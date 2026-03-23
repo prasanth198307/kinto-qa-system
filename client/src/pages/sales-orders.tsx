@@ -415,19 +415,26 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                       </Button>
                     </div>
 
-                    <div className="border rounded-md">
+                    <div className="border rounded-md overflow-x-auto">
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead className="w-[30%]">Product</TableHead>
-                            <TableHead>Qty</TableHead>
-                            <TableHead>Price (₹)</TableHead>
-                            <TableHead>GST (%)</TableHead>
-                            <TableHead className="w-[50px]"></TableHead>
+                            <TableHead className="min-w-[180px]">Product</TableHead>
+                            <TableHead className="w-20">Qty</TableHead>
+                            <TableHead className="w-28">Price (₹)</TableHead>
+                            <TableHead className="w-40">CGST% / SGST%</TableHead>
+                            <TableHead className="w-28 text-right">Line Total</TableHead>
+                            <TableHead className="w-10"></TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {fields.map((field, index) => (
+                          {fields.map((field, index) => {
+                            const watchedItems = form.watch("items");
+                            const row = watchedItems[index] || {};
+                            const taxable = (row.unitPrice || 0) * (row.quantity || 0);
+                            const taxRate = (Number(row.cgstRate) || 0) + (Number(row.sgstRate) || 0) + (Number(row.igstRate) || 0);
+                            const lineTotal = taxable * (1 + taxRate / 100);
+                            return (
                             <TableRow key={field.id}>
                               <TableCell>
                                 <FormField
@@ -437,7 +444,6 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                                     <Select 
                                       onValueChange={(val) => {
                                         field.onChange(val);
-                                        // Auto-fill description if needed
                                         const prod = products.find(p => p.id === val);
                                         if (prod) {
                                           form.setValue(`items.${index}.description`, prod.productName);
@@ -467,10 +473,12 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                                   render={({ field }) => (
                                     <FormControl>
                                       <Input 
-                                        type="number" 
+                                        type="number"
+                                        min={1}
+                                        step={1}
                                         {...field} 
                                         onChange={e => field.onChange(Number(e.target.value))}
-                                        className="w-20" 
+                                        className="w-16" 
                                         data-testid={`input-qty-${index}`}
                                       />
                                     </FormControl>
@@ -486,6 +494,7 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                                       <Input 
                                         type="number" 
                                         step="0.01"
+                                        min={0}
                                         {...field} 
                                         onChange={e => field.onChange(Number(e.target.value))}
                                         className="w-24" 
@@ -503,32 +512,43 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                                     render={({ field }) => (
                                       <FormControl>
                                         <Input 
-                                          type="number" 
+                                          type="number"
+                                          step="0.01"
+                                          min={0}
+                                          max={100}
                                           {...field} 
                                           onChange={e => field.onChange(Number(e.target.value))}
-                                          className="w-12 text-xs" 
+                                          className="w-16 text-xs" 
                                           title="CGST %"
+                                          placeholder="CGST"
                                         />
                                       </FormControl>
                                     )}
                                   />
-                                  <span className="text-xs text-muted-foreground">+</span>
+                                  <span className="text-xs text-muted-foreground">/</span>
                                   <FormField
                                     control={form.control}
                                     name={`items.${index}.sgstRate`}
                                     render={({ field }) => (
                                       <FormControl>
                                         <Input 
-                                          type="number" 
+                                          type="number"
+                                          step="0.01"
+                                          min={0}
+                                          max={100}
                                           {...field} 
                                           onChange={e => field.onChange(Number(e.target.value))}
-                                          className="w-12 text-xs" 
+                                          className="w-16 text-xs" 
                                           title="SGST %"
+                                          placeholder="SGST"
                                         />
                                       </FormControl>
                                     )}
                                   />
                                 </div>
+                              </TableCell>
+                              <TableCell className="text-right text-sm font-medium tabular-nums">
+                                ₹{lineTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </TableCell>
                               <TableCell>
                                 <Button
@@ -537,15 +557,28 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                                   size="icon"
                                   onClick={() => remove(index)}
                                   disabled={fields.length === 1}
-                                  className="text-destructive"
+                                  className="text-destructive h-8 w-8"
                                 >
                                   <Trash2 className="w-4 h-4" />
                                 </Button>
                               </TableCell>
                             </TableRow>
-                          ))}
+                          ); })}
                         </TableBody>
                       </Table>
+                    </div>
+                    {/* Live Total */}
+                    <div className="flex justify-end pt-1">
+                      <div className="flex items-center gap-4 bg-muted/50 rounded-md px-4 py-2 text-sm">
+                        <span className="text-muted-foreground">Estimated Grand Total (incl. GST):</span>
+                        <span className="font-bold text-base">
+                          ₹{form.watch("items").reduce((sum, item) => {
+                            const taxable = (item.unitPrice || 0) * (item.quantity || 0);
+                            const taxRate = (Number(item.cgstRate) || 0) + (Number(item.sgstRate) || 0) + (Number(item.igstRate) || 0);
+                            return sum + taxable * (1 + taxRate / 100);
+                          }, 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
                     </div>
                   </div>
 

@@ -2579,6 +2579,32 @@ function InvoiceDetailPageWrapper() {
 }
 
 // Wrapper component for Raw Material Detail page with filtered navigation
+function SalesOrderDetailWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('sales-orders');
+
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
+
+  return (
+    <DashboardShell
+      title="Sales Order Detail"
+      onLogoutClick={() => logoutMutation.mutate()}
+      notificationCount={0}
+      navSections={navSections}
+      activeView={activeView}
+      onNavigate={(viewId) => setActiveView(viewId)}
+    >
+      <SalesOrderDetailPage showHeader={false} />
+    </DashboardShell>
+  );
+}
+
 function RawMaterialDetailWrapper() {
   const { logoutMutation } = useAuth();
   const [, setLocation] = useLocation();
@@ -2971,7 +2997,7 @@ function Router() {
       <ProtectedRoute path="/vendor-history/:vendorId" component={VendorHistoryDetailPage} />
       <ProtectedRoute path="/invoice/:id" component={InvoiceDetailPageWrapper} />
       <ProtectedRoute path="/sales-orders" component={SalesOrdersPage} />
-      <ProtectedRoute path="/sales-orders/:id" component={SalesOrderDetailPage} />
+      <ProtectedRoute path="/sales-orders/:id" component={SalesOrderDetailWrapper} />
       <ProtectedRoute path="/raw-material/:id" component={RawMaterialDetailWrapper} />
       <ProtectedRoute path="/raw-material-type/:id" component={RawMaterialTypeDetailWrapper} />
       <ProtectedRoute path="/product/:id" component={ProductDetailWrapper} />
