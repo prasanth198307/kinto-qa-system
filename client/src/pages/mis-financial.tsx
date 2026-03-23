@@ -1,40 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { AlertTriangle, Calendar, Download, FileSpreadsheet, FileText } from "lucide-react";
 import {
-  ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
+  ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid,
+  Tooltip as RTooltip, ResponsiveContainer,
 } from "recharts";
 import { exportToExcel, formatDateForExcel } from "@/lib/excel-export";
 import { format } from "date-fns";
-
-/* ─── Color palette from mockup ─────────────────────────────────────── */
-const C = {
-  bg: "#F4F2EE", surface: "#F9F8F6", white: "#FFFFFF",
-  dark: "#1A1A18", muted: "#6B6B66", hint: "#888780", border: "#E8E6E0",
-  green: "#3B6D11", greenBg: "#EAF3DE", greenMid: "#97C459",
-  red: "#A32D2D", redBg: "#FCEBEB", redMid: "#E24B4A",
-  amber: "#633806", amberBg: "#FAEEDA", amberMid: "#EF9F27", amberBd: "#FAC775",
-  blue: "#185FA5", blueBg: "#E6F1FB", blueMid: "#378ADD",
-  teal: "#0F6E56", tealBg: "#E1F5EE", tealMid: "#1D9E75",
-  purple: "#534AB7", purpleBg: "#EEEDFE", purpleMid: "#7F77DD",
-  coral: "#993C1D", coralBg: "#FAECE7", coralMid: "#D85A30",
-};
-
-/* ─── Formatters ─────────────────────────────────────────────────────── */
-const INR = (p: number) =>
-  `₹${Math.abs(p / 100).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-const INR_K = (p: number) => {
-  const a = Math.abs(p / 100);
-  if (a >= 10000000) return `₹${(a / 10000000).toFixed(2)}Cr`;
-  if (a >= 100000) return `₹${(a / 100000).toFixed(2)}L`;
-  if (a >= 1000) return `₹${(a / 1000).toFixed(1)}K`;
-  return `₹${a.toLocaleString("en-IN")}`;
-};
-const PCT = (n: number, d: number) => (d > 0 ? Math.round((n / d) * 100) : 0);
-const MONTH_LABEL = (m: string) => {
-  const [y, mo] = m.split("-");
-  return new Date(parseInt(y), parseInt(mo) - 1, 1).toLocaleDateString("en-IN", { month: "short" });
-};
 
 /* ─── API shape ──────────────────────────────────────────────────────── */
 interface FinancialData {
@@ -55,1077 +32,764 @@ interface FinancialData {
   insights: Array<{ priority: string; label: string; title: string; body: string }>;
 }
 
-/* ─── Tiny primitives ────────────────────────────────────────────────── */
-type ChipColor = "green" | "red" | "amber" | "blue" | "purple" | "teal" | "gray" | "coral";
-function Chip({ children, color }: { children: React.ReactNode; color: ChipColor }) {
-  const s: Record<ChipColor, React.CSSProperties> = {
-    green:  { background: C.greenBg,  color: "#27500A" },
-    red:    { background: C.redBg,    color: "#791F1F" },
-    amber:  { background: C.amberBg,  color: C.amber },
-    blue:   { background: C.blueBg,   color: C.blue },
-    purple: { background: C.purpleBg, color: C.purple },
-    teal:   { background: C.tealBg,   color: C.teal },
-    gray:   { background: C.surface,  color: C.muted, border: `1px solid ${C.border}` },
-    coral:  { background: C.coralBg,  color: C.coral },
-  };
-  return (
-    <span style={{
-      display: "inline-block", fontSize: 9, fontWeight: 700,
-      padding: "2px 8px", borderRadius: 4, letterSpacing: "0.03em", whiteSpace: "nowrap",
-      ...s[color],
-    }}>{children}</span>
-  );
-}
-
-function SrcChip({ children }: { children: React.ReactNode }) {
-  return (
-    <span style={{
-      fontSize: 8, fontWeight: 700, padding: "2px 6px", borderRadius: 3,
-      background: C.purpleBg, color: C.purple, display: "inline-block", marginBottom: 6,
-    }}>{children}</span>
-  );
-}
-
-function KpiCard({
-  src, label, value, valueColor, sub, chip, chipColor, bg, borderColor,
-}: {
-  src: string; label: string; value: string; valueColor: string;
-  sub: string; chip: string; chipColor: ChipColor;
-  bg?: string; borderColor?: string;
-}) {
-  return (
-    <div style={{
-      background: bg ?? C.surface, borderRadius: 12, padding: "12px 14px",
-      border: borderColor ? `1.5px solid ${borderColor}` : "none",
-      position: "relative",
-    }}>
-      <SrcChip>{src}</SrcChip>
-      <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.05em", color: C.hint, marginBottom: 6 }}>{label}</div>
-      <div style={{ fontSize: 17, fontWeight: 600, marginBottom: 4, color: valueColor }}>{value}</div>
-      <div style={{ fontSize: 9, color: C.muted, marginBottom: 6 }}>{sub}</div>
-      <Chip color={chipColor}>{chip}</Chip>
-    </div>
-  );
-}
-
-function SectionHd({ title, sub, chip, chipColor }: { title: string; sub: string; chip: string; chipColor: ChipColor }) {
-  return (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10, marginTop: 20 }}>
-      <div>
-        <div style={{ fontSize: 13, fontWeight: 600, color: C.dark }}>{title}</div>
-        <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>{sub}</div>
-      </div>
-      <Chip color={chipColor}>{chip}</Chip>
-    </div>
-  );
-}
-
-function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
-  return (
-    <div style={{
-      background: C.white, border: `1px solid ${C.border}`,
-      borderRadius: 14, padding: "16px 20px", ...style,
-    }}>{children}</div>
-  );
-}
-function CardTitle({ children }: { children: React.ReactNode }) {
-  return <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 3 }}>{children}</div>;
-}
-function CardSub({ children }: { children: React.ReactNode }) {
-  return <div style={{ fontSize: 10, color: C.muted, marginBottom: 12 }}>{children}</div>;
-}
-
-function PlRow({
-  left, right, indent, head, total, leftColor, rightColor, rightMono,
-}: {
-  left: React.ReactNode; right?: React.ReactNode;
-  indent?: boolean; head?: boolean; total?: boolean;
-  leftColor?: string; rightColor?: string; rightMono?: boolean;
-}) {
-  return (
-    <div style={{
-      display: "flex", justifyContent: "space-between", alignItems: "center",
-      padding: head ? "6px 8px" : total ? "8px 8px 6px" : "6px 8px",
-      fontSize: indent ? 10 : 11,
-      paddingLeft: indent ? 24 : 8,
-      borderBottom: total ? "none" : `1px solid ${C.surface}`,
-      borderTop: total ? `1px solid ${C.border}` : "none",
-      marginTop: total ? 4 : 0,
-      fontWeight: (head || total) ? 600 : 400,
-      background: head ? "rgba(0,0,0,0.02)" : "transparent",
-      borderRadius: head ? 4 : 0,
-    }}>
-      <span style={{ color: leftColor ?? (indent ? C.muted : C.dark) }}>{left}</span>
-      {right !== undefined && (
-        <span style={{ fontFamily: rightMono !== false ? "DM Mono, monospace" : undefined, color: rightColor ?? C.dark }}>
-          {right}
-        </span>
-      )}
-    </div>
-  );
-}
-
-function PBar({ label, value, pct, color }: { label: string; value: string; pct: number; color: string }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-      <span style={{ width: 90, fontSize: 10, color: C.muted, flexShrink: 0 }}>{label}</span>
-      <div style={{ flex: 1, height: 7, background: C.surface, borderRadius: 4, overflow: "hidden", minWidth: 60 }}>
-        <div style={{ width: `${pct}%`, height: 7, background: color, borderRadius: 4 }} />
-      </div>
-      <span style={{ fontSize: 10, fontWeight: 600, flexShrink: 0 }}>{value}</span>
-    </div>
-  );
-}
-
-function MiniPBar({ pct, color }: { pct: number; color: string }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-      <div style={{ flex: 1, height: 7, background: C.surface, borderRadius: 4, overflow: "hidden", minWidth: 60 }}>
-        <div style={{ width: `${Math.min(pct, 100)}%`, height: 7, background: color, borderRadius: 4 }} />
-      </div>
-      <span style={{ fontSize: 10, color, fontWeight: 700, minWidth: 28 }}>{Math.round(pct)}%</span>
-    </div>
-  );
-}
-
-function Th({ children }: { children: React.ReactNode }) {
-  return (
-    <th style={{
-      textAlign: "left", padding: "6px 8px", fontSize: 9, fontWeight: 600,
-      textTransform: "uppercase", letterSpacing: "0.05em", color: C.hint,
-      borderBottom: `1px solid ${C.border}`, whiteSpace: "nowrap",
-    }}>{children}</th>
-  );
-}
-function Td({ children, mono, color, bold }: { children: React.ReactNode; mono?: boolean; color?: string; bold?: boolean }) {
-  return (
-    <td style={{
-      padding: "8px 8px", borderBottom: `1px solid ${C.surface}`, verticalAlign: "middle",
-      fontFamily: mono ? "DM Mono, monospace" : undefined, fontSize: 11,
-      color: color ?? C.dark, fontWeight: bold ? 600 : 400,
-    }}>{children}</td>
-  );
-}
-
-type RowVariant = "danger" | "warn" | "good" | "purple" | undefined;
-function TrVariant({ children, variant }: { children: React.ReactNode; variant?: RowVariant }) {
-  const bg = variant === "danger" ? C.redBg : variant === "warn" ? C.amberBg : variant === "good" ? C.greenBg : variant === "purple" ? C.purpleBg : "transparent";
-  return <tr style={{ background: bg }}>{children}</tr>;
-}
-
-function AgingBucket({
-  label, count, amount, total, pct, barColor, bg, borderStyle, sub, chip, chipColor,
-}: {
-  label: string; count: number; amount: number; total: number; pct: number;
-  barColor: string; bg: string; borderStyle?: string; sub: string; chip: string; chipColor: ChipColor;
-}) {
-  return (
-    <div style={{ borderRadius: 10, padding: "12px 14px", marginBottom: 8, background: bg, border: borderStyle }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-        <span style={{ fontSize: 11, fontWeight: 600 }}>
-          {label} <span style={{ fontWeight: 400, color: C.muted }}>· {count} invoices</span>
-        </span>
-        <span style={{ fontSize: 13, fontWeight: 600, color: barColor }}>{INR(amount)}</span>
-      </div>
-      <div style={{ height: 7, background: C.surface, borderRadius: 4, overflow: "hidden" }}>
-        <div style={{ width: `${pct}%`, height: 7, background: barColor, borderRadius: 4 }} />
-      </div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6, fontSize: 9 }}>
-        <span style={{ color: C.muted }}>{Math.round(pct)}% of total AR · {sub}</span>
-        <Chip color={chipColor}>{chip}</Chip>
-      </div>
-    </div>
-  );
-}
-
-function BsCol({
-  bg, titleColor, title, rows, totalLabel, totalVal, totalColor, note, noteColor,
-}: {
-  bg: string; titleColor: string; title: string;
-  rows: Array<{ label: string; val: string; color?: string }>;
-  totalLabel: string; totalVal: string; totalColor: string; note: string; noteColor: string;
-}) {
-  return (
-    <div style={{ borderRadius: 10, padding: 14, background: bg }}>
-      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.05em", marginBottom: 10, color: titleColor }}>{title}</div>
-      {rows.map((r, i) => (
-        <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", fontSize: 11, borderBottom: "1px solid rgba(0,0,0,0.04)" }}>
-          <span>{r.label}</span>
-          <span style={{ fontFamily: "DM Mono, monospace", color: r.color ?? C.muted }}>{r.val}</span>
-        </div>
-      ))}
-      <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0 0", fontSize: 12, fontWeight: 600, borderTop: "1px solid rgba(0,0,0,0.1)", marginTop: 4 }}>
-        <span style={{ color: titleColor }}>{totalLabel}</span>
-        <span style={{ fontFamily: "DM Mono, monospace", color: totalColor }}>{totalVal}</span>
-      </div>
-      <div style={{ fontSize: 9, marginTop: 6, color: noteColor }}>{note}</div>
-    </div>
-  );
-}
-
-function CoaItem({ badge, label, desc, badgeColor }: { badge: string; label: string; desc: string; badgeColor: ChipColor }) {
-  return (
-    <div style={{ display: "flex", gap: 8, alignItems: "flex-start", padding: 8, borderRadius: 6, marginBottom: 6, background: "rgba(255,255,255,0.6)", fontSize: 11 }}>
-      <Chip color={badgeColor}>{badge}</Chip>
-      <div>
-        <div style={{ fontWeight: 600 }}>{label}</div>
-        <div style={{ fontSize: 9, color: C.muted, marginTop: 1 }}>{desc}</div>
-      </div>
-    </div>
-  );
-}
-
-function DssCard({ priority, chip, chipColor, title, body, bg }: {
-  priority: string; chip: string; chipColor: ChipColor; title: string; body: string; bg: string;
-}) {
-  return (
-    <div style={{ borderRadius: 10, padding: 14, border: "1px solid rgba(0,0,0,0.06)", background: bg }}>
-      <Chip color={chipColor}>{chip}</Chip>
-      <div style={{ fontSize: 11, fontWeight: 600, color: C.dark, margin: "8px 0 4px" }}>{title}</div>
-      <div style={{ fontSize: 10, color: C.muted, lineHeight: 1.6 }}>{body}</div>
-    </div>
-  );
-}
-
-function Flag({ variant, children }: { variant: "crit" | "warn" | "purple"; children: React.ReactNode }) {
-  const s = {
-    crit:   { background: C.redBg,    border: `1.5px solid #F7C1C1`, color: C.red },
-    warn:   { background: C.amberBg,  border: `1.5px solid ${C.amberBd}`, color: C.amber },
-    purple: { background: C.purpleBg, border: `1px solid #AFA9EC`, color: C.purple },
-  }[variant];
-  return (
-    <div style={{ borderRadius: 12, padding: "10px 16px", display: "flex", gap: 10, alignItems: "flex-start", fontSize: 11, lineHeight: 1.6, ...s }}>
-      {children}
-    </div>
-  );
-}
-
-/* ─── Custom Tooltip for chart ──────────────────────────────────────── */
-function ChartTooltip({ active, payload, label }: any) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 12px", fontSize: 11 }}>
-      <div style={{ fontWeight: 600, marginBottom: 4, color: C.dark }}>{label}</div>
-      {payload.map((p: any) => (
-        <div key={p.name} style={{ color: p.color, display: "flex", gap: 6 }}>
-          <span style={{ color: C.muted }}>{p.name}:</span>
-          <span style={{ fontWeight: 600 }}>{INR_K(p.value * 100)}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/* ─── Period helpers ─────────────────────────────────────────────────── */
-const PERIODS = [
-  { value: "full_year", label: "Full Year" },
-  { value: "h1",        label: "H1 (Apr–Sep)" },
-  { value: "h2",        label: "H2 (Oct–Mar)" },
-  { value: "q1",        label: "Q1 (Apr–Jun)" },
-  { value: "q2",        label: "Q2 (Jul–Sep)" },
-  { value: "q3",        label: "Q3 (Oct–Dec)" },
-  { value: "q4",        label: "Q4 (Jan–Mar)" },
-  { value: "custom",    label: "Custom Range" },
+/* ─── Period options ─────────────────────────────────────────────────── */
+const PERIOD_GROUPS = [
+  {
+    group: "This FY (Apr–Mar)",
+    options: [
+      { value: "full_year", label: "Full Year" },
+      { value: "h1",        label: "H1 (Apr–Sep)" },
+      { value: "h2",        label: "H2 (Oct–Mar)" },
+      { value: "q1",        label: "Q1 (Apr–Jun)" },
+      { value: "q2",        label: "Q2 (Jul–Sep)" },
+      { value: "q3",        label: "Q3 (Oct–Dec)" },
+      { value: "q4",        label: "Q4 (Jan–Mar)" },
+    ],
+  },
+  {
+    group: "Custom",
+    options: [{ value: "custom", label: "Custom Range" }],
+  },
 ];
 
 function buildFyOptions() {
   const cur = new Date().getMonth() >= 3 ? new Date().getFullYear() : new Date().getFullYear() - 1;
-  return [cur, cur - 1, cur - 2].map((y) => ({
-    value: String(y),
-    label: `FY ${y}–${String(y + 1).slice(2)}`,
-  }));
+  return [cur, cur - 1, cur - 2].map((y) => ({ value: String(y), label: `FY ${y}–${String(y + 1).slice(2)}` }));
+}
+const FY_OPTIONS = buildFyOptions();
+
+/* ─── Formatters ─────────────────────────────────────────────────────── */
+function fmtCurr(paise: number): string {
+  const n = Math.abs(paise / 100);
+  if (n >= 10000000) return `₹${(n / 10000000).toFixed(2)}Cr`;
+  if (n >= 100000)   return `₹${(n / 100000).toFixed(2)}L`;
+  if (n >= 1000)     return `₹${(n / 1000).toFixed(1)}K`;
+  return `₹${Math.round(n).toLocaleString("en-IN")}`;
+}
+function fmtFull(paise: number): string {
+  return `₹${Math.abs(Math.round(paise / 100)).toLocaleString("en-IN")}`;
+}
+function pct(n: number, d: number) { return d > 0 ? Math.round((n / d) * 100) : 0; }
+function monthLabel(m: string) {
+  const [y, mo] = m.split("-");
+  return new Date(parseInt(y), parseInt(mo) - 1, 1).toLocaleDateString("en-IN", { month: "short", year: "2-digit" });
 }
 
-const FY_OPTIONS = buildFyOptions();
+/* ─── Tiny chips ─────────────────────────────────────────────────────── */
+function GreenChip({ children }: { children: React.ReactNode }) {
+  return <span style={{ background: "#EAF3DE", color: "#3B6D11", fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 4, whiteSpace: "nowrap" }}>{children}</span>;
+}
+function RedChip({ children }: { children: React.ReactNode }) {
+  return <span style={{ background: "#FCEBEB", color: "#A32D2D", fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 4, whiteSpace: "nowrap" }}>{children}</span>;
+}
+function AmberChip({ children }: { children: React.ReactNode }) {
+  return <span style={{ background: "#FAEEDA", color: "#854F0B", fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 4, whiteSpace: "nowrap" }}>{children}</span>;
+}
+function BlueChip({ children }: { children: React.ReactNode }) {
+  return <span style={{ background: "#E6F1FB", color: "#185FA5", fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 4, whiteSpace: "nowrap" }}>{children}</span>;
+}
+function PurpleChip({ children }: { children: React.ReactNode }) {
+  return <span style={{ background: "#EEEDFE", color: "#534AB7", fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 4, whiteSpace: "nowrap" }}>{children}</span>;
+}
+function GrayChip({ children }: { children: React.ReactNode }) {
+  return <span className="border" style={{ background: "hsl(var(--muted))", color: "hsl(var(--muted-foreground))", fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 4, whiteSpace: "nowrap" }}>{children}</span>;
+}
+
+/* ─── KPI Card ───────────────────────────────────────────────────────── */
+function KpiCard({ label, value, meta, chip, valueColor, bg }: {
+  label: string; value: string; meta?: string;
+  chip?: React.ReactNode; valueColor?: string; bg?: string;
+}) {
+  return (
+    <div className="rounded-lg p-3" style={{ background: bg ?? "hsl(var(--muted)/0.5)" }}>
+      <p className="text-muted-foreground" style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 6px" }}>{label}</p>
+      <p style={{ fontSize: 22, fontWeight: 500, margin: "0 0 4px", color: valueColor ?? "inherit" }}>{value}</p>
+      <div style={{ fontSize: 11, display: "flex", alignItems: "center", gap: 6 }} className="text-muted-foreground">
+        {meta && <span>{meta}</span>}
+        {chip}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Section heading ────────────────────────────────────────────────── */
+function SectionHd({ title, sub, right }: { title: string; sub: string; right?: React.ReactNode }) {
+  return (
+    <div className="flex items-start justify-between gap-2">
+      <div>
+        <p className="text-sm font-medium">{title}</p>
+        <p className="text-xs text-muted-foreground">{sub}</p>
+      </div>
+      {right}
+    </div>
+  );
+}
+
+/* ─── Mini progress bar ──────────────────────────────────────────────── */
+function MiniBar({ pct: p, color }: { pct: number; color: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <div style={{ flex: 1, background: "hsl(var(--muted))", borderRadius: 3, height: 6, overflow: "hidden", minWidth: 50 }}>
+        <div style={{ width: `${Math.min(p, 100)}%`, height: 6, background: color, borderRadius: 3 }} />
+      </div>
+      <span style={{ fontSize: 10, fontWeight: 600, color, minWidth: 28 }}>{Math.round(p)}%</span>
+    </div>
+  );
+}
+
+/* ─── Chart tooltip ──────────────────────────────────────────────────── */
+function ChartTip({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-md border bg-background p-2 shadow text-xs space-y-1">
+      <p className="font-medium">{label}</p>
+      {payload.map((p: any, i: number) => (
+        <p key={i} style={{ color: p.color }}>{p.name}: {fmtCurr(p.value * 100)}</p>
+      ))}
+    </div>
+  );
+}
+
+const CHART_IN  = "#97C459";
+const CHART_OUT = "#F09595";
+const CHART_NET = "#378ADD";
 
 /* ═══════════════════════════════════════════════════════════════════════
    Main Component
 ═══════════════════════════════════════════════════════════════════════ */
 export default function MISFinancial() {
-  const curFyYear = new Date().getMonth() >= 3 ? new Date().getFullYear() : new Date().getFullYear() - 1;
-  const [period, setPeriod] = useState("full_year");
-  const [fy, setFy] = useState(String(curFyYear));
-  const [customFrom, setCustomFrom] = useState(format(new Date(curFyYear, 3, 1), "yyyy-MM-dd"));
-  const [customTo, setCustomTo] = useState(format(new Date(), "yyyy-MM-dd"));
+  const curFy = new Date().getMonth() >= 3 ? new Date().getFullYear() : new Date().getFullYear() - 1;
+  const [period, setPeriod]       = useState("full_year");
+  const [fy, setFy]               = useState(String(curFy));
+  const [customFrom, setCustomFrom] = useState(format(new Date(curFy, 3, 1), "yyyy-MM-dd"));
+  const [customTo, setCustomTo]   = useState(format(new Date(), "yyyy-MM-dd"));
+  const [appliedFrom, setAppliedFrom] = useState("");
+  const [appliedTo, setAppliedTo] = useState("");
   const [isExporting, setIsExporting] = useState(false);
 
+  const isCustom = period === "custom";
+  const customReady = isCustom && appliedFrom && appliedTo;
+
   const qParams: Record<string, string> = { period, fy };
-  if (period === "custom") { qParams.from = customFrom; qParams.to = customTo; }
+  if (customReady) { qParams.from = appliedFrom; qParams.to = appliedTo; }
 
   const { data, isLoading } = useQuery<FinancialData>({
     queryKey: ["/api/mis/financial-analytics", qParams],
+    enabled: !isCustom || !!customReady,
     queryFn: async () => {
       const qs = new URLSearchParams(qParams).toString();
       const res = await fetch(`/api/mis/financial-analytics?${qs}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch");
+      if (!res.ok) throw new Error("Failed");
       return res.json();
     },
   });
 
-  const kpis = data?.kpis;
+  const kpis      = data?.kpis;
   const netProfit = kpis?.netProfit ?? 0;
   const netMargin = kpis?.netMargin ?? 0;
-  const totalAging = (data?.receivablesAging ?? []).reduce((s, r) => s + r.outstanding, 0);
+  const totalAging = useMemo(() => (data?.receivablesAging ?? []).reduce((s, r) => s + r.outstanding, 0), [data]);
 
-  const chartData = (data?.monthlyTrend ?? []).map((m) => ({
-    name: MONTH_LABEL(m.month),
-    Revenue: Math.round(m.revenue / 100),
-    Expenses: Math.round(m.expenses / 100),
-    Net: Math.round((m.revenue - m.expenses) / 100),
-  }));
+  const chartData = useMemo(() =>
+    (data?.monthlyTrend ?? []).map((m) => ({
+      name: monthLabel(m.month),
+      Revenue: Math.round(m.revenue / 100),
+      Expenses: Math.round(m.expenses / 100),
+      Net: Math.round((m.revenue - m.expenses) / 100),
+    })), [data]);
 
-  const marginLabel =
-    netMargin >= 15 ? "HEALTHY" : netMargin >= 5 ? "THIN" : netProfit >= 0 ? "LOW" : "LOSS";
-  const marginChip: ChipColor =
-    netMargin >= 15 ? "green" : netMargin >= 5 ? "amber" : "red";
+  const expRatio = kpis?.plRevenue ? pct(kpis.plExpenses, kpis.plRevenue) : 0;
+  const fyLabel  = data?.fy ?? FY_OPTIONS.find(o => o.value === fy)?.label ?? "FY 2025–26";
+  const periodLabel = PERIOD_GROUPS.flatMap(g => g.options).find(o => o.value === period)?.label ?? "Full Year";
+  const selectedLabel = isCustom && appliedFrom && appliedTo ? `${appliedFrom} → ${appliedTo}` : `${fyLabel} · ${periodLabel}`;
 
-  const expRatio = kpis?.plRevenue ? PCT(kpis.plExpenses, kpis.plRevenue) : 0;
-  const expChipColor: ChipColor = expRatio > 90 ? "red" : expRatio > 70 ? "amber" : "green";
-
-  const fyLabel = data?.fy ?? FY_OPTIONS.find(o => o.value === fy)?.label ?? "FY 2025–26";
-  const periodLabel = PERIODS.find(p => p.value === period)?.label ?? period;
-
-  const handleExportExcel = async () => {
+  const handleExport = async () => {
     if (!data) return;
     setIsExporting(true);
     try {
       await exportToExcel({
-        filename: `financial-ledger-mis-${fy}-${period}-${format(new Date(), "yyyy-MM-dd")}.xlsx`,
+        filename: `financial-mis-${fy}-${period}-${format(new Date(), "yyyy-MM-dd")}.xlsx`,
         sheets: [
-          {
-            name: "KPI Summary",
-            data: [
-              ["Metric", "Value"],
-              ["Period", `${fyLabel} — ${periodLabel}`],
-              ["Total Revenue (₹)", Math.round((kpis?.plRevenue ?? 0) / 100)],
-              ["Total Expenses (₹)", Math.round((kpis?.plExpenses ?? 0) / 100)],
-              ["Net Profit/Loss (₹)", Math.round(netProfit / 100)],
-              ["Net Margin (%)", kpis?.netMargin ?? 0],
-              ["Total Outstanding AR (₹)", Math.round((kpis?.totalOutstanding ?? 0) / 100)],
-              ["Overdue Invoices", kpis?.overdueCount ?? 0],
-              ["Cash/Bank Balance (₹)", Math.round((kpis?.cashBalance ?? 0) / 100)],
-              ["Unreconciled Entries", kpis?.unreconciledCount ?? 0],
-            ],
-          },
-          {
-            name: "Monthly Trend",
-            data: [
-              ["Month", "Revenue (₹)", "Expenses (₹)", "Net (₹)"],
-              ...(data.monthlyTrend ?? []).map(m => [
-                m.month,
-                Math.round(m.revenue / 100),
-                Math.round(m.expenses / 100),
-                Math.round((m.revenue - m.expenses) / 100),
-              ]),
-            ],
-          },
-          {
-            name: "Trial Balance Groups",
-            data: [
-              ["Account Group", "Type", "Debit (₹)", "Credit (₹)", "Net (₹)"],
-              ...(data.trialGroups ?? []).map(g => [
-                g.groupName, g.accountType,
-                Math.round(g.totalDebit), Math.round(g.totalCredit),
-                Math.round(g.netBalance ?? (g.totalDebit - g.totalCredit)),
-              ]),
-            ],
-          },
-          {
-            name: "Receivables Aging",
-            data: [
-              ["Bucket", "Invoice Count", "Outstanding (₹)"],
-              ...(data.receivablesAging ?? []).map(r => [r.bucket, r.count, Math.round(r.outstanding / 100)]),
-            ],
-          },
-          {
-            name: "Top Debtors",
-            data: [
-              ["Customer", "Invoices", "Total Billed (₹)", "Collected (₹)", "Outstanding (₹)"],
-              ...(data.topDebtors ?? []).map(d => [
-                d.customer, d.invoiceCount,
-                Math.round(d.totalBilled / 100),
-                Math.round(d.totalCollected / 100),
-                Math.round(d.outstanding / 100),
-              ]),
-            ],
-          },
-          {
-            name: "Journal Entries",
-            data: [
-              ["Date", "Reference", "Type", "Amount (₹)", "Narration", "Flags"],
-              ...(data.recentJournals ?? []).map(j => [
-                formatDateForExcel(j.date), j.reference || j.id, j.sourceType,
-                Math.round(j.amount / 100), j.narration ?? "", (j.flags ?? []).join(", "),
-              ]),
-            ],
-          },
+          { name: "KPI Summary", data: [
+            ["Metric", "Value"],
+            ["Period", selectedLabel],
+            ["Total Revenue (₹)", Math.round((kpis?.plRevenue ?? 0) / 100)],
+            ["Total Expenses (₹)", Math.round((kpis?.plExpenses ?? 0) / 100)],
+            ["Net Profit/Loss (₹)", Math.round(netProfit / 100)],
+            ["Net Margin (%)", kpis?.netMargin ?? 0],
+            ["Total Outstanding AR (₹)", Math.round((kpis?.totalOutstanding ?? 0) / 100)],
+            ["Overdue Invoices", kpis?.overdueCount ?? 0],
+            ["Cash/Bank Balance (₹)", Math.round((kpis?.cashBalance ?? 0) / 100)],
+            ["Unreconciled Entries", kpis?.unreconciledCount ?? 0],
+          ]},
+          { name: "Monthly Trend", data: [
+            ["Month", "Revenue (₹)", "Expenses (₹)", "Net (₹)"],
+            ...(data.monthlyTrend ?? []).map(m => [m.month, Math.round(m.revenue / 100), Math.round(m.expenses / 100), Math.round((m.revenue - m.expenses) / 100)]),
+          ]},
+          { name: "Trial Balance Groups", data: [
+            ["Account Group", "Type", "Debit (₹)", "Credit (₹)", "Net (₹)"],
+            ...(data.trialGroups ?? []).map(g => [g.groupName, g.accountType, Math.round(g.totalDebit), Math.round(g.totalCredit), Math.round(g.netBalance ?? (g.totalDebit - g.totalCredit))]),
+          ]},
+          { name: "Aging", data: [
+            ["Bucket", "Count", "Outstanding (₹)"],
+            ...(data.receivablesAging ?? []).map(r => [r.bucket, r.count, Math.round(r.outstanding / 100)]),
+          ]},
+          { name: "Top Debtors", data: [
+            ["Customer", "Invoices", "Billed (₹)", "Collected (₹)", "Outstanding (₹)"],
+            ...(data.topDebtors ?? []).map(d => [d.customer, d.invoiceCount, Math.round(d.totalBilled / 100), Math.round(d.totalCollected / 100), Math.round(d.outstanding / 100)]),
+          ]},
+          { name: "Journal Entries", data: [
+            ["Date", "Reference", "Type", "Amount (₹)", "Narration", "Flags"],
+            ...(data.recentJournals ?? []).map(j => [formatDateForExcel(j.date), j.reference || j.id, j.sourceType, Math.round(j.amount / 100), j.narration ?? "", (j.flags ?? []).join(", ")]),
+          ]},
         ],
       });
-    } finally {
-      setIsExporting(false);
-    }
+    } finally { setIsExporting(false); }
   };
 
-  if (isLoading) {
-    return (
-      <div style={{ background: C.bg, minHeight: "100vh", fontFamily: "DM Sans, sans-serif" }}>
-        <div style={{ padding: "20px 24px", maxWidth: 1400, margin: "0 auto" }}>
-          {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} className="h-32 w-full mb-4" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div style={{ background: C.bg, minHeight: "100vh", fontFamily: "'DM Sans', sans-serif", color: C.dark }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap');
-        .fin-tbl td { border-bottom: 1px solid ${C.surface} !important; }
-        .fin-tbl tr:last-child td { border-bottom: none !important; }
-      `}</style>
+    <div className="p-4 md:p-6 space-y-5 max-w-7xl mx-auto">
 
-      {/* ── PAGE HEADER ── */}
-      <div style={{
-        background: C.dark, padding: "14px 28px",
-        display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10,
-      }}>
+      {/* ── Header ── */}
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <div style={{ fontSize: 17, fontWeight: 600, color: "#fff" }}>Financial Accounting — Formal Ledger MIS</div>
-          <div style={{ fontSize: 11, color: C.hint, marginTop: 3 }}>
-            Decision Support System · {fyLabel} · {periodLabel} · KINTO · Accountant / CA view
-          </div>
+          <p className="text-lg font-medium">Financial Accounting — Ledger MIS</p>
+          <p className="text-xs text-muted-foreground">{selectedLabel} · Accountant / CA decision view</p>
         </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Active period badge */}
+          <span className="text-xs text-muted-foreground border rounded-md px-2.5 py-1">{selectedLabel}</span>
 
-        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          {/* FY Selector */}
-          <select
-            value={fy}
-            onChange={(e) => setFy(e.target.value)}
-            style={{ fontSize: 11, padding: "7px 10px", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 8, background: "rgba(255,255,255,0.1)", color: "#fff", cursor: "pointer" }}
-          >
-            {FY_OPTIONS.map(o => <option key={o.value} value={o.value} style={{ background: C.dark }}>{o.label}</option>)}
-          </select>
+          {/* FY selector */}
+          <Select value={fy} onValueChange={setFy}>
+            <SelectTrigger className="w-[130px]" data-testid="select-fy"><SelectValue placeholder="FY" /></SelectTrigger>
+            <SelectContent>
+              {FY_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
 
-          {/* Period Selector */}
-          <select
-            value={period}
-            onChange={(e) => setPeriod(e.target.value)}
-            style={{ fontSize: 11, padding: "7px 10px", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 8, background: "rgba(255,255,255,0.1)", color: "#fff", cursor: "pointer" }}
-          >
-            {PERIODS.map(p => <option key={p.value} value={p.value} style={{ background: C.dark }}>{p.label}</option>)}
-          </select>
+          {/* Period selector */}
+          <Select value={period} onValueChange={(v) => { setPeriod(v); if (v !== "custom") { setAppliedFrom(""); setAppliedTo(""); } }}>
+            <SelectTrigger className="w-[160px]" data-testid="select-period"><SelectValue placeholder="Period" /></SelectTrigger>
+            <SelectContent>
+              {PERIOD_GROUPS.map(g => (
+                <div key={g.group}>
+                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{g.group}</div>
+                  {g.options.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                </div>
+              ))}
+            </SelectContent>
+          </Select>
 
-          {/* Custom date pickers — only shown when Custom Range selected */}
-          {period === "custom" && (
-            <>
-              <input
-                type="date" value={customFrom}
-                onChange={(e) => setCustomFrom(e.target.value)}
-                style={{ fontSize: 11, padding: "6px 10px", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 8, background: "rgba(255,255,255,0.1)", color: "#fff", cursor: "pointer" }}
-              />
-              <span style={{ color: C.hint, fontSize: 11 }}>to</span>
-              <input
-                type="date" value={customTo}
-                onChange={(e) => setCustomTo(e.target.value)}
-                style={{ fontSize: 11, padding: "6px 10px", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 8, background: "rgba(255,255,255,0.1)", color: "#fff", cursor: "pointer" }}
-              />
-            </>
+          {/* Custom date pickers */}
+          {isCustom && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5">
+                <Label className="text-xs text-muted-foreground">From</Label>
+                <Input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)} className="h-9 w-[140px] text-sm" data-testid="input-from" />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Label className="text-xs text-muted-foreground">To</Label>
+                <Input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)} className="h-9 w-[140px] text-sm" data-testid="input-to" />
+              </div>
+              <Button size="sm" onClick={() => { if (customFrom && customTo) { setAppliedFrom(customFrom); setAppliedTo(customTo); } }} disabled={!customFrom || !customTo} data-testid="button-apply">
+                <Calendar className="w-3.5 h-3.5 mr-1.5" />Apply
+              </Button>
+            </div>
           )}
 
-          {/* Export Excel */}
-          <button
-            onClick={handleExportExcel}
-            disabled={isExporting || !data}
-            style={{ fontSize: 11, fontWeight: 500, padding: "7px 14px", border: `1px solid ${C.border}`, borderRadius: 8, background: C.surface, color: C.dark, cursor: "pointer", opacity: isExporting ? 0.6 : 1 }}
-          >
-            {isExporting ? "Exporting…" : "↓ Export Excel"}
-          </button>
-
-          {/* Export PDF placeholder */}
-          <button
-            onClick={() => window.print()}
-            style={{ fontSize: 11, fontWeight: 500, padding: "7px 14px", border: `1px solid ${C.border}`, borderRadius: 8, background: C.surface, color: C.dark, cursor: "pointer" }}
-          >
-            ↓ Export PDF
-          </button>
-
-          <span style={{ background: C.purpleMid, color: "#fff", fontSize: 10, fontWeight: 700, padding: "7px 14px", borderRadius: 8 }}>
-            ACCOUNTANT VIEW
-          </span>
+          {/* Export buttons */}
+          <Button variant="outline" size="sm" onClick={handleExport} disabled={isExporting || !data} data-testid="button-export-excel">
+            <FileSpreadsheet className="w-3.5 h-3.5 mr-1.5" />
+            {isExporting ? "Exporting…" : "Excel"}
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => window.print()} data-testid="button-export-pdf">
+            <FileText className="w-3.5 h-3.5 mr-1.5" />PDF
+          </Button>
         </div>
       </div>
 
-      {/* ── SOURCE STRIP ── */}
-      <div style={{ background: C.white, borderBottom: `1px solid ${C.border}`, display: "flex", overflowX: "auto", gap: 0 }}>
-        {[
-          ["Chart of Accounts", "Account structure"],
-          ["Journal Entries", "Vouchers & postings"],
-          ["Bank Statements", "Bank reconciliation"],
-          ["Trial Balance", "Dr/Cr balances"],
-          ["Profit & Loss", "Revenue & expense"],
-          ["Balance Sheet", "Assets & liabilities"],
-          ["Ledger View", "Per-account detail"],
-          ["Day Book", "Daily transactions"],
-          ["Outstanding/Aging", "AR aging buckets"],
-          ["Cash Flow", "Liquidity position"],
-          ["Group Summary", "Rollup view"],
-        ].map(([name, desc], i, arr) => (
-          <div key={name} style={{
-            padding: "8px 16px", borderRight: i < arr.length - 1 ? `1px solid ${C.border}` : "none",
-            whiteSpace: "nowrap", flexShrink: 0,
-          }}>
-            <div style={{ fontSize: 9, fontWeight: 600, color: C.purple, textTransform: "uppercase", letterSpacing: "0.04em" }}>{name}</div>
-            <div style={{ fontSize: 9, color: C.hint, marginTop: 1 }}>{desc}</div>
-          </div>
-        ))}
-      </div>
-
-      <div style={{ padding: "20px 24px", maxWidth: 1400, margin: "0 auto" }}>
-
-        {/* ══ A: KPI CARDS ════════════════════════════════════════════════ */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10, marginTop: 16 }}>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: C.dark }}>Financial Health — Key Indicators</div>
-            <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>All sourced from formal accounting modules · {fyLabel}</div>
-          </div>
-          <Chip color="purple">6 KPIs</Chip>
+      {/* ── KPI Grid ── */}
+      {isLoading ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-20 rounded-lg" />)}
         </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)", gap: 8, marginBottom: 16 }}>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           <KpiCard
-            src="P&L" label="Total Revenue"
-            value={INR_K(kpis?.plRevenue ?? 0)} valueColor={C.green}
-            sub={`${(data?.trialGroups ?? []).filter(g => g.accountType?.toLowerCase() === 'income').length || "—"} income accounts · FY total`}
-            chip="INCOME" chipColor="green"
-            bg={C.greenBg}
+            label="Total Revenue" value={fmtCurr(kpis?.plRevenue ?? 0)} valueColor="#3B6D11"
+            meta={fmtFull(kpis?.plRevenue ?? 0)} chip={<GreenChip>INCOME</GreenChip>}
+            bg="#EAF3DE"
           />
           <KpiCard
-            src="P&L / TB" label="Total Expenses"
-            value={INR_K(kpis?.plExpenses ?? 0)} valueColor={C.red}
-            sub={`${expRatio}% of revenue`}
-            chip={expRatio > 90 ? "HIGH" : "NORMAL"} chipColor={expChipColor}
-            bg={C.redBg} borderColor={C.redMid}
+            label="Total Expenses" value={fmtCurr(kpis?.plExpenses ?? 0)} valueColor="#A32D2D"
+            meta={fmtFull(kpis?.plExpenses ?? 0)} chip={<RedChip>{expRatio}% of revenue</RedChip>}
+            bg={expRatio > 90 ? "#FCEBEB" : undefined}
           />
           <KpiCard
-            src="P&L" label="Net Profit / Loss"
-            value={`${netProfit < 0 ? "−" : ""}${INR_K(Math.abs(netProfit))}`}
-            valueColor={netProfit >= 0 ? C.green : C.red}
-            sub={`${Math.abs(netMargin).toFixed(1)}% net margin`}
-            chip={marginLabel} chipColor={marginChip}
-            bg={netProfit < 0 ? C.redBg : C.amberBg}
-            borderColor={netProfit < 0 ? C.redMid : C.amberBd}
+            label="Net Profit / Loss"
+            value={`${netProfit < 0 ? "−" : ""}${fmtCurr(Math.abs(netProfit))}`}
+            valueColor={netProfit >= 0 ? "#3B6D11" : "#A32D2D"}
+            meta={`${Math.abs(netMargin).toFixed(1)}% margin`}
+            chip={netMargin >= 15 ? <GreenChip>HEALTHY</GreenChip> : netMargin >= 5 ? <AmberChip>THIN</AmberChip> : <RedChip>LOSS</RedChip>}
           />
           <KpiCard
-            src="Outstanding" label="Sundry Debtors (AR)"
-            value={INR_K(kpis?.totalOutstanding ?? 0)} valueColor={C.red}
-            sub={`${kpis?.overdueCount ?? 0} invoices o/s`}
-            chip="CRITICAL" chipColor="red"
-            bg={C.redBg} borderColor={C.redMid}
+            label="Sundry Debtors (AR)" value={fmtCurr(kpis?.totalOutstanding ?? 0)} valueColor="#A32D2D"
+            meta={`${kpis?.overdueCount ?? 0} invoices o/s`} chip={<RedChip>CRITICAL</RedChip>}
+            bg="#FCEBEB"
           />
           <KpiCard
-            src="Ledger" label="Cash / Bank Balance"
-            value={INR_K(kpis?.cashBalance ?? 0)}
-            valueColor={(kpis?.cashBalance ?? 0) < 10000000 ? C.amber : C.green}
-            sub="Per ledger balance"
-            chip={(kpis?.cashBalance ?? 0) < 10000000 ? "LOW" : "OK"}
-            chipColor={(kpis?.cashBalance ?? 0) < 10000000 ? "amber" : "green"}
-            bg={C.amberBg} borderColor={C.amberBd}
+            label="Cash / Bank Balance" value={fmtCurr(kpis?.cashBalance ?? 0)}
+            valueColor={(kpis?.cashBalance ?? 0) < 10000000 ? "#854F0B" : "#3B6D11"}
+            meta="Per ledger"
+            chip={(kpis?.cashBalance ?? 0) < 10000000 ? <AmberChip>LOW</AmberChip> : <GreenChip>OK</GreenChip>}
           />
           <KpiCard
-            src="Bank Stmt" label="Bank Recon Gap"
-            value={INR_K(kpis?.unreconciledAmount ?? 0)}
-            valueColor={(kpis?.unreconciledCount ?? 0) > 0 ? C.red : C.green}
-            sub={`${kpis?.unreconciledCount ?? 0} unreconciled entries`}
-            chip={(kpis?.unreconciledCount ?? 0) > 0 ? "UNRESOLVED" : "CLEAR"}
-            chipColor={(kpis?.unreconciledCount ?? 0) > 0 ? "red" : "green"}
-            bg={(kpis?.unreconciledCount ?? 0) > 0 ? C.redBg : C.greenBg}
-            borderColor={(kpis?.unreconciledCount ?? 0) > 0 ? C.redMid : undefined}
+            label="Bank Recon Gap" value={fmtCurr(kpis?.unreconciledAmount ?? 0)}
+            valueColor={(kpis?.unreconciledCount ?? 0) > 0 ? "#A32D2D" : "#3B6D11"}
+            meta={`${kpis?.unreconciledCount ?? 0} unreconciled`}
+            chip={(kpis?.unreconciledCount ?? 0) > 0 ? <RedChip>UNRESOLVED</RedChip> : <GreenChip>CLEAR</GreenChip>}
           />
         </div>
+      )}
 
-        {/* ══ B: P&L + CASH FLOW ═══════════════════════════════════════ */}
-        <SectionHd
-          title="Profit & Loss Statement"
-          sub="Monthly revenue vs expenses · Net margin trend · Source: P&L module"
-          chip="P&L MODULE" chipColor="green"
-        />
+      {/* ── P&L Chart + FY Summary ── */}
+      <div className="grid md:grid-cols-[1.4fr_1fr] gap-4">
+        {/* Chart */}
+        <div className="rounded-lg border bg-card p-4 space-y-3">
+          <SectionHd
+            title="Monthly P&L — Revenue vs Expenses"
+            sub="Revenue (green) · Expenses (red) · Net line (blue)"
+            right={<PurpleChip>P&L MODULE</PurpleChip>}
+          />
+          {isLoading ? (
+            <Skeleton className="h-52 w-full" />
+          ) : chartData.length === 0 ? (
+            <p className="text-muted-foreground text-sm py-8 text-center">No data for this period</p>
+          ) : (
+            <>
+              <div style={{ height: 220 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.12)" vertical={false} />
+                    <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#888" }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10, fill: "#888" }} axisLine={false} tickLine={false} width={52}
+                      tickFormatter={v => Math.abs(v) >= 100000 ? `₹${(v / 100000).toFixed(0)}L` : `₹${(v / 1000).toFixed(0)}K`}
+                    />
+                    <RTooltip content={<ChartTip />} />
+                    <Bar dataKey="Revenue" name="Revenue" fill={CHART_IN} radius={[3, 3, 0, 0]} maxBarSize={20} />
+                    <Bar dataKey="Expenses" name="Expenses" fill={CHART_OUT} radius={[3, 3, 0, 0]} maxBarSize={20} />
+                    <Line dataKey="Net" name="Net" type="monotone" stroke={CHART_NET} strokeWidth={2} dot={{ r: 3, fill: CHART_NET }} />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex gap-5 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: CHART_IN }} />Revenue</span>
+                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: CHART_OUT }} />Expenses</span>
+                <span className="flex items-center gap-1.5"><span className="w-8 inline-block border-b-2" style={{ borderColor: CHART_NET }} />Net (line)</span>
+              </div>
+            </>
+          )}
+        </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1.1fr 1fr", gap: 12, marginBottom: 12 }}>
-          {/* P&L Chart */}
-          <Card>
-            <CardTitle>Monthly P&L — {fyLabel}</CardTitle>
-            <CardSub>Revenue (green) vs Expenses (red) · Net line (blue) · Source: P&L module</CardSub>
-            <div style={{ width: "100%", height: 200 }}>
-              <ResponsiveContainer>
-                <ComposedChart data={chartData} margin={{ top: 4, right: 8, left: -10, bottom: 0 }}>
-                  <CartesianGrid vertical={false} stroke="rgba(0,0,0,0.04)" />
-                  <XAxis dataKey="name" tick={{ fontSize: 9, fill: C.hint }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 9, fill: C.hint }} axisLine={false} tickLine={false}
-                    tickFormatter={(v) => `₹${Math.abs(v) >= 100000 ? (v / 100000).toFixed(0) + "L" : (v / 1000).toFixed(0) + "K"}`}
-                  />
-                  <Tooltip content={<ChartTooltip />} />
-                  <Bar dataKey="Revenue" fill={C.greenMid} radius={[4, 4, 0, 0]} barSize={12} />
-                  <Bar dataKey="Expenses" fill="#F09595" radius={[4, 4, 0, 0]} barSize={12} />
-                  <Line dataKey="Net" type="monotone" stroke={C.blueMid} strokeWidth={2}
-                    dot={{ r: 4, fill: C.blueMid, stroke: "#fff", strokeWidth: 2 }} />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+        {/* FY Summary */}
+        <div className="space-y-4">
+          <div className="rounded-lg border bg-card p-4">
+            <SectionHd title="FY Summary" sub="Income statement condensed · Source: P&L" />
+            <div className="mt-3 space-y-1">
               {[
-                { dot: true, color: C.greenMid, label: "Revenue" },
-                { dot: true, color: "#F09595", label: "Expenses" },
-                { dot: false, color: C.blueMid, label: "Net Flow" },
-              ].map(({ dot, color, label }) => (
-                <div key={label} style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 20, padding: "4px 12px", fontSize: 10, color: C.muted, display: "flex", alignItems: "center", gap: 5 }}>
-                  {dot
-                    ? <span style={{ width: 6, height: 6, borderRadius: "50%", background: color, display: "inline-block" }} />
-                    : <span style={{ width: 14, height: 2, background: color, display: "inline-block", borderRadius: 1 }} />
-                  }
-                  {label}
+                { label: "Gross Revenue",    val: fmtFull(kpis?.plRevenue ?? 0),     color: "#3B6D11", bold: true },
+                { label: "Total Expenses",   val: fmtFull(kpis?.plExpenses ?? 0),    color: "#A32D2D", bold: false },
+                { label: "Gross Profit",     val: fmtFull((kpis?.plRevenue ?? 0) - (kpis?.plExpenses ?? 0)), color: netProfit >= 0 ? "#3B6D11" : "#A32D2D", bold: true },
+              ].map(({ label, val, color, bold }) => (
+                <div key={label} className="flex justify-between items-center py-1.5 border-b last:border-0 text-sm">
+                  <span className="text-muted-foreground">{label}</span>
+                  <span style={{ fontFamily: "monospace", fontWeight: bold ? 600 : 400, color }}>{val}</span>
+                </div>
+              ))}
+              {(data?.trialGroups ?? []).filter(g => (g.accountType ?? "").toLowerCase().includes("expense")).slice(0, 4).map((g) => (
+                <div key={g.groupName} className="flex justify-between items-center py-1 text-xs pl-3">
+                  <span className="text-muted-foreground">{g.groupName}</span>
+                  <span style={{ fontFamily: "monospace", color: "#A32D2D" }}>{fmtFull(Math.abs(g.netBalance ?? (g.totalDebit - g.totalCredit)) * 100)}</span>
                 </div>
               ))}
             </div>
-          </Card>
+          </div>
 
-          {/* FY Summary + Cash Flow */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <Card style={{ flex: 1 }}>
-              <CardTitle>FY Summary</CardTitle>
-              <CardSub>Income statement condensed · Source: P&L</CardSub>
-              <PlRow left="Gross Revenue" right={INR(kpis?.plRevenue ?? 0)} head rightColor={C.green} />
-              <PlRow left="Less: Total Expenses" right={INR(kpis?.plExpenses ?? 0)} leftColor={C.muted} rightColor={C.red} indent />
-              {(data?.trialGroups ?? [])
-                .filter(g => g.accountType?.toLowerCase() === "expenses" || g.accountType?.toLowerCase() === "expense")
-                .slice(0, 5)
-                .map((g) => (
-                  <PlRow key={g.groupName}
-                    left={g.groupName} indent
-                    right={INR(Math.abs(g.totalDebit - g.totalCredit) * 100)}
-                    leftColor={C.muted} rightColor={C.muted}
-                  />
-                ))
-              }
-              <PlRow
-                left="Net Profit / Loss" total
-                right={`${netProfit < 0 ? "−" : ""}${INR(Math.abs(netProfit))} (${Math.abs(netMargin).toFixed(1)}%)`}
-                rightColor={netProfit >= 0 ? C.green : C.red}
-              />
-            </Card>
-
-            <Card style={{ flex: 1 }}>
-              <CardTitle>Outstanding Summary</CardTitle>
-              <CardSub>Receivables position · Source: Invoice ledger</CardSub>
-              <PlRow left="Total Billed (FY)" right={INR(kpis?.totalBilled ?? 0)} head rightColor={C.blue} />
-              <PlRow left="Total Outstanding" right={INR(kpis?.totalOutstanding ?? 0)} leftColor={C.muted} rightColor={C.red} indent />
-              <PlRow left="Collection Rate"
-                right={`${kpis?.totalBilled ? PCT((kpis.totalBilled - kpis.totalOutstanding), kpis.totalBilled) : 0}%`}
-                leftColor={C.muted} rightColor={C.green} indent />
-              <PlRow
-                left="Billed not collected" total
-                right={INR(kpis?.totalOutstanding ?? 0)}
-                rightColor={C.red}
-              />
-              <div style={{ marginTop: 10, background: C.redBg, borderRadius: 8, padding: "8px 12px", fontSize: 10, color: C.red }}>
-                <strong>Billed not collected:</strong> {INR_K(kpis?.totalOutstanding ?? 0)} — critical business risk
+          <div className="rounded-lg border bg-card p-4">
+            <SectionHd title="Outstanding Summary" sub="AR position · Invoice ledger" />
+            <div className="mt-3 space-y-1">
+              {[
+                { label: "Total Billed (FY)",   val: fmtFull(kpis?.totalBilled ?? 0),      color: "#185FA5" },
+                { label: "Total Outstanding",    val: fmtFull(kpis?.totalOutstanding ?? 0), color: "#A32D2D" },
+                { label: "Collection Rate",      val: `${kpis?.totalBilled ? pct((kpis.totalBilled - kpis.totalOutstanding), kpis.totalBilled) : 0}%`, color: "#3B6D11" },
+              ].map(({ label, val, color }) => (
+                <div key={label} className="flex justify-between items-center py-1.5 border-b last:border-0 text-sm">
+                  <span className="text-muted-foreground">{label}</span>
+                  <span style={{ fontFamily: "monospace", fontWeight: 500, color }}>{val}</span>
+                </div>
+              ))}
+            </div>
+            {(kpis?.totalOutstanding ?? 0) > 0 && (
+              <div className="mt-3 rounded-md p-2.5 text-xs" style={{ background: "#FCEBEB", color: "#A32D2D" }}>
+                <strong>Billed not collected: </strong>{fmtCurr(kpis?.totalOutstanding ?? 0)} — critical business risk
               </div>
-            </Card>
+            )}
           </div>
         </div>
+      </div>
 
-        {/* ══ C: TRIAL BALANCE ══════════════════════════════════════════ */}
+      {/* ── Trial Balance ── */}
+      <div className="rounded-lg border bg-card p-4 space-y-3">
         <SectionHd
           title="Trial Balance & Group Summary"
-          sub="All account groups with debit/credit balances · DSS signal per group · Source: Trial Balance + Group Summary"
-          chip="TRIAL BALANCE" chipColor="purple"
+          sub="All account groups with Dr/Cr balances · DSS signal per group"
+          right={<PurpleChip>TRIAL BALANCE</PurpleChip>}
         />
-
-        <Card>
-          <CardTitle>Account Group Summary — Dr / Cr / Net / Signal</CardTitle>
-          <CardSub>Every account group from your Chart of Accounts · Sorted by risk</CardSub>
-          <div style={{ overflowX: "auto" }}>
-            <table className="fin-tbl" style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+        {isLoading ? (
+          <div className="space-y-2">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
               <thead>
-                <tr>
-                  <Th>Account Group</Th><Th>Category</Th><Th>Debit (Dr)</Th><Th>Credit (Cr)</Th>
-                  <Th>Net Balance</Th><Th>% of Revenue</Th><Th>Trend</Th><Th>DSS Signal</Th>
+                <tr className="border-b">
+                  {["Account Group", "Category", "Debit (Dr)", "Credit (Cr)", "Net Balance", "% of Rev", "Signal"].map(h => (
+                    <th key={h} style={{ textAlign: "left", padding: "6px 8px", fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }} className="text-muted-foreground whitespace-nowrap">{h}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 {(data?.trialGroups ?? []).map((g) => {
                   const t = (g.accountType ?? "").toLowerCase();
-                  const isIncome = t === "income" || t === "revenue";
-                  const isExpense = t === "expenses" || t === "expense";
-                  const isAsset = t === "assets" || t === "asset";
-                  const isLiab = t === "liabilities" || t === "liability";
-                  const net = Math.abs(g.netBalance ?? (g.totalDebit - g.totalCredit));
-                  const netRupees = net * 100;
-                  const revRupees = kpis?.plRevenue ?? 1;
-                  const pctRev = PCT(netRupees, revRupees);
-                  const catChip: ChipColor = isIncome ? "green" : isExpense ? "red" : isAsset ? "blue" : isLiab ? "amber" : "gray";
-                  const catLabel = isIncome ? "Income" : isExpense ? "Expense" : isAsset ? "Asset" : isLiab ? "Liability" : "Equity";
-                  const signalChip: ChipColor = isIncome ? "green" : (isExpense && pctRev > 50) ? "red" : (isExpense && pctRev > 25) ? "amber" : isAsset ? "blue" : "gray";
-                  const signalLabel = isIncome ? "INCOME" : (isExpense && pctRev > 50) ? "HIGH RISK" : (isExpense && pctRev > 25) ? "REVIEW" : isAsset ? "ASSET" : "NORMAL";
-                  const rowVar: RowVariant = isIncome ? "good" : (isExpense && pctRev > 50) ? "danger" : (isExpense && pctRev > 25) ? "warn" : undefined;
+                  const isInc = t === "income" || t === "revenue";
+                  const isExp = t.includes("expense");
+                  const isAss = t.includes("asset");
+                  const net   = Math.abs(g.netBalance ?? (g.totalDebit - g.totalCredit));
+                  const netPaise = net * 100;
+                  const revPct   = kpis?.plRevenue ? pct(netPaise, kpis.plRevenue) : 0;
+                  const rowBg    = isInc ? "#EAF3DE" : (isExp && revPct > 50) ? "#FCEBEB" : (isExp && revPct > 25) ? "#FAEEDA" : undefined;
                   return (
-                    <TrVariant key={g.groupName} variant={rowVar}>
-                      <Td bold={isIncome || (isExpense && pctRev > 50)}>{g.groupName}</Td>
-                      <Td><Chip color={catChip}>{catLabel}</Chip></Td>
-                      <Td mono color={g.totalDebit > 0 ? (isExpense ? C.red : C.muted) : C.hint}>
-                        {g.totalDebit > 0 ? INR(g.totalDebit * 100) : "—"}
-                      </Td>
-                      <Td mono color={g.totalCredit > 0 ? (isIncome ? C.green : C.muted) : C.hint}>
-                        {g.totalCredit > 0 ? INR(g.totalCredit * 100) : "—"}
-                      </Td>
-                      <Td mono bold color={isIncome ? C.green : (isExpense && pctRev > 50) ? C.red : (isExpense && pctRev > 25) ? C.amber : C.muted}>
-                        {INR(netRupees)}
-                      </Td>
-                      <Td color={pctRev > 50 ? C.red : pctRev > 25 ? C.amber : C.muted}>{pctRev}%</Td>
-                      <Td color={isIncome ? C.green : (isExpense && pctRev > 50) ? C.red : C.muted}>
-                        {isIncome ? "↑" : (isExpense && pctRev > 50) ? "↑↑" : "↔"}
-                      </Td>
-                      <Td><Chip color={signalChip}>{signalLabel}</Chip></Td>
-                    </TrVariant>
+                    <tr key={g.groupName} style={{ background: rowBg }} className="border-b last:border-0">
+                      <td style={{ padding: "8px 8px", fontWeight: (isInc || revPct > 50) ? 600 : 400 }}>{g.groupName}</td>
+                      <td style={{ padding: "8px 8px" }}>
+                        {isInc ? <GreenChip>Income</GreenChip> : isExp ? <RedChip>Expense</RedChip> : isAss ? <BlueChip>Asset</BlueChip> : <GrayChip>Other</GrayChip>}
+                      </td>
+                      <td style={{ padding: "8px 8px", fontFamily: "monospace", color: g.totalDebit > 0 ? (isExp ? "#A32D2D" : "inherit") : "var(--muted-foreground)" }}>{g.totalDebit > 0 ? fmtFull(g.totalDebit * 100) : "—"}</td>
+                      <td style={{ padding: "8px 8px", fontFamily: "monospace", color: g.totalCredit > 0 ? (isInc ? "#3B6D11" : "inherit") : "var(--muted-foreground)" }}>{g.totalCredit > 0 ? fmtFull(g.totalCredit * 100) : "—"}</td>
+                      <td style={{ padding: "8px 8px", fontFamily: "monospace", fontWeight: 600, color: isInc ? "#3B6D11" : revPct > 50 ? "#A32D2D" : revPct > 25 ? "#854F0B" : "inherit" }}>{fmtFull(netPaise)}</td>
+                      <td style={{ padding: "8px 8px", color: revPct > 50 ? "#A32D2D" : revPct > 25 ? "#854F0B" : undefined }} className="text-muted-foreground">{revPct}%</td>
+                      <td style={{ padding: "8px 8px" }}>
+                        {isInc ? <GreenChip>INCOME</GreenChip> : revPct > 50 ? <RedChip>HIGH RISK</RedChip> : revPct > 25 ? <AmberChip>REVIEW</AmberChip> : <GrayChip>NORMAL</GrayChip>}
+                      </td>
+                    </tr>
                   );
                 })}
                 {(data?.trialGroups ?? []).length === 0 && (
-                  <tr><td colSpan={8} style={{ padding: 20, textAlign: "center", color: C.hint, fontSize: 11 }}>No data available</td></tr>
+                  <tr><td colSpan={7} className="text-muted-foreground text-sm text-center py-8">No trial balance data available</td></tr>
                 )}
               </tbody>
             </table>
           </div>
-        </Card>
+        )}
+      </div>
 
-        {/* ══ D: AGING ANALYSIS ════════════════════════════════════════ */}
-        <SectionHd
-          title="Receivables Aging Analysis"
-          sub="Outstanding payments by age bucket · Recovery probability · Source: Outstanding/Aging module"
-          chip="OUTSTANDING/AGING" chipColor="red"
-        />
-
-        <div style={{ display: "grid", gridTemplateColumns: "1.1fr 1fr", gap: 12, marginBottom: 12 }}>
-          {/* Aging buckets */}
-          <Card style={{ border: `2px solid ${C.redMid}` }}>
-            <CardTitle style={{ color: C.red } as any}>Aging Buckets — {INR_K(totalAging)} Total AR</CardTitle>
-            <CardSub>All outstanding receivables grouped by overdue days</CardSub>
-            {(() => {
-              const buckets = [
-                { key: "0-30",  bg: C.greenBg, color: C.green,  barColor: C.greenMid, sub: "High recovery probability", chip: "COLLECT NORMALLY", chipColor: "green" as ChipColor },
-                { key: "31-60", bg: C.amberBg, color: C.amber,  barColor: C.amberMid, sub: "Medium risk", chip: "FOLLOW UP NOW", chipColor: "amber" as ChipColor },
-                { key: "61-90", bg: C.coralBg, color: C.coral,  barColor: C.coralMid, sub: "Escalating risk", chip: "ESCALATE", chipColor: "coral" as ChipColor },
-                { key: "90+",   bg: C.redBg,   color: C.red,    barColor: C.redMid, sub: "LARGEST BUCKET", chip: "LEGAL ACTION", chipColor: "red" as ChipColor },
-              ];
-              return buckets.map(({ key, bg, color: _color, barColor, sub, chip, chipColor }) => {
+      {/* ── Aging + Top Debtors ── */}
+      <div className="grid md:grid-cols-[1fr_1.2fr] gap-4">
+        {/* Aging buckets */}
+        <div className="rounded-lg border bg-card p-4 space-y-3" style={{ borderColor: "#E24B4A", borderWidth: 1.5 }}>
+          <SectionHd
+            title={`Receivables Aging — ${fmtCurr(totalAging)} Total AR`}
+            sub="Outstanding grouped by overdue days · Source: AR module"
+            right={<RedChip>OUTSTANDING</RedChip>}
+          />
+          {isLoading ? (
+            <div className="space-y-2">{[...Array(4)].map((_, i) => <Skeleton key={i} className="h-14 rounded-lg" />)}</div>
+          ) : (
+            <div className="space-y-2">
+              {[
+                { key: "0-30",  bg: "#EAF3DE", color: "#3B6D11", bar: CHART_IN,  sub: "High recovery probability", chip: <GreenChip>COLLECT NORMALLY</GreenChip> },
+                { key: "31-60", bg: "#FAEEDA", color: "#854F0B", bar: "#EF9F27", sub: "Medium risk — follow up", chip: <AmberChip>FOLLOW UP NOW</AmberChip> },
+                { key: "61-90", bg: "#FAECE7", color: "#993C1D", bar: "#D85A30", sub: "Escalating risk", chip: <AmberChip>ESCALATE</AmberChip> },
+                { key: "90+",   bg: "#FCEBEB", color: "#A32D2D", bar: "#E24B4A", sub: "LARGEST BUCKET — legal action", chip: <RedChip>LEGAL ACTION</RedChip> },
+              ].map(({ key, bg, color, bar, sub, chip }) => {
                 const row = (data?.receivablesAging ?? []).find(r => r.bucket === key);
                 const amt = row?.outstanding ?? 0;
                 const cnt = row?.count ?? 0;
-                const pct = totalAging > 0 ? PCT(amt, totalAging) : 0;
-                const is90 = key === "90+";
+                const p   = totalAging > 0 ? pct(amt, totalAging) : 0;
                 return (
-                  <AgingBucket key={key}
-                    label={key + " days"} count={cnt} amount={amt} total={totalAging}
-                    pct={pct} barColor={barColor} bg={bg}
-                    borderStyle={is90 ? `1.5px solid #F7C1C1` : undefined}
-                    sub={sub} chip={chip} chipColor={chipColor}
-                  />
+                  <div key={key} style={{ background: bg, borderRadius: 8, padding: "10px 12px" }}>
+                    <div className="flex justify-between items-center mb-1.5">
+                      <span style={{ fontSize: 12, fontWeight: 600, color }}>
+                        {key} days <span style={{ fontWeight: 400, color: "#888" }}>· {cnt} invoices</span>
+                      </span>
+                      <span style={{ fontSize: 14, fontWeight: 700, color }}>{fmtCurr(amt)}</span>
+                    </div>
+                    <div style={{ background: "rgba(0,0,0,0.08)", borderRadius: 3, height: 6, overflow: "hidden" }}>
+                      <div style={{ width: `${p}%`, height: 6, background: bar, borderRadius: 3 }} />
+                    </div>
+                    <div className="flex justify-between items-center mt-1.5">
+                      <span style={{ fontSize: 10, color: "#666" }}>{p}% of total · {sub}</span>
+                      {chip}
+                    </div>
+                  </div>
                 );
-              });
-            })()}
-            {(data?.insights ?? []).filter(i => i.priority === "P1").map((ins) => (
-              <div key={ins.title} style={{ marginTop: 10 }}>
-                <Flag variant="crit">
-                  <span>⚠</span>
+              })}
+              {(data?.insights ?? []).filter(i => i.priority === "P1").map(ins => (
+                <div key={ins.title} className="rounded-md p-2.5 text-xs flex gap-2 items-start" style={{ background: "#FCEBEB", color: "#A32D2D", border: "1.5px solid #F7C1C1" }}>
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
                   <span><strong>DSS:</strong> {ins.body}</span>
-                </Flag>
-              </div>
-            ))}
-          </Card>
-
-          {/* Top debtors */}
-          <Card>
-            <CardTitle>Top Debtors — Collection Health</CardTitle>
-            <CardSub>Sorted by pending amount · Source: Outstanding/Aging</CardSub>
-            <table className="fin-tbl" style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
-              <thead>
-                <tr>
-                  <Th>Customer</Th><Th>Inv.</Th><Th>Revenue</Th><Th>Pending</Th>
-                  <Th>Collection %</Th><Th>Risk</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {(data?.topDebtors ?? []).slice(0, 8).map((d) => {
-                  const collPct = d.totalBilled > 0 ? PCT(d.totalCollected, d.totalBilled) : 0;
-                  const risk: ChipColor = collPct === 0 ? "red" : collPct < 25 ? "amber" : "green";
-                  const rowVar: RowVariant = collPct === 0 ? "danger" : collPct < 25 ? "warn" : undefined;
-                  return (
-                    <TrVariant key={d.customer} variant={rowVar}>
-                      <Td bold={d.outstanding > 200000 * 100}>{d.customer}</Td>
-                      <Td>{d.invoiceCount}</Td>
-                      <Td mono>{INR(d.totalBilled)}</Td>
-                      <Td mono bold color={collPct < 25 ? C.red : C.amber}>{INR(d.outstanding)}</Td>
-                      <td style={{ padding: "8px 8px", verticalAlign: "middle", fontSize: 11 }}>
-                        <MiniPBar pct={collPct} color={collPct < 25 ? C.redMid : C.greenMid} />
-                      </td>
-                      <Td><Chip color={risk}>{collPct === 0 ? "CRITICAL" : collPct < 25 ? "HIGH RISK" : "OK"}</Chip></Td>
-                    </TrVariant>
-                  );
-                })}
-                {(data?.topDebtors ?? []).length === 0 && (
-                  <tr><td colSpan={6} style={{ padding: 20, textAlign: "center", color: C.hint, fontSize: 11 }}>No debtor data</td></tr>
-                )}
-              </tbody>
-            </table>
-          </Card>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* ══ E: BALANCE SHEET ══════════════════════════════════════════ */}
+        {/* Top debtors */}
+        <div className="rounded-lg border bg-card p-4 space-y-3">
+          <SectionHd title="Top Debtors — Collection Health" sub="Sorted by pending amount · Source: Outstanding/Aging" />
+          {isLoading ? (
+            <div className="space-y-2">{[...Array(6)].map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                <thead>
+                  <tr className="border-b">
+                    {["Customer", "Inv.", "Billed", "Pending", "Collected %", "Risk"].map(h => (
+                      <th key={h} style={{ textAlign: "left", padding: "5px 6px", fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }} className="text-muted-foreground whitespace-nowrap">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {(data?.topDebtors ?? []).slice(0, 8).map((d, i) => {
+                    const cp = d.totalBilled > 0 ? pct(d.totalCollected, d.totalBilled) : 0;
+                    const rowBg = cp === 0 ? "#FCEBEB" : cp < 25 ? "#FAEEDA" : undefined;
+                    return (
+                      <tr key={i} style={{ background: rowBg }} className="border-b last:border-0">
+                        <td style={{ padding: "7px 6px", fontWeight: 500, maxWidth: 120 }} className="truncate">{d.customer}</td>
+                        <td style={{ padding: "7px 6px" }} className="text-muted-foreground">{d.invoiceCount}</td>
+                        <td style={{ padding: "7px 6px", fontFamily: "monospace" }} className="text-muted-foreground">{fmtCurr(d.totalBilled)}</td>
+                        <td style={{ padding: "7px 6px", fontFamily: "monospace", fontWeight: 600, color: cp < 25 ? "#A32D2D" : "#854F0B" }}>{fmtCurr(d.outstanding)}</td>
+                        <td style={{ padding: "7px 6px", minWidth: 90 }}><MiniBar pct={cp} color={cp < 25 ? "#E24B4A" : "#97C459"} /></td>
+                        <td style={{ padding: "7px 6px" }}>{cp === 0 ? <RedChip>CRITICAL</RedChip> : cp < 25 ? <AmberChip>HIGH RISK</AmberChip> : <GreenChip>OK</GreenChip>}</td>
+                      </tr>
+                    );
+                  })}
+                  {(data?.topDebtors ?? []).length === 0 && (
+                    <tr><td colSpan={6} className="text-muted-foreground text-sm text-center py-6">No debtor data</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Balance Sheet ── */}
+      <div className="rounded-lg border bg-card p-4 space-y-3" style={{ borderColor: "#B5D4F4", borderWidth: 1.5 }}>
         <SectionHd
           title="Balance Sheet — Financial Position"
-          sub={`Assets, liabilities, equity · Source: Balance Sheet module`}
-          chip="BALANCE SHEET" chipColor="blue"
+          sub="Assets · Liabilities · Equity as at end of period"
+          right={<BlueChip>BALANCE SHEET</BlueChip>}
         />
-
-        <Card style={{ border: `1.5px solid #B5D4F4` }}>
-          <CardTitle>Balance Sheet — As at end of {fyLabel}</CardTitle>
-          <CardSub>Three-column view: Assets · Liabilities · Equity</CardSub>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-            <BsCol
-              bg={C.blueBg} titleColor={C.blue} title="ASSETS"
-              rows={[
-                { label: "Sundry Debtors (AR)", val: INR(kpis?.totalOutstanding ?? 0), color: C.red },
-                { label: "Cash / Bank", val: INR(kpis?.cashBalance ?? 0), color: C.amber },
-                { label: "Other Assets", val: "—" },
-              ]}
-              totalLabel="Total Assets" totalVal={INR(data?.balanceSheet?.assets ?? 0)} totalColor={C.blue}
-              note="⚠ Most assets = uncollected AR. Accelerate collections urgently."
-              noteColor={C.red}
-            />
-            <BsCol
-              bg={C.redBg} titleColor={C.red} title="LIABILITIES"
-              rows={[
+        {isLoading ? (
+          <div className="grid grid-cols-3 gap-4">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-32 rounded-lg" />)}</div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[
+              { title: "ASSETS", bg: "#E6F1FB", titleColor: "#185FA5", rows: [
+                { label: "Sundry Debtors (AR)", val: fmtFull(kpis?.totalOutstanding ?? 0), color: "#A32D2D" },
+                { label: "Cash / Bank",          val: fmtFull(kpis?.cashBalance ?? 0),       color: "#854F0B" },
+                { label: "Other Assets",          val: "—" },
+              ], total: fmtFull(data?.balanceSheet?.assets ?? 0), totalColor: "#185FA5", note: "⚠ Most assets = uncollected AR. Accelerate collections.", noteColor: "#A32D2D" },
+              { title: "LIABILITIES", bg: "#FCEBEB", titleColor: "#A32D2D", rows: [
                 { label: "Accounts Payable", val: "—" },
-                { label: "GST Payable", val: "—" },
-                { label: "Other Liabilities", val: "₹0" },
-              ]}
-              totalLabel="Total Liabilities" totalVal={INR(data?.balanceSheet?.liabilities ?? 0)} totalColor={C.red}
-              note="Manage payables — settle expenses on time to avoid penalties."
-              noteColor={C.amber}
-            />
-            <BsCol
-              bg={C.greenBg} titleColor={C.green} title="EQUITY"
-              rows={[
-                { label: "Net Profit FY", val: INR(Math.abs(netProfit)), color: netProfit >= 0 ? C.green : C.red },
-                { label: "Retained Earnings", val: INR(data?.balanceSheet?.equity ?? 0), color: C.amber },
-                { label: "Equity Base", val: INR(data?.balanceSheet?.equity ?? 0) },
-              ]}
-              totalLabel="Total Equity" totalVal={INR(data?.balanceSheet?.equity ?? 0)} totalColor={C.amber}
-              note="Collect AR urgently to strengthen the equity base."
-              noteColor={C.amber}
-            />
+                { label: "GST Payable",      val: "—" },
+                { label: "Other",            val: "₹0" },
+              ], total: fmtFull(data?.balanceSheet?.liabilities ?? 0), totalColor: "#A32D2D", note: "Settle payables on time to avoid penalties.", noteColor: "#854F0B" },
+              { title: "EQUITY", bg: "#EAF3DE", titleColor: "#3B6D11", rows: [
+                { label: "Net Profit FY", val: `${netProfit < 0 ? "−" : ""}${fmtFull(Math.abs(netProfit))}`, color: netProfit >= 0 ? "#3B6D11" : "#A32D2D" },
+                { label: "Retained Earnings", val: fmtFull(data?.balanceSheet?.equity ?? 0), color: "#854F0B" },
+                { label: "Equity Base", val: fmtFull(data?.balanceSheet?.equity ?? 0) },
+              ], total: fmtFull(data?.balanceSheet?.equity ?? 0), totalColor: "#854F0B", note: "Collect AR urgently to strengthen the equity base.", noteColor: "#854F0B" },
+            ].map(({ title, bg, titleColor, rows, total, totalColor, note, noteColor }) => (
+              <div key={title} style={{ borderRadius: 10, padding: 14, background: bg }}>
+                <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.05em", marginBottom: 10, color: titleColor }}>{title}</p>
+                {rows.map((r, i) => (
+                  <div key={i} className="flex justify-between py-1.5 border-b last:border-0 text-sm" style={{ borderColor: "rgba(0,0,0,0.06)" }}>
+                    <span className="text-muted-foreground">{r.label}</span>
+                    <span style={{ fontFamily: "monospace", color: r.color ?? undefined }}>{r.val}</span>
+                  </div>
+                ))}
+                <div className="flex justify-between pt-2 mt-1 text-sm font-semibold" style={{ borderTop: "1px solid rgba(0,0,0,0.1)" }}>
+                  <span style={{ color: titleColor }}>Total {title}</span>
+                  <span style={{ fontFamily: "monospace", color: totalColor }}>{total}</span>
+                </div>
+                <p style={{ fontSize: 9, marginTop: 6, color: noteColor }}>{note}</p>
+              </div>
+            ))}
           </div>
-        </Card>
+        )}
+      </div>
 
-        {/* ══ F: BANK RECONCILIATION ════════════════════════════════════ */}
+      {/* ── Bank Reconciliation ── */}
+      <div className="rounded-lg border bg-card p-4 space-y-3">
         <SectionHd
-          title="Bank Reconciliation Statement"
-          sub="Book balance vs bank balance · Identify uncleared items · Source: Bank Statements + Ledger View"
-          chip="BANK STATEMENTS" chipColor="blue"
+          title="Bank Reconciliation"
+          sub="Book balance vs bank statement · Identify uncleared items"
+          right={<BlueChip>BANK STATEMENTS</BlueChip>}
         />
-
-        <Card style={{ border: `1.5px solid #B5D4F4` }}>
-          <CardTitle>Bank Reconciliation</CardTitle>
-          <CardSub>
-            {(kpis?.unreconciledCount ?? 0) > 0
-              ? `${kpis?.unreconciledCount} unreconciled entries · ${INR_K(kpis?.unreconciledAmount ?? 0)} gap must be resolved`
-              : "All entries reconciled — no gaps found"
-            }
-          </CardSub>
-          <div style={{ overflowX: "auto" }}>
-            <table className="fin-tbl" style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+        {isLoading ? (
+          <Skeleton className="h-20 w-full" />
+        ) : (
+          <>
+            {(kpis?.unreconciledCount ?? 0) > 0 ? (
+              <div className="rounded-md border-l-4 p-3 text-sm" style={{ background: "#FCEBEB", borderLeftColor: "#E24B4A", color: "#A32D2D" }}>
+                <div className="flex items-center gap-2 font-semibold mb-1">
+                  <AlertTriangle className="w-4 h-4" />
+                  {kpis?.unreconciledCount} unreconciled entries — {fmtCurr(kpis?.unreconciledAmount ?? 0)} gap
+                </div>
+                <p className="text-xs">Run full bank reconciliation. Match every journal entry to bank statement line. Post all unposted entries before month-end close.</p>
+              </div>
+            ) : (
+              <div className="rounded-md p-3 text-sm" style={{ background: "#EAF3DE", color: "#3B6D11" }}>
+                All entries reconciled — no gaps found
+              </div>
+            )}
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
               <thead>
-                <tr>
-                  <Th>Item</Th><Th>Status</Th><Th>Count</Th><Th>Amount</Th><Th>Type</Th><Th>Action Required</Th>
+                <tr className="border-b">
+                  {["Item", "Status", "Entries", "Amount", "Type", "Action"].map(h => (
+                    <th key={h} style={{ padding: "5px 8px", textAlign: "left", fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }} className="text-muted-foreground whitespace-nowrap">{h}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 {(kpis?.unreconciledCount ?? 0) > 0 ? (
                   <>
-                    <TrVariant variant="danger">
-                      <Td bold>Unreconciled journal entries</Td>
-                      <Td><Chip color="red">GAP</Chip></Td>
-                      <Td>{kpis?.unreconciledCount}</Td>
-                      <Td mono bold color={C.red}>{INR_K(kpis?.unreconciledAmount ?? 0)}</Td>
-                      <Td><Chip color="red">URGENT</Chip></Td>
-                      <Td color={C.red}>Post missing entries; match bank statement lines</Td>
-                    </TrVariant>
-                    <TrVariant variant="warn">
-                      <Td bold>Total Reconciliation Gap</Td>
-                      <Td><Chip color="amber">TIMING</Chip></Td>
-                      <Td>—</Td>
-                      <Td mono bold color={C.red}>{INR_K(kpis?.unreconciledAmount ?? 0)}</Td>
-                      <Td><Chip color="amber">REVIEW</Chip></Td>
-                      <Td color={C.amber}>Investigate & resolve this week</Td>
-                    </TrVariant>
+                    <tr style={{ background: "#FCEBEB" }} className="border-b">
+                      <td style={{ padding: "8px 8px", fontWeight: 600 }}>Unreconciled journal entries</td>
+                      <td style={{ padding: "8px 8px" }}><RedChip>GAP</RedChip></td>
+                      <td style={{ padding: "8px 8px" }} className="text-muted-foreground">{kpis?.unreconciledCount}</td>
+                      <td style={{ padding: "8px 8px", fontFamily: "monospace", fontWeight: 600, color: "#A32D2D" }}>{fmtCurr(kpis?.unreconciledAmount ?? 0)}</td>
+                      <td style={{ padding: "8px 8px" }}><RedChip>URGENT</RedChip></td>
+                      <td style={{ padding: "8px 8px", fontSize: 11, color: "#A32D2D" }}>Post missing entries & match bank statement</td>
+                    </tr>
                   </>
                 ) : (
-                  <TrVariant variant="good">
-                    <Td bold>All entries matched</Td>
-                    <Td><Chip color="green">MATCH</Chip></Td>
-                    <Td>0</Td>
-                    <Td mono color={C.green}>₹0</Td>
-                    <Td><Chip color="green">CLEAR</Chip></Td>
-                    <Td color={C.muted}>No action needed</Td>
-                  </TrVariant>
+                  <tr style={{ background: "#EAF3DE" }}>
+                    <td style={{ padding: "8px 8px", fontWeight: 600 }}>All entries matched</td>
+                    <td style={{ padding: "8px 8px" }}><GreenChip>MATCH</GreenChip></td>
+                    <td style={{ padding: "8px 8px" }} className="text-muted-foreground">0</td>
+                    <td style={{ padding: "8px 8px", fontFamily: "monospace", color: "#3B6D11" }}>₹0</td>
+                    <td style={{ padding: "8px 8px" }}><GreenChip>CLEAR</GreenChip></td>
+                    <td style={{ padding: "8px 8px", fontSize: 11 }} className="text-muted-foreground">No action needed</td>
+                  </tr>
                 )}
               </tbody>
             </table>
-          </div>
-          {(kpis?.unreconciledCount ?? 0) > 0 && (
-            <div style={{ marginTop: 12 }}>
-              <Flag variant="warn">
-                <span>⚠</span>
-                <span><strong>Action required:</strong> Run full bank reconciliation. Match every journal entry to bank statement line. Post all unposted entries before month-end close.</span>
-              </Flag>
-            </div>
-          )}
-        </Card>
+          </>
+        )}
+      </div>
 
-        {/* ══ G: JOURNAL ANOMALIES ══════════════════════════════════════ */}
+      {/* ── Journal Anomalies ── */}
+      <div className="rounded-lg border bg-card p-4 space-y-3" style={{ borderColor: "#FAC775", borderWidth: 1.5 }}>
         <SectionHd
-          title="Journal Entries & Day Book — Anomaly Detection"
-          sub="All postings reviewed for narration gaps, duplicates, round figures · Source: Journal Entries + Day Book"
-          chip="JOURNAL / DAY BOOK" chipColor="amber"
+          title="Journal Entries — Anomaly Detection"
+          sub="Recent postings reviewed for narration gaps, duplicates, round figures"
+          right={<AmberChip>JOURNAL / DAY BOOK</AmberChip>}
         />
-
-        <Card style={{ border: `1.5px solid ${C.amberBd}` }}>
-          <CardTitle>Recent Entries — Flagged for Review</CardTitle>
-          <CardSub>
-            {(data?.recentJournals ?? []).filter(j => j.flags?.length > 0).length} anomalies found · Fix before month-end close
-          </CardSub>
-          <div style={{ overflowX: "auto" }}>
-            <table className="fin-tbl" style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
-              <thead>
-                <tr>
-                  <Th>Date</Th><Th>Reference</Th><Th>Type</Th><Th>Amount</Th>
-                  <Th>Narration</Th><Th>Lines</Th><Th>Flag</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {(data?.recentJournals ?? []).map((j) => {
-                  const hasFlag = j.flags?.length > 0;
-                  const isRound = j.flags?.includes("ROUND");
-                  const isDup = j.flags?.includes("DUPLICATE");
-                  const noNarr = j.flags?.includes("NO_NARR");
-                  const rowVar: RowVariant = (isRound || noNarr) ? "danger" : hasFlag ? "warn" : "good";
-                  const flagChip: ChipColor = (isRound && noNarr) ? "red" : isDup ? "amber" : hasFlag ? "amber" : "green";
-                  const flagLabel = noNarr && isRound ? "ROUND / NO NARR" : isDup ? "DUPLICATE?" : noNarr ? "NO NARRATION" : isRound ? "ROUND FIGURE" : hasFlag ? j.flags.join(", ") : "VERIFIED";
-                  return (
-                    <TrVariant key={j.id} variant={rowVar}>
-                      <Td>{new Date(j.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}</Td>
-                      <Td mono color={C.blueMid} bold={hasFlag}>{j.reference || `JV-${j.id}`}</Td>
-                      <Td>{j.sourceType}</Td>
-                      <Td mono color={j.amount < 0 ? C.red : C.green} bold={isRound}>
-                        {j.amount < 0 ? "−" : "+"}{INR(Math.abs(j.amount))}
-                      </Td>
-                      <Td color={noNarr ? C.red : C.muted}>
-                        {noNarr ? <span style={{ color: C.red }}>⚠ MISSING narration</span> : (j.narration || "—")}
-                      </Td>
-                      <Td>{j.lineCount}</Td>
-                      <Td><Chip color={flagChip}>{flagLabel}</Chip></Td>
-                    </TrVariant>
-                  );
-                })}
-                {(data?.recentJournals ?? []).length === 0 && (
-                  <tr><td colSpan={7} style={{ padding: 20, textAlign: "center", color: C.hint, fontSize: 11 }}>No recent journal entries</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-          <div style={{ marginTop: 12 }}>
-            <Flag variant="purple">
-              <span>ℹ</span>
-              <span>
-                <strong>Fix rules to implement:</strong> (1) Narration mandatory on all journal entries &nbsp;·&nbsp;
-                (2) Bill/invoice attachment required for every cash expense &nbsp;·&nbsp;
-                (3) Flag all ₹1L+ round-figure postings for monthly review &nbsp;·&nbsp;
-                (4) Resolve any duplicate entries — verify both are valid
-              </span>
-            </Flag>
-          </div>
-        </Card>
-
-        {/* ══ H: CHART OF ACCOUNTS ═════════════════════════════════════ */}
-        <SectionHd
-          title="Chart of Accounts — Structure Review"
-          sub="Current account structure vs what needs to be added · Source: Chart of Accounts module"
-          chip="CHART OF ACCOUNTS" chipColor="purple"
-        />
-
-        <Card style={{ border: `1.5px solid #AFA9EC` }}>
-          <CardTitle>Account Structure — Problems &amp; Recommended Additions</CardTitle>
-          <CardSub>Fix Chart of Accounts first — it drives all reports downstream</CardSub>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-            <div style={{ borderRadius: 10, padding: 14, background: C.redBg }}>
-              <div style={{ fontSize: 10, fontWeight: 700, marginBottom: 10, color: C.red }}>Current — Problems</div>
-              <CoaItem badge="27%" badgeColor="red" label="Miscellaneous Expenses" desc="₹7.73L with zero sub-classification — no visibility into actual spend" />
-              <CoaItem badge="GAP" badgeColor="red" label="No Diesel sub-account" desc="Diesel costs mixed with general transport — can't track alone" />
-              <CoaItem badge="GAP" badgeColor="red" label="No Packaging account" desc="Labels, caps, shrink film, boxes buried in COGS — cost per SKU unknown" />
-              <CoaItem badge="GAP" badgeColor="red" label="No Chemical account" desc="Water treatment chemicals not separately tracked — FSSAI compliance risk" />
+        {isLoading ? (
+          <div className="space-y-2">{[...Array(4)].map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}</div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                <thead>
+                  <tr className="border-b">
+                    {["Date", "Reference", "Type", "Amount", "Narration", "Lines", "Flag"].map(h => (
+                      <th key={h} style={{ padding: "5px 8px", textAlign: "left", fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }} className="text-muted-foreground whitespace-nowrap">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {(data?.recentJournals ?? []).map((j) => {
+                    const flags     = j.flags ?? [];
+                    const noNarr    = flags.includes("NO_NARR");
+                    const isRound   = flags.includes("ROUND");
+                    const isDup     = flags.includes("DUPLICATE");
+                    const hasFlag   = flags.length > 0;
+                    const rowBg     = (noNarr || isRound) ? "#FCEBEB" : hasFlag ? "#FAEEDA" : "#EAF3DE";
+                    const flagLabel = noNarr && isRound ? "ROUND / NO NARR" : isDup ? "DUPLICATE?" : noNarr ? "NO NARRATION" : isRound ? "ROUND FIGURE" : hasFlag ? flags.join(", ") : "VERIFIED";
+                    return (
+                      <tr key={j.id} style={{ background: rowBg }} className="border-b last:border-0">
+                        <td style={{ padding: "7px 8px" }} className="text-muted-foreground whitespace-nowrap">
+                          {new Date(j.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
+                        </td>
+                        <td style={{ padding: "7px 8px", fontFamily: "monospace", color: "#185FA5", fontWeight: hasFlag ? 600 : 400 }}>{j.reference || `JV-${j.id}`}</td>
+                        <td style={{ padding: "7px 8px" }} className="text-muted-foreground">{j.sourceType}</td>
+                        <td style={{ padding: "7px 8px", fontFamily: "monospace", fontWeight: isRound ? 600 : 400, color: j.amount < 0 ? "#A32D2D" : "#3B6D11" }}>
+                          {j.amount < 0 ? "−" : "+"}{fmtCurr(Math.abs(j.amount))}
+                        </td>
+                        <td style={{ padding: "7px 8px", fontSize: 11, color: noNarr ? "#A32D2D" : undefined }} className={noNarr ? "" : "text-muted-foreground"}>
+                          {noNarr ? "⚠ MISSING" : (j.narration || "—")}
+                        </td>
+                        <td style={{ padding: "7px 8px" }} className="text-muted-foreground">{j.lineCount}</td>
+                        <td style={{ padding: "7px 8px" }}>
+                          {hasFlag
+                            ? ((noNarr || isRound) ? <RedChip>{flagLabel}</RedChip> : <AmberChip>{flagLabel}</AmberChip>)
+                            : <GreenChip>VERIFIED</GreenChip>
+                          }
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {(data?.recentJournals ?? []).length === 0 && (
+                    <tr><td colSpan={7} className="text-muted-foreground text-sm text-center py-6">No recent journal entries</td></tr>
+                  )}
+                </tbody>
+              </table>
             </div>
-            <div style={{ borderRadius: 10, padding: 14, background: C.greenBg }}>
-              <div style={{ fontSize: 10, fontWeight: 700, marginBottom: 10, color: C.green }}>Add to Chart of Accounts</div>
-              <CoaItem badge="ADD" badgeColor="green" label="5100 — Diesel / Fuel" desc="Separate diesel from other transport. Track monthly diesel cost clearly." />
-              <CoaItem badge="ADD" badgeColor="green" label="5110 — Vehicle Maintenance" desc="Service, tyres, repairs — separate from operations expenses" />
-              <CoaItem badge="ADD" badgeColor="green" label="5200 — Packaging Materials" desc="Labels, shrink film, caps, corrugated boxes — enables SKU cost tracking" />
-              <CoaItem badge="ADD" badgeColor="green" label="5300 — Water Treatment" desc="RO chemicals, testing kits, disinfectants — required for FSSAI records" />
+            <div className="rounded-md p-2.5 text-xs flex gap-2 items-start" style={{ background: "#EEEDFE", color: "#534AB7", border: "1px solid #AFA9EC" }}>
+              <span className="shrink-0">ℹ</span>
+              <span><strong>Fix rules:</strong> (1) Narration mandatory on all entries · (2) Bill/invoice attachment required for every cash expense · (3) Flag all ₹1L+ round-figure postings · (4) Resolve any duplicate entries before month-end</span>
             </div>
-            <div style={{ borderRadius: 10, padding: 14, background: C.blueBg }}>
-              <div style={{ fontSize: 10, fontWeight: 700, marginBottom: 10, color: C.blue }}>Result After Fix</div>
-              <CoaItem badge="WIN" badgeColor="blue" label="Full fuel cost visibility" desc="See diesel ₹ per month, per vehicle, per route — negotiate from data" />
-              <CoaItem badge="WIN" badgeColor="blue" label="SKU profitability" desc="Know true cost per 20L jar vs 1L bottle vs 500ml — price correctly" />
-              <CoaItem badge="WIN" badgeColor="blue" label="Misc drops to ≤5%" desc="Currently high. After reclassification, target below 5% of expenses" />
-              <CoaItem badge="WIN" badgeColor="blue" label="Audit & compliance ready" desc="FSSAI, GST, Income Tax audits all simpler with proper account heads" />
-            </div>
-          </div>
-        </Card>
+          </>
+        )}
+      </div>
 
-        {/* ══ I: DSS DECISION PANEL ════════════════════════════════════ */}
+      {/* ── DSS Decisions ── */}
+      <div className="rounded-lg border bg-card p-4 space-y-3" style={{ borderColor: "#E24B4A", borderWidth: 1.5 }}>
         <SectionHd
           title="DSS Master Decision Panel"
           sub="Priority decisions derived from all accounting modules · Act on these in order"
-          chip="ALL MODULES" chipColor="red"
+          right={<RedChip>ALL MODULES</RedChip>}
         />
-
-        <Card style={{ border: `2px solid ${C.redMid}` }}>
-          <CardTitle style={{ color: C.red } as any}>Financial Accounting — Priority Decisions for Management</CardTitle>
-          <CardSub>All accounting modules → actionable decisions. Do in this order.</CardSub>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginTop: 12 }}>
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">{[...Array(6)].map((_, i) => <Skeleton key={i} className="h-28 rounded-lg" />)}</div>
+        ) : (data?.insights ?? []).length === 0 ? (
+          <p className="text-muted-foreground text-sm text-center py-6">No priority decisions generated — data may be insufficient</p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {(data?.insights ?? []).map((ins, i) => {
-              const bg = ins.priority === "P1" ? C.redBg : ins.priority === "P2" ? C.redBg : ins.priority === "P3" ? C.amberBg : ins.priority === "P4" ? C.amberBg : ins.priority === "P5" ? C.purpleBg : C.blueBg;
-              const chipColor: ChipColor = ins.priority === "P1" || ins.priority === "P2" ? "red" : ins.priority === "P3" || ins.priority === "P4" ? "amber" : ins.priority === "P5" ? "purple" : "blue";
+              const isPrio12 = ins.priority === "P1" || ins.priority === "P2";
+              const isPrio34 = ins.priority === "P3" || ins.priority === "P4";
+              const isPrio5  = ins.priority === "P5";
+              const bg    = isPrio12 ? "#FCEBEB" : isPrio34 ? "#FAEEDA" : isPrio5 ? "#EEEDFE" : "#E6F1FB";
+              const chip  = isPrio12 ? <RedChip>{ins.priority} — {ins.label}</RedChip>
+                          : isPrio34 ? <AmberChip>{ins.priority} — {ins.label}</AmberChip>
+                          : isPrio5  ? <PurpleChip>{ins.priority} — {ins.label}</PurpleChip>
+                          : <BlueChip>{ins.priority} — {ins.label}</BlueChip>;
               return (
-                <DssCard key={i}
-                  priority={ins.priority} chip={`${ins.priority} — ${ins.label}`} chipColor={chipColor}
-                  title={ins.title} body={ins.body} bg={bg}
-                />
+                <div key={i} style={{ background: bg, borderRadius: 10, padding: 14, border: "1px solid rgba(0,0,0,0.06)" }}>
+                  {chip}
+                  <p style={{ fontSize: 12, fontWeight: 600, margin: "8px 0 4px" }}>{ins.title}</p>
+                  <p style={{ fontSize: 11, lineHeight: 1.6 }} className="text-muted-foreground">{ins.body}</p>
+                </div>
               );
             })}
-            {(data?.insights ?? []).length === 0 && (
-              <div style={{ gridColumn: "1/-1", padding: 20, textAlign: "center", color: C.hint, fontSize: 11 }}>
-                No priority decisions generated — data may be insufficient
-              </div>
-            )}
           </div>
-        </Card>
-
-        {/* ── Footer ── */}
-        <div style={{ textAlign: "center", fontSize: 9, color: C.hint, padding: "20px 0 8px", borderTop: `1px solid ${C.border}`, marginTop: 24 }}>
-          KINTO Operations · Financial Accounting — Formal Ledger MIS · {fyLabel} · All Accounting Modules Covered
-        </div>
-
+        )}
       </div>
+
     </div>
   );
 }
