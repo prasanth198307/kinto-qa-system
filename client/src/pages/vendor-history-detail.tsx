@@ -303,6 +303,8 @@ export default function VendorHistoryDetailPage() {
     // Sheet 1 – Unpaid Invoices by Cluster (with outline grouping)
     const ws1 = wb.addWorksheet('Unpaid Invoices');
     ws1.properties.outlineLevelRow = 1;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (ws1.properties as any).outlineProperties = { summaryBelow: false }; // +/- button on summary row (above detail)
     ws1.properties.defaultRowHeight = 15;
     ws1.columns = [
       { key: 'c1', width: 20 }, { key: 'c2', width: 18 }, { key: 'c3', width: 30 },
@@ -339,6 +341,8 @@ export default function VendorHistoryDetailPage() {
     // Sheet 2 – Payments by Date (cash + advance, with outline grouping)
     const ws2 = wb.addWorksheet('Payments by Date');
     ws2.properties.outlineLevelRow = 1;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (ws2.properties as any).outlineProperties = { summaryBelow: false };
     ws2.columns = [
       { key: 'c1', width: 18 }, { key: 'c2', width: 26 }, { key: 'c3', width: 22 }, { key: 'c4', width: 26 }, { key: 'c5', width: 18 },
     ];
@@ -372,6 +376,8 @@ export default function VendorHistoryDetailPage() {
     // Sheet 3 – Debit Note Adjustments by Date (with outline grouping)
     const ws3 = wb.addWorksheet('DN Adjustments');
     ws3.properties.outlineLevelRow = 1;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (ws3.properties as any).outlineProperties = { summaryBelow: false };
     ws3.columns = [
       { key: 'c1', width: 18 }, { key: 'c2', width: 22 }, { key: 'c3', width: 22 }, { key: 'c4', width: 34 }, { key: 'c5', width: 18 },
     ];
