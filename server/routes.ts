@@ -6993,6 +6993,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
         page: page ? parseInt(page as string) : 1,
         pageSize: pageSize ? parseInt(pageSize as string) : 25,
       };
+
+      // Auto-correct stale SO statuses: find 'confirmed'/'draft' SOs that have linked active invoices
+      try {
+        const staleRows = await db.execute(sql`
+          SELECT DISTINCT so.id
+          FROM sales_orders so
+          JOIN invoices inv ON inv.sales_order_id = so.id
+            AND inv.record_status = 1
+            AND inv.status != 'cancelled'
+          WHERE so.status IN ('confirmed', 'draft')
+            AND so.record_status = 1
+        `);
+        if ((staleRows.rows as any[]).length > 0) {
+          for (const row of staleRows.rows as any[]) {
+            const soId = row.id;
+            const soItemRows = await db.select()
+              .from(salesOrderItems)
+              .where(and(eq(salesOrderItems.soId, soId), eq(salesOrderItems.recordStatus, 1)));
+            const activeInvRows = await db.select({ id: invoices.id })
+              .from(invoices)
+              .where(and(eq(invoices.salesOrderId, soId), eq(invoices.recordStatus, 1), ne(invoices.status, 'cancelled')));
+            const invoiceIds = activeInvRows.map(i => i.id);
+            let allInvoicedItems: any[] = [];
+            if (invoiceIds.length > 0) {
+              allInvoicedItems = await db.select()
+                .from(invoiceItems)
+                .where(and(inArray(invoiceItems.invoiceId, invoiceIds), eq(invoiceItems.recordStatus, 1)));
+            }
+            let allFull = soItemRows.length > 0;
+            let anyInv = false;
+            for (const soItem of soItemRows) {
+              const totalQty = allInvoicedItems.filter((ii: any) => ii.productId === soItem.productId).reduce((s: number, ii: any) => s + (ii.quantity || 0), 0);
+              if (totalQty > 0) anyInv = true;
+              if (totalQty < soItem.quantity) allFull = false;
+            }
+            const corrected = allFull && anyInv ? 'invoiced' : anyInv ? 'partially_invoiced' : null;
+            if (corrected) {
+              await db.update(salesOrders).set({ status: corrected, updatedAt: new Date().toISOString() }).where(eq(salesOrders.id, soId));
+              console.log(`[SO_AUTOCORRECT_LIST] SO ${soId} → ${corrected}`);
+            }
+          }
+        }
+      } catch (corrErr) {
+        console.error('[SO_AUTOCORRECT_LIST] Error during status correction:', corrErr);
+      }
+
       const result = await storage.getAllSalesOrders(filters);
       res.json(result);
     } catch (error) {
