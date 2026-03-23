@@ -7187,8 +7187,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/sales-orders/:id/invoices', isAuthenticated, async (req: any, res) => {
     try {
-      const invoices = await storage.getInvoicesBySalesOrder(req.params.id);
-      res.json(invoices);
+      const soId = req.params.id;
+      const linkedInvoices = await storage.getInvoicesBySalesOrder(soId);
+      
+      // Auto-correct SO status if there are linked invoices but SO is still in 'confirmed' state
+      const activeLinked = linkedInvoices.filter((inv: any) => inv.status !== 'cancelled' && inv.recordStatus !== 0);
+      if (activeLinked.length > 0) {
+        const [currentSO] = await db.select({ id: salesOrders.id, status: salesOrders.status })
+          .from(salesOrders)
+          .where(eq(salesOrders.id, soId));
+        if (currentSO && (currentSO.status === 'confirmed' || currentSO.status === 'draft')) {
+          // Determine correct status from invoiced quantities
+          const soItemRows = await db.select()
+            .from(salesOrderItems)
+            .where(and(eq(salesOrderItems.soId, soId), eq(salesOrderItems.recordStatus, 1)));
+          const invoiceIds = activeLinked.map((inv: any) => inv.id);
+          let allInvoicedItems: any[] = [];
+          if (invoiceIds.length > 0) {
+            allInvoicedItems = await db.select()
+              .from(invoiceItems)
+              .where(and(inArray(invoiceItems.invoiceId, invoiceIds), eq(invoiceItems.recordStatus, 1)));
+          }
+          let allFull = soItemRows.length > 0;
+          let anyInv = false;
+          for (const soItem of soItemRows) {
+            const totalQty = allInvoicedItems.filter((ii: any) => ii.productId === soItem.productId).reduce((s: number, ii: any) => s + (ii.quantity || 0), 0);
+            if (totalQty > 0) anyInv = true;
+            if (totalQty < soItem.quantity) allFull = false;
+          }
+          const correctedStatus = allFull && anyInv ? 'invoiced' : anyInv ? 'partially_invoiced' : currentSO.status;
+          if (correctedStatus !== currentSO.status) {
+            await db.update(salesOrders).set({ status: correctedStatus, updatedAt: new Date().toISOString() }).where(eq(salesOrders.id, soId));
+            console.log(`[SO_AUTOCORRECT] SO ${soId} status corrected from ${currentSO.status} to ${correctedStatus}`);
+          }
+        }
+      }
+      
+      res.json(linkedInvoices);
     } catch (error) {
       console.error('[SALES_ORDERS] Error fetching invoices for sales order:', error);
       res.status(500).json({ message: 'Internal server error' });

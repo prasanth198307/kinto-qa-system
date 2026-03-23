@@ -469,6 +469,8 @@ export default function SalesOrderDetail({ showHeader = true }: { showHeader?: b
     },
   });
 
+  const hasLinkedInvoices = !isLoadingInvoices && invoices.length > 0;
+
   const content = (() => {
     if (isLoadingSO) {
       return (
@@ -524,22 +526,22 @@ export default function SalesOrderDetail({ showHeader = true }: { showHeader?: b
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            {salesOrder.status === 'draft' && (
+            {salesOrder.status === 'draft' && !hasLinkedInvoices && (
               <Button onClick={() => confirmMutation.mutate()} disabled={confirmMutation.isPending} data-testid="button-confirm-so">
                 <CheckCircle className="w-4 h-4 mr-2" />Confirm
               </Button>
             )}
-            {salesOrder.status === 'confirmed' && (
+            {salesOrder.status === 'confirmed' && !hasLinkedInvoices && (
               <Button onClick={() => setLocation(`/?soId=${salesOrder.id}`)} data-testid="button-create-invoice">
                 <Plus className="w-4 h-4 mr-2" />Create Invoice
               </Button>
             )}
-            {(salesOrder.status === 'draft' || salesOrder.status === 'confirmed') && (
+            {(salesOrder.status === 'draft' || salesOrder.status === 'confirmed') && !hasLinkedInvoices && (
               <Button variant="outline" onClick={() => setIsEditOpen(true)} data-testid="button-edit-so">
                 <Edit className="w-4 h-4 mr-2" />Edit
               </Button>
             )}
-            {(salesOrder.status === 'draft' || salesOrder.status === 'confirmed') && (
+            {(salesOrder.status === 'draft' || salesOrder.status === 'confirmed') && !hasLinkedInvoices && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="outline" className="text-destructive hover:text-destructive" data-testid="button-cancel-so">
