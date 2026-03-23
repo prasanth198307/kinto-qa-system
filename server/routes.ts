@@ -20737,7 +20737,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             COUNT(*) as batch_count,
             COALESCE(SUM(fg.quantity), 0) as total_quantity,
             MIN(fg.production_date) as oldest_batch,
-            MAX(fg.production_date) as newest_batch
+            MAX(fg.production_date) as newest_batch,
+            COALESCE(SUM(fg.quantity * COALESCE(fg.unit_cost, 0)), 0) as stock_value
           FROM finished_goods fg
           JOIN products p ON fg.product_id = p.id
           WHERE fg.record_status = 1 AND fg.quality_status = 'approved'
@@ -20799,22 +20800,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
           belowReorder: parseInt(summary.below_reorder) || 0
         },
         agingBuckets,
-        rawMaterials: rawMaterialRows.slice(0, 20).map(rm => ({
-          id: rm.id,
-          materialCode: rm.material_code,
-          materialName: rm.material_name,
-          currentStock: rm.current_stock,
-          unitCost: rm.unit_cost,
-          stockValue: parseInt(rm.stock_value) || 0,
-          reorderLevel: rm.reorder_level,
-          agingBucket: rm.aging_bucket
-        })),
+        rawMaterials: rawMaterialRows.slice(0, 20).map(rm => {
+          // avg daily consumption: total issued in last 90 days / 90
+          const stockValue = parseInt(rm.stock_value) || 0;
+          const reorderLevel = parseInt(rm.reorder_level) || null;
+          const currentStock = parseInt(rm.current_stock) || 0;
+          return {
+            id: rm.id,
+            materialCode: rm.material_code,
+            materialName: rm.material_name,
+            currentStock,
+            unitCost: parseFloat(rm.unit_cost) || 0,
+            stockValue,
+            reorderLevel,
+            agingBucket: rm.aging_bucket
+          };
+        }),
         finishedGoods: finishedGoodsRows.map(fg => ({
           productName: fg.product_name,
           batchCount: parseInt(fg.batch_count),
           totalQuantity: parseInt(fg.total_quantity),
           oldestBatch: fg.oldest_batch,
-          newestBatch: fg.newest_batch
+          newestBatch: fg.newest_batch,
+          stockValue: parseInt(fg.stock_value) || 0,
         })),
         slowMovers: slowMoversRows.map(sm => ({
           id: sm.id,
@@ -21052,7 +21060,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             COALESCE(transporter_name, 'Direct') as transporter,
             COUNT(*) as total_dispatches,
             COUNT(CASE WHEN status IN ('delivered', 'completed') THEN 1 END) as completed,
-            COUNT(CASE WHEN status = 'generated' THEN 1 END) as pending
+            COUNT(CASE WHEN status = 'generated' THEN 1 END) as pending,
+            COUNT(CASE WHEN status = 'vehicle_out' THEN 1 END) as in_transit
           FROM gatepasses
           WHERE record_status = 1 AND gatepass_date >= ${startDateStr}
           GROUP BY transporter_name
@@ -21093,6 +21102,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           totalDispatches: parseInt(t.total_dispatches),
           completed: parseInt(t.completed),
           pending: parseInt(t.pending),
+          inTransit: parseInt(t.in_transit) || 0,
           completionRate: t.total_dispatches > 0 ? ((t.completed / t.total_dispatches) * 100).toFixed(1) : 0
         }))
       });
