@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Printer, Package, Calendar, RefreshCw } from "lucide-react";
+import { Plus, Trash2, Printer, Package, Calendar, RefreshCw, Info } from "lucide-react";
 import { format } from "date-fns";
 
 const headerSchema = insertGatepassSchema.extend({
@@ -481,6 +481,7 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
       queryClient.invalidateQueries({ queryKey: ['/api/gatepasses'] });
       queryClient.invalidateQueries({ queryKey: ['/api/gatepass-items'] });
       queryClient.invalidateQueries({ queryKey: ['/api/finished-goods'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/vendors'] });
       toast({
         title: "Success",
         description: gatepass ? "Gatepass updated successfully" : "Gatepass created successfully",
@@ -1015,7 +1016,7 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
                     >
                       <FormControl>
                         <SelectTrigger data-testid="select-vendor">
-                          <SelectValue placeholder="Select vendor" />
+                          <SelectValue placeholder="Select vendor (optional)" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -1031,6 +1032,10 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
                         ))}
                       </SelectContent>
                     </Select>
+                    <p className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                      <Info className="h-3 w-3 shrink-0" />
+                      If buyer is not in the list, they will be automatically added to vendor master when gatepass is saved.
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )}

@@ -6246,11 +6246,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!items || !Array.isArray(items) || items.length === 0) {
         return res.status(400).json({ message: "At least one gatepass item is required" });
       }
+
+      // Auto-find or auto-create vendor if vendorId not provided
+      // This ensures buyer is always in vendor master for future reuse
+      let resolvedVendorId = validatedHeader.vendorId || null;
+      if (!resolvedVendorId) {
+        const buyerName = validatedHeader.customerName || invoice.buyerName;
+        if (buyerName) {
+          // Look for existing vendor by name (case-insensitive)
+          const [existingVendor] = await db
+            .select()
+            .from(vendors)
+            .where(and(
+              sql`lower(${vendors.vendorName}) = lower(${buyerName})`,
+              eq(vendors.recordStatus, 1)
+            ))
+            .limit(1);
+
+          if (existingVendor) {
+            resolvedVendorId = existingVendor.id;
+          } else {
+            // Auto-create a vendor record from invoice buyer details
+            // Generate unique vendorCode: initials of name + timestamp
+            const initials = buyerName
+              .split(/\s+/)
+              .map((w: string) => w[0]?.toUpperCase() || '')
+              .join('')
+              .slice(0, 6);
+            const vendorCode = `${initials}-${Date.now()}`;
+
+            const [newVendor] = await db
+              .insert(vendors)
+              .values({
+                vendorCode,
+                vendorName: buyerName,
+                mobileNumber: '',
+                gstNumber: invoice.buyerGstin || null,
+                address: invoice.buyerAddress || null,
+                state: invoice.buyerState || null,
+                vendorType: 'customer',
+                isCluster: invoice.isCluster || 0,
+                isActive: 'true',
+                createdBy: req.user?.id || null,
+              })
+              .returning();
+
+            resolvedVendorId = newVendor.id;
+          }
+        }
+      }
       
       // Create gatepass header with auto-generated gatepass number
       const gatepassNumber = `GP-${Date.now()}`;
       const gatepassData = {
         ...validatedHeader,
+        vendorId: resolvedVendorId,
         gatepassDate: validatedHeader.gatepassDate ? new Date(validatedHeader.gatepassDate).toISOString() : new Date().toISOString(),
         gatepassNumber,
         issuedBy: req.user?.id,
