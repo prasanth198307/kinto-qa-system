@@ -434,8 +434,13 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                                           if (vendor.vendorName) form.setValue("buyerName", vendor.vendorName);
                                           if (vendor.gstNumber) form.setValue("buyerGstin", vendor.gstNumber);
                                           if (vendor.address) form.setValue("buyerAddress", vendor.address);
-                                          if ((vendor as any).vendorPhone) form.setValue("buyerContact", (vendor as any).vendorPhone);
+                                          if (vendor.state) form.setValue("buyerState", vendor.state);
+                                          if (vendor.mobileNumber) form.setValue("buyerContact", vendor.mobileNumber);
                                           if (vendor.shipToName) form.setValue("shipToName", vendor.shipToName);
+                                          if (vendor.shipToAddress) form.setValue("shipToAddress", vendor.shipToAddress);
+                                          if (vendor.shipToCity) form.setValue("shipToCity", vendor.shipToCity);
+                                          if (vendor.shipToState) form.setValue("shipToState", vendor.shipToState);
+                                          if (vendor.shipToPincode) form.setValue("shipToPin", vendor.shipToPincode);
                                         }}
                                       >
                                         <Check className={cn("mr-2 h-4 w-4", vendor.id === field.value ? "opacity-100" : "opacity-0")} />
