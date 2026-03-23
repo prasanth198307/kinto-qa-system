@@ -7800,6 +7800,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
         gatepass: result.autoCreatedGatepass,
         message 
       });
+
+      // Auto-find-or-create vendor from buyer details (non-blocking)
+      // This ensures every buyer is in vendor master for future reuse
+      try {
+        const buyerName = result.invoice.buyerName;
+        if (buyerName) {
+          const [existingVendor] = await db
+            .select()
+            .from(vendors)
+            .where(and(
+              sql`lower(${vendors.vendorName}) = lower(${buyerName})`,
+              eq(vendors.recordStatus, 1)
+            ))
+            .limit(1);
+
+          if (!existingVendor) {
+            const initials = buyerName
+              .split(/\s+/)
+              .map((w: string) => w[0]?.toUpperCase() || '')
+              .join('')
+              .slice(0, 6);
+            const vendorCode = `${initials}-${Date.now()}`;
+            await db.insert(vendors).values({
+              vendorCode,
+              vendorName: buyerName,
+              mobileNumber: (result.invoice as any).buyerContact || '',
+              gstNumber: result.invoice.buyerGstin || null,
+              address: result.invoice.buyerAddress || null,
+              state: result.invoice.buyerState || null,
+              vendorType: 'customer',
+              isCluster: result.invoice.isCluster || 0,
+              isActive: 'true',
+              createdBy: req.user?.id || null,
+            });
+            console.log(`[VENDOR_AUTO_CREATE] Created vendor "${buyerName}" from invoice ${result.invoice.invoiceNumber}`);
+          }
+        }
+      } catch (ve) { console.error('[VENDOR_AUTO_CREATE] Failed:', ve); }
       
       // Auto-generate journal entry (non-blocking)
       try {

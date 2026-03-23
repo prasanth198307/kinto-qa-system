@@ -232,6 +232,10 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
     defaultValues: {
       buyerName: "",
       vendorId: "",
+      buyerGstin: "",
+      buyerAddress: "",
+      buyerState: "",
+      buyerContact: "",
       soDate: format(new Date(), 'yyyy-MM-dd'),
       items: [{
         productId: "",
