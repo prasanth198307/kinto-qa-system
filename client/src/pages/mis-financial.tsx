@@ -1,21 +1,42 @@
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { AlertTriangle, Download, TrendingUp, TrendingDown, Minus, BookOpen, Scale, Landmark, FileWarning } from "lucide-react";
 import { useState } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
-  AreaChart, Area, Cell
+  ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from "recharts";
-import { format } from "date-fns";
 
+/* ─── Color palette from mockup ─────────────────────────────────────── */
+const C = {
+  bg: "#F4F2EE", surface: "#F9F8F6", white: "#FFFFFF",
+  dark: "#1A1A18", muted: "#6B6B66", hint: "#888780", border: "#E8E6E0",
+  green: "#3B6D11", greenBg: "#EAF3DE", greenMid: "#97C459",
+  red: "#A32D2D", redBg: "#FCEBEB", redMid: "#E24B4A",
+  amber: "#633806", amberBg: "#FAEEDA", amberMid: "#EF9F27", amberBd: "#FAC775",
+  blue: "#185FA5", blueBg: "#E6F1FB", blueMid: "#378ADD",
+  teal: "#0F6E56", tealBg: "#E1F5EE", tealMid: "#1D9E75",
+  purple: "#534AB7", purpleBg: "#EEEDFE", purpleMid: "#7F77DD",
+  coral: "#993C1D", coralBg: "#FAECE7", coralMid: "#D85A30",
+};
+
+/* ─── Formatters ─────────────────────────────────────────────────────── */
+const INR = (p: number) =>
+  `₹${Math.abs(p / 100).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+const INR_K = (p: number) => {
+  const a = Math.abs(p / 100);
+  if (a >= 10000000) return `₹${(a / 10000000).toFixed(2)}Cr`;
+  if (a >= 100000) return `₹${(a / 100000).toFixed(2)}L`;
+  if (a >= 1000) return `₹${(a / 1000).toFixed(1)}K`;
+  return `₹${a.toLocaleString("en-IN")}`;
+};
+const PCT = (n: number, d: number) => (d > 0 ? Math.round((n / d) * 100) : 0);
+const MONTH_LABEL = (m: string) => {
+  const [y, mo] = m.split("-");
+  return new Date(parseInt(y), parseInt(mo) - 1, 1).toLocaleDateString("en-IN", { month: "short" });
+};
+
+/* ─── API shape ──────────────────────────────────────────────────────── */
 interface FinancialData {
-  fy: string;
-  fyStart: string;
-  fyEnd: string;
+  fy: string; fyStart: string; fyEnd: string;
   kpis: {
     plRevenue: number; plExpenses: number; netProfit: number; netMargin: number;
     totalBilled: number; totalOutstanding: number; overdueCount: number;
@@ -32,54 +53,272 @@ interface FinancialData {
   insights: Array<{ priority: string; label: string; title: string; body: string }>;
 }
 
-const INR = (paise: number) =>
-  `₹${Math.abs(paise / 100).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-
-const INR_K = (paise: number) => {
-  const abs = Math.abs(paise / 100);
-  if (abs >= 10000000) return `₹${(abs / 10000000).toFixed(2)}Cr`;
-  if (abs >= 100000) return `₹${(abs / 100000).toFixed(2)}L`;
-  if (abs >= 1000) return `₹${(abs / 1000).toFixed(1)}K`;
-  return `₹${abs.toLocaleString("en-IN")}`;
-};
-
-function KpiBadge({ label, color }: { label: string; color: "gray" | "green" | "amber" | "red" | "blue" }) {
-  const cls = {
-    gray: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
-    green: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400",
-    amber: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400",
-    red: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400",
-    blue: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400",
-  }[color];
-  return <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded tracking-wide ${cls}`}>{label}</span>;
+/* ─── Tiny primitives ────────────────────────────────────────────────── */
+type ChipColor = "green" | "red" | "amber" | "blue" | "purple" | "teal" | "gray" | "coral";
+function Chip({ children, color }: { children: React.ReactNode; color: ChipColor }) {
+  const s: Record<ChipColor, React.CSSProperties> = {
+    green:  { background: C.greenBg,  color: "#27500A" },
+    red:    { background: C.redBg,    color: "#791F1F" },
+    amber:  { background: C.amberBg,  color: C.amber },
+    blue:   { background: C.blueBg,   color: C.blue },
+    purple: { background: C.purpleBg, color: C.purple },
+    teal:   { background: C.tealBg,   color: C.teal },
+    gray:   { background: C.surface,  color: C.muted, border: `1px solid ${C.border}` },
+    coral:  { background: C.coralBg,  color: C.coral },
+  };
+  return (
+    <span style={{
+      display: "inline-block", fontSize: 9, fontWeight: 700,
+      padding: "2px 8px", borderRadius: 4, letterSpacing: "0.03em", whiteSpace: "nowrap",
+      ...s[color],
+    }}>{children}</span>
+  );
 }
 
-function AgingBar({ outstanding, total }: { outstanding: number; total: number }) {
-  const pct = total > 0 ? Math.min((outstanding / total) * 100, 100) : 0;
+function SrcChip({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-2">
-      <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
-        <div className="h-full bg-red-400 rounded-full" style={{ width: `${pct}%` }} />
-      </div>
-      <span className="text-xs text-muted-foreground">{Math.round(pct)}%</span>
+    <span style={{
+      fontSize: 8, fontWeight: 700, padding: "2px 6px", borderRadius: 3,
+      background: C.purpleBg, color: C.purple, display: "inline-block", marginBottom: 6,
+    }}>{children}</span>
+  );
+}
+
+function KpiCard({
+  src, label, value, valueColor, sub, chip, chipColor, bg, borderColor,
+}: {
+  src: string; label: string; value: string; valueColor: string;
+  sub: string; chip: string; chipColor: ChipColor;
+  bg?: string; borderColor?: string;
+}) {
+  return (
+    <div style={{
+      background: bg ?? C.surface, borderRadius: 12, padding: "12px 14px",
+      border: borderColor ? `1.5px solid ${borderColor}` : "none",
+      position: "relative",
+    }}>
+      <SrcChip>{src}</SrcChip>
+      <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.05em", color: C.hint, marginBottom: 6 }}>{label}</div>
+      <div style={{ fontSize: 17, fontWeight: 600, marginBottom: 4, color: valueColor }}>{value}</div>
+      <div style={{ fontSize: 9, color: C.muted, marginBottom: 6 }}>{sub}</div>
+      <Chip color={chipColor}>{chip}</Chip>
     </div>
   );
 }
 
-const MONTH_FMT = (m: string) => {
-  const [y, mo] = m.split("-");
-  return new Date(parseInt(y), parseInt(mo) - 1, 1).toLocaleDateString("en-IN", { month: "short" });
-};
+function SectionHd({ title, sub, chip, chipColor }: { title: string; sub: string; chip: string; chipColor: ChipColor }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10, marginTop: 20 }}>
+      <div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: C.dark }}>{title}</div>
+        <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>{sub}</div>
+      </div>
+      <Chip color={chipColor}>{chip}</Chip>
+    </div>
+  );
+}
 
-const INSIGHT_COLORS = { P1: "red", P2: "amber", P3: "blue" } as const;
-const INSIGHT_BG = {
-  P1: "bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800",
-  P2: "bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800",
-  P3: "bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800",
-};
+function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
+  return (
+    <div style={{
+      background: C.white, border: `1px solid ${C.border}`,
+      borderRadius: 14, padding: "16px 20px", ...style,
+    }}>{children}</div>
+  );
+}
+function CardTitle({ children }: { children: React.ReactNode }) {
+  return <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 3 }}>{children}</div>;
+}
+function CardSub({ children }: { children: React.ReactNode }) {
+  return <div style={{ fontSize: 10, color: C.muted, marginBottom: 12 }}>{children}</div>;
+}
 
+function PlRow({
+  left, right, indent, head, total, leftColor, rightColor, rightMono,
+}: {
+  left: React.ReactNode; right?: React.ReactNode;
+  indent?: boolean; head?: boolean; total?: boolean;
+  leftColor?: string; rightColor?: string; rightMono?: boolean;
+}) {
+  return (
+    <div style={{
+      display: "flex", justifyContent: "space-between", alignItems: "center",
+      padding: head ? "6px 8px" : total ? "8px 8px 6px" : "6px 8px",
+      fontSize: indent ? 10 : 11,
+      paddingLeft: indent ? 24 : 8,
+      borderBottom: total ? "none" : `1px solid ${C.surface}`,
+      borderTop: total ? `1px solid ${C.border}` : "none",
+      marginTop: total ? 4 : 0,
+      fontWeight: (head || total) ? 600 : 400,
+      background: head ? "rgba(0,0,0,0.02)" : "transparent",
+      borderRadius: head ? 4 : 0,
+    }}>
+      <span style={{ color: leftColor ?? (indent ? C.muted : C.dark) }}>{left}</span>
+      {right !== undefined && (
+        <span style={{ fontFamily: rightMono !== false ? "DM Mono, monospace" : undefined, color: rightColor ?? C.dark }}>
+          {right}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function PBar({ label, value, pct, color }: { label: string; value: string; pct: number; color: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <span style={{ width: 90, fontSize: 10, color: C.muted, flexShrink: 0 }}>{label}</span>
+      <div style={{ flex: 1, height: 7, background: C.surface, borderRadius: 4, overflow: "hidden", minWidth: 60 }}>
+        <div style={{ width: `${pct}%`, height: 7, background: color, borderRadius: 4 }} />
+      </div>
+      <span style={{ fontSize: 10, fontWeight: 600, flexShrink: 0 }}>{value}</span>
+    </div>
+  );
+}
+
+function MiniPBar({ pct, color }: { pct: number; color: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <div style={{ flex: 1, height: 7, background: C.surface, borderRadius: 4, overflow: "hidden", minWidth: 60 }}>
+        <div style={{ width: `${Math.min(pct, 100)}%`, height: 7, background: color, borderRadius: 4 }} />
+      </div>
+      <span style={{ fontSize: 10, color, fontWeight: 700, minWidth: 28 }}>{Math.round(pct)}%</span>
+    </div>
+  );
+}
+
+function Th({ children }: { children: React.ReactNode }) {
+  return (
+    <th style={{
+      textAlign: "left", padding: "6px 8px", fontSize: 9, fontWeight: 600,
+      textTransform: "uppercase", letterSpacing: "0.05em", color: C.hint,
+      borderBottom: `1px solid ${C.border}`, whiteSpace: "nowrap",
+    }}>{children}</th>
+  );
+}
+function Td({ children, mono, color, bold }: { children: React.ReactNode; mono?: boolean; color?: string; bold?: boolean }) {
+  return (
+    <td style={{
+      padding: "8px 8px", borderBottom: `1px solid ${C.surface}`, verticalAlign: "middle",
+      fontFamily: mono ? "DM Mono, monospace" : undefined, fontSize: 11,
+      color: color ?? C.dark, fontWeight: bold ? 600 : 400,
+    }}>{children}</td>
+  );
+}
+
+type RowVariant = "danger" | "warn" | "good" | "purple" | undefined;
+function TrVariant({ children, variant }: { children: React.ReactNode; variant?: RowVariant }) {
+  const bg = variant === "danger" ? C.redBg : variant === "warn" ? C.amberBg : variant === "good" ? C.greenBg : variant === "purple" ? C.purpleBg : "transparent";
+  return <tr style={{ background: bg }}>{children}</tr>;
+}
+
+function AgingBucket({
+  label, count, amount, total, pct, barColor, bg, borderStyle, sub, chip, chipColor,
+}: {
+  label: string; count: number; amount: number; total: number; pct: number;
+  barColor: string; bg: string; borderStyle?: string; sub: string; chip: string; chipColor: ChipColor;
+}) {
+  return (
+    <div style={{ borderRadius: 10, padding: "12px 14px", marginBottom: 8, background: bg, border: borderStyle }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+        <span style={{ fontSize: 11, fontWeight: 600 }}>
+          {label} <span style={{ fontWeight: 400, color: C.muted }}>· {count} invoices</span>
+        </span>
+        <span style={{ fontSize: 13, fontWeight: 600, color: barColor }}>{INR(amount)}</span>
+      </div>
+      <div style={{ height: 7, background: C.surface, borderRadius: 4, overflow: "hidden" }}>
+        <div style={{ width: `${pct}%`, height: 7, background: barColor, borderRadius: 4 }} />
+      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6, fontSize: 9 }}>
+        <span style={{ color: C.muted }}>{Math.round(pct)}% of total AR · {sub}</span>
+        <Chip color={chipColor}>{chip}</Chip>
+      </div>
+    </div>
+  );
+}
+
+function BsCol({
+  bg, titleColor, title, rows, totalLabel, totalVal, totalColor, note, noteColor,
+}: {
+  bg: string; titleColor: string; title: string;
+  rows: Array<{ label: string; val: string; color?: string }>;
+  totalLabel: string; totalVal: string; totalColor: string; note: string; noteColor: string;
+}) {
+  return (
+    <div style={{ borderRadius: 10, padding: 14, background: bg }}>
+      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.05em", marginBottom: 10, color: titleColor }}>{title}</div>
+      {rows.map((r, i) => (
+        <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", fontSize: 11, borderBottom: "1px solid rgba(0,0,0,0.04)" }}>
+          <span>{r.label}</span>
+          <span style={{ fontFamily: "DM Mono, monospace", color: r.color ?? C.muted }}>{r.val}</span>
+        </div>
+      ))}
+      <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0 0", fontSize: 12, fontWeight: 600, borderTop: "1px solid rgba(0,0,0,0.1)", marginTop: 4 }}>
+        <span style={{ color: titleColor }}>{totalLabel}</span>
+        <span style={{ fontFamily: "DM Mono, monospace", color: totalColor }}>{totalVal}</span>
+      </div>
+      <div style={{ fontSize: 9, marginTop: 6, color: noteColor }}>{note}</div>
+    </div>
+  );
+}
+
+function CoaItem({ badge, label, desc, badgeColor }: { badge: string; label: string; desc: string; badgeColor: ChipColor }) {
+  return (
+    <div style={{ display: "flex", gap: 8, alignItems: "flex-start", padding: 8, borderRadius: 6, marginBottom: 6, background: "rgba(255,255,255,0.6)", fontSize: 11 }}>
+      <Chip color={badgeColor}>{badge}</Chip>
+      <div>
+        <div style={{ fontWeight: 600 }}>{label}</div>
+        <div style={{ fontSize: 9, color: C.muted, marginTop: 1 }}>{desc}</div>
+      </div>
+    </div>
+  );
+}
+
+function DssCard({ priority, chip, chipColor, title, body, bg }: {
+  priority: string; chip: string; chipColor: ChipColor; title: string; body: string; bg: string;
+}) {
+  return (
+    <div style={{ borderRadius: 10, padding: 14, border: "1px solid rgba(0,0,0,0.06)", background: bg }}>
+      <Chip color={chipColor}>{chip}</Chip>
+      <div style={{ fontSize: 11, fontWeight: 600, color: C.dark, margin: "8px 0 4px" }}>{title}</div>
+      <div style={{ fontSize: 10, color: C.muted, lineHeight: 1.6 }}>{body}</div>
+    </div>
+  );
+}
+
+function Flag({ variant, children }: { variant: "crit" | "warn" | "purple"; children: React.ReactNode }) {
+  const s = {
+    crit:   { background: C.redBg,    border: `1.5px solid #F7C1C1`, color: C.red },
+    warn:   { background: C.amberBg,  border: `1.5px solid ${C.amberBd}`, color: C.amber },
+    purple: { background: C.purpleBg, border: `1px solid #AFA9EC`, color: C.purple },
+  }[variant];
+  return (
+    <div style={{ borderRadius: 12, padding: "10px 16px", display: "flex", gap: 10, alignItems: "flex-start", fontSize: 11, lineHeight: 1.6, ...s }}>
+      {children}
+    </div>
+  );
+}
+
+/* ─── Custom Tooltip for chart ──────────────────────────────────────── */
+function ChartTooltip({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 12px", fontSize: 11 }}>
+      <div style={{ fontWeight: 600, marginBottom: 4, color: C.dark }}>{label}</div>
+      {payload.map((p: any) => (
+        <div key={p.name} style={{ color: p.color, display: "flex", gap: 6 }}>
+          <span style={{ color: C.muted }}>{p.name}:</span>
+          <span style={{ fontWeight: 600 }}>{INR_K(p.value * 100)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Main Component
+═══════════════════════════════════════════════════════════════════════ */
 export default function MISFinancial() {
-  const [isExporting, setIsExporting] = useState(false);
+  const [_exporting, setExporting] = useState(false);
 
   const { data, isLoading } = useQuery<FinancialData>({
     queryKey: ["/api/mis/financial-analytics"],
@@ -88,530 +327,641 @@ export default function MISFinancial() {
   const kpis = data?.kpis;
   const netProfit = kpis?.netProfit ?? 0;
   const netMargin = kpis?.netMargin ?? 0;
-  const isProfitable = netProfit >= 0;
-  const marginStatus = netMargin >= 15 ? "green" : netMargin >= 5 ? "amber" : "red";
-  const marginLabel = netMargin >= 15 ? "HEALTHY" : netMargin >= 5 ? "THIN" : "LOSS";
   const totalAging = (data?.receivablesAging ?? []).reduce((s, r) => s + r.outstanding, 0);
 
   const chartData = (data?.monthlyTrend ?? []).map((m) => ({
-    name: MONTH_FMT(m.month),
+    name: MONTH_LABEL(m.month),
     Revenue: Math.round(m.revenue / 100),
     Expenses: Math.round(m.expenses / 100),
+    Net: Math.round((m.revenue - m.expenses) / 100),
   }));
 
-  const trialByType: Record<string, { debit: number; credit: number }> = {};
-  for (const g of data?.trialGroups ?? []) {
-    const t = g.accountType?.toLowerCase() ?? "other";
-    if (!trialByType[t]) trialByType[t] = { debit: 0, credit: 0 };
-    trialByType[t].debit += g.totalDebit;
-    trialByType[t].credit += g.totalCredit;
+  const marginLabel =
+    netMargin >= 15 ? "HEALTHY" : netMargin >= 5 ? "THIN" : netProfit >= 0 ? "LOW" : "LOSS";
+  const marginChip: ChipColor =
+    netMargin >= 15 ? "green" : netMargin >= 5 ? "amber" : "red";
+
+  const arChipColor: ChipColor = (kpis?.totalOutstanding ?? 0) > 0 ? "red" : "green";
+  const expRatio = kpis?.plRevenue ? PCT(kpis.plExpenses, kpis.plRevenue) : 0;
+  const expChipColor: ChipColor = expRatio > 90 ? "red" : expRatio > 70 ? "amber" : "green";
+
+  const fyLabel = data?.fy
+    ? `FY ${data.fy}–${String(parseInt(data.fy) + 1).slice(2)}`
+    : "FY 2025–26";
+
+  if (isLoading) {
+    return (
+      <div style={{ background: C.bg, minHeight: "100vh", fontFamily: "DM Sans, sans-serif" }}>
+        <div style={{ padding: "20px 24px", maxWidth: 1400, margin: "0 auto" }}>
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-32 w-full mb-4" />
+          ))}
+        </div>
+      </div>
+    );
   }
 
-  const flaggedJournals = (data?.recentJournals ?? []).filter((j) => j.flags.length > 0);
-
   return (
-    <div className="p-4 md:p-6 space-y-6" data-testid="mis-financial-page">
-      {/* ── Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div style={{ background: C.bg, minHeight: "100vh", fontFamily: "'DM Sans', sans-serif", color: C.dark }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap');
+        .fin-tbl td { border-bottom: 1px solid ${C.surface} !important; }
+        .fin-tbl tr:last-child td { border-bottom: none !important; }
+      `}</style>
+
+      {/* ── PAGE HEADER ── */}
+      <div style={{
+        background: C.dark, padding: "16px 28px",
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+      }}>
         <div>
-          <h1 className="text-2xl font-bold" data-testid="text-page-title">
-            Financial Analytics
-          </h1>
-          <p className="text-muted-foreground text-sm">
-            Formal Ledger MIS — {data?.fy ?? "Current FY"} · Managed by Accountant / CA
-          </p>
+          <div style={{ fontSize: 17, fontWeight: 600, color: "#fff" }}>Financial Accounting — Formal Ledger MIS</div>
+          <div style={{ fontSize: 11, color: C.hint, marginTop: 3 }}>
+            Decision Support System · {fyLabel} · KINTO · Accountant / CA view
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="font-mono text-xs">
-            {data?.fy ?? "—"}
-          </Badge>
-          <Button variant="outline" size="sm" disabled={isExporting || isLoading} data-testid="button-export-excel">
-            <Download className="w-4 h-4 mr-2" />Export Report
-          </Button>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <button
+            style={{ fontSize: 11, fontWeight: 500, padding: "7px 14px", border: `1px solid ${C.border}`, borderRadius: 8, background: C.surface, color: C.dark, cursor: "pointer" }}
+            onClick={() => setExporting(true)}
+          >
+            ↓ Export PDF
+          </button>
+          <span style={{ background: C.purpleMid, color: "#fff", fontSize: 10, fontWeight: 700, padding: "7px 14px", borderRadius: 8 }}>
+            ACCOUNTANT VIEW
+          </span>
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">{[...Array(8)].map((_, i) => <Skeleton key={i} className="h-24" />)}</div>
-          <Skeleton className="h-64" />
+      {/* ── SOURCE STRIP ── */}
+      <div style={{ background: C.white, borderBottom: `1px solid ${C.border}`, display: "flex", overflowX: "auto", gap: 0 }}>
+        {[
+          ["Chart of Accounts", "Account structure"],
+          ["Journal Entries", "Vouchers & postings"],
+          ["Bank Statements", "Bank reconciliation"],
+          ["Trial Balance", "Dr/Cr balances"],
+          ["Profit & Loss", "Revenue & expense"],
+          ["Balance Sheet", "Assets & liabilities"],
+          ["Ledger View", "Per-account detail"],
+          ["Day Book", "Daily transactions"],
+          ["Outstanding/Aging", "AR aging buckets"],
+          ["Cash Flow", "Liquidity position"],
+          ["Group Summary", "Rollup view"],
+        ].map(([name, desc], i, arr) => (
+          <div key={name} style={{
+            padding: "8px 16px", borderRight: i < arr.length - 1 ? `1px solid ${C.border}` : "none",
+            whiteSpace: "nowrap", flexShrink: 0,
+          }}>
+            <div style={{ fontSize: 9, fontWeight: 600, color: C.purple, textTransform: "uppercase", letterSpacing: "0.04em" }}>{name}</div>
+            <div style={{ fontSize: 9, color: C.hint, marginTop: 1 }}>{desc}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ padding: "20px 24px", maxWidth: 1400, margin: "0 auto" }}>
+
+        {/* ══ A: KPI CARDS ════════════════════════════════════════════════ */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10, marginTop: 16 }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: C.dark }}>Financial Health — Key Indicators</div>
+            <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>All sourced from formal accounting modules · {fyLabel}</div>
+          </div>
+          <Chip color="purple">6 KPIs</Chip>
         </div>
-      ) : data ? (
-        <>
-          {/* ── KPI Bar ── */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between mb-1">
-                  <p className="text-xs text-muted-foreground">Gross Revenue</p>
-                  <KpiBadge label="INCOME" color="green" />
-                </div>
-                <p className="text-xl font-bold">{INR_K(kpis!.plRevenue)}</p>
-                <p className="text-xs text-muted-foreground mt-1">Journal-based FY total</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between mb-1">
-                  <p className="text-xs text-muted-foreground">Net Profit / Loss</p>
-                  <KpiBadge label={marginLabel} color={marginStatus} />
-                </div>
-                <p className={`text-xl font-bold ${isProfitable ? "text-green-600" : "text-red-600"}`}>
-                  {isProfitable ? "" : "−"}{INR_K(Math.abs(netProfit))}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">{netMargin.toFixed(1)}% margin</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between mb-1">
-                  <p className="text-xs text-muted-foreground">Outstanding / Aging</p>
-                  <KpiBadge label={kpis!.overdueCount > 0 ? "CRITICAL" : "LOW"} color={kpis!.overdueCount > 0 ? "red" : "green"} />
-                </div>
-                <p className="text-xl font-bold">{INR_K(kpis!.totalOutstanding)}</p>
-                <p className="text-xs text-muted-foreground mt-1">{kpis!.overdueCount} overdue 30d+</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between mb-1">
-                  <p className="text-xs text-muted-foreground">Bank / Cash Stock</p>
-                  <KpiBadge label={kpis!.unreconciledCount > 0 ? "UNRESOLVED" : "CLEAR"} color={kpis!.unreconciledCount > 0 ? "amber" : "green"} />
-                </div>
-                <p className="text-xl font-bold">{INR_K(kpis!.cashBalance + kpis!.bankBalance)}</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {kpis!.unreconciledCount > 0 ? `${kpis!.unreconciledCount} unreconciled` : "All reconciled"}
-                </p>
-              </CardContent>
-            </Card>
-          </div>
 
-          {/* ── P&L + Monthly Chart ── */}
-          <div className="grid lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-green-600" />
-                  Profit & Loss Statement
-                </CardTitle>
-                <CardDescription>Monthly revenue vs expenses — {data.fy}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {chartData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={220}>
-                    <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                      <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                      <YAxis tick={{ fontSize: 10 }} width={50} tickFormatter={(v) => `₹${v >= 1000 ? `${(v / 1000).toFixed(0)}K` : v}`} />
-                      <Tooltip formatter={(v: number, name: string) => [`₹${v.toLocaleString("en-IN")}`, name]} />
-                      <Legend />
-                      <Bar dataKey="Revenue" fill="#16a34a" radius={[3, 3, 0, 0]} />
-                      <Bar dataKey="Expenses" fill="#dc2626" radius={[3, 3, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="h-[220px] flex items-center justify-center text-sm text-muted-foreground text-center px-4">
-                    No journal entries posted yet for this period. Post invoices, payments, and expense vouchers to see P&L.
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)", gap: 8, marginBottom: 16 }}>
+          <KpiCard
+            src="P&L" label="Total Revenue"
+            value={INR_K(kpis?.plRevenue ?? 0)} valueColor={C.green}
+            sub={`${(data?.trialGroups ?? []).filter(g => g.accountType?.toLowerCase() === 'income').length || "—"} income accounts · FY total`}
+            chip="INCOME" chipColor="green"
+            bg={C.greenBg}
+          />
+          <KpiCard
+            src="P&L / TB" label="Total Expenses"
+            value={INR_K(kpis?.plExpenses ?? 0)} valueColor={C.red}
+            sub={`${expRatio}% of revenue`}
+            chip={expRatio > 90 ? "HIGH" : "NORMAL"} chipColor={expChipColor}
+            bg={C.redBg} borderColor={C.redMid}
+          />
+          <KpiCard
+            src="P&L" label="Net Profit / Loss"
+            value={`${netProfit < 0 ? "−" : ""}${INR_K(Math.abs(netProfit))}`}
+            valueColor={netProfit >= 0 ? C.green : C.red}
+            sub={`${Math.abs(netMargin).toFixed(1)}% net margin`}
+            chip={marginLabel} chipColor={marginChip}
+            bg={netProfit < 0 ? C.redBg : C.amberBg}
+            borderColor={netProfit < 0 ? C.redMid : C.amberBd}
+          />
+          <KpiCard
+            src="Outstanding" label="Sundry Debtors (AR)"
+            value={INR_K(kpis?.totalOutstanding ?? 0)} valueColor={C.red}
+            sub={`${kpis?.overdueCount ?? 0} invoices o/s`}
+            chip="CRITICAL" chipColor="red"
+            bg={C.redBg} borderColor={C.redMid}
+          />
+          <KpiCard
+            src="Ledger" label="Cash / Bank Balance"
+            value={INR_K(kpis?.cashBalance ?? 0)}
+            valueColor={(kpis?.cashBalance ?? 0) < 10000000 ? C.amber : C.green}
+            sub="Per ledger balance"
+            chip={(kpis?.cashBalance ?? 0) < 10000000 ? "LOW" : "OK"}
+            chipColor={(kpis?.cashBalance ?? 0) < 10000000 ? "amber" : "green"}
+            bg={C.amberBg} borderColor={C.amberBd}
+          />
+          <KpiCard
+            src="Bank Stmt" label="Bank Recon Gap"
+            value={INR_K(kpis?.unreconciledAmount ?? 0)}
+            valueColor={(kpis?.unreconciledCount ?? 0) > 0 ? C.red : C.green}
+            sub={`${kpis?.unreconciledCount ?? 0} unreconciled entries`}
+            chip={(kpis?.unreconciledCount ?? 0) > 0 ? "UNRESOLVED" : "CLEAR"}
+            chipColor={(kpis?.unreconciledCount ?? 0) > 0 ? "red" : "green"}
+            bg={(kpis?.unreconciledCount ?? 0) > 0 ? C.redBg : C.greenBg}
+            borderColor={(kpis?.unreconciledCount ?? 0) > 0 ? C.redMid : undefined}
+          />
+        </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Scale className="w-4 h-4 text-blue-600" />
-                  FY Summary
-                </CardTitle>
-                <CardDescription>Key financial metrics — {data.fyStart} to {data.fyEnd}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {[
-                    { label: "Gross Revenue", value: INR(kpis!.plRevenue), color: "text-green-600", pct: "100%" },
-                    { label: "Total Expenses", value: INR(kpis!.plExpenses), color: "text-red-600", pct: kpis!.plRevenue > 0 ? `${((kpis!.plExpenses / kpis!.plRevenue) * 100).toFixed(1)}%` : "—" },
-                    { label: "Net Profit", value: INR(netProfit), color: isProfitable ? "text-green-700 font-bold" : "text-red-700 font-bold", pct: `${netMargin.toFixed(1)}%` },
-                    { label: "Total Billed (FY)", value: INR(kpis!.totalBilled), color: "", pct: "" },
-                    { label: "Outstanding", value: INR(kpis!.totalOutstanding), color: "text-amber-600", pct: kpis!.totalBilled > 0 ? `${((kpis!.totalOutstanding / kpis!.totalBilled) * 100).toFixed(1)}%` : "—" },
-                    { label: "Cash Position", value: INR(kpis!.cashBalance), color: "", pct: "" },
-                    { label: "Bank Balance", value: INR(kpis!.bankBalance), color: "", pct: "" },
-                  ].map((row, i) => (
-                    <div key={i} className="flex justify-between items-center py-1 border-b border-border/50 last:border-0">
-                      <span className="text-sm">{row.label}</span>
-                      <div className="flex items-center gap-3">
-                        {row.pct && <span className="text-xs text-muted-foreground">{row.pct}</span>}
-                        <span className={`text-sm font-medium ${row.color}`}>{row.value}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+        {/* ══ B: P&L + CASH FLOW ═══════════════════════════════════════ */}
+        <SectionHd
+          title="Profit & Loss Statement"
+          sub="Monthly revenue vs expenses · Net margin trend · Source: P&L module"
+          chip="P&L MODULE" chipColor="green"
+        />
 
-          {/* ── Trial Balance Group Summary ── */}
+        <div style={{ display: "grid", gridTemplateColumns: "1.1fr 1fr", gap: 12, marginBottom: 12 }}>
+          {/* P&L Chart */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <BookOpen className="w-4 h-4 text-purple-600" />
-                Trial Balance — Group Summary
-              </CardTitle>
-              <CardDescription>Account group totals with debit/credit per group · Source: Journal Entries</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Account Group</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead className="text-right">Debit</TableHead>
-                    <TableHead className="text-right">Credit</TableHead>
-                    <TableHead className="text-right">Net Balance</TableHead>
-                    <TableHead>Signal</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {data.trialGroups.length > 0 ? (
-                    data.trialGroups.slice(0, 12).map((g, i) => {
-                      const net = g.netBalance;
-                      const acctType = (g.accountType || "").toLowerCase();
-                      const isNormal = acctType.includes("asset") || acctType.includes("expense") ? net >= 0 : net <= 0;
-                      return (
-                        <TableRow key={i}>
-                          <TableCell className="text-sm font-medium">{g.groupName || g.accountType}</TableCell>
-                          <TableCell>
-                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded tracking-wide ${
-                              acctType.includes("revenue") ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400" :
-                              acctType.includes("expense") ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400" :
-                              acctType.includes("asset") ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400" :
-                              "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
-                            }`}>
-                              {(g.accountType || "").toUpperCase()}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-right text-sm">{INR(g.totalDebit)}</TableCell>
-                          <TableCell className="text-right text-sm">{INR(g.totalCredit)}</TableCell>
-                          <TableCell className={`text-right text-sm font-semibold ${net < 0 ? "text-red-600" : ""}`}>
-                            {net >= 0 ? "" : "−"}{INR(Math.abs(net))}
-                          </TableCell>
-                          <TableCell>
-                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded tracking-wide ${
-                              isNormal ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400" :
-                              "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400"
-                            }`}>
-                              {isNormal ? "NORMAL" : "REVIEW"}
-                            </span>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center text-muted-foreground py-6 text-sm">
-                        No journal entries posted for this FY. Post invoices and expense vouchers to populate.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
+            <CardTitle>Monthly P&L — {fyLabel}</CardTitle>
+            <CardSub>Revenue (green) vs Expenses (red) · Net line (blue) · Source: P&L module</CardSub>
+            <div style={{ width: "100%", height: 200 }}>
+              <ResponsiveContainer>
+                <ComposedChart data={chartData} margin={{ top: 4, right: 8, left: -10, bottom: 0 }}>
+                  <CartesianGrid vertical={false} stroke="rgba(0,0,0,0.04)" />
+                  <XAxis dataKey="name" tick={{ fontSize: 9, fill: C.hint }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 9, fill: C.hint }} axisLine={false} tickLine={false}
+                    tickFormatter={(v) => `₹${Math.abs(v) >= 100000 ? (v / 100000).toFixed(0) + "L" : (v / 1000).toFixed(0) + "K"}`}
+                  />
+                  <Tooltip content={<ChartTooltip />} />
+                  <Bar dataKey="Revenue" fill={C.greenMid} radius={[4, 4, 0, 0]} barSize={12} />
+                  <Bar dataKey="Expenses" fill="#F09595" radius={[4, 4, 0, 0]} barSize={12} />
+                  <Line dataKey="Net" type="monotone" stroke={C.blueMid} strokeWidth={2}
+                    dot={{ r: 4, fill: C.blueMid, stroke: "#fff", strokeWidth: 2 }} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+              {[
+                { dot: true, color: C.greenMid, label: "Revenue" },
+                { dot: true, color: "#F09595", label: "Expenses" },
+                { dot: false, color: C.blueMid, label: "Net Flow" },
+              ].map(({ dot, color, label }) => (
+                <div key={label} style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 20, padding: "4px 12px", fontSize: 10, color: C.muted, display: "flex", alignItems: "center", gap: 5 }}>
+                  {dot
+                    ? <span style={{ width: 6, height: 6, borderRadius: "50%", background: color, display: "inline-block" }} />
+                    : <span style={{ width: 14, height: 2, background: color, display: "inline-block", borderRadius: 1 }} />
+                  }
+                  {label}
+                </div>
+              ))}
+            </div>
           </Card>
 
-          {/* ── Receivables Aging + Top Debtors ── */}
-          <div className="grid lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 text-amber-500" />
-                  Receivables Aging Analysis
-                </CardTitle>
-                <CardDescription>Outstanding by age — Source: Invoices · Recovery probability</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {data.receivablesAging.length > 0 ? (
+          {/* FY Summary + Cash Flow */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <Card style={{ flex: 1 }}>
+              <CardTitle>FY Summary</CardTitle>
+              <CardSub>Income statement condensed · Source: P&L</CardSub>
+              <PlRow left="Gross Revenue" right={INR(kpis?.plRevenue ?? 0)} head rightColor={C.green} />
+              <PlRow left="Less: Total Expenses" right={INR(kpis?.plExpenses ?? 0)} leftColor={C.muted} rightColor={C.red} indent />
+              {(data?.trialGroups ?? [])
+                .filter(g => g.accountType?.toLowerCase() === "expenses" || g.accountType?.toLowerCase() === "expense")
+                .slice(0, 5)
+                .map((g) => (
+                  <PlRow key={g.groupName}
+                    left={g.groupName} indent
+                    right={INR(Math.abs(g.totalDebit - g.totalCredit) * 100)}
+                    leftColor={C.muted} rightColor={C.muted}
+                  />
+                ))
+              }
+              <PlRow
+                left="Net Profit / Loss" total
+                right={`${netProfit < 0 ? "−" : ""}${INR(Math.abs(netProfit))} (${Math.abs(netMargin).toFixed(1)}%)`}
+                rightColor={netProfit >= 0 ? C.green : C.red}
+              />
+            </Card>
+
+            <Card style={{ flex: 1 }}>
+              <CardTitle>Outstanding Summary</CardTitle>
+              <CardSub>Receivables position · Source: Invoice ledger</CardSub>
+              <PlRow left="Total Billed (FY)" right={INR(kpis?.totalBilled ?? 0)} head rightColor={C.blue} />
+              <PlRow left="Total Outstanding" right={INR(kpis?.totalOutstanding ?? 0)} leftColor={C.muted} rightColor={C.red} indent />
+              <PlRow left="Collection Rate"
+                right={`${kpis?.totalBilled ? PCT((kpis.totalBilled - kpis.totalOutstanding), kpis.totalBilled) : 0}%`}
+                leftColor={C.muted} rightColor={C.green} indent />
+              <PlRow
+                left="Billed not collected" total
+                right={INR(kpis?.totalOutstanding ?? 0)}
+                rightColor={C.red}
+              />
+              <div style={{ marginTop: 10, background: C.redBg, borderRadius: 8, padding: "8px 12px", fontSize: 10, color: C.red }}>
+                <strong>Billed not collected:</strong> {INR_K(kpis?.totalOutstanding ?? 0)} — critical business risk
+              </div>
+            </Card>
+          </div>
+        </div>
+
+        {/* ══ C: TRIAL BALANCE ══════════════════════════════════════════ */}
+        <SectionHd
+          title="Trial Balance & Group Summary"
+          sub="All account groups with debit/credit balances · DSS signal per group · Source: Trial Balance + Group Summary"
+          chip="TRIAL BALANCE" chipColor="purple"
+        />
+
+        <Card>
+          <CardTitle>Account Group Summary — Dr / Cr / Net / Signal</CardTitle>
+          <CardSub>Every account group from your Chart of Accounts · Sorted by risk</CardSub>
+          <div style={{ overflowX: "auto" }}>
+            <table className="fin-tbl" style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+              <thead>
+                <tr>
+                  <Th>Account Group</Th><Th>Category</Th><Th>Debit (Dr)</Th><Th>Credit (Cr)</Th>
+                  <Th>Net Balance</Th><Th>% of Revenue</Th><Th>Trend</Th><Th>DSS Signal</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {(data?.trialGroups ?? []).map((g) => {
+                  const t = (g.accountType ?? "").toLowerCase();
+                  const isIncome = t === "income" || t === "revenue";
+                  const isExpense = t === "expenses" || t === "expense";
+                  const isAsset = t === "assets" || t === "asset";
+                  const isLiab = t === "liabilities" || t === "liability";
+                  const net = Math.abs(g.netBalance ?? (g.totalDebit - g.totalCredit));
+                  const netRupees = net * 100;
+                  const revRupees = kpis?.plRevenue ?? 1;
+                  const pctRev = PCT(netRupees, revRupees);
+                  const catChip: ChipColor = isIncome ? "green" : isExpense ? "red" : isAsset ? "blue" : isLiab ? "amber" : "gray";
+                  const catLabel = isIncome ? "Income" : isExpense ? "Expense" : isAsset ? "Asset" : isLiab ? "Liability" : "Equity";
+                  const signalChip: ChipColor = isIncome ? "green" : (isExpense && pctRev > 50) ? "red" : (isExpense && pctRev > 25) ? "amber" : isAsset ? "blue" : "gray";
+                  const signalLabel = isIncome ? "INCOME" : (isExpense && pctRev > 50) ? "HIGH RISK" : (isExpense && pctRev > 25) ? "REVIEW" : isAsset ? "ASSET" : "NORMAL";
+                  const rowVar: RowVariant = isIncome ? "good" : (isExpense && pctRev > 50) ? "danger" : (isExpense && pctRev > 25) ? "warn" : undefined;
+                  return (
+                    <TrVariant key={g.groupName} variant={rowVar}>
+                      <Td bold={isIncome || (isExpense && pctRev > 50)}>{g.groupName}</Td>
+                      <Td><Chip color={catChip}>{catLabel}</Chip></Td>
+                      <Td mono color={g.totalDebit > 0 ? (isExpense ? C.red : C.muted) : C.hint}>
+                        {g.totalDebit > 0 ? INR(g.totalDebit * 100) : "—"}
+                      </Td>
+                      <Td mono color={g.totalCredit > 0 ? (isIncome ? C.green : C.muted) : C.hint}>
+                        {g.totalCredit > 0 ? INR(g.totalCredit * 100) : "—"}
+                      </Td>
+                      <Td mono bold color={isIncome ? C.green : (isExpense && pctRev > 50) ? C.red : (isExpense && pctRev > 25) ? C.amber : C.muted}>
+                        {INR(netRupees)}
+                      </Td>
+                      <Td color={pctRev > 50 ? C.red : pctRev > 25 ? C.amber : C.muted}>{pctRev}%</Td>
+                      <Td color={isIncome ? C.green : (isExpense && pctRev > 50) ? C.red : C.muted}>
+                        {isIncome ? "↑" : (isExpense && pctRev > 50) ? "↑↑" : "↔"}
+                      </Td>
+                      <Td><Chip color={signalChip}>{signalLabel}</Chip></Td>
+                    </TrVariant>
+                  );
+                })}
+                {(data?.trialGroups ?? []).length === 0 && (
+                  <tr><td colSpan={8} style={{ padding: 20, textAlign: "center", color: C.hint, fontSize: 11 }}>No data available</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+
+        {/* ══ D: AGING ANALYSIS ════════════════════════════════════════ */}
+        <SectionHd
+          title="Receivables Aging Analysis"
+          sub="Outstanding payments by age bucket · Recovery probability · Source: Outstanding/Aging module"
+          chip="OUTSTANDING/AGING" chipColor="red"
+        />
+
+        <div style={{ display: "grid", gridTemplateColumns: "1.1fr 1fr", gap: 12, marginBottom: 12 }}>
+          {/* Aging buckets */}
+          <Card style={{ border: `2px solid ${C.redMid}` }}>
+            <CardTitle style={{ color: C.red } as any}>Aging Buckets — {INR_K(totalAging)} Total AR</CardTitle>
+            <CardSub>All outstanding receivables grouped by overdue days</CardSub>
+            {(() => {
+              const buckets = [
+                { key: "0-30",  bg: C.greenBg, color: C.green,  barColor: C.greenMid, sub: "High recovery probability", chip: "COLLECT NORMALLY", chipColor: "green" as ChipColor },
+                { key: "31-60", bg: C.amberBg, color: C.amber,  barColor: C.amberMid, sub: "Medium risk", chip: "FOLLOW UP NOW", chipColor: "amber" as ChipColor },
+                { key: "61-90", bg: C.coralBg, color: C.coral,  barColor: C.coralMid, sub: "Escalating risk", chip: "ESCALATE", chipColor: "coral" as ChipColor },
+                { key: "90+",   bg: C.redBg,   color: C.red,    barColor: C.redMid, sub: "LARGEST BUCKET", chip: "LEGAL ACTION", chipColor: "red" as ChipColor },
+              ];
+              return buckets.map(({ key, bg, color: _color, barColor, sub, chip, chipColor }) => {
+                const row = (data?.receivablesAging ?? []).find(r => r.bucket === key);
+                const amt = row?.outstanding ?? 0;
+                const cnt = row?.count ?? 0;
+                const pct = totalAging > 0 ? PCT(amt, totalAging) : 0;
+                const is90 = key === "90+";
+                return (
+                  <AgingBucket key={key}
+                    label={key + " days"} count={cnt} amount={amt} total={totalAging}
+                    pct={pct} barColor={barColor} bg={bg}
+                    borderStyle={is90 ? `1.5px solid #F7C1C1` : undefined}
+                    sub={sub} chip={chip} chipColor={chipColor}
+                  />
+                );
+              });
+            })()}
+            {(data?.insights ?? []).filter(i => i.priority === "P1").map((ins) => (
+              <div key={ins.title} style={{ marginTop: 10 }}>
+                <Flag variant="crit">
+                  <span>⚠</span>
+                  <span><strong>DSS:</strong> {ins.body}</span>
+                </Flag>
+              </div>
+            ))}
+          </Card>
+
+          {/* Top debtors */}
+          <Card>
+            <CardTitle>Top Debtors — Collection Health</CardTitle>
+            <CardSub>Sorted by pending amount · Source: Outstanding/Aging</CardSub>
+            <table className="fin-tbl" style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+              <thead>
+                <tr>
+                  <Th>Customer</Th><Th>Inv.</Th><Th>Revenue</Th><Th>Pending</Th>
+                  <Th>Collection %</Th><Th>Risk</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {(data?.topDebtors ?? []).slice(0, 8).map((d) => {
+                  const collPct = d.totalBilled > 0 ? PCT(d.totalCollected, d.totalBilled) : 0;
+                  const risk: ChipColor = collPct === 0 ? "red" : collPct < 25 ? "amber" : "green";
+                  const rowVar: RowVariant = collPct === 0 ? "danger" : collPct < 25 ? "warn" : undefined;
+                  return (
+                    <TrVariant key={d.customer} variant={rowVar}>
+                      <Td bold={d.outstanding > 200000 * 100}>{d.customer}</Td>
+                      <Td>{d.invoiceCount}</Td>
+                      <Td mono>{INR(d.totalBilled)}</Td>
+                      <Td mono bold color={collPct < 25 ? C.red : C.amber}>{INR(d.outstanding)}</Td>
+                      <td style={{ padding: "8px 8px", verticalAlign: "middle", fontSize: 11 }}>
+                        <MiniPBar pct={collPct} color={collPct < 25 ? C.redMid : C.greenMid} />
+                      </td>
+                      <Td><Chip color={risk}>{collPct === 0 ? "CRITICAL" : collPct < 25 ? "HIGH RISK" : "OK"}</Chip></Td>
+                    </TrVariant>
+                  );
+                })}
+                {(data?.topDebtors ?? []).length === 0 && (
+                  <tr><td colSpan={6} style={{ padding: 20, textAlign: "center", color: C.hint, fontSize: 11 }}>No debtor data</td></tr>
+                )}
+              </tbody>
+            </table>
+          </Card>
+        </div>
+
+        {/* ══ E: BALANCE SHEET ══════════════════════════════════════════ */}
+        <SectionHd
+          title="Balance Sheet — Financial Position"
+          sub={`Assets, liabilities, equity · Source: Balance Sheet module`}
+          chip="BALANCE SHEET" chipColor="blue"
+        />
+
+        <Card style={{ border: `1.5px solid #B5D4F4` }}>
+          <CardTitle>Balance Sheet — As at end of {fyLabel}</CardTitle>
+          <CardSub>Three-column view: Assets · Liabilities · Equity</CardSub>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+            <BsCol
+              bg={C.blueBg} titleColor={C.blue} title="ASSETS"
+              rows={[
+                { label: "Sundry Debtors (AR)", val: INR(kpis?.totalOutstanding ?? 0), color: C.red },
+                { label: "Cash / Bank", val: INR(kpis?.cashBalance ?? 0), color: C.amber },
+                { label: "Other Assets", val: "—" },
+              ]}
+              totalLabel="Total Assets" totalVal={INR(data?.balanceSheet?.assets ?? 0)} totalColor={C.blue}
+              note="⚠ Most assets = uncollected AR. Accelerate collections urgently."
+              noteColor={C.red}
+            />
+            <BsCol
+              bg={C.redBg} titleColor={C.red} title="LIABILITIES"
+              rows={[
+                { label: "Accounts Payable", val: "—" },
+                { label: "GST Payable", val: "—" },
+                { label: "Other Liabilities", val: "₹0" },
+              ]}
+              totalLabel="Total Liabilities" totalVal={INR(data?.balanceSheet?.liabilities ?? 0)} totalColor={C.red}
+              note="Manage payables — settle expenses on time to avoid penalties."
+              noteColor={C.amber}
+            />
+            <BsCol
+              bg={C.greenBg} titleColor={C.green} title="EQUITY"
+              rows={[
+                { label: "Net Profit FY", val: INR(Math.abs(netProfit)), color: netProfit >= 0 ? C.green : C.red },
+                { label: "Retained Earnings", val: INR(data?.balanceSheet?.equity ?? 0), color: C.amber },
+                { label: "Equity Base", val: INR(data?.balanceSheet?.equity ?? 0) },
+              ]}
+              totalLabel="Total Equity" totalVal={INR(data?.balanceSheet?.equity ?? 0)} totalColor={C.amber}
+              note="Collect AR urgently to strengthen the equity base."
+              noteColor={C.amber}
+            />
+          </div>
+        </Card>
+
+        {/* ══ F: BANK RECONCILIATION ════════════════════════════════════ */}
+        <SectionHd
+          title="Bank Reconciliation Statement"
+          sub="Book balance vs bank balance · Identify uncleared items · Source: Bank Statements + Ledger View"
+          chip="BANK STATEMENTS" chipColor="blue"
+        />
+
+        <Card style={{ border: `1.5px solid #B5D4F4` }}>
+          <CardTitle>Bank Reconciliation</CardTitle>
+          <CardSub>
+            {(kpis?.unreconciledCount ?? 0) > 0
+              ? `${kpis?.unreconciledCount} unreconciled entries · ${INR_K(kpis?.unreconciledAmount ?? 0)} gap must be resolved`
+              : "All entries reconciled — no gaps found"
+            }
+          </CardSub>
+          <div style={{ overflowX: "auto" }}>
+            <table className="fin-tbl" style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+              <thead>
+                <tr>
+                  <Th>Item</Th><Th>Status</Th><Th>Count</Th><Th>Amount</Th><Th>Type</Th><Th>Action Required</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {(kpis?.unreconciledCount ?? 0) > 0 ? (
                   <>
-                    {data.receivablesAging.map((bucket, i) => {
-                      const recProb = bucket.bucket === "0-30" ? "High" : bucket.bucket === "31-60" ? "Medium" : bucket.bucket === "61-90" ? "Low" : "Critical";
-                      const bucketColor = bucket.bucket === "0-30" ? "text-green-600" : bucket.bucket === "31-60" ? "text-amber-600" : bucket.bucket === "61-90" ? "text-orange-600" : "text-red-600";
-                      return (
-                        <div key={i} className="space-y-1">
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <span className="text-sm font-medium">{bucket.bucket} days</span>
-                              <span className="text-xs text-muted-foreground ml-2">· {bucket.count} invoice{bucket.count !== 1 ? "s" : ""}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className={`text-xs font-medium ${bucketColor}`}>Recovery: {recProb}</span>
-                              <span className="text-sm font-bold">{INR(bucket.outstanding)}</span>
-                            </div>
-                          </div>
-                          <AgingBar outstanding={bucket.outstanding} total={totalAging} />
-                        </div>
-                      );
-                    })}
-                    <div className="mt-3 pt-3 border-t flex justify-between items-center">
-                      <span className="text-sm font-semibold">Total Outstanding</span>
-                      <span className="text-base font-bold text-red-600">{INR(totalAging)}</span>
-                    </div>
+                    <TrVariant variant="danger">
+                      <Td bold>Unreconciled journal entries</Td>
+                      <Td><Chip color="red">GAP</Chip></Td>
+                      <Td>{kpis?.unreconciledCount}</Td>
+                      <Td mono bold color={C.red}>{INR_K(kpis?.unreconciledAmount ?? 0)}</Td>
+                      <Td><Chip color="red">URGENT</Chip></Td>
+                      <Td color={C.red}>Post missing entries; match bank statement lines</Td>
+                    </TrVariant>
+                    <TrVariant variant="warn">
+                      <Td bold>Total Reconciliation Gap</Td>
+                      <Td><Chip color="amber">TIMING</Chip></Td>
+                      <Td>—</Td>
+                      <Td mono bold color={C.red}>{INR_K(kpis?.unreconciledAmount ?? 0)}</Td>
+                      <Td><Chip color="amber">REVIEW</Chip></Td>
+                      <Td color={C.amber}>Investigate & resolve this week</Td>
+                    </TrVariant>
                   </>
                 ) : (
-                  <div className="py-8 text-center text-muted-foreground text-sm">
-                    No outstanding receivables — all invoices paid or no data yet
-                  </div>
+                  <TrVariant variant="good">
+                    <Td bold>All entries matched</Td>
+                    <Td><Chip color="green">MATCH</Chip></Td>
+                    <Td>0</Td>
+                    <Td mono color={C.green}>₹0</Td>
+                    <Td><Chip color="green">CLEAR</Chip></Td>
+                    <Td color={C.muted}>No action needed</Td>
+                  </TrVariant>
                 )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Top Debtors — Collection Health</CardTitle>
-                <CardDescription>Customers with highest outstanding balances</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Customer</TableHead>
-                      <TableHead className="text-right">Billed</TableHead>
-                      <TableHead className="text-right">Pending</TableHead>
-                      <TableHead className="text-right">Coll. %</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {data.topDebtors.length > 0 ? (
-                      data.topDebtors.slice(0, 8).map((d, i) => {
-                        const collPct = d.totalBilled > 0 ? ((d.totalCollected / d.totalBilled) * 100) : 0;
-                        const isRisk = collPct < 50;
-                        return (
-                          <TableRow key={i} className={isRisk ? "bg-red-50/40 dark:bg-red-900/10" : ""}>
-                            <TableCell>
-                              <p className="text-sm font-medium leading-tight">{d.customer}</p>
-                              <p className="text-xs text-muted-foreground">{d.invoiceCount} inv</p>
-                            </TableCell>
-                            <TableCell className="text-right text-sm">{INR(d.totalBilled)}</TableCell>
-                            <TableCell className={`text-right text-sm font-semibold ${isRisk ? "text-red-600" : "text-amber-600"}`}>
-                              {INR(d.outstanding)}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded tracking-wide ${
-                                collPct >= 80 ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400" :
-                                collPct >= 50 ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400" :
-                                "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400"
-                              }`}>
-                                {collPct.toFixed(0)}%
-                              </span>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={4} className="text-center text-muted-foreground py-6 text-sm">No outstanding receivables</TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+              </tbody>
+            </table>
           </div>
-
-          {/* ── Balance Sheet + Bank Reconciliation ── */}
-          <div className="grid lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Scale className="w-4 h-4 text-blue-600" />
-                  Balance Sheet — Financial Position
-                </CardTitle>
-                <CardDescription>Snapshot as of {data.fyEnd}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <p className="text-xs font-bold uppercase text-muted-foreground tracking-wide">Assets</p>
-                    <p className="text-2xl font-bold text-blue-600">{INR(data.balanceSheet.assets)}</p>
-                    <p className="text-xs text-muted-foreground">Sundry Debtors + Inventory + Cash + Bank + Other</p>
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-xs font-bold uppercase text-muted-foreground tracking-wide">Liabilities</p>
-                    <p className="text-2xl font-bold text-red-600">{INR(data.balanceSheet.liabilities)}</p>
-                    <p className="text-xs text-muted-foreground">Accounts Payable + Accruals + Other Liabilities</p>
-                  </div>
-                </div>
-                <div className="mt-4 p-3 bg-muted/50 rounded-lg">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="text-xs font-bold uppercase text-muted-foreground tracking-wide">Total Equity</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">Net Profit FY + Capital</p>
-                    </div>
-                    <p className="text-xl font-bold text-green-600">{INR(data.balanceSheet.equity + netProfit)}</p>
-                  </div>
-                </div>
-                {data.balanceSheet.assets > 0 && (
-                  <div className="mt-3 flex items-center gap-2 text-xs">
-                    {Math.abs(data.balanceSheet.assets - data.balanceSheet.liabilities - data.balanceSheet.equity - netProfit) < 1 ? (
-                      <span className="text-green-600 font-semibold">Balance sheet balances ✓</span>
-                    ) : (
-                      <span className="text-amber-600 font-semibold">Check journal entries — Balance sheet may not balance</span>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Landmark className="w-4 h-4 text-green-600" />
-                  Bank Reconciliation Statement
-                </CardTitle>
-                <CardDescription>Reconcile bank balance to book balance · Source: Bank Statements</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className={`p-4 rounded-lg border ${data.bankReconciliation.unreconciledCount > 0 ? "bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800" : "bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800"}`}>
-                    <div className="flex items-center gap-2 mb-2">
-                      {data.bankReconciliation.unreconciledCount > 0 ? (
-                        <AlertTriangle className="w-4 h-4 text-amber-600" />
-                      ) : (
-                        <TrendingUp className="w-4 h-4 text-green-600" />
-                      )}
-                      <p className={`text-sm font-semibold ${data.bankReconciliation.unreconciledCount > 0 ? "text-amber-800 dark:text-amber-300" : "text-green-800 dark:text-green-300"}`}>
-                        {data.bankReconciliation.unreconciledCount > 0
-                          ? `${data.bankReconciliation.unreconciledCount} Unreconciled Items`
-                          : "All Bank Transactions Reconciled"}
-                      </p>
-                    </div>
-                    {data.bankReconciliation.unreconciledCount > 0 && (
-                      <p className="text-xs text-amber-700 dark:text-amber-400">
-                        {INR(data.bankReconciliation.unreconciledAmount)} in unreconciled transactions — Go to Bank Statements → Reconcile
-                      </p>
-                    )}
-                  </div>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Bank Balance (Statement)</span>
-                      <span className="font-medium">{INR(kpis!.bankBalance)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Cash in Hand</span>
-                      <span className="font-medium">{INR(kpis!.cashBalance)}</span>
-                    </div>
-                    <div className="flex justify-between border-t pt-2 font-semibold">
-                      <span>Total Liquid Position</span>
-                      <span className="text-green-600">{INR(kpis!.cashBalance + kpis!.bankBalance)}</span>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* ── Journal Entries Anomaly Detection ── */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <FileWarning className="w-4 h-4 text-red-500" />
-                Journal Entries — Day Book & Anomaly Detection
-              </CardTitle>
-              <CardDescription>
-                All postings reviewed for narration, duplicates, round figures · Source: Journal Entries
-                {flaggedJournals.length > 0 && (
-                  <span className="ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded tracking-wide bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400">
-                    {flaggedJournals.length} FLAGGED
-                  </span>
-                )}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Reference</TableHead>
-                    <TableHead>Narration</TableHead>
-                    <TableHead>Source</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                    <TableHead>Flag</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {data.recentJournals.length > 0 ? (
-                    data.recentJournals.map((j, i) => (
-                      <TableRow key={i} className={j.flags.length > 0 ? "bg-amber-50/40 dark:bg-amber-900/10" : ""}>
-                        <TableCell className="text-sm">
-                          {j.date ? new Date(j.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short" }) : "—"}
-                        </TableCell>
-                        <TableCell className="text-xs font-mono text-muted-foreground">{j.reference || "—"}</TableCell>
-                        <TableCell className="text-sm max-w-[200px] truncate">{j.narration || <span className="text-muted-foreground italic">No narration</span>}</TableCell>
-                        <TableCell>
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded tracking-wide bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
-                            {(j.sourceType || "MANUAL").toUpperCase().replace(/_/g, " ")}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right text-sm font-medium">{INR(j.amount)}</TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                            {j.flags.length === 0 ? (
-                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded tracking-wide bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400">VERIFIED</span>
-                            ) : j.flags.map((flag, fi) => (
-                              <span key={fi} className="text-[10px] font-bold px-1.5 py-0.5 rounded tracking-wide bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">{flag}</span>
-                            ))}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center text-muted-foreground py-6 text-sm">No journal entries found</TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-
-          {/* ── AI-Driven Insights ── */}
-          {data.insights.length > 0 && (
-            <div>
-              <div className="mb-3">
-                <h2 className="text-base font-semibold">Financial Insights — {data.insights.length} Actions Required</h2>
-                <p className="text-sm text-muted-foreground">All {data.insights.length} accounting menu items · {data.insights.filter(i => i.priority === "P1").length} actionable decisions</p>
-              </div>
-              <div className="grid md:grid-cols-3 gap-4">
-                {data.insights.map((ins, i) => (
-                  <div key={i} className={`p-4 rounded-lg border ${INSIGHT_BG[ins.priority as keyof typeof INSIGHT_BG] || "bg-muted border-border"}`}>
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded tracking-wide bg-${INSIGHT_COLORS[ins.priority as keyof typeof INSIGHT_COLORS] ?? "gray"}-100 text-${INSIGHT_COLORS[ins.priority as keyof typeof INSIGHT_COLORS] ?? "gray"}-700`}>
-                        {ins.priority} — {ins.label}
-                      </span>
-                    </div>
-                    <p className="text-sm font-semibold mb-1">{ins.title}</p>
-                    <p className="text-xs text-muted-foreground">{ins.body}</p>
-                  </div>
-                ))}
-              </div>
+          {(kpis?.unreconciledCount ?? 0) > 0 && (
+            <div style={{ marginTop: 12 }}>
+              <Flag variant="warn">
+                <span>⚠</span>
+                <span><strong>Action required:</strong> Run full bank reconciliation. Match every journal entry to bank statement line. Post all unposted entries before month-end close.</span>
+              </Flag>
             </div>
           )}
-
-          {data.insights.length === 0 && (
-            <Card className="border-green-200 dark:border-green-800 bg-green-50/30 dark:bg-green-900/10">
-              <CardContent className="p-4 flex items-center gap-3">
-                <TrendingUp className="w-5 h-5 text-green-600" />
-                <div>
-                  <p className="text-sm font-semibold text-green-800 dark:text-green-300">No immediate financial actions required</p>
-                  <p className="text-xs text-green-700 dark:text-green-400 mt-0.5">Post more journal entries and invoices to unlock AI-driven financial insights</p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </>
-      ) : (
-        <Card>
-          <CardContent className="p-8 text-center">
-            <p className="text-muted-foreground">Failed to load financial analytics data</p>
-          </CardContent>
         </Card>
-      )}
+
+        {/* ══ G: JOURNAL ANOMALIES ══════════════════════════════════════ */}
+        <SectionHd
+          title="Journal Entries & Day Book — Anomaly Detection"
+          sub="All postings reviewed for narration gaps, duplicates, round figures · Source: Journal Entries + Day Book"
+          chip="JOURNAL / DAY BOOK" chipColor="amber"
+        />
+
+        <Card style={{ border: `1.5px solid ${C.amberBd}` }}>
+          <CardTitle>Recent Entries — Flagged for Review</CardTitle>
+          <CardSub>
+            {(data?.recentJournals ?? []).filter(j => j.flags?.length > 0).length} anomalies found · Fix before month-end close
+          </CardSub>
+          <div style={{ overflowX: "auto" }}>
+            <table className="fin-tbl" style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+              <thead>
+                <tr>
+                  <Th>Date</Th><Th>Reference</Th><Th>Type</Th><Th>Amount</Th>
+                  <Th>Narration</Th><Th>Lines</Th><Th>Flag</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {(data?.recentJournals ?? []).map((j) => {
+                  const hasFlag = j.flags?.length > 0;
+                  const isRound = j.flags?.includes("ROUND");
+                  const isDup = j.flags?.includes("DUPLICATE");
+                  const noNarr = j.flags?.includes("NO_NARR");
+                  const rowVar: RowVariant = (isRound || noNarr) ? "danger" : hasFlag ? "warn" : "good";
+                  const flagChip: ChipColor = (isRound && noNarr) ? "red" : isDup ? "amber" : hasFlag ? "amber" : "green";
+                  const flagLabel = noNarr && isRound ? "ROUND / NO NARR" : isDup ? "DUPLICATE?" : noNarr ? "NO NARRATION" : isRound ? "ROUND FIGURE" : hasFlag ? j.flags.join(", ") : "VERIFIED";
+                  return (
+                    <TrVariant key={j.id} variant={rowVar}>
+                      <Td>{new Date(j.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}</Td>
+                      <Td mono color={C.blueMid} bold={hasFlag}>{j.reference || `JV-${j.id}`}</Td>
+                      <Td>{j.sourceType}</Td>
+                      <Td mono color={j.amount < 0 ? C.red : C.green} bold={isRound}>
+                        {j.amount < 0 ? "−" : "+"}{INR(Math.abs(j.amount))}
+                      </Td>
+                      <Td color={noNarr ? C.red : C.muted}>
+                        {noNarr ? <span style={{ color: C.red }}>⚠ MISSING narration</span> : (j.narration || "—")}
+                      </Td>
+                      <Td>{j.lineCount}</Td>
+                      <Td><Chip color={flagChip}>{flagLabel}</Chip></Td>
+                    </TrVariant>
+                  );
+                })}
+                {(data?.recentJournals ?? []).length === 0 && (
+                  <tr><td colSpan={7} style={{ padding: 20, textAlign: "center", color: C.hint, fontSize: 11 }}>No recent journal entries</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <div style={{ marginTop: 12 }}>
+            <Flag variant="purple">
+              <span>ℹ</span>
+              <span>
+                <strong>Fix rules to implement:</strong> (1) Narration mandatory on all journal entries &nbsp;·&nbsp;
+                (2) Bill/invoice attachment required for every cash expense &nbsp;·&nbsp;
+                (3) Flag all ₹1L+ round-figure postings for monthly review &nbsp;·&nbsp;
+                (4) Resolve any duplicate entries — verify both are valid
+              </span>
+            </Flag>
+          </div>
+        </Card>
+
+        {/* ══ H: CHART OF ACCOUNTS ═════════════════════════════════════ */}
+        <SectionHd
+          title="Chart of Accounts — Structure Review"
+          sub="Current account structure vs what needs to be added · Source: Chart of Accounts module"
+          chip="CHART OF ACCOUNTS" chipColor="purple"
+        />
+
+        <Card style={{ border: `1.5px solid #AFA9EC` }}>
+          <CardTitle>Account Structure — Problems &amp; Recommended Additions</CardTitle>
+          <CardSub>Fix Chart of Accounts first — it drives all reports downstream</CardSub>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+            <div style={{ borderRadius: 10, padding: 14, background: C.redBg }}>
+              <div style={{ fontSize: 10, fontWeight: 700, marginBottom: 10, color: C.red }}>Current — Problems</div>
+              <CoaItem badge="27%" badgeColor="red" label="Miscellaneous Expenses" desc="₹7.73L with zero sub-classification — no visibility into actual spend" />
+              <CoaItem badge="GAP" badgeColor="red" label="No Diesel sub-account" desc="Diesel costs mixed with general transport — can't track alone" />
+              <CoaItem badge="GAP" badgeColor="red" label="No Packaging account" desc="Labels, caps, shrink film, boxes buried in COGS — cost per SKU unknown" />
+              <CoaItem badge="GAP" badgeColor="red" label="No Chemical account" desc="Water treatment chemicals not separately tracked — FSSAI compliance risk" />
+            </div>
+            <div style={{ borderRadius: 10, padding: 14, background: C.greenBg }}>
+              <div style={{ fontSize: 10, fontWeight: 700, marginBottom: 10, color: C.green }}>Add to Chart of Accounts</div>
+              <CoaItem badge="ADD" badgeColor="green" label="5100 — Diesel / Fuel" desc="Separate diesel from other transport. Track monthly diesel cost clearly." />
+              <CoaItem badge="ADD" badgeColor="green" label="5110 — Vehicle Maintenance" desc="Service, tyres, repairs — separate from operations expenses" />
+              <CoaItem badge="ADD" badgeColor="green" label="5200 — Packaging Materials" desc="Labels, shrink film, caps, corrugated boxes — enables SKU cost tracking" />
+              <CoaItem badge="ADD" badgeColor="green" label="5300 — Water Treatment" desc="RO chemicals, testing kits, disinfectants — required for FSSAI records" />
+            </div>
+            <div style={{ borderRadius: 10, padding: 14, background: C.blueBg }}>
+              <div style={{ fontSize: 10, fontWeight: 700, marginBottom: 10, color: C.blue }}>Result After Fix</div>
+              <CoaItem badge="WIN" badgeColor="blue" label="Full fuel cost visibility" desc="See diesel ₹ per month, per vehicle, per route — negotiate from data" />
+              <CoaItem badge="WIN" badgeColor="blue" label="SKU profitability" desc="Know true cost per 20L jar vs 1L bottle vs 500ml — price correctly" />
+              <CoaItem badge="WIN" badgeColor="blue" label="Misc drops to ≤5%" desc="Currently high. After reclassification, target below 5% of expenses" />
+              <CoaItem badge="WIN" badgeColor="blue" label="Audit & compliance ready" desc="FSSAI, GST, Income Tax audits all simpler with proper account heads" />
+            </div>
+          </div>
+        </Card>
+
+        {/* ══ I: DSS DECISION PANEL ════════════════════════════════════ */}
+        <SectionHd
+          title="DSS Master Decision Panel"
+          sub="Priority decisions derived from all accounting modules · Act on these in order"
+          chip="ALL MODULES" chipColor="red"
+        />
+
+        <Card style={{ border: `2px solid ${C.redMid}` }}>
+          <CardTitle style={{ color: C.red } as any}>Financial Accounting — Priority Decisions for Management</CardTitle>
+          <CardSub>All accounting modules → actionable decisions. Do in this order.</CardSub>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginTop: 12 }}>
+            {(data?.insights ?? []).map((ins, i) => {
+              const bg = ins.priority === "P1" ? C.redBg : ins.priority === "P2" ? C.redBg : ins.priority === "P3" ? C.amberBg : ins.priority === "P4" ? C.amberBg : ins.priority === "P5" ? C.purpleBg : C.blueBg;
+              const chipColor: ChipColor = ins.priority === "P1" || ins.priority === "P2" ? "red" : ins.priority === "P3" || ins.priority === "P4" ? "amber" : ins.priority === "P5" ? "purple" : "blue";
+              return (
+                <DssCard key={i}
+                  priority={ins.priority} chip={`${ins.priority} — ${ins.label}`} chipColor={chipColor}
+                  title={ins.title} body={ins.body} bg={bg}
+                />
+              );
+            })}
+            {(data?.insights ?? []).length === 0 && (
+              <div style={{ gridColumn: "1/-1", padding: 20, textAlign: "center", color: C.hint, fontSize: 11 }}>
+                No priority decisions generated — data may be insufficient
+              </div>
+            )}
+          </div>
+        </Card>
+
+        {/* ── Footer ── */}
+        <div style={{ textAlign: "center", fontSize: 9, color: C.hint, padding: "20px 0 8px", borderTop: `1px solid ${C.border}`, marginTop: 24 }}>
+          KINTO Operations · Financial Accounting — Formal Ledger MIS · {fyLabel} · All Accounting Modules Covered
+        </div>
+
+      </div>
     </div>
   );
 }

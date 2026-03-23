@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Financial Accounting — Formal Ledger MIS · Inmoisture</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root {
+  --font: 'DM Sans', sans-serif;
+  --mono: 'DM Mono', monospace;
+  --bg: #F4F2EE;
+  --surface: #F9F8F6;
+  --white: #FFFFFF;
+  --dark: #1A1A18;
+  --muted: #6B6B66;
+  --hint: #888780;
+  --border: #E8E6E0;
+  --green: #3B6D11;    --green-bg: #EAF3DE;  --green-mid: #97C459;
+  --red: #A32D2D;      --red-bg: #FCEBEB;    --red-mid: #E24B4A;
+  --amber: #633806;    --amber-bg: #FAEEDA;  --amber-mid: #EF9F27; --amber-bd: #FAC775;
+  --blue: #185FA5;     --blue-bg: #E6F1FB;   --blue-mid: #378ADD;
+  --teal: #0F6E56;     --teal-bg: #E1F5EE;   --teal-mid: #1D9E75;
+  --purple: #534AB7;   --purple-bg: #EEEDFE; --purple-mid: #7F77DD;
+  --coral: #993C1D;    --coral-bg: #FAECE7;  --coral-mid: #D85A30;
+  --r-sm: 8px; --r-md: 12px; --r-lg: 14px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font); background: var(--bg); color: var(--dark); }
+
+/* ── Layout ── */
+.topbar {
+  background: var(--dark); padding: 16px 28px;
+  display: flex; justify-content: space-between; align-items: center;
+  position: sticky; top: 0; z-index: 100;
+}
+.topbar h1 { font-size: 17px; font-weight: 600; color: #fff; }
+.topbar p  { font-size: 11px; color: #888780; margin-top: 3px; }
+.topbar-right { display: flex; gap: 8px; }
+
+.source-strip {
+  background: var(--white); border-bottom: 1px solid var(--border);
+  display: flex; overflow-x: auto; gap: 0;
+}
+.source-item {
+  padding: 8px 16px; border-right: 1px solid var(--border);
+  white-space: nowrap; flex-shrink: 0;
+}
+.source-item .src-name { font-size: 9px; font-weight: 600; color: var(--purple); text-transform: uppercase; letter-spacing: 0.04em; }
+.source-item .src-desc { font-size: 9px; color: var(--hint); margin-top: 1px; }
+
+.page { padding: 20px 24px; max-width: 1400px; margin: 0 auto; }
+
+/* ── Section header ── */
+.section-hd {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  margin-bottom: 10px; margin-top: 20px;
+}
+.section-hd h2 { font-size: 13px; font-weight: 600; color: var(--dark); }
+.section-hd p  { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+/* ── Cards ── */
+.card {
+  background: var(--white); border: 1px solid var(--border);
+  border-radius: var(--r-lg); padding: 16px 20px;
+}
+.card.crit  { border-color: var(--red-mid);  border-width: 2px; }
+.card.warn  { border-color: var(--amber-bd); border-width: 1.5px; }
+.card.info  { border-color: #B5D4F4; border-width: 1.5px; }
+.card.purple{ border-color: #AFA9EC; border-width: 1.5px; }
+.card-title { font-size: 12px; font-weight: 600; margin-bottom: 3px; }
+.card-sub   { font-size: 10px; color: var(--muted); margin-bottom: 12px; }
+
+/* ── KPI grid ── */
+.kpi-grid { display: grid; grid-template-columns: repeat(6,1fr); gap: 8px; margin-bottom: 16px; }
+.kpi { background: var(--surface); border-radius: var(--r-md); padding: 12px 14px; position: relative; }
+.kpi.crit  { background: var(--red-bg);   border: 1.5px solid var(--red-mid); }
+.kpi.warn  { background: var(--amber-bg); border: 1.5px solid var(--amber-bd); }
+.kpi.good  { background: var(--green-bg); }
+.kpi-src   { font-size: 8px; font-weight: 700; padding: 2px 6px; border-radius: 3px;
+             background: var(--purple-bg); color: var(--purple); display: inline-block; margin-bottom: 6px; }
+.kpi-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--hint); margin-bottom: 6px; }
+.kpi-value { font-size: 17px; font-weight: 600; margin-bottom: 4px; }
+.kpi-sub   { font-size: 9px; color: var(--muted); }
+.green  { color: var(--green); }
+.red    { color: var(--red); }
+.amber  { color: var(--amber); }
+.blue   { color: var(--blue); }
+.purple { color: var(--purple); }
+
+/* ── Chip ── */
+.chip {
+  display: inline-block; font-size: 9px; font-weight: 700;
+  padding: 2px 8px; border-radius: 4px; letter-spacing: 0.03em; white-space: nowrap;
+}
+.chip-green  { background: var(--green-bg);  color: #27500A; }
+.chip-red    { background: var(--red-bg);    color: #791F1F; }
+.chip-amber  { background: var(--amber-bg);  color: var(--amber); }
+.chip-blue   { background: var(--blue-bg);   color: var(--blue); }
+.chip-purple { background: var(--purple-bg); color: var(--purple); }
+.chip-teal   { background: var(--teal-bg);   color: var(--teal); }
+.chip-gray   { background: var(--surface);   color: var(--muted); border: 1px solid var(--border); }
+
+/* ── Grid layouts ── */
+.two-col   { display: grid; grid-template-columns: 1.1fr 1fr; gap: 12px; margin-bottom: 12px; }
+.three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+
+/* ── Table ── */
+.mis-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.mis-table th {
+  text-align: left; padding: 6px 8px; font-size: 9px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.05em; color: var(--hint);
+  border-bottom: 1px solid var(--border); white-space: nowrap;
+}
+.mis-table td { padding: 8px 8px; border-bottom: 1px solid var(--surface); vertical-align: middle; }
+.mis-table tr:last-child td { border-bottom: none; }
+.mis-table tr.row-danger td { background: var(--red-bg); }
+.mis-table tr.row-warn td   { background: var(--amber-bg); }
+.mis-table tr.row-good td   { background: var(--green-bg); }
+.mis-table tr.row-purple td { background: var(--purple-bg); }
+.mis-table td.num { font-family: var(--mono); font-size: 11px; }
+
+/* ── Progress bar ── */
+.pbar { display: flex; align-items: center; gap: 8px; }
+.pbar-bg { flex: 1; height: 7px; background: var(--surface); border-radius: 4px; overflow: hidden; min-width: 60px; }
+.pbar-fill { height: 7px; border-radius: 4px; transition: width 0.4s; }
+
+/* ── Flag ── */
+.flag {
+  border-radius: var(--r-md); padding: 10px 16px; margin-bottom: 14px;
+  display: flex; gap: 10px; align-items: flex-start; font-size: 11px; line-height: 1.6;
+}
+.flag-crit   { background: var(--red-bg);    border: 1.5px solid #F7C1C1; color: var(--red); }
+.flag-warn   { background: var(--amber-bg);  border: 1.5px solid var(--amber-bd); color: var(--amber); }
+.flag-purple { background: var(--purple-bg); border: 1px solid #AFA9EC; color: var(--purple); }
+.flag strong { font-weight: 600; }
+
+/* ── DSS item ── */
+.dss-item {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 10px 0; border-bottom: 1px solid var(--surface);
+}
+.dss-item:last-child { border-bottom: none; }
+.dss-text { font-size: 11px; color: var(--muted); line-height: 1.6; }
+.dss-text strong { color: var(--dark); font-weight: 600; }
+
+/* ── Chart ── */
+.chart-wrap { position: relative; width: 100%; height: 200px; }
+
+/* ── Aging bucket cards ── */
+.aging-bucket {
+  border-radius: 10px; padding: 12px 14px; margin-bottom: 8px;
+}
+.aging-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.aging-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; font-size: 9px; }
+
+/* ── Balance sheet columns ── */
+.bs-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.bs-col { border-radius: 10px; padding: 14px; }
+.bs-col h3 { font-size: 10px; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 10px; }
+.bs-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 11px; border-bottom: 1px solid rgba(0,0,0,0.04); }
+.bs-row:last-of-type { border-bottom: none; }
+.bs-total { display: flex; justify-content: space-between; padding: 8px 0 0; font-size: 12px; font-weight: 600; border-top: 1px solid rgba(0,0,0,0.1); margin-top: 4px; }
+.bs-note { font-size: 9px; margin-top: 6px; }
+
+/* ── COA grid ── */
+.coa-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.coa-col { border-radius: 10px; padding: 14px; }
+.coa-col h4 { font-size: 10px; font-weight: 700; margin-bottom: 10px; }
+.coa-item {
+  display: flex; gap: 8px; align-items: flex-start;
+  padding: 8px; border-radius: 6px; margin-bottom: 6px;
+  background: rgba(255,255,255,0.6); font-size: 11px;
+}
+.coa-label { font-weight: 600; }
+.coa-desc  { font-size: 9px; color: var(--muted); margin-top: 1px; }
+
+/* ── DSS panel ── */
+.dss-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.dss-card { border-radius: 10px; padding: 14px; border: 1px solid rgba(0,0,0,0.06); }
+.dss-card h4 { font-size: 11px; font-weight: 600; color: var(--dark); margin: 8px 0 4px; }
+.dss-card p  { font-size: 10px; color: var(--muted); line-height: 1.6; }
+
+/* ── Buttons ── */
+.btn {
+  font-size: 11px; font-weight: 500; padding: 7px 14px;
+  border: 1px solid var(--border); border-radius: var(--r-sm);
+  background: var(--white); color: var(--dark); cursor: pointer;
+}
+.btn-purple { background: var(--purple); color: #fff; border-color: var(--purple); }
+.btn-export { background: var(--surface); }
+
+/* ── P&L inline table ── */
+.pl-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 6px 8px; font-size: 11px; border-bottom: 1px solid var(--surface);
+}
+.pl-row:last-child { border-bottom: none; }
+.pl-row.head { font-weight: 600; background: rgba(0,0,0,0.02); border-radius: 4px; }
+.pl-row.total { font-weight: 600; border-top: 1px solid var(--border); margin-top: 4px; padding-top: 8px; }
+
+/* ── Insight pills ── */
+.pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.pill {
+  background: var(--white); border: 1px solid var(--border); border-radius: 20px;
+  padding: 4px 12px; font-size: 10px; color: var(--muted); display: flex; align-items: center; gap: 5px;
+}
+.pill-dot { width: 6px; height: 6px; border-radius: 50%; }
+
+/* ── Scrollable table wrapper ── */
+.table-scroll { overflow-x: auto; }
+
+/* ── Print / page footer ── */
+.page-footer {
+  text-align: center; font-size: 9px; color: var(--hint);
+  padding: 20px 0 8px; border-top: 1px solid var(--border); margin-top: 24px;
+}
+</style>
+</head>
+<body>
+
+<!-- ════════════════════ TOP BAR ════════════════════ -->
+<div class="topbar">
+  <div>
+    <h1>Financial Accounting — Formal Ledger MIS</h1>
+    <p>Decision Support System · FY 2025–26 · Inmoisture Private Limited · Accountant / CA view</p>
+  </div>
+  <div class="topbar-right">
+    <button class="btn btn-export">↓ Export Excel</button>
+    <button class="btn btn-export">↓ Export PDF</button>
+    <select style="font-size:11px;padding:7px 12px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;">
+      <option>FY 2025–26</option><option>FY 2024–25</option><option>Custom range</option>
+    </select>
+    <span style="background:var(--purple-mid);color:#fff;font-size:10px;font-weight:700;padding:7px 14px;border-radius:8px;">ACCOUNTANT VIEW</span>
+  </div>
+</div>
+
+<!-- ════════════════════ SOURCE STRIP ════════════════════ -->
+<div class="source-strip">
+  <div class="source-item"><div class="src-name">Chart of Accounts</div><div class="src-desc">Account structure</div></div>
+  <div class="source-item"><div class="src-name">Journal Entries</div><div class="src-desc">Vouchers & postings</div></div>
+  <div class="source-item"><div class="src-name">Bank Statements</div><div class="src-desc">Bank reconciliation</div></div>
+  <div class="source-item"><div class="src-name">Trial Balance</div><div class="src-desc">Dr/Cr balances</div></div>
+  <div class="source-item"><div class="src-name">Profit & Loss</div><div class="src-desc">Revenue & expense</div></div>
+  <div class="source-item"><div class="src-name">Balance Sheet</div><div class="src-desc">Assets & liabilities</div></div>
+  <div class="source-item"><div class="src-name">Ledger View</div><div class="src-desc">Per-account detail</div></div>
+  <div class="source-item"><div class="src-name">Day Book</div><div class="src-desc">Daily transactions</div></div>
+  <div class="source-item"><div class="src-name">Outstanding/Aging</div><div class="src-desc">AR aging buckets</div></div>
+  <div class="source-item"><div class="src-name">Cash Flow</div><div class="src-desc">Liquidity position</div></div>
+  <div class="source-item" style="border-right:none;"><div class="src-name">Group Summary</div><div class="src-desc">Rollup view</div></div>
+</div>
+
+<div class="page">
+
+<!-- ════════════════════ A: KPI CARDS ════════════════════ -->
+<div style="margin-top:16px;" class="section-hd">
+  <div><h2>Financial Health — Key Indicators</h2><p>All sourced from formal accounting modules · FY 2025–26</p></div>
+  <span class="chip chip-purple">6 KPIs</span>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi good">
+    <div class="kpi-src">P&L</div>
+    <div class="kpi-label">Total Revenue</div>
+    <div class="kpi-value green">₹17,08,696</div>
+    <div class="kpi-sub">35 invoices · FY total</div>
+    <div style="margin-top:6px;"><span class="chip chip-green">INCOME</span></div>
+  </div>
+  <div class="kpi crit">
+    <div class="kpi-src">P&L / TB</div>
+    <div class="kpi-label">Total Expenses</div>
+    <div class="kpi-value red">₹28,82,009</div>
+    <div class="kpi-sub">97.5% of revenue</div>
+    <div style="margin-top:6px;"><span class="chip chip-red">HIGH</span></div>
+  </div>
+  <div class="kpi warn">
+    <div class="kpi-src">P&L</div>
+    <div class="kpi-label">Net Profit / Loss</div>
+    <div class="kpi-value amber">₹72,547</div>
+    <div class="kpi-sub">2.5% net margin</div>
+    <div style="margin-top:6px;"><span class="chip chip-amber">THIN</span></div>
+  </div>
+  <div class="kpi crit">
+    <div class="kpi-src">Outstanding</div>
+    <div class="kpi-label">Sundry Debtors (AR)</div>
+    <div class="kpi-value red">₹89,66,178</div>
+    <div class="kpi-sub">262 invoices o/s</div>
+    <div style="margin-top:6px;"><span class="chip chip-red">CRITICAL</span></div>
+  </div>
+  <div class="kpi warn">
+    <div class="kpi-src">Bank Stmt</div>
+    <div class="kpi-label">Bank Balance</div>
+    <div class="kpi-value amber">₹63,336</div>
+    <div class="kpi-sub">Per bank statement</div>
+    <div style="margin-top:6px;"><span class="chip chip-amber">LOW</span></div>
+  </div>
+  <div class="kpi crit">
+    <div class="kpi-src">Bank Stmt</div>
+    <div class="kpi-label">Bank Recon Gap</div>
+    <div class="kpi-value red">₹5,42,962</div>
+    <div class="kpi-sub">Book vs bank diff</div>
+    <div style="margin-top:6px;"><span class="chip chip-red">UNRESOLVED</span></div>
+  </div>
+</div>
+
+<!-- ════════════════════ B: P&L + CASH FLOW ════════════════════ -->
+<div class="section-hd">
+  <div><h2>Profit & Loss Statement</h2><p>Monthly revenue vs expenses · Net margin trend · Source: P&L module</p></div>
+  <span class="chip chip-green">P&L MODULE</span>
+</div>
+
+<div class="two-col">
+  <!-- P&L Chart -->
+  <div class="card">
+    <div class="card-title">Monthly P&L — FY 2025–26</div>
+    <div class="card-sub">Revenue (green) vs Expenses (red) · Net line (blue) · Source: P&L module</div>
+    <div class="chart-wrap"><canvas id="plChart"></canvas></div>
+    <div class="pills" style="margin-top:8px;">
+      <div class="pill"><span class="pill-dot" style="background:#97C459;"></span>Revenue</div>
+      <div class="pill"><span class="pill-dot" style="background:#F09595;"></span>Expenses</div>
+      <div class="pill"><span style="width:14px;height:2px;background:#378ADD;display:inline-block;border-radius:1px;"></span>Net Flow</div>
+    </div>
+  </div>
+
+  <!-- P&L Summary + Cash Flow -->
+  <div style="display:flex;flex-direction:column;gap:12px;">
+    <div class="card" style="flex:1;">
+      <div class="card-title">FY Summary</div>
+      <div class="card-sub">Income statement condensed · Source: P&L</div>
+      <div class="pl-row head"><span>Gross Revenue</span><span class="green" style="font-family:var(--mono);">₹17,08,696</span></div>
+      <div class="pl-row" style="color:var(--muted);font-size:10px;"><span>Less: Total Expenses</span><span class="red" style="font-family:var(--mono);">₹28,82,009</span></div>
+      <div class="pl-row" style="padding-left:16px;font-size:10px;"><span style="color:var(--muted);">Fuel & Transport</span><span class="red" style="font-family:var(--mono);">₹9,72,460 <span style="color:var(--hint);">57%</span></span></div>
+      <div class="pl-row" style="padding-left:16px;font-size:10px;"><span style="color:var(--muted);">Miscellaneous</span><span class="amber" style="font-family:var(--mono);">₹7,73,424 <span style="color:var(--hint);">45%</span></span></div>
+      <div class="pl-row" style="padding-left:16px;font-size:10px;"><span style="color:var(--muted);">Maintenance</span><span style="font-family:var(--mono);color:var(--muted);">₹2,98,243</span></div>
+      <div class="pl-row" style="padding-left:16px;font-size:10px;"><span style="color:var(--muted);">Salaries & Wages</span><span style="font-family:var(--mono);color:var(--muted);">₹2,89,260</span></div>
+      <div class="pl-row" style="padding-left:16px;font-size:10px;"><span style="color:var(--muted);">Others</span><span style="font-family:var(--mono);color:var(--muted);">₹1,48,622</span></div>
+      <div class="pl-row total"><span>Net Profit</span><span class="amber" style="font-family:var(--mono);">₹72,547 (2.5%)</span></div>
+    </div>
+
+    <div class="card" style="flex:1;">
+      <div class="card-title">Cash Flow Statement</div>
+      <div class="card-sub">Source: Cash Flow Statement + Bank Statements</div>
+      <div class="pl-row head"><span>A. Operating Activities</span><span></span></div>
+      <div class="pl-row" style="font-size:10px;padding-left:16px;"><span style="color:var(--muted);">Cash from customers</span><span class="green" style="font-family:var(--mono);">+₹11,19,994</span></div>
+      <div class="pl-row" style="font-size:10px;padding-left:16px;"><span style="color:var(--muted);">Cash paid — expenses</span><span class="red" style="font-family:var(--mono);">-₹10,47,447</span></div>
+      <div class="pl-row total"><span>Net Operating Cash</span><span class="amber" style="font-family:var(--mono);">₹72,547</span></div>
+      <div style="height:8px;"></div>
+      <div class="pl-row head"><span>Collections by method</span><span></span></div>
+      <div style="display:flex;flex-direction:column;gap:5px;margin-top:8px;">
+        <div class="pbar"><span style="width:90px;font-size:10px;color:var(--muted);">UPI (26)</span><div class="pbar-bg"><div class="pbar-fill" style="width:66%;background:#378ADD;"></div></div><span style="font-size:10px;font-weight:600;">₹7,33,125</span></div>
+        <div class="pbar"><span style="width:90px;font-size:10px;color:var(--muted);">Debit Note (7)</span><div class="pbar-bg"><div class="pbar-fill" style="width:20%;background:#7F77DD;"></div></div><span style="font-size:10px;font-weight:600;">₹2,18,229</span></div>
+        <div class="pbar"><span style="width:90px;font-size:10px;color:var(--muted);">NEFT (2)</span><div class="pbar-bg"><div class="pbar-fill" style="width:10%;background:#1D9E75;"></div></div><span style="font-size:10px;font-weight:600;">₹1,10,000</span></div>
+        <div class="pbar"><span style="width:90px;font-size:10px;color:var(--muted);">Cash (2)</span><div class="pbar-bg"><div class="pbar-fill" style="width:5%;background:#EF9F27;"></div></div><span style="font-size:10px;font-weight:600;">₹58,540</span></div>
+      </div>
+      <div style="margin-top:10px;background:var(--red-bg);border-radius:8px;padding:8px 12px;font-size:10px;color:var(--red);">
+        <strong>Billed not collected:</strong> ₹89,66,178 — not in cash flow but critical business risk
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════ C: TRIAL BALANCE ════════════════════ -->
+<div class="section-hd">
+  <div><h2>Trial Balance & Group Summary</h2><p>All account groups with debit/credit balances · DSS signal per group · Source: Trial Balance + Group Summary</p></div>
+  <span class="chip chip-purple">TRIAL BALANCE</span>
+</div>
+
+<div class="card">
+  <div class="card-title">Account Group Summary — Dr / Cr / Net / Signal</div>
+  <div class="card-sub">Every account group from your Chart of Accounts · Sorted by risk</div>
+  <div class="table-scroll">
+    <table class="mis-table">
+      <thead>
+        <tr>
+          <th>Account Group</th><th>Category</th><th>Debit (Dr)</th><th>Credit (Cr)</th>
+          <th>Net Balance</th><th>% of Revenue</th><th>Trend</th><th>DSS Signal</th><th>Recommended Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="row-good">
+          <td><strong>Sales / Revenue</strong></td>
+          <td><span class="chip chip-green">Income</span></td>
+          <td class="num" style="color:var(--hint);">—</td>
+          <td class="num green">₹17,08,696</td>
+          <td class="num green"><strong>₹17,08,696</strong></td>
+          <td>100%</td>
+          <td style="color:var(--green);font-weight:700;">+12%</td>
+          <td><span class="chip chip-green">INCOME</span></td>
+          <td style="font-size:10px;color:var(--muted);">Monitor growth</td>
+        </tr>
+        <tr class="row-danger">
+          <td><strong>Sundry Debtors</strong></td>
+          <td><span class="chip chip-blue">Asset</span></td>
+          <td class="num red">₹89,66,178</td>
+          <td class="num" style="color:var(--hint);">—</td>
+          <td class="num red"><strong>₹89,66,178</strong></td>
+          <td style="color:var(--red);font-weight:600;">524%</td>
+          <td style="color:var(--red);font-weight:700;">↑↑</td>
+          <td><span class="chip chip-red">OVERDUE</span></td>
+          <td style="font-size:10px;color:var(--red);">Legal notice — P1 today</td>
+        </tr>
+        <tr class="row-danger">
+          <td><strong>Fuel & Transport</strong></td>
+          <td><span class="chip chip-red">Expense</span></td>
+          <td class="num red">₹9,72,460</td>
+          <td class="num" style="color:var(--hint);">—</td>
+          <td class="num red"><strong>₹9,72,460</strong></td>
+          <td style="color:var(--red);font-weight:600;">57%</td>
+          <td style="color:var(--red);font-weight:700;">↑↑</td>
+          <td><span class="chip chip-red">HIGH RISK</span></td>
+          <td style="font-size:10px;color:var(--red);">Negotiate diesel rate contract</td>
+        </tr>
+        <tr class="row-warn">
+          <td><strong>Miscellaneous Exp.</strong></td>
+          <td><span class="chip chip-red">Expense</span></td>
+          <td class="num amber">₹7,73,424</td>
+          <td class="num" style="color:var(--hint);">—</td>
+          <td class="num amber"><strong>₹7,73,424</strong></td>
+          <td style="color:var(--amber);">45%</td>
+          <td style="color:var(--hint);">—</td>
+          <td><span class="chip chip-amber">RECLASSIFY</span></td>
+          <td style="font-size:10px;color:var(--amber);">Create 4 new accounts in COA</td>
+        </tr>
+        <tr>
+          <td>Maintenance</td>
+          <td><span class="chip chip-red">Expense</span></td>
+          <td class="num" style="color:var(--muted);">₹2,98,243</td>
+          <td class="num" style="color:var(--hint);">—</td>
+          <td class="num">₹2,98,243</td>
+          <td style="color:var(--muted);">17%</td>
+          <td style="color:var(--muted);">↔</td>
+          <td><span class="chip chip-gray">NORMAL</span></td>
+          <td style="font-size:10px;color:var(--muted);">No action needed</td>
+        </tr>
+        <tr>
+          <td>Salaries & Wages</td>
+          <td><span class="chip chip-red">Expense</span></td>
+          <td class="num" style="color:var(--muted);">₹2,89,260</td>
+          <td class="num" style="color:var(--hint);">—</td>
+          <td class="num">₹2,89,260</td>
+          <td style="color:var(--muted);">17%</td>
+          <td style="color:var(--muted);">↔</td>
+          <td><span class="chip chip-gray">NORMAL</span></td>
+          <td style="font-size:10px;color:var(--muted);">No action needed</td>
+        </tr>
+        <tr class="row-warn">
+          <td>Bank / Cash Account</td>
+          <td><span class="chip chip-blue">Asset</span></td>
+          <td class="num amber">₹63,336</td>
+          <td class="num" style="color:var(--hint);">—</td>
+          <td class="num amber"><strong>₹63,336</strong></td>
+          <td style="color:var(--amber);">3.7%</td>
+          <td style="color:var(--red);">↓</td>
+          <td><span class="chip chip-amber">LOW</span></td>
+          <td style="font-size:10px;color:var(--amber);">Accelerate collections</td>
+        </tr>
+        <tr>
+          <td>Food & Beverages</td>
+          <td><span class="chip chip-red">Expense</span></td>
+          <td class="num" style="color:var(--muted);">₹2,10,197</td>
+          <td class="num" style="color:var(--hint);">—</td>
+          <td class="num">₹2,10,197</td>
+          <td style="color:var(--muted);">12%</td>
+          <td style="color:var(--muted);">↔</td>
+          <td><span class="chip chip-gray">REVIEW</span></td>
+          <td style="font-size:10px;color:var(--muted);">Verify category assignment</td>
+        </tr>
+        <tr>
+          <td>Raw Materials</td>
+          <td><span class="chip chip-red">Expense</span></td>
+          <td class="num" style="color:var(--muted);">₹50,000</td>
+          <td class="num" style="color:var(--hint);">—</td>
+          <td class="num">₹50,000</td>
+          <td style="color:var(--muted);">3%</td>
+          <td style="color:var(--muted);">↔</td>
+          <td><span class="chip chip-gray">NORMAL</span></td>
+          <td style="font-size:10px;color:var(--muted);">No action needed</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ════════════════════ D: OUTSTANDING / AGING ════════════════════ -->
+<div class="section-hd">
+  <div><h2>Receivables Aging Analysis</h2><p>Outstanding payments by age bucket · Recovery probability · Source: Outstanding/Aging module</p></div>
+  <span class="chip chip-red">OUTSTANDING/AGING</span>
+</div>
+
+<div class="two-col">
+  <div class="card crit">
+    <div class="card-title" style="color:var(--red);">Aging Buckets — ₹89,66,178 Total AR</div>
+    <div class="card-sub">All outstanding receivables grouped by overdue days</div>
+
+    <div class="aging-bucket" style="background:var(--green-bg);">
+      <div class="aging-top">
+        <span style="font-size:11px;font-weight:600;">0–30 days <span style="font-weight:400;color:var(--muted);">· 35 invoices</span></span>
+        <span style="font-size:13px;font-weight:600;color:var(--green);">₹17,32,994</span>
+      </div>
+      <div class="pbar-bg"><div class="pbar-fill" style="width:19%;background:#97C459;"></div></div>
+      <div class="aging-bottom"><span style="color:var(--muted);">19.3% of total AR · High recovery probability</span><span class="chip chip-green">COLLECT NORMALLY</span></div>
+    </div>
+
+    <div class="aging-bucket" style="background:var(--amber-bg);">
+      <div class="aging-top">
+        <span style="font-size:11px;font-weight:600;">31–60 days <span style="font-weight:400;color:var(--muted);">· 33 invoices</span></span>
+        <span style="font-size:13px;font-weight:600;color:var(--amber);">₹13,64,895</span>
+      </div>
+      <div class="pbar-bg"><div class="pbar-fill" style="width:15%;background:#EF9F27;"></div></div>
+      <div class="aging-bottom"><span style="color:var(--muted);">15.2% of total AR · Medium risk</span><span class="chip chip-amber">FOLLOW UP NOW</span></div>
+    </div>
+
+    <div class="aging-bucket" style="background:var(--coral-bg);">
+      <div class="aging-top">
+        <span style="font-size:11px;font-weight:600;">61–90 days <span style="font-weight:400;color:var(--muted);">· 27 invoices</span></span>
+        <span style="font-size:13px;font-weight:600;color:var(--coral);">₹11,10,650</span>
+      </div>
+      <div class="pbar-bg"><div class="pbar-fill" style="width:12%;background:#D85A30;"></div></div>
+      <div class="aging-bottom"><span style="color:var(--muted);">12.4% of total AR · Escalating risk</span><span class="chip" style="background:var(--coral-bg);color:var(--coral);">ESCALATE</span></div>
+    </div>
+
+    <div class="aging-bucket" style="background:var(--red-bg);border:1.5px solid #F7C1C1;">
+      <div class="aging-top">
+        <span style="font-size:12px;font-weight:700;color:var(--red);">90+ days <span style="font-weight:400;color:var(--muted);">· 167 invoices</span></span>
+        <span style="font-size:16px;font-weight:700;color:var(--red);">₹47,57,639</span>
+      </div>
+      <div class="pbar-bg"><div class="pbar-fill" style="width:53%;background:#E24B4A;"></div></div>
+      <div class="aging-bottom"><span style="color:var(--red);font-weight:600;">53.1% of total AR — LARGEST BUCKET</span><span class="chip chip-red">LEGAL ACTION</span></div>
+    </div>
+
+    <div class="flag flag-crit" style="margin-top:10px;margin-bottom:0;">
+      <span>⚠</span>
+      <span><strong>DSS:</strong> Call top 10 debtors today. Target: Collect ₹20L this month. Assign dedicated collections officer. Send legal notice to all 90+ day accounts immediately.</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Top Debtors — Collection Health</div>
+    <div class="card-sub">Sorted by pending amount · Source: Outstanding/Aging</div>
+    <table class="mis-table">
+      <thead>
+        <tr><th>Customer</th><th>Inv.</th><th>Revenue</th><th>Pending</th><th>Collection %</th><th>Risk</th></tr>
+      </thead>
+      <tbody>
+        <tr class="row-danger">
+          <td><strong>Prasanth Dusi</strong></td><td>13</td>
+          <td class="num">₹3,99,084</td>
+          <td class="num red"><strong>₹4,19,038</strong></td>
+          <td>
+            <div class="pbar"><div class="pbar-bg"><div class="pbar-fill" style="width:0%;background:#E24B4A;"></div></div><span style="font-size:10px;color:var(--red);font-weight:700;">0%</span></div>
+          </td>
+          <td><span class="chip chip-red">CRITICAL</span></td>
+        </tr>
+        <tr class="row-warn">
+          <td><strong>PADALA SRINIVASA RAO</strong></td><td>4</td>
+          <td class="num">₹3,76,958</td>
+          <td class="num amber"><strong>₹3,46,185</strong></td>
+          <td>
+            <div class="pbar"><div class="pbar-bg"><div class="pbar-fill" style="width:13%;background:#97C459;"></div></div><span style="font-size:10px;color:var(--amber);">13%</span></div>
+          </td>
+          <td><span class="chip chip-amber">HIGH RISK</span></td>
+        </tr>
+        <tr class="row-danger">
+          <td><strong>Sri Kanthamma Talli</strong></td><td>2</td>
+          <td class="num">₹2,09,520</td>
+          <td class="num red"><strong>₹2,19,996</strong></td>
+          <td>
+            <div class="pbar"><div class="pbar-bg"><div class="pbar-fill" style="width:0%;background:#E24B4A;"></div></div><span style="font-size:10px;color:var(--red);font-weight:700;">0%</span></div>
+          </td>
+          <td><span class="chip chip-red">CRITICAL</span></td>
+        </tr>
+        <tr class="row-warn">
+          <td>K L L MAHALAKSHMI</td><td>1</td>
+          <td class="num">₹1,13,332</td>
+          <td class="num amber">₹1,05,283</td>
+          <td>
+            <div class="pbar"><div class="pbar-bg"><div class="pbar-fill" style="width:12%;background:#97C459;"></div></div><span style="font-size:10px;color:var(--amber);">12%</span></div>
+          </td>
+          <td><span class="chip chip-amber">HIGH RISK</span></td>
+        </tr>
+        <tr class="row-danger">
+          <td>SURAGALA RAMARAO</td><td>1</td>
+          <td class="num">₹1,05,332</td>
+          <td class="num red">₹1,10,599</td>
+          <td>
+            <div class="pbar"><div class="pbar-bg"><div class="pbar-fill" style="width:0%;background:#E24B4A;"></div></div><span style="font-size:10px;color:var(--red);font-weight:700;">0%</span></div>
+          </td>
+          <td><span class="chip chip-red">CRITICAL</span></td>
+        </tr>
+        <tr class="row-danger">
+          <td>Raja Rao Bhaskara</td><td>1</td>
+          <td class="num">₹1,03,808</td>
+          <td class="num red">₹1,08,998</td>
+          <td>
+            <div class="pbar"><div class="pbar-bg"><div class="pbar-fill" style="width:0%;background:#E24B4A;"></div></div><span style="font-size:10px;color:var(--red);font-weight:700;">0%</span></div>
+          </td>
+          <td><span class="chip chip-red">CRITICAL</span></td>
+        </tr>
+        <tr class="row-danger">
+          <td>Purejal technologies Hyd</td><td>1</td>
+          <td class="num">₹86,479</td>
+          <td class="num red">₹93,002</td>
+          <td>
+            <div class="pbar"><div class="pbar-bg"><div class="pbar-fill" style="width:0%;background:#E24B4A;"></div></div><span style="font-size:10px;color:var(--red);font-weight:700;">0%</span></div>
+          </td>
+          <td><span class="chip chip-red">CRITICAL</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ════════════════════ E: BALANCE SHEET ════════════════════ -->
+<div class="section-hd">
+  <div><h2>Balance Sheet — Financial Position</h2><p>Assets, liabilities, equity as at 31 Mar 2026 · Source: Balance Sheet module</p></div>
+  <span class="chip chip-blue">BALANCE SHEET</span>
+</div>
+
+<div class="card info">
+  <div class="card-title">Balance Sheet — As at 31 March 2026</div>
+  <div class="card-sub">Three-column view: Assets · Liabilities · Equity</div>
+  <div class="bs-grid">
+    <div class="bs-col" style="background:var(--blue-bg);">
+      <h3 style="color:var(--blue);">ASSETS</h3>
+      <div class="bs-row"><span>Sundry Debtors (AR)</span><span class="red" style="font-family:var(--mono);font-size:11px;">₹89,66,178</span></div>
+      <div class="bs-row"><span>Bank / Cash</span><span class="amber" style="font-family:var(--mono);font-size:11px;">₹63,336</span></div>
+      <div class="bs-row"><span>Inventory (RM)</span><span style="font-family:var(--mono);font-size:11px;color:var(--muted);">₹321</span></div>
+      <div class="bs-row"><span>Other Assets</span><span style="font-family:var(--mono);font-size:11px;color:var(--muted);">₹1,61,679</span></div>
+      <div class="bs-total"><span style="color:var(--blue);">Total Assets</span><span class="blue" style="font-family:var(--mono);">₹92,91,514</span></div>
+      <div class="bs-note" style="color:var(--red);">⚠ 97% of assets = uncollected AR. Real liquid assets = ₹63K only.</div>
+    </div>
+    <div class="bs-col" style="background:var(--red-bg);">
+      <h3 style="color:var(--red);">LIABILITIES</h3>
+      <div class="bs-row"><span>Accounts Payable</span><span class="red" style="font-family:var(--mono);font-size:11px;">₹8,42,009</span></div>
+      <div class="bs-row"><span>Expense Accruals</span><span class="amber" style="font-family:var(--mono);font-size:11px;">₹20,40,000</span></div>
+      <div class="bs-row"><span>GST Payable (est.)</span><span class="amber" style="font-family:var(--mono);font-size:11px;">₹1,85,000</span></div>
+      <div class="bs-row"><span>Other Liabilities</span><span style="font-family:var(--mono);font-size:11px;color:var(--muted);">₹0</span></div>
+      <div class="bs-total"><span style="color:var(--red);">Total Liabilities</span><span class="red" style="font-family:var(--mono);">₹30,67,009</span></div>
+      <div class="bs-note" style="color:var(--amber);">Manage payables — ensure expenses are settled on time to avoid penalties.</div>
+    </div>
+    <div class="bs-col" style="background:var(--green-bg);">
+      <h3 style="color:var(--green);">EQUITY</h3>
+      <div class="bs-row"><span>Opening Capital</span><span class="green" style="font-family:var(--mono);font-size:11px;">₹62,18,505</span></div>
+      <div class="bs-row"><span>Net Profit FY</span><span class="amber" style="font-family:var(--mono);font-size:11px;">₹72,547</span></div>
+      <div class="bs-row"><span>Retained Earnings</span><span class="amber" style="font-family:var(--mono);font-size:11px;">₹72,547</span></div>
+      <div class="bs-row"><span>Debt-to-Equity</span><span class="red" style="font-family:var(--mono);font-size:11px;">~39.7x</span></div>
+      <div class="bs-total"><span style="color:var(--green);">Total Equity</span><span class="amber" style="font-family:var(--mono);">₹72,547</span></div>
+      <div class="bs-note" style="color:var(--amber);">Equity is thin. Collect AR urgently to strengthen the equity base.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════ F: BANK RECONCILIATION ════════════════════ -->
+<div class="section-hd">
+  <div><h2>Bank Reconciliation Statement</h2><p>Book balance vs bank balance · Identify uncleared items · Source: Bank Statements + Ledger View</p></div>
+  <span class="chip chip-blue">BANK STATEMENTS</span>
+</div>
+
+<div class="card info">
+  <div class="card-title">Bank Reconciliation — March 2026</div>
+  <div class="card-sub">Match every Day Book entry to bank statement line · ₹5,42,962 gap must be resolved</div>
+  <div class="table-scroll">
+    <table class="mis-table">
+      <thead>
+        <tr><th>Item</th><th>As Per Books</th><th>As Per Bank</th><th>Difference</th><th>Type</th><th>Reason</th><th>Action Required</th></tr>
+      </thead>
+      <tbody>
+        <tr class="row-warn">
+          <td><strong>Closing Cash Balance</strong></td>
+          <td class="num amber">₹63,336</td><td class="num">₹5,06,374</td>
+          <td class="num red"><strong>₹4,43,038</strong></td>
+          <td><span class="chip chip-amber">TIMING</span></td>
+          <td style="font-size:10px;">Cheques issued, not cleared</td>
+          <td style="font-size:10px;color:var(--amber);">Wait 3 working days</td>
+        </tr>
+        <tr class="row-good">
+          <td>Debit Note Adj. ₹2.18L</td>
+          <td class="num">₹2,18,229</td><td class="num">₹2,18,229</td>
+          <td class="num green">₹0</td>
+          <td><span class="chip chip-green">MATCH</span></td>
+          <td style="font-size:10px;">Cleared in bank</td>
+          <td style="font-size:10px;color:var(--muted);">No action</td>
+        </tr>
+        <tr class="row-good">
+          <td>UPI Collections (26)</td>
+          <td class="num">₹7,33,125</td><td class="num">₹7,33,125</td>
+          <td class="num green">₹0</td>
+          <td><span class="chip chip-green">MATCH</span></td>
+          <td style="font-size:10px;">All 26 UPI transactions matched</td>
+          <td style="font-size:10px;color:var(--muted);">No action</td>
+        </tr>
+        <tr class="row-good">
+          <td>NEFT — 2 payments</td>
+          <td class="num">₹1,10,000</td><td class="num">₹1,10,000</td>
+          <td class="num green">₹0</td>
+          <td><span class="chip chip-green">MATCH</span></td>
+          <td style="font-size:10px;">Both transfers confirmed</td>
+          <td style="font-size:10px;color:var(--muted);">No action</td>
+        </tr>
+        <tr class="row-danger">
+          <td><strong>Unposted expense entries</strong></td>
+          <td class="num red">₹99,924</td><td class="num" style="color:var(--hint);">—</td>
+          <td class="num red"><strong>₹99,924</strong></td>
+          <td><span class="chip chip-red">GAP</span></td>
+          <td style="font-size:10px;">Not posted to ledger</td>
+          <td style="font-size:10px;color:var(--red);">Post to ledger immediately</td>
+        </tr>
+        <tr class="row-danger">
+          <td><strong>TOTAL RECONCILIATION GAP</strong></td>
+          <td class="num red"><strong>₹5,42,962</strong></td><td class="num" style="color:var(--hint);">—</td>
+          <td class="num red"><strong>₹5,42,962</strong></td>
+          <td><span class="chip chip-red">URGENT</span></td>
+          <td style="font-size:10px;">Books understate by this amount</td>
+          <td style="font-size:10px;color:var(--red);">Investigate & resolve this week</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ════════════════════ G: JOURNAL + DAY BOOK ════════════════════ -->
+<div class="section-hd">
+  <div><h2>Journal Entries & Day Book — Anomaly Detection</h2><p>All postings reviewed for narration gaps, duplicates, round figures · Source: Journal Entries + Day Book</p></div>
+  <span class="chip chip-amber">JOURNAL / DAY BOOK</span>
+</div>
+
+<div class="card warn">
+  <div class="card-title">Recent Entries — Flagged for Review</div>
+  <div class="card-sub">4 anomalies found this month · Fix before month-end close</div>
+  <div class="table-scroll">
+    <table class="mis-table">
+      <thead>
+        <tr><th>Date</th><th>Voucher</th><th>Type</th><th>Dr Account</th><th>Cr Account</th><th>Amount</th><th>Narration</th><th>Approved By</th><th>Flag</th></tr>
+      </thead>
+      <tbody>
+        <tr class="row-danger">
+          <td>15 Mar</td><td class="num blue"><strong>JV-042</strong></td><td>Sales</td>
+          <td>Debtors A/c</td><td>Sales A/c</td>
+          <td class="num green"><strong>₹5,00,000</strong></td>
+          <td style="color:var(--red);font-size:10px;">⚠ MISSING narration</td>
+          <td>Owner</td>
+          <td><span class="chip chip-red">ROUND / NO NARR</span></td>
+        </tr>
+        <tr class="row-warn">
+          <td>12 Mar</td><td class="num blue">JV-038</td><td>Payment</td>
+          <td>Expense A/c</td><td>Bank A/c</td>
+          <td class="num red">₹1,10,000</td>
+          <td style="font-size:10px;color:var(--muted);">NEFT transfer</td>
+          <td>Acct</td>
+          <td><span class="chip chip-amber">DUPLICATE?</span></td>
+        </tr>
+        <tr class="row-warn">
+          <td>12 Mar</td><td class="num blue">JV-039</td><td>Payment</td>
+          <td>Expense A/c</td><td>Bank A/c</td>
+          <td class="num red">₹1,10,000</td>
+          <td style="font-size:10px;color:var(--muted);">NEFT transfer</td>
+          <td>Acct</td>
+          <td><span class="chip chip-amber">DUPLICATE?</span></td>
+        </tr>
+        <tr class="row-warn">
+          <td>20 Mar</td><td class="num blue">JV-051</td><td>Adjust</td>
+          <td>Debtors A/c</td><td>Debit Note</td>
+          <td class="num amber">₹2,18,229</td>
+          <td style="font-size:10px;color:var(--muted);">Debit Note Adj.</td>
+          <td>Acct</td>
+          <td><span class="chip chip-amber">NO BANK REF</span></td>
+        </tr>
+        <tr class="row-warn">
+          <td>08 Mar</td><td class="num blue">JV-031</td><td>Expense</td>
+          <td>Marketing A/c</td><td>Cash A/c</td>
+          <td class="num red">₹49,500</td>
+          <td style="font-size:10px;color:var(--muted);">Marketing spend</td>
+          <td style="color:var(--red);">—</td>
+          <td><span class="chip chip-red">NO BILL / APPR</span></td>
+        </tr>
+        <tr class="row-good">
+          <td>22 Mar</td><td class="num blue">JV-058</td><td>Receipt</td>
+          <td>Cash A/c</td><td>Sales A/c</td>
+          <td class="num green">₹8,800</td>
+          <td style="font-size:10px;color:var(--muted);">Cash sale — delivery</td>
+          <td>Auto</td>
+          <td><span class="chip chip-green">VERIFIED</span></td>
+        </tr>
+        <tr class="row-good">
+          <td>21 Mar</td><td class="num blue">JV-055</td><td>Expense</td>
+          <td>Diesel A/c</td><td>Cash A/c</td>
+          <td class="num red">₹18,200</td>
+          <td style="font-size:10px;color:var(--muted);">Diesel — 3 vehicles</td>
+          <td>PlMgr</td>
+          <td><span class="chip chip-green">VERIFIED</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="flag flag-purple" style="margin-top:12px;margin-bottom:0;">
+    <span>ℹ</span>
+    <span><strong>Fix rules to implement:</strong> (1) Narration mandatory on all journal entries &nbsp;·&nbsp; (2) Bill/invoice attachment required for every cash expense &nbsp;·&nbsp; (3) Flag all ₹1L+ round-figure postings for monthly review &nbsp;·&nbsp; (4) Resolve JV-038/039 duplicate — verify if both are valid</span>
+  </div>
+</div>
+
+<!-- ════════════════════ H: CHART OF ACCOUNTS ════════════════════ -->
+<div class="section-hd">
+  <div><h2>Chart of Accounts — Structure Review</h2><p>Current account structure vs what needs to be added · Source: Chart of Accounts module</p></div>
+  <span class="chip chip-purple">CHART OF ACCOUNTS</span>
+</div>
+
+<div class="card purple">
+  <div class="card-title">Account Structure — Problems & Recommended Additions</div>
+  <div class="card-sub">Fix Chart of Accounts first — it drives all reports downstream</div>
+  <div class="coa-grid">
+    <div class="coa-col" style="background:var(--red-bg);">
+      <h4 style="color:var(--red);">Current — Problems</h4>
+      <div class="coa-item">
+        <span class="chip chip-red" style="flex-shrink:0;">27%</span>
+        <div><div class="coa-label">Miscellaneous Expenses</div><div class="coa-desc">₹7.73L with zero sub-classification — no visibility into actual spend</div></div>
+      </div>
+      <div class="coa-item">
+        <span class="chip chip-red" style="flex-shrink:0;">GAP</span>
+        <div><div class="coa-label">No Diesel sub-account</div><div class="coa-desc">Diesel (₹9.72L) mixed with general transport — can't track alone</div></div>
+      </div>
+      <div class="coa-item">
+        <span class="chip chip-red" style="flex-shrink:0;">GAP</span>
+        <div><div class="coa-label">No Packaging account</div><div class="coa-desc">Labels, caps, shrink film, boxes buried in COGS — cost per SKU unknown</div></div>
+      </div>
+      <div class="coa-item">
+        <span class="chip chip-red" style="flex-shrink:0;">GAP</span>
+        <div><div class="coa-label">No Chemical account</div><div class="coa-desc">Water treatment chemicals not separately tracked — FSSAI compliance risk</div></div>
+      </div>
+    </div>
+    <div class="coa-col" style="background:var(--green-bg);">
+      <h4 style="color:var(--green);">Add to Chart of Accounts</h4>
+      <div class="coa-item">
+        <span class="chip chip-green" style="flex-shrink:0;">ADD</span>
+        <div><div class="coa-label">4100 — Diesel / Fuel</div><div class="coa-desc">Separate diesel from other transport. Track monthly diesel cost clearly.</div></div>
+      </div>
+      <div class="coa-item">
+        <span class="chip chip-green" style="flex-shrink:0;">ADD</span>
+        <div><div class="coa-label">4110 — Vehicle Maintenance</div><div class="coa-desc">Service, tyres, repairs — separate from operations expenses</div></div>
+      </div>
+      <div class="coa-item">
+        <span class="chip chip-green" style="flex-shrink:0;">ADD</span>
+        <div><div class="coa-label">4200 — Packaging Materials</div><div class="coa-desc">Labels, shrink film, caps, corrugated boxes — enables SKU cost tracking</div></div>
+      </div>
+      <div class="coa-item">
+        <span class="chip chip-green" style="flex-shrink:0;">ADD</span>
+        <div><div class="coa-label">4300 — Water Treatment Chemicals</div><div class="coa-desc">RO chemicals, testing kits, disinfectants — required for FSSAI records</div></div>
+      </div>
+    </div>
+    <div class="coa-col" style="background:var(--blue-bg);">
+      <h4 style="color:var(--blue);">Result After Fix</h4>
+      <div class="coa-item">
+        <span class="chip chip-blue" style="flex-shrink:0;">WIN</span>
+        <div><div class="coa-label">Full fuel cost visibility</div><div class="coa-desc">See diesel ₹ per month, per vehicle, per route — negotiate from data</div></div>
+      </div>
+      <div class="coa-item">
+        <span class="chip chip-blue" style="flex-shrink:0;">WIN</span>
+        <div><div class="coa-label">SKU profitability</div><div class="coa-desc">Know true cost per 20L jar vs 1L bottle vs 500ml — price correctly</div></div>
+      </div>
+      <div class="coa-item">
+        <span class="chip chip-blue" style="flex-shrink:0;">WIN</span>
+        <div><div class="coa-label">Misc drops to ≤5%</div><div class="coa-desc">Currently 27%. After reclassification, target below 5% of expenses</div></div>
+      </div>
+      <div class="coa-item">
+        <span class="chip chip-blue" style="flex-shrink:0;">WIN</span>
+        <div><div class="coa-label">Audit & compliance ready</div><div class="coa-desc">FSSAI, GST, Income Tax audits all simpler with proper account heads</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════ I: DSS PANEL ════════════════════ -->
+<div class="section-hd">
+  <div><h2>DSS Master Decision Panel</h2><p>6 priority decisions derived from all 11 accounting menu items · Act on these in order</p></div>
+  <span class="chip chip-red">ALL MODULES</span>
+</div>
+
+<div class="card crit">
+  <div class="card-title" style="color:var(--red);">Financial Accounting — 6 Priority Decisions for Management</div>
+  <div class="card-sub">All 11 accounting menu items → 6 actionable decisions. Do in this order.</div>
+  <div class="dss-grid" style="margin-top:12px;">
+    <div class="dss-card" style="background:var(--red-bg);">
+      <span class="chip chip-red">P1 — IMMEDIATE</span>
+      <h4>Collect ₹47.6L — 90+ day AR</h4>
+      <p>167 invoices overdue 90+ days. Start with Prasanth Dusi ₹4.19L and Sri Kanthamma ₹2.20L. Assign collections officer. Send legal notice this week. Target: collect ₹20L this month.</p>
+    </div>
+    <div class="dss-card" style="background:var(--red-bg);">
+      <span class="chip chip-red">P2 — CRITICAL</span>
+      <h4>Resolve ₹5.43L bank recon gap</h4>
+      <p>Bank statement shows ₹5.06L, books show ₹63K. Run full bank reconciliation. Match every Day Book entry to bank statement line. Post all unposted entries before month-end.</p>
+    </div>
+    <div class="dss-card" style="background:var(--amber-bg);">
+      <span class="chip chip-amber">P3 — FINANCIAL</span>
+      <h4>Reduce Fuel from 57% of revenue</h4>
+      <p>₹9.72L diesel vs ₹17L revenue — fuel alone makes margins negative. Negotiate bulk diesel rate. Track km per delivery. Set daily fuel budget ≤ ₹15,000. Create diesel account in COA first.</p>
+    </div>
+    <div class="dss-card" style="background:var(--amber-bg);">
+      <span class="chip chip-amber">P4 — ACCOUNTING</span>
+      <h4>Reclassify ₹7.73L Miscellaneous</h4>
+      <p>27% of all expenses unclassified. Add 4 new accounts to Chart of Accounts: Diesel, Packaging Materials, Vehicle Maintenance, Water Treatment Chemicals. Rebook all miscellaneous entries.</p>
+    </div>
+    <div class="dss-card" style="background:var(--purple-bg);">
+      <span class="chip chip-purple">P5 — SYSTEM</span>
+      <h4>Fix Journal Entry controls</h4>
+      <p>Make narration mandatory on all entries. Require bill/invoice attachment for every cash expense. Flag all ₹1L+ round-figure postings for monthly review. Resolve JV-038/039 duplicate immediately.</p>
+    </div>
+    <div class="dss-card" style="background:var(--blue-bg);">
+      <span class="chip chip-blue">P6 — STRATEGIC</span>
+      <h4>Target 10% net margin FY 2026–27</h4>
+      <p>Currently 2.5% (₹72,547 on ₹17L revenue). Need ₹1.7L additional net profit. Path: collect AR faster + reduce fuel 20% + reclassify Misc to find hidden savings. Review quarterly.</p>
+    </div>
+  </div>
+</div>
+
+<div class="page-footer">
+  Inmoisture Private Limited &nbsp;·&nbsp; Financial Accounting — Formal Ledger MIS &nbsp;·&nbsp; FY 2025–26 &nbsp;·&nbsp; All 11 Accounting Menu Items Covered &nbsp;·&nbsp; Hand this file to your dev agent
+</div>
+</div><!-- /page -->
+
+<script>
+const months = ['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar'];
+const revData = [980000,1050000,1100000,1250000,1200000,1180000,1500000,1600000,1700000,1850000,1750000,1708696];
+const expData = [920000,1010000,1020000,1120000,1080000,1100000,1380000,1450000,1560000,1700000,1620000,1650000];
+const netData = revData.map((v,i) => v - expData[i]);
+
+new Chart(document.getElementById('plChart'), {
+  type: 'bar',
+  data: {
+    labels: months,
+    datasets: [
+      { label:'Revenue',  data: revData, backgroundColor:'#97C459', borderRadius:4, order:2 },
+      { label:'Expenses', data: expData, backgroundColor:'#F09595', borderRadius:4, order:2 },
+      { label:'Net', data: netData, type:'line', borderColor:'#378ADD',
+        backgroundColor:'rgba(55,138,221,0.06)', fill:true,
+        pointRadius:4, pointBackgroundColor:'#378ADD', pointBorderColor:'#fff', pointBorderWidth:2,
+        tension:0.3, order:1, borderWidth:2 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => {
+        const v = ctx.raw; const abs = Math.abs(v);
+        const f = abs >= 100000 ? '₹'+(abs/100000).toFixed(2)+'L' : '₹'+Math.round(abs).toLocaleString('en-IN');
+        return ctx.dataset.label+': '+(v<0?'-':'')+f;
+      }}}
+    },
+    scales: {
+      x: { grid:{display:false}, ticks:{font:{size:9},color:'#888',autoSkip:false} },
+      y: { grid:{color:'rgba(0,0,0,0.04)'}, ticks:{font:{size:9},color:'#888',
+           callback: v => '₹'+(v/100000).toFixed(0)+'L'} }
+    }
+  }
+});
+</script>
+</body>
+</html>
