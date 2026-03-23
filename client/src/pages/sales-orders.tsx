@@ -149,12 +149,14 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
   const createSoMutation = useMutation({
     mutationFn: async (values: SalesOrderFormValues) => {
       // Map form values to API expected format
-      // Pre-compute item amounts so header totalAmount can be derived
+      // User enters case price INCLUSIVE of GST. Back-calculate base unit price.
       const computedItems = values.items.map(item => {
-        const unitPricePaise = Math.round(item.unitPrice * 100);
+        const casePriceIncl = item.unitPrice; // rupees, inclusive of GST (user input)
+        const totalGST = (Number(item.cgstRate) || 0) + (Number(item.sgstRate) || 0) + (Number(item.igstRate) || 0);
+        const unitPriceExcl = totalGST > 0 ? casePriceIncl / (1 + totalGST / 100) : casePriceIncl;
+        const unitPricePaise = Math.round(unitPriceExcl * 100); // base price in paise
         const taxableAmountPaise = unitPricePaise * item.quantity;
-        const taxRate = (Number(item.cgstRate) || 0) + (Number(item.sgstRate) || 0) + (Number(item.igstRate) || 0);
-        const totalAmountPaise = Math.round(taxableAmountPaise * (1 + taxRate / 100));
+        const totalAmountPaise = Math.round(casePriceIncl * 100) * item.quantity; // inclusive total in paise
         return { item, unitPricePaise, taxableAmountPaise, totalAmountPaise };
       });
       const soTotalPaise = computedItems.reduce((sum, c) => sum + c.totalAmountPaise, 0);
@@ -290,83 +292,68 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                 <DialogTitle>Create New Sales Order</DialogTitle>
               </DialogHeader>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="buyerName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Buyer Name *</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Enter buyer / customer name" {...field} data-testid="input-buyer-name" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="vendorId"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                          <FormLabel>Link to Vendor (Optional — auto-fills details)</FormLabel>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button
-                                  variant="outline"
-                                  role="combobox"
-                                  className={cn(
-                                    "w-full justify-between",
-                                    !field.value && "text-muted-foreground"
-                                  )}
-                                  data-testid="select-vendor"
-                                >
-                                  {field.value
-                                    ? vendors.find((v) => v.id === field.value)?.vendorName
-                                    : "Select vendor (optional)..."}
-                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-[400px] p-0">
-                              <Command>
-                                <CommandInput placeholder="Search vendor..." />
-                                <CommandList>
-                                  <CommandEmpty>No vendor found.</CommandEmpty>
-                                  <CommandGroup>
-                                    {vendors.map((vendor) => (
-                                      <CommandItem
-                                        value={vendor.vendorName}
-                                        key={vendor.id}
-                                        onSelect={() => {
-                                          form.setValue("vendorId", vendor.id);
-                                          if (vendor.vendorName) form.setValue("buyerName", vendor.vendorName);
-                                          if (vendor.gstNumber) form.setValue("buyerGstin", vendor.gstNumber);
-                                          if (vendor.address) form.setValue("buyerAddress", vendor.address);
-                                          if ((vendor as any).vendorPhone) form.setValue("buyerContact", (vendor as any).vendorPhone);
-                                          if (vendor.shipToName) form.setValue("shipToName", vendor.shipToName);
-                                        }}
-                                      >
-                                        <Check
-                                          className={cn(
-                                            "mr-2 h-4 w-4",
-                                            vendor.id === field.value ? "opacity-100" : "opacity-0"
-                                          )}
-                                        />
-                                        {vendor.vendorName}
-                                      </CommandItem>
-                                    ))}
-                                  </CommandGroup>
-                                </CommandList>
-                              </Command>
-                            </PopoverContent>
-                          </Popover>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+                  {/* Buyer Details */}
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Buyer Details</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <FormField
+                        control={form.control}
+                        name="buyerName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Buyer Name *</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter buyer / customer name" {...field} data-testid="input-buyer-name" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="buyerGstin"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Buyer GSTIN</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter GSTIN" {...field} data-testid="input-buyer-gstin" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="buyerContact"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Buyer Contact</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Phone / email" {...field} data-testid="input-buyer-contact" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="buyerAddress"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Buyer Address</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Full billing address" {...field} data-testid="input-buyer-address" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Order Info */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <FormField
                       control={form.control}
                       name="soDate"
@@ -395,38 +382,64 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                     />
                     <FormField
                       control={form.control}
-                      name="buyerGstin"
+                      name="vendorId"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Buyer GSTIN</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Enter GSTIN" {...field} data-testid="input-buyer-gstin" />
-                          </FormControl>
+                        <FormItem className="md:col-span-2 flex flex-col">
+                          <FormLabel>Link to Vendor <span className="font-normal text-muted-foreground">(optional — auto-fills details)</span></FormLabel>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant="outline"
+                                  role="combobox"
+                                  className={cn("w-full justify-between", !field.value && "text-muted-foreground")}
+                                  data-testid="select-vendor"
+                                >
+                                  {field.value ? vendors.find((v) => v.id === field.value)?.vendorName : "Select vendor (optional)..."}
+                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[400px] p-0">
+                              <Command>
+                                <CommandInput placeholder="Search vendor..." />
+                                <CommandList>
+                                  <CommandEmpty>No vendor found.</CommandEmpty>
+                                  <CommandGroup>
+                                    {vendors.map((vendor) => (
+                                      <CommandItem
+                                        value={vendor.vendorName}
+                                        key={vendor.id}
+                                        onSelect={() => {
+                                          form.setValue("vendorId", vendor.id);
+                                          if (vendor.vendorName) form.setValue("buyerName", vendor.vendorName);
+                                          if (vendor.gstNumber) form.setValue("buyerGstin", vendor.gstNumber);
+                                          if (vendor.address) form.setValue("buyerAddress", vendor.address);
+                                          if ((vendor as any).vendorPhone) form.setValue("buyerContact", (vendor as any).vendorPhone);
+                                          if (vendor.shipToName) form.setValue("shipToName", vendor.shipToName);
+                                        }}
+                                      >
+                                        <Check className={cn("mr-2 h-4 w-4", vendor.id === field.value ? "opacity-100" : "opacity-0")} />
+                                        {vendor.vendorName}
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
                     <FormField
                       control={form.control}
-                      name="buyerContact"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Buyer Contact</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Phone / email" {...field} data-testid="input-buyer-contact" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="buyerAddress"
+                      name="remarks"
                       render={({ field }) => (
                         <FormItem className="md:col-span-2">
-                          <FormLabel>Buyer Address</FormLabel>
+                          <FormLabel>Remarks</FormLabel>
                           <FormControl>
-                            <Input placeholder="Full billing address" {...field} data-testid="input-buyer-address" />
+                            <Input placeholder="Internal notes / special instructions" {...field} data-testid="input-remarks" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -437,15 +450,15 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                   {/* Ship-To section */}
                   <div className="space-y-3">
                     <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Shipping Address <span className="normal-case font-normal">(leave blank if same as buyer)</span></h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                       <FormField
                         control={form.control}
                         name="shipToName"
                         render={({ field }) => (
-                          <FormItem>
+                          <FormItem className="col-span-2">
                             <FormLabel>Ship-To Name</FormLabel>
                             <FormControl>
-                              <Input placeholder="Recipient name / company" {...field} data-testid="input-ship-to-name" />
+                              <Input placeholder="Recipient / company" {...field} data-testid="input-ship-to-name" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -455,7 +468,7 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                         control={form.control}
                         name="shipToAddress"
                         render={({ field }) => (
-                          <FormItem>
+                          <FormItem className="col-span-2">
                             <FormLabel>Ship-To Address</FormLabel>
                             <FormControl>
                               <Input placeholder="Street address" {...field} data-testid="input-ship-to-address" />
@@ -503,19 +516,6 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                           </FormItem>
                         )}
                       />
-                      <FormField
-                        control={form.control}
-                        name="remarks"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Remarks</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Internal notes / special instructions" {...field} data-testid="input-remarks" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
                     </div>
                   </div>
 
@@ -547,7 +547,7 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                           <TableRow>
                             <TableHead className="min-w-[180px]">Product</TableHead>
                             <TableHead className="w-20">Qty</TableHead>
-                            <TableHead className="w-28">Price (₹)</TableHead>
+                            <TableHead className="w-32">Case Price ₹ (incl. GST)</TableHead>
                             <TableHead className="w-40">CGST% / SGST%</TableHead>
                             <TableHead className="w-28 text-right">Line Total</TableHead>
                             <TableHead className="w-10"></TableHead>
@@ -557,9 +557,8 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                           {fields.map((field, index) => {
                             const watchedItems = form.watch("items");
                             const row = watchedItems[index] || {};
-                            const taxable = (row.unitPrice || 0) * (row.quantity || 0);
-                            const taxRate = (Number(row.cgstRate) || 0) + (Number(row.sgstRate) || 0) + (Number(row.igstRate) || 0);
-                            const lineTotal = taxable * (1 + taxRate / 100);
+                            // user enters case price inclusive of GST — line total = casePrice × qty
+                            const lineTotal = (row.unitPrice || 0) * (row.quantity || 0);
                             return (
                             <TableRow key={field.id}>
                               <TableCell>
@@ -573,7 +572,7 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                                         const prod = products.find(p => p.id === val);
                                         if (prod) {
                                           form.setValue(`items.${index}.description`, prod.productName);
-                                          form.setValue(`items.${index}.unitPrice`, Number(prod.basePrice || 0) / 100);
+                                          // Don't pre-fill price — user enters case price incl. GST
                                         }
                                       }} 
                                       value={field.value}
@@ -699,9 +698,8 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                         <span className="text-muted-foreground">Estimated Grand Total (incl. GST):</span>
                         <span className="font-bold text-base">
                           ₹{form.watch("items").reduce((sum, item) => {
-                            const taxable = (item.unitPrice || 0) * (item.quantity || 0);
-                            const taxRate = (Number(item.cgstRate) || 0) + (Number(item.sgstRate) || 0) + (Number(item.igstRate) || 0);
-                            return sum + taxable * (1 + taxRate / 100);
+                            // casePrice is already inclusive — grand total = casePrice × qty
+                            return sum + (item.unitPrice || 0) * (item.quantity || 0);
                           }, 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                       </div>

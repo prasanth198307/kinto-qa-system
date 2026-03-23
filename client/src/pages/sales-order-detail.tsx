@@ -121,34 +121,45 @@ function EditSalesOrderDialog({ salesOrder, open, onClose }: EditDialogProps) {
       shipToState: salesOrder.shipToState || "",
       shipToPin: salesOrder.shipToPin || "",
       remarks: salesOrder.remarks || "",
-      items: items.length > 0 ? items.map((item: any) => ({
-        productId: item.productId || "",
-        description: item.description || "",
-        quantity: Number(item.quantity) || 1,
-        unitPrice: Number(item.unitPrice || 0) / 100,
-        cgstRate: Number(item.cgstRate) || 9,
-        sgstRate: Number(item.sgstRate) || 9,
-        igstRate: Number(item.igstRate) || 0,
-      })) : [{ productId: "", quantity: 1, unitPrice: 0, cgstRate: 9, sgstRate: 9, igstRate: 0 }],
+      items: items.length > 0 ? items.map((item: any) => {
+        const cgst = Number(item.cgstRate) || 9;
+        const sgst = Number(item.sgstRate) || 9;
+        const igst = Number(item.igstRate) || 0;
+        const totalGST = cgst + sgst + igst;
+        // Convert stored base price (paise) back to case price incl. GST for display
+        const baseRupees = Number(item.unitPrice || 0) / 100;
+        const casePriceInclGST = baseRupees * (1 + totalGST / 100);
+        return {
+          productId: item.productId || "",
+          description: item.description || "",
+          quantity: Number(item.quantity) || 1,
+          unitPrice: Math.round(casePriceInclGST * 100) / 100, // case price incl. GST
+          cgstRate: cgst,
+          sgstRate: sgst,
+          igstRate: igst,
+        };
+      }) : [{ productId: "", quantity: 1, unitPrice: 0, cgstRate: 9, sgstRate: 9, igstRate: 0 }],
     },
   });
 
   const { fields, append, remove } = useFieldArray({ control: form.control, name: "items" });
 
   const watchedItems = form.watch("items");
+  // casePrice is already inclusive of GST — liveTotal = sum(casePrice × qty)
   const liveTotal = watchedItems.reduce((sum, item) => {
-    const taxable = (item.unitPrice || 0) * (item.quantity || 0);
-    const taxRate = (Number(item.cgstRate) || 0) + (Number(item.sgstRate) || 0) + (Number(item.igstRate) || 0);
-    return sum + taxable * (1 + taxRate / 100);
+    return sum + (item.unitPrice || 0) * (item.quantity || 0);
   }, 0);
 
   const updateMutation = useMutation({
     mutationFn: async (values: SOFormValues) => {
+      // User enters case price INCLUSIVE of GST. Back-calculate base unit price.
       const computedItems = values.items.map(item => {
-        const unitPricePaise = Math.round(item.unitPrice * 100);
+        const casePriceIncl = item.unitPrice; // rupees inclusive of GST
+        const totalGST = (Number(item.cgstRate) || 0) + (Number(item.sgstRate) || 0) + (Number(item.igstRate) || 0);
+        const unitPriceExcl = totalGST > 0 ? casePriceIncl / (1 + totalGST / 100) : casePriceIncl;
+        const unitPricePaise = Math.round(unitPriceExcl * 100);
         const taxableAmountPaise = unitPricePaise * item.quantity;
-        const taxRate = (Number(item.cgstRate) || 0) + (Number(item.sgstRate) || 0) + (Number(item.igstRate) || 0);
-        const totalAmountPaise = Math.round(taxableAmountPaise * (1 + taxRate / 100));
+        const totalAmountPaise = Math.round(casePriceIncl * 100) * item.quantity;
         return { item, unitPricePaise, taxableAmountPaise, totalAmountPaise };
       });
       const soTotalPaise = computedItems.reduce((sum, c) => sum + c.totalAmountPaise, 0);
@@ -294,7 +305,7 @@ function EditSalesOrderDialog({ salesOrder, open, onClose }: EditDialogProps) {
                     <TableRow>
                       <TableHead className="min-w-[180px]">Product</TableHead>
                       <TableHead className="w-20">Qty</TableHead>
-                      <TableHead className="w-28">Price (₹)</TableHead>
+                      <TableHead className="w-32">Case Price ₹ (incl. GST)</TableHead>
                       <TableHead className="w-40">CGST% / SGST%</TableHead>
                       <TableHead className="w-28 text-right">Line Total</TableHead>
                       <TableHead className="w-10"></TableHead>
@@ -303,9 +314,8 @@ function EditSalesOrderDialog({ salesOrder, open, onClose }: EditDialogProps) {
                   <TableBody>
                     {fields.map((field, index) => {
                       const row = watchedItems[index] || {};
-                      const taxable = (row.unitPrice || 0) * (row.quantity || 0);
-                      const taxRate = (Number(row.cgstRate) || 0) + (Number(row.sgstRate) || 0) + (Number(row.igstRate) || 0);
-                      const lineTotal = taxable * (1 + taxRate / 100);
+                      // casePrice is already inclusive of GST — line total = casePrice × qty
+                      const lineTotal = (row.unitPrice || 0) * (row.quantity || 0);
                       return (
                         <TableRow key={field.id}>
                           <TableCell>
