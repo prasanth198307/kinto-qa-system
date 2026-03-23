@@ -427,7 +427,7 @@ function ManagerDashboard() {
 // Dashboard for custom roles - uses AdminDashboard layout with database-based permission filtering
 function CustomRoleDashboard({ roleName }: { roleName: string }) {
   const { logoutMutation } = useAuth();
-  const { permissions, isLoading: permissionsLoading } = usePermissions();
+  const { permissions, role: userRoleName, isLoading: permissionsLoading } = usePermissions();
   const [location, setLocation] = useLocation();
   const [activeView, setActiveView] = useState('overview');
   const [isPMDialogOpen, setIsPMDialogOpen] = useState(false);
@@ -481,7 +481,7 @@ function CustomRoleDashboard({ roleName }: { roleName: string }) {
 
   // Get all navigation sections, then filter by database permissions for custom roles
   const allNavSections = getAdminNavSections(setLocation);
-  const navSections = filterNavSectionsWithDbPermissions(allNavSections, permissions);
+  const navSections = filterNavSectionsWithDbPermissions(allNavSections, permissions, userRoleName);
 
   // Show loading state while permissions are being fetched
   if (permissionsLoading) {
@@ -1628,11 +1628,20 @@ function filterNavSectionsByRole(sections: NavSection[], role: string): NavSecti
   return [];
 }
 
+// System roles always have full access — no DB permission rows needed
+const SYSTEM_ROLES_FULL_ACCESS = ['admin', 'manager', 'AccountsManager'];
+
 // Filter nav sections using database permissions (for custom roles)
-function filterNavSectionsWithDbPermissions(sections: NavSection[], dbPermissions: Permission[]): NavSection[] {
+function filterNavSectionsWithDbPermissions(sections: NavSection[], dbPermissions: Permission[], roleName?: string): NavSection[] {
   if (!sections || !Array.isArray(sections)) return [];
+
+  // System roles (admin, manager, AccountsManager) see ALL nav items — no DB filter
+  if (roleName && SYSTEM_ROLES_FULL_ACCESS.includes(roleName)) {
+    return sections;
+  }
+
   if (!dbPermissions || dbPermissions.length === 0) return [];
-  
+
   const filtered = sections
     .map(section => ({
       ...section,

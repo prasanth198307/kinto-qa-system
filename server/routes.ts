@@ -264,8 +264,16 @@ function requireRole(...allowedRoles: string[]) {
         return res.status(403).json({ message: "Forbidden: Invalid role" });
       }
 
-      // ALL access is controlled by database permissions - no role name matching
-      // This ensures custom roles with proper permissions can access any endpoint
+      // System role bypass: if the role name is explicitly in the allowed list, grant access immediately.
+      // This means admin/manager/AccountsManager never need a DB permission row for any endpoint
+      // that explicitly lists them in requireRole(). Custom roles still go through DB permissions below.
+      if (allowedRoles.includes(role.name)) {
+        console.log(`[AUDIT] Role ${role.name} granted access to ${req.path} (system role match)`);
+        req.userRole = role.name;
+        return next();
+      }
+
+      // Custom role path: check database permissions
       const pathBase = req.path.split('?')[0]; // Remove query params
       let screenKey: string | undefined;
       
