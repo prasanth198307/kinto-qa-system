@@ -149,6 +149,16 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
   const createSoMutation = useMutation({
     mutationFn: async (values: SalesOrderFormValues) => {
       // Map form values to API expected format
+      // Pre-compute item amounts so header totalAmount can be derived
+      const computedItems = values.items.map(item => {
+        const unitPricePaise = Math.round(item.unitPrice * 100);
+        const taxableAmountPaise = unitPricePaise * item.quantity;
+        const taxRate = (Number(item.cgstRate) || 0) + (Number(item.sgstRate) || 0) + (Number(item.igstRate) || 0);
+        const totalAmountPaise = Math.round(taxableAmountPaise * (1 + taxRate / 100));
+        return { item, unitPricePaise, taxableAmountPaise, totalAmountPaise };
+      });
+      const soTotalPaise = computedItems.reduce((sum, c) => sum + c.totalAmountPaise, 0);
+
       const payload = {
         header: {
           buyerName: values.buyerName,
@@ -164,15 +174,19 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
           shipToState: values.shipToState || null,
           shipToPin: values.shipToPin || null,
           remarks: values.remarks || null,
+          totalAmount: soTotalPaise,
         },
-        items: values.items.map(item => ({
-          ...item,
-          // GST rates stored as numeric percentages (e.g., 9 for 9%)
+        items: computedItems.map(({ item, unitPricePaise, taxableAmountPaise, totalAmountPaise }) => ({
+          productId: item.productId,
+          description: item.description,
+          hsnCode: item.hsnCode,
+          quantity: item.quantity,
           cgstRate: item.cgstRate,
           sgstRate: item.sgstRate,
           igstRate: item.igstRate,
-          // Unit price stored in paise
-          unitPrice: Math.round(item.unitPrice * 100),
+          unitPrice: unitPricePaise,
+          taxableAmount: taxableAmountPaise,
+          totalAmount: totalAmountPaise,
         }))
       };
       const res = await apiRequest('POST', '/api/sales-orders', payload);

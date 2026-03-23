@@ -144,6 +144,15 @@ function EditSalesOrderDialog({ salesOrder, open, onClose }: EditDialogProps) {
 
   const updateMutation = useMutation({
     mutationFn: async (values: SOFormValues) => {
+      const computedItems = values.items.map(item => {
+        const unitPricePaise = Math.round(item.unitPrice * 100);
+        const taxableAmountPaise = unitPricePaise * item.quantity;
+        const taxRate = (Number(item.cgstRate) || 0) + (Number(item.sgstRate) || 0) + (Number(item.igstRate) || 0);
+        const totalAmountPaise = Math.round(taxableAmountPaise * (1 + taxRate / 100));
+        return { item, unitPricePaise, taxableAmountPaise, totalAmountPaise };
+      });
+      const soTotalPaise = computedItems.reduce((sum, c) => sum + c.totalAmountPaise, 0);
+
       const payload = {
         header: {
           buyerName: values.buyerName,
@@ -159,15 +168,18 @@ function EditSalesOrderDialog({ salesOrder, open, onClose }: EditDialogProps) {
           shipToState: values.shipToState || null,
           shipToPin: values.shipToPin || null,
           remarks: values.remarks || null,
+          totalAmount: soTotalPaise,
         },
-        items: values.items.map(item => ({
+        items: computedItems.map(({ item, unitPricePaise, taxableAmountPaise, totalAmountPaise }) => ({
           productId: item.productId,
           description: item.description || null,
           quantity: item.quantity,
-          unitPrice: Math.round(item.unitPrice * 100),
           cgstRate: item.cgstRate,
           sgstRate: item.sgstRate,
           igstRate: item.igstRate,
+          unitPrice: unitPricePaise,
+          taxableAmount: taxableAmountPaise,
+          totalAmount: totalAmountPaise,
         })),
       };
       const res = await apiRequest('PATCH', `/api/sales-orders/${salesOrder.id}`, payload);

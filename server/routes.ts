@@ -6949,7 +6949,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'Sales order not found' });
       }
       const items = await storage.getSalesOrderItems(req.params.id);
-      res.json({ ...so, items });
+
+      // Resolve usernames for audit info
+      const userIds = [so.recordedBy, (so as any).confirmedBy, (so as any).cancelledBy].filter(Boolean);
+      const userMap: Record<string, string> = {};
+      if (userIds.length > 0) {
+        try {
+          const userRows = await db.select({ id: users.id, username: users.username }).from(users).where(inArray(users.id, userIds as string[]));
+          userRows.forEach(u => { userMap[u.id] = u.username; });
+        } catch {}
+      }
+
+      res.json({
+        ...so,
+        items,
+        recordedByUsername: so.recordedBy ? userMap[so.recordedBy] || null : null,
+        confirmedByUsername: (so as any).confirmedBy ? userMap[(so as any).confirmedBy] || null : null,
+        cancelledByUsername: (so as any).cancelledBy ? userMap[(so as any).cancelledBy] || null : null,
+      });
     } catch (error) {
       console.error('[SALES_ORDERS] Error fetching sales order:', error);
       res.status(500).json({ message: 'Internal server error' });
