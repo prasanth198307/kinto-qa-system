@@ -529,7 +529,7 @@ export default function SalesOrderDetail({ showHeader = true }: { showHeader?: b
                 <CheckCircle className="w-4 h-4 mr-2" />Confirm
               </Button>
             )}
-            {(salesOrder.status === 'confirmed' || salesOrder.status === 'partially_invoiced') && (
+            {salesOrder.status === 'confirmed' && (
               <Button onClick={() => setLocation(`/?soId=${salesOrder.id}`)} data-testid="button-create-invoice">
                 <Plus className="w-4 h-4 mr-2" />Create Invoice
               </Button>
@@ -539,7 +539,7 @@ export default function SalesOrderDetail({ showHeader = true }: { showHeader?: b
                 <Edit className="w-4 h-4 mr-2" />Edit
               </Button>
             )}
-            {(salesOrder.status !== 'invoiced' && salesOrder.status !== 'cancelled') && (
+            {(salesOrder.status === 'draft' || salesOrder.status === 'confirmed') && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="outline" className="text-destructive hover:text-destructive" data-testid="button-cancel-so">
