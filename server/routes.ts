@@ -17644,6 +17644,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ─── Auto-categorise expense items ────────────────────────────────────────
+  // Keyword patterns → category names (works with ANY set of categories in DB)
+  const CATEGORY_KEYWORD_MAP: Array<{ patterns: string[]; name: string }> = [
+    { name: 'Fuel & Transport', patterns: ['DIESEL','DEISEL','DISEL','DIESERL','DIESAL','DESEL','DEIISEL','PETROL','DEF OIL','ENGINE OIL','FUEL'] },
+    { name: 'Fuel',             patterns: ['DIESEL','DEISEL','DISEL','DIESERL','DIESAL','DESEL','DEIISEL','PETROL','DEF OIL','ENGINE OIL','FUEL'] },
+    { name: 'Transport',        patterns: ['FAST TAG','FASTAG','FASTTAG','FASTRAK','FASTRACK','FAST TRAK','HARI FAST','TOLLGATE','TOLL GATE','TOLLEGATE','TOLL TAGE','TOLL TAG','ROAD TAX','OVERLOAD','TRANSPORT','BOLERO','TATA ACE','MOTOR AUTO','RAPIDO','PARCEL','DTDC','COURIER','NUMBER PLATE'] },
+    { name: 'Travel & Conveyance', patterns: ['TRIP','TRAVEL','TRVEL','TAVEL','STAY','ROOM RENT','ROOM BILL','SNK GRAND','HYD EXPEN','LUGGAGE','LAUGGEG','PARVATHIPURAM','RAJAHMUNDRY','ANAKAPALLI','RTA'] },
+    { name: 'Food & Beverages', patterns: ['SNACKS','SNAKS','SANCKS','SWNACKS','MEALS','MEELS','DINNER','LUNCH','FOOD','VANTILLU','MILK','COCONUT','BIRYANI','BRAVAREGES','VEGETAB','VEZTABLE','GROCER','GROSSERY','GROSARI','GROSERIES','GROSARYS','GROSARYES','SUGAR','DRIVER MEAL','MEEALS','SAMANLU','TEA','COFFEE','RICE','CAKE','STAFF SNAKS','STAFF DINNER'] },
+    { name: 'Petty Cash',       patterns: ['SNACKS','SNAKS','MEALS','MEELS','DINNER','LUNCH','FOOD','MILK','COCONUT','GROCER','SUGAR','TEA','COFFEE','RICE','CAKE'] },
+    { name: 'Salaries & Wages', patterns: ['SALARY','SALARYS','SALERY','SALAREY','WAGES','DAILY WAGE','DRIVER BETA','KALASI','KALASH','HAMALI'] },
+    { name: 'Salaries',         patterns: ['SALARY','SALARYS','SALERY','SALAREY','WAGES','DAILY WAGE','DRIVER BETA','KALASI','KALASH','HAMALI'] },
+    { name: 'Maintenance',      patterns: ['MAINTENANCE','SPARE','CONSUMABLE','REPAIR','FLOORING','WELDING','WELDER','GREASE','GREEZ','PLUMB','BLOWER','CONTECTER','PAMPU','TAP HANDLE','PAIPES','CLAMPS','BEARING','L-BOW','MCB','ROPE','BOLT','IRON ROD','MILLING','ELECTRI','ELCTRI','VEHICLE MAIN','SNAKE','CONNECTOR','GREEN MAT','STICKRING','HOUSEKEEPING','PROTECTIVE EQUIPMENT'] },
+    { name: 'Repairs & Maintenance', patterns: ['MAINTENANCE','SPARE','CONSUMABLE','REPAIR','FLOORING','WELDING','WELDER','GREASE','GREEZ','PLUMB','BLOWER','CONTECTER','PAMPU','TAP HANDLE','PAIPES','CLAMPS','BEARING','L-BOW','MCB','ROPE','BOLT','HORN','IRON ROD','MILLING','ELECTRI','ELCTRI','VEHICLE','SNAKE','CONNECTOR','GREEN MAT'] },
+    { name: 'Raw Materials',    patterns: ['RAW MATERIAL'] },
+    { name: 'Office Supplies',  patterns: ['STATIONARY','STATIONERY','STAIONARY','SATIONARY','OFFICE SUPPLI','DRUM','LABEL','LABLE','BAG','FIRST AID'] },
+    { name: 'Professional Fees', patterns: ['UNLOADING','LOADING','CHEMICAL','CHLORINE','GEOLOG','WATER TEST','WATER SURVEY','RO FILTER','RO MEMB','MARKETING','LABS','COMMISION','COMMISSION','MEESAVA','MEESEVA','PROMOTION','COURIER','DTDC'] },
+    { name: 'Communication',    patterns: ['PHONE BILL','MOBILE BILL','INTERNET','RECHARGE'] },
+    { name: 'Utilities',        patterns: ['POWER BILL','CURRENT BILL','ELECTRIC BILL','WATER BILL','GAS BILL','ELECTRICITY'] },
+    { name: 'Insurance',        patterns: ['INSUR'] },
+    { name: 'Rent',             patterns: ['RENT'] },
+  ];
+
+  async function autoAssignExpenseCategory(description: string, db: any, sql: any): Promise<string | null> {
+    if (!description) return null;
+    const upper = description.toUpperCase().trim();
+    // Fetch all categories from DB (name → id)
+    const cats = await db.execute(sql`SELECT id, name FROM expense_categories WHERE record_status = 1`);
+    const catMap: Record<string, string> = {};
+    for (const row of cats.rows as any[]) catMap[row.name] = row.id;
+    // Try each rule in order — first match wins
+    for (const rule of CATEGORY_KEYWORD_MAP) {
+      const catId = catMap[rule.name];
+      if (!catId) continue; // category doesn't exist in this DB — skip
+      for (const pattern of rule.patterns) {
+        if (upper.includes(pattern)) return catId;
+      }
+    }
+    // Fall back to Miscellaneous if it exists
+    return catMap['Miscellaneous'] || null;
+  }
+
+  // Bulk auto-categorize endpoint — admin/manager can run anytime
+  app.post('/api/expense-items/auto-categorize', isAuthenticated, requireRole('admin', 'manager'), async (req: Request, res: Response) => {
+    try {
+      const cats = await db.execute(sql`SELECT id, name FROM expense_categories WHERE record_status = 1`);
+      const catMap: Record<string, string> = {};
+      for (const row of cats.rows as any[]) catMap[row.name] = row.id;
+      const miscId = catMap['Miscellaneous'] || null;
+      let updated = 0;
+      // Fetch all items that have no category OR are in Miscellaneous
+      const miscIds = miscId ? [null as string | null, miscId] : [null as string | null];
+      const items = await db.execute(sql`
+        SELECT id, description FROM expense_items
+        WHERE record_status = 1 AND (category_id IS NULL OR category_id = ${miscId})`);
+      for (const item of items.rows as any[]) {
+        const newCatId = await autoAssignExpenseCategory(item.description, db, sql);
+        if (newCatId && newCatId !== miscId) {
+          await db.execute(sql`UPDATE expense_items SET category_id = ${newCatId}, updated_at = NOW() WHERE id = ${item.id}`);
+          updated++;
+        } else if (newCatId === miscId && item.category_id === null) {
+          await db.execute(sql`UPDATE expense_items SET category_id = ${newCatId}, updated_at = NOW() WHERE id = ${item.id}`);
+          updated++;
+        }
+      }
+      res.json({ success: true, updated, message: `Auto-categorized ${updated} expense items` });
+    } catch (error: any) {
+      console.error('[AUTO-CAT] Error:', error);
+      res.status(500).json({ message: error.message || 'Auto-categorization failed' });
+    }
+  });
+
   // Expense Categories CRUD
   app.get('/api/expense-categories', isAuthenticated, async (req: Request, res: Response) => {
     try {
@@ -17760,9 +17831,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create expense items if provided
       if (req.body.items && Array.isArray(req.body.items)) {
         for (const item of req.body.items) {
+          // Auto-assign category if not provided
+          let catId = item.categoryId || null;
+          if (!catId && item.description) {
+            catId = await autoAssignExpenseCategory(item.description, db, sql);
+          }
           const itemData = {
             voucherId: voucher.id,
-            categoryId: item.categoryId || null,
+            categoryId: catId,
             description: item.description,
             amount: item.amount,
             gstAmount: item.gstAmount || '0',
@@ -18293,10 +18369,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             // Create expense line item so description appears on printed voucher
             try {
+              const autoCatId = await autoAssignExpenseCategory(expenseDescription, db, sql);
               await storage.createExpenseItem({
                 voucherId: voucher.id,
                 description: expenseDescription,
                 amount: amountInPaise,
+                categoryId: autoCatId || undefined,
               });
             } catch (itemErr) {
               console.error('[CASH_REGISTER] Error creating expense item:', itemErr);

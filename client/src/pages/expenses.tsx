@@ -15,7 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
-import { Plus, FileText, Trash2, Search, Eye, Check, X, Receipt, Send, IndianRupee, Calendar, User, Building2, Printer, ArrowLeft } from "lucide-react";
+import { Plus, FileText, Trash2, Search, Eye, Check, X, Receipt, Send, IndianRupee, Calendar, User, Building2, Printer, ArrowLeft, Wand2 } from "lucide-react";
 import PrintableExpenseVoucher from "@/components/PrintableExpenseVoucher";
 import type { ExpenseCategory, ExpenseVoucher, ExpenseItem, PaginationMeta } from "@shared/schema";
 import { DataTablePagination } from "@/components/DataTablePagination";
@@ -40,6 +40,7 @@ export default function ExpensesPage() {
   const { hasPermission } = usePermissions();
   const canCreate = hasPermission('expenses', 'create');
   const canDelete = hasPermission('expenses', 'delete');
+  const canManage = hasPermission('expenses', 'approve') || hasPermission('expenses', 'delete');
   
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -135,6 +136,20 @@ export default function ExpensesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/expense-vouchers'] });
       toast({ title: "Success", description: "Voucher deleted successfully" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const autoCategorizeMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', '/api/expense-items/auto-categorize');
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/expense-vouchers'] });
+      toast({ title: "Auto-Categorized", description: `${data.updated} expense items categorized automatically` });
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -293,7 +308,20 @@ export default function ExpensesPage() {
           </div>
         </div>
         
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <div className="flex items-center gap-2">
+          {canManage && (
+            <Button
+              variant="outline"
+              onClick={() => autoCategorizeMutation.mutate()}
+              disabled={autoCategorizeMutation.isPending}
+              data-testid="button-auto-categorize"
+              title="Automatically assign categories to uncategorized expense items based on description keywords"
+            >
+              <Wand2 className="h-4 w-4 mr-2" />
+              {autoCategorizeMutation.isPending ? 'Categorizing...' : 'Auto-Categorize'}
+            </Button>
+          )}
+          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           {canCreate && (
             <DialogTrigger asChild>
               <Button data-testid="button-create-voucher">
@@ -462,7 +490,8 @@ export default function ExpensesPage() {
               </Button>
             </DialogFooter>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
       </div>
 
       <Card>
