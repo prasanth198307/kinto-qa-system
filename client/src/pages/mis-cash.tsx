@@ -384,18 +384,49 @@ export default function MISCash() {
           <CardContent>
             {isLoading ? (
               <div className="space-y-3">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}</div>
-            ) : data?.expensesByCategory && data.expensesByCategory.length > 0 ? (
-              <HBarChart
-                colorClass="bg-destructive/80"
-                items={data.expensesByCategory.map(cat => ({
-                  label: cat.category,
-                  amount: cat.amount,
-                  share: Math.round((cat.amount / (data.expensesByCategory.reduce((s,c)=>s+c.amount,0)||1)) * 100),
-                }))}
-              />
-            ) : (
-              <p className="text-muted-foreground text-sm py-6 text-center">No category data for this period</p>
-            )}
+            ) : (() => {
+              const cats = data?.expensesByCategory ?? [];
+              const total = cats.reduce((s, c) => s + c.amount, 0);
+              const allUncategorised = cats.length > 0 && cats.every(c => c.category === 'Uncategorised');
+
+              if (cats.length === 0) {
+                return <p className="text-muted-foreground text-sm py-6 text-center">No expense data for this period</p>;
+              }
+
+              if (allUncategorised) {
+                return (
+                  <div className="space-y-4">
+                    <div className="rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-3 text-sm">
+                      <p className="font-medium text-amber-800 dark:text-amber-300">Categories not mapped</p>
+                      <p className="text-amber-700 dark:text-amber-400 text-xs mt-0.5">
+                        All {cats[0].count} expense items ({fmtCurrFull(total)}) are uncategorised.
+                        Assign categories when entering expenses in the Cash Register to see a breakdown here.
+                      </p>
+                    </div>
+                    <div className="space-y-0.5">
+                      <div className="flex items-center justify-between text-sm gap-2">
+                        <span className="font-medium text-muted-foreground">All Expenses (Uncategorised)</span>
+                        <span className="font-semibold tabular-nums">{fmtCurrFull(total)}</span>
+                      </div>
+                      <div className="h-2 bg-muted rounded-full overflow-hidden">
+                        <div className="h-full w-full rounded-full bg-destructive/40" />
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
+                <HBarChart
+                  colorClass="bg-destructive/80"
+                  items={cats.map(cat => ({
+                    label: cat.category,
+                    amount: cat.amount,
+                    share: Math.round((cat.amount / (total || 1)) * 100),
+                  }))}
+                />
+              );
+            })()}
           </CardContent>
         </Card>
 

@@ -24166,6 +24166,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           GROUP BY COALESCE(ec.name, 'Uncategorised') ORDER BY amount DESC LIMIT 20`);
         categoryRows = r.rows as any[];
       } catch (e) { console.log('[MIS-Cash] category:', (e as Error).message); }
+      // Fallback: if query failed or returned nothing, build total from raw expense items
+      if (categoryRows.length === 0) {
+        try {
+          const r = await db.execute(sql`
+            SELECT 'Uncategorised' AS category,
+              COALESCE(SUM(ei.amount), 0) AS amount,
+              COUNT(ei.id) AS count
+            FROM cash_register_expense_items ei
+            JOIN cash_register_transactions ct ON ei.transaction_id = ct.id
+            JOIN cash_register_days cd ON ct.day_id = cd.id
+            WHERE cd.register_date >= ${startStr} AND cd.register_date <= ${endStr}`);
+          if (r.rows.length > 0 && Number(r.rows[0].count || 0) > 0) {
+            categoryRows = r.rows as any[];
+          }
+        } catch (e) {}
+      }
 
       // Salesperson
       try {
