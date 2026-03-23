@@ -224,6 +224,7 @@ const endpointToScreenKey: Record<string, string> = {
   '/api/mis/inventory-analytics': 'mis_inventory',
   '/api/mis/sales-analytics': 'mis_sales',
   '/api/mis/delivery-performance': 'mis_delivery',
+  '/api/mis/cash-analytics': 'mis_cash',
 };
 
 // Standard roles that are handled by name matching (case-insensitive)
@@ -23985,6 +23986,161 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error("Error fetching budget variance:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // ─── MIS: Cash Register Analytics ─────────────────────────────────────────
+  app.get('/api/mis/cash-analytics', requireRole('admin', 'manager', 'AccountsManager'), async (req: any, res: Response) => {
+    try {
+      const { period = '30' } = req.query;
+      const daysBack = parseInt(period as string) || 30;
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - daysBack);
+      const startDateStr = startDate.toISOString().split('T')[0];
+
+      let dailyRows: any[] = [];
+      let categoryRows: any[] = [];
+      let personRows: any[] = [];
+      let topItemRows: any[] = [];
+      let sourceTypeRows: any[] = [];
+
+      // Daily trend: received vs expenses per day
+      try {
+        const daily = await db.execute(sql`
+          SELECT
+            register_date AS date,
+            SUM(total_cash_received) AS received,
+            SUM(total_expenses) AS expenses,
+            SUM(total_cash_received - total_expenses) AS net_flow
+          FROM cash_register_days
+          WHERE register_date >= ${startDateStr}
+          GROUP BY register_date
+          ORDER BY register_date ASC
+        `);
+        dailyRows = daily.rows as any[];
+      } catch (e) { console.log('[MIS-Cash] daily query skipped:', (e as Error).message); }
+
+      // Expense breakdown by category
+      try {
+        const category = await db.execute(sql`
+          SELECT
+            COALESCE(ec.name, 'Uncategorised') AS category,
+            SUM(ei.amount) AS amount,
+            COUNT(*) AS count
+          FROM cash_register_expense_items ei
+          JOIN cash_register_transactions ct ON ei.transaction_id = ct.id
+          JOIN cash_register_days cd ON ct.day_id = cd.id
+          LEFT JOIN expense_categories ec ON ei.expense_category_id = ec.id
+          WHERE cd.register_date >= ${startDateStr}
+          GROUP BY COALESCE(ec.name, 'Uncategorised')
+          ORDER BY amount DESC
+          LIMIT 15
+        `);
+        categoryRows = category.rows as any[];
+      } catch (e) { console.log('[MIS-Cash] category query skipped:', (e as Error).message); }
+
+      // Salesperson breakdown
+      try {
+        const person = await db.execute(sql`
+          SELECT
+            salesperson_name,
+            SUM(total_cash_received) AS received,
+            SUM(total_expenses) AS expenses,
+            SUM(total_cash_received - total_expenses) AS net,
+            COUNT(*) AS days_count
+          FROM cash_register_days
+          WHERE register_date >= ${startDateStr}
+          GROUP BY salesperson_name
+          ORDER BY received DESC
+        `);
+        personRows = person.rows as any[];
+      } catch (e) { console.log('[MIS-Cash] person query skipped:', (e as Error).message); }
+
+      // Top individual expense items (by label)
+      try {
+        const topItems = await db.execute(sql`
+          SELECT
+            UPPER(TRIM(ei.item_label)) AS label,
+            SUM(ei.amount) AS amount,
+            COUNT(*) AS count
+          FROM cash_register_expense_items ei
+          JOIN cash_register_transactions ct ON ei.transaction_id = ct.id
+          JOIN cash_register_days cd ON ct.day_id = cd.id
+          WHERE cd.register_date >= ${startDateStr}
+            AND ei.item_label IS NOT NULL AND ei.item_label != ''
+          GROUP BY UPPER(TRIM(ei.item_label))
+          ORDER BY amount DESC
+          LIMIT 10
+        `);
+        topItemRows = topItems.rows as any[];
+      } catch (e) { console.log('[MIS-Cash] top items query skipped:', (e as Error).message); }
+
+      // Cash received by source type
+      try {
+        const sourceType = await db.execute(sql`
+          SELECT
+            COALESCE(source_type, 'unspecified') AS source_type,
+            SUM(amount) AS amount,
+            COUNT(*) AS count
+          FROM cash_register_transactions
+          WHERE transaction_type = 'cash_received'
+            AND day_id IN (
+              SELECT id FROM cash_register_days WHERE register_date >= ${startDateStr}
+            )
+          GROUP BY COALESCE(source_type, 'unspecified')
+          ORDER BY amount DESC
+        `);
+        sourceTypeRows = sourceType.rows as any[];
+      } catch (e) { console.log('[MIS-Cash] source type query skipped:', (e as Error).message); }
+
+      // KPI totals
+      const totalReceived = dailyRows.reduce((s, r) => s + Number(r.received || 0), 0);
+      const totalExpenses = dailyRows.reduce((s, r) => s + Number(r.expenses || 0), 0);
+      const netCashFlow = totalReceived - totalExpenses;
+      const activeDays = dailyRows.length;
+
+      return res.json({
+        period: daysBack,
+        kpis: {
+          totalReceived,
+          totalExpenses,
+          netCashFlow,
+          activeDays,
+          avgDailyReceived: activeDays > 0 ? Math.round(totalReceived / activeDays) : 0,
+          avgDailyExpenses: activeDays > 0 ? Math.round(totalExpenses / activeDays) : 0,
+        },
+        dailyTrend: dailyRows.map(r => ({
+          date: r.date,
+          received: Number(r.received || 0),
+          expenses: Number(r.expenses || 0),
+          netFlow: Number(r.net_flow || 0),
+        })),
+        expensesByCategory: categoryRows.map(r => ({
+          category: r.category,
+          amount: Number(r.amount || 0),
+          count: Number(r.count || 0),
+        })),
+        expensesByPerson: personRows.map(r => ({
+          salesperson: r.salesperson_name,
+          received: Number(r.received || 0),
+          expenses: Number(r.expenses || 0),
+          net: Number(r.net || 0),
+          daysCount: Number(r.days_count || 0),
+        })),
+        topExpenseItems: topItemRows.map(r => ({
+          label: r.label,
+          amount: Number(r.amount || 0),
+          count: Number(r.count || 0),
+        })),
+        sourceTypes: sourceTypeRows.map(r => ({
+          sourceType: r.source_type,
+          amount: Number(r.amount || 0),
+          count: Number(r.count || 0),
+        })),
+      });
+    } catch (error: any) {
+      console.error('[MIS-Cash] error:', error);
       res.status(500).json({ message: error.message });
     }
   });

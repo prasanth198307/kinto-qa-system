@@ -480,6 +480,12 @@ export default function MISDashboard() {
                     Delivery Performance
                   </Button>
                 </Link>
+                <Link href="/mis/cash">
+                  <Button variant="outline" data-testid="link-cash-analytics">
+                    <Wallet className="w-4 h-4 mr-2" />
+                    Cash Analytics
+                  </Button>
+                </Link>
               </div>
             </>
           )}
