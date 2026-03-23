@@ -331,6 +331,7 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                                           if (vendor.vendorName) form.setValue("buyerName", vendor.vendorName);
                                           if (vendor.gstNumber) form.setValue("buyerGstin", vendor.gstNumber);
                                           if (vendor.address) form.setValue("buyerAddress", vendor.address);
+                                          if ((vendor as any).vendorPhone) form.setValue("buyerContact", (vendor as any).vendorPhone);
                                           if (vendor.shipToName) form.setValue("shipToName", vendor.shipToName);
                                         }}
                                       >
@@ -391,6 +392,117 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                         </FormItem>
                       )}
                     />
+                    <FormField
+                      control={form.control}
+                      name="buyerContact"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Buyer Contact</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Phone / email" {...field} data-testid="input-buyer-contact" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="buyerAddress"
+                      render={({ field }) => (
+                        <FormItem className="md:col-span-2">
+                          <FormLabel>Buyer Address</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Full billing address" {...field} data-testid="input-buyer-address" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* Ship-To section */}
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Shipping Address <span className="normal-case font-normal">(leave blank if same as buyer)</span></h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="shipToName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Ship-To Name</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Recipient name / company" {...field} data-testid="input-ship-to-name" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="shipToAddress"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Ship-To Address</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Street address" {...field} data-testid="input-ship-to-address" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="shipToCity"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>City</FormLabel>
+                            <FormControl>
+                              <Input placeholder="City" {...field} data-testid="input-ship-to-city" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="shipToState"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>State</FormLabel>
+                            <FormControl>
+                              <Input placeholder="State" {...field} data-testid="input-ship-to-state" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="shipToPin"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>PIN Code</FormLabel>
+                            <FormControl>
+                              <Input placeholder="6-digit PIN" {...field} data-testid="input-ship-to-pin" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="remarks"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Remarks</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Internal notes / special instructions" {...field} data-testid="input-remarks" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
                   </div>
 
                   <div className="space-y-4">
