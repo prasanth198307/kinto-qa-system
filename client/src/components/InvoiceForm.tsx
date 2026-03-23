@@ -885,6 +885,8 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
         // Include original invoice ID for reissue tracking
         // In reissue mode, the cancelled invoice's ID is stored as originalInvoiceId on the invoice prop
         originalInvoiceId: isReissueMode ? (invoice?.id || (invoice as any)?.originalInvoiceId) : null,
+        // Link to sales order if created from SO
+        salesOrderId: data.salesOrderId || null,
         // Ensure status is correctly set
         status: data.status || 'draft',
       };
