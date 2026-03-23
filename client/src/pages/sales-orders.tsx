@@ -112,6 +112,7 @@ const salesOrderSchema = z.object({
   vendorId: z.string().optional(),
   buyerGstin: z.string().optional(),
   buyerAddress: z.string().optional(),
+  buyerState: z.string().optional(),
   buyerContact: z.string().optional(),
   shipToName: z.string().optional(),
   shipToAddress: z.string().optional(),
@@ -169,6 +170,7 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
           vendorId: values.vendorId || null,
           buyerGstin: values.buyerGstin || null,
           buyerAddress: values.buyerAddress || null,
+          buyerState: values.buyerState || null,
           buyerContact: values.buyerContact || null,
           shipToName: values.shipToName || null,
           shipToAddress: values.shipToAddress || null,
@@ -344,6 +346,19 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                             <FormLabel>Buyer Address</FormLabel>
                             <FormControl>
                               <Input placeholder="Full billing address" {...field} data-testid="input-buyer-address" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="buyerState"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Buyer State</FormLabel>
+                            <FormControl>
+                              <Input placeholder="e.g. Andhra Pradesh" {...field} data-testid="input-buyer-state" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>

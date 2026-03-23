@@ -3663,6 +3663,7 @@ export const salesOrders = pgTable("sales_orders", {
   buyerName: varchar("buyer_name", { length: 255 }).notNull(),
   buyerGstin: varchar("buyer_gstin", { length: 15 }),
   buyerAddress: text("buyer_address"),
+  buyerState: varchar("buyer_state", { length: 100 }),
   buyerContact: varchar("buyer_contact", { length: 50 }),
   shipToName: varchar("ship_to_name", { length: 255 }),
   shipToAddress: text("ship_to_address"),

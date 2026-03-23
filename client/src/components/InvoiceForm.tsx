@@ -696,7 +696,9 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
       form.setValue("buyerName", soDetail.buyerName || "");
       form.setValue("buyerGstin", soDetail.buyerGstin || "");
       form.setValue("buyerAddress", soDetail.buyerAddress || "");
-      
+      form.setValue("buyerState", soDetail.buyerState || "");
+      form.setValue("buyerContact", soDetail.buyerContact || "");
+
       form.setValue("shipToName", soDetail.shipToName || "");
       form.setValue("shipToAddress", soDetail.shipToAddress || "");
       form.setValue("shipToCity", soDetail.shipToCity || "");
