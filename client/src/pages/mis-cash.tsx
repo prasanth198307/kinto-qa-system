@@ -1,19 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import {
-  ArrowLeft, TrendingUp, TrendingDown, Wallet, Receipt,
-  Users, CalendarDays, ArrowUpRight, ArrowDownRight,
-  Zap, Info, ChevronDown, ChevronRight
-} from "lucide-react";
-import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft, AlertTriangle } from "lucide-react";
+import { useState, useMemo } from "react";
 import { Link } from "wouter";
 import { format, parseISO } from "date-fns";
+import {
+  ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid,
+  Tooltip as RTooltip, ResponsiveContainer,
+} from "recharts";
 
 interface CashAnalytics {
   periodType: string;
@@ -62,15 +58,15 @@ const PERIOD_OPTIONS = [
   ]},
 ];
 
-// Amounts are stored as integers in RUPEES — no division needed
-function fmtCurr(amount: number): string {
-  if (amount >= 10000000) return `₹${(amount / 10000000).toFixed(2)}Cr`;
-  if (amount >= 100000) return `₹${(amount / 100000).toFixed(2)}L`;
-  if (amount >= 1000) return `₹${(amount / 1000).toFixed(1)}K`;
-  return `₹${Math.round(amount).toLocaleString("en-IN")}`;
+function fmtCurr(n: number): string {
+  if (n >= 10000000) return `₹${(n / 10000000).toFixed(2)}Cr`;
+  if (n >= 100000) return `₹${(n / 100000).toFixed(2)}L`;
+  if (n >= 1000) return `₹${(n / 1000).toFixed(1)}K`;
+  return `₹${Math.round(n).toLocaleString("en-IN")}`;
 }
-function fmtCurrFull(amount: number): string {
-  return `₹${Math.round(amount).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+function fmtL(n: number): string {
+  if (n >= 100000) return `₹${(n / 100000).toFixed(2)}L`;
+  return fmtCurr(n);
 }
 function fmtBucket(b: string, type: 'daily' | 'monthly'): string {
   try {
@@ -79,418 +75,359 @@ function fmtBucket(b: string, type: 'daily' | 'monthly'): string {
   } catch { return b; }
 }
 
-function TrendChip({ pct, invert = false }: { pct: number | null; invert?: boolean }) {
-  if (pct === null) return null;
-  const isPositive = invert ? pct < 0 : pct >= 0;
-  return (
-    <span className={`inline-flex items-center gap-0.5 text-xs font-medium ${isPositive ? "text-green-600" : "text-destructive"}`}>
-      {isPositive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-      {Math.abs(pct)}% vs prev
-    </span>
-  );
+function PosChip({ children }: { children: React.ReactNode }) {
+  return <span style={{ background: '#EAF3DE', color: '#3B6D11', fontSize: 10, fontWeight: 500, padding: '2px 6px', borderRadius: 4 }}>{children}</span>;
+}
+function NegChip({ children }: { children: React.ReactNode }) {
+  return <span style={{ background: '#FCEBEB', color: '#A32D2D', fontSize: 10, fontWeight: 500, padding: '2px 6px', borderRadius: 4 }}>{children}</span>;
+}
+function WarnChip({ children }: { children: React.ReactNode }) {
+  return <span style={{ background: '#FAEEDA', color: '#854F0B', fontSize: 10, fontWeight: 500, padding: '2px 6px', borderRadius: 4 }}>{children}</span>;
 }
 
-function KPICard({ title, value, subtitle, icon: Icon, color = "default", pctChange, invertChange }: {
-  title: string; value: string; subtitle?: string; icon: any;
-  color?: "default" | "success" | "danger" | "warning";
-  pctChange?: number | null; invertChange?: boolean;
+function KPICard({ label, value, meta, chip, valueColor }: {
+  label: string; value: string; meta?: string;
+  chip?: React.ReactNode; valueColor?: string;
 }) {
-  const colorMap = { default: "text-foreground", success: "text-green-600 dark:text-green-400", danger: "text-destructive", warning: "text-amber-600 dark:text-amber-400" };
   return (
-    <Card>
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            <p className="text-xs text-muted-foreground mb-1">{title}</p>
-            <p className={`text-xl font-bold truncate ${colorMap[color]}`}>{value}</p>
-            {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
-            {pctChange !== undefined && <div className="mt-1"><TrendChip pct={pctChange ?? null} invert={invertChange} /></div>}
-          </div>
-          <div className={`p-2 rounded-full bg-muted shrink-0 ${colorMap[color]}`}>
-            <Icon className="w-4 h-4" />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function TrendChart({ data, bucketType }: {
-  data: Array<{ bucket: string; received: number; expenses: number; netFlow: number }>;
-  bucketType: 'daily' | 'monthly';
-}) {
-  const maxVal = Math.max(...data.flatMap(d => [d.received, d.expenses]), 1);
-  const count = data.length;
-  if (count === 0) return <p className="text-muted-foreground text-sm py-8 text-center">No data for this period</p>;
-
-  return (
-    <div className="space-y-3">
-      <div className="relative h-32">
-        <svg width="100%" height="100%" preserveAspectRatio="none" viewBox={`0 0 ${count * 3} 100`}>
-          {data.map((d, i) => {
-            const recH = (d.received / maxVal) * 90;
-            const expH = (d.expenses / maxVal) * 90;
-            return (
-              <g key={i}>
-                <rect x={i * 3} y={100 - recH} width={1.3} height={recH} className="fill-green-500 opacity-80" />
-                <rect x={i * 3 + 1.5} y={100 - expH} width={1.3} height={expH} className="fill-destructive opacity-70" />
-              </g>
-            );
-          })}
-        </svg>
-      </div>
-      <div className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{bucketType === 'monthly' ? 'Month' : 'Date'}</TableHead>
-              <TableHead className="text-right text-green-600">Cash In</TableHead>
-              <TableHead className="text-right text-destructive">Expenses</TableHead>
-              <TableHead className="text-right">Net</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {[...data].reverse().map((row, i) => (
-              <TableRow key={i}>
-                <TableCell className="text-sm font-medium">{fmtBucket(row.bucket, bucketType)}</TableCell>
-                <TableCell className="text-right text-green-600 font-medium">{fmtCurrFull(row.received)}</TableCell>
-                <TableCell className="text-right text-destructive font-medium">{fmtCurrFull(row.expenses)}</TableCell>
-                <TableCell className={`text-right font-semibold ${row.netFlow >= 0 ? "text-green-600" : "text-destructive"}`}>
-                  {row.netFlow >= 0 ? "+" : ""}{fmtCurrFull(row.netFlow)}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+    <div className="rounded-lg p-3" style={{ background: 'hsl(var(--muted)/0.5)' }}>
+      <p style={{ fontSize: 11, color: 'var(--color-text-secondary)', margin: '0 0 6px', letterSpacing: '0.02em', textTransform: 'uppercase' }} className="text-muted-foreground">{label}</p>
+      <p style={{ fontSize: 22, fontWeight: 500, margin: '0 0 4px', color: valueColor ?? 'inherit' }}>{value}</p>
+      <div style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 6 }} className="text-muted-foreground">
+        {meta && <span>{meta}</span>}
+        {chip}
       </div>
     </div>
   );
 }
 
-// Horizontal bar chart for expense items / categories
-function HBarChart({ items, colorClass }: {
-  items: Array<{ label: string; amount: number; share?: number }>;
-  colorClass: string;
-}) {
-  const maxAmt = Math.max(...items.map(i => i.amount), 1);
-  return (
-    <div className="space-y-2">
-      {items.map((item, idx) => {
-        const pct = Math.round((item.amount / maxAmt) * 100);
-        return (
-          <div key={idx} className="space-y-0.5">
-            <div className="flex items-center justify-between text-sm gap-2">
-              <span className="truncate font-medium text-foreground">{item.label}</span>
-              <div className="flex items-center gap-2 shrink-0">
-                {item.share !== undefined && (
-                  <Badge variant="outline" className="text-xs">{item.share}%</Badge>
-                )}
-                <span className="font-semibold tabular-nums">{fmtCurrFull(item.amount)}</span>
-              </div>
-            </div>
-            <div className="h-2 bg-muted rounded-full overflow-hidden">
-              <div className={`h-full rounded-full transition-all ${colorClass}`} style={{ width: `${pct}%` }} />
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
+const CHART_IN  = '#97C459';
+const CHART_OUT = '#F09595';
+const CHART_NET = '#378ADD';
 
-function ConfidenceBadge({ confidence }: { confidence: number }) {
-  if (confidence >= 98) return null;
-  const color = confidence >= 80
-    ? "text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/30"
-    : "text-orange-600 border-orange-300 bg-orange-50 dark:bg-orange-950/30";
+function CustomTooltip({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null;
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Badge variant="outline" className={`text-xs px-1.5 py-0 ${color}`}>
-          <Info className="w-2.5 h-2.5 mr-0.5" />{confidence}% match
-        </Badge>
-      </TooltipTrigger>
-      <TooltipContent><p className="text-xs">Labels were fuzzy-matched. Confidence: {confidence}%</p></TooltipContent>
-    </Tooltip>
-  );
-}
-
-function ExpenseItemDetail({ item }: { item: CashAnalytics['topExpenseItems'][0] }) {
-  const [expanded, setExpanded] = useState(false);
-  const hasVariants = item.variants.length > 1;
-  return (
-    <div className={`space-y-1 p-2 rounded-md ${item.isHighImpact ? "bg-destructive/5 border border-destructive/20" : ""}`}>
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 min-w-0 flex-1">
-          {item.isHighImpact && (
-            <Tooltip>
-              <TooltipTrigger><Zap className="w-3.5 h-3.5 text-destructive shrink-0" /></TooltipTrigger>
-              <TooltipContent><p className="text-xs">High impact — {item.sharePct}% of total</p></TooltipContent>
-            </Tooltip>
-          )}
-          <span className="font-medium text-sm truncate">{item.label}</span>
-          <ConfidenceBadge confidence={item.confidence} />
-          {hasVariants && (
-            <button onClick={() => setExpanded(e => !e)} className="text-muted-foreground hover:text-foreground shrink-0" data-testid={`toggle-variants-${item.label}`}>
-              {expanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-            </button>
-          )}
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Badge variant="outline" className="text-xs">{item.sharePct}%</Badge>
-          <span className="text-sm font-semibold tabular-nums">{fmtCurrFull(item.amount)}</span>
-        </div>
-      </div>
-      {hasVariants && expanded && (
-        <div className="pl-5 flex flex-wrap gap-1">
-          {item.variants.map((v, i) => <Badge key={i} variant="secondary" className="text-xs font-normal">{v}</Badge>)}
-        </div>
-      )}
+    <div className="rounded-md border bg-background p-2 shadow text-xs space-y-1">
+      <p className="font-medium">{label}</p>
+      {payload.map((p: any, i: number) => (
+        <p key={i} style={{ color: p.color }}>
+          {p.name}: {fmtL(p.value)}
+        </p>
+      ))}
     </div>
   );
 }
 
 export default function MISCash() {
   const [periodType, setPeriodType] = useState("this-year");
-  const [itemsView, setItemsView] = useState<'chart' | 'list'>('chart');
 
   const { data, isLoading } = useQuery<CashAnalytics>({
     queryKey: ["/api/mis/cash-analytics", { periodType }],
   });
 
-  const kpis = data?.kpis;
-  const maxCat = Math.max(...(data?.expensesByCategory.map(c => c.amount) ?? [1]));
-  const maxSrc = Math.max(...(data?.sourceTypes.map(s => s.amount) ?? [1]));
-  const maxPerson = Math.max(...(data?.expensesByPerson.map(p => p.received) ?? [1]));
-  const totalSrc = data?.sourceTypes.reduce((s, r) => s + r.amount, 0) || 1;
-  const totalExpItems = data?.topExpenseItems.reduce((s, r) => s + r.amount, 0) || 1;
-
   const selectedLabel = PERIOD_OPTIONS.flatMap(g => g.options).find(o => o.value === periodType)?.label ?? "Full Year";
 
+  const kpis = data?.kpis;
+  const trend = data?.trend ?? [];
+
+  // Compute derived values
+  const chartData = useMemo(() => trend.map(d => ({
+    label: fmtBucket(d.bucket, data?.bucketType ?? 'monthly'),
+    cashIn: d.received,
+    expenses: d.expenses,
+    net: d.netFlow,
+  })), [trend, data?.bucketType]);
+
+  const sortedByNet = useMemo(() =>
+    [...trend].sort((a, b) => b.netFlow - a.netFlow),
+  [trend]);
+
+  const bestMonth = sortedByNet[0];
+  const worstMonth = sortedByNet[sortedByNet.length - 1];
+  const expPct = kpis ? Math.round((kpis.totalExpenses / (kpis.totalReceived || 1)) * 100) : 0;
+  const avgExpPct = kpis ? Math.round((kpis.avgDailyExpenses / (kpis.avgDailyReceived || 1)) * 100) : 0;
+
+  const cats = data?.expensesByCategory ?? [];
+  const totalCatAmt = cats.reduce((s, c) => s + c.amount, 0);
+  const maxCatAmt = Math.max(...cats.map(c => c.amount), 1);
+
+  const uncatEntry = cats.find(c => c.category === 'Uncategorised' || c.category === 'Cash Register Expense');
+  const uncatAmt = uncatEntry?.amount ?? 0;
+  const uncatPct = totalCatAmt > 0 ? Math.round((uncatAmt / totalCatAmt) * 100) : 0;
+  const showDataFlag = uncatPct >= 10;
+
+  // DSS actions
+  const dssActions = useMemo(() => {
+    if (!data) return [];
+    const actions: { level: 'CRITICAL' | 'REVIEW' | 'TARGET'; text: string }[] = [];
+    const topCat = [...cats].filter(c => c.category !== 'Uncategorised').sort((a, b) => b.amount - a.amount)[0];
+    if (topCat) {
+      const pct = Math.round((topCat.amount / (totalCatAmt || 1)) * 100);
+      if (pct >= 25) {
+        actions.push({ level: 'CRITICAL', text: `${topCat.category} is ${pct}% of total cost — evaluate supplier rate lock or alternatives` });
+      }
+    }
+    if (worstMonth && worstMonth.netFlow < 0) {
+      actions.push({ level: 'REVIEW', text: `${fmtBucket(worstMonth.bucket, data.bucketType)} is a deficit month — check if collections are pending or demand dropped` });
+    }
+    if (bestMonth && bestMonth.netFlow > 0) {
+      actions.push({ level: 'TARGET', text: `${fmtBucket(bestMonth.bucket, data.bucketType)} has best net (+${fmtCurr(bestMonth.netFlow)}) — replicate conditions in other months` });
+    }
+    if (expPct >= 95) {
+      actions.push({ level: 'REVIEW', text: `Expenses are ${expPct}% of cash received — margin is critically thin` });
+    }
+    return actions;
+  }, [data, cats, totalCatAmt, bestMonth, worstMonth, expPct]);
+
+  const maxTrendAmt = Math.max(...trend.flatMap(d => [d.received, d.expenses]), 1);
+
   return (
-    <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-4 md:p-6 space-y-4 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <Link href="/mis">
             <Button variant="ghost" size="icon" data-testid="button-back"><ArrowLeft className="w-4 h-4" /></Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold" data-testid="text-page-title">Cash Register Analytics</h1>
-            <p className="text-muted-foreground text-sm">{data?.periodLabel ?? "All amounts in ₹ (Rupees)"}</p>
+            <p className="text-lg font-medium" data-testid="text-page-title">Cash Register Analytics — MIS</p>
+            <p className="text-xs text-muted-foreground">{data?.periodLabel ?? "Amounts in ₹ · Decision Support View"}</p>
           </div>
         </div>
-        <Select value={periodType} onValueChange={setPeriodType}>
-          <SelectTrigger className="w-[180px]" data-testid="select-period">
-            <SelectValue placeholder="Select period">{selectedLabel}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {PERIOD_OPTIONS.map(group => (
-              <div key={group.group}>
-                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{group.group}</div>
-                {group.options.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-              </div>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground border rounded-md px-2.5 py-1">{selectedLabel}</span>
+          <Select value={periodType} onValueChange={setPeriodType}>
+            <SelectTrigger className="w-[160px]" data-testid="select-period">
+              <SelectValue placeholder="Period" />
+            </SelectTrigger>
+            <SelectContent>
+              {PERIOD_OPTIONS.map(group => (
+                <div key={group.group}>
+                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{group.group}</div>
+                  {group.options.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                </div>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
-      {/* KPI cards */}
-      {isLoading ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          {[...Array(6)].map((_, i) => <Card key={i}><CardContent className="p-4"><Skeleton className="h-4 w-20 mb-2" /><Skeleton className="h-7 w-28" /></CardContent></Card>)}
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          <KPICard title="Total Cash In" value={fmtCurr(kpis?.totalReceived ?? 0)} subtitle={fmtCurrFull(kpis?.totalReceived ?? 0)} icon={Wallet} color="success" pctChange={kpis?.receivedChange} />
-          <KPICard title="Total Expenses" value={fmtCurr(kpis?.totalExpenses ?? 0)} subtitle={fmtCurrFull(kpis?.totalExpenses ?? 0)} icon={Receipt} color="danger" pctChange={kpis?.expensesChange} invertChange />
-          <KPICard title="Net Cash Flow" value={fmtCurr(kpis?.netCashFlow ?? 0)} subtitle={(kpis?.netCashFlow ?? 0) >= 0 ? "Surplus" : "Deficit"} icon={(kpis?.netCashFlow ?? 0) >= 0 ? TrendingUp : TrendingDown} color={(kpis?.netCashFlow ?? 0) >= 0 ? "success" : "danger"} pctChange={kpis?.netChange} />
-          <KPICard title="Active Days" value={String(kpis?.activeDays ?? 0)} subtitle="Days with register data" icon={CalendarDays} />
-          <KPICard title="Avg Daily In" value={fmtCurr(kpis?.avgDailyReceived ?? 0)} subtitle="Per active day" icon={ArrowUpRight} color="success" />
-          <KPICard title="Avg Daily Expense" value={fmtCurr(kpis?.avgDailyExpenses ?? 0)} subtitle="Per active day" icon={ArrowDownRight} color="warning" />
+      {/* Data quality flag */}
+      {!isLoading && showDataFlag && (
+        <div className="flex gap-2 items-start rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-700 p-3 text-xs">
+          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+          <span className="text-amber-800 dark:text-amber-300 leading-relaxed">
+            <strong>Data quality flag:</strong> "{uncatEntry?.category}" is {fmtCurr(uncatAmt)} ({uncatPct}% of total spend) — use the <strong>Auto-Categorize</strong> button on the Expenses page to assign categories, or select a category when recording cash register expenses.
+          </span>
         </div>
       )}
 
-      {/* Trend */}
-      <Card>
-        <CardHeader className="pb-2">
-          <div className="flex flex-wrap items-center justify-between gap-2">
+      {/* KPI grid */}
+      {isLoading ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-20 rounded-lg" />)}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <KPICard
+            label="Total Cash In"
+            value={fmtCurr(kpis?.totalReceived ?? 0)}
+            meta={`₹${Math.round(kpis?.totalReceived ?? 0).toLocaleString('en-IN')}`}
+            chip={<PosChip>{kpis?.activeDays ?? 0} active days</PosChip>}
+            valueColor="#3B6D11"
+          />
+          <KPICard
+            label="Total Expenses"
+            value={fmtCurr(kpis?.totalExpenses ?? 0)}
+            meta={`₹${Math.round(kpis?.totalExpenses ?? 0).toLocaleString('en-IN')}`}
+            chip={<NegChip>{expPct}% of revenue</NegChip>}
+            valueColor="#A32D2D"
+          />
+          <KPICard
+            label="Net Cash Flow"
+            value={fmtCurr(kpis?.netCashFlow ?? 0)}
+            meta={(kpis?.netCashFlow ?? 0) >= 0 ? 'Surplus' : 'Deficit'}
+            chip={(kpis?.netCashFlow ?? 0) >= 0
+              ? <PosChip>{100 - expPct}% margin</PosChip>
+              : <NegChip>Loss</NegChip>
+            }
+          />
+          <KPICard
+            label="Avg Daily Revenue"
+            value={fmtCurr(kpis?.avgDailyReceived ?? 0)}
+            meta="Per active day"
+          />
+          <KPICard
+            label="Avg Daily Expense"
+            value={fmtCurr(kpis?.avgDailyExpenses ?? 0)}
+            meta="Per active day"
+            chip={avgExpPct > 90 ? <WarnChip>{avgExpPct}% of daily in</WarnChip> : undefined}
+          />
+          <KPICard
+            label="Best Month"
+            value={bestMonth ? fmtBucket(bestMonth.bucket, data?.bucketType ?? 'monthly') : '—'}
+            meta={bestMonth ? `+${fmtCurr(bestMonth.netFlow)} net` : 'No data'}
+            chip={worstMonth && worstMonth.netFlow < 0
+              ? <NegChip>vs {fmtBucket(worstMonth.bucket, data?.bucketType ?? 'monthly')} loss</NegChip>
+              : undefined
+            }
+            valueColor="#3B6D11"
+          />
+        </div>
+      )}
+
+      {/* Monthly Cash Flow Trend */}
+      <div className="rounded-lg border bg-card p-4 space-y-3">
+        <div>
+          <p className="text-sm font-medium">Monthly Cash Flow Trend</p>
+          <p className="text-xs text-muted-foreground">Cash In vs Expenses · net surplus/deficit per period</p>
+        </div>
+        {isLoading ? (
+          <Skeleton className="h-52 w-full" />
+        ) : chartData.length === 0 ? (
+          <p className="text-muted-foreground text-sm py-8 text-center">No data for this period</p>
+        ) : (
+          <>
+            <div style={{ height: 220 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.12)" vertical={false} />
+                  <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#888' }} axisLine={false} tickLine={false} />
+                  <YAxis
+                    tick={{ fontSize: 10, fill: '#888' }} axisLine={false} tickLine={false}
+                    tickFormatter={v => v >= 100000 ? `₹${(v/100000).toFixed(1)}L` : `₹${(v/1000).toFixed(0)}K`}
+                    width={52}
+                  />
+                  <RTooltip content={<CustomTooltip />} />
+                  <Bar dataKey="cashIn" name="Cash In" fill={CHART_IN} radius={[3, 3, 0, 0]} maxBarSize={24} />
+                  <Bar dataKey="expenses" name="Expenses" fill={CHART_OUT} radius={[3, 3, 0, 0]} maxBarSize={24} />
+                  <Line dataKey="net" name="Net" type="monotone" stroke={CHART_NET} strokeWidth={2} dot={{ r: 3, fill: CHART_NET }} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="flex gap-5 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: CHART_IN }} />Cash In</span>
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: CHART_OUT }} />Expenses</span>
+              <span className="flex items-center gap-1.5"><span className="w-8 inline-block border-b-2" style={{ borderColor: CHART_NET }} />Net (line)</span>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Bottom two-column section */}
+      <div className="grid md:grid-cols-[1.4fr_1fr] gap-4">
+        {/* Monthly Performance Table */}
+        <div className="rounded-lg border bg-card p-4">
+          <p className="text-sm font-medium">Monthly Performance Table</p>
+          <p className="text-xs text-muted-foreground mb-3">Ranked by net — green = surplus, red = deficit</p>
+          {isLoading ? (
+            <div className="space-y-2">{[...Array(6)].map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}</div>
+          ) : sortedByNet.length === 0 ? (
+            <p className="text-muted-foreground text-sm py-6 text-center">No data for this period</p>
+          ) : (
             <div>
-              <CardTitle className="text-base">Cash Flow Trend</CardTitle>
-              <CardDescription>{data?.bucketType === 'monthly' ? "Monthly aggregation" : "Daily view"} — {selectedLabel}</CardDescription>
-            </div>
-            <div className="flex items-center gap-4 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-green-500 opacity-80 inline-block" />Cash In</span>
-              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-destructive opacity-70 inline-block" />Expenses</span>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? <Skeleton className="h-40 w-full" /> : <TrendChart data={data?.trend ?? []} bucketType={data?.bucketType ?? 'daily'} />}
-        </CardContent>
-      </Card>
-
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* Top Expense Items — chart + detail list */}
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <CardTitle className="text-base flex items-center gap-2">
-                  Top Expense Items
-                  <Tooltip>
-                    <TooltipTrigger><Info className="w-3.5 h-3.5 text-muted-foreground" /></TooltipTrigger>
-                    <TooltipContent className="max-w-xs text-xs">Similar labels are fuzzy-matched and grouped. High impact = more than 12% of total. Click arrow to expand variants.</TooltipContent>
-                  </Tooltip>
-                </CardTitle>
-                <CardDescription>Amounts in ₹ — fuzzy-grouped by label</CardDescription>
+              {/* Header row */}
+              <div className="grid gap-1.5 pb-2 border-b mb-1" style={{ gridTemplateColumns: '52px 1fr 76px 76px 66px', fontSize: 10, color: 'var(--muted-foreground)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                <span>Month</span><span>Trend</span>
+                <span style={{ textAlign: 'right' }}>Cash In</span>
+                <span style={{ textAlign: 'right' }}>Expenses</span>
+                <span style={{ textAlign: 'right' }}>Net</span>
               </div>
-              <div className="flex rounded-md border overflow-hidden">
-                <button onClick={() => setItemsView('chart')} className={`px-2.5 py-1 text-xs font-medium transition-colors ${itemsView === 'chart' ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:text-foreground'}`} data-testid="btn-items-chart">Chart</button>
-                <button onClick={() => setItemsView('list')} className={`px-2.5 py-1 text-xs font-medium transition-colors ${itemsView === 'list' ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:text-foreground'}`} data-testid="btn-items-list">Detail</button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="space-y-3">{[...Array(6)].map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}</div>
-            ) : data?.topExpenseItems && data.topExpenseItems.length > 0 ? (
-              itemsView === 'chart' ? (
-                <HBarChart
-                  colorClass="bg-amber-500"
-                  items={data.topExpenseItems.map(item => ({
-                    label: item.isHighImpact ? `⚡ ${item.label}` : item.label,
-                    amount: item.amount,
-                    share: item.sharePct,
-                  }))}
-                />
-              ) : (
-                <div className="space-y-2">
-                  {data.topExpenseItems.map((item, i) => <ExpenseItemDetail key={i} item={item} />)}
-                </div>
-              )
-            ) : (
-              <p className="text-muted-foreground text-sm py-6 text-center">No expense items found for this period</p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Expenses by Category */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Expenses by Category</CardTitle>
-            <CardDescription>Amounts in ₹ — breakdown by assigned category</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="space-y-3">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}</div>
-            ) : (() => {
-              const cats = data?.expensesByCategory ?? [];
-              const total = cats.reduce((s, c) => s + c.amount, 0);
-              const allUncategorised = cats.length > 0 && cats.every(c => c.category === 'Uncategorised');
-
-              if (cats.length === 0) {
-                return <p className="text-muted-foreground text-sm py-6 text-center">No expense data for this period</p>;
-              }
-
-              if (allUncategorised) {
+              {sortedByNet.map((row, i) => {
+                const isBest = i === 0 && row.netFlow > 0;
+                const isWorst = i === sortedByNet.length - 1 && row.netFlow < 0;
+                const inH = Math.round((row.received / maxTrendAmt) * 20);
+                const expH = Math.round((row.expenses / maxTrendAmt) * 20);
                 return (
-                  <div className="space-y-4">
-                    <div className="rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-3 text-sm">
-                      <p className="font-medium text-amber-800 dark:text-amber-300">Categories not mapped</p>
-                      <p className="text-amber-700 dark:text-amber-400 text-xs mt-0.5">
-                        All {cats[0].count} expense items ({fmtCurrFull(total)}) are uncategorised.
-                        Assign categories when entering expenses in the Cash Register to see a breakdown here.
-                      </p>
+                  <div
+                    key={row.bucket}
+                    className="grid gap-1.5 items-center py-1.5 border-b last:border-0"
+                    style={{
+                      gridTemplateColumns: '52px 1fr 76px 76px 66px',
+                      fontSize: 12,
+                      background: isBest ? '#EAF3DE' : isWorst ? '#FCEBEB' : undefined,
+                      borderRadius: (isBest || isWorst) ? 4 : undefined,
+                      padding: (isBest || isWorst) ? '6px 4px' : undefined,
+                    }}
+                    data-testid={`row-month-${row.bucket}`}
+                  >
+                    <span style={{ fontWeight: 500 }}>{fmtBucket(row.bucket, data?.bucketType ?? 'monthly')}</span>
+                    {/* mini inline bar */}
+                    <div style={{ display: 'flex', gap: 3, alignItems: 'flex-end', height: 22 }}>
+                      <div style={{ width: 7, height: inH, background: '#639922', borderRadius: '2px 2px 0 0' }} />
+                      <div style={{ width: 7, height: expH, background: '#E24B4A', borderRadius: '2px 2px 0 0' }} />
                     </div>
-                    <div className="space-y-0.5">
-                      <div className="flex items-center justify-between text-sm gap-2">
-                        <span className="font-medium text-muted-foreground">All Expenses (Uncategorised)</span>
-                        <span className="font-semibold tabular-nums">{fmtCurrFull(total)}</span>
-                      </div>
-                      <div className="h-2 bg-muted rounded-full overflow-hidden">
-                        <div className="h-full w-full rounded-full bg-destructive/40" />
-                      </div>
-                    </div>
+                    <span style={{ textAlign: 'right' }} className="text-muted-foreground">{fmtL(row.received)}</span>
+                    <span style={{ textAlign: 'right' }} className="text-muted-foreground">{fmtL(row.expenses)}</span>
+                    <span style={{ textAlign: 'right', fontWeight: 500, color: row.netFlow >= 0 ? '#3B6D11' : '#A32D2D' }}>
+                      {row.netFlow >= 0 ? '+' : ''}{fmtCurr(row.netFlow)}
+                    </span>
                   </div>
                 );
-              }
+              })}
+            </div>
+          )}
+        </div>
 
-              return (
-                <HBarChart
-                  colorClass="bg-destructive/80"
-                  items={cats.map(cat => ({
-                    label: cat.category,
-                    amount: cat.amount,
-                    share: Math.round((cat.amount / (total || 1)) * 100),
-                  }))}
-                />
-              );
-            })()}
-          </CardContent>
-        </Card>
-
-        {/* Cash In by Source */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Cash Received by Source</CardTitle>
-            <CardDescription>Amounts in ₹ — how cash is coming in</CardDescription>
-          </CardHeader>
-          <CardContent>
+        {/* Right column */}
+        <div className="space-y-4">
+          {/* Expenses by Category */}
+          <div className="rounded-lg border bg-card p-4">
+            <p className="text-sm font-medium">Expenses by Category</p>
+            <p className="text-xs text-muted-foreground mb-3">Breakdown by assigned category</p>
             {isLoading ? (
-              <div className="space-y-3">{[...Array(4)].map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}</div>
-            ) : data?.sourceTypes && data.sourceTypes.length > 0 ? (
-              <HBarChart
-                colorClass="bg-green-500/80"
-                items={data.sourceTypes.map(src => ({
-                  label: src.sourceType.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase()),
-                  amount: src.amount,
-                  share: Math.round((src.amount / totalSrc) * 100),
-                }))}
-              />
+              <div className="space-y-2">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-5 w-full" />)}</div>
+            ) : cats.length === 0 ? (
+              <p className="text-muted-foreground text-sm py-4 text-center">No expense data</p>
             ) : (
-              <p className="text-muted-foreground text-sm py-6 text-center">No source data for this period</p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* By Salesperson */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">By Salesperson</CardTitle>
-            <CardDescription>Amounts in ₹ — individual cash performance</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? <Skeleton className="h-40 w-full" /> : data?.expensesByPerson && data.expensesByPerson.length > 0 ? (
-              <div className="space-y-4">
-                {data.expensesByPerson.map((p, i) => (
-                  <div key={i} className="space-y-1.5" data-testid={`row-person-${i}`}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Users className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                        <span className="font-medium text-sm">{p.salesperson || "Unknown"}</span>
-                        <Badge variant="outline" className="text-xs">{p.daysCount}d</Badge>
+              <div className="space-y-2">
+                {cats.map((cat, i) => {
+                  const pct = Math.round((cat.amount / (totalCatAmt || 1)) * 100);
+                  const fillPct = Math.round((cat.amount / maxCatAmt) * 100);
+                  return (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }} data-testid={`cat-row-${i}`}>
+                      <span style={{ width: 110, color: 'var(--muted-foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={cat.category}>{cat.category}</span>
+                      <div style={{ flex: 1, background: 'hsl(var(--muted))', borderRadius: 2, height: 6, overflow: 'hidden' }}>
+                        <div style={{ width: `${fillPct}%`, height: 6, background: '#E24B4A', borderRadius: 2 }} />
                       </div>
-                      <span className={`text-sm font-semibold tabular-nums ${p.net >= 0 ? "text-green-600" : "text-destructive"}`}>
-                        {p.net >= 0 ? "+" : ""}{fmtCurrFull(p.net)}
-                      </span>
+                      <span style={{ width: 30, textAlign: 'right' }} className="text-muted-foreground">{pct}%</span>
+                      <span style={{ width: 70, textAlign: 'right', fontWeight: 500 }}>{fmtCurr(cat.amount)}</span>
                     </div>
-                    <div className="flex gap-1 h-2">
-                      <div className="h-full rounded-l-full bg-green-500 opacity-80" style={{ width: `${maxPerson > 0 ? (p.received / maxPerson) * 50 : 0}%` }} />
-                      <div className="h-full rounded-r-full bg-destructive opacity-70" style={{ width: `${maxPerson > 0 ? (p.expenses / maxPerson) * 50 : 0}%` }} />
-                    </div>
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span className="text-green-600">In: {fmtCurrFull(p.received)}</span>
-                      <span className="text-destructive">Out: {fmtCurrFull(p.expenses)}</span>
-                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* DSS Actions */}
+          <div className="rounded-lg border bg-card p-4">
+            <p className="text-sm font-medium">DSS Actions</p>
+            <p className="text-xs text-muted-foreground mb-3">Suggested decisions based on data</p>
+            {isLoading ? (
+              <div className="space-y-2">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}</div>
+            ) : dssActions.length === 0 ? (
+              <p className="text-muted-foreground text-xs py-4 text-center">No significant signals detected for this period</p>
+            ) : (
+              <div className="space-y-2">
+                {dssActions.map((action, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12 }}>
+                    {action.level === 'CRITICAL' && (
+                      <span style={{ background: '#FCEBEB', color: '#A32D2D', padding: '2px 7px', borderRadius: 4, fontSize: 10, fontWeight: 500, flexShrink: 0 }}>CRITICAL</span>
+                    )}
+                    {action.level === 'REVIEW' && (
+                      <span style={{ background: '#FAEEDA', color: '#854F0B', padding: '2px 7px', borderRadius: 4, fontSize: 10, fontWeight: 500, flexShrink: 0 }}>REVIEW</span>
+                    )}
+                    {action.level === 'TARGET' && (
+                      <span style={{ background: '#EAF3DE', color: '#3B6D11', padding: '2px 7px', borderRadius: 4, fontSize: 10, fontWeight: 500, flexShrink: 0 }}>TARGET</span>
+                    )}
+                    <span className="text-muted-foreground leading-relaxed">{action.text}</span>
                   </div>
                 ))}
               </div>
-            ) : (
-              <p className="text-muted-foreground text-sm py-6 text-center">No salesperson data for this period</p>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );

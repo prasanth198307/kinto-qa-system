@@ -1,0 +1,241 @@
+
+<style>
+  .mis-root { font-family: var(--font-sans); padding: 0 0 2rem; }
+  .mis-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; }
+  .mis-title { font-size: 18px; font-weight: 500; color: var(--color-text-primary); margin: 0 0 2px; }
+  .mis-subtitle { font-size: 12px; color: var(--color-text-secondary); margin: 0; }
+  .period-badge { font-size: 11px; color: var(--color-text-secondary); border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-md); padding: 4px 10px; }
+  .kpi-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; margin-bottom: 1.25rem; }
+  .kpi-card { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 12px 14px; }
+  .kpi-label { font-size: 11px; color: var(--color-text-secondary); margin: 0 0 6px; letter-spacing: 0.02em; text-transform: uppercase; }
+  .kpi-value { font-size: 22px; font-weight: 500; margin: 0 0 4px; color: var(--color-text-primary); }
+  .kpi-meta { font-size: 11px; color: var(--color-text-secondary); display: flex; align-items: center; gap: 6px; }
+  .badge-pos { background: #EAF3DE; color: #3B6D11; font-size: 10px; font-weight: 500; padding: 2px 6px; border-radius: 4px; }
+  .badge-neg { background: #FCEBEB; color: #A32D2D; font-size: 10px; font-weight: 500; padding: 2px 6px; border-radius: 4px; }
+  .badge-warn { background: #FAEEDA; color: #854F0B; font-size: 10px; font-weight: 500; padding: 2px 6px; border-radius: 4px; }
+  .section-card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem 1.25rem; margin-bottom: 1rem; }
+  .section-label { font-size: 13px; font-weight: 500; color: var(--color-text-primary); margin: 0 0 4px; }
+  .section-sub { font-size: 11px; color: var(--color-text-secondary); margin: 0 0 1rem; }
+  .two-col { display: grid; grid-template-columns: minmax(0,1.4fr) minmax(0,1fr); gap: 10px; }
+  .month-row { display: grid; grid-template-columns: 52px 1fr 80px 80px 70px; gap: 6px; align-items: center; padding: 7px 0; border-bottom: 0.5px solid var(--color-border-tertiary); font-size: 12px; }
+  .month-row:last-child { border-bottom: none; }
+  .month-head { display: grid; grid-template-columns: 52px 1fr 80px 80px 70px; gap: 6px; padding: 0 0 6px; margin-bottom: 2px; border-bottom: 0.5px solid var(--color-border-secondary); font-size: 10px; color: var(--color-text-secondary); letter-spacing: 0.04em; text-transform: uppercase; }
+  .mini-bar-wrap { display: flex; gap: 3px; align-items: flex-end; height: 22px; }
+  .bar-in { background: #639922; border-radius: 2px 2px 0 0; width: 7px; }
+  .bar-out { background: #E24B4A; border-radius: 2px 2px 0 0; width: 7px; }
+  .net-pos { color: #3B6D11; font-weight: 500; text-align: right; }
+  .net-neg { color: #A32D2D; font-weight: 500; text-align: right; }
+  .cat-row { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; font-size: 12px; }
+  .cat-name { width: 110px; color: var(--color-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cat-bar-wrap { flex: 1; background: var(--color-background-secondary); border-radius: 2px; height: 6px; overflow: hidden; }
+  .cat-bar-fill { height: 6px; border-radius: 2px; }
+  .cat-pct { width: 30px; text-align: right; color: var(--color-text-secondary); }
+  .cat-amt { width: 70px; text-align: right; color: var(--color-text-primary); font-weight: 500; }
+  .flag-box { background: #FAEEDA; border: 0.5px solid #EF9F27; border-radius: var(--border-radius-md); padding: 8px 12px; margin-bottom: 1rem; display: flex; gap: 8px; align-items: flex-start; font-size: 11px; }
+  .flag-icon { font-size: 13px; margin-top: 1px; flex-shrink: 0; }
+  .flag-text { color: #633806; line-height: 1.5; }
+  .donut-wrap { position: relative; width: 130px; height: 130px; margin: 0 auto 1rem; }
+  .legend-item { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-size: 11px; color: var(--color-text-secondary); }
+  .legend-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+  .highlight-row { background: #EAF3DE; }
+  .lowlight-row { background: #FCEBEB; }
+</style>
+
+<div class="mis-root">
+  <div class="mis-header">
+    <div>
+      <p class="mis-title">Cash Register Analytics — MIS</p>
+      <p class="mis-subtitle">2025-04-01 → 2026-03-31 &nbsp;·&nbsp; Decision Support View</p>
+    </div>
+    <span class="period-badge">Full Year FY25-26</span>
+  </div>
+
+  <div class="flag-box">
+    <span class="flag-icon">⚠</span>
+    <span class="flag-text"><strong>Data quality flag:</strong> "Cash Register Expense" is ₹5.33L (19% of total spend) — verify this is not double-counting cash register entries as an expense category. If so, true expense base could be ~₹23.5L instead of ₹28.82L.</span>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <p class="kpi-label">Total Cash In</p>
+      <p class="kpi-value" style="color:#3B6D11;">₹29.55L</p>
+      <div class="kpi-meta"><span>₹29,54,556</span><span class="badge-pos">+292 days active</span></div>
+    </div>
+    <div class="kpi-card">
+      <p class="kpi-label">Total Expenses</p>
+      <p class="kpi-value" style="color:#A32D2D;">₹28.82L</p>
+      <div class="kpi-meta"><span>₹28,82,009</span><span class="badge-neg">97.5% of revenue</span></div>
+    </div>
+    <div class="kpi-card">
+      <p class="kpi-label">Net Cash Flow</p>
+      <p class="kpi-value" style="color:#3B6D11;">₹72.5K</p>
+      <div class="kpi-meta"><span>Surplus</span><span class="badge-warn">2.5% margin — thin</span></div>
+    </div>
+    <div class="kpi-card">
+      <p class="kpi-label">Avg Daily Revenue</p>
+      <p class="kpi-value">₹10.1K</p>
+      <div class="kpi-meta"><span>Per active day</span></div>
+    </div>
+    <div class="kpi-card">
+      <p class="kpi-label">Avg Daily Expense</p>
+      <p class="kpi-value">₹9.9K</p>
+      <div class="kpi-meta"><span>Per active day</span><span class="badge-warn">98% of daily in</span></div>
+    </div>
+    <div class="kpi-card">
+      <p class="kpi-label">Best Month</p>
+      <p class="kpi-value" style="color:#3B6D11;">Feb 26</p>
+      <div class="kpi-meta"><span>+₹45,111 net</span><span class="badge-pos">vs Mar 26 loss</span></div>
+    </div>
+  </div>
+
+  <div class="section-card">
+    <p class="section-label">Monthly Cash Flow Trend</p>
+    <p class="section-sub">Cash In vs Expenses · net surplus/deficit per month</p>
+    <div style="position:relative;width:100%;height:220px;"><canvas id="flowChart"></canvas></div>
+    <div style="display:flex;gap:20px;margin-top:10px;font-size:11px;color:var(--color-text-secondary);">
+      <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:2px;background:#639922;"></span>Cash In</span>
+      <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:2px;background:#E24B4A;"></span>Expenses</span>
+      <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:2px;background:#378ADD;"></span>Net (line)</span>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="section-card" style="margin-bottom:0;">
+      <p class="section-label">Monthly Performance Table</p>
+      <p class="section-sub">Ranked by net — green = surplus, red = deficit</p>
+      <div class="month-head">
+        <span>Month</span><span>Trend</span>
+        <span style="text-align:right;">Cash In</span>
+        <span style="text-align:right;">Expenses</span>
+        <span style="text-align:right;">Net</span>
+      </div>
+      <div id="monthTable"></div>
+    </div>
+
+    <div>
+      <div class="section-card" style="margin-bottom:10px;">
+        <p class="section-label">Expenses by Category</p>
+        <p class="section-sub">Breakdown by assigned category</p>
+        <div id="catBars"></div>
+      </div>
+      <div class="section-card" style="margin-bottom:0;">
+        <p class="section-label">DSS Actions</p>
+        <p class="section-sub">Suggested decisions based on data</p>
+        <div style="display:flex;flex-direction:column;gap:8px;font-size:12px;">
+          <div style="display:flex;gap:8px;align-items:flex-start;">
+            <span style="background:#FCEBEB;color:#A32D2D;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:500;flex-shrink:0;">CRITICAL</span>
+            <span style="color:var(--color-text-secondary);">Fuel is 34% of cost — evaluate diesel route optimisation or supplier rate lock</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:flex-start;">
+            <span style="background:#FAEEDA;color:#854F0B;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:500;flex-shrink:0;">REVIEW</span>
+            <span style="color:var(--color-text-secondary);">Mar 26 is deficit month — check if collection is pending or demand drop</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:flex-start;">
+            <span style="background:#EAF3DE;color:#3B6D11;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:500;flex-shrink:0;">TARGET</span>
+            <span style="color:var(--color-text-secondary);">Q4 (Jan–Mar) has highest revenue — align production capacity accordingly</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const months = ['Jun 25','Jul 25','Aug 25','Sep 25','Oct 25','Nov 25','Dec 25','Jan 26','Feb 26','Mar 26'];
+const cashIn = [196490,227580,161220,172086,169950,371240,423585,527885,402520,302000];
+const expenses = [177230,238399,160471,184875,161817,373353,383799,526026,357409,318630];
+const net = cashIn.map((v,i) => v - expenses[i]);
+
+const ctx = document.getElementById('flowChart').getContext('2d');
+new Chart(ctx, {
+  type: 'bar',
+  data: {
+    labels: months,
+    datasets: [
+      { label:'Cash In', data: cashIn, backgroundColor: '#97C459', borderRadius: 3, order: 2 },
+      { label:'Expenses', data: expenses, backgroundColor: '#F09595', borderRadius: 3, order: 2 },
+      { label:'Net', data: net, type:'line', borderColor:'#378ADD', backgroundColor:'rgba(55,138,221,0.08)', fill:true, pointRadius:3, pointBackgroundColor:'#378ADD', tension:0.3, order:1, borderWidth:2 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: {
+      callbacks: {
+        label: (ctx) => {
+          const v = ctx.raw;
+          const abs = Math.abs(v);
+          const formatted = abs >= 100000 ? '₹' + (abs/100000).toFixed(2) + 'L' : '₹' + Math.round(abs).toLocaleString('en-IN');
+          return ctx.dataset.label + ': ' + (v < 0 ? '-' : '') + formatted;
+        }
+      }
+    }},
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 10 }, color:'#888' } },
+      y: {
+        grid: { color:'rgba(128,128,128,0.1)' },
+        ticks: {
+          font: { size: 10 }, color:'#888',
+          callback: v => v >= 100000 ? '₹' + (v/100000).toFixed(1) + 'L' : '₹' + (v/1000).toFixed(0) + 'K'
+        }
+      }
+    }
+  }
+});
+
+const tableMonths = ['Mar 26','Feb 26','Jan 26','Dec 25','Nov 25','Oct 25','Sep 25','Aug 25','Jul 25','Jun 25'];
+const tableIn =    [302000,402520,527885,423585,371240,169950,172086,161220,227580,196490];
+const tableExp =   [318630,357409,526026,383799,373353,161817,184875,160471,238399,177230];
+const tableNet =   [-16630,45111,1859,39786,-2113,8133,-12789,749,-10819,19260];
+
+const maxIn = Math.max(...tableIn);
+const tableEl = document.getElementById('monthTable');
+tableMonths.forEach((m,i) => {
+  const row = document.createElement('div');
+  row.className = 'month-row';
+  if(i === 1) row.classList.add('highlight-row');
+  if(i === 0) row.classList.add('lowlight-row');
+
+  const inH = Math.round((tableIn[i]/maxIn)*22);
+  const expH = Math.round((tableExp[i]/maxIn)*22);
+  const netV = tableNet[i];
+  const netCls = netV >= 0 ? 'net-pos' : 'net-neg';
+  const netStr = (netV >= 0 ? '+' : '') + '₹' + Math.abs(netV).toLocaleString('en-IN');
+  const inStr = '₹' + (tableIn[i]/100000).toFixed(2) + 'L';
+  const expStr = '₹' + (tableExp[i]/100000).toFixed(2) + 'L';
+
+  row.innerHTML = `
+    <span style="color:var(--color-text-primary);font-weight:500;">${m}</span>
+    <div class="mini-bar-wrap">
+      <div class="bar-in" style="height:${inH}px;"></div>
+      <div class="bar-out" style="height:${expH}px;"></div>
+    </div>
+    <span style="text-align:right;color:var(--color-text-secondary);">${inStr}</span>
+    <span style="text-align:right;color:var(--color-text-secondary);">${expStr}</span>
+    <span class="${netCls}">${netStr}</span>
+  `;
+  tableEl.appendChild(row);
+});
+
+const cats = [
+  { name:'Fuel & Transport', pct:34, amt:'₹9.72L', color:'#E24B4A' },
+  { name:'Miscellaneous', pct:27, amt:'₹7.73L', color:'#888780' },
+  { name:'Maintenance', pct:10, amt:'₹2.98L', color:'#EF9F27' },
+  { name:'Salaries & Wages', pct:10, amt:'₹2.89L', color:'#378ADD' },
+  { name:'Food & Beverages', pct:7, amt:'₹2.10L', color:'#97C459' },
+  { name:'Travel & Conveyance', pct:5, amt:'₹1.54L', color:'#7F77DD' },
+  { name:'Professional Fees', pct:3, amt:'₹93K', color:'#5DCAA5' },
+  { name:'Raw Materials', pct:2, amt:'₹50K', color:'#D4537E' },
+];
+
+const catEl = document.getElementById('catBars');
+cats.forEach(c => {
+  catEl.innerHTML += `
+    <div class="cat-row">
+      <span class="cat-name">${c.name}</span>
+      <div class="cat-bar-wrap"><div class="cat-bar-fill" style="width:${c.pct}%;background:${c.color};"></div></div>
+      <span class="cat-pct">${c.pct}%</span>
+      <span class="cat-amt">${c.amt}</span>
+    </div>`;
+});
+</script>
