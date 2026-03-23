@@ -24651,7 +24651,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `);
         for (const row of plLines.rows as any[]) {
           const t = row.account_type?.toLowerCase() || '';
-          if (t === 'revenue' || t === 'revenues') plRevenue += parseFloat(row.net) || 0;
+          // DB stores 'Income' for revenue accounts, 'Expenses'/'expense' for expenses
+          if (t === 'income' || t === 'revenue' || t === 'revenues') plRevenue += parseFloat(row.net) || 0;
           if (t === 'expense' || t === 'expenses') plExpenses += Math.abs(parseFloat(row.net) || 0);
         }
 
@@ -24669,7 +24670,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             AND jl.record_status = 1
             AND je.journal_date >= (CURRENT_DATE - INTERVAL '6 months')
             AND coa.node_type = 'ledger'
-            AND coa.account_type ILIKE ANY(ARRAY['revenue', 'revenues', 'expense', 'expenses'])
+            AND coa.account_type IN ('Income', 'income', 'revenue', 'Revenue', 'revenues', 'Expenses', 'Expense', 'expense', 'expenses')
           GROUP BY month, coa.account_type
           ORDER BY month ASC
         `);
@@ -24858,7 +24859,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!monthMap[m]) monthMap[m] = { month: m, revenue: 0, expenses: 0 };
         const t = (row.account_type || '').toLowerCase();
         const v = Math.abs(parseFloat(row.net) || 0);
-        if (t.includes('revenue')) monthMap[m].revenue += v;
+        if (t.includes('revenue') || t === 'income') monthMap[m].revenue += v;
         if (t.includes('expense')) monthMap[m].expenses += v;
       }
       const monthlyTrend = Object.values(monthMap).sort((a, b) => a.month.localeCompare(b.month));
