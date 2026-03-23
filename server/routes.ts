@@ -225,6 +225,7 @@ const endpointToScreenKey: Record<string, string> = {
   '/api/mis/sales-analytics': 'mis_sales',
   '/api/mis/delivery-performance': 'mis_delivery',
   '/api/mis/cash-analytics': 'mis_cash',
+  '/api/mis/financial-analytics': 'mis_financial',
 };
 
 // Standard roles that are handled by name matching (case-insensitive)
@@ -24614,6 +24615,320 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('[MIS-Cash] error:', error);
       res.status(500).json({ message: error.message });
+    }
+  });
+
+  // ─── MIS: Financial Analytics ──────────────────────────────────────────────
+  app.get('/api/mis/financial-analytics', requireRole('admin', 'manager', 'AccountsManager'), async (req: any, res: Response) => {
+    try {
+      // Indian FY: April-March
+      const today = new Date();
+      const fyStart = today.getMonth() >= 3
+        ? new Date(today.getFullYear(), 3, 1)
+        : new Date(today.getFullYear() - 1, 3, 1);
+      const fyStartStr = fyStart.toISOString().split('T')[0];
+      const todayStr = today.toISOString().split('T')[0];
+      const fyYear = fyStart.getFullYear();
+
+      // ── 1. P&L Summary from journal lines ──────────────────────────────────
+      let plRevenue = 0, plExpenses = 0;
+      let monthlyTrendRows: any[] = [];
+      try {
+        const plLines = await db.execute(sql`
+          SELECT
+            coa.account_type,
+            COALESCE(SUM(jl.credit - jl.debit), 0) AS net
+          FROM journal_lines jl
+          JOIN journal_entries je ON jl.journal_id = je.id
+          JOIN chart_of_accounts coa ON jl.account_id = coa.id
+          WHERE je.status = 'posted'
+            AND je.record_status = 1
+            AND jl.record_status = 1
+            AND je.journal_date >= ${fyStartStr}
+            AND je.journal_date <= ${todayStr}
+            AND coa.node_type = 'ledger'
+          GROUP BY coa.account_type
+        `);
+        for (const row of plLines.rows as any[]) {
+          const t = row.account_type?.toLowerCase() || '';
+          if (t === 'revenue' || t === 'revenues') plRevenue += parseFloat(row.net) || 0;
+          if (t === 'expense' || t === 'expenses') plExpenses += Math.abs(parseFloat(row.net) || 0);
+        }
+
+        // Monthly trend (last 6 months)
+        const trendRows = await db.execute(sql`
+          SELECT
+            TO_CHAR(je.journal_date::date, 'YYYY-MM') AS month,
+            coa.account_type,
+            COALESCE(SUM(jl.credit - jl.debit), 0) AS net
+          FROM journal_lines jl
+          JOIN journal_entries je ON jl.journal_id = je.id
+          JOIN chart_of_accounts coa ON jl.account_id = coa.id
+          WHERE je.status = 'posted'
+            AND je.record_status = 1
+            AND jl.record_status = 1
+            AND je.journal_date >= (CURRENT_DATE - INTERVAL '6 months')
+            AND coa.node_type = 'ledger'
+            AND coa.account_type ILIKE ANY(ARRAY['revenue', 'revenues', 'expense', 'expenses'])
+          GROUP BY month, coa.account_type
+          ORDER BY month ASC
+        `);
+        monthlyTrendRows = trendRows.rows as any[];
+      } catch (e) { console.log('[MIS-Fin] P&L query skipped:', (e as Error).message); }
+
+      // ── 2. Receivables aging ──────────────────────────────────────────────
+      let agingRows: any[] = [];
+      try {
+        const aging = await db.execute(sql`
+          SELECT
+            CASE
+              WHEN (CURRENT_DATE - invoice_date::date) <= 30 THEN '0-30'
+              WHEN (CURRENT_DATE - invoice_date::date) <= 60 THEN '31-60'
+              WHEN (CURRENT_DATE - invoice_date::date) <= 90 THEN '61-90'
+              ELSE '90+'
+            END AS bucket,
+            COUNT(*) AS count,
+            COALESCE(SUM(total_amount - COALESCE(amount_received, 0)), 0) AS outstanding
+          FROM invoices
+          WHERE record_status = 1
+            AND status NOT IN ('cancelled', 'paid')
+            AND total_amount > COALESCE(amount_received, 0)
+          GROUP BY bucket
+          ORDER BY MIN(CURRENT_DATE - invoice_date::date)
+        `);
+        agingRows = aging.rows as any[];
+      } catch (e) { console.log('[MIS-Fin] Aging query skipped:', (e as Error).message); }
+
+      // ── 3. Top debtors ────────────────────────────────────────────────────
+      let topDebtorsRows: any[] = [];
+      try {
+        const debtors = await db.execute(sql`
+          SELECT
+            COALESCE(buyer_name, 'Unknown') AS customer,
+            COUNT(*) AS invoice_count,
+            COALESCE(SUM(total_amount), 0) AS total_billed,
+            COALESCE(SUM(COALESCE(amount_received, 0)), 0) AS total_collected,
+            COALESCE(SUM(total_amount - COALESCE(amount_received, 0)), 0) AS outstanding,
+            MAX(invoice_date) AS latest_invoice
+          FROM invoices
+          WHERE record_status = 1
+            AND status NOT IN ('cancelled')
+            AND total_amount > COALESCE(amount_received, 0)
+          GROUP BY buyer_name
+          ORDER BY outstanding DESC
+          LIMIT 10
+        `);
+        topDebtorsRows = debtors.rows as any[];
+      } catch (e) { console.log('[MIS-Fin] Debtors query skipped:', (e as Error).message); }
+
+      // ── 4. Balance sheet snapshot ─────────────────────────────────────────
+      let bsAssets = 0, bsLiabilities = 0, bsEquity = 0;
+      try {
+        const bsRows = await db.execute(sql`
+          SELECT
+            coa.account_type,
+            SUM(CASE WHEN coa.account_type ILIKE ANY(ARRAY['asset','assets','expense','expenses']) THEN jl.debit - jl.credit
+                     ELSE jl.credit - jl.debit END) AS balance
+          FROM journal_lines jl
+          JOIN journal_entries je ON jl.journal_id = je.id
+          JOIN chart_of_accounts coa ON jl.account_id = coa.id
+          WHERE je.status = 'posted' AND je.record_status = 1 AND jl.record_status = 1
+            AND coa.node_type = 'ledger'
+          GROUP BY coa.account_type
+        `);
+        for (const row of bsRows.rows as any[]) {
+          const t = (row.account_type || '').toLowerCase();
+          const v = parseFloat(row.balance) || 0;
+          if (t === 'asset' || t === 'assets') bsAssets += v;
+          if (t === 'liability' || t === 'liabilities') bsLiabilities += v;
+          if (t === 'equity') bsEquity += v;
+        }
+      } catch (e) { console.log('[MIS-Fin] Balance sheet query skipped:', (e as Error).message); }
+
+      // ── 5. Trial balance key groups ───────────────────────────────────────
+      let trialGroupRows: any[] = [];
+      try {
+        const tbRows = await db.execute(sql`
+          SELECT
+            coa.sub_type AS group_name,
+            coa.account_type,
+            COALESCE(SUM(jl.debit), 0) AS total_debit,
+            COALESCE(SUM(jl.credit), 0) AS total_credit,
+            COUNT(DISTINCT coa.id) AS account_count
+          FROM journal_lines jl
+          JOIN journal_entries je ON jl.journal_id = je.id
+          JOIN chart_of_accounts coa ON jl.account_id = coa.id
+          WHERE je.status = 'posted' AND je.record_status = 1 AND jl.record_status = 1
+            AND coa.node_type = 'ledger'
+            AND je.journal_date >= ${fyStartStr}
+            AND je.journal_date <= ${todayStr}
+          GROUP BY coa.sub_type, coa.account_type
+          ORDER BY coa.account_type, total_debit DESC
+        `);
+        trialGroupRows = tbRows.rows as any[];
+      } catch (e) { console.log('[MIS-Fin] Trial balance query skipped:', (e as Error).message); }
+
+      // ── 6. Bank reconciliation gap ────────────────────────────────────────
+      let unreconciledCount = 0, unreconciledAmount = 0;
+      try {
+        const unrecon = await db.execute(sql`
+          SELECT COUNT(*) AS cnt, COALESCE(SUM(ABS(amount)), 0) AS total
+          FROM bank_transactions
+          WHERE record_status = 1 AND reconciliation_status = 'unreconciled'
+        `);
+        const row = (unrecon.rows as any[])[0];
+        unreconciledCount = parseInt(row?.cnt) || 0;
+        unreconciledAmount = parseFloat(row?.total) || 0;
+      } catch (e) { console.log('[MIS-Fin] Bank recon query skipped:', (e as Error).message); }
+
+      // ── 7. Recent journal entries with anomaly flags ──────────────────────
+      let journalRows: any[] = [];
+      try {
+        const recent = await db.execute(sql`
+          SELECT
+            je.id, je.journal_date, je.reference_number,
+            je.narration, je.source_type,
+            COALESCE(SUM(jl.debit), 0) AS amount,
+            COUNT(jl.id) AS line_count
+          FROM journal_entries je
+          JOIN journal_lines jl ON jl.journal_id = je.id AND jl.record_status = 1
+          WHERE je.status = 'posted' AND je.record_status = 1
+          GROUP BY je.id, je.journal_date, je.reference_number, je.narration, je.source_type
+          ORDER BY je.journal_date DESC, je.id DESC
+          LIMIT 15
+        `);
+        journalRows = (recent.rows as any[]).map((r: any) => {
+          const amount = parseFloat(r.amount) || 0;
+          const flags: string[] = [];
+          if (!r.narration || r.narration.trim() === '') flags.push('NO NARRATION');
+          if (amount > 0 && amount % 1000 === 0 && amount >= 10000) flags.push('ROUND NUMBER');
+          if ((r.source_type || '').toLowerCase() === 'manual') flags.push('MANUAL');
+          return {
+            id: r.id,
+            date: r.journal_date,
+            reference: r.reference_number,
+            narration: r.narration,
+            sourceType: r.source_type,
+            amount,
+            lineCount: parseInt(r.line_count),
+            flags,
+          };
+        });
+      } catch (e) { console.log('[MIS-Fin] Journal entries query skipped:', (e as Error).message); }
+
+      // ── 8. Cash/bank balance ──────────────────────────────────────────────
+      let cashBalance = 0, bankBalance = 0;
+      try {
+        const cashRow = await db.execute(sql`
+          SELECT COALESCE(SUM(CASE WHEN transaction_type IN ('opening','deposit','receipt') THEN amount ELSE -amount END), 0) AS balance
+          FROM cash_register_transactions WHERE record_status = 1
+        `);
+        cashBalance = parseFloat((cashRow.rows as any[])[0]?.balance) || 0;
+
+        const bankRow = await db.execute(sql`
+          SELECT COALESCE(SUM(CASE WHEN type = 'credit' THEN amount ELSE -amount END), 0) AS balance
+          FROM bank_transactions WHERE record_status = 1
+        `);
+        bankBalance = parseFloat((bankRow.rows as any[])[0]?.balance) || 0;
+      } catch (e) { console.log('[MIS-Fin] Cash/bank query skipped:', (e as Error).message); }
+
+      // ── 9. Invoice stats ──────────────────────────────────────────────────
+      let totalOutstanding = 0, totalBilled = 0, overdueCount = 0;
+      try {
+        const invStats = await db.execute(sql`
+          SELECT
+            COALESCE(SUM(total_amount), 0) AS billed,
+            COALESCE(SUM(total_amount - COALESCE(amount_received, 0)), 0) AS outstanding,
+            COUNT(CASE WHEN (CURRENT_DATE - invoice_date::date) > 30
+                         AND status NOT IN ('paid','cancelled')
+                         AND total_amount > COALESCE(amount_received, 0) THEN 1 END) AS overdue
+          FROM invoices WHERE record_status = 1 AND status != 'cancelled'
+          AND invoice_date >= ${fyStartStr}
+        `);
+        const r = (invStats.rows as any[])[0];
+        totalBilled = parseFloat(r?.billed) || 0;
+        totalOutstanding = parseFloat(r?.outstanding) || 0;
+        overdueCount = parseInt(r?.overdue) || 0;
+      } catch (e) { console.log('[MIS-Fin] Invoice stats query skipped:', (e as Error).message); }
+
+      // ── Assemble monthly trend ────────────────────────────────────────────
+      const monthMap: Record<string, { month: string; revenue: number; expenses: number }> = {};
+      for (const row of monthlyTrendRows) {
+        const m = row.month as string;
+        if (!monthMap[m]) monthMap[m] = { month: m, revenue: 0, expenses: 0 };
+        const t = (row.account_type || '').toLowerCase();
+        const v = Math.abs(parseFloat(row.net) || 0);
+        if (t.includes('revenue')) monthMap[m].revenue += v;
+        if (t.includes('expense')) monthMap[m].expenses += v;
+      }
+      const monthlyTrend = Object.values(monthMap).sort((a, b) => a.month.localeCompare(b.month));
+
+      // ── Rule-based insights ────────────────────────────────────────────────
+      const insights: Array<{ priority: string; label: string; title: string; body: string }> = [];
+      const totalAging = agingRows.reduce((s: number, r: any) => s + parseFloat(r.outstanding), 0);
+      const aging90plus = agingRows.find((r: any) => r.bucket === '90+');
+      if (aging90plus && parseFloat(aging90plus.outstanding) > 50000) {
+        insights.push({ priority: 'P1', label: 'IMMEDIATE', title: `Collect ₹${Math.round(parseFloat(aging90plus.outstanding) / 100).toLocaleString('en-IN')} — 90+ day AR`, body: `${aging90plus.count} invoice(s) overdue 90+ days. Assign dedicated recovery. Send legal notice if > ₹1L.` });
+      }
+      if (unreconciledCount > 0) {
+        insights.push({ priority: 'P2', label: 'CRITICAL', title: `Fix Journal Entry — ${unreconciledCount} bank recon gap`, body: `${unreconciledCount} bank transaction(s) unreconciled. Watch this daily; book bank charges as Journal Entry.` });
+      }
+      const netProfit = plRevenue - plExpenses;
+      const netMargin = plRevenue > 0 ? (netProfit / plRevenue) * 100 : 0;
+      if (netMargin < 10 && plRevenue > 0) {
+        insights.push({ priority: 'P3', label: 'FINANCIAL', title: `Reduce fixed costs: net margin ${netMargin.toFixed(1)}%`, body: `Target 10% net margin. Review packaging, labels, freight. Automate where possible.` });
+      }
+      if (journalRows.filter(j => j.flags.includes('NO NARRATION')).length > 2) {
+        insights.push({ priority: 'P2', label: 'CRITICAL', title: 'Fix Journal Entries — missing narrations', body: 'Multiple journal entries have no narration. Required for audit trail. Fix in Journal Day Book.' });
+      }
+
+      res.json({
+        fy: `FY ${fyYear}-${String(fyYear + 1).slice(2)}`,
+        fyStart: fyStartStr,
+        fyEnd: todayStr,
+        kpis: {
+          plRevenue: Math.round(plRevenue),
+          plExpenses: Math.round(plExpenses),
+          netProfit: Math.round(netProfit),
+          netMargin: plRevenue > 0 ? parseFloat(netMargin.toFixed(1)) : 0,
+          totalBilled: Math.round(totalBilled),
+          totalOutstanding: Math.round(totalOutstanding),
+          overdueCount,
+          cashBalance: Math.round(cashBalance),
+          bankBalance: Math.round(bankBalance),
+          unreconciledCount,
+          unreconciledAmount: Math.round(unreconciledAmount),
+        },
+        monthlyTrend,
+        receivablesAging: agingRows.map((r: any) => ({
+          bucket: r.bucket,
+          count: parseInt(r.count),
+          outstanding: parseFloat(r.outstanding),
+        })),
+        topDebtors: topDebtorsRows.map((r: any) => ({
+          customer: r.customer,
+          invoiceCount: parseInt(r.invoice_count),
+          totalBilled: parseFloat(r.total_billed),
+          totalCollected: parseFloat(r.total_collected),
+          outstanding: parseFloat(r.outstanding),
+          latestInvoice: r.latest_invoice,
+        })),
+        trialGroups: trialGroupRows.map((r: any) => ({
+          groupName: r.group_name || r.account_type,
+          accountType: r.account_type,
+          totalDebit: parseFloat(r.total_debit),
+          totalCredit: parseFloat(r.total_credit),
+          netBalance: parseFloat(r.total_debit) - parseFloat(r.total_credit),
+          accountCount: parseInt(r.account_count),
+        })),
+        balanceSheet: { assets: Math.round(bsAssets), liabilities: Math.round(bsLiabilities), equity: Math.round(bsEquity) },
+        bankReconciliation: { unreconciledCount, unreconciledAmount: Math.round(unreconciledAmount) },
+        recentJournals: journalRows,
+        insights,
+      });
+    } catch (err: any) {
+      console.error('[MIS-Financial] Error:', err);
+      res.status(500).json({ message: err.message || 'Failed to fetch financial analytics' });
     }
   });
 
