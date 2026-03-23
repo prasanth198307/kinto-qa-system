@@ -319,7 +319,8 @@ export default function VendorHistoryDetailPage() {
       invs.forEach(inv => {
         const dr = ws1.addRow([inv.invoiceNumber, new Date(inv.invoiceDate).toLocaleDateString('en-IN'), inv.buyerName, inv.effectiveTotal / 100, inv.totalSettled / 100, inv.outstanding / 100]);
         dr.height = 15;
-        dr.outlineLevel = 1;           // ← makes this row part of the collapsible group
+        dr.outlineLevel = 1;           // ← collapsible group
+        dr.hidden = true;              // ← starts collapsed; click [+] in Excel to expand
         dr.eachCell(c => { c.font = { size: 9, color: { argb: DGREY } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } }; c.alignment = { vertical: 'middle', indent: 1 }; });
         [4,5].forEach(i => { dr.getCell(i).numFmt = '₹#,##0.00'; dr.getCell(i).alignment = { vertical: 'middle', horizontal: 'right' }; });
         dr.getCell(6).numFmt = '₹#,##0.00'; dr.getCell(6).alignment = { vertical: 'middle', horizontal: 'right' }; dr.getCell(6).font = { bold: true, size: 9, color: { argb: ORANGE } };
@@ -352,7 +353,8 @@ export default function VendorHistoryDetailPage() {
       grp.entries.forEach(e => {
         const sr = ws2.addRow(['', e.invoice, `${e.method}${e.ref ? ' / ' + e.ref : ''}`, '', e.amount / 100]);
         sr.height = 15;
-        sr.outlineLevel = 1;           // ← collapsible detail row
+        sr.outlineLevel = 1;           // ← collapsible group
+        sr.hidden = true;              // ← starts collapsed
         sr.eachCell(c => { c.font = { size: 9, color: { argb: DGREY } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } }; c.alignment = { vertical: 'middle', indent: 1 }; });
         sr.getCell(5).numFmt = '₹#,##0.00'; sr.getCell(5).alignment = { vertical: 'middle', horizontal: 'right' };
       });
@@ -384,7 +386,8 @@ export default function VendorHistoryDetailPage() {
       grp.entries.forEach(e => {
         const er = ws3.addRow(['', e.invoice, e.noteNumber || '—', e.reason || '—', e.amount / 100]);
         er.height = 15;
-        er.outlineLevel = 1;           // ← collapsible detail row
+        er.outlineLevel = 1;           // ← collapsible group
+        er.hidden = true;              // ← starts collapsed
         er.eachCell(c => { c.font = { size: 9, color: { argb: DGREY } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } }; c.alignment = { vertical: 'middle', indent: 1 }; });
         er.getCell(5).numFmt = '₹#,##0.00'; er.getCell(5).alignment = { vertical: 'middle', horizontal: 'right' };
       });
@@ -1621,7 +1624,7 @@ export default function VendorHistoryDetailPage() {
                       <TableBody>
                         {unpaidByCluster.map(([cluster, invs]) => {
                           const clusterOutstanding = invs.reduce((s, i) => s + i.outstanding, 0);
-                          const isOpen = expandedClusters[cluster] !== false; // default open
+                          const isOpen = expandedClusters[cluster] === true; // default collapsed
                           return (
                             <>
                               {/* Cluster header row */}
@@ -1703,7 +1706,7 @@ export default function VendorHistoryDetailPage() {
                       </TableHeader>
                       <TableBody>
                         {paymentsByDate.map(([dateKey, grp]) => {
-                          const isOpen = expandedClusters[`pmt-${dateKey}`] !== false;
+                          const isOpen = expandedClusters[`pmt-${dateKey}`] === true;
                           return (
                             <>
                               <TableRow key={`pmt-${dateKey}`} className="bg-green-50 dark:bg-green-950/20 cursor-pointer hover:bg-green-100 dark:hover:bg-green-950/30" onClick={() => setExpandedClusters(prev => ({ ...prev, [`pmt-${dateKey}`]: !isOpen }))}>
@@ -1777,7 +1780,7 @@ export default function VendorHistoryDetailPage() {
                       </TableHeader>
                       <TableBody>
                         {dnAdjByDate.map(([dateKey, grp]) => {
-                          const isOpen = expandedClusters[`dn-${dateKey}`] !== false;
+                          const isOpen = expandedClusters[`dn-${dateKey}`] === true;
                           return (
                             <>
                               <TableRow key={`dn-${dateKey}`} className="bg-purple-50 dark:bg-purple-950/20 cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-950/30" onClick={() => setExpandedClusters(prev => ({ ...prev, [`dn-${dateKey}`]: !isOpen }))}>
