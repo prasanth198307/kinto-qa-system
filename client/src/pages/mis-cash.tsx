@@ -2,7 +2,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, AlertTriangle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ArrowLeft, AlertTriangle, Calendar } from "lucide-react";
 import { useState, useMemo } from "react";
 import { Link } from "wouter";
 import { format, parseISO } from "date-fns";
@@ -121,12 +123,26 @@ function CustomTooltip({ active, payload, label }: any) {
 
 export default function MISCash() {
   const [periodType, setPeriodType] = useState("this-year");
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
+  const [appliedFrom, setAppliedFrom] = useState('');
+  const [appliedTo, setAppliedTo] = useState('');
+
+  const isCustom = periodType === 'custom';
+  const customReady = isCustom && appliedFrom && appliedTo;
+
+  const queryParams = customReady
+    ? { periodType: 'custom', startDate: appliedFrom, endDate: appliedTo }
+    : { periodType };
 
   const { data, isLoading } = useQuery<CashAnalytics>({
-    queryKey: ["/api/mis/cash-analytics", { periodType }],
+    queryKey: ["/api/mis/cash-analytics", queryParams],
+    enabled: !isCustom || customReady,
   });
 
-  const selectedLabel = PERIOD_OPTIONS.flatMap(g => g.options).find(o => o.value === periodType)?.label ?? "Full Year";
+  const selectedLabel = isCustom && appliedFrom && appliedTo
+    ? `${appliedFrom} → ${appliedTo}`
+    : PERIOD_OPTIONS.flatMap(g => g.options).find(o => o.value === periodType)?.label ?? "Full Year";
 
   const kpis = data?.kpis;
   const trend = data?.trend ?? [];
@@ -197,7 +213,7 @@ export default function MISCash() {
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground border rounded-md px-2.5 py-1">{selectedLabel}</span>
-          <Select value={periodType} onValueChange={setPeriodType}>
+          <Select value={periodType} onValueChange={(v) => { setPeriodType(v); if (v !== 'custom') { setAppliedFrom(''); setAppliedTo(''); } }}>
             <SelectTrigger className="w-[160px]" data-testid="select-period">
               <SelectValue placeholder="Period" />
             </SelectTrigger>
@@ -208,8 +224,26 @@ export default function MISCash() {
                   {group.options.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                 </div>
               ))}
+              <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Custom</div>
+              <SelectItem value="custom">Custom Range</SelectItem>
             </SelectContent>
           </Select>
+          {isCustom && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5">
+                <Label className="text-xs text-muted-foreground">From</Label>
+                <Input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)} className="h-9 w-[140px] text-sm" data-testid="input-custom-from" />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Label className="text-xs text-muted-foreground">To</Label>
+                <Input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)} className="h-9 w-[140px] text-sm" data-testid="input-custom-to" />
+              </div>
+              <Button size="sm" onClick={() => { if (customFrom && customTo) { setAppliedFrom(customFrom); setAppliedTo(customTo); } }} disabled={!customFrom || !customTo} data-testid="button-apply-custom">
+                <Calendar className="w-3.5 h-3.5 mr-1.5" />
+                Apply
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 

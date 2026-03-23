@@ -20242,11 +20242,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // MIS Executive KPI Dashboard - Get key performance indicators
   app.get('/api/mis/kpi-dashboard', requireRole('admin', 'manager', 'AccountsManager'), async (req: any, res: Response) => {
     try {
-      const { period = '30' } = req.query; // days
-      const daysBack = parseInt(period as string) || 30;
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - daysBack);
-      const startDateStr = startDate.toISOString().split('T')[0];
+      const { period = '30', startDate: startDateParam, endDate: endDateParam } = req.query;
+      let startDateStr: string;
+      let endDateStr: string;
+      if (startDateParam && endDateParam) {
+        startDateStr = startDateParam as string;
+        endDateStr = endDateParam as string;
+      } else {
+        const daysBack = parseInt(period as string) || 30;
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - daysBack);
+        startDateStr = startDate.toISOString().split('T')[0];
+        endDateStr = new Date().toISOString().split('T')[0];
+      }
       
       // Initialize default values
       let production: any = {};
@@ -20265,7 +20273,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             COALESCE(SUM(CAST(rejected_quantity AS numeric)), 0) as total_rejected,
             COALESCE(SUM(CAST(derived_units AS numeric)), 0) as total_derived_units
           FROM production_entries
-          WHERE record_status = 1 AND production_date >= ${startDateStr}
+          WHERE record_status = 1 AND production_date >= ${startDateStr} AND production_date <= ${endDateStr}
         `);
         production = (productionStats.rows[0] as any) || {};
       } catch (e) { console.log('[MIS] production_entries query skipped:', (e as Error).message); }
@@ -20280,7 +20288,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             COALESCE(SUM(amount_received), 0) as total_received,
             COALESCE(SUM(total_amount - amount_received), 0) as total_pending
           FROM invoices
-          WHERE record_status = 1 AND status != 'cancelled' AND invoice_date >= ${startDateStr}
+          WHERE record_status = 1 AND status != 'cancelled' AND invoice_date >= ${startDateStr} AND invoice_date <= ${endDateStr}
         `);
         sales = (salesStats.rows[0] as any) || {};
       } catch (e) { console.log('[MIS] invoices query skipped:', (e as Error).message); }
@@ -20294,7 +20302,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             payment_method,
             COUNT(*) as count
           FROM invoice_payments
-          WHERE record_status = 1 AND payment_date >= ${startDateStr}
+          WHERE record_status = 1 AND payment_date >= ${startDateStr} AND payment_date <= ${endDateStr}
           GROUP BY payment_method
         `);
         paymentRows = paymentStats.rows as any[];
@@ -20309,7 +20317,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             COUNT(CASE WHEN status = 'generated' THEN 1 END) as pending,
             COUNT(CASE WHEN status = 'vehicle_out' THEN 1 END) as in_transit
           FROM gatepasses
-          WHERE record_status = 1 AND gatepass_date >= ${startDateStr}
+          WHERE record_status = 1 AND gatepass_date >= ${startDateStr} AND gatepass_date <= ${endDateStr}
         `);
         dispatch = (dispatchStats.rows[0] as any) || {};
       } catch (e) { console.log('[MIS] gatepasses query skipped:', (e as Error).message); }
@@ -20322,7 +20330,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             COUNT(CASE WHEN overall_status = 'NOK' THEN 1 END) as nok_count,
             COUNT(CASE WHEN overall_status = 'OK' THEN 1 END) as ok_count
           FROM checklist_submissions
-          WHERE record_status = 1 AND submission_date >= ${startDateStr}
+          WHERE record_status = 1 AND submission_date >= ${startDateStr} AND submission_date <= ${endDateStr}
         `);
         quality = (qualityStats.rows[0] as any) || {};
       } catch (e) { console.log('[MIS] checklist_submissions query skipped:', (e as Error).message); }
@@ -20335,14 +20343,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             COALESCE(SUM(total_received), 0) as total_received,
             COALESCE(SUM(total_expenses), 0) as total_expenses
           FROM cash_register_days
-          WHERE record_status = 1 AND register_date >= ${startDateStr}
+          WHERE record_status = 1 AND register_date >= ${startDateStr} AND register_date <= ${endDateStr}
         `);
         cash = (cashStats.rows[0] as any) || {};
       } catch (e) { console.log('[MIS] cash_register_days query skipped:', (e as Error).message); }
       
       res.json({
-        period: daysBack,
+        period: startDateParam && endDateParam ? 0 : (parseInt(period as string) || 30),
         startDate: startDateStr,
+        endDate: endDateStr,
         kpis: {
           production: {
             totalEntries: parseInt(production.total_entries) || 0,
@@ -24185,7 +24194,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ─── MIS: Cash Register Analytics ─────────────────────────────────────────
   app.get('/api/mis/cash-analytics', requireRole('admin', 'manager', 'AccountsManager'), async (req: any, res: Response) => {
     try {
-      const { periodType = 'last-30' } = req.query;
+      const { periodType = 'last-30', startDate: startDateParam, endDate: endDateParam } = req.query;
 
       // ── Compute date ranges (Indian FY: April–March) ──────────────────────
       function fyYear(d: Date) { return d.getMonth() >= 3 ? d.getFullYear() : d.getFullYear() - 1; }
@@ -24197,7 +24206,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const pt = periodType as string;
 
-      if (pt.startsWith('last-')) {
+      if (pt === 'custom' && startDateParam && endDateParam) {
+        startDate = new Date(startDateParam as string);
+        endDate = new Date(endDateParam as string);
+        const days = Math.round((endDate.getTime() - startDate.getTime()) / 86400000);
+        prevEnd = addDays(startDate, -1);
+        prevStart = addDays(prevEnd, -days);
+        bucketType = days <= 60 ? 'daily' : 'monthly';
+      } else if (pt.startsWith('last-')) {
         const days = parseInt(pt.replace('last-', '')) || 30;
         endDate = today;
         startDate = addDays(today, -days);

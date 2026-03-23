@@ -26,10 +26,10 @@ import {
   Download,
   ArrowLeft,
   AlertOctagon,
-  Search,
-  Eye,
-  Zap,
+  Calendar,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import { Link } from "wouter";
 import { exportToExcel, formatCurrencyForExcel } from "@/lib/excel-export";
@@ -241,10 +241,22 @@ const barColors = ['bg-blue-500', 'bg-green-500', 'bg-amber-500', 'bg-violet-500
 export default function MISDashboard() {
   const [, navigate] = useLocation();
   const [period, setPeriod] = useState('30');
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
+  const [appliedFrom, setAppliedFrom] = useState('');
+  const [appliedTo, setAppliedTo] = useState('');
   const [isExporting, setIsExporting] = useState(false);
 
+  const isCustom = period === 'custom';
+  const customReady = isCustom && appliedFrom && appliedTo;
+
+  const queryParams = customReady
+    ? { startDate: appliedFrom, endDate: appliedTo }
+    : { period };
+
   const { data: kpiData, isLoading: kpiLoading } = useQuery<KPIData>({
-    queryKey: ['/api/mis/kpi-dashboard', { period }],
+    queryKey: ['/api/mis/kpi-dashboard', queryParams],
+    enabled: !isCustom || customReady,
   });
 
   const { data: alertsData, isLoading: alertsLoading } = useQuery<AlertsData>({
@@ -401,8 +413,8 @@ export default function MISDashboard() {
             <Download className="w-4 h-4 mr-2" />
             {isExporting ? 'Exporting...' : 'Export Excel'}
           </Button>
-          <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger className="w-[140px]" data-testid="select-period">
+          <Select value={period} onValueChange={(v) => { setPeriod(v); if (v !== 'custom') { setAppliedFrom(''); setAppliedTo(''); } }}>
+            <SelectTrigger className="w-[150px]" data-testid="select-period">
               <SelectValue placeholder="Period" />
             </SelectTrigger>
             <SelectContent>
@@ -410,8 +422,25 @@ export default function MISDashboard() {
               <SelectItem value="30">Last 30 days</SelectItem>
               <SelectItem value="60">Last 60 days</SelectItem>
               <SelectItem value="90">Last 90 days</SelectItem>
+              <SelectItem value="custom">Custom Range</SelectItem>
             </SelectContent>
           </Select>
+          {isCustom && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5">
+                <Label className="text-xs text-muted-foreground">From</Label>
+                <Input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)} className="h-9 w-[140px] text-sm" data-testid="input-custom-from" />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Label className="text-xs text-muted-foreground">To</Label>
+                <Input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)} className="h-9 w-[140px] text-sm" data-testid="input-custom-to" />
+              </div>
+              <Button size="sm" onClick={() => { if (customFrom && customTo) { setAppliedFrom(customFrom); setAppliedTo(customTo); } }} disabled={!customFrom || !customTo} data-testid="button-apply-custom">
+                <Calendar className="w-3.5 h-3.5 mr-1.5" />
+                Apply
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
