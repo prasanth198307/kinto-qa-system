@@ -254,7 +254,15 @@ export default function VendorHistoryDetailPage() {
       }
     } catch (_) {}
 
-    const NAVY = 'FF1E3A5F', BLUE = 'FF2563AA', LBLUE = 'FFD6E4F7', WHITE = 'FFFFFFFF', LGREY = 'FFF5F7FA', DGREY = 'FF555555', ORANGE = 'FFEA580C';
+    // Header/footer brand colours
+    const NAVY = 'FF1E3A5F', BLUE = 'FF2563AA', WHITE = 'FFFFFFFF', LGREY = 'FFF5F7FA', DGREY = 'FF555555', ORANGE = 'FFEA580C';
+    // Row colours matching Tailwind UI exactly
+    const LBLUE   = 'FFEFF6FF'; // blue-50  (cluster bg)
+    const BLUE700 = 'FF1D4ED8'; // blue-700 (cluster text)
+    const LGREEN  = 'FFF0FDF4'; // green-50 (payment date bg)
+    const GREEN   = 'FF16A34A'; // green-600 (payment text)
+    const LPURPLE = 'FFFAF5FF'; // purple-50 (DN adj bg)
+    const PURPLE  = 'FF9333EA'; // purple-600 (DN adj text)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const addHeaderBlock = (ws: any, cols: number, reportTitle: string) => {
       const merge = (n: number) => ws.mergeCells(n, 1, n, cols);
@@ -292,8 +300,6 @@ export default function VendorHistoryDetailPage() {
       ws.addRow([]); merge(ws.rowCount);
     };
 
-    const PURPLE = 'FF6D28D9', LPURPLE = 'FFEEDDFF', GREEN = 'FF15803D', LGREEN = 'FFD1FAE5';
-
     // Sheet 1 – Unpaid Invoices by Cluster (with outline grouping)
     const ws1 = wb.addWorksheet('Unpaid Invoices');
     ws1.properties.outlineLevelRow = 1;
@@ -313,7 +319,7 @@ export default function VendorHistoryDetailPage() {
       // Cluster header row — level 0 (summary, always visible)
       const cr = ws1.addRow([`▶  ${cluster}`, '', '', '', '', clusterTotal / 100]);
       cr.height = 18; ws1.mergeCells(cr.number, 1, cr.number, 3);
-      cr.eachCell(c => { c.font = { bold: true, size: 10, color: { argb: NAVY } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: LBLUE } }; c.alignment = { vertical: 'middle', indent: 1 }; });
+      cr.eachCell(c => { c.font = { bold: true, size: 10, color: { argb: BLUE700 } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: LBLUE } }; c.alignment = { vertical: 'middle', indent: 1 }; });
       cr.getCell(6).numFmt = '₹#,##0.00'; cr.getCell(6).alignment = { vertical: 'middle', horizontal: 'right' };
       // Invoice detail rows — level 1 (collapsible under the cluster)
       invs.forEach(inv => {
