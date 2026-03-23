@@ -23993,129 +23993,252 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ─── MIS: Cash Register Analytics ─────────────────────────────────────────
   app.get('/api/mis/cash-analytics', requireRole('admin', 'manager', 'AccountsManager'), async (req: any, res: Response) => {
     try {
-      const { period = '30' } = req.query;
-      const daysBack = parseInt(period as string) || 30;
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - daysBack);
-      const startDateStr = startDate.toISOString().split('T')[0];
+      const { periodType = 'last-30' } = req.query;
 
-      let dailyRows: any[] = [];
-      let categoryRows: any[] = [];
-      let personRows: any[] = [];
-      let topItemRows: any[] = [];
-      let sourceTypeRows: any[] = [];
+      // ── Compute date ranges (Indian FY: April–March) ──────────────────────
+      function fyYear(d: Date) { return d.getMonth() >= 3 ? d.getFullYear() : d.getFullYear() - 1; }
+      function isoDate(d: Date) { return d.toISOString().split('T')[0]; }
+      function addDays(d: Date, n: number) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
 
-      // Daily trend: received vs expenses per day
+      const today = new Date();
+      let startDate: Date, endDate: Date, prevStart: Date, prevEnd: Date, bucketType: 'daily' | 'monthly';
+
+      const pt = periodType as string;
+
+      if (pt.startsWith('last-')) {
+        const days = parseInt(pt.replace('last-', '')) || 30;
+        endDate = today;
+        startDate = addDays(today, -days);
+        prevEnd = addDays(startDate, -1);
+        prevStart = addDays(prevEnd, -days);
+        bucketType = days <= 60 ? 'daily' : 'monthly';
+      } else {
+        const fy = fyYear(today);
+        const qMap: Record<string, [Date, Date]> = {
+          'this-q1': [new Date(fy, 3, 1), new Date(fy, 5, 30)],
+          'this-q2': [new Date(fy, 6, 1), new Date(fy, 8, 30)],
+          'this-q3': [new Date(fy, 9, 1), new Date(fy, 11, 31)],
+          'this-q4': [new Date(fy + 1, 0, 1), new Date(fy + 1, 2, 31)],
+          'last-q1': [new Date(fy - 1, 3, 1), new Date(fy - 1, 5, 30)],
+          'last-q2': [new Date(fy - 1, 6, 1), new Date(fy - 1, 8, 30)],
+          'last-q3': [new Date(fy - 1, 9, 1), new Date(fy - 1, 11, 31)],
+          'last-q4': [new Date(fy, 0, 1), new Date(fy, 2, 31)],
+          'this-h1': [new Date(fy, 3, 1), new Date(fy, 8, 30)],
+          'this-h2': [new Date(fy, 9, 1), new Date(fy + 1, 2, 31)],
+          'last-h1': [new Date(fy - 1, 3, 1), new Date(fy - 1, 8, 30)],
+          'last-h2': [new Date(fy - 1, 9, 1), new Date(fy, 2, 31)],
+          'this-year': [new Date(fy, 3, 1), new Date(fy + 1, 2, 31)],
+          'last-year': [new Date(fy - 1, 3, 1), new Date(fy, 2, 31)],
+        };
+        const range = qMap[pt] || qMap['this-year'];
+        [startDate, endDate] = range;
+        // previous period = same duration shifted back
+        const days = Math.round((endDate.getTime() - startDate.getTime()) / 86400000);
+        prevEnd = addDays(startDate, -1);
+        prevStart = addDays(prevEnd, -days);
+        bucketType = 'monthly';
+      }
+
+      const startStr = isoDate(startDate!);
+      const endStr = isoDate(endDate!);
+      const prevStartStr = isoDate(prevStart!);
+      const prevEndStr = isoDate(prevEnd!);
+
+      // ── Fuzzy label grouping helpers ──────────────────────────────────────
+      function normalizeLabel(s: string): string {
+        return s.toUpperCase().trim()
+          .replace(/[^A-Z0-9 ]/g, '')
+          .replace(/\s+/g, ' ')
+          .trim();
+      }
+      function editDistance(a: string, b: string): number {
+        const m = a.length, n = b.length;
+        const dp: number[][] = Array.from({ length: m + 1 }, (_, i) =>
+          Array.from({ length: n + 1 }, (__, j) => (i === 0 ? j : j === 0 ? i : 0))
+        );
+        for (let i = 1; i <= m; i++)
+          for (let j = 1; j <= n; j++)
+            dp[i][j] = a[i-1] === b[j-1] ? dp[i-1][j-1] : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+        return dp[m][n];
+      }
+      function labelSimilarity(a: string, b: string): number {
+        if (a === b) return 1;
+        const maxLen = Math.max(a.length, b.length);
+        return maxLen === 0 ? 1 : 1 - editDistance(a, b) / maxLen;
+      }
+      function fuzzyGroupItems(items: Array<{ label: string; amount: number; count: number }>) {
+        const THRESHOLD = 0.65;
+        const groups: Array<{ canonical: string; amount: number; count: number; confidence: number; variants: string[] }> = [];
+
+        for (const item of items) {
+          const norm = normalizeLabel(item.label);
+          let bestGroup: typeof groups[0] | null = null;
+          let bestSim = 0;
+
+          for (const g of groups) {
+            const sim = labelSimilarity(norm, normalizeLabel(g.canonical));
+            if (sim >= THRESHOLD && sim > bestSim) { bestGroup = g; bestSim = sim; }
+          }
+
+          if (bestGroup) {
+            bestGroup.amount += item.amount;
+            bestGroup.count += item.count;
+            if (!bestGroup.variants.includes(item.label)) bestGroup.variants.push(item.label);
+            // confidence = harmonic mean of similarity and 1.0 (exact = 1, fuzzy < 1)
+            bestGroup.confidence = Math.min(bestGroup.confidence, bestSim);
+          } else {
+            groups.push({ canonical: item.label, amount: item.amount, count: item.count, confidence: 1.0, variants: [item.label] });
+          }
+        }
+
+        return groups.sort((a, b) => b.amount - a.amount);
+      }
+
+      // ── Monthly bucketed trend helper ─────────────────────────────────────
+      function bucketTrendRows(rows: any[], type: 'daily' | 'monthly') {
+        if (type === 'daily') {
+          return rows.map(r => ({
+            bucket: r.date as string,
+            received: Number(r.received || 0),
+            expenses: Number(r.expenses || 0),
+            netFlow: Number(r.net_flow || 0),
+          }));
+        }
+        // Monthly aggregation
+        const map = new Map<string, { received: number; expenses: number; netFlow: number }>();
+        for (const r of rows) {
+          const key = (r.date as string).substring(0, 7); // YYYY-MM
+          const prev = map.get(key) || { received: 0, expenses: 0, netFlow: 0 };
+          prev.received += Number(r.received || 0);
+          prev.expenses += Number(r.expenses || 0);
+          prev.netFlow += Number(r.net_flow || 0);
+          map.set(key, prev);
+        }
+        return Array.from(map.entries())
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([bucket, v]) => ({ bucket, ...v }));
+      }
+
+      let dailyRows: any[] = [], categoryRows: any[] = [], personRows: any[] = [];
+      let rawItemRows: any[] = [], sourceTypeRows: any[] = [];
+      let prevDailyRows: any[] = [];
+
+      // Daily trend (current period)
       try {
-        const daily = await db.execute(sql`
-          SELECT
-            register_date AS date,
+        const r = await db.execute(sql`
+          SELECT register_date AS date,
             SUM(total_cash_received) AS received,
             SUM(total_expenses) AS expenses,
             SUM(total_cash_received - total_expenses) AS net_flow
           FROM cash_register_days
-          WHERE register_date >= ${startDateStr}
-          GROUP BY register_date
-          ORDER BY register_date ASC
-        `);
-        dailyRows = daily.rows as any[];
-      } catch (e) { console.log('[MIS-Cash] daily query skipped:', (e as Error).message); }
+          WHERE register_date >= ${startStr} AND register_date <= ${endStr}
+          GROUP BY register_date ORDER BY register_date ASC`);
+        dailyRows = r.rows as any[];
+      } catch (e) { console.log('[MIS-Cash] daily:', (e as Error).message); }
 
-      // Expense breakdown by category
+      // Daily trend (previous period for comparison)
       try {
-        const category = await db.execute(sql`
-          SELECT
-            COALESCE(ec.name, 'Uncategorised') AS category,
-            SUM(ei.amount) AS amount,
-            COUNT(*) AS count
+        const r = await db.execute(sql`
+          SELECT SUM(total_cash_received) AS received, SUM(total_expenses) AS expenses
+          FROM cash_register_days
+          WHERE register_date >= ${prevStartStr} AND register_date <= ${prevEndStr}`);
+        prevDailyRows = r.rows as any[];
+      } catch (e) {}
+
+      // Expense categories
+      try {
+        const r = await db.execute(sql`
+          SELECT COALESCE(ec.name, 'Uncategorised') AS category,
+            SUM(ei.amount) AS amount, COUNT(*) AS count
           FROM cash_register_expense_items ei
           JOIN cash_register_transactions ct ON ei.transaction_id = ct.id
           JOIN cash_register_days cd ON ct.day_id = cd.id
           LEFT JOIN expense_categories ec ON ei.expense_category_id = ec.id
-          WHERE cd.register_date >= ${startDateStr}
-          GROUP BY COALESCE(ec.name, 'Uncategorised')
-          ORDER BY amount DESC
-          LIMIT 15
-        `);
-        categoryRows = category.rows as any[];
-      } catch (e) { console.log('[MIS-Cash] category query skipped:', (e as Error).message); }
+          WHERE cd.register_date >= ${startStr} AND cd.register_date <= ${endStr}
+          GROUP BY COALESCE(ec.name, 'Uncategorised') ORDER BY amount DESC LIMIT 20`);
+        categoryRows = r.rows as any[];
+      } catch (e) { console.log('[MIS-Cash] category:', (e as Error).message); }
 
-      // Salesperson breakdown
+      // Salesperson
       try {
-        const person = await db.execute(sql`
-          SELECT
-            salesperson_name,
-            SUM(total_cash_received) AS received,
-            SUM(total_expenses) AS expenses,
-            SUM(total_cash_received - total_expenses) AS net,
-            COUNT(*) AS days_count
+        const r = await db.execute(sql`
+          SELECT salesperson_name,
+            SUM(total_cash_received) AS received, SUM(total_expenses) AS expenses,
+            SUM(total_cash_received - total_expenses) AS net, COUNT(*) AS days_count
           FROM cash_register_days
-          WHERE register_date >= ${startDateStr}
-          GROUP BY salesperson_name
-          ORDER BY received DESC
-        `);
-        personRows = person.rows as any[];
-      } catch (e) { console.log('[MIS-Cash] person query skipped:', (e as Error).message); }
+          WHERE register_date >= ${startStr} AND register_date <= ${endStr}
+          GROUP BY salesperson_name ORDER BY received DESC`);
+        personRows = r.rows as any[];
+      } catch (e) { console.log('[MIS-Cash] person:', (e as Error).message); }
 
-      // Top individual expense items (by label)
+      // Raw expense items (for fuzzy grouping)
       try {
-        const topItems = await db.execute(sql`
-          SELECT
-            UPPER(TRIM(ei.item_label)) AS label,
-            SUM(ei.amount) AS amount,
-            COUNT(*) AS count
+        const r = await db.execute(sql`
+          SELECT UPPER(TRIM(ei.item_label)) AS label,
+            SUM(ei.amount) AS amount, COUNT(*) AS count
           FROM cash_register_expense_items ei
           JOIN cash_register_transactions ct ON ei.transaction_id = ct.id
           JOIN cash_register_days cd ON ct.day_id = cd.id
-          WHERE cd.register_date >= ${startDateStr}
+          WHERE cd.register_date >= ${startStr} AND cd.register_date <= ${endStr}
             AND ei.item_label IS NOT NULL AND ei.item_label != ''
-          GROUP BY UPPER(TRIM(ei.item_label))
-          ORDER BY amount DESC
-          LIMIT 10
-        `);
-        topItemRows = topItems.rows as any[];
-      } catch (e) { console.log('[MIS-Cash] top items query skipped:', (e as Error).message); }
+          GROUP BY UPPER(TRIM(ei.item_label)) ORDER BY amount DESC LIMIT 80`);
+        rawItemRows = r.rows as any[];
+      } catch (e) { console.log('[MIS-Cash] items:', (e as Error).message); }
 
-      // Cash received by source type
+      // Source types
       try {
-        const sourceType = await db.execute(sql`
-          SELECT
-            COALESCE(source_type, 'unspecified') AS source_type,
-            SUM(amount) AS amount,
-            COUNT(*) AS count
+        const r = await db.execute(sql`
+          SELECT COALESCE(source_type, 'unspecified') AS source_type,
+            SUM(amount) AS amount, COUNT(*) AS count
           FROM cash_register_transactions
           WHERE transaction_type = 'cash_received'
-            AND day_id IN (
-              SELECT id FROM cash_register_days WHERE register_date >= ${startDateStr}
-            )
-          GROUP BY COALESCE(source_type, 'unspecified')
-          ORDER BY amount DESC
-        `);
-        sourceTypeRows = sourceType.rows as any[];
-      } catch (e) { console.log('[MIS-Cash] source type query skipped:', (e as Error).message); }
+            AND day_id IN (SELECT id FROM cash_register_days WHERE register_date >= ${startStr} AND register_date <= ${endStr})
+          GROUP BY COALESCE(source_type, 'unspecified') ORDER BY amount DESC`);
+        sourceTypeRows = r.rows as any[];
+      } catch (e) { console.log('[MIS-Cash] source:', (e as Error).message); }
 
-      // KPI totals
+      // ── Compute KPIs ──────────────────────────────────────────────────────
       const totalReceived = dailyRows.reduce((s, r) => s + Number(r.received || 0), 0);
       const totalExpenses = dailyRows.reduce((s, r) => s + Number(r.expenses || 0), 0);
-      const netCashFlow = totalReceived - totalExpenses;
       const activeDays = dailyRows.length;
+      const prevReceived = Number(prevDailyRows[0]?.received || 0);
+      const prevExpenses = Number(prevDailyRows[0]?.expenses || 0);
+
+      function pctChange(curr: number, prev: number) {
+        if (prev === 0) return null;
+        return Math.round(((curr - prev) / prev) * 100);
+      }
+
+      // ── Fuzzy group expense items ─────────────────────────────────────────
+      const rawItems = rawItemRows.map(r => ({
+        label: r.label as string,
+        amount: Number(r.amount || 0),
+        count: Number(r.count || 0),
+      }));
+      const groupedItems = fuzzyGroupItems(rawItems);
+      const totalExpItemAmount = groupedItems.reduce((s, g) => s + g.amount, 0) || 1;
+      const highImpactThreshold = totalExpItemAmount * 0.12; // items > 12% of total = high impact
+
+      const trendData = bucketTrendRows(dailyRows, bucketType);
 
       return res.json({
-        period: daysBack,
+        periodType: pt,
+        bucketType,
+        periodLabel: `${startStr} → ${endStr}`,
         kpis: {
           totalReceived,
           totalExpenses,
-          netCashFlow,
+          netCashFlow: totalReceived - totalExpenses,
           activeDays,
           avgDailyReceived: activeDays > 0 ? Math.round(totalReceived / activeDays) : 0,
           avgDailyExpenses: activeDays > 0 ? Math.round(totalExpenses / activeDays) : 0,
+          prevReceived,
+          prevExpenses,
+          receivedChange: pctChange(totalReceived, prevReceived),
+          expensesChange: pctChange(totalExpenses, prevExpenses),
+          netChange: pctChange(totalReceived - totalExpenses, prevReceived - prevExpenses),
         },
-        dailyTrend: dailyRows.map(r => ({
-          date: r.date,
-          received: Number(r.received || 0),
-          expenses: Number(r.expenses || 0),
-          netFlow: Number(r.net_flow || 0),
-        })),
+        trend: trendData,
         expensesByCategory: categoryRows.map(r => ({
           category: r.category,
           amount: Number(r.amount || 0),
@@ -24128,10 +24251,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           net: Number(r.net || 0),
           daysCount: Number(r.days_count || 0),
         })),
-        topExpenseItems: topItemRows.map(r => ({
-          label: r.label,
-          amount: Number(r.amount || 0),
-          count: Number(r.count || 0),
+        topExpenseItems: groupedItems.slice(0, 15).map(g => ({
+          label: g.canonical,
+          amount: g.amount,
+          count: g.count,
+          confidence: Math.round(g.confidence * 100),
+          isHighImpact: g.amount >= highImpactThreshold,
+          variants: g.variants.length > 1 ? g.variants : [],
+          sharePct: Math.round((g.amount / totalExpItemAmount) * 100),
         })),
         sourceTypes: sourceTypeRows.map(r => ({
           sourceType: r.source_type,
