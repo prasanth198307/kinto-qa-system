@@ -66,7 +66,7 @@ import { ManagerChecklistAssignment } from "@/components/ManagerChecklistAssignm
 import PendingPaymentsDashboard from "@/components/PendingPaymentsDashboard";
 import { OperatorAssignedChecklists } from "@/components/OperatorAssignedChecklists";
 import { VerticalNavSidebar, type NavSection } from "@/components/VerticalNavSidebar";
-import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, ClipboardList, Settings, Calendar, Users, FileText, FileX, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator, IndianRupee, CreditCard, Upload, FolderOpen, Wallet, Car, BookOpen, Scale, BarChart3, Landmark } from "lucide-react";
+import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, ClipboardList, Settings, Calendar, Users, FileText, FileX, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator, IndianRupee, CreditCard, Upload, FolderOpen, Wallet, Car, BookOpen, Scale, BarChart3, Landmark, Tag } from "lucide-react";
 import SalesDashboard from "@/components/SalesDashboard";
 import SalesOrdersPage from "@/pages/sales-orders";
 import SalesOrderDetailPage from "@/pages/sales-order-detail";
@@ -83,6 +83,7 @@ import ChecklistsPage from "@/pages/checklists";
 import DataImport from "@/pages/data-import";
 import DocumentsPage from "@/pages/documents";
 import ExpensesPage from "@/pages/expenses";
+import ExpenseCategoriesPage from "@/pages/expense-categories";
 import CashRegisterPage from "@/pages/cash-register";
 import CashRegisterReport from "@/pages/cash-register-report";
 import CashRegisterVoucherPrint from "@/pages/cash-register-voucher-print";
@@ -860,6 +861,7 @@ function AdminDashboard() {
         { id: "cash-register", label: "Daily Cash Register", icon: Calculator, onClick: () => setLocation('/cash-register') },
         { id: "cash-register-report", label: "Cash Register Report", icon: FileStack, onClick: () => setLocation('/cash-register-report') },
         { id: "expenses", label: "Expense Vouchers", icon: Wallet, onClick: () => setLocation('/expenses') },
+        { id: "expense-categories", label: "Expense Categories", icon: Tag, onClick: () => setLocation('/expense-categories') },
       ],
     },
     {
@@ -1422,6 +1424,7 @@ const navItemToScreenKey: Record<string, string> = {
   'cash-register': 'cash_register',
   'cash-register-report': 'cash_register_report',
   'expenses': 'expenses',
+  'expense-categories': 'expense_categories',
   'documents': 'documents',
   // Accounting & Ledger
   'chart-of-accounts': 'chart_of_accounts',
@@ -1506,6 +1509,7 @@ const navItemToScreen: Record<string, string> = {
   'cash-register': 'Purchase Orders',
   'cash-register-report': 'Purchase Orders',
   'expenses': 'Purchase Orders',
+  'expense-categories': 'Purchase Orders',
   'documents': 'Inventory Management',
   // Accounting & Ledger
   'chart-of-accounts': 'Accounting',
@@ -1744,6 +1748,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "cash-register", label: "Daily Cash Register", icon: Calculator, onClick: () => setLocation('/cash-register') },
         { id: "cash-register-report", label: "Cash Register Report", icon: FileStack, onClick: () => setLocation('/cash-register-report') },
         { id: "expenses", label: "Expense Vouchers", icon: Wallet, onClick: () => setLocation('/expenses') },
+        { id: "expense-categories", label: "Expense Categories", icon: Tag, onClick: () => setLocation('/expense-categories') },
       ],
     },
     {
@@ -1928,6 +1933,30 @@ function DocumentsPageWrapper() {
       }}
     >
       <DocumentsPage />
+    </DashboardShell>
+  );
+}
+
+// Wrapper component for Expense Categories page
+function ExpenseCategoriesPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('expense-categories');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
+  return (
+    <DashboardShell
+      title="Expense Categories"
+      onLogoutClick={() => logoutMutation.mutate()}
+      notificationCount={0}
+      navSections={navSections}
+      activeView={activeView}
+      onNavigate={(viewId) => setActiveView(viewId)}
+    >
+      <ExpenseCategoriesPage />
     </DashboardShell>
   );
 }
@@ -2970,6 +2999,7 @@ function Router() {
       <ProtectedRoute path="/reports/finished-goods" component={FinishedGoodsReportWrapper} />
       <ProtectedRoute path="/documents" component={DocumentsPageWrapper} />
       <ProtectedRoute path="/expenses" component={ExpensesPageWrapper} />
+      <ProtectedRoute path="/expense-categories" component={ExpenseCategoriesPageWrapper} />
       <ProtectedRoute path="/cash-register" component={CashRegisterPageWrapper} />
       <ProtectedRoute path="/cash-register-report" component={CashRegisterReportWrapper} />
       <ProtectedRoute path="/cash-register/vouchers/print" component={CashRegisterVoucherPrint} />

@@ -109,8 +109,12 @@ export default function CashRegisterPage() {
   
   // New transaction form states
   const [newCashReceived, setNewCashReceived] = useState({ amount: '', reference: '', description: '', sourceType: 'sale_cash', partyName: '' });
+  const { data: expenseCategories = [] } = useQuery<{ id: string; name: string }[]>({
+    queryKey: ['/api/expense-categories'],
+  });
+
   // Support multiple expense line items - each will create its own voucher
-  const [expenseItems, setExpenseItems] = useState([{ amount: '', reference: '', description: '', partyName: '' }]);
+  const [expenseItems, setExpenseItems] = useState([{ amount: '', reference: '', description: '', partyName: '', categoryId: '' }]);
   const [newTransfer, setNewTransfer] = useState({ amount: '', transferTo: '', description: '' });
   const [isAddingCash, setIsAddingCash] = useState(false);
   const [isAddingExpense, setIsAddingExpense] = useState(false);
@@ -205,7 +209,7 @@ export default function CashRegisterPage() {
       toast({ title: "Success", description: "Transaction added" });
       // Reset forms
       setNewCashReceived({ amount: '', reference: '', description: '', sourceType: 'sale_cash' });
-      setExpenseItems([{ amount: '', reference: '', description: '' }]);
+      setExpenseItems([{ amount: '', reference: '', description: '', partyName: '', categoryId: '' }]);
       setNewTransfer({ amount: '', transferTo: '', description: '' });
       setIsAddingCash(false);
       setIsAddingExpense(false);
@@ -553,6 +557,7 @@ export default function CashRegisterPage() {
           reference: item.reference,
           description: item.description,
           partyName: item.partyName || undefined,
+          categoryId: item.categoryId || undefined,
         });
       }
       
@@ -563,7 +568,7 @@ export default function CashRegisterPage() {
         title: "Success", 
         description: `${validItems.length} expense${validItems.length > 1 ? 's' : ''} added with individual vouchers` 
       });
-      setExpenseItems([{ amount: '', reference: '', description: '', partyName: '' }]);
+      setExpenseItems([{ amount: '', reference: '', description: '', partyName: '', categoryId: '' }]);
       setIsAddingExpense(false);
     } catch (error: any) {
       toast({ title: "Error", description: error.message || "Failed to add expenses", variant: "destructive" });
@@ -574,7 +579,7 @@ export default function CashRegisterPage() {
   
   // Add new expense line item
   const addExpenseLineItem = () => {
-    setExpenseItems(prev => [...prev, { amount: '', reference: '', description: '', partyName: '' }]);
+    setExpenseItems(prev => [...prev, { amount: '', reference: '', description: '', partyName: '', categoryId: '' }]);
   };
   
   // Remove expense line item
@@ -975,12 +980,29 @@ export default function CashRegisterPage() {
                             data-testid={`input-expense-reference-${index}`}
                           />
                         </div>
-                        <Input
-                          placeholder="Paid To (e.g., Vendor Name, Shop Name)"
-                          value={item.partyName}
-                          onChange={(e) => updateExpenseLineItem(index, 'partyName', e.target.value)}
-                          data-testid={`input-expense-party-${index}`}
-                        />
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="Paid To (e.g., Vendor Name, Shop Name)"
+                            value={item.partyName}
+                            onChange={(e) => updateExpenseLineItem(index, 'partyName', e.target.value)}
+                            className="flex-1"
+                            data-testid={`input-expense-party-${index}`}
+                          />
+                          <Select
+                            value={item.categoryId || ''}
+                            onValueChange={(val) => updateExpenseLineItem(index, 'categoryId', val === 'none' ? '' : val)}
+                          >
+                            <SelectTrigger className="w-44" data-testid={`select-expense-category-${index}`}>
+                              <SelectValue placeholder="Category" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">No category</SelectItem>
+                              {expenseCategories.map((cat) => (
+                                <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
                         <Input
                           placeholder="Description (optional)"
                           value={item.description}
@@ -1028,7 +1050,7 @@ export default function CashRegisterPage() {
                       variant="outline" 
                       onClick={() => {
                         setIsAddingExpense(false);
-                        setExpenseItems([{ amount: '', reference: '', description: '' }]);
+                        setExpenseItems([{ amount: '', reference: '', description: '', partyName: '', categoryId: '' }]);
                       }} 
                       data-testid="button-cancel-expense"
                     >
@@ -1348,7 +1370,9 @@ export default function CashRegisterPage() {
                                   setExpenseItems([{ 
                                     amount: shortage.toString(), 
                                     reference: 'Reconciliation Adjustment', 
-                                    description: 'Cash shortage during reconciliation' 
+                                    description: 'Cash shortage during reconciliation',
+                                    partyName: '',
+                                    categoryId: '',
                                   }]);
                                   setIsAddingExpense(true);
                                   setIsReconcileOpen(false);

@@ -18369,7 +18369,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             // Create expense line item so description appears on printed voucher
             try {
-              const autoCatId = await autoAssignExpenseCategory(expenseDescription, db, sql);
+              const requestedCatId = req.body.categoryId || null;
+              const autoCatId = requestedCatId || await autoAssignExpenseCategory(expenseDescription, db, sql);
               await storage.createExpenseItem({
                 voucherId: voucher.id,
                 description: expenseDescription,
