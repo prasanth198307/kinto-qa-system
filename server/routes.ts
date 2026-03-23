@@ -24153,30 +24153,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         prevDailyRows = r.rows as any[];
       } catch (e) {}
 
-      // Expense categories
+      // Expense categories — via expense_items joined through converted_to_voucher_id
       try {
         const r = await db.execute(sql`
           SELECT COALESCE(ec.name, 'Uncategorised') AS category,
-            SUM(ei.amount) AS amount, COUNT(*) AS count
-          FROM cash_register_expense_items ei
-          JOIN cash_register_transactions ct ON ei.transaction_id = ct.id
+            SUM(ct.amount) AS amount, COUNT(DISTINCT ct.id) AS count
+          FROM cash_register_transactions ct
           JOIN cash_register_days cd ON ct.day_id = cd.id
-          LEFT JOIN expense_categories ec ON ei.expense_category_id = ec.id
-          WHERE cd.register_date >= ${startStr} AND cd.register_date <= ${endStr}
+          JOIN expense_items ei ON ct.converted_to_voucher_id = ei.voucher_id
+          LEFT JOIN expense_categories ec ON ei.category_id = ec.id
+          WHERE ct.transaction_type = 'expense'
+            AND ct.converted_to_voucher_id IS NOT NULL
+            AND cd.register_date >= ${startStr} AND cd.register_date <= ${endStr}
+            AND ct.record_status = 1 AND ei.record_status = 1
           GROUP BY COALESCE(ec.name, 'Uncategorised') ORDER BY amount DESC LIMIT 20`);
         categoryRows = r.rows as any[];
-      } catch (e) { console.log('[MIS-Cash] category:', (e as Error).message); }
-      // Fallback: if query failed or returned nothing, build total from raw expense items
+      } catch (e) { console.log('[MIS-Cash] category (expense_items):', (e as Error).message); }
+      // Fallback: sum from transactions directly when no voucher-linked items found
       if (categoryRows.length === 0) {
         try {
           const r = await db.execute(sql`
             SELECT 'Uncategorised' AS category,
-              COALESCE(SUM(ei.amount), 0) AS amount,
-              COUNT(ei.id) AS count
-            FROM cash_register_expense_items ei
-            JOIN cash_register_transactions ct ON ei.transaction_id = ct.id
+              COALESCE(SUM(ct.amount), 0) AS amount,
+              COUNT(*) AS count
+            FROM cash_register_transactions ct
             JOIN cash_register_days cd ON ct.day_id = cd.id
-            WHERE cd.register_date >= ${startStr} AND cd.register_date <= ${endStr}`);
+            WHERE ct.transaction_type = 'expense'
+              AND ct.record_status = 1
+              AND cd.register_date >= ${startStr} AND cd.register_date <= ${endStr}`);
           if (r.rows.length > 0 && Number(r.rows[0].count || 0) > 0) {
             categoryRows = r.rows as any[];
           }
@@ -24195,19 +24199,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         personRows = r.rows as any[];
       } catch (e) { console.log('[MIS-Cash] person:', (e as Error).message); }
 
-      // Raw expense items (for fuzzy grouping)
+      // Raw expense items (for fuzzy grouping) — via expense_items.description
       try {
         const r = await db.execute(sql`
-          SELECT UPPER(TRIM(ei.item_label)) AS label,
-            SUM(ei.amount) AS amount, COUNT(*) AS count
-          FROM cash_register_expense_items ei
-          JOIN cash_register_transactions ct ON ei.transaction_id = ct.id
+          SELECT UPPER(TRIM(ei.description)) AS label,
+            SUM(ct.amount) AS amount, COUNT(DISTINCT ct.id) AS count
+          FROM cash_register_transactions ct
           JOIN cash_register_days cd ON ct.day_id = cd.id
-          WHERE cd.register_date >= ${startStr} AND cd.register_date <= ${endStr}
-            AND ei.item_label IS NOT NULL AND ei.item_label != ''
-          GROUP BY UPPER(TRIM(ei.item_label)) ORDER BY amount DESC LIMIT 80`);
+          JOIN expense_items ei ON ct.converted_to_voucher_id = ei.voucher_id
+          WHERE ct.transaction_type = 'expense'
+            AND ct.converted_to_voucher_id IS NOT NULL
+            AND cd.register_date >= ${startStr} AND cd.register_date <= ${endStr}
+            AND ct.record_status = 1 AND ei.record_status = 1
+            AND ei.description IS NOT NULL AND TRIM(ei.description) != ''
+          GROUP BY UPPER(TRIM(ei.description)) ORDER BY amount DESC LIMIT 80`);
         rawItemRows = r.rows as any[];
-      } catch (e) { console.log('[MIS-Cash] items:', (e as Error).message); }
+      } catch (e) { console.log('[MIS-Cash] items (expense_items):', (e as Error).message);
+        // Fallback: use cash_register_expense_items if expense_items join fails
+        try {
+          const r2 = await db.execute(sql`
+            SELECT UPPER(TRIM(ei.item_label)) AS label,
+              SUM(ei.amount) AS amount, COUNT(*) AS count
+            FROM cash_register_expense_items ei
+            JOIN cash_register_transactions ct ON ei.transaction_id = ct.id
+            JOIN cash_register_days cd ON ct.day_id = cd.id
+            WHERE cd.register_date >= ${startStr} AND cd.register_date <= ${endStr}
+              AND ei.item_label IS NOT NULL AND ei.item_label != ''
+            GROUP BY UPPER(TRIM(ei.item_label)) ORDER BY amount DESC LIMIT 80`);
+          rawItemRows = r2.rows as any[];
+        } catch (e2) {}
+      }
 
       // Source types
       try {
