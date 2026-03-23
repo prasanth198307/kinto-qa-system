@@ -21,6 +21,7 @@ const navItemToScreenKey: Record<string, string> = {
   'mis-inventory': 'mis_inventory',
   'mis-sales': 'mis_sales',
   'mis-delivery': 'mis_delivery',
+  'mis-cash': 'mis_cash',
   'checklists': 'checklist_templates',
   'checklist-assignments': 'checklist_assignments',
   'machine-startup-reminders': 'machine_startup_reminders',
@@ -116,6 +117,7 @@ const navItemToScreen: Record<string, string> = {
   'mis-inventory': 'MIS Reports',
   'mis-sales': 'MIS Reports',
   'mis-delivery': 'MIS Reports',
+  'mis-cash': 'MIS Reports',
   'checklists': 'Checklist Templates',
   'checklist-assignments': 'Checklist Templates',
   'machine-startup-reminders': 'Checklist Templates',
@@ -251,11 +253,20 @@ function filterNavSectionsWithDbPermissions(sections: NavSection[], dbPermission
   return filtered;
 }
 
+// System roles always get full nav — no DB permission rows needed
+const SYSTEM_ROLES_FULL_ACCESS = ['admin', 'manager', 'accountsmanager'];
+
 export function useFilteredNavigation(allNavSections: NavSection[]) {
-  const { permissions, isLoading: permissionsLoading } = usePermissions();
+  const { permissions, role: roleName, isLoading: permissionsLoading } = usePermissions();
   const lastValidRef = useRef<NavSection[]>([]);
   
   const navSections = useMemo(() => {
+    // System roles bypass all filtering — show the full nav, always
+    if (roleName && SYSTEM_ROLES_FULL_ACCESS.includes(roleName.toLowerCase())) {
+      lastValidRef.current = allNavSections;
+      return allNavSections;
+    }
+
     if (permissionsLoading || !permissions || permissions.length === 0) {
       return lastValidRef.current;
     }
@@ -264,7 +275,7 @@ export function useFilteredNavigation(allNavSections: NavSection[]) {
       lastValidRef.current = filtered;
     }
     return filtered.length > 0 ? filtered : lastValidRef.current;
-  }, [allNavSections, permissions, permissionsLoading]);
+  }, [allNavSections, permissions, permissionsLoading, roleName]);
 
   return { 
     navSections,
