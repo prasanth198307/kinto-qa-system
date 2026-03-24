@@ -968,7 +968,6 @@ export default function VendorHistoryDetailPage() {
         statusLabel,
       ]);
       ir.height = 18;
-      if (hasAllocations) (ir as any).collapsed = true; // group starts collapsed; [+] appears on this row
       ir.eachCell(c => {
         c.font = { bold: true, size: 10, color: { argb: rowFg } };
         c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rowBg } };
