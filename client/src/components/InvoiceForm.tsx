@@ -242,6 +242,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
   const form = useForm<InvoiceFormData>({
     resolver: zodResolver(invoiceFormSchema),
     defaultValues: invoice ? {
+      salesOrderId: (invoice as any).salesOrderId || "",
       gatepassId: gatepass?.id || "",
       invoiceDate: new Date(invoice.invoiceDate).toISOString().split('T')[0],
       invoiceTemplateId: invoice.templateId || "",
@@ -283,6 +284,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
       includeSignature: invoice.includeSignature ?? 1,
       signatureType: (invoice as any).signatureType || 'default',
     } : {
+      salesOrderId: "",
       gatepassId: gatepass?.id || "",
       invoiceDate: new Date().toISOString().split('T')[0],
       invoiceTemplateId: "",
@@ -402,6 +404,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
       // React Hook Form only applies defaultValues on first mount, so we need to reset
       // when invoice changes to make the form editable with the new data
       form.reset({
+        salesOrderId: (invoice as any).salesOrderId || "",
         gatepassId: gatepass?.id || "",
         invoiceDate: new Date(invoice.invoiceDate).toISOString().split('T')[0],
         invoiceTemplateId: invoice.templateId || "",
@@ -893,11 +896,11 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
       
       console.log('[InvoiceForm] Invoice header being sent:', {
         buyerName: invoiceHeader.buyerName,
+        salesOrderId: invoiceHeader.salesOrderId,
         originalInvoiceId: invoiceHeader.originalInvoiceId,
         status: invoiceHeader.status,
         isReissueMode,
         invoiceId: invoice?.id,
-        // Ship-to debugging
         shipToName: invoiceHeader.shipToName,
         shipToAddress: invoiceHeader.shipToAddress,
         shipToCity: invoiceHeader.shipToCity,

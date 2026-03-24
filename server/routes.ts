@@ -7537,8 +7537,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { header, items } = req.body;
       
-      // Debug: Log incoming ship-to fields
-      console.log('[CREATE_INVOICE] Incoming ship-to fields:', JSON.stringify({
+      // Debug: Log incoming key fields
+      console.log('[CREATE_INVOICE] Incoming key fields:', JSON.stringify({
+        salesOrderId: header?.salesOrderId,
         shipToName: header?.shipToName,
         shipToAddress: header?.shipToAddress,
         shipToCity: header?.shipToCity,
