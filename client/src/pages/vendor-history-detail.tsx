@@ -878,49 +878,49 @@ export default function VendorHistoryDetailPage() {
     const RED     = 'FFDC2626'; // red-600
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const addHeaderBlock = (ws: any, cols: number, reportTitle: string) => {
-      const merge = (n: number) => ws.mergeCells(n, 1, n, cols);
-      const r1 = ws.addRow([companyName]); r1.height = 32;
+    const addHeaderBlock = (wsParam: any, cols: number, reportTitle: string) => {
+      const merge = (n: number) => wsParam.mergeCells(n, 1, n, cols);
+      const r1 = wsParam.addRow([companyName]); r1.height = 32;
       r1.getCell(1).font = { bold: true, size: 16, color: { argb: WHITE } };
       r1.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } };
       r1.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 2 };
-      merge(ws.rowCount);
+      merge(wsParam.rowCount);
       if (companyAddress) {
-        const r2 = ws.addRow([companyAddress]); r2.height = 16;
+        const r2 = wsParam.addRow([companyAddress]); r2.height = 16;
         r2.getCell(1).font = { size: 9, color: { argb: WHITE } };
         r2.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } };
         r2.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 2 };
-        merge(ws.rowCount);
+        merge(wsParam.rowCount);
       }
       const meta = [companyGstin ? `GSTIN: ${companyGstin}` : '', companyPhone ? `Ph: ${companyPhone}` : '', companyEmail ? `Email: ${companyEmail}` : ''].filter(Boolean).join('   |   ');
       if (meta) {
-        const r3 = ws.addRow([meta]); r3.height = 14;
+        const r3 = wsParam.addRow([meta]); r3.height = 14;
         r3.getCell(1).font = { size: 8, color: { argb: WHITE } };
         r3.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } };
         r3.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 2 };
-        merge(ws.rowCount);
+        merge(wsParam.rowCount);
       }
-      ws.addRow([]); merge(ws.rowCount);
-      const rt = ws.addRow([reportTitle]); rt.height = 22;
+      wsParam.addRow([]); merge(wsParam.rowCount);
+      const rt = wsParam.addRow([reportTitle]); rt.height = 22;
       rt.getCell(1).font = { bold: true, size: 12, color: { argb: WHITE } };
       rt.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BLUE } };
       rt.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 2 };
-      merge(ws.rowCount);
-      const rd = ws.addRow([`Vendor: ${data.vendor.vendorName}   |   Generated: ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}`]); rd.height = 14;
+      merge(wsParam.rowCount);
+      const rd = wsParam.addRow([`Vendor: ${data.vendor.vendorName}   |   Generated: ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}`]); rd.height = 14;
       rd.getCell(1).font = { italic: true, size: 8, color: { argb: DGREY } };
       rd.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: LGREY } };
       rd.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 2 };
-      merge(ws.rowCount);
-      ws.addRow([]); merge(ws.rowCount);
+      merge(wsParam.rowCount);
+      wsParam.addRow([]); merge(wsParam.rowCount);
     };
 
     // ── Sheet: Invoice Transactions (with outline grouping) ──────────────────
-    const ws = wb.addWorksheet('Invoice Transactions');
-    ws.properties.outlineLevelRow = 1;
+    const wsTx = wb.addWorksheet('Invoice Transactions');
+    wsTx.properties.outlineLevelRow = 1;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (ws.properties as any).outlineProperties = { summaryBelow: false }; // [+] beside summary row
-    ws.properties.defaultRowHeight = 15;
-    ws.columns = [
+    (wsTx.properties as any).outlineProperties = { summaryBelow: false, summaryRight: false };
+    wsTx.properties.defaultRowHeight = 15;
+    wsTx.columns = [
       { key: 'c1', width: 22 }, // Invoice # / Type
       { key: 'c2', width: 14 }, // Date
       { key: 'c3', width: 28 }, // Buyer / Reference
@@ -931,10 +931,10 @@ export default function VendorHistoryDetailPage() {
       { key: 'c8', width: 12 }, // Status
     ];
 
-    addHeaderBlock(ws, 8, 'INVOICE TRANSACTIONS');
+    addHeaderBlock(wsTx, 8, 'INVOICE TRANSACTIONS');
 
     // Column header row
-    const hdr = ws.addRow(['Invoice #', 'Date', 'Buyer / Customer', 'Details', 'Total (₹)', 'Settled (₹)', 'Outstanding (₹)', 'Status']);
+    const hdr = wsTx.addRow(['Invoice #', 'Date', 'Buyer / Customer', 'Details', 'Total (₹)', 'Settled (₹)', 'Outstanding (₹)', 'Status']);
     hdr.height = 20;
     hdr.eachCell(c => {
       c.font = { bold: true, size: 10, color: { argb: WHITE } };
@@ -948,12 +948,13 @@ export default function VendorHistoryDetailPage() {
       const isPartial = !isSettled && inv.totalSettled > 0;
       const statusLabel = isSettled ? 'Settled' : isPartial ? 'Partial' : 'Unpaid';
 
-      // Pick row colour based on payment status
-      const rowBg   = isSettled ? LGREEN  : isPartial ? LAMBER  : LRED;
-      const rowFg   = isSettled ? GREEN   : isPartial ? AMBER   : RED;
+      const rowBg = isSettled ? LGREEN : isPartial ? LAMBER : LRED;
+      const rowFg = isSettled ? GREEN  : isPartial ? AMBER  : RED;
 
-      // Invoice summary row — level 0 (always visible, [+] button here)
-      const ir = ws.addRow([
+      const hasAllocations = inv.allocations.length > 0;
+
+      // Invoice summary row — level 0 (always visible; [+] button appears here when collapsed)
+      const ir = wsTx.addRow([
         inv.invoiceNumber,
         new Date(inv.invoiceDate).toLocaleDateString('en-IN'),
         inv.buyerName + (inv.isChildVendor ? ' ★Child' : ''),
@@ -964,6 +965,7 @@ export default function VendorHistoryDetailPage() {
         statusLabel,
       ]);
       ir.height = 18;
+      if (hasAllocations) ir.collapsed = true; // group starts collapsed; [+] appears on this row
       ir.eachCell(c => {
         c.font = { bold: true, size: 10, color: { argb: rowFg } };
         c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rowBg } };
@@ -975,8 +977,8 @@ export default function VendorHistoryDetailPage() {
       });
       ir.getCell(8).alignment = { vertical: 'middle', horizontal: 'center' };
 
-      // Allocation detail rows — level 1 (collapsed, expand with [+])
-      if (inv.allocations.length > 0) {
+      // Allocation detail rows — level 1 (hidden/collapsed until user expands with [+])
+      if (hasAllocations) {
         inv.allocations.forEach(alloc => {
           const isAddition = alloc.type === 'debit_note';
           const detail = alloc.type === 'payment'
@@ -984,25 +986,25 @@ export default function VendorHistoryDetailPage() {
             : alloc.type === 'advance_application' ? `From advance: ${alloc.advanceNumber || ''}`
             : alloc.type === 'debit_note_adjustment' ? `Vendor DN: ${alloc.reference || ''}`
             : `${alloc.noteNumber || ''}${alloc.reason ? ' – ' + alloc.reason : ''}`;
-          const dr = ws.addRow([
+          const dr = wsTx.addRow([
             `  ↳ ${getAllocTypeLabel(alloc.type)}`,
             new Date(alloc.date).toLocaleDateString('en-IN'),
             alloc.reference || alloc.advanceNumber || alloc.noteNumber || '—',
             detail,
             '',
             '',
-            isAddition ? alloc.amount / 100 : -(alloc.amount / 100), // show as +/- in outstanding col
+            isAddition ? alloc.amount / 100 : -(alloc.amount / 100),
             '',
           ]);
           dr.height = 15;
-          dr.outlineLevel = 1;  // collapsible
-          dr.hidden = true;     // starts collapsed — click [+] to expand
+          dr.outlineLevel = 1;
+          dr.hidden = true;
           dr.eachCell(c => {
             c.font = { size: 9, color: { argb: DGREY } };
             c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: WHITE } };
             c.alignment = { vertical: 'middle', indent: 2 };
           });
-          dr.getCell(7).numFmt = isAddition ? '+₹#,##0.00' : '₹#,##0.00;[Red]-₹#,##0.00';
+          dr.getCell(7).numFmt = '₹#,##0.00;[Red]-₹#,##0.00';
           dr.getCell(7).alignment = { vertical: 'middle', horizontal: 'right' };
           dr.getCell(7).font = { size: 9, bold: true, color: { argb: isAddition ? ORANGE : DGREY } };
         });
@@ -1011,7 +1013,7 @@ export default function VendorHistoryDetailPage() {
 
     // Grand total footer
     const totalSettled = (txnData.summary.totalPayments || 0) + (txnData.summary.totalDnAdjustments || 0) + (txnData.summary.totalAdvances || 0);
-    const gr = ws.addRow(['', '', '', `${filteredTxnInvoices.length} invoices`, txnData.summary.totalInvoiceAmount / 100, totalSettled / 100, txnData.summary.totalOutstanding / 100, '']);
+    const gr = wsTx.addRow(['', '', '', `${filteredTxnInvoices.length} invoices`, txnData.summary.totalInvoiceAmount / 100, totalSettled / 100, txnData.summary.totalOutstanding / 100, '']);
     gr.height = 22;
     gr.eachCell(c => { c.font = { bold: true, size: 11, color: { argb: WHITE } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } }; c.alignment = { vertical: 'middle', indent: 1 }; });
     [5, 6, 7].forEach(i => { gr.getCell(i).numFmt = '₹#,##0.00'; gr.getCell(i).alignment = { vertical: 'middle', horizontal: 'right' }; });
