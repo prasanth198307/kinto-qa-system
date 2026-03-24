@@ -48,6 +48,7 @@ import type { Product, Vendor } from "@shared/schema";
 const salesOrderItemSchema = z.object({
   productId: z.string().min(1, "Product required"),
   description: z.string().optional(),
+  hsnCode: z.string().optional(),
   quantity: z.number().min(1, "Qty ≥ 1"),
   unitPrice: z.number().min(0),
   cgstRate: z.number().min(0).max(100).default(9),
@@ -134,13 +135,14 @@ function EditSalesOrderDialog({ salesOrder, open, onClose }: EditDialogProps) {
         return {
           productId: item.productId || "",
           description: item.description || "",
+          hsnCode: item.hsnCode || "",
           quantity: Number(item.quantity) || 1,
           unitPrice: Math.round(casePriceInclGST * 100) / 100, // case price incl. GST
           cgstRate: cgst,
           sgstRate: sgst,
           igstRate: igst,
         };
-      }) : [{ productId: "", quantity: 1, unitPrice: 0, cgstRate: 9, sgstRate: 9, igstRate: 0 }],
+      }) : [{ productId: "", description: "", hsnCode: "", quantity: 1, unitPrice: 0, cgstRate: 9, sgstRate: 9, igstRate: 0 }],
     },
   });
 
@@ -187,6 +189,7 @@ function EditSalesOrderDialog({ salesOrder, open, onClose }: EditDialogProps) {
         items: computedItems.map(({ item, unitPricePaise, taxableAmountPaise, totalAmountPaise }) => ({
           productId: item.productId,
           description: item.description || null,
+          hsnCode: item.hsnCode || null,
           quantity: item.quantity,
           cgstRate: item.cgstRate,
           sgstRate: item.sgstRate,
@@ -306,13 +309,69 @@ function EditSalesOrderDialog({ salesOrder, open, onClose }: EditDialogProps) {
                   <FormMessage />
                 </FormItem>
               )} />
+              <FormField control={form.control} name="buyerContact" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Buyer Contact</FormLabel>
+                  <FormControl><Input placeholder="Phone / Email" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="remarks" render={({ field }) => (
+                <FormItem className="md:col-span-2">
+                  <FormLabel>Remarks</FormLabel>
+                  <FormControl><Input placeholder="Internal notes / special instructions" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            </div>
+
+            {/* Ship-To */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Shipping Address <span className="normal-case font-normal">(leave blank if same as buyer)</span></h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <FormField control={form.control} name="shipToName" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Ship-To Name</FormLabel>
+                    <FormControl><Input placeholder="Consignee name" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="shipToAddress" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Ship-To Address</FormLabel>
+                    <FormControl><Input placeholder="Street / locality" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="shipToCity" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>City</FormLabel>
+                    <FormControl><Input placeholder="City" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="shipToState" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>State</FormLabel>
+                    <FormControl><Input placeholder="State" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="shipToPin" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>PIN Code</FormLabel>
+                    <FormControl><Input placeholder="PIN" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              </div>
             </div>
 
             {/* Line Items */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="font-medium">Line Items</h3>
-                <Button type="button" variant="outline" size="sm" onClick={() => append({ productId: "", quantity: 1, unitPrice: 0, cgstRate: 9, sgstRate: 9, igstRate: 0 })} data-testid="button-edit-add-item">
+                <Button type="button" variant="outline" size="sm" onClick={() => append({ productId: "", description: "", hsnCode: "", quantity: 1, unitPrice: 0, cgstRate: 9, sgstRate: 9, igstRate: 0 })} data-testid="button-edit-add-item">
                   <Plus className="w-4 h-4 mr-1" />Add Item
                 </Button>
               </div>
@@ -321,6 +380,7 @@ function EditSalesOrderDialog({ salesOrder, open, onClose }: EditDialogProps) {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="min-w-[180px]">Product</TableHead>
+                      <TableHead className="w-24">HSN Code</TableHead>
                       <TableHead className="w-20">Qty</TableHead>
                       <TableHead className="w-32">Case Price ₹ (incl. GST)</TableHead>
                       <TableHead className="w-40">CGST% / SGST%</TableHead>
@@ -342,7 +402,7 @@ function EditSalesOrderDialog({ salesOrder, open, onClose }: EditDialogProps) {
                                 const prod = products.find(p => p.id === val);
                                 if (prod) {
                                   form.setValue(`items.${index}.description`, prod.productName);
-                                  form.setValue(`items.${index}.unitPrice`, Number(prod.basePrice || 0) / 100);
+                                  if (prod.hsnCode) form.setValue(`items.${index}.hsnCode`, prod.hsnCode);
                                 }
                               }} value={f.value}>
                                 <FormControl>
@@ -354,6 +414,13 @@ function EditSalesOrderDialog({ salesOrder, open, onClose }: EditDialogProps) {
                                   {products.map(p => <SelectItem key={p.id} value={p.id}>{p.productName}</SelectItem>)}
                                 </SelectContent>
                               </Select>
+                            )} />
+                          </TableCell>
+                          <TableCell>
+                            <FormField control={form.control} name={`items.${index}.hsnCode`} render={({ field: f }) => (
+                              <FormControl>
+                                <Input placeholder="HSN" {...f} className="w-20 font-mono text-xs" data-testid={`input-edit-hsn-${index}`} />
+                              </FormControl>
                             )} />
                           </TableCell>
                           <TableCell>

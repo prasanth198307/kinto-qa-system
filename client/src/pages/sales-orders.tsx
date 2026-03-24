@@ -98,6 +98,7 @@ const StatusBadge = ({ status }: { status: string }) => {
 const salesOrderItemSchema = z.object({
   productId: z.string().min(1, "Product is required"),
   description: z.string().optional(),
+  hsnCode: z.string().optional(),
   quantity: z.number().min(1, "Quantity must be at least 1"),
   unitPrice: z.number().min(0, "Price must be positive"),
   cgstRate: z.number().min(0).max(100).default(9),
@@ -239,6 +240,8 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
       soDate: format(new Date(), 'yyyy-MM-dd'),
       items: [{
         productId: "",
+        description: "",
+        hsnCode: "",
         quantity: 1,
         unitPrice: 0,
         cgstRate: 9,
@@ -552,6 +555,8 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                         size="sm"
                         onClick={() => append({
                           productId: "",
+                          description: "",
+                          hsnCode: "",
                           quantity: 1,
                           unitPrice: 0,
                           cgstRate: 9,
@@ -570,6 +575,7 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                         <TableHeader>
                           <TableRow>
                             <TableHead className="min-w-[180px]">Product</TableHead>
+                            <TableHead className="w-24">HSN Code</TableHead>
                             <TableHead className="w-20">Qty</TableHead>
                             <TableHead className="w-32">Case Price ₹ (incl. GST)</TableHead>
                             <TableHead className="w-40">CGST% / SGST%</TableHead>
@@ -596,7 +602,7 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                                         const prod = products.find(p => p.id === val);
                                         if (prod) {
                                           form.setValue(`items.${index}.description`, prod.productName);
-                                          // Don't pre-fill price — user enters case price incl. GST
+                                          if (prod.hsnCode) form.setValue(`items.${index}.hsnCode`, prod.hsnCode);
                                         }
                                       }} 
                                       value={field.value}
@@ -612,6 +618,22 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                                         ))}
                                       </SelectContent>
                                     </Select>
+                                  )}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <FormField
+                                  control={form.control}
+                                  name={`items.${index}.hsnCode`}
+                                  render={({ field }) => (
+                                    <FormControl>
+                                      <Input
+                                        placeholder="HSN"
+                                        {...field}
+                                        className="w-20 font-mono text-xs"
+                                        data-testid={`input-hsn-${index}`}
+                                      />
+                                    </FormControl>
                                   )}
                                 />
                               </TableCell>
