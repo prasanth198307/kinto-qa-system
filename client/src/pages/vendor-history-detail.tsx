@@ -49,6 +49,7 @@ import {
   Users
 } from "lucide-react";
 import { exportToExcel, formatCurrencyForExcel, formatDateForExcel } from "@/lib/excel-export";
+import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface LedgerEntry {
@@ -149,6 +150,7 @@ export default function VendorHistoryDetailPage() {
   const [, setLocation] = useLocation();
   const { vendorId } = useParams<{ vendorId: string }>();
   const { hasPermission } = usePermissions();
+  const { toast } = useToast();
   const canViewPayments = hasPermission('payments', 'view');
   const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("ledger");
@@ -838,6 +840,7 @@ export default function VendorHistoryDetailPage() {
 
   const handleExportTransactionsExcel = async () => {
     if (!data || !txnData) return;
+    try {
 
     const getAllocTypeLabel = (type: string) => {
       switch (type) {
@@ -965,7 +968,7 @@ export default function VendorHistoryDetailPage() {
         statusLabel,
       ]);
       ir.height = 18;
-      if (hasAllocations) ir.collapsed = true; // group starts collapsed; [+] appears on this row
+      if (hasAllocations) (ir as any).collapsed = true; // group starts collapsed; [+] appears on this row
       ir.eachCell(c => {
         c.font = { bold: true, size: 10, color: { argb: rowFg } };
         c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rowBg } };
@@ -1024,6 +1027,10 @@ export default function VendorHistoryDetailPage() {
     const a = document.createElement('a'); a.href = url;
     a.download = `${data.vendor.vendorName.replace(/[^a-zA-Z0-9]/g, '_')}_Invoice_Transactions_${new Date().toISOString().slice(0, 10)}.xlsx`;
     a.click(); URL.revokeObjectURL(url);
+    } catch (err: any) {
+      console.error('Invoice Transactions Excel export failed:', err);
+      toast({ title: 'Export failed', description: err?.message || 'Unknown error', variant: 'destructive' });
+    }
   };
 
   return (
