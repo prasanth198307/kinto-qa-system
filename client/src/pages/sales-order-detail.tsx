@@ -142,7 +142,7 @@ function EditSalesOrderDialog({ salesOrder, open, onClose }: EditDialogProps) {
           sgstRate: sgst,
           igstRate: igst,
         };
-      }) : [{ productId: "", description: "", hsnCode: "", quantity: 1, unitPrice: 0, cgstRate: 9, sgstRate: 9, igstRate: 0 }],
+      }) : [{ productId: "", description: "", hsnCode: "22011010", quantity: 1, unitPrice: 0, cgstRate: 9, sgstRate: 9, igstRate: 0 }],
     },
   });
 
@@ -371,7 +371,7 @@ function EditSalesOrderDialog({ salesOrder, open, onClose }: EditDialogProps) {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="font-medium">Line Items</h3>
-                <Button type="button" variant="outline" size="sm" onClick={() => append({ productId: "", description: "", hsnCode: "", quantity: 1, unitPrice: 0, cgstRate: 9, sgstRate: 9, igstRate: 0 })} data-testid="button-edit-add-item">
+                <Button type="button" variant="outline" size="sm" onClick={() => append({ productId: "", description: "", hsnCode: "22011010", quantity: 1, unitPrice: 0, cgstRate: 9, sgstRate: 9, igstRate: 0 })} data-testid="button-edit-add-item">
                   <Plus className="w-4 h-4 mr-1" />Add Item
                 </Button>
               </div>

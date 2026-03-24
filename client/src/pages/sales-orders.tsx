@@ -241,7 +241,7 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
       items: [{
         productId: "",
         description: "",
-        hsnCode: "",
+        hsnCode: "22011010",
         quantity: 1,
         unitPrice: 0,
         cgstRate: 9,
@@ -556,7 +556,7 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                         onClick={() => append({
                           productId: "",
                           description: "",
-                          hsnCode: "",
+                          hsnCode: "22011010",
                           quantity: 1,
                           unitPrice: 0,
                           cgstRate: 9,
