@@ -296,12 +296,13 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                 New Sales Order
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
+            <DialogContent className="sm:max-w-5xl w-[95vw] flex flex-col max-h-[90vh] p-0 gap-0">
+              <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
                 <DialogTitle>Create New Sales Order</DialogTitle>
               </DialogHeader>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+                <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col min-h-0 flex-1">
+                <div className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
                   {/* Buyer Details */}
                   <div className="space-y-3">
                     <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Buyer Details</h3>
@@ -574,12 +575,12 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead className="min-w-[180px]">Product</TableHead>
-                            <TableHead className="w-24">HSN Code</TableHead>
-                            <TableHead className="w-20">Qty</TableHead>
-                            <TableHead className="w-32">Case Price ₹ (incl. GST)</TableHead>
-                            <TableHead className="w-40">CGST% / SGST%</TableHead>
-                            <TableHead className="w-28 text-right">Line Total</TableHead>
+                            <TableHead className="min-w-[220px]">Product</TableHead>
+                            <TableHead className="w-32">HSN Code</TableHead>
+                            <TableHead className="w-24">Qty</TableHead>
+                            <TableHead className="w-36">Case Price ₹ (incl. GST)</TableHead>
+                            <TableHead className="w-44">CGST% / SGST%</TableHead>
+                            <TableHead className="w-32 text-right">Line Total</TableHead>
                             <TableHead className="w-10"></TableHead>
                           </TableRow>
                         </TableHeader>
@@ -630,7 +631,7 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                                       <Input
                                         placeholder="HSN"
                                         {...field}
-                                        className="w-20 font-mono text-xs"
+                                        className="w-28 font-mono text-xs"
                                         data-testid={`input-hsn-${index}`}
                                       />
                                     </FormControl>
@@ -649,7 +650,7 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                                         step={1}
                                         {...field} 
                                         onChange={e => field.onChange(Number(e.target.value))}
-                                        className="w-16" 
+                                        className="w-20" 
                                         data-testid={`input-qty-${index}`}
                                       />
                                     </FormControl>
@@ -668,7 +669,7 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                                         min={0}
                                         {...field} 
                                         onChange={e => field.onChange(Number(e.target.value))}
-                                        className="w-24" 
+                                        className="w-28" 
                                         data-testid={`input-price-${index}`}
                                       />
                                     </FormControl>
@@ -689,7 +690,7 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                                           max={100}
                                           {...field} 
                                           onChange={e => field.onChange(Number(e.target.value))}
-                                          className="w-16 text-xs" 
+                                          className="w-20 text-xs" 
                                           title="CGST %"
                                           placeholder="CGST"
                                         />
@@ -709,7 +710,7 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                                           max={100}
                                           {...field} 
                                           onChange={e => field.onChange(Number(e.target.value))}
-                                          className="w-16 text-xs" 
+                                          className="w-20 text-xs" 
                                           title="SGST %"
                                           placeholder="SGST"
                                         />
@@ -752,6 +753,8 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                     </div>
                   </div>
 
+                </div>
+                <div className="px-6 py-4 border-t bg-background shrink-0">
                   <DialogFooter>
                     <Button 
                       type="submit" 
@@ -761,6 +764,7 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                       {createSoMutation.isPending ? "Creating..." : "Create Sales Order"}
                     </Button>
                   </DialogFooter>
+                </div>
                 </form>
               </Form>
             </DialogContent>
