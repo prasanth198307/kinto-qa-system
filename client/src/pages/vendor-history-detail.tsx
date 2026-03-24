@@ -850,60 +850,178 @@ export default function VendorHistoryDetailPage() {
       }
     };
 
-    const rows: any[][] = [
-      ['Invoice Transactions Report'],
-      [],
-      ['Vendor', data.vendor.vendorName],
-      ['Code', data.vendor.vendorCode],
-      [],
-      ['Invoice #', 'Date', 'Customer', 'Total', 'Settled', 'Outstanding', 'Status'],
+    const ExcelJS = (await import('exceljs')).default;
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'KINTO Ops';
+    wb.created = new Date();
+
+    // Fetch company info
+    let companyName = 'KINTO Smart Ops', companyAddress = '', companyGstin = '', companyPhone = '', companyEmail = '';
+    try {
+      const tmplRes = await fetch('/api/invoice-templates/default', { credentials: 'include' });
+      if (tmplRes.ok) {
+        const t = await tmplRes.json();
+        companyName    = t.defaultSellerName    || companyName;
+        companyAddress = t.defaultSellerAddress || '';
+        companyGstin   = t.defaultSellerGstin   || '';
+        companyPhone   = t.defaultSellerPhone   || '';
+        companyEmail   = t.defaultSellerEmail   || '';
+      }
+    } catch (_) {}
+
+    const NAVY = 'FF1E3A5F', BLUE = 'FF2563AA', WHITE = 'FFFFFFFF', LGREY = 'FFF5F7FA', DGREY = 'FF555555', ORANGE = 'FFEA580C';
+    const LGREEN  = 'FFF0FDF4'; // green-50 – settled row bg
+    const GREEN   = 'FF16A34A'; // green-600
+    const LAMBER  = 'FFFEFCE8'; // yellow-50 – partial row bg
+    const AMBER   = 'FFB45309'; // amber-700
+    const LRED    = 'FFFEF2F2'; // red-50   – unpaid row bg
+    const RED     = 'FFDC2626'; // red-600
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const addHeaderBlock = (ws: any, cols: number, reportTitle: string) => {
+      const merge = (n: number) => ws.mergeCells(n, 1, n, cols);
+      const r1 = ws.addRow([companyName]); r1.height = 32;
+      r1.getCell(1).font = { bold: true, size: 16, color: { argb: WHITE } };
+      r1.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } };
+      r1.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 2 };
+      merge(ws.rowCount);
+      if (companyAddress) {
+        const r2 = ws.addRow([companyAddress]); r2.height = 16;
+        r2.getCell(1).font = { size: 9, color: { argb: WHITE } };
+        r2.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } };
+        r2.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 2 };
+        merge(ws.rowCount);
+      }
+      const meta = [companyGstin ? `GSTIN: ${companyGstin}` : '', companyPhone ? `Ph: ${companyPhone}` : '', companyEmail ? `Email: ${companyEmail}` : ''].filter(Boolean).join('   |   ');
+      if (meta) {
+        const r3 = ws.addRow([meta]); r3.height = 14;
+        r3.getCell(1).font = { size: 8, color: { argb: WHITE } };
+        r3.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } };
+        r3.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 2 };
+        merge(ws.rowCount);
+      }
+      ws.addRow([]); merge(ws.rowCount);
+      const rt = ws.addRow([reportTitle]); rt.height = 22;
+      rt.getCell(1).font = { bold: true, size: 12, color: { argb: WHITE } };
+      rt.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BLUE } };
+      rt.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 2 };
+      merge(ws.rowCount);
+      const rd = ws.addRow([`Vendor: ${data.vendor.vendorName}   |   Generated: ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}`]); rd.height = 14;
+      rd.getCell(1).font = { italic: true, size: 8, color: { argb: DGREY } };
+      rd.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: LGREY } };
+      rd.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 2 };
+      merge(ws.rowCount);
+      ws.addRow([]); merge(ws.rowCount);
+    };
+
+    // ── Sheet: Invoice Transactions (with outline grouping) ──────────────────
+    const ws = wb.addWorksheet('Invoice Transactions');
+    ws.properties.outlineLevelRow = 1;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (ws.properties as any).outlineProperties = { summaryBelow: false }; // [+] beside summary row
+    ws.properties.defaultRowHeight = 15;
+    ws.columns = [
+      { key: 'c1', width: 22 }, // Invoice # / Type
+      { key: 'c2', width: 14 }, // Date
+      { key: 'c3', width: 28 }, // Buyer / Reference
+      { key: 'c4', width: 28 }, // Details
+      { key: 'c5', width: 16 }, // Total / Amount
+      { key: 'c6', width: 16 }, // Settled
+      { key: 'c7', width: 16 }, // Outstanding
+      { key: 'c8', width: 12 }, // Status
     ];
 
+    addHeaderBlock(ws, 8, 'INVOICE TRANSACTIONS');
+
+    // Column header row
+    const hdr = ws.addRow(['Invoice #', 'Date', 'Buyer / Customer', 'Details', 'Total (₹)', 'Settled (₹)', 'Outstanding (₹)', 'Status']);
+    hdr.height = 20;
+    hdr.eachCell(c => {
+      c.font = { bold: true, size: 10, color: { argb: WHITE } };
+      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } };
+      c.alignment = { vertical: 'middle', indent: 1 };
+    });
+    [5, 6, 7].forEach(i => { hdr.getCell(i).alignment = { vertical: 'middle', horizontal: 'right' }; });
+
     filteredTxnInvoices.forEach(inv => {
-      rows.push([
+      const isSettled = inv.outstanding <= 0;
+      const isPartial = !isSettled && inv.totalSettled > 0;
+      const statusLabel = isSettled ? 'Settled' : isPartial ? 'Partial' : 'Unpaid';
+
+      // Pick row colour based on payment status
+      const rowBg   = isSettled ? LGREEN  : isPartial ? LAMBER  : LRED;
+      const rowFg   = isSettled ? GREEN   : isPartial ? AMBER   : RED;
+
+      // Invoice summary row — level 0 (always visible, [+] button here)
+      const ir = ws.addRow([
         inv.invoiceNumber,
-        formatDateForExcel(inv.invoiceDate),
-        inv.buyerName + (inv.isChildVendor ? ' (Child)' : ''),
-        formatCurrencyForExcel(inv.effectiveTotal),
-        formatCurrencyForExcel(inv.totalSettled),
-        formatCurrencyForExcel(inv.outstanding),
-        inv.outstanding <= 0 ? 'Settled' : inv.totalSettled > 0 ? 'Partial' : 'Unpaid',
+        new Date(inv.invoiceDate).toLocaleDateString('en-IN'),
+        inv.buyerName + (inv.isChildVendor ? ' ★Child' : ''),
+        `${inv.allocations.length} settlement${inv.allocations.length !== 1 ? 's' : ''}`,
+        inv.effectiveTotal / 100,
+        inv.totalSettled / 100,
+        inv.outstanding / 100,
+        statusLabel,
       ]);
+      ir.height = 18;
+      ir.eachCell(c => {
+        c.font = { bold: true, size: 10, color: { argb: rowFg } };
+        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rowBg } };
+        c.alignment = { vertical: 'middle', indent: 1 };
+      });
+      [5, 6, 7].forEach(i => {
+        ir.getCell(i).numFmt = '₹#,##0.00';
+        ir.getCell(i).alignment = { vertical: 'middle', horizontal: 'right' };
+      });
+      ir.getCell(8).alignment = { vertical: 'middle', horizontal: 'center' };
+
+      // Allocation detail rows — level 1 (collapsed, expand with [+])
       if (inv.allocations.length > 0) {
-        rows.push(['', 'Date', 'Type', 'Reference', 'Details', 'Amount']);
         inv.allocations.forEach(alloc => {
           const isAddition = alloc.type === 'debit_note';
           const detail = alloc.type === 'payment'
-            ? `${alloc.method || 'Cash'}${alloc.bankName ? ' - ' + alloc.bankName : ''}${alloc.payerName ? ' (Paid by: ' + alloc.payerName + ')' : ''}`
-            : alloc.type === 'advance_application' ? `From: ${alloc.advanceNumber || ''}`
+            ? `${alloc.method || 'Cash'}${alloc.bankName ? ' – ' + alloc.bankName : ''}${alloc.payerName ? ' (Paid by: ' + alloc.payerName + ')' : ''}`
+            : alloc.type === 'advance_application' ? `From advance: ${alloc.advanceNumber || ''}`
             : alloc.type === 'debit_note_adjustment' ? `Vendor DN: ${alloc.reference || ''}`
-            : `${alloc.noteNumber || ''}${alloc.reason ? ' - ' + alloc.reason : ''}`;
-          rows.push([
-            '',
-            formatDateForExcel(alloc.date),
-            getAllocTypeLabel(alloc.type),
-            alloc.reference || alloc.advanceNumber || alloc.noteNumber || '-',
+            : `${alloc.noteNumber || ''}${alloc.reason ? ' – ' + alloc.reason : ''}`;
+          const dr = ws.addRow([
+            `  ↳ ${getAllocTypeLabel(alloc.type)}`,
+            new Date(alloc.date).toLocaleDateString('en-IN'),
+            alloc.reference || alloc.advanceNumber || alloc.noteNumber || '—',
             detail,
-            `${isAddition ? '+' : '-'}${formatCurrencyForExcel(alloc.amount)}`,
+            '',
+            '',
+            isAddition ? alloc.amount / 100 : -(alloc.amount / 100), // show as +/- in outstanding col
+            '',
           ]);
+          dr.height = 15;
+          dr.outlineLevel = 1;  // collapsible
+          dr.hidden = true;     // starts collapsed — click [+] to expand
+          dr.eachCell(c => {
+            c.font = { size: 9, color: { argb: DGREY } };
+            c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: WHITE } };
+            c.alignment = { vertical: 'middle', indent: 2 };
+          });
+          dr.getCell(7).numFmt = isAddition ? '+₹#,##0.00' : '₹#,##0.00;[Red]-₹#,##0.00';
+          dr.getCell(7).alignment = { vertical: 'middle', horizontal: 'right' };
+          dr.getCell(7).font = { size: 9, bold: true, color: { argb: isAddition ? ORANGE : DGREY } };
         });
-        rows.push([]);
       }
     });
 
-    rows.push([]);
-    rows.push(['Summary']);
-    rows.push(['Total Invoices', filteredTxnInvoices.length]);
-    rows.push(['Total Amount', formatCurrencyForExcel(txnData.summary.totalInvoiceAmount)]);
-    rows.push(['Total Settled', formatCurrencyForExcel((txnData.summary.totalPayments || 0) + (txnData.summary.totalDnAdjustments || 0) + (txnData.summary.totalAdvances || 0))]);
-    rows.push(['Total Outstanding', formatCurrencyForExcel(txnData.summary.totalOutstanding)]);
+    // Grand total footer
+    const totalSettled = (txnData.summary.totalPayments || 0) + (txnData.summary.totalDnAdjustments || 0) + (txnData.summary.totalAdvances || 0);
+    const gr = ws.addRow(['', '', '', `${filteredTxnInvoices.length} invoices`, txnData.summary.totalInvoiceAmount / 100, totalSettled / 100, txnData.summary.totalOutstanding / 100, '']);
+    gr.height = 22;
+    gr.eachCell(c => { c.font = { bold: true, size: 11, color: { argb: WHITE } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } }; c.alignment = { vertical: 'middle', indent: 1 }; });
+    [5, 6, 7].forEach(i => { gr.getCell(i).numFmt = '₹#,##0.00'; gr.getCell(i).alignment = { vertical: 'middle', horizontal: 'right' }; });
 
-    const filename = `${data.vendor.vendorName.replace(/[^a-zA-Z0-9]/g, '_')}_Invoice_Transactions_${new Date().toISOString().split('T')[0]}.xlsx`;
-
-    await exportToExcel({
-      filename,
-      sheets: [{ name: 'Invoice Transactions', data: rows }],
-    });
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url;
+    a.download = `${data.vendor.vendorName.replace(/[^a-zA-Z0-9]/g, '_')}_Invoice_Transactions_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    a.click(); URL.revokeObjectURL(url);
   };
 
   return (
