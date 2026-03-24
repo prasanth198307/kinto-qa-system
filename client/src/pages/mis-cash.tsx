@@ -129,7 +129,7 @@ export default function MISCash() {
   const [appliedTo, setAppliedTo] = useState('');
 
   const isCustom = periodType === 'custom';
-  const customReady = isCustom && appliedFrom && appliedTo;
+  const customReady = isCustom && !!appliedFrom && !!appliedTo;
 
   const queryParams = customReady
     ? { periodType: 'custom', startDate: appliedFrom, endDate: appliedTo }

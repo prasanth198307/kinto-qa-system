@@ -1,0 +1,44 @@
+index-IYmqr_aw.js:8/budget-variance:1 <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">
+index-IYmqr_aw.js:8 Error: Expected enabled to be a boolean or a callback that returns a boolean
+    at kZ.setOptions (index-IYmqr_aw.js:8:78481)
+    at index-IYmqr_aw.js:8:98595
+    at Mv (index-IYmqr_aw.js:8:25014)
+    at Bm (index-IYmqr_aw.js:8:43809)
+    at jX (index-IYmqr_aw.js:8:42505)
+    at gu (index-IYmqr_aw.js:8:41519)
+    at d4 (index-IYmqr_aw.js:8:37987)
+    at od (index-IYmqr_aw.js:6:3276)
+    at index-IYmqr_aw.js:8:35321
+yw @ index-IYmqr_aw.js:8
+EM.C.callback @ index-IYmqr_aw.js:8
+oM @ index-IYmqr_aw.js:6
+i4 @ index-IYmqr_aw.js:8
+a4 @ index-IYmqr_aw.js:8
+xX @ index-IYmqr_aw.js:8
+jX @ index-IYmqr_aw.js:8
+gu @ index-IYmqr_aw.js:8
+d4 @ index-IYmqr_aw.js:8
+od @ index-IYmqr_aw.js:6
+(anonymous) @ index-IYmqr_aw.js:8
+index-IYmqr_aw.js:8 Uncaught Error: Expected enabled to be a boolean or a callback that returns a boolean
+    at kZ.setOptions (index-IYmqr_aw.js:8:78481)
+    at index-IYmqr_aw.js:8:98595
+    at Mv (index-IYmqr_aw.js:8:25014)
+    at Bm (index-IYmqr_aw.js:8:43809)
+    at jX (index-IYmqr_aw.js:8:42505)
+    at gu (index-IYmqr_aw.js:8:41519)
+    at d4 (index-IYmqr_aw.js:8:37987)
+    at od (index-IYmqr_aw.js:6:3276)
+    at index-IYmqr_aw.js:8:35321
+setOptions @ index-IYmqr_aw.js:8
+(anonymous) @ index-IYmqr_aw.js:8
+Mv @ index-IYmqr_aw.js:8
+Bm @ index-IYmqr_aw.js:8
+jX @ index-IYmqr_aw.js:8
+gu @ index-IYmqr_aw.js:8
+d4 @ index-IYmqr_aw.js:8
+od @ index-IYmqr_aw.js:6
+(anonymous) @ index-IYmqr_aw.js:8
+ Error: Expected enabled to be a boolean or a callback that returns a boolean    at kZ.setOptions (index-IYmqr_aw.js:8:78481)     at index-IYmqr_aw.js:8:98595    at Mv (index-IYmqr_aw.js:8:25014)     at Bm (index-IYmqr_aw.js:8:43809)     at jX (index-IYmqr_aw.js:8:42505)     at gu (index-IYmqr_aw.js:8:41519)     at d4 (index-IYmqr_aw.js:8:37987)     at od (index-IYmqr_aw.js:6:3276)     at index-IYmqr_aw.js:8:35321
+ 
+index-IYmqr_aw.js:8 Uncaught Error: Expected enabled to be a boolean or a callback that returns a boolean    at kZ.setOptions (index-IYmqr_aw.js:8:78481)     at index-IYmqr_aw.js:8:98595    at Mv (index-IYmqr_aw.js:8:25014)     at Bm (index-IYmqr_aw.js:8:43809)     at jX (index-IYmqr_aw.js:8:42505)     at gu (index-IYmqr_aw.js:8:41519)     at d4 (index-IYmqr_aw.js:8:37987)     at od (index-IYmqr_aw.js:6:3276)     at index-IYmqr_aw.js:8:35321
