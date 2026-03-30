@@ -27,7 +27,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { FileText, Package, Receipt, ShoppingCart, Wrench, Filter, FileCheck2, Download, Wallet, Banknote, CreditCard, Check, ChevronsUpDown, Boxes, Settings, Trash2, Undo2, RefreshCw, Users } from "lucide-react";
+import { FileText, Package, Receipt, ShoppingCart, Wrench, Filter, FileCheck2, Download, Wallet, Banknote, CreditCard, Check, ChevronsUpDown, Boxes, Settings, Trash2, Undo2, RefreshCw, Users, Factory, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import type { Gatepass, Invoice, RawMaterialIssuance, PurchaseOrder, PMExecution, InvoicePayment } from "@shared/schema";
@@ -888,11 +888,12 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
     'sales-returns': canAccessReportTab('report_sales_returns'),
     'repacking': canAccessReportTab('report_repacking'),
     'vendor-report': canAccessReportTab('report_vendor_report'),
+    'monthly-production': canAccessReportTab('report_monthly_production'),
   };
   
   // Find first accessible tab for default
   const getFirstAccessibleTab = () => {
-    const tabs = ['gatepasses', 'invoices', 'issuances', 'purchase-orders', 'maintenance', 'machines', 'expenses', 'cash-register', 'gst-reports', 'payments', 'finished-goods', 'monthly-sales', 'scrap', 'sales-returns', 'repacking', 'vendor-report'];
+    const tabs = ['gatepasses', 'invoices', 'issuances', 'purchase-orders', 'maintenance', 'machines', 'expenses', 'cash-register', 'gst-reports', 'payments', 'finished-goods', 'monthly-sales', 'scrap', 'sales-returns', 'repacking', 'vendor-report', 'monthly-production'];
     for (const tab of tabs) {
       if (tabPermissions[tab as keyof typeof tabPermissions]) return tab;
     }
@@ -1742,6 +1743,12 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
             <TabsTrigger value="vendor-report" data-testid="tab-vendor-report">
               <Users className="w-4 h-4 mr-2" />
               Vendor Report
+            </TabsTrigger>
+          )}
+          {tabPermissions['monthly-production'] && (
+            <TabsTrigger value="monthly-production" data-testid="tab-monthly-production">
+              <Factory className="w-4 h-4 mr-2" />
+              Monthly Production
             </TabsTrigger>
           )}
         </TabsList>
@@ -3318,6 +3325,9 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
         <TabsContent value="vendor-report">
           <VendorReport />
         </TabsContent>
+        <TabsContent value="monthly-production">
+          <MonthlyProductionReportContent />
+        </TabsContent>
       </Tabs>
       </div>
     </>
@@ -4334,6 +4344,275 @@ function RepackingReportContent() {
                 </Table>
               </CardContent>
             </Card>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// Monthly Production per SKU Report
+const MONTH_SHORT: Record<string, string> = {
+  '01': 'Jan', '02': 'Feb', '03': 'Mar', '04': 'Apr',
+  '05': 'May', '06': 'Jun', '07': 'Jul', '08': 'Aug',
+  '09': 'Sep', '10': 'Oct', '11': 'Nov', '12': 'Dec',
+};
+
+function MonthlyProductionReportContent() {
+  const currentYear = new Date().getFullYear();
+  const [selectedYear, setSelectedYear] = useState(String(currentYear));
+  const [selectedProduct, setSelectedProduct] = useState<string>('all');
+  const [isExporting, setIsExporting] = useState(false);
+
+  const { data: products = [] } = useQuery<any[]>({ queryKey: ['/api/products'] });
+
+  const { data, isLoading, error } = useQuery<{
+    year: number;
+    months: string[];
+    data: Array<{
+      productId: string;
+      productName: string;
+      productCode: string;
+      monthly: Record<string, { produced: number; rejected: number; entries: number }>;
+      total: number;
+    }>;
+    monthlyTotals: Record<string, number>;
+    grandTotal: number;
+  }>({
+    queryKey: ['/api/mis/production-sku-monthly', { year: selectedYear }],
+  });
+
+  const yearOptions = [currentYear - 3, currentYear - 2, currentYear - 1, currentYear, currentYear + 1].map(String);
+
+  const filteredData = (data?.data || []).filter(p =>
+    selectedProduct === 'all' || p.productId === selectedProduct
+  );
+
+  const months = data?.months || [];
+
+  const filteredMonthlyTotals = months.reduce((acc, m) => {
+    acc[m] = filteredData.reduce((sum, p) => sum + (p.monthly[m]?.produced || 0), 0);
+    return acc;
+  }, {} as Record<string, number>);
+
+  const filteredGrandTotal = filteredData.reduce((sum, p) => sum + p.total, 0);
+
+  const handleExport = async () => {
+    if (!data || filteredData.length === 0) return;
+    setIsExporting(true);
+    try {
+      const XLSX = await import('xlsx');
+      const wb = XLSX.utils.book_new();
+      const monthLabels = months.map(m => MONTH_SHORT[m.slice(5, 7)] || m.slice(5, 7));
+      const rows: any[][] = [
+        [`Monthly Production Report — ${selectedYear}`],
+        [`Generated: ${format(new Date(), 'dd MMM yyyy HH:mm')}`],
+        [`Source: Production Entries (unaffected by sales/dispatch)`],
+        [],
+        ['Product', 'Product Code', ...monthLabels, 'Total'],
+        ...filteredData.map(p => [
+          p.productName,
+          p.productCode,
+          ...months.map(m => p.monthly[m]?.produced || 0),
+          p.total,
+        ]),
+        ['TOTAL', '', ...months.map(m => filteredMonthlyTotals[m] || 0), filteredGrandTotal],
+      ];
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      XLSX.utils.book_append_sheet(wb, ws, `Production ${selectedYear}`);
+      XLSX.writeFile(wb, `monthly-production-${selectedYear}.xlsx`);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Factory className="h-5 w-5" />
+              Monthly Production per SKU
+            </CardTitle>
+            <CardDescription>
+              Quantity produced each month per product — based on production shift entries
+            </CardDescription>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExport}
+            disabled={isExporting || isLoading || filteredData.length === 0}
+            data-testid="button-export-monthly-production"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            {isExporting ? 'Exporting...' : 'Export Excel'}
+          </Button>
+        </div>
+
+        <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md mt-2">
+          <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
+          <p className="text-xs text-blue-700 dark:text-blue-300">
+            This report reads from production shift entries. Even after goods are sold and finished goods stock reaches zero, the original production quantities remain unchanged here.
+          </p>
+        </div>
+      </CardHeader>
+
+      <CardContent className="space-y-4">
+        {/* Filters */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
+          <div className="space-y-1">
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Year</Label>
+            <Select value={selectedYear} onValueChange={setSelectedYear}>
+              <SelectTrigger data-testid="select-prod-year">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {yearOptions.map(y => (
+                  <SelectItem key={y} value={y}>{y}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Product (filter)</Label>
+            <Select value={selectedProduct} onValueChange={setSelectedProduct}>
+              <SelectTrigger data-testid="select-prod-product">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Products</SelectItem>
+                {products.map((p: any) => (
+                  <SelectItem key={p.id} value={p.id}>{p.productName}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Summary cards */}
+        {!isLoading && filteredData.length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="bg-muted p-3 rounded-md">
+              <p className="text-xs text-muted-foreground">Products</p>
+              <p className="text-xl font-bold">{filteredData.length}</p>
+            </div>
+            <div className="bg-muted p-3 rounded-md">
+              <p className="text-xs text-muted-foreground">Total Produced</p>
+              <p className="text-xl font-bold">{filteredGrandTotal.toLocaleString('en-IN')}</p>
+            </div>
+            <div className="bg-muted p-3 rounded-md">
+              <p className="text-xs text-muted-foreground">Active Months</p>
+              <p className="text-xl font-bold">{months.filter(m => filteredMonthlyTotals[m] > 0).length}</p>
+            </div>
+            <div className="bg-muted p-3 rounded-md">
+              <p className="text-xs text-muted-foreground">Peak Month</p>
+              <p className="text-xl font-bold text-green-600 dark:text-green-400">
+                {(() => {
+                  const best = months.reduce((a, b) =>
+                    (filteredMonthlyTotals[a] || 0) >= (filteredMonthlyTotals[b] || 0) ? a : b,
+                    months[0]
+                  );
+                  return best && filteredMonthlyTotals[best] > 0 ? MONTH_SHORT[best.slice(5, 7)] : '—';
+                })()}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Pivot Table */}
+        {isLoading ? (
+          <div className="space-y-2 py-4">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="h-10 bg-muted animate-pulse rounded" />
+            ))}
+          </div>
+        ) : error ? (
+          <div className="text-center py-10">
+            <p className="text-sm text-destructive">Failed to load report. Please try again.</p>
+          </div>
+        ) : filteredData.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            <Factory className="w-10 h-10 mx-auto mb-3 opacity-30" />
+            <p className="font-medium">No production data for {selectedYear}</p>
+            <p className="text-sm mt-1">Production shift entries recorded in {selectedYear} will appear here.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto border rounded-md">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/50">
+                  <TableHead className="sticky left-0 bg-muted/50 z-10 min-w-[180px] font-semibold">
+                    Product
+                  </TableHead>
+                  {months.map(m => (
+                    <TableHead
+                      key={m}
+                      className={`text-right min-w-[60px] font-semibold text-xs px-2 ${
+                        !filteredMonthlyTotals[m] ? 'text-muted-foreground' : ''
+                      }`}
+                    >
+                      {MONTH_SHORT[m.slice(5, 7)]}
+                    </TableHead>
+                  ))}
+                  <TableHead className="text-right min-w-[80px] font-bold">Total</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredData.map((product) => {
+                  const maxVal = Math.max(...months.map(m => product.monthly[m]?.produced || 0));
+                  return (
+                    <TableRow key={product.productId} data-testid={`row-monthly-prod-${product.productId}`}>
+                      <TableCell className="sticky left-0 bg-background z-10 py-2">
+                        <div className="font-medium text-sm">{product.productName}</div>
+                        {product.productCode && (
+                          <div className="text-xs text-muted-foreground">{product.productCode}</div>
+                        )}
+                      </TableCell>
+                      {months.map(m => {
+                        const val = product.monthly[m]?.produced;
+                        const isPeak = val === maxVal && val > 0;
+                        return (
+                          <TableCell key={m} className="text-right text-sm px-2 py-2">
+                            {val ? (
+                              <span className={`font-medium tabular-nums ${isPeak ? 'text-green-600 dark:text-green-400 font-bold' : ''}`}>
+                                {val.toLocaleString('en-IN')}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">—</span>
+                            )}
+                          </TableCell>
+                        );
+                      })}
+                      <TableCell className="text-right font-bold text-sm tabular-nums">
+                        {product.total.toLocaleString('en-IN')}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+                {/* Totals row */}
+                <TableRow className="border-t-2 bg-muted/40 font-bold">
+                  <TableCell className="sticky left-0 bg-muted/40 z-10 text-sm font-bold py-2">
+                    Total
+                  </TableCell>
+                  {months.map(m => (
+                    <TableCell key={m} className="text-right px-2 py-2">
+                      {filteredMonthlyTotals[m] ? (
+                        <span className="text-sm font-bold tabular-nums">
+                          {filteredMonthlyTotals[m].toLocaleString('en-IN')}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground text-xs font-normal">—</span>
+                      )}
+                    </TableCell>
+                  ))}
+                  <TableCell className="text-right font-bold text-sm text-primary tabular-nums">
+                    {filteredGrandTotal.toLocaleString('en-IN')}
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
           </div>
         )}
       </CardContent>
