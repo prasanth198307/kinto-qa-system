@@ -20079,6 +20079,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== MONTHLY PRODUCTION REPORT (Finished Goods based) ====================
+  
+  // Monthly production per SKU — uses finished_goods table.
+  // Since FG.quantity is reduced when goods are dispatched (and the record is soft-deleted
+  // when quantity reaches 0), we reconstruct the original production as:
+  //   original_qty = fg.quantity (current stock) + SUM(active gatepass dispatches for that FG)
+  // This correctly accounts for both partially-sold and fully-sold batches.
+  app.get('/api/reports/production-sku-monthly', isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const year = parseInt((req.query.year as string) || String(new Date().getFullYear()), 10);
+
+      // Raw SQL query: join finished_goods with aggregated active gatepass dispatches
+      const rows = await db.execute(sql`
+        SELECT
+          fg.product_id,
+          p.product_name,
+          p.product_code,
+          TO_CHAR(DATE_TRUNC('month', fg.production_date::timestamp), 'YYYY-MM') AS month,
+          COALESCE(SUM(fg.quantity), 0)
+            + COALESCE(SUM(gp_total.total_dispatched), 0) AS total_produced,
+          COUNT(fg.id)::int AS entries
+        FROM finished_goods fg
+        LEFT JOIN products p ON fg.product_id = p.id
+        LEFT JOIN (
+          SELECT gi.finished_good_id, SUM(gi.quantity_dispatched) AS total_dispatched
+          FROM gatepass_items gi
+          INNER JOIN gatepasses gp ON gi.gatepass_id = gp.id AND gp.record_status = 1
+          WHERE gi.record_status = 1
+          GROUP BY gi.finished_good_id
+        ) gp_total ON fg.id = gp_total.finished_good_id
+        WHERE
+          EXTRACT(YEAR FROM fg.production_date::timestamp) = ${year}
+          AND (fg.source = 'production' OR fg.source IS NULL)
+        GROUP BY
+          fg.product_id, p.product_name, p.product_code,
+          TO_CHAR(DATE_TRUNC('month', fg.production_date::timestamp), 'YYYY-MM')
+        ORDER BY p.product_name, month
+      `);
+
+      // Build pivot keyed by productId
+      const pivot: Record<string, { productName: string; productCode: string; months: Record<string, number> }> = {};
+      for (const row of rows.rows as any[]) {
+        const pid: string = row.product_id || 'unknown';
+        if (!pivot[pid]) pivot[pid] = { productName: row.product_name || 'Unknown', productCode: row.product_code || '', months: {} };
+        pivot[pid].months[row.month] = Number(row.total_produced);
+      }
+
+      const months: string[] = [];
+      for (let m = 1; m <= 12; m++) {
+        months.push(`${year}-${String(m).padStart(2, '0')}`);
+      }
+
+      const tableRows = Object.entries(pivot).map(([productId, data]) => ({
+        productId,
+        productName: data.productName,
+        productCode: data.productCode,
+        monthly: months.map(m => data.months[m] || 0),
+        total: months.reduce((s, m) => s + (data.months[m] || 0), 0),
+      }));
+
+      const columnTotals = months.map((_, i) =>
+        tableRows.reduce((s, r) => s + r.monthly[i], 0)
+      );
+
+      res.json({ year, months, rows: tableRows, columnTotals });
+    } catch (error: any) {
+      console.error('[REPORTS] Error in production-sku-monthly:', error);
+      res.status(500).json({ message: error.message || 'Failed to fetch production report' });
+    }
+  });
+
   // ==================== MONTHLY SALES REPORT ====================
   
   // Monthly sales report with product-wise breakdown
