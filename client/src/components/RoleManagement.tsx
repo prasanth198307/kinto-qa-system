@@ -61,6 +61,7 @@ const AVAILABLE_SCREENS: ScreenDefinition[] = [
   { key: 'report_sales_returns', label: 'Report: Sales Returns', allowedActions: ['view'] },
   { key: 'report_repacking', label: 'Report: Repacking', allowedActions: ['view'] },
   { key: 'report_vendor_report', label: 'Report: Vendor Report', allowedActions: ['view'] },
+  { key: 'report_monthly_production', label: 'Report: Monthly Production', allowedActions: ['view'] },
   
   // Analytics & Reports (Read-only)
   { key: 'production_reconciliation_report', label: 'Production Reconciliation Report', allowedActions: ['view'] },

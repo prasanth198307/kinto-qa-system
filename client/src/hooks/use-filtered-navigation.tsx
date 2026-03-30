@@ -219,7 +219,7 @@ function canAccessNavItemWithDbPermissions(itemId: string, dbPermissions: Permis
       'report_gatepasses', 'report_invoices', 'report_issuances', 
       'report_purchase_orders', 'report_maintenance', 'report_expenses',
       'report_cash_register', 'report_gst', 'report_payments',
-      'report_finished_goods', 'report_monthly_sales'
+      'report_finished_goods', 'report_monthly_sales', 'report_monthly_production'
     ];
     return dbPermissions.some(p => reportTabKeys.includes(p.screenKey) && p.canView === true);
   }
