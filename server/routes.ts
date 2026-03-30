@@ -221,6 +221,7 @@ const endpointToScreenKey: Record<string, string> = {
   '/api/mis/kpi-dashboard': 'mis_dashboard',
   '/api/mis/alerts': 'mis_dashboard',
   '/api/mis/production-analytics': 'mis_production',
+  '/api/mis/production-sku-monthly': 'mis_production',
   '/api/mis/inventory-analytics': 'mis_inventory',
   '/api/mis/sales-analytics': 'mis_sales',
   '/api/mis/delivery-performance': 'mis_delivery',
@@ -20696,14 +20697,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const byProduct = await db.execute(sql`
           SELECT 
-            p.name as product_name,
+            COALESCE(p.product_name, 'Unknown') as product_name,
             COUNT(*) as entries,
             COALESCE(SUM(CAST(pe.produced_quantity AS numeric)), 0) as total_produced,
             COALESCE(SUM(CAST(pe.rejected_quantity AS numeric)), 0) as total_rejected
           FROM production_entries pe
           LEFT JOIN products p ON pe.product_id = p.id
           WHERE pe.record_status = 1 AND pe.production_date >= ${startDateStr}
-          GROUP BY p.id, p.name
+          GROUP BY p.id, p.product_name
           ORDER BY total_produced DESC
           LIMIT 10
         `);
@@ -20783,6 +20784,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // MIS Month-wise Production per SKU
+  app.get('/api/mis/production-sku-monthly', requireRole('admin', 'manager'), async (req: any, res: Response) => {
+    try {
+      const { year } = req.query;
+      const targetYear = parseInt((year as string) || String(new Date().getFullYear()));
+
+      const rows = await db.execute(sql`
+        SELECT
+          p.id AS product_id,
+          COALESCE(p.product_name, 'Unknown') AS product_name,
+          COALESCE(p.product_code, '') AS product_code,
+          TO_CHAR(DATE_TRUNC('month', pe.production_date::timestamp), 'YYYY-MM') AS month,
+          COALESCE(SUM(CAST(pe.produced_quantity AS numeric)), 0) AS total_produced,
+          COALESCE(SUM(CAST(pe.rejected_quantity AS numeric)), 0) AS total_rejected,
+          COUNT(*) AS entries
+        FROM production_entries pe
+        LEFT JOIN products p ON pe.product_id = p.id
+        WHERE pe.record_status = 1
+          AND EXTRACT(YEAR FROM pe.production_date::timestamp) = ${targetYear}
+        GROUP BY p.id, p.product_name, p.product_code, TO_CHAR(DATE_TRUNC('month', pe.production_date::timestamp), 'YYYY-MM')
+        ORDER BY p.product_name, month
+      `);
+
+      const rawRows = rows.rows as any[];
+
+      // Build months array for the year (all 12)
+      const months: string[] = [];
+      for (let m = 1; m <= 12; m++) {
+        months.push(`${targetYear}-${String(m).padStart(2, '0')}`);
+      }
+
+      // Group by product
+      const productMap = new Map<string, {
+        productId: string;
+        productName: string;
+        productCode: string;
+        monthly: Record<string, { produced: number; rejected: number; entries: number }>;
+        total: number;
+      }>();
+
+      for (const row of rawRows) {
+        if (!productMap.has(row.product_id)) {
+          productMap.set(row.product_id, {
+            productId: row.product_id,
+            productName: row.product_name,
+            productCode: row.product_code,
+            monthly: {},
+            total: 0,
+          });
+        }
+        const entry = productMap.get(row.product_id)!;
+        const produced = parseFloat(row.total_produced);
+        entry.monthly[row.month] = {
+          produced,
+          rejected: parseFloat(row.total_rejected),
+          entries: parseInt(row.entries),
+        };
+        entry.total += produced;
+      }
+
+      const data = Array.from(productMap.values())
+        .sort((a, b) => b.total - a.total);
+
+      // Monthly totals across all products
+      const monthlyTotals: Record<string, number> = {};
+      for (const month of months) {
+        monthlyTotals[month] = data.reduce((sum, p) => sum + (p.monthly[month]?.produced || 0), 0);
+      }
+
+      res.json({
+        year: targetYear,
+        months,
+        data,
+        monthlyTotals,
+        grandTotal: data.reduce((sum, p) => sum + p.total, 0),
+      });
+    } catch (error: any) {
+      console.error('[MIS] Error fetching production SKU monthly:', error);
+      res.status(500).json({ message: error.message || 'Failed to fetch production SKU monthly data' });
+    }
+  });
+
   // MIS Inventory Intelligence
   app.get('/api/mis/inventory-analytics', requireRole('admin', 'manager'), async (req: any, res: Response) => {
     try {

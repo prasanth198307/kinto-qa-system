@@ -4145,7 +4145,7 @@ function FinishedGoodsTab({ searchTerm, onSearchChange }: { searchTerm: string; 
   });
 
   // Consolidated inventory view
-  const { data: consolidatedData, isLoading: isConsolidatedLoading } = useQuery<{
+  const { data: consolidatedData, isLoading: isConsolidatedLoading, error: consolidatedError } = useQuery<{
     consolidated: Array<{
       productId: string;
       productName: string;
@@ -4657,9 +4657,13 @@ function FinishedGoodsTab({ searchTerm, onSearchChange }: { searchTerm: string; 
               <div className="flex items-center justify-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
-            ) : consolidatedData?.consolidated.length === 0 ? (
+            ) : consolidatedError ? (
+              <div className="text-center py-8 text-destructive text-sm">
+                Failed to load consolidated data. Please try again.
+              </div>
+            ) : !consolidatedData?.consolidated || consolidatedData.consolidated.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                No inventory data found.
+                No inventory data found. Consolidated view shows finished goods with available stock.
               </div>
             ) : (
               <Table>
