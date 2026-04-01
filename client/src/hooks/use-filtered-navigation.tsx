@@ -39,7 +39,7 @@ const navItemToScreenKey: Record<string, string> = {
   'variance-analytics': 'variance_analytics',
   'sales-orders': 'sales_orders',
   'invoices': 'invoices',
-  'vendor-history': 'vendors',
+  'vendor-history': 'vendor_history',
   'pending-payments': 'pending_payments',
   'payment-management': 'payments',
   'customer-advances': 'customer_advances',

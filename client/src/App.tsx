@@ -1439,7 +1439,7 @@ const navItemToScreenKey: Record<string, string> = {
   // Finance & Sales
   'sales-orders': 'sales_orders',
   'invoices': 'invoices',
-  'vendor-history': 'vendors',
+  'vendor-history': 'vendor_history',
   'vendor-debit-notes': 'vendor_debit_notes',
   'pending-payments': 'pending_payments',
   'payment-management': 'payments',
