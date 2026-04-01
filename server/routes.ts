@@ -13361,8 +13361,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
       });
       
-      // Sort
-      vendorSummaries.sort((a, b) => {
+      // Group vendors with the same name into consolidated entries to avoid showing duplicates
+      const groupMap = new Map<string, typeof vendorSummaries>();
+      for (const vs of vendorSummaries) {
+        const key = vs.vendorName.toLowerCase().trim();
+        if (!groupMap.has(key)) groupMap.set(key, []);
+        groupMap.get(key)!.push(vs);
+      }
+
+      const consolidatedSummaries = Array.from(groupMap.values()).map(group => {
+        if (group.length === 1) {
+          return { ...group[0], isGroup: false, subVendorCount: 1 };
+        }
+        // Multiple vendors share the same name — consolidate into one row
+        const lastDate = group.map(v => v.lastTransactionDate).filter(Boolean).sort().pop() || null;
+        return {
+          id: group[0].id,
+          vendorCode: group[0].vendorCode,
+          vendorName: group[0].vendorName,
+          gstNumber: group[0].gstNumber,
+          mobileNumber: group[0].mobileNumber,
+          city: group[0].city,
+          state: group[0].state,
+          invoiceCount: group.reduce((s, v) => s + v.invoiceCount, 0),
+          creditNoteCount: group.reduce((s, v) => s + v.creditNoteCount, 0),
+          debitNoteCount: group.reduce((s, v) => s + v.debitNoteCount, 0),
+          advanceCount: group.reduce((s, v) => s + v.advanceCount, 0),
+          childVendorCount: group.length,
+          totalInvoiced: group.reduce((s, v) => s + v.totalInvoiced, 0),
+          totalReceived: group.reduce((s, v) => s + v.totalReceived, 0),
+          totalCredits: group.reduce((s, v) => s + v.totalCredits, 0),
+          totalDebits: group.reduce((s, v) => s + v.totalDebits, 0),
+          totalAdvances: group.reduce((s, v) => s + v.totalAdvances, 0),
+          outstanding: group.reduce((s, v) => s + v.outstanding, 0),
+          lastTransactionDate: lastDate,
+          isGroup: true,
+          subVendorCount: group.length,
+        };
+      });
+
+      // Sort consolidated summaries
+      consolidatedSummaries.sort((a, b) => {
         let comparison = 0;
         switch (sortBy) {
           case 'outstanding':
@@ -13386,20 +13425,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return sortOrder === 'desc' ? -comparison : comparison;
       });
       
-      // Calculate totals across all filtered vendors
-      // Only count parent/standalone vendors to avoid double-counting (parents already include child invoices)
-      const childVendorIds = new Set(activeVendors.filter(v => v.parentVendorId).map(v => v.id));
-      const parentOnlySummaries = vendorSummaries.filter(v => !childVendorIds.has(v.id));
+      // Calculate totals — use consolidated summaries to avoid double-counting
       const totals = {
-        totalVendors: vendorSummaries.length,
-        totalInvoiced: parentOnlySummaries.reduce((sum, v) => sum + v.totalInvoiced, 0),
-        totalReceived: parentOnlySummaries.reduce((sum, v) => sum + v.totalReceived, 0),
-        totalOutstanding: parentOnlySummaries.reduce((sum, v) => sum + v.outstanding, 0),
-        vendorsWithBalance: parentOnlySummaries.filter(v => v.outstanding > 0).length,
+        totalVendors: consolidatedSummaries.length,
+        totalInvoiced: consolidatedSummaries.reduce((sum, v) => sum + v.totalInvoiced, 0),
+        totalReceived: consolidatedSummaries.reduce((sum, v) => sum + v.totalReceived, 0),
+        totalOutstanding: consolidatedSummaries.reduce((sum, v) => sum + v.outstanding, 0),
+        vendorsWithBalance: consolidatedSummaries.filter(v => v.outstanding > 0).length,
       };
       
       // Paginate
-      const paginatedVendors = vendorSummaries.slice(offset, offset + limit);
+      const paginatedVendors = consolidatedSummaries.slice(offset, offset + limit);
       
       res.json({
         vendors: paginatedVendors,
@@ -13407,8 +13443,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         pagination: {
           page: pageNum,
           pageSize: limit,
-          totalItems: vendorSummaries.length,
-          totalPages: Math.ceil(vendorSummaries.length / limit),
+          totalItems: consolidatedSummaries.length,
+          totalPages: Math.ceil(consolidatedSummaries.length / limit),
         },
       });
     } catch (error) {
@@ -13417,6 +13453,113 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Get consolidated group detail for all vendors with the same name
+  app.get('/api/vendor-group/:vendorName', isAuthenticated, async (req: any, res) => {
+    try {
+      const vendorName = decodeURIComponent(req.params.vendorName);
+      const { startDate, endDate } = req.query;
+
+      // Find all vendors that share this name
+      const allVendors = await storage.getAllVendors();
+      const matchingVendors = allVendors.filter(v =>
+        v.vendorName?.toLowerCase().trim() === vendorName.toLowerCase().trim() && v.recordStatus === 1
+      );
+
+      if (matchingVendors.length === 0) {
+        return res.status(404).json({ message: "No vendors found with this name" });
+      }
+
+      const allInvoicesRaw = await storage.getAllInvoices();
+      const activeInvoices = allInvoicesRaw.filter(inv => inv.recordStatus === 1 && inv.status !== 'cancelled');
+
+      const allCreditNotes = await db.select()
+        .from(creditNotes)
+        .where(and(eq(creditNotes.recordStatus, 1), eq(creditNotes.status, 'issued')));
+
+      const allDebitNotes = await db.select()
+        .from(debitNotes)
+        .where(and(eq(debitNotes.recordStatus, 1), eq(debitNotes.status, 'issued')));
+
+      const allAdvances = await db.select()
+        .from(customerAdvances)
+        .where(eq(customerAdvances.recordStatus, 1));
+
+      // Build sub-dealer summaries — each vendor in the group = one sub-dealer row
+      const subDealers = matchingVendors.map(vendor => {
+        const namesToMatch = [vendor.vendorName, vendor.shipToName].filter(Boolean) as string[];
+
+        let vendorInvoices = activeInvoices.filter(inv =>
+          namesToMatch.some(name =>
+            name.toLowerCase() === (inv.buyerName?.toLowerCase() || '') ||
+            name.toLowerCase() === (inv.shipToName?.toLowerCase() || '')
+          )
+        );
+
+        if (startDate) {
+          vendorInvoices = vendorInvoices.filter(inv => new Date(inv.invoiceDate) >= new Date(startDate as string));
+        }
+        if (endDate) {
+          vendorInvoices = vendorInvoices.filter(inv => new Date(inv.invoiceDate) <= new Date(endDate as string));
+        }
+
+        const invoiceIds = vendorInvoices.map(inv => inv.id);
+
+        const vendorCredits = allCreditNotes.filter(cn => cn.invoiceId && invoiceIds.includes(cn.invoiceId));
+        const vendorDebits = allDebitNotes.filter(dn => dn.invoiceId && invoiceIds.includes(dn.invoiceId));
+        const vendorAdvances = allAdvances.filter(adv => adv.vendorId === vendor.id && adv.status === 'active');
+
+        const totalInvoiced = vendorInvoices.reduce((s, inv) => s + (inv.totalAmount || 0), 0);
+        const totalReceived = vendorInvoices.reduce((s, inv) => s + (inv.amountReceived || 0), 0);
+        const totalCredits = vendorCredits.reduce((s, cn) => s + (cn.grandTotal || 0), 0);
+        const totalDebits = vendorDebits.reduce((s, dn) => s + (dn.grandTotal || 0), 0);
+        const totalAdvances = vendorAdvances.reduce((s, adv) => s + ((adv.amount || 0) - (adv.usedAmount || 0)), 0);
+        const outstanding = totalInvoiced + totalDebits - totalCredits - totalReceived - totalAdvances;
+
+        const lastDate = vendorInvoices.length > 0
+          ? vendorInvoices.sort((a, b) => new Date(b.invoiceDate).getTime() - new Date(a.invoiceDate).getTime())[0].invoiceDate
+          : null;
+
+        return {
+          vendorId: vendor.id,
+          vendorCode: vendor.vendorCode,
+          subDealerName: vendor.shipToName || vendor.vendorName,
+          gstNumber: vendor.gstNumber,
+          mobileNumber: vendor.mobileNumber,
+          city: vendor.city,
+          state: vendor.state,
+          invoiceCount: vendorInvoices.length,
+          totalInvoiced,
+          totalReceived,
+          totalCredits,
+          totalDebits,
+          totalAdvances,
+          outstanding,
+          lastTransactionDate: lastDate,
+        };
+      });
+
+      // Sort by outstanding descending
+      subDealers.sort((a, b) => b.outstanding - a.outstanding);
+
+      const groupTotals = {
+        vendorName,
+        subDealerCount: subDealers.length,
+        invoiceCount: subDealers.reduce((s, d) => s + d.invoiceCount, 0),
+        totalInvoiced: subDealers.reduce((s, d) => s + d.totalInvoiced, 0),
+        totalReceived: subDealers.reduce((s, d) => s + d.totalReceived, 0),
+        totalCredits: subDealers.reduce((s, d) => s + d.totalCredits, 0),
+        totalDebits: subDealers.reduce((s, d) => s + d.totalDebits, 0),
+        totalAdvances: subDealers.reduce((s, d) => s + d.totalAdvances, 0),
+        outstanding: subDealers.reduce((s, d) => s + d.outstanding, 0),
+      };
+
+      res.json({ group: groupTotals, subDealers });
+    } catch (error) {
+      console.error("Error fetching vendor group detail:", error);
+      res.status(500).json({ message: "Failed to fetch vendor group detail" });
+    }
+  });
+
   // Get detailed ledger for a specific vendor
   app.get('/api/vendor-history/:vendorId', isAuthenticated, async (req: any, res) => {
     try {

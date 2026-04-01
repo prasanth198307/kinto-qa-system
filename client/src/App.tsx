@@ -89,6 +89,7 @@ import CashRegisterReport from "@/pages/cash-register-report";
 import CashRegisterVoucherPrint from "@/pages/cash-register-voucher-print";
 import VendorHistory from "@/pages/vendor-history";
 import VendorHistoryDetail from "@/pages/vendor-history-detail";
+import VendorGroupDetail from "@/pages/vendor-group-detail";
 import VendorDebitNotes from "@/pages/vendor-debit-notes";
 import CustomerAdvances from "@/pages/customer-advances";
 import MISDashboard from "@/pages/mis-dashboard";
@@ -1370,6 +1371,34 @@ function VendorHistoryDetailPage() {
       }}
     >
       <VendorHistoryDetail />
+    </DashboardShell>
+  );
+}
+
+function VendorGroupDetailPage() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('vendor-history');
+
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
+
+  return (
+    <DashboardShell
+      title="Vendor Group"
+      onLogoutClick={() => logoutMutation.mutate()}
+      notificationCount={0}
+      navSections={navSections}
+      activeView={activeView}
+      onNavigate={(viewId) => {
+        setActiveView(viewId);
+      }}
+    >
+      <VendorGroupDetail />
     </DashboardShell>
   );
 }
@@ -3023,6 +3052,7 @@ function Router() {
       <ProtectedRoute path="/hpcl-migration" component={HPCLMigrationPageWrapper} />
       <ProtectedRoute path="/vendor-management" component={VendorManagementPage} />
       <ProtectedRoute path="/vendor-history" component={VendorHistoryPage} />
+      <ProtectedRoute path="/vendor-group/:vendorName" component={VendorGroupDetailPage} />
       <ProtectedRoute path="/vendor-history/:vendorId" component={VendorHistoryDetailPage} />
       <ProtectedRoute path="/invoice/:id" component={InvoiceDetailPageWrapper} />
       <ProtectedRoute path="/sales-orders" component={SalesOrdersPage} />

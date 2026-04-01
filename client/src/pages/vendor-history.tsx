@@ -32,7 +32,8 @@ import {
   Eye,
   Printer,
   Download,
-  ArrowLeft
+  ArrowLeft,
+  Layers
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { exportToExcel, formatCurrencyForExcel, formatDateForExcel } from "@/lib/excel-export";
@@ -55,6 +56,8 @@ interface VendorSummary {
   totalDebits: number;
   outstanding: number;
   lastTransactionDate: string | null;
+  isGroup: boolean;
+  subVendorCount: number;
 }
 
 interface VendorHistoryResponse {
@@ -172,8 +175,12 @@ export default function VendorHistoryPage() {
     }
   };
 
-  const handleViewDetails = (vendorId: string) => {
-    setLocation(`/vendor-history/${vendorId}`);
+  const handleViewDetails = (vendor: VendorSummary) => {
+    if (vendor.isGroup && vendor.subVendorCount > 1) {
+      setLocation(`/vendor-group/${encodeURIComponent(vendor.vendorName)}`);
+    } else {
+      setLocation(`/vendor-history/${vendor.id}`);
+    }
   };
 
   const navigate = (path: string) => setLocation(path);
@@ -409,13 +416,19 @@ export default function VendorHistoryPage() {
                     <TableRow 
                       key={vendor.id} 
                       className="cursor-pointer hover-elevate"
-                      onClick={() => handleViewDetails(vendor.id)}
+                      onClick={() => handleViewDetails(vendor)}
                       data-testid={`row-vendor-${vendor.id}`}
                     >
                       <TableCell>
                         <div>
-                          <div className="font-medium" data-testid={`text-vendor-name-${vendor.id}`}>
+                          <div className="font-medium flex items-center gap-2" data-testid={`text-vendor-name-${vendor.id}`}>
                             {vendor.vendorName}
+                            {vendor.isGroup && vendor.subVendorCount > 1 && (
+                              <Badge variant="outline" className="text-xs text-blue-600 border-blue-200 flex items-center gap-1">
+                                <Layers className="h-3 w-3" />
+                                {vendor.subVendorCount} sub-dealers
+                              </Badge>
+                            )}
                           </div>
                           <div className="text-xs text-muted-foreground">{vendor.vendorCode}</div>
                         </div>
@@ -446,7 +459,7 @@ export default function VendorHistoryPage() {
                               DN: {vendor.debitNoteCount}
                             </Badge>
                           )}
-                          {vendor.creditNoteCount === 0 && vendor.debitNoteCount === 0 && (
+                          {vendor.creditNoteCount === 0 && vendor.debitNoteCount === 0 && !vendor.isGroup && (
                             <span className="text-muted-foreground text-xs">-</span>
                           )}
                         </div>
@@ -465,7 +478,7 @@ export default function VendorHistoryPage() {
                           variant="ghost"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleViewDetails(vendor.id);
+                            handleViewDetails(vendor);
                           }}
                           data-testid={`button-view-${vendor.id}`}
                         >
