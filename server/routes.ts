@@ -13248,15 +13248,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get all active vendors
       const allVendors = await storage.getAllVendors();
       const activeVendors = allVendors.filter(v => v.isActive === 'true' && v.recordStatus === 1);
+
+      // Only process top-level (non-child) vendors for the list.
+      // Child vendors (parentVendorId set) are already rolled up into their parent's summary via
+      // the childVendors logic below — including them again as standalone rows would double-count
+      // every invoice that belongs to a child, inflating all totals.
+      const topLevelVendors = activeVendors.filter(v => !v.parentVendorId);
       
-      // Filter by search if provided
-      let filteredVendors = activeVendors;
+      // Filter by search if provided — search across top-level AND children so a search for a child
+      // name still surfaces the parent row that consolidates it.
+      let filteredVendors = topLevelVendors;
       if (search) {
         const searchLower = (search as string).toLowerCase();
-        filteredVendors = activeVendors.filter(v => 
+        // Build a set of parent IDs whose children match the search
+        const parentIdsMatchedByChild = new Set(
+          activeVendors
+            .filter(v => v.parentVendorId && (
+              v.vendorName.toLowerCase().includes(searchLower) ||
+              (v.vendorCode && v.vendorCode.toLowerCase().includes(searchLower)) ||
+              (v.gstNumber && v.gstNumber.toLowerCase().includes(searchLower)) ||
+              (v.shipToName && v.shipToName.toLowerCase().includes(searchLower))
+            ))
+            .map(v => v.parentVendorId!)
+        );
+        filteredVendors = topLevelVendors.filter(v =>
           v.vendorName.toLowerCase().includes(searchLower) ||
           (v.gstNumber && v.gstNumber.toLowerCase().includes(searchLower)) ||
-          (v.vendorCode && v.vendorCode.toLowerCase().includes(searchLower))
+          (v.vendorCode && v.vendorCode.toLowerCase().includes(searchLower)) ||
+          parentIdsMatchedByChild.has(v.id)
         );
       }
       
