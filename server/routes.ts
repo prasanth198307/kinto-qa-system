@@ -13561,6 +13561,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get detailed ledger for a specific vendor
+  // Safe date helper — returns ISO date string "YYYY-MM-DD" or fallback if value is invalid
+  const safeIsoDate = (val: any, fallback?: string): string => {
+    if (!val) return fallback || '';
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return fallback || '';
+    return d.toISOString().split('T')[0];
+  };
+
   app.get('/api/vendor-history/:vendorId', isAuthenticated, async (req: any, res) => {
     try {
       const { vendorId } = req.params;
@@ -13682,7 +13690,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ledgerEntries.push({
               type: isDebitNoteAdjustment ? 'vendor_debit_note_adjustment' : 'payment',
               id: pmt.id,
-              date: pmt.paymentDate ? new Date(pmt.paymentDate).toISOString().split('T')[0] : inv.invoiceDate,
+              date: safeIsoDate(pmt.paymentDate, safeIsoDate(inv.invoiceDate)),
               reference: isDebitNoteAdjustment ? pmt.referenceNumber : `PMT-${inv.invoiceNumber}`,
               description: isDebitNoteAdjustment 
                 ? `Vendor Debit Note Adjustment ${pmt.referenceNumber} (against Invoice ${inv.invoiceNumber})`
@@ -13712,7 +13720,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ledgerEntries.push({
           type: 'credit_note',
           id: cn.id,
-          date: cn.creditDate,
+          date: safeIsoDate(cn.creditDate),
           reference: cn.noteNumber,
           description: `Credit Note ${cn.noteNumber} (against ${relatedInvoice?.invoiceNumber || 'N/A'})`,
           debit: 0,
@@ -13728,7 +13736,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ledgerEntries.push({
           type: 'debit_note',
           id: dn.id,
-          date: dn.debitDate,
+          date: safeIsoDate(dn.debitDate),
           reference: dn.noteNumber,
           description: `Debit Note ${dn.noteNumber} (against ${relatedInvoice?.invoiceNumber || 'N/A'})`,
           debit: dn.grandTotal, // Increases what customer owes
@@ -13750,7 +13758,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ledgerEntries.push({
           type: 'advance',
           id: adv.id,
-          date: adv.receiptDate, // Use receiptDate, not advanceDate
+          date: safeIsoDate(adv.receiptDate), // Use receiptDate, not advanceDate
           reference: adv.advanceNumber,
           description: `Customer Advance ${adv.advanceNumber} received (${adv.paymentMethod || 'Cash'})${vendorLabel}`,
           debit: 0,
@@ -13767,8 +13775,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         filteredEntries = ledgerEntries.filter(e => e.type === type);
       }
       
-      // Sort by date (oldest first for running balance)
-      filteredEntries.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      // Sort by date (oldest first for running balance) — treat empty/invalid dates as epoch 0
+      filteredEntries.sort((a, b) => {
+        const da = a.date ? new Date(a.date).getTime() : 0;
+        const db2 = b.date ? new Date(b.date).getTime() : 0;
+        return (isNaN(da) ? 0 : da) - (isNaN(db2) ? 0 : db2);
+      });
       
       // Calculate running balance from ledger entries
       let runningBalance = 0;

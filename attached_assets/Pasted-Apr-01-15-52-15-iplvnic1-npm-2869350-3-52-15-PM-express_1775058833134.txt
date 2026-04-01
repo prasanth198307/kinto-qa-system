@@ -1,0 +1,21 @@
+Apr 01 15:52:15 iplvnic1 npm[2869350]: 3:52:15 PM [express] GET /api/vendor-invoice-transactions/d4fa50ed-af86-4ec2-89eb-d6ed7aeaca65 304 i…
+Apr 01 15:53:26 iplvnic1 npm[2869350]: 3:53:26 PM [express] GET /api/user 304 in 5ms :: {"id":"user-admin","username":"admin","password":"$…
+Apr 01 15:53:26 iplvnic1 npm[2869350]: 🔹 Request: GET /api/my-permissions
+Apr 01 15:53:26 iplvnic1 npm[2869350]:    Cookie header: connect.sid=s%3Am4t9iSnKLHsXYXpQRNgXge1TLt_qZKFR.P19nrbAEZE5kZdi9pBpaUAULyU%2FaBRAWtFZt67FD2Ew; _ga=GA1.1.1321689309.1766052649; _ga_8MR6CJ1YLW=GS2.1.s1766052649$o1$g0$t1766052649$j60$l0$h0
+Apr 01 15:53:26 iplvnic1 npm[2869350]:    Session ID: m4t9iSnKLHsXYXpQRNgXge1TLt_qZKFR
+Apr 01 15:53:26 iplvnic1 npm[2869350]:    Authenticated: true
+Apr 01 15:53:26 iplvnic1 npm[2869350]: 3:53:26 PM [express] GET /api/my-permissions 304 in 9ms :: {"role":"admin","roleId":"role-admin","pe…
+Apr 01 15:53:26 iplvnic1 npm[2869350]: 🔹 Request: GET /api/vendor-history/d4fa50ed-af86-4ec2-89eb-d6ed7aeaca65
+Apr 01 15:53:26 iplvnic1 npm[2869350]:    Cookie header: connect.sid=s%3Am4t9iSnKLHsXYXpQRNgXge1TLt_qZKFR.P19nrbAEZE5kZdi9pBpaUAULyU%2FaBRAWtFZt67FD2Ew; _ga=GA1.1.1321689309.1766052649; _ga_8MR6CJ1YLW=GS2.1.s1766052649$o1$g0$t1766052649$j60$l0$h0
+Apr 01 15:53:26 iplvnic1 npm[2869350]:    Session ID: m4t9iSnKLHsXYXpQRNgXge1TLt_qZKFR
+Apr 01 15:53:26 iplvnic1 npm[2869350]:    Authenticated: true
+Apr 01 15:53:26 iplvnic1 npm[2869350]: Error fetching vendor ledger: RangeError: Invalid time value
+Apr 01 15:53:26 iplvnic1 npm[2869350]:     at Date.toISOString (<anonymous>)
+Apr 01 15:53:26 iplvnic1 npm[2869350]:     at file:///home/kinto/kinto-qa-system/dist/index.js:22783:65
+Apr 01 15:53:26 iplvnic1 npm[2869350]:     at Array.forEach (<anonymous>)
+Apr 01 15:53:26 iplvnic1 npm[2869350]:     at file:///home/kinto/kinto-qa-system/dist/index.js:22778:31
+Apr 01 15:53:26 iplvnic1 npm[2869350]:     at Array.forEach (<anonymous>)
+Apr 01 15:53:26 iplvnic1 npm[2869350]:     at file:///home/kinto/kinto-qa-system/dist/index.js:22764:22
+Apr 01 15:53:26 iplvnic1 npm[2869350]:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+Apr 01 15:53:26 iplvnic1 npm[2869350]: 3:53:26 PM [express] GET /api/vendor-history/d4fa50ed-af86-4ec2-89eb-d6ed7aeaca65 500 in 48ms :: {"m…
+[kinto@iplvnic1 ~]$ 
