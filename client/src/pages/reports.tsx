@@ -60,6 +60,13 @@ import {
 import { exportToExcel, formatCurrencyForExcel, formatDateForExcel } from "@/lib/excel-export";
 import { Badge } from "@/components/ui/badge";
 
+const safeFormat = (val: any, fmt: string, fallback = '-'): string => {
+  if (!val) return fallback;
+  const d = new Date(val);
+  if (isNaN(d.getTime())) return fallback;
+  return format(d, fmt);
+};
+
 interface FinishedGoodItem {
   id: string;
   productId: string;
@@ -156,7 +163,7 @@ function FinishedGoodsReportContent() {
       group.items.forEach(item => {
         excelData.push([
           item.batchNumber,
-          format(new Date(item.productionDate), 'dd MMM yyyy'),
+          safeFormat(item.productionDate, 'dd MMM yyyy'),
           item.quantity,
           item.qualityStatus,
           item.storageLocation || '-'
@@ -188,8 +195,8 @@ function FinishedGoodsReportContent() {
     }
 
     const filterInfo = [];
-    if (fgDateFrom) filterInfo.push(`From: ${format(new Date(fgDateFrom), 'dd MMM yyyy')}`);
-    if (fgDateTo) filterInfo.push(`To: ${format(new Date(fgDateTo), 'dd MMM yyyy')}`);
+    if (fgDateFrom) filterInfo.push(`From: ${safeFormat(fgDateFrom, 'dd MMM yyyy')}`);
+    if (fgDateTo) filterInfo.push(`To: ${safeFormat(fgDateTo, 'dd MMM yyyy')}`);
     if (fgSelectedProduct !== 'all') {
       const product = fgProducts.find((p: any) => p.id === fgSelectedProduct);
       if (product) filterInfo.push(`Product: ${product.productName}`);
@@ -241,7 +248,7 @@ function FinishedGoodsReportContent() {
                 ${group.items.map(item => `
                   <tr>
                     <td style="font-family: monospace;">${item.batchNumber}</td>
-                    <td>${format(new Date(item.productionDate), 'dd MMM yyyy')}</td>
+                    <td>${safeFormat(item.productionDate, 'dd MMM yyyy')}</td>
                     <td class="text-right">${item.quantity.toLocaleString()}</td>
                     <td>${item.qualityStatus.charAt(0).toUpperCase() + item.qualityStatus.slice(1)}</td>
                     <td>${item.storageLocation || '-'}</td>
@@ -396,7 +403,7 @@ function FinishedGoodsReportContent() {
                         {group.items.map((item) => (
                           <TableRow key={item.id}>
                             <TableCell className="font-mono">{item.batchNumber}</TableCell>
-                            <TableCell>{format(new Date(item.productionDate), 'dd MMM yyyy')}</TableCell>
+                            <TableCell>{safeFormat(item.productionDate, 'dd MMM yyyy')}</TableCell>
                             <TableCell className="text-right font-semibold">{item.quantity.toLocaleString()}</TableCell>
                             <TableCell>{getFgQualityStatusBadge(item.qualityStatus)}</TableCell>
                             <TableCell className="text-muted-foreground">{item.storageLocation || '-'}</TableCell>
@@ -1480,7 +1487,7 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
         [''],
         ['Execution Date', 'Machine ID', 'Plan ID', 'Status', 'Notes'],
         ...filteredPMExecutions.map(log => [
-          format(new Date(log.completedAt), 'yyyy-MM-dd HH:mm'),
+          safeFormat(log.completedAt, 'yyyy-MM-dd HH:mm'),
           log.machineId || '-',
           log.maintenancePlanId || '-',
           'Completed',
@@ -1892,7 +1899,7 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
                       {filteredGatepasses.map((gatepass) => (
                         <TableRow key={gatepass.id}>
                           <TableCell className="font-medium">{gatepass.gatepassNumber}</TableCell>
-                          <TableCell>{format(new Date(gatepass.gatepassDate), 'MMM dd, yyyy')}</TableCell>
+                          <TableCell>{safeFormat(gatepass.gatepassDate, 'MMM dd, yyyy')}</TableCell>
                           <TableCell>{gatepass.customerName || '-'}</TableCell>
                           <TableCell>{gatepass.driverName || '-'}</TableCell>
                           <TableCell>{gatepass.driverContact || '-'}</TableCell>
@@ -2050,7 +2057,7 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
                         {paginatedInvoicesData.paginatedInvoices.map((invoice) => (
                           <TableRow key={invoice.id}>
                             <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
-                            <TableCell>{format(new Date(invoice.invoiceDate), 'MMM dd, yyyy')}</TableCell>
+                            <TableCell>{safeFormat(invoice.invoiceDate, 'MMM dd, yyyy')}</TableCell>
                             <TableCell>{invoice.buyerName}</TableCell>
                             <TableCell className="font-semibold">
                               ₹{(invoice.totalAmount / 100).toFixed(2)}
@@ -2125,7 +2132,7 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
                       {filteredIssuances.map((issuance) => (
                         <TableRow key={issuance.id}>
                           <TableCell className="font-medium">{issuance.issuanceNumber}</TableCell>
-                          <TableCell>{format(new Date(issuance.issuanceDate), 'MMM dd, yyyy')}</TableCell>
+                          <TableCell>{safeFormat(issuance.issuanceDate, 'MMM dd, yyyy')}</TableCell>
                           <TableCell>{issuance.issuedTo || '-'}</TableCell>
                           <TableCell>
                             <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
@@ -2188,7 +2195,7 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
                         <TableRow key={po.id}>
                           <TableCell className="font-medium">{po.poNumber}</TableCell>
                           <TableCell>
-                            {po.createdAt ? format(new Date(po.createdAt), 'MMM dd, yyyy') : '-'}
+                            {safeFormat(po.createdAt, 'MMM dd, yyyy')}
                           </TableCell>
                           <TableCell>{po.supplier || '-'}</TableCell>
                           <TableCell className="font-semibold">
@@ -2249,7 +2256,7 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
                       {filteredPMExecutions.map((log) => (
                         <TableRow key={log.id}>
                           <TableCell>
-                            {format(new Date(log.completedAt), 'MMM dd, yyyy HH:mm')}
+                            {safeFormat(log.completedAt, 'MMM dd, yyyy HH:mm')}
                           </TableCell>
                           <TableCell>{log.machineId || '-'}</TableCell>
                           <TableCell>{log.maintenancePlanId || '-'}</TableCell>
@@ -2565,7 +2572,7 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
                       {expenseReportData.vouchers.slice(0, 50).map((voucher) => (
                         <TableRow key={voucher.id}>
                           <TableCell className="font-medium">{voucher.voucherNumber}</TableCell>
-                          <TableCell>{format(new Date(voucher.voucherDate), 'MMM dd, yyyy')}</TableCell>
+                          <TableCell>{safeFormat(voucher.voucherDate, 'MMM dd, yyyy')}</TableCell>
                           <TableCell>{voucher.payeeName}</TableCell>
                           <TableCell>{voucher.paymentMode}</TableCell>
                           <TableCell className="text-right">{(voucher.totalAmount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
@@ -2766,7 +2773,7 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
                     <TableBody>
                       {cashRegisterReportData.days.slice(0, 50).map((day) => (
                         <TableRow key={day.id}>
-                          <TableCell className="font-medium">{format(new Date(day.registerDate), 'MMM dd, yyyy')}</TableCell>
+                          <TableCell className="font-medium">{safeFormat(day.registerDate, 'MMM dd, yyyy')}</TableCell>
                           <TableCell>{day.salespersonName}</TableCell>
                           <TableCell className="text-right">{(day.openingBalance / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
                           <TableCell className="text-right text-green-600">{(day.totalCashReceived / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
@@ -3258,7 +3265,7 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
                       {filteredPayments.map((payment) => (
                         <TableRow key={payment.id} data-testid={`row-payment-${payment.id}`}>
                           <TableCell>
-                            {format(new Date(payment.paymentDate), 'MMM dd, yyyy')}
+                            {safeFormat(payment.paymentDate, 'MMM dd, yyyy')}
                           </TableCell>
                           <TableCell>
                             {payment.invoiceNumber || '-'}
@@ -3412,7 +3419,7 @@ function ScrapReportContent() {
     reportData.records.forEach(r => {
       excelData.push([
         r.scrapNumber,
-        format(new Date(r.scrapDate), 'dd MMM yyyy'),
+        safeFormat(r.scrapDate, 'dd MMM yyyy'),
         r.productName,
         r.batchNumber || '-',
         r.quantity,
@@ -3687,7 +3694,7 @@ function ScrapReportContent() {
                     {reportData.records.map((r) => (
                       <TableRow key={r.id}>
                         <TableCell className="font-mono text-sm">{r.scrapNumber}</TableCell>
-                        <TableCell>{format(new Date(r.scrapDate), 'dd MMM yyyy')}</TableCell>
+                        <TableCell>{safeFormat(r.scrapDate, 'dd MMM yyyy')}</TableCell>
                         <TableCell>{r.productName}</TableCell>
                         <TableCell><Badge variant="outline">{r.batchNumber || '-'}</Badge></TableCell>
                         <TableCell className="text-right">{r.quantity}</TableCell>
@@ -3751,7 +3758,7 @@ function SalesReturnsReportContent() {
     
     const excelData: any[][] = [
       ['Sales Returns Summary Report'],
-      [`Period: ${format(new Date(dateFrom), 'dd MMM yyyy')} - ${format(new Date(dateTo), 'dd MMM yyyy')}`],
+      [`Period: ${safeFormat(dateFrom, 'dd MMM yyyy')} - ${safeFormat(dateTo, 'dd MMM yyyy')}`],
       ['Generated:', format(new Date(), 'dd MMM yyyy HH:mm')],
       [''],
       ['Summary'],
@@ -3784,7 +3791,7 @@ function SalesReturnsReportContent() {
       const totalCredit = r.items?.reduce((sum: number, item: any) => sum + (item.creditAmount || 0), 0) || 0;
       excelData.push([
         r.returnNumber,
-        format(new Date(r.returnDate), 'dd MMM yyyy'),
+        safeFormat(r.returnDate, 'dd MMM yyyy'),
         r.customerName,
         r.status,
         r.items?.length || 0,
@@ -3826,7 +3833,7 @@ function SalesReturnsReportContent() {
       </head>
       <body>
         <h1>Sales Returns Summary Report</h1>
-        <p style="text-align: center;">${format(new Date(dateFrom), 'dd MMM yyyy')} - ${format(new Date(dateTo), 'dd MMM yyyy')}</p>
+        <p style="text-align: center;">${safeFormat(dateFrom, 'dd MMM yyyy')} - ${safeFormat(dateTo, 'dd MMM yyyy')}</p>
         
         <div class="summary">
           <div class="summary-grid">
@@ -4037,7 +4044,7 @@ function SalesReturnsReportContent() {
                       return (
                         <TableRow key={r.id}>
                           <TableCell className="font-mono text-sm">{r.returnNumber}</TableCell>
-                          <TableCell>{format(new Date(r.returnDate), 'dd MMM yyyy')}</TableCell>
+                          <TableCell>{safeFormat(r.returnDate, 'dd MMM yyyy')}</TableCell>
                           <TableCell>{r.customerName}</TableCell>
                           <TableCell>
                             <Badge variant={r.status === 'completed' ? 'default' : 'secondary'}>
@@ -4099,7 +4106,7 @@ function RepackingReportContent() {
     // Summary sheet
     const summaryData = [
       ['Repacking Report'],
-      ['Period', `${format(new Date(reportData.dateFrom), 'dd MMM yyyy')} - ${format(new Date(reportData.dateTo), 'dd MMM yyyy')}`],
+      ['Period', `${safeFormat(reportData.dateFrom, 'dd MMM yyyy')} - ${safeFormat(reportData.dateTo, 'dd MMM yyyy')}`],
       [],
       ['Summary'],
       ['Total Records', reportData.summary.totalRecords],
@@ -4126,8 +4133,8 @@ function RepackingReportContent() {
       'Original Batch': r.originalBatchNumber || '',
       'Quantity': r.quantity,
       'Quality Status': r.qualityStatus,
-      'Created Date': r.createdAt ? format(new Date(r.createdAt), 'dd MMM yyyy') : '',
-      'Repacking Date': r.repackingDate ? format(new Date(r.repackingDate), 'dd MMM yyyy') : '',
+      'Created Date': safeFormat(r.createdAt, 'dd MMM yyyy', ''),
+      'Repacking Date': safeFormat(r.repackingDate, 'dd MMM yyyy', ''),
       'Remarks': r.remarks || '',
     }));
     const detailsWs = XLSX.utils.json_to_sheet(detailsData);
@@ -4332,10 +4339,10 @@ function RepackingReportContent() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          {r.createdAt ? format(new Date(r.createdAt), 'dd MMM yyyy') : '-'}
+                          {safeFormat(r.createdAt, 'dd MMM yyyy')}
                         </TableCell>
                         <TableCell>
-                          {r.repackingDate ? format(new Date(r.repackingDate), 'dd MMM yyyy') : '-'}
+                          {safeFormat(r.repackingDate, 'dd MMM yyyy')}
                         </TableCell>
                         <TableCell className="max-w-[200px] truncate">{r.remarks || '-'}</TableCell>
                       </TableRow>
