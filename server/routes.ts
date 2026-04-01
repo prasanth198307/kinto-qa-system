@@ -13290,12 +13290,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Find child vendors of this parent
         const childVendors = activeVendors.filter(v => v.parentVendorId === vendor.id);
         const vendorIdsToInclude = [vendor.id, ...childVendors.map(cv => cv.id)];
-        const vendorNamesToInclude = [
-          vendor.vendorName,
-          vendor.shipToName || '',
-          ...childVendors.map(cv => cv.vendorName),
-          ...childVendors.map(cv => cv.shipToName || '')
-        ].filter(Boolean);
+
+        // For vendors that share a name (like 96 HPCL sub-dealers all named "VISAKH RETAIL RO..."),
+        // using vendorName would match EVERY invoice for ALL of them — causing 30× double-counting.
+        // Rule: if a vendor has a shipToName, match only by that unique alias.
+        //       Only fall back to vendorName if there is no shipToName.
+        const selfNames = vendor.shipToName
+          ? [vendor.shipToName]
+          : [vendor.vendorName];
+        const childNames = childVendors.flatMap(cv =>
+          cv.shipToName ? [cv.shipToName] : [cv.vendorName]
+        );
+        const vendorNamesToInclude = [...selfNames, ...childNames].filter(Boolean);
         
         // Get invoices for this vendor family (parent + children) - case insensitive match on buyerName and shipToName
         const vendorInvoices = activeInvoices.filter(inv => 
@@ -13377,7 +13383,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const lastDate = group.map(v => v.lastTransactionDate).filter(Boolean).sort().pop() || null;
         return {
           id: group[0].id,
-          vendorCode: group[0].vendorCode,
+          vendorCode: null, // Group row — no single vendor code applies
           vendorName: group[0].vendorName,
           gstNumber: group[0].gstNumber,
           mobileNumber: group[0].mobileNumber,
