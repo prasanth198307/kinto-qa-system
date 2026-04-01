@@ -13486,7 +13486,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Build sub-dealer summaries — each vendor in the group = one sub-dealer row
       const subDealers = matchingVendors.map(vendor => {
-        const namesToMatch = [vendor.vendorName, vendor.shipToName].filter(Boolean) as string[];
+        // For sub-dealers inside a group, ONLY match by shipToName (the unique alias per sub-dealer).
+        // Including vendorName (shared across all 96 vendors) would duplicate every invoice across every row.
+        // Only fall back to vendorName if this vendor has no shipToName.
+        const namesToMatch = vendor.shipToName
+          ? [vendor.shipToName]
+          : [vendor.vendorName];
 
         let vendorInvoices = activeInvoices.filter(inv =>
           namesToMatch.some(name =>
