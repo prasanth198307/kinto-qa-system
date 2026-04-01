@@ -13433,12 +13433,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allVendors = await storage.getAllVendors();
       const childVendors = allVendors.filter(v => v.parentVendorId === vendorId);
       const vendorIdsToInclude = [vendorId, ...childVendors.map(cv => cv.id)];
-      const vendorNamesToInclude = [vendor.vendorName, ...childVendors.map(cv => cv.vendorName)];
+      const vendorNamesToInclude = [
+        vendor.vendorName,
+        vendor.shipToName || '',
+        ...childVendors.map(cv => cv.vendorName),
+        ...childVendors.map(cv => cv.shipToName || '')
+      ].filter(Boolean);
       
       // Get all invoices for this vendor family (parent + children)
+      // Match on buyerName OR shipToName (same as the list endpoint)
       const allInvoices = await storage.getAllInvoices();
       let vendorInvoices = allInvoices.filter(inv => 
-        vendorNamesToInclude.some(name => name.toLowerCase() === inv.buyerName.toLowerCase()) && inv.recordStatus === 1
+        vendorNamesToInclude.some(name => 
+          name.toLowerCase() === inv.buyerName?.toLowerCase() ||
+          name.toLowerCase() === inv.shipToName?.toLowerCase()
+        ) && inv.recordStatus === 1
       );
       
       // Filter by date range if provided
