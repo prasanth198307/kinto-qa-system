@@ -13703,11 +13703,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allVendors = await storage.getAllVendors();
       const childVendors = allVendors.filter(v => v.parentVendorId === vendorId);
       const vendorIdsToInclude = [vendorId, ...childVendors.map(cv => cv.id)];
-      const vendorNamesToInclude = [vendor.vendorName, ...childVendors.map(cv => cv.vendorName)];
+      const vendorNamesToInclude = [
+        vendor.vendorName,
+        vendor.shipToName || '',
+        ...childVendors.map(cv => cv.vendorName),
+        ...childVendors.map(cv => cv.shipToName || '')
+      ].filter(Boolean);
       
       const allInvoices = await storage.getAllInvoices();
       const vendorInvoices = allInvoices.filter(inv => 
-        vendorNamesToInclude.some(name => name.toLowerCase() === inv.buyerName.toLowerCase()) && inv.recordStatus === 1
+        vendorNamesToInclude.some(name => 
+          name.toLowerCase() === inv.buyerName?.toLowerCase() ||
+          name.toLowerCase() === inv.shipToName?.toLowerCase()
+        ) && inv.recordStatus === 1
       );
       
       const invoiceIds = vendorInvoices.map(inv => inv.id);
@@ -13812,7 +13820,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const totalSettled = totalPayments + totalDnAdj + totalAdvances;
         const outstanding = effectiveTotal - totalSettled;
         
-        const isChildVendor = !vendorNamesToInclude[0] || inv.buyerName.toLowerCase() !== vendorNamesToInclude[0].toLowerCase();
+        const isChildVendor = !vendorNamesToInclude[0] || (inv.buyerName?.toLowerCase() || '') !== vendorNamesToInclude[0].toLowerCase();
         
         return {
           invoiceId: inv.id,
