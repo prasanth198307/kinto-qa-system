@@ -48,7 +48,7 @@ import {
   AlertTriangle,
   Users
 } from "lucide-react";
-import { exportToExcel, formatCurrencyForExcel, formatDateForExcel } from "@/lib/excel-export";
+import { formatCurrencyForExcel, formatDateForExcel } from "@/lib/excel-export";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -304,6 +304,7 @@ export default function VendorHistoryDetailPage() {
 
     // Sheet 1 – Unpaid Invoices by Cluster (with outline grouping)
     const ws1 = wb.addWorksheet('Unpaid Invoices');
+    ws1.pageSetup = { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
     ws1.properties.outlineLevelRow = 1;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (ws1.properties as any).outlineProperties = { summaryBelow: false }; // +/- button on summary row (above detail)
@@ -342,6 +343,7 @@ export default function VendorHistoryDetailPage() {
 
     // Sheet 2 – Payments by Date (cash + advance, with outline grouping)
     const ws2 = wb.addWorksheet('Payments by Date');
+    ws2.pageSetup = { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
     ws2.properties.outlineLevelRow = 1;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (ws2.properties as any).outlineProperties = { summaryBelow: false };
@@ -377,6 +379,7 @@ export default function VendorHistoryDetailPage() {
 
     // Sheet 3 – Debit Note Adjustments by Date (with outline grouping)
     const ws3 = wb.addWorksheet('DN Adjustments');
+    ws3.pageSetup = { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
     ws3.properties.outlineLevelRow = 1;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (ws3.properties as any).outlineProperties = { summaryBelow: false };
@@ -675,47 +678,130 @@ export default function VendorHistoryDetailPage() {
       }
     };
 
-    const ledgerData = filteredLedger.map(entry => [
-      formatDateForExcel(entry.date),
-      getTypeLabel(entry.type),
-      entry.reference,
-      entry.description,
-      entry.debit > 0 ? formatCurrencyForExcel(entry.debit) : '',
-      entry.credit > 0 ? formatCurrencyForExcel(entry.credit) : '',
-      formatCurrencyForExcel(entry.balance),
-    ]);
+    const ExcelJS = (await import('exceljs')).default;
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'KINTO Ops';
+    wb.created = new Date();
 
-    const summaryData = [
-      ['Vendor Ledger Report'],
-      [],
-      ['Vendor Details'],
-      ['Name', data.vendor.vendorName],
-      ['Code', data.vendor.vendorCode],
-      ['GST', data.vendor.gstNumber || 'N/A'],
-      ['Phone', data.vendor.mobileNumber],
-      ['Email', data.vendor.email || 'N/A'],
-      ['Address', [data.vendor.address, data.vendor.city, data.vendor.state].filter(Boolean).join(', ') || 'N/A'],
-      [],
-      ['Summary'],
-      ['Total Invoiced', formatCurrencyForExcel(data.summary.totalInvoiced)],
-      ['Total Payments', formatCurrencyForExcel(data.summary.totalPayments)],
-      ['Total Advances', formatCurrencyForExcel(data.summary.totalAdvances)],
-      ['Total Credits', formatCurrencyForExcel(data.summary.totalCredits)],
-      ['Total Debits', formatCurrencyForExcel(data.summary.totalDebits)],
-      ['DN Adjustments', formatCurrencyForExcel(data.summary.vendorDebitNoteAdjustments || 0)],
-      ['Current Balance', formatCurrencyForExcel(data.summary.currentBalance)],
-      [],
-      ['Transaction Ledger'],
-      ['Date', 'Type', 'Reference', 'Description', 'Debit', 'Credit', 'Balance'],
-      ...ledgerData,
+    // Fetch company info
+    let companyName = 'KINTO Smart Ops', companyAddress = '', companyGstin = '', companyPhone = '', companyEmail = '';
+    try {
+      const tmplRes = await fetch('/api/invoice-templates/default', { credentials: 'include' });
+      if (tmplRes.ok) {
+        const t = await tmplRes.json();
+        companyName    = t.defaultSellerName    || companyName;
+        companyAddress = t.defaultSellerAddress || '';
+        companyGstin   = t.defaultSellerGstin   || '';
+        companyPhone   = t.defaultSellerPhone   || '';
+        companyEmail   = t.defaultSellerEmail   || '';
+      }
+    } catch (_) {}
+
+    const NAVY = 'FF1E3A5F', BLUE = 'FF2563AA', WHITE = 'FFFFFFFF', LGREY = 'FFF5F7FA', DGREY = 'FF555555';
+
+    // ── Ledger Sheet ────────────────────────────────────────────────────────
+    const ws = wb.addWorksheet('Vendor Ledger');
+    ws.pageSetup = { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
+    ws.properties.defaultRowHeight = 15;
+    ws.columns = [
+      { key: 'c1', width: 14 }, // Date
+      { key: 'c2', width: 20 }, // Type
+      { key: 'c3', width: 22 }, // Reference
+      { key: 'c4', width: 38 }, // Description
+      { key: 'c5', width: 16 }, // Debit
+      { key: 'c6', width: 16 }, // Credit
+      { key: 'c7', width: 16 }, // Balance
     ];
 
-    const filename = `${data.vendor.vendorName.replace(/[^a-zA-Z0-9]/g, '_')}_Ledger_${new Date().toISOString().split('T')[0]}.xlsx`;
+    // Header block
+    const merge = (n: number) => ws.mergeCells(n, 1, n, 7);
+    const r1 = ws.addRow([companyName]); r1.height = 32;
+    r1.getCell(1).font = { bold: true, size: 16, color: { argb: WHITE } };
+    r1.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } };
+    r1.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 2 };
+    merge(ws.rowCount);
+    if (companyAddress) {
+      const r2 = ws.addRow([companyAddress]); r2.height = 16;
+      r2.getCell(1).font = { size: 9, color: { argb: WHITE } };
+      r2.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } };
+      r2.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 2 };
+      merge(ws.rowCount);
+    }
+    const meta = [companyGstin ? `GSTIN: ${companyGstin}` : '', companyPhone ? `Ph: ${companyPhone}` : '', companyEmail ? `Email: ${companyEmail}` : ''].filter(Boolean).join('   |   ');
+    if (meta) {
+      const r3 = ws.addRow([meta]); r3.height = 14;
+      r3.getCell(1).font = { size: 8, color: { argb: WHITE } };
+      r3.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } };
+      r3.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 2 };
+      merge(ws.rowCount);
+    }
+    ws.addRow([]); merge(ws.rowCount);
+    const rt = ws.addRow(['VENDOR TRANSACTION LEDGER']); rt.height = 22;
+    rt.getCell(1).font = { bold: true, size: 12, color: { argb: WHITE } };
+    rt.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BLUE } };
+    rt.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 2 };
+    merge(ws.rowCount);
+    const rd = ws.addRow([`Vendor: ${data.vendor.vendorName}   |   Code: ${data.vendor.vendorCode || '—'}   |   GST: ${data.vendor.gstNumber || 'N/A'}   |   Generated: ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}`]);
+    rd.height = 14;
+    rd.getCell(1).font = { italic: true, size: 8, color: { argb: DGREY } };
+    rd.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: LGREY } };
+    rd.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 2 };
+    merge(ws.rowCount);
+    ws.addRow([]); merge(ws.rowCount);
 
-    await exportToExcel({
-      filename,
-      sheets: [{ name: 'Vendor Ledger', data: summaryData }],
+    // Column header row
+    const hdr = ws.addRow(['Date', 'Type', 'Reference', 'Description', 'Debit (₹)', 'Credit (₹)', 'Balance (₹)']);
+    hdr.height = 20;
+    hdr.eachCell(c => {
+      c.font = { bold: true, size: 10, color: { argb: WHITE } };
+      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } };
+      c.alignment = { vertical: 'middle', indent: 1 };
     });
+    [5, 6, 7].forEach(i => { hdr.getCell(i).alignment = { vertical: 'middle', horizontal: 'right' }; });
+
+    // Data rows
+    let alt = false;
+    filteredLedger.forEach(entry => {
+      const bg = alt ? 'FFF9FAFB' : 'FFFFFFFF'; alt = !alt;
+      const dr = ws.addRow([
+        formatDateForExcel(entry.date),
+        getTypeLabel(entry.type),
+        entry.reference || '',
+        entry.description || '',
+        entry.debit > 0 ? entry.debit / 100 : null,
+        entry.credit > 0 ? entry.credit / 100 : null,
+        entry.balance / 100,
+      ]);
+      dr.height = 15;
+      dr.eachCell(c => {
+        c.font = { size: 9, color: { argb: DGREY } };
+        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
+        c.alignment = { vertical: 'middle', indent: 1 };
+      });
+      [5, 6].forEach(i => {
+        if (dr.getCell(i).value !== null) {
+          dr.getCell(i).numFmt = '₹#,##0.00';
+          dr.getCell(i).alignment = { vertical: 'middle', horizontal: 'right' };
+        }
+      });
+      dr.getCell(7).numFmt = '₹#,##0.00;[Red]-₹#,##0.00';
+      dr.getCell(7).alignment = { vertical: 'middle', horizontal: 'right' };
+      dr.getCell(7).font = { size: 9, bold: true, color: { argb: entry.balance > 0 ? 'FFEA580C' : entry.balance < 0 ? 'FF16A34A' : DGREY } };
+    });
+
+    // Footer summary row
+    const gr = ws.addRow(['', '', '', 'CLOSING BALANCE', null, null, data.summary.currentBalance / 100]);
+    gr.height = 22;
+    gr.eachCell(c => { c.font = { bold: true, size: 11, color: { argb: WHITE } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } }; c.alignment = { vertical: 'middle', indent: 1 }; });
+    gr.getCell(7).numFmt = '₹#,##0.00;[Red]-₹#,##0.00';
+    gr.getCell(7).alignment = { vertical: 'middle', horizontal: 'right' };
+
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url;
+    a.download = `${data.vendor.vendorName.replace(/[^a-zA-Z0-9]/g, '_')}_Ledger_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    a.click(); URL.revokeObjectURL(url);
   };
 
   const handlePrintTransactions = () => {
@@ -919,6 +1005,7 @@ export default function VendorHistoryDetailPage() {
 
     // ── Sheet: Invoice Transactions (with outline grouping) ──────────────────
     const wsTx = wb.addWorksheet('Invoice Transactions');
+    wsTx.pageSetup = { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
     wsTx.properties.outlineLevelRow = 1;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (wsTx.properties as any).outlineProperties = { summaryBelow: false, summaryRight: false };
