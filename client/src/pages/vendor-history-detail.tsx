@@ -304,7 +304,7 @@ export default function VendorHistoryDetailPage() {
 
     // Sheet 1 – Unpaid Invoices by Cluster (with outline grouping)
     const ws1 = wb.addWorksheet('Unpaid Invoices');
-    ws1.pageSetup.paperSize = 9; ws1.pageSetup.orientation = "landscape"; ws1.pageSetup.fitToPage = true; ws1.pageSetup.fitToWidth = 1; ws1.pageSetup.fitToHeight = 0;
+    ws1.pageSetup.paperSize = 9; ws1.pageSetup.orientation = "landscape";
     ws1.properties.outlineLevelRow = 1;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (ws1.properties as any).outlineProperties = { summaryBelow: false }; // +/- button on summary row (above detail)
@@ -343,7 +343,7 @@ export default function VendorHistoryDetailPage() {
 
     // Sheet 2 – Payments by Date (cash + advance, with outline grouping)
     const ws2 = wb.addWorksheet('Payments by Date');
-    ws2.pageSetup.paperSize = 9; ws2.pageSetup.orientation = "landscape"; ws2.pageSetup.fitToPage = true; ws2.pageSetup.fitToWidth = 1; ws2.pageSetup.fitToHeight = 0;
+    ws2.pageSetup.paperSize = 9; ws2.pageSetup.orientation = "landscape";
     ws2.properties.outlineLevelRow = 1;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (ws2.properties as any).outlineProperties = { summaryBelow: false };
@@ -379,7 +379,7 @@ export default function VendorHistoryDetailPage() {
 
     // Sheet 3 – Debit Note Adjustments by Date (with outline grouping)
     const ws3 = wb.addWorksheet('DN Adjustments');
-    ws3.pageSetup.paperSize = 9; ws3.pageSetup.orientation = "landscape"; ws3.pageSetup.fitToPage = true; ws3.pageSetup.fitToWidth = 1; ws3.pageSetup.fitToHeight = 0;
+    ws3.pageSetup.paperSize = 9; ws3.pageSetup.orientation = "landscape";
     ws3.properties.outlineLevelRow = 1;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (ws3.properties as any).outlineProperties = { summaryBelow: false };
@@ -701,16 +701,16 @@ export default function VendorHistoryDetailPage() {
 
     // ── Ledger Sheet ────────────────────────────────────────────────────────
     const ws = wb.addWorksheet('Vendor Ledger');
-    ws.pageSetup.paperSize = 9; ws.pageSetup.orientation = "landscape"; ws.pageSetup.fitToPage = true; ws.pageSetup.fitToWidth = 1; ws.pageSetup.fitToHeight = 0;
+    ws.pageSetup.paperSize = 9; ws.pageSetup.orientation = "landscape";
     ws.properties.defaultRowHeight = 15;
     ws.columns = [
-      { key: 'c1', width: 14 }, // Date
-      { key: 'c2', width: 20 }, // Type
-      { key: 'c3', width: 22 }, // Reference
-      { key: 'c4', width: 38 }, // Description
-      { key: 'c5', width: 16 }, // Debit
-      { key: 'c6', width: 16 }, // Credit
-      { key: 'c7', width: 16 }, // Balance
+      { key: 'c1', width: 13 }, // Date
+      { key: 'c2', width: 18 }, // Type
+      { key: 'c3', width: 20 }, // Reference
+      { key: 'c4', width: 30 }, // Description
+      { key: 'c5', width: 15 }, // Debit
+      { key: 'c6', width: 15 }, // Credit
+      { key: 'c7', width: 15 }, // Balance
     ];
 
     // Header block
@@ -1005,7 +1005,7 @@ export default function VendorHistoryDetailPage() {
 
     // ── Sheet: Invoice Transactions (with outline grouping) ──────────────────
     const wsTx = wb.addWorksheet('Invoice Transactions');
-    wsTx.pageSetup.paperSize = 9; wsTx.pageSetup.orientation = "landscape"; wsTx.pageSetup.fitToPage = true; wsTx.pageSetup.fitToWidth = 1; wsTx.pageSetup.fitToHeight = 0;
+    wsTx.pageSetup.paperSize = 9; wsTx.pageSetup.orientation = "landscape";
     wsTx.properties.outlineLevelRow = 1;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (wsTx.properties as any).outlineProperties = { summaryBelow: false, summaryRight: false };
