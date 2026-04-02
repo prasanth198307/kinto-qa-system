@@ -704,13 +704,13 @@ export default function VendorHistoryDetailPage() {
     ws.pageSetup.paperSize = 9; ws.pageSetup.orientation = "landscape";
     ws.properties.defaultRowHeight = 15;
     ws.columns = [
-      { key: 'c1', width: 13 }, // Date
-      { key: 'c2', width: 18 }, // Type
-      { key: 'c3', width: 20 }, // Reference
-      { key: 'c4', width: 30 }, // Description
-      { key: 'c5', width: 15 }, // Debit
-      { key: 'c6', width: 15 }, // Credit
-      { key: 'c7', width: 15 }, // Balance
+      { key: 'c1', width: 12 }, // Date
+      { key: 'c2', width: 14 }, // Type
+      { key: 'c3', width: 18 }, // Reference
+      { key: 'c4', width: 26 }, // Description
+      { key: 'c5', width: 12 }, // Debit
+      { key: 'c6', width: 12 }, // Credit
+      { key: 'c7', width: 12 }, // Balance
     ];
 
     // Header block
@@ -1011,14 +1011,14 @@ export default function VendorHistoryDetailPage() {
     (wsTx.properties as any).outlineProperties = { summaryBelow: false, summaryRight: false };
     wsTx.properties.defaultRowHeight = 15;
     wsTx.columns = [
-      { key: 'c1', width: 18 }, // Invoice # / Type
-      { key: 'c2', width: 12 }, // Date
-      { key: 'c3', width: 22 }, // Buyer / Reference
-      { key: 'c4', width: 22 }, // Details
-      { key: 'c5', width: 14 }, // Total / Amount
-      { key: 'c6', width: 14 }, // Settled
-      { key: 'c7', width: 14 }, // Outstanding
-      { key: 'c8', width: 10 }, // Status
+      { key: 'c1', width: 14 }, // Invoice # / Type
+      { key: 'c2', width: 10 }, // Date
+      { key: 'c3', width: 16 }, // Buyer / Reference
+      { key: 'c4', width: 16 }, // Details
+      { key: 'c5', width: 12 }, // Total / Amount
+      { key: 'c6', width: 12 }, // Settled
+      { key: 'c7', width: 12 }, // Outstanding
+      { key: 'c8', width: 8  }, // Status
     ];
 
     addHeaderBlock(wsTx, 8, 'INVOICE TRANSACTIONS');
