@@ -151,7 +151,7 @@ export default function VendorHistoryDetailPage() {
   const { vendorId } = useParams<{ vendorId: string }>();
   const { hasPermission } = usePermissions();
   const { toast } = useToast();
-  const canViewPayments = hasPermission('payments', 'view');
+  const canViewPayments = hasPermission('vendor_history', 'view');
   const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("ledger");
   const [expandedInvoices, setExpandedInvoices] = useState<Record<string, boolean>>({});
