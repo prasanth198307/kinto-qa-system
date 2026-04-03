@@ -158,6 +158,7 @@ const navItemToScreen: Record<string, string> = {
   'vendor-debit-notes': 'Purchase Orders',
   'users': 'User Management',
   'role-permissions': 'User Management',
+  'sales-orders': 'Purchase Orders',
   'sales-officers': 'Sales Officers',
   'vendors': 'Inventory Management',
   'vendor-types': 'Inventory Management',

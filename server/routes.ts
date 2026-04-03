@@ -25337,7 +25337,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/sales-officers', isAuthenticated, requireRole('admin', 'manager'), async (req: any, res) => {
+  app.post('/api/sales-officers', isAuthenticated, requireRole('admin', 'manager', 'accountsmanager'), async (req: any, res) => {
     try {
       const data = insertSalesOfficerSchema.parse(req.body);
       const officer = await storage.createSalesOfficer(data);
@@ -25357,9 +25357,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/sales-officers/:id', isAuthenticated, requireRole('admin', 'manager'), async (req: any, res) => {
+  app.patch('/api/sales-officers/:id', isAuthenticated, requireRole('admin', 'manager', 'accountsmanager'), async (req: any, res) => {
     try {
-      const officer = await storage.updateSalesOfficer(req.params.id, req.body);
+      const data = insertSalesOfficerSchema.partial().parse(req.body);
+      const officer = await storage.updateSalesOfficer(req.params.id, data);
       if (!officer) return res.status(404).json({ message: 'Sales officer not found' });
       res.json(officer);
     } catch (err: any) {
@@ -25367,7 +25368,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/sales-officers/:id', isAuthenticated, requireRole('admin', 'manager'), async (req: any, res) => {
+  app.delete('/api/sales-officers/:id', isAuthenticated, requireRole('admin', 'manager', 'accountsmanager'), async (req: any, res) => {
     try {
       await storage.deleteSalesOfficer(req.params.id);
       res.json({ message: 'Sales officer deleted' });

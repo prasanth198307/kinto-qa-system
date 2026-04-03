@@ -3797,7 +3797,9 @@ export const salesOfficers = pgTable("sales_officers", {
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 });
 
-export const insertSalesOfficerSchema = createInsertSchema(salesOfficers).omit({
+export const insertSalesOfficerSchema = createInsertSchema(salesOfficers, {
+  mobile: z.string().regex(/^\+?[0-9]{7,15}$/, "Invalid mobile number").optional().nullable(),
+}).omit({
   id: true,
   recordStatus: true,
   createdAt: true,

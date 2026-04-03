@@ -35,22 +35,12 @@ import { z } from "zod";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
-
-interface SalesOfficer {
-  id: string;
-  name: string;
-  code?: string | null;
-  mobile?: string | null;
-  email?: string | null;
-  territory?: string | null;
-  isActive: number;
-  createdAt?: string;
-}
+import type { SalesOfficer } from "@shared/schema";
 
 const formSchema = z.object({
   name: z.string().min(1, "Name is required"),
   code: z.string().optional(),
-  mobile: z.string().optional(),
+  mobile: z.string().regex(/^\+?[0-9]{7,15}$/, "Invalid mobile number").optional().or(z.literal("")),
   email: z.string().email("Invalid email").optional().or(z.literal("")),
   territory: z.string().optional(),
   isActive: z.number().default(1),
