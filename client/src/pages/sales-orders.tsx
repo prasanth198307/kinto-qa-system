@@ -175,7 +175,8 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
           discountPaise = Math.round(discountVal * item.quantity * 100); // ₹ per case × qty
         }
         const taxableAmountPaise = grossTaxable - discountPaise;
-        const totalAmountPaise = Math.round(casePriceIncl * 100) * item.quantity - discountPaise; // inclusive total minus discount
+        const gstAmountPaise = Math.round(taxableAmountPaise * totalGST / 100);
+        const totalAmountPaise = taxableAmountPaise + gstAmountPaise;
         return { item, unitPricePaise, taxableAmountPaise, totalAmountPaise, discountPaise };
       });
       const soTotalPaise = computedItems.reduce((sum, c) => sum + c.totalAmountPaise, 0);
@@ -637,14 +638,19 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                           {fields.map((field, index) => {
                             const watchedItems = form.watch("items");
                             const row = watchedItems[index] || {};
-                            // line total = casePrice × qty minus discount
-                            const grossLine = (row.unitPrice || 0) * (row.quantity || 0);
+                            // line total: back-calculate base from inclusive price, apply discount, add GST back
+                            const inclusivePrice = row.unitPrice || 0;
+                            const qty = row.quantity || 0;
+                            const gstRate = (row.cgstRate || 0) + (row.sgstRate || 0) + (row.igstRate || 0);
+                            const basePrice = gstRate > 0 ? inclusivePrice / (1 + gstRate / 100) : inclusivePrice;
+                            const grossBase = basePrice * qty;
                             const discountVal = row.discount || 0;
                             const discountMode = row.discountMode || '%';
                             const discountAmount = discountMode === '%'
-                              ? (grossLine * discountVal) / 100
-                              : discountVal * (row.quantity || 0);
-                            const lineTotal = grossLine - discountAmount;
+                              ? (grossBase * discountVal) / 100
+                              : discountVal * qty;
+                            const taxable = grossBase - discountAmount;
+                            const lineTotal = taxable + (taxable * gstRate / 100);
                             return (
                             <TableRow key={field.id}>
                               <TableCell>
@@ -835,12 +841,17 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                         <span className="text-muted-foreground">Estimated Grand Total (incl. GST):</span>
                         <span className="font-bold text-base">
                           ₹{form.watch("items").reduce((sum, item) => {
-                            const gross = (item.unitPrice || 0) * (item.quantity || 0);
+                            const inclPrice = item.unitPrice || 0;
+                            const qty = item.quantity || 0;
+                            const gst = (item.cgstRate || 0) + (item.sgstRate || 0) + (item.igstRate || 0);
+                            const base = gst > 0 ? inclPrice / (1 + gst / 100) : inclPrice;
+                            const grossBase = base * qty;
                             const dVal = item.discount || 0;
                             const dAmt = (item.discountMode || '%') === '%'
-                              ? (gross * dVal) / 100
-                              : dVal * (item.quantity || 0);
-                            return sum + gross - dAmt;
+                              ? (grossBase * dVal) / 100
+                              : dVal * qty;
+                            const taxable = grossBase - dAmt;
+                            return sum + taxable + (taxable * gst / 100);
                           }, 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                       </div>
