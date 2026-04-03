@@ -42,14 +42,18 @@ jobs:
         id: changed
         run: |
           git fetch origin main --depth=1
-          git diff --name-only origin/main...HEAD > /tmp/changed_files.txt
+          if git merge-base origin/main HEAD > /dev/null 2>&1; then
+            git diff --name-only origin/main...HEAD > /tmp/changed_files.txt
+          else
+            echo "" > /tmp/changed_files.txt
+          fi
           echo "Changed files:"
           cat /tmp/changed_files.txt
 
       - name: Check diff size
         id: diffcheck
         run: |
-          LINES=$(git diff --stat origin/main...HEAD | tail -1 | awk '{print $4}')
+          LINES=$(git diff --stat origin/main...HEAD 2>/dev/null | tail -1 | awk '{print $4}')
           LINES=${LINES:-0}
           echo "lines=$LINES" >> $GITHUB_OUTPUT
           echo "Changed lines: $LINES"
