@@ -83,6 +83,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           model: ${{ steps.model.outputs.model }}
           max_turns: ${{ steps.model.outputs.max_turns }}
+          allowed_tools: "Bash,Read,Write,Edit,Glob,Grep"
           direct_prompt: |
             You are reviewing the kinto-qa-system project.
             Read CLAUDE.md first for project structure and rules.
