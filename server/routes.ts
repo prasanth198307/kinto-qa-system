@@ -16212,6 +16212,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Permissions must be an array" });
       }
 
+      const existingRole = await storage.getRole(roleId);
+      if (!existingRole) {
+        return res.status(404).json({ message: "Role not found" });
+      }
+
       console.log(`[AUDIT] Admin ${req.user.id} batch updating permissions for role ${roleId}`);
 
       // Get existing permissions for this role

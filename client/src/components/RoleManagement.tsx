@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Plus, Edit, Trash2, Shield, Check, X } from "lucide-react";
+import { Plus, Edit, Trash2, Shield, Check, X, AlertTriangle } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
@@ -635,6 +635,14 @@ export default function RoleManagement() {
               Configure which screens and features this role can access
             </p>
           </DialogHeader>
+          {permissionsRole && isDefaultRole(permissionsRole.name) && (
+            <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800" data-testid="warning-default-role">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+              <span>
+                Warning: You are editing a default system role (<strong>{permissionsRole.name}</strong>). Ensure critical access (users, roles) is not removed — losing admin access may lock all users out.
+              </span>
+            </div>
+          )}
           <div className="py-4">
             <div className="overflow-x-auto">
               <table className="w-full">
