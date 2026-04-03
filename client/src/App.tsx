@@ -52,6 +52,7 @@ import TemplateManagement from "@/pages/template-management";
 import ProductCategories from "@/pages/product-categories";
 import ProductTypes from "@/pages/product-types";
 import VendorTypes from "@/pages/vendor-types";
+import SalesOfficersPage from "@/pages/sales-officers";
 import VendorManagement from "@/components/VendorManagement";
 import PendingPayments from "@/pages/pending-payments";
 import PaymentManagement from "@/pages/payment-management";
@@ -3071,6 +3072,7 @@ function Router() {
       <ProtectedRoute path="/invoice/:id" component={InvoiceDetailPageWrapper} />
       <ProtectedRoute path="/sales-orders" component={SalesOrdersPage} />
       <ProtectedRoute path="/sales-orders/:id" component={SalesOrderDetailWrapper} />
+      <ProtectedRoute path="/sales-officers" component={SalesOfficersPage} />
       <ProtectedRoute path="/raw-material/:id" component={RawMaterialDetailWrapper} />
       <ProtectedRoute path="/raw-material-type/:id" component={RawMaterialTypeDetailWrapper} />
       <ProtectedRoute path="/product/:id" component={ProductDetailWrapper} />
