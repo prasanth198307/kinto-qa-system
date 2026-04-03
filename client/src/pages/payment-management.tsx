@@ -47,6 +47,19 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -206,6 +219,7 @@ export default function PaymentManagement() {
 
   // Advance Payment (prepayment) state
   const [showAdvanceDialog, setShowAdvanceDialog] = useState(false);
+  const [advVendorOpen, setAdvVendorOpen] = useState(false);
   const [advanceVendorFilter, setAdvanceVendorFilter] = useState("all");
   const [advanceStatusFilter, setAdvanceStatusFilter] = useState("all");
   const [showApplyAdvanceDialog, setShowApplyAdvanceDialog] = useState(false);
@@ -1488,20 +1502,48 @@ export default function PaymentManagement() {
           <div className="space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Customer *</label>
-              <Select
-                value={advForm.vendorId}
-                onValueChange={(v) => setAdvForm(f => ({ ...f, vendorId: v }))}
-                data-testid="select-adv-vendor"
-              >
-                <SelectTrigger data-testid="trigger-adv-vendor">
-                  <SelectValue placeholder="Select customer..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {customerVendors.map((v: any) => (
-                    <SelectItem key={v.id} value={v.id}>{v.vendorName}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={advVendorOpen} onOpenChange={setAdvVendorOpen} modal>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={advVendorOpen}
+                    className="w-full justify-between font-normal"
+                    data-testid="trigger-adv-vendor"
+                  >
+                    {advForm.vendorId
+                      ? customerVendors.find((v: any) => v.id === advForm.vendorId)?.vendorName ?? "Select customer..."
+                      : "Select customer..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0" align="start" style={{ width: "var(--radix-popover-trigger-width)" }}>
+                  <Command>
+                    <CommandInput placeholder="Search customer..." />
+                    <CommandList>
+                      <CommandEmpty>No customer found.</CommandEmpty>
+                      <CommandGroup>
+                        {customerVendors.map((v: any) => (
+                          <CommandItem
+                            key={v.id}
+                            value={v.vendorName}
+                            onSelect={() => {
+                              setAdvForm(f => ({ ...f, vendorId: v.id }));
+                              setAdvVendorOpen(false);
+                            }}
+                            data-testid={`vendor-option-${v.id}`}
+                          >
+                            <Check
+                              className={cn("mr-2 h-4 w-4", advForm.vendorId === v.id ? "opacity-100" : "opacity-0")}
+                            />
+                            {v.vendorName}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
