@@ -3743,6 +3743,8 @@ export const salesOrderItems = pgTable("sales_order_items", {
   cgstRate: numeric("cgst_rate"),
   sgstRate: numeric("sgst_rate"),
   igstRate: numeric("igst_rate"),
+  discount: integer("discount").default(0).notNull(), // paise (value × 100)
+  discountMode: varchar("discount_mode", { length: 5 }).default('%').notNull(), // '%' or '₹'
   taxableAmount: integer("taxable_amount").default(0).notNull(), // paise
   totalAmount: integer("total_amount").default(0).notNull(), // paise
   recordStatus: integer("record_status").default(1).notNull(),

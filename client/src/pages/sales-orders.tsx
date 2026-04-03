@@ -101,6 +101,8 @@ const salesOrderItemSchema = z.object({
   hsnCode: z.string().optional(),
   quantity: z.number().min(1, "Quantity must be at least 1"),
   unitPrice: z.number().min(0, "Price must be positive"),
+  discount: z.number().min(0).default(0),
+  discountMode: z.string().default('%'),
   cgstRate: z.number().min(0).max(100).default(9),
   sgstRate: z.number().min(0).max(100).default(9),
   igstRate: z.number().min(0).max(100).default(0),
@@ -162,9 +164,19 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
         const totalGST = (Number(item.cgstRate) || 0) + (Number(item.sgstRate) || 0) + (Number(item.igstRate) || 0);
         const unitPriceExcl = totalGST > 0 ? casePriceIncl / (1 + totalGST / 100) : casePriceIncl;
         const unitPricePaise = Math.round(unitPriceExcl * 100); // base price in paise
-        const taxableAmountPaise = unitPricePaise * item.quantity;
-        const totalAmountPaise = Math.round(casePriceIncl * 100) * item.quantity; // inclusive total in paise
-        return { item, unitPricePaise, taxableAmountPaise, totalAmountPaise };
+        // Apply discount to taxable amount
+        const discountVal = item.discount || 0;
+        const discountMode = item.discountMode || '%';
+        const grossTaxable = unitPricePaise * item.quantity;
+        let discountPaise = 0;
+        if (discountMode === '%') {
+          discountPaise = Math.round((grossTaxable * discountVal) / 100);
+        } else {
+          discountPaise = Math.round(discountVal * item.quantity * 100); // ₹ per case × qty
+        }
+        const taxableAmountPaise = grossTaxable - discountPaise;
+        const totalAmountPaise = Math.round(casePriceIncl * 100) * item.quantity - discountPaise; // inclusive total minus discount
+        return { item, unitPricePaise, taxableAmountPaise, totalAmountPaise, discountPaise };
       });
       const soTotalPaise = computedItems.reduce((sum, c) => sum + c.totalAmountPaise, 0);
 
@@ -187,7 +199,7 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
           salesOfficerId: values.salesOfficerId || null,
           totalAmount: soTotalPaise,
         },
-        items: computedItems.map(({ item, unitPricePaise, taxableAmountPaise, totalAmountPaise }) => ({
+        items: computedItems.map(({ item, unitPricePaise, taxableAmountPaise, totalAmountPaise, discountPaise }) => ({
           productId: item.productId,
           description: item.description,
           hsnCode: item.hsnCode,
@@ -196,6 +208,8 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
           sgstRate: item.sgstRate,
           igstRate: item.igstRate,
           unitPrice: unitPricePaise,
+          discount: Math.round((item.discount || 0) * 100),
+          discountMode: item.discountMode || '%',
           taxableAmount: taxableAmountPaise,
           totalAmount: totalAmountPaise,
         }))
@@ -592,6 +606,8 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                           hsnCode: "22011010",
                           quantity: 1,
                           unitPrice: 0,
+                          discount: 0,
+                          discountMode: '%',
                           cgstRate: 9,
                           sgstRate: 9,
                           igstRate: 0,
@@ -607,12 +623,13 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead className="min-w-[220px]">Product</TableHead>
-                            <TableHead className="w-32">HSN Code</TableHead>
-                            <TableHead className="w-24">Qty</TableHead>
-                            <TableHead className="w-36">Case Price ₹ (incl. GST)</TableHead>
-                            <TableHead className="w-44">CGST% / SGST%</TableHead>
-                            <TableHead className="w-32 text-right">Line Total</TableHead>
+                            <TableHead className="min-w-[200px]">Product</TableHead>
+                            <TableHead className="w-28">HSN Code</TableHead>
+                            <TableHead className="w-20">Qty</TableHead>
+                            <TableHead className="w-32">Case Price ₹ (incl. GST)</TableHead>
+                            <TableHead className="w-36">Discount</TableHead>
+                            <TableHead className="w-36">CGST% / SGST%</TableHead>
+                            <TableHead className="w-28 text-right">Line Total</TableHead>
                             <TableHead className="w-10"></TableHead>
                           </TableRow>
                         </TableHeader>
@@ -620,8 +637,14 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                           {fields.map((field, index) => {
                             const watchedItems = form.watch("items");
                             const row = watchedItems[index] || {};
-                            // user enters case price inclusive of GST — line total = casePrice × qty
-                            const lineTotal = (row.unitPrice || 0) * (row.quantity || 0);
+                            // line total = casePrice × qty minus discount
+                            const grossLine = (row.unitPrice || 0) * (row.quantity || 0);
+                            const discountVal = row.discount || 0;
+                            const discountMode = row.discountMode || '%';
+                            const discountAmount = discountMode === '%'
+                              ? (grossLine * discountVal) / 100
+                              : discountVal * (row.quantity || 0);
+                            const lineTotal = grossLine - discountAmount;
                             return (
                             <TableRow key={field.id}>
                               <TableCell>
@@ -712,6 +735,41 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                                 <div className="flex gap-1 items-center">
                                   <FormField
                                     control={form.control}
+                                    name={`items.${index}.discount`}
+                                    render={({ field }) => (
+                                      <FormControl>
+                                        <Input
+                                          type="number"
+                                          step="0.01"
+                                          min={0}
+                                          {...field}
+                                          onChange={e => field.onChange(Number(e.target.value))}
+                                          className="w-20 text-xs"
+                                          placeholder="0"
+                                          data-testid={`input-discount-${index}`}
+                                        />
+                                      </FormControl>
+                                    )}
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 w-9 px-1 text-xs"
+                                    onClick={() => {
+                                      const cur = form.getValues(`items.${index}.discountMode`) || '%';
+                                      form.setValue(`items.${index}.discountMode`, cur === '%' ? '₹' : '%');
+                                    }}
+                                    data-testid={`button-discount-mode-${index}`}
+                                  >
+                                    {form.watch(`items.${index}.discountMode`) || '%'}
+                                  </Button>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex gap-1 items-center">
+                                  <FormField
+                                    control={form.control}
                                     name={`items.${index}.cgstRate`}
                                     render={({ field }) => (
                                       <FormControl>
@@ -777,8 +835,12 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                         <span className="text-muted-foreground">Estimated Grand Total (incl. GST):</span>
                         <span className="font-bold text-base">
                           ₹{form.watch("items").reduce((sum, item) => {
-                            // casePrice is already inclusive — grand total = casePrice × qty
-                            return sum + (item.unitPrice || 0) * (item.quantity || 0);
+                            const gross = (item.unitPrice || 0) * (item.quantity || 0);
+                            const dVal = item.discount || 0;
+                            const dAmt = (item.discountMode || '%') === '%'
+                              ? (gross * dVal) / 100
+                              : dVal * (item.quantity || 0);
+                            return sum + gross - dAmt;
                           }, 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                       </div>

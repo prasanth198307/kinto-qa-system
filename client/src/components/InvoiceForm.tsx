@@ -727,6 +727,8 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
             hsnCode: item.hsnCode || "",
             quantity: item.quantity,
             unitPrice: (item.unitPrice || 0) / 100, // Convert from paise
+            discount: (item.discount || 0) / 100,   // Convert from stored ×100
+            discountMode: item.discountMode || '%',
             gstRate: Number(gstRate), // numeric in DB is percentage (e.g. 18.00)
             transportRatePerCase: 0,
             batchNumber: "",
@@ -819,7 +821,16 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
     let totalTransportCharges = 0;
 
     watchItems.forEach((item) => {
-      const itemTotal = item.quantity * item.unitPrice;
+      const grossLine = item.quantity * item.unitPrice;
+      const discountVal = item.discount || 0;
+      const discountMode = item.discountMode || '%';
+      let discountAmount = 0;
+      if (discountMode === '%') {
+        discountAmount = (grossLine * discountVal) / 100;
+      } else {
+        discountAmount = discountVal * item.quantity; // ₹ per case × qty
+      }
+      const itemTotal = grossLine - discountAmount;
       subtotal += itemTotal;
       totalQuantity += item.quantity;
 
@@ -923,7 +934,16 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
       const invoiceItems = data.items.map((item) => {
         // Ensure gstRate is a number (form might pass it as string from Select)
         const gstRate = typeof item.gstRate === 'string' ? parseFloat(item.gstRate) : (item.gstRate || 0);
-        const taxableAmount = item.quantity * item.unitPrice;
+        const grossLine = item.quantity * item.unitPrice;
+        const discountVal = item.discount || 0;
+        const discountMode = item.discountMode || '%';
+        let discountAmount = 0;
+        if (discountMode === '%') {
+          discountAmount = (grossLine * discountVal) / 100;
+        } else {
+          discountAmount = discountVal * item.quantity; // ₹ per case × qty
+        }
+        const taxableAmount = grossLine - discountAmount;
         const taxAmount = (taxableAmount * gstRate) / 100;
         
         let cgstRateValue = 0;
@@ -957,7 +977,8 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
           quantity: item.quantity,
           uomId: defaultUomId, // Use default UOM (Cases) for invoice items
           unitPrice: Math.round(item.unitPrice * 100), // Convert to paise
-          discount: 0,
+          discount: Math.round(discountVal * 100), // stored as value × 100
+          discountMode: discountMode,
           taxableAmount: Math.round(taxableAmount * 100),
           cgstRate: cgstRateValue,
           cgstAmount,
@@ -1823,11 +1844,11 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
             <div className="col-span-1">Qty *</div>
             <div className="col-span-1">Batch #</div>
             <div className="col-span-1">{gstInclusiveMode ? 'Base ₹' : 'Price ₹'}</div>
-            <div className="col-span-1.5">Discount</div>
+            <div className="col-span-2">Discount</div>
             <div className="col-span-1">GST %</div>
             {gstInclusiveMode && <div className="col-span-2">Price/Case (incl. GST)</div>}
             <div className="col-span-1">Transport</div>
-            <div className="col-span-1"></div>
+            <div className={gstInclusiveMode ? "col-span-1" : "col-span-2"}></div>
           </div>
 
           {/* Items - Show message if empty */}
@@ -2014,7 +2035,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
               </div>
 
               {/* Discount with Mode Toggle */}
-              <div className="md:col-span-1.5">
+              <div className="md:col-span-2">
                 <Label className="md:hidden text-xs text-muted-foreground mb-1">Discount</Label>
                 <div className="flex gap-1 items-center h-9">
                   <Input
@@ -2131,7 +2152,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
               </div>
 
               {/* Remove Button */}
-              <div className="md:col-span-1 flex justify-center md:justify-center">
+              <div className={`${gstInclusiveMode ? 'md:col-span-1' : 'md:col-span-2'} flex justify-center md:justify-center`}>
                 {fields.length > 1 && (
                   <Button
                     type="button"
