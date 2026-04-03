@@ -144,28 +144,41 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
       itemUomIds: items.map(i => i.uomId)
     });
 
+    // Safe numeric helper — prevents NaN if DB field is null/undefined
+    const safeNum = (v: number | null | undefined): number => v || 0;
+
+    // Check if any item has a discount applied
+    const hasDiscount = items.some(item => {
+      const disc = safeNum((item as any).discount);
+      return disc > 0;
+    });
+
     // Calculate HSN-wise tax summary
     const hsnSummary = items.reduce((acc: any[], item) => {
       const hsnCode = item.hsnCode || item.sacCode || 'N/A';
       const existing = acc.find(h => h.hsn === hsnCode);
+      const cgst = safeNum(item.cgstAmount);
+      const sgst = safeNum(item.sgstAmount);
+      const igst = safeNum(item.igstAmount);
+      const taxable = safeNum(item.taxableAmount);
       
       if (existing) {
-        existing.taxableAmount += item.taxableAmount;
-        existing.cgstAmount += item.cgstAmount;
-        existing.sgstAmount += item.sgstAmount;
-        existing.igstAmount += item.igstAmount;
-        existing.totalTax += (item.cgstAmount + item.sgstAmount + item.igstAmount);
+        existing.taxableAmount += taxable;
+        existing.cgstAmount += cgst;
+        existing.sgstAmount += sgst;
+        existing.igstAmount += igst;
+        existing.totalTax += (cgst + sgst + igst);
       } else {
         acc.push({
           hsn: hsnCode,
-          taxableAmount: item.taxableAmount,
-          cgstRate: item.cgstRate,
-          cgstAmount: item.cgstAmount,
-          sgstRate: item.sgstRate,
-          sgstAmount: item.sgstAmount,
-          igstRate: item.igstRate,
-          igstAmount: item.igstAmount,
-          totalTax: item.cgstAmount + item.sgstAmount + item.igstAmount
+          taxableAmount: taxable,
+          cgstRate: safeNum(item.cgstRate),
+          cgstAmount: cgst,
+          sgstRate: safeNum(item.sgstRate),
+          sgstAmount: sgst,
+          igstRate: safeNum(item.igstRate),
+          igstAmount: igst,
+          totalTax: cgst + sgst + igst
         });
       }
       return acc;
@@ -292,6 +305,7 @@ ${invoice.shipToName || invoice.shipToAddress ? `
               <th>Quantity</th>
               <th>Unit</th>
               <th>Price/Unit (₹)</th>
+              ${hasDiscount ? '<th>Discount (₹)</th>' : ''}
               <th>GST%</th>
               <th>GST (₹)</th>
               <th>Amount (₹)</th>
@@ -299,16 +313,21 @@ ${invoice.shipToName || invoice.shipToAddress ? `
           </thead>
           <tbody>
             ${items.map((item, idx) => {
-              const totalGst = item.cgstAmount + item.sgstAmount + item.igstAmount;
-              const gstPercent = (item.cgstRate + item.sgstRate + item.igstRate) / 100;
-              const productName = getProductName(item.productId);
+              const cgst = safeNum(item.cgstAmount);
+              const sgst = safeNum(item.sgstAmount);
+              const igst = safeNum(item.igstAmount);
+              const totalGst = cgst + sgst + igst;
+              const gstPercent = (safeNum(item.cgstRate) + safeNum(item.sgstRate) + safeNum(item.igstRate)) / 100;
+              // Derive discount amount: gross line (unitPrice × qty) minus taxableAmount
+              const grossLine = safeNum(item.unitPrice) * safeNum(item.quantity);
+              const taxable = safeNum(item.taxableAmount);
+              const lineDiscount = Math.max(0, grossLine - taxable);
               // Find UOM by ID, fallback to "Cases" for invoice items (default for finished goods)
               let unit = 'Cases';
               if (item.uomId) {
                 const uom = uoms.find(u => u.id === item.uomId);
                 unit = uom?.name || 'Cases';
               } else {
-                // For legacy items without uomId, use Cases as default
                 const casesUom = uoms.find(u => u.code === 'CASES' || u.name === 'Cases');
                 unit = casesUom?.name || 'Cases';
               }
@@ -317,19 +336,20 @@ ${invoice.shipToName || invoice.shipToAddress ? `
                 <td>${idx + 1}</td>
                 <td style="text-align:left;">${item.description}</td>
                 <td>${item.hsnCode || item.sacCode || '-'}</td>
-                <td>${item.quantity}</td>
+                <td>${safeNum(item.quantity)}</td>
                 <td>${unit}</td>
-                <td>${formatCurrency(item.unitPrice)}</td>
+                <td>${formatCurrency(safeNum(item.unitPrice))}</td>
+                ${hasDiscount ? `<td>${lineDiscount > 0 ? formatCurrency(lineDiscount) : '-'}</td>` : ''}
                 <td>${gstPercent.toFixed(1)}%</td>
                 <td>${formatCurrency(totalGst)}</td>
-                <td>${formatCurrency(item.totalAmount)}</td>
+                <td>${formatCurrency(safeNum(item.totalAmount))}</td>
               </tr>`;
             }).join('')}
           </tbody>
           <tfoot>
             <tr class="total-row">
-              <td colspan="8" style="text-align:right;"><strong>Total</strong></td>
-              <td><strong>${formatCurrency(invoice.totalAmount)}</strong></td>
+              <td colspan="${hasDiscount ? 9 : 8}" style="text-align:right;"><strong>Total</strong></td>
+              <td><strong>${formatCurrency(safeNum(invoice.totalAmount))}</strong></td>
             </tr>
           </tfoot>
         </table>
@@ -384,17 +404,17 @@ ${invoice.shipToName || invoice.shipToAddress ? `
               <tfoot>
                 <tr class="total-row">
                   <td><strong>TOTAL</strong></td>
-                  <td style="text-align:right;"><strong>${formatCurrency(invoice.subtotal)}</strong></td>
+                  <td style="text-align:right;"><strong>${formatCurrency(safeNum(invoice.subtotal))}</strong></td>
                   ${isIntrastate ? `
                     <td></td>
-                    <td style="text-align:right;"><strong>${formatCurrency(invoice.cgstAmount)}</strong></td>
+                    <td style="text-align:right;"><strong>${formatCurrency(safeNum(invoice.cgstAmount))}</strong></td>
                     <td></td>
-                    <td style="text-align:right;"><strong>${formatCurrency(invoice.sgstAmount)}</strong></td>
+                    <td style="text-align:right;"><strong>${formatCurrency(safeNum(invoice.sgstAmount))}</strong></td>
                   ` : `
                     <td></td>
-                    <td style="text-align:right;"><strong>${formatCurrency(invoice.igstAmount)}</strong></td>
+                    <td style="text-align:right;"><strong>${formatCurrency(safeNum(invoice.igstAmount))}</strong></td>
                   `}
-                  <td style="text-align:right;"><strong>${formatCurrency(invoice.cgstAmount + invoice.sgstAmount + invoice.igstAmount)}</strong></td>
+                  <td style="text-align:right;"><strong>${formatCurrency(safeNum(invoice.cgstAmount) + safeNum(invoice.sgstAmount) + safeNum(invoice.igstAmount))}</strong></td>
                 </tr>
               </tfoot>
             </table>
@@ -404,35 +424,45 @@ ${invoice.shipToName || invoice.shipToAddress ? `
           <div class="totals-box">
             <table class="totals-table">
               <tbody>
+                ${hasDiscount ? `
+                  <tr>
+                    <td>Gross Amount:</td>
+                    <td style="text-align:right;">${formatCurrency(items.reduce((s, i) => s + safeNum(i.unitPrice) * safeNum(i.quantity), 0))}</td>
+                  </tr>
+                  <tr>
+                    <td>Discount:</td>
+                    <td style="text-align:right;">- ${formatCurrency(items.reduce((s, i) => s + Math.max(0, safeNum(i.unitPrice) * safeNum(i.quantity) - safeNum(i.taxableAmount)), 0))}</td>
+                  </tr>
+                ` : ''}
                 <tr>
                   <td>Sub Total:</td>
-                  <td style="text-align:right;">${formatCurrency(invoice.subtotal)}</td>
+                  <td style="text-align:right;">${formatCurrency(safeNum(invoice.subtotal))}</td>
                 </tr>
-                ${invoice.cgstAmount > 0 || invoice.sgstAmount > 0 ? `
+                ${safeNum(invoice.cgstAmount) > 0 || safeNum(invoice.sgstAmount) > 0 ? `
                   <tr>
                     <td>CGST:</td>
-                    <td style="text-align:right;">${formatCurrency(invoice.cgstAmount)}</td>
+                    <td style="text-align:right;">${formatCurrency(safeNum(invoice.cgstAmount))}</td>
                   </tr>
                   <tr>
                     <td>SGST:</td>
-                    <td style="text-align:right;">${formatCurrency(invoice.sgstAmount)}</td>
+                    <td style="text-align:right;">${formatCurrency(safeNum(invoice.sgstAmount))}</td>
                   </tr>
                 ` : ''}
-                ${invoice.igstAmount > 0 ? `
+                ${safeNum(invoice.igstAmount) > 0 ? `
                   <tr>
                     <td>IGST:</td>
-                    <td style="text-align:right;">${formatCurrency(invoice.igstAmount)}</td>
+                    <td style="text-align:right;">${formatCurrency(safeNum(invoice.igstAmount))}</td>
                   </tr>
                 ` : ''}
-                ${invoice.transportCharges && invoice.transportCharges > 0 ? `
+                ${safeNum(invoice.transportCharges) > 0 ? `
                   <tr>
                     <td>Transport Charges:</td>
-                    <td style="text-align:right;">${formatCurrency(invoice.transportCharges)}</td>
+                    <td style="text-align:right;">${formatCurrency(safeNum(invoice.transportCharges))}</td>
                   </tr>
                 ` : ''}
                 <tr>
                   <td><strong>Total:</strong></td>
-                  <td style="text-align:right;"><strong>${formatCurrency(invoice.totalAmount)}</strong></td>
+                  <td style="text-align:right;"><strong>${formatCurrency(safeNum(invoice.totalAmount))}</strong></td>
                 </tr>
               </tbody>
             </table>
@@ -478,7 +508,7 @@ ${invoice.shipToName || invoice.shipToAddress ? `
 
         <!-- Amount in Words -->
         <div class="amount-in-words">
-          Total Invoice Amount in words: <strong>${amountToWords(invoice.totalAmount)}</strong>
+          Total Invoice Amount in words: <strong>${amountToWords(safeNum(invoice.totalAmount))}</strong>
         </div>
 
         ${invoice.remarks ? `<div class="remarks">Note: ${invoice.remarks}</div>` : ''}
