@@ -90,6 +90,8 @@ const invoiceFormSchema = z.object({
     hsnCode: z.string().optional(),
     quantity: z.number().min(1, "Quantity must be at least 1"),
     unitPrice: z.number().min(0, "Price must be positive"),
+    discount: z.number().min(0).optional(), // Discount amount
+    discountMode: z.string().optional(), // '%' (percentage) or '₹' (flat rupees)
     gstRate: z.number().min(0).max(100, "GST rate must be 0-100%"),
     transportRatePerCase: z.number().min(0).optional(), // Transport rate per case (rupees)
     batchNumber: z.string().optional(),
@@ -372,6 +374,8 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
               hsnCode: item.hsnCode || "",
               quantity: item.quantity || 1,
               unitPrice: (item.unitPrice || 0) / 100, // Convert from paise to rupees
+              discount: (item.discount || 0) / 100, // Convert from paise to rupees
+              discountMode: item.discountMode || "%", // Default to percentage
               gstRate,
               transportRatePerCase: (item.transportRatePerCase || 0) / 100, // Convert from paise to rupees
               batchNumber: item.batchNumber || "", // Restore batch number
@@ -383,6 +387,8 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
             hsnCode: "",
             quantity: 1,
             unitPrice: 0,
+            discount: 0,
+            discountMode: "%",
             gstRate: 18,
             transportRatePerCase: 0,
             batchNumber: "", // Default empty batch
@@ -1792,7 +1798,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
               <Button
                 type="button"
                 size="sm"
-                onClick={() => append({ productId: "", description: "", hsnCode: "", quantity: 1, unitPrice: 0, gstRate: 18, transportRatePerCase: 0 })}
+                onClick={() => append({ productId: "", description: "", hsnCode: "", quantity: 1, unitPrice: 0, discount: 0, discountMode: "%", gstRate: 18, transportRatePerCase: 0 })}
                 data-testid="button-add-item"
               >
                 <Plus className="w-4 h-4 mr-1" />
@@ -1810,13 +1816,14 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
           )}
 
           {/* Table Header - Hidden on mobile */}
-          <div className="hidden md:grid grid-cols-12 gap-2 text-xs font-semibold text-muted-foreground px-2">
+          <div className="hidden md:grid grid-cols-14 gap-2 text-xs font-semibold text-muted-foreground px-2">
             <div className="col-span-2">Product *</div>
             <div className="col-span-1">HSN</div>
             <div className={gstInclusiveMode ? "col-span-1" : "col-span-2"}>Description *</div>
             <div className="col-span-1">Qty *</div>
             <div className="col-span-1">Batch #</div>
             <div className="col-span-1">{gstInclusiveMode ? 'Base ₹' : 'Price ₹'}</div>
+            <div className="col-span-1.5">Discount</div>
             <div className="col-span-1">GST %</div>
             {gstInclusiveMode && <div className="col-span-2">Price/Case (incl. GST)</div>}
             <div className="col-span-1">Transport</div>
@@ -1834,7 +1841,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
           {fields.map((field, index) => (
             <div key={field.id} className="border rounded-md p-3 md:p-1.5 hover-elevate">
               {/* Mobile: Stacked layout, Desktop: Grid layout */}
-              <div className="flex flex-col gap-3 md:grid md:grid-cols-12 md:gap-2 md:items-start">
+              <div className="flex flex-col gap-3 md:grid md:grid-cols-14 md:gap-2 md:items-start">
               {/* Product */}
               <div className="md:col-span-2">
                 <Label className="md:hidden text-xs text-muted-foreground mb-1">Product *</Label>
@@ -2004,6 +2011,36 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                   className={`h-9 text-sm ${gstInclusiveMode ? 'bg-muted/50' : ''}`}
                   data-testid={`input-unit-price-${index}`}
                 />
+              </div>
+
+              {/* Discount with Mode Toggle */}
+              <div className="md:col-span-1.5">
+                <Label className="md:hidden text-xs text-muted-foreground mb-1">Discount</Label>
+                <div className="flex gap-1 items-center h-9">
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    {...form.register(`items.${index}.discount`, { valueAsNumber: true })}
+                    placeholder="0"
+                    className="h-9 text-sm flex-1"
+                    data-testid={`input-discount-${index}`}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-9 w-10 px-1.5 text-xs"
+                    onClick={() => {
+                      const currentMode = form.watch(`items.${index}.discountMode`) || '%';
+                      const newMode = currentMode === '%' ? '₹' : '%';
+                      form.setValue(`items.${index}.discountMode`, newMode);
+                    }}
+                    data-testid={`button-discount-mode-${index}`}
+                  >
+                    {form.watch(`items.${index}.discountMode`) || '%'}
+                  </Button>
+                </div>
               </div>
 
               {/* GST Rate */}

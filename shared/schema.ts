@@ -1956,6 +1956,7 @@ export const invoiceItems = pgTable("invoice_items", {
   uomId: varchar("uom_id").references(() => uom.id),
   unitPrice: integer("unit_price").notNull(), // Price per unit (in paise)
   discount: integer("discount").default(0).notNull(), // Discount amount (in paise)
+  discountMode: varchar("discount_mode", { length: 5 }).default('%').notNull(), // '%' (percentage) or '₹' (flat rupees)
   taxableAmount: integer("taxable_amount").notNull(), // Amount after discount (in paise)
   
   // Tax Breakup
