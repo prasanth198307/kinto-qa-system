@@ -924,6 +924,7 @@ function AdminDashboard() {
       items: [
         { id: "users", label: "Users", icon: Users },
         { id: "role-permissions", label: "Role Permissions", icon: Shield },
+        { id: "sales-officers", label: "Sales Officers", icon: Users, onClick: () => setLocation('/sales-officers') },
         { id: "vendors", label: "Vendor Master", icon: Building2, onClick: () => setLocation('/vendor-management') },
         { id: "vendor-types", label: "Vendor Types", icon: Shield },
         { id: "hpcl-migration", label: "HPCL Migration", icon: Building2, onClick: () => setLocation('/hpcl-migration') },
