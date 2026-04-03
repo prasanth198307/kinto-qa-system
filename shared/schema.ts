@@ -3334,7 +3334,10 @@ export const customerAdvances = pgTable("customer_advances", {
   
   // Status tracking
   status: varchar("status", { length: 50 }).default('active').notNull(), // active, fully_used, cancelled
-  
+
+  // Type: 'security_deposit' (Customer Advances page) or 'prepayment' (Payment Management advance payment)
+  advanceType: varchar("advance_type", { length: 50 }).default('security_deposit').notNull(),
+
   // Metadata
   purpose: text("purpose"), // What the advance is for (general, specific order, etc.)
   remarks: text("remarks"),
@@ -3361,6 +3364,7 @@ export const insertCustomerAdvanceSchema = createInsertSchema(customerAdvances, 
   referenceNumber: z.string().optional().nullable(),
   bankName: z.string().optional().nullable(),
   status: z.string().optional(),
+  advanceType: z.enum(['security_deposit', 'prepayment']).optional().default('security_deposit'),
 }).omit({
   id: true,
   advanceNumber: true, // Auto-generated

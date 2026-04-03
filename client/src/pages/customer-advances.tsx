@@ -89,6 +89,7 @@ export default function CustomerAdvancesPage() {
       const params = new URLSearchParams();
       if (statusFilter !== "all") params.append("status", statusFilter);
       if (vendorFilter !== "all") params.append("vendorId", vendorFilter);
+      params.append("advanceType", "security_deposit"); // Customer Advances page = security deposits only
       const res = await fetch(`/api/customer-advances?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch advances");
       return res.json();
@@ -165,6 +166,7 @@ export default function CustomerAdvancesPage() {
       const response = await apiRequest('POST', '/api/customer-advances', {
         ...data,
         amount: Math.round(parseFloat(data.amount) * 100), // Convert to paise
+        advanceType: 'security_deposit', // Customer Advances page always creates security deposits
       });
       return response;
     },

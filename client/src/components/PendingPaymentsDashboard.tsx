@@ -51,6 +51,7 @@ interface InvoiceWithBalance extends Invoice {
   writeOffAmount: number;
   outstandingBalance: number;
   isOverpaid: boolean;
+  availablePrepayment?: number;
 }
 
 interface PendingPaymentsDashboardProps {
@@ -77,7 +78,7 @@ export default function PendingPaymentsDashboard({ customerFilter }: PendingPaym
   }
   
   // Fetch pending payments with pagination
-  const { data: pendingPaymentsData, isLoading } = useQuery<{ data: InvoiceWithBalance[], meta: PaginationMeta & { aggregateStats: { totalOutstanding: number, totalCount: number } } }>({
+  const { data: pendingPaymentsData, isLoading } = useQuery<{ data: InvoiceWithBalance[], meta: PaginationMeta & { aggregateStats: { totalOutstanding: number, totalPrepayment?: number, totalCount: number } } }>({
     queryKey: ['/api/pending-payments', currentPage, currentPageSize, customerFilter],
     queryFn: async () => {
       const response = await fetch(`/api/pending-payments?${queryParams}`);
@@ -134,6 +135,7 @@ export default function PendingPaymentsDashboard({ customerFilter }: PendingPaym
   const pendingInvoices = Array.isArray(pendingPaymentsData?.data) ? pendingPaymentsData.data : [];
   const paginationMeta = pendingPaymentsData?.meta;
   const totalOutstanding = paginationMeta?.aggregateStats?.totalOutstanding || 0;
+  const totalPrepayment = paginationMeta?.aggregateStats?.totalPrepayment || 0;
   const totalPendingCount = paginationMeta?.aggregateStats?.totalCount || 0;
 
   if (isLoading) {
@@ -182,11 +184,21 @@ export default function PendingPaymentsDashboard({ customerFilter }: PendingPaym
               }
             </CardDescription>
           </div>
-          <div className="text-right">
-            <p className="text-sm text-muted-foreground" data-testid="text-total-outstanding-label">Total Outstanding</p>
-            <p className="text-2xl font-bold text-destructive" data-testid="text-total-outstanding-amount">
-              ₹{(totalOutstanding / 100).toFixed(2)}
-            </p>
+          <div className="flex items-end gap-6">
+            {totalPrepayment > 0 && (
+              <div className="text-right">
+                <p className="text-sm text-muted-foreground">Advance Payments Available</p>
+                <p className="text-xl font-bold text-green-700 dark:text-green-400" data-testid="text-total-prepayment">
+                  ₹{(totalPrepayment / 100).toFixed(2)}
+                </p>
+              </div>
+            )}
+            <div className="text-right">
+              <p className="text-sm text-muted-foreground" data-testid="text-total-outstanding-label">Total Outstanding</p>
+              <p className="text-2xl font-bold text-destructive" data-testid="text-total-outstanding-amount">
+                ₹{(totalOutstanding / 100).toFixed(2)}
+              </p>
+            </div>
           </div>
         </div>
       </CardHeader>
@@ -209,6 +221,7 @@ export default function PendingPaymentsDashboard({ customerFilter }: PendingPaym
                   <TableHead className="text-right">Paid</TableHead>
                   <TableHead className="text-right">Written Off</TableHead>
                   <TableHead className="text-right">Outstanding</TableHead>
+                  <TableHead className="text-right">Avail. Advance</TableHead>
                   <TableHead className="text-center">Status</TableHead>
                   <TableHead className="text-center">Actions</TableHead>
                 </TableRow>
@@ -239,6 +252,15 @@ export default function PendingPaymentsDashboard({ customerFilter }: PendingPaym
                       </TableCell>
                       <TableCell className="text-right font-semibold text-destructive" data-testid={`text-outstanding-${invoice.id}`}>
                         ₹{(invoice.outstandingBalance / 100).toFixed(2)}
+                      </TableCell>
+                      <TableCell className="text-right" data-testid={`text-advance-${invoice.id}`}>
+                        {(invoice.availablePrepayment || 0) > 0 ? (
+                          <span className="font-medium text-green-700 dark:text-green-400">
+                            ₹{((invoice.availablePrepayment || 0) / 100).toFixed(2)}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
                       </TableCell>
                       <TableCell className="text-center">
                         <Badge 

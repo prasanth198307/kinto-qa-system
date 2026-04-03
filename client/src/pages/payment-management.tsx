@@ -204,6 +204,26 @@ export default function PaymentManagement() {
   // Track expanded bulk allocation rows
   const [expandedBulkAllocs, setExpandedBulkAllocs] = useState<Set<string>>(new Set());
 
+  // Advance Payment (prepayment) state
+  const [showAdvanceDialog, setShowAdvanceDialog] = useState(false);
+  const [advanceVendorFilter, setAdvanceVendorFilter] = useState("all");
+  const [advanceStatusFilter, setAdvanceStatusFilter] = useState("all");
+  const [showApplyAdvanceDialog, setShowApplyAdvanceDialog] = useState(false);
+  const [selectedAdvance, setSelectedAdvance] = useState<any>(null);
+  const [applyInvoiceId, setApplyInvoiceId] = useState("");
+  const [applyAmount, setApplyAmount] = useState("");
+  const [applyRemarks, setApplyRemarks] = useState("");
+
+  // Advance form state (for creating new prepayment)
+  const [advForm, setAdvForm] = useState({
+    vendorId: "",
+    receiptDate: new Date().toISOString().slice(0, 10),
+    amount: "",
+    paymentMethod: "Cash" as string,
+    referenceNumber: "",
+    remarks: "",
+  });
+
   const { data: vendors = [] } = useQuery<any[]>({
     queryKey: ['/api/vendors'],
   });
@@ -223,6 +243,110 @@ export default function PaymentManagement() {
     if (v.parentVendorId) acc[v.parentVendorId] = (acc[v.parentVendorId] || 0) + 1;
     return acc;
   }, {});
+
+  // Customer vendors (for advance payment customer selector)
+  const customerVendors = (vendors as any[]).filter(v => {
+    const types: string[] = v.vendorTypes?.map((t: any) => typeof t === 'string' ? t : t.typeName) || [];
+    const isCustomer = types.some((t: string) => ['Customer', 'Distributor', 'Retailer', 'Corporate', 'Government'].includes(t));
+    return isCustomer && !v.parentVendorId;
+  });
+
+  // Query for prepayment advances (advance payments from Payment Management)
+  const { data: prepaymentData = [], isLoading: prepaymentLoading } = useQuery<any[]>({
+    queryKey: ['/api/customer-advances', 'prepayment', advanceVendorFilter, advanceStatusFilter],
+    queryFn: async () => {
+      const params = new URLSearchParams({ advanceType: 'prepayment' });
+      if (advanceVendorFilter !== 'all') params.append('vendorId', advanceVendorFilter);
+      if (advanceStatusFilter !== 'all') params.append('status', advanceStatusFilter);
+      const res = await fetch(`/api/customer-advances?${params.toString()}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch advance payments');
+      return res.json();
+    },
+  });
+
+  // Fetch pending invoices for the selected advance's vendor (for applying)
+  const { data: vendorPendingInvoices = [] } = useQuery<any[]>({
+    queryKey: ['/api/invoices', selectedAdvance?.vendorId, 'pending-for-advance'],
+    enabled: !!selectedAdvance?.vendorId && showApplyAdvanceDialog,
+    queryFn: async () => {
+      const res = await fetch(
+        `/api/invoices?vendorId=${selectedAdvance.vendorId}&paymentStatus=pending&page=1&pageSize=200`,
+        { credentials: 'include' }
+      );
+      if (!res.ok) return [];
+      const data = await res.json();
+      return Array.isArray(data) ? data : (data.invoices || data.data || []);
+    },
+  });
+
+  // Create advance payment mutation
+  const createAdvanceMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', '/api/customer-advances', {
+        vendorId: advForm.vendorId,
+        receiptDate: advForm.receiptDate,
+        amount: Math.round(parseFloat(advForm.amount) * 100),
+        paymentMethod: advForm.paymentMethod,
+        referenceNumber: advForm.referenceNumber || undefined,
+        remarks: advForm.remarks || undefined,
+        advanceType: 'prepayment',
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to create advance payment');
+      return data;
+    },
+    onSuccess: () => {
+      toast({ title: 'Advance Payment Recorded', description: 'The advance payment has been recorded successfully.' });
+      queryClient.invalidateQueries({ queryKey: ['/api/customer-advances', 'prepayment'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/pending-payments'] });
+      setShowAdvanceDialog(false);
+      setAdvForm({ vendorId: '', receiptDate: new Date().toISOString().slice(0, 10), amount: '', paymentMethod: 'Cash', referenceNumber: '', remarks: '' });
+    },
+    onError: (err: Error) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
+  });
+
+  // Apply advance payment to invoice mutation
+  const applyAdvanceMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', `/api/customer-advances/${selectedAdvance.id}/apply`, {
+        invoiceId: applyInvoiceId,
+        amount: Math.round(parseFloat(applyAmount) * 100),
+        remarks: applyRemarks || `Applied advance ${selectedAdvance.advanceNumber} to invoice`,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to apply advance');
+      return data;
+    },
+    onSuccess: () => {
+      toast({ title: 'Advance Applied', description: 'Advance payment applied to invoice successfully.' });
+      queryClient.invalidateQueries({ queryKey: ['/api/customer-advances', 'prepayment'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/pending-payments'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/invoice-payments'] });
+      setShowApplyAdvanceDialog(false);
+      setSelectedAdvance(null);
+      setApplyInvoiceId('');
+      setApplyAmount('');
+      setApplyRemarks('');
+    },
+    onError: (err: Error) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
+  });
+
+  // Cancel advance mutation
+  const cancelAdvanceMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest('POST', `/api/customer-advances/${id}/cancel`, { remarks: 'Cancelled from Payment Management' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to cancel');
+      return data;
+    },
+    onSuccess: () => {
+      toast({ title: 'Advance Cancelled', description: 'Advance payment has been cancelled.' });
+      queryClient.invalidateQueries({ queryKey: ['/api/customer-advances', 'prepayment'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/pending-payments'] });
+    },
+    onError: (err: Error) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
+  });
 
   const { data: bulkAllocsData, isLoading: bulkAllocsLoading } = useQuery<{ data: any[]; total: number }>({
     queryKey: ['/api/invoice-payments/bulk-allocations', bulkPage, bulkSearch, bulkVendorId],
@@ -775,6 +899,9 @@ export default function PaymentManagement() {
             {canViewPayments && (
               <TabsTrigger value="bulk" data-testid="tab-bulk-allocations">Bulk Allocations</TabsTrigger>
             )}
+            {canViewPayments && (
+              <TabsTrigger value="advance" data-testid="tab-advance-payments">Advance Payments</TabsTrigger>
+            )}
           </TabsList>
           <div className="flex items-center gap-2">
             {canCreate && (
@@ -1196,7 +1323,333 @@ export default function PaymentManagement() {
         </CardContent>
       </Card>
         </TabsContent>
+
+        {/* Tab 3 — Advance Payments */}
+        <TabsContent value="advance" className="mt-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-4">
+              <div>
+                <CardTitle className="text-base">Advance Payments</CardTitle>
+                <CardDescription>Record customer payments not linked to a specific invoice. Apply them to invoices later.</CardDescription>
+              </div>
+              {canCreate && (
+                <Button onClick={() => setShowAdvanceDialog(true)} data-testid="button-record-advance">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Record Advance Payment
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {/* Filters */}
+              <div className="flex flex-wrap gap-2">
+                <Select value={advanceVendorFilter} onValueChange={setAdvanceVendorFilter} data-testid="select-advance-vendor">
+                  <SelectTrigger className="w-52" data-testid="trigger-advance-vendor">
+                    <SelectValue placeholder="All customers" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Customers</SelectItem>
+                    {customerVendors.map((v: any) => (
+                      <SelectItem key={v.id} value={v.id}>{v.vendorName}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={advanceStatusFilter} onValueChange={setAdvanceStatusFilter} data-testid="select-advance-status">
+                  <SelectTrigger className="w-40" data-testid="trigger-advance-status">
+                    <SelectValue placeholder="All statuses" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="fully_used">Fully Used</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Table */}
+              {prepaymentLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : (prepaymentData as any[]).length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground text-sm">
+                  No advance payments recorded yet.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Ref #</TableHead>
+                        <TableHead>Customer</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                        <TableHead className="text-right">Used</TableHead>
+                        <TableHead className="text-right">Available</TableHead>
+                        <TableHead>Method</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(prepaymentData as any[]).map((adv: any) => {
+                        const available = adv.amount - adv.usedAmount;
+                        const statusColor = adv.status === 'active' ? 'default' :
+                                            adv.status === 'fully_used' ? 'secondary' : 'destructive';
+                        return (
+                          <TableRow key={adv.id} data-testid={`row-advance-${adv.id}`}>
+                            <TableCell className="font-mono text-sm">{adv.advanceNumber}</TableCell>
+                            <TableCell className="font-medium">{adv.vendorName || '—'}</TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {adv.receiptDate ? format(new Date(adv.receiptDate), 'dd MMM yyyy') : '—'}
+                            </TableCell>
+                            <TableCell className="text-right font-mono text-sm">
+                              ₹{(adv.amount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                            </TableCell>
+                            <TableCell className="text-right font-mono text-sm text-muted-foreground">
+                              ₹{(adv.usedAmount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                            </TableCell>
+                            <TableCell className="text-right font-mono text-sm font-medium text-green-700 dark:text-green-400">
+                              ₹{(available / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                            </TableCell>
+                            <TableCell className="text-sm">{adv.paymentMethod}</TableCell>
+                            <TableCell>
+                              <Badge variant={statusColor as any} className="text-xs" data-testid={`badge-advance-status-${adv.id}`}>
+                                {adv.status === 'active' ? 'Active' : adv.status === 'fully_used' ? 'Fully Used' : 'Cancelled'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1">
+                                {canCreate && adv.status === 'active' && available > 0 && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      setSelectedAdvance(adv);
+                                      setApplyAmount((available / 100).toFixed(2));
+                                      setShowApplyAdvanceDialog(true);
+                                    }}
+                                    data-testid={`button-apply-advance-${adv.id}`}
+                                  >
+                                    Apply
+                                  </Button>
+                                )}
+                                {showAdminTools && adv.status === 'active' && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-destructive"
+                                    onClick={() => cancelAdvanceMutation.mutate(adv.id)}
+                                    disabled={cancelAdvanceMutation.isPending}
+                                    data-testid={`button-cancel-advance-${adv.id}`}
+                                  >
+                                    Cancel
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+
+              {/* Summary */}
+              {(prepaymentData as any[]).length > 0 && (
+                <div className="flex justify-end pt-2 border-t">
+                  <div className="text-sm text-right space-y-1">
+                    <div className="text-muted-foreground">
+                      Total Advance Payments: <span className="font-medium text-foreground">
+                        ₹{((prepaymentData as any[]).reduce((s: number, a: any) => s + a.amount, 0) / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                    <div className="text-muted-foreground">
+                      Total Available Balance: <span className="font-semibold text-green-700 dark:text-green-400">
+                        ₹{((prepaymentData as any[]).reduce((s: number, a: any) => s + Math.max(0, a.amount - a.usedAmount), 0) / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
+
+      {/* Record Advance Payment Dialog */}
+      <Dialog open={showAdvanceDialog} onOpenChange={setShowAdvanceDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Record Advance Payment</DialogTitle>
+            <DialogDescription>
+              Record a payment received from a customer that is not linked to any specific invoice. You can apply it to invoices later.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Customer *</label>
+              <Select
+                value={advForm.vendorId}
+                onValueChange={(v) => setAdvForm(f => ({ ...f, vendorId: v }))}
+                data-testid="select-adv-vendor"
+              >
+                <SelectTrigger data-testid="trigger-adv-vendor">
+                  <SelectValue placeholder="Select customer..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {customerVendors.map((v: any) => (
+                    <SelectItem key={v.id} value={v.id}>{v.vendorName}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Payment Date *</label>
+                <Input
+                  type="date"
+                  value={advForm.receiptDate}
+                  onChange={(e) => setAdvForm(f => ({ ...f, receiptDate: e.target.value }))}
+                  data-testid="input-adv-date"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Amount (₹) *</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  placeholder="0.00"
+                  value={advForm.amount}
+                  onChange={(e) => setAdvForm(f => ({ ...f, amount: e.target.value }))}
+                  data-testid="input-adv-amount"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Payment Method *</label>
+                <Select
+                  value={advForm.paymentMethod}
+                  onValueChange={(v) => setAdvForm(f => ({ ...f, paymentMethod: v }))}
+                  data-testid="select-adv-method"
+                >
+                  <SelectTrigger data-testid="trigger-adv-method">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Cash">Cash</SelectItem>
+                    <SelectItem value="Cheque">Cheque</SelectItem>
+                    <SelectItem value="NEFT">NEFT</SelectItem>
+                    <SelectItem value="RTGS">RTGS</SelectItem>
+                    <SelectItem value="UPI">UPI</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Reference No.</label>
+                <Input
+                  placeholder="UTR / Cheque no."
+                  value={advForm.referenceNumber}
+                  onChange={(e) => setAdvForm(f => ({ ...f, referenceNumber: e.target.value }))}
+                  data-testid="input-adv-ref"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Remarks</label>
+              <Textarea
+                placeholder="Optional notes..."
+                value={advForm.remarks}
+                onChange={(e) => setAdvForm(f => ({ ...f, remarks: e.target.value }))}
+                data-testid="input-adv-remarks"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAdvanceDialog(false)}>Cancel</Button>
+            <Button
+              onClick={() => createAdvanceMutation.mutate()}
+              disabled={createAdvanceMutation.isPending || !advForm.vendorId || !advForm.amount || parseFloat(advForm.amount) <= 0}
+              data-testid="button-submit-advance"
+            >
+              {createAdvanceMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              Record Payment
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Apply Advance to Invoice Dialog */}
+      <Dialog open={showApplyAdvanceDialog} onOpenChange={setShowApplyAdvanceDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Apply Advance to Invoice</DialogTitle>
+            <DialogDescription>
+              {selectedAdvance && (
+                <>Advance {selectedAdvance.advanceNumber} — Available: ₹{((selectedAdvance.amount - selectedAdvance.usedAmount) / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Select Invoice *</label>
+              <Select value={applyInvoiceId} onValueChange={setApplyInvoiceId} data-testid="select-apply-invoice">
+                <SelectTrigger data-testid="trigger-apply-invoice">
+                  <SelectValue placeholder="Select invoice..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {(vendorPendingInvoices as any[]).map((inv: any) => {
+                    const outstanding = inv.totalAmount - (inv.amountReceived || 0);
+                    return (
+                      <SelectItem key={inv.id} value={inv.id}>
+                        {inv.invoiceNumber} — ₹{(outstanding / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })} outstanding
+                      </SelectItem>
+                    );
+                  })}
+                  {(vendorPendingInvoices as any[]).length === 0 && (
+                    <SelectItem value="__none__" disabled>No pending invoices found</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Amount to Apply (₹) *</label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0.01"
+                value={applyAmount}
+                onChange={(e) => setApplyAmount(e.target.value)}
+                data-testid="input-apply-amount"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Remarks</label>
+              <Input
+                placeholder="Optional notes..."
+                value={applyRemarks}
+                onChange={(e) => setApplyRemarks(e.target.value)}
+                data-testid="input-apply-remarks"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowApplyAdvanceDialog(false); setSelectedAdvance(null); }}>Cancel</Button>
+            <Button
+              onClick={() => applyAdvanceMutation.mutate()}
+              disabled={applyAdvanceMutation.isPending || !applyInvoiceId || applyInvoiceId === '__none__' || !applyAmount || parseFloat(applyAmount) <= 0}
+              data-testid="button-submit-apply"
+            >
+              {applyAdvanceMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              Apply Advance
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">

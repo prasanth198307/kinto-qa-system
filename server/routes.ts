@@ -9419,9 +9419,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return numA - numB;
       });
       
+      // Fetch available prepayments (advance payments from Payment Management) grouped by vendorId
+      const allPrepayments = await db.select({
+        vendorId: customerAdvances.vendorId,
+        amount: customerAdvances.amount,
+        usedAmount: customerAdvances.usedAmount,
+      })
+      .from(customerAdvances)
+      .where(and(
+        eq(customerAdvances.recordStatus, 1),
+        eq(customerAdvances.advanceType, 'prepayment'),
+        eq(customerAdvances.status, 'active'),
+      ));
+
+      // Map: vendorId -> total available prepayment balance
+      const prepaymentByVendor = new Map<string, number>();
+      for (const p of allPrepayments) {
+        if (!p.vendorId) continue;
+        const available = Math.max(0, p.amount - p.usedAmount);
+        prepaymentByVendor.set(p.vendorId, (prepaymentByVendor.get(p.vendorId) || 0) + available);
+      }
+
+      // Attach prepayment info to each pending invoice
+      const pendingInvoicesWithPrepayment = pendingInvoices.map(inv => ({
+        ...inv,
+        availablePrepayment: inv.vendorId ? (prepaymentByVendor.get(inv.vendorId) || 0) : 0,
+      }));
+
       // Calculate aggregate statistics
-      const totalOutstanding = pendingInvoices.reduce((sum, inv) => sum + inv.outstandingBalance, 0);
-      const totalCount = pendingInvoices.length;
+      const totalOutstanding = pendingInvoicesWithPrepayment.reduce((sum, inv) => sum + inv.outstandingBalance, 0);
+      const totalPrepayment = [...prepaymentByVendor.values()].reduce((s, v) => s + v, 0);
+      const totalCount = pendingInvoicesWithPrepayment.length;
       
       // Parse pagination params or use defaults to always return consistent format
       const { paginationRequestSchema } = await import('@shared/schema');
@@ -9433,7 +9461,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalPages = Math.ceil(totalCount / paginationParams.pageSize);
       const startIndex = (paginationParams.page - 1) * paginationParams.pageSize;
       const endIndex = startIndex + paginationParams.pageSize;
-      const paginatedData = pendingInvoices.slice(startIndex, endIndex);
+      const paginatedData = pendingInvoicesWithPrepayment.slice(startIndex, endIndex);
       
       res.json({
         data: paginatedData,
@@ -9446,6 +9474,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           hasPreviousPage: paginationParams.page > 1,
           aggregateStats: {
             totalOutstanding,
+            totalPrepayment,
             totalCount,
           },
         },
@@ -11799,7 +11828,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all customer advances with optional filters
   app.get('/api/customer-advances', isAuthenticated, async (req: any, res) => {
     try {
-      const { vendorId, status, page, pageSize } = req.query;
+      const { vendorId, status, page, pageSize, advanceType } = req.query;
       
       // Build query with filters
       let conditions: any[] = [eq(customerAdvances.recordStatus, 1)];
@@ -11809,6 +11838,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       if (status && status !== 'all') {
         conditions.push(eq(customerAdvances.status, status as string));
+      }
+      // Filter by advance type: 'security_deposit' (Customer Advances page) or 'prepayment' (Payment Management)
+      if (advanceType && advanceType !== 'all') {
+        conditions.push(eq(customerAdvances.advanceType, advanceType as string));
       }
       
       // Get advances with vendor info
@@ -11824,6 +11857,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         referenceNumber: customerAdvances.referenceNumber,
         bankName: customerAdvances.bankName,
         status: customerAdvances.status,
+        advanceType: customerAdvances.advanceType,
         purpose: customerAdvances.purpose,
         remarks: customerAdvances.remarks,
         receivedBy: customerAdvances.receivedBy,
@@ -11960,17 +11994,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create new customer advance
   app.post('/api/customer-advances', requireRole('admin', 'manager', 'AccountsManager'), async (req: any, res) => {
     try {
+      const isPrepayment = req.body.advanceType === 'prepayment';
+      const numberPrefix = isPrepayment ? 'PRE' : 'ADV';
+      
       // Generate advance number
       const today = format(new Date(), 'yyyyMMdd');
       const existingCount = await db.select({ count: sql<number>`count(*)` })
         .from(customerAdvances)
-        .where(sql`${customerAdvances.advanceNumber} LIKE ${'ADV-' + today + '%'}`);
+        .where(sql`${customerAdvances.advanceNumber} LIKE ${numberPrefix + '-' + today + '%'}`);
       const seq = (existingCount[0]?.count || 0) + 1;
-      const advanceNumber = `ADV-${today}-${String(seq).padStart(3, '0')}`;
+      const advanceNumber = `${numberPrefix}-${today}-${String(seq).padStart(3, '0')}`;
       
       const validatedData = insertCustomerAdvanceSchema.parse({
         ...req.body,
         receivedBy: req.user?.id,
+        advanceType: isPrepayment ? 'prepayment' : 'security_deposit',
       });
       
       const [created] = await db.insert(customerAdvances).values({
@@ -12190,6 +12228,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get advances available for a specific vendor (for invoice creation)
+  // Returns both security_deposit advances AND prepayments from Payment Management
   app.get('/api/customer-advances/available/:vendorId', isAuthenticated, async (req: any, res) => {
     try {
       const { vendorId } = req.params;
@@ -12203,6 +12242,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         paymentMethod: customerAdvances.paymentMethod,
         referenceNumber: customerAdvances.referenceNumber,
         purpose: customerAdvances.purpose,
+        advanceType: customerAdvances.advanceType,
       })
       .from(customerAdvances)
       .where(and(
