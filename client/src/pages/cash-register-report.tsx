@@ -770,6 +770,72 @@ export default function CashRegisterReport() {
             </Card>
           </div>
 
+          {reportData.transactions && reportData.transactions.length > 0 && (() => {
+            const cashTxns = reportData.transactions!.filter(t => t.transactionType === 'cash_received');
+            if (cashTxns.length === 0) return null;
+            const bySource: Record<string, { amount: number; count: number; descriptions: string[] }> = {};
+            cashTxns.forEach(t => {
+              const key = t.sourceType || 'other';
+              if (!bySource[key]) bySource[key] = { amount: 0, count: 0, descriptions: [] };
+              bySource[key].amount += t.amount;
+              bySource[key].count += 1;
+              if (key === 'other' && t.description) bySource[key].descriptions.push(t.description);
+            });
+            const sourceEntries = Object.entries(bySource).sort((a, b) => b[1].amount - a[1].amount);
+            const totalReceived = sourceEntries.reduce((s, [, v]) => s + v.amount, 0);
+            const getLabel = (key: string) => {
+              switch (key) {
+                case 'sale_cash': return 'Sale Cash';
+                case 'secondary_sale': return 'Secondary Sale';
+                case 'upi': return 'UPI';
+                case 'bank_transfer': return 'Bank Transfer';
+                case 'from_inmoisture': return 'From Inmoisture';
+                case 'from_scrap': return 'From Scrap';
+                case 'other': return 'Other';
+                default: return key;
+              }
+            };
+            return (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-green-600" />
+                    Cash Received — By Source
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {sourceEntries.map(([key, val]) => {
+                      const pct = totalReceived > 0 ? Math.round((val.amount / totalReceived) * 100) : 0;
+                      const label = key === 'other' && val.descriptions.length > 0
+                        ? `Other (${val.descriptions.slice(0, 2).join(', ')}${val.descriptions.length > 2 ? '…' : ''})`
+                        : getLabel(key);
+                      return (
+                        <div key={key} className="space-y-1">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="font-medium">{label}</span>
+                            <div className="flex items-center gap-3">
+                              <span className="text-muted-foreground text-xs">{val.count} txn{val.count !== 1 ? 's' : ''}</span>
+                              <span className="text-muted-foreground text-xs">{pct}%</span>
+                              <span className="font-semibold text-green-600">{formatCurrency(val.amount)}</span>
+                            </div>
+                          </div>
+                          <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                            <div className="h-full rounded-full bg-green-500" style={{ width: `${pct}%` }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <div className="flex justify-between text-sm font-semibold border-t pt-2 mt-2">
+                      <span>Total</span>
+                      <span className="text-green-600">{formatCurrency(totalReceived)}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })()}
+
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
