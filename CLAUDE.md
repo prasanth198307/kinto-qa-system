@@ -31,10 +31,12 @@ QA and invoice management system for Kinto Water.
 - File naming for migrations: YYYY-MM-DD_description.sql
 - Never modify .github/workflows/ files
 - Never modify dist/ folder
-- Keep components under 300 lines split if larger
 - Always calculate GST on post-discount taxable value
 - Use server/auth.ts for all permission checks
 - Shared types go in shared/schema.ts
+- Keep all components under 300 lines
+- If a file exceeds 300 lines split it into smaller components
+- Suggest specific file names and responsibilities when splitting
 
 ## Key Files
 - Invoice form: client/src/components/InvoiceForm.tsx
@@ -48,3 +50,17 @@ QA and invoice management system for Kinto Water.
 - Location: db_scripts/
 - New migrations format: YYYY-MM-DD_description.sql
 - Example: 2026-04-03_add_discount_mode.sql
+
+## Large Files Warning
+- client/src/components/InvoiceForm.tsx is very large (29000+ tokens)
+- Always use Grep to search this file before reading
+- Never read InvoiceForm.tsx fully in one go
+- Use offset and limit to read specific sections only
+- Suggest splitting into smaller components when touching this file
+
+## How to Split Large Files
+When a file exceeds 300 lines split it like this:
+- InvoiceForm.tsx → InvoiceItemsTable.tsx + InvoiceDiscountSection.tsx + InvoiceTaxSummary.tsx + InvoiceFormHeader.tsx
+- Each component should have one clear responsibility
+- Keep shared state in parent component
+- Use props to pass data down
