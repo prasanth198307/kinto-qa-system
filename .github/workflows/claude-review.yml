@@ -54,17 +54,17 @@ jobs:
           echo "lines=$LINES" >> $GITHUB_OUTPUT
           echo "Changed lines: $LINES"
 
-      - name: Set model and tokens based on trigger
+      - name: Set model and turns based on trigger
         id: model
         run: |
           if [[ "${{ github.event.comment.body }}" == *"@claude-deep"* ]]; then
             echo "model=claude-sonnet-4-6" >> $GITHUB_OUTPUT
-            echo "max_tokens=2048" >> $GITHUB_OUTPUT
-            echo "Using Sonnet (deep review) with 2048 tokens"
+            echo "max_turns=3" >> $GITHUB_OUTPUT
+            echo "Using Sonnet (deep review) with 3 turns"
           else
             echo "model=claude-haiku-4-5" >> $GITHUB_OUTPUT
-            echo "max_tokens=1024" >> $GITHUB_OUTPUT
-            echo "Using Haiku (standard review) with 1024 tokens"
+            echo "max_turns=1" >> $GITHUB_OUTPUT
+            echo "Using Haiku (standard review) with 1 turn"
           fi
 
       - name: Run Claude Code Review
@@ -78,7 +78,7 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           model: ${{ steps.model.outputs.model }}
-          max_tokens: ${{ steps.model.outputs.max_tokens }}
+          max_turns: ${{ steps.model.outputs.max_turns }}
           direct_prompt: |
             You are reviewing the kinto-qa-system project.
 
