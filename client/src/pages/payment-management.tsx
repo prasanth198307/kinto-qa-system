@@ -228,11 +228,6 @@ export default function PaymentManagement() {
     queryKey: ['/api/vendors'],
   });
 
-  // Fetch all vendor-type assignments to identify customer vendors
-  const { data: vendorTypeAssignments = [] } = useQuery<any[]>({
-    queryKey: ['/api/vendor-vendor-types/batch'],
-  });
-
   const { data: paymentsData = [], isLoading } = useQuery<any[]>({
     queryKey: ['/api/invoice-payments/history'],
   });
@@ -249,20 +244,10 @@ export default function PaymentManagement() {
     return acc;
   }, {});
 
-  // Build a map of vendorId → type names using the batch assignment endpoint
-  const vendorTypeMap = (vendorTypeAssignments as any[]).reduce((acc: Record<string, string[]>, a: any) => {
-    const typeName = a.vendorType?.name || a.vendorTypeName || '';
-    if (!acc[a.vendorId]) acc[a.vendorId] = [];
-    acc[a.vendorId].push(typeName);
-    return acc;
-  }, {});
-
-  // Customer vendors (for advance payment customer selector)
-  const customerTypeNames = ['Customer', 'Distributor', 'Retailer', 'Corporate', 'Government'];
-  const customerVendors = (vendors as any[]).filter(v => {
-    const types = vendorTypeMap[v.id] || [];
-    return types.some((t: string) => customerTypeNames.includes(t)) && !v.parentVendorId;
-  });
+  // Customer vendors for advance payment — all active non-child vendors, sorted by name
+  const customerVendors = (vendors as any[])
+    .filter(v => !v.parentVendorId && v.isActive !== 0)
+    .sort((a, b) => a.vendorName.localeCompare(b.vendorName));
 
   // Query for prepayment advances (advance payments from Payment Management)
   const { data: prepaymentData = [], isLoading: prepaymentLoading } = useQuery<any[]>({
