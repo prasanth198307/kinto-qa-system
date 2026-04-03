@@ -404,7 +404,29 @@ export default function PrintInvoiceGatepassPage() {
         <div style={{ width: '180px' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9px' }}>
             <tbody>
-              <tr><td style={{ border: '1px solid #000', padding: '3px' }}>Subtotal:</td><td style={{ border: '1px solid #000', padding: '3px', textAlign: 'right' }}>{formatCurrency(invoice.subtotal)}</td></tr>
+              {(() => {
+                const totalDiscount = invoiceItems.reduce((sum, item) => {
+                  const grossLine = item.quantity * item.unitPrice;
+                  const discountMode = (item as any).discountMode || '%';
+                  if (discountMode === '%') {
+                    return sum + Math.round(grossLine * (item.discount || 0) / 10000);
+                  } else {
+                    return sum + (item.quantity * (item.discount || 0));
+                  }
+                }, 0);
+                const itemTotal = invoice.subtotal + totalDiscount;
+                return (
+                  <>
+                    {totalDiscount > 0 && (
+                      <>
+                        <tr><td style={{ border: '1px solid #000', padding: '3px' }}>Item Total:</td><td style={{ border: '1px solid #000', padding: '3px', textAlign: 'right' }}>{formatCurrency(itemTotal)}</td></tr>
+                        <tr><td style={{ border: '1px solid #000', padding: '3px' }}>Discount (−):</td><td style={{ border: '1px solid #000', padding: '3px', textAlign: 'right' }}>−{formatCurrency(totalDiscount)}</td></tr>
+                      </>
+                    )}
+                    <tr><td style={{ border: '1px solid #000', padding: '3px' }}>Subtotal:</td><td style={{ border: '1px solid #000', padding: '3px', textAlign: 'right' }}>{formatCurrency(invoice.subtotal)}</td></tr>
+                  </>
+                );
+              })()}
               {isIntrastate ? (
                 <>
                   <tr><td style={{ border: '1px solid #000', padding: '3px' }}>CGST:</td><td style={{ border: '1px solid #000', padding: '3px', textAlign: 'right' }}>{formatCurrency(invoice.cgstAmount)}</td></tr>

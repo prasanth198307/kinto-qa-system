@@ -491,7 +491,16 @@ export default function PrintInvoicePage() {
             <tbody>
               {/* Calculate total discount from all items */}
               {(() => {
-                const totalDiscount = items.reduce((sum, item) => sum + (item.discount || 0), 0);
+                // Compute actual discount amount per item (values stored ×100 in DB)
+                const totalDiscount = items.reduce((sum, item) => {
+                  const grossLine = item.quantity * item.unitPrice; // paise
+                  const discountMode = (item as any).discountMode || '%';
+                  if (discountMode === '%') {
+                    return sum + Math.round(grossLine * (item.discount || 0) / 10000);
+                  } else {
+                    return sum + (item.quantity * (item.discount || 0));
+                  }
+                }, 0);
                 const subtotalBeforeDiscount = invoice.subtotal + totalDiscount;
                 const taxableValue = invoice.subtotal;
                 
