@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Plus, X, Printer, FileText, AlertCircle, CreditCard, TrendingUp, TrendingDown } from "lucide-react";
+import { Plus, X, Printer, FileText, AlertCircle, CreditCard, TrendingUp, TrendingDown, Wallet } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -133,6 +133,9 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
   const [gstInclusiveMode, setGstInclusiveMode] = useState(false);
   // Track total amounts per item for inclusive mode calculation
   const [itemTotalAmounts, setItemTotalAmounts] = useState<{ [index: number]: number }>({});
+
+  // Customer advance application
+  const [advanceToApply, setAdvanceToApply] = useState<number>(0);
 
   const { data: products = [] } = useQuery<Product[]>({
     queryKey: ['/api/products'],
@@ -492,6 +495,19 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
     },
     enabled: !!watchedBuyerName && watchedBuyerName.length > 0,
   });
+
+  // Fetch available customer advances for the selected vendor
+  const { data: availableAdvancesData } = useQuery<{ advances: any[]; totalAvailable: number; count: number }>({
+    queryKey: ['/api/customer-advances/available', selectedVendorId],
+    queryFn: async () => {
+      if (!selectedVendorId) return { advances: [], totalAvailable: 0, count: 0 };
+      const res = await fetch(`/api/customer-advances/available/${selectedVendorId}`, { credentials: 'include' });
+      if (!res.ok) return { advances: [], totalAvailable: 0, count: 0 };
+      return res.json();
+    },
+    enabled: !!selectedVendorId && !invoice, // only for new invoices
+  });
+  const totalAvailableAdvance = availableAdvancesData?.totalAvailable ?? 0; // in paise
 
   // Auto-select default template and terms & conditions on load
   useEffect(() => {
@@ -1025,7 +1041,30 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
     },
     onSuccess: async (response: any) => {
       console.log('[InvoiceForm] Mutation success, response:', response);
-      
+
+      // Apply customer advance if user requested it (new invoices only)
+      const newInvoiceId = response?.invoice?.id;
+      if (newInvoiceId && advanceToApply > 0 && availableAdvancesData?.advances?.length) {
+        const amountPaise = Math.round(advanceToApply * 100);
+        let remaining = amountPaise;
+        for (const adv of availableAdvancesData.advances) {
+          if (remaining <= 0) break;
+          const canApply = Math.min(remaining, adv.availableBalance);
+          if (canApply <= 0) continue;
+          try {
+            await apiRequest('POST', `/api/customer-advances/${adv.id}/apply`, {
+              invoiceId: newInvoiceId,
+              amount: canApply,
+              remarks: 'Applied during invoice creation',
+            });
+            remaining -= canApply;
+          } catch (err) {
+            console.error('[InvoiceForm] Failed to apply advance:', err);
+          }
+        }
+        await queryClient.invalidateQueries({ queryKey: ['/api/customer-advances'] });
+      }
+
       // Force clear cache and refetch of invoices list
       // Use invalidateQueries to mark as stale, then refetch to get fresh data
       await queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
@@ -1891,6 +1930,65 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
 
         {/* Tax Summary */}
         <InvoiceTaxSummary taxes={taxes} isIntrastateSupply={isIntrastateSupply} />
+
+        {/* Customer Advance — shown only for new invoices when vendor has advance balance */}
+        {!invoice && totalAvailableAdvance > 0 && (
+          <div className="rounded-md border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 p-3 space-y-2">
+            <div className="flex items-center gap-2 text-green-800 dark:text-green-300">
+              <Wallet className="w-4 h-4 shrink-0" />
+              <span className="text-sm font-medium">
+                Customer has ₹{(totalAvailableAdvance / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })} in advance payments
+                {availableAdvancesData!.count > 1 ? ` (across ${availableAdvancesData!.count} records)` : ''}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Label className="text-sm text-green-800 dark:text-green-300 whitespace-nowrap shrink-0">
+                Apply towards this invoice (₹):
+              </Label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                max={totalAvailableAdvance / 100}
+                value={advanceToApply || ''}
+                onChange={(e) => {
+                  const val = parseFloat(e.target.value) || 0;
+                  setAdvanceToApply(Math.min(val, totalAvailableAdvance / 100));
+                }}
+                placeholder="0.00"
+                className="h-8 w-36 text-sm"
+                data-testid="input-advance-to-apply"
+              />
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-8 text-xs"
+                onClick={() => setAdvanceToApply(totalAvailableAdvance / 100)}
+                data-testid="button-apply-full-advance"
+              >
+                Apply Full
+              </Button>
+              {advanceToApply > 0 && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 text-xs text-muted-foreground"
+                  onClick={() => setAdvanceToApply(0)}
+                >
+                  Clear
+                </Button>
+              )}
+            </div>
+            {advanceToApply > 0 && (
+              <p className="text-xs text-green-700 dark:text-green-400">
+                ₹{advanceToApply.toLocaleString('en-IN', { minimumFractionDigits: 2 })} will be applied automatically after invoice is created.
+                Remaining due: ₹{Math.max(0, (taxes.totalAmount / 100) - advanceToApply).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Payment Details */}
         <div className="space-y-3">
