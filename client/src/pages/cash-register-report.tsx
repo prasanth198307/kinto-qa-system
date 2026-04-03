@@ -1246,7 +1246,7 @@ export default function CashRegisterReport() {
                           >
                             {doc.transactionType === 'cash_received' ? 'Cash Received' :
                              doc.transactionType === 'expense' ? 'Expense' : 'Transfer'}
-                            {doc.sourceType && ` (${doc.sourceType.replace('_', ' ')})`}
+                            {doc.transactionType === 'cash_received' && doc.sourceType && ` (${doc.sourceType.replace('_', ' ')})`}
                           </Badge>
                         </TableCell>
                         <TableCell className="max-w-[200px] truncate">
