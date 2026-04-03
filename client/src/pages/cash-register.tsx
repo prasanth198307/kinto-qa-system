@@ -504,6 +504,8 @@ export default function CashRegisterPage() {
     switch (sourceType) {
       case 'sale_cash': return 'Sale Cash';
       case 'secondary_sale': return 'Secondary Sale';
+      case 'from_inmoisture': return 'From Inmoisture';
+      case 'from_scrap': return 'From Scrap';
       case 'upi': return 'UPI';
       case 'bank_transfer': return 'Bank Transfer';
       case 'other': return 'Other';
@@ -812,6 +814,12 @@ export default function CashRegisterPage() {
                         </SelectItem>
                         <SelectItem value="secondary_sale">
                           <span className="flex items-center gap-2"><Receipt className="w-3 h-3" /> Secondary Sale</span>
+                        </SelectItem>
+                        <SelectItem value="from_inmoisture">
+                          <span className="flex items-center gap-2"><Banknote className="w-3 h-3" /> From Inmoisture</span>
+                        </SelectItem>
+                        <SelectItem value="from_scrap">
+                          <span className="flex items-center gap-2"><Receipt className="w-3 h-3" /> From Scrap</span>
                         </SelectItem>
                         <SelectItem value="upi">
                           <span className="flex items-center gap-2"><CreditCard className="w-3 h-3" /> UPI</span>
@@ -1459,6 +1467,8 @@ export default function CashRegisterPage() {
                       <SelectContent>
                         <SelectItem value="sale_cash">Sale Cash</SelectItem>
                         <SelectItem value="secondary_sale">Secondary Sale</SelectItem>
+                        <SelectItem value="from_inmoisture">From Inmoisture</SelectItem>
+                        <SelectItem value="from_scrap">From Scrap</SelectItem>
                         <SelectItem value="upi">UPI</SelectItem>
                         <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
                         <SelectItem value="other">Other</SelectItem>

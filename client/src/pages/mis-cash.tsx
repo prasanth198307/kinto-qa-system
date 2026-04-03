@@ -349,6 +349,49 @@ export default function MISCash() {
         )}
       </div>
 
+      {/* Cash Received by Source */}
+      {(data?.sourceTypes ?? []).length > 0 && (
+        <div className="rounded-lg border bg-card p-4 space-y-3">
+          <div>
+            <p className="text-sm font-medium">Cash Received — By Source</p>
+            <p className="text-xs text-muted-foreground">Breakdown of how cash was received</p>
+          </div>
+          {isLoading ? (
+            <div className="space-y-2">{[...Array(4)].map((_, i) => <Skeleton key={i} className="h-5 w-full" />)}</div>
+          ) : (
+            <div className="space-y-2">
+              {(data?.sourceTypes ?? []).map((row, i) => {
+                const totalSrc = (data?.sourceTypes ?? []).reduce((s, r) => s + r.amount, 0);
+                const pct = totalSrc > 0 ? Math.round((row.amount / totalSrc) * 100) : 0;
+                const label = (() => {
+                  switch (row.sourceType) {
+                    case 'sale_cash': return 'Sales Cash';
+                    case 'secondary_sale': return 'Secondary Sale';
+                    case 'from_inmoisture': return 'From Inmoisture';
+                    case 'from_scrap': return 'From Scrap';
+                    case 'upi': return 'UPI';
+                    case 'bank_transfer': return 'Bank Transfer';
+                    case 'other': return 'Other';
+                    default: return (row.sourceType || 'Unknown').replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+                  }
+                })();
+                return (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }} data-testid={`source-type-row-${i}`}>
+                    <span style={{ width: 130, color: 'var(--muted-foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={label}>{label}</span>
+                    <div style={{ flex: 1, background: 'hsl(var(--muted))', borderRadius: 2, height: 6, overflow: 'hidden' }}>
+                      <div style={{ width: `${pct}%`, height: 6, background: '#97C459', borderRadius: 2 }} />
+                    </div>
+                    <span style={{ width: 30, textAlign: 'right' }} className="text-muted-foreground">{pct}%</span>
+                    <span style={{ width: 70, textAlign: 'right', fontWeight: 500 }}>{fmtCurr(row.amount)}</span>
+                    <span style={{ width: 30, textAlign: 'right' }} className="text-muted-foreground">×{row.count}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Bottom two-column section */}
       <div className="grid md:grid-cols-[1.4fr_1fr] gap-4">
         {/* Monthly Performance Table */}

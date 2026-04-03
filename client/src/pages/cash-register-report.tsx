@@ -413,6 +413,33 @@ export default function CashRegisterReport() {
     }
   };
 
+  const sourceTypeLabel = (st: string) => {
+    switch (st) {
+      case 'sale_cash': return 'Sales Cash';
+      case 'secondary_sale': return 'Secondary Sale';
+      case 'from_inmoisture': return 'From Inmoisture';
+      case 'from_scrap': return 'From Scrap';
+      case 'upi': return 'UPI';
+      case 'bank_transfer': return 'Bank Transfer';
+      case 'other': return 'Other';
+      default: return st.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    }
+  };
+
+  const sourceTypeBreakdown = useMemo(() => {
+    if (!reportData?.transactions) return [];
+    const map: Record<string, number> = {};
+    reportData.transactions
+      .filter(t => t.transactionType === 'cash_received')
+      .forEach(t => {
+        const key = t.sourceType || 'other';
+        map[key] = (map[key] || 0) + t.amount;
+      });
+    return Object.entries(map)
+      .map(([sourceType, amount]) => ({ sourceType, amount }))
+      .sort((a, b) => b.amount - a.amount);
+  }, [reportData]);
+
   const togglePeriod = (period: string) => {
     const newExpanded = new Set(expandedPeriods);
     if (newExpanded.has(period)) {
@@ -769,6 +796,35 @@ export default function CashRegisterReport() {
               </CardContent>
             </Card>
           </div>
+
+          {sourceTypeBreakdown.length > 0 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-green-600" />
+                  Cash Received — By Source
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {sourceTypeBreakdown.map(({ sourceType, amount }) => {
+                    const total = sourceTypeBreakdown.reduce((s, r) => s + r.amount, 0);
+                    const pct = total > 0 ? Math.round((amount / total) * 100) : 0;
+                    return (
+                      <div key={sourceType} className="flex items-center gap-3 text-sm" data-testid={`source-row-${sourceType}`}>
+                        <span className="w-36 text-muted-foreground truncate">{sourceTypeLabel(sourceType)}</span>
+                        <div className="flex-1 bg-muted rounded h-2 overflow-hidden">
+                          <div className="h-2 rounded bg-green-500" style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="w-8 text-right text-muted-foreground">{pct}%</span>
+                        <span className="w-28 text-right font-medium">{formatCurrency(amount)}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           <Card>
             <CardHeader className="pb-3">
