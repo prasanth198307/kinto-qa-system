@@ -125,6 +125,7 @@ const endpointToScreenKey: Record<string, string> = {
   '/api/finished-goods': 'finished_goods',
   '/api/finished-goods/consolidated': 'finished_goods',
   '/api/sales-orders': 'sales_orders',
+  '/api/sales-officers': 'sales_officers',
   '/api/inventory': 'inventory',
   '/api/uom': 'uom',
   
@@ -7009,7 +7010,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/sales-officers', isAuthenticated, requireRole('admin', 'manager'), async (req: any, res) => {
+  app.post('/api/sales-officers', isAuthenticated, requireRole('admin', 'manager', 'accountsmanager'), async (req: any, res) => {
     try {
       const validatedData = insertSalesOfficerSchema.parse(req.body);
       const officer = await storage.createSalesOfficer(validatedData);
@@ -7023,7 +7024,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/sales-officers/:id', isAuthenticated, requireRole('admin', 'manager'), async (req: any, res) => {
+  app.patch('/api/sales-officers/:id', isAuthenticated, requireRole('admin', 'manager', 'accountsmanager'), async (req: any, res) => {
     try {
       const { id } = req.params;
       const validatedData = insertSalesOfficerSchema.partial().parse(req.body);
@@ -7039,7 +7040,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/sales-officers/:id', isAuthenticated, requireRole('admin', 'manager'), async (req: any, res) => {
+  app.delete('/api/sales-officers/:id', isAuthenticated, requireRole('admin', 'manager', 'accountsmanager'), async (req: any, res) => {
     try {
       const { id } = req.params;
       await storage.deleteSalesOfficer(id);

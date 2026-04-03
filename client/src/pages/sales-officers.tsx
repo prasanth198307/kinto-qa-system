@@ -113,7 +113,7 @@ function OfficerFormFields({ formData, setFormData, errors }: OfficerFormFieldsP
   );
 }
 
-export default function SalesOfficersPage() {
+export default function SalesOfficersPage({ showHeader = true }: { showHeader?: boolean }) {
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const { logoutMutation } = useAuth();
@@ -237,140 +237,147 @@ export default function SalesOfficersPage() {
     setDeleteConfirmOpen(true);
   };
 
+  const pageContent = (
+    <div className={showHeader ? "container mx-auto p-6 mt-16" : "p-4"}>
+      <div className="flex justify-between items-center mb-6">
+        <div className="flex items-center gap-3">
+          {showHeader && (
+            <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          )}
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+              <UserCheck className="h-8 w-8" />
+              Sales Officers
+            </h1>
+            <p className="text-muted-foreground mt-1">Manage the list of Sales Officers for order tracking.</p>
+          </div>
+        </div>
+        <Button onClick={() => { setFormData(emptyForm); setErrors({}); setIsCreateOpen(true); }}>
+          <Plus className="w-4 h-4 mr-2" />
+          Add Sales Officer
+        </Button>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Sales Officers ({officers.length})</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Code</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Mobile</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Territory</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">Loading...</TableCell>
+                </TableRow>
+              ) : officers.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                    No sales officers found. Add your first one.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                officers.map((officer) => (
+                  <TableRow key={officer.id}>
+                    <TableCell className="font-mono font-medium">{officer.code}</TableCell>
+                    <TableCell className="font-medium">{officer.name}</TableCell>
+                    <TableCell>{officer.mobileNumber || "—"}</TableCell>
+                    <TableCell>{officer.email || "—"}</TableCell>
+                    <TableCell>{officer.territory || "—"}</TableCell>
+                    <TableCell>
+                      {officer.isActive === 1
+                        ? <Badge className="bg-green-100 text-green-800 hover:bg-green-100/80">Active</Badge>
+                        : <Badge variant="secondary">Inactive</Badge>}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" size="sm" onClick={() => openEdit(officer)}>
+                          <Edit className="w-3 h-3 mr-1" />
+                          Edit
+                        </Button>
+                        <Button variant="ghost" size="sm" className="text-destructive" onClick={() => openDelete(officer)}>
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Add Sales Officer</DialogTitle>
+          </DialogHeader>
+          <OfficerFormFields formData={formData} setFormData={setFormData} errors={errors} />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
+            <Button onClick={handleCreate} disabled={createMutation.isPending}>
+              {createMutation.isPending ? "Creating..." : "Create"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Sales Officer</DialogTitle>
+          </DialogHeader>
+          <OfficerFormFields formData={formData} setFormData={setFormData} errors={errors} />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditOpen(false)}>Cancel</Button>
+            <Button onClick={handleUpdate} disabled={updateMutation.isPending}>
+              {updateMutation.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Sales Officer</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <strong>{officerToDelete?.name}</strong>? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => officerToDelete && deleteMutation.mutate(officerToDelete.id)}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+
+  if (!showHeader) return pageContent;
 
   return (
     <div className="min-h-screen bg-background">
       <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />
-      <div className="container mx-auto p-6 mt-16">
-        <div className="flex justify-between items-center mb-6">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-                <UserCheck className="h-8 w-8" />
-                Sales Officers
-              </h1>
-              <p className="text-muted-foreground mt-1">Manage the list of Sales Officers for order tracking.</p>
-            </div>
-          </div>
-          <Button onClick={() => { setFormData(emptyForm); setErrors({}); setIsCreateOpen(true); }}>
-            <Plus className="w-4 h-4 mr-2" />
-            Add Sales Officer
-          </Button>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Sales Officers ({officers.length})</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Code</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Mobile</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Territory</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">Loading...</TableCell>
-                  </TableRow>
-                ) : officers.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                      No sales officers found. Add your first one.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  officers.map((officer) => (
-                    <TableRow key={officer.id}>
-                      <TableCell className="font-mono font-medium">{officer.code}</TableCell>
-                      <TableCell className="font-medium">{officer.name}</TableCell>
-                      <TableCell>{officer.mobileNumber || "—"}</TableCell>
-                      <TableCell>{officer.email || "—"}</TableCell>
-                      <TableCell>{officer.territory || "—"}</TableCell>
-                      <TableCell>
-                        {officer.isActive === 1
-                          ? <Badge className="bg-green-100 text-green-800 hover:bg-green-100/80">Active</Badge>
-                          : <Badge variant="secondary">Inactive</Badge>}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button variant="outline" size="sm" onClick={() => openEdit(officer)}>
-                            <Edit className="w-3 h-3 mr-1" />
-                            Edit
-                          </Button>
-                          <Button variant="ghost" size="sm" className="text-destructive" onClick={() => openDelete(officer)}>
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-          <DialogContent className="sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Add Sales Officer</DialogTitle>
-            </DialogHeader>
-            <OfficerFormFields formData={formData} setFormData={setFormData} errors={errors} />
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
-              <Button onClick={handleCreate} disabled={createMutation.isPending}>
-                {createMutation.isPending ? "Creating..." : "Create"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-          <DialogContent className="sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Edit Sales Officer</DialogTitle>
-            </DialogHeader>
-            <OfficerFormFields formData={formData} setFormData={setFormData} errors={errors} />
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsEditOpen(false)}>Cancel</Button>
-              <Button onClick={handleUpdate} disabled={updateMutation.isPending}>
-                {updateMutation.isPending ? "Saving..." : "Save Changes"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete Sales Officer</AlertDialogTitle>
-              <AlertDialogDescription>
-                Are you sure you want to delete <strong>{officerToDelete?.name}</strong>? This action cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                onClick={() => officerToDelete && deleteMutation.mutate(officerToDelete.id)}
-              >
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
+      {pageContent}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { 
@@ -75,7 +75,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Check, ChevronsUpDown, Trash2 } from "lucide-react";
-import type { Product, Vendor, SalesOfficer } from "@shared/schema";
+import type { Product, Vendor } from "@shared/schema";
 
 // Sales Order Status Badge Component
 const StatusBadge = ({ status }: { status: string }) => {
@@ -149,14 +149,9 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
     queryKey: ['/api/vendors'],
   });
 
-  const { data: salesOfficers = [] } = useQuery<SalesOfficer[]>({
+  const { data: salesOfficers = [] } = useQuery<{ id: string; name: string; code?: string | null }[]>({
     queryKey: ['/api/sales-officers'],
   });
-
-  const salesOfficersMap = useMemo(
-    () => new Map(salesOfficers.map((o) => [o.id, o])),
-    [salesOfficers]
-  );
 
   const createSoMutation = useMutation({
     mutationFn: async (values: SalesOrderFormValues) => {
@@ -179,7 +174,6 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
           soDate: values.soDate,
           deliveryDate: values.deliveryDate || null,
           vendorId: values.vendorId || null,
-          salesOfficerId: (values.salesOfficerId && values.salesOfficerId !== 'none') ? values.salesOfficerId : null,
           buyerGstin: values.buyerGstin || null,
           buyerAddress: values.buyerAddress || null,
           buyerState: values.buyerState || null,
@@ -190,6 +184,7 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
           shipToState: values.shipToState || null,
           shipToPin: values.shipToPin || null,
           remarks: values.remarks || null,
+          salesOfficerId: values.salesOfficerId || null,
           totalAmount: soTotalPaise,
         },
         items: computedItems.map(({ item, unitPricePaise, taxableAmountPaise, totalAmountPaise }) => ({
@@ -244,7 +239,7 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
     defaultValues: {
       buyerName: "",
       vendorId: "",
-      salesOfficerId: "none",
+      salesOfficerId: "",
       buyerGstin: "",
       buyerAddress: "",
       buyerState: "",
@@ -417,32 +412,6 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                     />
                     <FormField
                       control={form.control}
-                      name="salesOfficerId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Sales Officer</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            value={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger data-testid="select-sales-officer">
-                                <SelectValue placeholder="Select sales officer..." />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="none">None</SelectItem>
-                              {salesOfficers.filter(o => o.isActive === 1).map((o) => (
-                                <SelectItem key={o.id} value={o.id}>{o.name} ({o.code})</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
                       name="vendorId"
                       render={({ field }) => (
                         <FormItem className="md:col-span-2 flex flex-col">
@@ -494,6 +463,31 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                               </Command>
                             </PopoverContent>
                           </Popover>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="salesOfficerId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Sales Officer</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value || ""}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-sales-officer">
+                                <SelectValue placeholder="Select sales officer" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="">— None —</SelectItem>
+                              {salesOfficers.map((officer) => (
+                                <SelectItem key={officer.id} value={officer.id}>
+                                  {officer.name}{officer.code ? ` (${officer.code})` : ""}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -889,10 +883,10 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                         }
                       </TableCell>
                       <TableCell className="max-w-[200px] truncate" data-testid={`text-buyer-name-${so.id}`}>{so.buyerName}</TableCell>
-                      <TableCell className="text-sm">
+                      <TableCell className="text-sm text-muted-foreground">
                         {so.salesOfficerId
-                          ? salesOfficersMap.get(so.salesOfficerId)?.name || <span className="text-muted-foreground">—</span>
-                          : <span className="text-muted-foreground">—</span>}
+                          ? (salesOfficers.find(o => o.id === so.salesOfficerId)?.name || "—")
+                          : "—"}
                       </TableCell>
                       <TableCell data-testid={`text-total-amount-${so.id}`}>
                         {formatCurrency(so.totalAmount)}

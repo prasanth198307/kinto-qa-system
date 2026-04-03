@@ -379,13 +379,6 @@ export interface IStorage {
   deleteProductBomItem(id: string): Promise<void>;
   bulkReplaceProductBom(productId: string, bomItems: InsertProductBom[], configurationId?: string): Promise<ProductBom[]>;
   
-  // Sales Officer Master
-  createSalesOfficer(officer: InsertSalesOfficer): Promise<SalesOfficer>;
-  getAllSalesOfficers(): Promise<SalesOfficer[]>;
-  getSalesOfficer(id: string): Promise<SalesOfficer | undefined>;
-  updateSalesOfficer(id: string, officer: Partial<InsertSalesOfficer>): Promise<SalesOfficer | undefined>;
-  deleteSalesOfficer(id: string): Promise<void>;
-
   // Vendor Master
   createVendor(vendor: InsertVendor): Promise<Vendor>;
   getAllVendors(): Promise<Vendor[]>;
@@ -775,6 +768,12 @@ export interface IStorage {
   getSalesOrderItems(soId: string): Promise<any[]>;
   deleteSalesOrderItems(soId: string): Promise<void>;
   getInvoicesBySalesOrder(soId: string): Promise<Invoice[]>;
+
+  createSalesOfficer(officer: InsertSalesOfficer): Promise<SalesOfficer>;
+  getAllSalesOfficers(): Promise<SalesOfficer[]>;
+  getSalesOfficer(id: string): Promise<SalesOfficer | undefined>;
+  updateSalesOfficer(id: string, updates: Partial<InsertSalesOfficer>): Promise<SalesOfficer | undefined>;
+  deleteSalesOfficer(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -4769,11 +4768,11 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async updateSalesOfficer(id: string, officerData: Partial<InsertSalesOfficer>): Promise<SalesOfficer | undefined> {
+  async updateSalesOfficer(id: string, updates: Partial<InsertSalesOfficer>): Promise<SalesOfficer | undefined> {
     const [result] = await db
       .update(salesOfficers)
-      .set({ ...officerData, updatedAt: new Date().toISOString() })
-      .where(eq(salesOfficers.id, id))
+      .set({ ...updates, updatedAt: new Date().toISOString() })
+      .where(and(eq(salesOfficers.id, id), eq(salesOfficers.recordStatus, 1)))
       .returning();
     return result;
   }
@@ -4781,7 +4780,7 @@ export class DatabaseStorage implements IStorage {
   async deleteSalesOfficer(id: string): Promise<void> {
     await db
       .update(salesOfficers)
-      .set({ recordStatus: 0 })
+      .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
       .where(eq(salesOfficers.id, id));
   }
 }

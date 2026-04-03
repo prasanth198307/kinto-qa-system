@@ -3674,7 +3674,7 @@ export const insertSalesOfficerSchema = createInsertSchema(salesOfficers).omit({
   updatedAt: true,
 }).extend({
   email: z.string().email("Invalid email address").optional().nullable(),
-  mobileNumber: z.string().regex(/^\d{10}$/, "Mobile must be a 10-digit number").optional().nullable(),
+  mobileNumber: z.string().regex(/^\+?[0-9]{7,15}$/, "Invalid mobile number").optional().nullable(),
 });
 
 export type InsertSalesOfficer = z.infer<typeof insertSalesOfficerSchema>;
@@ -3810,3 +3810,4 @@ export const budgetItems = pgTable("budget_items", {
   index("bi_budget_idx").on(table.budgetId),
   index("bi_account_idx").on(table.accountId),
 ]);
+

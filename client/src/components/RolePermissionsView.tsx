@@ -148,6 +148,14 @@ const permissions: Permission[] = [
     operator: false,
     reviewer: false,
   },
+  {
+    screen: "Sales Officers",
+    description: "Manage Sales Officers master data; assign to Sales Orders",
+    admin: true,
+    manager: true,
+    operator: false,
+    reviewer: false,
+  },
 ];
 
 const roleColors = {
