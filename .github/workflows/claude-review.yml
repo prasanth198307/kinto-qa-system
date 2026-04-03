@@ -1,7 +1,26 @@
 name: Claude Code Review
+
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+    paths:
+      - 'client/src/**'
+      - 'server/**'
+      - '**.ts'
+      - '**.tsx'
+      - '**.js'
+      - '**.jsx'
+    paths-ignore:
+      - '**.md'
+      - '**.json'
+      - '**.lock'
+      - '**.log'
+      - 'dist/**'
+      - 'build/**'
+      - 'public/**'
+      - 'migrations/**'
+      - 'coverage/**'
+      - '**.test.snap'
   issue_comment:
     types: [created]
   pull_request_review_comment:
@@ -35,23 +54,35 @@ jobs:
           echo "Changed files:"
           cat /tmp/changed_files.txt
 
-      - name: Set model based on trigger
+      - name: Check diff size
+        id: diffcheck
+        run: |
+          LINES=$(git diff --stat origin/main...HEAD | tail -1 | awk '{print $4}')
+          LINES=${LINES:-0}
+          echo "lines=$LINES" >> $GITHUB_OUTPUT
+          echo "Changed lines: $LINES"
+
+      - name: Set model and tokens based on trigger
         id: model
         run: |
           if [[ "${{ github.event.comment.body }}" == *"@claude-deep"* ]]; then
             echo "model=claude-sonnet-4-6" >> $GITHUB_OUTPUT
-            echo "Using Sonnet (deep review)"
+            echo "max_tokens=2048" >> $GITHUB_OUTPUT
+            echo "Using Sonnet (deep review) with 2048 tokens"
           else
             echo "model=claude-haiku-4-5" >> $GITHUB_OUTPUT
-            echo "Using Haiku (standard review)"
+            echo "max_tokens=1024" >> $GITHUB_OUTPUT
+            echo "Using Haiku (standard review) with 1024 tokens"
           fi
 
       - name: Run Claude Code Review
+        if: steps.diffcheck.outputs.lines > 10
         uses: anthropics/claude-code-action@beta
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           model: ${{ steps.model.outputs.model }}
+          max_tokens: ${{ steps.model.outputs.max_tokens }}
           direct_prompt: |
             You are reviewing the kinto-qa-system project.
 
@@ -71,4 +102,4 @@ jobs:
 
             Be concise. Only flag real issues.
             End with ✅ if approved or ⚠️ if issues found.
-            At the top of your response mention which model was used.
+            At the top mention: model used + number of files reviewed.
