@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { getCashSourceLabel } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -433,6 +434,36 @@ export default function MISCash() {
               </div>
             )}
           </div>
+
+          {/* Cash Received by Source */}
+          {!isLoading && data?.sourceTypes && data.sourceTypes.length > 0 && (() => {
+            const sources = data.sourceTypes;
+            const totalSrcAmt = sources.reduce((s, c) => s + c.amount, 0);
+            const maxSrcAmt = Math.max(...sources.map(c => c.amount), 1);
+            const getSourceLabel = getCashSourceLabel;
+            return (
+              <div className="rounded-lg border bg-card p-4">
+                <p className="text-sm font-medium">Cash Received — By Source</p>
+                <p className="text-xs text-muted-foreground mb-3">Breakdown by cash source type</p>
+                <div className="space-y-2">
+                  {sources.map((src, i) => {
+                    const pct = Math.round((src.amount / (totalSrcAmt || 1)) * 100);
+                    const fillPct = Math.round((src.amount / maxSrcAmt) * 100);
+                    return (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }} data-testid={`source-row-${i}`}>
+                        <span style={{ width: 110, color: 'var(--muted-foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={getSourceLabel(src.sourceType)}>{getSourceLabel(src.sourceType)}</span>
+                        <div style={{ flex: 1, background: 'hsl(var(--muted))', borderRadius: 2, height: 6, overflow: 'hidden' }}>
+                          <div style={{ width: `${fillPct}%`, height: 6, background: '#639922', borderRadius: 2 }} />
+                        </div>
+                        <span style={{ width: 30, textAlign: 'right' }} className="text-muted-foreground">{pct}%</span>
+                        <span style={{ width: 70, textAlign: 'right', fontWeight: 500 }}>{fmtCurr(src.amount)}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* DSS Actions */}
           <div className="rounded-lg border bg-card p-4">

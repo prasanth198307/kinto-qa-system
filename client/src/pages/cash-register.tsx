@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { getCashSourceLabel } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -205,7 +206,7 @@ export default function CashRegisterPage() {
       }
       toast({ title: "Success", description: "Transaction added" });
       // Reset forms
-      setNewCashReceived({ amount: '', reference: '', description: '', sourceType: 'sale_cash' });
+      setNewCashReceived({ amount: '', reference: '', description: '', sourceType: 'sale_cash', partyName: '' });
       setExpenseItems([{ amount: '', reference: '', description: '', partyName: '', categoryId: '' }]);
       setNewTransfer({ amount: '', transferTo: '', description: '' });
       setIsAddingCash(false);
@@ -500,15 +501,9 @@ export default function CashRegisterPage() {
     uploadDocumentMutation.mutate({ transactionId, file });
   };
 
-  const getSourceTypeLabel = (sourceType: string | null | undefined) => {
-    switch (sourceType) {
-      case 'sale_cash': return 'Sale Cash';
-      case 'secondary_sale': return 'Secondary Sale';
-      case 'upi': return 'UPI';
-      case 'bank_transfer': return 'Bank Transfer';
-      case 'other': return 'Other';
-      default: return sourceType || '';
-    }
+  const getSourceTypeLabel = (sourceType: string | null | undefined, description?: string | null) => {
+    if (sourceType === 'other') return description ? `Other: ${description}` : 'Other';
+    return sourceType ? getCashSourceLabel(sourceType) : '';
   };
 
   // Handle adding multiple expense items - each creates its own voucher
@@ -819,6 +814,12 @@ export default function CashRegisterPage() {
                         <SelectItem value="bank_transfer">
                           <span className="flex items-center gap-2"><ArrowDownRight className="w-3 h-3" /> Bank Transfer</span>
                         </SelectItem>
+                        <SelectItem value="from_inmoisture">
+                          <span className="flex items-center gap-2"><ArrowDownRight className="w-3 h-3" /> From Inmoisture</span>
+                        </SelectItem>
+                        <SelectItem value="from_scrap">
+                          <span className="flex items-center gap-2"><ArrowDownRight className="w-3 h-3" /> From Scrap</span>
+                        </SelectItem>
                         <SelectItem value="other">
                           <span className="flex items-center gap-2"><DollarSign className="w-3 h-3" /> Other</span>
                         </SelectItem>
@@ -866,7 +867,7 @@ export default function CashRegisterPage() {
                             <span className="font-medium text-green-600">{formatCurrency(txn.amount)}</span>
                             {txn.sourceType && (
                               <Badge variant="outline" className="text-xs">
-                                {getSourceTypeLabel(txn.sourceType)}
+                                {getSourceTypeLabel(txn.sourceType, txn.description)}
                               </Badge>
                             )}
                           </div>
@@ -1461,6 +1462,8 @@ export default function CashRegisterPage() {
                         <SelectItem value="secondary_sale">Secondary Sale</SelectItem>
                         <SelectItem value="upi">UPI</SelectItem>
                         <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                        <SelectItem value="from_inmoisture">From Inmoisture</SelectItem>
+                        <SelectItem value="from_scrap">From Scrap</SelectItem>
                         <SelectItem value="other">Other</SelectItem>
                       </SelectContent>
                     </Select>
