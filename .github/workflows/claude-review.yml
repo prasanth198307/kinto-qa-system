@@ -58,17 +58,17 @@ jobs:
           echo "lines=$LINES" >> $GITHUB_OUTPUT
           echo "Changed lines: $LINES"
 
-      - name: Set model and turns based on trigger
+      - name: Set model based on trigger
         id: model
         run: |
           if [[ "${{ github.event.comment.body }}" == *"@claude-deep"* ]]; then
             echo "model=claude-sonnet-4-6" >> $GITHUB_OUTPUT
             echo "max_turns=3" >> $GITHUB_OUTPUT
-            echo "Using Sonnet (deep review) with 3 turns"
+            echo "Using Sonnet deep review with 3 turns"
           else
             echo "model=claude-haiku-4-5" >> $GITHUB_OUTPUT
-            echo "max_turns=1" >> $GITHUB_OUTPUT
-            echo "Using Haiku (standard review) with 1 turn"
+            echo "max_turns=5" >> $GITHUB_OUTPUT
+            echo "Using Haiku standard review with 5 turns"
           fi
 
       - name: Run Claude Code Review
@@ -85,6 +85,7 @@ jobs:
           max_turns: ${{ steps.model.outputs.max_turns }}
           direct_prompt: |
             You are reviewing the kinto-qa-system project.
+            Read CLAUDE.md first for project structure and rules.
 
             IMPORTANT — Read ONLY these changed files:
             $(cat /tmp/changed_files.txt)
@@ -98,12 +99,12 @@ jobs:
             If triggered by a comment, respond to the specific request.
 
             Check for:
-            1. **Bugs & Logic Errors** — anything that could break functionality
-            2. **Security** — injection, auth issues, exposed secrets
-            3. **Code Quality** — readability, duplication, dead code
-            4. **Performance** — inefficient queries, loops, memory issues
-            5. **Tests** — are new changes covered?
+            1. Bugs and Logic Errors — anything that could break functionality
+            2. Security — injection, auth issues, exposed secrets
+            3. Code Quality — readability, duplication, dead code
+            4. Performance — inefficient queries, loops, memory issues
+            5. Tests — are new changes covered?
 
             Be concise. Only flag real issues.
-            End with ✅ if approved or ⚠️ if issues found.
+            End with APPROVED if approved or ISSUES FOUND if issues were found.
             At the top mention: model used + number of files reviewed.
