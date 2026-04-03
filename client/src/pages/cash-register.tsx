@@ -500,13 +500,15 @@ export default function CashRegisterPage() {
     uploadDocumentMutation.mutate({ transactionId, file });
   };
 
-  const getSourceTypeLabel = (sourceType: string | null | undefined) => {
+  const getSourceTypeLabel = (sourceType: string | null | undefined, description?: string | null) => {
     switch (sourceType) {
       case 'sale_cash': return 'Sale Cash';
       case 'secondary_sale': return 'Secondary Sale';
       case 'upi': return 'UPI';
       case 'bank_transfer': return 'Bank Transfer';
-      case 'other': return 'Other';
+      case 'from_inmoisture': return 'From Inmoisture';
+      case 'from_scrap': return 'From Scrap';
+      case 'other': return description ? `Other: ${description}` : 'Other';
       default: return sourceType || '';
     }
   };
@@ -819,6 +821,12 @@ export default function CashRegisterPage() {
                         <SelectItem value="bank_transfer">
                           <span className="flex items-center gap-2"><ArrowDownRight className="w-3 h-3" /> Bank Transfer</span>
                         </SelectItem>
+                        <SelectItem value="from_inmoisture">
+                          <span className="flex items-center gap-2"><ArrowDownRight className="w-3 h-3" /> From Inmoisture</span>
+                        </SelectItem>
+                        <SelectItem value="from_scrap">
+                          <span className="flex items-center gap-2"><ArrowDownRight className="w-3 h-3" /> From Scrap</span>
+                        </SelectItem>
                         <SelectItem value="other">
                           <span className="flex items-center gap-2"><DollarSign className="w-3 h-3" /> Other</span>
                         </SelectItem>
@@ -866,7 +874,7 @@ export default function CashRegisterPage() {
                             <span className="font-medium text-green-600">{formatCurrency(txn.amount)}</span>
                             {txn.sourceType && (
                               <Badge variant="outline" className="text-xs">
-                                {getSourceTypeLabel(txn.sourceType)}
+                                {getSourceTypeLabel(txn.sourceType, txn.description)}
                               </Badge>
                             )}
                           </div>
@@ -1461,6 +1469,8 @@ export default function CashRegisterPage() {
                         <SelectItem value="secondary_sale">Secondary Sale</SelectItem>
                         <SelectItem value="upi">UPI</SelectItem>
                         <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                        <SelectItem value="from_inmoisture">From Inmoisture</SelectItem>
+                        <SelectItem value="from_scrap">From Scrap</SelectItem>
                         <SelectItem value="other">Other</SelectItem>
                       </SelectContent>
                     </Select>
