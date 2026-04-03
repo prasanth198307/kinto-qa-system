@@ -74,6 +74,7 @@ const AVAILABLE_SCREENS: ScreenDefinition[] = [
   { key: 'write_off_report', label: 'Write-Off Report', allowedActions: ['view'] },
   { key: 'reviewer_dashboard', label: 'Reviewer Dashboard', allowedActions: ['view'] },
   { key: 'payments', label: 'Payment Management', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'payment_management', label: 'Payment Management (Admin Tools)', allowedActions: ['edit', 'delete'] },
   { key: 'bulk_payment_report', label: 'Bulk Payment Report (Download)', allowedActions: ['view'] },
   { key: 'customer_advances', label: 'Customer Advances', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'cancelled_invoices_report', label: 'Cancelled Invoices Report', allowedActions: ['view'] },
