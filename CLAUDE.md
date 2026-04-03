@@ -52,15 +52,22 @@ QA and invoice management system for Kinto Water.
 - Example: 2026-04-03_add_discount_mode.sql
 
 ## Large Files Warning
-- client/src/components/InvoiceForm.tsx is very large (29000+ tokens)
+- client/src/components/InvoiceForm.tsx is very large (~2025 lines)
 - Always use Grep to search this file before reading
 - Never read InvoiceForm.tsx fully in one go
 - Use offset and limit to read specific sections only
 - Suggest splitting into smaller components when touching this file
 
+## InvoiceForm Split Components
+InvoiceForm.tsx has been partially split. Current structure:
+- InvoiceForm.tsx (~2025 lines) — core form logic, state, mutations, layout
+- InvoiceItemRow.tsx (~344 lines) — single line-item row (product, qty, price, discount, GST, transport, remove)
+- InvoiceTaxSummary.tsx (~64 lines) — tax breakdown card (subtotal, CGST/SGST/IGST, transport, total)
+
 ## How to Split Large Files
 When a file exceeds 300 lines split it like this:
-- InvoiceForm.tsx → InvoiceItemsTable.tsx + InvoiceDiscountSection.tsx + InvoiceTaxSummary.tsx + InvoiceFormHeader.tsx
+- Extract self-contained UI sections into their own component files
 - Each component should have one clear responsibility
 - Keep shared state in parent component
 - Use props to pass data down
+- Always check for unused imports after extracting a component
