@@ -1,6 +1,10 @@
 name: Claude Code Review
 
 on:
+  issues:
+    types: [opened]
+  issue_comment:
+    types: [created]
   pull_request:
     types: [opened, synchronize, reopened]
     paths:
@@ -10,8 +14,6 @@ on:
       - '**.tsx'
       - '**.js'
       - '**.jsx'
-  issue_comment:
-    types: [created]
   pull_request_review_comment:
     types: [created]
 
@@ -24,6 +26,7 @@ permissions:
 jobs:
   claude-review:
     if: |
+      github.event_name == 'issues' ||
       github.event_name == 'pull_request' ||
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
       (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude'))
@@ -31,7 +34,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
         with:
           fetch-depth: 1
 
@@ -65,7 +68,11 @@ jobs:
           fi
 
       - name: Run Claude Code Review
-        if: steps.diffcheck.outputs.lines > 10
+        if: |
+          steps.diffcheck.outputs.lines > 10 ||
+          github.event_name == 'issues' ||
+          github.event_name == 'issue_comment' ||
+          github.event_name == 'pull_request_review_comment'
         uses: anthropics/claude-code-action@beta
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -81,6 +88,10 @@ jobs:
             Do NOT read or explore files outside this list.
             Do NOT scan the full codebase.
             Focus ONLY on changed lines and their direct imports.
+
+            If triggered by an issue, build or plan the code described.
+            If triggered by a PR, review the changes.
+            If triggered by a comment, respond to the specific request.
 
             Check for:
             1. **Bugs & Logic Errors** — anything that could break functionality
