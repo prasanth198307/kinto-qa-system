@@ -112,7 +112,8 @@ function PaymentEvidenceRow({ paymentId }: { paymentId: string }) {
   return (
     <>
       {evidence.map((ev: any, idx: number) => {
-        const sourceData = ev.sourceRow ? JSON.parse(ev.sourceRow) : {};
+        let sourceData: any = {};
+        try { sourceData = ev.sourceRow ? JSON.parse(ev.sourceRow) : {}; } catch { sourceData = {}; }
         const ConfidenceIcon = ev.matchConfidence >= 80 ? CircleCheck : 
                                ev.matchConfidence >= 50 ? CircleDashed : AlertTriangle;
         const confidenceColor = ev.matchConfidence >= 80 ? 'text-green-600' : 
@@ -178,9 +179,11 @@ export default function PaymentManagement() {
   const { hasPermission, role } = usePermissions();
   const canCreate = hasPermission('payments', 'create');
   const canEdit = hasPermission('payments', 'edit');
+  const canDelete = hasPermission('payments', 'delete');
   const canViewPayments = hasPermission('payments', 'view');
   const canDownloadBulkReport = canViewPayments || hasPermission('bulk_payment_report', 'view');
-  const isAdmin = role === 'admin';
+  const canManagePayments = role === 'manager' || hasPermission('payment_management', 'edit');
+  const showAdminTools = role === 'admin' || hasPermission('payment_management', 'delete');
   
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [cancelPaymentId, setCancelPaymentId] = useState<string | null>(null);
@@ -780,7 +783,7 @@ export default function PaymentManagement() {
                 New Payment
               </Button>
             )}
-            {isAdmin && (
+            {showAdminTools && (
               <Button
                 variant="outline"
                 onClick={() => backfillMutation.mutate()}
@@ -791,7 +794,7 @@ export default function PaymentManagement() {
                 Link Old Payments
               </Button>
             )}
-            {isAdmin && (
+            {showAdminTools && (
               <Button
                 variant="outline"
                 onClick={() => repairBulkDatesMutation.mutate()}
@@ -942,26 +945,30 @@ export default function PaymentManagement() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-sm">
-                          {!payment.cancelledAt && canEdit && (
+                          {!payment.cancelledAt && (canEdit || canDelete) && (
                             <div className="flex items-center gap-2">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => handleEditPayment(payment)}
-                                data-testid={`button-edit-payment-${payment.id}`}
-                              >
-                                <Pencil className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-destructive"
-                                onClick={() => setCancelPaymentId(payment.id)}
-                                data-testid={`button-cancel-payment-${payment.id}`}
-                              >
-                                <X className="w-4 h-4" />
-                              </Button>
+                              {canEdit && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => handleEditPayment(payment)}
+                                  data-testid={`button-edit-payment-${payment.id}`}
+                                >
+                                  <Pencil className="w-4 h-4" />
+                                </Button>
+                              )}
+                              {canDelete && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-destructive"
+                                  onClick={() => setCancelPaymentId(payment.id)}
+                                  data-testid={`button-cancel-payment-${payment.id}`}
+                                >
+                                  <X className="w-4 h-4" />
+                                </Button>
+                              )}
                             </div>
                           )}
                         </TableCell>

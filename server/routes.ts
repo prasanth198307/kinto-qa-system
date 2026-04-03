@@ -138,6 +138,8 @@ const endpointToScreenKey: Record<string, string> = {
   // Sales & Invoicing
   '/api/invoices': 'invoices',
   '/api/invoice-items': 'invoices',
+  '/api/invoice-payments/backfill-bulk-ids': 'payment_management',
+  '/api/invoice-payments/repair-bulk-dates': 'payment_management',
   '/api/invoice-payments': 'payments',
   '/api/pending-payments': 'pending_payments',
   '/api/payment-management': 'payments',
