@@ -6985,6 +6985,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== SALES OFFICERS MASTER ====================
+
+  app.get('/api/sales-officers', isAuthenticated, async (req: any, res) => {
+    try {
+      const officers = await storage.getAllSalesOfficers();
+      res.json(officers);
+    } catch (error) {
+      console.error("Error fetching sales officers:", error);
+      res.status(500).json({ message: "Failed to fetch sales officers" });
+    }
+  });
+
+  app.get('/api/sales-officers/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const officer = await storage.getSalesOfficer(id);
+      if (!officer) return res.status(404).json({ message: "Sales officer not found" });
+      res.json(officer);
+    } catch (error) {
+      console.error("Error fetching sales officer:", error);
+      res.status(500).json({ message: "Failed to fetch sales officer" });
+    }
+  });
+
+  app.post('/api/sales-officers', isAuthenticated, requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const officer = await storage.createSalesOfficer(req.body);
+      res.status(201).json(officer);
+    } catch (error) {
+      console.error("Error creating sales officer:", error);
+      res.status(500).json({ message: "Failed to create sales officer" });
+    }
+  });
+
+  app.patch('/api/sales-officers/:id', isAuthenticated, requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const officer = await storage.updateSalesOfficer(id, req.body);
+      if (!officer) return res.status(404).json({ message: "Sales officer not found" });
+      res.json(officer);
+    } catch (error) {
+      console.error("Error updating sales officer:", error);
+      res.status(500).json({ message: "Failed to update sales officer" });
+    }
+  });
+
+  app.delete('/api/sales-officers/:id', isAuthenticated, requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteSalesOfficer(id);
+      res.json({ message: "Sales officer deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting sales officer:", error);
+      res.status(500).json({ message: "Failed to delete sales officer" });
+    }
+  });
+
   // ==================== INVOICE MANAGEMENT ====================
   
   // Get all invoices

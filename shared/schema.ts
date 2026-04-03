@@ -3652,6 +3652,32 @@ export type InsertAccountSubtype = z.infer<typeof insertAccountSubtypeSchema>;
 export type AccountSubtype = typeof accountSubtypes.$inferSelect;
 
 // ============================================================
+// Sales Officers Master
+// ============================================================
+export const salesOfficers = pgTable("sales_officers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 255 }).notNull(),
+  code: varchar("code", { length: 50 }).notNull().unique(),
+  mobileNumber: varchar("mobile_number", { length: 15 }),
+  email: varchar("email", { length: 255 }),
+  territory: varchar("territory", { length: 255 }),
+  isActive: integer("is_active").default(1).notNull(),
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
+});
+
+export const insertSalesOfficerSchema = createInsertSchema(salesOfficers).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertSalesOfficer = z.infer<typeof insertSalesOfficerSchema>;
+export type SalesOfficer = typeof salesOfficers.$inferSelect;
+
+// ============================================================
 // Sales Orders
 // ============================================================
 export const salesOrders = pgTable("sales_orders", {
@@ -3660,6 +3686,7 @@ export const salesOrders = pgTable("sales_orders", {
   soDate: varchar("so_date", { length: 20 }).notNull(), // date string YYYY-MM-DD
   deliveryDate: varchar("delivery_date", { length: 20 }), // expected delivery date YYYY-MM-DD
   vendorId: varchar("vendor_id").references(() => vendors.id),
+  salesOfficerId: varchar("sales_officer_id").references(() => salesOfficers.id),
   buyerName: varchar("buyer_name", { length: 255 }).notNull(),
   buyerGstin: varchar("buyer_gstin", { length: 15 }),
   buyerAddress: text("buyer_address"),

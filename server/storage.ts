@@ -57,6 +57,9 @@ import {
   notificationConfig,
   salesOrders,
   salesOrderItems,
+  salesOfficers,
+  type SalesOfficer,
+  type InsertSalesOfficer,
   type User,
   type UpsertUser,
   type InsertUser,
@@ -376,6 +379,13 @@ export interface IStorage {
   deleteProductBomItem(id: string): Promise<void>;
   bulkReplaceProductBom(productId: string, bomItems: InsertProductBom[], configurationId?: string): Promise<ProductBom[]>;
   
+  // Sales Officer Master
+  createSalesOfficer(officer: InsertSalesOfficer): Promise<SalesOfficer>;
+  getAllSalesOfficers(): Promise<SalesOfficer[]>;
+  getSalesOfficer(id: string): Promise<SalesOfficer | undefined>;
+  updateSalesOfficer(id: string, officer: Partial<InsertSalesOfficer>): Promise<SalesOfficer | undefined>;
+  deleteSalesOfficer(id: string): Promise<void>;
+
   // Vendor Master
   createVendor(vendor: InsertVendor): Promise<Vendor>;
   getAllVendors(): Promise<Vendor[]>;
@@ -4736,6 +4746,43 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(invoices)
       .where(and(eq(invoices.salesOrderId, soId), eq(invoices.recordStatus, 1)));
+  }
+
+  async createSalesOfficer(officer: InsertSalesOfficer): Promise<SalesOfficer> {
+    const [result] = await db.insert(salesOfficers).values(officer).returning();
+    return result;
+  }
+
+  async getAllSalesOfficers(): Promise<SalesOfficer[]> {
+    return await db
+      .select()
+      .from(salesOfficers)
+      .where(eq(salesOfficers.recordStatus, 1))
+      .orderBy(salesOfficers.name);
+  }
+
+  async getSalesOfficer(id: string): Promise<SalesOfficer | undefined> {
+    const [result] = await db
+      .select()
+      .from(salesOfficers)
+      .where(and(eq(salesOfficers.id, id), eq(salesOfficers.recordStatus, 1)));
+    return result;
+  }
+
+  async updateSalesOfficer(id: string, officerData: Partial<InsertSalesOfficer>): Promise<SalesOfficer | undefined> {
+    const [result] = await db
+      .update(salesOfficers)
+      .set({ ...officerData, updatedAt: new Date().toISOString() })
+      .where(eq(salesOfficers.id, id))
+      .returning();
+    return result;
+  }
+
+  async deleteSalesOfficer(id: string): Promise<void> {
+    await db
+      .update(salesOfficers)
+      .set({ recordStatus: 0 })
+      .where(eq(salesOfficers.id, id));
   }
 }
 

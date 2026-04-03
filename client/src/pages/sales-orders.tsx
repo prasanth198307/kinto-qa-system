@@ -75,7 +75,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Check, ChevronsUpDown, Trash2 } from "lucide-react";
-import type { Product, Vendor } from "@shared/schema";
+import type { Product, Vendor, SalesOfficer } from "@shared/schema";
 
 // Sales Order Status Badge Component
 const StatusBadge = ({ status }: { status: string }) => {
@@ -111,6 +111,7 @@ const salesOrderSchema = z.object({
   soDate: z.string().min(1, "Date is required"),
   deliveryDate: z.string().optional(),
   vendorId: z.string().optional(),
+  salesOfficerId: z.string().optional(),
   buyerGstin: z.string().optional(),
   buyerAddress: z.string().optional(),
   buyerState: z.string().optional(),
@@ -148,6 +149,10 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
     queryKey: ['/api/vendors'],
   });
 
+  const { data: salesOfficers = [] } = useQuery<SalesOfficer[]>({
+    queryKey: ['/api/sales-officers'],
+  });
+
   const createSoMutation = useMutation({
     mutationFn: async (values: SalesOrderFormValues) => {
       // Map form values to API expected format
@@ -169,6 +174,7 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
           soDate: values.soDate,
           deliveryDate: values.deliveryDate || null,
           vendorId: values.vendorId || null,
+          salesOfficerId: (values.salesOfficerId && values.salesOfficerId !== 'none') ? values.salesOfficerId : null,
           buyerGstin: values.buyerGstin || null,
           buyerAddress: values.buyerAddress || null,
           buyerState: values.buyerState || null,
@@ -233,6 +239,7 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
     defaultValues: {
       buyerName: "",
       vendorId: "",
+      salesOfficerId: "",
       buyerGstin: "",
       buyerAddress: "",
       buyerState: "",
@@ -399,6 +406,32 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                           <FormControl>
                             <Input type="date" {...field} data-testid="input-delivery-date" />
                           </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="salesOfficerId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Sales Officer</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger data-testid="select-sales-officer">
+                                <SelectValue placeholder="Select sales officer..." />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="none">None</SelectItem>
+                              {salesOfficers.filter(o => o.isActive === 1).map((o) => (
+                                <SelectItem key={o.id} value={o.id}>{o.name} ({o.code})</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -813,6 +846,7 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                   <TableHead>Order Date</TableHead>
                   <TableHead>Delivery Date</TableHead>
                   <TableHead>Buyer</TableHead>
+                  <TableHead>Sales Officer</TableHead>
                   <TableHead>Total Amount</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -827,13 +861,14 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                       <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                       <TableCell><Skeleton className="h-6 w-20" /></TableCell>
                       <TableCell className="text-right"><Skeleton className="h-8 w-24 ml-auto" /></TableCell>
                     </TableRow>
                   ))
                 ) : soResponse?.data?.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                    <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
                       No sales orders found.
                     </TableCell>
                   </TableRow>
@@ -849,6 +884,11 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                         }
                       </TableCell>
                       <TableCell className="max-w-[200px] truncate" data-testid={`text-buyer-name-${so.id}`}>{so.buyerName}</TableCell>
+                      <TableCell className="text-sm">
+                        {so.salesOfficerId
+                          ? salesOfficers.find(o => o.id === so.salesOfficerId)?.name || <span className="text-muted-foreground">—</span>
+                          : <span className="text-muted-foreground">—</span>}
+                      </TableCell>
                       <TableCell data-testid={`text-total-amount-${so.id}`}>
                         {formatCurrency(so.totalAmount)}
                       </TableCell>
