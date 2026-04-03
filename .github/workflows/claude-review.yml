@@ -57,6 +57,22 @@ jobs:
           echo "CLAUDE.md status:"
           ls -la CLAUDE.md 2>/dev/null || echo "Not found"
 
+      - name: Check for large files
+        run: |
+          echo "" > /tmp/large_files.txt
+          echo "Checking file sizes..."
+          while IFS= read -r file; do
+            if [ -f "$file" ]; then
+              LINES=$(wc -l < "$file")
+              if [ "$LINES" -gt 500 ]; then
+                echo "WARNING: $file has $LINES lines - consider splitting"
+                echo "$file ($LINES lines)" >> /tmp/large_files.txt
+              fi
+            fi
+          done < /tmp/changed_files.txt
+          echo "Large files report:"
+          cat /tmp/large_files.txt 2>/dev/null || echo "No large files found"
+
       - name: Check diff size
         id: diffcheck
         run: |
@@ -98,6 +114,14 @@ jobs:
             IMPORTANT — Read ONLY these changed files:
             $(cat /tmp/changed_files.txt)
 
+            Large files detected over 500 lines:
+            $(cat /tmp/large_files.txt 2>/dev/null || echo "None")
+
+            For large files:
+            - Use Grep to search before reading
+            - Read only relevant sections using offset and limit
+            - If a file exceeds 300 lines suggest splitting it
+
             Do NOT read or explore files outside this list.
             Do NOT scan the full codebase.
             Focus ONLY on changed lines and their direct imports.
@@ -112,6 +136,9 @@ jobs:
             3. Code Quality — readability, duplication, dead code
             4. Performance — inefficient queries, loops, memory issues
             5. Tests — are new changes covered?
+
+            If any file exceeds 300 lines suggest how to split it into
+            smaller components with specific file names and responsibilities.
 
             Be concise. Only flag real issues.
             End with APPROVED if approved or ISSUES FOUND if issues were found.
