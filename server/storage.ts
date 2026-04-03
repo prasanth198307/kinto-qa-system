@@ -57,6 +57,9 @@ import {
   notificationConfig,
   salesOrders,
   salesOrderItems,
+  salesOfficers,
+  type SalesOfficer,
+  type InsertSalesOfficer,
   type User,
   type UpsertUser,
   type InsertUser,
@@ -211,7 +214,6 @@ import {
   bankTransactions,
   accountTypes,
   accountSubtypes,
-  salesOfficers,
   type ChartOfAccount,
   type InsertChartOfAccount,
   type JournalEntry,
@@ -226,8 +228,6 @@ import {
   type InsertAccountType,
   type AccountSubtype,
   type InsertAccountSubtype,
-  type SalesOfficer,
-  type InsertSalesOfficer,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, isNotNull, notInArray, inArray, gte, lte, sql, desc, ilike } from "drizzle-orm";

@@ -39,8 +39,8 @@ import type { SalesOfficer } from "@shared/schema";
 
 const formSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  code: z.string().optional(),
-  mobile: z.string().regex(/^\+?[0-9]{7,15}$/, "Invalid mobile number").optional().or(z.literal("")),
+  code: z.string().min(1, "Code is required"),
+  mobileNumber: z.string().regex(/^\+?[0-9]{7,15}$/, "Invalid mobile number").optional().or(z.literal("")),
   email: z.string().email("Invalid email").optional().or(z.literal("")),
   territory: z.string().optional(),
   isActive: z.number().default(1),
@@ -62,7 +62,7 @@ export default function SalesOfficersPage() {
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: { name: "", code: "", mobile: "", email: "", territory: "", isActive: 1 },
+    defaultValues: { name: "", code: "", mobileNumber: "", email: "", territory: "", isActive: 1 },
   });
 
   const createMutation = useMutation({
@@ -108,7 +108,7 @@ export default function SalesOfficersPage() {
 
   const openCreate = () => {
     setEditingOfficer(null);
-    form.reset({ name: "", code: "", mobile: "", email: "", territory: "", isActive: 1 });
+    form.reset({ name: "", code: "", mobileNumber: "", email: "", territory: "", isActive: 1 });
     setIsDialogOpen(true);
   };
 
@@ -117,7 +117,7 @@ export default function SalesOfficersPage() {
     form.reset({
       name: officer.name,
       code: officer.code || "",
-      mobile: officer.mobile || "",
+      mobileNumber: officer.mobileNumber || "",
       email: officer.email || "",
       territory: officer.territory || "",
       isActive: officer.isActive,
@@ -191,7 +191,7 @@ export default function SalesOfficersPage() {
                   <TableRow key={officer.id}>
                     <TableCell className="font-medium">{officer.name}</TableCell>
                     <TableCell>{officer.code || "—"}</TableCell>
-                    <TableCell>{officer.mobile || "—"}</TableCell>
+                    <TableCell>{officer.mobileNumber || "—"}</TableCell>
                     <TableCell>{officer.email || "—"}</TableCell>
                     <TableCell>{officer.territory || "—"}</TableCell>
                     <TableCell>
@@ -261,7 +261,7 @@ export default function SalesOfficersPage() {
                 />
                 <FormField
                   control={form.control}
-                  name="mobile"
+                  name="mobileNumber"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Mobile</FormLabel>
