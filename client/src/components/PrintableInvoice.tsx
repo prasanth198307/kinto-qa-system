@@ -18,6 +18,11 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
     queryKey: ['/api/invoice-items', invoice.id],
   });
 
+  const { data: invoicePayments = [] } = useQuery<any[]>({
+    queryKey: ['/api/invoice-payments', invoice.id],
+    enabled: !!invoice.id,
+  });
+
   const { data: products = [] } = useQuery<Product[]>({
     queryKey: ['/api/products'],
   });
@@ -168,6 +173,15 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
 
     const amountReceived = invoice.amountReceived || 0;
     const balanceDue = invoice.totalAmount - amountReceived;
+
+    // Calculate advance applied from payment records
+    const advanceApplied = invoicePayments
+      .filter((p: any) => p.paymentType === 'Advance')
+      .reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
+    const writeOffTotal = invoicePayments
+      .filter((p: any) => p.paymentType === 'Write-off')
+      .reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
+    const directReceived = Math.max(0, amountReceived - advanceApplied - writeOffTotal);
 
     // Get bank details - prioritize template (default) for QR code, fall back to invoice
     const bankName = template?.defaultBankName || invoice.bankName;
@@ -440,10 +454,24 @@ ${invoice.shipToName || invoice.shipToAddress ? `
           <!-- Received and Balance (Right Column) -->
           <div class="payment-summary">
             <div class="payment-grid">
+              ${directReceived > 0 ? `
               <div>Received:</div>
-              <div style="text-align:right;">${formatCurrency(amountReceived)}</div>
-              <div><strong>Balance:</strong></div>
-              <div style="text-align:right;"><strong>${formatCurrency(balanceDue)}</strong></div>
+              <div style="text-align:right;">${formatCurrency(directReceived)}</div>
+              ` : ''}
+              ${advanceApplied > 0 ? `
+              <div>Advance Applied:</div>
+              <div style="text-align:right;">${formatCurrency(advanceApplied)}</div>
+              ` : ''}
+              ${writeOffTotal > 0 ? `
+              <div>Written Off:</div>
+              <div style="text-align:right;">${formatCurrency(writeOffTotal)}</div>
+              ` : ''}
+              ${amountReceived === 0 && advanceApplied === 0 && writeOffTotal === 0 ? `
+              <div>Received:</div>
+              <div style="text-align:right;">${formatCurrency(0)}</div>
+              ` : ''}
+              <div style="border-top:1px solid #000; padding-top:3px;"><strong>Balance Due:</strong></div>
+              <div style="text-align:right; border-top:1px solid #000; padding-top:3px;"><strong>${formatCurrency(balanceDue)}</strong></div>
             </div>
           </div>
         </div>
