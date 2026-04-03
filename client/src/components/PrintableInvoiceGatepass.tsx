@@ -1,4 +1,3 @@
-import { useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { type Invoice, type Gatepass, type InvoiceItem, type GatepassItem, type Product, type Vendor, type FinishedGood, type TermsConditions } from "@shared/schema";
 import { Button } from "@/components/ui/button";
@@ -54,6 +53,10 @@ export default function PrintableInvoiceGatepass({ invoice, gatepass }: Printabl
 
   const { data: uoms = [] } = useQuery<any[]>({
     queryKey: ['/api/uom'],
+  });
+
+  const { data: invoicePayments = [] } = useQuery<any[]>({
+    queryKey: ['/api/invoice-payments', invoice.id],
   });
 
   // Fetch specific template if invoice has one
@@ -127,6 +130,8 @@ export default function PrintableInvoiceGatepass({ invoice, gatepass }: Printabl
     return `₹${(amountInPaise / 100).toFixed(2)}`;
   };
 
+  const safeNum = (v: any): number => v || 0;
+
   const isIntrastate = invoice.sellerStateCode === invoice.buyerStateCode;
 
   const handlePrint = async () => {
@@ -166,8 +171,18 @@ export default function PrintableInvoiceGatepass({ invoice, gatepass }: Printabl
       return acc;
     }, []);
 
-    const amountReceived = invoice.amountReceived || 0;
-    const balanceDue = invoice.totalAmount - amountReceived;
+    const directReceived = invoicePayments
+      .filter((p: any) => p.paymentType !== 'Advance' && p.paymentType !== 'WriteOff')
+      .reduce((s: number, p: any) => s + safeNum(p.amount), 0);
+    const advanceApplied = invoicePayments
+      .filter((p: any) => p.paymentType === 'Advance')
+      .reduce((s: number, p: any) => s + safeNum(p.amount), 0);
+    const writeOffTotal = invoicePayments
+      .filter((p: any) => p.paymentType === 'WriteOff')
+      .reduce((s: number, p: any) => s + safeNum(p.amount), 0);
+    const balanceDue = Math.max(0, safeNum(invoice.totalAmount) - directReceived - advanceApplied - writeOffTotal);
+
+    const hasDiscount = invoiceItems.some(item => safeNum((item as any).discount) > 0);
 
     const bankName = template?.defaultBankName || invoice.bankName;
     const bankAccountNumber = template?.defaultBankAccountNumber || invoice.bankAccountNumber;
@@ -266,6 +281,7 @@ ${invoice.shipToName || invoice.shipToAddress ? `
               <th>Quantity</th>
               <th>Unit</th>
               <th>Price/Unit (₹)</th>
+              ${hasDiscount ? '<th>Discount (₹)</th>' : ''}
               <th>GST%</th>
               <th>GST (₹)</th>
               <th>Amount (₹)</th>
@@ -273,28 +289,32 @@ ${invoice.shipToName || invoice.shipToAddress ? `
           </thead>
           <tbody>
             ${invoiceItems.map((item, idx) => {
-              const totalGst = item.cgstAmount + item.sgstAmount + item.igstAmount;
-              const gstPercent = (item.cgstRate + item.sgstRate + item.igstRate) / 100;
-              const uom = uoms.find(u => u.id === item.uomId);
-              const unit = uom?.name || 'Nos';
+              const totalGst = safeNum(item.cgstAmount) + safeNum(item.sgstAmount) + safeNum(item.igstAmount);
+              const gstPercent = (safeNum(item.cgstRate) + safeNum(item.sgstRate) + safeNum(item.igstRate)) / 100;
+              const uom = uoms.find((u: any) => u.id === item.uomId);
+              const unit = uom?.name || 'Cases';
+              const grossLine = safeNum(item.unitPrice) * safeNum(item.quantity);
+              const taxable = safeNum(item.taxableAmount);
+              const lineDiscount = Math.max(0, grossLine - taxable);
               return `
               <tr>
                 <td>${idx + 1}</td>
                 <td style="text-align:left;">${item.description}</td>
                 <td>${item.hsnCode || item.sacCode || '-'}</td>
-                <td>${item.quantity}</td>
+                <td>${safeNum(item.quantity)}</td>
                 <td>${unit}</td>
-                <td>${formatCurrency(item.unitPrice)}</td>
+                <td>${formatCurrency(safeNum(item.unitPrice))}</td>
+                ${hasDiscount ? `<td>${lineDiscount > 0 ? formatCurrency(lineDiscount) : '-'}</td>` : ''}
                 <td>${gstPercent.toFixed(1)}%</td>
                 <td>${formatCurrency(totalGst)}</td>
-                <td>${formatCurrency(item.totalAmount)}</td>
+                <td>${formatCurrency(safeNum(item.totalAmount))}</td>
               </tr>`;
             }).join('')}
           </tbody>
           <tfoot>
             <tr class="total-row">
-              <td colspan="8" style="text-align:right;"><strong>Total</strong></td>
-              <td><strong>${formatCurrency(invoice.totalAmount)}</strong></td>
+              <td colspan="${hasDiscount ? 9 : 8}" style="text-align:right;"><strong>Total</strong></td>
+              <td><strong>${formatCurrency(safeNum(invoice.totalAmount))}</strong></td>
             </tr>
           </tfoot>
         </table>
@@ -347,17 +367,17 @@ ${invoice.shipToName || invoice.shipToAddress ? `
               <tfoot>
                 <tr class="total-row">
                   <td><strong>TOTAL</strong></td>
-                  <td style="text-align:right;"><strong>${formatCurrency(invoice.subtotal)}</strong></td>
+                  <td style="text-align:right;"><strong>${formatCurrency(safeNum(invoice.subtotal))}</strong></td>
                   ${isIntrastate ? `
                     <td></td>
-                    <td style="text-align:right;"><strong>${formatCurrency(invoice.cgstAmount)}</strong></td>
+                    <td style="text-align:right;"><strong>${formatCurrency(safeNum(invoice.cgstAmount))}</strong></td>
                     <td></td>
-                    <td style="text-align:right;"><strong>${formatCurrency(invoice.sgstAmount)}</strong></td>
+                    <td style="text-align:right;"><strong>${formatCurrency(safeNum(invoice.sgstAmount))}</strong></td>
                   ` : `
                     <td></td>
-                    <td style="text-align:right;"><strong>${formatCurrency(invoice.igstAmount)}</strong></td>
+                    <td style="text-align:right;"><strong>${formatCurrency(safeNum(invoice.igstAmount))}</strong></td>
                   `}
-                  <td style="text-align:right;"><strong>${formatCurrency(invoice.cgstAmount + invoice.sgstAmount + invoice.igstAmount)}</strong></td>
+                  <td style="text-align:right;"><strong>${formatCurrency(safeNum(invoice.cgstAmount) + safeNum(invoice.sgstAmount) + safeNum(invoice.igstAmount))}</strong></td>
                 </tr>
               </tfoot>
             </table>
@@ -366,35 +386,45 @@ ${invoice.shipToName || invoice.shipToAddress ? `
           <div class="totals-box">
             <table class="totals-table">
               <tbody>
+                ${hasDiscount ? `
+                  <tr>
+                    <td>Gross Amount:</td>
+                    <td style="text-align:right;">${formatCurrency(invoiceItems.reduce((s: number, i: any) => s + safeNum(i.unitPrice) * safeNum(i.quantity), 0))}</td>
+                  </tr>
+                  <tr>
+                    <td>Discount:</td>
+                    <td style="text-align:right;">- ${formatCurrency(invoiceItems.reduce((s: number, i: any) => s + Math.max(0, safeNum(i.unitPrice) * safeNum(i.quantity) - safeNum(i.taxableAmount)), 0))}</td>
+                  </tr>
+                ` : ''}
                 <tr>
                   <td>Sub Total:</td>
-                  <td style="text-align:right;">${formatCurrency(invoice.subtotal)}</td>
+                  <td style="text-align:right;">${formatCurrency(safeNum(invoice.subtotal))}</td>
                 </tr>
-                ${invoice.cgstAmount > 0 || invoice.sgstAmount > 0 ? `
+                ${safeNum(invoice.cgstAmount) > 0 || safeNum(invoice.sgstAmount) > 0 ? `
                   <tr>
                     <td>CGST:</td>
-                    <td style="text-align:right;">${formatCurrency(invoice.cgstAmount)}</td>
+                    <td style="text-align:right;">${formatCurrency(safeNum(invoice.cgstAmount))}</td>
                   </tr>
                   <tr>
                     <td>SGST:</td>
-                    <td style="text-align:right;">${formatCurrency(invoice.sgstAmount)}</td>
+                    <td style="text-align:right;">${formatCurrency(safeNum(invoice.sgstAmount))}</td>
                   </tr>
                 ` : ''}
-                ${invoice.igstAmount > 0 ? `
+                ${safeNum(invoice.igstAmount) > 0 ? `
                   <tr>
                     <td>IGST:</td>
-                    <td style="text-align:right;">${formatCurrency(invoice.igstAmount)}</td>
+                    <td style="text-align:right;">${formatCurrency(safeNum(invoice.igstAmount))}</td>
                   </tr>
                 ` : ''}
-                ${invoice.transportCharges && invoice.transportCharges > 0 ? `
+                ${safeNum(invoice.transportCharges) > 0 ? `
                   <tr>
                     <td>Transport Charges:</td>
-                    <td style="text-align:right;">${formatCurrency(invoice.transportCharges)}</td>
+                    <td style="text-align:right;">${formatCurrency(safeNum(invoice.transportCharges))}</td>
                   </tr>
                 ` : ''}
                 <tr>
                   <td><strong>Total:</strong></td>
-                  <td style="text-align:right;"><strong>${formatCurrency(invoice.totalAmount)}</strong></td>
+                  <td style="text-align:right;"><strong>${formatCurrency(safeNum(invoice.totalAmount))}</strong></td>
                 </tr>
               </tbody>
             </table>
@@ -413,16 +443,30 @@ ${invoice.shipToName || invoice.shipToAddress ? `
           
           <div class="payment-summary">
             <div class="payment-grid">
+              ${directReceived > 0 ? `
               <div>Received:</div>
-              <div style="text-align:right;">${formatCurrency(amountReceived)}</div>
-              <div><strong>Balance:</strong></div>
-              <div style="text-align:right;"><strong>${formatCurrency(balanceDue)}</strong></div>
+              <div style="text-align:right;">${formatCurrency(directReceived)}</div>
+              ` : ''}
+              ${advanceApplied > 0 ? `
+              <div>Advance Applied:</div>
+              <div style="text-align:right;">${formatCurrency(advanceApplied)}</div>
+              ` : ''}
+              ${writeOffTotal > 0 ? `
+              <div>Written Off:</div>
+              <div style="text-align:right;">${formatCurrency(writeOffTotal)}</div>
+              ` : ''}
+              ${directReceived === 0 && advanceApplied === 0 && writeOffTotal === 0 ? `
+              <div>Received:</div>
+              <div style="text-align:right;">${formatCurrency(0)}</div>
+              ` : ''}
+              <div style="border-top:1px solid #000; padding-top:3px;"><strong>Balance Due:</strong></div>
+              <div style="text-align:right; border-top:1px solid #000; padding-top:3px;"><strong>${formatCurrency(balanceDue)}</strong></div>
             </div>
           </div>
         </div>
 
         <div class="amount-in-words">
-          Total Invoice Amount in words: <strong>${amountToWords(invoice.totalAmount)}</strong>
+          Total Invoice Amount in words: <strong>${amountToWords(safeNum(invoice.totalAmount))}</strong>
         </div>
 
         ${invoice.remarks ? `<div class="remarks">Note: ${invoice.remarks}</div>` : ''}
