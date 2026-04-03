@@ -304,6 +304,7 @@ export default function PrintInvoiceGatepassPage() {
             <th style={{ border: '1px solid #000', padding: '4px', textAlign: 'center', width: '40px' }}>Qty</th>
             <th style={{ border: '1px solid #000', padding: '4px', textAlign: 'center', width: '35px' }}>Unit</th>
             <th style={{ border: '1px solid #000', padding: '4px', textAlign: 'right', width: '60px' }}>Rate</th>
+            <th style={{ border: '1px solid #000', padding: '4px', textAlign: 'center', width: '45px' }}>Discount</th>
             <th style={{ border: '1px solid #000', padding: '4px', textAlign: 'center', width: '40px' }}>GST%</th>
             <th style={{ border: '1px solid #000', padding: '4px', textAlign: 'right', width: '55px' }}>GST</th>
             <th style={{ border: '1px solid #000', padding: '4px', textAlign: 'right', width: '65px' }}>Amount</th>
@@ -315,6 +316,10 @@ export default function PrintInvoiceGatepassPage() {
             const gstPercent = (item.cgstRate + item.sgstRate + item.igstRate) / 100;
             const uom = uoms.find(u => u.id === item.uomId);
             const unit = uom?.name || 'Nos';
+            const discountMode = (item as any).discountMode || '%';
+            const discountDisplay = item.discount > 0 
+              ? `${(item.discount / 100).toFixed(2)} ${discountMode}` 
+              : '-';
             return (
               <tr key={item.id}>
                 <td style={{ border: '1px solid #000', padding: '3px', textAlign: 'center' }}>{idx + 1}</td>
@@ -323,6 +328,7 @@ export default function PrintInvoiceGatepassPage() {
                 <td style={{ border: '1px solid #000', padding: '3px', textAlign: 'center' }}>{item.quantity}</td>
                 <td style={{ border: '1px solid #000', padding: '3px', textAlign: 'center' }}>{unit}</td>
                 <td style={{ border: '1px solid #000', padding: '3px', textAlign: 'right' }}>{formatCurrency(item.unitPrice)}</td>
+                <td style={{ border: '1px solid #000', padding: '3px', textAlign: 'center' }}>{discountDisplay}</td>
                 <td style={{ border: '1px solid #000', padding: '3px', textAlign: 'center' }}>{gstPercent.toFixed(1)}%</td>
                 <td style={{ border: '1px solid #000', padding: '3px', textAlign: 'right' }}>{formatCurrency(totalGst)}</td>
                 <td style={{ border: '1px solid #000', padding: '3px', textAlign: 'right' }}>{formatCurrency(item.totalAmount)}</td>

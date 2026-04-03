@@ -352,6 +352,7 @@ export default function PrintInvoicePage() {
             <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', background: '#f0f0f0' }}>Qty</th>
             <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', background: '#f0f0f0' }}>Unit</th>
             <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', background: '#f0f0f0' }}>Price/Unit (₹)</th>
+            <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', background: '#f0f0f0' }}>Discount</th>
             <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', background: '#f0f0f0' }}>GST%</th>
             <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', background: '#f0f0f0' }}>GST (₹)</th>
             <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', background: '#f0f0f0' }}>Amount (₹)</th>
@@ -361,6 +362,10 @@ export default function PrintInvoicePage() {
           {items.map((item, idx) => {
             const totalGst = (item.cgstAmount || 0) + (item.sgstAmount || 0) + (item.igstAmount || 0);
             const gstPercent = ((item.cgstRate || 0) + (item.sgstRate || 0) + (item.igstRate || 0)) / 100;
+            const discountMode = (item as any).discountMode || '%';
+            const discountDisplay = item.discount > 0 
+              ? `${(item.discount / 100).toFixed(2)} ${discountMode}` 
+              : '-';
             return (
               <tr key={item.id}>
                 <td style={{ textAlign: 'center', border: '1px solid #333', padding: '4px 6px', fontSize: '10px' }}>{idx + 1}</td>
@@ -369,6 +374,7 @@ export default function PrintInvoicePage() {
                 <td style={{ textAlign: 'center', border: '1px solid #333', padding: '4px 6px', fontSize: '10px' }}>{item.quantity}</td>
                 <td style={{ textAlign: 'center', border: '1px solid #333', padding: '4px 6px', fontSize: '10px' }}>{getUomName(item.uomId)}</td>
                 <td style={{ textAlign: 'right', border: '1px solid #333', padding: '4px 6px', fontSize: '10px' }}>{(item.unitPrice / 100).toFixed(2)}</td>
+                <td style={{ textAlign: 'center', border: '1px solid #333', padding: '4px 6px', fontSize: '10px' }}>{discountDisplay}</td>
                 <td style={{ textAlign: 'center', border: '1px solid #333', padding: '4px 6px', fontSize: '10px' }}>{gstPercent.toFixed(1)}%</td>
                 <td style={{ textAlign: 'right', border: '1px solid #333', padding: '4px 6px', fontSize: '10px' }}>{(totalGst / 100).toFixed(2)}</td>
                 <td style={{ textAlign: 'right', border: '1px solid #333', padding: '4px 6px', fontSize: '10px' }}>{(item.totalAmount / 100).toFixed(2)}</td>
@@ -483,10 +489,31 @@ export default function PrintInvoicePage() {
         <div style={{ width: '45%', textAlign: 'right' }}>
           <table style={{ marginLeft: 'auto', borderCollapse: 'collapse', border: '1px solid #333' }}>
             <tbody>
-              <tr>
-                <td style={{ fontSize: '10px', padding: '2px 6px', border: '1px solid #333' }}>Sub Total:</td>
-                <td style={{ textAlign: 'right', fontSize: '10px', padding: '2px 6px', border: '1px solid #333' }}>{formatCurrency(invoice.subtotal)}</td>
-              </tr>
+              {/* Calculate total discount from all items */}
+              {(() => {
+                const totalDiscount = items.reduce((sum, item) => sum + (item.discount || 0), 0);
+                const subtotalBeforeDiscount = invoice.subtotal + totalDiscount;
+                const taxableValue = invoice.subtotal;
+                
+                return (
+                  <>
+                    <tr>
+                      <td style={{ fontSize: '10px', padding: '2px 6px', border: '1px solid #333' }}>Item Total:</td>
+                      <td style={{ textAlign: 'right', fontSize: '10px', padding: '2px 6px', border: '1px solid #333' }}>{formatCurrency(subtotalBeforeDiscount)}</td>
+                    </tr>
+                    {totalDiscount > 0 && (
+                      <tr>
+                        <td style={{ fontSize: '10px', padding: '2px 6px', border: '1px solid #333' }}>Discount (−):</td>
+                        <td style={{ textAlign: 'right', fontSize: '10px', padding: '2px 6px', border: '1px solid #333' }}>−{formatCurrency(totalDiscount)}</td>
+                      </tr>
+                    )}
+                    <tr>
+                      <td style={{ fontSize: '10px', padding: '2px 6px', border: '1px solid #333' }}><strong>Taxable Value:</strong></td>
+                      <td style={{ textAlign: 'right', fontSize: '10px', padding: '2px 6px', border: '1px solid #333' }}><strong>{formatCurrency(taxableValue)}</strong></td>
+                    </tr>
+                  </>
+                );
+              })()}
               {((invoice.cgstAmount || 0) > 0 || (invoice.sgstAmount || 0) > 0) && (
                 <>
                   <tr>
