@@ -473,14 +473,14 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Sales Officer</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value || ""}>
+                          <Select onValueChange={(val) => field.onChange(val === "none" ? "" : val)} value={field.value || "none"}>
                             <FormControl>
                               <SelectTrigger data-testid="select-sales-officer">
                                 <SelectValue placeholder="Select sales officer" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="">— None —</SelectItem>
+                              <SelectItem value="none">— None —</SelectItem>
                               {salesOfficers.map((officer) => (
                                 <SelectItem key={officer.id} value={officer.id}>
                                   {officer.name}{officer.code ? ` (${officer.code})` : ""}
