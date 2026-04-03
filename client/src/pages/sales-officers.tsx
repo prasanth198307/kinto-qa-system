@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -37,6 +37,81 @@ const emptyForm = {
   territory: "",
   isActive: true,
 };
+
+type FormData = typeof emptyForm;
+
+interface OfficerFormFieldsProps {
+  formData: FormData;
+  setFormData: React.Dispatch<React.SetStateAction<FormData>>;
+  errors: Record<string, string>;
+}
+
+function OfficerFormFields({ formData, setFormData, errors }: OfficerFormFieldsProps) {
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1">
+          <Label htmlFor="so-name">Name *</Label>
+          <Input
+            id="so-name"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            placeholder="Full name"
+          />
+          {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="so-code">Code *</Label>
+          <Input
+            id="so-code"
+            value={formData.code}
+            onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
+            placeholder="e.g. SO001"
+          />
+          {errors.code && <p className="text-xs text-destructive">{errors.code}</p>}
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="so-mobile">Mobile Number</Label>
+          <Input
+            id="so-mobile"
+            value={formData.mobileNumber}
+            onChange={(e) => setFormData({ ...formData, mobileNumber: e.target.value })}
+            placeholder="10-digit mobile"
+          />
+          {errors.mobileNumber && <p className="text-xs text-destructive">{errors.mobileNumber}</p>}
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="so-email">Email</Label>
+          <Input
+            id="so-email"
+            type="email"
+            value={formData.email}
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            placeholder="email@example.com"
+          />
+          {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
+        </div>
+        <div className="space-y-1 col-span-2">
+          <Label htmlFor="so-territory">Territory / Area</Label>
+          <Input
+            id="so-territory"
+            value={formData.territory}
+            onChange={(e) => setFormData({ ...formData, territory: e.target.value })}
+            placeholder="e.g. Vizag North"
+          />
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <Switch
+          id="so-active"
+          checked={formData.isActive}
+          onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked })}
+        />
+        <Label htmlFor="so-active">Active</Label>
+      </div>
+    </div>
+  );
+}
 
 export default function SalesOfficersPage() {
   const { toast } = useToast();
@@ -119,6 +194,12 @@ export default function SalesOfficersPage() {
     const errs: Record<string, string> = {};
     if (!data.name.trim()) errs.name = "Name is required";
     if (!data.code.trim()) errs.code = "Code is required";
+    if (data.mobileNumber && !/^\d{10}$/.test(data.mobileNumber.trim())) {
+      errs.mobileNumber = "Mobile must be a 10-digit number";
+    }
+    if (data.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim())) {
+      errs.email = "Enter a valid email address";
+    }
     return errs;
   };
 
@@ -156,68 +237,6 @@ export default function SalesOfficersPage() {
     setDeleteConfirmOpen(true);
   };
 
-  const FormFields = () => (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-1">
-          <Label htmlFor="so-name">Name *</Label>
-          <Input
-            id="so-name"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            placeholder="Full name"
-          />
-          {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="so-code">Code *</Label>
-          <Input
-            id="so-code"
-            value={formData.code}
-            onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-            placeholder="e.g. SO001"
-          />
-          {errors.code && <p className="text-xs text-destructive">{errors.code}</p>}
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="so-mobile">Mobile Number</Label>
-          <Input
-            id="so-mobile"
-            value={formData.mobileNumber}
-            onChange={(e) => setFormData({ ...formData, mobileNumber: e.target.value })}
-            placeholder="10-digit mobile"
-          />
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="so-email">Email</Label>
-          <Input
-            id="so-email"
-            type="email"
-            value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            placeholder="email@example.com"
-          />
-        </div>
-        <div className="space-y-1 col-span-2">
-          <Label htmlFor="so-territory">Territory / Area</Label>
-          <Input
-            id="so-territory"
-            value={formData.territory}
-            onChange={(e) => setFormData({ ...formData, territory: e.target.value })}
-            placeholder="e.g. Vizag North"
-          />
-        </div>
-      </div>
-      <div className="flex items-center gap-2">
-        <Switch
-          id="so-active"
-          checked={formData.isActive}
-          onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked })}
-        />
-        <Label htmlFor="so-active">Active</Label>
-      </div>
-    </div>
-  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -307,7 +326,7 @@ export default function SalesOfficersPage() {
             <DialogHeader>
               <DialogTitle>Add Sales Officer</DialogTitle>
             </DialogHeader>
-            <FormFields />
+            <OfficerFormFields formData={formData} setFormData={setFormData} errors={errors} />
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
               <Button onClick={handleCreate} disabled={createMutation.isPending}>
@@ -322,7 +341,7 @@ export default function SalesOfficersPage() {
             <DialogHeader>
               <DialogTitle>Edit Sales Officer</DialogTitle>
             </DialogHeader>
-            <FormFields />
+            <OfficerFormFields formData={formData} setFormData={setFormData} errors={errors} />
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsEditOpen(false)}>Cancel</Button>
               <Button onClick={handleUpdate} disabled={updateMutation.isPending}>

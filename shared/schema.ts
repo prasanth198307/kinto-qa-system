@@ -3672,6 +3672,9 @@ export const insertSalesOfficerSchema = createInsertSchema(salesOfficers).omit({
   recordStatus: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  email: z.string().email("Invalid email address").optional().nullable(),
+  mobileNumber: z.string().regex(/^\d{10}$/, "Mobile must be a 10-digit number").optional().nullable(),
 });
 
 export type InsertSalesOfficer = z.infer<typeof insertSalesOfficerSchema>;

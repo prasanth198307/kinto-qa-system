@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { 
@@ -153,6 +153,11 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
     queryKey: ['/api/sales-officers'],
   });
 
+  const salesOfficersMap = useMemo(
+    () => new Map(salesOfficers.map((o) => [o.id, o])),
+    [salesOfficers]
+  );
+
   const createSoMutation = useMutation({
     mutationFn: async (values: SalesOrderFormValues) => {
       // Map form values to API expected format
@@ -239,7 +244,7 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
     defaultValues: {
       buyerName: "",
       vendorId: "",
-      salesOfficerId: "",
+      salesOfficerId: "none",
       buyerGstin: "",
       buyerAddress: "",
       buyerState: "",
@@ -886,7 +891,7 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                       <TableCell className="max-w-[200px] truncate" data-testid={`text-buyer-name-${so.id}`}>{so.buyerName}</TableCell>
                       <TableCell className="text-sm">
                         {so.salesOfficerId
-                          ? salesOfficers.find(o => o.id === so.salesOfficerId)?.name || <span className="text-muted-foreground">—</span>
+                          ? salesOfficersMap.get(so.salesOfficerId)?.name || <span className="text-muted-foreground">—</span>
                           : <span className="text-muted-foreground">—</span>}
                       </TableCell>
                       <TableCell data-testid={`text-total-amount-${so.id}`}>
