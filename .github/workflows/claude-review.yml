@@ -1,5 +1,4 @@
 name: Claude Code Review
-
 on:
   pull_request:
     types: [opened, synchronize, reopened]
@@ -16,34 +15,60 @@ permissions:
 
 jobs:
   claude-review:
-    # Only run on PRs or when @claude is mentioned in a comment
     if: |
       github.event_name == 'pull_request' ||
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
       (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude'))
-
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
+
+      - name: Get changed files only
+        id: changed
+        run: |
+          git fetch origin main --depth=1
+          git diff --name-only origin/main...HEAD > /tmp/changed_files.txt
+          echo "Changed files:"
+          cat /tmp/changed_files.txt
+
+      - name: Set model based on trigger
+        id: model
+        run: |
+          if [[ "${{ github.event.comment.body }}" == *"@claude-deep"* ]]; then
+            echo "model=claude-sonnet-4-6" >> $GITHUB_OUTPUT
+            echo "Using Sonnet (deep review)"
+          else
+            echo "model=claude-haiku-4-5" >> $GITHUB_OUTPUT
+            echo "Using Haiku (standard review)"
+          fi
 
       - name: Run Claude Code Review
         uses: anthropics/claude-code-action@beta
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          model: claude-sonnet-4-6   # or claude-opus-4-6 for deeper review
+          model: ${{ steps.model.outputs.model }}
           direct_prompt: |
-            Review this PR for the kinto-qa-system project:
+            You are reviewing the kinto-qa-system project.
 
-            1. **Bugs & Logic Errors** — flag anything that could break functionality
-            2. **Security Vulnerabilities** — check for injection, auth issues, exposed secrets
-            3. **Code Quality** — readability, naming, duplication, dead code
+            IMPORTANT — Read ONLY these changed files:
+            $(cat /tmp/changed_files.txt)
+
+            Do NOT read or explore files outside this list.
+            Do NOT scan the full codebase.
+            Focus ONLY on changed lines and their direct imports.
+
+            Check for:
+            1. **Bugs & Logic Errors** — anything that could break functionality
+            2. **Security** — injection, auth issues, exposed secrets
+            3. **Code Quality** — readability, duplication, dead code
             4. **Performance** — inefficient queries, loops, memory issues
-            5. **Test Coverage** — are new features or fixes covered by tests?
+            5. **Tests** — are new changes covered?
 
-            Be concise. Only flag real issues. 
-            End with ✅ if approved or ⚠️ if issues were found.
+            Be concise. Only flag real issues.
+            End with ✅ if approved or ⚠️ if issues found.
+            At the top of your response mention which model was used.
