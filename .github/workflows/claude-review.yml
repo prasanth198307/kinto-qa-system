@@ -50,6 +50,13 @@ jobs:
           echo "Changed files:"
           cat /tmp/changed_files.txt
 
+      - name: Fetch CLAUDE.md from main
+        run: |
+          git fetch origin main --depth=1
+          git checkout origin/main -- CLAUDE.md 2>/dev/null || true
+          echo "CLAUDE.md status:"
+          ls -la CLAUDE.md 2>/dev/null || echo "Not found"
+
       - name: Check diff size
         id: diffcheck
         run: |
