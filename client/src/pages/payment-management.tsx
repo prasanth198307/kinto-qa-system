@@ -4,8 +4,7 @@ import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { format } from "date-fns";
-import { parseISO } from "date-fns";
+import { format, parseISO } from "date-fns";
 import {
   Card,
   CardContent,
@@ -647,7 +646,7 @@ export default function PaymentManagement() {
     mutationFn: async (data: EditPaymentFormData & { paymentId: string; originalAmount: number }) => {
       const newAmount = data.amount ? Math.round(parseFloat(data.amount) * 100) : undefined;
       const payload: any = {
-        paymentDate: data.paymentDate ? parseISO(data.paymentDate).toISOString() : undefined,
+        paymentDate: parseISO(data.paymentDate).toISOString(),
         paymentMethod: data.paymentMethod,
         referenceNumber: data.referenceNumber,
         bankName: data.bankName,
@@ -683,7 +682,7 @@ export default function PaymentManagement() {
   const handleEditPayment = (payment: any) => {
     setEditPayment(payment);
     editForm.reset({
-      paymentDate: payment.paymentDate ? format(new Date(payment.paymentDate), "yyyy-MM-dd") : "",
+      paymentDate: payment.paymentDate ? format(parseISO(payment.paymentDate), "yyyy-MM-dd") : "",
       paymentMethod: payment.paymentMethod || "Cash",
       referenceNumber: payment.referenceNumber || "",
       bankName: payment.bankName || "",
@@ -1104,7 +1103,7 @@ export default function PaymentManagement() {
                             {isExpanded ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
                           </TableCell>
                           <TableCell className="text-sm">
-                            {alloc.paymentDate ? format(new Date(alloc.paymentDate), 'dd MMM yyyy') : '-'}
+                            {alloc.paymentDate ? format(parseISO(alloc.paymentDate), 'dd MMM yyyy') : '-'}
                           </TableCell>
                           <TableCell className="text-sm font-medium">
                             {alloc.payerName || alloc.vendorName || '-'}

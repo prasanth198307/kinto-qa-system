@@ -64,8 +64,8 @@ export default function PaymentHistory({ invoice }: PaymentHistoryProps) {
     const dateB = b.paymentDate ? parseISO(b.paymentDate).getTime() : 0;
     const dateCompare = dateA - dateB;
     if (dateCompare !== 0) return dateCompare;
-    const createdA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-    const createdB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    const createdA = a.createdAt ? parseISO(a.createdAt).getTime() : 0;
+    const createdB = b.createdAt ? parseISO(b.createdAt).getTime() : 0;
     return createdA - createdB;
   });
 
