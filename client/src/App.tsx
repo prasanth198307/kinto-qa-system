@@ -124,6 +124,7 @@ import CashFlowStatementPage from "@/pages/cash-flow-statement";
 import GroupSummaryPage from "@/pages/group-summary";
 import BudgetVariancePage from "@/pages/budget-variance";
 import AdminToolsPage from "@/pages/admin-tools";
+import { parseISO } from "date-fns";
 
 type Role = 'admin' | 'operator' | 'reviewer' | 'manager';
 
@@ -430,7 +431,7 @@ function ManagerDashboard() {
 // Dashboard for custom roles - uses AdminDashboard layout with database-based permission filtering
 function CustomRoleDashboard({ roleName }: { roleName: string }) {
   const { logoutMutation } = useAuth();
-  const { permissions, role: userRoleName, isLoading: permissionsLoading } = usePermissions();
+  const { permissions, role: userRoleName, isLoading: permissionsLoading, error: permissionsError } = usePermissions();
   const [location, setLocation] = useLocation();
   const [activeView, setActiveView] = useState('overview');
   const [isPMDialogOpen, setIsPMDialogOpen] = useState(false);
@@ -457,13 +458,13 @@ function CustomRoleDashboard({ roleName }: { roleName: string }) {
   const mockMaintenanceTasks = maintenancePlans.length > 0 
     ? maintenancePlans.map((plan: any) => {
         const isActive = plan.isActive === true || plan.isActive === 'true';
-        const isOverdue = plan.nextDueDate && new Date(plan.nextDueDate) < new Date();
+        const isOverdue = plan.nextDueDate && parseISO(plan.nextDueDate) < new Date();
         const status = !isActive ? 'completed' : (isOverdue ? 'overdue' : 'upcoming');
         return {
           id: plan.id,
           machine: plan.machineId || 'Unassigned',
           taskType: plan.planName,
-          scheduledDate: plan.nextDueDate ? new Date(plan.nextDueDate).toLocaleDateString() : 'Not scheduled',
+          scheduledDate: plan.nextDueDate ? parseISO(plan.nextDueDate).toLocaleDateString() : 'Not scheduled',
           status: status as 'upcoming' | 'overdue' | 'completed',
           assignedTo: plan.assignedTo || 'Unassigned',
           planData: plan,
@@ -491,6 +492,19 @@ function CustomRoleDashboard({ roleName }: { roleName: string }) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  // Show error state if permissions fetch failed
+  if (permissionsError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card className="p-8 max-w-md text-center space-y-4">
+          <h2 className="text-2xl font-bold">Unable to load permissions</h2>
+          <p className="text-muted-foreground">Failed to load your screen permissions. Please refresh the page or contact your administrator.</p>
+          <Button onClick={() => window.location.reload()}>Refresh Page</Button>
+        </Card>
       </div>
     );
   }
@@ -733,13 +747,13 @@ function AdminDashboard() {
   const mockMaintenanceTasks = maintenancePlans.length > 0 
     ? maintenancePlans.map((plan: any) => {
         const isActive = plan.isActive === true || plan.isActive === 'true';
-        const isOverdue = plan.nextDueDate && new Date(plan.nextDueDate) < new Date();
+        const isOverdue = plan.nextDueDate && parseISO(plan.nextDueDate) < new Date();
         const status = !isActive ? 'completed' : (isOverdue ? 'overdue' : 'upcoming');
         return {
           id: plan.id,
           machine: plan.machineId || 'Unassigned',
           taskType: plan.planName,
-          scheduledDate: plan.nextDueDate ? new Date(plan.nextDueDate).toLocaleDateString() : 'Not scheduled',
+          scheduledDate: plan.nextDueDate ? parseISO(plan.nextDueDate).toLocaleDateString() : 'Not scheduled',
           status: status as 'upcoming' | 'overdue' | 'completed',
           assignedTo: plan.assignedTo || 'Unassigned',
           planData: plan,

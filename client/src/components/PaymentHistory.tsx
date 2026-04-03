@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Trash2 } from "lucide-react";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -60,9 +60,13 @@ export default function PaymentHistory({ invoice }: PaymentHistoryProps) {
 
   // Sort payments chronologically (oldest first) by paymentDate, then createdAt
   const sortedPayments = [...payments].sort((a, b) => {
-    const dateCompare = new Date(a.paymentDate).getTime() - new Date(b.paymentDate).getTime();
+    const dateA = a.paymentDate ? parseISO(a.paymentDate).getTime() : 0;
+    const dateB = b.paymentDate ? parseISO(b.paymentDate).getTime() : 0;
+    const dateCompare = dateA - dateB;
     if (dateCompare !== 0) return dateCompare;
-    return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    const createdA = a.createdAt ? parseISO(a.createdAt).getTime() : 0;
+    const createdB = b.createdAt ? parseISO(b.createdAt).getTime() : 0;
+    return createdA - createdB;
   });
 
   // Calculate running balance for each payment (separating cash payments from write-offs)
@@ -160,7 +164,7 @@ export default function PaymentHistory({ invoice }: PaymentHistoryProps) {
                 {paymentsWithBalance.map((payment) => (
                   <TableRow key={payment.id} data-testid={`row-payment-${payment.id}`}>
                     <TableCell data-testid={`text-payment-date-${payment.id}`}>
-                      {format(new Date(payment.paymentDate), "dd-MMM-yyyy")}
+                      {payment.paymentDate ? format(parseISO(payment.paymentDate), "dd-MMM-yyyy") : '-'}
                     </TableCell>
                     <TableCell className="font-medium" data-testid={`text-payment-amount-${payment.id}`}>
                       ₹{(payment.amount / 100).toFixed(2)}
