@@ -70,6 +70,7 @@ import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, ClipboardLi
 import SalesDashboard from "@/components/SalesDashboard";
 import SalesOrdersPage from "@/pages/sales-orders";
 import SalesOrderDetailPage from "@/pages/sales-order-detail";
+import SalesOfficersPage from "@/pages/sales-officers";
 import VendorAnalytics from "@/pages/vendor-analytics";
 import ReviewerDashboardPage from "@/pages/ReviewerDashboard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -1838,6 +1839,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       items: [
         { id: "users", label: "Users", icon: Users, onClick: () => setLocation('/') },
         { id: "role-permissions", label: "Role Permissions", icon: Shield, onClick: () => setLocation('/') },
+        { id: "sales-officers", label: "Sales Officers", icon: Users, onClick: () => setLocation('/sales-officers') },
         { id: "vendors", label: "Vendor Master", icon: Building2, onClick: () => setLocation('/vendor-management') },
         { id: "vendor-types", label: "Vendor Types", icon: Shield, onClick: () => setLocation('/vendor-types') },
         { id: "hpcl-migration", label: "HPCL Migration", icon: Building2, onClick: () => setLocation('/hpcl-migration') },
@@ -2626,7 +2628,59 @@ function InvoiceDetailPageWrapper() {
   );
 }
 
-// Wrapper component for Raw Material Detail page with filtered navigation
+// Wrapper component for Sales Orders page with filtered navigation
+function SalesOrdersPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('sales-orders');
+
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
+
+  return (
+    <DashboardShell
+      title="Sales Orders"
+      onLogoutClick={() => logoutMutation.mutate()}
+      notificationCount={0}
+      navSections={navSections}
+      activeView={activeView}
+      onNavigate={(viewId) => setActiveView(viewId)}
+    >
+      <SalesOrdersPage showHeader={false} />
+    </DashboardShell>
+  );
+}
+
+function SalesOfficersPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('sales-officers');
+
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
+
+  return (
+    <DashboardShell
+      title="Sales Officers"
+      onLogoutClick={() => logoutMutation.mutate()}
+      notificationCount={0}
+      navSections={navSections}
+      activeView={activeView}
+      onNavigate={(viewId) => setActiveView(viewId)}
+    >
+      <SalesOfficersPage />
+    </DashboardShell>
+  );
+}
+
 function SalesOrderDetailWrapper() {
   const { logoutMutation } = useAuth();
   const [, setLocation] = useLocation();
@@ -3069,8 +3123,9 @@ function Router() {
       <ProtectedRoute path="/vendor-group/:vendorName" component={VendorGroupDetailPage} />
       <ProtectedRoute path="/vendor-history/:vendorId" component={VendorHistoryDetailPage} />
       <ProtectedRoute path="/invoice/:id" component={InvoiceDetailPageWrapper} />
-      <ProtectedRoute path="/sales-orders" component={SalesOrdersPage} />
+      <ProtectedRoute path="/sales-orders" component={SalesOrdersPageWrapper} />
       <ProtectedRoute path="/sales-orders/:id" component={SalesOrderDetailWrapper} />
+      <ProtectedRoute path="/sales-officers" component={SalesOfficersPageWrapper} />
       <ProtectedRoute path="/raw-material/:id" component={RawMaterialDetailWrapper} />
       <ProtectedRoute path="/raw-material-type/:id" component={RawMaterialTypeDetailWrapper} />
       <ProtectedRoute path="/product/:id" component={ProductDetailWrapper} />

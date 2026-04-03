@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import crypto from "crypto";
 import { storage } from "./storage";
 import { setupAuth, hashPassword } from "./auth";
-import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertPurchaseOrderItemSchema, purchaseOrders, purchaseOrderItems, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesOrderSchema, insertSalesOrderItemSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, insertVendorTypeSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, paymentEvidence, salesOrders, salesOrderItems, salesReturns, salesReturnItems, creditNotes, creditNoteItems, debitNotes, debitNoteItems, manualCreditNoteRequests, products, productBom, whatsappConversationSessions, vendorTypes, vendorVendorTypes, vendors, users, uom, insertDocumentCategorySchema, insertDocumentSchema, insertExpenseCategorySchema, insertExpenseVoucherSchema, insertExpenseItemSchema, insertExpenseAttachmentSchema, rolePermissions, vendorDebitNotes, vendorDebitNoteItems, vendorDebitNoteAdjustments, transporters, vehicles, drivers, insertTransporterSchema, insertVehicleSchema, insertDriverSchema, scrapInventory, insertSparePartEntrySchema, insertSparePartIssuanceSchema, insertScrapInventorySchema, sparePartEntries, sparePartsCatalog, accountSubtypes } from "@shared/schema";
+import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertPurchaseOrderItemSchema, purchaseOrders, purchaseOrderItems, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesOrderSchema, insertSalesOrderItemSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, insertVendorTypeSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, paymentEvidence, salesOrders, salesOrderItems, salesReturns, salesReturnItems, creditNotes, creditNoteItems, debitNotes, debitNoteItems, manualCreditNoteRequests, products, productBom, whatsappConversationSessions, vendorTypes, vendorVendorTypes, vendors, users, uom, insertDocumentCategorySchema, insertDocumentSchema, insertExpenseCategorySchema, insertExpenseVoucherSchema, insertExpenseItemSchema, insertExpenseAttachmentSchema, rolePermissions, vendorDebitNotes, vendorDebitNoteItems, vendorDebitNoteAdjustments, transporters, vehicles, drivers, insertTransporterSchema, insertVehicleSchema, insertDriverSchema, scrapInventory, insertSparePartEntrySchema, insertSparePartIssuanceSchema, insertScrapInventorySchema, sparePartEntries, sparePartsCatalog, accountSubtypes, insertSalesOfficerSchema, salesOfficers } from "@shared/schema";
 import { format } from "date-fns";
 import { z } from "zod";
 import path from "path";
@@ -125,6 +125,7 @@ const endpointToScreenKey: Record<string, string> = {
   '/api/finished-goods': 'finished_goods',
   '/api/finished-goods/consolidated': 'finished_goods',
   '/api/sales-orders': 'sales_orders',
+  '/api/sales-officers': 'sales_officers',
   '/api/inventory': 'inventory',
   '/api/uom': 'uom',
   
@@ -25323,6 +25324,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (err: any) {
       console.error('[MIS-Financial] Error:', err);
       res.status(500).json({ message: err.message || 'Failed to fetch financial analytics' });
+    }
+  });
+
+  // Sales Officers CRUD routes
+  app.get('/api/sales-officers', isAuthenticated, async (req: any, res) => {
+    try {
+      const officers = await storage.getAllSalesOfficers();
+      res.json(officers);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message || 'Failed to fetch sales officers' });
+    }
+  });
+
+  app.post('/api/sales-officers', isAuthenticated, requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const data = insertSalesOfficerSchema.parse(req.body);
+      const officer = await storage.createSalesOfficer(data);
+      res.status(201).json(officer);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message || 'Failed to create sales officer' });
+    }
+  });
+
+  app.get('/api/sales-officers/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const officer = await storage.getSalesOfficer(req.params.id);
+      if (!officer) return res.status(404).json({ message: 'Sales officer not found' });
+      res.json(officer);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message || 'Failed to fetch sales officer' });
+    }
+  });
+
+  app.patch('/api/sales-officers/:id', isAuthenticated, requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const officer = await storage.updateSalesOfficer(req.params.id, req.body);
+      if (!officer) return res.status(404).json({ message: 'Sales officer not found' });
+      res.json(officer);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message || 'Failed to update sales officer' });
+    }
+  });
+
+  app.delete('/api/sales-officers/:id', isAuthenticated, requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      await storage.deleteSalesOfficer(req.params.id);
+      res.json({ message: 'Sales officer deleted' });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message || 'Failed to delete sales officer' });
     }
   });
 

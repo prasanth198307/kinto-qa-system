@@ -111,6 +111,7 @@ const salesOrderSchema = z.object({
   soDate: z.string().min(1, "Date is required"),
   deliveryDate: z.string().optional(),
   vendorId: z.string().optional(),
+  salesOfficerId: z.string().optional(),
   buyerGstin: z.string().optional(),
   buyerAddress: z.string().optional(),
   buyerState: z.string().optional(),
@@ -148,6 +149,10 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
     queryKey: ['/api/vendors'],
   });
 
+  const { data: salesOfficers = [] } = useQuery<{ id: string; name: string; code?: string | null }[]>({
+    queryKey: ['/api/sales-officers'],
+  });
+
   const createSoMutation = useMutation({
     mutationFn: async (values: SalesOrderFormValues) => {
       // Map form values to API expected format
@@ -179,6 +184,7 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
           shipToState: values.shipToState || null,
           shipToPin: values.shipToPin || null,
           remarks: values.remarks || null,
+          salesOfficerId: values.salesOfficerId || null,
           totalAmount: soTotalPaise,
         },
         items: computedItems.map(({ item, unitPricePaise, taxableAmountPaise, totalAmountPaise }) => ({
@@ -233,6 +239,7 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
     defaultValues: {
       buyerName: "",
       vendorId: "",
+      salesOfficerId: "",
       buyerGstin: "",
       buyerAddress: "",
       buyerState: "",
@@ -456,6 +463,31 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                               </Command>
                             </PopoverContent>
                           </Popover>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="salesOfficerId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Sales Officer</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value || ""}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-sales-officer">
+                                <SelectValue placeholder="Select sales officer" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="">— None —</SelectItem>
+                              {salesOfficers.map((officer) => (
+                                <SelectItem key={officer.id} value={officer.id}>
+                                  {officer.name}{officer.code ? ` (${officer.code})` : ""}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -813,6 +845,7 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                   <TableHead>Order Date</TableHead>
                   <TableHead>Delivery Date</TableHead>
                   <TableHead>Buyer</TableHead>
+                  <TableHead>Sales Officer</TableHead>
                   <TableHead>Total Amount</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -827,13 +860,14 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                       <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                       <TableCell><Skeleton className="h-6 w-20" /></TableCell>
                       <TableCell className="text-right"><Skeleton className="h-8 w-24 ml-auto" /></TableCell>
                     </TableRow>
                   ))
                 ) : soResponse?.data?.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                    <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
                       No sales orders found.
                     </TableCell>
                   </TableRow>
@@ -849,6 +883,11 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                         }
                       </TableCell>
                       <TableCell className="max-w-[200px] truncate" data-testid={`text-buyer-name-${so.id}`}>{so.buyerName}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {so.salesOfficerId
+                          ? (salesOfficers.find(o => o.id === so.salesOfficerId)?.name || "—")
+                          : "—"}
+                      </TableCell>
                       <TableCell data-testid={`text-total-amount-${so.id}`}>
                         {formatCurrency(so.totalAmount)}
                       </TableCell>

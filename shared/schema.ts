@@ -3679,6 +3679,7 @@ export const salesOrders = pgTable("sales_orders", {
   cancelledAt: varchar("cancelled_at", { length: 50 }),
   cancelledBy: varchar("cancelled_by").references(() => users.id),
   cancellationReason: varchar("cancellation_reason", { length: 255 }),
+  salesOfficerId: varchar("sales_officer_id"),
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
@@ -3780,3 +3781,28 @@ export const budgetItems = pgTable("budget_items", {
   index("bi_budget_idx").on(table.budgetId),
   index("bi_account_idx").on(table.accountId),
 ]);
+
+// Sales Officers Master
+// ============================================================
+export const salesOfficers = pgTable("sales_officers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 255 }).notNull(),
+  code: varchar("code", { length: 50 }),
+  mobile: varchar("mobile", { length: 15 }),
+  email: varchar("email", { length: 255 }),
+  territory: varchar("territory", { length: 255 }),
+  isActive: integer("is_active").default(1).notNull(),
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
+});
+
+export const insertSalesOfficerSchema = createInsertSchema(salesOfficers).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertSalesOfficer = z.infer<typeof insertSalesOfficerSchema>;
+export type SalesOfficer = typeof salesOfficers.$inferSelect;

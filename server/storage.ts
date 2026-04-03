@@ -211,6 +211,7 @@ import {
   bankTransactions,
   accountTypes,
   accountSubtypes,
+  salesOfficers,
   type ChartOfAccount,
   type InsertChartOfAccount,
   type JournalEntry,
@@ -225,6 +226,8 @@ import {
   type InsertAccountType,
   type AccountSubtype,
   type InsertAccountSubtype,
+  type SalesOfficer,
+  type InsertSalesOfficer,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, isNotNull, notInArray, inArray, gte, lte, sql, desc, ilike } from "drizzle-orm";
@@ -765,6 +768,12 @@ export interface IStorage {
   getSalesOrderItems(soId: string): Promise<any[]>;
   deleteSalesOrderItems(soId: string): Promise<void>;
   getInvoicesBySalesOrder(soId: string): Promise<Invoice[]>;
+
+  createSalesOfficer(officer: InsertSalesOfficer): Promise<SalesOfficer>;
+  getAllSalesOfficers(): Promise<SalesOfficer[]>;
+  getSalesOfficer(id: string): Promise<SalesOfficer | undefined>;
+  updateSalesOfficer(id: string, updates: Partial<InsertSalesOfficer>): Promise<SalesOfficer | undefined>;
+  deleteSalesOfficer(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -4736,6 +4745,43 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(invoices)
       .where(and(eq(invoices.salesOrderId, soId), eq(invoices.recordStatus, 1)));
+  }
+
+  async createSalesOfficer(officer: InsertSalesOfficer): Promise<SalesOfficer> {
+    const [result] = await db.insert(salesOfficers).values(officer).returning();
+    return result;
+  }
+
+  async getAllSalesOfficers(): Promise<SalesOfficer[]> {
+    return await db
+      .select()
+      .from(salesOfficers)
+      .where(eq(salesOfficers.recordStatus, 1))
+      .orderBy(salesOfficers.name);
+  }
+
+  async getSalesOfficer(id: string): Promise<SalesOfficer | undefined> {
+    const [result] = await db
+      .select()
+      .from(salesOfficers)
+      .where(and(eq(salesOfficers.id, id), eq(salesOfficers.recordStatus, 1)));
+    return result;
+  }
+
+  async updateSalesOfficer(id: string, updates: Partial<InsertSalesOfficer>): Promise<SalesOfficer | undefined> {
+    const [result] = await db
+      .update(salesOfficers)
+      .set({ ...updates, updatedAt: new Date().toISOString() })
+      .where(and(eq(salesOfficers.id, id), eq(salesOfficers.recordStatus, 1)))
+      .returning();
+    return result;
+  }
+
+  async deleteSalesOfficer(id: string): Promise<void> {
+    await db
+      .update(salesOfficers)
+      .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
+      .where(eq(salesOfficers.id, id));
   }
 }
 

@@ -38,6 +38,7 @@ const navItemToScreenKey: Record<string, string> = {
   'production-reconciliation-report': 'production_reconciliation_report',
   'variance-analytics': 'variance_analytics',
   'sales-orders': 'sales_orders',
+  'sales-officers': 'sales_officers',
   'invoices': 'invoices',
   'vendor-history': 'vendor_history',
   'pending-payments': 'pending_payments',
@@ -106,6 +107,7 @@ const screenPermissions: Record<string, { admin: boolean; manager: boolean; oper
   'Final Approval': { admin: true, manager: true, operator: false, reviewer: false },
   'MIS Reports': { admin: true, manager: true, operator: false, reviewer: false },
   'Accounting & Ledger': { admin: true, manager: true, operator: false, reviewer: false },
+  'Sales Officers': { admin: true, manager: true, operator: false, reviewer: false },
 };
 
 const navItemToScreen: Record<string, string> = {
@@ -156,6 +158,7 @@ const navItemToScreen: Record<string, string> = {
   'vendor-debit-notes': 'Purchase Orders',
   'users': 'User Management',
   'role-permissions': 'User Management',
+  'sales-officers': 'Sales Officers',
   'vendors': 'Inventory Management',
   'vendor-types': 'Inventory Management',
   'machines': 'Machines',
