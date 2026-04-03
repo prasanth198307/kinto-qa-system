@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
+import { parseISO } from "date-fns";
 import {
   Card,
   CardContent,
@@ -381,7 +382,7 @@ export default function PaymentManagement() {
         // ── Data rows ─────────────────────────────────────────────────────────
         let grandTotal = 0;
         for (const g of groups) {
-          const date  = g.paymentDate ? new Date(g.paymentDate).toLocaleDateString('en-IN') : '-';
+          const date  = g.paymentDate ? parseISO(g.paymentDate).toLocaleDateString('en-IN') : '-';
           const total = Number((g.totalAmount / 100).toFixed(2));
           grandTotal += total;
 
@@ -563,7 +564,7 @@ export default function PaymentManagement() {
         // ── Data rows ─────────────────────────────────────────────────────────
         let isOdd = true;
         for (const g of groups) {
-          const date  = g.paymentDate ? new Date(g.paymentDate).toLocaleDateString('en-IN') : '-';
+          const date  = g.paymentDate ? parseISO(g.paymentDate).toLocaleDateString('en-IN') : '-';
           const total = Number((g.totalAmount / 100).toFixed(2));
           const rowBg = isOdd ? 'FFFFFFFF' : 'FFF0F4FA';
           isOdd = !isOdd;
@@ -646,7 +647,7 @@ export default function PaymentManagement() {
     mutationFn: async (data: EditPaymentFormData & { paymentId: string; originalAmount: number }) => {
       const newAmount = data.amount ? Math.round(parseFloat(data.amount) * 100) : undefined;
       const payload: any = {
-        paymentDate: new Date(data.paymentDate).toISOString(),
+        paymentDate: data.paymentDate ? parseISO(data.paymentDate).toISOString() : undefined,
         paymentMethod: data.paymentMethod,
         referenceNumber: data.referenceNumber,
         bankName: data.bankName,
@@ -926,7 +927,7 @@ export default function PaymentManagement() {
                                 )}
                               </Button>
                             )}
-                            {format(new Date(payment.paymentDate), 'dd MMM yyyy')}
+                            {payment.paymentDate ? format(parseISO(payment.paymentDate), 'dd MMM yyyy') : '-'}
                           </div>
                         </TableCell>
                         <TableCell className="text-sm">{payment.vendorName}</TableCell>
