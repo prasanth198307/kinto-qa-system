@@ -186,6 +186,7 @@ export default function RoleManagement() {
   
   // Permissions state
   const [permissions, setPermissions] = useState<Map<string, RolePermission>>(new Map());
+  const [originalPermissions, setOriginalPermissions] = useState<Map<string, RolePermission>>(new Map());
 
   // Fetch roles
   const { data: roles = [], isLoading: rolesLoading } = useQuery<Role[]>({
@@ -368,15 +369,14 @@ export default function RoleManagement() {
   const handleEditPermissions = (role: Role) => {
     setPermissionsRole(role);
     
-    // Load existing permissions for this role
     const rolePerms = allPermissions.filter(p => p.roleId === role.id);
     const permsMap = new Map<string, RolePermission>();
-    
     rolePerms.forEach(p => {
       permsMap.set(p.screenKey, p);
     });
     
     setPermissions(permsMap);
+    setOriginalPermissions(new Map(permsMap));
     setIsPermissionsDialogOpen(true);
   };
 
@@ -404,7 +404,7 @@ export default function RoleManagement() {
   const handleSavePermissions = () => {
     if (!permissionsRole) return;
 
-    const permissionsArray = AVAILABLE_SCREENS.map(screen => {
+    const permissionsArray = AVAILABLE_SCREENS.reduce<{ screenKey: string; canView: boolean; canCreate: boolean; canEdit: boolean; canDelete: boolean }[]>((acc, screen) => {
       const perm = permissions.get(screen.key) || {
         screenKey: screen.key,
         canView: 0,
@@ -412,15 +412,31 @@ export default function RoleManagement() {
         canEdit: 0,
         canDelete: 0,
       };
-
-      return {
+      const orig = originalPermissions.get(screen.key) || {
         screenKey: screen.key,
-        canView: perm.canView === 1,
-        canCreate: perm.canCreate === 1,
-        canEdit: perm.canEdit === 1,
-        canDelete: perm.canDelete === 1,
+        canView: 0,
+        canCreate: 0,
+        canEdit: 0,
+        canDelete: 0,
       };
-    });
+
+      const hasChanged =
+        perm.canView !== orig.canView ||
+        perm.canCreate !== orig.canCreate ||
+        perm.canEdit !== orig.canEdit ||
+        perm.canDelete !== orig.canDelete;
+
+      if (hasChanged || originalPermissions.has(screen.key)) {
+        acc.push({
+          screenKey: screen.key,
+          canView: perm.canView === 1,
+          canCreate: perm.canCreate === 1,
+          canEdit: perm.canEdit === 1,
+          canDelete: perm.canDelete === 1,
+        });
+      }
+      return acc;
+    }, []);
 
     updatePermissionsMutation.mutate({
       roleId: permissionsRole.id,
@@ -631,6 +647,11 @@ export default function RoleManagement() {
             <DialogTitle>
               Edit Permissions: {permissionsRole?.name}
             </DialogTitle>
+            {permissionsRole && isDefaultRole(permissionsRole.name) && (
+              <p className="text-sm text-amber-600 font-medium">
+                Warning: Modifying permissions for the "{permissionsRole.name}" default role. Ensure critical access (users, roles) is not removed.
+              </p>
+            )}
             <p className="text-sm text-muted-foreground">
               Configure which screens and features this role can access
             </p>
