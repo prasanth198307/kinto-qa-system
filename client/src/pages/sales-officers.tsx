@@ -1,342 +1,383 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
-import type { SalesOfficer } from "@shared/schema";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Plus, Edit, Trash2, ArrowLeft, UserCheck } from "lucide-react";
+import { useLocation } from "wouter";
+import { GlobalHeader } from "@/components/GlobalHeader";
+import { useAuth } from "@/hooks/use-auth";
 
-const formSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  code: z.string().min(1, "Code is required"),
-  mobileNumber: z.string().regex(/^\+?[0-9]{7,15}$/, "Invalid mobile number").optional().or(z.literal("")),
-  email: z.string().email("Invalid email").optional().or(z.literal("")),
-  territory: z.string().optional(),
-  isActive: z.number().default(1),
-});
+interface SalesOfficer {
+  id: string;
+  name: string;
+  code: string;
+  mobileNumber: string | null;
+  email: string | null;
+  territory: string | null;
+  isActive: number;
+  recordStatus: number;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
 
-type FormValues = z.infer<typeof formSchema>;
+const emptyForm = {
+  name: "",
+  code: "",
+  mobileNumber: "",
+  email: "",
+  territory: "",
+  isActive: true,
+};
 
-export default function SalesOfficersPage() {
+type FormData = typeof emptyForm;
+
+interface OfficerFormFieldsProps {
+  formData: FormData;
+  setFormData: React.Dispatch<React.SetStateAction<FormData>>;
+  errors: Record<string, string>;
+}
+
+function OfficerFormFields({ formData, setFormData, errors }: OfficerFormFieldsProps) {
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1">
+          <Label htmlFor="so-name">Name *</Label>
+          <Input
+            id="so-name"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            placeholder="Full name"
+          />
+          {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="so-code">Code *</Label>
+          <Input
+            id="so-code"
+            value={formData.code}
+            onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
+            placeholder="e.g. SO001"
+          />
+          {errors.code && <p className="text-xs text-destructive">{errors.code}</p>}
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="so-mobile">Mobile Number</Label>
+          <Input
+            id="so-mobile"
+            value={formData.mobileNumber}
+            onChange={(e) => setFormData({ ...formData, mobileNumber: e.target.value })}
+            placeholder="10-digit mobile"
+          />
+          {errors.mobileNumber && <p className="text-xs text-destructive">{errors.mobileNumber}</p>}
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="so-email">Email</Label>
+          <Input
+            id="so-email"
+            type="email"
+            value={formData.email}
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            placeholder="email@example.com"
+          />
+          {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
+        </div>
+        <div className="space-y-1 col-span-2">
+          <Label htmlFor="so-territory">Territory / Area</Label>
+          <Input
+            id="so-territory"
+            value={formData.territory}
+            onChange={(e) => setFormData({ ...formData, territory: e.target.value })}
+            placeholder="e.g. Vizag North"
+          />
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <Switch
+          id="so-active"
+          checked={formData.isActive}
+          onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked })}
+        />
+        <Label htmlFor="so-active">Active</Label>
+      </div>
+    </div>
+  );
+}
+
+export default function SalesOfficersPage({ showHeader = true }: { showHeader?: boolean }) {
   const { toast } = useToast();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [, navigate] = useLocation();
+  const { logoutMutation } = useAuth();
+
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingOfficer, setEditingOfficer] = useState<SalesOfficer | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [search, setSearch] = useState("");
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [officerToDelete, setOfficerToDelete] = useState<SalesOfficer | null>(null);
+  const [formData, setFormData] = useState(emptyForm);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const { data: officers = [], isLoading } = useQuery<SalesOfficer[]>({
     queryKey: ["/api/sales-officers"],
   });
 
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: { name: "", code: "", mobileNumber: "", email: "", territory: "", isActive: 1 },
-  });
-
   const createMutation = useMutation({
-    mutationFn: (data: FormValues) => apiRequest("POST", "/api/sales-officers", data),
+    mutationFn: async (data: typeof emptyForm) => {
+      const res = await apiRequest("POST", "/api/sales-officers", {
+        ...data,
+        isActive: data.isActive ? 1 : 0,
+        mobileNumber: data.mobileNumber || null,
+        email: data.email || null,
+        territory: data.territory || null,
+      });
+      return res.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/sales-officers"] });
-      toast({ title: "Sales Officer created successfully" });
-      setIsDialogOpen(false);
-      form.reset();
+      setIsCreateOpen(false);
+      setFormData(emptyForm);
+      toast({ title: "Sales Officer Created", description: "The sales officer has been added successfully." });
     },
-    onError: (err: any) => {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to create sales officer", variant: "destructive" });
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: FormValues }) =>
-      apiRequest("PATCH", `/api/sales-officers/${id}`, data),
+    mutationFn: async ({ id, data }: { id: string; data: typeof emptyForm }) => {
+      const res = await apiRequest("PATCH", `/api/sales-officers/${id}`, {
+        ...data,
+        isActive: data.isActive ? 1 : 0,
+        mobileNumber: data.mobileNumber || null,
+        email: data.email || null,
+        territory: data.territory || null,
+      });
+      return res.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/sales-officers"] });
-      toast({ title: "Sales Officer updated successfully" });
-      setIsDialogOpen(false);
+      setIsEditOpen(false);
       setEditingOfficer(null);
-      form.reset();
+      toast({ title: "Sales Officer Updated", description: "The sales officer has been updated successfully." });
     },
-    onError: (err: any) => {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to update sales officer", variant: "destructive" });
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => apiRequest("DELETE", `/api/sales-officers/${id}`),
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("DELETE", `/api/sales-officers/${id}`);
+      return res.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/sales-officers"] });
-      toast({ title: "Sales Officer deleted successfully" });
-      setIsDeleteOpen(false);
-      setDeletingId(null);
+      setDeleteConfirmOpen(false);
+      setOfficerToDelete(null);
+      toast({ title: "Sales Officer Deleted", description: "The sales officer has been removed." });
     },
-    onError: (err: any) => {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to delete sales officer", variant: "destructive" });
     },
   });
 
-  const openCreate = () => {
-    setEditingOfficer(null);
-    form.reset({ name: "", code: "", mobileNumber: "", email: "", territory: "", isActive: 1 });
-    setIsDialogOpen(true);
+  const validate = (data: typeof emptyForm) => {
+    const errs: Record<string, string> = {};
+    if (!data.name.trim()) errs.name = "Name is required";
+    if (!data.code.trim()) errs.code = "Code is required";
+    if (data.mobileNumber && !/^\d{10}$/.test(data.mobileNumber.trim())) {
+      errs.mobileNumber = "Mobile must be a 10-digit number";
+    }
+    if (data.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim())) {
+      errs.email = "Enter a valid email address";
+    }
+    return errs;
+  };
+
+  const handleCreate = () => {
+    const errs = validate(formData);
+    if (Object.keys(errs).length) { setErrors(errs); return; }
+    setErrors({});
+    createMutation.mutate(formData);
+  };
+
+  const handleUpdate = () => {
+    if (!editingOfficer) return;
+    const errs = validate(formData);
+    if (Object.keys(errs).length) { setErrors(errs); return; }
+    setErrors({});
+    updateMutation.mutate({ id: editingOfficer.id, data: formData });
   };
 
   const openEdit = (officer: SalesOfficer) => {
     setEditingOfficer(officer);
-    form.reset({
+    setFormData({
       name: officer.name,
-      code: officer.code || "",
+      code: officer.code,
       mobileNumber: officer.mobileNumber || "",
       email: officer.email || "",
       territory: officer.territory || "",
-      isActive: officer.isActive,
+      isActive: officer.isActive === 1,
     });
-    setIsDialogOpen(true);
+    setErrors({});
+    setIsEditOpen(true);
   };
 
-  const onSubmit = (data: FormValues) => {
-    if (editingOfficer) {
-      updateMutation.mutate({ id: editingOfficer.id, data });
-    } else {
-      createMutation.mutate(data);
-    }
+  const openDelete = (officer: SalesOfficer) => {
+    setOfficerToDelete(officer);
+    setDeleteConfirmOpen(true);
   };
 
-  const filtered = officers.filter(
-    (o) =>
-      o.name.toLowerCase().includes(search.toLowerCase()) ||
-      (o.code || "").toLowerCase().includes(search.toLowerCase()) ||
-      (o.territory || "").toLowerCase().includes(search.toLowerCase())
-  );
-
-  return (
-    <div className="p-4 md:p-6 space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Users className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-semibold">Sales Officers</h1>
+  const pageContent = (
+    <div className={showHeader ? "container mx-auto p-6 mt-16" : "p-4"}>
+      <div className="flex justify-between items-center mb-6">
+        <div className="flex items-center gap-3">
+          {showHeader && (
+            <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          )}
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+              <UserCheck className="h-8 w-8" />
+              Sales Officers
+            </h1>
+            <p className="text-muted-foreground mt-1">Manage the list of Sales Officers for order tracking.</p>
+          </div>
         </div>
-        <Button onClick={openCreate}>
-          <Plus className="h-4 w-4 mr-2" />
+        <Button onClick={() => { setFormData(emptyForm); setErrors({}); setIsCreateOpen(true); }}>
+          <Plus className="w-4 h-4 mr-2" />
           Add Sales Officer
         </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-2">
-            <Input
-              placeholder="Search by name, code, territory..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="max-w-sm"
-            />
-          </div>
+          <CardTitle>Sales Officers ({officers.length})</CardTitle>
         </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              {search ? "No sales officers match your search." : "No sales officers added yet."}
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Code</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Mobile</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Territory</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Code</TableHead>
-                  <TableHead>Mobile</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Territory</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">Loading...</TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((officer) => (
+              ) : officers.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                    No sales officers found. Add your first one.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                officers.map((officer) => (
                   <TableRow key={officer.id}>
+                    <TableCell className="font-mono font-medium">{officer.code}</TableCell>
                     <TableCell className="font-medium">{officer.name}</TableCell>
-                    <TableCell>{officer.code || "—"}</TableCell>
                     <TableCell>{officer.mobileNumber || "—"}</TableCell>
                     <TableCell>{officer.email || "—"}</TableCell>
                     <TableCell>{officer.territory || "—"}</TableCell>
                     <TableCell>
-                      <Badge variant={officer.isActive ? "default" : "secondary"}>
-                        {officer.isActive ? "Active" : "Inactive"}
-                      </Badge>
+                      {officer.isActive === 1
+                        ? <Badge className="bg-green-100 text-green-800 hover:bg-green-100/80">Active</Badge>
+                        : <Badge variant="secondary">Inactive</Badge>}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" onClick={() => openEdit(officer)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive"
-                        onClick={() => {
-                          setDeletingId(officer.id);
-                          setIsDeleteOpen(true);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" size="sm" onClick={() => openEdit(officer)}>
+                          <Edit className="w-3 h-3 mr-1" />
+                          Edit
+                        </Button>
+                        <Button variant="ghost" size="sm" className="text-destructive" onClick={() => openDelete(officer)}>
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
+                ))
+              )}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-lg">
+      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>
-              {editingOfficer ? "Edit Sales Officer" : "Add Sales Officer"}
-            </DialogTitle>
+            <DialogTitle>Add Sales Officer</DialogTitle>
           </DialogHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Name *</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Full name" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="code"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Code</FormLabel>
-                      <FormControl>
-                        <Input placeholder="SO001" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="mobileNumber"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Mobile</FormLabel>
-                      <FormControl>
-                        <Input placeholder="9876543210" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input placeholder="officer@company.com" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="territory"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Territory</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g. South Zone, Vizag" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="isActive"
-                render={({ field }) => (
-                  <FormItem className="flex items-center gap-3">
-                    <FormLabel>Active</FormLabel>
-                    <FormControl>
-                      <Switch
-                        checked={field.value === 1}
-                        onCheckedChange={(v) => field.onChange(v ? 1 : 0)}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={createMutation.isPending || updateMutation.isPending}
-                >
-                  {editingOfficer ? "Update" : "Create"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
+          <OfficerFormFields formData={formData} setFormData={setFormData} errors={errors} />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
+            <Button onClick={handleCreate} disabled={createMutation.isPending}>
+              {createMutation.isPending ? "Creating..." : "Create"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <ConfirmDeleteDialog
-        open={isDeleteOpen}
-        onOpenChange={setIsDeleteOpen}
-        onConfirm={() => deletingId && deleteMutation.mutate(deletingId)}
-        title="Delete Sales Officer"
-        description="Are you sure you want to delete this sales officer? This action cannot be undone."
-      />
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Sales Officer</DialogTitle>
+          </DialogHeader>
+          <OfficerFormFields formData={formData} setFormData={setFormData} errors={errors} />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditOpen(false)}>Cancel</Button>
+            <Button onClick={handleUpdate} disabled={updateMutation.isPending}>
+              {updateMutation.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Sales Officer</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <strong>{officerToDelete?.name}</strong>? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => officerToDelete && deleteMutation.mutate(officerToDelete.id)}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+
+  if (!showHeader) return pageContent;
+
+  return (
+    <div className="min-h-screen bg-background">
+      <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />
+      {pageContent}
     </div>
   );
 }

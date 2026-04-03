@@ -2676,7 +2676,7 @@ function SalesOfficersPageWrapper() {
       activeView={activeView}
       onNavigate={(viewId) => setActiveView(viewId)}
     >
-      <SalesOfficersPage />
+      <SalesOfficersPage showHeader={false} />
     </DashboardShell>
   );
 }
