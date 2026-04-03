@@ -1838,49 +1838,54 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
             </div>
           )}
 
-          {/* Table Header - Hidden on mobile */}
-          <div className="hidden md:grid grid-cols-14 gap-2 text-xs font-semibold text-muted-foreground px-2">
-            <div className="col-span-2">Product *</div>
-            <div className="col-span-1">HSN</div>
-            <div className={gstInclusiveMode ? "col-span-1" : "col-span-2"}>Description *</div>
-            <div className="col-span-1">Qty *</div>
-            <div className="col-span-1">Batch #</div>
-            <div className="col-span-1">{gstInclusiveMode ? 'Base ₹' : 'Price ₹'}</div>
-            <div className="col-span-2">Discount</div>
-            <div className="col-span-1">GST %</div>
-            {gstInclusiveMode && <div className="col-span-2">Price/Case (incl. GST)</div>}
-            <div className="col-span-1">Transport</div>
-            <div className={gstInclusiveMode ? "col-span-1" : "col-span-2"}></div>
-          </div>
-
-          {/* Items - Show message if empty */}
-          {fields.length === 0 && (
+          {/* Items table — horizontally scrollable so it never stacks */}
+          {fields.length === 0 ? (
             <div className="p-4 border rounded-md bg-muted/50 text-center text-sm text-muted-foreground">
               No items added yet. Click "Add Item" to add products.
             </div>
+          ) : (
+            <div className="overflow-x-auto rounded-md border">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="bg-muted/50 text-xs text-muted-foreground">
+                    <th className="text-left font-semibold px-2 py-1.5 whitespace-nowrap">Product *</th>
+                    <th className="text-left font-semibold px-2 py-1.5 whitespace-nowrap">HSN</th>
+                    <th className="text-left font-semibold px-2 py-1.5 whitespace-nowrap">Description *</th>
+                    <th className="text-left font-semibold px-2 py-1.5 whitespace-nowrap">Qty *</th>
+                    <th className="text-left font-semibold px-2 py-1.5 whitespace-nowrap">Batch #</th>
+                    <th className="text-left font-semibold px-2 py-1.5 whitespace-nowrap">{gstInclusiveMode ? 'Base ₹' : 'Price ₹'}</th>
+                    <th className="text-left font-semibold px-2 py-1.5 whitespace-nowrap">Discount</th>
+                    <th className="text-left font-semibold px-2 py-1.5 whitespace-nowrap">GST %</th>
+                    {gstInclusiveMode && <th className="text-left font-semibold px-2 py-1.5 whitespace-nowrap">Price/Case (incl. GST)</th>}
+                    <th className="text-left font-semibold px-2 py-1.5 whitespace-nowrap">Transport</th>
+                    <th className="px-2 py-1.5"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {fields.map((field, index) => (
+                    <InvoiceItemRow
+                      key={field.id}
+                      field={field}
+                      index={index}
+                      fieldsCount={fields.length}
+                      form={form}
+                      gstInclusiveMode={gstInclusiveMode}
+                      isIntrastateSupply={isIntrastateSupply}
+                      isReissueMode={isReissueMode}
+                      invoice={invoice}
+                      products={products}
+                      stockSummary={stockSummary}
+                      itemTotalAmounts={itemTotalAmounts}
+                      handleTotalAmountChange={handleTotalAmountChange}
+                      calculateBaseFromTotal={calculateBaseFromTotal}
+                      remove={remove}
+                      toast={toast}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
-          
-          {/* Items */}
-          {fields.map((field, index) => (
-            <InvoiceItemRow
-              key={field.id}
-              field={field}
-              index={index}
-              fieldsCount={fields.length}
-              form={form}
-              gstInclusiveMode={gstInclusiveMode}
-              isIntrastateSupply={isIntrastateSupply}
-              isReissueMode={isReissueMode}
-              invoice={invoice}
-              products={products}
-              stockSummary={stockSummary}
-              itemTotalAmounts={itemTotalAmounts}
-              handleTotalAmountChange={handleTotalAmountChange}
-              calculateBaseFromTotal={calculateBaseFromTotal}
-              remove={remove}
-              toast={toast}
-            />
-          ))}
         </div>
 
 
