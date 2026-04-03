@@ -97,6 +97,8 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
   const [cancelReason, setCancelReason] = useState('');
   const [isReissueFormOpen, setIsReissueFormOpen] = useState(false);
   const [reissueInvoiceData, setReissueInvoiceData] = useState<any>(null);
+  const [isApplyAdvanceOpen, setIsApplyAdvanceOpen] = useState(false);
+  const [applyAdvanceAmount, setApplyAdvanceAmount] = useState('');
 
   // Check if we're viewing a cancelled invoice (from cancelled invoices page)
   const urlParams = new URLSearchParams(window.location.search);
@@ -425,6 +427,65 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
     queryKey: ['/api/sales-orders', invoice?.salesOrderId],
     enabled: !!invoice?.salesOrderId,
   });
+
+  // Fetch available advance balance for this invoice's customer
+  const { data: availableAdvancesData } = useQuery<{ advances: any[]; totalAvailable: number; count: number }>({
+    queryKey: ['/api/customer-advances/available', matchingVendor?.id],
+    queryFn: async () => {
+      if (!matchingVendor?.id) return { advances: [], totalAvailable: 0, count: 0 };
+      const res = await fetch(`/api/customer-advances/available/${matchingVendor.id}`, { credentials: 'include' });
+      if (!res.ok) return { advances: [], totalAvailable: 0, count: 0 };
+      return res.json();
+    },
+    enabled: !!matchingVendor?.id,
+    retry: false,
+    throwOnError: false,
+  });
+
+  const totalAvailableAdvance = availableAdvancesData?.totalAvailable ?? 0; // in paise
+
+  // Mutation to apply advance to this invoice
+  const applyAdvanceMutation = useMutation({
+    mutationFn: async ({ advanceId, amount }: { advanceId: string; amount: number }) => {
+      return apiRequest('POST', `/api/customer-advances/${advanceId}/apply`, {
+        invoiceId: id,
+        amount,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/invoices', id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/invoice-payments', id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/customer-advances/available', matchingVendor?.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/customer-advances'] });
+      setIsApplyAdvanceOpen(false);
+      setApplyAdvanceAmount('');
+      toast({ title: 'Advance applied successfully' });
+    },
+    onError: (err: any) => {
+      toast({ title: 'Failed to apply advance', description: err.message, variant: 'destructive' });
+    },
+  });
+
+  const handleApplyAdvance = () => {
+    const amountPaise = Math.round(parseFloat(applyAdvanceAmount) * 100);
+    if (!amountPaise || amountPaise <= 0) {
+      toast({ title: 'Enter a valid amount', variant: 'destructive' });
+      return;
+    }
+    if (!availableAdvancesData?.advances?.length) return;
+    // Apply FIFO across available advances
+    let remaining = amountPaise;
+    const applyPromises = [];
+    for (const adv of availableAdvancesData.advances) {
+      if (remaining <= 0) break;
+      const use = Math.min(remaining, adv.availableAmount);
+      if (use > 0) {
+        applyPromises.push(applyAdvanceMutation.mutateAsync({ advanceId: adv.id, amount: use }));
+        remaining -= use;
+      }
+    }
+    Promise.all(applyPromises).catch(() => {});
+  };
 
   if (isLoadingInvoice) {
     return (
@@ -1130,6 +1191,37 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
                       {formatCurrency(invoice.totalAmount - (invoice.amountReceived || 0))}
                     </span>
                   </div>
+                  {totalAvailableAdvance > 0 && invoice.paymentStatus !== 'paid' && invoice.status !== 'cancelled' && (
+                    <>
+                      <Separator />
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-sm font-medium text-green-700 dark:text-green-400">Advance Available</div>
+                          <div className="text-xs text-muted-foreground">
+                            {availableAdvancesData!.count} record{availableAdvancesData!.count !== 1 ? 's' : ''} · can be applied to this invoice
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-green-700 dark:text-green-400">
+                            {formatCurrency(totalAvailableAdvance)}
+                          </span>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            data-testid="button-apply-advance"
+                            onClick={() => {
+                              const balanceDue = invoice.totalAmount - (invoice.amountReceived || 0);
+                              const maxApply = Math.min(totalAvailableAdvance / 100, balanceDue / 100);
+                              setApplyAdvanceAmount(maxApply.toFixed(2));
+                              setIsApplyAdvanceOpen(true);
+                            }}
+                          >
+                            Apply
+                          </Button>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </>
               );
             })()}
@@ -1556,6 +1648,53 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
               }}
             />
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Apply Advance Payment Dialog */}
+      <Dialog open={isApplyAdvanceOpen} onOpenChange={setIsApplyAdvanceOpen}>
+        <DialogContent className="max-w-sm" data-testid="dialog-apply-advance">
+          <DialogHeader>
+            <DialogTitle>Apply Advance to Invoice</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="text-sm text-muted-foreground">
+              Available balance:{' '}
+              <span className="font-semibold text-green-600">
+                {formatCurrency(totalAvailableAdvance)}
+              </span>
+            </div>
+            <div className="text-sm text-muted-foreground">
+              Balance due:{' '}
+              <span className="font-semibold text-orange-600">
+                {formatCurrency(invoice ? invoice.totalAmount - (invoice.amountReceived || 0) : 0)}
+              </span>
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Amount to Apply (₹)</label>
+              <Input
+                type="number"
+                min="0.01"
+                step="0.01"
+                value={applyAdvanceAmount}
+                onChange={(e) => setApplyAdvanceAmount(e.target.value)}
+                data-testid="input-apply-advance-amount"
+                placeholder="Enter amount"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIsApplyAdvanceOpen(false)} data-testid="button-cancel-apply-advance">
+                Cancel
+              </Button>
+              <Button
+                onClick={handleApplyAdvance}
+                disabled={applyAdvanceMutation.isPending}
+                data-testid="button-confirm-apply-advance"
+              >
+                {applyAdvanceMutation.isPending ? 'Applying...' : 'Apply'}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
       </div>
