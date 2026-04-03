@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { getCashSourceLabel } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -439,18 +440,7 @@ export default function MISCash() {
             const sources = data.sourceTypes;
             const totalSrcAmt = sources.reduce((s, c) => s + c.amount, 0);
             const maxSrcAmt = Math.max(...sources.map(c => c.amount), 1);
-            const getSourceLabel = (key: string) => {
-              switch (key) {
-                case 'sale_cash': return 'Sale Cash';
-                case 'secondary_sale': return 'Secondary Sale';
-                case 'upi': return 'UPI';
-                case 'bank_transfer': return 'Bank Transfer';
-                case 'from_inmoisture': return 'From Inmoisture';
-                case 'from_scrap': return 'From Scrap';
-                case 'other': return 'Other';
-                default: return key;
-              }
-            };
+            const getSourceLabel = getCashSourceLabel;
             return (
               <div className="rounded-lg border bg-card p-4">
                 <p className="text-sm font-medium">Cash Received — By Source</p>

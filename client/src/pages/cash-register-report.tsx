@@ -35,6 +35,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { useToast } from '@/hooks/use-toast';
+import { getCashSourceLabel } from '@/lib/utils';
 
 const MONTHS = [
   { value: '01', label: 'January' },
@@ -202,6 +203,32 @@ const exportToExcel = async (reportData: ReportData, periodType: string) => {
   const periodSheet = XLSX.utils.aoa_to_sheet(periodRows);
   XLSX.utils.book_append_sheet(workbook, periodSheet, 'Period Summary');
   
+  // Add Cash Received by Source sheet
+  if (reportData.transactions && reportData.transactions.length > 0) {
+    const cashTxns = reportData.transactions.filter(t => t.transactionType === 'cash_received');
+    if (cashTxns.length > 0) {
+      const bySource: Record<string, { amount: number; count: number }> = {};
+      cashTxns.forEach(t => {
+        const key = t.sourceType || 'other';
+        if (!bySource[key]) bySource[key] = { amount: 0, count: 0 };
+        bySource[key].amount += t.amount;
+        bySource[key].count += 1;
+      });
+      const sourceLabel = getCashSourceLabel;
+      const totalReceived = cashTxns.reduce((s, t) => s + t.amount, 0);
+      const sourceRows: (string | number)[][] = [['Source', 'Amount', 'Transactions', 'Share %']];
+      Object.entries(bySource)
+        .sort((a, b) => b[1].amount - a[1].amount)
+        .forEach(([key, val]) => {
+          const pct = totalReceived > 0 ? parseFloat(((val.amount / totalReceived) * 100).toFixed(1)) : 0;
+          sourceRows.push([sourceLabel(key), parseFloat(formatCurrencyNumber(val.amount)), val.count, pct]);
+        });
+      sourceRows.push(['Total', parseFloat(formatCurrencyNumber(totalReceived)), cashTxns.length, 100]);
+      const sourceSheet = XLSX.utils.aoa_to_sheet(sourceRows);
+      XLSX.utils.book_append_sheet(workbook, sourceSheet, 'Cash By Source');
+    }
+  }
+
   // Add Transactions sheet with all line items
   if (reportData.transactions && reportData.transactions.length > 0) {
     const transactionHeaders = ['Date', 'Salesperson', 'Type', 'Source', 'Amount', 'Description', 'Reference', 'Voucher ID'];
@@ -783,18 +810,7 @@ export default function CashRegisterReport() {
             });
             const sourceEntries = Object.entries(bySource).sort((a, b) => b[1].amount - a[1].amount);
             const totalReceived = sourceEntries.reduce((s, [, v]) => s + v.amount, 0);
-            const getLabel = (key: string) => {
-              switch (key) {
-                case 'sale_cash': return 'Sale Cash';
-                case 'secondary_sale': return 'Secondary Sale';
-                case 'upi': return 'UPI';
-                case 'bank_transfer': return 'Bank Transfer';
-                case 'from_inmoisture': return 'From Inmoisture';
-                case 'from_scrap': return 'From Scrap';
-                case 'other': return 'Other';
-                default: return key;
-              }
-            };
+            const getLabel = getCashSourceLabel;
             return (
               <Card>
                 <CardHeader className="pb-3">

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { getCashSourceLabel } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -205,7 +206,7 @@ export default function CashRegisterPage() {
       }
       toast({ title: "Success", description: "Transaction added" });
       // Reset forms
-      setNewCashReceived({ amount: '', reference: '', description: '', sourceType: 'sale_cash' });
+      setNewCashReceived({ amount: '', reference: '', description: '', sourceType: 'sale_cash', partyName: '' });
       setExpenseItems([{ amount: '', reference: '', description: '', partyName: '', categoryId: '' }]);
       setNewTransfer({ amount: '', transferTo: '', description: '' });
       setIsAddingCash(false);
@@ -501,16 +502,8 @@ export default function CashRegisterPage() {
   };
 
   const getSourceTypeLabel = (sourceType: string | null | undefined, description?: string | null) => {
-    switch (sourceType) {
-      case 'sale_cash': return 'Sale Cash';
-      case 'secondary_sale': return 'Secondary Sale';
-      case 'upi': return 'UPI';
-      case 'bank_transfer': return 'Bank Transfer';
-      case 'from_inmoisture': return 'From Inmoisture';
-      case 'from_scrap': return 'From Scrap';
-      case 'other': return description ? `Other: ${description}` : 'Other';
-      default: return sourceType || '';
-    }
+    if (sourceType === 'other') return description ? `Other: ${description}` : 'Other';
+    return sourceType ? getCashSourceLabel(sourceType) : '';
   };
 
   // Handle adding multiple expense items - each creates its own voucher
