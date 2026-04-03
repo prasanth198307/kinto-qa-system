@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+
+# Build outputs
+dist/
+build/
+coverage/
+
+# Logs
+*.log
+
+# Minified files
+*.min.js
+*.min.css
+
+# Media files
+*.png
+*.jpg
+*.jpeg
+*.pdf
+*.svg
+
+# Migrations (large, rarely need review)
+migrations/
+seeds/
+
+# Snapshots
+*.test.snap
+
+# Public assets
+public/assets/
