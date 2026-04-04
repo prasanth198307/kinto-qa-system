@@ -7202,7 +7202,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sr++;
         const pays = payMap[exp.id] ?? [];
         const bill = exp.amount ?? 0;
-        const paidAmt = exp.paid_amount ?? 0;
+        const paidAmt = exp.paidAmount ?? 0;
         const balance = Math.max(0, bill - paidAmt);
         grandTotalBill += bill;
         grandTotalPaid += paidAmt;
@@ -7221,19 +7221,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
             exp.name,
             exp.category ?? '',
             parseFloat(fmtAmt(bill)),
-            fmtDate(exp.due_date),
+            fmtDate(exp.dueDate),
             (exp.status ?? 'pending').toUpperCase(),
             parseFloat(fmtAmt(paidAmt)),
             parseFloat(fmtAmt(balance)),
-            exp.carry_to_next_month === 1 ? 'Yes' : 'No',
+            exp.carryToNextMonth === 1 ? 'Yes' : 'No',
             exp.notes ?? '',
             pay ? payIdx : '',
-            pay ? fmtDate(pay.payment_date) : '',
+            pay ? fmtDate(pay.paymentDate) : '',
             pay ? parseFloat(fmtAmt(pay.amount)) : '',
-            pay ? (pay.paid_by ?? '') : '',
-            pay ? sourceLabel(pay.payment_source) : '',
-            pay ? (pay.payment_mode ?? '') : '',
-            pay ? (pay.reference_number ?? '') : '',
+            pay ? (pay.paidBy ?? '') : '',
+            pay ? sourceLabel(pay.paymentSource) : '',
+            pay ? (pay.paymentMode ?? '') : '',
+            pay ? (pay.referenceNumber ?? '') : '',
           ];
           if (pay) grandTotalPayAmt += pay.amount ?? 0;
 
