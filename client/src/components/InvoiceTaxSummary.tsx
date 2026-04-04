@@ -4,6 +4,8 @@ const formatCurrency = (amountInPaise: number) =>
   `₹${(amountInPaise / 100).toFixed(2)}`;
 
 interface TaxBreakdown {
+  grossTotal?: number;
+  totalDiscount?: number;
   subtotal: number;
   cgstAmount: number;
   sgstAmount: number;
@@ -18,12 +20,27 @@ interface InvoiceTaxSummaryProps {
 }
 
 export default function InvoiceTaxSummary({ taxes, isIntrastateSupply }: InvoiceTaxSummaryProps) {
+  const hasDiscount = (taxes.totalDiscount ?? 0) > 0;
+
   return (
     <Card className="p-3 bg-muted">
       <h3 className="font-semibold text-sm mb-2">
         Tax Summary ({isIntrastateSupply ? "Intrastate" : "Interstate"} Supply)
       </h3>
-      <div className="space-y-1.5">
+      <div className="space-y-1.5 text-sm">
+        {hasDiscount && (
+          <>
+            <div className="flex justify-between text-muted-foreground">
+              <span>Gross Total:</span>
+              <span>{formatCurrency(taxes.grossTotal ?? 0)}</span>
+            </div>
+            <div className="flex justify-between text-red-600 dark:text-red-400">
+              <span>Discount:</span>
+              <span>- {formatCurrency(taxes.totalDiscount ?? 0)}</span>
+            </div>
+          </>
+        )}
+
         <div className="flex justify-between">
           <span>Subtotal:</span>
           <span className="font-semibold">{formatCurrency(taxes.subtotal)}</span>

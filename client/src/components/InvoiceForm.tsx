@@ -831,6 +831,8 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
   };
 
   const calculateTaxes = () => {
+    let grossTotal = 0;
+    let totalDiscountAmount = 0;
     let subtotal = 0;
     let cgstAmount = 0;
     let sgstAmount = 0;
@@ -848,6 +850,8 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
       } else {
         discountAmount = discountVal * item.quantity; // ₹ per case × qty
       }
+      grossTotal += grossLine;
+      totalDiscountAmount += discountAmount;
       const itemTotal = grossLine - discountAmount;
       subtotal += itemTotal;
       totalQuantity += item.quantity;
@@ -869,6 +873,8 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
     const totalAmount = subtotal + cgstAmount + sgstAmount + igstAmount + totalTransportCharges;
 
     return {
+      grossTotal: Math.round(grossTotal * 100),
+      totalDiscount: Math.round(totalDiscountAmount * 100),
       subtotal: Math.round(subtotal * 100), // Convert to paise
       cgstAmount: Math.round(cgstAmount * 100),
       sgstAmount: Math.round(sgstAmount * 100),
@@ -1884,7 +1890,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
             </div>
           ) : (
             <div className="overflow-x-auto rounded-md border">
-              <table className="w-full text-sm border-collapse">
+              <table className="w-full min-w-[900px] text-sm border-collapse">
                 <thead>
                   <tr className="bg-muted/50 text-xs text-muted-foreground">
                     <th className="text-left font-semibold px-2 py-1.5 whitespace-nowrap">Product *</th>
