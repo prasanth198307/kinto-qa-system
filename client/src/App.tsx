@@ -1475,7 +1475,7 @@ const navItemToScreenKey: Record<string, string> = {
   'cash-register-report': 'cash_register_report',
   'expenses': 'expenses',
   'expense-categories': 'expense_categories',
-  'monthly-expenses': 'expenses',
+  'monthly-expenses': 'monthly_expenses',
   'documents': 'documents',
   // Accounting & Ledger
   'chart-of-accounts': 'chart_of_accounts',
@@ -1563,7 +1563,7 @@ const navItemToScreen: Record<string, string> = {
   'expenses': 'Purchase Orders',
   'expense-categories': 'Purchase Orders',
   'monthly-expenses': 'Purchase Orders',
-  'documents': 'Inventory Management',
+  'documents': 'Documents',
   // Accounting & Ledger
   'chart-of-accounts': 'Accounting',
   'journal-entries': 'Accounting',

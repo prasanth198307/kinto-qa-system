@@ -167,6 +167,7 @@ const endpointToScreenKey: Record<string, string> = {
   '/api/expenses': 'expenses',
   '/api/expense-vouchers': 'expenses',
   '/api/expense-categories': 'expenses',
+  '/api/monthly-expenses': 'monthly_expenses',
   
   // Documents
   '/api/documents': 'documents',

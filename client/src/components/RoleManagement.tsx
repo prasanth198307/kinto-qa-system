@@ -136,6 +136,7 @@ const AVAILABLE_SCREENS: ScreenDefinition[] = [
   { key: 'document_categories', label: 'Document Categories', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'expenses', label: 'Expense Vouchers', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'expense_categories', label: 'Expense Categories', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'monthly_expenses', label: 'Monthly Expenses', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'cash_register', label: 'Cash Register', allowedActions: ['view', 'create', 'edit', 'delete'] },
   
   // Accounting & Ledger
