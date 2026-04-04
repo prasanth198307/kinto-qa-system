@@ -21,3 +21,7 @@ CREATE TABLE IF NOT EXISTS monthly_expenses (
 
 CREATE INDEX IF NOT EXISTS me_month_idx ON monthly_expenses(expense_month);
 CREATE INDEX IF NOT EXISTS me_status_idx ON monthly_expenses(status);
+
+-- Add paid_amount column for partial payment tracking (added same day)
+ALTER TABLE monthly_expenses ADD COLUMN IF NOT EXISTS paid_amount integer NOT NULL DEFAULT 0;
+-- status now supports 'pending' | 'partial' | 'paid'

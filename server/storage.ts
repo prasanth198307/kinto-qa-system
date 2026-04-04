@@ -4830,23 +4830,27 @@ export class DatabaseStorage implements IStorage {
     const nextDate = new Date(year, mon, 1); // JS months 0-indexed, so mon=existing 1-indexed month → next month
     const nextMonth = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}`;
 
-    // Get all pending, carry-flagged items from current month
+    // Get all pending/partial, carry-flagged items from current month
     const pending = await db
       .select()
       .from(monthlyExpenses)
       .where(and(
         eq(monthlyExpenses.expenseMonth, month),
-        eq(monthlyExpenses.status, 'pending'),
+        sql`status IN ('pending', 'partial')`,
         eq(monthlyExpenses.carryToNextMonth, 1),
         eq(monthlyExpenses.recordStatus, 1),
       ));
 
     const created: MonthlyExpense[] = [];
     for (const item of pending) {
+      // For partial payments, carry only the remaining balance as the new amount
+      const alreadyPaid = item.paidAmount || 0;
+      const carryAmount = Math.max(0, item.amount - alreadyPaid);
       const [newItem] = await db.insert(monthlyExpenses).values({
         name: item.name,
         category: item.category,
-        amount: item.amount,
+        amount: carryAmount > 0 ? carryAmount : item.amount,
+        paidAmount: 0,
         expenseMonth: nextMonth,
         dueDate: item.dueDate,
         status: 'pending',
@@ -4854,7 +4858,9 @@ export class DatabaseStorage implements IStorage {
         paymentMode: item.paymentMode,
         referenceNumber: null,
         carryToNextMonth: 1,
-        notes: item.notes ? `Carried from ${month}` : `Carried from ${month}`,
+        notes: alreadyPaid > 0
+          ? `Carried from ${month} (₹${(alreadyPaid / 100).toFixed(2)} already paid)`
+          : `Carried from ${month}`,
       }).returning();
       created.push(newItem);
     }

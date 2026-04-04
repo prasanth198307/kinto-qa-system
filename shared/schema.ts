@@ -3777,7 +3777,8 @@ export const monthlyExpenses = pgTable("monthly_expenses", {
   amount: integer("amount").default(0).notNull(), // paise
   expenseMonth: varchar("expense_month", { length: 7 }).notNull(), // YYYY-MM
   dueDate: varchar("due_date", { length: 10 }), // YYYY-MM-DD
-  status: varchar("status", { length: 20 }).default('pending').notNull(), // 'paid' | 'pending'
+  status: varchar("status", { length: 20 }).default('pending').notNull(), // 'paid' | 'partial' | 'pending'
+  paidAmount: integer("paid_amount").default(0).notNull(), // paise — amount paid so far
   paymentDate: varchar("payment_date", { length: 10 }), // YYYY-MM-DD
   paymentMode: varchar("payment_mode", { length: 50 }),
   referenceNumber: varchar("reference_number", { length: 100 }),
