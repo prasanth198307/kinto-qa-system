@@ -85,6 +85,7 @@ import DataImport from "@/pages/data-import";
 import DocumentsPage from "@/pages/documents";
 import ExpensesPage from "@/pages/expenses";
 import ExpenseCategoriesPage from "@/pages/expense-categories";
+import MonthlyExpensesPage from "@/pages/monthly-expenses";
 import CashRegisterPage from "@/pages/cash-register";
 import CashRegisterReport from "@/pages/cash-register-report";
 import CashRegisterVoucherPrint from "@/pages/cash-register-voucher-print";
@@ -880,6 +881,7 @@ function AdminDashboard() {
         { id: "cash-register-report", label: "Cash Register Report", icon: FileStack, onClick: () => setLocation('/cash-register-report') },
         { id: "expenses", label: "Expense Vouchers", icon: Wallet, onClick: () => setLocation('/expenses') },
         { id: "expense-categories", label: "Expense Categories", icon: Tag, onClick: () => setLocation('/expense-categories') },
+        { id: "monthly-expenses", label: "Monthly Expenses", icon: Calendar, onClick: () => setLocation('/monthly-expenses') },
       ],
     },
     {
@@ -1473,6 +1475,7 @@ const navItemToScreenKey: Record<string, string> = {
   'cash-register-report': 'cash_register_report',
   'expenses': 'expenses',
   'expense-categories': 'expense_categories',
+  'monthly-expenses': 'expenses',
   'documents': 'documents',
   // Accounting & Ledger
   'chart-of-accounts': 'chart_of_accounts',
@@ -1559,6 +1562,7 @@ const navItemToScreen: Record<string, string> = {
   'cash-register-report': 'Purchase Orders',
   'expenses': 'Purchase Orders',
   'expense-categories': 'Purchase Orders',
+  'monthly-expenses': 'Purchase Orders',
   'documents': 'Inventory Management',
   // Accounting & Ledger
   'chart-of-accounts': 'Accounting',
@@ -1799,6 +1803,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "cash-register-report", label: "Cash Register Report", icon: FileStack, onClick: () => setLocation('/cash-register-report') },
         { id: "expenses", label: "Expense Vouchers", icon: Wallet, onClick: () => setLocation('/expenses') },
         { id: "expense-categories", label: "Expense Categories", icon: Tag, onClick: () => setLocation('/expense-categories') },
+        { id: "monthly-expenses", label: "Monthly Expenses", icon: Calendar, onClick: () => setLocation('/monthly-expenses') },
       ],
     },
     {
@@ -2037,6 +2042,29 @@ function ExpensesPageWrapper() {
       }}
     >
       <ExpensesPage />
+    </DashboardShell>
+  );
+}
+
+function MonthlyExpensesPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('monthly-expenses');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  }
+  return (
+    <DashboardShell
+      title="Monthly Expenses"
+      onLogoutClick={() => logoutMutation.mutate()}
+      notificationCount={0}
+      navSections={navSections}
+      activeView={activeView}
+      onNavigate={(viewId) => { setActiveView(viewId); }}
+    >
+      <MonthlyExpensesPage />
     </DashboardShell>
   );
 }
@@ -3156,6 +3184,7 @@ function Router() {
       <ProtectedRoute path="/documents" component={DocumentsPageWrapper} />
       <ProtectedRoute path="/expenses" component={ExpensesPageWrapper} />
       <ProtectedRoute path="/expense-categories" component={ExpenseCategoriesPageWrapper} />
+      <ProtectedRoute path="/monthly-expenses" component={MonthlyExpensesPageWrapper} />
       <ProtectedRoute path="/cash-register" component={CashRegisterPageWrapper} />
       <ProtectedRoute path="/cash-register-report" component={CashRegisterReportWrapper} />
       <ProtectedRoute path="/cash-register/vouchers/print" component={CashRegisterVoucherPrint} />

@@ -228,6 +228,9 @@ import {
   type InsertAccountType,
   type AccountSubtype,
   type InsertAccountSubtype,
+  monthlyExpenses,
+  type MonthlyExpense,
+  type InsertMonthlyExpense,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, isNotNull, notInArray, inArray, gte, lte, sql, desc, ilike } from "drizzle-orm";
@@ -774,6 +777,13 @@ export interface IStorage {
   getSalesOfficer(id: string): Promise<SalesOfficer | undefined>;
   updateSalesOfficer(id: string, updates: Partial<InsertSalesOfficer>): Promise<SalesOfficer | undefined>;
   deleteSalesOfficer(id: string): Promise<void>;
+
+  // Monthly Expenses
+  createMonthlyExpense(data: InsertMonthlyExpense): Promise<MonthlyExpense>;
+  getMonthlyExpenses(month: string): Promise<MonthlyExpense[]>;
+  updateMonthlyExpense(id: string, data: Partial<InsertMonthlyExpense>): Promise<MonthlyExpense | undefined>;
+  deleteMonthlyExpense(id: string): Promise<void>;
+  carryExpensesToNextMonth(month: string): Promise<MonthlyExpense[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -4782,6 +4792,73 @@ export class DatabaseStorage implements IStorage {
       .update(salesOfficers)
       .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
       .where(eq(salesOfficers.id, id));
+  }
+
+  // Monthly Expenses
+  async createMonthlyExpense(data: InsertMonthlyExpense): Promise<MonthlyExpense> {
+    const [created] = await db.insert(monthlyExpenses).values(data).returning();
+    return created;
+  }
+
+  async getMonthlyExpenses(month: string): Promise<MonthlyExpense[]> {
+    return db
+      .select()
+      .from(monthlyExpenses)
+      .where(and(eq(monthlyExpenses.expenseMonth, month), eq(monthlyExpenses.recordStatus, 1)))
+      .orderBy(monthlyExpenses.createdAt);
+  }
+
+  async updateMonthlyExpense(id: string, data: Partial<InsertMonthlyExpense>): Promise<MonthlyExpense | undefined> {
+    const [updated] = await db
+      .update(monthlyExpenses)
+      .set({ ...data, updatedAt: new Date().toISOString() })
+      .where(and(eq(monthlyExpenses.id, id), eq(monthlyExpenses.recordStatus, 1)))
+      .returning();
+    return updated;
+  }
+
+  async deleteMonthlyExpense(id: string): Promise<void> {
+    await db
+      .update(monthlyExpenses)
+      .set({ recordStatus: 0 })
+      .where(eq(monthlyExpenses.id, id));
+  }
+
+  async carryExpensesToNextMonth(month: string): Promise<MonthlyExpense[]> {
+    // Parse YYYY-MM and compute next month
+    const [year, mon] = month.split('-').map(Number);
+    const nextDate = new Date(year, mon, 1); // JS months 0-indexed, so mon=existing 1-indexed month → next month
+    const nextMonth = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}`;
+
+    // Get all pending, carry-flagged items from current month
+    const pending = await db
+      .select()
+      .from(monthlyExpenses)
+      .where(and(
+        eq(monthlyExpenses.expenseMonth, month),
+        eq(monthlyExpenses.status, 'pending'),
+        eq(monthlyExpenses.carryToNextMonth, 1),
+        eq(monthlyExpenses.recordStatus, 1),
+      ));
+
+    const created: MonthlyExpense[] = [];
+    for (const item of pending) {
+      const [newItem] = await db.insert(monthlyExpenses).values({
+        name: item.name,
+        category: item.category,
+        amount: item.amount,
+        expenseMonth: nextMonth,
+        dueDate: item.dueDate,
+        status: 'pending',
+        paymentDate: null,
+        paymentMode: item.paymentMode,
+        referenceNumber: null,
+        carryToNextMonth: 1,
+        notes: item.notes ? `Carried from ${month}` : `Carried from ${month}`,
+      }).returning();
+      created.push(newItem);
+    }
+    return created;
   }
 }
 

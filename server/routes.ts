@@ -7051,6 +7051,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== MONTHLY EXPENSES ====================
+
+  app.get('/api/monthly-expenses', isAuthenticated, async (req: any, res) => {
+    try {
+      const { month } = req.query;
+      if (!month) return res.status(400).json({ message: 'month parameter required (YYYY-MM)' });
+      const items = await storage.getMonthlyExpenses(month as string);
+      res.json(items);
+    } catch (error) {
+      console.error('Error fetching monthly expenses:', error);
+      res.status(500).json({ message: 'Failed to fetch monthly expenses' });
+    }
+  });
+
+  app.post('/api/monthly-expenses', isAuthenticated, async (req: any, res) => {
+    try {
+      const { insertMonthlyExpenseSchema } = await import('@shared/schema');
+      const data = insertMonthlyExpenseSchema.parse(req.body);
+      const item = await storage.createMonthlyExpense(data);
+      res.json(item);
+    } catch (error) {
+      console.error('Error creating monthly expense:', error);
+      res.status(500).json({ message: 'Failed to create monthly expense' });
+    }
+  });
+
+  app.patch('/api/monthly-expenses/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const updated = await storage.updateMonthlyExpense(id, req.body);
+      if (!updated) return res.status(404).json({ message: 'Monthly expense not found' });
+      res.json(updated);
+    } catch (error) {
+      console.error('Error updating monthly expense:', error);
+      res.status(500).json({ message: 'Failed to update monthly expense' });
+    }
+  });
+
+  app.delete('/api/monthly-expenses/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteMonthlyExpense(id);
+      res.json({ message: 'Deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting monthly expense:', error);
+      res.status(500).json({ message: 'Failed to delete monthly expense' });
+    }
+  });
+
+  app.post('/api/monthly-expenses/carry-forward', isAuthenticated, requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { month } = req.body;
+      if (!month) return res.status(400).json({ message: 'month required' });
+      const created = await storage.carryExpensesToNextMonth(month);
+      res.json({ count: created.length, items: created });
+    } catch (error) {
+      console.error('Error carrying expenses forward:', error);
+      res.status(500).json({ message: 'Failed to carry expenses forward' });
+    }
+  });
+
   // ==================== INVOICE MANAGEMENT ====================
   
   // Get all invoices

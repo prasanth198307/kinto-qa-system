@@ -3768,6 +3768,38 @@ export const insertSalesOrderItemSchema = createInsertSchema(salesOrderItems).om
 export type InsertSalesOrderItem = z.infer<typeof insertSalesOrderItemSchema>;
 export type SalesOrderItem = typeof salesOrderItems.$inferSelect;
 
+// Monthly Expenses Tracker
+// ============================================================
+export const monthlyExpenses = pgTable("monthly_expenses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 255 }).notNull(),
+  category: varchar("category", { length: 100 }),
+  amount: integer("amount").default(0).notNull(), // paise
+  expenseMonth: varchar("expense_month", { length: 7 }).notNull(), // YYYY-MM
+  dueDate: varchar("due_date", { length: 10 }), // YYYY-MM-DD
+  status: varchar("status", { length: 20 }).default('pending').notNull(), // 'paid' | 'pending'
+  paymentDate: varchar("payment_date", { length: 10 }), // YYYY-MM-DD
+  paymentMode: varchar("payment_mode", { length: 50 }),
+  referenceNumber: varchar("reference_number", { length: 100 }),
+  carryToNextMonth: integer("carry_to_next_month").default(0).notNull(), // 0 | 1
+  notes: varchar("notes", { length: 500 }),
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
+}, (table) => [
+  index("me_month_idx").on(table.expenseMonth),
+  index("me_status_idx").on(table.status),
+]);
+
+export const insertMonthlyExpenseSchema = createInsertSchema(monthlyExpenses).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertMonthlyExpense = z.infer<typeof insertMonthlyExpenseSchema>;
+export type MonthlyExpense = typeof monthlyExpenses.$inferSelect;
+
 // Budget Master - Annual/periodic budgets
 // ============================================================
 export const budgets = pgTable("budgets", {
