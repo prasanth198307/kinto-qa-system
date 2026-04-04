@@ -3801,6 +3801,29 @@ export const insertMonthlyExpenseSchema = createInsertSchema(monthlyExpenses).om
 export type InsertMonthlyExpense = z.infer<typeof insertMonthlyExpenseSchema>;
 export type MonthlyExpense = typeof monthlyExpenses.$inferSelect;
 
+// Monthly Expense Payment Transactions
+export const monthlyExpensePayments = pgTable("monthly_expense_payments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  expenseId: varchar("expense_id").notNull(),
+  amount: integer("amount").notNull().default(0),           // paise
+  paymentDate: varchar("payment_date", { length: 10 }).notNull(), // YYYY-MM-DD
+  paymentMode: varchar("payment_mode", { length: 50 }),
+  paidBy: varchar("paid_by", { length: 150 }),              // person name / company
+  paymentSource: varchar("payment_source", { length: 30 }).notNull().default('company'), // 'company' | 'personal' | 'other'
+  referenceNumber: varchar("reference_number", { length: 100 }),
+  notes: varchar("notes", { length: 500 }),
+  recordStatus: integer("record_status").notNull().default(1),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+});
+
+export const insertMonthlyExpensePaymentSchema = createInsertSchema(monthlyExpensePayments).omit({
+  id: true,
+  recordStatus: true,
+  createdAt: true,
+});
+export type InsertMonthlyExpensePayment = z.infer<typeof insertMonthlyExpensePaymentSchema>;
+export type MonthlyExpensePayment = typeof monthlyExpensePayments.$inferSelect;
+
 // Budget Master - Annual/periodic budgets
 // ============================================================
 export const budgets = pgTable("budgets", {

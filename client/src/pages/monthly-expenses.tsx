@@ -47,6 +47,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Separator } from "@/components/ui/separator";
 import {
   Plus,
   Pencil,
@@ -59,6 +60,9 @@ import {
   IndianRupee,
   Loader2,
   MinusCircle,
+  History,
+  Building2,
+  User,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -79,89 +83,82 @@ type MonthlyExpense = {
   createdAt: string | null;
 };
 
+type ExpensePayment = {
+  id: string;
+  expenseId: string;
+  amount: number;
+  paymentDate: string;
+  paymentMode: string | null;
+  paidBy: string | null;
+  paymentSource: string;
+  referenceNumber: string | null;
+  notes: string | null;
+  createdAt: string | null;
+};
+
 const PAYMENT_MODES = ["Cash", "NEFT", "RTGS", "UPI", "Cheque", "Bank Transfer", "Other"];
+const PAYMENT_SOURCES = [
+  { value: 'company', label: 'Company Account', icon: Building2 },
+  { value: 'personal', label: 'Personal (Reimbursable)', icon: User },
+  { value: 'personal_nonreimb', label: 'Personal (Non-Reimbursable)', icon: User },
+  { value: 'other', label: 'Other', icon: User },
+];
 
 const CATEGORIES = [
-  "Rent",
-  "Electricity",
-  "Water",
-  "Salaries",
-  "Internet",
-  "Phone",
-  "Insurance",
-  "Maintenance",
-  "Raw Materials",
-  "Transport",
-  "Marketing",
-  "Office Supplies",
-  "Professional Fees",
-  "Bank Charges",
-  "Miscellaneous",
+  "Rent", "Electricity", "Water", "Salaries", "Internet", "Phone",
+  "Insurance", "Maintenance", "Raw Materials", "Transport", "Marketing",
+  "Office Supplies", "Professional Fees", "Bank Charges", "Miscellaneous",
 ];
 
 function getCurrentMonth() {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
-
 function formatMonth(ym: string) {
   const [year, month] = ym.split('-').map(Number);
   return format(new Date(year, month - 1, 1), 'MMMM yyyy');
 }
-
 function prevMonth(ym: string) {
   const [year, month] = ym.split('-').map(Number);
   const d = new Date(year, month - 2, 1);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
-
 function nextMonth(ym: string) {
   const [year, month] = ym.split('-').map(Number);
   const d = new Date(year, month, 1);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
-
 function fmtCurrency(paise: number) {
   return `₹${(paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
-
-/** Derive status automatically from paid amount vs total */
 function deriveStatus(totalPaise: number, paidPaise: number): 'pending' | 'partial' | 'paid' {
   if (paidPaise <= 0) return 'pending';
   if (paidPaise >= totalPaise) return 'paid';
   return 'partial';
 }
 
-const emptyForm = {
-  name: '',
-  category: '',
-  amount: '',
-  paidAmount: '',
-  dueDate: '',
-  paymentDate: '',
-  paymentMode: '',
-  referenceNumber: '',
-  carryToNextMonth: false,
-  notes: '',
+const emptyExpenseForm = {
+  name: '', category: '', amount: '', paidAmount: '',
+  dueDate: '', paymentDate: '', paymentMode: '', referenceNumber: '',
+  carryToNextMonth: false, notes: '',
 };
 
-type FormState = typeof emptyForm;
+const emptyPaymentForm = {
+  amount: '', paymentDate: new Date().toISOString().slice(0, 10),
+  paymentMode: '', paidBy: '', paymentSource: 'company', referenceNumber: '', notes: '',
+};
 
 function StatusBadge({ status }: { status: string }) {
-  if (status === 'paid') {
-    return (
-      <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-green-200 dark:border-green-800 gap-1">
-        <CheckCircle2 className="w-3 h-3" /> Paid
-      </Badge>
-    );
-  }
-  if (status === 'partial') {
-    return (
-      <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 border-yellow-200 dark:border-yellow-700 gap-1">
-        <MinusCircle className="w-3 h-3" /> Partial
-      </Badge>
-    );
-  }
+  if (status === 'paid') return (
+    <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-green-200 dark:border-green-800 gap-1">
+      <CheckCircle2 className="w-3 h-3" /> Paid
+    </Badge>
+  );
+  if (status === 'partial') return (
+    <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 border-yellow-200 dark:border-yellow-700 gap-1">
+      <MinusCircle className="w-3 h-3" /> Partial
+    </Badge>
+  );
   return (
     <Badge variant="outline" className="text-orange-600 border-orange-300 dark:text-orange-400 dark:border-orange-700 gap-1">
       <Clock className="w-3 h-3" /> Pending
@@ -169,25 +166,63 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+function SourceBadge({ source }: { source: string }) {
+  if (source === 'company') return (
+    <span className="inline-flex items-center gap-1 text-xs text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded px-1.5 py-0.5">
+      <Building2 className="w-3 h-3" /> Company
+    </span>
+  );
+  if (source === 'personal') return (
+    <span className="inline-flex items-center gap-1 text-xs text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded px-1.5 py-0.5">
+      <User className="w-3 h-3" /> Personal (Reimb.)
+    </span>
+  );
+  if (source === 'personal_nonreimb') return (
+    <span className="inline-flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/20 border border-gray-200 dark:border-gray-700 rounded px-1.5 py-0.5">
+      <User className="w-3 h-3" /> Personal
+    </span>
+  );
+  return <span className="text-xs text-muted-foreground">{source}</span>;
+}
+
 export default function MonthlyExpensesPage() {
   const { toast } = useToast();
   const [activeMonth, setActiveMonth] = useState(getCurrentMonth());
-  const [dialogOpen, setDialogOpen] = useState(false);
+
+  // Expense dialog
+  const [expDialogOpen, setExpDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState<FormState>(emptyForm);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [expForm, setExpForm] = useState(emptyExpenseForm);
+
+  // Payment history dialog
+  const [payDialogOpen, setPayDialogOpen] = useState(false);
+  const [selectedExpense, setSelectedExpense] = useState<MonthlyExpense | null>(null);
+  const [payForm, setPayForm] = useState(emptyPaymentForm);
+
+  // Delete dialogs
+  const [deleteExpId, setDeleteExpId] = useState<string | null>(null);
+  const [deletePayId, setDeletePayId] = useState<string | null>(null);
+
   const [carryDialogOpen, setCarryDialogOpen] = useState(false);
 
   const queryKey = ['/api/monthly-expenses', { month: activeMonth }];
-
   const { data: expenses = [], isLoading } = useQuery<MonthlyExpense[]>({ queryKey });
 
-  // Derived form values for live preview
-  const formTotalPaise = Math.round(parseFloat(form.amount || '0') * 100) || 0;
-  const formPaidPaise = Math.round(parseFloat(form.paidAmount || '0') * 100) || 0;
-  const formBalance = Math.max(0, formTotalPaise - formPaidPaise);
-  const formDerivedStatus = deriveStatus(formTotalPaise, formPaidPaise);
-  const formHasPayment = formPaidPaise > 0;
+  // Payments for selected expense
+  const payQueryKey = selectedExpense ? ['/api/monthly-expenses', selectedExpense.id, 'payments'] : null;
+  const { data: payments = [], isLoading: paymentsLoading } = useQuery<ExpensePayment[]>({
+    queryKey: payQueryKey!,
+    enabled: !!selectedExpense,
+  });
+
+  // Live form values
+  const formTotal = Math.round(parseFloat(expForm.amount || '0') * 100) || 0;
+  const formPaid = Math.round(parseFloat(expForm.paidAmount || '0') * 100) || 0;
+  const formBalance = Math.max(0, formTotal - formPaid);
+  const formStatus = deriveStatus(formTotal, formPaid);
+  const formHasPayment = formPaid > 0;
+
+  const payAmountPaise = Math.round(parseFloat(payForm.amount || '0') * 100) || 0;
 
   const summary = useMemo(() => {
     const totalBudget = expenses.reduce((s, e) => s + e.amount, 0);
@@ -199,136 +234,153 @@ export default function MonthlyExpensesPage() {
     return { totalBudget, totalPaid, balance, carryCount };
   }, [expenses]);
 
-  const createMutation = useMutation({
-    mutationFn: async (body: any) => {
-      const res = await apiRequest('POST', '/api/monthly-expenses', body);
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey });
-      setDialogOpen(false);
-      toast({ title: 'Expense added' });
-    },
+  // ── mutations ──────────────────────────────────────────────────────
+  const createExpMutation = useMutation({
+    mutationFn: async (body: any) => (await apiRequest('POST', '/api/monthly-expenses', body)).json(),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey }); setExpDialogOpen(false); toast({ title: 'Expense added' }); },
     onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
-  const updateMutation = useMutation({
-    mutationFn: async ({ id, body }: { id: string; body: any }) => {
-      const res = await apiRequest('PATCH', `/api/monthly-expenses/${id}`, body);
-      return res.json();
-    },
+  const updateExpMutation = useMutation({
+    mutationFn: async ({ id, body }: { id: string; body: any }) =>
+      (await apiRequest('PATCH', `/api/monthly-expenses/${id}`, body)).json(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
-      setDialogOpen(false);
-      setEditingId(null);
+      setExpDialogOpen(false); setEditingId(null);
       toast({ title: 'Expense updated' });
     },
     onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const res = await apiRequest('DELETE', `/api/monthly-expenses/${id}`);
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey });
-      setDeleteId(null);
-      toast({ title: 'Expense deleted' });
-    },
-    onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
-  });
-
-  const carryMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest('POST', '/api/monthly-expenses/carry-forward', { month: activeMonth });
-      return res.json();
-    },
-    onSuccess: (data: any) => {
-      queryClient.invalidateQueries({ queryKey });
-      setCarryDialogOpen(false);
-      toast({ title: `${data.count} expense(s) carried to ${formatMonth(nextMonth(activeMonth))}` });
-    },
+  const deleteExpMutation = useMutation({
+    mutationFn: async (id: string) => (await apiRequest('DELETE', `/api/monthly-expenses/${id}`)).json(),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey }); setDeleteExpId(null); toast({ title: 'Deleted' }); },
     onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
   const markPaidMutation = useMutation({
     mutationFn: async (expense: MonthlyExpense) => {
-      const today = new Date().toISOString().slice(0, 10);
-      const res = await apiRequest('PATCH', `/api/monthly-expenses/${expense.id}`, {
-        status: 'paid',
-        paidAmount: expense.amount,
-        paymentDate: today,
+      // Add a full-amount payment transaction (uses the payment transaction flow)
+      const res = await apiRequest('POST', `/api/monthly-expenses/${expense.id}/payments`, {
+        amount: expense.amount - (expense.paidAmount || 0),
+        paymentDate: new Date().toISOString().slice(0, 10),
+        paymentSource: 'company',
+        paidBy: 'Company',
       });
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey });
-      toast({ title: 'Marked as fully paid' });
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey }); toast({ title: 'Marked as fully paid' }); },
+    onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  const carryMutation = useMutation({
+    mutationFn: async () => (await apiRequest('POST', '/api/monthly-expenses/carry-forward', { month: activeMonth })).json(),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey }); setCarryDialogOpen(false);
+      toast({ title: `${data.count} expense(s) carried to ${formatMonth(nextMonth(activeMonth))}` });
     },
     onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
+  const addPaymentMutation = useMutation({
+    mutationFn: async ({ expenseId, body }: { expenseId: string; body: any }) =>
+      (await apiRequest('POST', `/api/monthly-expenses/${expenseId}/payments`, body)).json(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey });
+      queryClient.invalidateQueries({ queryKey: payQueryKey! });
+      // Refresh selected expense data
+      if (selectedExpense) {
+        const updated = expenses.find(e => e.id === selectedExpense.id);
+        if (updated) setSelectedExpense(updated);
+      }
+      setPayForm(emptyPaymentForm);
+      toast({ title: 'Payment recorded' });
+    },
+    onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  const deletePaymentMutation = useMutation({
+    mutationFn: async (paymentId: string) =>
+      (await apiRequest('DELETE', `/api/monthly-expense-payments/${paymentId}`)).json(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey });
+      queryClient.invalidateQueries({ queryKey: payQueryKey! });
+      setDeletePayId(null);
+      toast({ title: 'Payment entry removed' });
+    },
+    onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  // ── helpers ────────────────────────────────────────────────────────
   function openAdd() {
     setEditingId(null);
-    setForm({ ...emptyForm, dueDate: `${activeMonth}-01` });
-    setDialogOpen(true);
+    setExpForm({ ...emptyExpenseForm, dueDate: `${activeMonth}-01` });
+    setExpDialogOpen(true);
   }
-
   function openEdit(e: MonthlyExpense) {
     setEditingId(e.id);
-    setForm({
-      name: e.name,
-      category: e.category || '',
+    setExpForm({
+      name: e.name, category: e.category || '',
       amount: ((e.amount || 0) / 100).toString(),
       paidAmount: ((e.paidAmount || 0) / 100 > 0) ? ((e.paidAmount || 0) / 100).toString() : '',
-      dueDate: e.dueDate || '',
-      paymentDate: e.paymentDate || '',
-      paymentMode: e.paymentMode || '',
-      referenceNumber: e.referenceNumber || '',
-      carryToNextMonth: e.carryToNextMonth === 1,
-      notes: e.notes || '',
+      dueDate: e.dueDate || '', paymentDate: e.paymentDate || '',
+      paymentMode: e.paymentMode || '', referenceNumber: e.referenceNumber || '',
+      carryToNextMonth: e.carryToNextMonth === 1, notes: e.notes || '',
     });
-    setDialogOpen(true);
+    setExpDialogOpen(true);
+  }
+  function openPayments(e: MonthlyExpense) {
+    setSelectedExpense(e);
+    setPayForm(emptyPaymentForm);
+    setPayDialogOpen(true);
   }
 
-  function handleSubmit() {
-    if (!form.name.trim()) {
-      toast({ title: 'Expense name is required', variant: 'destructive' });
-      return;
-    }
-    if (formTotalPaise <= 0) {
-      toast({ title: 'Enter a valid total amount', variant: 'destructive' });
-      return;
-    }
-    if (formPaidPaise > formTotalPaise) {
-      toast({ title: 'Paid amount cannot exceed total amount', variant: 'destructive' });
-      return;
-    }
-
+  function handleExpSubmit() {
+    if (!expForm.name.trim()) { toast({ title: 'Name is required', variant: 'destructive' }); return; }
+    if (formTotal <= 0) { toast({ title: 'Enter a valid total amount', variant: 'destructive' }); return; }
+    if (formPaid > formTotal) { toast({ title: 'Paid amount cannot exceed total', variant: 'destructive' }); return; }
     const body = {
-      name: form.name.trim(),
-      category: form.category || null,
-      amount: formTotalPaise,
-      paidAmount: formPaidPaise,
-      expenseMonth: activeMonth,
-      dueDate: form.dueDate || null,
-      status: formDerivedStatus,
-      paymentDate: formHasPayment ? (form.paymentDate || null) : null,
-      paymentMode: formHasPayment ? (form.paymentMode || null) : null,
-      referenceNumber: formHasPayment ? (form.referenceNumber || null) : null,
-      carryToNextMonth: form.carryToNextMonth ? 1 : 0,
-      notes: form.notes || null,
+      name: expForm.name.trim(), category: expForm.category || null,
+      amount: formTotal, paidAmount: formPaid, expenseMonth: activeMonth,
+      dueDate: expForm.dueDate || null, status: formStatus,
+      paymentDate: formHasPayment ? (expForm.paymentDate || null) : null,
+      paymentMode: formHasPayment ? (expForm.paymentMode || null) : null,
+      referenceNumber: formHasPayment ? (expForm.referenceNumber || null) : null,
+      carryToNextMonth: expForm.carryToNextMonth ? 1 : 0,
+      notes: expForm.notes || null,
     };
-
-    if (editingId) {
-      updateMutation.mutate({ id: editingId, body });
-    } else {
-      createMutation.mutate(body);
-    }
+    editingId ? updateExpMutation.mutate({ id: editingId, body }) : createExpMutation.mutate(body);
   }
 
-  const isPending = createMutation.isPending || updateMutation.isPending;
+  function handleAddPayment() {
+    if (!selectedExpense) return;
+    if (payAmountPaise <= 0) { toast({ title: 'Enter a valid amount', variant: 'destructive' }); return; }
+    if (!payForm.paymentDate) { toast({ title: 'Payment date is required', variant: 'destructive' }); return; }
+    const remaining = selectedExpense.amount - (selectedExpense.paidAmount || 0);
+    if (payAmountPaise > remaining) {
+      toast({ title: `Amount cannot exceed balance of ${fmtCurrency(remaining)}`, variant: 'destructive' });
+      return;
+    }
+    addPaymentMutation.mutate({
+      expenseId: selectedExpense.id,
+      body: {
+        amount: payAmountPaise,
+        paymentDate: payForm.paymentDate,
+        paymentMode: payForm.paymentMode || null,
+        paidBy: payForm.paidBy || null,
+        paymentSource: payForm.paymentSource,
+        referenceNumber: payForm.referenceNumber || null,
+        notes: payForm.notes || null,
+      },
+    });
+  }
+
+  // Keep selectedExpense in sync after list refreshes
+  const refreshedSelected = selectedExpense ? expenses.find(e => e.id === selectedExpense.id) : null;
+  const displayExpense = refreshedSelected ?? selectedExpense;
+  const remainingBalance = displayExpense ? Math.max(0, displayExpense.amount - (displayExpense.paidAmount || 0)) : 0;
+
+  const expIsPending = createExpMutation.isPending || updateExpMutation.isPending;
 
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto w-full space-y-5">
@@ -337,7 +389,7 @@ export default function MonthlyExpensesPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Monthly Expenses</h1>
-          <p className="text-sm text-muted-foreground">Track your monthly bills and payments</p>
+          <p className="text-sm text-muted-foreground">Track monthly bills and payment transactions</p>
         </div>
         <Button onClick={openAdd} data-testid="button-add-expense">
           <Plus className="w-4 h-4 mr-1.5" /> Add Expense
@@ -364,44 +416,28 @@ export default function MonthlyExpensesPage() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Card>
-          <CardContent className="pt-4 pb-3 px-4">
-            <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-              <IndianRupee className="w-3 h-3" /> Total Budget
-            </div>
-            <div className="text-lg font-bold">{fmtCurrency(summary.totalBudget)}</div>
-            <div className="text-xs text-muted-foreground">{expenses.length} item(s)</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-3 px-4">
-            <div className="text-xs text-green-600 dark:text-green-400 mb-1 flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3" /> Total Paid
-            </div>
-            <div className="text-lg font-bold text-green-600 dark:text-green-400">{fmtCurrency(summary.totalPaid)}</div>
-            <div className="text-xs text-muted-foreground">{expenses.filter(e => e.status !== 'pending').length} item(s)</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-3 px-4">
-            <div className="text-xs text-orange-600 dark:text-orange-400 mb-1 flex items-center gap-1">
-              <Clock className="w-3 h-3" /> Balance Due
-            </div>
-            <div className="text-lg font-bold text-orange-600 dark:text-orange-400">{fmtCurrency(summary.balance)}</div>
-            <div className="text-xs text-muted-foreground">
-              {expenses.filter(e => e.status === 'pending').length} pending · {expenses.filter(e => e.status === 'partial').length} partial
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-3 px-4">
-            <div className="text-xs text-blue-600 dark:text-blue-400 mb-1 flex items-center gap-1">
-              <ArrowRight className="w-3 h-3" /> Carry Forward
-            </div>
-            <div className="text-lg font-bold text-blue-600 dark:text-blue-400">{summary.carryCount}</div>
-            <div className="text-xs text-muted-foreground">to carry next month</div>
-          </CardContent>
-        </Card>
+        <Card><CardContent className="pt-4 pb-3 px-4">
+          <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1"><IndianRupee className="w-3 h-3" /> Total Budget</div>
+          <div className="text-lg font-bold">{fmtCurrency(summary.totalBudget)}</div>
+          <div className="text-xs text-muted-foreground">{expenses.length} item(s)</div>
+        </CardContent></Card>
+        <Card><CardContent className="pt-4 pb-3 px-4">
+          <div className="text-xs text-green-600 dark:text-green-400 mb-1 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Total Paid</div>
+          <div className="text-lg font-bold text-green-600 dark:text-green-400">{fmtCurrency(summary.totalPaid)}</div>
+          <div className="text-xs text-muted-foreground">{expenses.filter(e => e.status !== 'pending').length} item(s)</div>
+        </CardContent></Card>
+        <Card><CardContent className="pt-4 pb-3 px-4">
+          <div className="text-xs text-orange-600 dark:text-orange-400 mb-1 flex items-center gap-1"><Clock className="w-3 h-3" /> Balance Due</div>
+          <div className="text-lg font-bold text-orange-600 dark:text-orange-400">{fmtCurrency(summary.balance)}</div>
+          <div className="text-xs text-muted-foreground">
+            {expenses.filter(e => e.status === 'pending').length} pending · {expenses.filter(e => e.status === 'partial').length} partial
+          </div>
+        </CardContent></Card>
+        <Card><CardContent className="pt-4 pb-3 px-4">
+          <div className="text-xs text-blue-600 dark:text-blue-400 mb-1 flex items-center gap-1"><ArrowRight className="w-3 h-3" /> Carry Forward</div>
+          <div className="text-lg font-bold text-blue-600 dark:text-blue-400">{summary.carryCount}</div>
+          <div className="text-xs text-muted-foreground">to carry next month</div>
+        </CardContent></Card>
       </div>
 
       {/* Carry Forward Banner */}
@@ -417,7 +453,7 @@ export default function MonthlyExpensesPage() {
         </div>
       )}
 
-      {/* Table */}
+      {/* Expense Table */}
       <Card>
         <CardContent className="p-0">
           {isLoading ? (
@@ -437,13 +473,13 @@ export default function MonthlyExpensesPage() {
                   <TableRow>
                     <TableHead>Expense</TableHead>
                     <TableHead>Category</TableHead>
-                    <TableHead className="text-right">Total Amt</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
                     <TableHead className="text-right">Paid</TableHead>
                     <TableHead className="text-right">Balance</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Due</TableHead>
                     <TableHead className="text-center">Carry?</TableHead>
-                    <TableHead className="w-[90px]"></TableHead>
+                    <TableHead className="w-[110px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -463,24 +499,18 @@ export default function MonthlyExpensesPage() {
                             ? <Badge variant="outline" className="text-xs font-normal">{expense.category}</Badge>
                             : <span className="text-muted-foreground text-xs">—</span>}
                         </TableCell>
-                        <TableCell className="text-right font-mono text-sm">
-                          {fmtCurrency(expense.amount)}
-                        </TableCell>
+                        <TableCell className="text-right font-mono text-sm">{fmtCurrency(expense.amount)}</TableCell>
                         <TableCell className="text-right font-mono text-sm text-green-700 dark:text-green-400">
                           {paid > 0 ? fmtCurrency(paid) : <span className="text-muted-foreground">—</span>}
                         </TableCell>
                         <TableCell className="text-right font-mono text-sm">
                           {balance > 0
-                            ? <span className="text-orange-600 dark:text-orange-400 font-semibold">{fmtCurrency(balance)}</span>
+                            ? <span className="font-semibold text-orange-600 dark:text-orange-400">{fmtCurrency(balance)}</span>
                             : <span className="text-muted-foreground">—</span>}
                         </TableCell>
-                        <TableCell>
-                          <StatusBadge status={expense.status} />
-                        </TableCell>
+                        <TableCell><StatusBadge status={expense.status} /></TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {expense.dueDate
-                            ? format(new Date(expense.dueDate + 'T00:00:00'), 'dd MMM')
-                            : '—'}
+                          {expense.dueDate ? format(new Date(expense.dueDate + 'T00:00:00'), 'dd MMM') : '—'}
                         </TableCell>
                         <TableCell className="text-center text-sm">
                           {(expense.status === 'pending' || expense.status === 'partial') && expense.carryToNextMonth === 1
@@ -489,6 +519,18 @@ export default function MonthlyExpensesPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-0.5">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost" size="icon" className="h-7 w-7"
+                                  onClick={() => openPayments(expense)}
+                                  data-testid={`button-payments-${expense.id}`}
+                                >
+                                  <History className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Payment History / Add Payment</TooltipContent>
+                            </Tooltip>
                             {expense.status !== 'paid' && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -501,16 +543,12 @@ export default function MonthlyExpensesPage() {
                                     <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
                                   </Button>
                                 </TooltipTrigger>
-                                <TooltipContent>Mark as Fully Paid</TooltipContent>
+                                <TooltipContent>Mark as Fully Paid (Company Account)</TooltipContent>
                               </Tooltip>
                             )}
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost" size="icon" className="h-7 w-7"
-                                  onClick={() => openEdit(expense)}
-                                  data-testid={`button-edit-expense-${expense.id}`}
-                                >
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(expense)} data-testid={`button-edit-expense-${expense.id}`}>
                                   <Pencil className="w-3.5 h-3.5" />
                                 </Button>
                               </TooltipTrigger>
@@ -518,11 +556,7 @@ export default function MonthlyExpensesPage() {
                             </Tooltip>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost" size="icon" className="h-7 w-7"
-                                  onClick={() => setDeleteId(expense.id)}
-                                  data-testid={`button-delete-expense-${expense.id}`}
-                                >
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDeleteExpId(expense.id)} data-testid={`button-delete-expense-${expense.id}`}>
                                   <Trash2 className="w-3.5 h-3.5 text-destructive" />
                                 </Button>
                               </TooltipTrigger>
@@ -540,107 +574,158 @@ export default function MonthlyExpensesPage() {
         </CardContent>
       </Card>
 
-      {/* Add / Edit Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={(o) => { if (!o) { setDialogOpen(false); setEditingId(null); } }}>
-        <DialogContent className="max-w-lg">
+      {/* ── Payment History Dialog ── */}
+      <Dialog open={payDialogOpen} onOpenChange={o => { if (!o) { setPayDialogOpen(false); setSelectedExpense(null); } }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingId ? 'Edit Expense' : 'Add Monthly Expense'}</DialogTitle>
-            <DialogDescription>{formatMonth(activeMonth)}</DialogDescription>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="w-4 h-4" /> Payment History
+            </DialogTitle>
+            <DialogDescription>
+              {displayExpense?.name} — {displayExpense ? formatMonth(displayExpense.expenseMonth) : ''}
+            </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-1">
-            {/* Name */}
-            <div className="space-y-1.5">
-              <Label>Expense Name *</Label>
-              <Input
-                placeholder="e.g. Office Rent, Electricity Bill"
-                value={form.name}
-                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                data-testid="input-expense-name"
-              />
-            </div>
-
-            {/* Category */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Category</Label>
-                <Select value={form.category} onValueChange={v => setForm(f => ({ ...f, category: v }))}>
-                  <SelectTrigger data-testid="select-category">
-                    <SelectValue placeholder="Select…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+          {/* Expense summary bar */}
+          {displayExpense && (
+            <div className="grid grid-cols-3 gap-3 rounded-md border bg-muted/30 p-3 text-sm">
+              <div>
+                <div className="text-xs text-muted-foreground mb-0.5">Total Bill</div>
+                <div className="font-semibold font-mono">{fmtCurrency(displayExpense.amount)}</div>
               </div>
-              <div className="space-y-1.5">
-                <Label>Due Date</Label>
-                <Input
-                  type="date"
-                  value={form.dueDate}
-                  onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))}
-                  data-testid="input-due-date"
-                />
+              <div>
+                <div className="text-xs text-muted-foreground mb-0.5">Total Paid</div>
+                <div className="font-semibold font-mono text-green-600 dark:text-green-400">{fmtCurrency(displayExpense.paidAmount || 0)}</div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground mb-0.5">Balance Due</div>
+                <div className="font-semibold font-mono text-orange-600 dark:text-orange-400">{fmtCurrency(remainingBalance)}</div>
               </div>
             </div>
+          )}
 
-            {/* Amount row */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Total Amount (₹) *</Label>
-                <Input
-                  type="number" step="0.01" min="0" placeholder="0.00"
-                  value={form.amount}
-                  onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
-                  data-testid="input-expense-amount"
-                />
+          {/* Payment list */}
+          <div className="space-y-2">
+            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Payment Entries</div>
+            {paymentsLoading ? (
+              <div className="flex items-center gap-2 text-muted-foreground py-4 justify-center text-sm">
+                <Loader2 className="w-4 h-4 animate-spin" /> Loading…
               </div>
-              <div className="space-y-1.5">
-                <Label>Amount Paid (₹)</Label>
-                <Input
-                  type="number" step="0.01" min="0" placeholder="0.00"
-                  value={form.paidAmount}
-                  onChange={e => setForm(f => ({ ...f, paidAmount: e.target.value }))}
-                  data-testid="input-paid-amount"
-                />
+            ) : payments.length === 0 ? (
+              <div className="text-center py-4 text-sm text-muted-foreground border rounded-md">
+                No payment entries yet. Add one below.
               </div>
-            </div>
-
-            {/* Live status preview */}
-            {formTotalPaise > 0 && (
-              <div className="flex items-center justify-between rounded-md border px-3 py-2 bg-muted/40 text-sm">
-                <div className="flex items-center gap-2">
-                  <span className="text-muted-foreground">Status:</span>
-                  <StatusBadge status={formDerivedStatus} />
-                </div>
-                {formBalance > 0 && (
-                  <div className="text-muted-foreground">
-                    Balance: <span className="font-semibold text-orange-600 dark:text-orange-400">{fmtCurrency(formBalance)}</span>
-                  </div>
-                )}
-                {formBalance === 0 && formTotalPaise > 0 && (
-                  <div className="text-green-600 dark:text-green-400 font-medium text-xs">Fully paid</div>
-                )}
+            ) : (
+              <div className="rounded-md border overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Paid By</TableHead>
+                      <TableHead>Source</TableHead>
+                      <TableHead>Mode</TableHead>
+                      <TableHead>Ref</TableHead>
+                      <TableHead className="w-8"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {payments.map(pay => (
+                      <TableRow key={pay.id} data-testid={`row-payment-${pay.id}`}>
+                        <TableCell className="text-sm">
+                          {format(new Date(pay.paymentDate + 'T00:00:00'), 'dd MMM yyyy')}
+                        </TableCell>
+                        <TableCell className="font-mono font-semibold text-green-700 dark:text-green-400 text-sm">
+                          {fmtCurrency(pay.amount)}
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {pay.paidBy || <span className="text-muted-foreground">—</span>}
+                        </TableCell>
+                        <TableCell><SourceBadge source={pay.paymentSource} /></TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{pay.paymentMode || '—'}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{pay.referenceNumber || '—'}</TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost" size="icon" className="h-6 w-6"
+                            onClick={() => setDeletePayId(pay.id)}
+                            data-testid={`button-delete-payment-${pay.id}`}
+                          >
+                            <Trash2 className="w-3 h-3 text-destructive" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
             )}
+          </div>
 
-            {/* Payment details — shown when any amount is paid */}
-            {formHasPayment && (
-              <div className="space-y-3 rounded-md border p-3">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Payment Details</p>
+          {/* Add payment form — only if balance remains */}
+          {displayExpense && remainingBalance > 0 && (
+            <>
+              <Separator />
+              <div className="space-y-3">
+                <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Record New Payment <span className="text-orange-600 dark:text-orange-400">(Balance: {fmtCurrency(remainingBalance)})</span>
+                </div>
+
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label>Payment Date</Label>
+                    <Label>Amount (₹) *</Label>
                     <Input
-                      type="date"
-                      value={form.paymentDate}
-                      onChange={e => setForm(f => ({ ...f, paymentDate: e.target.value }))}
-                      data-testid="input-payment-date"
+                      type="number" step="0.01" min="0"
+                      placeholder={`Max ${fmtCurrency(remainingBalance)}`}
+                      value={payForm.amount}
+                      onChange={e => setPayForm(f => ({ ...f, amount: e.target.value }))}
+                      data-testid="input-payment-amount"
                     />
                   </div>
                   <div className="space-y-1.5">
+                    <Label>Payment Date *</Label>
+                    <Input
+                      type="date"
+                      value={payForm.paymentDate}
+                      onChange={e => setPayForm(f => ({ ...f, paymentDate: e.target.value }))}
+                      data-testid="input-payment-date"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Paid By (Person / Company)</Label>
+                    <Input
+                      placeholder="e.g. Ramesh, Company"
+                      value={payForm.paidBy}
+                      onChange={e => setPayForm(f => ({ ...f, paidBy: e.target.value }))}
+                      data-testid="input-paid-by"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Payment Source *</Label>
+                    <Select value={payForm.paymentSource} onValueChange={v => setPayForm(f => ({ ...f, paymentSource: v }))}>
+                      <SelectTrigger data-testid="select-payment-source">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PAYMENT_SOURCES.map(s => (
+                          <SelectItem key={s.value} value={s.value}>
+                            <div className="flex items-center gap-1.5">
+                              <s.icon className="w-3.5 h-3.5" />
+                              {s.label}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
                     <Label>Payment Mode</Label>
-                    <Select value={form.paymentMode} onValueChange={v => setForm(f => ({ ...f, paymentMode: v }))}>
+                    <Select value={payForm.paymentMode} onValueChange={v => setPayForm(f => ({ ...f, paymentMode: v }))}>
                       <SelectTrigger data-testid="select-payment-mode">
                         <SelectValue placeholder="Select…" />
                       </SelectTrigger>
@@ -649,89 +734,172 @@ export default function MonthlyExpensesPage() {
                       </SelectContent>
                     </Select>
                   </div>
+                  <div className="space-y-1.5">
+                    <Label>Reference / UTR No.</Label>
+                    <Input
+                      placeholder="Optional"
+                      value={payForm.referenceNumber}
+                      onChange={e => setPayForm(f => ({ ...f, referenceNumber: e.target.value }))}
+                      data-testid="input-payment-reference"
+                    />
+                  </div>
                 </div>
+
                 <div className="space-y-1.5">
-                  <Label>Reference / UTR No.</Label>
+                  <Label>Notes</Label>
                   <Input
                     placeholder="Optional"
-                    value={form.referenceNumber}
-                    onChange={e => setForm(f => ({ ...f, referenceNumber: e.target.value }))}
-                    data-testid="input-reference"
+                    value={payForm.notes}
+                    onChange={e => setPayForm(f => ({ ...f, notes: e.target.value }))}
+                    data-testid="input-payment-notes"
                   />
                 </div>
+
+                <Button
+                  onClick={handleAddPayment}
+                  disabled={addPaymentMutation.isPending}
+                  className="w-full"
+                  data-testid="button-add-payment"
+                >
+                  {addPaymentMutation.isPending && <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />}
+                  <Plus className="w-4 h-4 mr-1.5" /> Record Payment
+                </Button>
+              </div>
+            </>
+          )}
+
+          {displayExpense && remainingBalance === 0 && (
+            <div className="flex items-center justify-center gap-2 text-sm text-green-600 dark:text-green-400 py-2 rounded-md bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+              <CheckCircle2 className="w-4 h-4" /> Fully paid — no balance remaining
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Add / Edit Expense Dialog ── */}
+      <Dialog open={expDialogOpen} onOpenChange={o => { if (!o) { setExpDialogOpen(false); setEditingId(null); } }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{editingId ? 'Edit Expense' : 'Add Monthly Expense'}</DialogTitle>
+            <DialogDescription>{formatMonth(activeMonth)}</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-1">
+            <div className="space-y-1.5">
+              <Label>Expense Name *</Label>
+              <Input
+                placeholder="e.g. Office Rent, Electricity Bill"
+                value={expForm.name}
+                onChange={e => setExpForm(f => ({ ...f, name: e.target.value }))}
+                data-testid="input-expense-name"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Category</Label>
+                <Select value={expForm.category} onValueChange={v => setExpForm(f => ({ ...f, category: v }))}>
+                  <SelectTrigger data-testid="select-category"><SelectValue placeholder="Select…" /></SelectTrigger>
+                  <SelectContent>{CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Due Date</Label>
+                <Input type="date" value={expForm.dueDate} onChange={e => setExpForm(f => ({ ...f, dueDate: e.target.value }))} data-testid="input-due-date" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Total Amount (₹) *</Label>
+                <Input type="number" step="0.01" min="0" placeholder="0.00" value={expForm.amount}
+                  onChange={e => setExpForm(f => ({ ...f, amount: e.target.value }))} data-testid="input-expense-amount" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Amount Paid (₹)</Label>
+                <Input type="number" step="0.01" min="0" placeholder="0.00" value={expForm.paidAmount}
+                  onChange={e => setExpForm(f => ({ ...f, paidAmount: e.target.value }))} data-testid="input-paid-amount" />
+                <p className="text-xs text-muted-foreground">Use "Payment History" for multiple payments</p>
+              </div>
+            </div>
+
+            {formTotal > 0 && (
+              <div className="flex items-center justify-between rounded-md border px-3 py-2 bg-muted/40 text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground">Status:</span>
+                  <StatusBadge status={formStatus} />
+                </div>
+                {formBalance > 0 && <div className="text-muted-foreground">Balance: <span className="font-semibold text-orange-600 dark:text-orange-400">{fmtCurrency(formBalance)}</span></div>}
               </div>
             )}
 
-            {/* Carry forward */}
-            {formDerivedStatus !== 'paid' && (
+            {formStatus !== 'paid' && (
               <div className="flex items-center gap-2 rounded-md border px-3 py-2.5">
-                <Checkbox
-                  id="carry-forward"
-                  checked={form.carryToNextMonth}
-                  onCheckedChange={v => setForm(f => ({ ...f, carryToNextMonth: !!v }))}
-                  data-testid="checkbox-carry-forward"
-                />
+                <Checkbox id="carry-forward" checked={expForm.carryToNextMonth}
+                  onCheckedChange={v => setExpForm(f => ({ ...f, carryToNextMonth: !!v }))} data-testid="checkbox-carry-forward" />
                 <label htmlFor="carry-forward" className="text-sm cursor-pointer leading-tight">
                   Carry to next month if still unpaid
-                  <span className="block text-xs text-muted-foreground">
-                    Will appear in {formatMonth(nextMonth(activeMonth))} when you use Carry Forward
-                  </span>
+                  <span className="block text-xs text-muted-foreground">Will appear in {formatMonth(nextMonth(activeMonth))}</span>
                 </label>
               </div>
             )}
 
-            {/* Notes */}
             <div className="space-y-1.5">
               <Label>Notes</Label>
-              <Textarea
-                placeholder="Optional remarks…"
-                value={form.notes}
-                onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-                className="resize-none h-16 text-sm"
-                data-testid="input-notes"
-              />
+              <Textarea placeholder="Optional remarks…" value={expForm.notes}
+                onChange={e => setExpForm(f => ({ ...f, notes: e.target.value }))}
+                className="resize-none h-16 text-sm" data-testid="input-notes" />
             </div>
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSubmit} disabled={isPending} data-testid="button-save-expense">
-              {isPending && <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />}
+            <Button variant="outline" onClick={() => setExpDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleExpSubmit} disabled={expIsPending} data-testid="button-save-expense">
+              {expIsPending && <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />}
               {editingId ? 'Save Changes' : 'Add Expense'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirm */}
-      <AlertDialog open={!!deleteId} onOpenChange={o => { if (!o) setDeleteId(null); }}>
+      {/* Delete Expense */}
+      <AlertDialog open={!!deleteExpId} onOpenChange={o => { if (!o) setDeleteExpId(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Expense?</AlertDialogTitle>
-            <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+            <AlertDialogDescription>This will permanently remove the expense and all its payment records.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => deleteId && deleteMutation.mutate(deleteId)}
-            >
-              Delete
-            </AlertDialogAction>
+            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteExpId && deleteExpMutation.mutate(deleteExpId)}>Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Carry Forward Confirm */}
+      {/* Delete Payment */}
+      <AlertDialog open={!!deletePayId} onOpenChange={o => { if (!o) setDeletePayId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove this payment entry?</AlertDialogTitle>
+            <AlertDialogDescription>The paid amount on the expense will be recalculated automatically.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deletePayId && deletePaymentMutation.mutate(deletePayId)}>Remove</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Carry Forward */}
       <AlertDialog open={carryDialogOpen} onOpenChange={setCarryDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Carry Forward {summary.carryCount} Expense(s)?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will copy all pending/partial carry-flagged expenses from{' '}
-              <strong>{formatMonth(activeMonth)}</strong> into{' '}
-              <strong>{formatMonth(nextMonth(activeMonth))}</strong>.
-              The original entries will remain unchanged.
+              Pending/partial carry-flagged expenses from <strong>{formatMonth(activeMonth)}</strong> will be copied to{' '}
+              <strong>{formatMonth(nextMonth(activeMonth))}</strong>. Only the remaining balance is carried — already-paid amounts stay here.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

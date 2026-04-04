@@ -7101,6 +7101,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Payment transactions for a specific monthly expense
+  app.get('/api/monthly-expenses/:id/payments', isAuthenticated, async (req: any, res) => {
+    try {
+      const payments = await storage.getExpensePayments(req.params.id);
+      res.json(payments);
+    } catch (error) {
+      console.error('Error fetching expense payments:', error);
+      res.status(500).json({ message: 'Failed to fetch payments' });
+    }
+  });
+
+  app.post('/api/monthly-expenses/:id/payments', isAuthenticated, async (req: any, res) => {
+    try {
+      const body = { ...req.body, expenseId: req.params.id };
+      const payment = await storage.addExpensePayment(body);
+      // Return updated expense too so client can refresh
+      const expense = await storage.updateMonthlyExpense(req.params.id, {}); // no-op to fetch latest
+      res.json({ payment, expense });
+    } catch (error) {
+      console.error('Error adding expense payment:', error);
+      res.status(500).json({ message: 'Failed to add payment' });
+    }
+  });
+
+  app.delete('/api/monthly-expense-payments/:paymentId', isAuthenticated, async (req: any, res) => {
+    try {
+      await storage.deleteExpensePayment(req.params.paymentId);
+      res.json({ message: 'Payment deleted' });
+    } catch (error) {
+      console.error('Error deleting expense payment:', error);
+      res.status(500).json({ message: 'Failed to delete payment' });
+    }
+  });
+
   app.post('/api/monthly-expenses/carry-forward', isAuthenticated, requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const { month } = req.body;

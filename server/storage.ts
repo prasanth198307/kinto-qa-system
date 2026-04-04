@@ -231,6 +231,9 @@ import {
   monthlyExpenses,
   type MonthlyExpense,
   type InsertMonthlyExpense,
+  monthlyExpensePayments,
+  type MonthlyExpensePayment,
+  type InsertMonthlyExpensePayment,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, isNotNull, notInArray, inArray, gte, lte, sql, desc, ilike } from "drizzle-orm";
@@ -784,6 +787,11 @@ export interface IStorage {
   updateMonthlyExpense(id: string, data: Partial<InsertMonthlyExpense>): Promise<MonthlyExpense | undefined>;
   deleteMonthlyExpense(id: string): Promise<void>;
   carryExpensesToNextMonth(month: string): Promise<MonthlyExpense[]>;
+
+  // Monthly Expense Payment Transactions
+  addExpensePayment(data: InsertMonthlyExpensePayment): Promise<MonthlyExpensePayment>;
+  getExpensePayments(expenseId: string): Promise<MonthlyExpensePayment[]>;
+  deleteExpensePayment(paymentId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -4865,6 +4873,72 @@ export class DatabaseStorage implements IStorage {
       created.push(newItem);
     }
     return created;
+  }
+
+  // Monthly Expense Payment Transactions
+  async addExpensePayment(data: InsertMonthlyExpensePayment): Promise<MonthlyExpensePayment> {
+    const [payment] = await db.insert(monthlyExpensePayments).values(data).returning();
+
+    // Recalculate paidAmount and status on the parent expense
+    const [sumRow] = await db
+      .select({ total: sql<number>`COALESCE(SUM(amount), 0)` })
+      .from(monthlyExpensePayments)
+      .where(and(eq(monthlyExpensePayments.expenseId, data.expenseId), eq(monthlyExpensePayments.recordStatus, 1)));
+    const totalPaid = Number(sumRow?.total ?? 0);
+
+    const [expense] = await db.select().from(monthlyExpenses).where(eq(monthlyExpenses.id, data.expenseId));
+    if (expense) {
+      let status: string;
+      if (totalPaid <= 0) status = 'pending';
+      else if (totalPaid >= expense.amount) status = 'paid';
+      else status = 'partial';
+
+      await db
+        .update(monthlyExpenses)
+        .set({ paidAmount: totalPaid, status, updatedAt: new Date().toISOString() })
+        .where(eq(monthlyExpenses.id, data.expenseId));
+    }
+
+    return payment;
+  }
+
+  async getExpensePayments(expenseId: string): Promise<MonthlyExpensePayment[]> {
+    return db
+      .select()
+      .from(monthlyExpensePayments)
+      .where(and(eq(monthlyExpensePayments.expenseId, expenseId), eq(monthlyExpensePayments.recordStatus, 1)))
+      .orderBy(monthlyExpensePayments.paymentDate);
+  }
+
+  async deleteExpensePayment(paymentId: string): Promise<void> {
+    // Get the payment first to know expenseId
+    const [payment] = await db.select().from(monthlyExpensePayments).where(eq(monthlyExpensePayments.id, paymentId));
+    if (!payment) return;
+
+    await db
+      .update(monthlyExpensePayments)
+      .set({ recordStatus: 0 })
+      .where(eq(monthlyExpensePayments.id, paymentId));
+
+    // Recalculate paidAmount and status on parent expense
+    const [sumRow] = await db
+      .select({ total: sql<number>`COALESCE(SUM(amount), 0)` })
+      .from(monthlyExpensePayments)
+      .where(and(eq(monthlyExpensePayments.expenseId, payment.expenseId), eq(monthlyExpensePayments.recordStatus, 1)));
+    const totalPaid = Number(sumRow?.total ?? 0);
+
+    const [expense] = await db.select().from(monthlyExpenses).where(eq(monthlyExpenses.id, payment.expenseId));
+    if (expense) {
+      let status: string;
+      if (totalPaid <= 0) status = 'pending';
+      else if (totalPaid >= expense.amount) status = 'paid';
+      else status = 'partial';
+
+      await db
+        .update(monthlyExpenses)
+        .set({ paidAmount: totalPaid, status, updatedAt: new Date().toISOString() })
+        .where(eq(monthlyExpenses.id, payment.expenseId));
+    }
   }
 }
 
