@@ -562,6 +562,22 @@ export default function SalesOrderDetail({ showHeader = true }: { showHeader?: b
     }
 
     const items = salesOrder.items || [];
+
+    // Compute per-item discount amounts in paise
+    // discount stored as value×100 (paise). '%' mode: gross×discount/10000; '₹' mode: discount×qty
+    const itemsWithDiscount = items.map((item: any) => {
+      const grossPaise = (item.unitPrice || 0) * (item.quantity || 0);
+      const discountVal = item.discount || 0;
+      const discountMode = item.discountMode || '%';
+      const discountPaise = discountMode === '%'
+        ? Math.round(grossPaise * discountVal / 10000)
+        : discountVal * (item.quantity || 0);
+      return { ...item, grossPaise, discountPaise };
+    });
+
+    const hasDiscount = itemsWithDiscount.some((item: any) => item.discountPaise > 0);
+    const grossTotal = itemsWithDiscount.reduce((acc: number, item: any) => acc + item.grossPaise, 0);
+    const totalDiscountAmount = itemsWithDiscount.reduce((acc: number, item: any) => acc + item.discountPaise, 0);
     const subtotal = items.reduce((acc: number, item: any) => acc + (item.taxableAmount || 0), 0);
     const totalTax = salesOrder.totalAmount - subtotal;
 
@@ -689,13 +705,15 @@ export default function SalesOrderDetail({ showHeader = true }: { showHeader?: b
                       <TableHead>Product</TableHead>
                       <TableHead className="text-right">Qty</TableHead>
                       <TableHead className="text-right">Rate</TableHead>
+                      {hasDiscount && <TableHead className="text-right">Gross</TableHead>}
+                      {hasDiscount && <TableHead className="text-right">Discount</TableHead>}
                       <TableHead className="text-right">Taxable</TableHead>
                       <TableHead className="text-right">Tax%</TableHead>
                       <TableHead className="text-right">Total</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {items.map((item: any, idx: number) => (
+                    {itemsWithDiscount.map((item: any, idx: number) => (
                       <TableRow key={item.id || idx}>
                         <TableCell>
                           <div className="font-medium">{item.productName || "Unknown Product"}</div>
@@ -704,6 +722,27 @@ export default function SalesOrderDetail({ showHeader = true }: { showHeader?: b
                         </TableCell>
                         <TableCell className="text-right">{item.quantity}</TableCell>
                         <TableCell className="text-right font-mono">{formatCurrency(item.unitPrice)}</TableCell>
+                        {hasDiscount && (
+                          <TableCell className="text-right font-mono text-muted-foreground">
+                            {formatCurrency(item.grossPaise)}
+                          </TableCell>
+                        )}
+                        {hasDiscount && (
+                          <TableCell className="text-right font-mono text-red-600 dark:text-red-400">
+                            {item.discountPaise > 0 ? (
+                              <span>
+                                -{formatCurrency(item.discountPaise)}
+                                <span className="text-[10px] text-muted-foreground ml-1">
+                                  ({item.discountMode === '%'
+                                    ? `${(item.discount / 100).toFixed(0)}%`
+                                    : `₹${(item.discount / 100).toFixed(0)}/cs`})
+                                </span>
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                        )}
                         <TableCell className="text-right font-mono">{formatCurrency(item.taxableAmount)}</TableCell>
                         <TableCell className="text-right text-xs">
                           {Number(item.igstRate) > 0 ? (
@@ -721,16 +760,28 @@ export default function SalesOrderDetail({ showHeader = true }: { showHeader?: b
                   </TableBody>
                 </Table>
                 <div className="p-6 flex flex-col items-end gap-2 bg-muted/20">
-                  <div className="flex justify-between w-full max-w-[260px] text-sm">
+                  {hasDiscount && (
+                    <div className="flex justify-between w-full max-w-[280px] text-sm">
+                      <span className="text-muted-foreground">Gross Total:</span>
+                      <span className="font-mono text-muted-foreground">{formatCurrency(grossTotal)}</span>
+                    </div>
+                  )}
+                  {hasDiscount && (
+                    <div className="flex justify-between w-full max-w-[280px] text-sm">
+                      <span className="text-red-600 dark:text-red-400">Discount:</span>
+                      <span className="font-mono text-red-600 dark:text-red-400">- {formatCurrency(totalDiscountAmount)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between w-full max-w-[280px] text-sm">
                     <span className="text-muted-foreground">Subtotal:</span>
                     <span className="font-mono">{formatCurrency(subtotal)}</span>
                   </div>
-                  <div className="flex justify-between w-full max-w-[260px] text-sm">
+                  <div className="flex justify-between w-full max-w-[280px] text-sm">
                     <span className="text-muted-foreground">Total Tax:</span>
                     <span className="font-mono">{formatCurrency(totalTax >= 0 ? totalTax : 0)}</span>
                   </div>
-                  <Separator className="w-full max-w-[260px] my-1" />
-                  <div className="flex justify-between w-full max-w-[260px] text-lg font-bold">
+                  <Separator className="w-full max-w-[280px] my-1" />
+                  <div className="flex justify-between w-full max-w-[280px] text-lg font-bold">
                     <span>Grand Total:</span>
                     <span className="font-mono text-primary">{formatCurrency(salesOrder.totalAmount || 0)}</span>
                   </div>
