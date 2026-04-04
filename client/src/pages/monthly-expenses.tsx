@@ -63,6 +63,7 @@ import {
   History,
   Building2,
   User,
+  FileDown,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -204,6 +205,28 @@ export default function MonthlyExpensesPage() {
   const [deletePayId, setDeletePayId] = useState<string | null>(null);
 
   const [carryDialogOpen, setCarryDialogOpen] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    try {
+      const res = await fetch(`/api/monthly-expenses/export?month=${activeMonth}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Export failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `monthly_expenses_${activeMonth}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast({ title: 'Export failed', description: 'Could not download the Excel file.', variant: 'destructive' });
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const queryKey = ['/api/monthly-expenses', { month: activeMonth }];
   const { data: expenses = [], isLoading } = useQuery<MonthlyExpense[]>({ queryKey });
@@ -391,9 +414,15 @@ export default function MonthlyExpensesPage() {
           <h1 className="text-2xl font-bold">Monthly Expenses</h1>
           <p className="text-sm text-muted-foreground">Track monthly bills and payment transactions</p>
         </div>
-        <Button onClick={openAdd} data-testid="button-add-expense">
-          <Plus className="w-4 h-4 mr-1.5" /> Add Expense
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={handleDownload} disabled={downloading} data-testid="button-download-excel">
+            {downloading ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <FileDown className="w-4 h-4 mr-1.5" />}
+            Download Excel
+          </Button>
+          <Button onClick={openAdd} data-testid="button-add-expense">
+            <Plus className="w-4 h-4 mr-1.5" /> Add Expense
+          </Button>
+        </div>
       </div>
 
       {/* Month Navigator */}

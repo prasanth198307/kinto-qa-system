@@ -10,6 +10,7 @@ import path from "path";
 import fs from "fs";
 import multer from "multer";
 import XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import { db } from "./db";
 import { whatsappService } from "./whatsappService";
 import { whatsappWebhookRouter } from "./whatsappWebhook";
@@ -7053,6 +7054,266 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ==================== MONTHLY EXPENSES ====================
+
+  // Excel export – must be before the /:id routes
+  app.get('/api/monthly-expenses/export', isAuthenticated, async (req: any, res) => {
+    try {
+      const { month } = req.query as { month?: string };
+      if (!month || !/^\d{4}-\d{2}$/.test(month)) {
+        return res.status(400).json({ message: 'month parameter required (YYYY-MM)' });
+      }
+
+      // Fetch expenses via storage (uses Drizzle, respects record_status)
+      const expRows = await storage.getMonthlyExpenses(month);
+
+      // Fetch payments for each expense
+      const payMap: Record<string, any[]> = {};
+      for (const exp of expRows) {
+        const pays = await storage.getExpensePayments(exp.id);
+        payMap[exp.id] = pays;
+      }
+
+      // Helpers
+      const fmtAmt = (paise: number) => paise ? (paise / 100).toFixed(2) : '0.00';
+      const fmtDate = (d: string | null) => d ?? '';
+      const sourceLabel = (s: string) => {
+        if (s === 'company') return 'Company Account';
+        if (s === 'personal') return 'Personal (Reimb.)';
+        if (s === 'personal_nonreimb') return 'Personal (Non-Reimb.)';
+        return s ?? '';
+      };
+      const monthName = new Date(`${month}-01`).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+
+      // Build workbook
+      const wb = new ExcelJS.Workbook();
+      wb.creator = 'Kinto Smart Ops';
+      wb.created = new Date();
+
+      const ws = wb.addWorksheet('Monthly Expenses', {
+        pageSetup: {
+          paperSize: 9,          // A4
+          orientation: 'landscape',
+          margins: { left: 0.5, right: 0.5, top: 0.75, bottom: 0.75, header: 0.3, footer: 0.3 },
+        },
+      });
+
+      // Column definitions (17 cols)
+      ws.columns = [
+        { key: 'sr',       width: 5  },
+        { key: 'name',     width: 26 },
+        { key: 'category', width: 16 },
+        { key: 'bill',     width: 13 },
+        { key: 'due',      width: 12 },
+        { key: 'status',   width: 10 },
+        { key: 'paid',     width: 13 },
+        { key: 'balance',  width: 13 },
+        { key: 'carry',    width: 10 },
+        { key: 'notes',    width: 20 },
+        { key: 'payno',    width: 6  },
+        { key: 'paydate',  width: 12 },
+        { key: 'payamt',   width: 13 },
+        { key: 'paidby',   width: 17 },
+        { key: 'source',   width: 20 },
+        { key: 'mode',     width: 12 },
+        { key: 'ref',      width: 16 },
+      ];
+
+      // ── Row 1: Title ─────────────────────────────────────────────
+      const titleRow = ws.addRow([`Monthly Expenses — ${monthName}`]);
+      ws.mergeCells(`A${titleRow.number}:Q${titleRow.number}`);
+      titleRow.getCell(1).style = {
+        font: { bold: true, size: 14, color: { argb: 'FFFFFFFF' } },
+        fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A5F' } },
+        alignment: { horizontal: 'center', vertical: 'middle' },
+      };
+      titleRow.height = 28;
+
+      // ── Row 2: Generated date ─────────────────────────────────────
+      const genRow = ws.addRow([`Generated: ${new Date().toLocaleString('en-IN')}`]);
+      ws.mergeCells(`A${genRow.number}:Q${genRow.number}`);
+      genRow.getCell(1).style = {
+        font: { italic: true, size: 9, color: { argb: 'FF666666' } },
+        fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF5F5F5' } },
+        alignment: { horizontal: 'right' },
+      };
+      genRow.height = 16;
+
+      // ── Row 3: blank ─────────────────────────────────────────────
+      ws.addRow([]);
+
+      // ── Row 4: Section labels (Expense Info | Payment Details) ───
+      const secRow = ws.addRow([
+        'Expense Information', '', '', '', '', '', '', '', '', '',
+        'Payment Details', '', '', '', '', '', '',
+      ]);
+      ws.mergeCells(`A${secRow.number}:J${secRow.number}`);
+      ws.mergeCells(`K${secRow.number}:Q${secRow.number}`);
+      const expSecStyle: ExcelJS.Style = {
+        font: { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 },
+        fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2563EB' } },
+        alignment: { horizontal: 'center', vertical: 'middle' },
+      };
+      const paySecStyle: ExcelJS.Style = {
+        font: { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 },
+        fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF16A34A' } },
+        alignment: { horizontal: 'center', vertical: 'middle' },
+      };
+      secRow.getCell(1).style = expSecStyle;
+      secRow.getCell(11).style = paySecStyle;
+      secRow.height = 18;
+
+      // ── Row 5: Column headers ─────────────────────────────────────
+      const hdrs = [
+        'Sr', 'Expense Name', 'Category', 'Bill Amt (₹)', 'Due Date',
+        'Status', 'Paid (₹)', 'Balance (₹)', 'Carry Fwd', 'Notes',
+        '#', 'Pay Date', 'Pay Amt (₹)', 'Paid By', 'Source', 'Mode', 'Reference',
+      ];
+      const hdrRow = ws.addRow(hdrs);
+      hdrRow.eachCell(cell => {
+        cell.style = {
+          font: { bold: true, size: 9, color: { argb: 'FF1E293B' } },
+          fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } },
+          alignment: { horizontal: 'center', vertical: 'middle', wrapText: true },
+          border: {
+            top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+            bottom: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+            left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+            right: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+          },
+        };
+      });
+      hdrRow.height = 22;
+
+      // ── Data rows ─────────────────────────────────────────────────
+      const borderThin: Partial<ExcelJS.Borders> = {
+        top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+        bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+        left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+        right: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+      };
+
+      let grandTotalBill = 0;
+      let grandTotalPaid = 0;
+      let grandTotalBalance = 0;
+      let grandTotalPayAmt = 0;
+      let sr = 0;
+
+      for (const exp of expRows) {
+        sr++;
+        const pays = payMap[exp.id] ?? [];
+        const bill = exp.amount ?? 0;
+        const paidAmt = exp.paid_amount ?? 0;
+        const balance = Math.max(0, bill - paidAmt);
+        grandTotalBill += bill;
+        grandTotalPaid += paidAmt;
+        grandTotalBalance += balance;
+
+        const rowCount = pays.length > 0 ? pays.length : 1;
+        const startRow = ws.rowCount + 1;
+
+        // One data row per payment (or one blank payment row if none)
+        const payList = pays.length > 0 ? pays : [null];
+        let payIdx = 0;
+        for (const pay of payList) {
+          payIdx++;
+          const rowData = [
+            sr,
+            exp.name,
+            exp.category ?? '',
+            parseFloat(fmtAmt(bill)),
+            fmtDate(exp.due_date),
+            (exp.status ?? 'pending').toUpperCase(),
+            parseFloat(fmtAmt(paidAmt)),
+            parseFloat(fmtAmt(balance)),
+            exp.carry_to_next_month === 1 ? 'Yes' : 'No',
+            exp.notes ?? '',
+            pay ? payIdx : '',
+            pay ? fmtDate(pay.payment_date) : '',
+            pay ? parseFloat(fmtAmt(pay.amount)) : '',
+            pay ? (pay.paid_by ?? '') : '',
+            pay ? sourceLabel(pay.payment_source) : '',
+            pay ? (pay.payment_mode ?? '') : '',
+            pay ? (pay.reference_number ?? '') : '',
+          ];
+          if (pay) grandTotalPayAmt += pay.amount ?? 0;
+
+          const dataRow = ws.addRow(rowData);
+          dataRow.height = 16;
+
+          const isEven = sr % 2 === 0;
+          const rowBg = isEven ? 'FFF8FAFC' : 'FFFFFFFF';
+
+          dataRow.eachCell({ includeEmpty: true }, (cell, colNum) => {
+            const isPayCol = colNum >= 11;
+            cell.style = {
+              font: { size: 9 },
+              fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: isPayCol && pay ? 'FFF0FDF4' : rowBg } },
+              alignment: {
+                horizontal: colNum <= 2 || colNum >= 11 ? 'left' : 'center',
+                vertical: 'middle',
+                wrapText: colNum === 2 || colNum === 10,
+              },
+              border: borderThin,
+              numFmt: [4, 7, 8, 13].includes(colNum) ? '#,##0.00' : undefined,
+            };
+          });
+
+          // Status colouring
+          const statusCell = dataRow.getCell(6);
+          const st = (exp.status ?? 'pending').toLowerCase();
+          statusCell.style = {
+            ...statusCell.style,
+            font: {
+              bold: true, size: 9,
+              color: { argb: st === 'paid' ? 'FF15803D' : st === 'partial' ? 'FFD97706' : 'FFDC2626' },
+            },
+          };
+        }
+
+        // Merge expense-info columns if multiple payment rows
+        if (rowCount > 1) {
+          const endRow = startRow + rowCount - 1;
+          for (let c = 1; c <= 10; c++) {
+            const colLetter = String.fromCharCode(64 + c);
+            ws.mergeCells(`${colLetter}${startRow}:${colLetter}${endRow}`);
+            // Re-apply vertical alignment for merged cells
+            ws.getCell(`${colLetter}${startRow}`).alignment = { vertical: 'middle', wrapText: c === 2 || c === 10 };
+          }
+        }
+      }
+
+      // ── Totals row ────────────────────────────────────────────────
+      ws.addRow([]); // spacer
+      const totRow = ws.addRow([
+        '', 'TOTAL', '',
+        parseFloat(fmtAmt(grandTotalBill)), '',
+        '', parseFloat(fmtAmt(grandTotalPaid)), parseFloat(fmtAmt(grandTotalBalance)),
+        '', '',
+        '', '', parseFloat(fmtAmt(grandTotalPayAmt)), '', '', '', '',
+      ]);
+      totRow.height = 18;
+      totRow.eachCell({ includeEmpty: true }, (cell, colNum) => {
+        cell.style = {
+          font: { bold: true, size: 9, color: { argb: 'FF1E3A5F' } },
+          fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF9C3' } },
+          alignment: { horizontal: 'center', vertical: 'middle' },
+          border: borderThin,
+          numFmt: [4, 7, 8, 13].includes(colNum) ? '#,##0.00' : undefined,
+        };
+      });
+      totRow.getCell(2).alignment = { horizontal: 'right', vertical: 'middle' };
+
+      // Send
+      const safeMonth = month.replace('-', '_');
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename="monthly_expenses_${safeMonth}.xlsx"`);
+      await wb.xlsx.write(res);
+      res.end();
+    } catch (error) {
+      console.error('Error exporting monthly expenses:', error);
+      res.status(500).json({ message: 'Failed to export' });
+    }
+  });
 
   app.get('/api/monthly-expenses', isAuthenticated, async (req: any, res) => {
     try {
