@@ -16,6 +16,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import {
   Dialog,
   DialogContent,
@@ -66,6 +68,8 @@ import {
   FileDown,
   RefreshCw,
   Pin,
+  Check,
+  ChevronsUpDown,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -241,9 +245,13 @@ export default function MonthlyExpensesPage() {
   const queryKey = ['/api/monthly-expenses', { month: activeMonth }];
   const { data: expenses = [], isLoading } = useQuery<MonthlyExpense[]>({ queryKey });
 
-  const { data: expenseCategories = [] } = useQuery<{ id: string; name: string }[]>({
+  const { data: expenseCategories = [], refetch: refetchCategories } = useQuery<{ id: string; name: string }[]>({
     queryKey: ['/api/expense-categories'],
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
+
+  const [catOpen, setCatOpen] = useState(false);
 
   const payQueryKey = selectedExpense ? ['/api/monthly-expenses', selectedExpense.id, 'payments'] : null;
   const { data: payments = [], isLoading: paymentsLoading } = useQuery<ExpensePayment[]>({
@@ -923,16 +931,50 @@ export default function MonthlyExpensesPage() {
                     Manage categories
                   </a>
                 </div>
-                <Select value={expForm.category} onValueChange={v => setExpForm(f => ({ ...f, category: v }))}>
-                  <SelectTrigger data-testid="select-category"><SelectValue placeholder="Select…" /></SelectTrigger>
-                  <SelectContent>
-                    {expenseCategories.length === 0 ? (
-                      <SelectItem value="_none" disabled>No categories — add via Manage categories</SelectItem>
-                    ) : (
-                      expenseCategories.map(c => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)
-                    )}
-                  </SelectContent>
-                </Select>
+                <Popover open={catOpen} onOpenChange={setCatOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      data-testid="select-category"
+                      className="w-full justify-between font-normal"
+                      onClick={() => { refetchCategories(); setCatOpen(o => !o); }}
+                    >
+                      <span className={expForm.category ? '' : 'text-muted-foreground'}>
+                        {expForm.category || 'Select category…'}
+                      </span>
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[220px] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search categories…" />
+                      <CommandList>
+                        <CommandEmpty>
+                          No match.{' '}
+                          <a href="/expense-categories" target="_blank" rel="noopener noreferrer" className="underline text-primary">
+                            Add category
+                          </a>
+                        </CommandEmpty>
+                        <CommandGroup>
+                          {expenseCategories.map(c => (
+                            <CommandItem
+                              key={c.id}
+                              value={c.name}
+                              onSelect={() => {
+                                setExpForm(f => ({ ...f, category: c.name }));
+                                setCatOpen(false);
+                              }}
+                            >
+                              <Check className={`mr-2 h-4 w-4 ${expForm.category === c.name ? 'opacity-100' : 'opacity-0'}`} />
+                              {c.name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
               <div className="space-y-1.5">
                 <Label>Due Date</Label>
