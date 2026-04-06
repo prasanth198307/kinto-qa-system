@@ -3783,6 +3783,8 @@ export const monthlyExpenses = pgTable("monthly_expenses", {
   paymentMode: varchar("payment_mode", { length: 50 }),
   referenceNumber: varchar("reference_number", { length: 100 }),
   carryToNextMonth: integer("carry_to_next_month").default(0).notNull(), // 0 | 1
+  expenseType: varchar("expense_type", { length: 20 }).default('fixed').notNull(), // 'fixed' | 'recurring'
+  baseAmount: integer("base_amount"), // paise — standard monthly amount for recurring (null for fixed)
   notes: varchar("notes", { length: 500 }),
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),

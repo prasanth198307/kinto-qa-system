@@ -64,6 +64,8 @@ import {
   Building2,
   User,
   FileDown,
+  RefreshCw,
+  Pin,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -80,6 +82,8 @@ type MonthlyExpense = {
   paymentMode: string | null;
   referenceNumber: string | null;
   carryToNextMonth: number;
+  expenseType: string; // 'fixed' | 'recurring'
+  baseAmount: number | null;
   notes: string | null;
   createdAt: string | null;
 };
@@ -142,6 +146,7 @@ const emptyExpenseForm = {
   name: '', category: '', amount: '', paidAmount: '',
   dueDate: '', paymentDate: '', paymentMode: '', referenceNumber: '',
   carryToNextMonth: false, notes: '',
+  expenseType: 'fixed' as 'fixed' | 'recurring',
 };
 
 const emptyPaymentForm = {
@@ -163,6 +168,19 @@ function StatusBadge({ status }: { status: string }) {
   return (
     <Badge variant="outline" className="text-orange-600 border-orange-300 dark:text-orange-400 dark:border-orange-700 gap-1">
       <Clock className="w-3 h-3" /> Pending
+    </Badge>
+  );
+}
+
+function TypeBadge({ type }: { type: string }) {
+  if (type === 'recurring') return (
+    <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 border-purple-200 dark:border-purple-800 gap-1 text-xs">
+      <RefreshCw className="w-3 h-3" /> Recurring
+    </Badge>
+  );
+  return (
+    <Badge variant="outline" className="text-slate-600 border-slate-300 dark:text-slate-400 dark:border-slate-600 gap-1 text-xs">
+      <Pin className="w-3 h-3" /> Fixed
     </Badge>
   );
 }
@@ -190,17 +208,14 @@ export default function MonthlyExpensesPage() {
   const { toast } = useToast();
   const [activeMonth, setActiveMonth] = useState(getCurrentMonth());
 
-  // Expense dialog
   const [expDialogOpen, setExpDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [expForm, setExpForm] = useState(emptyExpenseForm);
 
-  // Payment history dialog
   const [payDialogOpen, setPayDialogOpen] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState<MonthlyExpense | null>(null);
   const [payForm, setPayForm] = useState(emptyPaymentForm);
 
-  // Delete dialogs
   const [deleteExpId, setDeleteExpId] = useState<string | null>(null);
   const [deletePayId, setDeletePayId] = useState<string | null>(null);
 
@@ -231,19 +246,18 @@ export default function MonthlyExpensesPage() {
   const queryKey = ['/api/monthly-expenses', { month: activeMonth }];
   const { data: expenses = [], isLoading } = useQuery<MonthlyExpense[]>({ queryKey });
 
-  // Payments for selected expense
   const payQueryKey = selectedExpense ? ['/api/monthly-expenses', selectedExpense.id, 'payments'] : null;
   const { data: payments = [], isLoading: paymentsLoading } = useQuery<ExpensePayment[]>({
     queryKey: payQueryKey!,
     enabled: !!selectedExpense,
   });
 
-  // Live form values
   const formTotal = Math.round(parseFloat(expForm.amount || '0') * 100) || 0;
   const formPaid = Math.round(parseFloat(expForm.paidAmount || '0') * 100) || 0;
   const formBalance = Math.max(0, formTotal - formPaid);
   const formStatus = deriveStatus(formTotal, formPaid);
   const formHasPayment = formPaid > 0;
+  const isRecurring = expForm.expenseType === 'recurring';
 
   const payAmountPaise = Math.round(parseFloat(payForm.amount || '0') * 100) || 0;
 
@@ -251,13 +265,13 @@ export default function MonthlyExpensesPage() {
     const totalBudget = expenses.reduce((s, e) => s + e.amount, 0);
     const totalPaid = expenses.reduce((s, e) => s + (e.paidAmount || 0), 0);
     const balance = totalBudget - totalPaid;
+    const recurringCount = expenses.filter(e => e.expenseType === 'recurring').length;
     const carryCount = expenses.filter(
-      e => (e.status === 'pending' || e.status === 'partial') && e.carryToNextMonth === 1
+      e => e.expenseType === 'recurring' || ((e.status === 'pending' || e.status === 'partial') && e.carryToNextMonth === 1)
     ).length;
-    return { totalBudget, totalPaid, balance, carryCount };
+    return { totalBudget, totalPaid, balance, recurringCount, carryCount };
   }, [expenses]);
 
-  // ── mutations ──────────────────────────────────────────────────────
   const createExpMutation = useMutation({
     mutationFn: async (body: any) => (await apiRequest('POST', '/api/monthly-expenses', body)).json(),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey }); setExpDialogOpen(false); toast({ title: 'Expense added' }); },
@@ -283,7 +297,6 @@ export default function MonthlyExpensesPage() {
 
   const markPaidMutation = useMutation({
     mutationFn: async (expense: MonthlyExpense) => {
-      // Add a full-amount payment transaction (uses the payment transaction flow)
       const res = await apiRequest('POST', `/api/monthly-expenses/${expense.id}/payments`, {
         amount: expense.amount - (expense.paidAmount || 0),
         paymentDate: new Date().toISOString().slice(0, 10),
@@ -300,7 +313,10 @@ export default function MonthlyExpensesPage() {
     mutationFn: async () => (await apiRequest('POST', '/api/monthly-expenses/carry-forward', { month: activeMonth })).json(),
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey }); setCarryDialogOpen(false);
-      toast({ title: `${data.count} expense(s) carried to ${formatMonth(nextMonth(activeMonth))}` });
+      const parts: string[] = [];
+      if (data.recurringCount > 0) parts.push(`${data.recurringCount} recurring`);
+      if (data.fixedCount > 0) parts.push(`${data.fixedCount} fixed carry`);
+      toast({ title: `${data.count} expense(s) generated for ${formatMonth(nextMonth(activeMonth))}`, description: parts.join(', ') });
     },
     onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
@@ -311,7 +327,6 @@ export default function MonthlyExpensesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
       queryClient.invalidateQueries({ queryKey: payQueryKey! });
-      // Refresh selected expense data
       if (selectedExpense) {
         const updated = expenses.find(e => e.id === selectedExpense.id);
         if (updated) setSelectedExpense(updated);
@@ -334,7 +349,6 @@ export default function MonthlyExpensesPage() {
     onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
-  // ── helpers ────────────────────────────────────────────────────────
   function openAdd() {
     setEditingId(null);
     setExpForm({ ...emptyExpenseForm, dueDate: `${activeMonth}-01` });
@@ -348,7 +362,9 @@ export default function MonthlyExpensesPage() {
       paidAmount: ((e.paidAmount || 0) / 100 > 0) ? ((e.paidAmount || 0) / 100).toString() : '',
       dueDate: e.dueDate || '', paymentDate: e.paymentDate || '',
       paymentMode: e.paymentMode || '', referenceNumber: e.referenceNumber || '',
-      carryToNextMonth: e.carryToNextMonth === 1, notes: e.notes || '',
+      carryToNextMonth: e.carryToNextMonth === 1,
+      notes: e.notes || '',
+      expenseType: (e.expenseType as 'fixed' | 'recurring') || 'fixed',
     });
     setExpDialogOpen(true);
   }
@@ -369,7 +385,9 @@ export default function MonthlyExpensesPage() {
       paymentDate: formHasPayment ? (expForm.paymentDate || null) : null,
       paymentMode: formHasPayment ? (expForm.paymentMode || null) : null,
       referenceNumber: formHasPayment ? (expForm.referenceNumber || null) : null,
-      carryToNextMonth: expForm.carryToNextMonth ? 1 : 0,
+      carryToNextMonth: isRecurring ? 1 : (expForm.carryToNextMonth ? 1 : 0),
+      expenseType: expForm.expenseType,
+      baseAmount: isRecurring ? formTotal : null,
       notes: expForm.notes || null,
     };
     editingId ? updateExpMutation.mutate({ id: editingId, body }) : createExpMutation.mutate(body);
@@ -398,7 +416,6 @@ export default function MonthlyExpensesPage() {
     });
   }
 
-  // Keep selectedExpense in sync after list refreshes
   const refreshedSelected = selectedExpense ? expenses.find(e => e.id === selectedExpense.id) : null;
   const displayExpense = refreshedSelected ?? selectedExpense;
   const remainingBalance = displayExpense ? Math.max(0, displayExpense.amount - (displayExpense.paidAmount || 0)) : 0;
@@ -463,21 +480,24 @@ export default function MonthlyExpensesPage() {
           </div>
         </CardContent></Card>
         <Card><CardContent className="pt-4 pb-3 px-4">
-          <div className="text-xs text-blue-600 dark:text-blue-400 mb-1 flex items-center gap-1"><ArrowRight className="w-3 h-3" /> Carry Forward</div>
-          <div className="text-lg font-bold text-blue-600 dark:text-blue-400">{summary.carryCount}</div>
-          <div className="text-xs text-muted-foreground">to carry next month</div>
+          <div className="text-xs text-purple-600 dark:text-purple-400 mb-1 flex items-center gap-1"><RefreshCw className="w-3 h-3" /> Recurring</div>
+          <div className="text-lg font-bold text-purple-600 dark:text-purple-400">{summary.recurringCount}</div>
+          <div className="text-xs text-muted-foreground">{summary.carryCount} will carry to next month</div>
         </CardContent></Card>
       </div>
 
       {/* Carry Forward Banner */}
       {summary.carryCount > 0 && (
-        <div className="flex items-center justify-between rounded-md border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 px-4 py-2.5">
-          <div className="text-sm text-blue-800 dark:text-blue-300">
-            <span className="font-medium">{summary.carryCount}</span> item(s) marked to carry to{' '}
+        <div className="flex items-center justify-between rounded-md border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-900/20 px-4 py-2.5">
+          <div className="text-sm text-purple-800 dark:text-purple-300">
+            <span className="font-medium">{summary.carryCount}</span> item(s) will be generated for{' '}
             <span className="font-medium">{formatMonth(nextMonth(activeMonth))}</span>
+            <span className="text-xs ml-2 text-purple-600 dark:text-purple-400">
+              ({summary.recurringCount} recurring + {summary.carryCount - summary.recurringCount} fixed carry)
+            </span>
           </div>
           <Button size="sm" variant="outline" onClick={() => setCarryDialogOpen(true)} data-testid="button-carry-forward">
-            <ArrowRight className="w-3.5 h-3.5 mr-1" /> Carry Forward
+            <ArrowRight className="w-3.5 h-3.5 mr-1" /> Generate Next Month
           </Button>
         </div>
       )}
@@ -501,13 +521,12 @@ export default function MonthlyExpensesPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Expense</TableHead>
-                    <TableHead>Category</TableHead>
+                    <TableHead>Type</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead className="text-right">Paid</TableHead>
                     <TableHead className="text-right">Balance</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Due</TableHead>
-                    <TableHead className="text-center">Carry?</TableHead>
                     <TableHead className="w-[110px]"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -515,20 +534,31 @@ export default function MonthlyExpensesPage() {
                   {expenses.map((expense) => {
                     const paid = expense.paidAmount || 0;
                     const balance = Math.max(0, expense.amount - paid);
+                    const baseAmt = expense.baseAmount;
+                    const carriedBalance = baseAmt && expense.amount > baseAmt ? expense.amount - baseAmt : 0;
                     return (
                       <TableRow key={expense.id} data-testid={`row-expense-${expense.id}`}>
                         <TableCell>
                           <div className="font-medium">{expense.name}</div>
-                          {expense.notes && (
-                            <div className="text-xs text-muted-foreground truncate max-w-[160px]">{expense.notes}</div>
+                          {expense.category && (
+                            <Badge variant="outline" className="text-xs font-normal mt-0.5">{expense.category}</Badge>
+                          )}
+                          {carriedBalance > 0 && (
+                            <div className="text-xs text-orange-600 dark:text-orange-400 mt-0.5">
+                              + {fmtCurrency(carriedBalance)} unpaid from prev. month
+                            </div>
+                          )}
+                          {expense.notes && !expense.notes.startsWith('Recurring') && !expense.notes.startsWith('Carried') && (
+                            <div className="text-xs text-muted-foreground truncate max-w-[180px]">{expense.notes}</div>
                           )}
                         </TableCell>
-                        <TableCell>
-                          {expense.category
-                            ? <Badge variant="outline" className="text-xs font-normal">{expense.category}</Badge>
-                            : <span className="text-muted-foreground text-xs">—</span>}
+                        <TableCell><TypeBadge type={expense.expenseType || 'fixed'} /></TableCell>
+                        <TableCell className="text-right font-mono text-sm">
+                          <div>{fmtCurrency(expense.amount)}</div>
+                          {baseAmt && expense.amount !== baseAmt && (
+                            <div className="text-xs text-muted-foreground">Base: {fmtCurrency(baseAmt)}</div>
+                          )}
                         </TableCell>
-                        <TableCell className="text-right font-mono text-sm">{fmtCurrency(expense.amount)}</TableCell>
                         <TableCell className="text-right font-mono text-sm text-green-700 dark:text-green-400">
                           {paid > 0 ? fmtCurrency(paid) : <span className="text-muted-foreground">—</span>}
                         </TableCell>
@@ -540,11 +570,6 @@ export default function MonthlyExpensesPage() {
                         <TableCell><StatusBadge status={expense.status} /></TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {expense.dueDate ? format(new Date(expense.dueDate + 'T00:00:00'), 'dd MMM') : '—'}
-                        </TableCell>
-                        <TableCell className="text-center text-sm">
-                          {(expense.status === 'pending' || expense.status === 'partial') && expense.carryToNextMonth === 1
-                            ? <span className="text-blue-600 dark:text-blue-400 font-semibold">✓</span>
-                            : <span className="text-muted-foreground">—</span>}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-0.5">
@@ -615,12 +640,14 @@ export default function MonthlyExpensesPage() {
             </DialogDescription>
           </DialogHeader>
 
-          {/* Expense summary bar */}
           {displayExpense && (
             <div className="grid grid-cols-3 gap-3 rounded-md border bg-muted/30 p-3 text-sm">
               <div>
                 <div className="text-xs text-muted-foreground mb-0.5">Total Bill</div>
                 <div className="font-semibold font-mono">{fmtCurrency(displayExpense.amount)}</div>
+                {displayExpense.baseAmount && displayExpense.amount !== displayExpense.baseAmount && (
+                  <div className="text-xs text-muted-foreground">Base: {fmtCurrency(displayExpense.baseAmount)}</div>
+                )}
               </div>
               <div>
                 <div className="text-xs text-muted-foreground mb-0.5">Total Paid</div>
@@ -633,7 +660,6 @@ export default function MonthlyExpensesPage() {
             </div>
           )}
 
-          {/* Payment list */}
           <div className="space-y-2">
             <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Payment Entries</div>
             {paymentsLoading ? (
@@ -690,7 +716,6 @@ export default function MonthlyExpensesPage() {
             )}
           </div>
 
-          {/* Add payment form — only if balance remains */}
           {displayExpense && remainingBalance > 0 && (
             <>
               <Separator />
@@ -814,6 +839,51 @@ export default function MonthlyExpensesPage() {
           </DialogHeader>
 
           <div className="space-y-4 py-1">
+
+            {/* Expense Type Toggle */}
+            <div className="space-y-2">
+              <Label>Expense Type</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setExpForm(f => ({ ...f, expenseType: 'fixed' }))}
+                  data-testid="button-type-fixed"
+                  className={`flex items-center gap-2 rounded-md border px-3 py-2.5 text-sm transition-colors ${
+                    expForm.expenseType === 'fixed'
+                      ? 'border-primary bg-primary/5 text-primary font-medium'
+                      : 'border-border text-muted-foreground hover:border-muted-foreground'
+                  }`}
+                >
+                  <Pin className="w-4 h-4" />
+                  <div className="text-left">
+                    <div className="font-medium text-inherit">Fixed</div>
+                    <div className="text-xs opacity-70">One-time or manual carry</div>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setExpForm(f => ({ ...f, expenseType: 'recurring', carryToNextMonth: true }))}
+                  data-testid="button-type-recurring"
+                  className={`flex items-center gap-2 rounded-md border px-3 py-2.5 text-sm transition-colors ${
+                    expForm.expenseType === 'recurring'
+                      ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 font-medium'
+                      : 'border-border text-muted-foreground hover:border-muted-foreground'
+                  }`}
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  <div className="text-left">
+                    <div className="font-medium text-inherit">Recurring</div>
+                    <div className="text-xs opacity-70">Auto-creates next month</div>
+                  </div>
+                </button>
+              </div>
+              {isRecurring && (
+                <p className="text-xs text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded px-2.5 py-1.5">
+                  This expense will automatically carry to next month. If partially unpaid, the unpaid balance will be added to next month's total.
+                </p>
+              )}
+            </div>
+
             <div className="space-y-1.5">
               <Label>Expense Name *</Label>
               <Input
@@ -840,9 +910,10 @@ export default function MonthlyExpensesPage() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Total Amount (₹) *</Label>
+                <Label>{isRecurring ? 'Monthly Amount (₹) *' : 'Total Amount (₹) *'}</Label>
                 <Input type="number" step="0.01" min="0" placeholder="0.00" value={expForm.amount}
                   onChange={e => setExpForm(f => ({ ...f, amount: e.target.value }))} data-testid="input-expense-amount" />
+                {isRecurring && <p className="text-xs text-muted-foreground">Standard monthly bill amount</p>}
               </div>
               <div className="space-y-1.5">
                 <Label>Amount Paid (₹)</Label>
@@ -862,7 +933,8 @@ export default function MonthlyExpensesPage() {
               </div>
             )}
 
-            {formStatus !== 'paid' && (
+            {/* Carry checkbox — only show for Fixed type */}
+            {!isRecurring && formStatus !== 'paid' && (
               <div className="flex items-center gap-2 rounded-md border px-3 py-2.5">
                 <Checkbox id="carry-forward" checked={expForm.carryToNextMonth}
                   onCheckedChange={v => setExpForm(f => ({ ...f, carryToNextMonth: !!v }))} data-testid="checkbox-carry-forward" />
@@ -921,21 +993,37 @@ export default function MonthlyExpensesPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Carry Forward */}
+      {/* Generate Next Month Dialog */}
       <AlertDialog open={carryDialogOpen} onOpenChange={setCarryDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Carry Forward {summary.carryCount} Expense(s)?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Pending/partial carry-flagged expenses from <strong>{formatMonth(activeMonth)}</strong> will be copied to{' '}
-              <strong>{formatMonth(nextMonth(activeMonth))}</strong>. Only the remaining balance is carried — already-paid amounts stay here.
+            <AlertDialogTitle>Generate {formatMonth(nextMonth(activeMonth))} Expenses?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>
+                  The following will be created in <strong>{formatMonth(nextMonth(activeMonth))}</strong>:
+                </p>
+                <ul className="text-sm space-y-1 ml-3 list-disc">
+                  {summary.recurringCount > 0 && (
+                    <li>
+                      <strong>{summary.recurringCount} recurring</strong> expense(s) — at their standard monthly amount, plus any unpaid balance carried over
+                    </li>
+                  )}
+                  {(summary.carryCount - summary.recurringCount) > 0 && (
+                    <li>
+                      <strong>{summary.carryCount - summary.recurringCount} fixed</strong> expense(s) marked to carry — only the remaining unpaid balance
+                    </li>
+                  )}
+                </ul>
+                <p className="text-xs text-muted-foreground">Already-paid amounts stay in {formatMonth(activeMonth)}. Duplicates are skipped automatically.</p>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={() => carryMutation.mutate()} disabled={carryMutation.isPending}>
               {carryMutation.isPending && <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />}
-              Carry Forward
+              Generate Next Month
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

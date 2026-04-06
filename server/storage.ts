@@ -4835,29 +4835,70 @@ export class DatabaseStorage implements IStorage {
   async carryExpensesToNextMonth(month: string): Promise<MonthlyExpense[]> {
     // Parse YYYY-MM and compute next month
     const [year, mon] = month.split('-').map(Number);
-    const nextDate = new Date(year, mon, 1); // JS months 0-indexed, so mon=existing 1-indexed month → next month
+    const nextDate = new Date(year, mon, 1);
     const nextMonth = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}`;
 
-    // Get all pending/partial, carry-flagged items from current month
-    const pending = await db
+    // Get all active expenses from current month
+    const allExpenses = await db
       .select()
       .from(monthlyExpenses)
       .where(and(
         eq(monthlyExpenses.expenseMonth, month),
-        sql`status IN ('pending', 'partial')`,
-        eq(monthlyExpenses.carryToNextMonth, 1),
         eq(monthlyExpenses.recordStatus, 1),
       ));
 
+    // Filter: recurring (always carry) + fixed with carryToNextMonth=1 that are still pending/partial
+    const toCarry = allExpenses.filter(e => {
+      if (e.expenseType === 'recurring') return true;
+      return e.carryToNextMonth === 1 && (e.status === 'pending' || e.status === 'partial');
+    });
+
+    // Skip any that already exist in next month (idempotent)
+    const existingNext = await db
+      .select({ name: monthlyExpenses.name, expenseType: monthlyExpenses.expenseType })
+      .from(monthlyExpenses)
+      .where(and(
+        eq(monthlyExpenses.expenseMonth, nextMonth),
+        eq(monthlyExpenses.recordStatus, 1),
+      ));
+    const existingNames = new Set(existingNext.map(e => `${e.expenseType}::${e.name}`));
+
     const created: MonthlyExpense[] = [];
-    for (const item of pending) {
-      // For partial payments, carry only the remaining balance as the new amount
+    for (const item of toCarry) {
+      const key = `${item.expenseType}::${item.name}`;
+      if (existingNames.has(key)) continue; // already exists in next month
+
       const alreadyPaid = item.paidAmount || 0;
-      const carryAmount = Math.max(0, item.amount - alreadyPaid);
+      const unpaidBalance = Math.max(0, item.amount - alreadyPaid);
+
+      let newAmount: number;
+      let newBaseAmount: number | null;
+      let newCarryToNextMonth: number;
+      let notes: string;
+
+      if (item.expenseType === 'recurring') {
+        // For recurring: next month = standard base amount + any unpaid balance from this month
+        const baseAmt = item.baseAmount ?? item.amount; // fall back to amount if baseAmount not set
+        newAmount = baseAmt + unpaidBalance;
+        newBaseAmount = baseAmt;
+        newCarryToNextMonth = 1; // recurring always carries
+        notes = unpaidBalance > 0
+          ? `Recurring (+ ₹${(unpaidBalance / 100).toFixed(2)} unpaid from ${month})`
+          : `Recurring`;
+      } else {
+        // Fixed carry-forward: carry only the remaining balance
+        newAmount = unpaidBalance > 0 ? unpaidBalance : item.amount;
+        newBaseAmount = null;
+        newCarryToNextMonth = 1;
+        notes = alreadyPaid > 0
+          ? `Carried from ${month} (₹${(alreadyPaid / 100).toFixed(2)} already paid)`
+          : `Carried from ${month}`;
+      }
+
       const [newItem] = await db.insert(monthlyExpenses).values({
         name: item.name,
         category: item.category,
-        amount: carryAmount > 0 ? carryAmount : item.amount,
+        amount: newAmount,
         paidAmount: 0,
         expenseMonth: nextMonth,
         dueDate: item.dueDate,
@@ -4865,10 +4906,10 @@ export class DatabaseStorage implements IStorage {
         paymentDate: null,
         paymentMode: item.paymentMode,
         referenceNumber: null,
-        carryToNextMonth: 1,
-        notes: alreadyPaid > 0
-          ? `Carried from ${month} (₹${(alreadyPaid / 100).toFixed(2)} already paid)`
-          : `Carried from ${month}`,
+        carryToNextMonth: newCarryToNextMonth,
+        expenseType: item.expenseType,
+        baseAmount: newBaseAmount,
+        notes,
       }).returning();
       created.push(newItem);
     }

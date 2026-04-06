@@ -7401,7 +7401,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { month } = req.body;
       if (!month) return res.status(400).json({ message: 'month required' });
       const created = await storage.carryExpensesToNextMonth(month);
-      res.json({ count: created.length, items: created });
+      const recurringCount = created.filter((e: any) => e.expenseType === 'recurring').length;
+      const fixedCount = created.filter((e: any) => e.expenseType !== 'recurring').length;
+      res.json({ count: created.length, recurringCount, fixedCount, items: created });
     } catch (error) {
       console.error('Error carrying expenses forward:', error);
       res.status(500).json({ message: 'Failed to carry expenses forward' });
