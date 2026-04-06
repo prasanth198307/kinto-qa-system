@@ -278,10 +278,9 @@ export default function MonthlyExpensesPage() {
     const fixedCount = fixedExpenses.length;
     const recurringAmount = recurringExpenses.reduce((s, e) => s + e.amount, 0);
     const fixedAmount = fixedExpenses.reduce((s, e) => s + e.amount, 0);
-    const carryCount = expenses.filter(
-      e => e.expenseType === 'recurring' || ((e.status === 'pending' || e.status === 'partial') && e.carryToNextMonth === 1)
-    ).length;
-    return { totalBudget, totalPaid, balance, recurringCount, fixedCount, recurringAmount, fixedAmount, carryCount };
+    const unpaidFixedCount = fixedExpenses.filter(e => e.status === 'pending' || e.status === 'partial').length;
+    const carryCount = recurringCount + unpaidFixedCount;
+    return { totalBudget, totalPaid, balance, recurringCount, fixedCount, recurringAmount, fixedAmount, carryCount, unpaidFixedCount };
   }, [expenses]);
 
   const createExpMutation = useMutation({
@@ -517,7 +516,7 @@ export default function MonthlyExpensesPage() {
             <span className="font-medium">{summary.carryCount}</span> item(s) will be generated for{' '}
             <span className="font-medium">{formatMonth(nextMonth(activeMonth))}</span>
             <span className="text-xs ml-2 text-purple-600 dark:text-purple-400">
-              ({summary.recurringCount} recurring + {summary.carryCount - summary.recurringCount} fixed carry)
+              ({summary.recurringCount} recurring{summary.unpaidFixedCount > 0 ? ` + ${summary.unpaidFixedCount} unpaid fixed` : ''})
             </span>
           </div>
           <Button size="sm" variant="outline" onClick={() => setCarryDialogOpen(true)} data-testid="button-carry-forward">
@@ -1007,16 +1006,11 @@ export default function MonthlyExpensesPage() {
               </div>
             )}
 
-            {/* Carry checkbox — only show for Fixed type */}
-            {!isRecurring && formStatus !== 'paid' && (
-              <div className="flex items-center gap-2 rounded-md border px-3 py-2.5">
-                <Checkbox id="carry-forward" checked={expForm.carryToNextMonth}
-                  onCheckedChange={v => setExpForm(f => ({ ...f, carryToNextMonth: !!v }))} data-testid="checkbox-carry-forward" />
-                <label htmlFor="carry-forward" className="text-sm cursor-pointer leading-tight">
-                  Carry to next month if still unpaid
-                  <span className="block text-xs text-muted-foreground">Will appear in {formatMonth(nextMonth(activeMonth))}</span>
-                </label>
-              </div>
+            {/* Auto-carry notice for fixed expenses */}
+            {!isRecurring && (
+              <p className="text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 rounded px-2.5 py-1.5">
+                If this expense is still unpaid at month end, it will automatically carry forward to {formatMonth(nextMonth(activeMonth))}.
+              </p>
             )}
 
             <div className="space-y-1.5">
@@ -1080,12 +1074,12 @@ export default function MonthlyExpensesPage() {
                 <ul className="text-sm space-y-1 ml-3 list-disc">
                   {summary.recurringCount > 0 && (
                     <li>
-                      <strong>{summary.recurringCount} recurring</strong> expense(s) — at their standard monthly amount, plus any unpaid balance carried over
+                      <strong>{summary.recurringCount} recurring</strong> expense(s) — generated at their standard monthly amount, plus any unpaid balance from this month
                     </li>
                   )}
-                  {(summary.carryCount - summary.recurringCount) > 0 && (
+                  {summary.unpaidFixedCount > 0 && (
                     <li>
-                      <strong>{summary.carryCount - summary.recurringCount} fixed</strong> expense(s) marked to carry — only the remaining unpaid balance
+                      <strong>{summary.unpaidFixedCount} fixed</strong> expense(s) that are still unpaid — only the remaining balance is carried forward
                     </li>
                   )}
                 </ul>
