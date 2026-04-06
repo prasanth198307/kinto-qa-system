@@ -278,10 +278,9 @@ export default function MonthlyExpensesPage() {
     const fixedCount = fixedExpenses.length;
     const recurringAmount = recurringExpenses.reduce((s, e) => s + e.amount, 0);
     const fixedAmount = fixedExpenses.reduce((s, e) => s + e.amount, 0);
-    const unpaidRecurringCount = recurringExpenses.filter(e => e.status === 'pending' || e.status === 'partial').length;
     const unpaidFixedCount = fixedExpenses.filter(e => e.status === 'pending' || e.status === 'partial').length;
-    const carryCount = unpaidRecurringCount + unpaidFixedCount;
-    return { totalBudget, totalPaid, balance, recurringCount, fixedCount, recurringAmount, fixedAmount, carryCount, unpaidRecurringCount, unpaidFixedCount };
+    const carryCount = recurringCount + unpaidFixedCount; // recurring always + unpaid fixed
+    return { totalBudget, totalPaid, balance, recurringCount, fixedCount, recurringAmount, fixedAmount, carryCount, unpaidFixedCount };
   }, [expenses]);
 
   const createExpMutation = useMutation({
@@ -517,9 +516,7 @@ export default function MonthlyExpensesPage() {
             <span className="font-medium">{summary.carryCount}</span> item(s) will be generated for{' '}
             <span className="font-medium">{formatMonth(nextMonth(activeMonth))}</span>
             <span className="text-xs ml-2 text-purple-600 dark:text-purple-400">
-              ({summary.unpaidRecurringCount > 0 ? `${summary.unpaidRecurringCount} recurring` : ''}
-              {summary.unpaidRecurringCount > 0 && summary.unpaidFixedCount > 0 ? ' + ' : ''}
-              {summary.unpaidFixedCount > 0 ? `${summary.unpaidFixedCount} fixed` : ''} unpaid)
+              ({summary.recurringCount} recurring{summary.unpaidFixedCount > 0 ? ` + ${summary.unpaidFixedCount} unpaid fixed` : ''})
             </span>
           </div>
           <Button size="sm" variant="outline" onClick={() => setCarryDialogOpen(true)} data-testid="button-carry-forward">
@@ -1075,14 +1072,14 @@ export default function MonthlyExpensesPage() {
                   The following will be created in <strong>{formatMonth(nextMonth(activeMonth))}</strong>:
                 </p>
                 <ul className="text-sm space-y-1 ml-3 list-disc">
-                  {summary.unpaidRecurringCount > 0 && (
+                  {summary.recurringCount > 0 && (
                     <li>
-                      <strong>{summary.unpaidRecurringCount} recurring</strong> expense(s) that are unpaid — carried at standard monthly amount plus the outstanding balance
+                      <strong>{summary.recurringCount} recurring</strong> expense(s) — generated every month at their standard amount; any unpaid balance from this month is added on top
                     </li>
                   )}
                   {summary.unpaidFixedCount > 0 && (
                     <li>
-                      <strong>{summary.unpaidFixedCount} fixed</strong> expense(s) that are unpaid — only the remaining balance is carried forward
+                      <strong>{summary.unpaidFixedCount} fixed</strong> expense(s) still unpaid — only the outstanding balance is carried forward
                     </li>
                   )}
                 </ul>

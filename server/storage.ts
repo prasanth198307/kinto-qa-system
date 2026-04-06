@@ -4847,11 +4847,12 @@ export class DatabaseStorage implements IStorage {
         eq(monthlyExpenses.recordStatus, 1),
       ));
 
-    // Both recurring and fixed carry only if unpaid (pending or partial)
-    // Difference is in amount: recurring = baseAmount + unpaid, fixed = unpaid balance only
-    const toCarry = allExpenses.filter(e =>
-      e.status === 'pending' || e.status === 'partial'
-    );
+    // Recurring: always carry every month (base amount + any unpaid balance)
+    // Fixed: only carry if still unpaid (pending or partial)
+    const toCarry = allExpenses.filter(e => {
+      if (e.expenseType === 'recurring') return true;
+      return e.status === 'pending' || e.status === 'partial';
+    });
 
     // Skip any that already exist in next month (idempotent)
     const existingNext = await db
