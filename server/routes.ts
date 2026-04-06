@@ -22883,10 +22883,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const tallyDate = formatTallyDate(entry.journalDate);
         const narration = escapeXml(entry.description || '');
 
+        // Extract a clean business narration from a system-generated memo string
+        function extractNarration(memo: string): string {
+          if (!memo) return '';
+          // "Expense EV-CR-... - Cash Register Expense: Office materials" → "Office materials"
+          // "Expense EV-... - Salary Payment" → "Salary Payment"
+          const m = memo.match(/^(?:Expense|Invoice|Receipt)\s+\S+\s+-\s+(.+)$/);
+          if (m) {
+            return m[1]
+              .replace(/^Cash Register Expense:\s*/i, '')
+              .replace(/^Expense Voucher:\s*/i, '')
+              .trim();
+          }
+          // "Payment for EV-..." → "Payment"
+          if (/^Payment for /i.test(memo)) return 'Payment';
+          // "GST input credit" etc. → as-is
+          return memo;
+        }
+
         let ledgerEntries = '';
         for (const line of lines) {
           const ledgerName = escapeXml(line.accountName || 'Unknown Account');
           const lineMemo = escapeXml(line.memo || entry.description || '');
+          const lineNarration = escapeXml(extractNarration(line.memo || '') || entry.description || '');
           const debitAmt = (line.debit || 0) / 100;
           const creditAmt = (line.credit || 0) / 100;
 
@@ -22896,7 +22915,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             <LEDGERNAME>${ledgerName}</LEDGERNAME>
             <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
             <AMOUNT>-${debitAmt.toFixed(2)}</AMOUNT>
-            <NARRATION>${lineMemo}</NARRATION>
+            <NARRATION>${lineNarration}</NARRATION>
           </ALLLEDGERENTRIES.LIST>`;
           }
           if (creditAmt > 0) {
@@ -22905,7 +22924,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             <LEDGERNAME>${ledgerName}</LEDGERNAME>
             <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
             <AMOUNT>${creditAmt.toFixed(2)}</AMOUNT>
-            <NARRATION>${lineMemo}</NARRATION>
+            <NARRATION>${lineNarration}</NARRATION>
           </ALLLEDGERENTRIES.LIST>`;
           }
         }
@@ -23024,7 +23043,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return str;
       }
 
-      let csv = 'Date,Voucher Type,Voucher Number,Account Code,Account Name,Parent Group,Group Path,Debit,Credit,Description\n';
+      // Strips system-generated prefixes to produce a clean business narration
+      // e.g. "Expense EV-CR-... - Cash Register Expense: Office materials" → "Office materials"
+      function extractNarration(memo: string): string {
+        if (!memo) return '';
+        const m = memo.match(/^(?:Expense|Invoice|Receipt)\s+\S+\s+-\s+(.+)$/);
+        if (m) {
+          return m[1]
+            .replace(/^Cash Register Expense:\s*/i, '')
+            .replace(/^Expense Voucher:\s*/i, '')
+            .trim();
+        }
+        if (/^Payment for /i.test(memo)) return 'Payment';
+        return memo;
+      }
+
+      let csv = 'Date,Voucher Type,Voucher Number,Account Code,Account Name,Parent Group,Group Path,Debit,Credit,Description,Narration\n';
 
       const sourceTypeLabels: Record<string, string> = {
         invoice: 'Sales', payment: 'Receipt', customer_advance: 'Receipt',
@@ -23049,7 +23083,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const parentGroup = acct?.parentId ? (accountLookup.get(acct.parentId)?.name || '') : '';
           const groupPath = getGroupPath(line.accountId);
           const lineDesc = line.memo || entry.description || '';
-          csv += `${dateStr},${escapeCsv(vchType)},${escapeCsv(entry.journalNumber)},${escapeCsv(line.accountCode || '')},${escapeCsv(line.accountName || '')},${escapeCsv(parentGroup)},${escapeCsv(groupPath)},${debitAmt > 0 ? debitAmt.toFixed(2) : ''},${creditAmt > 0 ? creditAmt.toFixed(2) : ''},${escapeCsv(lineDesc)}\n`;
+          const lineNarration = extractNarration(line.memo || '') || entry.description || '';
+          csv += `${dateStr},${escapeCsv(vchType)},${escapeCsv(entry.journalNumber)},${escapeCsv(line.accountCode || '')},${escapeCsv(line.accountName || '')},${escapeCsv(parentGroup)},${escapeCsv(groupPath)},${debitAmt > 0 ? debitAmt.toFixed(2) : ''},${creditAmt > 0 ? creditAmt.toFixed(2) : ''},${escapeCsv(lineDesc)},${escapeCsv(lineNarration)}\n`;
         }
       }
 
