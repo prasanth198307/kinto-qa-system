@@ -264,11 +264,16 @@ export default function MonthlyExpensesPage() {
     const totalBudget = expenses.reduce((s, e) => s + e.amount, 0);
     const totalPaid = expenses.reduce((s, e) => s + (e.paidAmount || 0), 0);
     const balance = totalBudget - totalPaid;
-    const recurringCount = expenses.filter(e => e.expenseType === 'recurring').length;
+    const recurringExpenses = expenses.filter(e => e.expenseType === 'recurring');
+    const fixedExpenses = expenses.filter(e => e.expenseType !== 'recurring');
+    const recurringCount = recurringExpenses.length;
+    const fixedCount = fixedExpenses.length;
+    const recurringAmount = recurringExpenses.reduce((s, e) => s + e.amount, 0);
+    const fixedAmount = fixedExpenses.reduce((s, e) => s + e.amount, 0);
     const carryCount = expenses.filter(
       e => e.expenseType === 'recurring' || ((e.status === 'pending' || e.status === 'partial') && e.carryToNextMonth === 1)
     ).length;
-    return { totalBudget, totalPaid, balance, recurringCount, carryCount };
+    return { totalBudget, totalPaid, balance, recurringCount, fixedCount, recurringAmount, fixedAmount, carryCount };
   }, [expenses]);
 
   const createExpMutation = useMutation({
@@ -479,9 +484,21 @@ export default function MonthlyExpensesPage() {
           </div>
         </CardContent></Card>
         <Card><CardContent className="pt-4 pb-3 px-4">
-          <div className="text-xs text-purple-600 dark:text-purple-400 mb-1 flex items-center gap-1"><RefreshCw className="w-3 h-3" /> Recurring</div>
-          <div className="text-lg font-bold text-purple-600 dark:text-purple-400">{summary.recurringCount}</div>
-          <div className="text-xs text-muted-foreground">{summary.carryCount} will carry to next month</div>
+          <div className="text-xs text-muted-foreground mb-2 flex items-center gap-1"><Pin className="w-3 h-3" /> By Type</div>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-purple-600 dark:text-purple-400 flex items-center gap-1">
+                <RefreshCw className="w-2.5 h-2.5" /> Recurring ({summary.recurringCount})
+              </span>
+              <span className="text-sm font-bold text-purple-600 dark:text-purple-400">{fmtCurrency(summary.recurringAmount)}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                <MinusCircle className="w-2.5 h-2.5" /> Fixed ({summary.fixedCount})
+              </span>
+              <span className="text-sm font-bold text-slate-600 dark:text-slate-300">{fmtCurrency(summary.fixedAmount)}</span>
+            </div>
+          </div>
         </CardContent></Card>
       </div>
 
