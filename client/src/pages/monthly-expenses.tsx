@@ -109,11 +109,6 @@ const PAYMENT_SOURCES = [
   { value: 'other', label: 'Other', icon: User },
 ];
 
-const CATEGORIES = [
-  "Rent", "Electricity", "Water", "Salaries", "Internet", "Phone",
-  "Insurance", "Maintenance", "Raw Materials", "Transport", "Marketing",
-  "Office Supplies", "Professional Fees", "Bank Charges", "Miscellaneous",
-];
 
 function getCurrentMonth() {
   const now = new Date();
@@ -245,6 +240,10 @@ export default function MonthlyExpensesPage() {
 
   const queryKey = ['/api/monthly-expenses', { month: activeMonth }];
   const { data: expenses = [], isLoading } = useQuery<MonthlyExpense[]>({ queryKey });
+
+  const { data: expenseCategories = [] } = useQuery<{ id: string; name: string }[]>({
+    queryKey: ['/api/expense-categories'],
+  });
 
   const payQueryKey = selectedExpense ? ['/api/monthly-expenses', selectedExpense.id, 'payments'] : null;
   const { data: payments = [], isLoading: paymentsLoading } = useQuery<ExpensePayment[]>({
@@ -896,10 +895,26 @@ export default function MonthlyExpensesPage() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Category</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Category</Label>
+                  <a
+                    href="/expense-categories"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+                  >
+                    Manage categories
+                  </a>
+                </div>
                 <Select value={expForm.category} onValueChange={v => setExpForm(f => ({ ...f, category: v }))}>
                   <SelectTrigger data-testid="select-category"><SelectValue placeholder="Select…" /></SelectTrigger>
-                  <SelectContent>{CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                  <SelectContent>
+                    {expenseCategories.length === 0 ? (
+                      <SelectItem value="_none" disabled>No categories — add via Manage categories</SelectItem>
+                    ) : (
+                      expenseCategories.map(c => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)
+                    )}
+                  </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
