@@ -7097,17 +7097,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
       });
 
-      // Column definitions (19 cols)
-      // A=Sr, B=Name, C=Type, D=Category, E=Current Month, F=Carried Over, G=Total Bill,
-      // H=Due, I=Status, J=Paid, K=Balance, L=Notes,
-      // M=#, N=Pay Date, O=Pay Amt, P=Paid By, Q=Source, R=Mode, S=Reference
+      // Column definitions (20 cols)
+      // A=Sr, B=Name, C=Type, D=Category,
+      // E=Current Month ₹, F=Carried Over ₹, G=Unpaid From (month), H=Total Bill ₹,
+      // I=Due, J=Status, K=Paid ₹, L=Balance ₹, M=Notes,
+      // N=#, O=Pay Date, P=Pay Amt ₹, Q=Paid By, R=Source, S=Mode, T=Reference
       ws.columns = [
         { key: 'sr',       width: 5  },
         { key: 'name',     width: 24 },
         { key: 'type',     width: 11 },
         { key: 'category', width: 14 },
-        { key: 'curamt',   width: 14 },
-        { key: 'carried',  width: 14 },
+        { key: 'curamt',   width: 15 },
+        { key: 'carried',  width: 15 },
+        { key: 'frommon',  width: 13 },
         { key: 'bill',     width: 13 },
         { key: 'due',      width: 11 },
         { key: 'status',   width: 10 },
@@ -7123,9 +7125,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         { key: 'ref',      width: 15 },
       ];
 
+      // Helper: parse source month from notes field
+      // Notes look like: "Recurring (+ ₹20000.00 unpaid from 2026-03)"
+      const parseFromMonth = (notes: string | null): string => {
+        if (!notes) return '';
+        const m = notes.match(/unpaid from (\d{4}-\d{2})/);
+        if (!m) return '';
+        const [year, mon] = m[1].split('-');
+        return new Date(`${year}-${mon}-01`).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+      };
+
       // ── Row 1: Title ─────────────────────────────────────────────
       const titleRow = ws.addRow([`Monthly Expenses — ${monthName}`]);
-      ws.mergeCells(`A${titleRow.number}:S${titleRow.number}`);
+      ws.mergeCells(`A${titleRow.number}:T${titleRow.number}`);
       titleRow.getCell(1).style = {
         font: { bold: true, size: 14, color: { argb: 'FFFFFFFF' } },
         fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A5F' } },
@@ -7135,7 +7147,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // ── Row 2: Generated date ─────────────────────────────────────
       const genRow = ws.addRow([`Generated: ${new Date().toLocaleString('en-IN')}`]);
-      ws.mergeCells(`A${genRow.number}:S${genRow.number}`);
+      ws.mergeCells(`A${genRow.number}:T${genRow.number}`);
       genRow.getCell(1).style = {
         font: { italic: true, size: 9, color: { argb: 'FF666666' } },
         fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF5F5F5' } },
@@ -7147,13 +7159,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ws.addRow([]);
 
       // ── Row 4: Section labels ─────────────────────────────────────
-      // Expense Info: cols 1-12 (A-L), Payment Details: cols 13-19 (M-S)
+      // Expense Info: cols 1-13 (A-M), Payment Details: cols 14-20 (N-T)
       const secRow = ws.addRow([
-        'Expense Information', '', '', '', '', '', '', '', '', '', '', '',
+        'Expense Information', '', '', '', '', '', '', '', '', '', '', '', '',
         'Payment Details', '', '', '', '', '', '',
       ]);
-      ws.mergeCells(`A${secRow.number}:L${secRow.number}`);
-      ws.mergeCells(`M${secRow.number}:S${secRow.number}`);
+      ws.mergeCells(`A${secRow.number}:M${secRow.number}`);
+      ws.mergeCells(`N${secRow.number}:T${secRow.number}`);
       const expSecStyle: ExcelJS.Style = {
         font: { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 },
         fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2563EB' } },
@@ -7165,16 +7177,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         alignment: { horizontal: 'center', vertical: 'middle' },
       };
       secRow.getCell(1).style = expSecStyle;
-      secRow.getCell(13).style = paySecStyle;
+      secRow.getCell(14).style = paySecStyle;
       secRow.height = 18;
 
       // ── Row 5: Sub-section label for amount breakdown ─────────────
-      // Highlight cols E-G as the "Amount Breakdown" sub-header
+      // Highlight cols E-H (5-8) as the "Amount Breakdown" group
       const subRow = ws.addRow([
-        '', '', '', '', 'Amount Breakdown', '', '', '', '', '', '', '',
+        '', '', '', '', 'Amount Breakdown', '', '', '', '', '', '', '', '',
         '', '', '', '', '', '', '',
       ]);
-      ws.mergeCells(`E${subRow.number}:G${subRow.number}`);
+      ws.mergeCells(`E${subRow.number}:H${subRow.number}`);
       subRow.getCell(5).style = {
         font: { bold: true, size: 8, color: { argb: 'FF92400E' } },
         fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } },
@@ -7191,13 +7203,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // ── Row 6: Column headers ─────────────────────────────────────
       const hdrs = [
         'Sr', 'Expense Name', 'Type', 'Category',
-        'Current Month (₹)', 'Carried Over (₹)', 'Total Bill (₹)',
+        'Current Month (₹)', 'Carried Over (₹)', 'Unpaid From', 'Total Bill (₹)',
         'Due Date', 'Status', 'Paid (₹)', 'Balance (₹)', 'Notes',
         '#', 'Pay Date', 'Pay Amt (₹)', 'Paid By', 'Source', 'Mode', 'Reference',
       ];
       const hdrRow = ws.addRow(hdrs);
       hdrRow.eachCell((cell, colNum) => {
-        const isAmtBreakdown = colNum >= 5 && colNum <= 7;
+        const isAmtBreakdown = colNum >= 5 && colNum <= 8;
         cell.style = {
           font: { bold: true, size: 9, color: { argb: 'FF1E293B' } },
           fill: {
@@ -7231,8 +7243,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let grandTotalPayAmt = 0;
       let sr = 0;
 
-      // Amount columns that need currency format (1-indexed): E=5, F=6, G=7, J=10, K=11, O=15
-      const currencyCols = new Set([5, 6, 7, 10, 11, 15]);
+      // Currency-format columns (1-indexed): E=5, F=6, H=8, K=11, L=12, P=16
+      const currencyCols = new Set([5, 6, 8, 11, 12, 16]);
 
       for (const exp of expRows) {
         sr++;
@@ -7253,6 +7265,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           currentMonthAmt = bill;
           carriedAmt = 0;
         }
+
+        // Extract which month the carry came from (stored in notes)
+        const fromMonthLabel = carriedAmt > 0 ? parseFromMonth(exp.notes) : '';
 
         grandTotalCurrentMonth += currentMonthAmt;
         grandTotalCarried += carriedAmt;
@@ -7275,6 +7290,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             exp.category ?? '',
             parseFloat(fmtAmt(currentMonthAmt)),
             carriedAmt > 0 ? parseFloat(fmtAmt(carriedAmt)) : '',
+            fromMonthLabel,                               // G — "Mar 2026" etc.
             parseFloat(fmtAmt(bill)),
             fmtDate(exp.dueDate),
             (exp.status ?? 'pending').toUpperCase(),
@@ -7296,40 +7312,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           const isEven = sr % 2 === 0;
           const rowBg = isEven ? 'FFF8FAFC' : 'FFFFFFFF';
-          const recurringBg = isRecurring ? 'FFF5F3FF' : rowBg; // faint purple tint for recurring rows
+          const recurringBg = isRecurring ? 'FFF5F3FF' : rowBg;
 
           dataRow.eachCell({ includeEmpty: true }, (cell, colNum) => {
-            const isPayCol = colNum >= 13;
+            const isPayCol = colNum >= 14;
             const isCarriedCol = colNum === 6;
-            const isAmtBreakdown = colNum >= 5 && colNum <= 7;
-            let bgColor = isPayCol && pay ? 'FFF0FDF4' : (isAmtBreakdown ? (isEven ? 'FFFFFBEB' : 'FFFEFCE8') : recurringBg);
-            if (isCarriedCol && carriedAmt > 0) bgColor = 'FFFEF3C7'; // amber tint for non-zero carry
+            const isFromMonCol = colNum === 7;
+            const isAmtBreakdown = colNum >= 5 && colNum <= 8;
+            const hasCarry = carriedAmt > 0;
 
+            let bgColor: string;
+            if (isPayCol && pay) {
+              bgColor = 'FFF0FDF4';
+            } else if ((isCarriedCol || isFromMonCol) && hasCarry) {
+              bgColor = 'FFFEF3C7'; // amber for carried-over cells
+            } else if (isAmtBreakdown) {
+              bgColor = isEven ? 'FFFFFBEB' : 'FFFEFCE8';
+            } else {
+              bgColor = recurringBg;
+            }
+
+            const isAmberText = (isCarriedCol || isFromMonCol) && hasCarry;
             cell.style = {
-              font: { size: 9, color: { argb: isCarriedCol && carriedAmt > 0 ? 'FF92400E' : '00000000' } },
+              font: { size: 9, color: { argb: isAmberText ? 'FF92400E' : '00000000' } },
               fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: bgColor } },
               alignment: {
-                horizontal: colNum <= 2 || colNum >= 13 ? 'left' : 'center',
+                horizontal: colNum <= 2 || colNum >= 14 ? 'left' : 'center',
                 vertical: 'middle',
-                wrapText: colNum === 2 || colNum === 12,
+                wrapText: colNum === 2 || colNum === 13,
               },
               border: borderThin,
               numFmt: currencyCols.has(colNum) ? '#,##0.00' : undefined,
             };
           });
 
-          // Type badge colouring (col 3)
+          // Type badge colouring (col C = 3)
           const typeCell = dataRow.getCell(3);
           typeCell.style = {
             ...typeCell.style,
-            font: {
-              bold: true, size: 8,
-              color: { argb: isRecurring ? 'FF6D28D9' : 'FF475569' },
-            },
+            font: { bold: true, size: 8, color: { argb: isRecurring ? 'FF6D28D9' : 'FF475569' } },
           };
 
-          // Status colouring (col 9)
-          const statusCell = dataRow.getCell(9);
+          // Status colouring (col J = 10)
+          const statusCell = dataRow.getCell(10);
           const st = (exp.status ?? 'pending').toLowerCase();
           statusCell.style = {
             ...statusCell.style,
@@ -7340,14 +7365,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           };
         }
 
-        // Merge expense-info columns if multiple payment rows (cols 1-12)
+        // Merge expense-info columns if multiple payment rows (cols 1-13)
         if (rowCount > 1) {
           const endRow = startRow + rowCount - 1;
-          for (let c = 1; c <= 12; c++) {
+          for (let c = 1; c <= 13; c++) {
             const colLetter = String.fromCharCode(64 + c);
             ws.mergeCells(`${colLetter}${startRow}:${colLetter}${endRow}`);
-            const mergedCell = ws.getCell(`${colLetter}${startRow}`);
-            mergedCell.alignment = { vertical: 'middle', wrapText: c === 2 || c === 12 };
+            ws.getCell(`${colLetter}${startRow}`).alignment = {
+              vertical: 'middle', wrapText: c === 2 || c === 13,
+            };
           }
         }
       }
@@ -7358,6 +7384,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         '', 'TOTAL', '', '',
         parseFloat(fmtAmt(grandTotalCurrentMonth)),
         grandTotalCarried > 0 ? parseFloat(fmtAmt(grandTotalCarried)) : '',
+        '',
         parseFloat(fmtAmt(grandTotalBill)),
         '', '',
         parseFloat(fmtAmt(grandTotalPaid)),
@@ -7380,9 +7407,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // ── Legend row ────────────────────────────────────────────────
       ws.addRow([]);
       const legendRow = ws.addRow([
-        'Legend:  Current Month = standard bill for this month   |   Carried Over = unpaid balance rolled from previous month(s)   |   Total Bill = Current Month + Carried Over',
+        'Legend:  Current Month = standard bill for this month   |   Carried Over = unpaid amount from a prior month   |   Unpaid From = which month that balance came from   |   Total Bill = Current Month + Carried Over',
       ]);
-      ws.mergeCells(`A${legendRow.number}:S${legendRow.number}`);
+      ws.mergeCells(`A${legendRow.number}:T${legendRow.number}`);
       legendRow.getCell(1).style = {
         font: { italic: true, size: 8, color: { argb: 'FF64748B' } },
         fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } },
