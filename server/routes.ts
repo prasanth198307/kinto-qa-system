@@ -22857,6 +22857,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             debit: journalLines.debit,
             credit: journalLines.credit,
             accountName: chartOfAccounts.name,
+            memo: journalLines.memo,
           })
           .from(journalLines)
           .innerJoin(chartOfAccounts, eq(journalLines.accountId, chartOfAccounts.id))
@@ -22885,6 +22886,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let ledgerEntries = '';
         for (const line of lines) {
           const ledgerName = escapeXml(line.accountName || 'Unknown Account');
+          const lineMemo = escapeXml(line.memo || entry.description || '');
           const debitAmt = (line.debit || 0) / 100;
           const creditAmt = (line.credit || 0) / 100;
 
@@ -22894,6 +22896,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             <LEDGERNAME>${ledgerName}</LEDGERNAME>
             <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
             <AMOUNT>-${debitAmt.toFixed(2)}</AMOUNT>
+            <NARRATION>${lineMemo}</NARRATION>
           </ALLLEDGERENTRIES.LIST>`;
           }
           if (creditAmt > 0) {
@@ -22902,6 +22905,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             <LEDGERNAME>${ledgerName}</LEDGERNAME>
             <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
             <AMOUNT>${creditAmt.toFixed(2)}</AMOUNT>
+            <NARRATION>${lineMemo}</NARRATION>
           </ALLLEDGERENTRIES.LIST>`;
           }
         }
@@ -22995,6 +22999,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             credit: journalLines.credit,
             accountName: chartOfAccounts.name,
             accountCode: chartOfAccounts.code,
+            memo: journalLines.memo,
           })
           .from(journalLines)
           .innerJoin(chartOfAccounts, eq(journalLines.accountId, chartOfAccounts.id))
@@ -23043,7 +23048,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const acct = accountLookup.get(line.accountId);
           const parentGroup = acct?.parentId ? (accountLookup.get(acct.parentId)?.name || '') : '';
           const groupPath = getGroupPath(line.accountId);
-          csv += `${dateStr},${escapeCsv(vchType)},${escapeCsv(entry.journalNumber)},${escapeCsv(line.accountCode || '')},${escapeCsv(line.accountName || '')},${escapeCsv(parentGroup)},${escapeCsv(groupPath)},${debitAmt > 0 ? debitAmt.toFixed(2) : ''},${creditAmt > 0 ? creditAmt.toFixed(2) : ''},${escapeCsv(entry.description || '')}\n`;
+          const lineDesc = line.memo || entry.description || '';
+          csv += `${dateStr},${escapeCsv(vchType)},${escapeCsv(entry.journalNumber)},${escapeCsv(line.accountCode || '')},${escapeCsv(line.accountName || '')},${escapeCsv(parentGroup)},${escapeCsv(groupPath)},${debitAmt > 0 ? debitAmt.toFixed(2) : ''},${creditAmt > 0 ? creditAmt.toFixed(2) : ''},${escapeCsv(lineDesc)}\n`;
         }
       }
 
