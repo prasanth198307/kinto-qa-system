@@ -1,110 +1,115 @@
 /**
  * Cross-platform file download utility.
  *
- * Strategy:
- *  - iOS / Android: use Web Share API (navigator.share with files) — triggers
- *    the native share sheet so the user can save to Files, Drive, WhatsApp, etc.
- *    Falls back to opening the blob URL in the current tab if sharing fails.
- *  - Desktop (Chrome / Firefox / Edge / Safari macOS): standard
- *    `<a href=blobUrl download=filename>` click.
+ * Strategy — anchor-click with a blob URL (works everywhere):
  *
- * Why not just <a download> everywhere?
- *   iOS Safari ignores the `download` attribute for blob: URLs and for
- *   cross-origin URLs — the file either opens in the browser or throws an error.
+ *  - iOS Safari 14.5+  : supports `download` attribute on blob: URLs → file saves
+ *                        to the Files app / Downloads.
+ *  - Android Chrome    : standard blob-URL anchor-click download.
+ *  - Desktop browsers  : standard blob-URL anchor-click download.
+ *
+ * Why NOT Web Share API?
+ *   navigator.share() requires a direct user-activation token. Because our Excel
+ *   generation uses `await import('xlsx')`, the user-activation window has already
+ *   expired before we can call share(). The browser silently rejects the call on
+ *   iOS and Android, so nothing happens. Anchor-click downloads do NOT need
+ *   user-activation and work reliably in async handlers.
+ *
+ * iOS < 14.5 fallback:
+ *   The `download` attribute is ignored in very old Safari. We detect this and
+ *   open the blob URL in a new tab instead, where iOS QuickLook lets the user
+ *   tap "Share → Save to Files".
  */
 
-const isIOS = (): boolean =>
-  /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+/** True if the browser is Safari on iOS/iPadOS (but not Chrome on iOS). */
+function isOldIOSSafari(): boolean {
+  const ua = navigator.userAgent;
+  const isIOS = /iPad|iPhone|iPod/.test(ua) && !(window as any).MSStream;
+  if (!isIOS) return false;
 
-const isAndroid = (): boolean => /Android/i.test(navigator.userAgent);
+  // iOS Safari ships WebKit; Chrome on iOS includes "CriOS"
+  const isSafari = /^((?!CriOS|FxiOS|OPiOS|EdgiOS).)*Safari/.test(ua);
+  if (!isSafari) return false;
 
-const isMobile = (): boolean => isIOS() || isAndroid();
-
-/**
- * Primary download function — works on iOS, Android, Chrome, Firefox, Edge, Safari.
- *
- * @param blob     The file data as a Blob (already has the correct MIME type set).
- * @param filename The suggested file name, e.g. "Report_April_2026.xlsx".
- */
-export async function downloadBlob(blob: Blob, filename: string): Promise<void> {
-  // ── Web Share API (iOS 15+ / Android Chrome 89+) ─────────────────────────
-  if (
-    typeof navigator !== 'undefined' &&
-    navigator.canShare &&
-    typeof navigator.share === 'function'
-  ) {
-    const file = new File([blob], filename, { type: blob.type });
-    if (navigator.canShare({ files: [file] })) {
-      try {
-        await navigator.share({ files: [file], title: filename });
-        return; // success — native share sheet handled it
-      } catch (err: any) {
-        if (err?.name === 'AbortError') return; // user cancelled — do nothing
-        // Any other error: fall through to blob-URL approach
-      }
-    }
-  }
-
-  // ── Standard blob-URL approach (Desktop + Android fallback) ──────────────
-  const url = URL.createObjectURL(blob);
-
-  if (isMobile() && !isAndroid()) {
-    // iOS without Web Share API: navigate to blob URL in same tab.
-    // Safari will offer "Open in…" / Quick Look for recognised types.
-    window.location.href = url;
-    // Revoke after a short delay so the navigation can start.
-    setTimeout(() => URL.revokeObjectURL(url), 3000);
-  } else {
-    // Desktop or Android: programmatic anchor click.
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }
+  // iOS 14.5 introduced blob-URL download support (Safari 14.1).
+  // Parse the OS version from the UA string.
+  const match = ua.match(/OS (\d+)_(\d+)/);
+  if (!match) return false;
+  const major = parseInt(match[1], 10);
+  const minor = parseInt(match[2], 10);
+  // Consider "old" if < 14.5
+  return major < 14 || (major === 14 && minor < 5);
 }
 
 /**
- * Convenience: download a plain string (JSON, CSV, …) as a text file.
+ * Download any Blob as a named file.
+ * Works on iOS 14.5+, Android, and all desktop browsers.
+ *
+ * @param blob     The file data (correct MIME type already set).
+ * @param filename Suggested file name, e.g. "Report_April_2026.xlsx".
  */
-export async function downloadText(
+export function downloadBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+
+  if (isOldIOSSafari()) {
+    // Old iOS Safari: open blob URL in a new tab.
+    // The user will see a QuickLook preview with a Share button to save to Files.
+    const tab = window.open(url, '_blank');
+    if (!tab) {
+      // If popups are blocked, navigate in same tab as last resort.
+      window.location.href = url;
+    }
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    return;
+  }
+
+  // Standard anchor-click — works on all modern browsers including iOS 14.5+.
+  // This does NOT require user-activation (unlike navigator.share or window.open).
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.style.cssText = 'position:fixed;top:-1px;left:-1px;opacity:0;';
+  document.body.appendChild(a);
+  a.click();
+
+  setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 2000);
+}
+
+/**
+ * Download a plain-text string (JSON, CSV, …) as a file.
+ */
+export function downloadText(
   text: string,
   filename: string,
   mimeType = 'text/plain;charset=utf-8'
-): Promise<void> {
+): void {
   const blob = new Blob([text], { type: mimeType });
-  await downloadBlob(blob, filename);
+  downloadBlob(blob, filename);
 }
 
 /**
- * Convenience: download a JSON object as a .json file.
+ * Download a JSON-serialisable value as a .json file.
  */
-export async function downloadJSON(data: unknown, filename: string): Promise<void> {
-  const json = JSON.stringify(data, null, 2);
-  await downloadText(json, filename, 'application/json');
+export function downloadJSON(data: unknown, filename: string): void {
+  downloadText(JSON.stringify(data, null, 2), filename, 'application/json');
 }
 
 /**
- * XLSX-compatible replacement for `XLSX.writeFile(workbook, filename)`.
+ * XLSX drop-in replacement for `XLSX.writeFile(workbook, filename)`.
  *
- * Usage:
- *   import XLSX from 'xlsx';
- *   import { downloadXLSX } from '@/lib/download-utils';
+ * The workbook must already be built before calling this function.
+ * All modern platforms (iOS 14.5+, Android, Desktop) are supported.
  *
- *   const wb = XLSX.utils.book_new();
- *   // … build workbook …
- *   await downloadXLSX(wb, 'MyReport.xlsx');
+ * @param workbook  A SheetJS workbook object.
+ * @param filename  File name including .xlsx extension.
  */
-export async function downloadXLSX(
-  workbook: any,
-  filename: string
-): Promise<void> {
+export async function downloadXLSX(workbook: any, filename: string): Promise<void> {
   const XLSX = await import('xlsx');
 
-  // Write to ArrayBuffer (works in all browsers, no file-system access needed)
+  // Write to Uint8Array — works in every browser without file-system access.
   const buf: ArrayBuffer = XLSX.write(workbook, {
     bookType: 'xlsx',
     type: 'array',
@@ -114,5 +119,5 @@ export async function downloadXLSX(
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   });
 
-  await downloadBlob(blob, filename);
+  downloadBlob(blob, filename);
 }

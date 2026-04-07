@@ -1,4 +1,5 @@
 import type { Invoice, InvoiceWithItems, CreditNote, DebitNote, VendorDebitNote } from '@shared/schema';
+import { downloadJSON, downloadXLSX } from '@/lib/download-utils';
 
 // GST Report Types
 export type GSTReportType = 'GSTR1' | 'GSTR3B';
@@ -646,13 +647,12 @@ export function getPeriodString(month: number, year: number): string {
 /**
  * Export GST Report as JSON
  */
-export async function exportGSTReportAsJSON(
+export function exportGSTReportAsJSON(
   report: GSTR1Report | GSTR3BReport,
   reportType: GSTReportType,
   period: string
-): Promise<void> {
-  const { downloadJSON } = await import('@/lib/download-utils');
-  await downloadJSON(report, `${reportType}_${period}.json`);
+): void {
+  downloadJSON(report, `${reportType}_${period}.json`);
 }
 
 /**
@@ -801,7 +801,6 @@ export async function exportGSTR1AsExcel(report: GSTR1Report, period: string): P
   }
 
   // Write file
-  const { downloadXLSX } = await import('@/lib/download-utils');
   await downloadXLSX(workbook, `GSTR1_${period}.xlsx`);
 }
 
@@ -857,6 +856,5 @@ export async function exportGSTR3BAsExcel(report: GSTR3BReport, period: string):
     XLSX.utils.book_append_sheet(workbook, itcSheet, 'Table 4 - ITC');
   }
 
-  const { downloadXLSX } = await import('@/lib/download-utils');
   await downloadXLSX(workbook, `GSTR3B_${period}.xlsx`);
 }
