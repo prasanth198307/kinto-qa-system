@@ -12,3 +12,9 @@ id = "Aczzn50fDcYdAFBcBbUXM"
 uri = "file://Kinto_SmartOps_PitchDeck.pptx"
 type = "slides"
 title = "Kinto Smart Ops — Pitch Deck (12 Slides)"
+
+[[outputs]]
+id = "qwO7leQYtIwv8gyDZ-Bl7"
+uri = "file://Kinto_Customer_Presentation.pptx"
+type = "slides"
+title = "Kinto Smart Ops — Customer Sales Deck (12 Slides)"
