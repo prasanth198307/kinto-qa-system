@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Download, Users, TrendingUp, AlertCircle, RefreshCw } from "lucide-react";
+import { downloadXLSX } from "@/lib/download-utils";
 import { format } from "date-fns";
 
 interface VendorType {
@@ -134,7 +135,7 @@ export default function VendorReport() {
     XLSX.utils.book_append_sheet(wb, ws, "Vendor Report");
 
     const filename = `Vendor_Report_${selectedTypeName.replace(/\s+/g, "_")}_${format(new Date(), "yyyyMMdd_HHmm")}.xlsx`;
-    XLSX.writeFile(wb, filename);
+    await downloadXLSX(wb, filename);
   };
 
   return (

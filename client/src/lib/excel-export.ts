@@ -1,4 +1,5 @@
 import { format } from 'date-fns';
+import { downloadXLSX } from '@/lib/download-utils';
 
 export interface ExcelSheet {
   name: string;
@@ -19,7 +20,7 @@ export async function exportToExcel(options: ExcelExportOptions): Promise<void> 
     XLSX.utils.book_append_sheet(workbook, worksheet, sheet.name.substring(0, 31));
   }
   
-  XLSX.writeFile(workbook, options.filename);
+  await downloadXLSX(workbook, options.filename);
 }
 
 export function formatCurrencyForExcel(paise: number | null | undefined): number {

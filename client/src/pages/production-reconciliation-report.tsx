@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { FileSpreadsheet, FileDown, Calendar } from "lucide-react";
+import { downloadXLSX } from "@/lib/download-utils";
 import { format } from "date-fns";
 
 interface MaterialDetail {
@@ -176,7 +177,7 @@ export default function ProductionReconciliationReport() {
     const fileName = `Production_Reconciliation_Report_${dateFrom || 'all'}_to_${dateTo || 'all'}.xlsx`;
     
     // Save file
-    XLSX.writeFile(wb, fileName);
+    await downloadXLSX(wb, fileName);
   };
 
   const handleExportPDF = () => {

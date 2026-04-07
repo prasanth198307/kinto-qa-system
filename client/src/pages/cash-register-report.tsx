@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/collapsible";
 import { useToast } from '@/hooks/use-toast';
 import { getCashSourceLabel } from '@/lib/utils';
+import { downloadXLSX } from '@/lib/download-utils';
 
 const MONTHS = [
   { value: '01', label: 'January' },
@@ -256,7 +257,7 @@ const exportToExcel = async (reportData: ReportData, periodType: string) => {
     XLSX.utils.book_append_sheet(workbook, transactionSheet, 'Transactions');
   }
   
-  XLSX.writeFile(workbook, `cash-register-report-${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+  await downloadXLSX(workbook, `cash-register-report-${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
 };
 
 const formatPeriodLabel = (period: string, periodType: string) => {

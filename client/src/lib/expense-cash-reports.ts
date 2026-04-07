@@ -1,4 +1,5 @@
 import { format } from 'date-fns';
+import { downloadXLSX } from '@/lib/download-utils';
 
 export interface ExpenseReportVoucher {
   id: string;
@@ -215,7 +216,7 @@ export async function exportExpenseReportAsExcel(data: ExpenseReportData): Promi
   }
   
   const filename = `Expense_Report_${format(new Date(), 'yyyyMMdd_HHmmss')}.xlsx`;
-  XLSX.writeFile(workbook, filename);
+  await downloadXLSX(workbook, filename);
 }
 
 export async function exportCashRegisterReportAsExcel(data: CashRegisterReportData): Promise<void> {
@@ -316,5 +317,5 @@ export async function exportCashRegisterReportAsExcel(data: CashRegisterReportDa
   }
   
   const filename = `Cash_Register_Report_${format(new Date(), 'yyyyMMdd_HHmmss')}.xlsx`;
-  XLSX.writeFile(workbook, filename);
+  await downloadXLSX(workbook, filename);
 }

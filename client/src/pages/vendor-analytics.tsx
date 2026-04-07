@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Building2, TrendingUp, DollarSign, Users, FileSpreadsheet, ExternalLink, Search, X, ArrowLeft } from "lucide-react";
+import { downloadXLSX } from "@/lib/download-utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { DataTablePagination } from "@/components/DataTablePagination";
@@ -190,7 +191,7 @@ export default function VendorAnalytics() {
     const filename = `Vendor_Analytics_${new Date().toISOString().split('T')[0]}.xlsx`;
 
     // Download file
-    XLSX.writeFile(wb, filename);
+    await downloadXLSX(wb, filename);
 
     toast({
       title: "Export Successful",

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChevronDown, ChevronRight, Calendar, Download, Search, FileStack } from "lucide-react";
+import { downloadXLSX } from "@/lib/download-utils";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 
@@ -168,7 +169,7 @@ export default function DayBookPage() {
       ];
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Day Book");
-      XLSX.writeFile(wb, `Day_Book_${fromDate}_to_${toDate}.xlsx`);
+      await downloadXLSX(wb, `Day_Book_${fromDate}_to_${toDate}.xlsx`);
       toast({ title: "Downloaded", description: "Day Book exported as Excel (.xlsx)" });
     } catch (err: any) {
       toast({

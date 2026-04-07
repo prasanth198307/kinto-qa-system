@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TrendingUp, Package, DollarSign, ShoppingCart, Calendar, FileSpreadsheet } from "lucide-react";
+import { downloadXLSX } from "@/lib/download-utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 
@@ -127,7 +128,7 @@ export default function SalesDashboard() {
     const filename = `Sales_Report_${periodLabel}.xlsx`;
 
     // Download file
-    XLSX.writeFile(wb, filename);
+    await downloadXLSX(wb, filename);
 
     toast({
       title: "Export Successful",

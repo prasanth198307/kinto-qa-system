@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
 import { Calendar, Download, Search, Check, ChevronsUpDown, BookOpen } from "lucide-react";
+import { downloadXLSX } from "@/lib/download-utils";
 import { groupAccountsByParent } from "@/lib/account-hierarchy";
 
 interface AccountListItem {
@@ -192,7 +193,7 @@ export default function LedgerViewPage() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Ledger");
     const accountName = ledgerData.account.name.replace(/[^a-zA-Z0-9]/g, "_");
-    XLSX.writeFile(wb, `Ledger_${accountName}_${selectedFY}.xlsx`);
+    await downloadXLSX(wb, `Ledger_${accountName}_${selectedFY}.xlsx`);
     toast({ title: "Downloaded", description: "Ledger exported as Excel (.xlsx)" });
   }
 

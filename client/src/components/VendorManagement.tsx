@@ -44,6 +44,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Star, Search, X, Check, ChevronsUpDown, ShieldCheck, Loader2, AlertCircle, RefreshCw, Download } from "lucide-react";
+import { downloadXLSX } from "@/lib/download-utils";
 import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -681,7 +682,7 @@ export default function VendorManagement() {
       ];
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Vendor Contacts');
-      XLSX.writeFile(wb, `Vendor_Contacts_${format(new Date(), 'yyyyMMdd_HHmm')}.xlsx`);
+      await downloadXLSX(wb, `Vendor_Contacts_${format(new Date(), 'yyyyMMdd_HHmm')}.xlsx`);
     } catch (e) {
       toast({ title: 'Download failed', description: 'Could not export vendor contacts.', variant: 'destructive' });
     }

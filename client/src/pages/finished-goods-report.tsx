@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { FileSpreadsheet, FileDown, FileText, Calendar, Package, CheckCircle, XCircle, Clock, ArrowLeft } from "lucide-react";
+import { downloadXLSX } from "@/lib/download-utils";
 import { format } from "date-fns";
 
 interface FinishedGoodItem {
@@ -136,7 +137,7 @@ export default function FinishedGoodsReport() {
     XLSX.utils.book_append_sheet(wb, ws, 'Finished Goods Report');
 
     const dateStr = format(new Date(), 'yyyy-MM-dd');
-    XLSX.writeFile(wb, `finished-goods-report-${dateStr}.xlsx`);
+    await downloadXLSX(wb, `finished-goods-report-${dateStr}.xlsx`);
   };
 
   const handleExportPDF = async () => {

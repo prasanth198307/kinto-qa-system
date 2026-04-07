@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Plus, Search, ChevronDown, ChevronRight, Edit, Trash2, Lock, Calendar, Download, FolderOpen, Folder, BookOpen, Check, ChevronsUpDown } from "lucide-react";
+import { downloadXLSX } from "@/lib/download-utils";
 
 interface ChartAccount {
   id: string;
@@ -321,7 +322,7 @@ export default function ChartOfAccountsPage() {
     ];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Chart of Accounts');
-    XLSX.writeFile(wb, `Chart_of_Accounts_FY_${selectedFY}-${String(parseInt(selectedFY) + 1).slice(2)}.xlsx`);
+    await downloadXLSX(wb, `Chart_of_Accounts_FY_${selectedFY}-${String(parseInt(selectedFY) + 1).slice(2)}.xlsx`);
     toast({ title: "Downloaded", description: "Chart of Accounts exported as Excel (.xlsx)" });
   }
 

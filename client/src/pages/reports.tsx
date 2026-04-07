@@ -28,6 +28,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { FileText, Package, Receipt, ShoppingCart, Wrench, Filter, FileCheck2, Download, Wallet, Banknote, CreditCard, Check, ChevronsUpDown, Boxes, Settings, Trash2, Undo2, RefreshCw, Users, Factory, Info } from "lucide-react";
+import { downloadXLSX } from "@/lib/download-utils";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import type { Gatepass, Invoice, RawMaterialIssuance, PurchaseOrder, PMExecution, InvoicePayment } from "@shared/schema";
@@ -182,7 +183,7 @@ function FinishedGoodsReportContent() {
     XLSX.utils.book_append_sheet(wb, ws, 'Finished Goods Report');
 
     const dateStr = format(new Date(), 'yyyy-MM-dd');
-    XLSX.writeFile(wb, `finished-goods-report-${dateStr}.xlsx`);
+    await downloadXLSX(wb, `finished-goods-report-${dateStr}.xlsx`);
   };
 
   const handleFgExportPDF = async () => {
@@ -569,7 +570,7 @@ function MonthlySalesReportContent() {
     XLSX.utils.book_append_sheet(wb, ws, 'Monthly Sales');
 
     const dateStr = format(new Date(), 'yyyy-MM-dd');
-    XLSX.writeFile(wb, `monthly-sales-report-${msYear}-${dateStr}.xlsx`);
+    await downloadXLSX(wb, `monthly-sales-report-${msYear}-${dateStr}.xlsx`);
   };
 
   const handleMsExportPDF = async () => {
@@ -3431,7 +3432,7 @@ function ScrapReportContent() {
     
     const ws = XLSX.utils.aoa_to_sheet(excelData);
     XLSX.utils.book_append_sheet(wb, ws, 'Scrap Report');
-    XLSX.writeFile(wb, `scrap-report-${selectedMonth}-${selectedYear}.xlsx`);
+    await downloadXLSX(wb, `scrap-report-${selectedMonth}-${selectedYear}.xlsx`);
   };
 
   const handlePrint = () => {
@@ -3801,7 +3802,7 @@ function SalesReturnsReportContent() {
     
     const ws = XLSX.utils.aoa_to_sheet(excelData);
     XLSX.utils.book_append_sheet(wb, ws, 'Sales Returns Summary');
-    XLSX.writeFile(wb, `sales-returns-summary-${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+    await downloadXLSX(wb, `sales-returns-summary-${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
   };
 
   const handlePrint = () => {
@@ -4152,7 +4153,7 @@ function RepackingReportContent() {
     const productWs = XLSX.utils.json_to_sheet(productData);
     XLSX.utils.book_append_sheet(wb, productWs, 'By Product');
     
-    XLSX.writeFile(wb, `Repacking_Report_${format(new Date(), 'yyyyMMdd')}.xlsx`);
+    await downloadXLSX(wb, `Repacking_Report_${format(new Date(), 'yyyyMMdd')}.xlsx`);
   };
 
   const handlePrint = () => {
@@ -4426,7 +4427,7 @@ function MonthlyProductionReportContent() {
       ];
       const ws = XLSX.utils.aoa_to_sheet(sheetRows);
       XLSX.utils.book_append_sheet(wb, ws, `Production ${selectedYear}`);
-      XLSX.writeFile(wb, `monthly-production-${selectedYear}.xlsx`);
+      await downloadXLSX(wb, `monthly-production-${selectedYear}.xlsx`);
     } finally {
       setIsExporting(false);
     }

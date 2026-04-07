@@ -646,21 +646,13 @@ export function getPeriodString(month: number, year: number): string {
 /**
  * Export GST Report as JSON
  */
-export function exportGSTReportAsJSON(
+export async function exportGSTReportAsJSON(
   report: GSTR1Report | GSTR3BReport,
   reportType: GSTReportType,
   period: string
-): void {
-  const json = JSON.stringify(report, null, 2);
-  const blob = new Blob([json], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `${reportType}_${period}.json`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+): Promise<void> {
+  const { downloadJSON } = await import('@/lib/download-utils');
+  await downloadJSON(report, `${reportType}_${period}.json`);
 }
 
 /**
@@ -809,7 +801,8 @@ export async function exportGSTR1AsExcel(report: GSTR1Report, period: string): P
   }
 
   // Write file
-  XLSX.writeFile(workbook, `GSTR1_${period}.xlsx`);
+  const { downloadXLSX } = await import('@/lib/download-utils');
+  await downloadXLSX(workbook, `GSTR1_${period}.xlsx`);
 }
 
 /**
@@ -864,5 +857,6 @@ export async function exportGSTR3BAsExcel(report: GSTR3BReport, period: string):
     XLSX.utils.book_append_sheet(workbook, itcSheet, 'Table 4 - ITC');
   }
 
-  XLSX.writeFile(workbook, `GSTR3B_${period}.xlsx`);
+  const { downloadXLSX } = await import('@/lib/download-utils');
+  await downloadXLSX(workbook, `GSTR3B_${period}.xlsx`);
 }
