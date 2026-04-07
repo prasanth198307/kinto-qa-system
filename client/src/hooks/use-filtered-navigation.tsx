@@ -76,11 +76,13 @@ const navItemToScreenKey: Record<string, string> = {
   'data-import': 'data_import',
   'chart-of-accounts': 'chart_of_accounts',
   'journal-entries': 'journal_entries',
-  'journal-entry-new': 'manual_journal_entry',
+  'journal-entry-new': 'journal_entries',
   'bank-transactions': 'journal_entries',
-  'trial-balance': 'trial_balance',
-  'profit-loss': 'profit_loss',
-  'balance-sheet': 'balance_sheet',
+  // trial-balance page calls /api/chart-of-accounts — match backend screenKey
+  'trial-balance': 'chart_of_accounts',
+  // profit-loss and balance-sheet pages both call /api/group-summary — match backend screenKey
+  'profit-loss': 'group_summary',
+  'balance-sheet': 'group_summary',
   'ledger-view': 'ledger_view',
   'day-book': 'day_book',
   'aging-report': 'aging_report',
@@ -88,6 +90,16 @@ const navItemToScreenKey: Record<string, string> = {
   'group-summary': 'group_summary',
   'budget-variance': 'budget_variance',
   'admin-tools': 'admin_tools',
+  'hpcl-migration': 'admin_tools',
+  // Spare parts stock page
+  'spare-parts-stock': 'spare_parts',
+  // Action shortcut nav items — inherit parent screen permission
+  'add-product': 'products',
+  'add-raw-material': 'raw_materials',
+  'create-issuance': 'raw_material_issuance',
+  'create-gatepass': 'gatepasses',
+  'add-purchase-order': 'purchase_orders',
+  'schedule-maintenance': 'maintenance_plans',
 };
 
 const screenPermissions: Record<string, { admin: boolean; manager: boolean; operator: boolean; reviewer: boolean }> = {

@@ -219,6 +219,7 @@ const endpointToScreenKey: Record<string, string> = {
   // Accounting & Journal Entries
   '/api/journal-entries': 'journal_entries',
   '/api/chart-of-accounts': 'chart_of_accounts',
+  '/api/account-types': 'chart_of_accounts',
   '/api/trial-balance': 'trial_balance',
   '/api/profit-loss': 'profit_loss',
   '/api/bank-transactions': 'bank_transactions',
