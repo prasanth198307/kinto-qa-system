@@ -24,9 +24,16 @@ import archiver from "archiver";
 import { insertCashRegisterDaySchema, insertCashRegisterTransactionSchema, insertCashRegisterExpenseItemSchema, insertSalespersonMappingSchema, cashRegisterDays, cashRegisterTransactions, cashRegisterExpenseItems, expenseVouchers, expenseItems, customerAdvances, advanceApplications, insertCustomerAdvanceSchema, insertAdvanceApplicationSchema, journalEntries, journalLines, chartOfAccounts, budgets, budgetItems } from "@shared/schema";
 import { sql, and, eq, ne, gte, lte, gt, asc, desc, inArray, isNotNull, isNull, or, ilike, type SQL } from "drizzle-orm";
 
-// Simple audit logging function
+// Persistent audit logging function
 async function logAudit(userId: string | undefined, action: string, table: string, recordId: string, description: string) {
-  console.log(`[AUDIT] User: ${userId}, Action: ${action}, Table: ${table}, Record: ${recordId}, Description: ${description}`);
+  try {
+    await db.execute(sql`
+      INSERT INTO audit_logs (user_id, action, table_name, record_id, description, created_at)
+      VALUES (${userId ?? null}, ${action}, ${table}, ${recordId}, ${description}, NOW())
+    `);
+  } catch (err) {
+    console.error(`[AUDIT] Failed to persist audit log — User: ${userId}, Action: ${action}, Table: ${table}, Record: ${recordId}`, err);
+  }
 }
 
 // Recalculate discrepancy for a cash register day
@@ -9549,7 +9556,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // GST Reports - Get invoices with items and HSN summary for a period
   // Allow admin, manager, billing manager, and accounts manager roles
-  app.post('/api/gst-reports', requireRole('admin', 'manager', 'billing manager', 'accounts manager', 'AccountsManager'), async (req: any, res) => {
+  app.post('/api/gst-reports', requireRole('admin', 'manager', 'accountsmanager'), async (req: any, res) => {
     try {
       const { periodType, month, year } = req.body;
       
@@ -11626,7 +11633,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============ SCRAP INVENTORY API ============
 
   // Create direct scrap record from finished goods (admin/manager only)
-  app.post('/api/scrap-inventory/direct', requireRole('admin', 'Admin', 'manager', 'Manager'), async (req: any, res) => {
+  app.post('/api/scrap-inventory/direct', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const { productId, productName, batchNumber, quantity, unitCost, damageReason, conditionDescription, remarks, scrapDate } = req.body;
 
@@ -11701,7 +11708,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get all scrap inventory records with optional filters (manager+ only)
-  app.get('/api/scrap-inventory', requireRole('admin', 'Admin', 'manager', 'Manager', 'AccountsManager'), async (req: any, res) => {
+  app.get('/api/scrap-inventory', requireRole('admin', 'manager', 'accountsmanager'), async (req: any, res) => {
     try {
       const { startDate, endDate, approvalStatus, productId } = req.query;
       
@@ -11738,7 +11745,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get scrap inventory summary/report for month-end loss calculation (manager+ only)
-  app.get('/api/scrap-inventory/report', requireRole('admin', 'Admin', 'manager', 'Manager', 'AccountsManager'), async (req: any, res) => {
+  app.get('/api/scrap-inventory/report', requireRole('admin', 'manager', 'accountsmanager'), async (req: any, res) => {
     try {
       const { month, year } = req.query;
       
@@ -11815,7 +11822,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get sales returns summary report with disposition breakdown
-  app.get('/api/reports/sales-returns-summary', requireRole('admin', 'Admin', 'manager', 'Manager', 'AccountsManager'), async (req: any, res) => {
+  app.get('/api/reports/sales-returns-summary', requireRole('admin', 'manager', 'accountsmanager'), async (req: any, res) => {
     try {
       const { month, year, dateFrom, dateTo } = req.query;
       
@@ -11931,7 +11938,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get repacking report with date range filtering
-  app.get('/api/reports/repacking', requireRole('admin', 'Admin', 'manager', 'Manager', 'AccountsManager'), async (req: any, res) => {
+  app.get('/api/reports/repacking', requireRole('admin', 'manager', 'accountsmanager'), async (req: any, res) => {
     try {
       const { dateFrom, dateTo } = req.query;
       
@@ -12031,7 +12038,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get specific scrap record (manager+ only)
-  app.get('/api/scrap-inventory/:id', requireRole('admin', 'Admin', 'manager', 'Manager', 'AccountsManager'), async (req: any, res) => {
+  app.get('/api/scrap-inventory/:id', requireRole('admin', 'manager', 'accountsmanager'), async (req: any, res) => {
     try {
       const { id } = req.params;
       const [scrap] = await db.select()
@@ -12054,7 +12061,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Approve/reject scrap record
-  app.patch('/api/scrap-inventory/:id/approve', requireRole('admin', 'Admin', 'manager', 'Manager'), async (req: any, res) => {
+  app.patch('/api/scrap-inventory/:id/approve', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const { id } = req.params;
       const { action, remarks } = req.body; // action: 'approve' or 'reject'
@@ -12131,7 +12138,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update scrap disposal details
-  app.patch('/api/scrap-inventory/:id/dispose', requireRole('admin', 'Admin', 'manager', 'Manager'), async (req: any, res) => {
+  app.patch('/api/scrap-inventory/:id/dispose', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const { id } = req.params;
       const { disposalMethod, disposalValue, remarks } = req.body;
@@ -12204,7 +12211,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Upload damage evidence photo for scrap record
-  app.post('/api/scrap-inventory/:id/evidence', requireRole('admin', 'Admin', 'manager', 'Manager'), scrapEvidenceUpload.single('photo'), async (req: any, res) => {
+  app.post('/api/scrap-inventory/:id/evidence', requireRole('admin', 'manager'), scrapEvidenceUpload.single('photo'), async (req: any, res) => {
     try {
       const { id } = req.params;
       
@@ -12465,7 +12472,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create new customer advance
-  app.post('/api/customer-advances', requireRole('admin', 'manager', 'AccountsManager'), async (req: any, res) => {
+  app.post('/api/customer-advances', requireRole('admin', 'manager', 'accountsmanager'), async (req: any, res) => {
     try {
       const isPrepayment = req.body.advanceType === 'prepayment';
       const numberPrefix = isPrepayment ? 'PRE' : 'ADV';
@@ -12512,7 +12519,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Apply advance to invoice
-  app.post('/api/customer-advances/:id/apply', requireRole('admin', 'manager', 'AccountsManager'), async (req: any, res) => {
+  app.post('/api/customer-advances/:id/apply', requireRole('admin', 'manager', 'accountsmanager'), async (req: any, res) => {
     try {
       const { id } = req.params;
       const { invoiceId, amount, remarks } = req.body;
@@ -14983,7 +14990,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create vendor debit note
-  app.post('/api/vendor-debit-notes', requireRole('admin', 'manager', 'AccountsManager'), async (req: any, res) => {
+  app.post('/api/vendor-debit-notes', requireRole('admin', 'manager', 'accountsmanager'), async (req: any, res) => {
     try {
       const { vendorId, purchaseOrderId, debitDate, reason, notes, items } = req.body;
 
@@ -15383,7 +15390,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create debit note adjustment (link to invoice or PO)
-  app.post('/api/vendor-debit-notes/:id/adjustments', requireRole('admin', 'manager', 'AccountsManager'), async (req: any, res) => {
+  app.post('/api/vendor-debit-notes/:id/adjustments', requireRole('admin', 'manager', 'accountsmanager'), async (req: any, res) => {
     try {
       const { id: debitNoteId } = req.params;
       const { referenceType, invoiceId, purchaseOrderId, adjustmentAmount, remarks } = req.body;
@@ -19233,7 +19240,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Reconcile/lock cash register day
-  app.post('/api/cash-register/days/:id/reconcile', isAuthenticated, requireRole('Admin', 'Finance'), async (req: any, res: Response) => {
+  app.post('/api/cash-register/days/:id/reconcile', isAuthenticated, requireRole('admin', 'accountsmanager'), async (req: any, res: Response) => {
     try {
       const { id } = req.params;
       const { varianceAmount, notes } = req.body;
@@ -19261,7 +19268,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete cash register day
-  app.delete('/api/cash-register/days/:id', isAuthenticated, requireRole('Admin'), async (req: any, res: Response) => {
+  app.delete('/api/cash-register/days/:id', isAuthenticated, requireRole('admin'), async (req: any, res: Response) => {
     try {
       const { id } = req.params;
       const day = await storage.getCashRegisterDay(id);
@@ -19280,7 +19287,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Clear discrepancy remarks from a cash register day
-  app.post('/api/cash-register/days/:id/clear-discrepancy', isAuthenticated, requireRole('Admin'), async (req: any, res: Response) => {
+  app.post('/api/cash-register/days/:id/clear-discrepancy', isAuthenticated, requireRole('admin'), async (req: any, res: Response) => {
     try {
       const { id } = req.params;
       const day = await storage.getCashRegisterDay(id);
@@ -20502,7 +20509,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/cash-register/salesperson-mappings', isAuthenticated, requireRole('Admin'), async (req: any, res: Response) => {
+  app.post('/api/cash-register/salesperson-mappings', isAuthenticated, requireRole('admin'), async (req: any, res: Response) => {
     try {
       const parsed = insertSalespersonMappingSchema.parse(req.body);
       
@@ -20520,7 +20527,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/cash-register/salesperson-mappings/:id', isAuthenticated, requireRole('Admin'), async (req: any, res: Response) => {
+  app.patch('/api/cash-register/salesperson-mappings/:id', isAuthenticated, requireRole('admin'), async (req: any, res: Response) => {
     try {
       const { id } = req.params;
       const updated = await storage.updateSalespersonMapping(id, req.body);
@@ -20534,7 +20541,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/cash-register/salesperson-mappings/:id', isAuthenticated, requireRole('Admin'), async (req: any, res: Response) => {
+  app.delete('/api/cash-register/salesperson-mappings/:id', isAuthenticated, requireRole('admin'), async (req: any, res: Response) => {
     try {
       const { id } = req.params;
       await storage.deleteSalespersonMapping(id);
@@ -20546,7 +20553,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Convert cash register expense to voucher
-  app.post('/api/cash-register/transactions/:transactionId/convert-to-voucher', isAuthenticated, requireRole('Admin', 'Finance'), async (req: any, res: Response) => {
+  app.post('/api/cash-register/transactions/:transactionId/convert-to-voucher', isAuthenticated, requireRole('admin', 'accountsmanager'), async (req: any, res: Response) => {
     try {
       const { transactionId } = req.params;
       const { categoryId, payeeName } = req.body;
@@ -21193,7 +21200,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ==================== MIS (Management Information System) API ENDPOINTS ====================
   
   // MIS Executive KPI Dashboard - Get key performance indicators
-  app.get('/api/mis/kpi-dashboard', requireRole('admin', 'manager', 'AccountsManager'), async (req: any, res: Response) => {
+  app.get('/api/mis/kpi-dashboard', requireRole('admin', 'manager', 'accountsmanager'), async (req: any, res: Response) => {
     try {
       const { period = '30', startDate: startDateParam, endDate: endDateParam } = req.query;
       let startDateStr: string;
@@ -21361,7 +21368,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // MIS Exception Alerts - Get items needing attention
-  app.get('/api/mis/alerts', requireRole('admin', 'manager', 'AccountsManager'), async (req: any, res: Response) => {
+  app.get('/api/mis/alerts', requireRole('admin', 'manager', 'accountsmanager'), async (req: any, res: Response) => {
     try {
       const alerts: any[] = [];
       
@@ -21865,7 +21872,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // MIS Sales & Margin Analysis
-  app.get('/api/mis/sales-analytics', requireRole('admin', 'manager', 'AccountsManager'), async (req: any, res: Response) => {
+  app.get('/api/mis/sales-analytics', requireRole('admin', 'manager', 'accountsmanager'), async (req: any, res: Response) => {
     try {
       const { period = '30' } = req.query;
       const daysBack = parseInt(period as string) || 30;
@@ -25278,7 +25285,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ─── MIS: Cash Register Analytics ─────────────────────────────────────────
-  app.get('/api/mis/cash-analytics', requireRole('admin', 'manager', 'AccountsManager'), async (req: any, res: Response) => {
+  app.get('/api/mis/cash-analytics', requireRole('admin', 'manager', 'accountsmanager'), async (req: any, res: Response) => {
     try {
       const { periodType = 'last-30', startDate: startDateParam, endDate: endDateParam } = req.query;
 
@@ -25604,7 +25611,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ─── MIS: Financial Analytics ──────────────────────────────────────────────
-  app.get('/api/mis/financial-analytics', requireRole('admin', 'manager', 'AccountsManager'), async (req: any, res: Response) => {
+  app.get('/api/mis/financial-analytics', requireRole('admin', 'manager', 'accountsmanager'), async (req: any, res: Response) => {
     try {
       // ── Period / FY resolution ─────────────────────────────────────────────
       const today = new Date();
