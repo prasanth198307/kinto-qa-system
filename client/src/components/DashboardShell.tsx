@@ -33,7 +33,7 @@ export function DashboardShell({
         onMobileMenuClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
       />
       
-      <div className="flex min-h-screen bg-background overflow-x-hidden">
+      <div className="flex bg-background overflow-x-hidden" style={{ minHeight: '100dvh' }}>
         <VerticalNavSidebar
           sections={navSections}
           activeItem={activeView}
@@ -43,7 +43,10 @@ export function DashboardShell({
           onMobileClose={() => setIsMobileMenuOpen(false)}
         />
         
-        <div className="flex-1 pt-16 overflow-x-auto min-w-0">
+        <div
+          className="flex-1 overflow-x-auto min-w-0"
+          style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 4rem)' }}
+        >
           {children}
         </div>
       </div>

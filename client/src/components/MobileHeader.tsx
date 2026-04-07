@@ -31,25 +31,32 @@ export default function MobileHeader({
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 h-14 bg-white border-b border-gray-200 shadow-sm z-[100]">
-      <div className="flex items-center justify-between h-full px-4">
+    <header
+      className="fixed left-0 right-0 bg-card border-b border-border shadow-sm z-[100]"
+      style={{
+        top: 0,
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+        height: 'calc(env(safe-area-inset-top, 0px) + 3.5rem)',
+      }}
+    >
+      <div className="flex items-center justify-between h-14 px-4">
         <Button
           size="icon"
           variant="ghost"
-          className="text-gray-700"
+          className="text-foreground touch-manipulation"
           onClick={handleLogoutClick}
           data-testid="button-logout"
         >
           <LogOut className="h-5 w-5" />
         </Button>
         
-        <h1 className="text-base font-semibold text-gray-900" data-testid="text-app-title">{title}</h1>
+        <h1 className="text-base font-semibold text-foreground" data-testid="text-app-title">{title}</h1>
         
         <div className="relative">
           <Button
             size="icon"
             variant="ghost"
-            className="text-gray-700"
+            className="text-foreground touch-manipulation"
             onClick={() => console.log('Notifications clicked')}
             data-testid="button-notifications"
           >

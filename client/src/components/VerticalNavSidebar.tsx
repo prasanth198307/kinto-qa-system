@@ -57,24 +57,39 @@ export function VerticalNavSidebar({
   onMobileClose,
 }: VerticalNavSidebarProps) {
   const [, navigate] = useLocation();
-  // Guard against undefined sections
   const safeSections = sections || [];
-  
+
+  // Lock body scroll when mobile menu is open (Android + iOS)
+  useEffect(() => {
+    if (isMobileOpen) {
+      const scrollY = window.scrollY;
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+      return () => {
+        document.body.style.overflow = '';
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.width = '';
+        window.scrollTo(0, scrollY);
+      };
+    }
+  }, [isMobileOpen]);
+
   // Initialize collapsed state - default all collapsed
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>(() => {
-    const STORAGE_VERSION = 'v2'; // Change this to reset user preferences
+    const STORAGE_VERSION = 'v2';
     try {
       const version = localStorage.getItem('sidebarVersion');
       const saved = localStorage.getItem('sidebarCollapsedSections');
       if (version === STORAGE_VERSION && saved) {
         return JSON.parse(saved);
       }
-      // Reset storage for new version
       localStorage.setItem('sidebarVersion', STORAGE_VERSION);
     } catch (e) {
-      // Ignore parse errors
+      // ignore
     }
-    // Default: all sections collapsed
     const defaultCollapsed: Record<string, boolean> = {};
     safeSections.forEach(section => {
       if (section.label) {
@@ -84,14 +99,13 @@ export function VerticalNavSidebar({
     return defaultCollapsed;
   });
 
-  // Save to localStorage when collapsed state changes
   useEffect(() => {
     localStorage.setItem('sidebarCollapsedSections', JSON.stringify(collapsedSections));
   }, [collapsedSections]);
 
   // Auto-expand section containing active item
   useEffect(() => {
-    const activeSection = safeSections.find(section => 
+    const activeSection = safeSections.find(section =>
       section.items.some(item => item.id === activeItem)
     );
     if (activeSection && collapsedSections[activeSection.id]) {
@@ -110,19 +124,15 @@ export function VerticalNavSidebar({
   };
 
   const handleItemClick = (item: NavItem) => {
-    // If the item has its own onClick handler (i.e., it navigates to a standalone page route),
-    // use that instead of navigating to /?tab=... which is for dashboard tabs only.
     if (item.onClick) {
-      // Just call the onClick handler which will handle navigation
       item.onClick();
       onItemClick(item.id);
     } else {
-      // For dashboard tabs, navigate to root with the tab parameter
-      // This ensures the dashboard correctly picks up the active tab on mount
       navigate(`/?tab=${item.id}`);
       onItemClick(item.id);
     }
 
+    // Scroll main content to top
     window.scrollTo({ top: 0, behavior: 'instant' });
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
@@ -134,7 +144,7 @@ export function VerticalNavSidebar({
       document.body.scrollTop = 0;
       if (mainContent) mainContent.scrollTop = 0;
     }, 50);
-    
+
     if (onMobileClose) {
       onMobileClose();
     }
@@ -148,7 +158,7 @@ export function VerticalNavSidebar({
       <Button
         key={item.id}
         variant={isActive ? "default" : "ghost"}
-        className={`w-full justify-start text-left min-h-9 h-auto py-1.5 ${
+        className={`w-full justify-start text-left min-h-9 h-auto py-1.5 touch-manipulation ${
           isActive ? "bg-primary text-primary-foreground" : "text-muted-foreground hover-elevate"
         }`}
         onClick={() => handleItemClick(item)}
@@ -161,14 +171,15 @@ export function VerticalNavSidebar({
   };
 
   const sidebarContent = (
-    <div 
+    <div
       className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-visible"
       tabIndex={0}
       style={{
-        scrollbarWidth: 'thin',
+        scrollbarWidth: 'thin' as any,
         scrollbarColor: 'hsl(var(--muted-foreground) / 0.3) transparent',
         WebkitOverflowScrolling: 'touch',
         touchAction: 'pan-y',
+        overscrollBehavior: 'contain',
         outline: 'none',
       }}
       onKeyDown={(e) => {
@@ -198,7 +209,7 @@ export function VerticalNavSidebar({
         {safeSections.map((section, index) => {
           const isCollapsed = collapsedSections[section.id] ?? false;
           const hasActiveItem = section.items.some(item => item.id === activeItem);
-          
+
           return (
             <div key={section.id}>
               {section.label ? (
@@ -208,7 +219,7 @@ export function VerticalNavSidebar({
                       <Button
                         variant="ghost"
                         size="sm"
-                        className={`flex-1 justify-start h-8 px-2 hover-elevate ${
+                        className={`flex-1 justify-start h-8 px-2 touch-manipulation hover-elevate ${
                           hasActiveItem && isCollapsed ? 'bg-primary/10 text-primary' : ''
                         }`}
                         data-testid={`toggle-section-${section.id}`}
@@ -232,7 +243,7 @@ export function VerticalNavSidebar({
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-6 w-6 hover-elevate flex-shrink-0"
+                            className="h-6 w-6 hover-elevate flex-shrink-0 touch-manipulation"
                             aria-label={`Add ${section.label?.toLowerCase()} item`}
                             data-testid={`button-quick-action-${section.id}`}
                           >
@@ -280,11 +291,12 @@ export function VerticalNavSidebar({
 
   return (
     <>
-      {/* Mobile Sidebar Overlay */}
+      {/* Mobile Sidebar Overlay — touch-action:none prevents background scroll-through */}
       {isMobileOpen && (
         <div
           className="lg:hidden fixed inset-0 bg-black/50 z-30"
           onClick={onMobileClose}
+          style={{ touchAction: 'none' }}
           data-testid="sidebar-overlay"
         />
       )}
@@ -292,13 +304,15 @@ export function VerticalNavSidebar({
       {/* Sidebar */}
       <div
         className={`
-          fixed top-0 left-0 bottom-0 w-72 bg-card border-r border-border z-40 pt-20 px-3 pb-4
-          transition-transform duration-300 ease-in-out
-          flex flex-col
+          fixed top-0 left-0 bottom-0 w-72 bg-card border-r border-border z-40 px-3 pb-4
+          flex flex-col sidebar-full-height panel-slide
           ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
           lg:translate-x-0
         `}
-        style={{ height: '100vh' }}
+        style={{
+          paddingTop: 'calc(env(safe-area-inset-top, 0px) + 5rem)',
+          transition: 'transform 300ms ease-in-out',
+        }}
         data-testid="vertical-nav-sidebar"
       >
         {sidebarContent}

@@ -326,7 +326,7 @@ export default function ChecklistForm({ machineName, tasks: initialTasks, onSubm
         </div>
       </Card>
 
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t">
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))' }}>
         <Button
           className="w-full"
           size="lg"

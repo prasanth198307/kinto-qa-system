@@ -155,7 +155,11 @@ function OperatorDashboard() {
   ];
 
   const bottomNav = (
-    <div className="fixed bottom-0 left-0 right-0 bg-card border-t">
+    <div
+      className="fixed bottom-0 left-0 right-0 bg-card border-t"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      data-testid="mobile-bottom-nav"
+    >
       <div className="flex">
         <button
           className={`flex-1 py-3 flex flex-col items-center gap-1 ${activeView === 'dashboard' ? 'text-primary' : 'text-muted-foreground'}`}

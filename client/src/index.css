@@ -240,6 +240,14 @@
 @layer base {
   * {
     @apply border-border;
+    box-sizing: border-box;
+    /* Remove iOS tap highlight globally */
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html {
+    /* Use dynamic viewport height when supported (fixes iOS Safari address-bar issue) */
+    height: -webkit-fill-available;
   }
 
   body {
@@ -247,6 +255,12 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     letter-spacing: -0.011em;
+    /* Prevent overscroll bounce on body (iOS) */
+    overscroll-behavior: none;
+    /* Ensure full height on mobile Safari */
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    min-height: 100dvh;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -254,8 +268,70 @@
     font-weight: 600;
   }
 
+  /* Prevent iOS Safari from zooming in on focused inputs (requires font-size >= 16px) */
   input, textarea, select {
     letter-spacing: -0.011em;
+    font-size: max(16px, 1em);
+  }
+
+  /* On desktop restore normal sizing for inputs */
+  @media (hover: hover) and (pointer: fine) {
+    input, textarea, select {
+      font-size: 0.875rem;
+    }
+  }
+
+  /* iOS — remove default styling on form elements */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="date"],
+  input[type="time"],
+  textarea {
+    -webkit-appearance: none;
+    appearance: none;
+    border-radius: 0;
+  }
+
+  select {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  /* Improve touch target size for interactive elements (iOS HIG: 44×44pt minimum) */
+  button, [role="button"], a, label[for], input[type="checkbox"], input[type="radio"] {
+    touch-action: manipulation;
+  }
+
+  /* Prevent text selection on double-tap of buttons/nav items */
+  button, [role="button"] {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* Safari sticky fix — sticky only works when parent does NOT have overflow:hidden/auto */
+  .sticky-header th {
+    position: -webkit-sticky;
+    position: sticky;
+  }
+
+  /* Fix Safari bug: sticky thead doesn't work; apply sticky to th elements inside */
+  thead[class*="sticky"] th,
+  thead.sticky th {
+    position: -webkit-sticky;
+    position: sticky;
+    top: 0;
+  }
+
+  /* Ensure dialogs/modals don't cause Safari scroll lock issues */
+  [data-radix-dialog-content],
+  [data-radix-alert-dialog-content] {
+    -webkit-overflow-scrolling: touch;
+    overflow-y: auto;
   }
 }
 
@@ -473,6 +549,71 @@
       overflow-y: auto !important;
       -webkit-overflow-scrolling: touch;
     }
+  }
+
+  /* ===== Cross-browser / Mobile compatibility utilities ===== */
+
+  /* Sidebar full height — 100dvh with fallback for browsers without dvh support */
+  .sidebar-full-height {
+    height: 100vh; /* fallback for older browsers */
+    height: -webkit-fill-available; /* Safari iOS fill-available */
+    height: 100dvh; /* modern dynamic viewport height */
+  }
+
+  /* Layout containers — dvh-aware min-height */
+  .min-h-dvh {
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  /* Prevent scroll chaining — stops scroll bleeding to parent on iOS/Chrome */
+  .scroll-contain {
+    overscroll-behavior: contain;
+    overscroll-behavior-y: contain;
+  }
+
+  /* Utility to lock body scroll (used when mobile drawer/overlay is open) */
+  body.scroll-locked {
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+  }
+
+  /* Bottom safe area padding for iPhone home indicator */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Properly accelerated transitions for slide-in panels */
+  .panel-slide {
+    will-change: transform;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    transform: translateZ(0);
+  }
+
+  /* Fix Edge/IE table rendering */
+  table {
+    border-collapse: collapse;
+  }
+
+  /* Prevent horizontal overflow on mobile — important for data tables */
+  .overflow-x-safe {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+  }
+
+  /* Fix flexbox gap in older Safari (< 14.1) */
+  @supports not (gap: 1rem) {
+    .flex-gap-fallback > * + * {
+      margin-left: 0.5rem;
+    }
+  }
+
+  /* Make sure dropdown/popover menus appear above everything on mobile */
+  [data-radix-popper-content-wrapper] {
+    z-index: 9999 !important;
   }
 }
 

@@ -23,8 +23,8 @@ export function OperatorDashboardShell({
         notificationCount={notificationCount}
         noSidebarOffset={true}
       />
-      <div className="min-h-screen bg-background px-4">
-        <div className="mt-16 pb-20">
+      <div className="bg-background px-4" style={{ minHeight: '100dvh', paddingTop: 'calc(env(safe-area-inset-top, 0px) + 4rem)', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 5rem)' }}>
+        <div>
           {children}
         </div>
         {bottomNav}

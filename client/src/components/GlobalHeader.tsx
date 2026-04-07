@@ -26,7 +26,17 @@ export function GlobalHeader({
   showMobileMenu = false,
 }: GlobalHeaderProps) {
   return (
-    <div className="fixed top-0 left-0 right-0 h-16 bg-card border-b border-border z-50 flex items-center justify-between px-4 gap-4" data-testid="global-header">
+    <div
+      className="fixed left-0 right-0 bg-card border-b border-border z-50 flex items-center justify-between px-4 gap-4"
+      style={{
+        top: 0,
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+        height: 'calc(env(safe-area-inset-top, 0px) + 4rem)',
+        paddingLeft: 'max(1rem, env(safe-area-inset-left, 0px))',
+        paddingRight: 'max(1rem, env(safe-area-inset-right, 0px))',
+      }}
+      data-testid="global-header"
+    >
       {/* Left: Mobile Menu + KINTO Logo + SmartOps (horizontal) + Optional Title */}
       <div className="flex items-center gap-4 min-w-0">
         {/* Mobile Menu Button */}
