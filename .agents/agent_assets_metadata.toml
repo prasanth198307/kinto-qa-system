@@ -6,3 +6,9 @@ id = "ReofxDRzPRgCaxjdXMbCN"
 uri = "file://Kinto_SaaS_Multitenancy_Plan.xlsx"
 type = "table"
 title = "Kinto SaaS Plan — Full Edition (10 Sheets)"
+
+[[outputs]]
+id = "Aczzn50fDcYdAFBcBbUXM"
+uri = "file://Kinto_SmartOps_PitchDeck.pptx"
+type = "slides"
+title = "Kinto Smart Ops — Pitch Deck (12 Slides)"
