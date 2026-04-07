@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "ReofxDRzPRgCaxjdXMbCN"
+uri = "file://Kinto_SaaS_Multitenancy_Plan.xlsx"
+type = "table"
+title = "Kinto SaaS Multitenancy Plan"
