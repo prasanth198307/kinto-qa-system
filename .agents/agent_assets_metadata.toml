@@ -24,3 +24,9 @@ id = "HYj3x1008wgKm6EXA8KRh"
 uri = "file://Kinto_Trial_Deletion_Backup_Plan.xlsx"
 type = "table"
 title = "Kinto — Trial System, Auto-Deletion & Backup Plan"
+
+[[outputs]]
+id = "YlmODWOV9C9AmmbLDUdTk"
+uri = "file://Kinto_SaaS_Complete_Master_Plan.xlsx"
+type = "table"
+title = "Kinto Smart Ops — Complete SaaS Master Plan (12 Sheets)"
