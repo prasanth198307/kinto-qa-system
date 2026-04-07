@@ -18,3 +18,9 @@ id = "qwO7leQYtIwv8gyDZ-Bl7"
 uri = "file://Kinto_Customer_Presentation.pptx"
 type = "slides"
 title = "Kinto Smart Ops — Customer Sales Deck (Updated with Competitor Comparison)"
+
+[[outputs]]
+id = "HYj3x1008wgKm6EXA8KRh"
+uri = "file://Kinto_Trial_Deletion_Backup_Plan.xlsx"
+type = "table"
+title = "Kinto — Trial System, Auto-Deletion & Backup Plan"
