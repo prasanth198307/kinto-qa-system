@@ -7502,6 +7502,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Return updated expense too so client can refresh
       const expense = await storage.updateMonthlyExpense(req.params.id, {}); // no-op to fetch latest
       res.json({ payment, expense });
+
+      // Auto-generate journal entry (non-blocking)
+      try {
+        const { journalForMonthlyExpensePayment } = await import('./journal-service');
+        await journalForMonthlyExpensePayment(payment, expense);
+      } catch (je) {
+        console.error('[JOURNAL] Monthly expense payment journal failed:', je);
+      }
     } catch (error) {
       console.error('Error adding expense payment:', error);
       res.status(500).json({ message: 'Failed to add payment' });
@@ -7510,8 +7518,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/monthly-expense-payments/:paymentId', isAuthenticated, async (req: any, res) => {
     try {
-      await storage.deleteExpensePayment(req.params.paymentId);
+      const paymentId = req.params.paymentId;
+      await storage.deleteExpensePayment(paymentId);
       res.json({ message: 'Payment deleted' });
+
+      // Void the corresponding journal entry (non-blocking)
+      try {
+        const { deleteJournalEntry } = await import('./journal-service');
+        await deleteJournalEntry('monthly_expense_payment', paymentId);
+      } catch (je) {
+        console.error('[JOURNAL] Monthly expense payment journal deletion failed:', je);
+      }
     } catch (error) {
       console.error('Error deleting expense payment:', error);
       res.status(500).json({ message: 'Failed to delete payment' });
@@ -8654,6 +8671,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
         
+        // Regenerate journal if financial amounts changed
+        try {
+          const oldTotal = Number(existingInvoice.totalAmount) || 0;
+          const newTotal = Number(invoice.totalAmount) || 0;
+          if (oldTotal !== newTotal && invoice.status !== 'cancelled') {
+            const { journalForInvoice, deleteJournalEntry } = await import('./journal-service');
+            await deleteJournalEntry('invoice', id);
+            await journalForInvoice(invoice);
+          }
+        } catch (je) {
+          console.error('[JOURNAL] Invoice update journal regeneration failed:', je);
+        }
+
         return res.json(invoice);
       }
       
@@ -8682,6 +8712,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .where(eq(gatepasses.id, linkedGatepass[0].id));
           console.log(`[AUDIT] Gatepass ${linkedGatepass[0].gatepassNumber} marked as delivered along with invoice ${id}`);
         }
+      }
+
+      // Regenerate journal if financial amounts changed (header-only path)
+      try {
+        const oldTotal = Number(existingInvoice.totalAmount) || 0;
+        const newTotal = Number(invoice.totalAmount) || 0;
+        if (oldTotal !== newTotal && invoice.status !== 'cancelled') {
+          const { journalForInvoice, deleteJournalEntry } = await import('./journal-service');
+          await deleteJournalEntry('invoice', id);
+          await journalForInvoice(invoice);
+        }
+      } catch (je) {
+        console.error('[JOURNAL] Invoice header-update journal regeneration failed:', je);
       }
       
       res.json(invoice);
