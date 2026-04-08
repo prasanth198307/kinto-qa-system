@@ -52,7 +52,8 @@ export default function AuthPage() {
     if (!emailOrUsername.trim()) return;
     setIsLooking(true);
     try {
-      const data = await apiRequest("POST", "/api/auth/lookup-email", { emailOrUsername: emailOrUsername.trim() });
+      const res = await apiRequest("POST", "/api/auth/lookup-email", { emailOrUsername: emailOrUsername.trim() });
+      const data = await res.json();
       const found: Company[] = data.companies ?? [];
 
       if (found.length === 0) {

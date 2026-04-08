@@ -1219,6 +1219,11 @@ function AuthenticatedApp() {
     );
   }
 
+  // Super-admin goes directly to their portal — no role selection needed
+  if ((user as any)?.isSuperAdmin) {
+    return <SuperAdminTenants />;
+  }
+
   if (!(user as any)?.role) {
     return <RoleAssignment />;
   }

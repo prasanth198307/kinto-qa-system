@@ -276,6 +276,12 @@ function requireRole(...allowedRoles: string[]) {
         return res.status(401).json({ message: "Unauthorized: User not found" });
       }
 
+      // Super-admin bypass — they have no roleId but full access
+      if ((user as any).isSuperAdmin) {
+        req.userRole = (user as any).role ?? 'admin';
+        return next();
+      }
+
       if (!user.roleId) {
         console.log(`[AUDIT] User ${user.id} has no role assigned, denying access to ${req.path}`);
         return res.status(403).json({ message: "Forbidden: No role assigned" });

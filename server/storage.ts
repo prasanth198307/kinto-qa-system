@@ -2,6 +2,7 @@ import {
   roles,
   rolePermissions,
   users,
+  tenants,
   machines,
   checklistTemplates,
   templateTasks,
@@ -832,7 +833,9 @@ export class DatabaseStorage implements IStorage {
         lastName: users.lastName,
         profileImageUrl: users.profileImageUrl,
         roleId: users.roleId,
-        role: roles.name,
+        role: sql<string>`COALESCE(${roles.name}, ${users.role})`,
+        tenantId: users.tenantId,
+        isSuperAdmin: tenants.isSuperAdmin,
         resetToken: users.resetToken,
         resetTokenExpiry: users.resetTokenExpiry,
         createdAt: users.createdAt,
@@ -840,7 +843,8 @@ export class DatabaseStorage implements IStorage {
       })
       .from(users)
       .leftJoin(roles, eq(users.roleId, roles.id))
-      .where(and(eq(users.id, id), eq(users.recordStatus, 1), tc(users)));
+      .leftJoin(tenants, eq(users.tenantId, tenants.id))
+      .where(and(eq(users.id, id), eq(users.recordStatus, 1)));
     return result as any;
   }
 
@@ -855,7 +859,8 @@ export class DatabaseStorage implements IStorage {
         lastName: users.lastName,
         profileImageUrl: users.profileImageUrl,
         roleId: users.roleId,
-        role: roles.name,
+        role: sql<string>`COALESCE(${roles.name}, ${users.role})`,
+        tenantId: users.tenantId,
         resetToken: users.resetToken,
         resetTokenExpiry: users.resetTokenExpiry,
         createdAt: users.createdAt,
@@ -880,7 +885,7 @@ export class DatabaseStorage implements IStorage {
         lastName: users.lastName,
         profileImageUrl: users.profileImageUrl,
         roleId: users.roleId,
-        role: roles.name,
+        role: sql<string>`COALESCE(${roles.name}, ${users.role})`,
         tenantId: users.tenantId,
         resetToken: users.resetToken,
         resetTokenExpiry: users.resetTokenExpiry,
