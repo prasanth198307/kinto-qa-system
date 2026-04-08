@@ -25,7 +25,7 @@ import { importCreditNotesFromExcel } from "./creditnote-import";
 import { parseExcelFile, commitImport } from "./cashRegisterImport";
 import { importCashRegisterFromExcel } from "./importCashRegisterFromExcel";
 import archiver from "archiver";
-import { insertCashRegisterDaySchema, insertCashRegisterTransactionSchema, insertCashRegisterExpenseItemSchema, insertSalespersonMappingSchema, cashRegisterDays, cashRegisterTransactions, cashRegisterExpenseItems, expenseVouchers, expenseItems, customerAdvances, advanceApplications, insertCustomerAdvanceSchema, insertAdvanceApplicationSchema, journalEntries, journalLines, chartOfAccounts, budgets, budgetItems, tenants, subscriptionPlans, subscriptions, billingEvents } from "@shared/schema";
+import { insertCashRegisterDaySchema, insertCashRegisterTransactionSchema, insertCashRegisterExpenseItemSchema, insertSalespersonMappingSchema, cashRegisterDays, cashRegisterTransactions, cashRegisterExpenseItems, expenseVouchers, expenseItems, customerAdvances, advanceApplications, insertCustomerAdvanceSchema, insertAdvanceApplicationSchema, journalEntries, journalLines, chartOfAccounts, budgets, budgetItems, tenants, subscriptionPlans, subscriptions, billingEvents, deletionAudit } from "@shared/schema";
 import { sql, and, eq, ne, gte, lte, gt, asc, desc, inArray, isNotNull, isNull, or, ilike, type SQL } from "drizzle-orm";
 
 // Persistent audit logging function
@@ -915,6 +915,159 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(events);
     } catch (err) {
       res.status(500).json({ message: 'Failed to fetch billing events' });
+    }
+  });
+
+  // ─── Super-admin: Pending upgrade requests ───────────────────────────────────
+  app.get('/api/admin/upgrade-requests', async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const currentUser = req.user as any;
+    if (!currentUser?.isSuperAdmin && currentUser?.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    try {
+      const rows = await db
+        .select({
+          event: billingEvents,
+          tenant: { id: tenants.id, name: tenants.name, slug: tenants.slug, status: tenants.status, plan: tenants.plan },
+        })
+        .from(billingEvents)
+        .leftJoin(tenants, eq(billingEvents.tenantId, tenants.id))
+        .where(eq(billingEvents.eventType, 'upgrade_requested'))
+        .orderBy(desc(billingEvents.createdAt));
+      res.json(rows);
+    } catch (err) {
+      res.status(500).json({ message: 'Failed to fetch upgrade requests' });
+    }
+  });
+
+  // ─── Super-admin: Deletion audit log ─────────────────────────────────────────
+  app.get('/api/admin/deletion-audit', async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const currentUser = req.user as any;
+    if (!currentUser?.isSuperAdmin) return res.status(403).json({ message: 'Super-admin only' });
+    try {
+      const rows = await db.select().from(deletionAudit).orderBy(desc(deletionAudit.deletedAt));
+      res.json(rows);
+    } catch (err) {
+      res.status(500).json({ message: 'Failed to fetch deletion audit' });
+    }
+  });
+
+  // ─── Super-admin: Revenue summary ────────────────────────────────────────────
+  app.get('/api/admin/revenue-summary', async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const currentUser = req.user as any;
+    if (!currentUser?.isSuperAdmin) return res.status(403).json({ message: 'Super-admin only' });
+    try {
+      // Get all active subscriptions with their plan prices
+      const activeSubs = await db
+        .select({
+          billingCycle: subscriptions.billingCycle,
+          priceMonthly: subscriptionPlans.priceMonthly,
+          priceYearly: subscriptionPlans.priceYearly,
+          planSlug: subscriptions.planSlug,
+        })
+        .from(subscriptions)
+        .leftJoin(subscriptionPlans, eq(subscriptions.planId, subscriptionPlans.id))
+        .where(and(eq(subscriptions.status, 'active'), ne(subscriptions.planSlug, 'trial')));
+
+      let mrr = 0;
+      for (const sub of activeSubs) {
+        if (sub.billingCycle === 'yearly' && sub.priceYearly) {
+          mrr += sub.priceYearly / 12;
+        } else if (sub.priceMonthly) {
+          mrr += sub.priceMonthly;
+        }
+      }
+
+      // Plan breakdown
+      const planCounts: Record<string, number> = {};
+      for (const sub of activeSubs) {
+        planCounts[sub.planSlug ?? 'unknown'] = (planCounts[sub.planSlug ?? 'unknown'] || 0) + 1;
+      }
+
+      res.json({
+        mrr: Math.round(mrr),
+        arr: Math.round(mrr * 12),
+        activePayingCount: activeSubs.length,
+        planCounts,
+      });
+    } catch (err) {
+      res.status(500).json({ message: 'Failed to fetch revenue summary' });
+    }
+  });
+
+  // ─── Super-admin: Create tenant manually ──────────────────────────────────────
+  app.post('/api/admin/tenants', async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const currentUser = req.user as any;
+    if (!currentUser?.isSuperAdmin) return res.status(403).json({ message: 'Super-admin only' });
+    const { name, slug, plan, adminUsername, adminPassword, adminEmail, maxUsers, trialDays } = req.body;
+    if (!name || !slug || !adminUsername || !adminPassword) {
+      return res.status(400).json({ message: 'name, slug, adminUsername, adminPassword are required' });
+    }
+    try {
+      // Check slug uniqueness
+      const [existing] = await db.select({ id: tenants.id }).from(tenants).where(eq(tenants.slug, slug));
+      if (existing) return res.status(409).json({ message: `Slug "${slug}" is already taken` });
+
+      const planSlug = plan ?? 'trial';
+      const [planRow] = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.slug, planSlug));
+
+      const trialEnd = trialDays ? new Date(Date.now() + parseInt(trialDays) * 24 * 60 * 60 * 1000).toISOString() : null;
+
+      // Create tenant
+      const [newTenant] = await db.insert(tenants).values({
+        name,
+        slug,
+        plan: planSlug,
+        status: planSlug === 'trial' ? 'trial' : 'active',
+        maxUsers: maxUsers ?? planRow?.maxUsers ?? 5,
+        billingEmail: adminEmail ?? null,
+        trialEndsAt: trialEnd,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }).returning();
+
+      // Create subscription
+      const [newSub] = await db.insert(subscriptions).values({
+        tenantId: newTenant.id,
+        planId: planRow?.id ?? null,
+        planSlug,
+        billingCycle: planSlug === 'trial' ? 'trial' : 'monthly',
+        status: planSlug === 'trial' ? 'trial' : 'active',
+        startedAt: new Date().toISOString(),
+        currentPeriodStart: new Date().toISOString(),
+        currentPeriodEnd: trialEnd,
+      }).returning();
+
+      // Hash password and create admin user
+      const { hashPassword } = await import('./auth');
+      const hashed = await hashPassword(adminPassword);
+      await db.insert(users).values({
+        username: adminUsername,
+        email: adminEmail ?? null,
+        password: hashed,
+        tenantId: newTenant.id,
+        roleId: null,
+      } as any);
+
+      // Log billing event
+      await db.insert(billingEvents).values({
+        tenantId: newTenant.id,
+        subscriptionId: newSub.id,
+        eventType: 'plan_activated',
+        fromPlan: null,
+        toPlan: planSlug,
+        billingCycle: planSlug === 'trial' ? 'trial' : 'monthly',
+        amount: 0,
+        notes: `Tenant created manually by super-admin ${currentUser.username}`,
+        createdBy: currentUser.username,
+      });
+
+      res.json({ message: 'Tenant created successfully', tenant: newTenant });
+    } catch (err: any) {
+      console.error('POST /api/admin/tenants error:', err);
+      res.status(500).json({ message: err.message ?? 'Failed to create tenant' });
     }
   });
 

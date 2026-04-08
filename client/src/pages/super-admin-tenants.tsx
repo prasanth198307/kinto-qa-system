@@ -25,7 +25,7 @@ import {
   Building2, Users, MoreVertical, Search, RefreshCw, ShieldAlert,
   CheckCircle2, Clock, XCircle, Loader2, FlaskConical, CreditCard,
   Eye, Trash2, AlertTriangle, Archive, Download, Database, CalendarClock,
-  HardDrive, LogOut,
+  HardDrive, LogOut, Plus, ScrollText,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -64,6 +64,19 @@ const PLAN_CONFIG: Record<string, { label: string; variant: "default" | "seconda
   enterprise:   { label: "Enterprise",   variant: "default" },
 };
 
+interface DeletionAuditRecord {
+  id: number;
+  tenantId: number;
+  tenantName: string;
+  tenantSlug: string;
+  ownerEmail: string | null;
+  deletedAt: string;
+  rowsDeleted: Record<string, number> | null;
+  exportUrl: string | null;
+  deletedBy: string | null;
+  reason: string | null;
+}
+
 export default function SuperAdminTenants() {
   const { toast } = useToast();
   const { logoutMutation } = useAuth();
@@ -75,9 +88,38 @@ export default function SuperAdminTenants() {
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleteReason, setDeleteReason]   = useState("");
   const [backupTenant, setBackupTenant]   = useState<Tenant | null>(null);
+  const [showCreateTenant, setShowCreateTenant] = useState(false);
+  const [showDeletionAudit, setShowDeletionAudit] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    name: "", slug: "", plan: "trial", adminUsername: "", adminPassword: "",
+    adminEmail: "", maxUsers: "5", trialDays: "14",
+  });
 
   const { data: tenants = [], isLoading, refetch } = useQuery<Tenant[]>({
     queryKey: ["/api/admin/tenants"],
+  });
+
+  const { data: deletionAuditRecords = [], isLoading: auditLoading } = useQuery<DeletionAuditRecord[]>({
+    queryKey: ["/api/admin/deletion-audit"],
+    enabled: showDeletionAudit,
+  });
+
+  const createTenantMutation = useMutation({
+    mutationFn: async (payload: typeof createForm) => {
+      const res = await apiRequest("POST", "/api/admin/tenants", payload);
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message ?? "Failed to create tenant");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/tenants"] });
+      toast({ title: "Tenant created", description: data.message });
+      setShowCreateTenant(false);
+      setCreateForm({ name: "", slug: "", plan: "trial", adminUsername: "", adminPassword: "", adminEmail: "", maxUsers: "5", trialDays: "14" });
+    },
+    onError: (err: any) => toast({ title: "Creation failed", description: err.message, variant: "destructive" }),
   });
 
   const seedDemoMutation = useMutation({
@@ -232,6 +274,12 @@ export default function SuperAdminTenants() {
       subtitle="Manage all company accounts on this platform"
       actions={
         <>
+          <Button variant="default" size="default" onClick={() => setShowCreateTenant(true)} data-testid="button-create-tenant">
+            <Plus className="h-4 w-4 mr-2" /> Create Tenant
+          </Button>
+          <Button variant="outline" size="default" onClick={() => setShowDeletionAudit(true)} data-testid="button-deletion-audit">
+            <ScrollText className="h-4 w-4 mr-2" /> Deletion Log
+          </Button>
           <Button variant="outline" size="default" onClick={() => seedDemoMutation.mutate()} disabled={seedDemoMutation.isPending} data-testid="button-seed-demo">
             {seedDemoMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FlaskConical className="h-4 w-4 mr-2" />}
             Seed Demo
@@ -552,6 +600,177 @@ export default function SuperAdminTenants() {
           backingUp={manualBackupMutation.isPending}
         />
       )}
+
+      {/* ── Create Tenant Dialog ── */}
+      <Dialog open={showCreateTenant} onOpenChange={setShowCreateTenant}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create New Tenant</DialogTitle>
+            <DialogDescription>Manually provision a new company account.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>Company Name *</Label>
+                <Input
+                  placeholder="Acme Pvt Ltd"
+                  value={createForm.name}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
+                  data-testid="input-create-name"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Slug (URL key) *</Label>
+                <Input
+                  placeholder="acme-pvt-ltd"
+                  value={createForm.slug}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, slug: e.target.value.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "") }))}
+                  data-testid="input-create-slug"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>Plan</Label>
+                <Select value={createForm.plan} onValueChange={(v) => setCreateForm((f) => ({ ...f, plan: v }))}>
+                  <SelectTrigger data-testid="select-create-plan"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="trial">Trial</SelectItem>
+                    <SelectItem value="basic">Basic</SelectItem>
+                    <SelectItem value="professional">Professional</SelectItem>
+                    <SelectItem value="enterprise">Enterprise</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label>Max Users</Label>
+                <Input
+                  type="number"
+                  placeholder="5"
+                  value={createForm.maxUsers}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, maxUsers: e.target.value }))}
+                  data-testid="input-create-maxusers"
+                />
+              </div>
+            </div>
+            {createForm.plan === "trial" && (
+              <div className="space-y-1">
+                <Label>Trial Days</Label>
+                <Input
+                  type="number"
+                  placeholder="14"
+                  value={createForm.trialDays}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, trialDays: e.target.value }))}
+                  data-testid="input-create-trialdays"
+                />
+              </div>
+            )}
+            <div className="space-y-1">
+              <Label>Admin Email</Label>
+              <Input
+                type="email"
+                placeholder="admin@acme.com"
+                value={createForm.adminEmail}
+                onChange={(e) => setCreateForm((f) => ({ ...f, adminEmail: e.target.value }))}
+                data-testid="input-create-email"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>Admin Username *</Label>
+                <Input
+                  placeholder="acme_admin"
+                  value={createForm.adminUsername}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, adminUsername: e.target.value }))}
+                  data-testid="input-create-username"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Admin Password *</Label>
+                <Input
+                  type="password"
+                  placeholder="••••••••"
+                  value={createForm.adminPassword}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, adminPassword: e.target.value }))}
+                  data-testid="input-create-password"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowCreateTenant(false)}>Cancel</Button>
+            <Button
+              onClick={() => createTenantMutation.mutate(createForm)}
+              disabled={createTenantMutation.isPending || !createForm.name || !createForm.slug || !createForm.adminUsername || !createForm.adminPassword}
+              data-testid="button-confirm-create-tenant"
+            >
+              {createTenantMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+              Create Tenant
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Deletion Audit Dialog ── */}
+      <Dialog open={showDeletionAudit} onOpenChange={setShowDeletionAudit}>
+        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ScrollText className="h-4 w-4" /> Tenant Deletion Audit Log
+            </DialogTitle>
+            <DialogDescription>Record of all permanently deleted tenants and their data.</DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto space-y-3 py-2 min-h-0">
+            {auditLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : deletionAuditRecords.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground text-sm">
+                <ScrollText className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                No tenant deletions recorded yet.
+              </div>
+            ) : (
+              deletionAuditRecords.map((rec) => (
+                <div key={rec.id} className="rounded-md border px-4 py-3 space-y-1" data-testid={`deletion-audit-${rec.id}`}>
+                  <div className="flex flex-wrap items-center gap-2 justify-between">
+                    <div>
+                      <span className="font-medium text-sm">{rec.tenantName}</span>
+                      <span className="text-muted-foreground text-xs ml-2">({rec.tenantSlug})</span>
+                      <span className="text-muted-foreground text-xs ml-2">· Tenant #{rec.tenantId}</span>
+                    </div>
+                    <Badge variant="destructive" className="text-xs">Deleted</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Deleted {rec.deletedAt ? format(new Date(rec.deletedAt), "dd MMM yyyy, h:mm a") : "—"}
+                    {rec.deletedBy && <span> by {rec.deletedBy}</span>}
+                    {rec.ownerEmail && <span> · Owner: {rec.ownerEmail}</span>}
+                  </p>
+                  {rec.reason && <p className="text-xs text-muted-foreground">Reason: {rec.reason}</p>}
+                  {rec.rowsDeleted && Object.keys(rec.rowsDeleted).length > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      Rows deleted: {Object.entries(rec.rowsDeleted).map(([k, v]) => `${k}: ${v}`).join(", ")}
+                    </p>
+                  )}
+                  {rec.exportUrl && (
+                    <a
+                      href={rec.exportUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-primary underline"
+                    >
+                      Download backup export
+                    </a>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeletionAudit(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
     </SuperAdminLayout>
   );

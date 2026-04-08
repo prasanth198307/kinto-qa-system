@@ -1,12 +1,12 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Building2, Users, TrendingUp, AlertCircle, CheckCircle2,
+  Building2, TrendingUp, AlertCircle, CheckCircle2, Users,
   Clock, Ban, CreditCard, Package, RefreshCw, Loader2,
+  IndianRupee, ArrowUpRight,
 } from "lucide-react";
-import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
@@ -24,16 +24,16 @@ interface Tenant {
   isSuperAdmin: boolean;
 }
 
-interface SubscriptionPlan {
-  id: number;
-  name: string;
-  slug: string;
-  priceMonthly: number;
-  isActive: boolean;
+interface RevenueSummary {
+  mrr: number;
+  arr: number;
+  activePayingCount: number;
+  planCounts: Record<string, number>;
 }
 
-interface PlansData {
-  plans: SubscriptionPlan[];
+interface UpgradeRequestRow {
+  event: { id: number; fromPlan: string | null; toPlan: string | null; notes: string | null; createdAt: string };
+  tenant: { id: number; name: string; slug: string } | null;
 }
 
 export default function SuperAdminOverview() {
@@ -44,8 +44,12 @@ export default function SuperAdminOverview() {
     queryKey: ["/api/admin/tenants"],
   });
 
-  const { data: plansData } = useQuery<PlansData>({
-    queryKey: ["/api/admin/subscription-plans"],
+  const { data: revenue } = useQuery<RevenueSummary>({
+    queryKey: ["/api/admin/revenue-summary"],
+  });
+
+  const { data: upgradeRequests = [] } = useQuery<UpgradeRequestRow[]>({
+    queryKey: ["/api/admin/upgrade-requests"],
   });
 
   const seedDemoMutation = useMutation({
@@ -114,7 +118,21 @@ export default function SuperAdminOverview() {
         </div>
       ) : (
         <div className="space-y-6">
-          {/* ── KPI cards ── */}
+          {/* ── Upgrade requests alert ── */}
+          {upgradeRequests.length > 0 && (
+            <div
+              className="flex items-center gap-3 rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 px-4 py-3 cursor-pointer"
+              onClick={() => setLocation("/super-admin/billing")}
+              data-testid="alert-upgrade-requests"
+            >
+              <ArrowUpRight className="h-5 w-5 text-amber-600 shrink-0" />
+              <p className="text-sm text-amber-800 dark:text-amber-200 font-medium">
+                {upgradeRequests.length} pending upgrade {upgradeRequests.length === 1 ? "request" : "requests"} — click to review in Billing
+              </p>
+            </div>
+          )}
+
+          {/* ── Tenant KPI cards ── */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[
               { label: "Total Tenants", value: stats.total, icon: Building2, color: "text-primary" },
@@ -130,6 +148,46 @@ export default function SuperAdminOverview() {
                       <p className="text-3xl font-bold mt-0.5">{value}</p>
                     </div>
                     <Icon className={`h-8 w-8 ${color} opacity-70`} />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* ── Revenue KPI cards ── */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {[
+              {
+                label: "Monthly Recurring Revenue",
+                value: revenue ? `₹${(revenue.mrr / 100).toLocaleString("en-IN", { maximumFractionDigits: 0 })}` : "—",
+                sub: "MRR (paise → ₹)",
+                icon: IndianRupee,
+                color: "text-primary",
+              },
+              {
+                label: "Annual Recurring Revenue",
+                value: revenue ? `₹${(revenue.arr / 100).toLocaleString("en-IN", { maximumFractionDigits: 0 })}` : "—",
+                sub: "ARR (MRR × 12)",
+                icon: TrendingUp,
+                color: "text-green-600",
+              },
+              {
+                label: "Paying Customers",
+                value: revenue?.activePayingCount ?? "—",
+                sub: "Active paid subscriptions",
+                icon: CreditCard,
+                color: "text-blue-600",
+              },
+            ].map(({ label, value, sub, icon: Icon, color }) => (
+              <Card key={label}>
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <p className="text-xs text-muted-foreground">{label}</p>
+                      <p className="text-2xl font-bold mt-0.5">{value}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>
+                    </div>
+                    <Icon className={`h-7 w-7 ${color} opacity-70`} />
                   </div>
                 </CardContent>
               </Card>

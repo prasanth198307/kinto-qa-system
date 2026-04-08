@@ -15,6 +15,7 @@ import {
 import {
   RefreshCw, Loader2, CreditCard, TrendingUp, TrendingDown,
   ArrowLeftRight, Search, ChevronDown, ChevronUp, RotateCcw,
+  ArrowUpRight, CheckCircle2, Clock,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -64,6 +65,19 @@ interface BillingEvent {
 
 interface PlansData {
   plans: { id: number; name: string; slug: string }[];
+}
+
+interface UpgradeRequestRow {
+  event: {
+    id: number;
+    fromPlan: string | null;
+    toPlan: string | null;
+    billingCycle: string | null;
+    notes: string | null;
+    createdAt: string;
+    createdBy: string | null;
+  };
+  tenant: { id: number; name: string; slug: string; status: string; plan: string } | null;
 }
 
 const PLAN_ORDER = ["trial", "basic", "professional", "enterprise"];
@@ -118,6 +132,26 @@ export default function SuperAdminBilling() {
     enabled: expandedTenant !== null,
   });
 
+  const { data: upgradeRequests = [], refetch: refetchUpgradeRequests } = useQuery<UpgradeRequestRow[]>({
+    queryKey: ["/api/admin/upgrade-requests"],
+  });
+
+  const approveUpgradeMutation = useMutation({
+    mutationFn: async ({ tenantId, toPlan, billingCycle }: { tenantId: number; toPlan: string; billingCycle: string }) => {
+      const res = await apiRequest("PATCH", `/api/admin/subscriptions/${tenantId}/change-plan`, {
+        toPlan, billingCycle, notes: "Approved by super-admin",
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/subscriptions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/upgrade-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/tenants"] });
+      toast({ title: "Upgrade approved successfully" });
+    },
+    onError: (err: any) => toast({ title: "Failed to approve", description: err.message, variant: "destructive" }),
+  });
+
   const changePlanMutation = useMutation({
     mutationFn: async ({ tenantId, toPlan, billingCycle, notes }: { tenantId: number; toPlan: string; billingCycle: string; notes: string }) => {
       const res = await apiRequest("PATCH", `/api/admin/subscriptions/${tenantId}/change-plan`, { toPlan, billingCycle, notes });
@@ -162,6 +196,61 @@ export default function SuperAdminBilling() {
         </Button>
       }
     >
+      {/* ── Upgrade Requests Section ── */}
+      {upgradeRequests.length > 0 && (
+        <Card className="mb-6 border-amber-300 dark:border-amber-700">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <ArrowUpRight className="h-4 w-4 text-amber-600" />
+              Pending Upgrade Requests
+              <Badge variant="outline" className="border-amber-400 text-amber-700 dark:text-amber-300 text-xs ml-1">{upgradeRequests.length}</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {upgradeRequests.map((row) => (
+              <div
+                key={row.event.id}
+                className="flex flex-wrap items-center gap-3 rounded-md border px-3 py-2 bg-muted/30"
+                data-testid={`upgrade-request-${row.event.id}`}
+              >
+                <Clock className="h-4 w-4 text-amber-600 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">
+                    {row.tenant?.name ?? `Tenant #${row.event.id}`}
+                    <span className="text-muted-foreground font-normal ml-1">({row.tenant?.slug})</span>
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Current: <span className="capitalize">{row.tenant?.plan ?? row.event.fromPlan ?? "—"}</span>
+                    {" → "}
+                    Requested: <span className="capitalize font-medium">{row.event.toPlan ?? "—"}</span>
+                    {row.event.billingCycle && <span className="ml-2">({row.event.billingCycle})</span>}
+                    {row.event.notes && <span className="ml-2">· {row.event.notes}</span>}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Submitted {row.event.createdAt ? format(new Date(row.event.createdAt), "dd MMM yyyy, h:mm a") : "—"}
+                    {row.event.createdBy && <span> by {row.event.createdBy}</span>}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="default"
+                  disabled={approveUpgradeMutation.isPending || !row.tenant}
+                  onClick={() => row.tenant && approveUpgradeMutation.mutate({
+                    tenantId: row.tenant.id,
+                    toPlan: row.event.toPlan ?? "basic",
+                    billingCycle: row.event.billingCycle ?? "monthly",
+                  })}
+                  data-testid={`button-approve-upgrade-${row.event.id}`}
+                >
+                  {approveUpgradeMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5 mr-1" />}
+                  Approve
+                </Button>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
       {/* ── Search ── */}
       <div className="relative mb-4 max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
