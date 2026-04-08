@@ -121,6 +121,21 @@ export default function SuperAdminTenants() {
     },
   });
 
+  const changePlanMutation = useMutation({
+    mutationFn: async ({ tenantId, toPlan, status, billingCycle }: { tenantId: number; toPlan: string; status: string; billingCycle: string }) => {
+      const res = await apiRequest("PATCH", `/api/admin/subscriptions/${tenantId}/change-plan`, { toPlan, status, billingCycle });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/tenants"] });
+      toast({ title: "Plan & subscription updated successfully" });
+      setEditTenant(null);
+    },
+    onError: (err: any) => {
+      toast({ title: "Update failed", description: err.message, variant: "destructive" });
+    },
+  });
+
   const openEdit = (tenant: Tenant) => {
     setEditTenant(tenant);
     setEditForm({ status: tenant.status, plan: tenant.plan, maxUsers: String(tenant.maxUsers) });
@@ -128,19 +143,34 @@ export default function SuperAdminTenants() {
 
   const handleSaveEdit = () => {
     if (!editTenant) return;
-    updateMutation.mutate({
-      id: editTenant.id,
-      updates: {
+    const planChanged = editForm.plan !== editTenant.plan;
+    const maxUsersInt = parseInt(editForm.maxUsers) || editTenant.maxUsers;
+
+    if (planChanged) {
+      // Use the new subscription-aware endpoint for plan changes
+      changePlanMutation.mutate({
+        tenantId: editTenant.id,
+        toPlan: editForm.plan,
         status: editForm.status,
-        plan: editForm.plan,
-        maxUsers: parseInt(editForm.maxUsers) || editTenant.maxUsers,
-      },
-    });
+        billingCycle: editForm.plan === 'trial' ? 'trial' : 'monthly',
+      });
+      // Also update maxUsers separately if changed
+      if (maxUsersInt !== editTenant.maxUsers) {
+        updateMutation.mutate({ id: editTenant.id, updates: { maxUsers: maxUsersInt } });
+      }
+    } else {
+      updateMutation.mutate({
+        id: editTenant.id,
+        updates: { status: editForm.status, maxUsers: maxUsersInt },
+      });
+    }
   };
 
   const quickStatus = (tenant: Tenant, status: string) => {
     updateMutation.mutate({ id: tenant.id, updates: { status } });
   };
+
+  const isPending = updateMutation.isPending || changePlanMutation.isPending;
 
   const filtered = tenants.filter(
     (t) =>
@@ -400,8 +430,8 @@ export default function SuperAdminTenants() {
             <Button variant="outline" onClick={() => setEditTenant(null)}>
               Cancel
             </Button>
-            <Button onClick={handleSaveEdit} disabled={updateMutation.isPending} data-testid="button-save-tenant">
-              {updateMutation.isPending ? (
+            <Button onClick={handleSaveEdit} disabled={isPending} data-testid="button-save-tenant">
+              {isPending ? (
                 <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</>
               ) : (
                 "Save Changes"

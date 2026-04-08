@@ -1,3 +1,4 @@
+import { type ReactNode } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -59,7 +60,7 @@ interface SubscriptionData {
   history: BillingEvent[];
 }
 
-const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; icon: React.ReactNode }> = {
+const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; icon: ReactNode }> = {
   active:    { label: "Active",    variant: "default",      icon: <CheckCircle2 className="h-3 w-3" /> },
   trial:     { label: "Trial",     variant: "secondary",    icon: <Clock className="h-3 w-3" /> },
   cancelled: { label: "Cancelled", variant: "destructive",  icon: <XCircle className="h-3 w-3" /> },
@@ -67,7 +68,7 @@ const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secon
   pending:   { label: "Pending",   variant: "secondary",    icon: <Clock className="h-3 w-3" /> },
 };
 
-const EVENT_CONFIG: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
+const EVENT_CONFIG: Record<string, { label: string; icon: ReactNode; color: string }> = {
   trial_started:      { label: "Trial Started",       icon: <Zap className="h-3.5 w-3.5" />,          color: "text-amber-600" },
   plan_activated:     { label: "Plan Activated",      icon: <CheckCircle2 className="h-3.5 w-3.5" />,  color: "text-emerald-600" },
   upgraded:           { label: "Plan Upgraded",       icon: <TrendingUp className="h-3.5 w-3.5" />,    color: "text-blue-600" },

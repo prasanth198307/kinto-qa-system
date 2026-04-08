@@ -131,6 +131,7 @@ import GroupSummaryPage from "@/pages/group-summary";
 import BudgetVariancePage from "@/pages/budget-variance";
 import AdminToolsPage from "@/pages/admin-tools";
 import TenantSettings from "@/pages/tenant-settings";
+import PricingPage from "@/pages/pricing";
 import { parseISO } from "date-fns";
 
 type Role = 'admin' | 'operator' | 'reviewer' | 'manager';
@@ -3246,6 +3247,11 @@ function Router() {
       <ProtectedRoute path="/budget-variance" component={BudgetVariancePageWrapper} />
       <ProtectedRoute path="/admin-tools" component={AdminToolsPageWrapper} />
       <ProtectedRoute path="/company-settings" component={TenantSettingsPageWrapper} />
+      <ProtectedRoute path="/pricing" component={() => (
+        <div className="flex-1 overflow-auto">
+          <PricingPage />
+        </div>
+      )} />
       <ProtectedRoute path="/journal-entry/new" component={ManualJournalEntryPageWrapper} />
       <ProtectedRoute path="/journal-entry/:id" component={JournalEntryDetailPageWrapper} />
       <ProtectedRoute path="/" component={AuthenticatedApp} />

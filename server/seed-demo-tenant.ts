@@ -188,6 +188,30 @@ export async function seedDemoTenant(): Promise<{ created: boolean; tenantId: nu
   ]);
   console.log(`[DEMO SEED] Products created`);
 
+  // Create subscription record for the demo tenant (trial plan)
+  try {
+    const { neon } = await import("@neondatabase/serverless");
+    const sql2 = neon(process.env.DATABASE_URL!);
+    const planRows = await sql2`SELECT id FROM subscription_plans WHERE slug = 'trial' LIMIT 1`;
+    if (planRows.length > 0) {
+      const planId = planRows[0].id;
+      const now = new Date().toISOString();
+      const trialEnd = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+      await sql2`
+        INSERT INTO subscriptions (tenant_id, plan_id, plan_slug, billing_cycle, status, started_at, trial_ends_at)
+        VALUES (${tenantId}, ${planId}, 'trial', 'trial', 'trial', ${now}, ${trialEnd})
+        ON CONFLICT (tenant_id) DO NOTHING
+      `;
+      await sql2`
+        INSERT INTO billing_events (tenant_id, event_type, from_plan, to_plan, billing_cycle, amount, notes, created_by, created_at)
+        VALUES (${tenantId}, 'trial_started', null, 'trial', 'trial', 0, 'Demo tenant trial started', 'system', ${now})
+      `;
+      console.log(`[DEMO SEED] Subscription record created (trial plan)`);
+    }
+  } catch (err) {
+    console.warn(`[DEMO SEED] Could not create subscription record:`, err);
+  }
+
   console.log(`[DEMO SEED] ✅ Demo tenant fully seeded! Tenant ID: ${tenantId}`);
   console.log(`[DEMO SEED] Login: slug=acme-demo, username=acme-admin, password=Demo@1234`);
 
