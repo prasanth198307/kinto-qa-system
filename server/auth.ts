@@ -587,23 +587,19 @@ export function setupAuth(app: Express) {
         tenantStatus = effectiveStatus;
       }
 
-      req.session.regenerate((err) => {
-        if (err) return res.status(500).json({ message: "Session regeneration failed" });
+      req.login(user, (err) => {
+        if (err) return res.status(500).json({ message: "Login failed" });
 
-        req.login(user, (err) => {
-          if (err) return res.status(500).json({ message: "Login failed" });
+        // Store tenantId, tenantPlan, and tenantStatus in session
+        (req.session as any).tenantId = (user as any).tenantId ?? 1;
+        (req.session as any).tenantPlan = tenantPlan;
+        (req.session as any).tenantStatus = tenantStatus;
 
-          // Store tenantId, tenantPlan, and tenantStatus in session
-          (req.session as any).tenantId = (user as any).tenantId ?? 1;
-          (req.session as any).tenantPlan = tenantPlan;
-          (req.session as any).tenantStatus = tenantStatus;
+        req.session.save((err) => {
+          if (err) return res.status(500).json({ message: "Session save failed" });
 
-          req.session.save((err) => {
-            if (err) return res.status(500).json({ message: "Session save failed" });
-
-            console.log(`✅ Session saved — user: ${user.username}, tenant: ${(req.session as any).tenantId}, plan: ${tenantPlan}, status: ${tenantStatus}`);
-            return res.json(req.user);
-          });
+          console.log(`✅ Session saved — user: ${user.username}, tenant: ${(req.session as any).tenantId}, plan: ${tenantPlan}, status: ${tenantStatus}`);
+          return res.json(req.user);
         });
       });
     })(req, res, next);

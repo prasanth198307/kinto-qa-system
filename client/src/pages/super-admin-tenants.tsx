@@ -226,8 +226,26 @@ export default function SuperAdminTenants() {
     suspended: tenants.filter((t) => t.status === "suspended").length,
   };
 
+  const isInIframe = window.self !== window.top;
+
   return (
     <div className="p-6 space-y-6">
+      {isInIframe && (
+        <div className="flex items-center gap-3 rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span>
+            Session cookies are blocked in the preview pane. Open the app in a new tab so authentication works correctly.
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            className="ml-auto shrink-0"
+            onClick={() => window.open(window.location.href, "_blank")}
+          >
+            Open in New Tab
+          </Button>
+        </div>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
