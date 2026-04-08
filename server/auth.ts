@@ -8,7 +8,7 @@ import bcrypt from "bcryptjs";
 import { storage } from "./storage";
 import { User as SelectUser, tenants, users, roles, deletionAudit } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc, sql, or, and } from "drizzle-orm";
 import { lookupTenantBySlug } from "./tenant-middleware";
 import { seedNewTenant } from "./seed-tenant";
 import { backupTenant } from "./backup";
@@ -109,6 +109,42 @@ export function setupAuth(app: Express) {
   passport.deserializeUser(async (id: string, done) => {
     const user = await storage.getUser(id);
     done(null, user);
+  });
+
+  // ─── Public: Look up which companies an email/username belongs to ────────────
+  app.post("/api/auth/lookup-email", async (req, res) => {
+    try {
+      const { emailOrUsername } = req.body;
+      if (!emailOrUsername) return res.status(400).json({ message: "Email is required" });
+
+      const matches = await db
+        .select({
+          tenantId: users.tenantId,
+          tenantName: tenants.name,
+          tenantSlug: tenants.slug,
+          tenantPlan: tenants.plan,
+          tenantStatus: tenants.status,
+        })
+        .from(users)
+        .innerJoin(tenants, eq(users.tenantId, tenants.id))
+        .where(and(
+          or(eq(users.email, emailOrUsername.toLowerCase().trim()), eq(users.username, emailOrUsername.trim())),
+          eq(users.recordStatus, 1),
+        ));
+
+      // Deduplicate by tenantId
+      const seen = new Set<number>();
+      const companies = matches.filter(m => {
+        if (seen.has(m.tenantId!)) return false;
+        seen.add(m.tenantId!);
+        return true;
+      });
+
+      return res.json({ companies });
+    } catch (err) {
+      console.error("Email lookup error:", err);
+      return res.status(500).json({ message: "Lookup failed" });
+    }
   });
 
   // ─── Public: Tenant lookup by slug ──────────────────────────────────────────
