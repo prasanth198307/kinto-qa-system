@@ -3320,6 +3320,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/company" component={CompanySelectPage} />
+      <Route path="/company-select" component={CompanySelectPage} />
       <Route path="/register-company" component={RegisterCompanyPage} />
       <Route path="/demo" component={DemoPage} />
       <Route path="/auth" component={AuthPage} />
