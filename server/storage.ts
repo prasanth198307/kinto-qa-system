@@ -868,6 +868,35 @@ export class DatabaseStorage implements IStorage {
     return result as any;
   }
 
+  // Scoped lookup — used during login when tenantId is known from the company slug
+  async getUserByUsernameAndTenant(username: string, tenantId: number): Promise<User | undefined> {
+    const [result] = await db
+      .select({
+        id: users.id,
+        username: users.username,
+        password: users.password,
+        email: users.email,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImageUrl: users.profileImageUrl,
+        roleId: users.roleId,
+        role: roles.name,
+        tenantId: users.tenantId,
+        resetToken: users.resetToken,
+        resetTokenExpiry: users.resetTokenExpiry,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt,
+      })
+      .from(users)
+      .leftJoin(roles, eq(users.roleId, roles.id))
+      .where(and(
+        or(eq(users.username, username), eq(users.email, username)),
+        eq(users.tenantId, tenantId),
+        eq(users.recordStatus, 1)
+      ));
+    return result as any;
+  }
+
   async createUser(userData: InsertUser): Promise<User> {
     const [user] = await db.insert(users).values(userData).returning();
     return user;

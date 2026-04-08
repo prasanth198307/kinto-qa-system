@@ -194,9 +194,9 @@ export type RolePermission = typeof rolePermissions.$inferSelect;
 // User storage table - Email/Password authentication
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  username: varchar("username", { length: 255 }).unique().notNull(),
+  username: varchar("username", { length: 255 }).notNull(),
   password: text("password").notNull(),
-  email: varchar("email").unique(),
+  email: varchar("email"),
   mobileNumber: varchar("mobile_number", { length: 15 }),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),

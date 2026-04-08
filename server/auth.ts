@@ -73,10 +73,23 @@ export function setupAuth(app: Express) {
   app.use(passport.session());
 
   passport.use(
-    new LocalStrategy(async (username, password, done) => {
+    new LocalStrategy({ passReqToCallback: true } as any, async (req: any, username: string, password: string, done: any) => {
       try {
         console.log("🔍 Login attempt for user:", username);
-        const user = await storage.getUserByUsername(username);
+        const { tenantSlug } = req.body;
+
+        let user: any;
+
+        if (tenantSlug) {
+          // Preferred path: scope lookup to the specific tenant
+          const tenant = await lookupTenantBySlug(tenantSlug);
+          if (!tenant) return done(null, false);
+          user = await storage.getUserByUsernameAndTenant(username, tenant.id);
+        } else {
+          // Fallback: global lookup (super-admin or no slug provided)
+          user = await storage.getUserByUsername(username);
+        }
+
         if (!user || !user.password) return done(null, false);
         const valid = await comparePasswords(password, user.password);
         if (!valid) {
@@ -582,9 +595,19 @@ export function setupAuth(app: Express) {
   // ─── Forgot password ───────────────────────────────────────────────────────
   app.post("/api/auth/forgot-password", async (req, res) => {
     try {
-      const { email } = req.body;
+      const { email, tenantSlug } = req.body;
       if (!email) return res.status(400).json({ message: "Email is required" });
-      const user = await storage.getUserByEmail(email);
+
+      let user: any;
+      if (tenantSlug) {
+        const tenant = await lookupTenantBySlug(tenantSlug);
+        if (tenant) {
+          user = await storage.getUserByUsernameAndTenant(email, tenant.id);
+        }
+      } else {
+        user = await storage.getUserByEmail(email);
+      }
+
       if (!user) return res.status(200).json({ message: "If the email exists, a reset link will be sent" });
 
       const resetToken = randomBytes(32).toString("hex");

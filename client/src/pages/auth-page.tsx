@@ -46,7 +46,7 @@ export default function AuthPage() {
     e.preventDefault();
     setIsResetting(true);
     try {
-      await apiRequest("POST", "/api/auth/forgot-password", { email: resetEmail });
+      await apiRequest("POST", "/api/auth/forgot-password", { email: resetEmail, tenantSlug: selectedTenant?.slug });
       toast({
         title: "Password reset link sent",
         description: "Please check your email for the password reset link.",
