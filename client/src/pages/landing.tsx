@@ -24,6 +24,7 @@ import {
   IndianRupee,
   Star,
   ChevronRight,
+  Video,
 } from "lucide-react";
 
 const modules = [
@@ -96,6 +97,9 @@ export default function LandingPage() {
           </nav>
 
           <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setLocation("/demo")} data-testid="nav-demo-btn">
+              Book a Demo
+            </Button>
             <Button variant="ghost" size="sm" onClick={() => setLocation("/auth")} data-testid="nav-login-btn">
               Log in
             </Button>
@@ -127,8 +131,12 @@ export default function LandingPage() {
               Start Free Trial
               <ArrowRight className="w-4 h-4" />
             </Button>
-            <Button size="lg" variant="outline" onClick={() => setLocation("/auth")} data-testid="hero-login-btn">
-              Log in to your account
+            <Button size="lg" variant="outline" onClick={() => setLocation("/demo")} data-testid="hero-demo-btn" className="gap-2">
+              <Video className="w-4 h-4" />
+              Book a Demo
+            </Button>
+            <Button size="lg" variant="ghost" onClick={() => setLocation("/auth")} data-testid="hero-login-btn">
+              Log in
             </Button>
           </div>
           <p className="text-xs text-muted-foreground mt-4">

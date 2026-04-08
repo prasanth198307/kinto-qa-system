@@ -4,15 +4,16 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   ShieldAlert, Building2, CreditCard, Package, HardDrive,
-  LayoutDashboard, LogOut, Loader2, ChevronRight, AlertTriangle,
+  LayoutDashboard, LogOut, Loader2, ChevronRight, AlertTriangle, Video,
 } from "lucide-react";
 
 const NAV_ITEMS = [
-  { path: "/super-admin/overview",      label: "Overview",        icon: LayoutDashboard },
-  { path: "/super-admin/tenants",       label: "Tenants",         icon: Building2 },
-  { path: "/super-admin/billing",       label: "Billing",         icon: CreditCard },
-  { path: "/super-admin/plans",         label: "Plans",           icon: Package },
-  { path: "/super-admin/backups",       label: "Backups",         icon: HardDrive },
+  { path: "/super-admin/overview",       label: "Overview",       icon: LayoutDashboard },
+  { path: "/super-admin/tenants",        label: "Tenants",        icon: Building2 },
+  { path: "/super-admin/billing",        label: "Billing",        icon: CreditCard },
+  { path: "/super-admin/plans",          label: "Plans",          icon: Package },
+  { path: "/super-admin/demo-requests",  label: "Demo Requests",  icon: Video },
+  { path: "/super-admin/backups",        label: "Backups",        icon: HardDrive },
 ];
 
 interface SuperAdminLayoutProps {

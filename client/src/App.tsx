@@ -11,6 +11,7 @@ import { usePermissions } from "@/hooks/use-permissions";
 import { useFilteredNavigation } from "@/hooks/use-filtered-navigation";
 import { ProtectedRoute } from "@/lib/protected-route";
 import LandingPage from "@/pages/landing";
+import DemoPage from "@/pages/demo";
 import AuthPage from "@/pages/auth-page";
 import ResetPasswordPage from "@/pages/reset-password";
 import CompanySelectPage from "@/pages/company-select";
@@ -19,6 +20,7 @@ import SuperAdminTenants from "@/pages/super-admin-tenants";
 import SuperAdminPlans from "@/pages/super-admin-plans";
 import SuperAdminOverview from "@/pages/super-admin-overview";
 import SuperAdminBilling from "@/pages/super-admin-billing";
+import SuperAdminDemoRequests from "@/pages/super-admin-demo-requests";
 import SuperAdminBackups from "@/pages/super-admin-backups";
 import Landing from "@/components/Landing";
 import RoleSelector from "@/components/RoleSelector";
@@ -3275,12 +3277,14 @@ function Router() {
     <Switch>
       <Route path="/company" component={CompanySelectPage} />
       <Route path="/register-company" component={RegisterCompanyPage} />
+      <Route path="/demo" component={DemoPage} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/reset-password" component={ResetPasswordPage} />
       <ProtectedRoute path="/super-admin/overview" component={() => <SuperAdminOverview />} />
       <ProtectedRoute path="/super-admin/tenants" component={() => <SuperAdminTenants />} />
       <ProtectedRoute path="/super-admin/billing" component={() => <SuperAdminBilling />} />
       <ProtectedRoute path="/super-admin/plans" component={() => <SuperAdminPlans />} />
+      <ProtectedRoute path="/super-admin/demo-requests" component={() => <SuperAdminDemoRequests />} />
       <ProtectedRoute path="/super-admin/backups" component={() => <SuperAdminBackups />} />
       <Route path="/print/invoice/:id" component={PrintInvoicePage} />
       <Route path="/print/gatepass/:id" component={PrintGatepassPage} />

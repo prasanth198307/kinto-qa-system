@@ -15,7 +15,7 @@ import fs from "fs";
 import multer from "multer";
 import XLSX from "xlsx";
 import ExcelJS from "exceljs";
-import { db } from "./db";
+import { db, pool } from "./db";
 import { whatsappService } from "./whatsappService";
 import { whatsappWebhookRouter } from "./whatsappWebhook";
 import { whatsappConversationService } from "./whatsappConversationService";
@@ -26924,6 +26924,40 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('Content-Type', 'application/gzip');
     res.sendFile(filePath);
+  });
+
+  // ─── Public: Book a Demo request (no auth required) ──────────────────────
+  app.post('/api/demo-request', async (req: any, res) => {
+    const { name, company, email, phone, city, message } = req.body;
+    if (!name || !company || !email) {
+      return res.status(400).json({ message: 'Name, company, and email are required.' });
+    }
+    try {
+      await pool.query(
+        `INSERT INTO demo_requests (name, company, email, phone, city, message)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [name.trim(), company.trim(), email.trim(), phone?.trim() || null, city?.trim() || null, message?.trim() || null]
+      );
+      return res.json({ success: true });
+    } catch (err: any) {
+      console.error('Demo request error:', err);
+      return res.status(500).json({ message: 'Failed to save request.' });
+    }
+  });
+
+  // ─── Super-admin: List demo requests ─────────────────────────────────────
+  app.get('/api/admin/demo-requests', async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.user?.isSuperAdmin) return res.status(403).json({ message: 'Super-admin only' });
+    try {
+      const result = await pool.query(
+        `SELECT * FROM demo_requests ORDER BY created_at DESC`
+      );
+      return res.json(result.rows);
+    } catch (err: any) {
+      console.error('List demo requests error:', err);
+      return res.status(500).json({ message: 'Failed to fetch demo requests.' });
+    }
   });
 
   const httpServer = createServer(app);
