@@ -16,7 +16,7 @@ type AuthContextType = {
   logoutMutation: UseMutationResult<void, Error, void>;
 };
 
-type LoginData = { username: string; password: string };
+type LoginData = { username: string; password: string; tenantSlug?: string };
 
 export const AuthContext = createContext<AuthContextType | null>(null);
 

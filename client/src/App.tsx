@@ -12,6 +12,9 @@ import { useFilteredNavigation } from "@/hooks/use-filtered-navigation";
 import { ProtectedRoute } from "@/lib/protected-route";
 import AuthPage from "@/pages/auth-page";
 import ResetPasswordPage from "@/pages/reset-password";
+import CompanySelectPage from "@/pages/company-select";
+import RegisterCompanyPage from "@/pages/register-company";
+import SuperAdminTenants from "@/pages/super-admin-tenants";
 import Landing from "@/components/Landing";
 import RoleSelector from "@/components/RoleSelector";
 import { TopRightHeader } from "@/components/TopRightHeader";
@@ -3155,8 +3158,11 @@ function ScrollToTop() {
 function Router() {
   return (
     <Switch>
+      <Route path="/company" component={CompanySelectPage} />
+      <Route path="/register-company" component={RegisterCompanyPage} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/reset-password" component={ResetPasswordPage} />
+      <ProtectedRoute path="/super-admin/tenants" component={() => <SuperAdminTenants />} />
       <Route path="/print/invoice/:id" component={PrintInvoicePage} />
       <Route path="/print/gatepass/:id" component={PrintGatepassPage} />
       <Route path="/print/credit-note/:id" component={PrintCreditNotePage} />

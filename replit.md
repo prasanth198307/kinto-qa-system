@@ -1,7 +1,18 @@
-# KINTO Operations & QA Management System
+# Kinto Smart Ops — Manufacturing ERP SaaS
 
 ## Overview
-KINTO Operations & QA is a comprehensive manufacturing operations and quality management system designed to streamline industrial operations, enhance quality control, and prevent errors. It manages production, inventory, purchase orders, invoicing, gatepasses, quality assurance, and preventive maintenance. Key features include FIFO payment allocation, GST-compliant invoice generation, payment tracking, extensive reporting, and two-way WhatsApp integration for machine startup and checklist management. The system supports various user roles through tasks like checklist completion, verification, approval, and configuration, providing a full-stack TypeScript solution for industrial settings. The business vision is to modernize industrial operations, improve efficiency, and ensure high-quality output.
+Kinto Smart Ops is a comprehensive manufacturing ERP SaaS platform for Indian manufacturing companies. It manages production, inventory, purchase orders, invoicing (GST-compliant), gatepasses, quality assurance, preventive maintenance, double-entry accounting, and provides MIS analytics. The system is built for multi-tenancy (SaaS) with each company getting their own isolated data space. It supports two-way WhatsApp integration for machine startup and checklist management. The business vision is to modernize Indian industrial operations with a cloud-based, subscription SaaS model.
+
+## SaaS Multitenancy Architecture (Phase 1 — COMPLETE)
+- **Tenants table:** `tenants` (id, name, slug, plan, status, trial_ends_at, max_users, billing info, is_super_admin)
+- **Tenant isolation:** `tenant_id INTEGER DEFAULT 1` column added to all 94 business tables
+- **Default tenant:** Tenant #1 = KINTO (enterprise/active) — all existing data
+- **Two-step login:** `/company` page (slug entry) → `/auth` (username+password with tenant context)
+- **Self-registration:** `/register-company` (creates tenant + admin user, 14-day trial)
+- **Super-admin dashboard:** `/super-admin/tenants` — manage all company accounts
+- **API routes:** GET /api/tenants/lookup/:slug, POST /api/tenants/register, GET/PATCH /api/admin/tenants
+- **Session:** `tenantId` stored in session after login for downstream use
+- **Branch:** `feature/saas-multitenancy` (main branch = Oracle Cloud production, untouched)
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.

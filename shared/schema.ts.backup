@@ -3,13 +3,11 @@ import {
   index,
   jsonb,
   pgTable,
-  serial,
   timestamp,
   date,
   varchar,
   text,
   integer,
-  boolean,
   numeric,
   real,
   unique,
@@ -29,36 +27,7 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
-// ─── SaaS Tenants ───────────────────────────────────────────────────────────
-export const tenants = pgTable("tenants", {
-  id: serial("id").primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  slug: varchar("slug", { length: 100 }).notNull().unique(),
-  plan: varchar("plan", { length: 50 }).default('trial'),
-  status: varchar("status", { length: 50 }).default('trial'),
-  trialEndsAt: timestamp("trial_ends_at", { mode: 'string' }),
-  maxUsers: integer("max_users").default(5),
-  logoUrl: varchar("logo_url"),
-  primaryColor: varchar("primary_color", { length: 20 }).default('#1a56db'),
-  billingEmail: varchar("billing_email"),
-  contactName: varchar("contact_name", { length: 255 }),
-  contactPhone: varchar("contact_phone", { length: 20 }),
-  gstNumber: varchar("gst_number", { length: 20 }),
-  address: text("address"),
-  isSuperAdmin: boolean("is_super_admin").default(false),
-  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
-  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-});
-
-export const insertTenantSchema = createInsertSchema(tenants).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-export type InsertTenant = z.infer<typeof insertTenantSchema>;
-export type Tenant = typeof tenants.$inferSelect;
-
-// ─── Roles table for dynamic role management ─────────────────────────────────
+// Roles table for dynamic role management
 export const roles = pgTable("roles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: varchar("name", { length: 50 }).notNull().unique(),
@@ -67,7 +36,6 @@ export const roles = pgTable("roles", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 // Role Permissions table - defines which screens each role can access
@@ -82,7 +50,6 @@ export const rolePermissions = pgTable("role_permissions", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertRoleSchema = createInsertSchema(roles).omit({
@@ -111,7 +78,7 @@ export const users = pgTable("users", {
   username: varchar("username", { length: 255 }).unique().notNull(),
   password: text("password").notNull(),
   email: varchar("email").unique(),
-  mobileNumber: varchar("mobile_number", { length: 15 }),
+  mobileNumber: varchar("mobile_number", { length: 15 }).notNull(),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
@@ -121,13 +88,12 @@ export const users = pgTable("users", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertUserSchema = createInsertSchema(users, {
   username: z.string().min(3, "Username must be at least 3 characters"),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  mobileNumber: z.string().regex(/^[0-9]{10}$/, "Mobile number must be 10 digits").optional().nullable(),
+  mobileNumber: z.string().regex(/^[0-9]{10}$/, "Mobile number must be 10 digits"),
   email: z.string().email("Invalid email address").optional(),
 }).omit({
   id: true,
@@ -155,7 +121,6 @@ export const machines = pgTable("machines", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertMachineSchema = createInsertSchema(machines).omit({
@@ -179,7 +144,6 @@ export const checklistTemplates = pgTable("checklist_templates", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertChecklistTemplateSchema = createInsertSchema(checklistTemplates).omit({
@@ -200,7 +164,6 @@ export const templateTasks = pgTable("template_tasks", {
   verificationCriteria: text("verification_criteria"),
   orderIndex: integer("order_index"),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertTemplateTaskSchema = createInsertSchema(templateTasks).omit({
@@ -236,7 +199,6 @@ export const checklistAssignments = pgTable("checklist_assignments", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertChecklistAssignmentSchema = createInsertSchema(checklistAssignments, {
@@ -268,7 +230,6 @@ export const partialTaskAnswers = pgTable("partial_task_answers", {
   answeredAt: timestamp("answered_at", { mode: 'string' }).defaultNow().notNull(),
   answeredBy: varchar("answered_by").references(() => users.id).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertPartialTaskAnswerSchema = createInsertSchema(partialTaskAnswers).omit({
@@ -297,7 +258,6 @@ export const checklistSubmissions = pgTable("checklist_submissions", {
   reviewedAt: timestamp("reviewed_at", { mode: 'string' }),
   approvedAt: timestamp("approved_at", { mode: 'string' }),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export type ChecklistSubmission = typeof checklistSubmissions.$inferSelect;
@@ -313,7 +273,6 @@ export const submissionTasks = pgTable("submission_tasks", {
   verifiedByName: varchar("verified_by_name", { length: 255 }),
   verifiedSignature: text("verified_signature"),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export type SubmissionTask = typeof submissionTasks.$inferSelect;
@@ -337,7 +296,6 @@ export const whatsappConversationSessions = pgTable("whatsapp_conversation_sessi
   startedAt: timestamp("started_at", { mode: 'string' }).defaultNow(),
   completedAt: timestamp("completed_at", { mode: 'string' }),
   expiresAt: timestamp("expires_at", { mode: 'string' }).notNull(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertWhatsAppConversationSessionSchema = createInsertSchema(whatsappConversationSessions).omit({
@@ -362,7 +320,6 @@ export const sparePartsCatalog = pgTable("spare_parts_catalog", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertSparePartSchema = createInsertSchema(sparePartsCatalog).omit({
@@ -390,7 +347,6 @@ export const sparePartEntries = pgTable("spare_part_entries", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertSparePartEntrySchema = createInsertSchema(sparePartEntries).omit({
@@ -421,7 +377,6 @@ export const sparePartIssuances = pgTable("spare_part_issuances", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertSparePartIssuanceSchema = createInsertSchema(sparePartIssuances).omit({
@@ -447,7 +402,6 @@ export const requiredSpares = pgTable("required_spares", {
   approvedAt: timestamp("approved_at", { mode: 'string' }),
   rejectionReason: text("rejection_reason"),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export type RequiredSpare = typeof requiredSpares.$inferSelect;
@@ -464,7 +418,6 @@ export const pmTaskListTemplates = pgTable("pm_task_list_templates", {
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertPMTaskListTemplateSchema = createInsertSchema(pmTaskListTemplates).omit({
@@ -487,7 +440,6 @@ export const pmTemplateTasks = pgTable("pm_template_tasks", {
   orderIndex: integer("order_index"),
   requiresPhoto: varchar("requires_photo").default('false'),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertPMTemplateTaskSchema = createInsertSchema(pmTemplateTasks).omit({
@@ -513,7 +465,6 @@ export const maintenancePlans = pgTable("maintenance_plans", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertMaintenancePlanSchema = createInsertSchema(maintenancePlans).omit({
@@ -540,7 +491,6 @@ export const pmExecutions = pgTable("pm_executions", {
   downtimeHours: integer("downtime_hours"),
   sparePartsUsed: text("spare_parts_used"),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertPMExecutionSchema = createInsertSchema(pmExecutions).omit({
@@ -562,7 +512,6 @@ export const pmExecutionTasks = pgTable("pm_execution_tasks", {
   photoUrl: varchar("photo_url", { length: 500 }),
   orderIndex: integer("order_index"),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertPMExecutionTaskSchema = createInsertSchema(pmExecutionTasks).omit({
@@ -587,7 +536,6 @@ export const maintenanceHistory = pgTable("maintenance_history", {
   downtimeHours: integer("downtime_hours"),
   cost: integer("cost"),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export type MaintenanceHistory = typeof maintenanceHistory.$inferSelect;
@@ -601,7 +549,6 @@ export const userAssignments = pgTable("user_assignments", {
   machineIds: text("machine_ids").array(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export type UserAssignment = typeof userAssignments.$inferSelect;
@@ -615,7 +562,6 @@ export const machineTypes = pgTable("machine_types", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertMachineTypeSchema = createInsertSchema(machineTypes).omit({
@@ -635,7 +581,6 @@ export const machineSpares = pgTable("machine_spares", {
   sparePartId: varchar("spare_part_id").references(() => sparePartsCatalog.id).notNull(),
   recommendedQuantity: integer("recommended_quantity").default(1),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertMachineSpareSchema = createInsertSchema(machineSpares).omit({
@@ -687,7 +632,6 @@ export const purchaseOrders = pgTable("purchase_orders", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertPurchaseOrderSchema = createInsertSchema(purchaseOrders, {
@@ -744,7 +688,6 @@ export const purchaseOrderItems = pgTable("purchase_order_items", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertPurchaseOrderItemSchema = createInsertSchema(purchaseOrderItems, {
@@ -777,7 +720,6 @@ export const uom = pgTable("uom", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertUomSchema = createInsertSchema(uom).omit({
@@ -801,7 +743,6 @@ export const productCategories = pgTable("product_categories", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertProductCategorySchema = createInsertSchema(productCategories).omit({
@@ -825,7 +766,6 @@ export const productTypes = pgTable("product_types", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertProductTypeSchema = createInsertSchema(productTypes).omit({
@@ -880,7 +820,6 @@ export const products = pgTable("products", {
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertProductSchema = createInsertSchema(products).omit({
@@ -921,7 +860,6 @@ export const productBomConfigurations = pgTable("product_bom_configurations", {
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 }, (table) => ({
   productIdIdx: index("product_bom_configurations_product_id_idx").on(table.productId),
   isDefaultIdx: index("product_bom_configurations_is_default_idx").on(table.isDefault),
@@ -951,7 +889,6 @@ export const productBom = pgTable("product_bom", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 }, (table) => ({
   productIdIdx: index("product_bom_product_id_idx").on(table.productId),
   configurationIdIdx: index("product_bom_configuration_id_idx").on(table.configurationId),
@@ -1024,7 +961,6 @@ export const vendors = pgTable("vendors", {
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertVendorSchema = createInsertSchema(vendors, {
@@ -1051,7 +987,6 @@ export const vendorTypes = pgTable("vendor_types", {
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 }, (table) => ({
   codeIdx: index("vendor_types_code_idx").on(table.code),
   isActiveIdx: index("vendor_types_is_active_idx").on(table.isActive),
@@ -1075,7 +1010,6 @@ export const vendorVendorTypes = pgTable("vendor_vendor_types", {
   isPrimary: integer("is_primary").default(0).notNull(), // 1 = Primary type for this vendor
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 }, (table) => ({
   vendorIdIdx: index("vendor_vendor_types_vendor_id_idx").on(table.vendorId),
   vendorTypeIdIdx: index("vendor_vendor_types_vendor_type_id_idx").on(table.vendorTypeId),
@@ -1125,7 +1059,6 @@ export const rawMaterialTypes = pgTable("raw_material_types", {
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 // Base schema with common fields
@@ -1241,7 +1174,6 @@ export const rawMaterials = pgTable("raw_materials", {
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertRawMaterialSchema = createInsertSchema(rawMaterials, {
@@ -1336,7 +1268,6 @@ export const rawMaterialTransactions = pgTable("raw_material_transactions", {
   remarks: text("remarks"),
   performedBy: varchar("performed_by").references(() => users.id),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertRawMaterialTransactionSchema = createInsertSchema(rawMaterialTransactions).omit({
@@ -1371,7 +1302,6 @@ export const finishedGoods = pgTable("finished_goods", {
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertFinishedGoodSchema = createInsertSchema(finishedGoods, {
@@ -1418,7 +1348,6 @@ export const rawMaterialIssuance = pgTable("raw_material_issuance", {
   issuedBy: varchar("issued_by").references(() => users.id),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertRawMaterialIssuanceSchema = createInsertSchema(rawMaterialIssuance, {
@@ -1471,7 +1400,6 @@ export const rawMaterialIssuanceItems = pgTable("raw_material_issuance_items", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertRawMaterialIssuanceItemSchema = createInsertSchema(rawMaterialIssuanceItems, {
@@ -1530,7 +1458,6 @@ export const productionEntries = pgTable("production_entries", {
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 }, (table) => [
   // Unique constraint: one production entry per issuance per date per shift
   unique().on(table.issuanceId, table.productionDate, table.shift),
@@ -1645,7 +1572,6 @@ export const transporters = pgTable("transporters", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertTransporterSchema = createInsertSchema(transporters).omit({
@@ -1674,7 +1600,6 @@ export const vehicles = pgTable("vehicles", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertVehicleSchema = createInsertSchema(vehicles).omit({
@@ -1702,7 +1627,6 @@ export const drivers = pgTable("drivers", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertDriverSchema = createInsertSchema(drivers).omit({
@@ -1756,7 +1680,6 @@ export const gatepasses = pgTable("gatepasses", {
   issuedBy: varchar("issued_by").references(() => users.id),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertGatepassSchema = createInsertSchema(gatepasses, {
@@ -1800,7 +1723,6 @@ export const gatepassItems = pgTable("gatepass_items", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertGatepassItemSchema = createInsertSchema(gatepassItems).omit({
@@ -1857,7 +1779,6 @@ export const invoiceTemplates = pgTable("invoice_templates", {
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertInvoiceTemplateSchema = createInsertSchema(invoiceTemplates).omit({
@@ -1887,7 +1808,6 @@ export const termsConditions = pgTable("terms_conditions", {
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertTermsConditionsSchema = createInsertSchema(termsConditions).omit({
@@ -1993,7 +1913,6 @@ export const invoices = pgTable("invoices", {
   generatedBy: varchar("generated_by").references(() => users.id),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertInvoiceSchema = createInsertSchema(invoices, {
@@ -2059,7 +1978,6 @@ export const invoiceItems = pgTable("invoice_items", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertInvoiceItemSchema = createInsertSchema(invoiceItems).omit({
@@ -2137,7 +2055,6 @@ export const invoicePayments = pgTable("invoice_payments", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertInvoicePaymentSchema = createInsertSchema(invoicePayments).omit({
@@ -2175,7 +2092,6 @@ export const paymentEvidence = pgTable("payment_evidence", {
   
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertPaymentEvidenceSchema = createInsertSchema(paymentEvidence).omit({
@@ -2201,7 +2117,6 @@ export const banks = pgTable("banks", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertBankSchema = createInsertSchema(banks).omit({
@@ -2256,7 +2171,6 @@ export const salesReturns = pgTable("sales_returns", {
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertSalesReturnSchema = createInsertSchema(salesReturns, {
@@ -2357,7 +2271,6 @@ export const salesReturnItems = pgTable("sales_return_items", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertSalesReturnItemSchema = createInsertSchema(salesReturnItems).omit({
@@ -2400,7 +2313,6 @@ export const creditNotes = pgTable("credit_notes", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertCreditNoteSchema = createInsertSchema(creditNotes, {
@@ -2444,7 +2356,6 @@ export const creditNoteItems = pgTable("credit_note_items", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertCreditNoteItemSchema = createInsertSchema(creditNoteItems).omit({
@@ -2485,7 +2396,6 @@ export const debitNotes = pgTable("debit_notes", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertDebitNoteSchema = createInsertSchema(debitNotes, {
@@ -2535,7 +2445,6 @@ export const debitNoteItems = pgTable("debit_note_items", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertDebitNoteItemSchema = createInsertSchema(debitNoteItems).omit({
@@ -2576,7 +2485,6 @@ export const manualCreditNoteRequests = pgTable("manual_credit_note_requests", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertManualCreditNoteRequestSchema = createInsertSchema(manualCreditNoteRequests).omit({
@@ -2614,7 +2522,6 @@ export const machineStartupTasks = pgTable("machine_startup_tasks", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertMachineStartupTaskSchema = createInsertSchema(machineStartupTasks, {
@@ -2656,7 +2563,6 @@ export const notificationConfig = pgTable("notification_config", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertNotificationConfigSchema = createInsertSchema(notificationConfig).omit({
@@ -2700,7 +2606,6 @@ export const productionReconciliations = pgTable("production_reconciliations", {
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 }, (table) => [
   // Composite unique index: prevent duplicate reconciliations for same issuance + shift
   uniqueIndex("production_reconciliations_issuance_shift_idx").on(table.issuanceId, table.shift),
@@ -2758,7 +2663,6 @@ export const productionReconciliationItems = pgTable("production_reconciliation_
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertProductionReconciliationItemSchema = createInsertSchema(productionReconciliationItems).omit({
@@ -2782,7 +2686,6 @@ export const documentCategories = pgTable("document_categories", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertDocumentCategorySchema = createInsertSchema(documentCategories).omit({
@@ -2831,7 +2734,6 @@ export const documents = pgTable("documents", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 }, (table) => [
   index("documents_category_idx").on(table.categoryId),
   index("documents_related_entity_idx").on(table.relatedEntityType, table.relatedEntityId),
@@ -2861,7 +2763,6 @@ export const expenseCategories = pgTable("expense_categories", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertExpenseCategorySchema = createInsertSchema(expenseCategories).omit({
@@ -2910,7 +2811,6 @@ export const expenseVouchers = pgTable("expense_vouchers", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 }, (table) => [
   index("expense_vouchers_date_idx").on(table.voucherDate),
   index("expense_vouchers_status_idx").on(table.status),
@@ -2952,7 +2852,6 @@ export const expenseItems = pgTable("expense_items", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertExpenseItemSchema = createInsertSchema(expenseItems).omit({
@@ -2980,7 +2879,6 @@ export const expenseAttachments = pgTable("expense_attachments", {
   
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertExpenseAttachmentSchema = createInsertSchema(expenseAttachments).omit({
@@ -3038,7 +2936,6 @@ export const cashRegisterDays = pgTable("cash_register_days", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 }, (table) => [
   index("cash_register_days_date_idx").on(table.registerDate),
   index("cash_register_days_salesperson_idx").on(table.salespersonId),
@@ -3089,7 +2986,6 @@ export const cashRegisterTransactions = pgTable("cash_register_transactions", {
   
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertCashRegisterTransactionSchema = createInsertSchema(cashRegisterTransactions).omit({
@@ -3118,7 +3014,6 @@ export const cashRegisterExpenseItems = pgTable("cash_register_expense_items", {
   
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertCashRegisterExpenseItemSchema = createInsertSchema(cashRegisterExpenseItems).omit({
@@ -3138,7 +3033,6 @@ export const salespersonMappings = pgTable("salesperson_mappings", {
   displayName: varchar("display_name", { length: 100 }),
   isActive: integer("is_active").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertSalespersonMappingSchema = createInsertSchema(salespersonMappings).omit({
@@ -3195,7 +3089,6 @@ export const systemAlerts = pgTable("system_alerts", {
   resolvedAt: timestamp("resolved_at", { mode: 'string' }),
   resolvedBy: varchar("resolved_by").references(() => users.id),
   createdByInvoiceId: varchar("created_by_invoice_id"), // Invoice that triggered the alert
-  tenantId: integer("tenant_id").default(1),
 }, (table) => [
   index("idx_system_alerts_type_status").on(table.alertType, table.status),
   index("idx_system_alerts_entity").on(table.entityType, table.entityId, table.status),
@@ -3246,7 +3139,6 @@ export const vendorDebitNotes = pgTable("vendor_debit_notes", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertVendorDebitNoteSchema = createInsertSchema(vendorDebitNotes, {
@@ -3290,7 +3182,6 @@ export const vendorDebitNoteItems = pgTable("vendor_debit_note_items", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertVendorDebitNoteItemSchema = createInsertSchema(vendorDebitNoteItems).omit({
@@ -3323,7 +3214,6 @@ export const vendorDebitNoteAdjustments = pgTable("vendor_debit_note_adjustments
   
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertVendorDebitNoteAdjustmentSchema = createInsertSchema(vendorDebitNoteAdjustments).omit({
@@ -3385,7 +3275,6 @@ export const scrapInventory = pgTable("scrap_inventory", {
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertScrapInventorySchema = createInsertSchema(scrapInventory, {
@@ -3462,7 +3351,6 @@ export const customerAdvances = pgTable("customer_advances", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 }, (table) => ({
   vendorIdx: index("customer_advances_vendor_idx").on(table.vendorId),
   statusIdx: index("customer_advances_status_idx").on(table.status),
@@ -3516,7 +3404,6 @@ export const advanceApplications = pgTable("advance_applications", {
   
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 }, (table) => ({
   advanceIdx: index("advance_applications_advance_idx").on(table.advanceId),
   invoiceIdx: index("advance_applications_invoice_idx").on(table.invoiceId),
@@ -3558,7 +3445,6 @@ export const chartOfAccounts = pgTable("chart_of_accounts", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 }, (table) => [
   index("coa_type_idx").on(table.accountType),
   index("coa_parent_idx").on(table.parentId),
@@ -3602,7 +3488,6 @@ export const journalEntries = pgTable("journal_entries", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 }, (table) => [
   index("journal_date_idx").on(table.journalDate),
   index("journal_source_idx").on(table.sourceType, table.sourceId),
@@ -3643,7 +3528,6 @@ export const journalLines = pgTable("journal_lines", {
   
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 }, (table) => [
   index("jl_journal_idx").on(table.journalId),
   index("jl_account_idx").on(table.accountId),
@@ -3672,7 +3556,6 @@ export const bankStatementImports = pgTable("bank_statement_imports", {
   createdBy: varchar("created_by"),
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertBankStatementImportSchema = createInsertSchema(bankStatementImports).omit({
@@ -3714,7 +3597,6 @@ export const bankTransactions = pgTable("bank_transactions", {
 
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 }, (table) => [
   index("bt_import_idx").on(table.importId),
   index("bt_status_idx").on(table.status),
@@ -3788,7 +3670,6 @@ export const salesOfficers = pgTable("sales_officers", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertSalesOfficerSchema = createInsertSchema(salesOfficers).omit({
@@ -3836,7 +3717,6 @@ export const salesOrders = pgTable("sales_orders", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 }, (table) => [
   index("so_buyer_idx").on(table.buyerName),
   index("so_status_idx").on(table.status),
@@ -3872,7 +3752,6 @@ export const salesOrderItems = pgTable("sales_order_items", {
   taxableAmount: integer("taxable_amount").default(0).notNull(), // paise
   totalAmount: integer("total_amount").default(0).notNull(), // paise
   recordStatus: integer("record_status").default(1).notNull(),
-  tenantId: integer("tenant_id").default(1),
 }, (table) => [
   index("soi_so_idx").on(table.soId),
 ]);
@@ -3910,7 +3789,6 @@ export const monthlyExpenses = pgTable("monthly_expenses", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 }, (table) => [
   index("me_month_idx").on(table.expenseMonth),
   index("me_status_idx").on(table.status),
@@ -3938,7 +3816,6 @@ export const monthlyExpensePayments = pgTable("monthly_expense_payments", {
   notes: varchar("notes", { length: 500 }),
   recordStatus: integer("record_status").notNull().default(1),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertMonthlyExpensePaymentSchema = createInsertSchema(monthlyExpensePayments).omit({
@@ -3962,7 +3839,6 @@ export const budgets = pgTable("budgets", {
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 });
 
 export const insertBudgetSchema = createInsertSchema(budgets).omit({
@@ -3995,7 +3871,6 @@ export const budgetItems = pgTable("budget_items", {
   mar: integer("mar").default(0).notNull(),
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
-  tenantId: integer("tenant_id").default(1),
 }, (table) => [
   index("bi_budget_idx").on(table.budgetId),
   index("bi_account_idx").on(table.accountId),
