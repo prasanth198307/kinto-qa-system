@@ -63,7 +63,9 @@ export default function AuthPage() {
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-background">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
-            <KintoLogo className="justify-center" variant="full" />
+            <a href="/" aria-label="Back to home">
+              <KintoLogo className="justify-center" variant="full" />
+            </a>
           </div>
 
           <Card>
