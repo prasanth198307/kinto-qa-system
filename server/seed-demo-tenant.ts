@@ -10,6 +10,62 @@ import { eq, sql } from "drizzle-orm";
 import { seedNewTenant } from "./seed-tenant";
 import { hashPassword } from "./auth";
 
+/** Grants full admin permissions for every ERP screen to the demo admin role. Idempotent. */
+async function ensureDemoPermissions(tenantId: number, adminRoleId: string): Promise<void> {
+  const ALL_SCREEN_KEYS = [
+    // Dashboard & Analytics
+    'dashboard','sales_dashboard','vendor_analytics','reports',
+    'report_finished_goods','report_monthly_production','report_vendor_report','report_gst',
+    // MIS
+    'mis_dashboard','mis_production','mis_inventory','mis_sales','mis_delivery',
+    // Quality & Checklists
+    'checklist_templates','checklist_assignments','checklists',
+    'machine_startup_reminders','whatsapp_analytics',
+    // Inventory
+    'products','product_categories','product_types',
+    'raw_materials','raw_material_types',
+    'finished_goods','inventory','uom',
+    'sales_orders','sales_officers',
+    // Production
+    'raw_material_issuance','production_entries','production_reconciliations',
+    'variance_analytics','production_reconciliation',
+    // Sales & Invoicing
+    'invoices','payments','pending_payments','credit_notes',
+    'cancelled_invoices_report','sales_returns','payment_writeoff',
+    'customer_advances','payment_management',
+    // Dispatch
+    'gatepasses','dispatch_tracking','dispatch_masters',
+    // Finance
+    'cash_register','cash_register_report','expenses','monthly_expenses',
+    // Documents
+    'documents',
+    // Maintenance
+    'maintenance_plans','pm_execution','pm_templates',
+    // Purchasing
+    'purchase_orders','vendor_debit_notes',
+    // Master Data
+    'vendors','vendor_types','machines','machine_types',
+    'spare_parts','banks','scrap_inventory',
+    // Admin
+    'users','roles','admin_tools','template_management',
+    'notification_settings','data_import',
+    // Accounting
+    'chart_of_accounts','account_subtypes','journal_entries','manual_journal_entry',
+    'trial_balance','profit_loss','balance_sheet','ledger_view','day_book',
+    'aging_report','cash_flow_statement','group_summary','budget_variance','bank_transactions',
+  ];
+
+  for (const key of ALL_SCREEN_KEYS) {
+    await db.execute(sql`
+      INSERT INTO role_permissions (role_id, screen_key, can_view, can_create, can_edit, can_delete, tenant_id)
+      VALUES (${adminRoleId}, ${key}, 1, 1, 1, 1, ${tenantId})
+      ON CONFLICT (role_id, screen_key) DO UPDATE
+        SET can_view=1, can_create=1, can_edit=1, can_delete=1
+    `);
+  }
+  console.log(`[DEMO SEED] ${ALL_SCREEN_KEYS.length} permissions set for demo admin role`);
+}
+
 /** Creates acme-admin and acme-manager for an already-existing demo tenant. */
 async function ensureDemoUsers(tenantId: number): Promise<void> {
   const rolesResult = await db.execute(
@@ -72,6 +128,15 @@ export async function seedDemoTenant(): Promise<{ created: boolean; tenantId: nu
     if (existingUsers.length === 0) {
       console.log(`[DEMO SEED] No users found — running ensureDemoUsers`);
       await ensureDemoUsers(existing.id);
+    }
+
+    // Always ensure the admin role has ALL permissions (idempotent upsert)
+    const adminRoleRow = await db.execute(
+      sql`SELECT id FROM roles WHERE tenant_id = ${existing.id} AND name = 'admin' LIMIT 1`
+    );
+    const adminRoleRows = (adminRoleRow as any).rows ?? [];
+    if (adminRoleRows.length > 0) {
+      await ensureDemoPermissions(existing.id, String(adminRoleRows[0].id));
     }
 
     return {
@@ -265,6 +330,11 @@ export async function seedDemoTenant(): Promise<{ created: boolean; tenantId: nu
     }
   } catch (err) {
     console.warn(`[DEMO SEED] Could not create subscription record:`, err);
+  }
+
+  // ─── Grant full permissions to admin role ────────────────────────────────
+  if (rolesMap["admin"]) {
+    await ensureDemoPermissions(tenantId, rolesMap["admin"]);
   }
 
   console.log(`[DEMO SEED] ✅ Demo tenant fully seeded! Tenant ID: ${tenantId}`);
