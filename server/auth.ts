@@ -47,7 +47,12 @@ async function comparePasswords(supplied: string, stored: string) {
 export function setupAuth(app: Express) {
   const isReplit = !!(process.env.REPLIT_DOMAINS || process.env.REPLIT_DEV_DOMAIN);
   const isDevelopment = process.env.NODE_ENV === "development";
-  const useSecure = !isDevelopment && isReplit;
+
+  // Replit always serves over HTTPS (even in dev), so we can use Secure cookies.
+  // SameSite=none is required so the cookie is sent inside the Replit preview iframe
+  // (which is a cross-site context: replit.com embedding xxx.replit.dev).
+  const cookieSecure = isReplit;
+  const cookieSameSite: "none" | "lax" = isReplit ? "none" : "lax";
 
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || "insecure_dev_secret",
@@ -57,14 +62,14 @@ export function setupAuth(app: Express) {
     cookie: {
       maxAge: 7 * 24 * 60 * 60 * 1000,
       httpOnly: true,
-      secure: false,
-      sameSite: "lax",
+      secure: cookieSecure,
+      sameSite: cookieSameSite,
       path: "/",
     },
   };
 
   console.log(
-    `🔧 Session configured — Secure: ${useSecure}, SameSite: Lax, Dev Mode: ${isDevelopment}${isReplit ? " (Replit)" : ""}`
+    `🔧 Session configured — Secure: ${cookieSecure}, SameSite: ${cookieSameSite}, Dev Mode: ${isDevelopment}${isReplit ? " (Replit)" : ""}`
   );
 
   app.set("trust proxy", 1);
