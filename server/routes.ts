@@ -3,6 +3,8 @@ import { createServer, type Server } from "http";
 import crypto from "crypto";
 import { storage } from "./storage";
 import { setupAuth, hashPassword } from "./auth";
+import { tenantMiddleware } from "./tenant-middleware";
+import { tc } from "./tenant-context";
 import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertPurchaseOrderItemSchema, purchaseOrders, purchaseOrderItems, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesOrderSchema, insertSalesOrderItemSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, insertVendorTypeSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, paymentEvidence, salesOrders, salesOrderItems, salesReturns, salesReturnItems, creditNotes, creditNoteItems, debitNotes, debitNoteItems, manualCreditNoteRequests, products, productBom, whatsappConversationSessions, vendorTypes, vendorVendorTypes, vendors, users, uom, insertDocumentCategorySchema, insertDocumentSchema, insertExpenseCategorySchema, insertExpenseVoucherSchema, insertExpenseItemSchema, insertExpenseAttachmentSchema, rolePermissions, vendorDebitNotes, vendorDebitNoteItems, vendorDebitNoteAdjustments, transporters, vehicles, drivers, insertTransporterSchema, insertVehicleSchema, insertDriverSchema, scrapInventory, insertSparePartEntrySchema, insertSparePartIssuanceSchema, insertScrapInventorySchema, sparePartEntries, sparePartsCatalog, accountSubtypes, insertSalesOfficerSchema } from "@shared/schema";
 import { format } from "date-fns";
 import { z } from "zod";
@@ -322,7 +324,7 @@ function requireRole(...allowedRoles: string[]) {
           .where(and(
             eq(rolePermissions.roleId, user.roleId),
             eq(rolePermissions.screenKey, screenKey),
-            eq(rolePermissions.recordStatus, 1)
+            eq(rolePermissions.recordStatus, 1), tc(rolePermissions)
           ))
           .limit(1);
         
@@ -451,6 +453,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   setupAuth(app);
+
+  // Tenant isolation middleware — runs on every request after session is loaded
+  // Sets tenantId in AsyncLocalStorage so all storage queries auto-scope by tenant
+  app.use(tenantMiddleware);
 
   // Secure WhatsApp photo download route (validates files before serving)
   app.get('/whatsapp-photos/:filename', async (req, res) => {
@@ -1513,7 +1519,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const items = await db.select().from(purchaseOrderItems)
         .where(and(
           eq(purchaseOrderItems.purchaseOrderId, purchaseOrderId),
-          eq(purchaseOrderItems.recordStatus, 1)
+          eq(purchaseOrderItems.recordStatus, 1), tc(purchaseOrderItems)
         ))
         .orderBy(purchaseOrderItems.serialNo);
       res.json(items);
@@ -1532,7 +1538,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalItems: sql<number>`count(*)::int`,
       })
         .from(purchaseOrderItems)
-        .where(eq(purchaseOrderItems.recordStatus, 1))
+        .where(and(eq(purchaseOrderItems.recordStatus, 1), tc(purchaseOrderItems)))
         .groupBy(purchaseOrderItems.purchaseOrderId);
 
       // Get received items count per PO (raw materials linked to PO items)
@@ -1543,7 +1549,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(rawMaterials)
         .where(and(
           sql`${rawMaterials.purchaseOrderId} IS NOT NULL`,
-          eq(rawMaterials.recordStatus, 1)
+          eq(rawMaterials.recordStatus, 1), tc(rawMaterials)
         ))
         .groupBy(rawMaterials.purchaseOrderId);
 
@@ -2070,7 +2076,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allTransporters = await db
         .select()
         .from(transporters)
-        .where(eq(transporters.recordStatus, 1))
+        .where(and(eq(transporters.recordStatus, 1), tc(transporters)))
         .orderBy(transporters.transporterName);
       res.json(allTransporters);
     } catch (error) {
@@ -2147,11 +2153,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
         .from(vehicles)
         .leftJoin(transporters, eq(vehicles.transporterId, transporters.id))
-        .where(eq(vehicles.recordStatus, 1))
+        .where(and(eq(vehicles.recordStatus, 1), tc(vehicles)))
         .orderBy(vehicles.vehicleNumber);
       
       if (transporterId) {
-        query = query.where(and(eq(vehicles.recordStatus, 1), eq(vehicles.transporterId, transporterId as string)));
+        query = query.where(and(eq(vehicles.recordStatus, 1), tc(vehicles), eq(vehicles.transporterId, transporterId as string)));
       }
       
       const allVehicles = await query;
@@ -2230,11 +2236,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
         .from(drivers)
         .leftJoin(transporters, eq(drivers.transporterId, transporters.id))
-        .where(eq(drivers.recordStatus, 1))
+        .where(and(eq(drivers.recordStatus, 1), tc(drivers)))
         .orderBy(drivers.driverName);
       
       if (transporterId) {
-        query = query.where(and(eq(drivers.recordStatus, 1), eq(drivers.transporterId, transporterId as string)));
+        query = query.where(and(eq(drivers.recordStatus, 1), tc(drivers), eq(drivers.transporterId, transporterId as string)));
       }
       
       const allDrivers = await query;
@@ -2428,8 +2434,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(vendorVendorTypes)
         .innerJoin(vendorTypes, eq(vendorVendorTypes.vendorTypeId, vendorTypes.id))
         .where(and(
-          eq(vendorVendorTypes.recordStatus, 1),
-          eq(vendorTypes.recordStatus, 1)
+          eq(vendorVendorTypes.recordStatus, 1), tc(vendorVendorTypes),
+          eq(vendorTypes.recordStatus, 1), tc(vendorTypes)
         ));
       res.json(mappings);
     } catch (error) {
@@ -3108,10 +3114,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get all credit notes and debit notes for outstanding balance calculation
       const allCreditNotes = await db.select().from(creditNotes).where(
-        and(eq(creditNotes.recordStatus, 1), eq(creditNotes.status, 'issued'))
+        and(eq(creditNotes.recordStatus, 1), tc(creditNotes), eq(creditNotes.status, 'issued'))
       );
       const allDebitNotes = await db.select().from(debitNotes).where(
-        and(eq(debitNotes.recordStatus, 1), eq(debitNotes.status, 'issued'))
+        and(eq(debitNotes.recordStatus, 1), tc(debitNotes), eq(debitNotes.status, 'issued'))
       );
 
       // Group credit/debit notes by invoice ID
@@ -4015,7 +4021,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allPendingInvoices = await db.select().from(invoices).where(
         and(
           sql`${invoices.status} IN ('draft', 'ready_for_gatepass')`,
-          eq(invoices.recordStatus, 1)
+          eq(invoices.recordStatus, 1), tc(invoices)
         )
       );
       
@@ -4024,7 +4030,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         invoiceId: gatepasses.invoiceId
       }).from(gatepasses).where(
         and(
-          eq(gatepasses.recordStatus, 1),
+          eq(gatepasses.recordStatus, 1), tc(gatepasses),
           sql`${gatepasses.invoiceId} IS NOT NULL`
         )
       );
@@ -4050,7 +4056,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }).from(invoiceItems).where(
           and(
             sql`${invoiceItems.invoiceId} IN (${sql.join(pendingInvoiceIds.map(id => sql`${id}`), sql`, `)})`,
-            eq(invoiceItems.recordStatus, 1)
+            eq(invoiceItems.recordStatus, 1), tc(invoiceItems)
           )
         );
         
@@ -4192,7 +4198,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(finishedGoods)
         .leftJoin(products, eq(finishedGoods.productId, products.id))
         .where(and(
-          eq(finishedGoods.recordStatus, 1),
+          eq(finishedGoods.recordStatus, 1), tc(finishedGoods),
           sql`${finishedGoods.quantity} > 0`
         ))
         .orderBy(desc(finishedGoods.createdAt));
@@ -4353,7 +4359,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .leftJoin(products, eq(salesReturnItems.productId, products.id))
         .where(and(
           eq(salesReturnItems.repackStatus, 'pending'),
-          eq(salesReturnItems.recordStatus, 1)
+          eq(salesReturnItems.recordStatus, 1), tc(salesReturnItems)
         ))
         .orderBy(desc(salesReturnItems.createdAt));
       
@@ -4488,7 +4494,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const pendingInvoicesList = await db.select().from(invoices).where(
         and(
           sql`${invoices.status} IN ('draft', 'ready_for_gatepass')`,
-          eq(invoices.recordStatus, 1)
+          eq(invoices.recordStatus, 1), tc(invoices)
         )
       );
       
@@ -4498,7 +4504,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         invoiceId: gatepasses.invoiceId
       }).from(gatepasses).where(
         and(
-          eq(gatepasses.recordStatus, 1),
+          eq(gatepasses.recordStatus, 1), tc(gatepasses),
           sql`${gatepasses.invoiceId} IS NOT NULL`
         )
       );
@@ -4681,7 +4687,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Get current material stock with row lock to prevent race conditions
           const [material] = await tx.select().from(rawMaterials)
-            .where(and(eq(rawMaterials.id, validatedItem.rawMaterialId), eq(rawMaterials.recordStatus, 1)))
+            .where(and(eq(rawMaterials.id, validatedItem.rawMaterialId), eq(rawMaterials.recordStatus, 1), tc(rawMaterials)))
             .for('update');
           
           if (!material) {
@@ -5402,7 +5408,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // If material was RETURNED, add it back to raw material inventory
           if (validatedItem.quantityReturned && Number(validatedItem.quantityReturned) > 0) {
             const [material] = await tx.select().from(rawMaterials)
-              .where(and(eq(rawMaterials.id, validatedItem.rawMaterialId), eq(rawMaterials.recordStatus, 1)))
+              .where(and(eq(rawMaterials.id, validatedItem.rawMaterialId), eq(rawMaterials.recordStatus, 1), tc(rawMaterials)))
               .for('update');
             
             if (material) {
@@ -5476,7 +5482,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(and(
           eq(rolePermissions.roleId, req.user.roleId),
           eq(rolePermissions.screenKey, 'production_reconciliation'),
-          eq(rolePermissions.recordStatus, 1)
+          eq(rolePermissions.recordStatus, 1), tc(rolePermissions)
         ))
         .limit(1);
       const hasUnlimitedEdits = editPermission.length > 0 && editPermission[0].canDelete === 1;
@@ -5530,7 +5536,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 
                 if (delta !== 0) {
                   const [material] = await tx.select().from(rawMaterials)
-                    .where(and(eq(rawMaterials.id, oldItem.rawMaterialId), eq(rawMaterials.recordStatus, 1)))
+                    .where(and(eq(rawMaterials.id, oldItem.rawMaterialId), eq(rawMaterials.recordStatus, 1), tc(rawMaterials)))
                     .for('update');
                   
                   if (material) {
@@ -5599,7 +5605,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('[RECONCILIATION_REPORT] Query params:', { dateFrom, dateTo, productId, batchId, shift });
 
       // Build where conditions
-      const conditions = [eq(productionReconciliations.recordStatus, 1)];
+      const conditions = [eq(productionReconciliations.recordStatus, 1), tc(productionReconciliations)];
       
       if (dateFrom) {
         // Use the date string directly for comparison (YYYY-MM-DD format)
@@ -5792,7 +5798,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .leftJoin(productionEntries, eq(productionReconciliations.productionEntryId, productionEntries.id))
         .where(
           and(
-            eq(productionReconciliations.recordStatus, 1),
+            eq(productionReconciliations.recordStatus, 1), tc(productionReconciliations),
             gte(productionReconciliations.reconciliationDate, new Date(currentYear, 0, 1).toISOString()),
             lte(productionReconciliations.reconciliationDate, new Date(currentYear, 11, 31, 23, 59, 59).toISOString())
           )
@@ -5810,7 +5816,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .leftJoin(rawMaterials, eq(productionReconciliationItems.rawMaterialId, rawMaterials.id))
         .where(
           and(
-            eq(productionReconciliationItems.recordStatus, 1),
+            eq(productionReconciliationItems.recordStatus, 1), tc(productionReconciliationItems),
             inArray(productionReconciliationItems.reconciliationId, reconciliationIds)
           )
         ) : [];
@@ -6132,7 +6138,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Build dynamic where conditions
       const conditions: any[] = [
-        eq(gatepasses.recordStatus, 1),
+        eq(gatepasses.recordStatus, 1), tc(gatepasses),
         ne(gatepasses.status, 'cancelled')
       ];
       
@@ -6179,7 +6185,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .leftJoin(finishedGoods, eq(gatepassItems.finishedGoodId, finishedGoods.id))
         .leftJoin(products, eq(gatepassItems.productId, products.id))
         .where(and(
-          eq(gatepassItems.recordStatus, 1),
+          eq(gatepassItems.recordStatus, 1), tc(gatepassItems),
           inArray(gatepassItems.gatepassId, gatepassIds)
         ));
 
@@ -6238,7 +6244,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(
           and(
             eq(invoices.id, validatedHeader.invoiceId),
-            eq(invoices.recordStatus, 1)
+            eq(invoices.recordStatus, 1), tc(invoices)
           )
         )
         .limit(1);
@@ -6256,7 +6262,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(
           and(
             eq(gatepasses.invoiceId, validatedHeader.invoiceId),
-            eq(gatepasses.recordStatus, 1)
+            eq(gatepasses.recordStatus, 1), tc(gatepasses)
           )
         )
         .limit(1);
@@ -6284,7 +6290,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .from(vendors)
             .where(and(
               sql`lower(${vendors.vendorName}) = lower(${buyerName})`,
-              eq(vendors.recordStatus, 1)
+              eq(vendors.recordStatus, 1), tc(vendors)
             ))
             .limit(1);
 
@@ -6351,7 +6357,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Get current finished good stock with row lock to prevent race conditions
           const [finishedGood] = await tx.select().from(finishedGoods)
-            .where(and(eq(finishedGoods.id, validatedItem.finishedGoodId), eq(finishedGoods.recordStatus, 1)))
+            .where(and(eq(finishedGoods.id, validatedItem.finishedGoodId), eq(finishedGoods.recordStatus, 1), tc(finishedGoods)))
             .for('update');
           
           if (!finishedGood) {
@@ -6424,7 +6430,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .where(
             and(
               eq(gatepasses.invoiceId, validatedData.invoiceId),
-              eq(gatepasses.recordStatus, 1),
+              eq(gatepasses.recordStatus, 1), tc(gatepasses),
               ne(gatepasses.id, id) // Exclude the current gatepass being edited
             )
           )
@@ -7579,16 +7585,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const soId = row.id;
             const soItemRows = await db.select()
               .from(salesOrderItems)
-              .where(and(eq(salesOrderItems.soId, soId), eq(salesOrderItems.recordStatus, 1)));
+              .where(and(eq(salesOrderItems.soId, soId), eq(salesOrderItems.recordStatus, 1), tc(salesOrderItems)));
             const activeInvRows = await db.select({ id: invoices.id })
               .from(invoices)
-              .where(and(eq(invoices.salesOrderId, soId), eq(invoices.recordStatus, 1), ne(invoices.status, 'cancelled')));
+              .where(and(eq(invoices.salesOrderId, soId), eq(invoices.recordStatus, 1), tc(invoices), ne(invoices.status, 'cancelled')));
             const invoiceIds = activeInvRows.map(i => i.id);
             let allInvoicedItems: any[] = [];
             if (invoiceIds.length > 0) {
               allInvoicedItems = await db.select()
                 .from(invoiceItems)
-                .where(and(inArray(invoiceItems.invoiceId, invoiceIds), eq(invoiceItems.recordStatus, 1)));
+                .where(and(inArray(invoiceItems.invoiceId, invoiceIds), eq(invoiceItems.recordStatus, 1), tc(invoiceItems)));
             }
             let allFull = soItemRows.length > 0;
             let anyInv = false;
@@ -7815,13 +7821,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Determine correct status from invoiced quantities
           const soItemRows = await db.select()
             .from(salesOrderItems)
-            .where(and(eq(salesOrderItems.soId, soId), eq(salesOrderItems.recordStatus, 1)));
+            .where(and(eq(salesOrderItems.soId, soId), eq(salesOrderItems.recordStatus, 1), tc(salesOrderItems)));
           const invoiceIds = activeLinked.map((inv: any) => inv.id);
           let allInvoicedItems: any[] = [];
           if (invoiceIds.length > 0) {
             allInvoicedItems = await db.select()
               .from(invoiceItems)
-              .where(and(inArray(invoiceItems.invoiceId, invoiceIds), eq(invoiceItems.recordStatus, 1)));
+              .where(and(inArray(invoiceItems.invoiceId, invoiceIds), eq(invoiceItems.recordStatus, 1), tc(invoiceItems)));
           }
           let allFull = soItemRows.length > 0;
           let anyInv = false;
@@ -7853,7 +7859,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const invoicesWithGatepasses = await db.select({ invoiceId: gatepasses.invoiceId })
         .from(gatepasses)
         .where(and(
-          eq(gatepasses.recordStatus, 1),
+          eq(gatepasses.recordStatus, 1), tc(gatepasses),
           sql`${gatepasses.invoiceId} IS NOT NULL`
         ));
       const invoiceIdsWithGatepass = new Set(invoicesWithGatepasses.map(g => g.invoiceId));
@@ -8025,7 +8031,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Fetch all cancelled invoices (record_status = 0)
       let cancelledInvoices = await db.select()
         .from(invoices)
-        .where(eq(invoices.recordStatus, 0))
+        .where(and(eq(invoices.recordStatus, 0), tc(invoices)))
         .orderBy(desc(invoices.updatedAt)); // Most recently cancelled first
       
       // Apply filters - use updatedAt as cancellation date since that's when record_status was set to 0
@@ -8058,7 +8064,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .where(
               and(
                 eq(invoices.buyerName, cancelled.buyerName),
-                eq(invoices.recordStatus, 1),
+                eq(invoices.recordStatus, 1), tc(invoices),
                 gt(invoices.createdAt, cancelled.updatedAt!) // Created after cancellation
               )
             )
@@ -8148,7 +8154,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .from(finishedGoods)
             .where(and(
               eq(finishedGoods.productId, item.productId),
-              eq(finishedGoods.recordStatus, 1),
+              eq(finishedGoods.recordStatus, 1), tc(finishedGoods),
               sql`${finishedGoods.quantity} > 0`
             ));
             
@@ -8262,7 +8268,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 .from(finishedGoods)
                 .where(and(
                   eq(finishedGoods.productId, item.productId),
-                  eq(finishedGoods.recordStatus, 1),
+                  eq(finishedGoods.recordStatus, 1), tc(finishedGoods),
                   sql`${finishedGoods.quantity} > 0`
                 ))
                 .orderBy(sql`CASE WHEN ${finishedGoods.batchNumber} LIKE 'CANCEL-%' THEN 0 ELSE 1 END, ${finishedGoods.createdAt} ASC`);
@@ -8406,14 +8412,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // 1. Get all items for this SO
           const soItems = await db.select()
             .from(salesOrderItems)
-            .where(and(eq(salesOrderItems.soId, soId), eq(salesOrderItems.recordStatus, 1)));
+            .where(and(eq(salesOrderItems.soId, soId), eq(salesOrderItems.recordStatus, 1), tc(salesOrderItems)));
 
           // 2. Get all invoices linked to this SO
           const activeInvoices = await db.select()
             .from(invoices)
             .where(and(
               eq(invoices.salesOrderId, soId),
-              eq(invoices.recordStatus, 1),
+              eq(invoices.recordStatus, 1), tc(invoices),
               ne(invoices.status, 'cancelled')
             ));
 
@@ -8426,7 +8432,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               .from(invoiceItems)
               .where(and(
                 inArray(invoiceItems.invoiceId, invoiceIds),
-                eq(invoiceItems.recordStatus, 1)
+                eq(invoiceItems.recordStatus, 1), tc(invoiceItems)
               ));
           }
 
@@ -8471,7 +8477,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .from(vendors)
             .where(and(
               sql`lower(${vendors.vendorName}) = lower(${buyerName})`,
-              eq(vendors.recordStatus, 1)
+              eq(vendors.recordStatus, 1), tc(vendors)
             ))
             .limit(1);
 
@@ -8594,7 +8600,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .where(
             and(
               eq(gatepasses.invoiceId, id),
-              eq(gatepasses.recordStatus, 1)
+              eq(gatepasses.recordStatus, 1), tc(gatepasses)
             )
           )
           .limit(1);
@@ -8629,7 +8635,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
             .where(and(
               eq(invoiceItems.invoiceId, id),
-              eq(invoiceItems.recordStatus, 1)
+              eq(invoiceItems.recordStatus, 1), tc(invoiceItems)
             ));
           
           // Insert new items with explicit recordStatus = 1
@@ -8658,7 +8664,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .where(
               and(
                 eq(gatepasses.invoiceId, id),
-                eq(gatepasses.recordStatus, 1)
+                eq(gatepasses.recordStatus, 1), tc(gatepasses)
               )
             )
             .limit(1);
@@ -8701,7 +8707,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .where(
             and(
               eq(gatepasses.invoiceId, id),
-              eq(gatepasses.recordStatus, 1)
+              eq(gatepasses.recordStatus, 1), tc(gatepasses)
             )
           )
           .limit(1);
@@ -8769,7 +8775,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(
           and(
             eq(gatepasses.invoiceId, id),
-            eq(gatepasses.recordStatus, 1)
+            eq(gatepasses.recordStatus, 1), tc(gatepasses)
           )
         )
         .limit(1);
@@ -8831,7 +8837,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(
           and(
             eq(gatepasses.invoiceId, id),
-            eq(gatepasses.recordStatus, 1)
+            eq(gatepasses.recordStatus, 1), tc(gatepasses)
           )
         );
       
@@ -8988,7 +8994,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             })
             .where(and(
               ilike(finishedGoods.batchNumber, `${cancelBatchPrefix}%`),
-              eq(finishedGoods.recordStatus, 1)
+              eq(finishedGoods.recordStatus, 1), tc(finishedGoods)
             ));
           
           console.log(`[RESTORE] Undid inventory returns for invoice ${invoice.invoiceNumber} and reactivated gatepass ${linkedGatepass.gatepassNumber}`);
@@ -9036,7 +9042,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(
           and(
             eq(gatepasses.invoiceId, id),
-            eq(gatepasses.recordStatus, 1)
+            eq(gatepasses.recordStatus, 1), tc(gatepasses)
           )
         );
       
@@ -9119,7 +9125,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     eq(finishedGoods.productId, item.productId),
                     eq(finishedGoods.batchNumber, batchNumber),
                     // We check for all records (even recordStatus 0) to allow restoration
-                    or(eq(finishedGoods.recordStatus, 1), eq(finishedGoods.recordStatus, 0))
+                    or(eq(finishedGoods.recordStatus, 1), tc(finishedGoods), eq(finishedGoods.recordStatus, 0), tc(finishedGoods))
                   ))
                   .limit(1);
                 
@@ -9257,7 +9263,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(and(
           eq(rolePermissions.roleId, user.roleId),
           eq(rolePermissions.screenKey, 'invoices'),
-          eq(rolePermissions.recordStatus, 1)
+          eq(rolePermissions.recordStatus, 1), tc(rolePermissions)
         ))
         .limit(1);
       
@@ -9340,7 +9346,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(and(
           eq(creditNotes.invoiceId, invoiceId),
           eq(creditNotes.status, 'issued'),
-          eq(creditNotes.recordStatus, 1)
+          eq(creditNotes.recordStatus, 1), tc(creditNotes)
         ));
       
       // Get all issued debit notes for this invoice
@@ -9349,7 +9355,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(and(
           eq(debitNotes.invoiceId, invoiceId),
           eq(debitNotes.status, 'issued'),
-          eq(debitNotes.recordStatus, 1)
+          eq(debitNotes.recordStatus, 1), tc(debitNotes)
         ));
       
       // Get credit note items grouped by invoice item - track VALUE and QUANTITY
@@ -9360,7 +9366,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .from(creditNoteItems)
           .where(and(
             eq(creditNoteItems.creditNoteId, cn.id),
-            eq(creditNoteItems.recordStatus, 1)
+            eq(creditNoteItems.recordStatus, 1), tc(creditNoteItems)
           ));
         
         for (const item of cnItems) {
@@ -9382,7 +9388,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .from(debitNoteItems)
           .where(and(
             eq(debitNoteItems.debitNoteId, dn.id),
-            eq(debitNoteItems.recordStatus, 1)
+            eq(debitNoteItems.recordStatus, 1), tc(debitNoteItems)
           ));
         
         for (const item of dnItems) {
@@ -9513,7 +9519,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const [gatepass] = await db.select().from(gatepasses)
         .where(and(
           eq(gatepasses.invoiceId, invoiceId),
-          eq(gatepasses.recordStatus, 1)
+          eq(gatepasses.recordStatus, 1), tc(gatepasses)
         ));
       
       console.log(`[BATCH] Invoice ${invoiceId}: Gatepass found: ${gatepass ? gatepass.id : 'NONE'}`);
@@ -9534,7 +9540,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .leftJoin(finishedGoods, eq(gatepassItems.finishedGoodId, finishedGoods.id))
         .where(and(
           eq(gatepassItems.gatepassId, gatepass.id),
-          eq(gatepassItems.recordStatus, 1)
+          eq(gatepassItems.recordStatus, 1), tc(gatepassItems)
         ));
         
         console.log(`[BATCH] Gatepass ${gatepass.id}: Found ${gatepassItemsData.length} gatepass items`);
@@ -9638,7 +9644,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allCreditNotes = await db.select().from(creditNotes)
         .where(
           and(
-            eq(creditNotes.recordStatus, 1),
+            eq(creditNotes.recordStatus, 1), tc(creditNotes),
             eq(creditNotes.status, 'issued'),
             gte(creditNotes.creditDate, startDate.toISOString().split('T')[0]),
             lte(creditNotes.creditDate, endDate.toISOString().split('T')[0])
@@ -9662,7 +9668,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allDebitNotes = await db.select().from(debitNotes)
         .where(
           and(
-            eq(debitNotes.recordStatus, 1),
+            eq(debitNotes.recordStatus, 1), tc(debitNotes),
             eq(debitNotes.status, 'issued'),
             gte(debitNotes.debitDate, startDate.toISOString().split('T')[0]),
             lte(debitNotes.debitDate, endDate.toISOString().split('T')[0])
@@ -9692,7 +9698,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const scrapLosses = await db.select().from(scrapInventory)
         .where(
           and(
-            eq(scrapInventory.recordStatus, 1),
+            eq(scrapInventory.recordStatus, 1), tc(scrapInventory),
             eq(scrapInventory.approvalStatus, 'approved'),
             gte(scrapInventory.scrapDate, scrapStartStr),
             lte(scrapInventory.scrapDate, scrapEndStr)
@@ -9841,10 +9847,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get all credit notes and debit notes for outstanding balance calculation
       const allCreditNotes = await db.select().from(creditNotes).where(
-        and(eq(creditNotes.recordStatus, 1), eq(creditNotes.status, 'issued'))
+        and(eq(creditNotes.recordStatus, 1), tc(creditNotes), eq(creditNotes.status, 'issued'))
       );
       const allDebitNotes = await db.select().from(debitNotes).where(
-        and(eq(debitNotes.recordStatus, 1), eq(debitNotes.status, 'issued'))
+        and(eq(debitNotes.recordStatus, 1), tc(debitNotes), eq(debitNotes.status, 'issued'))
       );
 
       // Group credit/debit notes by invoice ID
@@ -9951,7 +9957,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       })
       .from(customerAdvances)
       .where(and(
-        eq(customerAdvances.recordStatus, 1),
+        eq(customerAdvances.recordStatus, 1), tc(customerAdvances),
         eq(customerAdvances.advanceType, 'prepayment'),
         eq(customerAdvances.status, 'active'),
       ));
@@ -10062,7 +10068,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       })
       .from(invoicePayments)
       .leftJoin(invoices, eq(invoicePayments.invoiceId, invoices.id))
-      .where(eq(invoicePayments.recordStatus, 1))
+      .where(and(eq(invoicePayments.recordStatus, 1), tc(invoicePayments)))
       .orderBy(desc(invoicePayments.paymentDate));
 
       const vendorByName = new Map<string, typeof allVendors[0]>();
@@ -10555,7 +10561,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .from(invoicePayments)
           .where(and(
             eq(invoicePayments.invoiceId, invoiceId),
-            eq(invoicePayments.recordStatus, 1)
+            eq(invoicePayments.recordStatus, 1), tc(invoicePayments)
           ));
 
         const totalPaid = existingPayments.reduce((sum, p) => sum + p.amount, 0);
@@ -10627,7 +10633,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get all vendor types for dropdown (match the same filter as /api/vendor-types)
       const allVendorTypes = await db.select().from(vendorTypes)
-        .where(eq(vendorTypes.recordStatus, 1))
+        .where(and(eq(vendorTypes.recordStatus, 1), tc(vendorTypes)))
         .orderBy(vendorTypes.name);
 
       // Build vendor query with optional type filter
@@ -10643,11 +10649,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.json({ vendorTypes: allVendorTypes, vendors: [] });
         }
         vendorList = await db.select().from(vendors)
-          .where(and(eq(vendors.recordStatus, 1), inArray(vendors.id, ids)))
+          .where(and(eq(vendors.recordStatus, 1), tc(vendors), inArray(vendors.id, ids)))
           .orderBy(vendors.vendorName);
       } else {
         vendorList = await db.select().from(vendors)
-          .where(eq(vendors.recordStatus, 1))
+          .where(and(eq(vendors.recordStatus, 1), tc(vendors)))
           .orderBy(vendors.vendorName);
       }
 
@@ -10658,7 +10664,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       })
         .from(vendorVendorTypes)
         .innerJoin(vendorTypes, eq(vendorVendorTypes.vendorTypeId, vendorTypes.id))
-        .where(and(eq(vendorVendorTypes.recordStatus, 1), eq(vendorTypes.recordStatus, 1)));
+        .where(and(eq(vendorVendorTypes.recordStatus, 1), tc(vendorVendorTypes), eq(vendorTypes.recordStatus, 1), tc(vendorTypes)));
 
       const typesByVendor: Record<string, string[]> = {};
       allMappings.forEach(m => {
@@ -10677,7 +10683,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         invoiceDate: invoices.invoiceDate,
       })
         .from(invoices)
-        .where(and(eq(invoices.recordStatus, 1), sql`${invoices.status} != 'cancelled'`));
+        .where(and(eq(invoices.recordStatus, 1), tc(invoices), sql`${invoices.status} != 'cancelled'`));
 
       // Get all payments (actual payment records, excluding write-offs)
       const allPayments = await db.select({
@@ -10687,7 +10693,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       })
         .from(invoicePayments)
         .where(and(
-          eq(invoicePayments.recordStatus, 1),
+          eq(invoicePayments.recordStatus, 1), tc(invoicePayments),
           sql`${invoicePayments.paymentType} != 'Write-off'`
         ));
 
@@ -10697,7 +10703,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         grandTotal: creditNotes.grandTotal,
       })
         .from(creditNotes)
-        .where(and(eq(creditNotes.recordStatus, 1), eq(creditNotes.status, 'issued')));
+        .where(and(eq(creditNotes.recordStatus, 1), tc(creditNotes), eq(creditNotes.status, 'issued')));
 
       // Index payments and credit notes by invoiceId
       const paymentsByInvoice: Record<string, number> = {};
@@ -10771,7 +10777,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Build WHERE conditions for SQL-level filtering
       const conditions: any[] = [
         eq(invoicePayments.paymentType, 'Write-off'),
-        eq(invoicePayments.recordStatus, 1)
+        eq(invoicePayments.recordStatus, 1), tc(invoicePayments)
       ];
 
       if (dateFrom) {
@@ -11187,7 +11193,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(and(
           eq(rolePermissions.roleId, user.roleId),
           eq(rolePermissions.screenKey, 'sales_returns'),
-          eq(rolePermissions.recordStatus, 1)
+          eq(rolePermissions.recordStatus, 1), tc(rolePermissions)
         ))
         .limit(1);
       
@@ -11239,7 +11245,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(and(
           eq(rolePermissions.roleId, user.roleId),
           eq(rolePermissions.screenKey, 'sales_returns'),
-          eq(rolePermissions.recordStatus, 1)
+          eq(rolePermissions.recordStatus, 1), tc(rolePermissions)
         ))
         .limit(1);
       
@@ -11465,7 +11471,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const updatedReturnItems = await tx.select().from(salesReturnItems)
           .where(and(
             eq(salesReturnItems.returnId, id),
-            eq(salesReturnItems.recordStatus, 1)
+            eq(salesReturnItems.recordStatus, 1), tc(salesReturnItems)
           ));
         const recalcTotalCredit = updatedReturnItems.reduce((sum, ri) => sum + (ri.creditAmount || 0), 0);
         
@@ -11487,14 +11493,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const returnItems = await tx.select().from(salesReturnItems)
             .where(and(
               eq(salesReturnItems.returnId, id),
-              eq(salesReturnItems.recordStatus, 1)
+              eq(salesReturnItems.recordStatus, 1), tc(salesReturnItems)
             ));
           
           // Get existing credit notes for this invoice to generate sequence number
           const existingCreditNotes = await tx.select().from(creditNotes)
             .where(and(
               eq(creditNotes.invoiceId, salesReturn.invoiceId),
-              eq(creditNotes.recordStatus, 1)
+              eq(creditNotes.recordStatus, 1), tc(creditNotes)
             ));
           
           const seq = existingCreditNotes.length + 1;
@@ -11694,7 +11700,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const stockConditions: any[] = [
         eq(finishedGoods.productId, productId),
         eq(finishedGoods.qualityStatus, 'approved'),
-        eq(finishedGoods.recordStatus, 1),
+        eq(finishedGoods.recordStatus, 1), tc(finishedGoods),
       ];
       if (batchNumber) stockConditions.push(eq(finishedGoods.batchNumber, batchNumber));
 
@@ -11757,11 +11763,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { startDate, endDate, approvalStatus, productId } = req.query;
       
       let query = db.select().from(scrapInventory)
-        .where(eq(scrapInventory.recordStatus, 1))
+        .where(and(eq(scrapInventory.recordStatus, 1), tc(scrapInventory)))
         .orderBy(desc(scrapInventory.scrapDate));
       
       // Apply filters if provided
-      const conditions = [eq(scrapInventory.recordStatus, 1)];
+      const conditions = [eq(scrapInventory.recordStatus, 1), tc(scrapInventory)];
       
       if (startDate) {
         conditions.push(gte(scrapInventory.scrapDate, new Date(startDate as string).toISOString()));
@@ -11804,7 +11810,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const scrapRecords = await db.select()
         .from(scrapInventory)
         .where(and(
-          eq(scrapInventory.recordStatus, 1),
+          eq(scrapInventory.recordStatus, 1), tc(scrapInventory),
           gte(scrapInventory.scrapDate, startDate.toISOString()),
           lte(scrapInventory.scrapDate, endDate.toISOString())
         ))
@@ -11888,7 +11894,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const returns = await db.select()
         .from(salesReturns)
         .where(and(
-          eq(salesReturns.recordStatus, 1),
+          eq(salesReturns.recordStatus, 1), tc(salesReturns),
           gte(salesReturns.returnDate, startDate.toISOString()),
           lte(salesReturns.returnDate, endDate.toISOString())
         ))
@@ -12020,7 +12026,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       .from(finishedGoods)
       .leftJoin(products, eq(finishedGoods.productId, products.id))
       .where(and(
-        eq(finishedGoods.recordStatus, 1),
+        eq(finishedGoods.recordStatus, 1), tc(finishedGoods),
         eq(finishedGoods.source, 'sales_return_repack'),
         gte(finishedGoods.createdAt, startDate.toISOString()),
         lte(finishedGoods.createdAt, endDate.toISOString())
@@ -12089,7 +12095,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(scrapInventory)
         .where(and(
           eq(scrapInventory.id, id),
-          eq(scrapInventory.recordStatus, 1)
+          eq(scrapInventory.recordStatus, 1), tc(scrapInventory)
         ))
         .limit(1);
       
@@ -12118,7 +12124,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(scrapInventory)
         .where(and(
           eq(scrapInventory.id, id),
-          eq(scrapInventory.recordStatus, 1)
+          eq(scrapInventory.recordStatus, 1), tc(scrapInventory)
         ))
         .limit(1);
       
@@ -12146,7 +12152,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const fgConditions: any[] = [
           eq(finishedGoods.productId, scrap.productId),
           eq(finishedGoods.qualityStatus, 'approved'),
-          eq(finishedGoods.recordStatus, 1),
+          eq(finishedGoods.recordStatus, 1), tc(finishedGoods),
         ];
         if (scrap.batchNumber) fgConditions.push(eq(finishedGoods.batchNumber, scrap.batchNumber));
 
@@ -12191,7 +12197,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(scrapInventory)
         .where(and(
           eq(scrapInventory.id, id),
-          eq(scrapInventory.recordStatus, 1)
+          eq(scrapInventory.recordStatus, 1), tc(scrapInventory)
         ))
         .limit(1);
       
@@ -12274,7 +12280,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(scrapInventory)
         .where(and(
           eq(scrapInventory.id, id),
-          eq(scrapInventory.recordStatus, 1)
+          eq(scrapInventory.recordStatus, 1), tc(scrapInventory)
         ))
         .limit(1);
       
@@ -12355,7 +12361,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { vendorId, status, page, pageSize, advanceType } = req.query;
       
       // Build query with filters
-      let conditions: any[] = [eq(customerAdvances.recordStatus, 1)];
+      let conditions: any[] = [eq(customerAdvances.recordStatus, 1), tc(customerAdvances)];
       
       if (vendorId) {
         conditions.push(eq(customerAdvances.vendorId, vendorId as string));
@@ -12435,7 +12441,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       .where(and(
         eq(customerAdvances.vendorId, vendorId),
         eq(customerAdvances.status, 'active'),
-        eq(customerAdvances.recordStatus, 1)
+        eq(customerAdvances.recordStatus, 1), tc(customerAdvances)
       ));
       
       const totalAdvance = advances.reduce((sum, adv) => sum + adv.amount, 0);
@@ -12479,7 +12485,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       })
       .from(customerAdvances)
       .leftJoin(vendors, eq(customerAdvances.vendorId, vendors.id))
-      .where(and(eq(customerAdvances.id, id), eq(customerAdvances.recordStatus, 1)));
+      .where(and(eq(customerAdvances.id, id), eq(customerAdvances.recordStatus, 1), tc(customerAdvances)));
       
       if (!advance) {
         return res.status(404).json({ message: "Customer advance not found" });
@@ -12500,7 +12506,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       .leftJoin(invoices, eq(advanceApplications.invoiceId, invoices.id))
       .where(and(
         eq(advanceApplications.advanceId, id),
-        eq(advanceApplications.recordStatus, 1)
+        eq(advanceApplications.recordStatus, 1), tc(advanceApplications)
       ))
       .orderBy(desc(advanceApplications.applicationDate));
       
@@ -12581,7 +12587,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await db.transaction(async (tx) => {
         // Get advance with lock
         const [advance] = await tx.select().from(customerAdvances)
-          .where(and(eq(customerAdvances.id, id), eq(customerAdvances.recordStatus, 1)))
+          .where(and(eq(customerAdvances.id, id), eq(customerAdvances.recordStatus, 1), tc(customerAdvances)))
           .for('update');
         
         if (!advance) {
@@ -12707,7 +12713,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { remarks } = req.body;
       
       const [advance] = await db.select().from(customerAdvances)
-        .where(and(eq(customerAdvances.id, id), eq(customerAdvances.recordStatus, 1)));
+        .where(and(eq(customerAdvances.id, id), eq(customerAdvances.recordStatus, 1), tc(customerAdvances)));
       
       if (!advance) {
         return res.status(404).json({ message: "Advance not found" });
@@ -12772,7 +12778,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       .where(and(
         eq(customerAdvances.vendorId, vendorId),
         eq(customerAdvances.status, 'active'),
-        eq(customerAdvances.recordStatus, 1)
+        eq(customerAdvances.recordStatus, 1), tc(customerAdvances)
       ))
       .orderBy(customerAdvances.receiptDate);
       
@@ -12831,7 +12837,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
         .from(creditNotes)
         .leftJoin(invoices, eq(creditNotes.invoiceId, invoices.id))
-        .where(eq(creditNotes.recordStatus, 1))
+        .where(and(eq(creditNotes.recordStatus, 1), tc(creditNotes)))
         .orderBy(desc(creditNotes.createdAt));
       
       // Fetch all vendors for lookup (by name since invoices store buyerName)
@@ -13007,7 +13013,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(and(
           eq(debitNotes.invoiceId, invoiceId),
           eq(debitNotes.status, 'issued'),
-          eq(debitNotes.recordStatus, 1)
+          eq(debitNotes.recordStatus, 1), tc(debitNotes)
         ));
       
       // Build maps of debit note adjustments for each invoice item
@@ -13240,7 +13246,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(and(
           eq(debitNotes.invoiceId, invoiceId),
           eq(debitNotes.status, 'issued'),
-          eq(debitNotes.recordStatus, 1)
+          eq(debitNotes.recordStatus, 1), tc(debitNotes)
         ));
       
       // Build maps of debit note adjustments for each invoice item
@@ -13268,7 +13274,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(and(
           eq(creditNotes.invoiceId, invoiceId),
           eq(creditNotes.status, 'issued'),
-          eq(creditNotes.recordStatus, 1)
+          eq(creditNotes.recordStatus, 1), tc(creditNotes)
         ));
       
       // Build map of credited quantities for each invoice item
@@ -13553,7 +13559,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(and(
           eq(creditNotes.invoiceId, invoiceId),
           eq(creditNotes.status, 'issued'),
-          eq(creditNotes.recordStatus, 1)
+          eq(creditNotes.recordStatus, 1), tc(creditNotes)
         ));
       
       const existingDebitNotes = await db.select()
@@ -13561,7 +13567,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(and(
           eq(debitNotes.invoiceId, invoiceId),
           eq(debitNotes.status, 'issued'),
-          eq(debitNotes.recordStatus, 1)
+          eq(debitNotes.recordStatus, 1), tc(debitNotes)
         ));
       
       const existingCreditTotal = existingCreditNotes.reduce((sum, cn) => sum + cn.grandTotal, 0);
@@ -13809,7 +13815,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       .from(creditNotes)
       .where(
         and(
-          eq(creditNotes.recordStatus, 1),
+          eq(creditNotes.recordStatus, 1), tc(creditNotes),
           eq(creditNotes.status, 'issued'),
           inArray(creditNotes.invoiceId, invoiceIds)
         )
@@ -13828,7 +13834,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       .from(debitNotes)
       .where(
         and(
-          eq(debitNotes.recordStatus, 1),
+          eq(debitNotes.recordStatus, 1), tc(debitNotes),
           eq(debitNotes.status, 'issued'),
           inArray(debitNotes.invoiceId, invoiceIds)
         )
@@ -13919,7 +13925,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allCreditNotes = await db.select()
         .from(creditNotes)
         .where(and(
-          eq(creditNotes.recordStatus, 1),
+          eq(creditNotes.recordStatus, 1), tc(creditNotes),
           eq(creditNotes.status, 'issued')
         ));
       
@@ -13927,14 +13933,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allDebitNotes = await db.select()
         .from(debitNotes)
         .where(and(
-          eq(debitNotes.recordStatus, 1),
+          eq(debitNotes.recordStatus, 1), tc(debitNotes),
           eq(debitNotes.status, 'issued')
         ));
       
       // Get all customer advances
       const allAdvances = await db.select()
         .from(customerAdvances)
-        .where(eq(customerAdvances.recordStatus, 1));
+        .where(and(eq(customerAdvances.recordStatus, 1), tc(customerAdvances)));
       
       // Build vendor summaries
       const vendorSummaries = filteredVendors.map(vendor => {
@@ -14131,15 +14137,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const allCreditNotes = await db.select()
         .from(creditNotes)
-        .where(and(eq(creditNotes.recordStatus, 1), eq(creditNotes.status, 'issued')));
+        .where(and(eq(creditNotes.recordStatus, 1), tc(creditNotes), eq(creditNotes.status, 'issued')));
 
       const allDebitNotes = await db.select()
         .from(debitNotes)
-        .where(and(eq(debitNotes.recordStatus, 1), eq(debitNotes.status, 'issued')));
+        .where(and(eq(debitNotes.recordStatus, 1), tc(debitNotes), eq(debitNotes.status, 'issued')));
 
       const allAdvances = await db.select()
         .from(customerAdvances)
-        .where(eq(customerAdvances.recordStatus, 1));
+        .where(and(eq(customerAdvances.recordStatus, 1), tc(customerAdvances)));
 
       // Build sub-dealer summaries — each vendor in the group = one sub-dealer row
       const subDealers = matchingVendors.map(vendor => {
@@ -14283,7 +14289,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         vendorCreditNotes = await db.select()
           .from(creditNotes)
           .where(and(
-            eq(creditNotes.recordStatus, 1),
+            eq(creditNotes.recordStatus, 1), tc(creditNotes),
             inArray(creditNotes.invoiceId, invoiceIds)
           ));
       }
@@ -14294,7 +14300,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         customerDebitNotes = await db.select()
           .from(debitNotes)
           .where(and(
-            eq(debitNotes.recordStatus, 1),
+            eq(debitNotes.recordStatus, 1), tc(debitNotes),
             inArray(debitNotes.invoiceId, invoiceIds)
           ));
       }
@@ -14305,7 +14311,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         allInvoicePayments = await db.select()
           .from(invoicePayments)
           .where(and(
-            eq(invoicePayments.recordStatus, 1),
+            eq(invoicePayments.recordStatus, 1), tc(invoicePayments),
             inArray(invoicePayments.invoiceId, invoiceIds)
           ));
       }
@@ -14314,7 +14320,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const vendorAdvances = await db.select()
         .from(customerAdvances)
         .where(and(
-          eq(customerAdvances.recordStatus, 1),
+          eq(customerAdvances.recordStatus, 1), tc(customerAdvances),
           inArray(customerAdvances.vendorId, vendorIdsToInclude)
         ));
 
@@ -14544,13 +14550,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (invoiceIds.length > 0) {
         allPayments = await db.select().from(invoicePayments)
-          .where(and(eq(invoicePayments.recordStatus, 1), inArray(invoicePayments.invoiceId, invoiceIds)));
+          .where(and(eq(invoicePayments.recordStatus, 1), tc(invoicePayments), inArray(invoicePayments.invoiceId, invoiceIds)));
         
         allCreditNotesList = await db.select().from(creditNotes)
-          .where(and(eq(creditNotes.recordStatus, 1), inArray(creditNotes.invoiceId, invoiceIds)));
+          .where(and(eq(creditNotes.recordStatus, 1), tc(creditNotes), inArray(creditNotes.invoiceId, invoiceIds)));
         
         allDebitNotesList = await db.select().from(debitNotes)
-          .where(and(eq(debitNotes.recordStatus, 1), inArray(debitNotes.invoiceId, invoiceIds)));
+          .where(and(eq(debitNotes.recordStatus, 1), tc(debitNotes), inArray(debitNotes.invoiceId, invoiceIds)));
         
         allAdvanceApps = await db.select({
           id: advanceApplications.id,
@@ -14977,7 +14983,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       })
       .from(vendorDebitNotes)
       .leftJoin(vendors, eq(vendorDebitNotes.vendorId, vendors.id))
-      .where(eq(vendorDebitNotes.recordStatus, 1))
+      .where(and(eq(vendorDebitNotes.recordStatus, 1), tc(vendorDebitNotes)))
       .orderBy(desc(vendorDebitNotes.createdAt));
       
       res.json(notes);
@@ -15016,7 +15022,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       })
       .from(vendorDebitNotes)
       .leftJoin(vendors, eq(vendorDebitNotes.vendorId, vendors.id))
-      .where(and(eq(vendorDebitNotes.id, id), eq(vendorDebitNotes.recordStatus, 1)));
+      .where(and(eq(vendorDebitNotes.id, id), eq(vendorDebitNotes.recordStatus, 1), tc(vendorDebitNotes)));
 
       if (!note) {
         return res.status(404).json({ message: "Vendor debit note not found" });
@@ -15024,7 +15030,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const items = await db.select()
         .from(vendorDebitNoteItems)
-        .where(and(eq(vendorDebitNoteItems.vendorDebitNoteId, id), eq(vendorDebitNoteItems.recordStatus, 1)));
+        .where(and(eq(vendorDebitNoteItems.vendorDebitNoteId, id), eq(vendorDebitNoteItems.recordStatus, 1), tc(vendorDebitNoteItems)));
 
       res.json({ ...note, items });
     } catch (error) {
@@ -15179,7 +15185,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(and(
           eq(rolePermissions.roleId, user.roleId),
           eq(rolePermissions.screenKey, 'vendor_debit_notes'),
-          eq(rolePermissions.recordStatus, 1)
+          eq(rolePermissions.recordStatus, 1), tc(rolePermissions)
         ))
         .limit(1);
       
@@ -15236,7 +15242,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const notes = await db.select()
         .from(vendorDebitNotes)
-        .where(and(eq(vendorDebitNotes.vendorId, vendorId), eq(vendorDebitNotes.recordStatus, 1)))
+        .where(and(eq(vendorDebitNotes.vendorId, vendorId), eq(vendorDebitNotes.recordStatus, 1), tc(vendorDebitNotes)))
         .orderBy(desc(vendorDebitNotes.createdAt));
 
       res.json(notes);
@@ -15282,7 +15288,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: invoices.status,
       })
         .from(invoices)
-        .where(eq(invoices.recordStatus, 1))
+        .where(and(eq(invoices.recordStatus, 1), tc(invoices)))
         .orderBy(desc(invoices.invoiceDate));
       
       // Filter invoices by vendor family names (case-insensitive)
@@ -15303,7 +15309,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .from(invoicePayments)
           .where(and(
             inArray(invoicePayments.invoiceId, invoiceIds),
-            eq(invoicePayments.recordStatus, 1)
+            eq(invoicePayments.recordStatus, 1), tc(invoicePayments)
           ))
         : [];
       
@@ -15323,7 +15329,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .from(creditNotes)
           .where(and(
             inArray(creditNotes.invoiceId, invoiceIds),
-            eq(creditNotes.recordStatus, 1),
+            eq(creditNotes.recordStatus, 1), tc(creditNotes),
             eq(creditNotes.status, 'issued')
           ))
         : [];
@@ -15342,7 +15348,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .from(debitNotes)
           .where(and(
             inArray(debitNotes.invoiceId, invoiceIds),
-            eq(debitNotes.recordStatus, 1),
+            eq(debitNotes.recordStatus, 1), tc(debitNotes),
             eq(debitNotes.status, 'issued')
           ))
         : [];
@@ -15393,7 +15399,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(purchaseOrders)
         .where(and(
           eq(purchaseOrders.vendorId, vendorId),
-          eq(purchaseOrders.recordStatus, 1),
+          eq(purchaseOrders.recordStatus, 1), tc(purchaseOrders),
           inArray(purchaseOrders.status, ['delivered', 'partially_delivered', 'approved'])
         ))
         .orderBy(desc(purchaseOrders.poDate));
@@ -15409,7 +15415,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .from(vendorDebitNoteAdjustments)
           .where(and(
             inArray(vendorDebitNoteAdjustments.purchaseOrderId, poIds),
-            eq(vendorDebitNoteAdjustments.recordStatus, 1)
+            eq(vendorDebitNoteAdjustments.recordStatus, 1), tc(vendorDebitNoteAdjustments)
           ))
         : [];
 
@@ -15442,7 +15448,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate debit note exists and has unsettled balance
       const [debitNote] = await db.select()
         .from(vendorDebitNotes)
-        .where(and(eq(vendorDebitNotes.id, debitNoteId), eq(vendorDebitNotes.recordStatus, 1)));
+        .where(and(eq(vendorDebitNotes.id, debitNoteId), eq(vendorDebitNotes.recordStatus, 1), tc(vendorDebitNotes)));
 
       if (!debitNote) {
         return res.status(404).json({ message: "Vendor debit note not found" });
@@ -15567,7 +15573,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get the debit note
       const [debitNote] = await db.select()
         .from(vendorDebitNotes)
-        .where(and(eq(vendorDebitNotes.id, debitNoteId), eq(vendorDebitNotes.recordStatus, 1)));
+        .where(and(eq(vendorDebitNotes.id, debitNoteId), eq(vendorDebitNotes.recordStatus, 1), tc(vendorDebitNotes)));
 
       if (!debitNote) {
         return res.status(404).json({ message: "Vendor debit note not found" });
@@ -15578,7 +15584,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(vendorDebitNoteAdjustments)
         .where(and(
           eq(vendorDebitNoteAdjustments.vendorDebitNoteId, debitNoteId),
-          eq(vendorDebitNoteAdjustments.recordStatus, 1)
+          eq(vendorDebitNoteAdjustments.recordStatus, 1), tc(vendorDebitNoteAdjustments)
         ));
 
       await db.transaction(async (tx) => {
@@ -15596,7 +15602,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 eq(invoicePayments.invoiceId, adjustment.invoiceId),
                 eq(invoicePayments.referenceNumber, debitNote.noteNumber),
                 eq(invoicePayments.paymentMethod, 'Debit Note Adjustment'),
-                eq(invoicePayments.recordStatus, 1)
+                eq(invoicePayments.recordStatus, 1), tc(invoicePayments)
               ));
 
             // Decrease invoice amountReceived to reverse the adjustment
@@ -15663,7 +15669,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .leftJoin(purchaseOrders, eq(vendorDebitNoteAdjustments.purchaseOrderId, purchaseOrders.id))
         .where(and(
           eq(vendorDebitNoteAdjustments.vendorDebitNoteId, debitNoteId),
-          eq(vendorDebitNoteAdjustments.recordStatus, 1)
+          eq(vendorDebitNoteAdjustments.recordStatus, 1), tc(vendorDebitNoteAdjustments)
         ))
         .orderBy(desc(vendorDebitNoteAdjustments.createdAt));
 
@@ -15684,7 +15690,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Fetch credit notes for net revenue calculation
       const allCreditNotes = await db.select().from(creditNotes).where(
-        and(eq(creditNotes.recordStatus, 1), eq(creditNotes.status, 'issued'))
+        and(eq(creditNotes.recordStatus, 1), tc(creditNotes), eq(creditNotes.status, 'issued'))
       );
       
       // Group credit notes by invoice ID
@@ -15723,7 +15729,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Fetch all invoice items in bulk to avoid N+1 queries
       const invoiceIds = new Set(yearInvoices.map(inv => inv.id));
-      const allItems = await db.select().from(invoiceItems).where(eq(invoiceItems.recordStatus, 1));
+      const allItems = await db.select().from(invoiceItems).where(and(eq(invoiceItems.recordStatus, 1), tc(invoiceItems)));
       const allInvoiceItems = allItems.filter(item => invoiceIds.has(item.invoiceId));
       
       // Fetch vendors for vendor-linked credit notes
@@ -15809,7 +15815,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Calculate vendor type breakdown (same logic as vendor-analytics)
       // Get vendor types
       const allVendorTypes = await storage.getAllVendorTypes();
-      const vendorTypeLinks = await db.select().from(vendorVendorTypes).where(eq(vendorVendorTypes.recordStatus, 1));
+      const vendorTypeLinks = await db.select().from(vendorVendorTypes).where(and(eq(vendorVendorTypes.recordStatus, 1), tc(vendorVendorTypes)));
 
       // Build vendor type breakdown by primary type only (with net revenue)
       const typeBreakdown: Record<string, { count: Set<string>; revenue: number }> = {};
@@ -15864,19 +15870,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Fetch all vendors, invoices, invoice items, payments, and vendor types
       const allVendors = await storage.getAllVendors();
       const allInvoices = await storage.getAllInvoices();
-      const allPayments = await db.select().from(invoicePayments).where(eq(invoicePayments.recordStatus, 1));
+      const allPayments = await db.select().from(invoicePayments).where(and(eq(invoicePayments.recordStatus, 1), tc(invoicePayments)));
       const allVendorTypes = await storage.getAllVendorTypes();
-      const vendorTypeLinks = await db.select().from(vendorVendorTypes).where(eq(vendorVendorTypes.recordStatus, 1));
+      const vendorTypeLinks = await db.select().from(vendorVendorTypes).where(and(eq(vendorVendorTypes.recordStatus, 1), tc(vendorVendorTypes)));
 
       // Get all invoice items for quantity calculations
-      const allItems = await db.select().from(invoiceItems).where(eq(invoiceItems.recordStatus, 1));
+      const allItems = await db.select().from(invoiceItems).where(and(eq(invoiceItems.recordStatus, 1), tc(invoiceItems)));
 
       // Get all credit notes and debit notes for outstanding balance and net revenue calculation
       const allCreditNotes = await db.select().from(creditNotes).where(
-        and(eq(creditNotes.recordStatus, 1), eq(creditNotes.status, 'issued'))
+        and(eq(creditNotes.recordStatus, 1), tc(creditNotes), eq(creditNotes.status, 'issued'))
       );
       const allDebitNotes = await db.select().from(debitNotes).where(
-        and(eq(debitNotes.recordStatus, 1), eq(debitNotes.status, 'issued'))
+        and(eq(debitNotes.recordStatus, 1), tc(debitNotes), eq(debitNotes.status, 'issued'))
       );
 
       // Group credit notes by invoice ID (for credit notes linked to invoices)
@@ -16105,7 +16111,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const [paymentSum] = await tx
               .select({ sum: sql<number>`COALESCE(SUM(amount), 0)` })
               .from(invoicePayments)
-              .where(and(eq(invoicePayments.invoiceId, invoice.id), eq(invoicePayments.recordStatus, 1)));
+              .where(and(eq(invoicePayments.invoiceId, invoice.id), eq(invoicePayments.recordStatus, 1), tc(invoicePayments)));
             
             const outstanding = invoice.totalAmount - Number(paymentSum.sum);
             
@@ -16162,7 +16168,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const [paymentSum] = await tx
                 .select({ sum: sql<number>`COALESCE(SUM(amount), 0)` })
                 .from(invoicePayments)
-                .where(and(eq(invoicePayments.invoiceId, invoice.id), eq(invoicePayments.recordStatus, 1)));
+                .where(and(eq(invoicePayments.invoiceId, invoice.id), eq(invoicePayments.recordStatus, 1), tc(invoicePayments)));
               const outstanding = invoice.totalAmount - Number(paymentSum.sum);
               return { ...invoice, outstanding };
             })
@@ -16312,7 +16318,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .from(invoicePayments)
           .where(and(
             eq(invoicePayments.invoiceId, payment.invoiceId),
-            eq(invoicePayments.recordStatus, 1)
+            eq(invoicePayments.recordStatus, 1), tc(invoicePayments)
           ));
         
         // Only count non-cancelled payments
@@ -16420,7 +16426,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(
           and(
             eq(invoicePayments.invoiceId, payment.invoiceId),
-            eq(invoicePayments.recordStatus, 1),
+            eq(invoicePayments.recordStatus, 1), tc(invoicePayments),
             sql`${invoicePayments.cancelledAt} IS NULL`
           )
         );
@@ -17019,7 +17025,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .where(and(
             eq(rolePermissions.roleId, user.roleId),
             eq(rolePermissions.screenKey, 'checklist_submissions'),
-            eq(rolePermissions.recordStatus, 1)
+            eq(rolePermissions.recordStatus, 1), tc(rolePermissions)
           ))
           .limit(1);
         const hasFullAccess = checklistPermission.length > 0 && checklistPermission[0].canEdit === 1;
@@ -17111,7 +17117,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(and(
           eq(rolePermissions.roleId, user.roleId),
           eq(rolePermissions.screenKey, 'checklist_submissions'),
-          eq(rolePermissions.recordStatus, 1)
+          eq(rolePermissions.recordStatus, 1), tc(rolePermissions)
         ))
         .limit(1);
       const hasFullAccess = checklistPermission.length > 0 && checklistPermission[0].canDelete === 1;
@@ -17182,7 +17188,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(and(
           eq(rolePermissions.roleId, user.roleId),
           eq(rolePermissions.screenKey, 'machine_startup_tasks'),
-          eq(rolePermissions.recordStatus, 1)
+          eq(rolePermissions.recordStatus, 1), tc(rolePermissions)
         ))
         .limit(1);
       const hasFullAccess = taskPermission.length > 0 && taskPermission[0].canEdit === 1;
@@ -17218,7 +17224,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(and(
           eq(rolePermissions.roleId, user.roleId),
           eq(rolePermissions.screenKey, 'machine_startup_tasks'),
-          eq(rolePermissions.recordStatus, 1)
+          eq(rolePermissions.recordStatus, 1), tc(rolePermissions)
         ))
         .limit(1);
       const hasFullAccess = taskPermission.length > 0 && taskPermission[0].canEdit === 1;
@@ -17254,7 +17260,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(and(
           eq(rolePermissions.roleId, user.roleId),
           eq(rolePermissions.screenKey, 'machine_startup_tasks'),
-          eq(rolePermissions.recordStatus, 1)
+          eq(rolePermissions.recordStatus, 1), tc(rolePermissions)
         ))
         .limit(1);
       const hasFullAccess = taskPermission.length > 0 && taskPermission[0].canDelete === 1;
@@ -20203,7 +20209,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(cashRegisterTransactions)
         .where(and(
           inArray(cashRegisterTransactions.dayId, allDayIds),
-          eq(cashRegisterTransactions.recordStatus, 1)
+          eq(cashRegisterTransactions.recordStatus, 1), tc(cashRegisterTransactions)
         ));
       }
       
@@ -20277,7 +20283,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(and(
           inArray(cashRegisterTransactions.dayId, dayIds.length > 0 ? dayIds : ['']),
           isNotNull(cashRegisterTransactions.documentPath),
-          eq(cashRegisterTransactions.recordStatus, 1)
+          eq(cashRegisterTransactions.recordStatus, 1), tc(cashRegisterTransactions)
         ));
       
       // Filter by transaction type if specified
@@ -20343,7 +20349,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(and(
           inArray(cashRegisterTransactions.dayId, dayIds),
           isNotNull(cashRegisterTransactions.documentPath),
-          eq(cashRegisterTransactions.recordStatus, 1)
+          eq(cashRegisterTransactions.recordStatus, 1), tc(cashRegisterTransactions)
         ));
       
       // Filter by transaction type if specified
@@ -20429,7 +20435,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               sql`${expenseVouchers.voucherNumber} LIKE 'EXP-CR-%'`,
               sql`${expenseVouchers.voucherNumber} LIKE 'CR-%'`
             ),
-            eq(expenseVouchers.recordStatus, 1)
+            eq(expenseVouchers.recordStatus, 1), tc(expenseVouchers)
           ))
           .orderBy(desc(expenseVouchers.voucherDate))
           .limit(50); // Limit to 50 for performance
@@ -20453,7 +20459,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               inArray(cashRegisterTransactions.dayId, dayIds),
               eq(cashRegisterTransactions.transactionType, 'expense'),
               isNotNull(cashRegisterTransactions.convertedToVoucherId),
-              eq(cashRegisterTransactions.recordStatus, 1)
+              eq(cashRegisterTransactions.recordStatus, 1), tc(cashRegisterTransactions)
             ));
           
           voucherIds = transactions
@@ -20471,7 +20477,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(expenseVouchers)
         .where(and(
           inArray(expenseVouchers.id, voucherIds),
-          eq(expenseVouchers.recordStatus, 1)
+          eq(expenseVouchers.recordStatus, 1), tc(expenseVouchers)
         ))
         .orderBy(expenseVouchers.voucherDate);
       
@@ -20480,7 +20486,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(expenseItems)
         .where(and(
           inArray(expenseItems.voucherId, voucherIds),
-          eq(expenseItems.recordStatus, 1)
+          eq(expenseItems.recordStatus, 1), tc(expenseItems)
         ));
       
       // Group items by voucher
@@ -20832,7 +20838,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Build conditions for filtering - exclude items with 0 quantity
       const conditions: SQL[] = [
-        eq(finishedGoods.recordStatus, 1),
+        eq(finishedGoods.recordStatus, 1), tc(finishedGoods),
         gt(finishedGoods.quantity, 0)
       ];
       
@@ -22221,7 +22227,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           and(
             eq(vendorVendorTypes.vendorTypeId, hpPaniType[0].id),
             eq(vendorVendorTypes.isPrimary, 1),
-            eq(vendorVendorTypes.recordStatus, 1)
+            eq(vendorVendorTypes.recordStatus, 1), tc(vendorVendorTypes)
           )
         );
 
@@ -22372,7 +22378,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const accounts = await storage.getAllChartOfAccounts();
 
-      const allSubtypes = await db.select().from(accountSubtypes).where(eq(accountSubtypes.recordStatus, 1));
+      const allSubtypes = await db.select().from(accountSubtypes).where(and(eq(accountSubtypes.recordStatus, 1), tc(accountSubtypes)));
       const subtypeIdMap = new Map(allSubtypes.map(s => [s.id, s]));
 
       const fyParam = req.query.fy as string | undefined;
@@ -22401,8 +22407,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .from(journalLines)
           .innerJoin(journalEntries, eq(journalLines.journalId, journalEntries.id))
           .where(and(
-            eq(journalLines.recordStatus, 1),
-            eq(journalEntries.recordStatus, 1),
+            eq(journalLines.recordStatus, 1), tc(journalLines),
+            eq(journalEntries.recordStatus, 1), tc(journalEntries),
             sql`${journalEntries.journalDate} < ${fyStart}`
           ))
           .groupBy(journalLines.accountId);
@@ -22415,8 +22421,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .from(journalLines)
           .innerJoin(journalEntries, eq(journalLines.journalId, journalEntries.id))
           .where(and(
-            eq(journalLines.recordStatus, 1),
-            eq(journalEntries.recordStatus, 1),
+            eq(journalLines.recordStatus, 1), tc(journalLines),
+            eq(journalEntries.recordStatus, 1), tc(journalEntries),
             sql`${journalEntries.journalDate} >= ${fyStart}`,
             sql`${journalEntries.journalDate} <= ${fyEnd}`
           ))
@@ -22487,7 +22493,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           totalCredit: sql<number>`coalesce(sum(${journalLines.credit}), 0)`.as('total_credit'),
         })
           .from(journalLines)
-          .where(eq(journalLines.recordStatus, 1))
+          .where(and(eq(journalLines.recordStatus, 1), tc(journalLines)))
           .groupBy(journalLines.accountId);
 
         const balanceMap = new Map<string, { totalDebit: number; totalCredit: number }>();
@@ -22723,7 +22729,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const maxPageSize = accountId ? 5000 : 100;
       const pageSizeNum = Math.min(maxPageSize, Math.max(1, parseInt(pageSize as string) || 25));
 
-      const conditions: any[] = [eq(journalEntries.recordStatus, 1)];
+      const conditions: any[] = [eq(journalEntries.recordStatus, 1), tc(journalEntries)];
       if (sourceType) conditions.push(eq(journalEntries.sourceType, sourceType as string));
       if (status) conditions.push(eq(journalEntries.status, status as string));
       if (dateFrom) conditions.push(gte(journalEntries.journalDate, dateFrom as string));
@@ -22756,10 +22762,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .from(journalLines)
           .where(and(
             inArray(journalLines.accountId, plAccountIds),
-            eq(journalLines.recordStatus, 1)
+            eq(journalLines.recordStatus, 1), tc(journalLines)
           ));
         const reConditions: any[] = [
-          eq(journalEntries.recordStatus, 1),
+          eq(journalEntries.recordStatus, 1), tc(journalEntries),
           sql`${journalEntries.journalDate} < ${dateFrom}`,
           sql`${journalEntries.id} IN (${plJournalIds})`
         ];
@@ -22791,7 +22797,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .from(journalLines)
             .where(and(
               inArray(journalLines.accountId, plAccountIds),
-              eq(journalLines.recordStatus, 1),
+              eq(journalLines.recordStatus, 1), tc(journalLines),
               inArray(journalLines.journalId, entryIds)
             ));
           for (const line of plLines) {
@@ -22815,7 +22821,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .from(journalLines)
           .where(and(
             eq(journalLines.accountId, accountId as string),
-            eq(journalLines.recordStatus, 1)
+            eq(journalLines.recordStatus, 1), tc(journalLines)
           ));
         conditions.push(sql`${journalEntries.id} IN (${journalIdsForAccount})`);
       }
@@ -22858,8 +22864,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               .innerJoin(journalEntries, eq(journalLines.journalId, journalEntries.id))
               .where(and(
                 eq(journalLines.accountId, accountId as string),
-                eq(journalLines.recordStatus, 1),
-                eq(journalEntries.recordStatus, 1),
+                eq(journalLines.recordStatus, 1), tc(journalLines),
+                eq(journalEntries.recordStatus, 1), tc(journalEntries),
                 sql`${journalEntries.journalDate} < ${dateFrom}`
               ));
             openingBalance = (obResult?.totalDebit || 0) - (obResult?.totalCredit || 0);
@@ -22876,7 +22882,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .from(journalLines)
             .where(and(
               eq(journalLines.accountId, accountId as string),
-              eq(journalLines.recordStatus, 1),
+              eq(journalLines.recordStatus, 1), tc(journalLines),
               inArray(journalLines.journalId, entryIds)
             ));
           entryAmounts = {};
@@ -22906,7 +22912,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { dateFrom, dateTo, sourceType, companyName = 'KINTO Operations' } = req.query;
 
       const conditions: any[] = [
-        eq(journalEntries.recordStatus, 1),
+        eq(journalEntries.recordStatus, 1), tc(journalEntries),
         eq(journalEntries.status, 'posted'),
       ];
       if (sourceType && sourceType !== 'all') conditions.push(eq(journalEntries.sourceType, sourceType as string));
@@ -22961,7 +22967,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allAccounts = await db.select()
         .from(chartOfAccounts)
         .where(and(
-          eq(chartOfAccounts.recordStatus, 1),
+          eq(chartOfAccounts.recordStatus, 1), tc(chartOfAccounts),
           eq(chartOfAccounts.isActive, 1)
         ))
         .orderBy(chartOfAccounts.code);
@@ -23030,7 +23036,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .innerJoin(chartOfAccounts, eq(journalLines.accountId, chartOfAccounts.id))
           .where(and(
             inArray(journalLines.journalId, entryIds),
-            eq(journalLines.recordStatus, 1)
+            eq(journalLines.recordStatus, 1), tc(journalLines)
           ))
         : [];
 
@@ -23141,7 +23147,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { dateFrom, dateTo, sourceType } = req.query;
 
       const conditions: any[] = [
-        eq(journalEntries.recordStatus, 1),
+        eq(journalEntries.recordStatus, 1), tc(journalEntries),
         eq(journalEntries.status, 'posted'),
       ];
       if (sourceType && sourceType !== 'all') conditions.push(eq(journalEntries.sourceType, sourceType as string));
@@ -23158,7 +23164,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allAccounts = await db.select()
         .from(chartOfAccounts)
         .where(and(
-          eq(chartOfAccounts.recordStatus, 1),
+          eq(chartOfAccounts.recordStatus, 1), tc(chartOfAccounts),
           eq(chartOfAccounts.isActive, 1)
         ));
       const accountLookup = new Map(allAccounts.map(a => [a.id, a]));
@@ -23191,7 +23197,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .innerJoin(chartOfAccounts, eq(journalLines.accountId, chartOfAccounts.id))
           .where(and(
             inArray(journalLines.journalId, entryIds),
-            eq(journalLines.recordStatus, 1)
+            eq(journalLines.recordStatus, 1), tc(journalLines)
           ))
         : [];
 
@@ -23886,13 +23892,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         bankName: invoicePayments.bankName,
       }).from(invoicePayments).where(
         and(
-          eq(invoicePayments.recordStatus, 1),
+          eq(invoicePayments.recordStatus, 1), tc(invoicePayments),
           sql`${invoicePayments.paymentMethod} NOT IN ('Cash', 'cash')`
         )
       );
 
       const allAdvances = await db.select().from(customerAdvances).where(
-        eq(customerAdvances.recordStatus, 1)
+        eq(customerAdvances.recordStatus, 1), tc(customerAdvances)
       );
 
       const allSparePartPurchases = await db.select({
@@ -23902,7 +23908,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalAmount: sparePartEntries.totalAmount,
         vendorId: sparePartEntries.vendorId,
         remarks: sparePartEntries.remarks,
-      }).from(sparePartEntries).where(eq(sparePartEntries.recordStatus, 1));
+      }).from(sparePartEntries).where(and(eq(sparePartEntries.recordStatus, 1), tc(sparePartEntries)));
 
       const allRawMaterialReceipts = await db.select({
         id: rawMaterials.id,
@@ -23914,7 +23920,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalValuation: rawMaterials.totalValuation,
         supplier: rawMaterials.supplier,
         openingDate: rawMaterials.openingDate,
-      }).from(rawMaterials).where(eq(rawMaterials.recordStatus, 1));
+      }).from(rawMaterials).where(and(eq(rawMaterials.recordStatus, 1), tc(rawMaterials)));
 
       const existingJournals = await db.select({
         id: journalEntries.id,
@@ -23922,7 +23928,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sourceId: journalEntries.sourceId,
       }).from(journalEntries).where(
         and(
-          eq(journalEntries.recordStatus, 1),
+          eq(journalEntries.recordStatus, 1), tc(journalEntries),
           sql`${journalEntries.sourceType} IN ('payment', 'customer_advance', 'material_receipt', 'spare_part_receipt')`
         )
       );
@@ -24141,7 +24147,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         details = `Payment for Invoice ${inv?.invoiceNumber || payment.invoiceId} - ${payment.paymentMethod}`;
 
         const je = await db.select().from(journalEntries).where(
-          and(eq(journalEntries.sourceType, 'payment'), eq(journalEntries.sourceId, sourceId), eq(journalEntries.recordStatus, 1))
+          and(eq(journalEntries.sourceType, 'payment'), eq(journalEntries.sourceId, sourceId), eq(journalEntries.recordStatus, 1), tc(journalEntries))
         );
         journalId = je[0]?.id || null;
       } else if (sourceType === 'customer_advance') {
@@ -24152,7 +24158,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         details = `Customer Advance ${advance.advanceNumber} - ${vendor?.name || ''}`;
 
         const je = await db.select().from(journalEntries).where(
-          and(eq(journalEntries.sourceType, 'customer_advance'), eq(journalEntries.sourceId, sourceId), eq(journalEntries.recordStatus, 1))
+          and(eq(journalEntries.sourceType, 'customer_advance'), eq(journalEntries.sourceId, sourceId), eq(journalEntries.recordStatus, 1), tc(journalEntries))
         );
         journalId = je[0]?.id || null;
       } else if (sourceType === 'spare_part_purchase') {
@@ -24164,7 +24170,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         details = `Spare Part: ${sparePart[0]?.name || 'Unknown'} - Rs ${((spe.totalAmount || 0) / 100).toFixed(2)}${vendorName ? ' - ' + vendorName : ''}`;
 
         const je = await db.select().from(journalEntries).where(
-          and(eq(journalEntries.sourceType, 'spare_part_receipt'), eq(journalEntries.sourceId, sourceId), eq(journalEntries.recordStatus, 1))
+          and(eq(journalEntries.sourceType, 'spare_part_receipt'), eq(journalEntries.sourceId, sourceId), eq(journalEntries.recordStatus, 1), tc(journalEntries))
         );
         journalId = je[0]?.id || null;
       } else if (sourceType === 'raw_material_receipt') {
@@ -24174,7 +24180,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         details = `Raw Material: ${mat.materialName} (${mat.materialCode})${mat.supplier ? ' - ' + mat.supplier : ''}`;
 
         const je = await db.select().from(journalEntries).where(
-          and(eq(journalEntries.sourceType, 'material_receipt'), eq(journalEntries.sourceId, sourceId), eq(journalEntries.recordStatus, 1))
+          and(eq(journalEntries.sourceType, 'material_receipt'), eq(journalEntries.sourceId, sourceId), eq(journalEntries.recordStatus, 1), tc(journalEntries))
         );
         journalId = je[0]?.id || null;
       } else {
@@ -24258,7 +24264,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         referenceNumber: invoicePayments.referenceNumber,
         payerName: invoicePayments.payerName,
       }).from(invoicePayments).where(
-        and(eq(invoicePayments.recordStatus, 1), sql`${invoicePayments.paymentMethod} NOT IN ('Cash', 'cash')`)
+        and(eq(invoicePayments.recordStatus, 1), tc(invoicePayments), sql`${invoicePayments.paymentMethod} NOT IN ('Cash', 'cash')`)
       );
 
       const advances = await db.select({
@@ -24270,7 +24276,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         paymentMethod: customerAdvances.paymentMethod,
         referenceNumber: customerAdvances.referenceNumber,
       }).from(customerAdvances).where(
-        eq(customerAdvances.recordStatus, 1)
+        eq(customerAdvances.recordStatus, 1), tc(customerAdvances)
       );
 
       const sparePartPurchases = await db.select({
@@ -24280,7 +24286,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalAmount: sparePartEntries.totalAmount,
         vendorId: sparePartEntries.vendorId,
         remarks: sparePartEntries.remarks,
-      }).from(sparePartEntries).where(eq(sparePartEntries.recordStatus, 1));
+      }).from(sparePartEntries).where(and(eq(sparePartEntries.recordStatus, 1), tc(sparePartEntries)));
 
       const rawMaterialList = await db.select({
         id: rawMaterials.id,
@@ -24289,7 +24295,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalValuation: rawMaterials.totalValuation,
         supplier: rawMaterials.supplier,
         openingDate: rawMaterials.openingDate,
-      }).from(rawMaterials).where(eq(rawMaterials.recordStatus, 1));
+      }).from(rawMaterials).where(and(eq(rawMaterials.recordStatus, 1), tc(rawMaterials)));
 
       const unreconciledPayments = [];
       for (const p of payments) {
@@ -24398,8 +24404,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .innerJoin(journalEntries, eq(journalLines.journalId, journalEntries.id))
           .where(and(
             eq(journalLines.accountId, accountId),
-            eq(journalLines.recordStatus, 1),
-            eq(journalEntries.recordStatus, 1),
+            eq(journalLines.recordStatus, 1), tc(journalLines),
+            eq(journalEntries.recordStatus, 1), tc(journalEntries),
             sql`${journalEntries.journalDate} < ${dateStart}`
           ));
         const od = Number(openingRows[0]?.totalDebit) || 0;
@@ -24424,8 +24430,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .innerJoin(journalEntries, eq(journalLines.journalId, journalEntries.id))
         .where(and(
           eq(journalLines.accountId, accountId),
-          eq(journalLines.recordStatus, 1),
-          eq(journalEntries.recordStatus, 1),
+          eq(journalLines.recordStatus, 1), tc(journalLines),
+          eq(journalEntries.recordStatus, 1), tc(journalEntries),
           sql`${journalEntries.journalDate} >= ${dateStart}`,
           sql`${journalEntries.journalDate} <= ${dateEnd}`
         ))
@@ -24465,7 +24471,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
 
       const conditions = [
-        eq(journalEntries.recordStatus, 1),
+        eq(journalEntries.recordStatus, 1), tc(journalEntries),
         sql`${journalEntries.journalDate} >= ${fromDate}`,
         sql`${journalEntries.journalDate} <= ${toDate}`,
       ];
@@ -24503,7 +24509,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .innerJoin(chartOfAccounts, eq(journalLines.accountId, chartOfAccounts.id))
           .where(and(
             sql`${journalLines.journalId} IN (${sql.join(journalIds.map(id => sql`${id}`), sql`, `)})`,
-            eq(journalLines.recordStatus, 1)
+            eq(journalLines.recordStatus, 1), tc(journalLines)
           ));
         for (const line of allLines) {
           const existing = linesMap.get(line.journalId) || [];
@@ -24525,7 +24531,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const sourceTypes = await db.selectDistinct({ sourceType: journalEntries.sourceType })
         .from(journalEntries)
-        .where(eq(journalEntries.recordStatus, 1));
+        .where(and(eq(journalEntries.recordStatus, 1), tc(journalEntries)));
 
       res.json({
         entries: result,
@@ -24738,8 +24744,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(journalLines)
         .innerJoin(journalEntries, eq(journalLines.journalId, journalEntries.id))
         .where(and(
-          eq(journalLines.recordStatus, 1),
-          eq(journalEntries.recordStatus, 1),
+          eq(journalLines.recordStatus, 1), tc(journalLines),
+          eq(journalEntries.recordStatus, 1), tc(journalEntries),
           sql`${journalEntries.journalDate} < ${dateStart}`,
           sql`${journalLines.accountId} IN (${sql.join([...cashBankIds].map(id => sql`${id}`), sql`, `)})`
         ))
@@ -24761,8 +24767,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(journalLines)
         .innerJoin(journalEntries, eq(journalLines.journalId, journalEntries.id))
         .where(and(
-          eq(journalLines.recordStatus, 1),
-          eq(journalEntries.recordStatus, 1),
+          eq(journalLines.recordStatus, 1), tc(journalLines),
+          eq(journalEntries.recordStatus, 1), tc(journalEntries),
           sql`${journalEntries.journalDate} >= ${dateStart}`,
           sql`${journalEntries.journalDate} <= ${dateEnd}`
         ));
@@ -24873,7 +24879,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const accounts = await db.select()
         .from(chartOfAccounts)
         .where(and(
-          eq(chartOfAccounts.recordStatus, 1),
+          eq(chartOfAccounts.recordStatus, 1), tc(chartOfAccounts),
           eq(chartOfAccounts.isActive, 1)
         ))
         .orderBy(chartOfAccounts.code);
@@ -24886,8 +24892,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(journalLines)
         .innerJoin(journalEntries, eq(journalLines.journalId, journalEntries.id))
         .where(and(
-          eq(journalEntries.recordStatus, 1),
-          eq(journalLines.recordStatus, 1),
+          eq(journalEntries.recordStatus, 1), tc(journalEntries),
+          eq(journalLines.recordStatus, 1), tc(journalLines),
           eq(journalEntries.status, 'posted'),
           sql`${journalEntries.journalDate} >= ${fromDate}`,
           sql`${journalEntries.journalDate} <= ${toDate}`,
@@ -24904,8 +24910,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(journalLines)
         .innerJoin(journalEntries, eq(journalLines.journalId, journalEntries.id))
         .where(and(
-          eq(journalEntries.recordStatus, 1),
-          eq(journalLines.recordStatus, 1),
+          eq(journalEntries.recordStatus, 1), tc(journalEntries),
+          eq(journalLines.recordStatus, 1), tc(journalLines),
           eq(journalEntries.status, 'posted'),
           sql`${journalEntries.journalDate} < ${fromDate}`,
         ))
@@ -25059,7 +25065,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/budgets', async (req: any, res) => {
     try {
       const fy = req.query.fy as string;
-      const conditions = [eq(budgets.recordStatus, 1)];
+      const conditions = [eq(budgets.recordStatus, 1), tc(budgets)];
       if (fy) conditions.push(eq(budgets.financialYear, fy));
       
       const result = await db.select().from(budgets)
@@ -25075,7 +25081,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/budgets/:id', async (req: any, res) => {
     try {
       const budget = await db.select().from(budgets)
-        .where(and(eq(budgets.id, req.params.id), eq(budgets.recordStatus, 1)))
+        .where(and(eq(budgets.id, req.params.id), eq(budgets.recordStatus, 1), tc(budgets)))
         .limit(1);
       
       if (!budget.length) return res.status(404).json({ message: 'Budget not found' });
@@ -25102,7 +25108,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       })
         .from(budgetItems)
         .innerJoin(chartOfAccounts, eq(budgetItems.accountId, chartOfAccounts.id))
-        .where(and(eq(budgetItems.budgetId, req.params.id), eq(budgetItems.recordStatus, 1)))
+        .where(and(eq(budgetItems.budgetId, req.params.id), eq(budgetItems.recordStatus, 1), tc(budgetItems)))
         .orderBy(chartOfAccounts.code);
       
       res.json({ ...budget[0], items });
@@ -25213,7 +25219,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!budgetId) return res.status(400).json({ message: 'budgetId is required' });
       
       const budget = await db.select().from(budgets)
-        .where(and(eq(budgets.id, budgetId), eq(budgets.recordStatus, 1)))
+        .where(and(eq(budgets.id, budgetId), eq(budgets.recordStatus, 1), tc(budgets)))
         .limit(1);
       
       if (!budget.length) return res.status(404).json({ message: 'Budget not found' });
@@ -25222,7 +25228,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const fyStart = `${fy}-04-01`;
       const fyEnd = `${parseInt(fy) + 1}-03-31`;
       
-      const allSubtypesForBudget = await db.select().from(accountSubtypes).where(eq(accountSubtypes.recordStatus, 1));
+      const allSubtypesForBudget = await db.select().from(accountSubtypes).where(and(eq(accountSubtypes.recordStatus, 1), tc(accountSubtypes)));
       const subtypeIdMapForBudget = new Map(allSubtypesForBudget.map(s => [s.id, s]));
 
       const items = await db.select({
@@ -25239,7 +25245,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       })
         .from(budgetItems)
         .innerJoin(chartOfAccounts, eq(budgetItems.accountId, chartOfAccounts.id))
-        .where(and(eq(budgetItems.budgetId, budgetId), eq(budgetItems.recordStatus, 1)))
+        .where(and(eq(budgetItems.budgetId, budgetId), eq(budgetItems.recordStatus, 1), tc(budgetItems)))
         .orderBy(chartOfAccounts.code);
       
       const actuals = items.length > 0 ? await db.select({
@@ -25252,8 +25258,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(journalLines)
         .innerJoin(journalEntries, eq(journalLines.journalId, journalEntries.id))
         .where(and(
-          eq(journalEntries.recordStatus, 1),
-          eq(journalLines.recordStatus, 1),
+          eq(journalEntries.recordStatus, 1), tc(journalEntries),
+          eq(journalLines.recordStatus, 1), tc(journalLines),
           eq(journalEntries.status, 'posted'),
           sql`${journalEntries.journalDate} >= ${fyStart}`,
           sql`${journalEntries.journalDate} <= ${fyEnd}`,

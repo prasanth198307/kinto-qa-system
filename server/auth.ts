@@ -10,6 +10,7 @@ import { User as SelectUser, tenants, users, roles } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql } from "drizzle-orm";
 import { lookupTenantBySlug } from "./tenant-middleware";
+import { seedNewTenant } from "./seed-tenant";
 
 declare global {
   namespace Express {
@@ -164,17 +165,12 @@ export function setupAuth(app: Express) {
         })
         .returning();
 
+      // Seed default roles + Chart of Accounts for the new tenant
+      const { adminRoleId } = await seedNewTenant(newTenant.id);
+
       // Create first admin user for this tenant
       const hashedPw = await hashPassword(password);
       const adminUsername = email.split("@")[0].toLowerCase().replace(/[^a-z0-9]/g, "");
-
-      // Find or create admin role for this tenant
-      let adminRole = await db
-        .select()
-        .from(roles)
-        .where(eq(roles.name, "admin"))
-        .limit(1)
-        .then((r) => r[0]);
 
       const newUser = await db
         .insert(users)
@@ -185,7 +181,7 @@ export function setupAuth(app: Express) {
           firstName: adminName.split(" ")[0] || adminName,
           lastName: adminName.split(" ").slice(1).join(" ") || null,
           mobileNumber: phone ? phone.replace(/[^0-9]/g, "").slice(-10) || null : null,
-          roleId: adminRole?.id || null,
+          roleId: adminRoleId,
           tenantId: newTenant.id,
           recordStatus: 1,
         } as any)

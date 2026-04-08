@@ -61,14 +61,16 @@ export type Tenant = typeof tenants.$inferSelect;
 // ─── Roles table for dynamic role management ─────────────────────────────────
 export const roles = pgTable("roles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: varchar("name", { length: 50 }).notNull().unique(),
+  name: varchar("name", { length: 50 }).notNull(),
   description: text("description"),
   permissions: text("permissions").array(),
   recordStatus: integer("record_status").default(1).notNull(),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
   tenantId: integer("tenant_id").default(1),
-});
+}, (table) => [
+  uniqueIndex("roles_name_tenant_unique").on(table.name, table.tenantId),
+]);
 
 // Role Permissions table - defines which screens each role can access
 export const rolePermissions = pgTable("role_permissions", {
@@ -3545,7 +3547,7 @@ export type AdvanceApplication = typeof advanceApplications.$inferSelect;
 // Chart of Accounts - Master list of all account heads
 export const chartOfAccounts = pgTable("chart_of_accounts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  code: varchar("code", { length: 20 }).unique().notNull(),
+  code: varchar("code", { length: 20 }).notNull(),
   name: varchar("name", { length: 255 }).notNull(),
   accountType: varchar("account_type", { length: 50 }).notNull(), // asset, liability, equity, revenue, expense
   nodeType: varchar("node_type", { length: 10 }).default('ledger').notNull(), // 'group' = non-postable, 'ledger' = postable
@@ -3563,6 +3565,7 @@ export const chartOfAccounts = pgTable("chart_of_accounts", {
   index("coa_type_idx").on(table.accountType),
   index("coa_parent_idx").on(table.parentId),
   index("coa_node_type_idx").on(table.nodeType),
+  uniqueIndex("coa_code_tenant_unique").on(table.code, table.tenantId),
 ]);
 
 export const insertChartOfAccountSchema = createInsertSchema(chartOfAccounts).omit({

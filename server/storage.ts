@@ -236,9 +236,10 @@ import {
   type InsertMonthlyExpensePayment,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, or, isNotNull, notInArray, inArray, gte, lte, sql, desc, ilike } from "drizzle-orm";
+import { eq, and, or, isNotNull, notInArray, inArray, gte, lte, sql, desc, ilike, SQL } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
+import { getCurrentTenantId, tc } from "./tenant-context";
 
 const PostgresSessionStore = connectPg(session);
 
@@ -839,7 +840,7 @@ export class DatabaseStorage implements IStorage {
       })
       .from(users)
       .leftJoin(roles, eq(users.roleId, roles.id))
-      .where(and(eq(users.id, id), eq(users.recordStatus, 1)));
+      .where(and(eq(users.id, id), eq(users.recordStatus, 1), tc(users)));
     return result as any;
   }
 
@@ -862,7 +863,7 @@ export class DatabaseStorage implements IStorage {
       })
       .from(users)
       .leftJoin(roles, eq(users.roleId, roles.id))
-      .where(and(or(eq(users.username, username), eq(users.email, username)), eq(users.recordStatus, 1)));
+      .where(and(or(eq(users.username, username), eq(users.email, username)), eq(users.recordStatus, 1), tc(users)));
     
     return result as any;
   }
@@ -926,7 +927,7 @@ export class DatabaseStorage implements IStorage {
       })
       .from(users)
       .leftJoin(roles, eq(users.roleId, roles.id))
-      .where(eq(users.recordStatus, 1));
+      .where(and(eq(users.recordStatus, 1), tc(users)));
     return results.map(r => ({
       ...r,
       role: r.roleName || 'operator'
@@ -941,12 +942,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(and(eq(users.email, email), eq(users.recordStatus, 1)));
+    const [user] = await db.select().from(users).where(and(eq(users.email, email), eq(users.recordStatus, 1), tc(users)));
     return user;
   }
 
   async getUserByResetToken(token: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(and(eq(users.resetToken, token), eq(users.recordStatus, 1)));
+    const [user] = await db.select().from(users).where(and(eq(users.resetToken, token), eq(users.recordStatus, 1), tc(users)));
     return user;
   }
 
@@ -973,7 +974,7 @@ export class DatabaseStorage implements IStorage {
     const [role] = await db
       .select({ id: roles.id, name: roles.name })
       .from(roles)
-      .where(and(eq(roles.id, roleId), eq(roles.recordStatus, 1)));
+      .where(and(eq(roles.id, roleId), eq(roles.recordStatus, 1), tc(roles)));
     return role;
   }
 
@@ -983,7 +984,7 @@ export class DatabaseStorage implements IStorage {
       .from(roles)
       .where(and(
         sql`LOWER(${roles.name}) = LOWER(${roleName})`,
-        eq(roles.recordStatus, 1)
+        eq(roles.recordStatus, 1), tc(roles)
       ));
     return role;
   }
@@ -1013,11 +1014,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllMachines(): Promise<Machine[]> {
-    return await db.select().from(machines).where(eq(machines.recordStatus, 1));
+    return await db.select().from(machines).where(and(eq(machines.recordStatus, 1), tc(machines)));
   }
 
   async getMachine(id: string): Promise<Machine | undefined> {
-    const [machine] = await db.select().from(machines).where(and(eq(machines.id, id), eq(machines.recordStatus, 1)));
+    const [machine] = await db.select().from(machines).where(and(eq(machines.id, id), eq(machines.recordStatus, 1), tc(machines)));
     return machine;
   }
 
@@ -1025,7 +1026,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(machines)
       .set({ ...machine, updatedAt: new Date().toISOString() })
-      .where(and(eq(machines.id, id), eq(machines.recordStatus, 1)))
+      .where(and(eq(machines.id, id), eq(machines.recordStatus, 1), tc(machines)))
       .returning();
     return updated;
   }
@@ -1064,11 +1065,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllChecklistTemplates(): Promise<ChecklistTemplate[]> {
-    return await db.select().from(checklistTemplates).where(eq(checklistTemplates.recordStatus, 1));
+    return await db.select().from(checklistTemplates).where(and(eq(checklistTemplates.recordStatus, 1), tc(checklistTemplates)));
   }
 
   async getChecklistTemplate(id: string): Promise<ChecklistTemplate | undefined> {
-    const [template] = await db.select().from(checklistTemplates).where(and(eq(checklistTemplates.id, id), eq(checklistTemplates.recordStatus, 1)));
+    const [template] = await db.select().from(checklistTemplates).where(and(eq(checklistTemplates.id, id), eq(checklistTemplates.recordStatus, 1), tc(checklistTemplates)));
     return template;
   }
 
@@ -1089,11 +1090,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllSpareParts(): Promise<SparePartCatalog[]> {
-    return await db.select().from(sparePartsCatalog).where(eq(sparePartsCatalog.recordStatus, 1));
+    return await db.select().from(sparePartsCatalog).where(and(eq(sparePartsCatalog.recordStatus, 1), tc(sparePartsCatalog)));
   }
 
   async getSparePart(id: string): Promise<SparePartCatalog | undefined> {
-    const [spare] = await db.select().from(sparePartsCatalog).where(and(eq(sparePartsCatalog.id, id), eq(sparePartsCatalog.recordStatus, 1)));
+    const [spare] = await db.select().from(sparePartsCatalog).where(and(eq(sparePartsCatalog.id, id), eq(sparePartsCatalog.recordStatus, 1), tc(sparePartsCatalog)));
     return spare;
   }
 
@@ -1101,7 +1102,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(sparePartsCatalog)
       .set({ ...sparePart, updatedAt: new Date().toISOString() })
-      .where(and(eq(sparePartsCatalog.id, id), eq(sparePartsCatalog.recordStatus, 1)))
+      .where(and(eq(sparePartsCatalog.id, id), eq(sparePartsCatalog.recordStatus, 1), tc(sparePartsCatalog)))
       .returning();
     return updated;
   }
@@ -1117,7 +1118,7 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(sparePartsCatalog)
       .where(and(
         sql`LOWER(${sparePartsCatalog.partName}) LIKE LOWER(${`%${searchTerm}%`})`,
-        eq(sparePartsCatalog.recordStatus, 1)
+        eq(sparePartsCatalog.recordStatus, 1), tc(sparePartsCatalog)
       ))
       .limit(10);
   }
@@ -1128,11 +1129,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllMachineTypes(): Promise<MachineType[]> {
-    return await db.select().from(machineTypes).where(eq(machineTypes.recordStatus, 1));
+    return await db.select().from(machineTypes).where(and(eq(machineTypes.recordStatus, 1), tc(machineTypes)));
   }
 
   async getMachineType(id: string): Promise<MachineType | undefined> {
-    const [type] = await db.select().from(machineTypes).where(and(eq(machineTypes.id, id), eq(machineTypes.recordStatus, 1)));
+    const [type] = await db.select().from(machineTypes).where(and(eq(machineTypes.id, id), eq(machineTypes.recordStatus, 1), tc(machineTypes)));
     return type;
   }
 
@@ -1140,7 +1141,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(machineTypes)
       .set({ ...machineType, updatedAt: new Date().toISOString() })
-      .where(and(eq(machineTypes.id, id), eq(machineTypes.recordStatus, 1)))
+      .where(and(eq(machineTypes.id, id), eq(machineTypes.recordStatus, 1), tc(machineTypes)))
       .returning();
     return updated;
   }
@@ -1182,7 +1183,7 @@ export class DatabaseStorage implements IStorage {
       })
       .from(machineSpares)
       .innerJoin(sparePartsCatalog, eq(machineSpares.sparePartId, sparePartsCatalog.id))
-      .where(and(eq(machineSpares.machineId, machineId), eq(sparePartsCatalog.recordStatus, 1)));
+      .where(and(eq(machineSpares.machineId, machineId), eq(sparePartsCatalog.recordStatus, 1), tc(sparePartsCatalog)));
     return result;
   }
 
@@ -1201,11 +1202,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllPurchaseOrders(): Promise<PurchaseOrder[]> {
-    return await db.select().from(purchaseOrders).where(eq(purchaseOrders.recordStatus, 1));
+    return await db.select().from(purchaseOrders).where(and(eq(purchaseOrders.recordStatus, 1), tc(purchaseOrders)));
   }
 
   async getPurchaseOrder(id: string): Promise<PurchaseOrder | undefined> {
-    const [po] = await db.select().from(purchaseOrders).where(and(eq(purchaseOrders.id, id), eq(purchaseOrders.recordStatus, 1)));
+    const [po] = await db.select().from(purchaseOrders).where(and(eq(purchaseOrders.id, id), eq(purchaseOrders.recordStatus, 1), tc(purchaseOrders)));
     return po;
   }
 
@@ -1213,7 +1214,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(purchaseOrders)
       .set({ ...purchaseOrder, updatedAt: new Date().toISOString() })
-      .where(and(eq(purchaseOrders.id, id), eq(purchaseOrders.recordStatus, 1)))
+      .where(and(eq(purchaseOrders.id, id), eq(purchaseOrders.recordStatus, 1), tc(purchaseOrders)))
       .returning();
     return updated;
   }
@@ -1231,11 +1232,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllMaintenancePlans(): Promise<MaintenancePlan[]> {
-    return await db.select().from(maintenancePlans).where(eq(maintenancePlans.recordStatus, 1));
+    return await db.select().from(maintenancePlans).where(and(eq(maintenancePlans.recordStatus, 1), tc(maintenancePlans)));
   }
 
   async getMaintenancePlan(id: string): Promise<MaintenancePlan | undefined> {
-    const [plan] = await db.select().from(maintenancePlans).where(and(eq(maintenancePlans.id, id), eq(maintenancePlans.recordStatus, 1)));
+    const [plan] = await db.select().from(maintenancePlans).where(and(eq(maintenancePlans.id, id), eq(maintenancePlans.recordStatus, 1), tc(maintenancePlans)));
     return plan;
   }
 
@@ -1243,7 +1244,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(maintenancePlans)
       .set({ ...plan, updatedAt: new Date().toISOString() })
-      .where(and(eq(maintenancePlans.id, id), eq(maintenancePlans.recordStatus, 1)))
+      .where(and(eq(maintenancePlans.id, id), eq(maintenancePlans.recordStatus, 1), tc(maintenancePlans)))
       .returning();
     return updated;
   }
@@ -1271,11 +1272,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllPMTaskListTemplates(): Promise<PMTaskListTemplate[]> {
-    return await db.select().from(pmTaskListTemplates).where(eq(pmTaskListTemplates.recordStatus, 1));
+    return await db.select().from(pmTaskListTemplates).where(and(eq(pmTaskListTemplates.recordStatus, 1), tc(pmTaskListTemplates)));
   }
 
   async getPMTaskListTemplate(id: string): Promise<PMTaskListTemplate | undefined> {
-    const [template] = await db.select().from(pmTaskListTemplates).where(and(eq(pmTaskListTemplates.id, id), eq(pmTaskListTemplates.recordStatus, 1)));
+    const [template] = await db.select().from(pmTaskListTemplates).where(and(eq(pmTaskListTemplates.id, id), eq(pmTaskListTemplates.recordStatus, 1), tc(pmTaskListTemplates)));
     return template;
   }
 
@@ -1287,7 +1288,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(pmTaskListTemplates)
       .set({ ...template, updatedAt: new Date().toISOString() })
-      .where(and(eq(pmTaskListTemplates.id, id), eq(pmTaskListTemplates.recordStatus, 1)))
+      .where(and(eq(pmTaskListTemplates.id, id), eq(pmTaskListTemplates.recordStatus, 1), tc(pmTaskListTemplates)))
       .returning();
     return updated;
   }
@@ -1339,7 +1340,7 @@ export class DatabaseStorage implements IStorage {
 
   async getSparePartEntries(sparePartId: string): Promise<SparePartEntry[]> {
     return await db.select().from(sparePartEntries)
-      .where(and(eq(sparePartEntries.sparePartId, sparePartId), eq(sparePartEntries.recordStatus, 1)))
+      .where(and(eq(sparePartEntries.sparePartId, sparePartId), eq(sparePartEntries.recordStatus, 1), tc(sparePartEntries)))
       .orderBy(desc(sparePartEntries.purchaseDate));
   }
 
@@ -1369,17 +1370,17 @@ export class DatabaseStorage implements IStorage {
   async getSparePartIssuances(sparePartId?: string): Promise<SparePartIssuance[]> {
     if (sparePartId) {
       return await db.select().from(sparePartIssuances)
-        .where(and(eq(sparePartIssuances.sparePartId, sparePartId), eq(sparePartIssuances.recordStatus, 1)))
+        .where(and(eq(sparePartIssuances.sparePartId, sparePartId), eq(sparePartIssuances.recordStatus, 1), tc(sparePartIssuances)))
         .orderBy(desc(sparePartIssuances.issueDate));
     }
     return await db.select().from(sparePartIssuances)
-      .where(eq(sparePartIssuances.recordStatus, 1))
+      .where(and(eq(sparePartIssuances.recordStatus, 1), tc(sparePartIssuances)))
       .orderBy(desc(sparePartIssuances.issueDate));
   }
 
   async getSparePartIssuance(id: string): Promise<SparePartIssuance | undefined> {
     const [result] = await db.select().from(sparePartIssuances)
-      .where(and(eq(sparePartIssuances.id, id), eq(sparePartIssuances.recordStatus, 1)));
+      .where(and(eq(sparePartIssuances.id, id), eq(sparePartIssuances.recordStatus, 1), tc(sparePartIssuances)));
     return result;
   }
 
@@ -1387,7 +1388,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(sparePartIssuances)
       .set({ ...data, updatedAt: new Date().toISOString() })
-      .where(and(eq(sparePartIssuances.id, id), eq(sparePartIssuances.recordStatus, 1)))
+      .where(and(eq(sparePartIssuances.id, id), eq(sparePartIssuances.recordStatus, 1), tc(sparePartIssuances)))
       .returning();
     return updated;
   }
@@ -1450,11 +1451,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllUoms(): Promise<Uom[]> {
-    return await db.select().from(uom).where(eq(uom.recordStatus, 1));
+    return await db.select().from(uom).where(and(eq(uom.recordStatus, 1), tc(uom)));
   }
 
   async getUom(id: string): Promise<Uom | undefined> {
-    const [result] = await db.select().from(uom).where(and(eq(uom.id, id), eq(uom.recordStatus, 1)));
+    const [result] = await db.select().from(uom).where(and(eq(uom.id, id), eq(uom.recordStatus, 1), tc(uom)));
     return result;
   }
 
@@ -1462,7 +1463,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(uom)
       .set({ ...uomData, updatedAt: new Date().toISOString() })
-      .where(and(eq(uom.id, id), eq(uom.recordStatus, 1)))
+      .where(and(eq(uom.id, id), eq(uom.recordStatus, 1), tc(uom)))
       .returning();
     return updated;
   }
@@ -1481,11 +1482,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllProductCategories(): Promise<ProductCategory[]> {
-    return await db.select().from(productCategories).where(eq(productCategories.recordStatus, 1));
+    return await db.select().from(productCategories).where(and(eq(productCategories.recordStatus, 1), tc(productCategories)));
   }
 
   async getProductCategory(id: string): Promise<ProductCategory | undefined> {
-    const [result] = await db.select().from(productCategories).where(and(eq(productCategories.id, id), eq(productCategories.recordStatus, 1)));
+    const [result] = await db.select().from(productCategories).where(and(eq(productCategories.id, id), eq(productCategories.recordStatus, 1), tc(productCategories)));
     return result;
   }
 
@@ -1493,7 +1494,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(productCategories)
       .set({ ...categoryData, updatedAt: new Date().toISOString() })
-      .where(and(eq(productCategories.id, id), eq(productCategories.recordStatus, 1)))
+      .where(and(eq(productCategories.id, id), eq(productCategories.recordStatus, 1), tc(productCategories)))
       .returning();
     return updated;
   }
@@ -1512,11 +1513,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllProductTypes(): Promise<ProductType[]> {
-    return await db.select().from(productTypes).where(eq(productTypes.recordStatus, 1));
+    return await db.select().from(productTypes).where(and(eq(productTypes.recordStatus, 1), tc(productTypes)));
   }
 
   async getProductType(id: string): Promise<ProductType | undefined> {
-    const [result] = await db.select().from(productTypes).where(and(eq(productTypes.id, id), eq(productTypes.recordStatus, 1)));
+    const [result] = await db.select().from(productTypes).where(and(eq(productTypes.id, id), eq(productTypes.recordStatus, 1), tc(productTypes)));
     return result;
   }
 
@@ -1524,7 +1525,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(productTypes)
       .set({ ...typeData, updatedAt: new Date().toISOString() })
-      .where(and(eq(productTypes.id, id), eq(productTypes.recordStatus, 1)))
+      .where(and(eq(productTypes.id, id), eq(productTypes.recordStatus, 1), tc(productTypes)))
       .returning();
     return updated;
   }
@@ -1548,11 +1549,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllProducts(): Promise<Product[]> {
-    return await db.select().from(products).where(eq(products.recordStatus, 1));
+    return await db.select().from(products).where(and(eq(products.recordStatus, 1), tc(products)));
   }
 
   async getProduct(id: string): Promise<Product | undefined> {
-    const [product] = await db.select().from(products).where(and(eq(products.id, id), eq(products.recordStatus, 1)));
+    const [product] = await db.select().from(products).where(and(eq(products.id, id), eq(products.recordStatus, 1), tc(products)));
     return product;
   }
 
@@ -1565,7 +1566,7 @@ export class DatabaseStorage implements IStorage {
         usableDerivedUnits: productData.usableDerivedUnits !== undefined ? productData.usableDerivedUnits?.toString() : undefined,
         updatedAt: new Date().toISOString() 
       })
-      .where(and(eq(products.id, id), eq(products.recordStatus, 1)))
+      .where(and(eq(products.id, id), eq(products.recordStatus, 1), tc(products)))
       .returning();
     return updated;
   }
@@ -1583,7 +1584,7 @@ export class DatabaseStorage implements IStorage {
     const [product] = await db
       .select()
       .from(products)
-      .where(and(eq(products.id, config.productId), eq(products.recordStatus, 1)));
+      .where(and(eq(products.id, config.productId), eq(products.recordStatus, 1), tc(products)));
     
     if (!product) {
       throw new Error("Product not found");
@@ -1596,7 +1597,7 @@ export class DatabaseStorage implements IStorage {
         .set({ isDefault: 0, updatedAt: new Date().toISOString() })
         .where(and(
           eq(productBomConfigurations.productId, config.productId),
-          eq(productBomConfigurations.recordStatus, 1)
+          eq(productBomConfigurations.recordStatus, 1), tc(productBomConfigurations)
         ));
     }
 
@@ -1610,7 +1611,7 @@ export class DatabaseStorage implements IStorage {
       .from(productBomConfigurations)
       .where(and(
         eq(productBomConfigurations.productId, productId),
-        eq(productBomConfigurations.recordStatus, 1)
+        eq(productBomConfigurations.recordStatus, 1), tc(productBomConfigurations)
       ))
       .orderBy(productBomConfigurations.createdAt);
   }
@@ -1621,7 +1622,7 @@ export class DatabaseStorage implements IStorage {
       .from(productBomConfigurations)
       .where(and(
         eq(productBomConfigurations.id, id),
-        eq(productBomConfigurations.recordStatus, 1)
+        eq(productBomConfigurations.recordStatus, 1), tc(productBomConfigurations)
       ));
     return config;
   }
@@ -1636,7 +1637,7 @@ export class DatabaseStorage implements IStorage {
           .set({ isDefault: 0, updatedAt: new Date().toISOString() })
           .where(and(
             eq(productBomConfigurations.productId, existing.productId),
-            eq(productBomConfigurations.recordStatus, 1),
+            eq(productBomConfigurations.recordStatus, 1), tc(productBomConfigurations),
             sql`${productBomConfigurations.id} != ${id}`
           ));
       }
@@ -1647,7 +1648,7 @@ export class DatabaseStorage implements IStorage {
       .set({ ...config, updatedAt: new Date().toISOString() })
       .where(and(
         eq(productBomConfigurations.id, id),
-        eq(productBomConfigurations.recordStatus, 1)
+        eq(productBomConfigurations.recordStatus, 1), tc(productBomConfigurations)
       ))
       .returning();
     return updated;
@@ -1674,7 +1675,7 @@ export class DatabaseStorage implements IStorage {
       .set({ isDefault: 0, updatedAt: new Date().toISOString() })
       .where(and(
         eq(productBomConfigurations.productId, productId),
-        eq(productBomConfigurations.recordStatus, 1)
+        eq(productBomConfigurations.recordStatus, 1), tc(productBomConfigurations)
       ));
     
     // Set the new default
@@ -1683,7 +1684,7 @@ export class DatabaseStorage implements IStorage {
       .set({ isDefault: 1, updatedAt: new Date().toISOString() })
       .where(and(
         eq(productBomConfigurations.id, configId),
-        eq(productBomConfigurations.recordStatus, 1)
+        eq(productBomConfigurations.recordStatus, 1), tc(productBomConfigurations)
       ));
   }
 
@@ -1693,7 +1694,7 @@ export class DatabaseStorage implements IStorage {
     const [product] = await db
       .select()
       .from(products)
-      .where(and(eq(products.id, bomItem.productId), eq(products.recordStatus, 1)));
+      .where(and(eq(products.id, bomItem.productId), eq(products.recordStatus, 1), tc(products)));
     
     if (!product) {
       throw new Error("Product not found");
@@ -1703,7 +1704,7 @@ export class DatabaseStorage implements IStorage {
     const [rawMaterial] = await db
       .select()
       .from(rawMaterials)
-      .where(and(eq(rawMaterials.id, bomItem.rawMaterialId), eq(rawMaterials.recordStatus, 1)));
+      .where(and(eq(rawMaterials.id, bomItem.rawMaterialId), eq(rawMaterials.recordStatus, 1), tc(rawMaterials)));
     
     if (!rawMaterial) {
       throw new Error("Raw material not found");
@@ -1719,7 +1720,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(productBom)
       .leftJoin(rawMaterials, eq(productBom.rawMaterialId, rawMaterials.id))
-      .where(and(eq(productBom.productId, productId), eq(productBom.recordStatus, 1)))
+      .where(and(eq(productBom.productId, productId), eq(productBom.recordStatus, 1), tc(productBom)))
       .orderBy(productBom.createdAt);
     
     // Transform the joined data into a flatter structure
@@ -1744,7 +1745,7 @@ export class DatabaseStorage implements IStorage {
     const [product] = await db
       .select()
       .from(products)
-      .where(and(eq(products.id, productId), eq(products.recordStatus, 1)));
+      .where(and(eq(products.id, productId), eq(products.recordStatus, 1), tc(products)));
     
     if (!product) {
       throw new Error('Product not found');
@@ -1760,7 +1761,7 @@ export class DatabaseStorage implements IStorage {
         .from(productBomConfigurations)
         .where(and(
           eq(productBomConfigurations.id, configurationId),
-          eq(productBomConfigurations.recordStatus, 1)
+          eq(productBomConfigurations.recordStatus, 1), tc(productBomConfigurations)
         ));
       if (config) {
         configName = config.configName;
@@ -1773,7 +1774,7 @@ export class DatabaseStorage implements IStorage {
         .where(and(
           eq(productBomConfigurations.productId, productId),
           eq(productBomConfigurations.isDefault, 1),
-          eq(productBomConfigurations.recordStatus, 1)
+          eq(productBomConfigurations.recordStatus, 1), tc(productBomConfigurations)
         ));
       if (defaultConfig) {
         effectiveConfigId = defaultConfig.id;
@@ -1784,7 +1785,7 @@ export class DatabaseStorage implements IStorage {
     // Build query conditions for BOM items
     const bomConditions = [
       eq(productBom.productId, productId),
-      eq(productBom.recordStatus, 1)
+      eq(productBom.recordStatus, 1), tc(productBom)
     ];
     
     // Filter by configuration if specified (or if we found a default)
@@ -1822,7 +1823,7 @@ export class DatabaseStorage implements IStorage {
         .select()
         .from(rawMaterials)
         .where(and(
-          eq(rawMaterials.recordStatus, 1),
+          eq(rawMaterials.recordStatus, 1), tc(rawMaterials),
           or(
             neededRawMaterialIds.size > 0 ? inArray(rawMaterials.id, Array.from(neededRawMaterialIds)) : undefined,
             neededTypeIds.size > 0 ? inArray(rawMaterials.typeId, Array.from(neededTypeIds)) : undefined
@@ -1846,7 +1847,7 @@ export class DatabaseStorage implements IStorage {
         .select()
         .from(rawMaterialTypes)
         .where(and(
-          eq(rawMaterialTypes.recordStatus, 1),
+          eq(rawMaterialTypes.recordStatus, 1), tc(rawMaterialTypes),
           inArray(rawMaterialTypes.id, allNeededTypeIds)
         ));
     }
@@ -1855,7 +1856,7 @@ export class DatabaseStorage implements IStorage {
     const allUoms = await db
       .select()
       .from(uom)
-      .where(eq(uom.recordStatus, 1));
+      .where(and(eq(uom.recordStatus, 1), tc(uom)));
 
     // Create lookup maps
     const rawMaterialMap = new Map(relevantRawMaterials.map(rm => [rm.id, rm]));
@@ -1957,7 +1958,7 @@ export class DatabaseStorage implements IStorage {
     const [bomItem] = await db
       .select()
       .from(productBom)
-      .where(and(eq(productBom.id, id), eq(productBom.recordStatus, 1)));
+      .where(and(eq(productBom.id, id), eq(productBom.recordStatus, 1), tc(productBom)));
     return bomItem;
   }
 
@@ -1967,7 +1968,7 @@ export class DatabaseStorage implements IStorage {
       const [rawMaterial] = await db
         .select()
         .from(rawMaterials)
-        .where(and(eq(rawMaterials.id, bomItemData.rawMaterialId), eq(rawMaterials.recordStatus, 1)));
+        .where(and(eq(rawMaterials.id, bomItemData.rawMaterialId), eq(rawMaterials.recordStatus, 1), tc(rawMaterials)));
       
       if (!rawMaterial) {
         throw new Error("Raw material not found");
@@ -1977,7 +1978,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(productBom)
       .set({ ...bomItemData, updatedAt: new Date().toISOString() })
-      .where(and(eq(productBom.id, id), eq(productBom.recordStatus, 1)))
+      .where(and(eq(productBom.id, id), eq(productBom.recordStatus, 1), tc(productBom)))
       .returning();
     return updated;
   }
@@ -1994,7 +1995,7 @@ export class DatabaseStorage implements IStorage {
     const [product] = await db
       .select()
       .from(products)
-      .where(and(eq(products.id, productId), eq(products.recordStatus, 1)));
+      .where(and(eq(products.id, productId), eq(products.recordStatus, 1), tc(products)));
     
     if (!product) {
       throw new Error("Product not found");
@@ -2005,7 +2006,7 @@ export class DatabaseStorage implements IStorage {
       const [rawMaterial] = await db
         .select()
         .from(rawMaterials)
-        .where(and(eq(rawMaterials.id, bomItem.rawMaterialId), eq(rawMaterials.recordStatus, 1)));
+        .where(and(eq(rawMaterials.id, bomItem.rawMaterialId), eq(rawMaterials.recordStatus, 1), tc(rawMaterials)));
       
       if (!rawMaterial) {
         throw new Error(`Raw material not found: ${bomItem.rawMaterialId}`);
@@ -2047,7 +2048,7 @@ export class DatabaseStorage implements IStorage {
     const [product] = await db
       .select()
       .from(products)
-      .where(and(eq(products.id, productId), eq(products.recordStatus, 1)));
+      .where(and(eq(products.id, productId), eq(products.recordStatus, 1), tc(products)));
     
     if (!product) {
       throw new Error("Product not found");
@@ -2060,7 +2061,7 @@ export class DatabaseStorage implements IStorage {
         .from(productBomConfigurations)
         .where(and(
           eq(productBomConfigurations.id, configurationId),
-          eq(productBomConfigurations.recordStatus, 1)
+          eq(productBomConfigurations.recordStatus, 1), tc(productBomConfigurations)
         ));
       if (!config) {
         throw new Error("BOM configuration not found");
@@ -2122,11 +2123,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllVendors(): Promise<Vendor[]> {
-    return await db.select().from(vendors).where(eq(vendors.recordStatus, 1));
+    return await db.select().from(vendors).where(and(eq(vendors.recordStatus, 1), tc(vendors)));
   }
 
   async getVendor(id: string): Promise<Vendor | undefined> {
-    const [vendor] = await db.select().from(vendors).where(and(eq(vendors.id, id), eq(vendors.recordStatus, 1)));
+    const [vendor] = await db.select().from(vendors).where(and(eq(vendors.id, id), eq(vendors.recordStatus, 1), tc(vendors)));
     return vendor;
   }
 
@@ -2134,7 +2135,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(vendors)
       .set({ ...vendorData, updatedAt: new Date().toISOString() })
-      .where(and(eq(vendors.id, id), eq(vendors.recordStatus, 1)))
+      .where(and(eq(vendors.id, id), eq(vendors.recordStatus, 1), tc(vendors)))
       .returning();
     return updated;
   }
@@ -2153,11 +2154,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllVendorTypes(): Promise<VendorType[]> {
-    return await db.select().from(vendorTypes).where(eq(vendorTypes.recordStatus, 1));
+    return await db.select().from(vendorTypes).where(and(eq(vendorTypes.recordStatus, 1), tc(vendorTypes)));
   }
 
   async getVendorType(id: string): Promise<VendorType | undefined> {
-    const [type] = await db.select().from(vendorTypes).where(and(eq(vendorTypes.id, id), eq(vendorTypes.recordStatus, 1)));
+    const [type] = await db.select().from(vendorTypes).where(and(eq(vendorTypes.id, id), eq(vendorTypes.recordStatus, 1), tc(vendorTypes)));
     return type;
   }
 
@@ -2165,7 +2166,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(vendorTypes)
       .set({ ...vendorTypeData, updatedAt: new Date().toISOString() })
-      .where(and(eq(vendorTypes.id, id), eq(vendorTypes.recordStatus, 1)))
+      .where(and(eq(vendorTypes.id, id), eq(vendorTypes.recordStatus, 1), tc(vendorTypes)))
       .returning();
     return updated;
   }
@@ -2196,8 +2197,8 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(vendorTypes, eq(vendorVendorTypes.vendorTypeId, vendorTypes.id))
       .where(and(
         eq(vendorVendorTypes.vendorId, vendorId),
-        eq(vendorVendorTypes.recordStatus, 1),
-        eq(vendorTypes.recordStatus, 1)
+        eq(vendorVendorTypes.recordStatus, 1), tc(vendorVendorTypes),
+        eq(vendorTypes.recordStatus, 1), tc(vendorTypes)
       ));
     
     return results.map(r => r.vendorType);
@@ -2220,7 +2221,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllRawMaterialTypes(): Promise<RawMaterialType[]> {
-    return await db.select().from(rawMaterialTypes).where(eq(rawMaterialTypes.recordStatus, 1));
+    return await db.select().from(rawMaterialTypes).where(and(eq(rawMaterialTypes.recordStatus, 1), tc(rawMaterialTypes)));
   }
 
   async getRawMaterialTypeByCode(code: string): Promise<RawMaterialType | undefined> {
@@ -2229,7 +2230,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getRawMaterialType(id: string): Promise<RawMaterialType | undefined> {
-    const [type] = await db.select().from(rawMaterialTypes).where(and(eq(rawMaterialTypes.id, id), eq(rawMaterialTypes.recordStatus, 1)));
+    const [type] = await db.select().from(rawMaterialTypes).where(and(eq(rawMaterialTypes.id, id), eq(rawMaterialTypes.recordStatus, 1), tc(rawMaterialTypes)));
     return type;
   }
 
@@ -2237,7 +2238,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(rawMaterialTypes)
       .set({ ...typeData, updatedAt: new Date().toISOString() })
-      .where(and(eq(rawMaterialTypes.id, id), eq(rawMaterialTypes.recordStatus, 1)))
+      .where(and(eq(rawMaterialTypes.id, id), eq(rawMaterialTypes.recordStatus, 1), tc(rawMaterialTypes)))
       .returning();
     return updated;
   }
@@ -2256,11 +2257,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllRawMaterials(): Promise<RawMaterial[]> {
-    return await db.select().from(rawMaterials).where(eq(rawMaterials.recordStatus, 1));
+    return await db.select().from(rawMaterials).where(and(eq(rawMaterials.recordStatus, 1), tc(rawMaterials)));
   }
 
   async getRawMaterial(id: string): Promise<RawMaterial | undefined> {
-    const [material] = await db.select().from(rawMaterials).where(and(eq(rawMaterials.id, id), eq(rawMaterials.recordStatus, 1)));
+    const [material] = await db.select().from(rawMaterials).where(and(eq(rawMaterials.id, id), eq(rawMaterials.recordStatus, 1), tc(rawMaterials)));
     return material;
   }
 
@@ -2268,7 +2269,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(rawMaterials)
       .set({ ...materialData, updatedAt: new Date().toISOString() })
-      .where(and(eq(rawMaterials.id, id), eq(rawMaterials.recordStatus, 1)))
+      .where(and(eq(rawMaterials.id, id), eq(rawMaterials.recordStatus, 1), tc(rawMaterials)))
       .returning();
     return updated;
   }
@@ -2317,11 +2318,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllFinishedGoods(): Promise<FinishedGood[]> {
-    return await db.select().from(finishedGoods).where(eq(finishedGoods.recordStatus, 1));
+    return await db.select().from(finishedGoods).where(and(eq(finishedGoods.recordStatus, 1), tc(finishedGoods)));
   }
 
   async getFinishedGood(id: string): Promise<FinishedGood | undefined> {
-    const [good] = await db.select().from(finishedGoods).where(and(eq(finishedGoods.id, id), eq(finishedGoods.recordStatus, 1)));
+    const [good] = await db.select().from(finishedGoods).where(and(eq(finishedGoods.id, id), eq(finishedGoods.recordStatus, 1), tc(finishedGoods)));
     return good;
   }
 
@@ -2334,7 +2335,7 @@ export class DatabaseStorage implements IStorage {
         inspectionDate: finishedGoodData.inspectionDate ? new Date(finishedGoodData.inspectionDate).toISOString() : undefined,
         updatedAt: new Date().toISOString() 
       })
-      .where(and(eq(finishedGoods.id, id), eq(finishedGoods.recordStatus, 1)))
+      .where(and(eq(finishedGoods.id, id), eq(finishedGoods.recordStatus, 1), tc(finishedGoods)))
       .returning();
     return updated;
   }
@@ -2347,11 +2348,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getFinishedGoodsByProduct(productId: string): Promise<FinishedGood[]> {
-    return await db.select().from(finishedGoods).where(and(eq(finishedGoods.productId, productId), eq(finishedGoods.recordStatus, 1)));
+    return await db.select().from(finishedGoods).where(and(eq(finishedGoods.productId, productId), eq(finishedGoods.recordStatus, 1), tc(finishedGoods)));
   }
 
   async getFinishedGoodsByBatchNumber(batchNumber: string): Promise<FinishedGood[]> {
-    return await db.select().from(finishedGoods).where(and(eq(finishedGoods.batchNumber, batchNumber), eq(finishedGoods.recordStatus, 1)));
+    return await db.select().from(finishedGoods).where(and(eq(finishedGoods.batchNumber, batchNumber), eq(finishedGoods.recordStatus, 1), tc(finishedGoods)));
   }
 
   // Raw Material Issuance
@@ -2361,11 +2362,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllRawMaterialIssuances(): Promise<RawMaterialIssuance[]> {
-    return await db.select().from(rawMaterialIssuance).where(eq(rawMaterialIssuance.recordStatus, 1));
+    return await db.select().from(rawMaterialIssuance).where(and(eq(rawMaterialIssuance.recordStatus, 1), tc(rawMaterialIssuance)));
   }
 
   async getRawMaterialIssuance(id: string): Promise<RawMaterialIssuance | undefined> {
-    const [result] = await db.select().from(rawMaterialIssuance).where(and(eq(rawMaterialIssuance.id, id), eq(rawMaterialIssuance.recordStatus, 1)));
+    const [result] = await db.select().from(rawMaterialIssuance).where(and(eq(rawMaterialIssuance.id, id), eq(rawMaterialIssuance.recordStatus, 1), tc(rawMaterialIssuance)));
     return result;
   }
 
@@ -2374,7 +2375,7 @@ export class DatabaseStorage implements IStorage {
       ...updates,
       issuanceDate: updates.issuanceDate ? new Date(updates.issuanceDate).toISOString() : undefined,
       plannedOutput: updates.plannedOutput !== undefined ? updates.plannedOutput?.toString() : undefined,
-    }).where(and(eq(rawMaterialIssuance.id, id), eq(rawMaterialIssuance.recordStatus, 1))).returning();
+    }).where(and(eq(rawMaterialIssuance.id, id), eq(rawMaterialIssuance.recordStatus, 1), tc(rawMaterialIssuance))).returning();
     return updated;
   }
 
@@ -2387,7 +2388,7 @@ export class DatabaseStorage implements IStorage {
     const endOfDay = new Date(date.setHours(23, 59, 59, 999));
     return await db.select().from(rawMaterialIssuance).where(
       and(
-        eq(rawMaterialIssuance.recordStatus, 1)
+        eq(rawMaterialIssuance.recordStatus, 1), tc(rawMaterialIssuance)
       )
     );
   }
@@ -2399,11 +2400,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllGatepasses(): Promise<Gatepass[]> {
-    return await db.select().from(gatepasses).where(eq(gatepasses.recordStatus, 1));
+    return await db.select().from(gatepasses).where(and(eq(gatepasses.recordStatus, 1), tc(gatepasses)));
   }
 
   async getGatepass(id: string): Promise<Gatepass | undefined> {
-    const [result] = await db.select().from(gatepasses).where(and(eq(gatepasses.id, id), eq(gatepasses.recordStatus, 1)));
+    const [result] = await db.select().from(gatepasses).where(and(eq(gatepasses.id, id), eq(gatepasses.recordStatus, 1), tc(gatepasses)));
     return result;
   }
 
@@ -2411,7 +2412,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db.update(gatepasses).set({
       ...updates,
       gatepassDate: updates.gatepassDate ? new Date(updates.gatepassDate).toISOString() : undefined
-    }).where(and(eq(gatepasses.id, id), eq(gatepasses.recordStatus, 1))).returning();
+    }).where(and(eq(gatepasses.id, id), eq(gatepasses.recordStatus, 1), tc(gatepasses))).returning();
     return updated;
   }
 
@@ -2424,13 +2425,13 @@ export class DatabaseStorage implements IStorage {
     const endOfDay = new Date(date.setHours(23, 59, 59, 999));
     return await db.select().from(gatepasses).where(
       and(
-        eq(gatepasses.recordStatus, 1)
+        eq(gatepasses.recordStatus, 1), tc(gatepasses)
       )
     );
   }
 
   async getGatepassByNumber(gatepassNumber: string): Promise<Gatepass | undefined> {
-    const [result] = await db.select().from(gatepasses).where(and(eq(gatepasses.gatepassNumber, gatepassNumber), eq(gatepasses.recordStatus, 1)));
+    const [result] = await db.select().from(gatepasses).where(and(eq(gatepasses.gatepassNumber, gatepassNumber), eq(gatepasses.recordStatus, 1), tc(gatepasses)));
     return result;
   }
 
@@ -2449,7 +2450,7 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(rawMaterialIssuanceItems).where(
       and(
         eq(rawMaterialIssuanceItems.issuanceId, issuanceId),
-        eq(rawMaterialIssuanceItems.recordStatus, 1)
+        eq(rawMaterialIssuanceItems.recordStatus, 1), tc(rawMaterialIssuanceItems)
       )
     );
   }
@@ -2463,7 +2464,7 @@ export class DatabaseStorage implements IStorage {
         suggestedQuantity: updates.suggestedQuantity !== undefined ? updates.suggestedQuantity?.toString() : undefined,
         updatedAt: new Date().toISOString() 
       })
-      .where(and(eq(rawMaterialIssuanceItems.id, id), eq(rawMaterialIssuanceItems.recordStatus, 1)))
+      .where(and(eq(rawMaterialIssuanceItems.id, id), eq(rawMaterialIssuanceItems.recordStatus, 1), tc(rawMaterialIssuanceItems)))
       .returning();
     return updated;
   }
@@ -2515,13 +2516,13 @@ export class DatabaseStorage implements IStorage {
       })
       .from(productionEntries)
       .leftJoin(rawMaterialIssuance, eq(productionEntries.issuanceId, rawMaterialIssuance.id))
-      .where(eq(productionEntries.recordStatus, 1));
+      .where(and(eq(productionEntries.recordStatus, 1), tc(productionEntries)));
     
     return results as any;
   }
 
   async getProductionEntry(id: string): Promise<ProductionEntry | undefined> {
-    const [result] = await db.select().from(productionEntries).where(and(eq(productionEntries.id, id), eq(productionEntries.recordStatus, 1)));
+    const [result] = await db.select().from(productionEntries).where(and(eq(productionEntries.id, id), eq(productionEntries.recordStatus, 1), tc(productionEntries)));
     return result;
   }
 
@@ -2529,7 +2530,7 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(productionEntries).where(
       and(
         eq(productionEntries.issuanceId, issuanceId),
-        eq(productionEntries.recordStatus, 1)
+        eq(productionEntries.recordStatus, 1), tc(productionEntries)
       )
     );
   }
@@ -2548,7 +2549,7 @@ export class DatabaseStorage implements IStorage {
         derivedUnits: updates.derivedUnits !== undefined ? updates.derivedUnits?.toString() : undefined,
         updatedAt: new Date().toISOString() 
       })
-      .where(and(eq(productionEntries.id, id), eq(productionEntries.recordStatus, 1)))
+      .where(and(eq(productionEntries.id, id), eq(productionEntries.recordStatus, 1), tc(productionEntries)))
       .returning();
     return updated;
   }
@@ -2564,16 +2565,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllProductionReconciliations(): Promise<ProductionReconciliation[]> {
-    return await db.select().from(productionReconciliations).where(eq(productionReconciliations.recordStatus, 1));
+    return await db.select().from(productionReconciliations).where(and(eq(productionReconciliations.recordStatus, 1), tc(productionReconciliations)));
   }
 
   async getProductionReconciliation(id: string): Promise<ProductionReconciliation | undefined> {
-    const [result] = await db.select().from(productionReconciliations).where(and(eq(productionReconciliations.id, id), eq(productionReconciliations.recordStatus, 1)));
+    const [result] = await db.select().from(productionReconciliations).where(and(eq(productionReconciliations.id, id), eq(productionReconciliations.recordStatus, 1), tc(productionReconciliations)));
     return result;
   }
 
   async getProductionReconciliationByNumber(reconciliationNumber: string): Promise<ProductionReconciliation | undefined> {
-    const [result] = await db.select().from(productionReconciliations).where(and(eq(productionReconciliations.reconciliationNumber, reconciliationNumber), eq(productionReconciliations.recordStatus, 1)));
+    const [result] = await db.select().from(productionReconciliations).where(and(eq(productionReconciliations.reconciliationNumber, reconciliationNumber), eq(productionReconciliations.recordStatus, 1), tc(productionReconciliations)));
     return result;
   }
 
@@ -2581,7 +2582,7 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(productionReconciliations).where(
       and(
         eq(productionReconciliations.issuanceId, issuanceId),
-        eq(productionReconciliations.recordStatus, 1)
+        eq(productionReconciliations.recordStatus, 1), tc(productionReconciliations)
       )
     );
   }
@@ -2590,7 +2591,7 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(productionReconciliations).where(
       and(
         eq(productionReconciliations.productionEntryId, productionEntryId),
-        eq(productionReconciliations.recordStatus, 1)
+        eq(productionReconciliations.recordStatus, 1), tc(productionReconciliations)
       )
     );
   }
@@ -2603,7 +2604,7 @@ export class DatabaseStorage implements IStorage {
         reconciliationDate: updates.reconciliationDate ? new Date(updates.reconciliationDate).toISOString() : undefined,
         updatedAt: new Date().toISOString() 
       })
-      .where(and(eq(productionReconciliations.id, id), eq(productionReconciliations.recordStatus, 1)))
+      .where(and(eq(productionReconciliations.id, id), eq(productionReconciliations.recordStatus, 1), tc(productionReconciliations)))
       .returning();
     return updated;
   }
@@ -2622,7 +2623,7 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(productionReconciliationItems).where(
       and(
         eq(productionReconciliationItems.reconciliationId, reconciliationId),
-        eq(productionReconciliationItems.recordStatus, 1)
+        eq(productionReconciliationItems.recordStatus, 1), tc(productionReconciliationItems)
       )
     );
   }
@@ -2631,7 +2632,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(productionReconciliationItems)
       .set({ ...updates, updatedAt: new Date().toISOString() })
-      .where(and(eq(productionReconciliationItems.id, id), eq(productionReconciliationItems.recordStatus, 1)))
+      .where(and(eq(productionReconciliationItems.id, id), eq(productionReconciliationItems.recordStatus, 1), tc(productionReconciliationItems)))
       .returning();
     return updated;
   }
@@ -2650,7 +2651,7 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(gatepassItems).where(
       and(
         eq(gatepassItems.gatepassId, gatepassId),
-        eq(gatepassItems.recordStatus, 1)
+        eq(gatepassItems.recordStatus, 1), tc(gatepassItems)
       )
     );
   }
@@ -2659,7 +2660,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(gatepassItems)
       .set({ ...updates, updatedAt: new Date().toISOString() })
-      .where(and(eq(gatepassItems.id, id), eq(gatepassItems.recordStatus, 1)))
+      .where(and(eq(gatepassItems.id, id), eq(gatepassItems.recordStatus, 1), tc(gatepassItems)))
       .returning();
     return updated;
   }
@@ -2675,19 +2676,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllInvoiceTemplates(): Promise<InvoiceTemplate[]> {
-    return await db.select().from(invoiceTemplates).where(eq(invoiceTemplates.recordStatus, 1));
+    return await db.select().from(invoiceTemplates).where(and(eq(invoiceTemplates.recordStatus, 1), tc(invoiceTemplates)));
   }
 
   async getActiveInvoiceTemplates(): Promise<InvoiceTemplate[]> {
     return await db.select().from(invoiceTemplates).where(
-      and(eq(invoiceTemplates.recordStatus, 1), eq(invoiceTemplates.isActive, 1))
+      and(eq(invoiceTemplates.recordStatus, 1), tc(invoiceTemplates), eq(invoiceTemplates.isActive, 1))
     );
   }
 
   async getDefaultInvoiceTemplate(): Promise<InvoiceTemplate | undefined> {
     const [template] = await db.select().from(invoiceTemplates).where(
       and(
-        eq(invoiceTemplates.recordStatus, 1),
+        eq(invoiceTemplates.recordStatus, 1), tc(invoiceTemplates),
         eq(invoiceTemplates.isDefault, 1),
         eq(invoiceTemplates.isActive, 1)
       )
@@ -2697,7 +2698,7 @@ export class DatabaseStorage implements IStorage {
 
   async getInvoiceTemplate(id: string): Promise<InvoiceTemplate | undefined> {
     const [template] = await db.select().from(invoiceTemplates).where(
-      and(eq(invoiceTemplates.id, id), eq(invoiceTemplates.recordStatus, 1))
+      and(eq(invoiceTemplates.id, id), eq(invoiceTemplates.recordStatus, 1), tc(invoiceTemplates))
     );
     return template;
   }
@@ -2725,19 +2726,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllTermsConditions(): Promise<TermsConditions[]> {
-    return await db.select().from(termsConditions).where(eq(termsConditions.recordStatus, 1));
+    return await db.select().from(termsConditions).where(and(eq(termsConditions.recordStatus, 1), tc(termsConditions)));
   }
 
   async getActiveTermsConditions(): Promise<TermsConditions[]> {
     return await db.select().from(termsConditions).where(
-      and(eq(termsConditions.recordStatus, 1), eq(termsConditions.isActive, 1))
+      and(eq(termsConditions.recordStatus, 1), tc(termsConditions), eq(termsConditions.isActive, 1))
     );
   }
 
   async getDefaultTermsConditions(): Promise<TermsConditions | undefined> {
     const [tc] = await db.select().from(termsConditions).where(
       and(
-        eq(termsConditions.recordStatus, 1),
+        eq(termsConditions.recordStatus, 1), tc(termsConditions),
         eq(termsConditions.isDefault, 1),
         eq(termsConditions.isActive, 1)
       )
@@ -2747,7 +2748,7 @@ export class DatabaseStorage implements IStorage {
 
   async getTermsConditions(id: string): Promise<TermsConditions | undefined> {
     const [tc] = await db.select().from(termsConditions).where(
-      and(eq(termsConditions.id, id), eq(termsConditions.recordStatus, 1))
+      and(eq(termsConditions.id, id), eq(termsConditions.recordStatus, 1), tc(termsConditions))
     );
     return tc;
   }
@@ -2775,7 +2776,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllInvoices(): Promise<Invoice[]> {
-    return await db.select().from(invoices).where(eq(invoices.recordStatus, 1));
+    return await db.select().from(invoices).where(and(eq(invoices.recordStatus, 1), tc(invoices)));
   }
 
   async getAvailableInvoices(): Promise<Invoice[]> {
@@ -2787,7 +2788,7 @@ export class DatabaseStorage implements IStorage {
       .from(gatepasses)
       .where(
         and(
-          eq(gatepasses.recordStatus, 1), // Only active gatepasses
+          eq(gatepasses.recordStatus, 1), tc(gatepasses), // Only active gatepasses
           isNotNull(gatepasses.invoiceId)
         )
       );
@@ -2798,7 +2799,7 @@ export class DatabaseStorage implements IStorage {
       // No active gatepasses using any invoices - return only invoices with "ready_for_gatepass" status
       return await db.select().from(invoices).where(
         and(
-          eq(invoices.recordStatus, 1),
+          eq(invoices.recordStatus, 1), tc(invoices),
           eq(invoices.status, 'ready_for_gatepass')
         )
       );
@@ -2809,7 +2810,7 @@ export class DatabaseStorage implements IStorage {
       .from(invoices)
       .where(
         and(
-          eq(invoices.recordStatus, 1),
+          eq(invoices.recordStatus, 1), tc(invoices),
           eq(invoices.status, 'ready_for_gatepass'),
           notInArray(invoices.id, usedIds)
         )
@@ -2822,7 +2823,7 @@ export class DatabaseStorage implements IStorage {
       const [invoice] = await db.select().from(invoices).where(eq(invoices.id, id));
       return invoice;
     }
-    const [invoice] = await db.select().from(invoices).where(and(eq(invoices.id, id), eq(invoices.recordStatus, 1)));
+    const [invoice] = await db.select().from(invoices).where(and(eq(invoices.id, id), eq(invoices.recordStatus, 1), tc(invoices)));
     return invoice;
   }
 
@@ -2843,14 +2844,14 @@ export class DatabaseStorage implements IStorage {
     
     return await db.select().from(invoices).where(
       and(
-        eq(invoices.recordStatus, 1),
+        eq(invoices.recordStatus, 1), tc(invoices),
         eq(invoices.invoiceDate, date)
       )
     );
   }
 
   async getInvoiceByNumber(invoiceNumber: string): Promise<Invoice | undefined> {
-    const [invoice] = await db.select().from(invoices).where(and(eq(invoices.invoiceNumber, invoiceNumber), eq(invoices.recordStatus, 1)));
+    const [invoice] = await db.select().from(invoices).where(and(eq(invoices.invoiceNumber, invoiceNumber), eq(invoices.recordStatus, 1), tc(invoices)));
     return invoice;
   }
 
@@ -2866,7 +2867,7 @@ export class DatabaseStorage implements IStorage {
       // Include cancelled items (recordStatus = 0 or 1)
       return await db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, invoiceId));
     }
-    return await db.select().from(invoiceItems).where(and(eq(invoiceItems.invoiceId, invoiceId), eq(invoiceItems.recordStatus, 1)));
+    return await db.select().from(invoiceItems).where(and(eq(invoiceItems.invoiceId, invoiceId), eq(invoiceItems.recordStatus, 1), tc(invoiceItems)));
   }
 
   async updateInvoiceItem(id: string, updates: Partial<InsertInvoiceItem>): Promise<InvoiceItem | undefined> {
@@ -2883,7 +2884,7 @@ export class DatabaseStorage implements IStorage {
     // Fetch all active invoices in the period
     const invoicesInPeriod = await db.select().from(invoices).where(
       and(
-        eq(invoices.recordStatus, 1),
+        eq(invoices.recordStatus, 1), tc(invoices),
         gte(invoices.invoiceDate, startDate),
         lte(invoices.invoiceDate, endDate)
       )
@@ -2909,11 +2910,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllBanks(): Promise<Bank[]> {
-    return await db.select().from(banks).where(eq(banks.recordStatus, 1));
+    return await db.select().from(banks).where(and(eq(banks.recordStatus, 1), tc(banks)));
   }
 
   async getBank(id: string): Promise<Bank | undefined> {
-    const [bank] = await db.select().from(banks).where(and(eq(banks.id, id), eq(banks.recordStatus, 1)));
+    const [bank] = await db.select().from(banks).where(and(eq(banks.id, id), eq(banks.recordStatus, 1), tc(banks)));
     return bank;
   }
 
@@ -2927,13 +2928,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getDefaultBank(): Promise<Bank | undefined> {
-    const [bank] = await db.select().from(banks).where(and(eq(banks.isDefault, 1), eq(banks.recordStatus, 1)));
+    const [bank] = await db.select().from(banks).where(and(eq(banks.isDefault, 1), eq(banks.recordStatus, 1), tc(banks)));
     return bank;
   }
 
   async setDefaultBank(id: string): Promise<void> {
     // Reset all banks to non-default
-    await db.update(banks).set({ isDefault: 0, updatedAt: new Date().toISOString() }).where(eq(banks.recordStatus, 1));
+    await db.update(banks).set({ isDefault: 0, updatedAt: new Date().toISOString() }).where(and(eq(banks.recordStatus, 1), tc(banks)));
     // Set the selected bank as default
     await db.update(banks).set({ isDefault: 1, updatedAt: new Date().toISOString() }).where(eq(banks.id, id));
   }
@@ -2945,11 +2946,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllPayments(): Promise<InvoicePayment[]> {
-    return await db.select().from(invoicePayments).where(eq(invoicePayments.recordStatus, 1));
+    return await db.select().from(invoicePayments).where(and(eq(invoicePayments.recordStatus, 1), tc(invoicePayments)));
   }
 
   async getPayment(id: string): Promise<InvoicePayment | undefined> {
-    const [payment] = await db.select().from(invoicePayments).where(and(eq(invoicePayments.id, id), eq(invoicePayments.recordStatus, 1)));
+    const [payment] = await db.select().from(invoicePayments).where(and(eq(invoicePayments.id, id), eq(invoicePayments.recordStatus, 1), tc(invoicePayments)));
     return payment;
   }
 
@@ -2976,7 +2977,7 @@ export class DatabaseStorage implements IStorage {
       })
       .from(invoicePayments)
       .leftJoin(users, eq(invoicePayments.recordedBy, users.id))
-      .where(and(eq(invoicePayments.invoiceId, invoiceId), eq(invoicePayments.recordStatus, 1)));
+      .where(and(eq(invoicePayments.invoiceId, invoiceId), eq(invoicePayments.recordStatus, 1), tc(invoicePayments)));
     
     return results.map(r => ({
       ...r,
@@ -3000,7 +3001,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(paymentEvidence)
-      .where(and(eq(paymentEvidence.parentPaymentId, parentPaymentId), eq(paymentEvidence.recordStatus, 1)));
+      .where(and(eq(paymentEvidence.parentPaymentId, parentPaymentId), eq(paymentEvidence.recordStatus, 1), tc(paymentEvidence)));
   }
 
   async getPaymentEvidenceByInvoice(invoiceId: string): Promise<PaymentEvidence[]> {
@@ -3012,7 +3013,7 @@ export class DatabaseStorage implements IStorage {
           eq(paymentEvidence.invoiceId, invoiceId),
           sql`${paymentEvidence.parentPaymentId} IN (SELECT id FROM invoice_payments WHERE invoice_id = ${invoiceId})`
         ),
-        eq(paymentEvidence.recordStatus, 1)
+        eq(paymentEvidence.recordStatus, 1), tc(paymentEvidence)
       ));
   }
 
@@ -3020,14 +3021,14 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(paymentEvidence)
-      .where(and(eq(paymentEvidence.vendorId, vendorId), eq(paymentEvidence.recordStatus, 1)));
+      .where(and(eq(paymentEvidence.vendorId, vendorId), eq(paymentEvidence.recordStatus, 1), tc(paymentEvidence)));
   }
 
   async getAllOrphanEvidence(): Promise<PaymentEvidence[]> {
     return await db
       .select()
       .from(paymentEvidence)
-      .where(and(eq(paymentEvidence.matchStatus, 'orphan'), eq(paymentEvidence.recordStatus, 1)));
+      .where(and(eq(paymentEvidence.matchStatus, 'orphan'), eq(paymentEvidence.recordStatus, 1), tc(paymentEvidence)));
   }
 
   async updatePaymentEvidence(id: string, updates: Partial<InsertPaymentEvidence>): Promise<PaymentEvidence | undefined> {
@@ -3065,7 +3066,7 @@ export class DatabaseStorage implements IStorage {
     const offset = (page - 1) * pageSize;
     
     // Build conditions
-    const conditions: any[] = [eq(invoicePayments.recordStatus, 1)];
+    const conditions: any[] = [eq(invoicePayments.recordStatus, 1), tc(invoicePayments)];
     
     if (options?.invoiceId) {
       conditions.push(eq(invoicePayments.invoiceId, options.invoiceId));
@@ -3130,7 +3131,7 @@ export class DatabaseStorage implements IStorage {
         .from(paymentEvidence)
         .where(and(
           inArray(paymentEvidence.parentPaymentId, paymentIds),
-          eq(paymentEvidence.recordStatus, 1)
+          eq(paymentEvidence.recordStatus, 1), tc(paymentEvidence)
         ));
       
       // Group evidence by parent payment ID
@@ -3225,7 +3226,7 @@ export class DatabaseStorage implements IStorage {
       })
       .from(salesReturns)
       .leftJoin(invoices, eq(salesReturns.invoiceId, invoices.id))
-      .where(eq(salesReturns.recordStatus, 1));
+      .where(and(eq(salesReturns.recordStatus, 1), tc(salesReturns)));
     
     return results as (SalesReturn & { invoiceNumber: string | null })[];
   }
@@ -3257,13 +3258,13 @@ export class DatabaseStorage implements IStorage {
       })
       .from(salesReturns)
       .leftJoin(invoices, eq(salesReturns.invoiceId, invoices.id))
-      .where(and(eq(salesReturns.id, id), eq(salesReturns.recordStatus, 1)));
+      .where(and(eq(salesReturns.id, id), eq(salesReturns.recordStatus, 1), tc(salesReturns)));
     
     return results[0] as (SalesReturn & { invoiceNumber: string | null }) | undefined;
   }
 
   async getSalesReturnByNumber(returnNumber: string): Promise<SalesReturn | undefined> {
-    const [salesReturn] = await db.select().from(salesReturns).where(and(eq(salesReturns.returnNumber, returnNumber), eq(salesReturns.recordStatus, 1)));
+    const [salesReturn] = await db.select().from(salesReturns).where(and(eq(salesReturns.returnNumber, returnNumber), eq(salesReturns.recordStatus, 1), tc(salesReturns)));
     return salesReturn;
   }
 
@@ -3271,7 +3272,7 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(salesReturns).where(
       and(
         eq(salesReturns.invoiceId, invoiceId),
-        eq(salesReturns.recordStatus, 1)
+        eq(salesReturns.recordStatus, 1), tc(salesReturns)
       )
     );
   }
@@ -3280,7 +3281,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(salesReturns)
       .set({ ...updates, updatedAt: new Date().toISOString() })
-      .where(and(eq(salesReturns.id, id), eq(salesReturns.recordStatus, 1)))
+      .where(and(eq(salesReturns.id, id), eq(salesReturns.recordStatus, 1), tc(salesReturns)))
       .returning();
     return updated;
   }
@@ -3299,7 +3300,7 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(salesReturnItems).where(
       and(
         eq(salesReturnItems.returnId, returnId),
-        eq(salesReturnItems.recordStatus, 1)
+        eq(salesReturnItems.recordStatus, 1), tc(salesReturnItems)
       )
     );
   }
@@ -3308,7 +3309,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(salesReturnItems)
       .set({ ...updates, updatedAt: new Date().toISOString() })
-      .where(and(eq(salesReturnItems.id, id), eq(salesReturnItems.recordStatus, 1)))
+      .where(and(eq(salesReturnItems.id, id), eq(salesReturnItems.recordStatus, 1), tc(salesReturnItems)))
       .returning();
     return updated;
   }
@@ -3324,16 +3325,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllCreditNotes(): Promise<CreditNote[]> {
-    return await db.select().from(creditNotes).where(eq(creditNotes.recordStatus, 1));
+    return await db.select().from(creditNotes).where(and(eq(creditNotes.recordStatus, 1), tc(creditNotes)));
   }
 
   async getCreditNote(id: string): Promise<CreditNote | undefined> {
-    const [creditNote] = await db.select().from(creditNotes).where(and(eq(creditNotes.id, id), eq(creditNotes.recordStatus, 1)));
+    const [creditNote] = await db.select().from(creditNotes).where(and(eq(creditNotes.id, id), eq(creditNotes.recordStatus, 1), tc(creditNotes)));
     return creditNote;
   }
 
   async getCreditNoteByNumber(noteNumber: string): Promise<CreditNote | undefined> {
-    const [creditNote] = await db.select().from(creditNotes).where(and(eq(creditNotes.noteNumber, noteNumber), eq(creditNotes.recordStatus, 1)));
+    const [creditNote] = await db.select().from(creditNotes).where(and(eq(creditNotes.noteNumber, noteNumber), eq(creditNotes.recordStatus, 1), tc(creditNotes)));
     return creditNote;
   }
 
@@ -3341,7 +3342,7 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(creditNotes).where(
       and(
         eq(creditNotes.invoiceId, invoiceId),
-        eq(creditNotes.recordStatus, 1)
+        eq(creditNotes.recordStatus, 1), tc(creditNotes)
       )
     );
   }
@@ -3350,7 +3351,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(creditNotes)
       .set({ ...updates, updatedAt: new Date().toISOString() })
-      .where(and(eq(creditNotes.id, id), eq(creditNotes.recordStatus, 1)))
+      .where(and(eq(creditNotes.id, id), eq(creditNotes.recordStatus, 1), tc(creditNotes)))
       .returning();
     return updated;
   }
@@ -3369,7 +3370,7 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(creditNoteItems).where(
       and(
         eq(creditNoteItems.creditNoteId, creditNoteId),
-        eq(creditNoteItems.recordStatus, 1)
+        eq(creditNoteItems.recordStatus, 1), tc(creditNoteItems)
       )
     );
   }
@@ -3378,7 +3379,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(creditNoteItems)
       .set({ ...updates, updatedAt: new Date().toISOString() })
-      .where(and(eq(creditNoteItems.id, id), eq(creditNoteItems.recordStatus, 1)))
+      .where(and(eq(creditNoteItems.id, id), eq(creditNoteItems.recordStatus, 1), tc(creditNoteItems)))
       .returning();
     return updated;
   }
@@ -3394,16 +3395,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllDebitNotes(): Promise<DebitNote[]> {
-    return await db.select().from(debitNotes).where(eq(debitNotes.recordStatus, 1));
+    return await db.select().from(debitNotes).where(and(eq(debitNotes.recordStatus, 1), tc(debitNotes)));
   }
 
   async getDebitNote(id: string): Promise<DebitNote | undefined> {
-    const [debitNote] = await db.select().from(debitNotes).where(and(eq(debitNotes.id, id), eq(debitNotes.recordStatus, 1)));
+    const [debitNote] = await db.select().from(debitNotes).where(and(eq(debitNotes.id, id), eq(debitNotes.recordStatus, 1), tc(debitNotes)));
     return debitNote;
   }
 
   async getDebitNoteByNumber(noteNumber: string): Promise<DebitNote | undefined> {
-    const [debitNote] = await db.select().from(debitNotes).where(and(eq(debitNotes.noteNumber, noteNumber), eq(debitNotes.recordStatus, 1)));
+    const [debitNote] = await db.select().from(debitNotes).where(and(eq(debitNotes.noteNumber, noteNumber), eq(debitNotes.recordStatus, 1), tc(debitNotes)));
     return debitNote;
   }
 
@@ -3411,7 +3412,7 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(debitNotes).where(
       and(
         eq(debitNotes.invoiceId, invoiceId),
-        eq(debitNotes.recordStatus, 1)
+        eq(debitNotes.recordStatus, 1), tc(debitNotes)
       )
     );
   }
@@ -3420,7 +3421,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(debitNotes)
       .set({ ...updates, updatedAt: new Date().toISOString() })
-      .where(and(eq(debitNotes.id, id), eq(debitNotes.recordStatus, 1)))
+      .where(and(eq(debitNotes.id, id), eq(debitNotes.recordStatus, 1), tc(debitNotes)))
       .returning();
     return updated;
   }
@@ -3439,7 +3440,7 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(debitNoteItems).where(
       and(
         eq(debitNoteItems.debitNoteId, debitNoteId),
-        eq(debitNoteItems.recordStatus, 1)
+        eq(debitNoteItems.recordStatus, 1), tc(debitNoteItems)
       )
     );
   }
@@ -3448,7 +3449,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(debitNoteItems)
       .set({ ...updates, updatedAt: new Date().toISOString() })
-      .where(and(eq(debitNoteItems.id, id), eq(debitNoteItems.recordStatus, 1)))
+      .where(and(eq(debitNoteItems.id, id), eq(debitNoteItems.recordStatus, 1), tc(debitNoteItems)))
       .returning();
     return updated;
   }
@@ -3464,11 +3465,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllRoles(): Promise<Role[]> {
-    return await db.select().from(roles).where(eq(roles.recordStatus, 1));
+    return await db.select().from(roles).where(and(eq(roles.recordStatus, 1), tc(roles)));
   }
 
   async getRole(id: string): Promise<Role | undefined> {
-    const [role] = await db.select().from(roles).where(and(eq(roles.id, id), eq(roles.recordStatus, 1)));
+    const [role] = await db.select().from(roles).where(and(eq(roles.id, id), eq(roles.recordStatus, 1), tc(roles)));
     return role;
   }
 
@@ -3476,7 +3477,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(roles)
       .set({ ...roleData, updatedAt: new Date().toISOString() })
-      .where(and(eq(roles.id, id), eq(roles.recordStatus, 1)))
+      .where(and(eq(roles.id, id), eq(roles.recordStatus, 1), tc(roles)))
       .returning();
     return updated;
   }
@@ -3495,18 +3496,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getRolePermissions(roleId: string): Promise<RolePermission[]> {
-    return await db.select().from(rolePermissions).where(and(eq(rolePermissions.roleId, roleId), eq(rolePermissions.recordStatus, 1)));
+    return await db.select().from(rolePermissions).where(and(eq(rolePermissions.roleId, roleId), eq(rolePermissions.recordStatus, 1), tc(rolePermissions)));
   }
 
   async getAllRolePermissions(): Promise<RolePermission[]> {
-    return await db.select().from(rolePermissions).where(eq(rolePermissions.recordStatus, 1));
+    return await db.select().from(rolePermissions).where(and(eq(rolePermissions.recordStatus, 1), tc(rolePermissions)));
   }
 
   async updateRolePermission(id: string, permissionData: Partial<InsertRolePermission>): Promise<RolePermission | undefined> {
     const [updated] = await db
       .update(rolePermissions)
       .set({ ...permissionData, updatedAt: new Date().toISOString() })
-      .where(and(eq(rolePermissions.id, id), eq(rolePermissions.recordStatus, 1)))
+      .where(and(eq(rolePermissions.id, id), eq(rolePermissions.recordStatus, 1), tc(rolePermissions)))
       .returning();
     return updated;
   }
@@ -3538,29 +3539,29 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllChecklistAssignments(): Promise<ChecklistAssignment[]> {
-    return await db.select().from(checklistAssignments).where(eq(checklistAssignments.recordStatus, 1));
+    return await db.select().from(checklistAssignments).where(and(eq(checklistAssignments.recordStatus, 1), tc(checklistAssignments)));
   }
 
   async getChecklistAssignment(id: string): Promise<ChecklistAssignment | undefined> {
-    const [assignment] = await db.select().from(checklistAssignments).where(and(eq(checklistAssignments.id, id), eq(checklistAssignments.recordStatus, 1)));
+    const [assignment] = await db.select().from(checklistAssignments).where(and(eq(checklistAssignments.id, id), eq(checklistAssignments.recordStatus, 1), tc(checklistAssignments)));
     return assignment;
   }
 
   async getChecklistAssignmentsByOperator(operatorId: string): Promise<ChecklistAssignment[]> {
     return await db.select().from(checklistAssignments)
-      .where(and(eq(checklistAssignments.operatorId, operatorId), eq(checklistAssignments.recordStatus, 1)));
+      .where(and(eq(checklistAssignments.operatorId, operatorId), eq(checklistAssignments.recordStatus, 1), tc(checklistAssignments)));
   }
 
   async getChecklistAssignmentsByDate(date: string): Promise<ChecklistAssignment[]> {
     return await db.select().from(checklistAssignments)
-      .where(and(eq(checklistAssignments.assignedDate, date), eq(checklistAssignments.recordStatus, 1)));
+      .where(and(eq(checklistAssignments.assignedDate, date), eq(checklistAssignments.recordStatus, 1), tc(checklistAssignments)));
   }
 
   async updateChecklistAssignment(id: string, updates: Partial<InsertChecklistAssignment>): Promise<ChecklistAssignment | undefined> {
     const [updated] = await db
       .update(checklistAssignments)
       .set({ ...updates, updatedAt: new Date().toISOString() })
-      .where(and(eq(checklistAssignments.id, id), eq(checklistAssignments.recordStatus, 1)))
+      .where(and(eq(checklistAssignments.id, id), eq(checklistAssignments.recordStatus, 1), tc(checklistAssignments)))
       .returning();
     return updated;
   }
@@ -3604,7 +3605,7 @@ export class DatabaseStorage implements IStorage {
     const [assignment] = await db.select().from(checklistAssignments)
       .where(and(
         eq(checklistAssignments.taskReferenceId, taskReferenceId),
-        eq(checklistAssignments.recordStatus, 1)
+        eq(checklistAssignments.recordStatus, 1), tc(checklistAssignments)
       ));
     return assignment;
   }
@@ -3654,7 +3655,7 @@ export class DatabaseStorage implements IStorage {
       .where(and(
         eq(checklistAssignments.status, 'pending'),
         eq(checklistAssignments.missedNotificationSent, 0),
-        eq(checklistAssignments.recordStatus, 1)
+        eq(checklistAssignments.recordStatus, 1), tc(checklistAssignments)
       ));
     
     // Filter assignments where dueDateTime is in the past
@@ -3774,7 +3775,7 @@ export class DatabaseStorage implements IStorage {
     const roleId = role[0].id;
     return await db.select().from(users).where(and(
       eq(users.roleId, roleId),
-      eq(users.recordStatus, 1)
+      eq(users.recordStatus, 1), tc(users)
     ));
   }
 
@@ -3785,11 +3786,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllMachineStartupTasks(): Promise<MachineStartupTask[]> {
-    return await db.select().from(machineStartupTasks).where(eq(machineStartupTasks.recordStatus, 1));
+    return await db.select().from(machineStartupTasks).where(and(eq(machineStartupTasks.recordStatus, 1), tc(machineStartupTasks)));
   }
 
   async getMachineStartupTask(id: string): Promise<MachineStartupTask | undefined> {
-    const [task] = await db.select().from(machineStartupTasks).where(and(eq(machineStartupTasks.id, id), eq(machineStartupTasks.recordStatus, 1)));
+    const [task] = await db.select().from(machineStartupTasks).where(and(eq(machineStartupTasks.id, id), eq(machineStartupTasks.recordStatus, 1), tc(machineStartupTasks)));
     return task;
   }
 
@@ -3797,7 +3798,7 @@ export class DatabaseStorage implements IStorage {
     const [task] = await db.select().from(machineStartupTasks)
       .where(and(
         eq(machineStartupTasks.taskReferenceId, taskReferenceId),
-        eq(machineStartupTasks.recordStatus, 1)
+        eq(machineStartupTasks.recordStatus, 1), tc(machineStartupTasks)
       ));
     return task;
   }
@@ -3806,7 +3807,7 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(machineStartupTasks)
       .where(and(
         eq(machineStartupTasks.status, 'pending'),
-        eq(machineStartupTasks.recordStatus, 1)
+        eq(machineStartupTasks.recordStatus, 1), tc(machineStartupTasks)
       ));
   }
 
@@ -3814,7 +3815,7 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(machineStartupTasks)
       .where(and(
         eq(machineStartupTasks.productionDate, date),
-        eq(machineStartupTasks.recordStatus, 1)
+        eq(machineStartupTasks.recordStatus, 1), tc(machineStartupTasks)
       ));
   }
 
@@ -3822,7 +3823,7 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(machineStartupTasks)
       .where(and(
         eq(machineStartupTasks.assignedUserId, userId),
-        eq(machineStartupTasks.recordStatus, 1)
+        eq(machineStartupTasks.recordStatus, 1), tc(machineStartupTasks)
       ));
   }
 
@@ -3836,7 +3837,7 @@ export class DatabaseStorage implements IStorage {
     operatorResponseTime?: Date;
     responseStatus?: 'on_time' | 'late' | 'early' | 'no_response';
   }, onlyIfNotCompletedOrCancelled?: boolean): Promise<MachineStartupTask | undefined> {
-    const conditions = [eq(machineStartupTasks.id, id), eq(machineStartupTasks.recordStatus, 1)];
+    const conditions = [eq(machineStartupTasks.id, id), eq(machineStartupTasks.recordStatus, 1), tc(machineStartupTasks)];
     
     // Add condition to prevent overwriting completed/cancelled tasks
     if (onlyIfNotCompletedOrCancelled) {
@@ -3863,7 +3864,7 @@ export class DatabaseStorage implements IStorage {
   // Notification Configuration Methods
   async getNotificationConfig(): Promise<NotificationConfig | undefined> {
     // Return the first (and should be only) active config
-    const [config] = await db.select().from(notificationConfig).where(eq(notificationConfig.recordStatus, 1)).limit(1);
+    const [config] = await db.select().from(notificationConfig).where(and(eq(notificationConfig.recordStatus, 1), tc(notificationConfig))).limit(1);
     return config;
   }
 
@@ -3876,7 +3877,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(notificationConfig)
       .set({ ...updates, updatedAt: new Date().toISOString() })
-      .where(and(eq(notificationConfig.id, id), eq(notificationConfig.recordStatus, 1)))
+      .where(and(eq(notificationConfig.id, id), eq(notificationConfig.recordStatus, 1), tc(notificationConfig)))
       .returning();
     return updated;
   }
@@ -3890,19 +3891,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllDocumentCategories(): Promise<DocumentCategory[]> {
-    return await db.select().from(documentCategories).where(eq(documentCategories.recordStatus, 1));
+    return await db.select().from(documentCategories).where(and(eq(documentCategories.recordStatus, 1), tc(documentCategories)));
   }
 
   async getDocumentCategory(id: string): Promise<DocumentCategory | undefined> {
     const [category] = await db.select().from(documentCategories)
-      .where(and(eq(documentCategories.id, id), eq(documentCategories.recordStatus, 1)));
+      .where(and(eq(documentCategories.id, id), eq(documentCategories.recordStatus, 1), tc(documentCategories)));
     return category;
   }
 
   async updateDocumentCategory(id: string, category: Partial<InsertDocumentCategory>): Promise<DocumentCategory | undefined> {
     const [updated] = await db.update(documentCategories)
       .set({ ...category, updatedAt: new Date().toISOString() })
-      .where(and(eq(documentCategories.id, id), eq(documentCategories.recordStatus, 1)))
+      .where(and(eq(documentCategories.id, id), eq(documentCategories.recordStatus, 1), tc(documentCategories)))
       .returning();
     return updated;
   }
@@ -3920,18 +3921,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllDocuments(): Promise<Document[]> {
-    return await db.select().from(documents).where(eq(documents.recordStatus, 1));
+    return await db.select().from(documents).where(and(eq(documents.recordStatus, 1), tc(documents)));
   }
 
   async getDocument(id: string): Promise<Document | undefined> {
     const [doc] = await db.select().from(documents)
-      .where(and(eq(documents.id, id), eq(documents.recordStatus, 1)));
+      .where(and(eq(documents.id, id), eq(documents.recordStatus, 1), tc(documents)));
     return doc;
   }
 
   async getDocumentsByCategory(categoryId: string): Promise<Document[]> {
     return await db.select().from(documents)
-      .where(and(eq(documents.categoryId, categoryId), eq(documents.recordStatus, 1)));
+      .where(and(eq(documents.categoryId, categoryId), eq(documents.recordStatus, 1), tc(documents)));
   }
 
   async getDocumentsByEntity(entityType: string, entityId: string): Promise<Document[]> {
@@ -3939,7 +3940,7 @@ export class DatabaseStorage implements IStorage {
       .where(and(
         eq(documents.relatedEntityType, entityType),
         eq(documents.relatedEntityId, entityId),
-        eq(documents.recordStatus, 1)
+        eq(documents.recordStatus, 1), tc(documents)
       ));
   }
 
@@ -3950,7 +3951,7 @@ export class DatabaseStorage implements IStorage {
     if ('expiryDate' in document) {
       // Get current document to check if expiry date is changing
       const [current] = await db.select().from(documents)
-        .where(and(eq(documents.id, id), eq(documents.recordStatus, 1)));
+        .where(and(eq(documents.id, id), eq(documents.recordStatus, 1), tc(documents)));
       
       if (current && current.expiryDate !== document.expiryDate) {
         // Expiry date changed - reset alert status so notification can be sent again
@@ -3961,7 +3962,7 @@ export class DatabaseStorage implements IStorage {
     
     const [updated] = await db.update(documents)
       .set(updateData)
-      .where(and(eq(documents.id, id), eq(documents.recordStatus, 1)))
+      .where(and(eq(documents.id, id), eq(documents.recordStatus, 1), tc(documents)))
       .returning();
     return updated;
   }
@@ -3984,7 +3985,7 @@ export class DatabaseStorage implements IStorage {
     // 4. Are active (recordStatus = 1)
     return await db.select().from(documents)
       .where(and(
-        eq(documents.recordStatus, 1),
+        eq(documents.recordStatus, 1), tc(documents),
         isNotNull(documents.expiryDate),
         lte(documents.expiryDate, futureDate.toISOString().split('T')[0]),
         gte(documents.expiryDate, today.toISOString().split('T')[0]),
@@ -4022,19 +4023,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllExpenseCategories(): Promise<ExpenseCategory[]> {
-    return await db.select().from(expenseCategories).where(eq(expenseCategories.recordStatus, 1));
+    return await db.select().from(expenseCategories).where(and(eq(expenseCategories.recordStatus, 1), tc(expenseCategories)));
   }
 
   async getExpenseCategory(id: string): Promise<ExpenseCategory | undefined> {
     const [category] = await db.select().from(expenseCategories)
-      .where(and(eq(expenseCategories.id, id), eq(expenseCategories.recordStatus, 1)));
+      .where(and(eq(expenseCategories.id, id), eq(expenseCategories.recordStatus, 1), tc(expenseCategories)));
     return category;
   }
 
   async updateExpenseCategory(id: string, category: Partial<InsertExpenseCategory>): Promise<ExpenseCategory | undefined> {
     const [updated] = await db.update(expenseCategories)
       .set({ ...category, updatedAt: new Date().toISOString() })
-      .where(and(eq(expenseCategories.id, id), eq(expenseCategories.recordStatus, 1)))
+      .where(and(eq(expenseCategories.id, id), eq(expenseCategories.recordStatus, 1), tc(expenseCategories)))
       .returning();
     return updated;
   }
@@ -4052,25 +4053,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllExpenseVouchers(): Promise<ExpenseVoucher[]> {
-    return await db.select().from(expenseVouchers).where(eq(expenseVouchers.recordStatus, 1));
+    return await db.select().from(expenseVouchers).where(and(eq(expenseVouchers.recordStatus, 1), tc(expenseVouchers)));
   }
 
   async getExpenseVoucher(id: string): Promise<ExpenseVoucher | undefined> {
     const [voucher] = await db.select().from(expenseVouchers)
-      .where(and(eq(expenseVouchers.id, id), eq(expenseVouchers.recordStatus, 1)));
+      .where(and(eq(expenseVouchers.id, id), eq(expenseVouchers.recordStatus, 1), tc(expenseVouchers)));
     return voucher;
   }
 
   async getExpenseVoucherByNumber(voucherNumber: string): Promise<ExpenseVoucher | undefined> {
     const [voucher] = await db.select().from(expenseVouchers)
-      .where(and(eq(expenseVouchers.voucherNumber, voucherNumber), eq(expenseVouchers.recordStatus, 1)));
+      .where(and(eq(expenseVouchers.voucherNumber, voucherNumber), eq(expenseVouchers.recordStatus, 1), tc(expenseVouchers)));
     return voucher;
   }
 
   async updateExpenseVoucher(id: string, voucher: Partial<InsertExpenseVoucher>): Promise<ExpenseVoucher | undefined> {
     const [updated] = await db.update(expenseVouchers)
       .set({ ...voucher, updatedAt: new Date().toISOString() })
-      .where(and(eq(expenseVouchers.id, id), eq(expenseVouchers.recordStatus, 1)))
+      .where(and(eq(expenseVouchers.id, id), eq(expenseVouchers.recordStatus, 1), tc(expenseVouchers)))
       .returning();
     return updated;
   }
@@ -4089,13 +4090,13 @@ export class DatabaseStorage implements IStorage {
 
   async getExpenseItems(voucherId: string): Promise<ExpenseItem[]> {
     return await db.select().from(expenseItems)
-      .where(and(eq(expenseItems.voucherId, voucherId), eq(expenseItems.recordStatus, 1)));
+      .where(and(eq(expenseItems.voucherId, voucherId), eq(expenseItems.recordStatus, 1), tc(expenseItems)));
   }
 
   async updateExpenseItem(id: string, item: Partial<InsertExpenseItem>): Promise<ExpenseItem | undefined> {
     const [updated] = await db.update(expenseItems)
       .set({ ...item, updatedAt: new Date().toISOString() })
-      .where(and(eq(expenseItems.id, id), eq(expenseItems.recordStatus, 1)))
+      .where(and(eq(expenseItems.id, id), eq(expenseItems.recordStatus, 1), tc(expenseItems)))
       .returning();
     return updated;
   }
@@ -4114,7 +4115,7 @@ export class DatabaseStorage implements IStorage {
 
   async getExpenseAttachments(voucherId: string): Promise<ExpenseAttachment[]> {
     return await db.select().from(expenseAttachments)
-      .where(and(eq(expenseAttachments.voucherId, voucherId), eq(expenseAttachments.recordStatus, 1)));
+      .where(and(eq(expenseAttachments.voucherId, voucherId), eq(expenseAttachments.recordStatus, 1), tc(expenseAttachments)));
   }
 
   async deleteExpenseAttachment(id: string): Promise<void> {
@@ -4130,7 +4131,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getCashRegisterDays(filters?: { startDate?: string; endDate?: string; salespersonName?: string; status?: string }): Promise<CashRegisterDay[]> {
-    const conditions = [eq(cashRegisterDays.recordStatus, 1)];
+    const conditions = [eq(cashRegisterDays.recordStatus, 1), tc(cashRegisterDays)];
     
     if (filters?.startDate) {
       conditions.push(gte(cashRegisterDays.registerDate, filters.startDate));
@@ -4152,7 +4153,7 @@ export class DatabaseStorage implements IStorage {
 
   async getCashRegisterDay(id: string): Promise<CashRegisterDay | undefined> {
     const [day] = await db.select().from(cashRegisterDays)
-      .where(and(eq(cashRegisterDays.id, id), eq(cashRegisterDays.recordStatus, 1)));
+      .where(and(eq(cashRegisterDays.id, id), eq(cashRegisterDays.recordStatus, 1), tc(cashRegisterDays)));
     return day;
   }
 
@@ -4161,7 +4162,7 @@ export class DatabaseStorage implements IStorage {
       .where(and(
         eq(cashRegisterDays.registerDate, date),
         eq(cashRegisterDays.salespersonName, salespersonName),
-        eq(cashRegisterDays.recordStatus, 1)
+        eq(cashRegisterDays.recordStatus, 1), tc(cashRegisterDays)
       ));
     return day;
   }
@@ -4170,7 +4171,7 @@ export class DatabaseStorage implements IStorage {
     const [day] = await db.select().from(cashRegisterDays)
       .where(and(
         eq(cashRegisterDays.registerDate, date),
-        eq(cashRegisterDays.recordStatus, 1)
+        eq(cashRegisterDays.recordStatus, 1), tc(cashRegisterDays)
       ));
     return day;
   }
@@ -4178,7 +4179,7 @@ export class DatabaseStorage implements IStorage {
   async updateCashRegisterDay(id: string, day: Partial<InsertCashRegisterDay>): Promise<CashRegisterDay | undefined> {
     const [updated] = await db.update(cashRegisterDays)
       .set({ ...day, updatedAt: new Date().toISOString() })
-      .where(and(eq(cashRegisterDays.id, id), eq(cashRegisterDays.recordStatus, 1)))
+      .where(and(eq(cashRegisterDays.id, id), eq(cashRegisterDays.recordStatus, 1), tc(cashRegisterDays)))
       .returning();
     return updated;
   }
@@ -4197,19 +4198,19 @@ export class DatabaseStorage implements IStorage {
 
   async getCashRegisterTransactions(dayId: string): Promise<CashRegisterTransaction[]> {
     return await db.select().from(cashRegisterTransactions)
-      .where(and(eq(cashRegisterTransactions.dayId, dayId), eq(cashRegisterTransactions.recordStatus, 1)));
+      .where(and(eq(cashRegisterTransactions.dayId, dayId), eq(cashRegisterTransactions.recordStatus, 1), tc(cashRegisterTransactions)));
   }
 
   async getCashRegisterTransaction(id: string): Promise<CashRegisterTransaction | undefined> {
     const [transaction] = await db.select().from(cashRegisterTransactions)
-      .where(and(eq(cashRegisterTransactions.id, id), eq(cashRegisterTransactions.recordStatus, 1)));
+      .where(and(eq(cashRegisterTransactions.id, id), eq(cashRegisterTransactions.recordStatus, 1), tc(cashRegisterTransactions)));
     return transaction;
   }
 
   async updateCashRegisterTransaction(id: string, transaction: Partial<InsertCashRegisterTransaction>): Promise<CashRegisterTransaction | undefined> {
     const [updated] = await db.update(cashRegisterTransactions)
       .set(transaction)
-      .where(and(eq(cashRegisterTransactions.id, id), eq(cashRegisterTransactions.recordStatus, 1)))
+      .where(and(eq(cashRegisterTransactions.id, id), eq(cashRegisterTransactions.recordStatus, 1), tc(cashRegisterTransactions)))
       .returning();
     return updated;
   }
@@ -4228,19 +4229,19 @@ export class DatabaseStorage implements IStorage {
 
   async getCashRegisterExpenseItem(id: string): Promise<CashRegisterExpenseItem | undefined> {
     const [item] = await db.select().from(cashRegisterExpenseItems)
-      .where(and(eq(cashRegisterExpenseItems.id, id), eq(cashRegisterExpenseItems.recordStatus, 1)));
+      .where(and(eq(cashRegisterExpenseItems.id, id), eq(cashRegisterExpenseItems.recordStatus, 1), tc(cashRegisterExpenseItems)));
     return item;
   }
 
   async getCashRegisterExpenseItems(transactionId: string): Promise<CashRegisterExpenseItem[]> {
     return await db.select().from(cashRegisterExpenseItems)
-      .where(and(eq(cashRegisterExpenseItems.transactionId, transactionId), eq(cashRegisterExpenseItems.recordStatus, 1)));
+      .where(and(eq(cashRegisterExpenseItems.transactionId, transactionId), eq(cashRegisterExpenseItems.recordStatus, 1), tc(cashRegisterExpenseItems)));
   }
 
   async updateCashRegisterExpenseItem(id: string, item: Partial<InsertCashRegisterExpenseItem>): Promise<CashRegisterExpenseItem | undefined> {
     const [updated] = await db.update(cashRegisterExpenseItems)
       .set(item)
-      .where(and(eq(cashRegisterExpenseItems.id, id), eq(cashRegisterExpenseItems.recordStatus, 1)))
+      .where(and(eq(cashRegisterExpenseItems.id, id), eq(cashRegisterExpenseItems.recordStatus, 1), tc(cashRegisterExpenseItems)))
       .returning();
     return updated;
   }
@@ -4383,12 +4384,13 @@ export class DatabaseStorage implements IStorage {
         .from(finishedGoods)
         .where(and(
           eq(finishedGoods.productId, productId),
-          eq(finishedGoods.recordStatus, 1)
+          eq(finishedGoods.recordStatus, 1), tc(finishedGoods)
         ));
       
       const physicalStock = finishedGoodsList.reduce((sum, fg) => sum + (fg.currentStock || 0), 0);
       
       // Get reserved stock (sum of invoice items for pending invoices)
+      const tenantId = getCurrentTenantId() ?? 1;
       const reservedResult = await db.execute(sql`
         SELECT COALESCE(SUM(ii.quantity), 0)::INTEGER as reserved_stock
         FROM invoice_items ii
@@ -4397,6 +4399,7 @@ export class DatabaseStorage implements IStorage {
           AND ii.record_status = 1
           AND i.record_status = 1
           AND i.status NOT IN ('dispatched', 'delivered', 'cancelled')
+          AND i.tenant_id = ${tenantId}
       `);
       
       const reservedStock = Number(reservedResult.rows?.[0]?.reserved_stock || 0);
@@ -4429,16 +4432,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllChartOfAccounts(): Promise<ChartOfAccount[]> {
-    return db.select().from(chartOfAccounts).where(eq(chartOfAccounts.recordStatus, 1)).orderBy(chartOfAccounts.code);
+    return db.select().from(chartOfAccounts).where(and(eq(chartOfAccounts.recordStatus, 1), tc(chartOfAccounts))).orderBy(chartOfAccounts.code);
   }
 
   async getChartOfAccount(id: string): Promise<ChartOfAccount | undefined> {
-    const [account] = await db.select().from(chartOfAccounts).where(and(eq(chartOfAccounts.id, id), eq(chartOfAccounts.recordStatus, 1))).limit(1);
+    const [account] = await db.select().from(chartOfAccounts).where(and(eq(chartOfAccounts.id, id), eq(chartOfAccounts.recordStatus, 1), tc(chartOfAccounts))).limit(1);
     return account;
   }
 
   async getChartOfAccountByCode(code: string): Promise<ChartOfAccount | undefined> {
-    const [account] = await db.select().from(chartOfAccounts).where(and(eq(chartOfAccounts.code, code), eq(chartOfAccounts.recordStatus, 1))).limit(1);
+    const [account] = await db.select().from(chartOfAccounts).where(and(eq(chartOfAccounts.code, code), eq(chartOfAccounts.recordStatus, 1), tc(chartOfAccounts))).limit(1);
     return account;
   }
 
@@ -4461,7 +4464,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllJournalEntries(filters?: { startDate?: string; endDate?: string; sourceType?: string; accountId?: string; status?: string }): Promise<JournalEntry[]> {
-    const conditions = [eq(journalEntries.recordStatus, 1)];
+    const conditions = [eq(journalEntries.recordStatus, 1), tc(journalEntries)];
     
     if (filters?.startDate) {
       conditions.push(gte(journalEntries.journalDate, filters.startDate));
@@ -4482,7 +4485,7 @@ export class DatabaseStorage implements IStorage {
     if (filters?.accountId) {
       const journalIds = await db.select({ journalId: journalLines.journalId })
         .from(journalLines)
-        .where(and(eq(journalLines.accountId, filters.accountId), eq(journalLines.recordStatus, 1)));
+        .where(and(eq(journalLines.accountId, filters.accountId), eq(journalLines.recordStatus, 1), tc(journalLines)));
       
       const ids = journalIds.map(j => j.journalId);
       if (ids.length === 0) return [];
@@ -4494,7 +4497,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getJournalEntry(id: string): Promise<JournalEntry | undefined> {
-    const [entry] = await db.select().from(journalEntries).where(and(eq(journalEntries.id, id), eq(journalEntries.recordStatus, 1))).limit(1);
+    const [entry] = await db.select().from(journalEntries).where(and(eq(journalEntries.id, id), eq(journalEntries.recordStatus, 1), tc(journalEntries))).limit(1);
     return entry;
   }
 
@@ -4503,7 +4506,7 @@ export class DatabaseStorage implements IStorage {
       and(
         eq(journalEntries.sourceType, sourceType),
         eq(journalEntries.sourceId, sourceId),
-        eq(journalEntries.recordStatus, 1)
+        eq(journalEntries.recordStatus, 1), tc(journalEntries)
       )
     ).limit(1);
     return entry;
@@ -4524,7 +4527,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getJournalLines(journalId: string): Promise<JournalLine[]> {
-    return db.select().from(journalLines).where(and(eq(journalLines.journalId, journalId), eq(journalLines.recordStatus, 1)));
+    return db.select().from(journalLines).where(and(eq(journalLines.journalId, journalId), eq(journalLines.recordStatus, 1), tc(journalLines)));
   }
 
   async deleteJournalLinesByJournalId(journalId: string): Promise<void> {
@@ -4546,11 +4549,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getBankStatementImports(): Promise<BankStatementImport[]> {
-    return db.select().from(bankStatementImports).where(eq(bankStatementImports.recordStatus, 1)).orderBy(desc(bankStatementImports.createdAt));
+    return db.select().from(bankStatementImports).where(and(eq(bankStatementImports.recordStatus, 1), tc(bankStatementImports))).orderBy(desc(bankStatementImports.createdAt));
   }
 
   async getBankStatementImport(id: string): Promise<BankStatementImport | undefined> {
-    const [imp] = await db.select().from(bankStatementImports).where(and(eq(bankStatementImports.id, id), eq(bankStatementImports.recordStatus, 1))).limit(1);
+    const [imp] = await db.select().from(bankStatementImports).where(and(eq(bankStatementImports.id, id), eq(bankStatementImports.recordStatus, 1), tc(bankStatementImports))).limit(1);
     return imp;
   }
 
@@ -4564,7 +4567,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getBankTransactions(filters?: { importId?: string; status?: string; bankAccountId?: string }): Promise<BankTransaction[]> {
-    const conditions = [eq(bankTransactions.recordStatus, 1)];
+    const conditions = [eq(bankTransactions.recordStatus, 1), tc(bankTransactions)];
     if (filters?.importId) conditions.push(eq(bankTransactions.importId, filters.importId));
     if (filters?.status) conditions.push(eq(bankTransactions.status, filters.status));
     if (filters?.bankAccountId) conditions.push(eq(bankTransactions.bankAccountId, filters.bankAccountId));
@@ -4572,7 +4575,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getBankTransaction(id: string): Promise<BankTransaction | undefined> {
-    const [txn] = await db.select().from(bankTransactions).where(and(eq(bankTransactions.id, id), eq(bankTransactions.recordStatus, 1))).limit(1);
+    const [txn] = await db.select().from(bankTransactions).where(and(eq(bankTransactions.id, id), eq(bankTransactions.recordStatus, 1), tc(bankTransactions))).limit(1);
     return txn;
   }
 
@@ -4586,14 +4589,14 @@ export class DatabaseStorage implements IStorage {
       and(
         eq(bankTransactions.duplicateHash, hash),
         eq(bankTransactions.bankAccountId, bankAccountId),
-        eq(bankTransactions.recordStatus, 1)
+        eq(bankTransactions.recordStatus, 1), tc(bankTransactions)
       )
     ).limit(1);
     return txn;
   }
   // Account Types
   async getAccountTypes(): Promise<AccountType[]> {
-    return db.select().from(accountTypes).where(eq(accountTypes.recordStatus, 1)).orderBy(accountTypes.label);
+    return db.select().from(accountTypes).where(and(eq(accountTypes.recordStatus, 1), tc(accountTypes))).orderBy(accountTypes.label);
   }
 
   async createAccountType(data: InsertAccountType): Promise<AccountType> {
@@ -4607,14 +4610,14 @@ export class DatabaseStorage implements IStorage {
 
   async getAccountTypeByName(name: string): Promise<AccountType | undefined> {
     const [found] = await db.select().from(accountTypes).where(
-      and(eq(accountTypes.name, name), eq(accountTypes.recordStatus, 1))
+      and(eq(accountTypes.name, name), eq(accountTypes.recordStatus, 1), tc(accountTypes))
     ).limit(1);
     return found;
   }
 
   // Account Subtypes
   async getAccountSubtypes(accountType?: string): Promise<AccountSubtype[]> {
-    const conditions = [eq(accountSubtypes.recordStatus, 1)];
+    const conditions = [eq(accountSubtypes.recordStatus, 1), tc(accountSubtypes)];
     if (accountType) conditions.push(eq(accountSubtypes.accountType, accountType));
     return db.select().from(accountSubtypes).where(and(...conditions)).orderBy(accountSubtypes.accountType, accountSubtypes.label);
   }
@@ -4630,7 +4633,7 @@ export class DatabaseStorage implements IStorage {
 
   async getAccountSubtypeByName(accountType: string, name: string): Promise<AccountSubtype | undefined> {
     const [found] = await db.select().from(accountSubtypes).where(
-      and(eq(accountSubtypes.accountType, accountType), eq(accountSubtypes.name, name), eq(accountSubtypes.recordStatus, 1))
+      and(eq(accountSubtypes.accountType, accountType), eq(accountSubtypes.name, name), eq(accountSubtypes.recordStatus, 1), tc(accountSubtypes))
     ).limit(1);
     return found;
   }
@@ -4651,7 +4654,7 @@ export class DatabaseStorage implements IStorage {
     const pageSize = filters?.pageSize || 25;
     const offset = (page - 1) * pageSize;
 
-    const whereClauses: any[] = [eq(salesOrders.recordStatus, 1)];
+    const whereClauses: any[] = [eq(salesOrders.recordStatus, 1), tc(salesOrders)];
     if (search) {
       whereClauses.push(or(
         ilike(salesOrders.soNumber, `%${search}%`),
@@ -4692,7 +4695,7 @@ export class DatabaseStorage implements IStorage {
     const [result] = await db
       .select()
       .from(salesOrders)
-      .where(and(eq(salesOrders.id, id), eq(salesOrders.recordStatus, 1)));
+      .where(and(eq(salesOrders.id, id), eq(salesOrders.recordStatus, 1), tc(salesOrders)));
     return result;
   }
 
@@ -4700,7 +4703,7 @@ export class DatabaseStorage implements IStorage {
     const [result] = await db
       .select()
       .from(salesOrders)
-      .where(and(eq(salesOrders.soNumber, soNumber), eq(salesOrders.recordStatus, 1)));
+      .where(and(eq(salesOrders.soNumber, soNumber), eq(salesOrders.recordStatus, 1), tc(salesOrders)));
     return result;
   }
 
@@ -4748,7 +4751,7 @@ export class DatabaseStorage implements IStorage {
       })
       .from(salesOrderItems)
       .leftJoin(products, eq(salesOrderItems.productId, products.id))
-      .where(and(eq(salesOrderItems.soId, soId), eq(salesOrderItems.recordStatus, 1)));
+      .where(and(eq(salesOrderItems.soId, soId), eq(salesOrderItems.recordStatus, 1), tc(salesOrderItems)));
   }
 
   async deleteSalesOrderItems(soId: string): Promise<void> {
@@ -4762,7 +4765,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(invoices)
-      .where(and(eq(invoices.salesOrderId, soId), eq(invoices.recordStatus, 1)));
+      .where(and(eq(invoices.salesOrderId, soId), eq(invoices.recordStatus, 1), tc(invoices)));
   }
 
   async createSalesOfficer(officer: InsertSalesOfficer): Promise<SalesOfficer> {
@@ -4774,7 +4777,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(salesOfficers)
-      .where(eq(salesOfficers.recordStatus, 1))
+      .where(and(eq(salesOfficers.recordStatus, 1), tc(salesOfficers)))
       .orderBy(salesOfficers.name);
   }
 
@@ -4782,7 +4785,7 @@ export class DatabaseStorage implements IStorage {
     const [result] = await db
       .select()
       .from(salesOfficers)
-      .where(and(eq(salesOfficers.id, id), eq(salesOfficers.recordStatus, 1)));
+      .where(and(eq(salesOfficers.id, id), eq(salesOfficers.recordStatus, 1), tc(salesOfficers)));
     return result;
   }
 
@@ -4790,7 +4793,7 @@ export class DatabaseStorage implements IStorage {
     const [result] = await db
       .update(salesOfficers)
       .set({ ...updates, updatedAt: new Date().toISOString() })
-      .where(and(eq(salesOfficers.id, id), eq(salesOfficers.recordStatus, 1)))
+      .where(and(eq(salesOfficers.id, id), eq(salesOfficers.recordStatus, 1), tc(salesOfficers)))
       .returning();
     return result;
   }
@@ -4812,7 +4815,7 @@ export class DatabaseStorage implements IStorage {
     return db
       .select()
       .from(monthlyExpenses)
-      .where(and(eq(monthlyExpenses.expenseMonth, month), eq(monthlyExpenses.recordStatus, 1)))
+      .where(and(eq(monthlyExpenses.expenseMonth, month), eq(monthlyExpenses.recordStatus, 1), tc(monthlyExpenses)))
       .orderBy(monthlyExpenses.createdAt);
   }
 
@@ -4820,7 +4823,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(monthlyExpenses)
       .set({ ...data, updatedAt: new Date().toISOString() })
-      .where(and(eq(monthlyExpenses.id, id), eq(monthlyExpenses.recordStatus, 1)))
+      .where(and(eq(monthlyExpenses.id, id), eq(monthlyExpenses.recordStatus, 1), tc(monthlyExpenses)))
       .returning();
     return updated;
   }
@@ -4844,7 +4847,7 @@ export class DatabaseStorage implements IStorage {
       .from(monthlyExpenses)
       .where(and(
         eq(monthlyExpenses.expenseMonth, month),
-        eq(monthlyExpenses.recordStatus, 1),
+        eq(monthlyExpenses.recordStatus, 1), tc(monthlyExpenses),
       ));
 
     // Recurring: always carry every month (base amount + any unpaid balance)
@@ -4860,7 +4863,7 @@ export class DatabaseStorage implements IStorage {
       .from(monthlyExpenses)
       .where(and(
         eq(monthlyExpenses.expenseMonth, nextMonth),
-        eq(monthlyExpenses.recordStatus, 1),
+        eq(monthlyExpenses.recordStatus, 1), tc(monthlyExpenses),
       ));
     const existingNames = new Set(existingNext.map(e => `${e.expenseType}::${e.name}`));
 
@@ -4925,7 +4928,7 @@ export class DatabaseStorage implements IStorage {
     const [sumRow] = await db
       .select({ total: sql<number>`COALESCE(SUM(amount), 0)` })
       .from(monthlyExpensePayments)
-      .where(and(eq(monthlyExpensePayments.expenseId, data.expenseId), eq(monthlyExpensePayments.recordStatus, 1)));
+      .where(and(eq(monthlyExpensePayments.expenseId, data.expenseId), eq(monthlyExpensePayments.recordStatus, 1), tc(monthlyExpensePayments)));
     const totalPaid = Number(sumRow?.total ?? 0);
 
     const [expense] = await db.select().from(monthlyExpenses).where(eq(monthlyExpenses.id, data.expenseId));
@@ -4948,7 +4951,7 @@ export class DatabaseStorage implements IStorage {
     return db
       .select()
       .from(monthlyExpensePayments)
-      .where(and(eq(monthlyExpensePayments.expenseId, expenseId), eq(monthlyExpensePayments.recordStatus, 1)))
+      .where(and(eq(monthlyExpensePayments.expenseId, expenseId), eq(monthlyExpensePayments.recordStatus, 1), tc(monthlyExpensePayments)))
       .orderBy(monthlyExpensePayments.paymentDate);
   }
 
@@ -4966,7 +4969,7 @@ export class DatabaseStorage implements IStorage {
     const [sumRow] = await db
       .select({ total: sql<number>`COALESCE(SUM(amount), 0)` })
       .from(monthlyExpensePayments)
-      .where(and(eq(monthlyExpensePayments.expenseId, payment.expenseId), eq(monthlyExpensePayments.recordStatus, 1)));
+      .where(and(eq(monthlyExpensePayments.expenseId, payment.expenseId), eq(monthlyExpensePayments.recordStatus, 1), tc(monthlyExpensePayments)));
     const totalPaid = Number(sumRow?.total ?? 0);
 
     const [expense] = await db.select().from(monthlyExpenses).where(eq(monthlyExpenses.id, payment.expenseId));

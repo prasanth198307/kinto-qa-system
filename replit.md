@@ -3,7 +3,9 @@
 ## Overview
 Kinto Smart Ops is a comprehensive manufacturing ERP SaaS platform for Indian manufacturing companies. It manages production, inventory, purchase orders, invoicing (GST-compliant), gatepasses, quality assurance, preventive maintenance, double-entry accounting, and provides MIS analytics. The system is built for multi-tenancy (SaaS) with each company getting their own isolated data space. It supports two-way WhatsApp integration for machine startup and checklist management. The business vision is to modernize Indian industrial operations with a cloud-based, subscription SaaS model.
 
-## SaaS Multitenancy Architecture (Phase 1 — COMPLETE)
+## SaaS Multitenancy Architecture (Phase 2 — COMPLETE)
+
+### Phase 1 (Complete)
 - **Tenants table:** `tenants` (id, name, slug, plan, status, trial_ends_at, max_users, billing info, is_super_admin)
 - **Tenant isolation:** `tenant_id INTEGER DEFAULT 1` column added to all 94 business tables
 - **Default tenant:** Tenant #1 = KINTO (enterprise/active) — all existing data
@@ -12,7 +14,17 @@ Kinto Smart Ops is a comprehensive manufacturing ERP SaaS platform for Indian ma
 - **Super-admin dashboard:** `/super-admin/tenants` — manage all company accounts
 - **API routes:** GET /api/tenants/lookup/:slug, POST /api/tenants/register, GET/PATCH /api/admin/tenants
 - **Session:** `tenantId` stored in session after login for downstream use
-- **Branch:** `feature/saas-multitenancy` (main branch = Oracle Cloud production, untouched)
+
+### Phase 2 (Complete) — Tenant Data Isolation via AsyncLocalStorage
+- **Mechanism:** `AsyncLocalStorage` in `server/tenant-context.ts` propagates `tenantId` automatically through all async chains without prop-drilling
+- **`tc()` helper:** Exported from `server/tenant-context.ts` — generates `eq(table.tenantId, currentTenantId)` WHERE clause; silently returns `undefined` for system tables without `tenantId`
+- **storage.ts:** 253 `tc()` injections into all business table WHERE clauses
+- **routes.ts direct queries:** 225 `tc()` injections into all direct `db.*` calls that bypass storage layer
+- **Unique constraint fixes:** `roles(name, tenant_id)` and `chart_of_accounts(code, tenant_id)` — composite per-tenant unique (dropped global unique constraints)
+- **Per-tenant seeding** (`server/seed-tenant.ts`): On new tenant registration, automatically seeds:
+  - 5 default roles: `admin`, `manager`, `accountsmanager`, `operator`, `reviewer`
+  - 80-account Indian manufacturing COA (GST-compliant, 5-level hierarchy)
+- **Registration flow:** Updated to call `seedNewTenant()` and assign new tenant's own admin role to first user
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
