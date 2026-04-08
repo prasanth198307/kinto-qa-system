@@ -22,6 +22,7 @@ interface Tenant {
   billingEmail: string | null;
   createdAt: string;
   isSuperAdmin: boolean;
+  isInternal: boolean;
 }
 
 interface RevenueSummary {
@@ -64,7 +65,7 @@ export default function SuperAdminOverview() {
     onError: (err: any) => toast({ title: "Seed failed", description: err.message, variant: "destructive" }),
   });
 
-  const realTenants = tenants.filter((t) => !t.isSuperAdmin);
+  const realTenants = tenants.filter((t) => !t.isInternal);
   const stats = {
     total:     realTenants.length,
     active:    realTenants.filter((t) => t.status === "active").length,

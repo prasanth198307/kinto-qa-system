@@ -825,7 +825,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(subscriptions)
         .leftJoin(tenants, eq(subscriptions.tenantId, tenants.id))
         .leftJoin(subscriptionPlans, eq(subscriptions.planId, subscriptionPlans.id))
-        .where(eq(tenants.isSuperAdmin, false))
+        .where(eq(tenants.isInternal, false))
         .orderBy(desc(subscriptions.id));
       res.json(rows);
     } catch (err) {
@@ -977,7 +977,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(and(
           eq(subscriptions.status, 'active'),
           ne(subscriptions.planSlug, 'trial'),
-          eq(tenants.isSuperAdmin, false),
+          eq(tenants.isInternal, false),
         ));
 
       let mrr = 0;

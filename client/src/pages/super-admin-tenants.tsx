@@ -45,6 +45,7 @@ type Tenant = {
   contactName: string | null;
   contactPhone: string | null;
   isSuperAdmin: boolean;
+  isInternal: boolean;
   createdAt: string;
   userCount: number;
 };
@@ -372,8 +373,8 @@ export default function SuperAdminTenants() {
                           <div>
                             <div className="flex items-center gap-2">
                               <span className="font-medium">{tenant.name}</span>
-                              {tenant.isSuperAdmin && (
-                                <Badge variant="secondary" className="text-xs">Super Admin</Badge>
+                              {tenant.isInternal && (
+                                <Badge variant="secondary" className="text-xs">{tenant.isSuperAdmin ? "Super Admin" : "Internal"}</Badge>
                               )}
                             </div>
                             <div className="text-xs text-muted-foreground">
@@ -383,13 +384,13 @@ export default function SuperAdminTenants() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          {tenant.isSuperAdmin
+                          {tenant.isInternal
                             ? <Badge variant="outline" className="capitalize text-muted-foreground">Platform Owner</Badge>
                             : <Badge variant={planConf.variant} className="capitalize">{planConf.label}</Badge>
                           }
                         </TableCell>
                         <TableCell>
-                          {tenant.isSuperAdmin
+                          {tenant.isInternal
                             ? <span className="text-xs text-muted-foreground">—</span>
                             : <Badge variant={statusConf.variant} className="flex items-center gap-1 w-fit capitalize">
                                 {statusConf.icon}{statusConf.label}
@@ -400,11 +401,11 @@ export default function SuperAdminTenants() {
                           <div className="flex items-center gap-1 text-sm">
                             <Users className="h-3.5 w-3.5 text-muted-foreground" />
                             <span>{tenant.userCount}</span>
-                            {!tenant.isSuperAdmin && <span className="text-muted-foreground">/ {tenant.maxUsers}</span>}
+                            {!tenant.isInternal && <span className="text-muted-foreground">/ {tenant.maxUsers}</span>}
                           </div>
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {tenant.isSuperAdmin
+                          {tenant.isInternal
                             ? <span className="text-xs">N/A</span>
                             : tenant.trialEndsAt ? format(new Date(tenant.trialEndsAt), "dd MMM yyyy") : "—"
                           }
@@ -430,7 +431,7 @@ export default function SuperAdminTenants() {
                                   data-testid={`button-impersonate-${tenant.id}`}
                                 >
                                   <Eye className="h-4 w-4 mr-2" />
-                                  View as this Tenant
+                                  {tenant.isInternal ? "Switch to This Tenant" : "View as this Tenant"}
                                 </DropdownMenuItem>
                               )}
                               <DropdownMenuSeparator />

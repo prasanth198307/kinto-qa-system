@@ -297,6 +297,7 @@ export function setupAuth(app: Express) {
           contactName: tenants.contactName,
           contactPhone: tenants.contactPhone,
           isSuperAdmin: tenants.isSuperAdmin,
+          isInternal: tenants.isInternal,
           createdAt: tenants.createdAt,
           userCount: sql<number>`(SELECT COUNT(*) FROM users u WHERE u.tenant_id = ${tenants.id} AND u.record_status = 1)`,
         })
