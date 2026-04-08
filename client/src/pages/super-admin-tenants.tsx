@@ -5,50 +5,26 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogFooter,
+  DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Building2,
-  Users,
-  MoreVertical,
-  Search,
-  RefreshCw,
-  ShieldAlert,
-  CheckCircle2,
-  Clock,
-  XCircle,
-  Loader2,
-  FlaskConical,
-  CreditCard,
+  Building2, Users, MoreVertical, Search, RefreshCw, ShieldAlert,
+  CheckCircle2, Clock, XCircle, Loader2, FlaskConical, CreditCard,
+  Eye, Trash2, AlertTriangle,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -71,25 +47,29 @@ type Tenant = {
 };
 
 const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; icon: React.ReactNode }> = {
-  active: { label: "Active", variant: "default", icon: <CheckCircle2 className="h-3 w-3" /> },
-  trial: { label: "Trial", variant: "secondary", icon: <Clock className="h-3 w-3" /> },
+  active:    { label: "Active",    variant: "default",     icon: <CheckCircle2 className="h-3 w-3" /> },
+  trial:     { label: "Trial",     variant: "secondary",   icon: <Clock className="h-3 w-3" /> },
   suspended: { label: "Suspended", variant: "destructive", icon: <XCircle className="h-3 w-3" /> },
-  expired: { label: "Expired", variant: "outline", icon: <XCircle className="h-3 w-3" /> },
+  expired:   { label: "Expired",   variant: "outline",     icon: <XCircle className="h-3 w-3" /> },
+  deleted:   { label: "Deleted",   variant: "outline",     icon: <XCircle className="h-3 w-3" /> },
 };
 
 const PLAN_CONFIG: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
-  trial: { label: "Trial", variant: "secondary" },
-  basic: { label: "Basic", variant: "outline" },
+  trial:        { label: "Trial",        variant: "secondary" },
+  basic:        { label: "Basic",        variant: "outline" },
   professional: { label: "Professional", variant: "default" },
-  enterprise: { label: "Enterprise", variant: "default" },
+  enterprise:   { label: "Enterprise",   variant: "default" },
 };
 
 export default function SuperAdminTenants() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
-  const [editTenant, setEditTenant] = useState<Tenant | null>(null);
-  const [editForm, setEditForm] = useState({ status: "", plan: "", maxUsers: "" });
+  const [editTenant, setEditTenant]     = useState<Tenant | null>(null);
+  const [editForm, setEditForm]         = useState({ status: "", plan: "", maxUsers: "" });
+  const [deleteTenant, setDeleteTenant] = useState<Tenant | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deleteReason, setDeleteReason]   = useState("");
 
   const { data: tenants = [], isLoading, refetch } = useQuery<Tenant[]>({
     queryKey: ["/api/admin/tenants"],
@@ -139,9 +119,50 @@ export default function SuperAdminTenants() {
     },
   });
 
+  const impersonateMutation = useMutation({
+    mutationFn: async (tenantId: number) => {
+      const res = await apiRequest("POST", `/api/admin/tenants/${tenantId}/impersonate`, {});
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({ title: data.message, description: "Reload the page to see this tenant's data. Use 'Stop Impersonation' in super-admin to revert." });
+      // Reload to apply the new tenantId session
+      setTimeout(() => window.location.href = "/", 1500);
+    },
+    onError: (err: any) => {
+      toast({ title: "Impersonation failed", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async ({ tenantId, reason }: { tenantId: number; reason: string }) => {
+      const res = await apiRequest("POST", `/api/admin/tenants/${tenantId}/delete-data`, {
+        confirm: "DELETE",
+        reason,
+      });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/tenants"] });
+      toast({ title: "Tenant data permanently deleted", description: data.message });
+      setDeleteTenant(null);
+      setDeleteConfirm("");
+      setDeleteReason("");
+    },
+    onError: (err: any) => {
+      toast({ title: "Deletion failed", description: err.message, variant: "destructive" });
+    },
+  });
+
   const openEdit = (tenant: Tenant) => {
     setEditTenant(tenant);
     setEditForm({ status: tenant.status, plan: tenant.plan, maxUsers: String(tenant.maxUsers) });
+  };
+
+  const openDelete = (tenant: Tenant) => {
+    setDeleteTenant(tenant);
+    setDeleteConfirm("");
+    setDeleteReason("");
   };
 
   const handleSaveEdit = () => {
@@ -150,14 +171,12 @@ export default function SuperAdminTenants() {
     const maxUsersInt = parseInt(editForm.maxUsers) || editTenant.maxUsers;
 
     if (planChanged) {
-      // Use the new subscription-aware endpoint for plan changes
       changePlanMutation.mutate({
         tenantId: editTenant.id,
         toPlan: editForm.plan,
         status: editForm.status,
-        billingCycle: editForm.plan === 'trial' ? 'trial' : 'monthly',
+        billingCycle: editForm.plan === "trial" ? "trial" : "monthly",
       });
-      // Also update maxUsers separately if changed
       if (maxUsersInt !== editTenant.maxUsers) {
         updateMutation.mutate({ id: editTenant.id, updates: { maxUsers: maxUsersInt } });
       }
@@ -182,11 +201,10 @@ export default function SuperAdminTenants() {
       (t.billingEmail ?? "").toLowerCase().includes(search.toLowerCase())
   );
 
-  // Summary stats
   const stats = {
-    total: tenants.length,
-    active: tenants.filter((t) => t.status === "active").length,
-    trial: tenants.filter((t) => t.status === "trial").length,
+    total:     tenants.length,
+    active:    tenants.filter((t) => t.status === "active").length,
+    trial:     tenants.filter((t) => t.status === "trial").length,
     suspended: tenants.filter((t) => t.status === "suspended").length,
   };
 
@@ -202,33 +220,16 @@ export default function SuperAdminTenants() {
             Manage all company accounts on this platform
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="default"
-            onClick={() => setLocation("/super-admin/plans")}
-            data-testid="button-manage-plans"
-          >
-            <CreditCard className="h-4 w-4 mr-2" />
-            Manage Plans
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="outline" size="default" onClick={() => setLocation("/super-admin/plans")} data-testid="button-manage-plans">
+            <CreditCard className="h-4 w-4 mr-2" />Manage Plans
           </Button>
-          <Button
-            variant="outline"
-            size="default"
-            onClick={() => seedDemoMutation.mutate()}
-            disabled={seedDemoMutation.isPending}
-            data-testid="button-seed-demo"
-          >
-            {seedDemoMutation.isPending ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <FlaskConical className="h-4 w-4 mr-2" />
-            )}
+          <Button variant="outline" size="default" onClick={() => seedDemoMutation.mutate()} disabled={seedDemoMutation.isPending} data-testid="button-seed-demo">
+            {seedDemoMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FlaskConical className="h-4 w-4 mr-2" />}
             Seed Demo Tenant
           </Button>
           <Button variant="outline" size="default" onClick={() => refetch()} data-testid="button-refresh-tenants">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
+            <RefreshCw className="h-4 w-4 mr-2" />Refresh
           </Button>
         </div>
       </div>
@@ -236,10 +237,10 @@ export default function SuperAdminTenants() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: "Total Companies", value: stats.total, icon: <Building2 className="h-5 w-5" /> },
-          { label: "Active", value: stats.active, icon: <CheckCircle2 className="h-5 w-5 text-green-600" /> },
-          { label: "Trial", value: stats.trial, icon: <Clock className="h-5 w-5 text-amber-500" /> },
-          { label: "Suspended", value: stats.suspended, icon: <XCircle className="h-5 w-5 text-destructive" /> },
+          { label: "Total Companies", value: stats.total,     icon: <Building2 className="h-5 w-5" /> },
+          { label: "Active",          value: stats.active,    icon: <CheckCircle2 className="h-5 w-5 text-green-600" /> },
+          { label: "Trial",           value: stats.trial,     icon: <Clock className="h-5 w-5 text-amber-500" /> },
+          { label: "Suspended",       value: stats.suspended, icon: <XCircle className="h-5 w-5 text-destructive" /> },
         ].map((s) => (
           <Card key={s.label}>
             <CardContent className="p-4 flex items-center justify-between">
@@ -296,7 +297,7 @@ export default function SuperAdminTenants() {
                 <TableBody>
                   {filtered.map((tenant) => {
                     const statusConf = STATUS_CONFIG[tenant.status] ?? STATUS_CONFIG.trial;
-                    const planConf = PLAN_CONFIG[tenant.plan] ?? PLAN_CONFIG.trial;
+                    const planConf   = PLAN_CONFIG[tenant.plan]   ?? PLAN_CONFIG.trial;
                     return (
                       <TableRow key={tenant.id} data-testid={`row-tenant-${tenant.id}`}>
                         <TableCell>
@@ -304,9 +305,7 @@ export default function SuperAdminTenants() {
                             <div className="flex items-center gap-2">
                               <span className="font-medium">{tenant.name}</span>
                               {tenant.isSuperAdmin && (
-                                <Badge variant="secondary" className="text-xs">
-                                  Super Admin
-                                </Badge>
+                                <Badge variant="secondary" className="text-xs">Super Admin</Badge>
                               )}
                             </div>
                             <div className="text-xs text-muted-foreground">
@@ -316,14 +315,11 @@ export default function SuperAdminTenants() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={planConf.variant} className="capitalize">
-                            {planConf.label}
-                          </Badge>
+                          <Badge variant={planConf.variant} className="capitalize">{planConf.label}</Badge>
                         </TableCell>
                         <TableCell>
                           <Badge variant={statusConf.variant} className="flex items-center gap-1 w-fit capitalize">
-                            {statusConf.icon}
-                            {statusConf.label}
+                            {statusConf.icon}{statusConf.label}
                           </Badge>
                         </TableCell>
                         <TableCell>
@@ -334,14 +330,10 @@ export default function SuperAdminTenants() {
                           </div>
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {tenant.trialEndsAt
-                            ? format(new Date(tenant.trialEndsAt), "dd MMM yyyy")
-                            : "—"}
+                          {tenant.trialEndsAt ? format(new Date(tenant.trialEndsAt), "dd MMM yyyy") : "—"}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {tenant.createdAt
-                            ? format(new Date(tenant.createdAt), "dd MMM yyyy")
-                            : "—"}
+                          {tenant.createdAt ? format(new Date(tenant.createdAt), "dd MMM yyyy") : "—"}
                         </TableCell>
                         <TableCell>
                           <DropdownMenu>
@@ -354,20 +346,24 @@ export default function SuperAdminTenants() {
                               <DropdownMenuItem onClick={() => openEdit(tenant)}>
                                 Edit Tenant
                               </DropdownMenuItem>
+                              {!tenant.isSuperAdmin && (
+                                <DropdownMenuItem
+                                  onClick={() => impersonateMutation.mutate(tenant.id)}
+                                  disabled={impersonateMutation.isPending}
+                                  data-testid={`button-impersonate-${tenant.id}`}
+                                >
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  View as this Tenant
+                                </DropdownMenuItem>
+                              )}
                               <DropdownMenuSeparator />
                               {tenant.status !== "active" && (
-                                <DropdownMenuItem
-                                  onClick={() => quickStatus(tenant, "active")}
-                                  className="text-green-600"
-                                >
+                                <DropdownMenuItem onClick={() => quickStatus(tenant, "active")} className="text-green-600">
                                   Set Active
                                 </DropdownMenuItem>
                               )}
                               {tenant.status !== "suspended" && (
-                                <DropdownMenuItem
-                                  onClick={() => quickStatus(tenant, "suspended")}
-                                  className="text-destructive"
-                                >
+                                <DropdownMenuItem onClick={() => quickStatus(tenant, "suspended")} className="text-amber-600">
                                   Suspend
                                 </DropdownMenuItem>
                               )}
@@ -375,6 +371,19 @@ export default function SuperAdminTenants() {
                                 <DropdownMenuItem onClick={() => quickStatus(tenant, "trial")}>
                                   Reset to Trial
                                 </DropdownMenuItem>
+                              )}
+                              {!tenant.isSuperAdmin && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => openDelete(tenant)}
+                                    className="text-destructive"
+                                    data-testid={`button-delete-tenant-${tenant.id}`}
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Delete Tenant Data
+                                  </DropdownMenuItem>
+                                </>
                               )}
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -394,9 +403,7 @@ export default function SuperAdminTenants() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Tenant — {editTenant?.name}</DialogTitle>
-            <DialogDescription>
-              Change plan, status, or user limits for this company.
-            </DialogDescription>
+            <DialogDescription>Change plan, status, or user limits for this company.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
@@ -430,8 +437,7 @@ export default function SuperAdminTenants() {
             <div className="space-y-2">
               <Label>Max Users</Label>
               <Input
-                type="number"
-                min={1}
+                type="number" min={1}
                 value={editForm.maxUsers}
                 onChange={(e) => setEditForm((f) => ({ ...f, maxUsers: e.target.value }))}
                 data-testid="input-max-users"
@@ -439,15 +445,72 @@ export default function SuperAdminTenants() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditTenant(null)}>
-              Cancel
-            </Button>
+            <Button variant="outline" onClick={() => setEditTenant(null)}>Cancel</Button>
             <Button onClick={handleSaveEdit} disabled={isPending} data-testid="button-save-tenant">
-              {isPending ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</>
-              ) : (
-                "Save Changes"
-              )}
+              {isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!deleteTenant} onOpenChange={(open) => !open && setDeleteTenant(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              Delete Tenant Data — {deleteTenant?.name}
+            </DialogTitle>
+            <DialogDescription>
+              This will permanently delete all data for <strong>{deleteTenant?.name}</strong> ({deleteTenant?.slug}).
+              This action is irreversible. A deletion audit record will be created for compliance.
+              The tenant account row will be preserved but marked as deleted.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 space-y-1">
+              <p className="text-sm font-medium text-destructive">What will be deleted:</p>
+              <ul className="text-xs text-muted-foreground list-disc list-inside space-y-0.5">
+                <li>All invoices, sales orders, purchase orders</li>
+                <li>All vendors, products, raw materials</li>
+                <li>All journal entries and accounting data</li>
+                <li>All users and roles (except tenant row)</li>
+                <li>All documents, expenses, production records</li>
+              </ul>
+            </div>
+            <div className="space-y-2">
+              <Label>Reason for deletion</Label>
+              <Textarea
+                placeholder="e.g. Customer requested account closure, non-payment, trial expired..."
+                value={deleteReason}
+                onChange={(e) => setDeleteReason(e.target.value)}
+                rows={2}
+                data-testid="input-delete-reason"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>
+                Type <strong className="text-destructive">DELETE</strong> to confirm
+              </Label>
+              <Input
+                placeholder="DELETE"
+                value={deleteConfirm}
+                onChange={(e) => setDeleteConfirm(e.target.value)}
+                data-testid="input-delete-confirm"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTenant(null)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              disabled={deleteConfirm !== "DELETE" || deleteMutation.isPending}
+              onClick={() => deleteTenant && deleteMutation.mutate({ tenantId: deleteTenant.id, reason: deleteReason })}
+              data-testid="button-confirm-delete-tenant"
+            >
+              {deleteMutation.isPending
+                ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Deleting...</>
+                : <><Trash2 className="mr-2 h-4 w-4" />Permanently Delete Data</>}
             </Button>
           </DialogFooter>
         </DialogContent>

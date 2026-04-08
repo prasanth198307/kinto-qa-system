@@ -160,6 +160,33 @@ COMMENT ON COLUMN billing_events.created_by IS 'Username of admin who made the c
 
 
 -- ============================================================
+-- SECTION 4B: DELETION AUDIT TABLE
+-- Permanent legal compliance record of every tenant data deletion.
+-- NEVER delete rows from this table.
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS deletion_audit (
+    id                SERIAL PRIMARY KEY,
+    tenant_id         INTEGER      NOT NULL,
+    tenant_name       VARCHAR(255) NOT NULL,
+    tenant_slug       VARCHAR(100) NOT NULL,
+    owner_email       VARCHAR(255),
+    deleted_at        TIMESTAMP    DEFAULT NOW() NOT NULL,
+    rows_deleted      JSONB        DEFAULT '{}',
+    export_url        VARCHAR,
+    export_expires_at TIMESTAMP,
+    deleted_by        VARCHAR(255),
+    reason            TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_deletion_audit_tenant_id  ON deletion_audit(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_deletion_audit_deleted_at ON deletion_audit(deleted_at);
+
+COMMENT ON TABLE  deletion_audit            IS 'PERMANENT legal compliance log. Never delete rows.';
+COMMENT ON COLUMN deletion_audit.rows_deleted IS 'JSON: { tableName: rowCount } snapshot taken before deletion';
+COMMENT ON COLUMN deletion_audit.deleted_by   IS 'Super-admin username who triggered the deletion';
+
+-- ============================================================
 -- SECTION 5: TENANT_ID COLUMNS ON BUSINESS TABLES
 -- All 94 business tables have a tenant_id column added for
 -- row-level data isolation between tenants.

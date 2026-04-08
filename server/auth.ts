@@ -6,7 +6,7 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import bcrypt from "bcryptjs";
 import { storage } from "./storage";
-import { User as SelectUser, tenants, users, roles } from "@shared/schema";
+import { User as SelectUser, tenants, users, roles, deletionAudit } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql } from "drizzle-orm";
 import { lookupTenantBySlug } from "./tenant-middleware";
@@ -285,6 +285,186 @@ export function setupAuth(app: Express) {
     } catch (err) {
       console.error("Update tenant status error:", err);
       return res.status(500).json({ message: "Failed to update tenant" });
+    }
+  });
+
+  // ─── Super-admin: Impersonate a tenant ────────────────────────────────────
+  app.post("/api/admin/tenants/:id/impersonate", async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const currentUser = req.user as any;
+    if (!currentUser?.isSuperAdmin) return res.status(403).json({ message: "Super-admin only" });
+
+    const targetTenantId = parseInt(req.params.id);
+    try {
+      const [tenant] = await db.select().from(tenants).where(eq(tenants.id, targetTenantId));
+      if (!tenant) return res.status(404).json({ message: "Tenant not found" });
+
+      // Find the admin user of the target tenant
+      const [targetAdmin] = await db
+        .select()
+        .from(users)
+        .where(eq(users.tenantId, targetTenantId))
+        .limit(1);
+
+      if (!targetAdmin) return res.status(404).json({ message: "No users found in this tenant" });
+
+      // Swap session to impersonate the tenant
+      const previousTenantId = (req.session as any).tenantId;
+      const previousUserId = (req.session as any).userId;
+      (req.session as any).impersonating = true;
+      (req.session as any).originalTenantId = previousTenantId;
+      (req.session as any).originalUserId = previousUserId;
+      (req.session as any).tenantId = targetTenantId;
+      (req.session as any).tenantPlan = tenant.plan;
+      (req.session as any).tenantStatus = tenant.status;
+
+      // Log the impersonation
+      console.log(`[ADMIN] Super-admin ${currentUser.username} impersonating tenant ${targetTenantId} (${tenant.slug})`);
+
+      return res.json({
+        message: `Now viewing as ${tenant.name}`,
+        tenant: { id: tenant.id, name: tenant.name, slug: tenant.slug, plan: tenant.plan },
+      });
+    } catch (err) {
+      console.error("Impersonate error:", err);
+      return res.status(500).json({ message: "Failed to impersonate tenant" });
+    }
+  });
+
+  // ─── Super-admin: Stop impersonation ──────────────────────────────────────
+  app.post("/api/admin/impersonate/stop", async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!(req.session as any).impersonating) return res.status(400).json({ message: "Not impersonating" });
+
+    (req.session as any).tenantId = (req.session as any).originalTenantId;
+    (req.session as any).tenantPlan = undefined;
+    (req.session as any).tenantStatus = undefined;
+    (req.session as any).impersonating = false;
+    (req.session as any).originalTenantId = undefined;
+    (req.session as any).originalUserId = undefined;
+
+    return res.json({ message: "Stopped impersonation, returned to super-admin" });
+  });
+
+  // ─── Super-admin: Delete tenant data (irreversible) ───────────────────────
+  app.post("/api/admin/tenants/:id/delete-data", async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const currentUser = req.user as any;
+    if (!currentUser?.isSuperAdmin) return res.status(403).json({ message: "Super-admin only" });
+
+    const targetTenantId = parseInt(req.params.id);
+    const { reason, confirm } = req.body;
+
+    if (confirm !== "DELETE") {
+      return res.status(400).json({ message: 'Send confirm: "DELETE" to proceed' });
+    }
+
+    try {
+      // Get tenant info before deletion
+      const [tenant] = await db.select().from(tenants).where(eq(tenants.id, targetTenantId));
+      if (!tenant) return res.status(404).json({ message: "Tenant not found" });
+      if ((tenant as any).isSuperAdmin) return res.status(403).json({ message: "Cannot delete super-admin tenant" });
+
+      // Count rows per key table before deletion
+      const rowsDeleted: Record<string, number> = {};
+      const tables = [
+        "invoices", "invoice_items", "sales_orders", "sales_order_items",
+        "purchase_orders", "purchase_order_items", "gatepasses", "gatepass_items",
+        "vendors", "products", "raw_materials", "users",
+        "journal_entries", "journal_lines", "expense_vouchers", "documents",
+        "checklist_submissions", "production_entries", "finished_goods",
+      ];
+
+      for (const table of tables) {
+        try {
+          const result = await db.execute(
+            sql`SELECT COUNT(*)::int AS cnt FROM ${sql.identifier(table)} WHERE tenant_id = ${targetTenantId}`
+          );
+          rowsDeleted[table] = (result.rows[0] as any)?.cnt ?? 0;
+        } catch {
+          rowsDeleted[table] = 0;
+        }
+      }
+
+      // Write deletion audit record FIRST (before any deletion)
+      await db.insert(deletionAudit).values({
+        tenantId: targetTenantId,
+        tenantName: tenant.name,
+        tenantSlug: tenant.slug,
+        ownerEmail: (tenant as any).billingEmail,
+        rowsDeleted,
+        deletedBy: currentUser.username,
+        reason: reason || "Manual deletion by super-admin",
+      });
+
+      // Delete all tenant data from key tables (in dependency order)
+      const deleteOrder = [
+        "checklist_submissions", "submission_tasks",
+        "whatsapp_conversation_sessions",
+        "pm_executions", "pm_execution_tasks",
+        "journal_lines", "journal_entries",
+        "invoice_payments", "payment_evidence",
+        "credit_note_items", "credit_notes",
+        "debit_note_items", "debit_notes",
+        "vendor_debit_note_items", "vendor_debit_notes",
+        "sales_return_items", "sales_returns",
+        "gatepass_items", "gatepasses",
+        "invoice_items", "invoices",
+        "sales_order_items", "sales_orders",
+        "purchase_order_items", "purchase_orders",
+        "raw_material_issuance_items", "raw_material_issuance",
+        "production_reconciliation_items", "production_reconciliations",
+        "production_entries",
+        "raw_material_transactions",
+        "finished_goods",
+        "raw_materials",
+        "product_bom",
+        "products",
+        "vendors",
+        "expense_items", "expense_vouchers",
+        "monthly_expenses",
+        "cash_register_transactions", "cash_register_days",
+        "documents",
+        "notification_config",
+        "role_permissions", "roles",
+        "users",
+        "chart_of_accounts",
+        "scrap_inventory",
+      ];
+
+      for (const table of deleteOrder) {
+        try {
+          await db.execute(
+            sql`DELETE FROM ${sql.identifier(table)} WHERE tenant_id = ${targetTenantId}`
+          );
+        } catch (e) {
+          console.warn(`[DELETE TENANT] Could not delete from ${table}:`, (e as any).message);
+        }
+      }
+
+      // Mark tenant as deleted (do NOT delete the tenants row — per spec)
+      await db.update(tenants).set({
+        status: "deleted" as any,
+        updatedAt: new Date().toISOString(),
+      } as any).where(eq(tenants.id, targetTenantId));
+
+      console.log(`[ADMIN] Tenant ${targetTenantId} (${tenant.slug}) data deleted by ${currentUser.username}`);
+      return res.json({ message: `Tenant "${tenant.name}" data permanently deleted`, rowsDeleted });
+    } catch (err) {
+      console.error("Delete tenant data error:", err);
+      return res.status(500).json({ message: "Failed to delete tenant data" });
+    }
+  });
+
+  // ─── Super-admin: Deletion audit log ─────────────────────────────────────
+  app.get("/api/admin/deletion-audit", async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.user?.isSuperAdmin) return res.status(403).json({ message: "Super-admin only" });
+    try {
+      const records = await db.select().from(deletionAudit).orderBy(desc(deletionAudit.deletedAt));
+      return res.json(records);
+    } catch (err) {
+      return res.status(500).json({ message: "Failed to fetch deletion audit" });
     }
   });
 

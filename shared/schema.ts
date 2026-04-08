@@ -124,6 +124,24 @@ export const insertBillingEventSchema = createInsertSchema(billingEvents).omit({
 export type BillingEvent = typeof billingEvents.$inferSelect;
 export type InsertBillingEvent = z.infer<typeof insertBillingEventSchema>;
 
+// ─── Deletion Audit — permanent record of every tenant data deletion ─────────
+export const deletionAudit = pgTable("deletion_audit", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenant_id").notNull(),
+  tenantName: varchar("tenant_name", { length: 255 }).notNull(),
+  tenantSlug: varchar("tenant_slug", { length: 100 }).notNull(),
+  ownerEmail: varchar("owner_email", { length: 255 }),
+  deletedAt: timestamp("deleted_at", { mode: 'string' }).defaultNow().notNull(),
+  rowsDeleted: jsonb("rows_deleted").$type<Record<string, number>>().default({}),
+  exportUrl: varchar("export_url"),
+  exportExpiresAt: timestamp("export_expires_at", { mode: 'string' }),
+  deletedBy: varchar("deleted_by", { length: 255 }),              // super-admin username
+  reason: text("reason"),
+});
+export const insertDeletionAuditSchema = createInsertSchema(deletionAudit).omit({ id: true, deletedAt: true });
+export type DeletionAudit = typeof deletionAudit.$inferSelect;
+export type InsertDeletionAudit = z.infer<typeof insertDeletionAuditSchema>;
+
 // ─── Roles table for dynamic role management ─────────────────────────────────
 export const roles = pgTable("roles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

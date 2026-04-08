@@ -538,6 +538,21 @@ CREATE TABLE IF NOT EXISTS billing_events (
     created_at      TIMESTAMP    DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS deletion_audit (
+    id               SERIAL PRIMARY KEY,
+    tenant_id        INTEGER      NOT NULL,
+    tenant_name      VARCHAR(255) NOT NULL,
+    tenant_slug      VARCHAR(100) NOT NULL,
+    owner_email      VARCHAR(255),
+    deleted_at       TIMESTAMP    DEFAULT NOW() NOT NULL,
+    rows_deleted     JSONB        DEFAULT '{}',
+    export_url       VARCHAR,
+    export_expires_at TIMESTAMP,
+    deleted_by       VARCHAR(255),
+    reason           TEXT
+    -- NOTE: NEVER delete rows from this table — it is a permanent legal compliance record.
+);
+
 -- ===========================================
 -- INDEXES FOR PERFORMANCE
 -- ===========================================

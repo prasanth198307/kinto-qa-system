@@ -568,6 +568,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ─── Tenant: Export all company data as JSON ─────────────────────────────
+  app.get('/api/tenant/export', async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' });
+    if (req.user?.role !== 'admin' && !req.user?.isSuperAdmin) return res.status(403).json({ message: 'Admin only' });
+
+    const tenantId: number = (req.session as any).tenantId ?? req.user?.tenantId ?? 1;
+
+    try {
+      // Fetch key tables for this tenant
+      const exportData: Record<string, any[]> = {};
+
+      const tablesToExport = [
+        { name: 'vendors', table: 'vendors' },
+        { name: 'products', table: 'products' },
+        { name: 'raw_materials', table: 'raw_materials' },
+        { name: 'invoices', table: 'invoices' },
+        { name: 'invoice_items', table: 'invoice_items' },
+        { name: 'sales_orders', table: 'sales_orders' },
+        { name: 'sales_order_items', table: 'sales_order_items' },
+        { name: 'purchase_orders', table: 'purchase_orders' },
+        { name: 'purchase_order_items', table: 'purchase_order_items' },
+        { name: 'gatepasses', table: 'gatepasses' },
+        { name: 'gatepass_items', table: 'gatepass_items' },
+        { name: 'journal_entries', table: 'journal_entries' },
+        { name: 'journal_lines', table: 'journal_lines' },
+        { name: 'expense_vouchers', table: 'expense_vouchers' },
+        { name: 'expense_items', table: 'expense_items' },
+        { name: 'cash_register_days', table: 'cash_register_days' },
+        { name: 'cash_register_transactions', table: 'cash_register_transactions' },
+        { name: 'users', table: 'users' },
+        { name: 'roles', table: 'roles' },
+        { name: 'chart_of_accounts', table: 'chart_of_accounts' },
+        { name: 'finished_goods', table: 'finished_goods' },
+        { name: 'production_entries', table: 'production_entries' },
+        { name: 'documents', table: 'documents' },
+      ];
+
+      for (const { name, table } of tablesToExport) {
+        try {
+          const rows = await db.execute(
+            sql`SELECT * FROM ${sql.identifier(table)} WHERE tenant_id = ${tenantId} LIMIT 10000`
+          );
+          exportData[name] = rows.rows as any[];
+        } catch {
+          exportData[name] = [];
+        }
+      }
+
+      const exportPayload = {
+        exportedAt: new Date().toISOString(),
+        tenantId,
+        version: '1.0',
+        tables: exportData,
+        summary: Object.fromEntries(
+          Object.entries(exportData).map(([k, v]) => [k, v.length])
+        ),
+      };
+
+      const tenantRow = await db.execute(sql`SELECT slug FROM tenants WHERE id = ${tenantId}`);
+      const slug = (tenantRow.rows[0] as any)?.slug ?? `tenant-${tenantId}`;
+      const filename = `kinto-export-${slug}-${new Date().toISOString().slice(0, 10)}.json`;
+
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      return res.json(exportPayload);
+    } catch (err) {
+      console.error('GET /api/tenant/export error:', err);
+      return res.status(500).json({ message: 'Failed to export data' });
+    }
+  });
+
   // ─── Public: List active subscription plans ─────────────────────────────────
   app.get('/api/subscription-plans', async (req, res) => {
     try {
