@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { roles, chartOfAccounts } from "@shared/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 
 // ─── Default Roles ────────────────────────────────────────────────────────────
 
@@ -185,11 +185,71 @@ export async function seedTenantCOA(tenantId: number): Promise<void> {
   }
 }
 
+// ─── Full admin permissions list ──────────────────────────────────────────────
+// Every new tenant's admin role gets view+create+edit+delete on all screens.
+// Idempotent: uses ON CONFLICT DO UPDATE so it's safe to call multiple times.
+
+export const ALL_ADMIN_SCREEN_KEYS = [
+  // Dashboard & Analytics
+  'dashboard','sales_dashboard','vendor_analytics','reports',
+  'report_finished_goods','report_monthly_production','report_vendor_report','report_gst',
+  // MIS
+  'mis_dashboard','mis_production','mis_inventory','mis_sales','mis_delivery',
+  // Quality & Checklists
+  'checklist_templates','checklist_assignments','checklists',
+  'machine_startup_reminders','whatsapp_analytics',
+  // Inventory
+  'products','product_categories','product_types',
+  'raw_materials','raw_material_types',
+  'finished_goods','inventory','uom',
+  'sales_orders','sales_officers',
+  // Production
+  'raw_material_issuance','production_entries','production_reconciliations',
+  'production_reconciliation','variance_analytics',
+  // Sales & Invoicing
+  'invoices','payments','pending_payments','credit_notes',
+  'cancelled_invoices_report','sales_returns','payment_writeoff',
+  'customer_advances','payment_management',
+  // Dispatch
+  'gatepasses','dispatch_tracking','dispatch_masters',
+  // Finance
+  'cash_register','cash_register_report','expenses','monthly_expenses',
+  // Documents
+  'documents',
+  // Maintenance
+  'maintenance_plans','pm_execution','pm_templates',
+  // Purchasing
+  'purchase_orders','vendor_debit_notes',
+  // Master Data
+  'vendors','vendor_types','machines','machine_types',
+  'spare_parts','banks','scrap_inventory',
+  // Admin & Settings
+  'users','roles','admin_tools','template_management',
+  'notification_settings','data_import',
+  // Accounting
+  'chart_of_accounts','account_subtypes','journal_entries','manual_journal_entry',
+  'trial_balance','profit_loss','balance_sheet','ledger_view','day_book',
+  'aging_report','cash_flow_statement','group_summary','budget_variance','bank_transactions',
+];
+
+export async function seedTenantPermissions(tenantId: number, adminRoleId: string): Promise<void> {
+  for (const key of ALL_ADMIN_SCREEN_KEYS) {
+    await db.execute(sql`
+      INSERT INTO role_permissions (role_id, screen_key, can_view, can_create, can_edit, can_delete, tenant_id)
+      VALUES (${adminRoleId}, ${key}, 1, 1, 1, 1, ${tenantId})
+      ON CONFLICT (role_id, screen_key) DO UPDATE
+        SET can_view=1, can_create=1, can_edit=1, can_delete=1
+    `);
+  }
+  console.log(`✅ Seeded ${ALL_ADMIN_SCREEN_KEYS.length} permissions for admin role in tenant #${tenantId}`);
+}
+
 // ─── Single entry point ───────────────────────────────────────────────────────
 
 export async function seedNewTenant(tenantId: number): Promise<{ adminRoleId: string }> {
   const { adminRoleId } = await seedTenantRoles(tenantId);
   await seedTenantCOA(tenantId);
-  console.log(`✅ Seeded roles + COA for tenant #${tenantId}`);
+  await seedTenantPermissions(tenantId, adminRoleId);
+  console.log(`✅ Seeded roles + COA + permissions for tenant #${tenantId}`);
   return { adminRoleId };
 }
