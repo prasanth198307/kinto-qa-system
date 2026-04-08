@@ -120,7 +120,7 @@ export default function LandingPage() {
             <Button variant="ghost" size="sm" onClick={() => setLocation("/demo")} data-testid="nav-demo-btn">
               Book a Demo
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => setLocation("/company-select")} data-testid="nav-login-btn">
+            <Button variant="ghost" size="sm" onClick={() => setLocation("/auth")} data-testid="nav-login-btn">
               Log in
             </Button>
             <Button size="sm" onClick={() => setLocation("/register-company")} data-testid="nav-register-btn">
@@ -164,7 +164,7 @@ export default function LandingPage() {
                 : <><Play className="w-4 h-4" /> Try Live Demo</>
               }
             </Button>
-            <Button size="lg" variant="ghost" onClick={() => setLocation("/company-select")} data-testid="hero-login-btn">
+            <Button size="lg" variant="ghost" onClick={() => setLocation("/auth")} data-testid="hero-login-btn">
               Log in
             </Button>
           </div>
@@ -373,7 +373,7 @@ export default function LandingPage() {
               Create Your Free Account
               <ArrowRight className="w-4 h-4" />
             </Button>
-            <Button size="lg" variant="outline" onClick={() => setLocation("/company-select")} data-testid="footer-login-btn">
+            <Button size="lg" variant="outline" onClick={() => setLocation("/auth")} data-testid="footer-login-btn">
               Log in
             </Button>
           </div>
@@ -393,7 +393,7 @@ export default function LandingPage() {
             <a href="#features" className="hover:text-foreground transition-colors">Features</a>
             <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
             <a href="/register-company" className="hover:text-foreground transition-colors">Register</a>
-            <a href="/company-select" className="hover:text-foreground transition-colors">Login</a>
+            <a href="/auth" className="hover:text-foreground transition-colors">Login</a>
           </div>
           <p className="text-xs text-muted-foreground">
             © {new Date().getFullYear()} Kinto Smart Ops. Made in India.
