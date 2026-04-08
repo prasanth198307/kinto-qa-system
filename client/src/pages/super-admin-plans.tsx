@@ -35,6 +35,8 @@ interface SubscriptionPlan {
   priceMonthly: number;
   priceYearly: number;
   maxUsers: number;
+  baseUsers: number;
+  perUserPrice: number;
   modules: string[];
   features: string[];
   isActive: boolean;
@@ -81,11 +83,12 @@ function paiseToRupees(paise: number): string {
 }
 
 // ── Blank plan template ───────────────────────────────────────────────────────
-function blankPlan(): Partial<SubscriptionPlan> & { priceMonthlyRupees: string; priceYearlyRupees: string } {
+function blankPlan(): Partial<SubscriptionPlan> & { priceMonthlyRupees: string; priceYearlyRupees: string; perUserPriceRupees: string } {
   return {
     name: "", slug: "", tagline: "", description: "",
     priceMonthlyRupees: "0", priceYearlyRupees: "0",
-    maxUsers: 5, modules: [], features: [],
+    maxUsers: 5, baseUsers: 0, perUserPrice: 0, perUserPriceRupees: "0",
+    modules: [], features: [],
     isActive: true, isFeatured: false, displayOrder: 99, trialDays: 0,
   };
 }
@@ -96,7 +99,7 @@ export default function SuperAdminPlans() {
   const { logoutMutation } = useAuth();
   const [, setLocation] = useLocation();
 
-  const [editPlan, setEditPlan] = useState<(Partial<SubscriptionPlan> & { priceMonthlyRupees: string; priceYearlyRupees: string }) | null>(null);
+  const [editPlan, setEditPlan] = useState<(Partial<SubscriptionPlan> & { priceMonthlyRupees: string; priceYearlyRupees: string; perUserPriceRupees: string }) | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [newFeatureText, setNewFeatureText] = useState("");
 
@@ -161,6 +164,7 @@ export default function SuperAdminPlans() {
       ...plan,
       priceMonthlyRupees: paiseToRupees(plan.priceMonthly),
       priceYearlyRupees:  paiseToRupees(plan.priceYearly),
+      perUserPriceRupees: paiseToRupees(plan.perUserPrice ?? 0),
     });
   };
 
@@ -179,6 +183,8 @@ export default function SuperAdminPlans() {
       priceMonthly: rupeesToPaise(editPlan.priceMonthlyRupees ?? "0"),
       priceYearly:  rupeesToPaise(editPlan.priceYearlyRupees ?? "0"),
       maxUsers: editPlan.maxUsers,
+      baseUsers: editPlan.baseUsers ?? 0,
+      perUserPrice: rupeesToPaise(editPlan.perUserPriceRupees ?? "0"),
       modules: editPlan.modules,
       features: editPlan.features,
       isActive: editPlan.isActive,
@@ -269,7 +275,12 @@ export default function SuperAdminPlans() {
                     </p>
                   )}
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Users className="h-3 w-3" /> Up to {plan.maxUsers} users
+                    <Users className="h-3 w-3" />
+                    {plan.baseUsers > 0 ? (
+                      <span>{plan.baseUsers} users incl. · +₹{(plan.perUserPrice / 100)}/extra · max {plan.maxUsers}</span>
+                    ) : (
+                      <span>Up to {plan.maxUsers} users</span>
+                    )}
                   </div>
                 </div>
               </CardHeader>
@@ -431,13 +442,27 @@ export default function SuperAdminPlans() {
                     })()}
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                   <div className="space-y-1">
-                    <Label htmlFor="max-users">Max Users</Label>
+                    <Label htmlFor="base-users">Base Users (included)</Label>
+                    <Input id="base-users" type="number" min="0" value={editPlan.baseUsers ?? 0}
+                      onChange={(e) => setEditPlan((p) => p ? { ...p, baseUsers: parseInt(e.target.value) || 0 } : p)}
+                      data-testid="input-base-users" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="per-user-price">Extra User Price (₹/month)</Label>
+                    <Input id="per-user-price" type="number" min="0" value={editPlan.perUserPriceRupees ?? "0"}
+                      onChange={(e) => setEditPlan((p) => p ? { ...p, perUserPriceRupees: e.target.value } : p)}
+                      data-testid="input-per-user-price" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="max-users">Max Users (hard cap)</Label>
                     <Input id="max-users" type="number" min="1" value={editPlan.maxUsers ?? 5}
                       onChange={(e) => setEditPlan((p) => p ? { ...p, maxUsers: parseInt(e.target.value) || 5 } : p)}
                       data-testid="input-max-users" />
                   </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label htmlFor="trial-days">Trial Days</Label>
                     <Input id="trial-days" type="number" min="0" value={editPlan.trialDays ?? 0}

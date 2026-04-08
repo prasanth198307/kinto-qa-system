@@ -26,6 +26,8 @@ interface Plan {
   priceMonthly: number;
   priceYearly: number;
   maxUsers: number;
+  baseUsers: number;
+  perUserPrice: number;
   modules: string[];
   features: string[];
   isActive: boolean;
@@ -431,7 +433,14 @@ export default function PricingPage({ onUpgrade }: { onUpgrade?: (plan: string) 
                       </p>
                     </div>
                   )}
-                  <p className="text-xs text-muted-foreground mt-1">Up to {plan.maxUsers} users</p>
+                  {plan.baseUsers > 0 ? (
+                    <div className="mt-1 space-y-0.5">
+                      <p className="text-xs text-muted-foreground">{plan.baseUsers} users included</p>
+                      <p className="text-xs text-muted-foreground">+₹{(plan.perUserPrice / 100).toLocaleString("en-IN")}/extra user/month</p>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground mt-1">Up to {plan.maxUsers} users</p>
+                  )}
                 </div>
               </CardHeader>
 

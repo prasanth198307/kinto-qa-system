@@ -68,6 +68,8 @@ export const subscriptionPlans = pgTable("subscription_plans", {
   priceMonthly: integer("price_monthly").default(0).notNull(), // in paise (₹ × 100)
   priceYearly: integer("price_yearly").default(0).notNull(),   // in paise (discounted annual)
   maxUsers: integer("max_users").default(5).notNull(),
+  baseUsers: integer("base_users").default(0).notNull(),       // users included in base price
+  perUserPrice: integer("per_user_price").default(0).notNull(),// paise per additional user/month
   modules: jsonb("modules").$type<string[]>().default([]),    // included module slugs
   features: jsonb("features").$type<string[]>().default([]),  // human-readable feature list
   isActive: boolean("is_active").default(true).notNull(),

@@ -678,7 +678,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ─── Super-admin: Create a new subscription plan ─────────────────────────────
   app.post('/api/admin/subscription-plans', async (req: any, res) => {
     if (!req.isAuthenticated() || !req.user?.isSuperAdmin) return res.status(403).json({ message: 'Super-admin only' });
-    const { name, slug, tagline, description, priceMonthly, priceYearly, maxUsers,
+    const { name, slug, tagline, description, priceMonthly, priceYearly, maxUsers, baseUsers, perUserPrice,
             modules, features, isActive, isFeatured, displayOrder, trialDays } = req.body;
     if (!name || !slug) return res.status(400).json({ message: 'name and slug are required' });
     try {
@@ -688,6 +688,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         priceMonthly: priceMonthly ?? 0,
         priceYearly: priceYearly ?? 0,
         maxUsers: maxUsers ?? 5,
+        baseUsers: baseUsers ?? 0,
+        perUserPrice: perUserPrice ?? 0,
         modules: modules ?? [],
         features: features ?? [],
         isActive: isActive ?? true,
@@ -707,16 +709,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.isAuthenticated() || !req.user?.isSuperAdmin) return res.status(403).json({ message: 'Super-admin only' });
     const id = parseInt(req.params.id);
     if (isNaN(id)) return res.status(400).json({ message: 'Invalid plan id' });
-    const { name, tagline, description, priceMonthly, priceYearly, maxUsers,
+    const { name, tagline, description, priceMonthly, priceYearly, maxUsers, baseUsers, perUserPrice,
             modules, features, isActive, isFeatured, displayOrder, trialDays } = req.body;
     try {
       const updates: Record<string, any> = {};
-      if (name !== undefined)         updates.name = name;
+      if (name !== undefined)          updates.name = name;
       if (tagline !== undefined)       updates.tagline = tagline;
       if (description !== undefined)   updates.description = description;
       if (priceMonthly !== undefined)  updates.priceMonthly = priceMonthly;
       if (priceYearly !== undefined)   updates.priceYearly = priceYearly;
       if (maxUsers !== undefined)      updates.maxUsers = maxUsers;
+      if (baseUsers !== undefined)     updates.baseUsers = baseUsers;
+      if (perUserPrice !== undefined)  updates.perUserPrice = perUserPrice;
       if (modules !== undefined)       updates.modules = modules;
       if (features !== undefined)      updates.features = features;
       if (isActive !== undefined)      updates.isActive = isActive;
