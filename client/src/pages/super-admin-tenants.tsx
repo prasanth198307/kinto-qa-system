@@ -31,6 +31,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { format } from "date-fns";
+import SuperAdminLayout from "./super-admin-layout";
 
 type Tenant = {
   id: number;
@@ -74,7 +75,6 @@ export default function SuperAdminTenants() {
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleteReason, setDeleteReason]   = useState("");
   const [backupTenant, setBackupTenant]   = useState<Tenant | null>(null);
-  const [showDbBackup, setShowDbBackup]   = useState(false);
 
   const { data: tenants = [], isLoading, refetch } = useQuery<Tenant[]>({
     queryKey: ["/api/admin/tenants"],
@@ -226,65 +226,23 @@ export default function SuperAdminTenants() {
     suspended: tenants.filter((t) => t.status === "suspended").length,
   };
 
-  const isInIframe = window.self !== window.top;
-
   return (
-    <div className="p-6 space-y-6">
-      {isInIframe && (
-        <div className="flex items-center gap-3 rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
-          <AlertTriangle className="h-4 w-4 shrink-0" />
-          <span>
-            Session cookies are blocked in the preview pane. Open the app in a new tab so authentication works correctly.
-          </span>
-          <Button
-            size="sm"
-            variant="outline"
-            className="ml-auto shrink-0"
-            onClick={() => window.open(window.location.href, "_blank")}
-          >
-            Open in New Tab
-          </Button>
-        </div>
-      )}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <ShieldAlert className="h-6 w-6 text-primary" />
-            Super Admin — Tenants
-          </h1>
-          <p className="text-muted-foreground text-sm mt-0.5">
-            Manage all company accounts on this platform
-          </p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <Button variant="outline" size="default" onClick={() => setLocation("/super-admin/plans")} data-testid="button-manage-plans">
-            <CreditCard className="h-4 w-4 mr-2" />Manage Plans
-          </Button>
-          <Button variant="outline" size="default" onClick={() => setShowDbBackup((v) => !v)} data-testid="button-toggle-db-backup">
-            <Database className="h-4 w-4 mr-2" />DB Backups
-          </Button>
+    <SuperAdminLayout
+      title="Tenants"
+      subtitle="Manage all company accounts on this platform"
+      actions={
+        <>
           <Button variant="outline" size="default" onClick={() => seedDemoMutation.mutate()} disabled={seedDemoMutation.isPending} data-testid="button-seed-demo">
             {seedDemoMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FlaskConical className="h-4 w-4 mr-2" />}
-            Seed Demo Tenant
+            Seed Demo
           </Button>
           <Button variant="outline" size="default" onClick={() => refetch()} data-testid="button-refresh-tenants">
             <RefreshCw className="h-4 w-4 mr-2" />Refresh
           </Button>
-          <Button
-            variant="destructive"
-            size="default"
-            onClick={() => logoutMutation.mutate()}
-            disabled={logoutMutation.isPending}
-            data-testid="button-logout"
-          >
-            {logoutMutation.isPending
-              ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              : <LogOut className="h-4 w-4 mr-2" />}
-            Logout
-          </Button>
-        </div>
-      </div>
-
+        </>
+      }
+    >
+    <div className="space-y-6">
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
@@ -304,9 +262,6 @@ export default function SuperAdminTenants() {
           </Card>
         ))}
       </div>
-
-      {/* PostgreSQL Database Backup Panel */}
-      {showDbBackup && <PostgresBackupPanel />}
 
       {/* Search + Table */}
       <Card>
@@ -598,6 +553,7 @@ export default function SuperAdminTenants() {
         />
       )}
     </div>
+    </SuperAdminLayout>
   );
 }
 

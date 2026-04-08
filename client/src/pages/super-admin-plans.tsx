@@ -23,6 +23,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
+import SuperAdminLayout from "./super-admin-layout";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface SubscriptionPlan {
@@ -225,39 +226,16 @@ export default function SuperAdminPlans() {
   }
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => setLocation("/super-admin/tenants")} data-testid="button-back">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <CreditCard className="h-6 w-6 text-primary" /> Subscription Plan Management
-            </h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Define pricing, modules, and features for each subscription tier
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button onClick={openCreate} data-testid="button-create-plan">
-            <Plus className="h-4 w-4 mr-2" /> New Plan
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={() => logoutMutation.mutate()}
-            disabled={logoutMutation.isPending}
-            data-testid="button-logout"
-          >
-            {logoutMutation.isPending
-              ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              : <LogOut className="h-4 w-4 mr-2" />}
-            Logout
-          </Button>
-        </div>
-      </div>
+    <SuperAdminLayout
+      title="Subscription Plans"
+      subtitle="Define pricing, modules, and features for each subscription tier"
+      actions={
+        <Button onClick={openCreate} data-testid="button-create-plan">
+          <Plus className="h-4 w-4 mr-2" /> New Plan
+        </Button>
+      }
+    >
+    <div className="space-y-6">
 
       {/* Plan cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -577,5 +555,6 @@ export default function SuperAdminPlans() {
         </DialogContent>
       </Dialog>
     </div>
+    </SuperAdminLayout>
   );
 }

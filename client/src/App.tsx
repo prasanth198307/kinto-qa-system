@@ -16,6 +16,9 @@ import CompanySelectPage from "@/pages/company-select";
 import RegisterCompanyPage from "@/pages/register-company";
 import SuperAdminTenants from "@/pages/super-admin-tenants";
 import SuperAdminPlans from "@/pages/super-admin-plans";
+import SuperAdminOverview from "@/pages/super-admin-overview";
+import SuperAdminBilling from "@/pages/super-admin-billing";
+import SuperAdminBackups from "@/pages/super-admin-backups";
 import Landing from "@/components/Landing";
 import RoleSelector from "@/components/RoleSelector";
 import { TopRightHeader } from "@/components/TopRightHeader";
@@ -1221,7 +1224,7 @@ function AuthenticatedApp() {
 
   // Super-admin goes directly to their portal — no role selection needed
   if ((user as any)?.isSuperAdmin) {
-    return <SuperAdminTenants />;
+    return <SuperAdminOverview />;
   }
 
   if (!(user as any)?.role) {
@@ -3260,8 +3263,11 @@ function Router() {
       <Route path="/register-company" component={RegisterCompanyPage} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/reset-password" component={ResetPasswordPage} />
+      <ProtectedRoute path="/super-admin/overview" component={() => <SuperAdminOverview />} />
       <ProtectedRoute path="/super-admin/tenants" component={() => <SuperAdminTenants />} />
+      <ProtectedRoute path="/super-admin/billing" component={() => <SuperAdminBilling />} />
       <ProtectedRoute path="/super-admin/plans" component={() => <SuperAdminPlans />} />
+      <ProtectedRoute path="/super-admin/backups" component={() => <SuperAdminBackups />} />
       <Route path="/print/invoice/:id" component={PrintInvoicePage} />
       <Route path="/print/gatepass/:id" component={PrintGatepassPage} />
       <Route path="/print/credit-note/:id" component={PrintCreditNotePage} />
