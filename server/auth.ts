@@ -258,6 +258,56 @@ export function setupAuth(app: Express) {
     }
   });
 
+  // ─── Public: One-click demo login ───────────────────────────────────────────
+  // Auto-seeds the demo tenant if it doesn't exist, then logs the caller in
+  // as acme-admin. No credentials required — anyone can use this.
+  app.post("/api/demo-login", async (req: any, res) => {
+    try {
+      // 1. Ensure demo tenant exists
+      const { seedDemoTenant } = await import("./seed-demo-tenant");
+      const seedResult = await seedDemoTenant();
+      const tenantId = seedResult.tenantId;
+
+      // 2. Find the demo admin user
+      const [demoUser] = await db
+        .select()
+        .from(users)
+        .where(and(eq(users.tenantId, tenantId), eq(users.username, "acme-admin"), eq(users.recordStatus, 1)))
+        .limit(1);
+
+      if (!demoUser) {
+        return res.status(500).json({ message: "Demo user not found. Please try again." });
+      }
+
+      // 3. Get role name
+      const roleRow = demoUser.roleId
+        ? await db.select({ name: roles.name }).from(roles).where(eq(roles.id, demoUser.roleId)).limit(1)
+        : [];
+      const roleName = roleRow[0]?.name ?? "admin";
+
+      // 4. Log in via passport
+      const userWithRole = { ...demoUser, role: roleName, isDemo: true };
+
+      req.login(userWithRole, (err: any) => {
+        if (err) return res.status(500).json({ message: "Demo login failed" });
+
+        (req.session as any).tenantId    = tenantId;
+        (req.session as any).tenantPlan  = "professional";
+        (req.session as any).tenantStatus = "active";
+        (req.session as any).isDemo      = true;
+
+        req.session.save((err: any) => {
+          if (err) return res.status(500).json({ message: "Session save failed" });
+          console.log(`✅ Demo login — user: acme-admin, tenant: ${tenantId}`);
+          return res.json({ ...userWithRole, isDemo: true });
+        });
+      });
+    } catch (err: any) {
+      console.error("Demo login error:", err);
+      return res.status(500).json({ message: err?.message ?? "Demo login failed" });
+    }
+  });
+
   // ─── Super-admin: Seed demo tenant ─────────────────────────────────────────
   app.post("/api/admin/seed-demo", async (req: any, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
@@ -624,11 +674,12 @@ export function setupAuth(app: Express) {
   app.get("/api/user", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const user = req.user as any;
+    const isDemo = !!(req.session as any).isDemo;
     if (user.roleId) {
       const roleData = await storage.getRole(user.roleId);
-      res.json({ ...user, role: roleData?.name });
+      res.json({ ...user, role: roleData?.name, isDemo });
     } else {
-      res.json(user);
+      res.json({ ...user, isDemo });
     }
   });
 

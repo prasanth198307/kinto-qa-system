@@ -76,7 +76,7 @@ import { ManagerChecklistAssignment } from "@/components/ManagerChecklistAssignm
 import PendingPaymentsDashboard from "@/components/PendingPaymentsDashboard";
 import { OperatorAssignedChecklists } from "@/components/OperatorAssignedChecklists";
 import { VerticalNavSidebar, type NavSection } from "@/components/VerticalNavSidebar";
-import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, ClipboardList, Settings, Calendar, Users, FileText, FileX, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator, IndianRupee, CreditCard, Upload, FolderOpen, Wallet, Car, BookOpen, Scale, BarChart3, Landmark, Tag, Trash2, PackageX, Loader2 } from "lucide-react";
+import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, ClipboardList, Settings, Calendar, Users, FileText, FileX, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator, IndianRupee, CreditCard, Upload, FolderOpen, Wallet, Car, BookOpen, Scale, BarChart3, Landmark, Tag, Trash2, PackageX, Loader2, Play } from "lucide-react";
 import SalesDashboard from "@/components/SalesDashboard";
 import SalesOrdersPage from "@/pages/sales-orders";
 import SalesOrderDetailPage from "@/pages/sales-order-detail";
@@ -1211,6 +1211,44 @@ function RoleAssignment() {
   );
 }
 
+function DemoBanner() {
+  const { user, logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  if (!(user as any)?.isDemo) return null;
+  return (
+    <div
+      data-testid="demo-banner"
+      className="sticky top-0 z-[9999] w-full flex flex-wrap items-center justify-between gap-2 px-4 py-2 text-sm font-medium"
+      style={{ background: "hsl(38 95% 48%)", color: "#fff" }}
+    >
+      <span className="flex items-center gap-2">
+        <Play className="w-4 h-4 shrink-0" />
+        You are exploring a live demo. Data is shared and may be reset daily.
+      </span>
+      <div className="flex items-center gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          className="text-amber-900 border-amber-100 bg-white/90"
+          onClick={() => setLocation("/register-company")}
+          data-testid="demo-banner-start-trial"
+        >
+          Start Free Trial
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="text-white"
+          onClick={() => logoutMutation.mutate()}
+          data-testid="demo-banner-exit"
+        >
+          Exit Demo
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function AuthenticatedApp() {
   const { user, isLoading } = useAuth();
 
@@ -1236,13 +1274,19 @@ function AuthenticatedApp() {
 
   const role = ((user as any).role as string).toLowerCase() as Role;
 
-  if (role === 'operator') return <OperatorDashboard />;
-  if (role === 'reviewer') return <ReviewerDashboard />;
-  if (role === 'manager') return <ManagerDashboard />;
-  if (role === 'admin') return <AdminDashboard />;
-  
-  // Custom roles - use AdminDashboard layout with role-based nav filtering
-  return <CustomRoleDashboard roleName={(user as any).role} />;
+  const dashboard =
+    role === 'operator' ? <OperatorDashboard /> :
+    role === 'reviewer' ? <ReviewerDashboard /> :
+    role === 'manager'  ? <ManagerDashboard /> :
+    role === 'admin'    ? <AdminDashboard /> :
+    <CustomRoleDashboard roleName={(user as any).role} />;
+
+  return (
+    <>
+      <DemoBanner />
+      {dashboard}
+    </>
+  );
 }
 
 // Wrapper component for Vendor Management with filtered navigation

@@ -1,7 +1,10 @@
+import { useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import {
   Factory,
   Package,
@@ -25,6 +28,8 @@ import {
   Star,
   ChevronRight,
   Video,
+  Play,
+  Loader2,
 } from "lucide-react";
 
 const modules = [
@@ -77,6 +82,21 @@ const testimonials = [
 
 export default function LandingPage() {
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const [demoLoading, setDemoLoading] = useState(false);
+
+  async function handleDemoLogin() {
+    setDemoLoading(true);
+    try {
+      await apiRequest("POST", "/api/demo-login", {});
+      setLocation("/");
+      window.location.reload();
+    } catch (err: any) {
+      toast({ title: "Demo unavailable", description: err.message ?? "Please try again.", variant: "destructive" });
+    } finally {
+      setDemoLoading(false);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -131,9 +151,18 @@ export default function LandingPage() {
               Start Free Trial
               <ArrowRight className="w-4 h-4" />
             </Button>
-            <Button size="lg" variant="outline" onClick={() => setLocation("/demo")} data-testid="hero-demo-btn" className="gap-2">
-              <Video className="w-4 h-4" />
-              Book a Demo
+            <Button
+              size="lg"
+              variant="outline"
+              onClick={handleDemoLogin}
+              disabled={demoLoading}
+              data-testid="hero-live-demo-btn"
+              className="gap-2"
+            >
+              {demoLoading
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> Loading demo...</>
+                : <><Play className="w-4 h-4" /> Try Live Demo</>
+              }
             </Button>
             <Button size="lg" variant="ghost" onClick={() => setLocation("/auth")} data-testid="hero-login-btn">
               Log in

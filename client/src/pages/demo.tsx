@@ -20,6 +20,7 @@ import {
   Wrench,
   FileText,
   Loader2,
+  Play,
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -48,6 +49,20 @@ export default function DemoPage() {
   const { toast } = useToast();
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
+
+  async function handleDemoLogin() {
+    setDemoLoading(true);
+    try {
+      await apiRequest("POST", "/api/demo-login", {});
+      setLocation("/");
+      window.location.reload();
+    } catch (err: any) {
+      toast({ title: "Demo unavailable", description: err.message ?? "Please try again.", variant: "destructive" });
+    } finally {
+      setDemoLoading(false);
+    }
+  }
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -145,8 +160,32 @@ export default function DemoPage() {
               </CardContent>
             </Card>
 
+            <div className="border rounded-md p-4 bg-primary/5 space-y-3">
+              <div className="flex items-start gap-3">
+                <Play className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-sm">Try the live platform now</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Explore a fully populated demo account — no registration needed.
+                    Data is pre-filled with products, vendors, machines and invoices.
+                  </p>
+                </div>
+              </div>
+              <Button
+                className="w-full gap-2"
+                onClick={handleDemoLogin}
+                disabled={demoLoading}
+                data-testid="demo-page-live-demo-btn"
+              >
+                {demoLoading
+                  ? <><Loader2 className="w-4 h-4 animate-spin" /> Setting up demo...</>
+                  : <><Play className="w-4 h-4" /> Launch Live Demo</>
+                }
+              </Button>
+            </div>
+
             <div className="text-center">
-              <p className="text-xs text-muted-foreground mb-2">Rather just explore on your own?</p>
+              <p className="text-xs text-muted-foreground mb-2">Or start with your own account:</p>
               <Button variant="outline" size="sm" onClick={() => setLocation("/register-company")} data-testid="demo-try-free">
                 Start 14-day free trial instead
               </Button>

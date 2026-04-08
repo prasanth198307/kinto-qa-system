@@ -10,6 +10,47 @@ import { eq, sql } from "drizzle-orm";
 import { seedNewTenant } from "./seed-tenant";
 import { hashPassword } from "./auth";
 
+/** Creates acme-admin and acme-manager for an already-existing demo tenant. */
+async function ensureDemoUsers(tenantId: number): Promise<void> {
+  const rolesResult = await db.execute(
+    sql`SELECT id, name FROM roles WHERE tenant_id = ${tenantId} AND name IN ('admin','manager')`
+  );
+  const rolesMap: Record<string, string> = {};
+  const rolesRows = (rolesResult as any).rows ?? (rolesResult as any) ?? [];
+  for (const row of rolesRows) {
+    rolesMap[row.name] = String(row.id);
+  }
+
+  const adminPwd = await hashPassword("Demo@1234");
+  const mgrPwd   = await hashPassword("Demo@1234");
+
+  await db.insert(users).values([
+    {
+      username: "acme-admin",
+      email: "admin@acme-demo.com",
+      password: adminPwd,
+      firstName: "Rajesh",
+      lastName: "Mehta",
+      mobileNumber: "9876543210",
+      roleId: rolesMap["admin"] ?? null,
+      tenantId,
+      recordStatus: 1,
+    },
+    {
+      username: "acme-manager",
+      email: "manager@acme-demo.com",
+      password: mgrPwd,
+      firstName: "Priya",
+      lastName: "Sharma",
+      mobileNumber: "9876543211",
+      roleId: rolesMap["manager"] ?? null,
+      tenantId,
+      recordStatus: 1,
+    },
+  ]);
+  console.log(`[DEMO SEED] Users created for tenant ${tenantId}`);
+}
+
 export async function seedDemoTenant(): Promise<{ created: boolean; tenantId: number; message: string }> {
   const DEMO_SLUG = "acme-demo";
 
@@ -20,6 +61,19 @@ export async function seedDemoTenant(): Promise<{ created: boolean; tenantId: nu
     .where(eq(tenants.slug, DEMO_SLUG));
 
   if (existing) {
+    // Ensure users exist (handles partial-seed recovery)
+    const existingUsers = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.tenantId, existing.id));
+
+    console.log(`[DEMO SEED] Tenant ${existing.id} found. User count: ${existingUsers.length}`);
+
+    if (existingUsers.length === 0) {
+      console.log(`[DEMO SEED] No users found — running ensureDemoUsers`);
+      await ensureDemoUsers(existing.id);
+    }
+
     return {
       created: false,
       tenantId: existing.id,
@@ -55,7 +109,8 @@ export async function seedDemoTenant(): Promise<{ created: boolean; tenantId: nu
     sql`SELECT id, name FROM roles WHERE tenant_id = ${tenantId} AND name IN ('admin','manager')`
   );
   const rolesMap: Record<string, string> = {};
-  for (const row of rolesResult as any[]) {
+  const rolesRows = (rolesResult as any).rows ?? (rolesResult as any) ?? [];
+  for (const row of rolesRows) {
     rolesMap[row.name] = row.id;
   }
 
