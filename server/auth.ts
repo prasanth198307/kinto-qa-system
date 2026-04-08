@@ -7,7 +7,7 @@ import { promisify } from "util";
 import bcrypt from "bcryptjs";
 import { storage } from "./storage";
 import { User as SelectUser, tenants, users, roles, deletionAudit } from "@shared/schema";
-import { db } from "./db";
+import { db, pool } from "./db";
 import { eq, desc, sql, or, and } from "drizzle-orm";
 import { lookupTenantBySlug } from "./tenant-middleware";
 import { seedNewTenant } from "./seed-tenant";
@@ -284,27 +284,29 @@ export function setupAuth(app: Express) {
     }
 
     try {
-      const allTenants = await db
-        .select({
-          id: tenants.id,
-          name: tenants.name,
-          slug: tenants.slug,
-          plan: tenants.plan,
-          status: tenants.status,
-          trialEndsAt: tenants.trialEndsAt,
-          maxUsers: tenants.maxUsers,
-          billingEmail: tenants.billingEmail,
-          contactName: tenants.contactName,
-          contactPhone: tenants.contactPhone,
-          isSuperAdmin: tenants.isSuperAdmin,
-          isInternal: tenants.isInternal,
-          createdAt: tenants.createdAt,
-          userCount: sql<number>`(SELECT COUNT(*) FROM users u WHERE u.tenant_id = ${tenants.id} AND u.record_status = 1)`,
-        })
-        .from(tenants)
-        .orderBy(desc(tenants.createdAt));
-
-      return res.json(allTenants);
+      const result = await pool.query(`
+        SELECT
+          t.id,
+          t.name,
+          t.slug,
+          t.plan,
+          t.status,
+          t.trial_ends_at   AS "trialEndsAt",
+          t.max_users       AS "maxUsers",
+          t.billing_email   AS "billingEmail",
+          t.contact_name    AS "contactName",
+          t.contact_phone   AS "contactPhone",
+          t.is_super_admin  AS "isSuperAdmin",
+          t.is_internal     AS "isInternal",
+          t.created_at      AS "createdAt",
+          (SELECT COUNT(*)::int
+             FROM users u
+            WHERE u.tenant_id = t.id
+              AND u.record_status = 1)  AS "userCount"
+        FROM tenants t
+        ORDER BY t.created_at DESC
+      `);
+      return res.json(result.rows);
     } catch (err) {
       console.error("List tenants error:", err);
       return res.status(500).json({ message: "Failed to fetch tenants" });

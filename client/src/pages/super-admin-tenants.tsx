@@ -335,15 +335,21 @@ export default function SuperAdminTenants() {
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           ) : isError ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
+            <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
               <AlertCircle className="h-10 w-10 text-destructive" />
               <div>
                 <p className="font-semibold text-destructive">Could not load tenant data</p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Session cookies are blocked in the preview pane.<br />
-                  Click <strong>Open in New Tab</strong> and log in again.
+                  A server error occurred while fetching tenants.<br />
+                  Please refresh the page or try again.
                 </p>
               </div>
+              <button
+                onClick={() => window.location.reload()}
+                className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm hover:opacity-90"
+              >
+                Retry
+              </button>
             </div>
           ) : filtered.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">

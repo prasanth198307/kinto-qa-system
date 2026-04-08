@@ -239,10 +239,16 @@ export default function SuperAdminPlans() {
           <div>
             <p className="font-semibold text-destructive">Could not load subscription plans</p>
             <p className="text-sm text-muted-foreground mt-1">
-              Session cookies are blocked in the preview pane.<br />
-              Use <strong>Open in New Tab</strong> and log in again to access the super-admin portal.
+              A server error occurred while fetching plans.<br />
+              Please refresh the page or try again.
             </p>
           </div>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm hover:opacity-90"
+          >
+            Retry
+          </button>
         </div>
       </SuperAdminLayout>
     );
