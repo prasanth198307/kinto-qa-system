@@ -49,6 +49,7 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
     "hpcl-migration",
     "spare-parts",
     "spare-parts-stock",
+    "company-settings",
   ],
   gatepasses: [
     "gatepasses",

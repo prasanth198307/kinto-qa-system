@@ -46,6 +46,7 @@ import {
   Clock,
   XCircle,
   Loader2,
+  FlaskConical,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -76,7 +77,7 @@ const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secon
 
 const PLAN_CONFIG: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
   trial: { label: "Trial", variant: "secondary" },
-  starter: { label: "Starter", variant: "outline" },
+  basic: { label: "Basic", variant: "outline" },
   professional: { label: "Professional", variant: "default" },
   enterprise: { label: "Enterprise", variant: "default" },
 };
@@ -89,6 +90,20 @@ export default function SuperAdminTenants() {
 
   const { data: tenants = [], isLoading, refetch } = useQuery<Tenant[]>({
     queryKey: ["/api/admin/tenants"],
+  });
+
+  const seedDemoMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/admin/seed-demo", {});
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/tenants"] });
+      toast({ title: data.created ? "Demo tenant created" : "Demo tenant already exists", description: data.message });
+    },
+    onError: (err: any) => {
+      toast({ title: "Seed failed", description: err.message, variant: "destructive" });
+    },
   });
 
   const updateMutation = useMutation({
@@ -154,10 +169,26 @@ export default function SuperAdminTenants() {
             Manage all company accounts on this platform
           </p>
         </div>
-        <Button variant="outline" size="default" onClick={() => refetch()} data-testid="button-refresh-tenants">
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="default"
+            onClick={() => seedDemoMutation.mutate()}
+            disabled={seedDemoMutation.isPending}
+            data-testid="button-seed-demo"
+          >
+            {seedDemoMutation.isPending ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <FlaskConical className="h-4 w-4 mr-2" />
+            )}
+            Seed Demo Tenant
+          </Button>
+          <Button variant="outline" size="default" onClick={() => refetch()} data-testid="button-refresh-tenants">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -348,7 +379,7 @@ export default function SuperAdminTenants() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="trial">Trial</SelectItem>
-                  <SelectItem value="starter">Starter</SelectItem>
+                  <SelectItem value="basic">Basic</SelectItem>
                   <SelectItem value="professional">Professional</SelectItem>
                   <SelectItem value="enterprise">Enterprise</SelectItem>
                 </SelectContent>

@@ -203,6 +203,23 @@ export function setupAuth(app: Express) {
     }
   });
 
+  // ─── Super-admin: Seed demo tenant ─────────────────────────────────────────
+  app.post("/api/admin/seed-demo", async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const currentUser = req.user as any;
+    if (!currentUser?.isSuperAdmin && currentUser?.role !== "admin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    try {
+      const { seedDemoTenant } = await import("./seed-demo-tenant");
+      const result = await seedDemoTenant();
+      return res.json(result);
+    } catch (err: any) {
+      console.error("Demo seed error:", err);
+      return res.status(500).json({ message: err?.message ?? "Failed to seed demo tenant" });
+    }
+  });
+
   // ─── Super-admin: List all tenants ─────────────────────────────────────────
   app.get("/api/admin/tenants", async (req: any, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
@@ -280,12 +297,26 @@ export function setupAuth(app: Express) {
       if (!user) return res.status(401).json({ message: "Invalid username or password" });
 
       let tenantPlan = "trial";
+      let tenantStatus = "active";
 
-      // If tenantSlug provided, verify user belongs to that tenant and grab plan
+      // If tenantSlug provided, verify user belongs to that tenant and grab plan/status
       if (tenantSlug) {
         const tenant = await lookupTenantBySlug(tenantSlug);
         if (!tenant) return res.status(401).json({ message: "Company not found" });
-        if (tenant.status === "suspended") return res.status(403).json({ message: "Company account is suspended" });
+
+        // Check for trial expiry — auto-expire if needed
+        let effectiveStatus = tenant.status;
+        if (effectiveStatus === "trial" && (tenant as any).trialEndsAt) {
+          const trialEnd = new Date((tenant as any).trialEndsAt);
+          if (trialEnd < new Date()) {
+            // Auto-expire the tenant in DB
+            await db.update(tenants).set({ status: "expired", updatedAt: new Date().toISOString() }).where(eq(tenants.id, tenant.id));
+            effectiveStatus = "expired";
+          }
+        }
+
+        if (effectiveStatus === "suspended") return res.status(403).json({ message: "Your company account has been suspended. Please contact support.", code: "TENANT_SUSPENDED" });
+        if (effectiveStatus === "expired") return res.status(403).json({ message: "Your trial has expired. Please upgrade to continue.", code: "TRIAL_EXPIRED" });
 
         const userTenantId = (user as any).tenantId ?? 1;
         if (userTenantId !== tenant.id) {
@@ -293,11 +324,22 @@ export function setupAuth(app: Express) {
           return res.status(401).json({ message: "Invalid username or password" });
         }
         tenantPlan = (tenant as any).plan ?? "trial";
+        tenantStatus = effectiveStatus;
       } else {
-        // No slug provided — look up tenant plan by user's tenantId
+        // No slug provided — look up tenant plan/status by user's tenantId
         const userTenantId = (user as any).tenantId ?? 1;
-        const tenantRow = await db.select({ plan: tenants.plan }).from(tenants).where(eq(tenants.id, userTenantId)).limit(1);
+        const tenantRow = await db.select({ plan: tenants.plan, status: tenants.status, trialEndsAt: tenants.trialEndsAt }).from(tenants).where(eq(tenants.id, userTenantId)).limit(1);
         tenantPlan = tenantRow[0]?.plan ?? "trial";
+        let effectiveStatus = tenantRow[0]?.status ?? "active";
+        if (effectiveStatus === "trial" && tenantRow[0]?.trialEndsAt) {
+          if (new Date(tenantRow[0].trialEndsAt) < new Date()) {
+            await db.update(tenants).set({ status: "expired", updatedAt: new Date().toISOString() }).where(eq(tenants.id, userTenantId));
+            effectiveStatus = "expired";
+          }
+        }
+        if (effectiveStatus === "suspended") return res.status(403).json({ message: "Your company account has been suspended. Please contact support.", code: "TENANT_SUSPENDED" });
+        if (effectiveStatus === "expired") return res.status(403).json({ message: "Your trial has expired. Please upgrade to continue.", code: "TRIAL_EXPIRED" });
+        tenantStatus = effectiveStatus;
       }
 
       req.session.regenerate((err) => {
@@ -306,14 +348,15 @@ export function setupAuth(app: Express) {
         req.login(user, (err) => {
           if (err) return res.status(500).json({ message: "Login failed" });
 
-          // Store tenantId and tenantPlan in session
+          // Store tenantId, tenantPlan, and tenantStatus in session
           (req.session as any).tenantId = (user as any).tenantId ?? 1;
           (req.session as any).tenantPlan = tenantPlan;
+          (req.session as any).tenantStatus = tenantStatus;
 
           req.session.save((err) => {
             if (err) return res.status(500).json({ message: "Session save failed" });
 
-            console.log(`✅ Session saved — user: ${user.username}, tenant: ${(req.session as any).tenantId}, plan: ${tenantPlan}`);
+            console.log(`✅ Session saved — user: ${user.username}, tenant: ${(req.session as any).tenantId}, plan: ${tenantPlan}, status: ${tenantStatus}`);
             return res.json(req.user);
           });
         });

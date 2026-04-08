@@ -485,6 +485,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(features);
   });
 
+  // ─── Tenant info endpoint (for settings page + white-labeling) ─────────────
+  app.get('/api/tenant/info', async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' });
+    const tenantId: number = (req.session as any).tenantId ?? req.user?.tenantId ?? 1;
+    try {
+      const [tenant] = await db.select({
+        id: tenants.id,
+        name: tenants.name,
+        slug: tenants.slug,
+        plan: tenants.plan,
+        status: tenants.status,
+        trialEndsAt: tenants.trialEndsAt,
+        maxUsers: tenants.maxUsers,
+        logoUrl: tenants.logoUrl,
+        primaryColor: tenants.primaryColor,
+        billingEmail: tenants.billingEmail,
+        contactName: tenants.contactName,
+        contactPhone: tenants.contactPhone,
+        gstNumber: tenants.gstNumber,
+        address: tenants.address,
+        createdAt: tenants.createdAt,
+      }).from(tenants).where(eq(tenants.id, tenantId));
+
+      if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
+
+      // Include current user count
+      const [{ userCount }] = await db.select({ userCount: sql<number>`COUNT(*)` }).from(users).where(and(eq(users.tenantId, tenantId), eq(users.recordStatus, 1)));
+
+      res.json({ ...tenant, userCount: Number(userCount) });
+    } catch (err) {
+      console.error('GET /api/tenant/info error:', err);
+      res.status(500).json({ message: 'Failed to fetch tenant info' });
+    }
+  });
+
+  // ─── Tenant settings update (admin only, company info only — not plan) ──────
+  app.patch('/api/tenant/settings', async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' });
+    if (req.user?.role !== 'admin' && !req.user?.isSuperAdmin) return res.status(403).json({ message: 'Admin only' });
+
+    const tenantId: number = (req.session as any).tenantId ?? req.user?.tenantId ?? 1;
+    const { billingEmail, contactName, contactPhone, gstNumber, address, logoUrl, primaryColor } = req.body;
+
+    try {
+      const updates: Record<string, any> = { updatedAt: new Date().toISOString() };
+      if (billingEmail !== undefined) updates.billingEmail = billingEmail;
+      if (contactName !== undefined) updates.contactName = contactName;
+      if (contactPhone !== undefined) updates.contactPhone = contactPhone;
+      if (gstNumber !== undefined) updates.gstNumber = gstNumber;
+      if (address !== undefined) updates.address = address;
+      if (logoUrl !== undefined) updates.logoUrl = logoUrl;
+      if (primaryColor !== undefined) updates.primaryColor = primaryColor;
+
+      const [updated] = await db.update(tenants).set(updates).where(eq(tenants.id, tenantId)).returning();
+      res.json(updated);
+    } catch (err) {
+      console.error('PATCH /api/tenant/settings error:', err);
+      res.status(500).json({ message: 'Failed to update settings' });
+    }
+  });
+
   // Secure WhatsApp photo download route (validates files before serving)
   app.get('/whatsapp-photos/:filename', async (req, res) => {
     try {
@@ -845,6 +906,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate required fields
       if (!email || !password || !mobileNumber) {
         return res.status(400).json({ message: "Email, password, and mobile number are required" });
+      }
+
+      // Enforce max users plan limit
+      const tenantId: number = (req.session as any)?.tenantId ?? req.user?.tenantId ?? 1;
+      const [tenantRow] = await db.select({ maxUsers: tenants.maxUsers }).from(tenants).where(eq(tenants.id, tenantId));
+      if (tenantRow?.maxUsers) {
+        const [{ count }] = await db.select({ count: sql<number>`COUNT(*)` }).from(users).where(and(eq(users.tenantId, tenantId), eq(users.recordStatus, 1)));
+        if (Number(count) >= tenantRow.maxUsers) {
+          return res.status(403).json({ message: `User limit reached. Your plan allows up to ${tenantRow.maxUsers} users. Please upgrade to add more.`, code: "USER_LIMIT_REACHED" });
+        }
       }
       
       // Validate mobile number format

@@ -3,6 +3,7 @@ import { KintoLogo } from "@/components/branding/KintoLogo";
 import { TopRightHeader } from "@/components/TopRightHeader";
 import { Button } from "@/components/ui/button";
 import { Menu } from "lucide-react";
+import { useTenantBranding } from "@/hooks/use-tenant-branding";
 
 interface GlobalHeaderProps {
   title?: string;
@@ -25,6 +26,8 @@ export function GlobalHeader({
   onMobileMenuClick,
   showMobileMenu = false,
 }: GlobalHeaderProps) {
+  const { logoUrl, tenantName } = useTenantBranding();
+
   return (
     <div
       className="fixed left-0 right-0 bg-card border-b border-border z-50 flex items-center justify-between px-4 gap-4"
@@ -37,9 +40,8 @@ export function GlobalHeader({
       }}
       data-testid="global-header"
     >
-      {/* Left: Mobile Menu + KINTO Logo + SmartOps (horizontal) + Optional Title */}
+      {/* Left: Mobile Menu + Logo + Optional Title */}
       <div className="flex items-center gap-4 min-w-0">
-        {/* Mobile Menu Button */}
         {showMobileMenu && onMobileMenuClick && (
           <Button
             variant="ghost"
@@ -51,7 +53,16 @@ export function GlobalHeader({
             <Menu className="w-5 h-5" />
           </Button>
         )}
-        <KintoLogo variant="compact" layout="horizontal" />
+        {logoUrl ? (
+          <img
+            src={logoUrl}
+            alt={tenantName}
+            className="h-8 object-contain max-w-[140px]"
+            data-testid="img-tenant-logo"
+          />
+        ) : (
+          <KintoLogo variant="compact" layout="horizontal" />
+        )}
         {title && (
           <h1 className="text-lg font-semibold text-foreground truncate">
             {title}

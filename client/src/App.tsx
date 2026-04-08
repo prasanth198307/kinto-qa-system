@@ -130,6 +130,7 @@ import CashFlowStatementPage from "@/pages/cash-flow-statement";
 import GroupSummaryPage from "@/pages/group-summary";
 import BudgetVariancePage from "@/pages/budget-variance";
 import AdminToolsPage from "@/pages/admin-tools";
+import TenantSettings from "@/pages/tenant-settings";
 import { parseISO } from "date-fns";
 
 type Role = 'admin' | 'operator' | 'reviewer' | 'manager';
@@ -1518,6 +1519,7 @@ const navItemToScreenKey: Record<string, string> = {
   'notification-settings': 'notification_settings',
   'data-import': 'data_import',
   'admin-tools': 'admin_tools',
+  'company-settings': 'admin_tools',
 };
 
 // Legacy permission mapping for backward compatibility with default roles
@@ -1605,6 +1607,7 @@ const navItemToScreen: Record<string, string> = {
   'notification-settings': 'User Management',
   'data-import': 'User Management',
   'admin-tools': 'User Management',
+  'company-settings': 'User Management',
 };
 
 // Permission matrix: which roles can access which screens
@@ -1873,6 +1876,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "notification-settings", label: "Notification Settings", icon: Bell, onClick: () => setLocation('/') },
         { id: "data-import", label: "Data Import", icon: Upload, onClick: () => setLocation('/') },
         { id: "admin-tools", label: "Admin Tools", icon: Wrench, onClick: () => setLocation('/admin-tools') },
+        { id: "company-settings", label: "Company Settings", icon: Building2, onClick: () => setLocation('/company-settings') },
       ],
     },
   ];
@@ -2327,6 +2331,20 @@ function AdminToolsPageWrapper() {
   return (
     <DashboardShell title="Admin Tools" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
       <AdminToolsPage />
+    </DashboardShell>
+  );
+}
+
+function TenantSettingsPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('company-settings');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  return (
+    <DashboardShell title="Company Settings" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); setLocation(`/${viewId}`); }}>
+      <TenantSettings />
     </DashboardShell>
   );
 }
@@ -3227,6 +3245,7 @@ function Router() {
       <ProtectedRoute path="/group-summary" component={GroupSummaryPageWrapper} />
       <ProtectedRoute path="/budget-variance" component={BudgetVariancePageWrapper} />
       <ProtectedRoute path="/admin-tools" component={AdminToolsPageWrapper} />
+      <ProtectedRoute path="/company-settings" component={TenantSettingsPageWrapper} />
       <ProtectedRoute path="/journal-entry/new" component={ManualJournalEntryPageWrapper} />
       <ProtectedRoute path="/journal-entry/:id" component={JournalEntryDetailPageWrapper} />
       <ProtectedRoute path="/" component={AuthenticatedApp} />

@@ -17,19 +17,38 @@ declare global {
  * Global tenant middleware.
  * Reads tenantId from session (set at login), attaches to req,
  * AND sets it in AsyncLocalStorage so all storage queries auto-scope.
+ * Also blocks suspended/expired tenants on every API call.
  */
-export function tenantMiddleware(req: Request, _res: Response, next: NextFunction) {
+export async function tenantMiddleware(req: Request, res: Response, next: NextFunction) {
   try {
     const session = req.session as any;
     const user = req.user as any;
 
-    const tenantId: number =
-      session?.tenantId ?? user?.tenantId ?? 1;
-
+    const tenantId: number = session?.tenantId ?? user?.tenantId ?? 1;
     req.tenantId = tenantId;
 
+    // Block suspended or expired tenants from all authenticated API requests
+    // Allow a small allowlist so the UI can still fetch plan/company info and log out
+    const TENANT_STATUS_ALLOWLIST = ['/api/tenant/info', '/api/tenant/features', '/api/logout', '/api/user'];
+    const isAllowlisted = TENANT_STATUS_ALLOWLIST.some(p => req.path.startsWith(p));
+
+    if (req.isAuthenticated() && req.path.startsWith('/api/') && !(user?.isSuperAdmin) && !isAllowlisted) {
+      const tenantStatus: string = session?.tenantStatus;
+      if (tenantStatus === 'suspended') {
+        return res.status(403).json({
+          message: 'Your company account has been suspended. Please contact support.',
+          code: 'TENANT_SUSPENDED',
+        });
+      }
+      if (tenantStatus === 'expired') {
+        return res.status(403).json({
+          message: 'Your trial has expired. Please upgrade your plan to continue.',
+          code: 'TRIAL_EXPIRED',
+        });
+      }
+    }
+
     // Propagate tenantId through the entire async call chain
-    // This means storage.ts queries pick it up without prop-drilling
     runWithTenantId(tenantId, next);
   } catch {
     next();
@@ -58,8 +77,10 @@ export async function lookupTenantBySlug(slug: string) {
       slug: tenants.slug,
       plan: tenants.plan,
       status: tenants.status,
+      trialEndsAt: tenants.trialEndsAt,
       logoUrl: tenants.logoUrl,
       primaryColor: tenants.primaryColor,
+      maxUsers: tenants.maxUsers,
       isSuperAdmin: tenants.isSuperAdmin,
     })
     .from(tenants)

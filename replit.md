@@ -40,6 +40,17 @@ Kinto Smart Ops is a comprehensive manufacturing ERP SaaS platform for Indian ma
   - 80-account Indian manufacturing COA (GST-compliant, 5-level hierarchy)
 - **Registration flow:** Updated to call `seedNewTenant()` and assign new tenant's own admin role to first user
 
+### Phase 4 (Complete) — SaaS Operational Features
+
+- **Trial Expiry Enforcement** (`server/auth.ts`): Login auto-expires tenants past `trialEndsAt`; blocked tenants see clear messages; `tenantStatus` stored in session
+- **Tenant Middleware** (`server/tenant-middleware.ts`): Blocks all API calls for suspended/expired tenants; allowlist for auth/info endpoints
+- **Max Users Enforcement** (`server/routes.ts`): `POST /api/users` checks current user count vs `maxUsers`; returns 403 at limit
+- **Company Settings UI** (`client/src/pages/tenant-settings.tsx`): Plan overview, module list, company info form, logo URL + brand color; accessible at `/company-settings`
+- **Tenant Info API** (`GET /api/tenant/info`, `PATCH /api/tenant/settings`): Returns full tenant info + user count; allows admin to update contact/branding fields
+- **White-Labeling** (`client/src/hooks/use-tenant-branding.ts`): Applies `primaryColor` as CSS HSL variable; `GlobalHeader.tsx` shows custom logo if `logoUrl` is set
+- **Super-Admin Enhancements** (`client/src/pages/super-admin-tenants.tsx`): Fixed plan tiers (trial/basic/professional/enterprise); "Seed Demo Tenant" button
+- **Demo Tenant Seed** (`server/seed-demo-tenant.ts`, `POST /api/admin/seed-demo`): Creates "Acme Precision Parts" (slug: acme-demo) with vendors, raw materials, products; Login: acme-admin / Demo@1234
+
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
