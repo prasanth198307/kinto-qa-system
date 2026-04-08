@@ -17,6 +17,10 @@ VALUES ('Kinto Admin', 'kinto-admin', 'enterprise', 'active', TRUE, 999)
 ON CONFLICT (slug) DO NOTHING;
 
 -- ── 2. Super-admin user ──────────────────────────────────────
+-- NOTE: The "role" column is a legacy direct-text column on the users table.
+-- It is NOT in the Drizzle schema but exists in the DB. Super-admin users
+-- use this column because they have no role_id (foreign key to roles table).
+-- The storage queries use COALESCE(roles.name, "users"."role") to handle both.
 -- Password "superadmin123" hashed with scrypt (salt:derivedKey)
 INSERT INTO users (username, email, password, role, first_name, last_name, tenant_id, record_status)
 SELECT
