@@ -923,7 +923,8 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
   const [periodType, setPeriodType] = useState<PeriodType>("monthly");
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const companyGSTIN = "37AAHCI5047B1ZR"; // Inmoisture Pvt Ltd GSTIN
+  const { data: tenantSettings } = useQuery<any>({ queryKey: ["/api/tenant/settings"] });
+  const companyGSTIN: string = (tenantSettings?.gstNumber ?? "").toUpperCase();
   
   // Expense Report States
   const [expenseReportData, setExpenseReportData] = useState<ExpenseReportData | null>(null);

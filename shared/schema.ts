@@ -4088,3 +4088,96 @@ export const budgetItems = pgTable("budget_items", {
   index("bi_account_idx").on(table.accountId),
 ]);
 
+
+// ─── Purchase Returns / GRN ──────────────────────────────────────────────────
+
+export const purchaseReturns = pgTable("purchase_returns", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  returnNumber: varchar("return_number", { length: 100 }).notNull().unique(), // PR-YYYYMMDD-XXX
+  returnDate: timestamp("return_date", { mode: 'string' }).notNull(),
+  purchaseOrderId: varchar("purchase_order_id").references(() => purchaseOrders.id),
+  vendorId: varchar("vendor_id").references(() => vendors.id),
+  vendorName: varchar("vendor_name", { length: 255 }).notNull(),
+  returnReason: varchar("return_reason", { length: 50 }).notNull(), // quality_issue, excess_quantity, wrong_item, damaged, other
+  status: varchar("status", { length: 30 }).default('pending').notNull(), // pending, approved, dispatched, credited
+  totalAmount: integer("total_amount").default(0),
+  debitNoteId: varchar("debit_note_id"),
+  remarks: text("remarks"),
+  approvedBy: varchar("approved_by").references(() => users.id),
+  approvalDate: timestamp("approval_date", { mode: 'string' }),
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
+  tenantId: integer("tenant_id").default(1),
+});
+
+export const insertPurchaseReturnSchema = createInsertSchema(purchaseReturns).omit({
+  id: true, returnNumber: true, recordStatus: true, createdAt: true, updatedAt: true,
+});
+export type InsertPurchaseReturn = z.infer<typeof insertPurchaseReturnSchema>;
+export type PurchaseReturn = typeof purchaseReturns.$inferSelect;
+
+export const purchaseReturnItems = pgTable("purchase_return_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  purchaseReturnId: varchar("purchase_return_id").references(() => purchaseReturns.id).notNull(),
+  rawMaterialId: varchar("raw_material_id").references(() => rawMaterials.id),
+  itemName: varchar("item_name", { length: 255 }).notNull(),
+  quantity: integer("quantity").notNull(),
+  unitPrice: integer("unit_price").notNull(),
+  totalAmount: integer("total_amount").notNull(),
+  remarks: text("remarks"),
+  recordStatus: integer("record_status").default(1).notNull(),
+  tenantId: integer("tenant_id").default(1),
+});
+
+export const insertPurchaseReturnItemSchema = createInsertSchema(purchaseReturnItems).omit({
+  id: true, recordStatus: true,
+});
+export type InsertPurchaseReturnItem = z.infer<typeof insertPurchaseReturnItemSchema>;
+export type PurchaseReturnItem = typeof purchaseReturnItems.$inferSelect;
+
+// ─── TDS Tracking ────────────────────────────────────────────────────────────
+
+export const tdsRates = pgTable("tds_rates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  section: varchar("section", { length: 20 }).notNull(), // 194C, 194J, 194I, etc.
+  description: text("description"),
+  individualRate: integer("individual_rate").notNull(), // basis points e.g. 100 = 1%
+  companyRate: integer("company_rate").notNull(),
+  threshold: integer("threshold").default(0), // annual threshold in paise
+  recordStatus: integer("record_status").default(1).notNull(),
+  tenantId: integer("tenant_id").default(1),
+});
+
+export const insertTdsRateSchema = createInsertSchema(tdsRates).omit({ id: true, recordStatus: true });
+export type InsertTdsRate = z.infer<typeof insertTdsRateSchema>;
+export type TdsRate = typeof tdsRates.$inferSelect;
+
+export const tdsEntries = pgTable("tds_entries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  entryDate: timestamp("entry_date", { mode: 'string' }).notNull(),
+  vendorId: varchar("vendor_id").references(() => vendors.id),
+  vendorName: varchar("vendor_name", { length: 255 }).notNull(),
+  tdsRateId: varchar("tds_rate_id").references(() => tdsRates.id),
+  section: varchar("section", { length: 20 }).notNull(),
+  grossAmount: integer("gross_amount").notNull(), // in paise
+  tdsRate: integer("tds_rate").notNull(), // basis points
+  tdsAmount: integer("tds_amount").notNull(), // in paise
+  netAmount: integer("net_amount").notNull(), // grossAmount - tdsAmount
+  purchaseOrderId: varchar("purchase_order_id").references(() => purchaseOrders.id),
+  description: text("description"),
+  depositStatus: varchar("deposit_status", { length: 30 }).default('pending'), // pending, deposited
+  depositDate: timestamp("deposit_date", { mode: 'string' }),
+  challanNumber: varchar("challan_number", { length: 100 }),
+  recordStatus: integer("record_status").default(1).notNull(),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  tenantId: integer("tenant_id").default(1),
+});
+
+export const insertTdsEntrySchema = createInsertSchema(tdsEntries).omit({
+  id: true, recordStatus: true, createdAt: true,
+});
+export type InsertTdsEntry = z.infer<typeof insertTdsEntrySchema>;
+export type TdsEntry = typeof tdsEntries.$inferSelect;

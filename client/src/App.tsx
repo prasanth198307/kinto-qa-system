@@ -70,12 +70,16 @@ import { ManagerChecklistAssignment } from "@/components/ManagerChecklistAssignm
 import PendingPaymentsDashboard from "@/components/PendingPaymentsDashboard";
 import { OperatorAssignedChecklists } from "@/components/OperatorAssignedChecklists";
 import { VerticalNavSidebar, type NavSection } from "@/components/VerticalNavSidebar";
-import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, ClipboardList, Settings, Calendar, Users, FileText, FileX, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator, IndianRupee, CreditCard, Upload, FolderOpen, Wallet, Car, BookOpen, Scale, BarChart3, Landmark, Tag } from "lucide-react";
+import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, ClipboardList, Settings, Calendar, Users, FileText, FileX, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator, IndianRupee, CreditCard, Upload, FolderOpen, Wallet, Car, BookOpen, Scale, BarChart3, Landmark, Tag, Trash2, PackageX } from "lucide-react";
 import SalesDashboard from "@/components/SalesDashboard";
 import SalesOrdersPage from "@/pages/sales-orders";
 import SalesOrderDetailPage from "@/pages/sales-order-detail";
 import SalesOfficersPage from "@/pages/sales-officers";
 import VendorAnalytics from "@/pages/vendor-analytics";
+import SpareParts from "@/pages/spare-parts";
+import ScrapManagement from "@/pages/scrap-management";
+import PurchaseReturns from "@/pages/purchase-returns";
+import TDSManagement from "@/pages/tds-management";
 import ReviewerDashboardPage from "@/pages/ReviewerDashboard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -1506,6 +1510,9 @@ const navItemToScreenKey: Record<string, string> = {
   'maintenance': 'maintenance_plans',
   'pm-history': 'pm_history',
   'purchase-orders': 'purchase_orders',
+  'purchase-returns': 'purchase_orders',
+  'scrap-management': 'production_entries',
+  'tds-management': 'journal_entries',
   // Master Data
   'users': 'users',
   'role-permissions': 'roles',
@@ -1594,6 +1601,10 @@ const navItemToScreen: Record<string, string> = {
   'maintenance': 'Maintenance Plans',
   'pm-history': 'PM History',
   'purchase-orders': 'Purchase Orders',
+  'purchase-returns': 'Purchase Orders',
+  'tds-management': 'Accounting',
+  'scrap-management': 'Create Finished Goods',
+  'spare-parts': 'Spare Parts',
   // Master Data
   'users': 'User Management',
   'role-permissions': 'User Management',
@@ -1772,7 +1783,10 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "production-reconciliations", label: "Production Reconciliation", icon: Calculator, onClick: () => setLocation('/') },
         { id: "production-reconciliation-report", label: "Reconciliation Report", icon: FileStack, onClick: () => setLocation('/reports/production-reconciliation') },
         { id: "variance-analytics", label: "Variance Analytics", icon: TrendingUp, onClick: () => setLocation('/') },
-        { id: "spare-parts", label: "Spare Parts", icon: Wrench, onClick: () => setLocation('/') },
+        { id: "spare-parts", label: "Spare Parts", icon: Wrench, onClick: () => setLocation('/spare-parts') },
+        { id: "scrap-management", label: "Scrap Management", icon: Trash2, onClick: () => setLocation('/scrap-management') },
+        { id: "purchase-returns", label: "Purchase Returns", icon: PackageX, onClick: () => setLocation('/purchase-returns') },
+        { id: "tds-management", label: "TDS Management", icon: Calculator, onClick: () => setLocation('/tds-management') },
       ],
     },
     {
@@ -1864,7 +1878,10 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "hpcl-migration", label: "HPCL Migration", icon: Building2, onClick: () => setLocation('/hpcl-migration') },
         { id: "machines", label: "Machines", icon: Settings, onClick: () => setLocation('/') },
         { id: "machine-types", label: "Machine Types", icon: Layers, onClick: () => setLocation('/') },
-        { id: "spare-parts", label: "Spare Parts", icon: Package, onClick: () => setLocation('/') },
+        { id: "spare-parts", label: "Spare Parts", icon: Package, onClick: () => setLocation('/spare-parts') },
+        { id: "scrap-management", label: "Scrap Management", icon: Trash2, onClick: () => setLocation('/scrap-management') },
+        { id: "purchase-returns", label: "Purchase Returns", icon: PackageX, onClick: () => setLocation('/purchase-returns') },
+        { id: "tds-management", label: "TDS Management", icon: Calculator, onClick: () => setLocation('/tds-management') },
         { id: "pm-templates", label: "PM Templates", icon: ListChecks, onClick: () => setLocation('/') },
         { id: "uom", label: "Unit of Measurement", icon: Layers, onClick: () => setLocation('/') },
         { id: "raw-material-types", label: "Raw Material Types", icon: Archive, onClick: () => setLocation('/') },
@@ -3163,6 +3180,62 @@ function MISDeliveryPageWrapper() {
   );
 }
 
+function SparePartsPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('spare-parts');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  return (
+    <DashboardShell title="Spare Parts" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => setActiveView(viewId)}>
+      <SpareParts />
+    </DashboardShell>
+  );
+}
+
+function ScrapManagementPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('scrap-management');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  return (
+    <DashboardShell title="Scrap Management" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => setActiveView(viewId)}>
+      <ScrapManagement />
+    </DashboardShell>
+  );
+}
+
+function PurchaseReturnsPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('purchase-returns');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  return (
+    <DashboardShell title="Purchase Returns" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => setActiveView(viewId)}>
+      <PurchaseReturns />
+    </DashboardShell>
+  );
+}
+
+function TDSManagementPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('tds-management');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  return (
+    <DashboardShell title="TDS Management" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => setActiveView(viewId)}>
+      <TDSManagement />
+    </DashboardShell>
+  );
+}
+
 function ScrollToTop() {
   const [location] = useLocation();
   useEffect(() => {
@@ -3214,6 +3287,10 @@ function Router() {
       <ProtectedRoute path="/pending-payments" component={PendingPaymentsPage} />
       <ProtectedRoute path="/payment-management" component={PaymentManagementPage} />
       <ProtectedRoute path="/vendor-analytics" component={VendorAnalyticsPage} />
+      <ProtectedRoute path="/spare-parts" component={SparePartsPageWrapper} />
+      <ProtectedRoute path="/scrap-management" component={ScrapManagementPageWrapper} />
+      <ProtectedRoute path="/purchase-returns" component={PurchaseReturnsPageWrapper} />
+      <ProtectedRoute path="/tds-management" component={TDSManagementPageWrapper} />
       <ProtectedRoute path="/vendor-debit-notes" component={VendorDebitNotesPage} />
       <ProtectedRoute path="/customer-advances" component={CustomerAdvancesPageWrapper} />
       <ProtectedRoute path="/mis" component={MISDashboardPageWrapper} />

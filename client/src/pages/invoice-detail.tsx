@@ -40,8 +40,10 @@ import {
 } from "@/components/ui/table";
 import PrintableInvoice from "@/components/PrintableInvoice";
 import InvoiceForm from "@/components/InvoiceForm";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { format } from "date-fns";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -99,6 +101,9 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
   const [reissueInvoiceData, setReissueInvoiceData] = useState<any>(null);
   const [isApplyAdvanceOpen, setIsApplyAdvanceOpen] = useState(false);
   const [applyAdvanceAmount, setApplyAdvanceAmount] = useState('');
+  const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
+  const [emailTo, setEmailTo] = useState('');
+  const [emailMessage, setEmailMessage] = useState('');
 
   // Check if we're viewing a cancelled invoice (from cancelled invoices page)
   const urlParams = new URLSearchParams(window.location.search);
@@ -553,12 +558,24 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
     navigate(`/dispatch-tracking?invoice=${id}`);
   };
 
+  const sendEmailMutation = useMutation({
+    mutationFn: async ({ toEmail, message }: { toEmail: string; message: string }) => {
+      const res = await apiRequest("POST", `/api/invoices/${id}/send-email`, { toEmail, message });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Invoice sent", description: `Invoice emailed to ${emailTo}` });
+      setIsEmailDialogOpen(false);
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed to send email", description: err.message, variant: "destructive" });
+    },
+  });
+
   const handleEmail = () => {
-    toast({
-      title: "Email Invoice",
-      description: "Email functionality will be implemented soon.",
-      variant: "default",
-    });
+    setEmailTo((invoice as any)?.email || '');
+    setEmailMessage('');
+    setIsEmailDialogOpen(true);
   };
 
   const handleCreditNoteSuccess = (creditNoteNumber: string) => {
@@ -1695,6 +1712,52 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Email Invoice Dialog */}
+      <Dialog open={isEmailDialogOpen} onOpenChange={setIsEmailDialogOpen}>
+        <DialogContent data-testid="dialog-email-invoice">
+          <DialogHeader>
+            <DialogTitle>Email Invoice</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="email-to">Recipient Email</Label>
+              <Input
+                id="email-to"
+                type="email"
+                placeholder="customer@example.com"
+                value={emailTo}
+                onChange={(e) => setEmailTo(e.target.value)}
+                data-testid="input-email-to"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="email-message">Message (optional)</Label>
+              <Textarea
+                id="email-message"
+                placeholder="Add a personal note to the email..."
+                value={emailMessage}
+                onChange={(e) => setEmailMessage(e.target.value)}
+                rows={3}
+                data-testid="input-email-message"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              The invoice details will be included in the email body.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEmailDialogOpen(false)}>Cancel</Button>
+            <Button
+              onClick={() => sendEmailMutation.mutate({ toEmail: emailTo, message: emailMessage })}
+              disabled={!emailTo || sendEmailMutation.isPending}
+              data-testid="button-send-email-confirm"
+            >
+              {sendEmailMutation.isPending ? 'Sending...' : 'Send Email'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
       </div>

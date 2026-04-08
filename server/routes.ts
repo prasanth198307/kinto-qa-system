@@ -7,7 +7,7 @@ import { tenantMiddleware } from "./tenant-middleware";
 import { planEnforcementMiddleware } from "./plan-middleware";
 import { getPlanFeatures, getPlanFeaturesFromModules, ALL_MODULE_KEYS } from "./plan-features";
 import { tc } from "./tenant-context";
-import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertPurchaseOrderItemSchema, purchaseOrders, purchaseOrderItems, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesOrderSchema, insertSalesOrderItemSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, insertVendorTypeSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, paymentEvidence, salesOrders, salesOrderItems, salesReturns, salesReturnItems, creditNotes, creditNoteItems, debitNotes, debitNoteItems, manualCreditNoteRequests, products, productBom, whatsappConversationSessions, vendorTypes, vendorVendorTypes, vendors, users, uom, insertDocumentCategorySchema, insertDocumentSchema, insertExpenseCategorySchema, insertExpenseVoucherSchema, insertExpenseItemSchema, insertExpenseAttachmentSchema, rolePermissions, vendorDebitNotes, vendorDebitNoteItems, vendorDebitNoteAdjustments, transporters, vehicles, drivers, insertTransporterSchema, insertVehicleSchema, insertDriverSchema, scrapInventory, insertSparePartEntrySchema, insertSparePartIssuanceSchema, insertScrapInventorySchema, sparePartEntries, sparePartsCatalog, accountSubtypes, insertSalesOfficerSchema } from "@shared/schema";
+import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertPurchaseOrderItemSchema, purchaseOrders, purchaseOrderItems, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesOrderSchema, insertSalesOrderItemSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, insertVendorTypeSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, paymentEvidence, salesOrders, salesOrderItems, salesReturns, salesReturnItems, creditNotes, creditNoteItems, debitNotes, debitNoteItems, manualCreditNoteRequests, products, productBom, whatsappConversationSessions, vendorTypes, vendorVendorTypes, vendors, users, uom, insertDocumentCategorySchema, insertDocumentSchema, insertExpenseCategorySchema, insertExpenseVoucherSchema, insertExpenseItemSchema, insertExpenseAttachmentSchema, rolePermissions, vendorDebitNotes, vendorDebitNoteItems, vendorDebitNoteAdjustments, transporters, vehicles, drivers, insertTransporterSchema, insertVehicleSchema, insertDriverSchema, scrapInventory, insertSparePartEntrySchema, insertSparePartIssuanceSchema, insertScrapInventorySchema, sparePartEntries, sparePartsCatalog, accountSubtypes, insertSalesOfficerSchema, purchaseReturns, purchaseReturnItems, tdsRates, tdsEntries } from "@shared/schema";
 import { format } from "date-fns";
 import { z } from "zod";
 import path from "path";
@@ -192,6 +192,10 @@ const endpointToScreenKey: Record<string, string> = {
   
   // Purchasing
   '/api/purchase-orders': 'purchase_orders',
+  '/api/purchase-returns': 'purchase_orders',
+  '/api/purchase-return-items': 'purchase_orders',
+  '/api/tds-rates': 'purchase_orders',
+  '/api/tds-entries': 'purchase_orders',
   '/api/vendor-debit-notes': 'vendor_debit_notes',
   '/api/vendor-debit-note-adjustments': 'vendor_debit_notes',
   
@@ -9695,6 +9699,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating invoice signature:", error);
       res.status(500).json({ message: "Failed to update invoice signature" });
+    }
+  });
+
+  // Send invoice by email
+  app.post('/api/invoices/:id/send-email', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { toEmail, message } = req.body;
+
+      if (!toEmail) return res.status(400).json({ message: "Recipient email is required" });
+
+      const invoice = await storage.getInvoice(id);
+      if (!invoice) return res.status(404).json({ message: "Invoice not found" });
+
+      const items = await storage.getInvoiceItems(id);
+
+      const tenant = await db.select().from(tenants).where(eq(tenants.id, invoice.tenantId as number)).limit(1);
+      const companyName = tenant[0]?.companyName ?? "Kinto Smart Ops";
+
+      const formatCurrency = (amount: number) => `₹${(amount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+
+      const itemsHtml = items.map((item: any) => `
+        <tr>
+          <td style="padding:8px;border-bottom:1px solid #e5e7eb;">${item.productName}</td>
+          <td style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:center;">${item.quantity}</td>
+          <td style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:right;">${formatCurrency(item.unitPrice)}</td>
+          <td style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:right;">${formatCurrency(item.totalAmount ?? item.quantity * item.unitPrice)}</td>
+        </tr>`).join('');
+
+      const subject = `Invoice ${invoice.invoiceNumber} from ${companyName}`;
+      const htmlBody = `
+<!DOCTYPE html><html><head>
+<style>body{font-family:Arial,sans-serif;color:#333;line-height:1.6}
+.container{max-width:640px;margin:0 auto;padding:20px}
+.header{background:#1e40af;color:white;padding:20px;border-radius:8px 8px 0 0}
+.body{background:#f9fafb;padding:24px;border:1px solid #e5e7eb;border-top:none}
+table{width:100%;border-collapse:collapse}
+th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
+.total{font-size:16px;font-weight:bold;color:#1e40af}
+.footer{color:#9ca3af;font-size:12px;text-align:center;margin-top:16px}
+</style></head><body>
+<div class="container">
+  <div class="header"><h2 style="margin:0">Invoice from ${companyName}</h2><p style="margin:4px 0;opacity:0.85">Invoice No: ${invoice.invoiceNumber}</p></div>
+  <div class="body">
+    ${message ? `<p>${message}</p>` : `<p>Please find your invoice details below.</p>`}
+    <p><strong>Invoice Date:</strong> ${invoice.invoiceDate ? new Date(invoice.invoiceDate).toLocaleDateString('en-IN') : ''}</p>
+    <p><strong>Bill To:</strong> ${invoice.partyName}</p>
+    <table><thead><tr><th>Item</th><th style="text-align:center">Qty</th><th style="text-align:right">Rate</th><th style="text-align:right">Amount</th></tr></thead>
+    <tbody>${itemsHtml}</tbody></table>
+    <div style="text-align:right;margin-top:16px">
+      ${invoice.totalDiscount ? `<p>Discount: ${formatCurrency(invoice.totalDiscount as number)}</p>` : ''}
+      ${invoice.totalGstAmount ? `<p>GST: ${formatCurrency(invoice.totalGstAmount as number)}</p>` : ''}
+      <p class="total">Total: ${formatCurrency(invoice.grandTotal as number)}</p>
+    </div>
+    <p style="color:#6b7280;font-size:13px">For queries, contact ${companyName}.</p>
+  </div>
+  <div class="footer"><p>${companyName} — Powered by Kinto Smart Ops</p></div>
+</div></body></html>`;
+
+      const sendIt = async () => {
+        if (process.env.OFFICE365_EMAIL && process.env.OFFICE365_PASSWORD) {
+          const nodemailer = await import('nodemailer');
+          const transporter = nodemailer.default.createTransport({
+            host: 'smtp.office365.com', port: 587, secure: false,
+            auth: { user: process.env.OFFICE365_EMAIL, pass: process.env.OFFICE365_PASSWORD },
+            tls: { ciphers: 'SSLv3', rejectUnauthorized: false }
+          });
+          await transporter.sendMail({ from: `"${companyName}" <${process.env.OFFICE365_EMAIL}>`, to: toEmail, subject, html: htmlBody });
+          return 'Office365';
+        }
+        if (process.env.SENDGRID_API_KEY) {
+          const sgMail = await import('@sendgrid/mail');
+          sgMail.default.setApiKey(process.env.SENDGRID_API_KEY);
+          await sgMail.default.send({ to: toEmail, from: { email: process.env.SENDGRID_FROM_EMAIL || 'noreply@kinto.com', name: companyName }, subject, html: htmlBody });
+          return 'SendGrid';
+        }
+        throw new Error('No email service configured. Set OFFICE365_EMAIL+OFFICE365_PASSWORD or SENDGRID_API_KEY.');
+      };
+
+      const provider = await sendIt();
+      console.log(`[INVOICE EMAIL] Invoice ${invoice.invoiceNumber} sent to ${toEmail} via ${provider}`);
+      res.json({ message: `Invoice sent to ${toEmail} successfully`, provider });
+    } catch (error: any) {
+      console.error("Error sending invoice email:", error);
+      res.status(500).json({ message: error.message || "Failed to send email" });
     }
   });
 
@@ -26492,6 +26581,105 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+
+  // ─── Purchase Returns ────────────────────────────────────────────────────
+
+  app.get('/api/purchase-returns', isAuthenticated, async (req: any, res) => {
+    try {
+      const result = await db.select().from(purchaseReturns)
+        .where(and(eq(purchaseReturns.recordStatus, 1), tc(purchaseReturns)))
+        .orderBy(desc(purchaseReturns.createdAt));
+      res.json(result);
+    } catch (e) { console.error(e); res.status(500).json({ message: "Failed to fetch purchase returns" }); }
+  });
+
+  app.get('/api/purchase-returns/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const [pr] = await db.select().from(purchaseReturns).where(and(eq(purchaseReturns.id, req.params.id), tc(purchaseReturns)));
+      if (!pr) return res.status(404).json({ message: "Purchase return not found" });
+      const items = await db.select().from(purchaseReturnItems).where(and(eq(purchaseReturnItems.purchaseReturnId, req.params.id), eq(purchaseReturnItems.recordStatus, 1)));
+      res.json({ ...pr, items });
+    } catch (e) { console.error(e); res.status(500).json({ message: "Failed to fetch purchase return" }); }
+  });
+
+  app.post('/api/purchase-returns', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { items: itemsData, ...body } = req.body;
+      // Generate return number
+      const count = await db.select({ count: sql<number>`count(*)` }).from(purchaseReturns).where(tc(purchaseReturns));
+      const num = (Number(count[0]?.count ?? 0) + 1).toString().padStart(4, '0');
+      const dateStr = format(new Date(), 'yyyyMMdd');
+      const returnNumber = `PR-${dateStr}-${num}`;
+      const tenantId = (req.user as any)?.tenantId ?? 1;
+
+      const [pr] = await db.insert(purchaseReturns).values({
+        ...body,
+        returnNumber,
+        tenantId,
+        createdBy: (req.user as any)?.id,
+      }).returning();
+
+      if (itemsData?.length) {
+        await db.insert(purchaseReturnItems).values(
+          itemsData.map((it: any) => ({ ...it, purchaseReturnId: pr.id, tenantId }))
+        );
+      }
+      res.status(201).json(pr);
+    } catch (e: any) { console.error(e); res.status(500).json({ message: e.message || "Failed to create purchase return" }); }
+  });
+
+  app.patch('/api/purchase-returns/:id', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const updateData: any = { ...req.body, updatedAt: new Date().toISOString() };
+      if (req.body.status === 'approved') { updateData.approvedBy = (req.user as any)?.id; updateData.approvalDate = new Date().toISOString(); }
+      const [updated] = await db.update(purchaseReturns).set(updateData).where(and(eq(purchaseReturns.id, id), tc(purchaseReturns))).returning();
+      if (!updated) return res.status(404).json({ message: "Purchase return not found" });
+      res.json(updated);
+    } catch (e: any) { console.error(e); res.status(500).json({ message: "Failed to update purchase return" }); }
+  });
+
+  // ─── TDS Rates & Entries ─────────────────────────────────────────────────
+
+  app.get('/api/tds-rates', isAuthenticated, async (req: any, res) => {
+    try {
+      const result = await db.select().from(tdsRates).where(and(eq(tdsRates.recordStatus, 1), tc(tdsRates)));
+      res.json(result);
+    } catch (e) { console.error(e); res.status(500).json({ message: "Failed to fetch TDS rates" }); }
+  });
+
+  app.get('/api/tds-entries', isAuthenticated, async (req: any, res) => {
+    try {
+      const result = await db.select().from(tdsEntries)
+        .where(and(eq(tdsEntries.recordStatus, 1), tc(tdsEntries)))
+        .orderBy(desc(tdsEntries.createdAt));
+      res.json(result);
+    } catch (e) { console.error(e); res.status(500).json({ message: "Failed to fetch TDS entries" }); }
+  });
+
+  app.post('/api/tds-entries', requireRole('admin', 'manager', 'accountsmanager'), async (req: any, res) => {
+    try {
+      const tenantId = (req.user as any)?.tenantId ?? 1;
+      const [entry] = await db.insert(tdsEntries).values({
+        ...req.body,
+        tenantId,
+        createdBy: (req.user as any)?.id,
+      }).returning();
+      res.status(201).json(entry);
+    } catch (e: any) { console.error(e); res.status(500).json({ message: e.message || "Failed to create TDS entry" }); }
+  });
+
+  app.patch('/api/tds-entries/:id/deposit', requireRole('admin', 'manager', 'accountsmanager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { depositDate, challanNumber } = req.body;
+      const [updated] = await db.update(tdsEntries)
+        .set({ depositStatus: 'deposited', depositDate, challanNumber })
+        .where(and(eq(tdsEntries.id, id), tc(tdsEntries))).returning();
+      if (!updated) return res.status(404).json({ message: "TDS entry not found" });
+      res.json(updated);
+    } catch (e: any) { console.error(e); res.status(500).json({ message: "Failed to update TDS entry" }); }
+  });
 
   // ─── Register Razorpay Billing routes ────────────────────────────────────
   const { registerBillingRoutes } = await import('./billing.js');
