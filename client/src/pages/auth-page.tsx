@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Redirect, useLocation } from "wouter";
-import { Loader2, Lock, Mail, Building2 } from "lucide-react";
+import { Loader2, Lock, Mail, Building2, ArrowLeft } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -67,6 +67,14 @@ export default function AuthPage() {
               <KintoLogo className="justify-center" variant="full" />
             </a>
           </div>
+
+          <a
+            href="/"
+            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
+            data-testid="link-back-home"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" /> Back to Home
+          </a>
 
           <Card>
             <CardHeader>
