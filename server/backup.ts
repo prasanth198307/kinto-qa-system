@@ -1,12 +1,21 @@
 import path from "path";
 import fs from "fs";
+import { execFile } from "child_process";
+import { promisify } from "util";
+import { createGzip } from "zlib";
+import { pipeline } from "stream";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
 import { tenants } from "@shared/schema";
 import { eq } from "drizzle-orm";
 
-const UPLOADS_ROOT = path.join(process.cwd(), "uploads");
+const execFileAsync = promisify(execFile);
+const pipelineAsync = promisify(pipeline);
+
+const UPLOADS_ROOT         = path.join(process.cwd(), "uploads");
 const MAX_BACKUPS_PER_TENANT = 30;
+const MAX_POSTGRES_BACKUPS   = 30;
+const POSTGRES_BACKUP_DIR    = path.join(UPLOADS_ROOT, "admin", "postgres-backups");
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -166,6 +175,122 @@ export function getBackupFilePath(tenantId: number, filename: string): string | 
   // Path traversal check
   const resolved = fs.realpathSync(filePath);
   if (!resolved.startsWith(UPLOADS_ROOT)) return null;
+  return resolved;
+}
+
+// ─── PostgreSQL dump (full database) ─────────────────────────────────────────
+
+function ensurePostgresBackupDir(): string {
+  fs.mkdirSync(POSTGRES_BACKUP_DIR, { recursive: true });
+  return POSTGRES_BACKUP_DIR;
+}
+
+function rotatePostgresBackups(): void {
+  try {
+    const files = fs
+      .readdirSync(POSTGRES_BACKUP_DIR)
+      .filter((f) => f.endsWith(".sql.gz"))
+      .map((f) => ({ name: f, mtime: fs.statSync(path.join(POSTGRES_BACKUP_DIR, f)).mtimeMs }))
+      .sort((a, b) => b.mtime - a.mtime);
+
+    for (const f of files.slice(MAX_POSTGRES_BACKUPS)) {
+      try { fs.unlinkSync(path.join(POSTGRES_BACKUP_DIR, f.name)); } catch {}
+    }
+  } catch {}
+}
+
+export async function runPostgresBackup(label: "scheduled" | "manual" = "manual"): Promise<string> {
+  ensurePostgresBackupDir();
+
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) throw new Error("DATABASE_URL is not set");
+
+  // Resolve pg_dump binary — prefer system PATH, fall back to known Nix store path
+  let pgDumpBin = "pg_dump";
+  try {
+    const { stdout } = await execFileAsync("which", ["pg_dump"]);
+    pgDumpBin = stdout.trim() || pgDumpBin;
+  } catch {
+    // which failed — use default and let spawn fail naturally if not found
+  }
+
+  const tag      = formatDateTag();
+  const ts       = Date.now();
+  const filename = `${label}-${tag}-${ts}.sql.gz`;
+  const filePath = path.join(POSTGRES_BACKUP_DIR, filename);
+
+  await new Promise<void>((resolve, reject) => {
+    const { spawn } = require("child_process");
+    const pgDump = spawn(pgDumpBin, [
+      `--dbname=${databaseUrl}`,
+      "--no-password",
+      "--format=plain",
+      "--no-owner",
+      "--no-acl",
+    ]);
+
+    const gzip       = createGzip();
+    const outStream  = fs.createWriteStream(filePath);
+
+    pgDump.stdout.pipe(gzip).pipe(outStream);
+
+    pgDump.stderr.on("data", (d: Buffer) => {
+      const msg = d.toString();
+      if (!msg.includes("WARNING")) {
+        console.warn("[PGBACKUP] pg_dump stderr:", msg.trim());
+      }
+    });
+
+    outStream.on("finish", resolve);
+    outStream.on("error", reject);
+    pgDump.on("error", reject);
+    pgDump.on("close", (code: number) => {
+      if (code !== 0) reject(new Error(`pg_dump exited with code ${code}`));
+    });
+  });
+
+  const stat   = fs.statSync(filePath);
+  const sizeMb = (stat.size / (1024 * 1024)).toFixed(2);
+  console.log(`[PGBACKUP] ✅ ${filename} (${sizeMb} MB)`);
+
+  rotatePostgresBackups();
+  return filename;
+}
+
+export function listPostgresBackups(): Array<{
+  filename: string;
+  label: string;
+  date: string;
+  sizeMb: string;
+  createdAt: string;
+}> {
+  if (!fs.existsSync(POSTGRES_BACKUP_DIR)) return [];
+
+  return fs
+    .readdirSync(POSTGRES_BACKUP_DIR)
+    .filter((f) => f.endsWith(".sql.gz"))
+    .map((f) => {
+      const stat  = fs.statSync(path.join(POSTGRES_BACKUP_DIR, f));
+      const parts = f.split("-");
+      const label = parts[0] ?? "backup";
+      return {
+        filename:  f,
+        label,
+        date:      parts.slice(1, 4).join("-"),
+        sizeMb:    (stat.size / (1024 * 1024)).toFixed(2),
+        createdAt: stat.mtime.toISOString(),
+      };
+    })
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+export function getPostgresBackupFilePath(filename: string): string | null {
+  // Validate: only allow expected filename pattern, no path traversal
+  if (!/^[\w\-]+\.sql\.gz$/.test(filename)) return null;
+  const filePath = path.join(POSTGRES_BACKUP_DIR, filename);
+  if (!fs.existsSync(filePath)) return null;
+  const resolved = fs.realpathSync(filePath);
+  if (!resolved.startsWith(path.resolve(UPLOADS_ROOT))) return null;
   return resolved;
 }
 

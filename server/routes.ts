@@ -26534,6 +26534,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ─── Admin: list PostgreSQL dump backups ─────────────────────────────────
+  app.get('/api/admin/postgres-backups', async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.user?.isSuperAdmin) return res.status(403).json({ message: 'Super-admin only' });
+    const { listPostgresBackups } = await import('./backup.js');
+    res.json(listPostgresBackups());
+  });
+
+  // ─── Admin: trigger a manual PostgreSQL dump backup ───────────────────────
+  app.post('/api/admin/postgres-backups', async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.user?.isSuperAdmin) return res.status(403).json({ message: 'Super-admin only' });
+    const { runPostgresBackup } = await import('./backup.js');
+    try {
+      const filename = await runPostgresBackup('manual');
+      res.json({ message: 'PostgreSQL backup created successfully', filename });
+    } catch (err: any) {
+      console.error('[PGBACKUP] Manual backup failed:', err);
+      res.status(500).json({ message: 'Backup failed: ' + err.message });
+    }
+  });
+
+  // ─── Admin: download a specific PostgreSQL dump backup ────────────────────
+  app.get('/api/admin/postgres-backups/:filename', async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.user?.isSuperAdmin) return res.status(403).json({ message: 'Super-admin only' });
+    const { filename } = req.params;
+    const { getPostgresBackupFilePath } = await import('./backup.js');
+    const filePath = getPostgresBackupFilePath(filename);
+    if (!filePath) return res.status(404).json({ message: 'Backup file not found' });
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Type', 'application/gzip');
+    res.sendFile(filePath);
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

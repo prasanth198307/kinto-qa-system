@@ -200,6 +200,24 @@ app.use((req, res, next) => {
     console.error('[BACKUP CRON SETUP ERROR]', err);
   }
 
+  // ─── PostgreSQL dump cron (1:00 AM daily) ────────────────────────────────
+  // Full pg_dump of the entire database, stored in uploads/admin/postgres-backups/
+  try {
+    const pgCron = (await import('node-cron')).default;
+    pgCron.schedule('0 1 * * *', async () => {
+      try {
+        const { runPostgresBackup } = await import('./backup');
+        const filename = await runPostgresBackup('scheduled');
+        log(`✅ Scheduled PostgreSQL backup: ${filename}`);
+      } catch (err) {
+        console.error('[PGBACKUP CRON ERROR]', err);
+      }
+    });
+    log('✅ PostgreSQL dump cron initialized (runs at 1:00 AM)');
+  } catch (err) {
+    console.error('[PGBACKUP CRON SETUP ERROR]', err);
+  }
+
   // ─── Subscription expiry cron (3:00 AM daily) ────────────────────────────
   // Downgrades any cancelled subscription whose billing period has ended
   try {

@@ -24,7 +24,8 @@ import {
 import {
   Building2, Users, MoreVertical, Search, RefreshCw, ShieldAlert,
   CheckCircle2, Clock, XCircle, Loader2, FlaskConical, CreditCard,
-  Eye, Trash2, AlertTriangle, Archive, Download,
+  Eye, Trash2, AlertTriangle, Archive, Download, Database, CalendarClock,
+  HardDrive,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -71,6 +72,7 @@ export default function SuperAdminTenants() {
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleteReason, setDeleteReason]   = useState("");
   const [backupTenant, setBackupTenant]   = useState<Tenant | null>(null);
+  const [showDbBackup, setShowDbBackup]   = useState(false);
 
   const { data: tenants = [], isLoading, refetch } = useQuery<Tenant[]>({
     queryKey: ["/api/admin/tenants"],
@@ -238,6 +240,9 @@ export default function SuperAdminTenants() {
           <Button variant="outline" size="default" onClick={() => setLocation("/super-admin/plans")} data-testid="button-manage-plans">
             <CreditCard className="h-4 w-4 mr-2" />Manage Plans
           </Button>
+          <Button variant="outline" size="default" onClick={() => setShowDbBackup((v) => !v)} data-testid="button-toggle-db-backup">
+            <Database className="h-4 w-4 mr-2" />DB Backups
+          </Button>
           <Button variant="outline" size="default" onClick={() => seedDemoMutation.mutate()} disabled={seedDemoMutation.isPending} data-testid="button-seed-demo">
             {seedDemoMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FlaskConical className="h-4 w-4 mr-2" />}
             Seed Demo Tenant
@@ -267,6 +272,9 @@ export default function SuperAdminTenants() {
           </Card>
         ))}
       </div>
+
+      {/* PostgreSQL Database Backup Panel */}
+      {showDbBackup && <PostgresBackupPanel />}
 
       {/* Search + Table */}
       <Card>
@@ -656,5 +664,117 @@ function BackupsDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ─── PostgreSQL Database Backup Panel ────────────────────────────────────────
+
+type PgBackupFile = {
+  filename: string;
+  label: string;
+  date: string;
+  sizeMb: string;
+  createdAt: string;
+};
+
+function PostgresBackupPanel() {
+  const { toast } = useToast();
+
+  const { data: backups = [], isLoading, refetch } = useQuery<PgBackupFile[]>({
+    queryKey: ["/api/admin/postgres-backups"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/postgres-backups", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load backups");
+      return res.json();
+    },
+  });
+
+  const backupMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/admin/postgres-backups", {});
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({ title: "Backup created", description: data.filename });
+      refetch();
+    },
+    onError: (err: any) => {
+      toast({ title: "Backup failed", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const LABEL_BADGE: Record<string, "default" | "secondary" | "outline"> = {
+    scheduled: "secondary",
+    manual:    "default",
+  };
+
+  return (
+    <Card data-testid="postgres-backup-panel">
+      <CardHeader className="pb-3">
+        <div className="flex flex-wrap items-center gap-3 justify-between">
+          <div className="flex items-center gap-2">
+            <Database className="h-5 w-5 text-primary" />
+            <CardTitle className="text-base">PostgreSQL Database Backups</CardTitle>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <CalendarClock className="h-4 w-4" />
+            <span>Scheduled daily at 1:00 AM · Last {backups.length} of 30 kept</span>
+          </div>
+          <Button
+            size="default"
+            onClick={() => backupMutation.mutate()}
+            disabled={backupMutation.isPending}
+            data-testid="button-run-pg-backup"
+          >
+            {backupMutation.isPending
+              ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Running pg_dump...</>
+              : <><Database className="h-4 w-4 mr-2" />Backup Now</>}
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground mt-1">
+          Full <code>pg_dump</code> of the entire database, compressed as <code>.sql.gz</code>.
+          Stored in <code>uploads/admin/postgres-backups/</code>. Super-admin access only.
+        </p>
+      </CardHeader>
+      <CardContent className="p-0">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-10">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : backups.length === 0 ? (
+          <div className="text-center py-10 text-muted-foreground text-sm space-y-2">
+            <HardDrive className="h-8 w-8 mx-auto opacity-30" />
+            <p>No backups yet. Click "Backup Now" to create the first one.</p>
+            <p className="text-xs">Scheduled backups will appear here automatically after 1:00 AM.</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-border">
+            {backups.map((b) => (
+              <div key={b.filename} className="flex items-center gap-4 px-6 py-3" data-testid={`row-pgbackup-${b.filename}`}>
+                <HardDrive className="h-4 w-4 text-muted-foreground shrink-0" />
+                <div className="flex-1 min-w-0 space-y-0.5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge variant={LABEL_BADGE[b.label] ?? "outline"} className="capitalize text-xs">{b.label}</Badge>
+                    <span className="text-sm font-medium">{b.date}</span>
+                    <span className="text-xs text-muted-foreground">{b.sizeMb} MB</span>
+                    <span className="text-xs text-muted-foreground">·</span>
+                    <span className="text-xs text-muted-foreground">{format(new Date(b.createdAt), "d MMM yyyy, h:mm a")}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground truncate">{b.filename}</p>
+                </div>
+                <Button
+                  size="default"
+                  variant="outline"
+                  onClick={() => window.open(`/api/admin/postgres-backups/${b.filename}`, "_blank")}
+                  data-testid={`button-download-pgbackup-${b.filename}`}
+                >
+                  <Download className="h-4 w-4 mr-1" />Download
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
