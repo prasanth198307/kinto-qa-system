@@ -179,6 +179,71 @@ ON CONFLICT (code) DO UPDATE SET
   is_active = EXCLUDED.is_active;
 
 -- ============================================================================
+-- SUBSCRIPTION PLANS SEED DATA
+-- (Added April 2026 — SaaS multitenancy phase)
+-- Prices in paise (₹ × 100). Super-admin can edit via /super-admin/plans.
+-- ============================================================================
+
+INSERT INTO tenants (id, name, slug, plan, status, max_users, is_super_admin, created_at)
+VALUES (1, 'KINTO', 'kinto', 'enterprise', 'active', 999, FALSE, NOW())
+ON CONFLICT (id) DO UPDATE SET
+    name      = EXCLUDED.name,
+    plan      = EXCLUDED.plan,
+    status    = EXCLUDED.status,
+    max_users = EXCLUDED.max_users;
+
+INSERT INTO subscription_plans (
+    name, slug, tagline, price_monthly, price_yearly, max_users,
+    modules, features, is_active, is_featured, display_order, trial_days
+) VALUES
+(
+    'Trial', 'trial', 'Explore free for 14 days',
+    0, 0, 5,
+    '["invoicing","purchase_orders","basic_inventory"]'::JSONB,
+    '["GST-compliant invoicing","Purchase order management","Inventory management","Up to 5 users","14-day free trial"]'::JSONB,
+    TRUE, FALSE, 1, 14
+),
+(
+    'Basic', 'basic', 'For small manufacturers',
+    299900, 2999900, 10,
+    '["invoicing","purchase_orders","basic_inventory","gatepasses","sales_orders"]'::JSONB,
+    '["All Trial features","Gatepass & dispatch tracking","Sales orders","Up to 10 users","Email support"]'::JSONB,
+    TRUE, FALSE, 2, 0
+),
+(
+    'Professional', 'professional', 'For growing operations',
+    699900, 6999900, 25,
+    '["invoicing","purchase_orders","basic_inventory","gatepasses","sales_orders","production","quality_returns","accounting","mis","expenses","documents"]'::JSONB,
+    '["All Basic features","BOM-driven production","Double-entry accounting","MIS analytics","Expense & cash register","Document management","Up to 25 users","Priority support"]'::JSONB,
+    TRUE, TRUE, 3, 0
+),
+(
+    'Enterprise', 'enterprise', 'For large-scale industrial operations',
+    1499900, 14999900, 999,
+    '["invoicing","purchase_orders","basic_inventory","gatepasses","sales_orders","production","quality_returns","accounting","mis","expenses","documents","whatsapp","maintenance"]'::JSONB,
+    '["All Professional features","WhatsApp interactive checklists","Preventive maintenance (PM)","Unlimited users","Dedicated account manager"]'::JSONB,
+    TRUE, FALSE, 4, 0
+)
+ON CONFLICT (slug) DO UPDATE SET
+    name          = EXCLUDED.name,
+    tagline       = EXCLUDED.tagline,
+    price_monthly = EXCLUDED.price_monthly,
+    price_yearly  = EXCLUDED.price_yearly,
+    max_users     = EXCLUDED.max_users,
+    modules       = EXCLUDED.modules,
+    features      = EXCLUDED.features,
+    is_active     = EXCLUDED.is_active,
+    is_featured   = EXCLUDED.is_featured,
+    display_order = EXCLUDED.display_order,
+    trial_days    = EXCLUDED.trial_days;
+
+-- Create enterprise subscription for tenant #1 (KINTO)
+INSERT INTO subscriptions (tenant_id, plan_id, plan_slug, billing_cycle, status, started_at)
+SELECT 1, sp.id, 'enterprise', 'monthly', 'active', NOW()
+FROM subscription_plans sp WHERE sp.slug = 'enterprise'
+ON CONFLICT (tenant_id) DO NOTHING;
+
+-- ============================================================================
 -- VERIFICATION SUMMARY
 -- ============================================================================
 SELECT 'Seed data loaded successfully!' as status;

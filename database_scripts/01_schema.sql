@@ -460,6 +460,85 @@ CREATE TABLE IF NOT EXISTS gatepass_items (
 );
 
 -- ===========================================
+-- SAAS MULTITENANCY TABLES
+-- (Added in Phase 2 — April 2026)
+-- ===========================================
+
+CREATE TABLE IF NOT EXISTS tenants (
+    id             SERIAL PRIMARY KEY,
+    name           VARCHAR(255) NOT NULL,
+    slug           VARCHAR(100) NOT NULL UNIQUE,
+    plan           VARCHAR(50)  DEFAULT 'trial',
+    status         VARCHAR(50)  DEFAULT 'trial',
+    trial_ends_at  TIMESTAMP,
+    max_users      INTEGER      DEFAULT 5,
+    logo_url       VARCHAR,
+    primary_color  VARCHAR(20)  DEFAULT '#1a56db',
+    billing_email  VARCHAR,
+    contact_name   VARCHAR(255),
+    contact_phone  VARCHAR(20),
+    gst_number     VARCHAR(20),
+    address        TEXT,
+    is_super_admin BOOLEAN      DEFAULT FALSE,
+    created_at     TIMESTAMP    DEFAULT NOW(),
+    updated_at     TIMESTAMP    DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS subscription_plans (
+    id             SERIAL PRIMARY KEY,
+    name           VARCHAR(100) NOT NULL,
+    slug           VARCHAR(50)  NOT NULL UNIQUE,
+    tagline        VARCHAR(255),
+    description    TEXT,
+    price_monthly  INTEGER      DEFAULT 0    NOT NULL,
+    price_yearly   INTEGER      DEFAULT 0    NOT NULL,
+    max_users      INTEGER      DEFAULT 5    NOT NULL,
+    modules        JSONB        DEFAULT '[]'::JSONB,
+    features       JSONB        DEFAULT '[]'::JSONB,
+    is_active      BOOLEAN      DEFAULT TRUE NOT NULL,
+    is_featured    BOOLEAN      DEFAULT FALSE NOT NULL,
+    display_order  INTEGER      DEFAULT 0    NOT NULL,
+    trial_days     INTEGER      DEFAULT 0    NOT NULL,
+    created_at     TIMESTAMP    DEFAULT NOW(),
+    updated_at     TIMESTAMP    DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS subscriptions (
+    id                   SERIAL PRIMARY KEY,
+    tenant_id            INTEGER      NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    plan_id              INTEGER      NOT NULL REFERENCES subscription_plans(id),
+    plan_slug            VARCHAR(50)  NOT NULL,
+    billing_cycle        VARCHAR(20)  DEFAULT 'monthly' NOT NULL,
+    status               VARCHAR(30)  DEFAULT 'active'  NOT NULL,
+    started_at           TIMESTAMP    DEFAULT NOW()     NOT NULL,
+    current_period_start TIMESTAMP,
+    current_period_end   TIMESTAMP,
+    trial_ends_at        TIMESTAMP,
+    cancelled_at         TIMESTAMP,
+    cancel_reason        TEXT,
+    notes                TEXT,
+    created_at           TIMESTAMP    DEFAULT NOW(),
+    updated_at           TIMESTAMP    DEFAULT NOW(),
+    CONSTRAINT subscriptions_tenant_unique UNIQUE (tenant_id)
+);
+
+CREATE TABLE IF NOT EXISTS billing_events (
+    id              SERIAL PRIMARY KEY,
+    tenant_id       INTEGER      NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    subscription_id INTEGER      REFERENCES subscriptions(id),
+    event_type      VARCHAR(50)  NOT NULL,
+    from_plan       VARCHAR(50),
+    to_plan         VARCHAR(50),
+    billing_cycle   VARCHAR(20),
+    amount          INTEGER      DEFAULT 0 NOT NULL,
+    currency        VARCHAR(10)  DEFAULT 'INR',
+    notes           TEXT,
+    metadata        JSONB        DEFAULT '{}'::JSONB,
+    created_by      VARCHAR(255),
+    created_at      TIMESTAMP    DEFAULT NOW()
+);
+
+-- ===========================================
 -- INDEXES FOR PERFORMANCE
 -- ===========================================
 
