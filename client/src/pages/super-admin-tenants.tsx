@@ -25,10 +25,11 @@ import {
   Building2, Users, MoreVertical, Search, RefreshCw, ShieldAlert,
   CheckCircle2, Clock, XCircle, Loader2, FlaskConical, CreditCard,
   Eye, Trash2, AlertTriangle, Archive, Download, Database, CalendarClock,
-  HardDrive,
+  HardDrive, LogOut,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { format } from "date-fns";
 
 type Tenant = {
@@ -64,6 +65,7 @@ const PLAN_CONFIG: Record<string, { label: string; variant: "default" | "seconda
 
 export default function SuperAdminTenants() {
   const { toast } = useToast();
+  const { logoutMutation } = useAuth();
   const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
   const [editTenant, setEditTenant]     = useState<Tenant | null>(null);
@@ -249,6 +251,18 @@ export default function SuperAdminTenants() {
           </Button>
           <Button variant="outline" size="default" onClick={() => refetch()} data-testid="button-refresh-tenants">
             <RefreshCw className="h-4 w-4 mr-2" />Refresh
+          </Button>
+          <Button
+            variant="destructive"
+            size="default"
+            onClick={() => logoutMutation.mutate()}
+            disabled={logoutMutation.isPending}
+            data-testid="button-logout"
+          >
+            {logoutMutation.isPending
+              ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              : <LogOut className="h-4 w-4 mr-2" />}
+            Logout
           </Button>
         </div>
       </div>

@@ -17,10 +17,11 @@ import {
 } from "@/components/ui/dialog";
 import {
   Plus, Pencil, Trash2, CheckCircle2, XCircle, Loader2, Star,
-  CreditCard, Users, Package, GripVertical, X, ArrowLeft,
+  CreditCard, Users, Package, GripVertical, X, ArrowLeft, LogOut,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -91,6 +92,7 @@ function blankPlan(): Partial<SubscriptionPlan> & { priceMonthlyRupees: string; 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function SuperAdminPlans() {
   const { toast } = useToast();
+  const { logoutMutation } = useAuth();
   const [, setLocation] = useLocation();
 
   const [editPlan, setEditPlan] = useState<(Partial<SubscriptionPlan> & { priceMonthlyRupees: string; priceYearlyRupees: string }) | null>(null);
@@ -236,9 +238,22 @@ export default function SuperAdminPlans() {
             </p>
           </div>
         </div>
-        <Button onClick={openCreate} data-testid="button-create-plan">
-          <Plus className="h-4 w-4 mr-2" /> New Plan
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={openCreate} data-testid="button-create-plan">
+            <Plus className="h-4 w-4 mr-2" /> New Plan
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={() => logoutMutation.mutate()}
+            disabled={logoutMutation.isPending}
+            data-testid="button-logout"
+          >
+            {logoutMutation.isPending
+              ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              : <LogOut className="h-4 w-4 mr-2" />}
+            Logout
+          </Button>
+        </div>
       </div>
 
       {/* Plan cards */}
