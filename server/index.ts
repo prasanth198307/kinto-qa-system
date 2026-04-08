@@ -200,6 +200,23 @@ app.use((req, res, next) => {
     console.error('[BACKUP CRON SETUP ERROR]', err);
   }
 
+  // ─── Subscription expiry cron (3:00 AM daily) ────────────────────────────
+  // Downgrades any cancelled subscription whose billing period has ended
+  try {
+    const cron2 = (await import('node-cron')).default;
+    cron2.schedule('0 3 * * *', async () => {
+      try {
+        const { runSubscriptionExpiryCheck } = await import('./billing');
+        await runSubscriptionExpiryCheck();
+      } catch (err) {
+        console.error('[SUBSCRIPTION EXPIRY CRON ERROR]', err);
+      }
+    });
+    log('✅ Subscription expiry cron initialized (runs at 3:00 AM)');
+  } catch (err) {
+    console.error('[SUBSCRIPTION EXPIRY CRON SETUP ERROR]', err);
+  }
+
   const port = parseInt(process.env.PORT || "5000", 10);
   server.listen(port, "0.0.0.0", () => {
     log(`🚀 Server running on port ${port}`);

@@ -34,6 +34,7 @@ export async function tenantMiddleware(req: Request, res: Response, next: NextFu
       '/api/tenant/info', '/api/tenant/features', '/api/logout', '/api/user',
       '/api/billing/plans', '/api/billing/create-order', '/api/billing/verify-payment',
       '/api/billing/request-upgrade', '/api/billing/history',
+      '/api/billing/subscription', '/api/billing/cancel',
     ];
     const isAllowlisted = TENANT_STATUS_ALLOWLIST.some(p => req.path.startsWith(p));
 
