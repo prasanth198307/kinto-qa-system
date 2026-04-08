@@ -25,6 +25,9 @@ The backend uses Express.js with TypeScript and Node.js, leveraging Neon Serverl
 - **Access Control:** Comprehensive role permissions management with granular screen and API-level enforcement.
 - **Data Management:** Master data management (product category/type), advanced search/filter, Vyapaar data import, server-side and client-side pagination, and a document management system with versioning and alerts.
 - **SaaS Specifics:** Multitenancy (isolated data, per-tenant seeding), plan-based module gating, trial management, user limits, and tenant-specific notification configuration.
+- **File Upload Scoping:** All file uploads (documents, scrap-evidence, expenses, WhatsApp photos) are saved under `uploads/tenants/{tenantId}/{type}/`. Serving routes validate tenant ownership. Legacy flat-path routes exist for backward compatibility.
+- **Razorpay Billing:** `server/billing.ts` handles order creation, payment verification, webhook processing, billing history, and manual upgrade requests. Frontend pricing page integrates Razorpay checkout.js with graceful fallback when keys are absent. Keys via `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` env vars.
+- **Automated Backups:** `server/backup.ts` exports full tenant JSON to `uploads/tenants/{id}/backups/`. Daily cron runs at 2:00 AM (node-cron). Pre-deletion backups run automatically before any tenant data deletion; filename stored in `deletion_audit.export_url`. Max 30 rotated files per tenant. Super-admin can list and download backups via UI and trigger manual backups.
 
 ### System Design Choices
 - **Authentication:** Username or email login.

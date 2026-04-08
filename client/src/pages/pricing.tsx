@@ -3,10 +3,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { CheckCircle2, Zap, Loader2, ArrowRight, Star } from "lucide-react";
+import { CheckCircle2, Zap, Loader2, ArrowRight, Star, CreditCard, PhoneCall } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface Plan {
   id: number;
@@ -25,10 +25,29 @@ interface Plan {
   trialDays: number;
 }
 
+interface BillingPlan {
+  plan: string;
+  label: string;
+  priceMonthly: number;
+  currency: string;
+  razorpayEnabled: boolean;
+}
+
+interface BillingPlansData {
+  plans: BillingPlan[];
+  razorpayKeyId: string | null;
+}
+
 interface SubscriptionData {
   subscription: { planSlug: string; billingCycle: string; status: string } | null;
   plan: Plan | null;
   history: any[];
+}
+
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
 }
 
 const PLAN_COLORS: Record<string, { accent: string; badge: string }> = {
@@ -58,13 +77,29 @@ function yearlyDiscount(monthly: number, yearly: number): number {
   return Math.round(((annualMonthly - yearly) / annualMonthly) * 100);
 }
 
+function loadRazorpayScript(): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (window.Razorpay) { resolve(true); return; }
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload  = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+}
+
 export default function PricingPage({ onUpgrade }: { onUpgrade?: (plan: string) => void }) {
   const { toast } = useToast();
   const [cycle, setCycle] = useState<"monthly" | "yearly">("monthly");
-  const [requestingPlan, setRequestingPlan] = useState<string | null>(null);
+  const [processingPlan, setProcessingPlan] = useState<string | null>(null);
 
   const { data: plans = [], isLoading: plansLoading } = useQuery<Plan[]>({
     queryKey: ["/api/subscription-plans"],
+  });
+
+  const { data: billingData } = useQuery<BillingPlansData>({
+    queryKey: ["/api/billing/plans"],
+    retry: false,
   });
 
   const { data: subData } = useQuery<SubscriptionData>({
@@ -72,35 +107,122 @@ export default function PricingPage({ onUpgrade }: { onUpgrade?: (plan: string) 
     retry: false,
   });
 
-  const upgradeMutation = useMutation({
-    mutationFn: async ({ toPlan, billingCycle }: { toPlan: string; billingCycle: string }) => {
-      const res = await apiRequest("POST", "/api/tenant/upgrade-request", { toPlan, billingCycle });
+  const razorpayEnabled = billingData?.razorpayKeyId != null;
+  const razorpayKeyId   = billingData?.razorpayKeyId ?? "";
+
+  // ─── Request upgrade (no Razorpay — sends manual request) ────────────────
+  const requestMutation = useMutation({
+    mutationFn: async ({ plan }: { plan: string }) => {
+      const res = await apiRequest("POST", "/api/billing/request-upgrade", { plan });
       return res.json();
     },
-    onSuccess: (_, vars) => {
+    onSuccess: (data, vars) => {
       queryClient.invalidateQueries({ queryKey: ["/api/tenant/subscription"] });
-      toast({
-        title: "Upgrade request sent!",
-        description: "Our team will contact you within 24 hours to complete the upgrade.",
-      });
-      setRequestingPlan(null);
-      onUpgrade?.(vars.toPlan);
+      toast({ title: "Upgrade request sent!", description: data.message });
+      setProcessingPlan(null);
+      onUpgrade?.(vars.plan);
     },
     onError: (err: any) => {
       toast({ title: "Request failed", description: err.message, variant: "destructive" });
-      setRequestingPlan(null);
+      setProcessingPlan(null);
     },
   });
 
-  const currentPlan = subData?.subscription?.planSlug ?? "trial";
+  // ─── Verify payment after Razorpay checkout ───────────────────────────────
+  const verifyMutation = useMutation({
+    mutationFn: async (payload: {
+      razorpay_order_id: string;
+      razorpay_payment_id: string;
+      razorpay_signature: string;
+      plan: string;
+    }) => {
+      const res = await apiRequest("POST", "/api/billing/verify-payment", payload);
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tenant/subscription"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/billing/history"] });
+      toast({ title: "Payment successful!", description: data.message });
+      setProcessingPlan(null);
+      onUpgrade?.(data.plan);
+      // Reload page to refresh session plan from server
+      setTimeout(() => window.location.reload(), 1500);
+    },
+    onError: (err: any) => {
+      toast({ title: "Payment verification failed", description: err.message, variant: "destructive" });
+      setProcessingPlan(null);
+    },
+  });
 
-  const planOrder = ["trial", "basic", "professional", "enterprise"];
-  const currentLevel = planOrder.indexOf(currentPlan);
+  // ─── Main upgrade handler ─────────────────────────────────────────────────
+  const handleUpgrade = async (plan: Plan) => {
+    setProcessingPlan(plan.slug);
 
-  const handleUpgrade = (plan: Plan) => {
-    setRequestingPlan(plan.slug);
-    upgradeMutation.mutate({ toPlan: plan.slug, billingCycle: cycle });
+    // If Razorpay is not configured, fall back to manual request
+    if (!razorpayEnabled) {
+      requestMutation.mutate({ plan: plan.slug });
+      return;
+    }
+
+    try {
+      // Load Razorpay checkout.js
+      const loaded = await loadRazorpayScript();
+      if (!loaded) {
+        toast({ title: "Payment gateway unavailable", description: "Please try again or contact support.", variant: "destructive" });
+        setProcessingPlan(null);
+        return;
+      }
+
+      // Create order
+      const orderRes = await apiRequest("POST", "/api/billing/create-order", { plan: plan.slug });
+      const order = await orderRes.json();
+      if (!orderRes.ok) {
+        toast({ title: "Could not create order", description: order.message, variant: "destructive" });
+        setProcessingPlan(null);
+        return;
+      }
+
+      // Open Razorpay modal
+      const rzp = new window.Razorpay({
+        key:         razorpayKeyId,
+        amount:      order.amount,
+        currency:    order.currency,
+        name:        "Kinto Smart Ops",
+        description: order.planLabel,
+        order_id:    order.orderId,
+        prefill: {
+          name:  order.tenantName,
+          email: order.billingEmail ?? "",
+        },
+        theme: { color: "#6d28d9" },
+        modal: {
+          ondismiss: () => {
+            setProcessingPlan(null);
+          },
+        },
+        handler: (response: {
+          razorpay_payment_id: string;
+          razorpay_order_id: string;
+          razorpay_signature: string;
+        }) => {
+          verifyMutation.mutate({
+            razorpay_order_id:  response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature:  response.razorpay_signature,
+            plan: plan.slug,
+          });
+        },
+      });
+      rzp.open();
+    } catch (err: any) {
+      toast({ title: "Payment failed", description: err.message, variant: "destructive" });
+      setProcessingPlan(null);
+    }
   };
+
+  const currentPlan  = subData?.subscription?.planSlug ?? "trial";
+  const planOrder    = ["trial", "basic", "professional", "enterprise"];
+  const currentLevel = planOrder.indexOf(currentPlan);
 
   if (plansLoading) {
     return (
@@ -120,6 +242,13 @@ export default function PricingPage({ onUpgrade }: { onUpgrade?: (plan: string) 
         <p className="text-muted-foreground max-w-xl mx-auto">
           Start free. Upgrade when your business grows. All plans include GST invoicing and 24×7 data access.
         </p>
+
+        {razorpayEnabled && (
+          <div className="flex items-center justify-center gap-2 text-sm text-emerald-600">
+            <CreditCard className="h-4 w-4" />
+            <span>Secure online payments enabled</span>
+          </div>
+        )}
 
         {/* Billing cycle toggle */}
         <div className="inline-flex items-center gap-1 bg-muted rounded-lg p-1 mt-2">
@@ -144,10 +273,11 @@ export default function PricingPage({ onUpgrade }: { onUpgrade?: (plan: string) 
       {/* Plan cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {plans.map((plan) => {
-          const colors = PLAN_COLORS[plan.slug] ?? PLAN_COLORS.trial;
+          const colors   = PLAN_COLORS[plan.slug] ?? PLAN_COLORS.trial;
           const planLevel = planOrder.indexOf(plan.slug);
           const isCurrent = plan.slug === currentPlan;
-          const isHigher = planLevel > currentLevel;
+          const isHigher  = planLevel > currentLevel;
+          const isProcessing = processingPlan === plan.slug;
 
           return (
             <Card
@@ -164,7 +294,7 @@ export default function PricingPage({ onUpgrade }: { onUpgrade?: (plan: string) 
               )}
 
               <CardHeader className="pb-3">
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
                   <CardTitle className="text-base">{plan.name}</CardTitle>
                   {isCurrent && (
                     <Badge variant="secondary" className="text-xs shrink-0">Current</Badge>
@@ -211,16 +341,22 @@ export default function PricingPage({ onUpgrade }: { onUpgrade?: (plan: string) 
                   <Button
                     className="w-full text-sm"
                     onClick={() => handleUpgrade(plan)}
-                    disabled={upgradeMutation.isPending && requestingPlan === plan.slug}
+                    disabled={processingPlan !== null}
                     data-testid={`button-upgrade-${plan.slug}`}
                   >
-                    {upgradeMutation.isPending && requestingPlan === plan.slug ? (
+                    {isProcessing ? (
                       <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : razorpayEnabled ? (
+                      <CreditCard className="h-4 w-4 mr-2" />
                     ) : (
                       <Zap className="h-4 w-4 mr-2" />
                     )}
-                    Upgrade
-                    <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                    {isProcessing
+                      ? "Processing..."
+                      : razorpayEnabled
+                        ? "Pay & Upgrade"
+                        : "Request Upgrade"}
+                    {!isProcessing && <ArrowRight className="h-3.5 w-3.5 ml-1" />}
                   </Button>
                 ) : (
                   <Button variant="ghost" disabled className="w-full text-sm text-muted-foreground" data-testid={`button-downgrade-${plan.slug}`}>
@@ -234,11 +370,19 @@ export default function PricingPage({ onUpgrade }: { onUpgrade?: (plan: string) 
       </div>
 
       {/* Bottom note */}
-      <div className="text-center text-sm text-muted-foreground">
-        All prices are exclusive of GST (18%). Clicking "Upgrade" sends a request to our team — we'll confirm and activate within 24 hours.
-        <br />
-        Need a custom plan or volume pricing?{" "}
-        <a href="mailto:sales@kinto.in" className="text-primary underline">Contact our sales team</a>.
+      <div className="text-center text-sm text-muted-foreground space-y-1">
+        <p>All prices are exclusive of GST (18%).</p>
+        {razorpayEnabled ? (
+          <p>Payments are processed securely via Razorpay. Plan activates instantly after payment.</p>
+        ) : (
+          <p>
+            Clicking "Request Upgrade" notifies our team — we'll confirm and activate within 24 hours.
+          </p>
+        )}
+        <p>
+          Need a custom plan or volume pricing?{" "}
+          <a href="mailto:sales@kinto.in" className="text-primary underline">Contact our sales team</a>.
+        </p>
       </div>
     </div>
   );

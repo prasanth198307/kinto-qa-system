@@ -12690,15 +12690,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Configure multer for scrap evidence uploads (disk storage)
-  const scrapEvidenceDir = path.join(process.cwd(), 'uploads', 'scrap-evidence');
-  if (!fs.existsSync(scrapEvidenceDir)) {
-    fs.mkdirSync(scrapEvidenceDir, { recursive: true });
-  }
-  
+  // Configure multer for scrap evidence uploads (disk storage, tenant-scoped)
   const scrapEvidenceStorage = multer.diskStorage({
-    destination: (req, file, cb) => {
-      cb(null, scrapEvidenceDir);
+    destination: (req: any, file, cb) => {
+      const tenantId = (req.session as any)?.tenantId || 'global';
+      const dir = path.join(process.cwd(), 'uploads', 'tenants', String(tenantId), 'scrap-evidence');
+      fs.mkdirSync(dir, { recursive: true });
+      cb(null, dir);
     },
     filename: (req, file, cb) => {
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -12761,8 +12759,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Store relative URL for serving
-      const evidenceUrl = `/api/scrap-evidence/${req.file.filename}`;
+      // Store relative URL for serving (tenant-scoped path)
+      const tenantId = (req.session as any)?.tenantId || 'global';
+      const evidenceUrl = `/api/scrap-evidence/${tenantId}/${req.file.filename}`;
       
       const [updated] = await db.update(scrapInventory)
         .set({
@@ -12782,34 +12781,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Serve scrap evidence photos (authenticated access)
-  app.get('/api/scrap-evidence/:filename', isAuthenticated, (req: any, res) => {
+  // Serve scrap evidence — tenant-scoped: /api/scrap-evidence/:tenantId/:filename
+  app.get('/api/scrap-evidence/:tenantId/:filename', isAuthenticated, (req: any, res) => {
     try {
-      const { filename } = req.params;
-      
-      // Security: validate filename format to prevent path traversal
+      const { tenantId, filename } = req.params;
       if (!filename || !/^scrap-\d+-\d+\.(jpg|jpeg|png|webp)$/i.test(filename)) {
         return res.status(400).json({ message: 'Invalid filename format' });
       }
-      
-      const filePath = path.join(scrapEvidenceDir, filename);
-      
-      // Security: verify file exists and is within allowed directory
+      const tenantDir = path.join(process.cwd(), 'uploads', 'tenants', String(tenantId), 'scrap-evidence');
+      const filePath = path.join(tenantDir, filename);
       if (!fs.existsSync(filePath)) {
         return res.status(404).json({ message: 'Photo not found' });
       }
-      
-      // Security: ensure resolved path is still within uploads directory
       const resolvedPath = fs.realpathSync(filePath);
-      const resolvedDir = fs.realpathSync(scrapEvidenceDir);
-      if (!resolvedPath.startsWith(resolvedDir)) {
+      const resolvedBase = path.join(process.cwd(), 'uploads');
+      if (!resolvedPath.startsWith(resolvedBase)) {
         return res.status(403).json({ message: 'Access denied' });
       }
-      
-      // Set appropriate cache headers
       res.setHeader('Cache-Control', 'private, max-age=3600');
       res.sendFile(resolvedPath);
     } catch (error) {
       console.error("Error serving scrap evidence:", error);
+      res.status(500).json({ message: 'Failed to retrieve photo' });
+    }
+  });
+
+  // Legacy flat-path scrap evidence (backward compat for old records)
+  app.get('/api/scrap-evidence/:filename', isAuthenticated, (req: any, res) => {
+    try {
+      const { filename } = req.params;
+      if (!filename || !/^scrap-\d+-\d+\.(jpg|jpeg|png|webp)$/i.test(filename)) {
+        return res.status(400).json({ message: 'Invalid filename format' });
+      }
+      const legacyDir = path.join(process.cwd(), 'uploads', 'scrap-evidence');
+      const filePath = path.join(legacyDir, filename);
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ message: 'Photo not found' });
+      }
+      const resolvedPath = fs.realpathSync(filePath);
+      const resolvedBase = path.join(process.cwd(), 'uploads');
+      if (!resolvedPath.startsWith(resolvedBase)) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      res.setHeader('Cache-Control', 'private, max-age=3600');
+      res.sendFile(resolvedPath);
+    } catch (error) {
+      console.error("Error serving scrap evidence (legacy):", error);
       res.status(500).json({ message: 'Failed to retrieve photo' });
     }
   });
@@ -18816,14 +18833,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ============= DOCUMENT MANAGEMENT ROUTES =============
   
-  // Configure multer for document uploads
+  // Configure multer for document uploads (tenant-scoped)
   const documentUpload = multer({
     storage: multer.diskStorage({
-      destination: (req, file, cb) => {
-        const uploadDir = path.join(process.cwd(), 'uploads', 'documents');
-        if (!fs.existsSync(uploadDir)) {
-          fs.mkdirSync(uploadDir, { recursive: true });
-        }
+      destination: (req: any, file, cb) => {
+        const tenantId = (req.session as any)?.tenantId || 'global';
+        const uploadDir = path.join(process.cwd(), 'uploads', 'tenants', String(tenantId), 'documents');
+        fs.mkdirSync(uploadDir, { recursive: true });
         cb(null, uploadDir);
       },
       filename: (req, file, cb) => {
@@ -18964,7 +18980,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         fileName: req.file.originalname,
         fileType: req.file.mimetype,
         fileSize: req.file.size,
-        filePath: `/uploads/documents/${req.file.filename}`,
+        filePath: `/uploads/tenants/${(req.session as any)?.tenantId || 'global'}/documents/${req.file.filename}`,
         relatedEntityType: req.body.relatedEntityType || null,
         relatedEntityId: req.body.relatedEntityId || null,
         documentDate: req.body.documentDate || null,
@@ -19026,15 +19042,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Serve document files (view in browser)
+  // Serve document files — tenant-scoped path (new)
+  app.get('/uploads/tenants/:tenantId/documents/:filename', isAuthenticated, (req: Request, res: Response) => {
+    const { tenantId, filename } = req.params;
+    const filePath = path.join(process.cwd(), 'uploads', 'tenants', tenantId, 'documents', filename);
+    const resolvedBase = path.join(process.cwd(), 'uploads');
+    if (!fs.existsSync(filePath)) return res.status(404).json({ message: 'File not found' });
+    const resolved = fs.realpathSync(filePath);
+    if (!resolved.startsWith(resolvedBase)) return res.status(403).json({ message: 'Access denied' });
+    res.sendFile(resolved);
+  });
+
+  // Serve document files — legacy flat path (backward compat)
   app.get('/uploads/documents/:filename', isAuthenticated, (req: Request, res: Response) => {
     const { filename } = req.params;
     const filePath = path.join(process.cwd(), 'uploads', 'documents', filename);
-    
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ message: 'File not found' });
-    }
-    
+    if (!fs.existsSync(filePath)) return res.status(404).json({ message: 'File not found' });
     res.sendFile(filePath);
   });
 
@@ -19121,14 +19144,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ============= EXPENSE TRACKING ROUTES =============
   
-  // Configure multer for expense attachments
+  // Configure multer for expense attachments (tenant-scoped)
   const expenseUpload = multer({
     storage: multer.diskStorage({
-      destination: (req, file, cb) => {
-        const uploadDir = path.join(process.cwd(), 'uploads', 'expenses');
-        if (!fs.existsSync(uploadDir)) {
-          fs.mkdirSync(uploadDir, { recursive: true });
-        }
+      destination: (req: any, file, cb) => {
+        const tenantId = (req.session as any)?.tenantId || 'global';
+        const uploadDir = path.join(process.cwd(), 'uploads', 'tenants', String(tenantId), 'expenses');
+        fs.mkdirSync(uploadDir, { recursive: true });
         cb(null, uploadDir);
       },
       filename: (req, file, cb) => {
@@ -19563,7 +19585,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         fileName: req.file.originalname,
         fileType: req.file.mimetype,
         fileSize: req.file.size,
-        filePath: `/uploads/expenses/${req.file.filename}`,
+        filePath: `/uploads/tenants/${(req.session as any)?.tenantId || 'global'}/expenses/${req.file.filename}`,
         uploadedBy: req.user?.id || null,
       };
       
@@ -19591,15 +19613,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Serve expense attachment files
+  // Serve expense attachment files — tenant-scoped (new)
+  app.get('/uploads/tenants/:tenantId/expenses/:filename', isAuthenticated, (req: Request, res: Response) => {
+    const { tenantId, filename } = req.params;
+    const filePath = path.join(process.cwd(), 'uploads', 'tenants', tenantId, 'expenses', filename);
+    const resolvedBase = path.join(process.cwd(), 'uploads');
+    if (!fs.existsSync(filePath)) return res.status(404).json({ message: 'File not found' });
+    const resolved = fs.realpathSync(filePath);
+    if (!resolved.startsWith(resolvedBase)) return res.status(403).json({ message: 'Access denied' });
+    res.sendFile(resolved);
+  });
+
+  // Serve expense attachment files — legacy flat path (backward compat)
   app.get('/uploads/expenses/:filename', isAuthenticated, (req: Request, res: Response) => {
     const { filename } = req.params;
     const filePath = path.join(process.cwd(), 'uploads', 'expenses', filename);
-    
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ message: 'File not found' });
-    }
-    
+    if (!fs.existsSync(filePath)) return res.status(404).json({ message: 'File not found' });
     res.sendFile(filePath);
   });
 
@@ -26460,6 +26489,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (err: any) {
       console.error('[MIS-Financial] Error:', err);
       res.status(500).json({ message: err.message || 'Failed to fetch financial analytics' });
+    }
+  });
+
+
+  // ─── Register Razorpay Billing routes ────────────────────────────────────
+  const { registerBillingRoutes } = await import('./billing.js');
+  registerBillingRoutes(app);
+
+  // ─── Admin: list backups for a tenant ────────────────────────────────────
+  app.get('/api/admin/tenants/:id/backups', async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.user?.isSuperAdmin) return res.status(403).json({ message: 'Super-admin only' });
+    const tenantId = parseInt(req.params.id);
+    const { listBackups } = await import('./backup.js');
+    res.json(listBackups(tenantId));
+  });
+
+  // ─── Admin: download a specific backup file ───────────────────────────────
+  app.get('/api/admin/tenants/:id/backups/:filename', async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.user?.isSuperAdmin) return res.status(403).json({ message: 'Super-admin only' });
+    const tenantId = parseInt(req.params.id);
+    const { filename } = req.params;
+    const { getBackupFilePath } = await import('./backup.js');
+    const filePath = getBackupFilePath(tenantId, filename);
+    if (!filePath) return res.status(404).json({ message: 'Backup not found' });
+    res.setHeader('Content-Disposition', 'attachment; filename="' + filename + '"');
+    res.setHeader('Content-Type', 'application/json');
+    res.sendFile(filePath);
+  });
+
+  // ─── Admin: trigger manual backup for a tenant ───────────────────────────
+  app.post('/api/admin/tenants/:id/backup', async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.user?.isSuperAdmin) return res.status(403).json({ message: 'Super-admin only' });
+    const tenantId = parseInt(req.params.id);
+    const { backupTenant } = await import('./backup.js');
+    try {
+      const filename = await backupTenant(tenantId, 'manual');
+      res.json({ message: 'Backup created', filename });
+    } catch (err) {
+      res.status(500).json({ message: err.message });
     }
   });
 

@@ -11,6 +11,7 @@ import { db } from "./db";
 import { eq, desc, sql } from "drizzle-orm";
 import { lookupTenantBySlug } from "./tenant-middleware";
 import { seedNewTenant } from "./seed-tenant";
+import { backupTenant } from "./backup";
 
 declare global {
   namespace Express {
@@ -386,6 +387,15 @@ export function setupAuth(app: Express) {
         }
       }
 
+      // Step 1: Run pre-deletion backup (save full export BEFORE any deletion)
+      let preDeletionBackupFile: string | null = null;
+      try {
+        preDeletionBackupFile = await backupTenant(targetTenantId, "pre-deletion");
+        console.log(`[DELETE TENANT] Pre-deletion backup created: ${preDeletionBackupFile}`);
+      } catch (backupErr) {
+        console.error("[DELETE TENANT] Pre-deletion backup failed (proceeding anyway):", (backupErr as any).message);
+      }
+
       // Write deletion audit record FIRST (before any deletion)
       await db.insert(deletionAudit).values({
         tenantId: targetTenantId,
@@ -393,6 +403,7 @@ export function setupAuth(app: Express) {
         tenantSlug: tenant.slug,
         ownerEmail: (tenant as any).billingEmail,
         rowsDeleted,
+        exportUrl: preDeletionBackupFile ?? undefined,
         deletedBy: currentUser.username,
         reason: reason || "Manual deletion by super-admin",
       });

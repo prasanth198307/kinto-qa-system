@@ -184,6 +184,22 @@ app.use((req, res, next) => {
     console.error('[CREDITOR RECTIFY ERROR]', error);
   }
 
+  // ─── Daily tenant backup cron (2:00 AM daily) ────────────────────────────
+  try {
+    const cron = (await import('node-cron')).default;
+    cron.schedule('0 2 * * *', async () => {
+      try {
+        const { runDailyBackups } = await import('./backup');
+        await runDailyBackups();
+      } catch (err) {
+        console.error('[BACKUP CRON ERROR]', err);
+      }
+    });
+    log('✅ Daily tenant backup cron initialized (runs at 2:00 AM)');
+  } catch (err) {
+    console.error('[BACKUP CRON SETUP ERROR]', err);
+  }
+
   const port = parseInt(process.env.PORT || "5000", 10);
   server.listen(port, "0.0.0.0", () => {
     log(`🚀 Server running on port ${port}`);
@@ -228,6 +244,9 @@ app.use((req, res, next) => {
       console.error('[WHATSAPP SECRETS SYNC ERROR]', error);
     });
     
+    // ─── Daily tenant backup cron is initialized after listen ───────────────
+    // (setup happens below in the async IIFE)
+
     log('✅ Machine startup reminder system initialized');
     log('✅ Missed checklist notification system initialized');
     log('✅ Document expiry alert system initialized');

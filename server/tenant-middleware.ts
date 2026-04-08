@@ -29,7 +29,12 @@ export async function tenantMiddleware(req: Request, res: Response, next: NextFu
 
     // Block suspended or expired tenants from all authenticated API requests
     // Allow a small allowlist so the UI can still fetch plan/company info and log out
-    const TENANT_STATUS_ALLOWLIST = ['/api/tenant/info', '/api/tenant/features', '/api/logout', '/api/user'];
+    // Billing routes must be accessible so suspended/expired tenants can upgrade their plan
+    const TENANT_STATUS_ALLOWLIST = [
+      '/api/tenant/info', '/api/tenant/features', '/api/logout', '/api/user',
+      '/api/billing/plans', '/api/billing/create-order', '/api/billing/verify-payment',
+      '/api/billing/request-upgrade', '/api/billing/history',
+    ];
     const isAllowlisted = TENANT_STATUS_ALLOWLIST.some(p => req.path.startsWith(p));
 
     if (req.isAuthenticated() && req.path.startsWith('/api/') && !(user?.isSuperAdmin) && !isAllowlisted) {

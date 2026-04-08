@@ -24,7 +24,7 @@ import {
 import {
   Building2, Users, MoreVertical, Search, RefreshCw, ShieldAlert,
   CheckCircle2, Clock, XCircle, Loader2, FlaskConical, CreditCard,
-  Eye, Trash2, AlertTriangle,
+  Eye, Trash2, AlertTriangle, Archive, Download,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -70,6 +70,7 @@ export default function SuperAdminTenants() {
   const [deleteTenant, setDeleteTenant] = useState<Tenant | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleteReason, setDeleteReason]   = useState("");
+  const [backupTenant, setBackupTenant]   = useState<Tenant | null>(null);
 
   const { data: tenants = [], isLoading, refetch } = useQuery<Tenant[]>({
     queryKey: ["/api/admin/tenants"],
@@ -131,6 +132,19 @@ export default function SuperAdminTenants() {
     },
     onError: (err: any) => {
       toast({ title: "Impersonation failed", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const manualBackupMutation = useMutation({
+    mutationFn: async (tenantId: number) => {
+      const res = await apiRequest("POST", `/api/admin/tenants/${tenantId}/backup`, {});
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({ title: "Backup created", description: `File: ${data.filename}` });
+    },
+    onError: (err: any) => {
+      toast({ title: "Backup failed", description: err.message, variant: "destructive" });
     },
   });
 
@@ -372,6 +386,24 @@ export default function SuperAdminTenants() {
                                   Reset to Trial
                                 </DropdownMenuItem>
                               )}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => setBackupTenant(tenant)}
+                                data-testid={`button-backups-${tenant.id}`}
+                              >
+                                <Archive className="h-4 w-4 mr-2" />
+                                Manage Backups
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => manualBackupMutation.mutate(tenant.id)}
+                                disabled={manualBackupMutation.isPending}
+                                data-testid={`button-backup-now-${tenant.id}`}
+                              >
+                                {manualBackupMutation.isPending
+                                  ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  : <Download className="h-4 w-4 mr-2" />}
+                                Backup Now
+                              </DropdownMenuItem>
                               {!tenant.isSuperAdmin && (
                                 <>
                                   <DropdownMenuSeparator />
@@ -515,6 +547,114 @@ export default function SuperAdminTenants() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Backup Management Dialog */}
+      {backupTenant && (
+        <BackupsDialog
+          tenant={backupTenant}
+          onClose={() => setBackupTenant(null)}
+          onBackupNow={() => manualBackupMutation.mutate(backupTenant.id)}
+          backingUp={manualBackupMutation.isPending}
+        />
+      )}
     </div>
+  );
+}
+
+type BackupFile = {
+  filename: string;
+  label: string;
+  date: string;
+  sizeKb: number;
+  createdAt: string;
+};
+
+function BackupsDialog({
+  tenant,
+  onClose,
+  onBackupNow,
+  backingUp,
+}: {
+  tenant: Tenant;
+  onClose: () => void;
+  onBackupNow: () => void;
+  backingUp: boolean;
+}) {
+  const { data: backups = [], isLoading, refetch } = useQuery<BackupFile[]>({
+    queryKey: ["/api/admin/tenants", tenant.id, "backups"],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/tenants/${tenant.id}/backups`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load backups");
+      return res.json();
+    },
+    enabled: true,
+  });
+
+  const LABEL_BADGE: Record<string, "default" | "secondary" | "destructive"> = {
+    "daily":        "secondary",
+    "pre-deletion": "destructive",
+    "manual":       "default",
+  };
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Archive className="h-5 w-5" />
+            Backups — {tenant.name}
+          </DialogTitle>
+          <DialogDescription>
+            Tenant data backups stored on the server. Daily backups run automatically at 2:00 AM.
+            Pre-deletion backups are created before any tenant data deletion.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-3 max-h-80 overflow-y-auto py-2">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : backups.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-6">No backups yet. Click "Backup Now" to create one.</p>
+          ) : (
+            backups.map((b) => (
+              <div key={b.filename} className="flex items-center justify-between gap-3 py-2 border-b border-border last:border-0" data-testid={`row-backup-${b.filename}`}>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge variant={LABEL_BADGE[b.label] ?? "secondary"} className="capitalize text-xs">{b.label}</Badge>
+                    <span className="text-sm font-medium">{b.date}</span>
+                    <span className="text-xs text-muted-foreground">{b.sizeKb} KB</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">{b.filename}</p>
+                </div>
+                <Button
+                  size="default"
+                  variant="outline"
+                  onClick={() => {
+                    window.open(`/api/admin/tenants/${tenant.id}/backups/${b.filename}`, "_blank");
+                  }}
+                  data-testid={`button-download-backup-${b.filename}`}
+                >
+                  <Download className="h-4 w-4 mr-1" />Download
+                </Button>
+              </div>
+            ))
+          )}
+        </div>
+
+        <DialogFooter className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={onClose}>Close</Button>
+          <Button
+            onClick={async () => { onBackupNow(); setTimeout(() => refetch(), 3000); }}
+            disabled={backingUp}
+            data-testid="button-backup-now-dialog"
+          >
+            {backingUp ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Archive className="h-4 w-4 mr-2" />}
+            Backup Now
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
