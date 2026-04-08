@@ -58,6 +58,72 @@ export const insertTenantSchema = createInsertSchema(tenants).omit({
 export type InsertTenant = z.infer<typeof insertTenantSchema>;
 export type Tenant = typeof tenants.$inferSelect;
 
+// ─── Subscription Plans ──────────────────────────────────────────────────────
+export const subscriptionPlans = pgTable("subscription_plans", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  slug: varchar("slug", { length: 50 }).notNull().unique(), // trial, basic, professional, enterprise
+  tagline: varchar("tagline", { length: 255 }),
+  description: text("description"),
+  priceMonthly: integer("price_monthly").default(0).notNull(), // in paise (₹ × 100)
+  priceYearly: integer("price_yearly").default(0).notNull(),   // in paise (discounted annual)
+  maxUsers: integer("max_users").default(5).notNull(),
+  modules: jsonb("modules").$type<string[]>().default([]),    // included module slugs
+  features: jsonb("features").$type<string[]>().default([]),  // human-readable feature list
+  isActive: boolean("is_active").default(true).notNull(),
+  isFeatured: boolean("is_featured").default(false).notNull(), // highlight on pricing page
+  displayOrder: integer("display_order").default(0).notNull(),
+  trialDays: integer("trial_days").default(0).notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
+});
+export const insertSubscriptionPlanSchema = createInsertSchema(subscriptionPlans).omit({ id: true, createdAt: true, updatedAt: true });
+export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
+export type InsertSubscriptionPlan = z.infer<typeof insertSubscriptionPlanSchema>;
+
+// ─── Tenant Subscriptions ────────────────────────────────────────────────────
+export const subscriptions = pgTable("subscriptions", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenant_id").notNull(),
+  planId: integer("plan_id").notNull(),
+  planSlug: varchar("plan_slug", { length: 50 }).notNull(),   // denormalized for quick reads
+  billingCycle: varchar("billing_cycle", { length: 20 }).default("monthly").notNull(), // monthly, yearly, trial, custom
+  status: varchar("status", { length: 30 }).default("active").notNull(), // active, cancelled, expired, trial, pending
+  startedAt: timestamp("started_at", { mode: 'string' }).defaultNow().notNull(),
+  currentPeriodStart: timestamp("current_period_start", { mode: 'string' }),
+  currentPeriodEnd: timestamp("current_period_end", { mode: 'string' }),
+  trialEndsAt: timestamp("trial_ends_at", { mode: 'string' }),
+  cancelledAt: timestamp("cancelled_at", { mode: 'string' }),
+  cancelReason: text("cancel_reason"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
+});
+export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({ id: true, createdAt: true, updatedAt: true });
+export type Subscription = typeof subscriptions.$inferSelect;
+export type InsertSubscription = z.infer<typeof insertSubscriptionSchema>;
+
+// ─── Billing Events (audit log of all plan changes & payments) ───────────────
+export const billingEvents = pgTable("billing_events", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenant_id").notNull(),
+  subscriptionId: integer("subscription_id"),
+  eventType: varchar("event_type", { length: 50 }).notNull(),
+  // trial_started | plan_activated | upgraded | downgraded | renewed | cancelled | payment_received | upgrade_requested | trial_expired
+  fromPlan: varchar("from_plan", { length: 50 }),
+  toPlan: varchar("to_plan", { length: 50 }),
+  billingCycle: varchar("billing_cycle", { length: 20 }),
+  amount: integer("amount").default(0).notNull(),              // in paise
+  currency: varchar("currency", { length: 10 }).default("INR"),
+  notes: text("notes"),
+  metadata: jsonb("metadata").$type<Record<string, any>>().default({}),
+  createdBy: varchar("created_by", { length: 255 }),           // username or 'system'
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+});
+export const insertBillingEventSchema = createInsertSchema(billingEvents).omit({ id: true, createdAt: true });
+export type BillingEvent = typeof billingEvents.$inferSelect;
+export type InsertBillingEvent = z.infer<typeof insertBillingEventSchema>;
+
 // ─── Roles table for dynamic role management ─────────────────────────────────
 export const roles = pgTable("roles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

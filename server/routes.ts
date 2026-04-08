@@ -25,7 +25,7 @@ import { importCreditNotesFromExcel } from "./creditnote-import";
 import { parseExcelFile, commitImport } from "./cashRegisterImport";
 import { importCashRegisterFromExcel } from "./importCashRegisterFromExcel";
 import archiver from "archiver";
-import { insertCashRegisterDaySchema, insertCashRegisterTransactionSchema, insertCashRegisterExpenseItemSchema, insertSalespersonMappingSchema, cashRegisterDays, cashRegisterTransactions, cashRegisterExpenseItems, expenseVouchers, expenseItems, customerAdvances, advanceApplications, insertCustomerAdvanceSchema, insertAdvanceApplicationSchema, journalEntries, journalLines, chartOfAccounts, budgets, budgetItems, tenants } from "@shared/schema";
+import { insertCashRegisterDaySchema, insertCashRegisterTransactionSchema, insertCashRegisterExpenseItemSchema, insertSalespersonMappingSchema, cashRegisterDays, cashRegisterTransactions, cashRegisterExpenseItems, expenseVouchers, expenseItems, customerAdvances, advanceApplications, insertCustomerAdvanceSchema, insertAdvanceApplicationSchema, journalEntries, journalLines, chartOfAccounts, budgets, budgetItems, tenants, subscriptionPlans, subscriptions, billingEvents } from "@shared/schema";
 import { sql, and, eq, ne, gte, lte, gt, asc, desc, inArray, isNotNull, isNull, or, ilike, type SQL } from "drizzle-orm";
 
 // Persistent audit logging function
@@ -543,6 +543,191 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (err) {
       console.error('PATCH /api/tenant/settings error:', err);
       res.status(500).json({ message: 'Failed to update settings' });
+    }
+  });
+
+  // ─── Public: List active subscription plans ─────────────────────────────────
+  app.get('/api/subscription-plans', async (req, res) => {
+    try {
+      const plans = await db
+        .select()
+        .from(subscriptionPlans)
+        .where(eq(subscriptionPlans.isActive, true))
+        .orderBy(asc(subscriptionPlans.displayOrder));
+      res.json(plans);
+    } catch (err) {
+      res.status(500).json({ message: 'Failed to fetch plans' });
+    }
+  });
+
+  // ─── Get current tenant subscription + billing history ──────────────────────
+  app.get('/api/tenant/subscription', async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' });
+    const tenantId: number = (req.session as any).tenantId ?? req.user?.tenantId ?? 1;
+    try {
+      // Current subscription with plan details
+      const [sub] = await db
+        .select({
+          subscription: subscriptions,
+          plan: subscriptionPlans,
+        })
+        .from(subscriptions)
+        .leftJoin(subscriptionPlans, eq(subscriptions.planId, subscriptionPlans.id))
+        .where(eq(subscriptions.tenantId, tenantId))
+        .orderBy(desc(subscriptions.id))
+        .limit(1);
+
+      // Billing history (most recent 20)
+      const history = await db
+        .select()
+        .from(billingEvents)
+        .where(eq(billingEvents.tenantId, tenantId))
+        .orderBy(desc(billingEvents.createdAt))
+        .limit(20);
+
+      res.json({ subscription: sub?.subscription ?? null, plan: sub?.plan ?? null, history });
+    } catch (err) {
+      console.error('GET /api/tenant/subscription error:', err);
+      res.status(500).json({ message: 'Failed to fetch subscription' });
+    }
+  });
+
+  // ─── Tenant: Request plan upgrade ────────────────────────────────────────────
+  app.post('/api/tenant/upgrade-request', async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' });
+    if (req.user?.role !== 'admin' && !req.user?.isSuperAdmin) return res.status(403).json({ message: 'Admin only' });
+    const tenantId: number = (req.session as any).tenantId ?? req.user?.tenantId ?? 1;
+    const { toPlan, billingCycle, notes } = req.body;
+    if (!toPlan) return res.status(400).json({ message: 'toPlan is required' });
+
+    try {
+      const [currentSub] = await db.select().from(subscriptions).where(eq(subscriptions.tenantId, tenantId)).orderBy(desc(subscriptions.id)).limit(1);
+      const [tenant] = await db.select({ plan: tenants.plan }).from(tenants).where(eq(tenants.id, tenantId));
+
+      await db.insert(billingEvents).values({
+        tenantId,
+        subscriptionId: currentSub?.id ?? null,
+        eventType: 'upgrade_requested',
+        fromPlan: tenant?.plan ?? currentSub?.planSlug,
+        toPlan,
+        billingCycle: billingCycle ?? 'monthly',
+        amount: 0,
+        notes: notes ?? `Upgrade request to ${toPlan} plan`,
+        createdBy: req.user?.username ?? 'admin',
+      });
+
+      res.json({ message: 'Upgrade request submitted. Our team will contact you shortly.' });
+    } catch (err) {
+      console.error('POST /api/tenant/upgrade-request error:', err);
+      res.status(500).json({ message: 'Failed to submit upgrade request' });
+    }
+  });
+
+  // ─── Super-admin: List all subscriptions ─────────────────────────────────────
+  app.get('/api/admin/subscriptions', async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const currentUser = req.user as any;
+    if (!currentUser?.isSuperAdmin && currentUser?.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    try {
+      const rows = await db
+        .select({ subscription: subscriptions, tenant: { id: tenants.id, name: tenants.name, slug: tenants.slug, status: tenants.status }, plan: subscriptionPlans })
+        .from(subscriptions)
+        .leftJoin(tenants, eq(subscriptions.tenantId, tenants.id))
+        .leftJoin(subscriptionPlans, eq(subscriptions.planId, subscriptionPlans.id))
+        .orderBy(desc(subscriptions.id));
+      res.json(rows);
+    } catch (err) {
+      res.status(500).json({ message: 'Failed to fetch subscriptions' });
+    }
+  });
+
+  // ─── Super-admin: Change a tenant's plan ──────────────────────────────────────
+  app.patch('/api/admin/subscriptions/:tenantId/change-plan', async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const currentUser = req.user as any;
+    if (!currentUser?.isSuperAdmin && currentUser?.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+
+    const targetTenantId = parseInt(req.params.tenantId);
+    const { toPlan, billingCycle, notes, status } = req.body;
+    if (!toPlan) return res.status(400).json({ message: 'toPlan is required' });
+
+    try {
+      const [planRow] = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.slug, toPlan));
+      if (!planRow) return res.status(400).json({ message: `Unknown plan: ${toPlan}` });
+
+      const [currentTenant] = await db.select({ plan: tenants.plan, status: tenants.status }).from(tenants).where(eq(tenants.id, targetTenantId));
+      const fromPlan = currentTenant?.plan;
+
+      const cycle = billingCycle ?? (toPlan === 'trial' ? 'trial' : 'monthly');
+      const newStatus = status ?? (toPlan === 'trial' ? 'trial' : 'active');
+
+      // Deactivate old subscription
+      await db.update(subscriptions)
+        .set({ status: 'cancelled', cancelledAt: new Date().toISOString(), cancelReason: `Replaced by plan change to ${toPlan}`, updatedAt: new Date().toISOString() })
+        .where(and(eq(subscriptions.tenantId, targetTenantId), eq(subscriptions.status, 'active')));
+
+      // Create new subscription
+      const now = new Date().toISOString();
+      const periodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+      const [newSub] = await db.insert(subscriptions).values({
+        tenantId: targetTenantId,
+        planId: planRow.id,
+        planSlug: toPlan,
+        billingCycle: cycle,
+        status: newStatus,
+        startedAt: now,
+        currentPeriodStart: now,
+        currentPeriodEnd: toPlan === 'trial' ? null : periodEnd,
+        notes: notes ?? null,
+      }).returning();
+
+      // Log billing event
+      const eventType = fromPlan === toPlan ? 'plan_reactivated' : (
+        ['trial','basic','professional','enterprise'].indexOf(toPlan) > ['trial','basic','professional','enterprise'].indexOf(fromPlan ?? '')
+          ? 'upgraded' : 'downgraded'
+      );
+      await db.insert(billingEvents).values({
+        tenantId: targetTenantId,
+        subscriptionId: newSub.id,
+        eventType,
+        fromPlan,
+        toPlan,
+        billingCycle: cycle,
+        amount: toPlan === 'trial' ? 0 : (cycle === 'yearly' ? planRow.priceYearly : planRow.priceMonthly),
+        notes: notes ?? `Plan changed to ${toPlan}`,
+        createdBy: currentUser.username ?? 'super-admin',
+      });
+
+      // Update tenant record
+      await db.update(tenants).set({
+        plan: toPlan,
+        status: newStatus,
+        maxUsers: planRow.maxUsers,
+        updatedAt: new Date().toISOString(),
+      }).where(eq(tenants.id, targetTenantId));
+
+      res.json({ message: `Plan updated to ${toPlan}`, subscription: newSub });
+    } catch (err) {
+      console.error('PATCH /api/admin/subscriptions change-plan error:', err);
+      res.status(500).json({ message: 'Failed to change plan' });
+    }
+  });
+
+  // ─── Super-admin: Get billing events for a tenant ────────────────────────────
+  app.get('/api/admin/billing-events/:tenantId', async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const currentUser = req.user as any;
+    if (!currentUser?.isSuperAdmin && currentUser?.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    const targetTenantId = parseInt(req.params.tenantId);
+    try {
+      const events = await db
+        .select()
+        .from(billingEvents)
+        .where(eq(billingEvents.tenantId, targetTenantId))
+        .orderBy(desc(billingEvents.createdAt));
+      res.json(events);
+    } catch (err) {
+      res.status(500).json({ message: 'Failed to fetch billing events' });
     }
   });
 
