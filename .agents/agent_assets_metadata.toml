@@ -30,3 +30,9 @@ id = "YlmODWOV9C9AmmbLDUdTk"
 uri = "file://Kinto_SaaS_Complete_Master_Plan.xlsx"
 type = "table"
 title = "Kinto Smart Ops — Complete SaaS Master Plan (12 Sheets)"
+
+[[outputs]]
+id = "G3LwyzQFnhmG0Bu4dlH-V"
+uri = "file://uploads/kinto_hr_module_plan.xlsx"
+type = "table"
+title = "Kinto HR Module — Full Plan"
