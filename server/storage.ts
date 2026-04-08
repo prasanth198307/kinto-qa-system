@@ -861,6 +861,7 @@ export class DatabaseStorage implements IStorage {
         roleId: users.roleId,
         role: sql<string>`COALESCE(${roles.name}, "users"."role")`,
         tenantId: users.tenantId,
+        isSuperAdmin: tenants.isSuperAdmin,
         resetToken: users.resetToken,
         resetTokenExpiry: users.resetTokenExpiry,
         createdAt: users.createdAt,
@@ -868,6 +869,7 @@ export class DatabaseStorage implements IStorage {
       })
       .from(users)
       .leftJoin(roles, eq(users.roleId, roles.id))
+      .leftJoin(tenants, eq(users.tenantId, tenants.id))
       .where(and(or(eq(users.username, username), eq(users.email, username)), eq(users.recordStatus, 1), tc(users)));
     
     return result as any;
@@ -887,6 +889,7 @@ export class DatabaseStorage implements IStorage {
         roleId: users.roleId,
         role: sql<string>`COALESCE(${roles.name}, "users"."role")`,
         tenantId: users.tenantId,
+        isSuperAdmin: tenants.isSuperAdmin,
         resetToken: users.resetToken,
         resetTokenExpiry: users.resetTokenExpiry,
         createdAt: users.createdAt,
@@ -894,6 +897,7 @@ export class DatabaseStorage implements IStorage {
       })
       .from(users)
       .leftJoin(roles, eq(users.roleId, roles.id))
+      .leftJoin(tenants, eq(users.tenantId, tenants.id))
       .where(and(
         or(eq(users.username, username), eq(users.email, username)),
         eq(users.tenantId, tenantId),
