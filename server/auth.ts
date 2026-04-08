@@ -279,7 +279,9 @@ export function setupAuth(app: Express) {
       if (err) return next(err);
       if (!user) return res.status(401).json({ message: "Invalid username or password" });
 
-      // If tenantSlug provided, verify user belongs to that tenant
+      let tenantPlan = "trial";
+
+      // If tenantSlug provided, verify user belongs to that tenant and grab plan
       if (tenantSlug) {
         const tenant = await lookupTenantBySlug(tenantSlug);
         if (!tenant) return res.status(401).json({ message: "Company not found" });
@@ -290,6 +292,12 @@ export function setupAuth(app: Express) {
           console.warn(`⚠️ User ${user.username} (tenant ${userTenantId}) attempted login to tenant ${tenant.id}`);
           return res.status(401).json({ message: "Invalid username or password" });
         }
+        tenantPlan = (tenant as any).plan ?? "trial";
+      } else {
+        // No slug provided — look up tenant plan by user's tenantId
+        const userTenantId = (user as any).tenantId ?? 1;
+        const tenantRow = await db.select({ plan: tenants.plan }).from(tenants).where(eq(tenants.id, userTenantId)).limit(1);
+        tenantPlan = tenantRow[0]?.plan ?? "trial";
       }
 
       req.session.regenerate((err) => {
@@ -298,13 +306,14 @@ export function setupAuth(app: Express) {
         req.login(user, (err) => {
           if (err) return res.status(500).json({ message: "Login failed" });
 
-          // Store tenantId in session
+          // Store tenantId and tenantPlan in session
           (req.session as any).tenantId = (user as any).tenantId ?? 1;
+          (req.session as any).tenantPlan = tenantPlan;
 
           req.session.save((err) => {
             if (err) return res.status(500).json({ message: "Session save failed" });
 
-            console.log(`✅ Session saved — user: ${user.username}, tenant: ${(req.session as any).tenantId}`);
+            console.log(`✅ Session saved — user: ${user.username}, tenant: ${(req.session as any).tenantId}, plan: ${tenantPlan}`);
             return res.json(req.user);
           });
         });

@@ -1,6 +1,7 @@
 import { useMemo, useRef } from "react";
 import { usePermissions } from "@/hooks/use-permissions";
 import { useAuth } from "@/hooks/use-auth";
+import { usePlanFeatures } from "@/hooks/use-plan-features";
 import { type NavSection } from "@/components/VerticalNavSidebar";
 
 interface Permission {
@@ -278,29 +279,46 @@ function filterNavSectionsWithDbPermissions(sections: NavSection[], dbPermission
 // System roles always get full nav — no DB permission rows needed
 const SYSTEM_ROLES_FULL_ACCESS = ['admin', 'manager', 'accountsmanager'];
 
+function filterNavSectionsByPlan(sections: NavSection[], allowedNavItems: string[]): NavSection[] {
+  if (!allowedNavItems || allowedNavItems.length === 0) return sections;
+  const allowed = new Set(allowedNavItems);
+  return sections
+    .map(section => ({
+      ...section,
+      items: section.items.filter(item => allowed.has(item.id)),
+    }))
+    .filter(section => section.items.length > 0);
+}
+
 export function useFilteredNavigation(allNavSections: NavSection[]) {
   const { permissions, role: roleName, isLoading: permissionsLoading } = usePermissions();
+  const { allowedNavItems, isLoading: planLoading } = usePlanFeatures();
   const lastValidRef = useRef<NavSection[]>([]);
   
   const navSections = useMemo(() => {
-    // System roles bypass all filtering — show the full nav, always
+    // First apply plan-level filtering (hides modules not in subscription)
+    const planFiltered = allowedNavItems.length > 0
+      ? filterNavSectionsByPlan(allNavSections, allowedNavItems)
+      : allNavSections;
+
+    // System roles bypass role/permission filtering — only plan gating applies
     if (roleName && SYSTEM_ROLES_FULL_ACCESS.includes(roleName.toLowerCase())) {
-      lastValidRef.current = allNavSections;
-      return allNavSections;
+      lastValidRef.current = planFiltered;
+      return planFiltered;
     }
 
     if (permissionsLoading || !permissions || permissions.length === 0) {
       return lastValidRef.current;
     }
-    const filtered = filterNavSectionsWithDbPermissions(allNavSections, permissions);
+    const filtered = filterNavSectionsWithDbPermissions(planFiltered, permissions);
     if (filtered.length > 0) {
       lastValidRef.current = filtered;
     }
     return filtered.length > 0 ? filtered : lastValidRef.current;
-  }, [allNavSections, permissions, permissionsLoading, roleName]);
+  }, [allNavSections, permissions, permissionsLoading, roleName, allowedNavItems]);
 
   return { 
     navSections,
-    isLoading: permissionsLoading && lastValidRef.current.length === 0
+    isLoading: (permissionsLoading || planLoading) && lastValidRef.current.length === 0
   };
 }

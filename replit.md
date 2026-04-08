@@ -15,6 +15,20 @@ Kinto Smart Ops is a comprehensive manufacturing ERP SaaS platform for Indian ma
 - **API routes:** GET /api/tenants/lookup/:slug, POST /api/tenants/register, GET/PATCH /api/admin/tenants
 - **Session:** `tenantId` stored in session after login for downstream use
 
+### Phase 3 (Complete) — Plan-Based Module Gating
+
+- **Plan tiers:** `trial` → `basic` → `professional` → `enterprise` (each is a superset of previous)
+- **Plan map** (`server/plan-features.ts`): Defines which module groups belong to each plan
+  - **Trial:** Invoicing, Purchase Orders, Basic Inventory
+  - **Basic:** + Gatepasses & Dispatch, Sales Orders
+  - **Professional:** + Production & BOM, Quality/Returns, Accounting/COA/Ledger, MIS Analytics, Expenses & Cash Register, Documents
+  - **Enterprise:** + WhatsApp/Checklists, Preventive Maintenance
+- **Backend enforcement** (`server/plan-middleware.ts`): `planEnforcementMiddleware` intercepts API requests, matches path prefixes to ROUTE_PLAN_REQUIREMENTS, returns HTTP 403 with upgrade message if plan doesn't qualify
+- **Session caching:** `tenantPlan` stored in session at login (alongside `tenantId`); old sessions fall back to DB lookup and auto-cache
+- **Frontend gating** (`client/src/hooks/use-plan-features.ts`): `usePlanFeatures()` hook fetches allowed modules/navItems from `GET /api/tenant/features`
+- **Nav filtering** (`client/src/hooks/use-filtered-navigation.tsx`): Plan filter applied first (removes locked nav sections), then role/permission filter applied on top
+- **Super-admin bypass:** Users with `isSuperAdmin=true` skip all plan enforcement
+
 ### Phase 2 (Complete) — Tenant Data Isolation via AsyncLocalStorage
 - **Mechanism:** `AsyncLocalStorage` in `server/tenant-context.ts` propagates `tenantId` automatically through all async chains without prop-drilling
 - **`tc()` helper:** Exported from `server/tenant-context.ts` — generates `eq(table.tenantId, currentTenantId)` WHERE clause; silently returns `undefined` for system tables without `tenantId`
