@@ -10,6 +10,7 @@ import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { usePermissions } from "@/hooks/use-permissions";
 import { useFilteredNavigation } from "@/hooks/use-filtered-navigation";
 import { ProtectedRoute } from "@/lib/protected-route";
+import LandingPage from "@/pages/landing";
 import AuthPage from "@/pages/auth-page";
 import ResetPasswordPage from "@/pages/reset-password";
 import CompanySelectPage from "@/pages/company-select";
@@ -73,7 +74,7 @@ import { ManagerChecklistAssignment } from "@/components/ManagerChecklistAssignm
 import PendingPaymentsDashboard from "@/components/PendingPaymentsDashboard";
 import { OperatorAssignedChecklists } from "@/components/OperatorAssignedChecklists";
 import { VerticalNavSidebar, type NavSection } from "@/components/VerticalNavSidebar";
-import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, ClipboardList, Settings, Calendar, Users, FileText, FileX, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator, IndianRupee, CreditCard, Upload, FolderOpen, Wallet, Car, BookOpen, Scale, BarChart3, Landmark, Tag, Trash2, PackageX } from "lucide-react";
+import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, ClipboardList, Settings, Calendar, Users, FileText, FileX, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator, IndianRupee, CreditCard, Upload, FolderOpen, Wallet, Car, BookOpen, Scale, BarChart3, Landmark, Tag, Trash2, PackageX, Loader2 } from "lucide-react";
 import SalesDashboard from "@/components/SalesDashboard";
 import SalesOrdersPage from "@/pages/sales-orders";
 import SalesOrderDetailPage from "@/pages/sales-order-detail";
@@ -3256,6 +3257,19 @@ function ScrollToTop() {
   return null;
 }
 
+function SmartRoot() {
+  const { user, isLoading } = useAuth();
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-border" />
+      </div>
+    );
+  }
+  if (!user) return <LandingPage />;
+  return <AuthenticatedApp />;
+}
+
 function Router() {
   return (
     <Switch>
@@ -3344,7 +3358,7 @@ function Router() {
       )} />
       <ProtectedRoute path="/journal-entry/new" component={ManualJournalEntryPageWrapper} />
       <ProtectedRoute path="/journal-entry/:id" component={JournalEntryDetailPageWrapper} />
-      <ProtectedRoute path="/" component={AuthenticatedApp} />
+      <Route path="/" component={SmartRoot} />
       <Route component={NotFound} />
     </Switch>
   );
