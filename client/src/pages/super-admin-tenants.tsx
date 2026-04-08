@@ -383,22 +383,31 @@ export default function SuperAdminTenants() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={planConf.variant} className="capitalize">{planConf.label}</Badge>
+                          {tenant.isSuperAdmin
+                            ? <Badge variant="outline" className="capitalize text-muted-foreground">Platform Owner</Badge>
+                            : <Badge variant={planConf.variant} className="capitalize">{planConf.label}</Badge>
+                          }
                         </TableCell>
                         <TableCell>
-                          <Badge variant={statusConf.variant} className="flex items-center gap-1 w-fit capitalize">
-                            {statusConf.icon}{statusConf.label}
-                          </Badge>
+                          {tenant.isSuperAdmin
+                            ? <span className="text-xs text-muted-foreground">—</span>
+                            : <Badge variant={statusConf.variant} className="flex items-center gap-1 w-fit capitalize">
+                                {statusConf.icon}{statusConf.label}
+                              </Badge>
+                          }
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1 text-sm">
                             <Users className="h-3.5 w-3.5 text-muted-foreground" />
                             <span>{tenant.userCount}</span>
-                            <span className="text-muted-foreground">/ {tenant.maxUsers}</span>
+                            {!tenant.isSuperAdmin && <span className="text-muted-foreground">/ {tenant.maxUsers}</span>}
                           </div>
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {tenant.trialEndsAt ? format(new Date(tenant.trialEndsAt), "dd MMM yyyy") : "—"}
+                          {tenant.isSuperAdmin
+                            ? <span className="text-xs">N/A</span>
+                            : tenant.trialEndsAt ? format(new Date(tenant.trialEndsAt), "dd MMM yyyy") : "—"
+                          }
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {tenant.createdAt ? format(new Date(tenant.createdAt), "dd MMM yyyy") : "—"}

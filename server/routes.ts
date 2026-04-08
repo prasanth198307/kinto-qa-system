@@ -825,6 +825,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(subscriptions)
         .leftJoin(tenants, eq(subscriptions.tenantId, tenants.id))
         .leftJoin(subscriptionPlans, eq(subscriptions.planId, subscriptionPlans.id))
+        .where(eq(tenants.isSuperAdmin, false))
         .orderBy(desc(subscriptions.id));
       res.json(rows);
     } catch (err) {
@@ -962,7 +963,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const currentUser = req.user as any;
     if (!currentUser?.isSuperAdmin) return res.status(403).json({ message: 'Super-admin only' });
     try {
-      // Get all active subscriptions with their plan prices
+      // Get all active subscriptions with their plan prices — exclude the super-admin (Kinto) tenant
       const activeSubs = await db
         .select({
           billingCycle: subscriptions.billingCycle,
@@ -972,7 +973,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
         .from(subscriptions)
         .leftJoin(subscriptionPlans, eq(subscriptions.planId, subscriptionPlans.id))
-        .where(and(eq(subscriptions.status, 'active'), ne(subscriptions.planSlug, 'trial')));
+        .leftJoin(tenants, eq(subscriptions.tenantId, tenants.id))
+        .where(and(
+          eq(subscriptions.status, 'active'),
+          ne(subscriptions.planSlug, 'trial'),
+          eq(tenants.isSuperAdmin, false),
+        ));
 
       let mrr = 0;
       for (const sub of activeSubs) {
