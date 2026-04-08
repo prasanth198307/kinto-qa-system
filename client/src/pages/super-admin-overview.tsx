@@ -40,7 +40,7 @@ export default function SuperAdminOverview() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
 
-  const { data: tenants = [], isLoading: tenantsLoading, refetch } = useQuery<Tenant[]>({
+  const { data: tenants = [], isLoading: tenantsLoading, isError: tenantsError, refetch } = useQuery<Tenant[]>({
     queryKey: ["/api/admin/tenants"],
   });
 
@@ -115,6 +115,17 @@ export default function SuperAdminOverview() {
       {tenantsLoading ? (
         <div className="flex items-center justify-center py-24">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : tenantsError ? (
+        <div className="flex flex-col items-center justify-center py-24 gap-3 text-center">
+          <AlertCircle className="h-10 w-10 text-destructive" />
+          <div>
+            <p className="font-semibold text-destructive">Could not load tenant data</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Session cookies are blocked in the preview pane.<br />
+              Click <strong>Open in New Tab</strong> and log in again to access the super-admin portal.
+            </p>
+          </div>
         </div>
       ) : (
         <div className="space-y-6">

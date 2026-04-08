@@ -103,7 +103,7 @@ export default function SuperAdminPlans() {
   const [isCreating, setIsCreating] = useState(false);
   const [newFeatureText, setNewFeatureText] = useState("");
 
-  const { data, isLoading } = useQuery<PlansData>({
+  const { data, isLoading, isError } = useQuery<PlansData>({
     queryKey: ["/api/admin/subscription-plans"],
   });
 
@@ -228,6 +228,23 @@ export default function SuperAdminPlans() {
       <div className="flex items-center justify-center py-24">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <SuperAdminLayout>
+        <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
+          <XCircle className="h-10 w-10 text-destructive" />
+          <div>
+            <p className="font-semibold text-destructive">Could not load subscription plans</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Session cookies are blocked in the preview pane.<br />
+              Use <strong>Open in New Tab</strong> and log in again to access the super-admin portal.
+            </p>
+          </div>
+        </div>
+      </SuperAdminLayout>
     );
   }
 

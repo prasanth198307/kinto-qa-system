@@ -25,7 +25,7 @@ import {
   Building2, Users, MoreVertical, Search, RefreshCw, ShieldAlert,
   CheckCircle2, Clock, XCircle, Loader2, FlaskConical, CreditCard,
   Eye, Trash2, AlertTriangle, Archive, Download, Database, CalendarClock,
-  HardDrive, LogOut, Plus, ScrollText,
+  HardDrive, LogOut, Plus, ScrollText, AlertCircle,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -95,7 +95,7 @@ export default function SuperAdminTenants() {
     adminEmail: "", maxUsers: "5", trialDays: "14",
   });
 
-  const { data: tenants = [], isLoading, refetch } = useQuery<Tenant[]>({
+  const { data: tenants = [], isLoading, isError, refetch } = useQuery<Tenant[]>({
     queryKey: ["/api/admin/tenants"],
   });
 
@@ -332,6 +332,17 @@ export default function SuperAdminTenants() {
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : isError ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
+              <AlertCircle className="h-10 w-10 text-destructive" />
+              <div>
+                <p className="font-semibold text-destructive">Could not load tenant data</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Session cookies are blocked in the preview pane.<br />
+                  Click <strong>Open in New Tab</strong> and log in again.
+                </p>
+              </div>
             </div>
           ) : filtered.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
