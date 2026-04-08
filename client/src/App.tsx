@@ -15,6 +15,7 @@ import ResetPasswordPage from "@/pages/reset-password";
 import CompanySelectPage from "@/pages/company-select";
 import RegisterCompanyPage from "@/pages/register-company";
 import SuperAdminTenants from "@/pages/super-admin-tenants";
+import SuperAdminPlans from "@/pages/super-admin-plans";
 import Landing from "@/components/Landing";
 import RoleSelector from "@/components/RoleSelector";
 import { TopRightHeader } from "@/components/TopRightHeader";
@@ -3182,6 +3183,7 @@ function Router() {
       <Route path="/auth" component={AuthPage} />
       <Route path="/reset-password" component={ResetPasswordPage} />
       <ProtectedRoute path="/super-admin/tenants" component={() => <SuperAdminTenants />} />
+      <ProtectedRoute path="/super-admin/plans" component={() => <SuperAdminPlans />} />
       <Route path="/print/invoice/:id" component={PrintInvoicePage} />
       <Route path="/print/gatepass/:id" component={PrintGatepassPage} />
       <Route path="/print/credit-note/:id" component={PrintCreditNotePage} />

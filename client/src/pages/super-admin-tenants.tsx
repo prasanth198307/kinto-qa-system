@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,6 +48,7 @@ import {
   XCircle,
   Loader2,
   FlaskConical,
+  CreditCard,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -84,6 +86,7 @@ const PLAN_CONFIG: Record<string, { label: string; variant: "default" | "seconda
 
 export default function SuperAdminTenants() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
   const [editTenant, setEditTenant] = useState<Tenant | null>(null);
   const [editForm, setEditForm] = useState({ status: "", plan: "", maxUsers: "" });
@@ -200,6 +203,15 @@ export default function SuperAdminTenants() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="default"
+            onClick={() => setLocation("/super-admin/plans")}
+            data-testid="button-manage-plans"
+          >
+            <CreditCard className="h-4 w-4 mr-2" />
+            Manage Plans
+          </Button>
           <Button
             variant="outline"
             size="default"

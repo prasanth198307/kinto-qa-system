@@ -5,7 +5,7 @@ import { storage } from "./storage";
 import { setupAuth, hashPassword } from "./auth";
 import { tenantMiddleware } from "./tenant-middleware";
 import { planEnforcementMiddleware } from "./plan-middleware";
-import { getPlanFeatures } from "./plan-features";
+import { getPlanFeatures, getPlanFeaturesFromModules, ALL_MODULE_KEYS } from "./plan-features";
 import { tc } from "./tenant-context";
 import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertPurchaseOrderItemSchema, purchaseOrders, purchaseOrderItems, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesOrderSchema, insertSalesOrderItemSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, insertVendorTypeSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, paymentEvidence, salesOrders, salesOrderItems, salesReturns, salesReturnItems, creditNotes, creditNoteItems, debitNotes, debitNoteItems, manualCreditNoteRequests, products, productBom, whatsappConversationSessions, vendorTypes, vendorVendorTypes, vendors, users, uom, insertDocumentCategorySchema, insertDocumentSchema, insertExpenseCategorySchema, insertExpenseVoucherSchema, insertExpenseItemSchema, insertExpenseAttachmentSchema, rolePermissions, vendorDebitNotes, vendorDebitNoteItems, vendorDebitNoteAdjustments, transporters, vehicles, drivers, insertTransporterSchema, insertVehicleSchema, insertDriverSchema, scrapInventory, insertSparePartEntrySchema, insertSparePartIssuanceSchema, insertScrapInventorySchema, sparePartEntries, sparePartsCatalog, accountSubtypes, insertSalesOfficerSchema } from "@shared/schema";
 import { format } from "date-fns";
@@ -468,6 +468,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/tenant/features', async (req: any, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' });
 
+    // Super-admins get enterprise-level access regardless of tenant plan
+    if (req.user?.isSuperAdmin) {
+      res.json(getPlanFeatures('enterprise'));
+      return;
+    }
+
     // Use session-cached plan; if missing (e.g. old sessions), fetch from DB and cache
     let tenantPlan: string = (req.session as any).tenantPlan;
     if (!tenantPlan) {
@@ -481,8 +487,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
 
-    const features = getPlanFeatures(tenantPlan);
-    res.json(features);
+    // Try to read module list from the DB plan record (DB-driven, so super-admin edits take effect)
+    try {
+      const [planRecord] = await db
+        .select({ modules: subscriptionPlans.modules })
+        .from(subscriptionPlans)
+        .where(eq(subscriptionPlans.slug, tenantPlan))
+        .limit(1);
+
+      if (planRecord?.modules && Array.isArray(planRecord.modules) && planRecord.modules.length > 0) {
+        res.json(getPlanFeaturesFromModules(tenantPlan, planRecord.modules as string[]));
+        return;
+      }
+    } catch {
+      // Fall through to code-based fallback
+    }
+
+    // Fallback: use hardcoded plan features
+    res.json(getPlanFeatures(tenantPlan));
   });
 
   // ─── Tenant info endpoint (for settings page + white-labeling) ─────────────
@@ -557,6 +579,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(plans);
     } catch (err) {
       res.status(500).json({ message: 'Failed to fetch plans' });
+    }
+  });
+
+  // ─── Super-admin: List ALL plans (including inactive) ────────────────────────
+  app.get('/api/admin/subscription-plans', async (req: any, res) => {
+    if (!req.isAuthenticated() || !req.user?.isSuperAdmin) return res.status(403).json({ message: 'Super-admin only' });
+    try {
+      const plans = await db.select().from(subscriptionPlans).orderBy(asc(subscriptionPlans.displayOrder));
+      // Attach the registry of available modules so the UI can show a checkbox list
+      res.json({ plans, availableModules: ALL_MODULE_KEYS });
+    } catch (err) {
+      res.status(500).json({ message: 'Failed to fetch plans' });
+    }
+  });
+
+  // ─── Super-admin: Create a new subscription plan ─────────────────────────────
+  app.post('/api/admin/subscription-plans', async (req: any, res) => {
+    if (!req.isAuthenticated() || !req.user?.isSuperAdmin) return res.status(403).json({ message: 'Super-admin only' });
+    const { name, slug, tagline, description, priceMonthly, priceYearly, maxUsers,
+            modules, features, isActive, isFeatured, displayOrder, trialDays } = req.body;
+    if (!name || !slug) return res.status(400).json({ message: 'name and slug are required' });
+    try {
+      const [plan] = await db.insert(subscriptionPlans).values({
+        name, slug, tagline: tagline ?? '',
+        description: description ?? '',
+        priceMonthly: priceMonthly ?? 0,
+        priceYearly: priceYearly ?? 0,
+        maxUsers: maxUsers ?? 5,
+        modules: modules ?? [],
+        features: features ?? [],
+        isActive: isActive ?? true,
+        isFeatured: isFeatured ?? false,
+        displayOrder: displayOrder ?? 99,
+        trialDays: trialDays ?? 0,
+      }).returning();
+      res.json(plan);
+    } catch (err: any) {
+      if (err.code === '23505') return res.status(400).json({ message: 'A plan with that slug already exists' });
+      res.status(500).json({ message: 'Failed to create plan' });
+    }
+  });
+
+  // ─── Super-admin: Update a subscription plan ──────────────────────────────────
+  app.put('/api/admin/subscription-plans/:id', async (req: any, res) => {
+    if (!req.isAuthenticated() || !req.user?.isSuperAdmin) return res.status(403).json({ message: 'Super-admin only' });
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: 'Invalid plan id' });
+    const { name, tagline, description, priceMonthly, priceYearly, maxUsers,
+            modules, features, isActive, isFeatured, displayOrder, trialDays } = req.body;
+    try {
+      const updates: Record<string, any> = {};
+      if (name !== undefined)         updates.name = name;
+      if (tagline !== undefined)       updates.tagline = tagline;
+      if (description !== undefined)   updates.description = description;
+      if (priceMonthly !== undefined)  updates.priceMonthly = priceMonthly;
+      if (priceYearly !== undefined)   updates.priceYearly = priceYearly;
+      if (maxUsers !== undefined)      updates.maxUsers = maxUsers;
+      if (modules !== undefined)       updates.modules = modules;
+      if (features !== undefined)      updates.features = features;
+      if (isActive !== undefined)      updates.isActive = isActive;
+      if (isFeatured !== undefined)    updates.isFeatured = isFeatured;
+      if (displayOrder !== undefined)  updates.displayOrder = displayOrder;
+      if (trialDays !== undefined)     updates.trialDays = trialDays;
+
+      const [plan] = await db.update(subscriptionPlans).set(updates).where(eq(subscriptionPlans.id, id)).returning();
+      if (!plan) return res.status(404).json({ message: 'Plan not found' });
+      res.json(plan);
+    } catch (err) {
+      res.status(500).json({ message: 'Failed to update plan' });
+    }
+  });
+
+  // ─── Super-admin: Delete (deactivate) a subscription plan ────────────────────
+  app.delete('/api/admin/subscription-plans/:id', async (req: any, res) => {
+    if (!req.isAuthenticated() || !req.user?.isSuperAdmin) return res.status(403).json({ message: 'Super-admin only' });
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: 'Invalid plan id' });
+    try {
+      // Soft-delete: set isActive = false (to preserve historical billing data)
+      const [plan] = await db.update(subscriptionPlans).set({ isActive: false }).where(eq(subscriptionPlans.id, id)).returning();
+      if (!plan) return res.status(404).json({ message: 'Plan not found' });
+      res.json({ message: 'Plan deactivated', plan });
+    } catch (err) {
+      res.status(500).json({ message: 'Failed to deactivate plan' });
     }
   });
 

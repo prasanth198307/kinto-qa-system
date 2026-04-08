@@ -205,9 +205,10 @@ export function planMeetsMinimum(tenantPlan: string, minPlan: string): boolean {
   return tenantLevel >= requiredLevel;
 }
 
-// ── Feature summary for a given plan ─────────────────────────────────────────
-// Returns the list of unlocked modules + nav item IDs for frontend consumption.
+// ── All available module keys (for the plan management UI) ───────────────────
+export const ALL_MODULE_KEYS = Object.keys(MODULE_NAV_ITEMS);
 
+// ── Feature summary for a given plan (code-based fallback) ───────────────────
 export function getPlanFeatures(plan: string) {
   const modules = PLAN_MODULES[plan] ?? PLAN_MODULES["trial"];
   const navItems = new Set<string>();
@@ -216,9 +217,17 @@ export function getPlanFeatures(plan: string) {
       navItems.add(item);
     }
   }
-  return {
-    plan,
-    modules,
-    allowedNavItems: [...navItems],
-  };
+  return { plan, modules, allowedNavItems: [...navItems] };
+}
+
+// ── Feature summary using DB-sourced module list ──────────────────────────────
+// Use this when the plan record has been loaded from the DB (modules is a JSON array).
+export function getPlanFeaturesFromModules(plan: string, modules: string[]) {
+  const navItems = new Set<string>();
+  for (const mod of modules) {
+    for (const item of MODULE_NAV_ITEMS[mod] ?? []) {
+      navItems.add(item);
+    }
+  }
+  return { plan, modules, allowedNavItems: [...navItems] };
 }
