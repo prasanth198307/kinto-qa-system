@@ -104,7 +104,10 @@ export default function SuperAdminPlans() {
   });
 
   const plans = data?.plans ?? [];
-  const availableModules = data?.availableModules ?? [];
+  // Fall back to hardcoded module keys when API returns empty (e.g. iframe auth issue)
+  const availableModules = (data?.availableModules && data.availableModules.length > 0)
+    ? data.availableModules
+    : Object.keys(MODULE_LABELS);
 
   // ── Mutations ──────────────────────────────────────────────────────────────
   const createMutation = useMutation({
@@ -390,20 +393,67 @@ export default function SuperAdminPlans() {
               {/* ── Pricing ── */}
               <section className="space-y-3">
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Pricing (in ₹ Rupees)</h3>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Monthly */}
                   <div className="space-y-1">
                     <Label htmlFor="price-monthly">Monthly Price (₹)</Label>
                     <Input id="price-monthly" type="number" min="0" value={editPlan.priceMonthlyRupees ?? "0"}
                       onChange={(e) => setEditPlan((p) => p ? { ...p, priceMonthlyRupees: e.target.value } : p)}
-                      placeholder="2999" data-testid="input-price-monthly" />
-                    <p className="text-xs text-muted-foreground">0 = Free</p>
+                      placeholder="999" data-testid="input-price-monthly" />
+                    <p className="text-xs text-muted-foreground">0 = Free plan</p>
                   </div>
+                  {/* Yearly with quick-fill helpers */}
                   <div className="space-y-1">
-                    <Label htmlFor="price-yearly">Yearly Price (₹)</Label>
+                    <div className="flex items-center justify-between gap-2">
+                      <Label htmlFor="price-yearly">Yearly Price (₹)</Label>
+                      <div className="flex items-center gap-1">
+                        {/* 11+1 = pay 11 months, get 12 */}
+                        <Button type="button" size="sm" variant="outline" className="h-6 text-xs px-2 py-0"
+                          onClick={() => {
+                            const monthly = parseFloat(editPlan?.priceMonthlyRupees ?? "0");
+                            if (monthly > 0) setEditPlan((p) => p ? { ...p, priceYearlyRupees: String(Math.round(monthly * 11)) } : p);
+                          }}
+                          data-testid="button-yearly-11plus1"
+                        >11+1</Button>
+                        {/* 10% off */}
+                        <Button type="button" size="sm" variant="outline" className="h-6 text-xs px-2 py-0"
+                          onClick={() => {
+                            const monthly = parseFloat(editPlan?.priceMonthlyRupees ?? "0");
+                            if (monthly > 0) setEditPlan((p) => p ? { ...p, priceYearlyRupees: String(Math.round(monthly * 12 * 0.9)) } : p);
+                          }}
+                          data-testid="button-yearly-10off"
+                        >10% off</Button>
+                        {/* 20% off */}
+                        <Button type="button" size="sm" variant="outline" className="h-6 text-xs px-2 py-0"
+                          onClick={() => {
+                            const monthly = parseFloat(editPlan?.priceMonthlyRupees ?? "0");
+                            if (monthly > 0) setEditPlan((p) => p ? { ...p, priceYearlyRupees: String(Math.round(monthly * 12 * 0.8)) } : p);
+                          }}
+                          data-testid="button-yearly-20off"
+                        >20% off</Button>
+                      </div>
+                    </div>
                     <Input id="price-yearly" type="number" min="0" value={editPlan.priceYearlyRupees ?? "0"}
                       onChange={(e) => setEditPlan((p) => p ? { ...p, priceYearlyRupees: e.target.value } : p)}
-                      placeholder="29999" data-testid="input-price-yearly" />
+                      placeholder="9999" data-testid="input-price-yearly" />
+                    {/* Discount display */}
+                    {(() => {
+                      const monthly = parseFloat(editPlan?.priceMonthlyRupees ?? "0");
+                      const yearly  = parseFloat(editPlan?.priceYearlyRupees ?? "0");
+                      if (monthly > 0 && yearly > 0 && yearly < monthly * 12) {
+                        const saving = Math.round(((monthly * 12 - yearly) / (monthly * 12)) * 100);
+                        const freeMonths = ((monthly * 12 - yearly) / monthly).toFixed(1);
+                        return (
+                          <p className="text-xs text-green-600 dark:text-green-400 font-medium">
+                            {saving}% off · saves ₹{Math.round(monthly * 12 - yearly).toLocaleString()} · ~{freeMonths} months free
+                          </p>
+                        );
+                      }
+                      return <p className="text-xs text-muted-foreground">Set yearly price less than 12×monthly to show a discount</p>;
+                    })()}
                   </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label htmlFor="max-users">Max Users</Label>
                     <Input id="max-users" type="number" min="1" value={editPlan.maxUsers ?? 5}
