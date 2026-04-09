@@ -698,6 +698,15 @@ function SalaryRevisionPanel({ emp }: { emp: any }) {
 // ── Employee Detail View ──────────────────────────────────────────────────────
 function EmployeeDetail({ emp, onBack, onEdit }: any) {
   const [tab, setTab] = useState("overview");
+  const { toast } = useToast();
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  const uploadPhoto = async (file: File) => {
+    const fd = new FormData(); fd.append("photo", file);
+    await fetch(`/api/hr/employees/${emp.id}/photo`, { method: "POST", body: fd, credentials: "include" });
+    queryClient.invalidateQueries({ queryKey: ["/api/hr/employees"] });
+    toast({ title: "Photo updated" });
+  };
 
   const InfoRow = ({ label, value }: { label: string; value?: string | null }) =>
     value ? (
@@ -714,13 +723,21 @@ function EmployeeDetail({ emp, onBack, onEdit }: any) {
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" onClick={onBack}><ArrowLeft className="h-4 w-4" /></Button>
         <div className="flex items-center gap-3 flex-1">
-          <Avatar className="h-10 w-10">
-            <AvatarImage src={emp.photo_path ? `/${emp.photo_path}` : undefined} />
-            <AvatarFallback>{emp.first_name?.[0]}{emp.last_name?.[0]}</AvatarFallback>
-          </Avatar>
+          <input ref={photoInputRef} type="file" className="hidden" accept="image/*"
+            onChange={e => { if (e.target.files?.[0]) uploadPhoto(e.target.files[0]); e.target.value = ""; }} />
+          <div className="relative group cursor-pointer" onClick={() => photoInputRef.current?.click()} title="Click to upload photo">
+            <Avatar className="h-12 w-12">
+              <AvatarImage src={emp.photo_path ? `/${emp.photo_path}` : undefined} />
+              <AvatarFallback className="text-sm">{emp.first_name?.[0]}{emp.last_name?.[0]}</AvatarFallback>
+            </Avatar>
+            <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              <Camera className="h-4 w-4 text-white" />
+            </div>
+          </div>
           <div>
             <p className="font-semibold">{emp.first_name} {emp.last_name}</p>
             <p className="text-sm text-muted-foreground">{emp.emp_code} · {emp.designation_name || "—"} · {emp.department_name || "—"}</p>
+            <p className="text-xs text-muted-foreground">Click photo to change</p>
           </div>
         </div>
         <Badge variant={emp.status === "active" ? "default" : "secondary"} className="capitalize">{emp.status}</Badge>
@@ -867,8 +884,6 @@ export default function HrEmployees() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [viewingEmp, setViewingEmp] = useState<any>(null);
-  const photoRef = useRef<HTMLInputElement>(null);
-
   const { data: employees = [], isLoading } = useQuery<any[]>({ queryKey: ["/api/hr/employees"] });
   const { data: depts = [] } = useQuery<any[]>({ queryKey: ["/api/hr/departments"] });
   const { data: desigs = [] } = useQuery<any[]>({ queryKey: ["/api/hr/designations"] });
@@ -891,13 +906,6 @@ export default function HrEmployees() {
     mutationFn: (id: number) => apiRequest("DELETE", `/api/hr/employees/${id}`),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/hr/employees"] }); toast({ title: "Employee removed" }); }
   });
-
-  const uploadPhoto = async (empId: number, file: File) => {
-    const fd = new FormData(); fd.append("photo", file);
-    await fetch(`/api/hr/employees/${empId}/photo`, { method: "POST", body: fd, credentials: "include" });
-    queryClient.invalidateQueries({ queryKey: ["/api/hr/employees"] });
-    toast({ title: "Photo updated" });
-  };
 
   const managers = employees.filter((e: any) => e.status === "active");
 
@@ -1009,13 +1017,7 @@ export default function HrEmployees() {
                   </td>
                   <td className="px-3 py-2.5" onClick={e => e.stopPropagation()}>
                     <div className="flex gap-1 justify-end">
-                      <input ref={photoRef} type="file" className="hidden" accept="image/*"
-                        onChange={e => { if (e.target.files?.[0]) uploadPhoto(emp.id, e.target.files[0]); e.target.value = ""; }}
-                      />
-                      <Button size="icon" variant="ghost" title="Upload photo" onClick={() => photoRef.current?.click()}>
-                        <Camera className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button size="icon" variant="ghost" onClick={() => { setEditing(emp); setShowForm(true); }}>
+                      <Button size="icon" variant="ghost" title="Edit employee" onClick={() => { setEditing(emp); setShowForm(true); }}>
                         <FileText className="h-3.5 w-3.5" />
                       </Button>
                       <Button size="icon" variant="ghost" onClick={() => del.mutate(emp.id)}>
