@@ -46,7 +46,7 @@ router.post("/leads", requireCRM, async (req: any, res) => {
     const r = await db.execute(sql`
       INSERT INTO crm_leads (tenant_id, lead_no, name, company, phone, email, source, product_interest, assigned_to, status, notes, next_follow_up)
       VALUES (${tid}, ${leadNo}, ${name}, ${company ?? null}, ${phone ?? null}, ${email ?? null},
-        ${source ?? null}, ${productInterest ?? null}, ${assignedTo ?? null}, ${status ?? 'new'},
+        ${source ?? null}, ${productInterest ?? null}, ${assignedTo || null}, ${status ?? 'new'},
         ${notes ?? null}, ${nextFollowUp ?? null})
       RETURNING *
     `);
@@ -63,7 +63,7 @@ router.put("/leads/:id", requireCRM, async (req: any, res) => {
       UPDATE crm_leads SET
         name=${name}, company=${company ?? null}, phone=${phone ?? null}, email=${email ?? null},
         source=${source ?? null}, product_interest=${productInterest ?? null},
-        assigned_to=${assignedTo ?? null}, status=${status ?? 'new'},
+        assigned_to=${assignedTo || null}, status=${status ?? 'new'},
         notes=${notes ?? null}, next_follow_up=${nextFollowUp ?? null},
         updated_at=NOW()
       WHERE id=${req.params.id} AND tenant_id=${tid}

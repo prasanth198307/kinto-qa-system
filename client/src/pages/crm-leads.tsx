@@ -171,7 +171,13 @@ export default function CRMLeadsPage() {
   });
 
   const statusMutation = useMutation({
-    mutationFn: ({ id, status, lead }: any) => apiRequest("PUT", `/api/crm/leads/${id}`, { ...lead, status, assignedTo: lead.assigned_to }).then(r => r.json()),
+    mutationFn: ({ id, status, lead }: any) => apiRequest("PUT", `/api/crm/leads/${id}`, {
+      name: lead.name, company: lead.company, phone: lead.phone, email: lead.email,
+      source: lead.source, productInterest: lead.product_interest,
+      assignedTo: lead.assigned_to || null, notes: lead.notes,
+      nextFollowUp: lead.next_follow_up ? lead.next_follow_up.split("T")[0] : null,
+      status,
+    }).then(r => r.json()),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/crm/leads"] }),
   });
 
@@ -188,7 +194,7 @@ export default function CRMLeadsPage() {
   };
 
   const handleSave = () => {
-    saveMutation.mutate({ ...form, assignedTo: form.assignedTo ? Number(form.assignedTo) : null });
+    saveMutation.mutate({ ...form, assignedTo: form.assignedTo || null });
   };
 
   const filtered = (leads as any[]).filter(l => {
