@@ -83,7 +83,7 @@ export default function PrintableInvoiceGatepass({ invoice, gatepass }: Printabl
   const isLoadingTemplate = isLoadingSpecificTemplate || isLoadingDefaultTemplate;
 
   // Fetch terms & conditions by ID
-  const { data: termsConditions } = useQuery<TermsConditions | null>({
+  const { data: termsConditions, isLoading: isLoadingSpecificTC } = useQuery<TermsConditions | null>({
     queryKey: ['/api/terms-conditions', invoice.termsConditionsId],
     queryFn: async () => {
       if (!invoice.termsConditionsId) return null;
@@ -97,10 +97,12 @@ export default function PrintableInvoiceGatepass({ invoice, gatepass }: Printabl
   });
 
   // Fallback to default terms & conditions
-  const { data: defaultTermsConditions } = useQuery<TermsConditions | null>({
+  const { data: defaultTermsConditions, isLoading: isLoadingDefaultTC } = useQuery<TermsConditions | null>({
     queryKey: ['/api/terms-conditions/default'],
     enabled: !invoice.termsConditionsId,
   });
+
+  const isLoadingTC = isLoadingSpecificTC || isLoadingDefaultTC;
 
   // Use specific terms or default
   const activeTermsConditions = termsConditions || defaultTermsConditions;
@@ -135,11 +137,11 @@ export default function PrintableInvoiceGatepass({ invoice, gatepass }: Printabl
   const isIntrastate = invoice.sellerStateCode === invoice.buyerStateCode;
 
   const handlePrint = async () => {
-    // Wait for template to load (either specific or default)
-    if (isLoadingTemplate) {
+    // Wait for template and T&C to load
+    if (isLoadingTemplate || isLoadingTC) {
       toast({
         title: "Please wait",
-        description: "Template is still loading...",
+        description: "Loading print data...",
         variant: "default",
       });
       return;
@@ -436,7 +438,7 @@ ${invoice.shipToName || invoice.shipToAddress ? `
         </div>
 
         <div class="terms-payment-grid">
-          <div class="terms-section">
+          <div class="${activeTermsConditions && activeTermsConditions.terms && activeTermsConditions.terms.length > 0 ? 'terms-section' : ''}">
             ${activeTermsConditions && activeTermsConditions.terms && activeTermsConditions.terms.length > 0 ? `
               <div class="terms-title">Terms & Conditions:</div>
               <ol>
