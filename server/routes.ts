@@ -933,6 +933,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updatedAt: new Date().toISOString(),
       }).where(eq(tenants.id, targetTenantId));
 
+      // Auto-sync role permissions for the new plan
+      // Adds missing rows + unlocks screens that are now enabled by the new plan
+      try {
+        const syncResult = await syncAndUnlockByPlan(targetTenantId);
+        console.log(`[PLAN CHANGE] Synced permissions for tenant ${targetTenantId}: ${syncResult.inserted} inserted, ${syncResult.unlocked} unlocked`);
+      } catch (syncErr) {
+        console.error(`[PLAN CHANGE] Permission sync failed for tenant ${targetTenantId}:`, syncErr);
+        // Non-fatal — plan change still succeeds; admin can manually sync
+      }
+
       res.json({ message: `Plan updated to ${toPlan}`, subscription: newSub });
     } catch (err) {
       console.error('PATCH /api/admin/subscriptions change-plan error:', err);
