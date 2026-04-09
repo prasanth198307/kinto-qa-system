@@ -101,6 +101,12 @@ const navItemToScreenKey: Record<string, string> = {
   'create-gatepass': 'gatepasses',
   'add-purchase-order': 'purchase_orders',
   'schedule-maintenance': 'maintenance_plans',
+  // HR & Payroll
+  'hr-employees': 'hr_employees',
+  'hr-attendance': 'hr_attendance',
+  'hr-leaves': 'hr_leaves',
+  'hr-payroll': 'hr_payroll',
+  'hr-masters': 'hr_masters',
 };
 
 const screenPermissions: Record<string, { admin: boolean; manager: boolean; operator: boolean; reviewer: boolean }> = {

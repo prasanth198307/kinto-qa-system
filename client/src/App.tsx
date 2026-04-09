@@ -1586,11 +1586,11 @@ const navItemToScreenKey: Record<string, string> = {
   'raw-material-types': 'raw_material_types',
   'template-management': 'template_management',
   // HR Module
-  'hr-employees': 'admin_tools',
-  'hr-attendance': 'admin_tools',
-  'hr-leaves': 'admin_tools',
-  'hr-payroll': 'admin_tools',
-  'hr-masters': 'admin_tools',
+  'hr-employees': 'hr_employees',
+  'hr-attendance': 'hr_attendance',
+  'hr-leaves': 'hr_leaves',
+  'hr-payroll': 'hr_payroll',
+  'hr-masters': 'hr_masters',
   // Settings
   'notification-settings': 'notification_settings',
   'data-import': 'data_import',
@@ -1665,11 +1665,11 @@ const navItemToScreen: Record<string, string> = {
   'group-summary': 'Accounting',
   'budget-variance': 'Accounting',
   // HR Module
-  'hr-employees': 'User Management',
-  'hr-attendance': 'User Management',
-  'hr-leaves': 'User Management',
-  'hr-payroll': 'User Management',
-  'hr-masters': 'User Management',
+  'hr-employees': 'HR & Payroll',
+  'hr-attendance': 'HR & Payroll',
+  'hr-leaves': 'HR & Payroll',
+  'hr-payroll': 'HR & Payroll',
+  'hr-masters': 'HR & Payroll',
   // Maintenance
   'maintenance': 'Maintenance Plans',
   'pm-history': 'PM History',

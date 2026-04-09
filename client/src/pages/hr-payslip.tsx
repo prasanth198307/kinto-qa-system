@@ -32,12 +32,13 @@ export default function HRPayslipPage() {
     queryFn: () => fetch(`/api/hr/payslips/${params.id}`, { credentials: "include" }).then(r => r.json()),
   });
 
-  const { data: company } = useQuery<any>({ queryKey: ["/api/settings"] });
+  const { data: company } = useQuery<any>({ queryKey: ["/api/tenant/info"] });
 
   if (isLoading) return <div className="p-8 text-center">Loading payslip...</div>;
   if (error || !ps || ps.message) return <div className="p-8 text-center text-muted-foreground">Payslip not found</div>;
 
-  const companyName = company?.companyName || "Your Company";
+  const companyName = company?.name || "Your Company";
+  const logoUrl = company?.logoUrl;
 
   return (
     <div className="min-h-screen bg-muted/30 p-4 print:bg-white print:p-0">
@@ -53,13 +54,24 @@ export default function HRPayslipPage() {
         <div className="bg-white text-black rounded-lg border shadow-sm print:shadow-none print:border-none payslip-print">
           {/* Header */}
           <div className="border-b p-5">
-            <div className="flex items-start justify-between">
-              <div>
-                <h1 className="text-xl font-bold">{companyName}</h1>
-                {company?.address && <p className="text-sm text-gray-500 mt-0.5">{company.address}</p>}
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-center gap-3">
+                {logoUrl && (
+                  <img
+                    src={logoUrl}
+                    alt="Company Logo"
+                    className="h-12 w-auto object-contain"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                  />
+                )}
+                <div>
+                  <h1 className="text-xl font-bold">{companyName}</h1>
+                  {company?.address && <p className="text-sm text-gray-500 mt-0.5">{company.address}</p>}
+                  {company?.gstNumber && <p className="text-xs text-gray-400 mt-0.5">GSTIN: {company.gstNumber}</p>}
+                </div>
               </div>
-              <div className="text-right">
-                <h2 className="text-base font-semibold">PAYSLIP</h2>
+              <div className="text-right shrink-0">
+                <h2 className="text-base font-semibold tracking-wide">PAYSLIP</h2>
                 <p className="text-sm text-gray-500">{MONTHS[ps.month]} {ps.year}</p>
               </div>
             </div>

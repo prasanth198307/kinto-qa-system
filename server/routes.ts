@@ -213,6 +213,22 @@ const endpointToScreenKey: Record<string, string> = {
   '/api/payment-evidence': 'payments',
   '/api/terms-conditions': 'template_management',
   
+  // HR & Payroll
+  '/api/hr/employees': 'hr_employees',
+  '/api/hr/attendance': 'hr_attendance',
+  '/api/hr/leave-applications': 'hr_leaves',
+  '/api/hr/leave-balances': 'hr_leaves',
+  '/api/hr/payroll-runs': 'hr_payroll',
+  '/api/hr/payslips': 'hr_payroll',
+  '/api/hr/departments': 'hr_masters',
+  '/api/hr/designations': 'hr_masters',
+  '/api/hr/shifts': 'hr_masters',
+  '/api/hr/leave-types': 'hr_masters',
+  '/api/hr/holidays': 'hr_masters',
+  '/api/hr/salary-components': 'hr_masters',
+  '/api/hr/salary-structures': 'hr_masters',
+  '/api/hr/pt-slabs': 'hr_masters',
+
   // Administration
   '/api/users': 'users',
   '/api/roles': 'roles',

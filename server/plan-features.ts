@@ -120,6 +120,13 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
     "pm-history",
     "schedule-maintenance",
   ],
+  hr_payroll: [
+    "hr-employees",
+    "hr-attendance",
+    "hr-leaves",
+    "hr-payroll",
+    "hr-masters",
+  ],
 };
 
 // ── Plan → module list ────────────────────────────────────────────────────────
@@ -127,7 +134,7 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
 const TRIAL_MODULES       = ["invoicing", "purchase_orders", "basic_inventory"];
 const BASIC_MODULES       = [...TRIAL_MODULES,       "gatepasses", "sales_orders"];
 const PROFESSIONAL_MODULES= [...BASIC_MODULES,       "production", "quality_returns", "accounting", "mis", "expenses", "documents"];
-const ENTERPRISE_MODULES  = [...PROFESSIONAL_MODULES,"whatsapp",   "maintenance"];
+const ENTERPRISE_MODULES  = [...PROFESSIONAL_MODULES,"whatsapp",   "maintenance", "hr_payroll"];
 
 export const PLAN_MODULES: Record<string, string[]> = {
   trial:        TRIAL_MODULES,
@@ -191,6 +198,9 @@ export const ROUTE_PLAN_REQUIREMENTS: Array<{ prefix: string; module: string; mi
   { prefix: "/api/machines",            module: "maintenance",    minPlan: "enterprise" },
   { prefix: "/api/machine-types",       module: "maintenance",    minPlan: "enterprise" },
   { prefix: "/api/spare-parts",         module: "maintenance",    minPlan: "enterprise" },
+
+  // HR & Payroll (Enterprise)
+  { prefix: "/api/hr",                  module: "hr_payroll",     minPlan: "enterprise" },
 ];
 
 // ── Plan order for comparison ─────────────────────────────────────────────────

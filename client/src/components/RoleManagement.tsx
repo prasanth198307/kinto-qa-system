@@ -166,6 +166,13 @@ const AVAILABLE_SCREENS: ScreenDefinition[] = [
   { key: 'data_import', label: 'Data Import', allowedActions: ['view', 'create'] },
   { key: 'hpcl_migration', label: 'HPCL Data Migration', allowedActions: ['view', 'create'] },
   { key: 'payment_writeoff', label: 'Payment Write-Off', allowedActions: ['view', 'create', 'delete'] },
+
+  // HR & Payroll
+  { key: 'hr_employees', label: 'HR: Employee Master', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'hr_attendance', label: 'HR: Attendance', allowedActions: ['view', 'create', 'edit'] },
+  { key: 'hr_leaves', label: 'HR: Leave Management', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'hr_payroll', label: 'HR: Payroll Processing', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'hr_masters', label: 'HR: Masters (Dept/Designation/Shift/Leave Types)', allowedActions: ['view', 'create', 'edit', 'delete'] },
 ];
 
 export default function RoleManagement() {
