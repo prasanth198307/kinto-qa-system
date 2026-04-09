@@ -241,10 +241,13 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
           </div>
           <div className="space-y-1.5">
             <Label>Reporting Manager</Label>
-            <Select value={form.reportingManagerId} onValueChange={s("reportingManagerId")}>
+            <Select
+              value={form.reportingManagerId || "__none__"}
+              onValueChange={v => s("reportingManagerId")(v === "__none__" ? "" : v)}
+            >
               <SelectTrigger className={inputCls}><SelectValue placeholder="Select manager" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">None</SelectItem>
+                <SelectItem value="__none__">None</SelectItem>
                 {(managers || []).map((m: any) => <SelectItem key={m.id} value={String(m.id)}>{m.first_name} {m.last_name}</SelectItem>)}
               </SelectContent>
             </Select>
@@ -270,7 +273,7 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
             <Label>Exit Type</Label>
             <Select value={form.exitType} onValueChange={s("exitType")}>
               <SelectTrigger className={inputCls}><SelectValue placeholder="Select" /></SelectTrigger>
-              <SelectContent>{EXIT_TYPES.map(t => <SelectItem key={t} value={t.toLowerCase().replace(" ", "_")}>{t}</SelectItem>)}</SelectContent>
+              <SelectContent>{EXIT_TYPES.map(t => <SelectItem key={t} value={t.toLowerCase().replace(/ /g, "_")}>{t}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div className="space-y-1.5 col-span-2">
@@ -1017,10 +1020,13 @@ export default function HrEmployees() {
                   </td>
                   <td className="px-3 py-2.5" onClick={e => e.stopPropagation()}>
                     <div className="flex gap-1 justify-end">
-                      <Button size="icon" variant="ghost" title="Edit employee" onClick={() => { setEditing(emp); setShowForm(true); }}>
+                      <Button size="sm" variant="outline" onClick={() => setViewingEmp(emp)} data-testid={`btn-view-employee-${emp.id}`}>
+                        <Eye className="h-3.5 w-3.5 mr-1" />View
+                      </Button>
+                      <Button size="icon" variant="ghost" title="Edit employee" onClick={() => { setEditing(emp); setShowForm(true); }} data-testid={`btn-edit-employee-${emp.id}`}>
                         <FileText className="h-3.5 w-3.5" />
                       </Button>
-                      <Button size="icon" variant="ghost" onClick={() => del.mutate(emp.id)}>
+                      <Button size="icon" variant="ghost" onClick={() => del.mutate(emp.id)} data-testid={`btn-delete-employee-${emp.id}`}>
                         <Trash2 className="h-3.5 w-3.5 text-destructive" />
                       </Button>
                     </div>
