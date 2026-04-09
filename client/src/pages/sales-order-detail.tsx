@@ -54,6 +54,8 @@ const salesOrderItemSchema = z.object({
   cgstRate: z.number().min(0).max(100).default(9),
   sgstRate: z.number().min(0).max(100).default(9),
   igstRate: z.number().min(0).max(100).default(0),
+  discount: z.number().min(0).default(0),
+  discountMode: z.enum(['%', '₹']).default('%'),
 });
 
 const salesOrderSchema = z.object({
@@ -141,8 +143,10 @@ function EditSalesOrderDialog({ salesOrder, open, onClose }: EditDialogProps) {
           cgstRate: cgst,
           sgstRate: sgst,
           igstRate: igst,
+          discount: Number(item.discount || 0) / 100,       // stored as value×100, convert back
+          discountMode: (item.discountMode || '%') as '%' | '₹',
         };
-      }) : [{ productId: "", description: "", hsnCode: "22011010", quantity: 1, unitPrice: 0, cgstRate: 9, sgstRate: 9, igstRate: 0 }],
+      }) : [{ productId: "", description: "", hsnCode: "22011010", quantity: 1, unitPrice: 0, cgstRate: 9, sgstRate: 9, igstRate: 0, discount: 0, discountMode: '%' as '%' | '₹' }],
     },
   });
 
@@ -151,7 +155,11 @@ function EditSalesOrderDialog({ salesOrder, open, onClose }: EditDialogProps) {
   const watchedItems = form.watch("items");
   // casePrice is already inclusive of GST — liveTotal = sum(casePrice × qty)
   const liveTotal = watchedItems.reduce((sum, item) => {
-    return sum + (item.unitPrice || 0) * (item.quantity || 0);
+    const gross = (item.unitPrice || 0) * (item.quantity || 0);
+    const disc = item.discountMode === '%'
+      ? gross * (item.discount || 0) / 100
+      : (item.discount || 0) * (item.quantity || 0);
+    return sum + gross - disc;
   }, 0);
 
   const updateMutation = useMutation({
@@ -162,9 +170,19 @@ function EditSalesOrderDialog({ salesOrder, open, onClose }: EditDialogProps) {
         const totalGST = (Number(item.cgstRate) || 0) + (Number(item.sgstRate) || 0) + (Number(item.igstRate) || 0);
         const unitPriceExcl = totalGST > 0 ? casePriceIncl / (1 + totalGST / 100) : casePriceIncl;
         const unitPricePaise = Math.round(unitPriceExcl * 100);
-        const taxableAmountPaise = unitPricePaise * item.quantity;
-        const totalAmountPaise = Math.round(casePriceIncl * 100) * item.quantity;
-        return { item, unitPricePaise, taxableAmountPaise, totalAmountPaise };
+        const grossPaise = unitPricePaise * item.quantity;
+
+        // Discount stored as value×100 (paise-style). '%' mode: gross×discount/10000; '₹' mode: discount×qty
+        const discountStored = Math.round((item.discount || 0) * 100); // store back as value×100
+        const discountMode = item.discountMode || '%';
+        const discountPaise = discountMode === '%'
+          ? Math.round(grossPaise * discountStored / 10000)
+          : discountStored * item.quantity;
+
+        const taxableAmountPaise = grossPaise - discountPaise;
+        const gstPaise = Math.round(taxableAmountPaise * totalGST / 100);
+        const totalAmountPaise = taxableAmountPaise + gstPaise;
+        return { item, unitPricePaise, taxableAmountPaise, totalAmountPaise, discountStored, discountMode };
       });
       const soTotalPaise = computedItems.reduce((sum, c) => sum + c.totalAmountPaise, 0);
 
@@ -186,7 +204,7 @@ function EditSalesOrderDialog({ salesOrder, open, onClose }: EditDialogProps) {
           remarks: values.remarks || null,
           totalAmount: soTotalPaise,
         },
-        items: computedItems.map(({ item, unitPricePaise, taxableAmountPaise, totalAmountPaise }) => ({
+        items: computedItems.map(({ item, unitPricePaise, taxableAmountPaise, totalAmountPaise, discountStored, discountMode }) => ({
           productId: item.productId,
           description: item.description || null,
           hsnCode: item.hsnCode || null,
@@ -197,6 +215,8 @@ function EditSalesOrderDialog({ salesOrder, open, onClose }: EditDialogProps) {
           unitPrice: unitPricePaise,
           taxableAmount: taxableAmountPaise,
           totalAmount: totalAmountPaise,
+          discount: discountStored,
+          discountMode: discountMode,
         })),
       };
       const res = await apiRequest('PATCH', `/api/sales-orders/${salesOrder.id}`, payload);
@@ -371,7 +391,7 @@ function EditSalesOrderDialog({ salesOrder, open, onClose }: EditDialogProps) {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="font-medium">Line Items</h3>
-                <Button type="button" variant="outline" size="sm" onClick={() => append({ productId: "", description: "", hsnCode: "22011010", quantity: 1, unitPrice: 0, cgstRate: 9, sgstRate: 9, igstRate: 0 })} data-testid="button-edit-add-item">
+                <Button type="button" variant="outline" size="sm" onClick={() => append({ productId: "", description: "", hsnCode: "22011010", quantity: 1, unitPrice: 0, cgstRate: 9, sgstRate: 9, igstRate: 0, discount: 0, discountMode: '%' as '%' | '₹' })} data-testid="button-edit-add-item">
                   <Plus className="w-4 h-4 mr-1" />Add Item
                 </Button>
               </div>
@@ -384,6 +404,7 @@ function EditSalesOrderDialog({ salesOrder, open, onClose }: EditDialogProps) {
                       <TableHead className="w-20">Qty</TableHead>
                       <TableHead className="w-32">Case Price ₹ (incl. GST)</TableHead>
                       <TableHead className="w-40">CGST% / SGST%</TableHead>
+                      <TableHead className="w-36">Discount</TableHead>
                       <TableHead className="w-28 text-right">Line Total</TableHead>
                       <TableHead className="w-10"></TableHead>
                     </TableRow>
@@ -391,8 +412,11 @@ function EditSalesOrderDialog({ salesOrder, open, onClose }: EditDialogProps) {
                   <TableBody>
                     {fields.map((field, index) => {
                       const row = watchedItems[index] || {};
-                      // casePrice is already inclusive of GST — line total = casePrice × qty
-                      const lineTotal = (row.unitPrice || 0) * (row.quantity || 0);
+                      // casePrice is already inclusive of GST; apply discount for display
+                      const grossTotal = (row.unitPrice || 0) * (row.quantity || 0);
+                      const lineTotal = row.discountMode === '%'
+                        ? grossTotal * (1 - (row.discount || 0) / 100)
+                        : grossTotal - (row.discount || 0) * (row.quantity || 0);
                       return (
                         <TableRow key={field.id}>
                           <TableCell>
@@ -448,6 +472,28 @@ function EditSalesOrderDialog({ salesOrder, open, onClose }: EditDialogProps) {
                               <FormField control={form.control} name={`items.${index}.sgstRate`} render={({ field: f }) => (
                                 <FormControl>
                                   <Input type="number" step="0.01" min={0} max={100} {...f} onChange={e => f.onChange(Number(e.target.value))} className="w-16 text-xs" title="SGST %" placeholder="SGST" />
+                                </FormControl>
+                              )} />
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-1 items-center">
+                              <FormField control={form.control} name={`items.${index}.discountMode`} render={({ field: f }) => (
+                                <Select onValueChange={f.onChange} value={f.value}>
+                                  <FormControl>
+                                    <SelectTrigger className="w-14 text-xs h-8" data-testid={`select-edit-discount-mode-${index}`}>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    <SelectItem value="%">%</SelectItem>
+                                    <SelectItem value="₹">₹</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              )} />
+                              <FormField control={form.control} name={`items.${index}.discount`} render={({ field: f }) => (
+                                <FormControl>
+                                  <Input type="number" step="0.01" min={0} {...f} onChange={e => f.onChange(Number(e.target.value))} className="w-16 text-xs" placeholder="0" data-testid={`input-edit-discount-${index}`} />
                                 </FormControl>
                               )} />
                             </div>
