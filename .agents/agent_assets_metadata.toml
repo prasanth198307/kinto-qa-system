@@ -36,3 +36,9 @@ id = "G3LwyzQFnhmG0Bu4dlH-V"
 uri = "file://uploads/kinto_hr_module_plan.xlsx"
 type = "table"
 title = "Kinto HR Module — Full Plan"
+
+[[outputs]]
+id = "GRpzDTB0HgXnORufeb9Yc"
+uri = "file://db_scripts/MIGRATION_RUN_ORDER.txt"
+type = "text"
+title = "DB Migration Run Order — SaaS Multitenancy"
