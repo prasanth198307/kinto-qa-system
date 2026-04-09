@@ -1,0 +1,41 @@
+[kinto@iplvnic1 kinto-qa-system]$ npm audit fix --force
+npm warn using --force Recommended protections disabled.
+npm warn audit Updating drizzle-orm to 0.45.2, which is a SemVer major change.
+npm warn audit Updating nodemailer to 8.0.5, which is a SemVer major change.
+npm warn audit No fix available for xlsx@*
+npm warn audit Updating drizzle-kit to 0.18.1, which is a SemVer major change.
+npm warn deprecated glob@8.1.0: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+npm warn deprecated glob@10.5.0: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+
+added 26 packages, removed 8 packages, changed 98 packages, and audited 1002 packages in 40s
+
+100 packages are looking for funding
+  run `npm fund` for details
+
+# npm audit report
+
+esbuild  <=0.24.2
+Severity: moderate
+esbuild enables any website to send any requests to the development server and read the response - https://github.com/advisories/GHSA-67mh-4wv8-2f99
+fix available via `npm audit fix --force`
+Will install drizzle-kit@0.31.10, which is a breaking change
+node_modules/drizzle-kit/node_modules/esbuild
+  drizzle-kit  0.9.1 - 0.9.54 || 0.12.9 - 0.18.1 || 0.19.2-9340465 - 0.30.6 || 1.0.0-beta.1 - 1.0.0-beta.1-fd5d1e8
+  Depends on vulnerable versions of esbuild
+  node_modules/drizzle-kit
+
+xlsx  *
+Severity: high
+Prototype Pollution in sheetJS - https://github.com/advisories/GHSA-4r6h-8v6p-xvw6
+SheetJS Regular Expression Denial of Service (ReDoS) - https://github.com/advisories/GHSA-5pgg-2g8v-p4x9
+No fix available
+node_modules/xlsx
+
+3 vulnerabilities (2 moderate, 1 high)
+
+To address all issues possible (including breaking changes), run:
+  npm audit fix --force
+
+Some issues need review, and may require choosing
+a different dependency.
+[kinto@iplvnic1 kinto-qa-s
