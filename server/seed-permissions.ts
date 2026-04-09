@@ -1,6 +1,7 @@
 import { db } from "./db";
-import { sql } from "drizzle-orm";
+import { sql, eq } from "drizzle-orm";
 import { MODULE_NAV_ITEMS, PLAN_MODULES } from "./plan-features";
+import { subscriptionPlans } from "../shared/schema";
 
 /**
  * Server-side mirror of client/src/hooks/use-filtered-navigation.tsx navItemToScreenKey.
@@ -132,10 +133,33 @@ export const ALL_SCREEN_KEYS: string[] = Array.from(
 
 /**
  * Returns the set of screen keys that are unlocked for a given plan.
- * Any screen key NOT in this set should be seeded with all-zero permissions.
+ * Reads the module list from the subscription_plans DB table first (so custom
+ * plans like "hr_only" work automatically). Falls back to hardcoded PLAN_MODULES.
+ * Any screen key NOT in the returned set should be seeded with all-zero permissions.
  */
-export function getUnlockedScreenKeys(plan: string): Set<string> {
-  const modules = PLAN_MODULES[plan] ?? PLAN_MODULES['trial'];
+export async function getUnlockedScreenKeys(plan: string): Promise<Set<string>> {
+  let modules: string[] | null = null;
+
+  // Try DB first — custom plans are stored here
+  try {
+    const [planRecord] = await db
+      .select({ modules: subscriptionPlans.modules })
+      .from(subscriptionPlans)
+      .where(eq(subscriptionPlans.slug, plan))
+      .limit(1);
+
+    if (planRecord?.modules && Array.isArray(planRecord.modules) && planRecord.modules.length > 0) {
+      modules = planRecord.modules as string[];
+    }
+  } catch {
+    // Fall through to hardcoded fallback
+  }
+
+  // Fallback: use hardcoded plan definition
+  if (!modules) {
+    modules = PLAN_MODULES[plan] ?? PLAN_MODULES['trial'];
+  }
+
   const unlocked = new Set<string>();
   for (const mod of modules) {
     for (const navItem of MODULE_NAV_ITEMS[mod] ?? []) {
@@ -203,7 +227,7 @@ export async function seedTenantPermissions(
     SELECT plan FROM tenants WHERE id = ${tenantId} LIMIT 1
   `);
   const plan: string = (tenantResult.rows[0] as any)?.plan ?? 'trial';
-  const unlockedScreenKeys = getUnlockedScreenKeys(plan);
+  const unlockedScreenKeys = await getUnlockedScreenKeys(plan);
 
   // Get all active roles for this tenant
   const roles = await db.execute(sql`
@@ -260,7 +284,7 @@ export async function syncAndUnlockByPlan(
     SELECT plan FROM tenants WHERE id = ${tenantId} LIMIT 1
   `);
   const plan: string = (tenantResult.rows[0] as any)?.plan ?? 'trial';
-  const unlockedScreenKeys = getUnlockedScreenKeys(plan);
+  const unlockedScreenKeys = await getUnlockedScreenKeys(plan);
 
   const roles = await db.execute(sql`
     SELECT id, name FROM roles WHERE tenant_id = ${tenantId} AND record_status = 1
