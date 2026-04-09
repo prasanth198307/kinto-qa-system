@@ -11,6 +11,11 @@
 -- IMPORTANT: Change the password after first login.
 -- ============================================================
 
+-- ── 0. Ensure legacy "role" column exists on users table ─────
+-- This column is not in the Drizzle schema but is used by the app
+-- via COALESCE(roles.name, users.role) for super-admin accounts.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(100);
+
 -- ── 1. Super-admin tenant ────────────────────────────────────
 INSERT INTO tenants (name, slug, plan, status, is_super_admin, max_users)
 VALUES ('Kinto Admin', 'kinto-admin', 'enterprise', 'active', TRUE, 999)
