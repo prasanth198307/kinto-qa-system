@@ -16,6 +16,9 @@
 -- via COALESCE(roles.name, users.role) for super-admin accounts.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(100);
 
+-- Ensure mobile_number allows NULL (schema defines it as optional)
+ALTER TABLE users ALTER COLUMN mobile_number DROP NOT NULL;
+
 -- ── 1. Super-admin tenant ────────────────────────────────────
 INSERT INTO tenants (name, slug, plan, status, is_super_admin, max_users)
 VALUES ('Kinto Admin', 'kinto-admin', 'enterprise', 'active', TRUE, 999)
