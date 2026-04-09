@@ -1007,6 +1007,9 @@ function AdminDashboard() {
     },
   ];
 
+  const { navSections: filteredNav, isLoading: navLoading } = useFilteredNavigation(navSections);
+  const resolvedNav = navLoading ? navSections : filteredNav;
+
   const renderContent = () => {
     switch (activeView) {
       case 'overview':
@@ -1183,7 +1186,7 @@ function AdminDashboard() {
       title="Admin Dashboard"
       onLogoutClick={handleLogout}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={setActiveView}
     >
