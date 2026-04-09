@@ -18,6 +18,7 @@ import ExcelJS from "exceljs";
 import { db, pool } from "./db";
 import { whatsappService } from "./whatsappService";
 import { whatsappWebhookRouter } from "./whatsappWebhook";
+import hrRouter from "./hr-routes";
 import { whatsappConversationService } from "./whatsappConversationService";
 import { calculateBOMSuggestions } from "@shared/calculations";
 import { importVyapaarData, clearImportedData, importPaymentsOnly } from "./vyapaar-import";
@@ -1180,6 +1181,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register WhatsApp webhook routes (must be before authentication)
   app.use('/api/whatsapp', whatsappWebhookRouter);
+
+  // HR Module routes
+  app.use('/api/hr', hrRouter);
 
   // Auth routes are handled by setupAuth() in auth.ts
   // /api/register, /api/login, /api/logout, /api/user are automatically set up

@@ -142,6 +142,12 @@ import GroupSummaryPage from "@/pages/group-summary";
 import BudgetVariancePage from "@/pages/budget-variance";
 import AdminToolsPage from "@/pages/admin-tools";
 import TenantSettings from "@/pages/tenant-settings";
+import HRMastersPage from "@/pages/hr-masters";
+import HREmployeesPage from "@/pages/hr-employees";
+import HRAttendancePage from "@/pages/hr-attendance";
+import HRLeavesPage from "@/pages/hr-leaves";
+import HRPayrollPage from "@/pages/hr-payroll";
+import HRPayslipPage from "@/pages/hr-payslip";
 import PricingPage from "@/pages/pricing";
 import { parseISO } from "date-fns";
 
@@ -1579,6 +1585,12 @@ const navItemToScreenKey: Record<string, string> = {
   'uom': 'uom',
   'raw-material-types': 'raw_material_types',
   'template-management': 'template_management',
+  // HR Module
+  'hr-employees': 'admin_tools',
+  'hr-attendance': 'admin_tools',
+  'hr-leaves': 'admin_tools',
+  'hr-payroll': 'admin_tools',
+  'hr-masters': 'admin_tools',
   // Settings
   'notification-settings': 'notification_settings',
   'data-import': 'data_import',
@@ -1652,6 +1664,12 @@ const navItemToScreen: Record<string, string> = {
   'cash-flow-statement': 'Accounting',
   'group-summary': 'Accounting',
   'budget-variance': 'Accounting',
+  // HR Module
+  'hr-employees': 'User Management',
+  'hr-attendance': 'User Management',
+  'hr-leaves': 'User Management',
+  'hr-payroll': 'User Management',
+  'hr-masters': 'User Management',
   // Maintenance
   'maintenance': 'Maintenance Plans',
   'pm-history': 'PM History',
@@ -1919,6 +1937,17 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       items: [
         { id: "maintenance", label: "PM Schedule", icon: Wrench, onClick: () => setLocation('/') },
         { id: "pm-history", label: "PM History", icon: History, onClick: () => setLocation('/') },
+      ],
+    },
+    {
+      id: "hr-section",
+      label: "HR & Payroll",
+      items: [
+        { id: "hr-employees", label: "Employees", icon: Users, onClick: () => setLocation('/hr/employees') },
+        { id: "hr-attendance", label: "Attendance", icon: Calendar, onClick: () => setLocation('/hr/attendance') },
+        { id: "hr-leaves", label: "Leave Management", icon: ClipboardList, onClick: () => setLocation('/hr/leaves') },
+        { id: "hr-payroll", label: "Payroll", icon: IndianRupee, onClick: () => setLocation('/hr/payroll') },
+        { id: "hr-masters", label: "HR Masters", icon: Settings, onClick: () => setLocation('/hr/masters') },
       ],
     },
     {
@@ -3316,6 +3345,87 @@ function SmartRoot() {
   return <AuthenticatedApp />;
 }
 
+// ── HR Module Wrappers ────────────────────────────────────────────────────────
+function HREmployeesWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('hr-employees');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  return (
+    <DashboardShell title="Employees" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={navSections} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation('/'); }}>
+      <HREmployeesPage />
+    </DashboardShell>
+  );
+}
+
+function HRAttendanceWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('hr-attendance');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  return (
+    <DashboardShell title="Attendance" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={navSections} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation('/'); }}>
+      <HRAttendancePage />
+    </DashboardShell>
+  );
+}
+
+function HRLeavesWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('hr-leaves');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  return (
+    <DashboardShell title="Leave Management" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={navSections} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation('/'); }}>
+      <HRLeavesPage />
+    </DashboardShell>
+  );
+}
+
+function HRPayrollWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('hr-payroll');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  return (
+    <DashboardShell title="Payroll" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={navSections} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation('/'); }}>
+      <HRPayrollPage />
+    </DashboardShell>
+  );
+}
+
+function HRMastersWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('hr-masters');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  return (
+    <DashboardShell title="HR Masters" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={navSections} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation('/'); }}>
+      <HRMastersPage />
+    </DashboardShell>
+  );
+}
+
 function Router() {
   return (
     <Switch>
@@ -3400,6 +3510,12 @@ function Router() {
       <ProtectedRoute path="/budget-variance" component={BudgetVariancePageWrapper} />
       <ProtectedRoute path="/admin-tools" component={AdminToolsPageWrapper} />
       <ProtectedRoute path="/company-settings" component={TenantSettingsPageWrapper} />
+      <ProtectedRoute path="/hr/employees" component={HREmployeesWrapper} />
+      <ProtectedRoute path="/hr/attendance" component={HRAttendanceWrapper} />
+      <ProtectedRoute path="/hr/leaves" component={HRLeavesWrapper} />
+      <ProtectedRoute path="/hr/payroll" component={HRPayrollWrapper} />
+      <ProtectedRoute path="/hr/masters" component={HRMastersWrapper} />
+      <Route path="/hr/payslip/:id" component={HRPayslipPage} />
       <ProtectedRoute path="/pricing" component={() => (
         <div className="flex-1 overflow-auto">
           <PricingPage />
