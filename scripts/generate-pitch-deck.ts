@@ -525,7 +525,7 @@ function bullet(slide: any, x: number, y: number, w: number, items: string[], si
   s.addShape(pptx.ShapeType.rect, { x: 0, y: 1.2, w: "100%", h: 6.1, fill: { color: C.white } });
 
   // Table header
-  const cols = ["Feature", "Kinto Smart Ops", "Tally / Busy", "Zoho Books", "SAP B1 / MS Dynamics", "Vyapar / Marg"];
+  const cols = ["Feature", "Kinto Smart Ops", "Tally / Busy", "Zoho Books", "Odoo", "Vyapar / Marg"];
   const colW = [2.8, 2.0, 1.8, 1.8, 2.2, 1.8];
   const colX = [0.15, 2.95, 4.95, 6.75, 8.55, 10.75];
 
@@ -543,17 +543,17 @@ function bullet(slide: any, x: number, y: number, w: number, items: string[], si
   const P = (row: string) => "D97706"; // amber/partial
 
   const rows: [string, string, string, string, string, string][] = [
-    ["Indian GST Built-In",          "✔ Full",    "✔ Full",    "✔ Full",    "⚠ Add-on",    "✔ Basic"  ],
-    ["Manufacturing / BOM",          "✔ Full",    "✘ None",    "✘ None",    "✔ Full",      "✘ None"   ],
-    ["WhatsApp Integration",         "✔ Native",  "✘ None",    "✘ None",    "✘ None",      "✘ None"   ],
-    ["HR & Payroll Built-In",        "✔ Full",    "✘ None",    "✘ None",    "⚠ Add-on",    "✘ None"   ],
-    ["CRM Lead Management",          "✔ Full",    "✘ None",    "⚠ Separate","⚠ Add-on",    "✘ None"   ],
-    ["Employee Self-Service Portal", "✔ Full",    "✘ None",    "✘ None",    "⚠ Add-on",    "✘ None"   ],
-    ["Preventive Maintenance",       "✔ Full",    "✘ None",    "✘ None",    "⚠ Add-on",    "✘ None"   ],
-    ["Cloud-Based (SaaS)",           "✔ Yes",     "⚠ Hybrid",  "✔ Yes",     "✔ Yes",       "⚠ Mobile" ],
-    ["Setup Time",                   "< 1 week",  "1–2 weeks", "2–3 days",  "3–6 months",  "1–2 days" ],
-    ["Starting Price",               "₹999/mo",   "₹18k/yr",   "₹999/mo",   "₹2L+/yr",    "₹1,099/yr"],
-    ["Support",                      "Priority",  "Basic",     "Standard",  "Paid",        "Basic"    ],
+    ["Indian GST Built-In",          "✔ Full",    "✔ Full",    "✔ Full",    "⚠ Add-on",      "✔ Basic"  ],
+    ["Manufacturing / BOM",          "✔ Full",    "✘ None",    "✘ None",    "✔ Full",        "✘ None"   ],
+    ["WhatsApp Integration",         "✔ Native",  "✘ None",    "✘ None",    "✘ None",        "✘ None"   ],
+    ["Indian HR & Payroll",          "✔ Full",    "✘ None",    "✘ None",    "⚠ Needs custom","✘ None"   ],
+    ["CRM Lead Management",          "✔ Full",    "✘ None",    "⚠ Separate","✔ Full",        "✘ None"   ],
+    ["Employee Self-Service",        "✔ Full",    "✘ None",    "✘ None",    "⚠ Basic",       "✘ None"   ],
+    ["Preventive Maintenance",       "✔ Full",    "✘ None",    "✘ None",    "⚠ Enterprise+", "✘ None"   ],
+    ["Cloud-Based (SaaS)",           "✔ Yes",     "⚠ Hybrid",  "✔ Yes",     "✔ Yes",         "⚠ Mobile" ],
+    ["Setup Time",                   "< 1 week",  "1–2 weeks", "2–3 days",  "2–4 months",    "1–2 days" ],
+    ["Starting Price",               "₹999/mo",   "₹18k/yr",   "₹999/mo",   "₹2,500+/user", "₹1,099/yr"],
+    ["Support",                      "Priority",  "Basic",     "Standard",  "Paid (costly)", "Basic"    ],
   ];
 
   const rowColors: Record<string, string> = { "✔": Y(""), "✘": N(""), "⚠": P("") };
