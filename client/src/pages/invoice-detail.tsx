@@ -492,6 +492,20 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
     Promise.all(applyPromises).catch(() => {});
   };
 
+  const sendEmailMutation = useMutation({
+    mutationFn: async ({ toEmail, message }: { toEmail: string; message: string }) => {
+      const res = await apiRequest("POST", `/api/invoices/${id}/send-email`, { toEmail, message });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Invoice sent", description: `Invoice emailed to ${emailTo}` });
+      setIsEmailDialogOpen(false);
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed to send email", description: err.message, variant: "destructive" });
+    },
+  });
+
   if (isLoadingInvoice) {
     return (
       <>
@@ -557,20 +571,6 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
   const handleGenerateGatepass = () => {
     navigate(`/dispatch-tracking?invoice=${id}`);
   };
-
-  const sendEmailMutation = useMutation({
-    mutationFn: async ({ toEmail, message }: { toEmail: string; message: string }) => {
-      const res = await apiRequest("POST", `/api/invoices/${id}/send-email`, { toEmail, message });
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({ title: "Invoice sent", description: `Invoice emailed to ${emailTo}` });
-      setIsEmailDialogOpen(false);
-    },
-    onError: (err: any) => {
-      toast({ title: "Failed to send email", description: err.message, variant: "destructive" });
-    },
-  });
 
   const handleEmail = () => {
     setEmailTo((invoice as any)?.email || '');

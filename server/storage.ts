@@ -2774,21 +2774,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getDefaultTermsConditions(): Promise<TermsConditions | undefined> {
-    const [tc] = await db.select().from(termsConditions).where(
+    const [row] = await db.select().from(termsConditions).where(
       and(
         eq(termsConditions.recordStatus, 1), tc(termsConditions),
         eq(termsConditions.isDefault, 1),
         eq(termsConditions.isActive, 1)
       )
     );
-    return tc;
+    return row;
   }
 
   async getTermsConditions(id: string): Promise<TermsConditions | undefined> {
-    const [tc] = await db.select().from(termsConditions).where(
+    const [row] = await db.select().from(termsConditions).where(
       and(eq(termsConditions.id, id), eq(termsConditions.recordStatus, 1), tc(termsConditions))
     );
-    return tc;
+    return row;
   }
 
   async updateTermsConditions(id: string, updates: Partial<InsertTermsConditions>): Promise<TermsConditions | undefined> {
