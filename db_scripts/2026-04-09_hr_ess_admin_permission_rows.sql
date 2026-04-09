@@ -21,7 +21,7 @@ BEGIN
     END IF;
     INSERT INTO role_permissions (role_id, screen_key, tenant_id, can_view, can_create, can_edit, can_delete, record_status)
     VALUES (r.role_id, 'hr_ess_admin', r.tenant_id, cv, cc, ce, 0, 1)
-    ON CONFLICT (role_id, screen_key) DO NOTHING;
+    ON CONFLICT (role_id, screen_key, tenant_id) DO NOTHING;
   END LOOP;
   RAISE NOTICE 'hr_ess_admin rows seeded for enterprise tenants';
 END $$;

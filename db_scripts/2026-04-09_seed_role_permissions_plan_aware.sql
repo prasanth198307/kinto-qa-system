@@ -66,7 +66,7 @@ BEGIN
         END IF;
         INSERT INTO role_permissions (role_id, screen_key, tenant_id, can_view, can_create, can_edit, can_delete, record_status)
         VALUES (r.id, sk, tid, cv, cc, ce, cd, 1)
-        ON CONFLICT (role_id, screen_key) DO NOTHING;
+        ON CONFLICT (role_id, screen_key, tenant_id) DO NOTHING;
         inserted_count := inserted_count + 1;
       END LOOP;
     END LOOP;

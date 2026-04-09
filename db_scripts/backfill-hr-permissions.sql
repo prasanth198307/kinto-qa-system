@@ -19,13 +19,13 @@ BEGIN
       FOREACH sk IN ARRAY hr_screens_operator LOOP
         INSERT INTO role_permissions (role_id, screen_key, can_view, can_create, can_edit, can_delete, tenant_id)
         VALUES (r.role_id, sk, 1, 0, 0, 0, r.tenant_id)
-        ON CONFLICT (role_id, screen_key) DO NOTHING;
+        ON CONFLICT (role_id, screen_key, tenant_id) DO NOTHING;
       END LOOP;
     ELSE
       FOREACH sk IN ARRAY hr_screens LOOP
         INSERT INTO role_permissions (role_id, screen_key, can_view, can_create, can_edit, can_delete, tenant_id)
         VALUES (r.role_id, sk, 1, 1, 1, 1, r.tenant_id)
-        ON CONFLICT (role_id, screen_key) DO NOTHING;
+        ON CONFLICT (role_id, screen_key, tenant_id) DO NOTHING;
       END LOOP;
     END IF;
   END LOOP;
