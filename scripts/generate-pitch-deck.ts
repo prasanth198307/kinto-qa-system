@@ -525,7 +525,7 @@ function bullet(slide: any, x: number, y: number, w: number, items: string[], si
   s.addShape(pptx.ShapeType.rect, { x: 0, y: 1.2, w: "100%", h: 6.1, fill: { color: C.white } });
 
   // Table header
-  const cols = ["Feature", "Kinto Smart Ops", "Tally / Busy", "Zoho Books", "SAP B1 / MS Dynamics", "ERPNext"];
+  const cols = ["Feature", "Kinto Smart Ops", "Tally / Busy", "Zoho Books", "SAP B1 / MS Dynamics", "Vyapar / Marg"];
   const colW = [2.8, 2.0, 1.8, 1.8, 2.2, 1.8];
   const colX = [0.15, 2.95, 4.95, 6.75, 8.55, 10.75];
 
@@ -543,17 +543,17 @@ function bullet(slide: any, x: number, y: number, w: number, items: string[], si
   const P = (row: string) => "D97706"; // amber/partial
 
   const rows: [string, string, string, string, string, string][] = [
-    ["Indian GST Built-In",          "✔ Full",    "✔ Full",   "✔ Full",   "⚠ Add-on",   "✔ Full"  ],
-    ["Manufacturing / BOM",          "✔ Full",    "✘ None",   "✘ None",   "✔ Full",     "✔ Full"  ],
-    ["WhatsApp Integration",         "✔ Native",  "✘ None",   "✘ None",   "✘ None",     "✘ None"  ],
-    ["HR & Payroll Built-In",        "✔ Full",    "✘ None",   "✘ None",   "⚠ Add-on",   "✔ Full"  ],
-    ["CRM Lead Management",          "✔ Full",    "✘ None",   "⚠ Separate","⚠ Add-on",  "✔ Full"  ],
-    ["Employee Self-Service Portal", "✔ Full",    "✘ None",   "✘ None",   "⚠ Add-on",   "⚠ Basic" ],
-    ["Preventive Maintenance",       "✔ Full",    "✘ None",   "✘ None",   "⚠ Add-on",   "✔ Full"  ],
-    ["Cloud-Based (SaaS)",           "✔ Yes",     "⚠ Hybrid", "✔ Yes",    "✔ Yes",      "✔ Yes"   ],
-    ["Setup Time",                   "< 1 week",  "1–2 weeks","2–3 days", "3–6 months", "2–4 weeks"],
-    ["Starting Price",               "₹999/mo",   "₹18k/yr",  "₹999/mo",  "₹2L+/yr",   "Free*"   ],
-    ["Support",                      "Priority",  "Basic",    "Standard", "Paid",       "Community"],
+    ["Indian GST Built-In",          "✔ Full",    "✔ Full",    "✔ Full",    "⚠ Add-on",    "✔ Basic"  ],
+    ["Manufacturing / BOM",          "✔ Full",    "✘ None",    "✘ None",    "✔ Full",      "✘ None"   ],
+    ["WhatsApp Integration",         "✔ Native",  "✘ None",    "✘ None",    "✘ None",      "✘ None"   ],
+    ["HR & Payroll Built-In",        "✔ Full",    "✘ None",    "✘ None",    "⚠ Add-on",    "✘ None"   ],
+    ["CRM Lead Management",          "✔ Full",    "✘ None",    "⚠ Separate","⚠ Add-on",    "✘ None"   ],
+    ["Employee Self-Service Portal", "✔ Full",    "✘ None",    "✘ None",    "⚠ Add-on",    "✘ None"   ],
+    ["Preventive Maintenance",       "✔ Full",    "✘ None",    "✘ None",    "⚠ Add-on",    "✘ None"   ],
+    ["Cloud-Based (SaaS)",           "✔ Yes",     "⚠ Hybrid",  "✔ Yes",     "✔ Yes",       "⚠ Mobile" ],
+    ["Setup Time",                   "< 1 week",  "1–2 weeks", "2–3 days",  "3–6 months",  "1–2 days" ],
+    ["Starting Price",               "₹999/mo",   "₹18k/yr",   "₹999/mo",   "₹2L+/yr",    "₹1,099/yr"],
+    ["Support",                      "Priority",  "Basic",     "Standard",  "Paid",        "Basic"    ],
   ];
 
   const rowColors: Record<string, string> = { "✔": Y(""), "✘": N(""), "⚠": P("") };
@@ -578,8 +578,8 @@ function bullet(slide: any, x: number, y: number, w: number, items: string[], si
   s.addShape(pptx.ShapeType.rect, { x: 2.95, y: 1.3, w: 2.0, h: 0.06, fill: { color: C.accent } });
   s.addShape(pptx.ShapeType.rect, { x: 2.95, y: 1.7 + rows.length * 0.48 - 0.06, w: 2.0, h: 0.06, fill: { color: C.accent } });
 
-  s.addText("* ERPNext is open-source but requires significant IT setup cost and expertise.", {
-    x: 0.15, y: 7.08, w: 12.5, h: 0.2, fontSize: 7.5, color: C.muted, fontFace: "Calibri", italic: true,
+  s.addText("Kinto Smart Ops is the only solution that covers Manufacturing + HR & Payroll + CRM + WhatsApp natively in a single platform.", {
+    x: 0.15, y: 7.08, w: 12.5, h: 0.2, fontSize: 8, color: C.blue, fontFace: "Calibri", bold: true,
   });
 }
 
