@@ -76,7 +76,7 @@ import { ManagerChecklistAssignment } from "@/components/ManagerChecklistAssignm
 import PendingPaymentsDashboard from "@/components/PendingPaymentsDashboard";
 import { OperatorAssignedChecklists } from "@/components/OperatorAssignedChecklists";
 import { VerticalNavSidebar, type NavSection } from "@/components/VerticalNavSidebar";
-import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, ClipboardList, Settings, Calendar, Users, FileText, FileX, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator, IndianRupee, CreditCard, Upload, FolderOpen, Wallet, Car, BookOpen, Scale, BarChart3, Landmark, Tag, Trash2, PackageX, Loader2, Play } from "lucide-react";
+import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, ClipboardList, Settings, Calendar, Users, FileText, FileX, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator, IndianRupee, CreditCard, Upload, FolderOpen, Wallet, Car, BookOpen, Scale, BarChart3, Landmark, Tag, Trash2, PackageX, Loader2, Play, UserX } from "lucide-react";
 import SalesDashboard from "@/components/SalesDashboard";
 import SalesOrdersPage from "@/pages/sales-orders";
 import SalesOrderDetailPage from "@/pages/sales-order-detail";
@@ -148,6 +148,7 @@ import HRAttendancePage from "@/pages/hr-attendance";
 import HRLeavesPage from "@/pages/hr-leaves";
 import HRPayrollPage from "@/pages/hr-payroll";
 import HRReportsPage from "@/pages/hr-reports";
+import HRExitManagementPage from "@/pages/hr-exit-management";
 import HRPayslipPage from "@/pages/hr-payslip";
 import PricingPage from "@/pages/pricing";
 import { parseISO } from "date-fns";
@@ -950,6 +951,7 @@ function AdminDashboard() {
         { id: "hr-attendance", label: "Attendance", icon: Calendar, onClick: () => setLocation('/hr/attendance') },
         { id: "hr-leaves", label: "Leave Management", icon: ClipboardList, onClick: () => setLocation('/hr/leaves') },
         { id: "hr-payroll", label: "Payroll", icon: IndianRupee, onClick: () => setLocation('/hr/payroll') },
+        { id: "hr-exit-management", label: "Exit Management", icon: UserX, onClick: () => setLocation('/hr/exit-management') },
         { id: "hr-reports", label: "HR Reports", icon: BarChart3, onClick: () => setLocation('/hr/reports') },
         { id: "hr-masters", label: "HR Masters", icon: Settings, onClick: () => setLocation('/hr/masters') },
       ],
@@ -1597,6 +1599,7 @@ const navItemToScreenKey: Record<string, string> = {
   'hr-attendance': 'hr_attendance',
   'hr-leaves': 'hr_leaves',
   'hr-payroll': 'hr_payroll',
+  'hr-exit-management': 'hr_employees',
   'hr-reports': 'hr_payroll',
   'hr-masters': 'hr_masters',
   // Settings
@@ -1677,6 +1680,7 @@ const navItemToScreen: Record<string, string> = {
   'hr-attendance': 'HR & Payroll',
   'hr-leaves': 'HR & Payroll',
   'hr-payroll': 'HR & Payroll',
+  'hr-exit-management': 'HR & Payroll',
   'hr-reports': 'HR & Payroll',
   'hr-masters': 'HR & Payroll',
   // Maintenance
@@ -1957,6 +1961,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "hr-attendance", label: "Attendance", icon: Calendar, onClick: () => setLocation('/hr/attendance') },
         { id: "hr-leaves", label: "Leave Management", icon: ClipboardList, onClick: () => setLocation('/hr/leaves') },
         { id: "hr-payroll", label: "Payroll", icon: IndianRupee, onClick: () => setLocation('/hr/payroll') },
+        { id: "hr-exit-management", label: "Exit Management", icon: UserX, onClick: () => setLocation('/hr/exit-management') },
         { id: "hr-reports", label: "HR Reports", icon: BarChart3, onClick: () => setLocation('/hr/reports') },
         { id: "hr-masters", label: "HR Masters", icon: Settings, onClick: () => setLocation('/hr/masters') },
       ],
@@ -3453,6 +3458,22 @@ function HRReportsWrapper() {
   );
 }
 
+function HRExitManagementWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('hr-exit-management');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Exit Management" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation('/'); }}>
+      <HRExitManagementPage />
+    </DashboardShell>
+  );
+}
+
 function Router() {
   return (
     <Switch>
@@ -3542,6 +3563,7 @@ function Router() {
       <ProtectedRoute path="/hr/leaves" component={HRLeavesWrapper} />
       <ProtectedRoute path="/hr/payroll" component={HRPayrollWrapper} />
       <ProtectedRoute path="/hr/masters" component={HRMastersWrapper} />
+      <ProtectedRoute path="/hr/exit-management" component={HRExitManagementWrapper} />
       <ProtectedRoute path="/hr/reports" component={HRReportsWrapper} />
       <Route path="/hr/payslip/:id" component={HRPayslipPage} />
       <ProtectedRoute path="/pricing" component={() => (
