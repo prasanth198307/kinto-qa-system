@@ -516,6 +516,129 @@ function bullet(slide: any, x: number, y: number, w: number, items: string[], si
   });
 }
 
+// ══════════════════════════════════════════════════════════════
+// SLIDE 14 — COMPETITIVE COMPARISON
+// ══════════════════════════════════════════════════════════════
+{
+  const s = pptx.addSlide();
+  addNavyHeader(s, "How We Compare to the Competition", "Purpose-built for Indian manufacturing — not adapted from a global product");
+  s.addShape(pptx.ShapeType.rect, { x: 0, y: 1.2, w: "100%", h: 6.1, fill: { color: C.white } });
+
+  // Table header
+  const cols = ["Feature", "Kinto Smart Ops", "Tally / Busy", "Zoho Books", "SAP B1 / MS Dynamics", "ERPNext"];
+  const colW = [2.8, 2.0, 1.8, 1.8, 2.2, 1.8];
+  const colX = [0.15, 2.95, 4.95, 6.75, 8.55, 10.75];
+
+  // Header row
+  colX.forEach((x, i) => {
+    const isKinto = i === 1;
+    s.addShape(pptx.ShapeType.rect, { x, y: 1.3, w: colW[i], h: 0.4,
+      fill: { color: isKinto ? C.blue : C.navy }, rectRadius: 0 });
+    s.addText(cols[i], { x: x + 0.05, y: 1.3, w: colW[i] - 0.1, h: 0.4,
+      fontSize: 9, bold: true, color: C.white, fontFace: "Calibri", align: "center", valign: "middle" });
+  });
+
+  const Y = (row: string) => "22A310"; // green
+  const N = (row: string) => "DC2626"; // red
+  const P = (row: string) => "D97706"; // amber/partial
+
+  const rows: [string, string, string, string, string, string][] = [
+    ["Indian GST Built-In",          "✔ Full",    "✔ Full",   "✔ Full",   "⚠ Add-on",   "✔ Full"  ],
+    ["Manufacturing / BOM",          "✔ Full",    "✘ None",   "✘ None",   "✔ Full",     "✔ Full"  ],
+    ["WhatsApp Integration",         "✔ Native",  "✘ None",   "✘ None",   "✘ None",     "✘ None"  ],
+    ["HR & Payroll Built-In",        "✔ Full",    "✘ None",   "✘ None",   "⚠ Add-on",   "✔ Full"  ],
+    ["CRM Lead Management",          "✔ Full",    "✘ None",   "⚠ Separate","⚠ Add-on",  "✔ Full"  ],
+    ["Employee Self-Service Portal", "✔ Full",    "✘ None",   "✘ None",   "⚠ Add-on",   "⚠ Basic" ],
+    ["Preventive Maintenance",       "✔ Full",    "✘ None",   "✘ None",   "⚠ Add-on",   "✔ Full"  ],
+    ["Cloud-Based (SaaS)",           "✔ Yes",     "⚠ Hybrid", "✔ Yes",    "✔ Yes",      "✔ Yes"   ],
+    ["Setup Time",                   "< 1 week",  "1–2 weeks","2–3 days", "3–6 months", "2–4 weeks"],
+    ["Starting Price",               "₹999/mo",   "₹18k/yr",  "₹999/mo",  "₹2L+/yr",   "Free*"   ],
+    ["Support",                      "Priority",  "Basic",    "Standard", "Paid",       "Community"],
+  ];
+
+  const rowColors: Record<string, string> = { "✔": Y(""), "✘": N(""), "⚠": P("") };
+
+  rows.forEach((row, ri) => {
+    const bgColor = ri % 2 === 0 ? "F8FAFC" : C.white;
+    colX.forEach((x, ci) => {
+      s.addShape(pptx.ShapeType.rect, { x, y: 1.7 + ri * 0.48, w: colW[ci], h: 0.46,
+        fill: { color: ci === 1 ? "EFF6FF" : bgColor }, line: { color: C.border, width: 0.5 } });
+      const cell = row[ci];
+      const firstChar = cell.trim()[0];
+      const textColor = ci === 0 ? C.dark : ci === 1
+        ? (firstChar === "✔" ? "15803D" : firstChar === "✘" ? "DC2626" : "D97706")
+        : (firstChar === "✔" ? "15803D" : firstChar === "✘" ? "9CA3AF" : "D97706");
+      s.addText(cell, { x: x + 0.05, y: 1.7 + ri * 0.48, w: colW[ci] - 0.1, h: 0.46,
+        fontSize: ci === 0 ? 9 : 8.5, bold: ci === 1, color: textColor, fontFace: "Calibri",
+        align: ci === 0 ? "left" : "center", valign: "middle" });
+    });
+  });
+
+  // Kinto column top + bottom accent lines
+  s.addShape(pptx.ShapeType.rect, { x: 2.95, y: 1.3, w: 2.0, h: 0.06, fill: { color: C.accent } });
+  s.addShape(pptx.ShapeType.rect, { x: 2.95, y: 1.7 + rows.length * 0.48 - 0.06, w: 2.0, h: 0.06, fill: { color: C.accent } });
+
+  s.addText("* ERPNext is open-source but requires significant IT setup cost and expertise.", {
+    x: 0.15, y: 7.08, w: 12.5, h: 0.2, fontSize: 7.5, color: C.muted, fontFace: "Calibri", italic: true,
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// SLIDE 15 — WHY KINTO WINS / OUR UNFAIR ADVANTAGES
+// ══════════════════════════════════════════════════════════════
+{
+  const s = pptx.addSlide();
+  addNavyHeader(s, "Why Customers Choose Kinto Smart Ops", "Our unfair advantages — things no competitor does as well");
+  s.addShape(pptx.ShapeType.rect, { x: 0, y: 1.2, w: "100%", h: 6.1, fill: { color: C.lightBlue } });
+
+  const advantages = [
+    {
+      no: "01",
+      title: "Only ERP with Native WhatsApp",
+      body: "No other Indian ERP has WhatsApp baked in. Operators submit checklists, receive payslips, and get alerts — all on WhatsApp. Zero app downloads required.",
+    },
+    {
+      no: "02",
+      title: "Manufacturing + HR + CRM in One Price",
+      body: "Competitors charge separately for manufacturing, HR, and CRM modules — or require different products. Kinto gives all three in one subscription.",
+    },
+    {
+      no: "03",
+      title: "Built for Indian Manufacturing from Day One",
+      body: "GST, PT state slabs, TDS old/new regime, PF/ESI — all built-in. Not an afterthought or a plugin. Designed specifically for how Indian factories operate.",
+    },
+    {
+      no: "04",
+      title: "Employee Self-Service No One Else Offers at This Price",
+      body: "ESS portals cost lakhs with SAP or Oracle. Kinto includes a full ESS portal — payslips, leave, tax declarations — in the Enterprise plan at ₹2,599/month.",
+    },
+    {
+      no: "05",
+      title: "Fastest Time-to-Value",
+      body: "Most teams are live within a week. No 6-month implementation projects, no consultants, no server setup. Start free trial today — go live next Monday.",
+    },
+    {
+      no: "06",
+      title: "Transparent Pricing, No Hidden Costs",
+      body: "One flat monthly price + ₹100–150 per extra user. No modules sold separately. No yearly lock-in forced on you. Cancel anytime.",
+    },
+  ];
+
+  advantages.forEach((adv, i) => {
+    const col = i % 2;
+    const row = Math.floor(i / 2);
+    const x = 0.25 + col * 6.55;
+    const y = 1.35 + row * 1.95;
+
+    s.addShape(pptx.ShapeType.rect, { x, y, w: 6.3, h: 1.82, fill: { color: C.white }, line: { color: C.border, width: 1 }, rectRadius: 0.08 });
+    // Number badge
+    s.addShape(pptx.ShapeType.rect, { x: x + 0.12, y: y + 0.12, w: 0.44, h: 0.44, fill: { color: C.blue }, rectRadius: 0.06 });
+    s.addText(adv.no, { x: x + 0.12, y: y + 0.12, w: 0.44, h: 0.44, fontSize: 11, bold: true, color: C.white, fontFace: "Calibri", align: "center", valign: "middle" });
+    s.addText(adv.title, { x: x + 0.65, y: y + 0.12, w: 5.5, h: 0.44, fontSize: 11.5, bold: true, color: C.navy, fontFace: "Calibri", valign: "middle" });
+    s.addText(adv.body,  { x: x + 0.12, y: y + 0.6, w: 6.0, h: 1.1, fontSize: 9.5, color: C.muted, fontFace: "Calibri", valign: "top" });
+  });
+}
+
 // ── Write file ────────────────────────────────────────────────
-await pptx.writeFile({ fileName: "Kinto_Smart_Ops_Pitch_Deck_V3.pptx" });
-console.log("Done: Kinto_Smart_Ops_Pitch_Deck_V3.pptx");
+await pptx.writeFile({ fileName: "Kinto_Smart_Ops_Pitch_Deck_V4.pptx" });
+console.log("Done: Kinto_Smart_Ops_Pitch_Deck_V4.pptx");
