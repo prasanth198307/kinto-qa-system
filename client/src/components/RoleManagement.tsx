@@ -175,6 +175,11 @@ const AVAILABLE_SCREENS: ScreenDefinition[] = [
   { key: 'hr_attendance', label: 'HR: Attendance', allowedActions: ['view', 'create', 'edit'] },
   { key: 'hr_leaves', label: 'HR: Leave Management', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'hr_payroll', label: 'HR: Payroll Processing', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'hr_exit_management', label: 'HR: Exit Management & F&F', allowedActions: ['view', 'create', 'edit'] },
+  { key: 'hr_loans', label: 'HR: Loans & Advances', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'hr_tds', label: 'HR: TDS & Compliance', allowedActions: ['view', 'create', 'edit'] },
+  { key: 'hr_recruitment', label: 'HR: Recruitment', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'hr_reports', label: 'HR: Reports', allowedActions: ['view'] },
   { key: 'hr_masters', label: 'HR: Masters (Dept/Designation/Shift/Leave Types)', allowedActions: ['view', 'create', 'edit', 'delete'] },
 ];
 
