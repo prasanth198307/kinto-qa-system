@@ -38,6 +38,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: (user: SelectUser) => {
       queryClient.setQueryData(["/api/user"], user);
+      // Invalidate plan features and permissions so they refetch with the new session
+      queryClient.invalidateQueries({ queryKey: ["/api/tenant/features"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/my-permissions"] });
     },
     onError: (error: Error) => {
       toast({

@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { getQueryFn } from "@/lib/queryClient";
 
 interface PlanFeatures {
   plan: string;
@@ -7,9 +8,10 @@ interface PlanFeatures {
 }
 
 export function usePlanFeatures() {
-  const { data, isLoading } = useQuery<PlanFeatures>({
+  const { data, isLoading } = useQuery<PlanFeatures | null>({
     queryKey: ["/api/tenant/features"],
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes — plan rarely changes
+    queryFn: getQueryFn({ on401: "returnNull" }),
+    staleTime: 0,
     retry: false,
   });
 
