@@ -289,6 +289,7 @@ function ReviewerDashboard() {
 
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
 
   const renderContent = () => {
     switch (activeView) {
@@ -301,16 +302,12 @@ function ReviewerDashboard() {
     }
   };
 
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
-
   return (
     <DashboardShell
       title="Reviewer Dashboard"
       onLogoutClick={handleLogout}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => {
         setActiveView(viewId);
@@ -349,6 +346,7 @@ function ManagerDashboard() {
 
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
 
   const renderContent = () => {
     switch (activeView) {
@@ -439,16 +437,12 @@ function ManagerDashboard() {
     }
   };
 
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
-
   return (
     <DashboardShell
       title="Manager Dashboard"
       onLogoutClick={handleLogout}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={setActiveView}
     >
@@ -1324,7 +1318,7 @@ function VendorManagementPage() {
       title="Vendor Management"
       onLogoutClick={() => logoutMutation.mutate()}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => {
         setActiveView(viewId);
@@ -1353,7 +1347,7 @@ function ReportsPage() {
       title="Reports"
       onLogoutClick={() => logoutMutation.mutate()}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => {
         setActiveView(viewId);
@@ -1382,7 +1376,7 @@ function PendingPaymentsPage() {
       title="Pending Payments"
       onLogoutClick={() => logoutMutation.mutate()}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => {
         setActiveView(viewId);
@@ -1411,7 +1405,7 @@ function PaymentManagementPage() {
       title="Payment Management"
       onLogoutClick={() => logoutMutation.mutate()}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => {
         setActiveView(viewId);
@@ -1440,7 +1434,7 @@ function VendorHistoryPage() {
       title="Vendor History"
       onLogoutClick={() => logoutMutation.mutate()}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => {
         setActiveView(viewId);
@@ -1469,7 +1463,7 @@ function VendorHistoryDetailPage() {
       title="Vendor History"
       onLogoutClick={() => logoutMutation.mutate()}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => {
         setActiveView(viewId);
@@ -1497,7 +1491,7 @@ function VendorGroupDetailPage() {
       title="Vendor Group"
       onLogoutClick={() => logoutMutation.mutate()}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => {
         setActiveView(viewId);
@@ -2021,7 +2015,7 @@ function VendorAnalyticsPage() {
       title="Vendor Analytics"
       onLogoutClick={() => logoutMutation.mutate()}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => {
         setActiveView(viewId);
@@ -2050,7 +2044,7 @@ function VendorDebitNotesPage() {
       title="Vendor Debit Notes"
       onLogoutClick={() => logoutMutation.mutate()}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => {
         setActiveView(viewId);
@@ -2079,7 +2073,7 @@ function CustomerAdvancesPageWrapper() {
       title="Customer Advances"
       onLogoutClick={() => logoutMutation.mutate()}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => {
         setActiveView(viewId);
@@ -2108,7 +2102,7 @@ function DocumentsPageWrapper() {
       title="Documents"
       onLogoutClick={() => logoutMutation.mutate()}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => {
         setActiveView(viewId);
@@ -2135,7 +2129,7 @@ function ExpenseCategoriesPageWrapper() {
       title="Expense Categories"
       onLogoutClick={() => logoutMutation.mutate()}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => setActiveView(viewId)}
     >
@@ -2162,7 +2156,7 @@ function ExpensesPageWrapper() {
       title="Expense Vouchers"
       onLogoutClick={() => logoutMutation.mutate()}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => {
         setActiveView(viewId);
@@ -2187,7 +2181,7 @@ function MonthlyExpensesPageWrapper() {
       title="Monthly Expenses"
       onLogoutClick={() => logoutMutation.mutate()}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => { setActiveView(viewId); }}
     >
@@ -2214,7 +2208,7 @@ function CashRegisterPageWrapper() {
       title="Cash Register"
       onLogoutClick={() => logoutMutation.mutate()}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => {
         setActiveView(viewId);
@@ -2231,9 +2225,9 @@ function ChartOfAccountsPageWrapper() {
   const [activeView, setActiveView] = useState('chart-of-accounts');
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  const resolvedNav = isLoading ? allNavSections : navSections;
   return (
-    <DashboardShell title="Chart of Accounts" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
+    <DashboardShell title="Chart of Accounts" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={resolvedNav} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
       <ChartOfAccountsPage />
     </DashboardShell>
   );
@@ -2246,9 +2240,9 @@ function AccountSubtypesPageWrapper() {
   const [activeView, setActiveView] = useState('chart-of-accounts');
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  const resolvedNav = isLoading ? allNavSections : navSections;
   return (
-    <DashboardShell title="Account Types" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
+    <DashboardShell title="Account Types" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={resolvedNav} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
       <AccountSubtypesPage />
     </DashboardShell>
   );
@@ -2260,9 +2254,9 @@ function JournalEntriesPageWrapper() {
   const [activeView, setActiveView] = useState('journal-entries');
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  const resolvedNav = isLoading ? allNavSections : navSections;
   return (
-    <DashboardShell title="Journal Entries" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
+    <DashboardShell title="Journal Entries" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={resolvedNav} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
       <JournalEntriesPage />
     </DashboardShell>
   );
@@ -2274,9 +2268,9 @@ function JournalEntryDetailPageWrapper() {
   const [activeView, setActiveView] = useState('journal-entries');
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  const resolvedNav = isLoading ? allNavSections : navSections;
   return (
-    <DashboardShell title="Journal Entry" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
+    <DashboardShell title="Journal Entry" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={resolvedNav} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
       <JournalEntryDetailPage />
     </DashboardShell>
   );
@@ -2288,9 +2282,9 @@ function ManualJournalEntryPageWrapper() {
   const [activeView, setActiveView] = useState('journal-entries');
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  const resolvedNav = isLoading ? allNavSections : navSections;
   return (
-    <DashboardShell title="New Journal Entry" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
+    <DashboardShell title="New Journal Entry" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={resolvedNav} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
       <ManualJournalEntryPage />
     </DashboardShell>
   );
@@ -2302,9 +2296,9 @@ function TrialBalancePageWrapper() {
   const [activeView, setActiveView] = useState('trial-balance');
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  const resolvedNav = isLoading ? allNavSections : navSections;
   return (
-    <DashboardShell title="Trial Balance" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
+    <DashboardShell title="Trial Balance" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={resolvedNav} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
       <TrialBalancePage />
     </DashboardShell>
   );
@@ -2316,9 +2310,9 @@ function ProfitLossPageWrapper() {
   const [activeView, setActiveView] = useState('profit-loss');
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  const resolvedNav = isLoading ? allNavSections : navSections;
   return (
-    <DashboardShell title="Profit & Loss" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
+    <DashboardShell title="Profit & Loss" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={resolvedNav} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
       <ProfitLossPage />
     </DashboardShell>
   );
@@ -2330,9 +2324,9 @@ function BalanceSheetPageWrapper() {
   const [activeView, setActiveView] = useState('balance-sheet');
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  const resolvedNav = isLoading ? allNavSections : navSections;
   return (
-    <DashboardShell title="Balance Sheet" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
+    <DashboardShell title="Balance Sheet" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={resolvedNav} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
       <BalanceSheetPage />
     </DashboardShell>
   );
@@ -2344,9 +2338,9 @@ function BankTransactionsPageWrapper() {
   const [activeView, setActiveView] = useState('bank-transactions');
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  const resolvedNav = isLoading ? allNavSections : navSections;
   return (
-    <DashboardShell title="Bank Statements" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
+    <DashboardShell title="Bank Statements" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={resolvedNav} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
       <BankTransactionsPage />
     </DashboardShell>
   );
@@ -2358,9 +2352,9 @@ function LedgerViewPageWrapper() {
   const [activeView, setActiveView] = useState('ledger-view');
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  const resolvedNav = isLoading ? allNavSections : navSections;
   return (
-    <DashboardShell title="Ledger View" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
+    <DashboardShell title="Ledger View" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={resolvedNav} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
       <LedgerViewPage />
     </DashboardShell>
   );
@@ -2372,9 +2366,9 @@ function DayBookPageWrapper() {
   const [activeView, setActiveView] = useState('day-book');
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  const resolvedNav = isLoading ? allNavSections : navSections;
   return (
-    <DashboardShell title="Day Book" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
+    <DashboardShell title="Day Book" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={resolvedNav} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
       <DayBookPage />
     </DashboardShell>
   );
@@ -2386,9 +2380,9 @@ function AgingReportPageWrapper() {
   const [activeView, setActiveView] = useState('aging-report');
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  const resolvedNav = isLoading ? allNavSections : navSections;
   return (
-    <DashboardShell title="Outstanding / Aging Report" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
+    <DashboardShell title="Outstanding / Aging Report" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={resolvedNav} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
       <AgingReportPage />
     </DashboardShell>
   );
@@ -2400,9 +2394,9 @@ function CashFlowStatementPageWrapper() {
   const [activeView, setActiveView] = useState('cash-flow-statement');
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  const resolvedNav = isLoading ? allNavSections : navSections;
   return (
-    <DashboardShell title="Cash Flow Statement" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
+    <DashboardShell title="Cash Flow Statement" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={resolvedNav} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
       <CashFlowStatementPage />
     </DashboardShell>
   );
@@ -2414,9 +2408,9 @@ function GroupSummaryPageWrapper() {
   const [activeView, setActiveView] = useState('group-summary');
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  const resolvedNav = isLoading ? allNavSections : navSections;
   return (
-    <DashboardShell title="Group Summary" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
+    <DashboardShell title="Group Summary" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={resolvedNav} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
       <GroupSummaryPage />
     </DashboardShell>
   );
@@ -2428,9 +2422,9 @@ function BudgetVariancePageWrapper() {
   const [activeView, setActiveView] = useState('budget-variance');
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  const resolvedNav = isLoading ? allNavSections : navSections;
   return (
-    <DashboardShell title="Budget & Variance" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
+    <DashboardShell title="Budget & Variance" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={resolvedNav} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
       <BudgetVariancePage />
     </DashboardShell>
   );
@@ -2442,9 +2436,9 @@ function AdminToolsPageWrapper() {
   const [activeView, setActiveView] = useState('admin-tools');
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  const resolvedNav = isLoading ? allNavSections : navSections;
   return (
-    <DashboardShell title="Admin Tools" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
+    <DashboardShell title="Admin Tools" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={resolvedNav} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); }}>
       <AdminToolsPage />
     </DashboardShell>
   );
@@ -2456,9 +2450,9 @@ function TenantSettingsPageWrapper() {
   const [activeView, setActiveView] = useState('company-settings');
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  const resolvedNav = isLoading ? allNavSections : navSections;
   return (
-    <DashboardShell title="Company Settings" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); setLocation(`/${viewId}`); }}>
+    <DashboardShell title="Company Settings" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={resolvedNav} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); setLocation(`/${viewId}`); }}>
       <TenantSettings />
     </DashboardShell>
   );
@@ -2482,7 +2476,7 @@ function CashRegisterReportWrapper() {
       title="Cash Register Report"
       onLogoutClick={() => logoutMutation.mutate()}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => {
         setActiveView(viewId);
@@ -2511,7 +2505,7 @@ function CreditNotesPageWrapper() {
       title="Credit Notes"
       onLogoutClick={() => logoutMutation.mutate()}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => {
         setActiveView(viewId);
@@ -2540,7 +2534,7 @@ function SalesReturnsPageWrapper() {
       title="Sales Returns"
       onLogoutClick={() => logoutMutation.mutate()}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => {
         setActiveView(viewId);
@@ -2569,7 +2563,7 @@ function WriteOffReportPageWrapper() {
       title="Write-Off Report"
       onLogoutClick={() => logoutMutation.mutate()}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => {
         setActiveView(viewId);
@@ -2598,7 +2592,7 @@ function DispatchTrackingPageWrapper() {
       title="Dispatch Tracking"
       onLogoutClick={() => logoutMutation.mutate()}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => {
         setActiveView(viewId);
@@ -2627,7 +2621,7 @@ function CancelledInvoicesPageWrapper() {
       title="Cancelled Invoices"
       onLogoutClick={() => logoutMutation.mutate()}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => {
         setActiveView(viewId);
@@ -2656,7 +2650,7 @@ function ChecklistsPageWrapper() {
       title="Checklists"
       onLogoutClick={() => logoutMutation.mutate()}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => {
         setActiveView(viewId);
@@ -2685,7 +2679,7 @@ function ReviewerDashboardPageWrapper() {
       title="Reviewer Dashboard"
       onLogoutClick={() => logoutMutation.mutate()}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => {
         setActiveView(viewId);
@@ -2714,7 +2708,7 @@ function VendorTypesPageWrapper() {
       title="Vendor Types"
       onLogoutClick={() => logoutMutation.mutate()}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => {
         setActiveView(viewId);
@@ -2743,7 +2737,7 @@ function HPCLMigrationPageWrapper() {
       title="HPCL Vendor Migration"
       onLogoutClick={() => logoutMutation.mutate()}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => {
         setActiveView(viewId);
@@ -2772,7 +2766,7 @@ function DispatchMastersPageWrapper() {
       title="Dispatch Master Data"
       onLogoutClick={() => logoutMutation.mutate()}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => {
         setActiveView(viewId);
@@ -2801,7 +2795,7 @@ function InvoiceDetailPageWrapper() {
       title="Invoice Details"
       onLogoutClick={() => logoutMutation.mutate()}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => {
         setActiveView(viewId);
@@ -2830,7 +2824,7 @@ function SalesOrdersPageWrapper() {
       title="Sales Orders"
       onLogoutClick={() => logoutMutation.mutate()}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => setActiveView(viewId)}
     >
@@ -2856,7 +2850,7 @@ function SalesOfficersPageWrapper() {
       title="Sales Officers"
       onLogoutClick={() => logoutMutation.mutate()}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => setActiveView(viewId)}
     >
@@ -2882,7 +2876,7 @@ function SalesOrderDetailWrapper() {
       title="Sales Order Detail"
       onLogoutClick={() => logoutMutation.mutate()}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => setActiveView(viewId)}
     >
@@ -2908,7 +2902,7 @@ function RawMaterialDetailWrapper() {
       title="Raw Material Details"
       onLogoutClick={() => logoutMutation.mutate()}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => {
         setActiveView(viewId);
@@ -2937,7 +2931,7 @@ function RawMaterialTypeDetailWrapper() {
       title="Material Type Details"
       onLogoutClick={() => logoutMutation.mutate()}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => {
         setActiveView(viewId);
@@ -2966,7 +2960,7 @@ function ProductDetailWrapper() {
       title="Product Details"
       onLogoutClick={() => logoutMutation.mutate()}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => {
         setActiveView(viewId);
@@ -2995,7 +2989,7 @@ function FinishedGoodDetailWrapper() {
       title="Finished Good Details"
       onLogoutClick={() => logoutMutation.mutate()}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => {
         setActiveView(viewId);
@@ -3024,7 +3018,7 @@ function ProductionManagementPageWrapper() {
       title="Production Management"
       onLogoutClick={() => logoutMutation.mutate()}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => {
         setActiveView(viewId);
@@ -3053,7 +3047,7 @@ function ProductionReconciliationReportWrapper() {
       title="Production Reconciliation Report"
       onLogoutClick={() => logoutMutation.mutate()}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => {
         setActiveView(viewId);
@@ -3082,7 +3076,7 @@ function FinishedGoodsReportWrapper() {
       title="Finished Goods Inventory Report"
       onLogoutClick={() => logoutMutation.mutate()}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => {
         setActiveView(viewId);
@@ -3111,7 +3105,7 @@ function MISDashboardPageWrapper() {
       title="MIS Executive Dashboard"
       onLogoutClick={() => logoutMutation.mutate()}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => setActiveView(viewId)}
     >
@@ -3138,7 +3132,7 @@ function MISProductionPageWrapper() {
       title="Production Analytics"
       onLogoutClick={() => logoutMutation.mutate()}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => setActiveView(viewId)}
     >
@@ -3165,7 +3159,7 @@ function MISInventoryPageWrapper() {
       title="Inventory Intelligence"
       onLogoutClick={() => logoutMutation.mutate()}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => setActiveView(viewId)}
     >
@@ -3192,7 +3186,7 @@ function MISSalesPageWrapper() {
       title="Sales Analysis"
       onLogoutClick={() => logoutMutation.mutate()}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => setActiveView(viewId)}
     >
@@ -3216,7 +3210,7 @@ function MISFinancialPageWrapper() {
       title="Financial Analytics"
       onLogoutClick={() => logoutMutation.mutate()}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => setActiveView(viewId)}
     >
@@ -3240,7 +3234,7 @@ function MISCashPageWrapper() {
       title="Cash Analytics"
       onLogoutClick={() => logoutMutation.mutate()}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => setActiveView(viewId)}
     >
@@ -3267,7 +3261,7 @@ function MISDeliveryPageWrapper() {
       title="Delivery Performance"
       onLogoutClick={() => logoutMutation.mutate()}
       notificationCount={0}
-      navSections={navSections}
+      navSections={resolvedNav}
       activeView={activeView}
       onNavigate={(viewId) => setActiveView(viewId)}
     >
@@ -3282,9 +3276,9 @@ function SparePartsPageWrapper() {
   const [activeView, setActiveView] = useState('spare-parts');
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  const resolvedNav = isLoading ? allNavSections : navSections;
   return (
-    <DashboardShell title="Spare Parts" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => setActiveView(viewId)}>
+    <DashboardShell title="Spare Parts" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={resolvedNav} activeView={activeView} onNavigate={(viewId) => setActiveView(viewId)}>
       <SpareParts />
     </DashboardShell>
   );
@@ -3296,9 +3290,9 @@ function ScrapManagementPageWrapper() {
   const [activeView, setActiveView] = useState('scrap-management');
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  const resolvedNav = isLoading ? allNavSections : navSections;
   return (
-    <DashboardShell title="Scrap Management" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => setActiveView(viewId)}>
+    <DashboardShell title="Scrap Management" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={resolvedNav} activeView={activeView} onNavigate={(viewId) => setActiveView(viewId)}>
       <ScrapManagement />
     </DashboardShell>
   );
@@ -3310,9 +3304,9 @@ function PurchaseReturnsPageWrapper() {
   const [activeView, setActiveView] = useState('purchase-returns');
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  const resolvedNav = isLoading ? allNavSections : navSections;
   return (
-    <DashboardShell title="Purchase Returns" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => setActiveView(viewId)}>
+    <DashboardShell title="Purchase Returns" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={resolvedNav} activeView={activeView} onNavigate={(viewId) => setActiveView(viewId)}>
       <PurchaseReturns />
     </DashboardShell>
   );
@@ -3324,9 +3318,9 @@ function TDSManagementPageWrapper() {
   const [activeView, setActiveView] = useState('tds-management');
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  const resolvedNav = isLoading ? allNavSections : navSections;
   return (
-    <DashboardShell title="TDS Management" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={navSections} activeView={activeView} onNavigate={(viewId) => setActiveView(viewId)}>
+    <DashboardShell title="TDS Management" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={resolvedNav} activeView={activeView} onNavigate={(viewId) => setActiveView(viewId)}>
       <TDSManagement />
     </DashboardShell>
   );
@@ -3364,10 +3358,10 @@ function HREmployeesWrapper() {
   const [activeView, setActiveView] = useState('hr-employees');
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  const resolvedNav = isLoading ? allNavSections : navSections;
   return (
     <DashboardShell title="Employees" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
-      navSections={navSections} activeView={activeView}
+      navSections={resolvedNav} activeView={activeView}
       onNavigate={(v) => { setActiveView(v); setLocation('/'); }}>
       <HREmployeesPage />
     </DashboardShell>
@@ -3380,10 +3374,10 @@ function HRAttendanceWrapper() {
   const [activeView, setActiveView] = useState('hr-attendance');
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  const resolvedNav = isLoading ? allNavSections : navSections;
   return (
     <DashboardShell title="Attendance" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
-      navSections={navSections} activeView={activeView}
+      navSections={resolvedNav} activeView={activeView}
       onNavigate={(v) => { setActiveView(v); setLocation('/'); }}>
       <HRAttendancePage />
     </DashboardShell>
@@ -3396,10 +3390,10 @@ function HRLeavesWrapper() {
   const [activeView, setActiveView] = useState('hr-leaves');
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  const resolvedNav = isLoading ? allNavSections : navSections;
   return (
     <DashboardShell title="Leave Management" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
-      navSections={navSections} activeView={activeView}
+      navSections={resolvedNav} activeView={activeView}
       onNavigate={(v) => { setActiveView(v); setLocation('/'); }}>
       <HRLeavesPage />
     </DashboardShell>
@@ -3412,10 +3406,10 @@ function HRPayrollWrapper() {
   const [activeView, setActiveView] = useState('hr-payroll');
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  const resolvedNav = isLoading ? allNavSections : navSections;
   return (
     <DashboardShell title="Payroll" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
-      navSections={navSections} activeView={activeView}
+      navSections={resolvedNav} activeView={activeView}
       onNavigate={(v) => { setActiveView(v); setLocation('/'); }}>
       <HRPayrollPage />
     </DashboardShell>
@@ -3428,10 +3422,10 @@ function HRMastersWrapper() {
   const [activeView, setActiveView] = useState('hr-masters');
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+  const resolvedNav = isLoading ? allNavSections : navSections;
   return (
     <DashboardShell title="HR Masters" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
-      navSections={navSections} activeView={activeView}
+      navSections={resolvedNav} activeView={activeView}
       onNavigate={(v) => { setActiveView(v); setLocation('/'); }}>
       <HRMastersPage />
     </DashboardShell>
