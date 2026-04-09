@@ -143,7 +143,13 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
       signatureLength: template?.defaultSignatureImage?.length,
       uomsLoaded: uoms.length,
       uomsList: uoms.map(u => ({ id: u.id, name: u.name })),
-      itemUomIds: items.map(i => i.uomId)
+      itemUomIds: items.map(i => i.uomId),
+      termsConditionsId: invoice.termsConditionsId,
+      activeTermsConditions,
+      termsCount: activeTermsConditions?.terms?.length ?? 0,
+      isLoadingTC,
+      isLoadingSpecificTC,
+      isLoadingDefaultTC,
     });
 
     // Safe numeric helper — prevents NaN if DB field is null/undefined
@@ -1098,15 +1104,15 @@ ${invoice.shipToName || invoice.shipToAddress ? `
         variant="default"
         size="sm"
         onClick={handlePrint}
-        disabled={isLoadingTemplate || items.length === 0}
+        disabled={isLoadingTemplate || isLoadingTC || items.length === 0}
         data-testid={`button-print-invoice-${invoice.id}`}
         className="gap-2"
       >
         <Printer className="w-4 h-4" />
-        {isLoadingTemplate ? 'Loading...' : 'Print / Download PDF'}
+        {(isLoadingTemplate || isLoadingTC) ? 'Loading...' : 'Print / Download PDF'}
       </Button>
       <span className="text-xs text-muted-foreground">
-        {isLoadingTemplate ? 'Preparing invoice...' : '(Click to print or save as PDF)'}
+        {(isLoadingTemplate || isLoadingTC) ? 'Preparing invoice...' : '(Click to print or save as PDF)'}
       </span>
     </div>
   );

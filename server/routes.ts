@@ -7657,7 +7657,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/terms-conditions/default', isAuthenticated, async (req: any, res) => {
     try {
       const tc = await storage.getDefaultTermsConditions();
-      res.json(tc);
+      if (!tc) {
+        console.warn("[T&C] No default terms & conditions found for tenant", (req as any).tenantId);
+      }
+      res.json(tc ?? null);
     } catch (error) {
       console.error("Error fetching default terms & conditions:", error);
       res.status(500).json({ message: "Failed to fetch default terms & conditions" });
