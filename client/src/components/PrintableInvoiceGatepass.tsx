@@ -102,7 +102,7 @@ export default function PrintableInvoiceGatepass({ invoice, gatepass }: Printabl
     enabled: !invoice.termsConditionsId,
   });
 
-  const isLoadingTC = isLoadingSpecificTC || isLoadingDefaultTC;
+  const isLoadingTC = invoice.termsConditionsId ? isLoadingSpecificTC : isLoadingDefaultTC;
 
   // Use specific terms or default
   const activeTermsConditions = termsConditions || defaultTermsConditions;

@@ -74,7 +74,7 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
     enabled: !invoice.termsConditionsId,
   });
 
-  const isLoadingTC = isLoadingSpecificTC || isLoadingDefaultTC;
+  const isLoadingTC = invoice.termsConditionsId ? isLoadingSpecificTC : isLoadingDefaultTC;
 
   // Use specific terms or default
   const activeTermsConditions = termsConditions || defaultTermsConditions;
