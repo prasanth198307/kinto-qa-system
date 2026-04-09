@@ -466,6 +466,61 @@ router.post("/attendance/bulk", requireHR, async (req: any, res) => {
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 
+// OT register — GET all OT entries for a month (ot_hours > 0)
+router.get("/attendance/ot", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  const { month, year } = req.query;
+  try {
+    const rows = await db.execute(sql`
+      SELECT a.id, a.employee_id, a.date, a.ot_hours, a.status,
+             e.first_name, e.last_name, e.emp_code
+      FROM hr_attendance a
+      JOIN hr_employees e ON e.id = a.employee_id
+      WHERE a.tenant_id=${tid} AND a.record_status=1
+        AND a.ot_hours > 0
+        AND EXTRACT(MONTH FROM a.date)=${Number(month)}
+        AND EXTRACT(YEAR FROM a.date)=${Number(year)}
+      ORDER BY a.date, e.emp_code
+    `);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// OT register — POST upsert OT hours for an employee on a date (preserves attendance status)
+router.post("/attendance/ot", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  const { employeeId, date, otHours } = req.body;
+  if (!employeeId || !date) return res.status(400).json({ message: "employeeId and date required" });
+  try {
+    const existing = await db.execute(sql`
+      SELECT id, status FROM hr_attendance
+      WHERE employee_id=${employeeId} AND date=${date} AND tenant_id=${tid}
+    `);
+    if (existing.rows.length) {
+      const r = await db.execute(sql`
+        UPDATE hr_attendance SET ot_hours=${Number(otHours) || 0}
+        WHERE id=${(existing.rows[0] as any).id} RETURNING *
+      `);
+      return res.json(r.rows[0]);
+    }
+    // No attendance record yet — create with present + OT hours
+    const r = await db.execute(sql`
+      INSERT INTO hr_attendance (tenant_id, employee_id, date, status, ot_hours)
+      VALUES (${tid}, ${employeeId}, ${date}, 'present', ${Number(otHours) || 0}) RETURNING *
+    `);
+    res.json(r.rows[0]);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// OT register — DELETE (clear OT hours for one record)
+router.delete("/attendance/ot/:id", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  try {
+    await db.execute(sql`UPDATE hr_attendance SET ot_hours=0 WHERE id=${req.params.id} AND tenant_id=${tid}`);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
 // Monthly attendance summary per employee
 router.get("/attendance/summary", requireHR, async (req: any, res) => {
   const tid = getTenantId(req);
