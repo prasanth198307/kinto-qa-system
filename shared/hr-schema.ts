@@ -144,11 +144,19 @@ export const hrEmployees = pgTable("hr_employees", {
   joinDate: date("join_date").notNull(),
   exitDate: date("exit_date"),
   exitType: varchar("exit_type", { length: 50 }),
+  exitReason: text("exit_reason"),
+  resignationDate: date("resignation_date"),
   reportingManagerId: integer("reporting_manager_id"),
   phone: varchar("phone", { length: 20 }),
+  alternatePhone: varchar("alternate_phone", { length: 20 }),
   email: varchar("email", { length: 200 }),
   address: text("address"),
+  city: varchar("city", { length: 100 }),
+  state: varchar("state", { length: 100 }),
+  pincode: varchar("pincode", { length: 10 }),
   emergencyContact: varchar("emergency_contact", { length: 20 }),
+  emergencyContactName: varchar("emergency_contact_name", { length: 100 }),
+  emergencyContactRelation: varchar("emergency_contact_relation", { length: 50 }),
   pan: varchar("pan", { length: 20 }),
   aadhaar: varchar("aadhaar", { length: 20 }),
   pfNumber: varchar("pf_number", { length: 50 }),
@@ -158,6 +166,18 @@ export const hrEmployees = pgTable("hr_employees", {
   ifsc: varchar("ifsc", { length: 20 }),
   bankName: varchar("bank_name", { length: 100 }),
   taxRegime: varchar("tax_regime", { length: 10 }).default("new"),
+  // Family details
+  maritalStatus: varchar("marital_status", { length: 20 }),
+  spouseName: varchar("spouse_name", { length: 100 }),
+  spouseDob: date("spouse_dob"),
+  spouseAadhaar: varchar("spouse_aadhaar", { length: 20 }),
+  fatherName: varchar("father_name", { length: 100 }),
+  fatherDob: date("father_dob"),
+  fatherAadhaar: varchar("father_aadhaar", { length: 20 }),
+  motherName: varchar("mother_name", { length: 100 }),
+  motherDob: date("mother_dob"),
+  motherAadhaar: varchar("mother_aadhaar", { length: 20 }),
+  numberOfChildren: integer("number_of_children").default(0),
   status: varchar("status", { length: 20 }).default("active"),
   recordStatus: integer("record_status").notNull().default(1),
   createdAt: timestamp("created_at").defaultNow(),
@@ -166,6 +186,26 @@ export const hrEmployees = pgTable("hr_employees", {
 export const insertHrEmployeeSchema = createInsertSchema(hrEmployees).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertHrEmployee = z.infer<typeof insertHrEmployeeSchema>;
 export type HrEmployee = typeof hrEmployees.$inferSelect;
+
+// ── Salary Revisions ─────────────────────────────────────────────────────────
+export const hrSalaryRevisions = pgTable("hr_salary_revisions", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenant_id").notNull(),
+  employeeId: integer("employee_id").notNull(),
+  effectiveDate: date("effective_date").notNull(),
+  oldBasic: integer("old_basic").default(0),
+  newBasic: integer("new_basic").notNull(),
+  oldCtc: integer("old_ctc").default(0),
+  newCtc: integer("new_ctc").notNull(),
+  revisionType: varchar("revision_type", { length: 50 }).default("increment"),
+  reason: text("reason"),
+  approvedBy: varchar("approved_by", { length: 100 }),
+  recordStatus: integer("record_status").notNull().default(1),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+export const insertHrSalaryRevisionSchema = createInsertSchema(hrSalaryRevisions).omit({ id: true, createdAt: true });
+export type InsertHrSalaryRevision = z.infer<typeof insertHrSalaryRevisionSchema>;
+export type HrSalaryRevision = typeof hrSalaryRevisions.$inferSelect;
 
 // ── Employee Documents ───────────────────────────────────────────────────────
 export const hrEmployeeDocuments = pgTable("hr_employee_documents", {

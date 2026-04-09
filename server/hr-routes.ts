@@ -331,18 +331,30 @@ router.post("/employees", requireHR, async (req: any, res) => {
       INSERT INTO hr_employees (
         tenant_id, emp_code, first_name, last_name, gender, date_of_birth, blood_group,
         department_id, designation_id, shift_id, salary_structure_id, basic_salary, ctc,
-        join_date, reporting_manager_id, phone, email, address, emergency_contact,
-        pan, aadhaar, pf_number, esi_number, uan, bank_account, ifsc, bank_name, tax_regime
+        join_date, exit_date, exit_type, exit_reason, resignation_date,
+        reporting_manager_id, phone, alternate_phone, email,
+        address, city, state, pincode,
+        emergency_contact, emergency_contact_name, emergency_contact_relation,
+        pan, aadhaar, pf_number, esi_number, uan, bank_account, ifsc, bank_name, tax_regime,
+        marital_status, spouse_name, spouse_dob, spouse_aadhaar,
+        father_name, father_dob, father_aadhaar,
+        mother_name, mother_dob, mother_aadhaar, number_of_children, status
       ) VALUES (
         ${tid}, ${d.empCode}, ${d.firstName}, ${d.lastName ?? null}, ${d.gender ?? null},
         ${d.dateOfBirth ?? null}, ${d.bloodGroup ?? null},
         ${d.departmentId ?? null}, ${d.designationId ?? null}, ${d.shiftId ?? null},
         ${d.salaryStructureId ?? null}, ${d.basicSalary ?? 0}, ${d.ctc ?? 0},
-        ${d.joinDate}, ${d.reportingManagerId ?? null}, ${d.phone ?? null},
-        ${d.email ?? null}, ${d.address ?? null}, ${d.emergencyContact ?? null},
+        ${d.joinDate}, ${d.exitDate ?? null}, ${d.exitType ?? null}, ${d.exitReason ?? null}, ${d.resignationDate ?? null},
+        ${d.reportingManagerId ?? null}, ${d.phone ?? null}, ${d.alternatePhone ?? null}, ${d.email ?? null},
+        ${d.address ?? null}, ${d.city ?? null}, ${d.state ?? null}, ${d.pincode ?? null},
+        ${d.emergencyContact ?? null}, ${d.emergencyContactName ?? null}, ${d.emergencyContactRelation ?? null},
         ${d.pan ?? null}, ${d.aadhaar ?? null}, ${d.pfNumber ?? null},
         ${d.esiNumber ?? null}, ${d.uan ?? null}, ${d.bankAccount ?? null},
-        ${d.ifsc ?? null}, ${d.bankName ?? null}, ${d.taxRegime ?? 'new'}
+        ${d.ifsc ?? null}, ${d.bankName ?? null}, ${d.taxRegime ?? 'new'},
+        ${d.maritalStatus ?? null}, ${d.spouseName ?? null}, ${d.spouseDob ?? null}, ${d.spouseAadhaar ?? null},
+        ${d.fatherName ?? null}, ${d.fatherDob ?? null}, ${d.fatherAadhaar ?? null},
+        ${d.motherName ?? null}, ${d.motherDob ?? null}, ${d.motherAadhaar ?? null},
+        ${d.numberOfChildren ?? 0}, ${d.status ?? 'active'}
       ) RETURNING *
     `);
     res.json(r.rows[0]);
@@ -360,11 +372,24 @@ router.put("/employees/:id", requireHR, async (req: any, res) => {
         department_id=${d.departmentId ?? null}, designation_id=${d.designationId ?? null},
         shift_id=${d.shiftId ?? null}, salary_structure_id=${d.salaryStructureId ?? null},
         basic_salary=${d.basicSalary ?? 0}, ctc=${d.ctc ?? 0}, join_date=${d.joinDate},
-        reporting_manager_id=${d.reportingManagerId ?? null}, phone=${d.phone ?? null},
-        email=${d.email ?? null}, address=${d.address ?? null}, emergency_contact=${d.emergencyContact ?? null},
+        exit_date=${d.exitDate ?? null}, exit_type=${d.exitType ?? null},
+        exit_reason=${d.exitReason ?? null}, resignation_date=${d.resignationDate ?? null},
+        reporting_manager_id=${d.reportingManagerId ?? null},
+        phone=${d.phone ?? null}, alternate_phone=${d.alternatePhone ?? null},
+        email=${d.email ?? null}, address=${d.address ?? null},
+        city=${d.city ?? null}, state=${d.state ?? null}, pincode=${d.pincode ?? null},
+        emergency_contact=${d.emergencyContact ?? null},
+        emergency_contact_name=${d.emergencyContactName ?? null},
+        emergency_contact_relation=${d.emergencyContactRelation ?? null},
         pan=${d.pan ?? null}, aadhaar=${d.aadhaar ?? null}, pf_number=${d.pfNumber ?? null},
         esi_number=${d.esiNumber ?? null}, uan=${d.uan ?? null}, bank_account=${d.bankAccount ?? null},
         ifsc=${d.ifsc ?? null}, bank_name=${d.bankName ?? null}, tax_regime=${d.taxRegime ?? 'new'},
+        marital_status=${d.maritalStatus ?? null}, spouse_name=${d.spouseName ?? null},
+        spouse_dob=${d.spouseDob ?? null}, spouse_aadhaar=${d.spouseAadhaar ?? null},
+        father_name=${d.fatherName ?? null}, father_dob=${d.fatherDob ?? null},
+        father_aadhaar=${d.fatherAadhaar ?? null}, mother_name=${d.motherName ?? null},
+        mother_dob=${d.motherDob ?? null}, mother_aadhaar=${d.motherAadhaar ?? null},
+        number_of_children=${d.numberOfChildren ?? 0},
         status=${d.status ?? 'active'}, updated_at=NOW()
       WHERE id=${req.params.id} AND tenant_id=${tid} RETURNING *
     `);
@@ -816,6 +841,203 @@ router.get("/employees/:id/payslips", requireHR, async (req: any, res) => {
       WHERE p.employee_id=${req.params.id} AND p.tenant_id=${tid}
       ORDER BY p.year DESC, p.month DESC
     `);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// ── SALARY REVISIONS ─────────────────────────────────────────────────────────
+router.get("/salary-revisions", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  const { employeeId } = req.query;
+  try {
+    let rows;
+    if (employeeId) {
+      rows = await db.execute(sql`
+        SELECT sr.*, e.first_name, e.last_name, e.emp_code
+        FROM hr_salary_revisions sr
+        JOIN hr_employees e ON sr.employee_id = e.id
+        WHERE sr.tenant_id=${tid} AND sr.employee_id=${Number(employeeId)} AND sr.record_status=1
+        ORDER BY sr.effective_date DESC
+      `);
+    } else {
+      rows = await db.execute(sql`
+        SELECT sr.*, e.first_name, e.last_name, e.emp_code
+        FROM hr_salary_revisions sr
+        JOIN hr_employees e ON sr.employee_id = e.id
+        WHERE sr.tenant_id=${tid} AND sr.record_status=1
+        ORDER BY sr.effective_date DESC
+      `);
+    }
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/salary-revisions", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  const d = req.body;
+  try {
+    const r = await db.execute(sql`
+      INSERT INTO hr_salary_revisions
+        (tenant_id, employee_id, effective_date, old_basic, new_basic, old_ctc, new_ctc, revision_type, reason, approved_by)
+      VALUES
+        (${tid}, ${d.employeeId}, ${d.effectiveDate}, ${d.oldBasic ?? 0}, ${d.newBasic},
+         ${d.oldCtc ?? 0}, ${d.newCtc}, ${d.revisionType ?? 'increment'}, ${d.reason ?? null}, ${d.approvedBy ?? null})
+      RETURNING *
+    `);
+    // Also update employee's current salary
+    await db.execute(sql`
+      UPDATE hr_employees SET basic_salary=${d.newBasic}, ctc=${d.newCtc}, updated_at=NOW()
+      WHERE id=${d.employeeId} AND tenant_id=${tid}
+    `);
+    res.json(r.rows[0]);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.delete("/salary-revisions/:id", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  try {
+    await db.execute(sql`UPDATE hr_salary_revisions SET record_status=0 WHERE id=${req.params.id} AND tenant_id=${tid}`);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// ── HR REPORTS ────────────────────────────────────────────────────────────────
+
+// Employee directory report
+router.get("/reports/employee-directory", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  const { status, departmentId } = req.query;
+  try {
+    let q = sql`
+      SELECT e.*, d.name as department_name, des.name as designation_name, s.name as shift_name
+      FROM hr_employees e
+      LEFT JOIN hr_departments d ON e.department_id = d.id
+      LEFT JOIN hr_designations des ON e.designation_id = des.id
+      LEFT JOIN hr_shifts s ON e.shift_id = s.id
+      WHERE e.tenant_id=${tid} AND e.record_status=1
+    `;
+    if (status) q = sql`${q} AND e.status=${status}`;
+    if (departmentId) q = sql`${q} AND e.department_id=${Number(departmentId)}`;
+    q = sql`${q} ORDER BY e.emp_code`;
+    const rows = await db.execute(q);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// Attendance summary report
+router.get("/reports/attendance-summary", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  const { month, year, departmentId } = req.query;
+  if (!month || !year) return res.status(400).json({ message: "month and year required" });
+  try {
+    const rows = await db.execute(sql`
+      SELECT
+        e.id, e.emp_code, e.first_name, e.last_name,
+        d.name as department_name, des.name as designation_name,
+        COUNT(CASE WHEN a.status='present' THEN 1 END) as present_days,
+        COUNT(CASE WHEN a.status='absent' THEN 1 END) as absent_days,
+        COUNT(CASE WHEN a.status='half_day' THEN 1 END) as half_days,
+        COUNT(CASE WHEN a.status='lop' THEN 1 END) as lop_days,
+        COUNT(CASE WHEN a.status='on_leave' THEN 1 END) as leave_days,
+        COUNT(CASE WHEN a.status='weekly_off' THEN 1 END) as weekly_off,
+        COUNT(CASE WHEN a.status='holiday' THEN 1 END) as holidays,
+        COALESCE(SUM(CAST(ot.ot_hours AS numeric)), 0) as total_ot_hours
+      FROM hr_employees e
+      LEFT JOIN hr_departments d ON e.department_id = d.id
+      LEFT JOIN hr_designations des ON e.designation_id = des.id
+      LEFT JOIN hr_attendance a ON a.employee_id = e.id
+        AND EXTRACT(MONTH FROM a.date) = ${Number(month)}
+        AND EXTRACT(YEAR FROM a.date) = ${Number(year)}
+        AND a.record_status = 1
+      LEFT JOIN hr_ot_records ot ON ot.employee_id = e.id
+        AND EXTRACT(MONTH FROM ot.date) = ${Number(month)}
+        AND EXTRACT(YEAR FROM ot.date) = ${Number(year)}
+        AND ot.record_status = 1
+      WHERE e.tenant_id=${tid} AND e.record_status=1 AND e.status='active'
+      ${departmentId ? sql`AND e.department_id=${Number(departmentId)}` : sql``}
+      GROUP BY e.id, e.emp_code, e.first_name, e.last_name, d.name, des.name
+      ORDER BY e.emp_code
+    `);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// Payroll summary report
+router.get("/reports/payroll-summary", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  const { month, year } = req.query;
+  try {
+    let q = sql`
+      SELECT
+        r.id as run_id, r.month, r.year, r.status as run_status,
+        COUNT(p.id) as employee_count,
+        SUM(p.basic_salary) as total_basic,
+        SUM(p.gross_salary) as total_gross,
+        SUM(p.total_deductions) as total_deductions,
+        SUM(p.net_salary) as total_net,
+        SUM(p.pf_employee) as total_pf_employee,
+        SUM(p.pf_employer) as total_pf_employer,
+        SUM(p.esi_employee) as total_esi_employee,
+        SUM(p.esi_employer) as total_esi_employer,
+        SUM(p.professional_tax) as total_pt,
+        SUM(p.income_tax) as total_tds
+      FROM hr_payroll_runs r
+      LEFT JOIN hr_payslips p ON p.payroll_run_id = r.id AND p.tenant_id=${tid}
+      WHERE r.tenant_id=${tid}
+    `;
+    if (month && year) {
+      q = sql`${q} AND r.month=${Number(month)} AND r.year=${Number(year)}`;
+    }
+    q = sql`${q} GROUP BY r.id, r.month, r.year, r.status ORDER BY r.year DESC, r.month DESC`;
+    const rows = await db.execute(q);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// Leave balance report
+router.get("/reports/leave-balance", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  const { year, departmentId } = req.query;
+  const y = year ? Number(year) : new Date().getFullYear();
+  try {
+    const rows = await db.execute(sql`
+      SELECT
+        e.emp_code, e.first_name, e.last_name,
+        d.name as department_name, des.name as designation_name,
+        lt.name as leave_type, lt.code as leave_code,
+        lb.total_days, lb.used_days, lb.pending_days,
+        (lb.total_days - lb.used_days - lb.pending_days) as balance_days
+      FROM hr_employees e
+      LEFT JOIN hr_departments d ON e.department_id = d.id
+      LEFT JOIN hr_designations des ON e.designation_id = des.id
+      JOIN hr_leave_balances lb ON lb.employee_id = e.id AND lb.year=${y}
+      JOIN hr_leave_types lt ON lt.id = lb.leave_type_id AND lt.tenant_id=${tid}
+      WHERE e.tenant_id=${tid} AND e.record_status=1 AND e.status='active'
+      ${departmentId ? sql`AND e.department_id=${Number(departmentId)}` : sql``}
+      ORDER BY e.emp_code, lt.name
+    `);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// Salary revision report
+router.get("/reports/salary-revisions", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  const { fromDate, toDate, departmentId } = req.query;
+  try {
+    let q = sql`
+      SELECT sr.*, e.first_name, e.last_name, e.emp_code, d.name as department_name, des.name as designation_name
+      FROM hr_salary_revisions sr
+      JOIN hr_employees e ON sr.employee_id = e.id
+      LEFT JOIN hr_departments d ON e.department_id = d.id
+      LEFT JOIN hr_designations des ON e.designation_id = des.id
+      WHERE sr.tenant_id=${tid} AND sr.record_status=1
+    `;
+    if (fromDate) q = sql`${q} AND sr.effective_date >= ${fromDate}`;
+    if (toDate) q = sql`${q} AND sr.effective_date <= ${toDate}`;
+    if (departmentId) q = sql`${q} AND e.department_id=${Number(departmentId)}`;
+    q = sql`${q} ORDER BY sr.effective_date DESC`;
+    const rows = await db.execute(q);
     res.json(rows.rows);
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });

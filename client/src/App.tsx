@@ -147,6 +147,7 @@ import HREmployeesPage from "@/pages/hr-employees";
 import HRAttendancePage from "@/pages/hr-attendance";
 import HRLeavesPage from "@/pages/hr-leaves";
 import HRPayrollPage from "@/pages/hr-payroll";
+import HRReportsPage from "@/pages/hr-reports";
 import HRPayslipPage from "@/pages/hr-payslip";
 import PricingPage from "@/pages/pricing";
 import { parseISO } from "date-fns";
@@ -949,6 +950,7 @@ function AdminDashboard() {
         { id: "hr-attendance", label: "Attendance", icon: Calendar, onClick: () => setLocation('/hr/attendance') },
         { id: "hr-leaves", label: "Leave Management", icon: ClipboardList, onClick: () => setLocation('/hr/leaves') },
         { id: "hr-payroll", label: "Payroll", icon: IndianRupee, onClick: () => setLocation('/hr/payroll') },
+        { id: "hr-reports", label: "HR Reports", icon: BarChart3, onClick: () => setLocation('/hr/reports') },
         { id: "hr-masters", label: "HR Masters", icon: Settings, onClick: () => setLocation('/hr/masters') },
       ],
     },
@@ -1595,6 +1597,7 @@ const navItemToScreenKey: Record<string, string> = {
   'hr-attendance': 'hr_attendance',
   'hr-leaves': 'hr_leaves',
   'hr-payroll': 'hr_payroll',
+  'hr-reports': 'hr_payroll',
   'hr-masters': 'hr_masters',
   // Settings
   'notification-settings': 'notification_settings',
@@ -1674,6 +1677,7 @@ const navItemToScreen: Record<string, string> = {
   'hr-attendance': 'HR & Payroll',
   'hr-leaves': 'HR & Payroll',
   'hr-payroll': 'HR & Payroll',
+  'hr-reports': 'HR & Payroll',
   'hr-masters': 'HR & Payroll',
   // Maintenance
   'maintenance': 'Maintenance Plans',
@@ -1953,6 +1957,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "hr-attendance", label: "Attendance", icon: Calendar, onClick: () => setLocation('/hr/attendance') },
         { id: "hr-leaves", label: "Leave Management", icon: ClipboardList, onClick: () => setLocation('/hr/leaves') },
         { id: "hr-payroll", label: "Payroll", icon: IndianRupee, onClick: () => setLocation('/hr/payroll') },
+        { id: "hr-reports", label: "HR Reports", icon: BarChart3, onClick: () => setLocation('/hr/reports') },
         { id: "hr-masters", label: "HR Masters", icon: Settings, onClick: () => setLocation('/hr/masters') },
       ],
     },
@@ -3432,6 +3437,22 @@ function HRMastersWrapper() {
   );
 }
 
+function HRReportsWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('hr-reports');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="HR Reports" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation('/'); }}>
+      <HRReportsPage />
+    </DashboardShell>
+  );
+}
+
 function Router() {
   return (
     <Switch>
@@ -3521,6 +3542,7 @@ function Router() {
       <ProtectedRoute path="/hr/leaves" component={HRLeavesWrapper} />
       <ProtectedRoute path="/hr/payroll" component={HRPayrollWrapper} />
       <ProtectedRoute path="/hr/masters" component={HRMastersWrapper} />
+      <ProtectedRoute path="/hr/reports" component={HRReportsWrapper} />
       <Route path="/hr/payslip/:id" component={HRPayslipPage} />
       <ProtectedRoute path="/pricing" component={() => (
         <div className="flex-1 overflow-auto">

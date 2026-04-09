@@ -21,7 +21,7 @@ Preferred communication style: Simple, everyday language.
 
 ### Feature Modules
 - **Core ERP:** Production, inventory, purchase orders, sales orders, GST invoicing, gatepasses, quality control, returns, double-entry accounting (COA, ledger, P&L, Balance Sheet), preventive maintenance, expenses, cash register, document management.
-- **HR & Payroll:** Employee master, department/designation/shift masters, attendance management, leave management with approval workflows, payroll processing (PF/ESI/PT auto-calculation), and printable payslips.
+- **HR & Payroll:** Employee master (5-tab form with personal, employment, contact/address, statutory/bank, family details), department/designation/shift masters, attendance management, leave management with approval workflows, payroll processing (PF/ESI/PT auto-calculation), printable payslips, salary revision/increment tracking, and HR reports (employee directory, attendance summary, payroll summary, leave balance, salary revisions).
 - **Reporting:** Customizable reports, sales dashboards, vendor analytics, and various MIS reports covering executive KPIs, production, inventory, sales, delivery, cash, and financial performance.
 - **WhatsApp Integration:** Utilizes Colloki Flow API with Meta Cloud API fallback for AI-assisted responses, checklist Q&A, and photo storage capabilities.
 - **Billing:** Integrates with Razorpay for order creation and webhook processing.
