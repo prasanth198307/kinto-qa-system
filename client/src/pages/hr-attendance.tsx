@@ -79,9 +79,11 @@ function OTRegisterTab({ month, year, employees }: { month: number; year: number
         </CardHeader>
         <CardContent>
           <p className="text-xs text-muted-foreground mb-4">
-            OT hours entered here are used in payroll: <strong>OT Pay = (Basic ÷ 26 ÷ 8) × 1.5 × OT Hours</strong>
+            OT pay = <strong>(Basic ÷ 26 ÷ 8) × 1.5 × OT hours</strong>.
+            Works for any month — navigate with ← → arrows above.
+            Full day OT (Sunday/holiday) = <strong>8 hrs</strong>.
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <Label className="text-xs">Employee *</Label>
               <Select value={empId} onValueChange={setEmpId}>
@@ -110,24 +112,47 @@ function OTRegisterTab({ month, year, employees }: { month: number; year: number
             </div>
             <div>
               <Label className="text-xs">OT Hours *</Label>
-              <Input
-                type="number"
-                min="0.5"
-                max="24"
-                step="0.5"
-                placeholder="e.g. 2.5"
-                value={otHours}
-                onChange={e => setOtHours(e.target.value)}
-                data-testid="input-ot-hours"
-              />
+              <div className="flex gap-1.5">
+                <Input
+                  type="number"
+                  min="0.5"
+                  max="24"
+                  step="0.5"
+                  placeholder="hrs"
+                  value={otHours}
+                  onChange={e => setOtHours(e.target.value)}
+                  data-testid="input-ot-hours"
+                  className="w-24"
+                />
+                <div className="flex gap-1 flex-wrap">
+                  {[
+                    { label: "2h",  value: "2" },
+                    { label: "4h",  value: "4" },
+                    { label: "Full day (8h)", value: "8" },
+                  ].map(opt => (
+                    <Button
+                      key={opt.value}
+                      type="button"
+                      size="sm"
+                      variant={otHours === opt.value ? "default" : "outline"}
+                      onClick={() => setOtHours(opt.value)}
+                      className="text-xs"
+                    >
+                      {opt.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
             </div>
+          </div>
+          <div className="mt-3">
             <Button
               onClick={() => addMutation.mutate()}
               disabled={!empId || !date || !otHours || addMutation.isPending}
               data-testid="btn-add-ot"
             >
               <Plus className="h-4 w-4 mr-1" />
-              {addMutation.isPending ? "Saving..." : "Add OT"}
+              {addMutation.isPending ? "Saving..." : "Save OT Entry"}
             </Button>
           </div>
         </CardContent>
