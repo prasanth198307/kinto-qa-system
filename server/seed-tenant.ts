@@ -218,6 +218,8 @@ export const ALL_ADMIN_SCREEN_KEYS = [
   'documents',
   // Maintenance
   'maintenance_plans','pm_execution','pm_templates',
+  // HR & Payroll
+  'hr_employees','hr_attendance','hr_leaves','hr_payroll','hr_masters',
   // Purchasing
   'purchase_orders','vendor_debit_notes',
   // Master Data
