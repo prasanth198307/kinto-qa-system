@@ -495,6 +495,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/tenant/features', async (req: any, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' });
 
+    // Prevent browser caching so nav filter always gets the latest plan data
+    res.set('Cache-Control', 'no-store');
+
     // Super-admins get enterprise-level access regardless of tenant plan
     if (req.user?.isSuperAdmin) {
       res.json(getPlanFeatures('enterprise'));

@@ -1880,7 +1880,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       id: "finance-section",
       label: "Finance & Sales",
       items: [
-        { id: "sales-orders", label: "Sales Orders", icon: ClipboardList },
+        { id: "sales-orders", label: "Sales Orders", icon: ClipboardList, onClick: () => setLocation('/sales-orders') },
         { id: "invoices", label: "Sales Invoices", icon: Receipt, onClick: () => setLocation('/') },
         { id: "vendor-history", label: "Vendor History", icon: History, onClick: () => setLocation('/vendor-history') },
         { id: "vendor-debit-notes", label: "Vendor Debit Notes", icon: FileX, onClick: () => setLocation('/vendor-debit-notes') },
