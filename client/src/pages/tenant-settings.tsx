@@ -78,6 +78,8 @@ const MODULE_LABELS: Record<string, string> = {
   documents: "Document Management",
   whatsapp: "WhatsApp Integration",
   maintenance: "Preventive Maintenance",
+  crm: "CRM",
+  hr_payroll: "HR & Payroll",
 };
 
 const PLAN_LABELS: Record<string, { label: string; color: string }> = {

@@ -65,6 +65,8 @@ const MODULE_LABELS: Record<string, { label: string; description: string }> = {
   documents:        { label: "Document Management",       description: "Contracts, certificates, expiry alerts" },
   whatsapp:         { label: "WhatsApp Integration",      description: "Interactive checklists, machine startup reminders" },
   maintenance:      { label: "Preventive Maintenance",    description: "PM schedules, templates, history logs" },
+  crm:              { label: "CRM",                       description: "Lead management, pipeline tracking, sales CRM" },
+  hr_payroll:       { label: "HR & Payroll",              description: "Employees, attendance, leaves, payroll, ESS portal" },
 };
 
 const PLAN_COLORS: Record<string, string> = {
