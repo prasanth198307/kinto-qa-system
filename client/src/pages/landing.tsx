@@ -27,9 +27,12 @@ import {
   IndianRupee,
   Star,
   ChevronRight,
-  Video,
   Play,
   Loader2,
+  Target,
+  UserCheck,
+  BookOpen,
+  MonitorSmartphone,
 } from "lucide-react";
 
 const modules = [
@@ -45,6 +48,9 @@ const modules = [
   { icon: MessageCircle, label: "WhatsApp Integration", desc: "Machine startup & checklist via WhatsApp" },
   { icon: IndianRupee, label: "Expenses & Cash Register", desc: "Daily cash register with voucher printing" },
   { icon: Layers, label: "Document Management", desc: "Versioned documents with expiry alerts" },
+  { icon: Target, label: "CRM Lead Management", desc: "Kanban pipeline, lead tracking & follow-ups" },
+  { icon: UserCheck, label: "HR & Payroll", desc: "Employees, attendance, payroll, TDS & recruitment" },
+  { icon: MonitorSmartphone, label: "Employee Self-Service", desc: "Payslips, leaves & tax declarations for staff" },
 ];
 
 const plans = [
@@ -54,7 +60,15 @@ const plans = [
     period: "/month",
     baseUsers: 5,
     highlight: false,
-    features: ["5 base users", "Core ERP modules", "GST invoicing", "Inventory management", "Email support"],
+    features: [
+      "5 base users",
+      "GST invoicing & receipts",
+      "Inventory management",
+      "Purchase & sales orders",
+      "Gatepasses & dispatch",
+      "Expenses & documents",
+      "Email support",
+    ],
   },
   {
     name: "Professional",
@@ -62,7 +76,17 @@ const plans = [
     period: "/month",
     baseUsers: 15,
     highlight: true,
-    features: ["15 base users", "All Basic features", "Production & BOM", "MIS Analytics", "WhatsApp integration", "Priority support"],
+    features: [
+      "15 base users",
+      "All Basic features",
+      "Production & BOM tracking",
+      "Double-entry accounting",
+      "MIS analytics dashboards",
+      "CRM lead management",
+      "WhatsApp checklists",
+      "Preventive maintenance",
+      "Priority support",
+    ],
   },
   {
     name: "Enterprise",
@@ -70,13 +94,22 @@ const plans = [
     period: "/month",
     baseUsers: 20,
     highlight: false,
-    features: ["20 base users", "All Professional features", "Preventive maintenance", "Advanced accounting", "Custom branding", "Dedicated support"],
+    features: [
+      "20 base users",
+      "All Professional features",
+      "HR & Payroll module",
+      "Employee Self-Service portal",
+      "TDS & compliance (Form 16)",
+      "Recruitment management",
+      "Custom branding",
+      "Dedicated support",
+    ],
   },
 ];
 
 const testimonials = [
   { name: "Rajesh Sharma", company: "Precision Parts Mfg.", role: "Director", text: "Kinto Smart Ops transformed how we track production. Real-time inventory and GST invoicing in one place." },
-  { name: "Meera Patel", company: "Alpha Industries", role: "CFO", text: "The accounting module with P&L and Balance Sheet saved us hours every month. WhatsApp integration is a game-changer." },
+  { name: "Meera Patel", company: "Alpha Industries", role: "CFO", text: "The HR & Payroll module with automated TDS calculations and payslip delivery saved us days every month. Excellent." },
   { name: "Suresh Kumar", company: "Bharat Engineering", role: "Operations Head", text: "From purchase orders to dispatch gatepasses, everything flows seamlessly. Our team adopted it within a week." },
 ];
 
@@ -143,7 +176,7 @@ export default function LandingPage() {
             <span className="text-primary">Indian manufacturers</span>
           </h1>
           <p className="text-muted-foreground text-base sm:text-lg max-w-2xl mx-auto mb-8 leading-relaxed">
-            Production, inventory, GST invoicing, accounting, WhatsApp checklists, and MIS analytics —
+            Production, GST invoicing, accounting, HR & payroll, CRM, WhatsApp checklists, and MIS analytics —
             all in one cloud platform. Start your 14-day free trial today.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3">
@@ -175,7 +208,7 @@ export default function LandingPage() {
           {/* Stats bar */}
           <div className="mt-14 grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl mx-auto">
             {[
-              { value: "12+", label: "ERP Modules" },
+              { value: "15+", label: "ERP Modules" },
               { value: "GST", label: "Compliant Invoicing" },
               { value: "100%", label: "Cloud-Based" },
               { value: "WhatsApp", label: "Native Integration" },
@@ -241,9 +274,24 @@ export default function LandingPage() {
                 desc: "Executive KPIs, production efficiency, inventory turnover, and cash flow — all visible in one dashboard without Excel.",
               },
               {
+                icon: UserCheck,
+                title: "HR & Payroll built-in",
+                desc: "Full employee lifecycle — attendance, leaves, salary structures, PF/ESI, TDS projection, payslips, and F&F settlements.",
+              },
+              {
+                icon: Target,
+                title: "CRM for sales teams",
+                desc: "Track leads from first contact to conversion with a Kanban pipeline, follow-up dates, and assignment management.",
+              },
+              {
                 icon: Shield,
                 title: "Role-based access control",
                 desc: "Define roles, assign screen-level permissions, and keep sensitive financial data visible only to the right people.",
+              },
+              {
+                icon: BookOpen,
+                title: "Employee Self-Service",
+                desc: "Employees view payslips, apply for leave, check attendance, and submit tax declarations — no admin intervention needed.",
               },
               {
                 icon: Users,
