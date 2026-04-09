@@ -50,6 +50,7 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
     shiftId: String(editing.shift_id || ""),
     salaryStructureId: String(editing.salary_structure_id || ""),
     basicSalary: String(editing.basic_salary || ""),
+    specialAllowance: String(editing.special_allowance || ""),
     ctc: String(editing.ctc || ""),
     joinDate: editing.join_date || "",
     exitDate: editing.exit_date || "",
@@ -91,7 +92,7 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
   } : {
     empCode: "", firstName: "", lastName: "", gender: "", dateOfBirth: "", bloodGroup: "",
     departmentId: "", designationId: "", shiftId: "", salaryStructureId: "",
-    basicSalary: "", ctc: "", joinDate: "", exitDate: "", exitType: "", exitReason: "",
+    basicSalary: "", specialAllowance: "", ctc: "", joinDate: "", exitDate: "", exitType: "", exitReason: "",
     resignationDate: "", reportingManagerId: "", phone: "", alternatePhone: "",
     email: "", address: "", city: "", state: "", pincode: "",
     emergencyContact: "", emergencyContactName: "", emergencyContactRelation: "",
@@ -114,6 +115,7 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
       shiftId: form.shiftId ? Number(form.shiftId) : null,
       salaryStructureId: form.salaryStructureId ? Number(form.salaryStructureId) : null,
       basicSalary: form.basicSalary ? Number(form.basicSalary) : 0,
+      specialAllowance: form.specialAllowance ? Number(form.specialAllowance) : 0,
       ctc: form.ctc ? Number(form.ctc) : 0,
       reportingManagerId: form.reportingManagerId ? Number(form.reportingManagerId) : null,
       numberOfChildren: form.numberOfChildren ? Number(form.numberOfChildren) : 0,
@@ -234,6 +236,10 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
           <div className="space-y-1.5">
             <Label>Basic Salary (₹)</Label>
             <Input className={inputCls} type="number" value={form.basicSalary} onChange={f("basicSalary")} placeholder="0" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Special Allowance (₹) <span className="text-xs text-muted-foreground">— per employee balancing figure</span></Label>
+            <Input className={inputCls} type="number" value={form.specialAllowance} onChange={f("specialAllowance")} placeholder="0" />
           </div>
           <div className="space-y-1.5">
             <Label>CTC (₹)</Label>
@@ -770,6 +776,7 @@ function EmployeeDetail({ emp, onBack, onEdit }: any) {
             <Card><CardContent className="pt-4">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Compensation</p>
               <InfoRow label="Basic Salary" value={fmt(emp.basic_salary)} />
+              {Number(emp.special_allowance) > 0 && <InfoRow label="Special Allowance" value={fmt(emp.special_allowance)} />}
               <InfoRow label="CTC" value={fmt(emp.ctc)} />
               <InfoRow label="Salary Structure" value={emp.salary_structure_name} />
               <InfoRow label="Tax Regime" value={emp.tax_regime === "new" ? "New Regime" : "Old Regime"} />

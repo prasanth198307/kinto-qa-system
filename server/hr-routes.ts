@@ -368,7 +368,7 @@ router.post("/employees", requireHR, async (req: any, res) => {
     const r = await db.execute(sql`
       INSERT INTO hr_employees (
         tenant_id, emp_code, first_name, last_name, gender, date_of_birth, blood_group,
-        department_id, designation_id, shift_id, salary_structure_id, basic_salary, ctc,
+        department_id, designation_id, shift_id, salary_structure_id, basic_salary, special_allowance, ctc,
         join_date, exit_date, exit_type, exit_reason, resignation_date,
         reporting_manager_id, phone, alternate_phone, email,
         address, city, state, pincode,
@@ -381,7 +381,7 @@ router.post("/employees", requireHR, async (req: any, res) => {
         ${tid}, ${d.empCode}, ${d.firstName}, ${d.lastName ?? null}, ${d.gender ?? null},
         ${d.dateOfBirth ?? null}, ${d.bloodGroup ?? null},
         ${d.departmentId ?? null}, ${d.designationId ?? null}, ${d.shiftId ?? null},
-        ${d.salaryStructureId ?? null}, ${d.basicSalary ?? 0}, ${d.ctc ?? 0},
+        ${d.salaryStructureId ?? null}, ${d.basicSalary ?? 0}, ${d.specialAllowance ?? 0}, ${d.ctc ?? 0},
         ${d.joinDate}, ${d.exitDate ?? null}, ${d.exitType ?? null}, ${d.exitReason ?? null}, ${d.resignationDate ?? null},
         ${d.reportingManagerId ?? null}, ${d.phone ?? null}, ${d.alternatePhone ?? null}, ${d.email ?? null},
         ${d.address ?? null}, ${d.city ?? null}, ${d.state ?? null}, ${d.pincode ?? null},
@@ -409,7 +409,7 @@ router.put("/employees/:id", requireHR, async (req: any, res) => {
         gender=${d.gender ?? null}, date_of_birth=${d.dateOfBirth ?? null}, blood_group=${d.bloodGroup ?? null},
         department_id=${d.departmentId ?? null}, designation_id=${d.designationId ?? null},
         shift_id=${d.shiftId ?? null}, salary_structure_id=${d.salaryStructureId ?? null},
-        basic_salary=${d.basicSalary ?? 0}, ctc=${d.ctc ?? 0}, join_date=${d.joinDate},
+        basic_salary=${d.basicSalary ?? 0}, special_allowance=${d.specialAllowance ?? 0}, ctc=${d.ctc ?? 0}, join_date=${d.joinDate},
         exit_date=${d.exitDate ?? null}, exit_type=${d.exitType ?? null},
         exit_reason=${d.exitReason ?? null}, resignation_date=${d.resignationDate ?? null},
         reporting_manager_id=${d.reportingManagerId ?? null},
@@ -902,6 +902,16 @@ router.post("/payroll-runs/:id/process", requireHR, async (req: any, res) => {
           if (comp.code === 'BASIC' || comp.name?.toLowerCase() === 'basic') {
             componentBreakdown.push({ name: 'Basic Salary', code: 'BASIC', amount: proRataBasic, type: 'earning' });
             componentGross += proRataBasic;
+            continue;
+          }
+          // Special Allowance: use per-employee value if set, else fall back to structure formula
+          if (comp.code === 'SPEC' || comp.name?.toLowerCase().includes('special allowance')) {
+            const specBase = Number(emp.special_allowance || 0);
+            const specAmount = specBase > 0 ? Math.round(specBase * attendancePct) : Math.round(Number(comp.formula_value || 0) * attendancePct);
+            if (specAmount > 0) {
+              componentBreakdown.push({ name: comp.name, code: comp.code, amount: specAmount, type: 'earning' });
+              componentGross += specAmount;
+            }
             continue;
           }
           let amount = 0;

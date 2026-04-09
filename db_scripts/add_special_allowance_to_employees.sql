@@ -1,0 +1,1 @@
+ALTER TABLE hr_employees ADD COLUMN IF NOT EXISTS special_allowance NUMERIC DEFAULT 0;
