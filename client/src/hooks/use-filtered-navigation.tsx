@@ -107,6 +107,7 @@ const navItemToScreenKey: Record<string, string> = {
   'hr-leaves': 'hr_leaves',
   'hr-payroll': 'hr_payroll',
   'hr-exit-management': 'hr_employees',
+  'hr-loans': 'hr_payroll',
   'hr-reports': 'hr_payroll',
   'hr-masters': 'hr_masters',
 };

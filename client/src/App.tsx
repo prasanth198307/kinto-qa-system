@@ -149,6 +149,7 @@ import HRLeavesPage from "@/pages/hr-leaves";
 import HRPayrollPage from "@/pages/hr-payroll";
 import HRReportsPage from "@/pages/hr-reports";
 import HRExitManagementPage from "@/pages/hr-exit-management";
+import HRLoansPage from "@/pages/hr-loans";
 import HRPayslipPage from "@/pages/hr-payslip";
 import PricingPage from "@/pages/pricing";
 import { parseISO } from "date-fns";
@@ -952,6 +953,7 @@ function AdminDashboard() {
         { id: "hr-leaves", label: "Leave Management", icon: ClipboardList, onClick: () => setLocation('/hr/leaves') },
         { id: "hr-payroll", label: "Payroll", icon: IndianRupee, onClick: () => setLocation('/hr/payroll') },
         { id: "hr-exit-management", label: "Exit Management", icon: UserX, onClick: () => setLocation('/hr/exit-management') },
+        { id: "hr-loans", label: "Loans & Advances", icon: CreditCard, onClick: () => setLocation('/hr/loans') },
         { id: "hr-reports", label: "HR Reports", icon: BarChart3, onClick: () => setLocation('/hr/reports') },
         { id: "hr-masters", label: "HR Masters", icon: Settings, onClick: () => setLocation('/hr/masters') },
       ],
@@ -1600,6 +1602,7 @@ const navItemToScreenKey: Record<string, string> = {
   'hr-leaves': 'hr_leaves',
   'hr-payroll': 'hr_payroll',
   'hr-exit-management': 'hr_employees',
+  'hr-loans': 'hr_payroll',
   'hr-reports': 'hr_payroll',
   'hr-masters': 'hr_masters',
   // Settings
@@ -1681,6 +1684,7 @@ const navItemToScreen: Record<string, string> = {
   'hr-leaves': 'HR & Payroll',
   'hr-payroll': 'HR & Payroll',
   'hr-exit-management': 'HR & Payroll',
+  'hr-loans': 'HR & Payroll',
   'hr-reports': 'HR & Payroll',
   'hr-masters': 'HR & Payroll',
   // Maintenance
@@ -1962,6 +1966,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "hr-leaves", label: "Leave Management", icon: ClipboardList, onClick: () => setLocation('/hr/leaves') },
         { id: "hr-payroll", label: "Payroll", icon: IndianRupee, onClick: () => setLocation('/hr/payroll') },
         { id: "hr-exit-management", label: "Exit Management", icon: UserX, onClick: () => setLocation('/hr/exit-management') },
+        { id: "hr-loans", label: "Loans & Advances", icon: CreditCard, onClick: () => setLocation('/hr/loans') },
         { id: "hr-reports", label: "HR Reports", icon: BarChart3, onClick: () => setLocation('/hr/reports') },
         { id: "hr-masters", label: "HR Masters", icon: Settings, onClick: () => setLocation('/hr/masters') },
       ],
@@ -3474,6 +3479,22 @@ function HRExitManagementWrapper() {
   );
 }
 
+function HRLoansWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('hr-loans');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Loans & Advances" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation('/'); }}>
+      <HRLoansPage />
+    </DashboardShell>
+  );
+}
+
 function Router() {
   return (
     <Switch>
@@ -3564,6 +3585,7 @@ function Router() {
       <ProtectedRoute path="/hr/payroll" component={HRPayrollWrapper} />
       <ProtectedRoute path="/hr/masters" component={HRMastersWrapper} />
       <ProtectedRoute path="/hr/exit-management" component={HRExitManagementWrapper} />
+      <ProtectedRoute path="/hr/loans" component={HRLoansWrapper} />
       <ProtectedRoute path="/hr/reports" component={HRReportsWrapper} />
       <Route path="/hr/payslip/:id" component={HRPayslipPage} />
       <ProtectedRoute path="/pricing" component={() => (

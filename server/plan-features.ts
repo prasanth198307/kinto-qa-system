@@ -126,6 +126,7 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
     "hr-leaves",
     "hr-payroll",
     "hr-exit-management",
+    "hr-loans",
     "hr-reports",
     "hr-masters",
   ],

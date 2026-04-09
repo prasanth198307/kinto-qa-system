@@ -914,7 +914,33 @@ router.post("/payroll-runs/:id/process", requireHR, async (req: any, res) => {
       if (pt > 0) componentBreakdown.push({ name: 'Professional Tax', code: 'PT', amount: pt, type: 'deduction' });
       if (tds > 0) componentBreakdown.push({ name: 'TDS', code: 'TDS', amount: tds, type: 'deduction' });
 
-      const totalDeductionsAmt = pfEmployee + esiEmployee + pt + tds;
+      // Loan / Advance EMI deductions
+      const activeLoans = await db.execute(sql`
+        SELECT * FROM hr_loans
+        WHERE employee_id=${emp.id} AND tenant_id=${tid} AND status='active' AND record_status=1
+        AND (start_year < ${year} OR (start_year=${year} AND start_month <= ${month}))
+        ORDER BY created_at
+      `);
+      let loanDeductionTotal = 0;
+      for (const loan of activeLoans.rows as any[]) {
+        const deductAmt = Math.min(Number(loan.emi), Number(loan.outstanding));
+        if (deductAmt <= 0) continue;
+        const newOutstanding = Number(loan.outstanding) - deductAmt;
+        loanDeductionTotal += deductAmt;
+        const label = loan.loan_type === 'advance' ? 'Advance Recovery' : 'Loan Recovery';
+        componentBreakdown.push({ name: label, code: `LOAN_${loan.id}`, amount: deductAmt, type: 'deduction' });
+        // Update outstanding and close loan if fully paid
+        await db.execute(sql`
+          UPDATE hr_loans SET outstanding=${newOutstanding}, status=${newOutstanding <= 0 ? 'closed' : 'active'}
+          WHERE id=${loan.id} AND tenant_id=${tid}
+        `);
+        await db.execute(sql`
+          INSERT INTO hr_loan_ledger (loan_id, tenant_id, payroll_run_id, month, year, deducted_amount, balance_after, notes)
+          VALUES (${loan.id}, ${tid}, ${runId}, ${month}, ${year}, ${deductAmt}, ${newOutstanding}, 'Auto-deducted via payroll')
+        `);
+      }
+
+      const totalDeductionsAmt = pfEmployee + esiEmployee + pt + tds + loanDeductionTotal;
       const netSalary = totalGrossSalary - totalDeductionsAmt;
 
       totalGross += totalGrossSalary;
@@ -928,13 +954,13 @@ router.post("/payroll-runs/:id/process", requireHR, async (req: any, res) => {
           tenant_id, payroll_run_id, employee_id, month, year, days_in_month,
           days_worked, days_absent, lop_days, ot_hours, basic_salary, gross_salary,
           pf_employee, pf_employer, esi_employee, esi_employer, pt, tds,
-          total_deductions, net_salary, components
+          other_deductions, total_deductions, net_salary, components
         ) VALUES (
           ${tid}, ${runId}, ${emp.id}, ${month}, ${year}, ${workingDays},
           ${daysWorked}, ${daysInMonth - Math.round(daysWorked) - lopDays}, ${lopDays}, ${otHours},
           ${basicSalary}, ${totalGrossSalary},
           ${pfEmployee}, ${pfEmployer}, ${esiEmployee}, ${esiEmployer}, ${pt}, ${tds},
-          ${totalDeductionsAmt}, ${netSalary}, ${JSON.stringify(componentBreakdown)}
+          ${loanDeductionTotal}, ${totalDeductionsAmt}, ${netSalary}, ${JSON.stringify(componentBreakdown)}
         )
       `);
     }
@@ -1334,6 +1360,98 @@ router.get("/reports/salary-revisions", requireHR, async (req: any, res) => {
     q = sql`${q} ORDER BY sr.effective_date DESC`;
     const rows = await db.execute(q);
     res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// ─── LOANS & ADVANCES ─────────────────────────────────────────────────────────
+router.get("/loans", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  const { employeeId } = req.query;
+  try {
+    let q = sql`
+      SELECT l.*, e.first_name, e.last_name, e.emp_code, dep.name as department_name
+      FROM hr_loans l
+      JOIN hr_employees e ON l.employee_id = e.id
+      LEFT JOIN hr_departments dep ON e.department_id = dep.id
+      WHERE l.tenant_id=${tid} AND l.record_status=1
+    `;
+    if (employeeId) q = sql`${q} AND l.employee_id=${Number(employeeId)}`;
+    q = sql`${q} ORDER BY l.created_at DESC`;
+    res.json((await db.execute(q)).rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.get("/loans/:id/ledger", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  try {
+    const rows = await db.execute(sql`
+      SELECT * FROM hr_loan_ledger WHERE loan_id=${req.params.id} AND tenant_id=${tid} ORDER BY year, month
+    `);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/loans", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  const { employeeId, loanType, purpose, sanctionedAmount, emi, disbursedDate, startMonth, startYear, notes } = req.body;
+  try {
+    const r = await db.execute(sql`
+      INSERT INTO hr_loans (tenant_id, employee_id, loan_type, purpose, sanctioned_amount, outstanding, emi,
+        disbursed_date, start_month, start_year, notes)
+      VALUES (${tid}, ${Number(employeeId)}, ${loanType || 'loan'}, ${purpose ?? null}, ${Number(sanctionedAmount)},
+        ${Number(sanctionedAmount)}, ${Number(emi)}, ${disbursedDate ?? null},
+        ${Number(startMonth)}, ${Number(startYear)}, ${notes ?? null})
+      RETURNING *
+    `);
+    res.json(r.rows[0]);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.put("/loans/:id", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  const { emi, status, notes, outstanding } = req.body;
+  try {
+    const updates: string[] = [];
+    if (emi !== undefined) updates.push(`emi=${Number(emi)}`);
+    if (status !== undefined) updates.push(`status='${status}'`);
+    if (notes !== undefined) updates.push(`notes=${notes ? `'${notes.replace(/'/g, "''")}'` : 'NULL'}`);
+    if (outstanding !== undefined) updates.push(`outstanding=${Number(outstanding)}`);
+    if (updates.length === 0) return res.json({ success: true });
+    await db.execute(sql`UPDATE hr_loans SET ${sql.raw(updates.join(','))} WHERE id=${req.params.id} AND tenant_id=${tid}`);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.delete("/loans/:id", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  try {
+    await db.execute(sql`UPDATE hr_loans SET record_status=0 WHERE id=${req.params.id} AND tenant_id=${tid}`);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// ─── PAYSLIP SETTINGS ─────────────────────────────────────────────────────────
+router.get("/payslip-settings", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  try {
+    const r = await db.execute(sql`SELECT * FROM hr_payslip_settings WHERE tenant_id=${tid}`);
+    res.json(r.rows[0] || { signatory_name: null, signatory_designation: null, show_employer_contributions: true, show_loan_deductions: true, footer_note: null });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.put("/payslip-settings", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  const { signatoryName, signatoryDesignation, showEmployerContributions, showLoanDeductions, footerNote } = req.body;
+  try {
+    await db.execute(sql`
+      INSERT INTO hr_payslip_settings (tenant_id, signatory_name, signatory_designation, show_employer_contributions, show_loan_deductions, footer_note, updated_at)
+      VALUES (${tid}, ${signatoryName ?? null}, ${signatoryDesignation ?? null}, ${showEmployerContributions ?? true}, ${showLoanDeductions ?? true}, ${footerNote ?? null}, NOW())
+      ON CONFLICT (tenant_id) DO UPDATE SET
+        signatory_name=${signatoryName ?? null}, signatory_designation=${signatoryDesignation ?? null},
+        show_employer_contributions=${showEmployerContributions ?? true}, show_loan_deductions=${showLoanDeductions ?? true},
+        footer_note=${footerNote ?? null}, updated_at=NOW()
+    `);
+    res.json({ success: true });
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 

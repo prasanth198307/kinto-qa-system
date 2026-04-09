@@ -1,9 +1,10 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Printer, MessageCircle } from "lucide-react";
+import { Printer, MessageCircle, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { useRef, useState } from "react";
 
 const MONTHS = ["", "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December"];
@@ -29,6 +30,8 @@ function fmt(n: any) { return Number(n || 0).toLocaleString("en-IN"); }
 export default function HRPayslipPage() {
   const params = useParams<{ id: string }>();
   const { toast } = useToast();
+  const payslipRef = useRef<HTMLDivElement>(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   const { data: ps, isLoading, error } = useQuery({
     queryKey: ["/api/hr/payslips", params.id],
@@ -36,6 +39,10 @@ export default function HRPayslipPage() {
   });
 
   const { data: company } = useQuery<any>({ queryKey: ["/api/tenant/info"] });
+  const { data: psSettings } = useQuery<any>({
+    queryKey: ["/api/hr/payslip-settings"],
+    queryFn: () => fetch("/api/hr/payslip-settings", { credentials: "include" }).then(r => r.json()),
+  });
 
   const sendWA = useMutation({
     mutationFn: () => apiRequest("POST", `/api/hr/payslips/${params.id}/send-whatsapp`, {}),
@@ -43,13 +50,62 @@ export default function HRPayslipPage() {
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
+  const downloadPDF = async () => {
+    if (!payslipRef.current) return;
+    setPdfLoading(true);
+    try {
+      const [jsPDFMod, html2canvasMod] = await Promise.all([
+        import("jspdf"),
+        import("html2canvas"),
+      ]);
+      const jsPDF = jsPDFMod.default;
+      const html2canvas = html2canvasMod.default;
+
+      const canvas = await html2canvas(payslipRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = pageWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      if (imgHeight <= pageHeight) {
+        pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
+      } else {
+        let yPos = 0;
+        let remainingHeight = imgHeight;
+        while (remainingHeight > 0) {
+          const sliceHeight = Math.min(pageHeight, remainingHeight);
+          pdf.addImage(imgData, "PNG", 0, -yPos, imgWidth, imgHeight);
+          remainingHeight -= sliceHeight;
+          yPos += sliceHeight;
+          if (remainingHeight > 0) pdf.addPage();
+        }
+      }
+
+      const name = `${ps?.first_name || ""}_${ps?.last_name || ""}_${MONTHS[ps?.month]}_${ps?.year}`.replace(/\s+/g, "_");
+      pdf.save(`Payslip_${name}.pdf`);
+      toast({ title: "PDF downloaded" });
+    } catch (e: any) {
+      toast({ title: "PDF generation failed", description: e.message, variant: "destructive" });
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
   if (isLoading) return <div className="p-8 text-center">Loading payslip...</div>;
   if (error || !ps || ps.message) return <div className="p-8 text-center text-muted-foreground">Payslip not found</div>;
 
   const companyName = company?.name || "Your Company";
   const logoUrl = company?.logoUrl;
+  const showEmployerContrib = psSettings?.show_employer_contributions !== false;
 
-  // Parse components from JSONB — fallback to legacy columns
   let components: any[] = [];
   try {
     components = ps.components
@@ -60,9 +116,8 @@ export default function HRPayslipPage() {
   const earnings = components.filter((c: any) => c.type === "earning");
   const deductionComponents = components.filter((c: any) => c.type === "deduction");
 
-  // If no components stored, build from legacy columns
   const showLegacy = components.length === 0;
-  const legacyEarnings = showLegacy
+  const displayEarnings = showLegacy
     ? [
         { name: "Basic Salary", amount: ps.basic_salary },
         ...(Number(ps.gross_salary) > Number(ps.basic_salary)
@@ -71,31 +126,34 @@ export default function HRPayslipPage() {
       ]
     : earnings;
 
-  const legacyDeductions = showLegacy
+  const displayDeductions = showLegacy
     ? [
         ...(Number(ps.pf_employee) > 0 ? [{ name: "PF (Employee)", amount: ps.pf_employee }] : []),
         ...(Number(ps.esi_employee) > 0 ? [{ name: "ESI (Employee)", amount: ps.esi_employee }] : []),
         ...(Number(ps.pt) > 0 ? [{ name: "Professional Tax", amount: ps.pt }] : []),
         ...(Number(ps.tds) > 0 ? [{ name: "TDS", amount: ps.tds }] : []),
+        ...(Number(ps.other_deductions) > 0 ? [{ name: "Loan/Advance Recovery", amount: ps.other_deductions }] : []),
       ]
     : deductionComponents;
 
   return (
     <div className="min-h-screen bg-muted/30 p-4 print:bg-white print:p-0">
       <div className="max-w-3xl mx-auto">
-        {/* Action Buttons */}
         <div className="flex justify-end gap-2 mb-3 print:hidden">
           <Button size="sm" variant="outline" onClick={() => sendWA.mutate()} disabled={sendWA.isPending}>
             <MessageCircle className="h-4 w-4 mr-1 text-green-600" />
             {sendWA.isPending ? "Sending..." : "Send WhatsApp"}
           </Button>
+          <Button size="sm" variant="outline" onClick={downloadPDF} disabled={pdfLoading} data-testid="btn-download-pdf">
+            <Download className="h-4 w-4 mr-1" />
+            {pdfLoading ? "Generating..." : "Download PDF"}
+          </Button>
           <Button size="sm" onClick={() => window.print()}>
-            <Printer className="h-4 w-4 mr-1" />Print Payslip
+            <Printer className="h-4 w-4 mr-1" />Print
           </Button>
         </div>
 
-        {/* Payslip */}
-        <div className="bg-white text-black rounded-lg border shadow-sm print:shadow-none print:border-none payslip-print">
+        <div ref={payslipRef} className="bg-white text-black rounded-lg border shadow-sm print:shadow-none print:border-none payslip-print">
           {/* Header */}
           <div className="border-b p-5">
             <div className="flex items-start justify-between gap-4">
@@ -148,12 +206,11 @@ export default function HRPayslipPage() {
           {/* Earnings & Deductions */}
           <div className="p-5 border-b">
             <div className="grid grid-cols-2 gap-6">
-              {/* Earnings */}
               <div>
                 <h3 className="font-semibold text-sm mb-2 border-b pb-1">EARNINGS</h3>
                 <table className="w-full text-sm">
                   <tbody>
-                    {legacyEarnings.map((c: any, i: number) => (
+                    {displayEarnings.map((c: any, i: number) => (
                       <tr key={i}>
                         <td className="py-1 text-gray-600">{c.name}</td>
                         <td className="py-1 text-right font-medium">₹{fmt(c.amount)}</td>
@@ -169,18 +226,17 @@ export default function HRPayslipPage() {
                 </table>
               </div>
 
-              {/* Deductions */}
               <div>
                 <h3 className="font-semibold text-sm mb-2 border-b pb-1">DEDUCTIONS</h3>
                 <table className="w-full text-sm">
                   <tbody>
-                    {legacyDeductions.map((c: any, i: number) => (
+                    {displayDeductions.map((c: any, i: number) => (
                       <tr key={i}>
                         <td className="py-1 text-gray-600">{c.name}</td>
                         <td className="py-1 text-right font-medium">₹{fmt(c.amount)}</td>
                       </tr>
                     ))}
-                    {legacyDeductions.length === 0 && (
+                    {displayDeductions.length === 0 && (
                       <tr><td colSpan={2} className="py-2 text-gray-400 text-xs">No deductions</td></tr>
                     )}
                   </tbody>
@@ -196,7 +252,7 @@ export default function HRPayslipPage() {
           </div>
 
           {/* Employer Contributions */}
-          {(Number(ps.pf_employer) > 0 || Number(ps.esi_employer) > 0) && (
+          {showEmployerContrib && (Number(ps.pf_employer) > 0 || Number(ps.esi_employer) > 0) && (
             <div className="px-5 py-3 border-b bg-gray-50 text-sm flex gap-6 flex-wrap">
               {Number(ps.pf_employer) > 0 && (
                 <span className="text-gray-500">Employer PF: <span className="font-medium text-black">₹{fmt(ps.pf_employer)}</span></span>
@@ -208,7 +264,7 @@ export default function HRPayslipPage() {
           )}
 
           {/* Net Pay */}
-          <div className="p-5">
+          <div className="p-5 border-b">
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-sm text-gray-500">Net Pay (In Words)</p>
@@ -220,6 +276,26 @@ export default function HRPayslipPage() {
               </div>
             </div>
           </div>
+
+          {/* Signatory */}
+          {(psSettings?.signatory_name || psSettings?.footer_note) && (
+            <div className="px-5 py-4 flex justify-between items-end text-sm">
+              <div>
+                {psSettings?.footer_note && (
+                  <p className="text-gray-500 text-xs">{psSettings.footer_note}</p>
+                )}
+              </div>
+              {psSettings?.signatory_name && (
+                <div className="text-right">
+                  <div className="h-8 border-b border-gray-300 mb-1 w-32 ml-auto" />
+                  <p className="font-medium">{psSettings.signatory_name}</p>
+                  {psSettings?.signatory_designation && (
+                    <p className="text-gray-500 text-xs">{psSettings.signatory_designation}</p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Footer */}
           <div className="border-t px-5 py-3 bg-gray-50 text-xs text-gray-500 flex justify-between items-center">

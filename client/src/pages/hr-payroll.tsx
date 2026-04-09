@@ -7,12 +7,14 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import {
   Play, CheckCircle, Lock, Eye, Plus, Unlock, Download,
-  MessageCircle, Mail, IndianRupee, Users, ExternalLink
+  MessageCircle, Mail, IndianRupee, Users, ExternalLink, Settings2
 } from "lucide-react";
 
 const MONTHS = ["", "January", "February", "March", "April", "May", "June",
@@ -41,8 +43,24 @@ export default function HRPayrollPage() {
   const [sendRun, setSendRun] = useState<any>(null);
   const [newMonth, setNewMonth] = useState(String(new Date().getMonth() + 1));
   const [newYear, setNewYear] = useState(String(currentYear));
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsForm, setSettingsForm] = useState({ signatoryName: "", signatoryDesignation: "", showEmployerContributions: true, showLoanDeductions: true, footerNote: "" });
 
   const { data: runs = [], isLoading } = useQuery<any[]>({ queryKey: ["/api/hr/payroll-runs"] });
+
+  const { data: psSettings } = useQuery<any>({
+    queryKey: ["/api/hr/payslip-settings"],
+    queryFn: () => fetch("/api/hr/payslip-settings", { credentials: "include" }).then(r => r.json()),
+    onSuccess: (d: any) => {
+      if (d) setSettingsForm({
+        signatoryName: d.signatory_name || "",
+        signatoryDesignation: d.signatory_designation || "",
+        showEmployerContributions: d.show_employer_contributions !== false,
+        showLoanDeductions: d.show_loan_deductions !== false,
+        footerNote: d.footer_note || "",
+      });
+    },
+  } as any);
 
   const { data: payslips = [], isLoading: psLoading } = useQuery({
     queryKey: ["/api/hr/payroll-runs", viewRun?.id, "payslips"],
@@ -100,6 +118,25 @@ export default function HRPayrollPage() {
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
+  const saveSettings = useMutation({
+    mutationFn: (d: any) => apiRequest("PUT", "/api/hr/payslip-settings", d),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/hr/payslip-settings"] }); setSettingsOpen(false); toast({ title: "Payslip settings saved" }); },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  function openSettings() {
+    if (psSettings) {
+      setSettingsForm({
+        signatoryName: psSettings.signatory_name || "",
+        signatoryDesignation: psSettings.signatory_designation || "",
+        showEmployerContributions: psSettings.show_employer_contributions !== false,
+        showLoanDeductions: psSettings.show_loan_deductions !== false,
+        footerNote: psSettings.footer_note || "",
+      });
+    }
+    setSettingsOpen(true);
+  }
+
   return (
     <div className="p-4 space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -107,9 +144,14 @@ export default function HRPayrollPage() {
           <h1 className="text-xl font-semibold">Payroll</h1>
           <p className="text-sm text-muted-foreground">Process monthly payroll and generate payslips</p>
         </div>
+        <div className="flex items-center gap-2">
+        <Button size="sm" variant="outline" onClick={openSettings} data-testid="btn-payslip-settings">
+          <Settings2 className="h-4 w-4 mr-1" />Payslip Settings
+        </Button>
         <Button size="sm" onClick={() => setCreateOpen(true)} data-testid="btn-new-payroll-run">
           <Plus className="h-4 w-4 mr-1" />New Payroll Run
         </Button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -339,6 +381,55 @@ export default function HRPayrollPage() {
                 onClick={() => unlockTarget && doUnlock.mutate({ id: unlockTarget.id, reason: unlockReason })}
                 data-testid="btn-confirm-unlock">
                 {doUnlock.isPending ? "Unlocking..." : "Confirm Unlock"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Payslip Settings Dialog */}
+      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Payslip Settings</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>Signatory Name</Label>
+                <Input value={settingsForm.signatoryName} onChange={e => setSettingsForm(f => ({ ...f, signatoryName: e.target.value }))} placeholder="e.g. Rajesh Kumar" data-testid="input-signatory-name" />
+              </div>
+              <div className="space-y-1">
+                <Label>Signatory Designation</Label>
+                <Input value={settingsForm.signatoryDesignation} onChange={e => setSettingsForm(f => ({ ...f, signatoryDesignation: e.target.value }))} placeholder="e.g. HR Manager" data-testid="input-signatory-designation" />
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Show Employer Contributions</p>
+                <p className="text-xs text-muted-foreground">Display employer PF/ESI on payslip</p>
+              </div>
+              <Switch checked={settingsForm.showEmployerContributions} onCheckedChange={v => setSettingsForm(f => ({ ...f, showEmployerContributions: v }))} data-testid="switch-employer-contributions" />
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Show Loan Deductions</p>
+                <p className="text-xs text-muted-foreground">Display loan EMI deductions section</p>
+              </div>
+              <Switch checked={settingsForm.showLoanDeductions} onCheckedChange={v => setSettingsForm(f => ({ ...f, showLoanDeductions: v }))} data-testid="switch-loan-deductions" />
+            </div>
+            <div className="space-y-1">
+              <Label>Footer Note</Label>
+              <Textarea value={settingsForm.footerNote} onChange={e => setSettingsForm(f => ({ ...f, footerNote: e.target.value }))} rows={2} placeholder="e.g. This is a computer generated payslip." data-testid="input-footer-note" />
+            </div>
+            <div className="flex gap-2 pt-1">
+              <Button variant="outline" className="flex-1" onClick={() => setSettingsOpen(false)}>Cancel</Button>
+              <Button className="flex-1" disabled={saveSettings.isPending} onClick={() => saveSettings.mutate({
+                signatory_name: settingsForm.signatoryName,
+                signatory_designation: settingsForm.signatoryDesignation,
+                show_employer_contributions: settingsForm.showEmployerContributions,
+                show_loan_deductions: settingsForm.showLoanDeductions,
+                footer_note: settingsForm.footerNote,
+              })} data-testid="btn-save-payslip-settings">
+                {saveSettings.isPending ? "Saving..." : "Save Settings"}
               </Button>
             </div>
           </div>
