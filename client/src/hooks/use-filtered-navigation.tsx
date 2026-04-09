@@ -108,6 +108,8 @@ const navItemToScreenKey: Record<string, string> = {
   'hr-payroll': 'hr_payroll',
   'hr-exit-management': 'hr_employees',
   'hr-loans': 'hr_payroll',
+  'hr-tds': 'hr_payroll',
+  'hr-recruitment': 'hr_employees',
   'hr-reports': 'hr_payroll',
   'hr-masters': 'hr_masters',
 };

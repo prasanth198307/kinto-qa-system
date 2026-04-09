@@ -76,7 +76,7 @@ import { ManagerChecklistAssignment } from "@/components/ManagerChecklistAssignm
 import PendingPaymentsDashboard from "@/components/PendingPaymentsDashboard";
 import { OperatorAssignedChecklists } from "@/components/OperatorAssignedChecklists";
 import { VerticalNavSidebar, type NavSection } from "@/components/VerticalNavSidebar";
-import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, ClipboardList, Settings, Calendar, Users, FileText, FileX, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator, IndianRupee, CreditCard, Upload, FolderOpen, Wallet, Car, BookOpen, Scale, BarChart3, Landmark, Tag, Trash2, PackageX, Loader2, Play, UserX } from "lucide-react";
+import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, ClipboardList, Settings, Calendar, Users, FileText, FileX, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator, IndianRupee, CreditCard, Upload, FolderOpen, Wallet, Car, BookOpen, Scale, BarChart3, Landmark, Tag, Trash2, PackageX, Loader2, Play, UserX, Briefcase } from "lucide-react";
 import SalesDashboard from "@/components/SalesDashboard";
 import SalesOrdersPage from "@/pages/sales-orders";
 import SalesOrderDetailPage from "@/pages/sales-order-detail";
@@ -150,6 +150,8 @@ import HRPayrollPage from "@/pages/hr-payroll";
 import HRReportsPage from "@/pages/hr-reports";
 import HRExitManagementPage from "@/pages/hr-exit-management";
 import HRLoansPage from "@/pages/hr-loans";
+import HRTdsDeclarationsPage from "@/pages/hr-tds-declarations";
+import HRRecruitmentPage from "@/pages/hr-recruitment";
 import HRPayslipPage from "@/pages/hr-payslip";
 import PricingPage from "@/pages/pricing";
 import { parseISO } from "date-fns";
@@ -954,6 +956,8 @@ function AdminDashboard() {
         { id: "hr-payroll", label: "Payroll", icon: IndianRupee, onClick: () => setLocation('/hr/payroll') },
         { id: "hr-exit-management", label: "Exit Management", icon: UserX, onClick: () => setLocation('/hr/exit-management') },
         { id: "hr-loans", label: "Loans & Advances", icon: CreditCard, onClick: () => setLocation('/hr/loans') },
+        { id: "hr-tds", label: "TDS & Compliance", icon: Shield, onClick: () => setLocation('/hr/tds-declarations') },
+        { id: "hr-recruitment", label: "Recruitment", icon: Briefcase, onClick: () => setLocation('/hr/recruitment') },
         { id: "hr-reports", label: "HR Reports", icon: BarChart3, onClick: () => setLocation('/hr/reports') },
         { id: "hr-masters", label: "HR Masters", icon: Settings, onClick: () => setLocation('/hr/masters') },
       ],
@@ -1603,6 +1607,8 @@ const navItemToScreenKey: Record<string, string> = {
   'hr-payroll': 'hr_payroll',
   'hr-exit-management': 'hr_employees',
   'hr-loans': 'hr_payroll',
+  'hr-tds': 'hr_payroll',
+  'hr-recruitment': 'hr_employees',
   'hr-reports': 'hr_payroll',
   'hr-masters': 'hr_masters',
   // Settings
@@ -1685,6 +1691,8 @@ const navItemToScreen: Record<string, string> = {
   'hr-payroll': 'HR & Payroll',
   'hr-exit-management': 'HR & Payroll',
   'hr-loans': 'HR & Payroll',
+  'hr-tds': 'HR & Payroll',
+  'hr-recruitment': 'HR & Payroll',
   'hr-reports': 'HR & Payroll',
   'hr-masters': 'HR & Payroll',
   // Maintenance
@@ -1967,6 +1975,8 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "hr-payroll", label: "Payroll", icon: IndianRupee, onClick: () => setLocation('/hr/payroll') },
         { id: "hr-exit-management", label: "Exit Management", icon: UserX, onClick: () => setLocation('/hr/exit-management') },
         { id: "hr-loans", label: "Loans & Advances", icon: CreditCard, onClick: () => setLocation('/hr/loans') },
+        { id: "hr-tds", label: "TDS & Compliance", icon: Shield, onClick: () => setLocation('/hr/tds-declarations') },
+        { id: "hr-recruitment", label: "Recruitment", icon: Briefcase, onClick: () => setLocation('/hr/recruitment') },
         { id: "hr-reports", label: "HR Reports", icon: BarChart3, onClick: () => setLocation('/hr/reports') },
         { id: "hr-masters", label: "HR Masters", icon: Settings, onClick: () => setLocation('/hr/masters') },
       ],
@@ -3479,6 +3489,38 @@ function HRExitManagementWrapper() {
   );
 }
 
+function HRTdsDeclarationsWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('hr-tds');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="TDS & Compliance" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation('/'); }}>
+      <HRTdsDeclarationsPage />
+    </DashboardShell>
+  );
+}
+
+function HRRecruitmentWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('hr-recruitment');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Recruitment" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation('/'); }}>
+      <HRRecruitmentPage />
+    </DashboardShell>
+  );
+}
+
 function HRLoansWrapper() {
   const { logoutMutation } = useAuth();
   const [, setLocation] = useLocation();
@@ -3586,6 +3628,8 @@ function Router() {
       <ProtectedRoute path="/hr/masters" component={HRMastersWrapper} />
       <ProtectedRoute path="/hr/exit-management" component={HRExitManagementWrapper} />
       <ProtectedRoute path="/hr/loans" component={HRLoansWrapper} />
+      <ProtectedRoute path="/hr/tds-declarations" component={HRTdsDeclarationsWrapper} />
+      <ProtectedRoute path="/hr/recruitment" component={HRRecruitmentWrapper} />
       <ProtectedRoute path="/hr/reports" component={HRReportsWrapper} />
       <Route path="/hr/payslip/:id" component={HRPayslipPage} />
       <ProtectedRoute path="/pricing" component={() => (

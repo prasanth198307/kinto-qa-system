@@ -1490,4 +1490,296 @@ router.put("/payslip-settings", requireHR, async (req: any, res) => {
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 
+// ─── PHASE 4: TDS DECLARATIONS ────────────────────────────────────────────────
+router.get("/tds-declarations", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  const { employeeId, fiscalYear } = req.query;
+  try {
+    let q = sql`SELECT td.*, e.first_name, e.last_name, e.emp_code
+      FROM hr_tds_declarations td
+      JOIN hr_employees e ON td.employee_id = e.id
+      WHERE td.tenant_id=${tid}`;
+    if (employeeId) q = sql`${q} AND td.employee_id=${Number(employeeId)}`;
+    if (fiscalYear) q = sql`${q} AND td.fiscal_year=${fiscalYear}`;
+    q = sql`${q} ORDER BY e.first_name, e.last_name`;
+    res.json((await db.execute(q)).rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.get("/tds-declarations/:id", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  try {
+    const r = await db.execute(sql`SELECT * FROM hr_tds_declarations WHERE id=${req.params.id} AND tenant_id=${tid}`);
+    if (!r.rows[0]) return res.status(404).json({ message: 'Not found' });
+    res.json(r.rows[0]);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/tds-declarations", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  const d = req.body;
+  try {
+    const r = await db.execute(sql`
+      INSERT INTO hr_tds_declarations (tenant_id, employee_id, fiscal_year, regime,
+        lic_premium, ppf, elss, nsc, home_loan_principal, fd_tax_saving, other_80c,
+        sec_80d_self, sec_80d_parents, parents_senior_citizen,
+        rent_per_month, city_type, home_loan_interest, edu_loan_interest,
+        nps_80ccd, sec_80g, sec_80tta, other_deductions, notes)
+      VALUES (${tid}, ${Number(d.employeeId)}, ${d.fiscalYear}, ${d.regime || 'new'},
+        ${Number(d.licPremium||0)}, ${Number(d.ppf||0)}, ${Number(d.elss||0)}, ${Number(d.nsc||0)},
+        ${Number(d.homeLoanPrincipal||0)}, ${Number(d.fdTaxSaving||0)}, ${Number(d.other80c||0)},
+        ${Number(d.sec80dSelf||0)}, ${Number(d.sec80dParents||0)}, ${!!d.parentsSeniorCitizen},
+        ${Number(d.rentPerMonth||0)}, ${d.cityType||'non_metro'},
+        ${Number(d.homeLoanInterest||0)}, ${Number(d.eduLoanInterest||0)},
+        ${Number(d.nps80ccd||0)}, ${Number(d.sec80g||0)}, ${Number(d.sec80tta||0)},
+        ${Number(d.otherDeductions||0)}, ${d.notes||null})
+      ON CONFLICT (tenant_id, employee_id, fiscal_year) DO UPDATE SET
+        regime=${d.regime||'new'}, lic_premium=${Number(d.licPremium||0)}, ppf=${Number(d.ppf||0)},
+        elss=${Number(d.elss||0)}, nsc=${Number(d.nsc||0)}, home_loan_principal=${Number(d.homeLoanPrincipal||0)},
+        fd_tax_saving=${Number(d.fdTaxSaving||0)}, other_80c=${Number(d.other80c||0)},
+        sec_80d_self=${Number(d.sec80dSelf||0)}, sec_80d_parents=${Number(d.sec80dParents||0)},
+        parents_senior_citizen=${!!d.parentsSeniorCitizen}, rent_per_month=${Number(d.rentPerMonth||0)},
+        city_type=${d.cityType||'non_metro'}, home_loan_interest=${Number(d.homeLoanInterest||0)},
+        edu_loan_interest=${Number(d.eduLoanInterest||0)}, nps_80ccd=${Number(d.nps80ccd||0)},
+        sec_80g=${Number(d.sec80g||0)}, sec_80tta=${Number(d.sec80tta||0)},
+        other_deductions=${Number(d.otherDeductions||0)}, notes=${d.notes||null}, updated_at=NOW()
+      RETURNING *`);
+    res.json(r.rows[0]);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.get("/form16/:employeeId/:fiscalYear", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  const { employeeId, fiscalYear } = req.params;
+  try {
+    const emp = await db.execute(sql`
+      SELECT e.*, d.name as department_name, des.name as designation_name
+      FROM hr_employees e
+      LEFT JOIN hr_departments d ON e.department_id=d.id
+      LEFT JOIN hr_designations des ON e.designation_id=des.id
+      WHERE e.id=${Number(employeeId)} AND e.tenant_id=${tid}
+    `);
+    if (!emp.rows[0]) return res.status(404).json({ message: 'Employee not found' });
+    const [fromYear, toYear] = fiscalYear.split('-').map(Number);
+    const payslips = await db.execute(sql`
+      SELECT p.*, pr.month, pr.year FROM hr_payslips p
+      JOIN hr_payroll_runs pr ON p.payroll_run_id=pr.id
+      WHERE p.employee_id=${Number(employeeId)} AND p.tenant_id=${tid}
+      AND ((pr.year=${fromYear} AND pr.month >= 4) OR (pr.year=${toYear} AND pr.month <= 3))
+      ORDER BY pr.year, pr.month
+    `);
+    const decl = await db.execute(sql`SELECT * FROM hr_tds_declarations WHERE employee_id=${Number(employeeId)} AND tenant_id=${tid} AND fiscal_year=${fiscalYear}`);
+    res.json({ employee: emp.rows[0], payslips: payslips.rows, declaration: decl.rows[0] || null, fiscalYear });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// ─── PHASE 5: F&F SETTLEMENTS ──────────────────────────────────────────────────
+router.get("/fnf", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  try {
+    const r = await db.execute(sql`
+      SELECT f.*, e.first_name, e.last_name, e.emp_code, e.designation_id,
+        des.name as designation_name, d.name as department_name
+      FROM hr_fnf_settlements f
+      JOIN hr_employees e ON f.employee_id=e.id
+      LEFT JOIN hr_designations des ON e.designation_id=des.id
+      LEFT JOIN hr_departments d ON e.department_id=d.id
+      WHERE f.tenant_id=${tid} ORDER BY f.settlement_date DESC
+    `);
+    res.json(r.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/fnf/calculate", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  const { employeeId, settlementDate } = req.body;
+  try {
+    const emp = await db.execute(sql`SELECT * FROM hr_employees WHERE id=${Number(employeeId)} AND tenant_id=${tid}`);
+    if (!emp.rows[0]) return res.status(404).json({ message: 'Employee not found' });
+    const e = emp.rows[0] as any;
+    const sDate = new Date(settlementDate);
+    const lwd = e.exit_date ? new Date(e.exit_date) : sDate;
+    const daysInMonth = new Date(lwd.getFullYear(), lwd.getMonth() + 1, 0).getDate();
+    const workedDays = lwd.getDate();
+    const dailyBasic = Number(e.basic_salary || 0) / 26;
+    const pendingSalaryDays = workedDays;
+    const pendingSalary = Math.round(dailyBasic * workedDays);
+    const joinDate = e.join_date ? new Date(e.join_date) : null;
+    let yearsServed = 0;
+    if (joinDate) {
+      const ms = lwd.getTime() - joinDate.getTime();
+      yearsServed = ms / (365.25 * 24 * 3600 * 1000);
+    }
+    const gratuity = yearsServed >= 5 ? Math.round((Number(e.basic_salary || 0) * 15 * Math.floor(yearsServed)) / 26) : 0;
+    const leaveBal = await db.execute(sql`SELECT * FROM hr_leave_balances WHERE employee_id=${Number(employeeId)} AND tenant_id=${tid} AND leave_type_id IN (SELECT id FROM hr_leave_types WHERE type_code='EL' AND tenant_id=${tid})`);
+    const elDays = leaveBal.rows[0] ? Number((leaveBal.rows[0] as any).balance || 0) : 0;
+    const elEncashment = Math.round(dailyBasic * elDays);
+    const noticeRequired = e.notice_period_days || 30;
+    res.json({
+      employeeId: Number(employeeId), pendingSalaryDays, pendingSalary,
+      elEncashmentDays: elDays, elEncashmentAmount: elEncashment,
+      gratuityAmount: gratuity, yearsServed: Math.floor(yearsServed),
+      noticePeriodDays: noticeRequired, noticeServedDays: 0,
+      noticeRecovery: 0, noticePay: 0, bonusArrears: 0,
+      otherAdditions: 0, otherDeductions: 0,
+      grossSettlement: pendingSalary + elEncashment + gratuity,
+      tdsOnSettlement: 0, netSettlement: pendingSalary + elEncashment + gratuity,
+    });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/fnf", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  const d = req.body;
+  try {
+    const r = await db.execute(sql`
+      INSERT INTO hr_fnf_settlements (tenant_id, employee_id, settlement_date, last_working_date,
+        notice_period_days, notice_served_days, pending_salary_days, pending_salary,
+        el_encashment_days, el_encashment_amount, gratuity_amount,
+        notice_recovery, notice_pay, bonus_arrears, other_additions, other_deductions,
+        gross_settlement, tds_on_settlement, net_settlement, status, notes)
+      VALUES (${tid}, ${Number(d.employeeId)}, ${d.settlementDate}, ${d.lastWorkingDate||null},
+        ${Number(d.noticePeriodDays||0)}, ${Number(d.noticeServedDays||0)},
+        ${Number(d.pendingSalaryDays||0)}, ${Number(d.pendingSalary||0)},
+        ${Number(d.elEncashmentDays||0)}, ${Number(d.elEncashmentAmount||0)}, ${Number(d.gratuityAmount||0)},
+        ${Number(d.noticeRecovery||0)}, ${Number(d.noticePay||0)}, ${Number(d.bonusArrears||0)},
+        ${Number(d.otherAdditions||0)}, ${Number(d.otherDeductions||0)},
+        ${Number(d.grossSettlement||0)}, ${Number(d.tdsOnSettlement||0)}, ${Number(d.netSettlement||0)},
+        ${d.status||'draft'}, ${d.notes||null})
+      ON CONFLICT (tenant_id, employee_id) DO UPDATE SET
+        settlement_date=${d.settlementDate}, last_working_date=${d.lastWorkingDate||null},
+        notice_period_days=${Number(d.noticePeriodDays||0)}, notice_served_days=${Number(d.noticeServedDays||0)},
+        pending_salary_days=${Number(d.pendingSalaryDays||0)}, pending_salary=${Number(d.pendingSalary||0)},
+        el_encashment_days=${Number(d.elEncashmentDays||0)}, el_encashment_amount=${Number(d.elEncashmentAmount||0)},
+        gratuity_amount=${Number(d.gratuityAmount||0)}, notice_recovery=${Number(d.noticeRecovery||0)},
+        notice_pay=${Number(d.noticePay||0)}, bonus_arrears=${Number(d.bonusArrears||0)},
+        other_additions=${Number(d.otherAdditions||0)}, other_deductions=${Number(d.otherDeductions||0)},
+        gross_settlement=${Number(d.grossSettlement||0)}, tds_on_settlement=${Number(d.tdsOnSettlement||0)},
+        net_settlement=${Number(d.netSettlement||0)}, status=${d.status||'draft'}, notes=${d.notes||null}, updated_at=NOW()
+      RETURNING *`);
+    res.json(r.rows[0]);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.put("/fnf/:id/finalize", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  try {
+    await db.execute(sql`UPDATE hr_fnf_settlements SET status='finalized', updated_at=NOW() WHERE id=${req.params.id} AND tenant_id=${tid}`);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// ─── PHASE 6: RECRUITMENT ─────────────────────────────────────────────────────
+router.get("/job-openings", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  try {
+    const r = await db.execute(sql`
+      SELECT jo.*, d.name as department_name,
+        COUNT(ja.id) as application_count
+      FROM hr_job_openings jo
+      LEFT JOIN hr_departments d ON jo.department_id=d.id
+      LEFT JOIN hr_job_applications ja ON ja.opening_id=jo.id AND ja.record_status=1
+      WHERE jo.tenant_id=${tid} AND jo.record_status=1
+      GROUP BY jo.id, d.name ORDER BY jo.created_at DESC
+    `);
+    res.json(r.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/job-openings", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  const d = req.body;
+  try {
+    const r = await db.execute(sql`
+      INSERT INTO hr_job_openings (tenant_id, title, department_id, positions, experience_min, experience_max,
+        salary_min, salary_max, job_type, location, skills, description, status, posted_date, closing_date)
+      VALUES (${tid}, ${d.title}, ${d.departmentId?Number(d.departmentId):null}, ${Number(d.positions||1)},
+        ${Number(d.experienceMin||0)}, ${Number(d.experienceMax||0)},
+        ${d.salaryMin?Number(d.salaryMin):null}, ${d.salaryMax?Number(d.salaryMax):null},
+        ${d.jobType||'full_time'}, ${d.location||null}, ${d.skills||null}, ${d.description||null},
+        ${d.status||'open'}, ${d.postedDate||new Date().toISOString().slice(0,10)}, ${d.closingDate||null})
+      RETURNING *`);
+    res.json(r.rows[0]);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.put("/job-openings/:id", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  const d = req.body;
+  try {
+    await db.execute(sql`
+      UPDATE hr_job_openings SET title=${d.title}, department_id=${d.departmentId?Number(d.departmentId):null},
+        positions=${Number(d.positions||1)}, experience_min=${Number(d.experienceMin||0)},
+        experience_max=${Number(d.experienceMax||0)}, salary_min=${d.salaryMin?Number(d.salaryMin):null},
+        salary_max=${d.salaryMax?Number(d.salaryMax):null}, job_type=${d.jobType||'full_time'},
+        location=${d.location||null}, skills=${d.skills||null}, description=${d.description||null},
+        status=${d.status||'open'}, closing_date=${d.closingDate||null}
+      WHERE id=${req.params.id} AND tenant_id=${tid}`);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.delete("/job-openings/:id", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  try {
+    await db.execute(sql`UPDATE hr_job_openings SET record_status=0 WHERE id=${req.params.id} AND tenant_id=${tid}`);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.get("/job-applications", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  const { openingId, stage } = req.query;
+  try {
+    let q = sql`SELECT ja.*, jo.title as opening_title, jo.department_id
+      FROM hr_job_applications ja
+      JOIN hr_job_openings jo ON ja.opening_id=jo.id
+      WHERE ja.tenant_id=${tid} AND ja.record_status=1`;
+    if (openingId) q = sql`${q} AND ja.opening_id=${Number(openingId)}`;
+    if (stage) q = sql`${q} AND ja.stage=${stage}`;
+    q = sql`${q} ORDER BY ja.created_at DESC`;
+    res.json((await db.execute(q)).rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/job-applications", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  const d = req.body;
+  try {
+    const r = await db.execute(sql`
+      INSERT INTO hr_job_applications (tenant_id, opening_id, candidate_name, phone, email,
+        current_company, current_ctc, expected_ctc, notice_period_days, source, stage, rating, interview_date, notes)
+      VALUES (${tid}, ${Number(d.openingId)}, ${d.candidateName}, ${d.phone||null}, ${d.email||null},
+        ${d.currentCompany||null}, ${d.currentCtc?Number(d.currentCtc):null}, ${d.expectedCtc?Number(d.expectedCtc):null},
+        ${Number(d.noticePeriodDays||0)}, ${d.source||'direct'}, ${d.stage||'applied'},
+        ${Number(d.rating||0)}, ${d.interviewDate||null}, ${d.notes||null})
+      RETURNING *`);
+    res.json(r.rows[0]);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.put("/job-applications/:id", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  const d = req.body;
+  try {
+    await db.execute(sql`
+      UPDATE hr_job_applications SET stage=${d.stage||'applied'}, rating=${Number(d.rating||0)},
+        interview_date=${d.interviewDate||null}, notes=${d.notes||null},
+        current_company=${d.currentCompany||null}, current_ctc=${d.currentCtc?Number(d.currentCtc):null},
+        expected_ctc=${d.expectedCtc?Number(d.expectedCtc):null}, notice_period_days=${Number(d.noticePeriodDays||0)},
+        phone=${d.phone||null}, email=${d.email||null}
+      WHERE id=${req.params.id} AND tenant_id=${tid}`);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.delete("/job-applications/:id", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  try {
+    await db.execute(sql`UPDATE hr_job_applications SET record_status=0 WHERE id=${req.params.id} AND tenant_id=${tid}`);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
 export default router;
+
