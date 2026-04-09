@@ -147,10 +147,11 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
     // Safe numeric helper — prevents NaN if DB field is null/undefined
     const safeNum = (v: number | null | undefined): number => v || 0;
 
-    // Check if any item has a discount applied
+    // Check if any item has a discount applied — inferred from grossLine vs taxableAmount
+    // This works even for older invoices where item.discount field was stored as 0
     const hasDiscount = items.some(item => {
-      const disc = safeNum((item as any).discount);
-      return disc > 0;
+      const grossLine = safeNum(item.unitPrice) * safeNum(item.quantity);
+      return grossLine > safeNum(item.taxableAmount);
     });
 
     // Calculate HSN-wise tax summary

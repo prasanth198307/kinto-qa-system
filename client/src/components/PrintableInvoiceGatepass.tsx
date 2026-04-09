@@ -182,7 +182,11 @@ export default function PrintableInvoiceGatepass({ invoice, gatepass }: Printabl
       .reduce((s: number, p: any) => s + safeNum(p.amount), 0);
     const balanceDue = Math.max(0, safeNum(invoice.totalAmount) - directReceived - advanceApplied - writeOffTotal);
 
-    const hasDiscount = invoiceItems.some(item => safeNum((item as any).discount) > 0);
+    // Infer discount from grossLine vs taxableAmount — works even if item.discount field is 0
+    const hasDiscount = invoiceItems.some(item => {
+      const grossLine = safeNum(item.unitPrice) * safeNum(item.quantity);
+      return grossLine > safeNum(item.taxableAmount);
+    });
 
     const bankName = template?.defaultBankName || invoice.bankName;
     const bankAccountNumber = template?.defaultBankAccountNumber || invoice.bankAccountNumber;
