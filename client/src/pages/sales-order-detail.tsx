@@ -235,7 +235,7 @@ function EditSalesOrderDialog({ salesOrder, open, onClose }: EditDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Sales Order — {salesOrder.soNumber}</DialogTitle>
         </DialogHeader>
@@ -478,24 +478,28 @@ function EditSalesOrderDialog({ salesOrder, open, onClose }: EditDialogProps) {
                           </TableCell>
                           <TableCell>
                             <div className="flex gap-1 items-center">
-                              <FormField control={form.control} name={`items.${index}.discountMode`} render={({ field: f }) => (
-                                <Select onValueChange={f.onChange} value={f.value}>
-                                  <FormControl>
-                                    <SelectTrigger className="w-14 text-xs h-8" data-testid={`select-edit-discount-mode-${index}`}>
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    <SelectItem value="%">%</SelectItem>
-                                    <SelectItem value="₹">₹</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              )} />
-                              <FormField control={form.control} name={`items.${index}.discount`} render={({ field: f }) => (
-                                <FormControl>
-                                  <Input type="number" step="0.01" min={0} {...f} onChange={e => f.onChange(Number(e.target.value))} className="w-16 text-xs" placeholder="0" data-testid={`input-edit-discount-${index}`} />
-                                </FormControl>
-                              )} />
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min={0}
+                                {...form.register(`items.${index}.discount`, { valueAsNumber: true })}
+                                placeholder="0"
+                                className="w-16 text-xs"
+                                data-testid={`input-edit-discount-${index}`}
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="w-9 px-1 text-xs shrink-0"
+                                onClick={() => {
+                                  const cur = form.getValues(`items.${index}.discountMode`) || '%';
+                                  form.setValue(`items.${index}.discountMode`, cur === '%' ? '₹' : '%');
+                                }}
+                                data-testid={`button-edit-discount-mode-${index}`}
+                              >
+                                {form.watch(`items.${index}.discountMode`) || '%'}
+                              </Button>
                             </div>
                           </TableCell>
                           <TableCell className="text-right text-sm font-medium tabular-nums">
