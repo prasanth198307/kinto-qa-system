@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, CheckCircle, XCircle, Clock } from "lucide-react";
+import { Plus, CheckCircle, XCircle, Clock, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "secondary",
@@ -20,6 +20,11 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: "secondary",
 };
 
+const MONTHS = ["", "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"];
+
+const LEAVE_COLORS = ["bg-blue-500", "bg-green-500", "bg-purple-500", "bg-orange-500", "bg-pink-500", "bg-teal-500"];
+
 export default function HRLeavesPage() {
   const { toast } = useToast();
   const [applyOpen, setApplyOpen] = useState(false);
@@ -27,6 +32,11 @@ export default function HRLeavesPage() {
   const [selectedApp, setSelectedApp] = useState<any>(null);
   const [statusFilter, setStatusFilter] = useState("all");
   const [actionComment, setActionComment] = useState("");
+  const [carryFwdOpen, setCarryFwdOpen] = useState(false);
+  const [carryFwdYear, setCarryFwdYear] = useState(String(new Date().getFullYear()));
+
+  const [calMonth, setCalMonth] = useState(new Date().getMonth() + 1);
+  const [calYear, setCalYear] = useState(new Date().getFullYear());
 
   const currentYear = new Date().getFullYear();
 
@@ -49,6 +59,11 @@ export default function HRLeavesPage() {
         : "/api/hr/leave-applications";
       return fetch(url, { credentials: "include" }).then(r => r.json());
     },
+  });
+
+  const { data: calendarData = [] } = useQuery({
+    queryKey: ["/api/hr/leave-calendar", calMonth, calYear],
+    queryFn: () => fetch(`/api/hr/leave-calendar?month=${calMonth}&year=${calYear}`, { credentials: "include" }).then(r => r.json()),
   });
 
   const { data: balances = [] } = useQuery({
@@ -86,6 +101,16 @@ export default function HRLeavesPage() {
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
+  const carryFwdMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/hr/leave-balances/carry-forward", { fromYear: Number(carryFwdYear) }),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/hr/leave-balances"] });
+      setCarryFwdOpen(false);
+      toast({ title: "Carry Forward Complete", description: data.message });
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
   const handleEmpChange = (empId: string) => {
     setApplyForm(f => ({ ...f, employeeId: empId }));
     initBalance.mutate(Number(empId));
@@ -97,8 +122,6 @@ export default function HRLeavesPage() {
     const diff = Math.round((d2.getTime() - d1.getTime()) / 86400000) + 1;
     return String(Math.max(1, diff));
   };
-
-  const MONTHS = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
   const pending = (applications as any[]).filter((a: any) => a.status === "pending");
   const activeEmps = (employees as any[]).filter((e: any) => e.status === "active");
@@ -126,6 +149,7 @@ export default function HRLeavesPage() {
         <TabsList>
           <TabsTrigger value="applications">Applications</TabsTrigger>
           <TabsTrigger value="balances">Leave Balances</TabsTrigger>
+          <TabsTrigger value="calendar">Calendar</TabsTrigger>
         </TabsList>
 
         <TabsContent value="applications" className="mt-3">
@@ -198,7 +222,28 @@ export default function HRLeavesPage() {
         </TabsContent>
 
         <TabsContent value="balances" className="mt-3">
-          <LeaveBalancesTab employees={activeEmps} leaveTypes={leaveTypes as any[]} currentYear={currentYear} />
+          <LeaveBalancesTab
+            employees={activeEmps}
+            leaveTypes={leaveTypes as any[]}
+            currentYear={currentYear}
+            onCarryForward={() => setCarryFwdOpen(true)}
+          />
+        </TabsContent>
+
+        <TabsContent value="calendar" className="mt-3">
+          <LeaveCalendarTab
+            calMonth={calMonth}
+            calYear={calYear}
+            onPrev={() => {
+              if (calMonth === 1) { setCalMonth(12); setCalYear(y => y - 1); }
+              else setCalMonth(m => m - 1);
+            }}
+            onNext={() => {
+              if (calMonth === 12) { setCalMonth(1); setCalYear(y => y + 1); }
+              else setCalMonth(m => m + 1);
+            }}
+            data={calendarData as any[]}
+          />
         </TabsContent>
       </Tabs>
 
@@ -273,7 +318,7 @@ export default function HRLeavesPage() {
               <div className="flex gap-2">
                 <Button variant="outline" className="flex-1" onClick={() => setActionOpen(false)}>Cancel</Button>
                 <Button
-                  className={`flex-1 ${selectedApp?.action === "rejected" ? "bg-destructive hover:bg-destructive/90" : ""}`}
+                  className={`flex-1 ${selectedApp?.action === "rejected" ? "bg-destructive text-destructive-foreground" : ""}`}
                   onClick={() => actionMutation.mutate({ id: selectedApp.id, status: selectedApp.action })}
                   disabled={actionMutation.isPending}
                   data-testid="btn-confirm-action">
@@ -284,11 +329,34 @@ export default function HRLeavesPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Carry Forward Dialog */}
+      <Dialog open={carryFwdOpen} onOpenChange={setCarryFwdOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Year-End Leave Carry Forward</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              This will carry forward the EL (Earned Leave) balances from the selected year to the next year, capped at the maximum carry-forward limit configured in the Leave Type Master.
+            </p>
+            <div>
+              <Label>Carry Forward From Year *</Label>
+              <Input type="number" value={carryFwdYear} onChange={e => setCarryFwdYear(e.target.value)} min="2020" max="2099" />
+            </div>
+            <p className="text-xs text-muted-foreground">Balances will be added to {Number(carryFwdYear) + 1}.</p>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setCarryFwdOpen(false)}>Cancel</Button>
+              <Button className="flex-1" onClick={() => carryFwdMutation.mutate()} disabled={carryFwdMutation.isPending} data-testid="btn-confirm-carry-forward">
+                {carryFwdMutation.isPending ? "Processing..." : "Run Carry Forward"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
-function LeaveBalancesTab({ employees, leaveTypes, currentYear }: any) {
+function LeaveBalancesTab({ employees, leaveTypes, currentYear, onCarryForward }: any) {
   const [selectedEmp, setSelectedEmp] = useState("");
 
   const { data: balances = [] } = useQuery({
@@ -314,6 +382,9 @@ function LeaveBalancesTab({ employees, leaveTypes, currentYear }: any) {
               <SelectTrigger className="w-52"><SelectValue placeholder="Select employee" /></SelectTrigger>
               <SelectContent>{employees.map((e: any) => <SelectItem key={e.id} value={String(e.id)}>{e.first_name} {e.last_name} ({e.emp_code})</SelectItem>)}</SelectContent>
             </Select>
+            <Button size="sm" variant="outline" onClick={onCarryForward} data-testid="btn-carry-forward">
+              <RefreshCw className="h-3.5 w-3.5 mr-1" />Year-End Carry Forward
+            </Button>
           </div>
         </div>
       </CardHeader>
@@ -346,6 +417,101 @@ function LeaveBalancesTab({ employees, leaveTypes, currentYear }: any) {
               </div>
             ))}
           </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function LeaveCalendarTab({ calMonth, calYear, onPrev, onNext, data }: any) {
+  const daysInMonth = new Date(calYear, calMonth, 0).getDate();
+  const firstDayOfWeek = new Date(calYear, calMonth - 1, 1).getDay();
+
+  // Build a map: date -> list of leave entries
+  const dateMap: Record<number, any[]> = {};
+  for (const entry of data) {
+    const from = new Date(entry.from_date);
+    const to = new Date(entry.to_date);
+    let cur = new Date(from);
+    while (cur <= to) {
+      if (cur.getMonth() + 1 === calMonth && cur.getFullYear() === calYear) {
+        const day = cur.getDate();
+        if (!dateMap[day]) dateMap[day] = [];
+        dateMap[day].push(entry);
+      }
+      cur.setDate(cur.getDate() + 1);
+    }
+  }
+
+  // Unique employees for color coding
+  const empList: string[] = [];
+  for (const entry of data) {
+    const key = entry.emp_code;
+    if (!empList.includes(key)) empList.push(key);
+  }
+  const empColorMap: Record<string, string> = {};
+  empList.forEach((ec, i) => { empColorMap[ec] = LEAVE_COLORS[i % LEAVE_COLORS.length]; });
+
+  const cells: (number | null)[] = [];
+  for (let i = 0; i < firstDayOfWeek; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <CardTitle className="text-sm">Leave Calendar — {MONTHS[calMonth]} {calYear}</CardTitle>
+          <div className="flex items-center gap-2">
+            <Button size="icon" variant="outline" onClick={onPrev}><ChevronLeft className="h-4 w-4" /></Button>
+            <Button size="icon" variant="outline" onClick={onNext}><ChevronRight className="h-4 w-4" /></Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {/* Legend */}
+        {empList.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-4">
+            {empList.map(ec => {
+              const entry = data.find((d: any) => d.emp_code === ec);
+              return (
+                <div key={ec} className="flex items-center gap-1.5 text-xs">
+                  <span className={`w-2.5 h-2.5 rounded-full ${empColorMap[ec]}`} />
+                  <span>{entry?.first_name} {entry?.last_name} ({ec})</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Calendar grid */}
+        <div className="grid grid-cols-7 gap-1">
+          {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(d => (
+            <div key={d} className="text-center text-xs font-medium text-muted-foreground py-1">{d}</div>
+          ))}
+          {cells.map((day, idx) => (
+            <div key={idx} className={`min-h-[60px] rounded border p-1 ${day ? "bg-background" : "bg-muted/30"}`}>
+              {day && (
+                <>
+                  <p className="text-xs font-medium mb-1">{day}</p>
+                  <div className="space-y-0.5">
+                    {(dateMap[day] || []).slice(0, 3).map((entry: any, ei: number) => (
+                      <div key={ei} className={`text-white text-[10px] px-1 rounded truncate ${empColorMap[entry.emp_code] || "bg-blue-500"}`}
+                        title={`${entry.first_name} ${entry.last_name} — ${entry.leave_type_name}`}>
+                        {entry.emp_code}
+                      </div>
+                    ))}
+                    {(dateMap[day] || []).length > 3 && (
+                      <div className="text-[10px] text-muted-foreground">+{(dateMap[day] || []).length - 3} more</div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {data.length === 0 && (
+          <p className="text-sm text-muted-foreground text-center py-6">No leave applications for {MONTHS[calMonth]} {calYear}</p>
         )}
       </CardContent>
     </Card>

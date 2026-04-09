@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { whatsappService } from "./whatsappService";
 
 const router = Router();
 
@@ -636,19 +637,101 @@ router.put("/leave-applications/:id/action", requireHR, async (req: any, res) =>
   const { status, approverComment } = req.body;
   const userId = (req.user as any)?.id;
   try {
-    const app = await db.execute(sql`SELECT * FROM hr_leave_applications WHERE id=${req.params.id} AND tenant_id=${tid}`);
+    const app = await db.execute(sql`
+      SELECT la.*, lt.name as leave_type_name, lt.code,
+        e.first_name, e.last_name, e.phone
+      FROM hr_leave_applications la
+      JOIN hr_leave_types lt ON la.leave_type_id = lt.id
+      JOIN hr_employees e ON la.employee_id = e.id
+      WHERE la.id=${req.params.id} AND la.tenant_id=${tid}
+    `);
     if (!app.rows.length) return res.status(404).json({ message: "Not found" });
+    const a = app.rows[0] as any;
     await db.execute(sql`UPDATE hr_leave_applications SET status=${status}, approved_by=${userId ?? null}, approver_comment=${approverComment ?? null}, action_at=NOW() WHERE id=${req.params.id}`);
-    // Update balance if approved
     if (status === 'approved') {
-      const a = app.rows[0] as any;
       const year = new Date(a.from_date).getFullYear();
       await db.execute(sql`
         UPDATE hr_leave_balances SET used=used+${a.days}, balance=balance-${a.days}
         WHERE tenant_id=${tid} AND employee_id=${a.employee_id} AND leave_type_id=${a.leave_type_id} AND year=${year}
       `);
     }
+    // WhatsApp notification to employee
+    if (a.phone) {
+      const actionWord = status === 'approved' ? 'approved' : 'rejected';
+      const comment = approverComment ? `\nComment: ${approverComment}` : '';
+      const msg = `Hi ${a.first_name},\n\nYour ${a.leave_type_name} (${a.code}) leave application from ${a.from_date} to ${a.to_date} (${a.days} day${a.days > 1 ? 's' : ''}) has been *${actionWord}*.${comment}\n\n- HR Team`;
+      whatsappService.sendTextMessage({ to: a.phone, message: msg }).catch(() => {});
+    }
     res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// Leave calendar — returns approved leaves for a given month/year
+router.get("/leave-calendar", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  const { month, year } = req.query;
+  const m = Number(month) || new Date().getMonth() + 1;
+  const y = Number(year) || new Date().getFullYear();
+  try {
+    const rows = await db.execute(sql`
+      SELECT la.from_date, la.to_date, la.days, la.status,
+        e.first_name, e.last_name, e.emp_code,
+        lt.name as leave_type_name, lt.code as leave_code
+      FROM hr_leave_applications la
+      JOIN hr_employees e ON la.employee_id = e.id
+      JOIN hr_leave_types lt ON la.leave_type_id = lt.id
+      WHERE la.tenant_id=${tid} AND la.record_status=1
+        AND la.status IN ('approved', 'pending')
+        AND (
+          (EXTRACT(MONTH FROM la.from_date)=${m} AND EXTRACT(YEAR FROM la.from_date)=${y})
+          OR (EXTRACT(MONTH FROM la.to_date)=${m} AND EXTRACT(YEAR FROM la.to_date)=${y})
+        )
+      ORDER BY la.from_date
+    `);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// Year-end carry forward
+router.post("/leave-balances/carry-forward", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  const { fromYear } = req.body;
+  const srcYear = Number(fromYear) || new Date().getFullYear();
+  const destYear = srcYear + 1;
+  try {
+    // Get all encashable leave types
+    const ltypes = await db.execute(sql`SELECT * FROM hr_leave_types WHERE tenant_id=${tid} AND is_carry_forward=true AND record_status=1`);
+    // Get all active employees
+    const emps = await db.execute(sql`SELECT id FROM hr_employees WHERE tenant_id=${tid} AND record_status=1 AND status='active'`);
+    let processed = 0;
+    for (const emp of emps.rows as any[]) {
+      for (const lt of ltypes.rows as any[]) {
+        const bal = await db.execute(sql`
+          SELECT * FROM hr_leave_balances WHERE tenant_id=${tid} AND employee_id=${emp.id} AND leave_type_id=${lt.id} AND year=${srcYear}
+        `);
+        if (!bal.rows.length) continue;
+        const b = bal.rows[0] as any;
+        const carryOver = Math.min(Number(b.balance ?? 0), Number(lt.max_carry_forward ?? 0));
+        if (carryOver <= 0) continue;
+        // Check if dest year balance exists
+        const existing = await db.execute(sql`
+          SELECT id FROM hr_leave_balances WHERE tenant_id=${tid} AND employee_id=${emp.id} AND leave_type_id=${lt.id} AND year=${destYear}
+        `);
+        if (existing.rows.length) {
+          await db.execute(sql`
+            UPDATE hr_leave_balances SET entitled=entitled+${carryOver}, balance=balance+${carryOver}
+            WHERE tenant_id=${tid} AND employee_id=${emp.id} AND leave_type_id=${lt.id} AND year=${destYear}
+          `);
+        } else {
+          await db.execute(sql`
+            INSERT INTO hr_leave_balances (tenant_id, employee_id, leave_type_id, year, entitled, used, balance)
+            VALUES (${tid}, ${emp.id}, ${lt.id}, ${destYear}, ${carryOver}, 0, ${carryOver})
+          `);
+        }
+        processed++;
+      }
+    }
+    res.json({ success: true, message: `Carry forward completed. ${processed} leave balance(s) carried over to ${destYear}.` });
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 
@@ -673,6 +756,30 @@ router.post("/payroll-runs", requireHR, async (req: any, res) => {
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 
+// Helper: calculate annual tax given taxable income and regime
+function calcAnnualTax(taxableIncome: number, regime: string): number {
+  if (taxableIncome <= 0) return 0;
+  if (regime === 'new') {
+    // New regime slabs (FY 2024-25) with rebate u/s 87A up to ₹7L
+    let tax = 0;
+    if (taxableIncome > 1500000) tax += (taxableIncome - 1500000) * 0.30;
+    if (taxableIncome > 1200000) tax += (Math.min(taxableIncome, 1500000) - 1200000) * 0.20;
+    if (taxableIncome > 900000) tax += (Math.min(taxableIncome, 1200000) - 900000) * 0.15;
+    if (taxableIncome > 600000) tax += (Math.min(taxableIncome, 900000) - 600000) * 0.10;
+    if (taxableIncome > 300000) tax += (Math.min(taxableIncome, 600000) - 300000) * 0.05;
+    if (taxableIncome <= 700000) tax = 0; // 87A rebate
+    return Math.round(tax);
+  } else {
+    // Old regime slabs
+    let tax = 0;
+    if (taxableIncome > 1000000) tax += (taxableIncome - 1000000) * 0.30;
+    if (taxableIncome > 500000) tax += (Math.min(taxableIncome, 1000000) - 500000) * 0.20;
+    if (taxableIncome > 250000) tax += (Math.min(taxableIncome, 500000) - 250000) * 0.05;
+    if (taxableIncome <= 500000) tax = 0; // 87A rebate
+    return Math.round(tax);
+  }
+}
+
 // Process payroll — calculate payslips for all active employees
 router.post("/payroll-runs/:id/process", requireHR, async (req: any, res) => {
   const tid = getTenantId(req);
@@ -680,19 +787,27 @@ router.post("/payroll-runs/:id/process", requireHR, async (req: any, res) => {
   try {
     const run = await db.execute(sql`SELECT * FROM hr_payroll_runs WHERE id=${runId} AND tenant_id=${tid}`);
     if (!run.rows.length) return res.status(404).json({ message: "Payroll run not found" });
-    const { month, year } = run.rows[0] as any;
+    const runRow = run.rows[0] as any;
+    if (runRow.status === 'locked') return res.status(400).json({ message: "Payroll is locked" });
+    const { month, year } = runRow;
 
-    // Get working days in month (from attendance)
     const daysInMonth = new Date(year, month, 0).getDate();
-    const workingDays = 26; // Standard for Indian payroll
+    const workingDays = 26;
 
-    // Get all active employees
-    const employees = await db.execute(sql`SELECT * FROM hr_employees WHERE tenant_id=${tid} AND record_status=1 AND status='active'`);
+    // Get all active employees with their salary structures
+    const employees = await db.execute(sql`
+      SELECT e.*, ss.components as structure_components
+      FROM hr_employees e
+      LEFT JOIN hr_salary_structures ss ON e.salary_structure_id = ss.id
+      WHERE e.tenant_id=${tid} AND e.record_status=1 AND e.status='active'
+    `);
+
+    // Get PT slabs for tenant
+    const ptSlabs = await db.execute(sql`SELECT * FROM hr_pt_slabs WHERE tenant_id=${tid} AND record_status=1 ORDER BY income_from`);
 
     let totalGross = 0, totalDeductions = 0, totalNet = 0;
 
     for (const emp of employees.rows as any[]) {
-      // Get attendance summary
       const att = await db.execute(sql`
         SELECT
           COUNT(CASE WHEN status='present' THEN 1 END) as present,
@@ -712,15 +827,53 @@ router.post("/payroll-runs/:id/process", requireHR, async (req: any, res) => {
       const otHours = Number(a.ot_hours || 0);
       const daysWorked = present + (halfDay * 0.5) + onLeave;
       const lopDays = lop;
+      const attendancePct = workingDays > 0 ? Math.min(daysWorked, workingDays) / workingDays : 0;
 
-      // Salary calculation
-      const basicSalary = emp.basic_salary || 0;
+      const basicSalary = Number(emp.basic_salary || 0);
       const dailyRate = basicSalary / workingDays;
-      const grossSalary = Math.round(dailyRate * Math.min(daysWorked, workingDays));
-
-      // OT pay (1.5x rate)
+      const proRataBasic = Math.round(basicSalary * attendancePct);
       const otPay = Math.round((dailyRate / 8) * 1.5 * otHours);
-      const totalGrossSalary = grossSalary + otPay;
+
+      // Build component-wise breakdown from salary structure
+      const structureComponents: any[] = emp.structure_components
+        ? (typeof emp.structure_components === 'string' ? JSON.parse(emp.structure_components) : emp.structure_components)
+        : [];
+
+      const componentBreakdown: any[] = [];
+      let totalEarnings = proRataBasic;
+      let componentGross = 0;
+
+      if (structureComponents.length > 0) {
+        for (const comp of structureComponents) {
+          if (comp.type !== 'earning') continue;
+          if (comp.code === 'BASIC' || comp.name?.toLowerCase() === 'basic') {
+            componentBreakdown.push({ name: 'Basic Salary', code: 'BASIC', amount: proRataBasic, type: 'earning' });
+            componentGross += proRataBasic;
+            continue;
+          }
+          let amount = 0;
+          if (comp.formula_type === 'percentage') {
+            amount = Math.round(basicSalary * (Number(comp.formula_value) / 100) * attendancePct);
+          } else {
+            amount = Math.round(Number(comp.formula_value || 0) * attendancePct);
+          }
+          if (amount > 0) {
+            componentBreakdown.push({ name: comp.name, code: comp.code, amount, type: 'earning' });
+            componentGross += amount;
+          }
+        }
+        totalEarnings = componentGross;
+      } else {
+        componentBreakdown.push({ name: 'Basic Salary', code: 'BASIC', amount: proRataBasic, type: 'earning' });
+        totalEarnings = proRataBasic;
+      }
+
+      if (otPay > 0) {
+        componentBreakdown.push({ name: 'Overtime Pay', code: 'OT', amount: otPay, type: 'earning' });
+        totalEarnings += otPay;
+      }
+
+      const totalGrossSalary = totalEarnings;
 
       // PF: 12% of basic (employee), capped at 1800
       const pfEmployee = basicSalary <= 15000 ? Math.round(basicSalary * 0.12) : 1800;
@@ -730,39 +883,62 @@ router.post("/payroll-runs/:id/process", requireHR, async (req: any, res) => {
       const esiEmployee = totalGrossSalary <= 21000 ? Math.round(totalGrossSalary * 0.0075) : 0;
       const esiEmployer = totalGrossSalary <= 21000 ? Math.round(totalGrossSalary * 0.0325) : 0;
 
-      // PT: Simple slab
+      // PT: from state slabs or fallback
       let pt = 0;
-      if (totalGrossSalary > 15000) pt = 200;
-      else if (totalGrossSalary > 10000) pt = 150;
-      else if (totalGrossSalary > 7500) pt = 100;
+      const empState = (emp.state || '').toLowerCase();
+      const matchSlabs = (ptSlabs.rows as any[]).filter(s => s.state.toLowerCase() === empState);
+      if (matchSlabs.length > 0) {
+        for (const slab of matchSlabs) {
+          if (totalGrossSalary >= Number(slab.income_from) && (slab.income_to === null || totalGrossSalary <= Number(slab.income_to))) {
+            pt = Number(slab.pt_amount);
+            break;
+          }
+        }
+      } else {
+        if (totalGrossSalary > 15000) pt = 200;
+        else if (totalGrossSalary > 10000) pt = 150;
+        else if (totalGrossSalary > 7500) pt = 100;
+      }
 
-      const totalDeductionsAmt = pfEmployee + esiEmployee + pt;
+      // TDS: project annual taxable income and compute monthly TDS
+      const monthsRemaining = Math.max(1, 12 - month + 1);
+      const annualProjectedGross = totalGrossSalary * 12;
+      const regime = emp.tax_regime || 'new';
+      const standardDeduction = regime === 'new' ? 75000 : 50000;
+      const taxableIncome = Math.max(0, annualProjectedGross - standardDeduction - (pfEmployee * 12));
+      const annualTax = calcAnnualTax(taxableIncome, regime);
+      const tds = Math.round(annualTax / 12);
+
+      componentBreakdown.push({ name: 'PF (Employee)', code: 'PF_EMP', amount: pfEmployee, type: 'deduction' });
+      if (esiEmployee > 0) componentBreakdown.push({ name: 'ESI (Employee)', code: 'ESI_EMP', amount: esiEmployee, type: 'deduction' });
+      if (pt > 0) componentBreakdown.push({ name: 'Professional Tax', code: 'PT', amount: pt, type: 'deduction' });
+      if (tds > 0) componentBreakdown.push({ name: 'TDS', code: 'TDS', amount: tds, type: 'deduction' });
+
+      const totalDeductionsAmt = pfEmployee + esiEmployee + pt + tds;
       const netSalary = totalGrossSalary - totalDeductionsAmt;
 
       totalGross += totalGrossSalary;
       totalDeductions += totalDeductionsAmt;
       totalNet += netSalary;
 
-      // Delete old payslip for this employee+month if draft
       await db.execute(sql`DELETE FROM hr_payslips WHERE payroll_run_id=${runId} AND employee_id=${emp.id} AND tenant_id=${tid}`);
 
-      // Create payslip
       await db.execute(sql`
         INSERT INTO hr_payslips (
           tenant_id, payroll_run_id, employee_id, month, year, days_in_month,
           days_worked, days_absent, lop_days, ot_hours, basic_salary, gross_salary,
-          pf_employee, pf_employer, esi_employee, esi_employer, pt, tds, total_deductions, net_salary
+          pf_employee, pf_employer, esi_employee, esi_employer, pt, tds,
+          total_deductions, net_salary, components
         ) VALUES (
           ${tid}, ${runId}, ${emp.id}, ${month}, ${year}, ${workingDays},
           ${daysWorked}, ${daysInMonth - Math.round(daysWorked) - lopDays}, ${lopDays}, ${otHours},
           ${basicSalary}, ${totalGrossSalary},
-          ${pfEmployee}, ${pfEmployer}, ${esiEmployee}, ${esiEmployer}, ${pt}, 0,
-          ${totalDeductionsAmt}, ${netSalary}
+          ${pfEmployee}, ${pfEmployer}, ${esiEmployee}, ${esiEmployer}, ${pt}, ${tds},
+          ${totalDeductionsAmt}, ${netSalary}, ${JSON.stringify(componentBreakdown)}
         )
       `);
     }
 
-    // Update run totals
     await db.execute(sql`
       UPDATE hr_payroll_runs SET
         status='draft', total_gross=${totalGross}, total_deductions=${totalDeductions},
@@ -786,9 +962,128 @@ router.put("/payroll-runs/:id/approve", requireHR, async (req: any, res) => {
 router.put("/payroll-runs/:id/lock", requireHR, async (req: any, res) => {
   const tid = getTenantId(req);
   try {
-    await db.execute(sql`UPDATE hr_payroll_runs SET status='locked' WHERE id=${req.params.id} AND tenant_id=${tid}`);
+    await db.execute(sql`UPDATE hr_payroll_runs SET status='locked', locked_at=NOW() WHERE id=${req.params.id} AND tenant_id=${tid}`);
     await db.execute(sql`UPDATE hr_payslips SET status='locked' WHERE payroll_run_id=${req.params.id} AND tenant_id=${tid}`);
     res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.put("/payroll-runs/:id/unlock", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  const { reason } = req.body;
+  try {
+    await db.execute(sql`UPDATE hr_payroll_runs SET status='approved', locked_at=NULL, unlock_reason=${reason ?? null} WHERE id=${req.params.id} AND tenant_id=${tid}`);
+    await db.execute(sql`UPDATE hr_payslips SET status='approved' WHERE payroll_run_id=${req.params.id} AND tenant_id=${tid}`);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// Bank transfer file — CSV with bank details + net salary
+router.get("/payroll-runs/:id/bank-file", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  try {
+    const rows = await db.execute(sql`
+      SELECT p.net_salary, e.first_name, e.last_name, e.emp_code,
+        e.bank_account, e.ifsc, e.bank_name,
+        dep.name as department_name
+      FROM hr_payslips p
+      JOIN hr_employees e ON p.employee_id = e.id
+      LEFT JOIN hr_departments dep ON e.department_id = dep.id
+      WHERE p.payroll_run_id=${req.params.id} AND p.tenant_id=${tid}
+      ORDER BY e.emp_code
+    `);
+    const run = await db.execute(sql`SELECT month, year FROM hr_payroll_runs WHERE id=${req.params.id} AND tenant_id=${tid}`);
+    const { month, year } = (run.rows[0] as any) || { month: 1, year: 2025 };
+    const MONTHS = ["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    let csv = 'Emp Code,Employee Name,Department,Bank Account,IFSC Code,Bank Name,Net Salary\n';
+    for (const r of rows.rows as any[]) {
+      csv += `${r.emp_code},"${r.first_name} ${r.last_name}","${r.department_name || ''}",${r.bank_account || ''},${r.ifsc || ''},"${r.bank_name || ''}",${r.net_salary}\n`;
+    }
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="salary_bank_${MONTHS[month]}_${year}.csv"`);
+    res.send(csv);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// Send payslip via WhatsApp to all employees in a run
+router.post("/payroll-runs/:id/send-whatsapp", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  try {
+    const rows = await db.execute(sql`
+      SELECT p.*, e.first_name, e.phone, p.month, p.year
+      FROM hr_payslips p
+      JOIN hr_employees e ON p.employee_id = e.id
+      WHERE p.payroll_run_id=${req.params.id} AND p.tenant_id=${tid}
+    `);
+    const MONTHS = ["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    let sent = 0, skipped = 0;
+    for (const p of rows.rows as any[]) {
+      if (!p.phone) { skipped++; continue; }
+      const msg = `Hi ${p.first_name},\n\nYour salary for *${MONTHS[p.month]} ${p.year}* has been credited.\n\n💰 Gross: ₹${Number(p.gross_salary).toLocaleString('en-IN')}\n🔻 Deductions: ₹${Number(p.total_deductions).toLocaleString('en-IN')}\n✅ Net Pay: ₹${Number(p.net_salary).toLocaleString('en-IN')}\n\nFor detailed payslip, please contact HR.\n\n- HR Team`;
+      const ok = await whatsappService.sendTextMessage({ to: p.phone, message: msg }).catch(() => false);
+      if (ok) sent++; else skipped++;
+    }
+    res.json({ success: true, sent, skipped });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// Send single payslip via WhatsApp
+router.post("/payslips/:id/send-whatsapp", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  try {
+    const r = await db.execute(sql`
+      SELECT p.*, e.first_name, e.phone
+      FROM hr_payslips p JOIN hr_employees e ON p.employee_id = e.id
+      WHERE p.id=${req.params.id} AND p.tenant_id=${tid}
+    `);
+    if (!r.rows.length) return res.status(404).json({ message: "Not found" });
+    const p = r.rows[0] as any;
+    if (!p.phone) return res.status(400).json({ message: "Employee has no phone number" });
+    const MONTHS = ["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const msg = `Hi ${p.first_name},\n\nYour salary for *${MONTHS[p.month]} ${p.year}* has been credited.\n\n💰 Gross: ₹${Number(p.gross_salary).toLocaleString('en-IN')}\n🔻 Deductions: ₹${Number(p.total_deductions).toLocaleString('en-IN')}\n✅ Net Pay: ₹${Number(p.net_salary).toLocaleString('en-IN')}\n\nFor detailed payslip, please contact HR.\n\n- HR Team`;
+    const ok = await whatsappService.sendTextMessage({ to: p.phone, message: msg });
+    res.json({ success: ok, message: ok ? "Sent" : "Failed to send" });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// Send payslips via email for all employees in a run
+router.post("/payroll-runs/:id/send-email", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  try {
+    const rows = await db.execute(sql`
+      SELECT p.*, e.first_name, e.last_name, e.email, p.month, p.year
+      FROM hr_payslips p
+      JOIN hr_employees e ON p.employee_id = e.id
+      WHERE p.payroll_run_id=${req.params.id} AND p.tenant_id=${tid}
+    `);
+    const MONTHS = ["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    let sent = 0, skipped = 0;
+    const nodemailer = await import('nodemailer');
+    const transporter = nodemailer.default.createTransport({
+      host: 'smtp.office365.com', port: 587, secure: false,
+      auth: { user: process.env.OFFICE365_EMAIL, pass: process.env.OFFICE365_PASSWORD },
+    });
+    for (const p of rows.rows as any[]) {
+      if (!p.email) { skipped++; continue; }
+      const html = `<p>Dear ${p.first_name} ${p.last_name},</p>
+<p>Your salary for <strong>${MONTHS[p.month]} ${p.year}</strong> has been processed.</p>
+<table border="1" cellpadding="6" style="border-collapse:collapse">
+  <tr><td>Gross Salary</td><td>₹${Number(p.gross_salary).toLocaleString('en-IN')}</td></tr>
+  <tr><td>Total Deductions</td><td>₹${Number(p.total_deductions).toLocaleString('en-IN')}</td></tr>
+  <tr><td><strong>Net Pay</strong></td><td><strong>₹${Number(p.net_salary).toLocaleString('en-IN')}</strong></td></tr>
+</table>
+<p>For detailed payslip, please contact HR.</p><p>- HR Team</p>`;
+      try {
+        await transporter.sendMail({
+          from: process.env.OFFICE365_EMAIL,
+          to: p.email,
+          subject: `Payslip for ${MONTHS[p.month]} ${p.year}`,
+          html,
+        });
+        sent++;
+      } catch { skipped++; }
+    }
+    res.json({ success: true, sent, skipped });
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 
