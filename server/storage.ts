@@ -4783,6 +4783,8 @@ export class DatabaseStorage implements IStorage {
         cgstRate: salesOrderItems.cgstRate,
         sgstRate: salesOrderItems.sgstRate,
         igstRate: salesOrderItems.igstRate,
+        discount: salesOrderItems.discount,
+        discountMode: salesOrderItems.discountMode,
         taxableAmount: salesOrderItems.taxableAmount,
         totalAmount: salesOrderItems.totalAmount,
         recordStatus: salesOrderItems.recordStatus,
