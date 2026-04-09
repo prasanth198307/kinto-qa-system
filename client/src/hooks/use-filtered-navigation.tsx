@@ -102,6 +102,7 @@ const navItemToScreenKey: Record<string, string> = {
   'add-purchase-order': 'purchase_orders',
   'schedule-maintenance': 'maintenance_plans',
   // HR & Payroll
+  'crm-leads': 'dashboard',
   'hr-employees': 'hr_employees',
   'hr-attendance': 'hr_attendance',
   'hr-leaves': 'hr_leaves',

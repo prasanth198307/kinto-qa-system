@@ -76,7 +76,8 @@ import { ManagerChecklistAssignment } from "@/components/ManagerChecklistAssignm
 import PendingPaymentsDashboard from "@/components/PendingPaymentsDashboard";
 import { OperatorAssignedChecklists } from "@/components/OperatorAssignedChecklists";
 import { VerticalNavSidebar, type NavSection } from "@/components/VerticalNavSidebar";
-import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, ClipboardList, Settings, Calendar, Users, FileText, FileX, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator, IndianRupee, CreditCard, Upload, FolderOpen, Wallet, Car, BookOpen, Scale, BarChart3, Landmark, Tag, Trash2, PackageX, Loader2, Play, UserX, Briefcase } from "lucide-react";
+import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, ClipboardList, Settings, Calendar, Users, FileText, FileX, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator, IndianRupee, CreditCard, Upload, FolderOpen, Wallet, Car, BookOpen, Scale, BarChart3, Landmark, Tag, Trash2, PackageX, Loader2, Play, UserX, Briefcase, Target } from "lucide-react";
+import CRMLeadsPage from "@/pages/crm-leads";
 import SalesDashboard from "@/components/SalesDashboard";
 import SalesOrdersPage from "@/pages/sales-orders";
 import SalesOrderDetailPage from "@/pages/sales-order-detail";
@@ -965,6 +966,13 @@ function AdminDashboard() {
       ],
     },
     {
+      id: "crm-section",
+      label: "CRM & Leads",
+      items: [
+        { id: "crm-leads", label: "Lead Management", icon: Target, onClick: () => setLocation('/crm/leads') },
+      ],
+    },
+    {
       id: "master-section",
       label: "Master Data",
       items: [
@@ -1602,6 +1610,8 @@ const navItemToScreenKey: Record<string, string> = {
   'uom': 'uom',
   'raw-material-types': 'raw_material_types',
   'template-management': 'template_management',
+  // CRM Module
+  'crm-leads': 'dashboard',
   // HR Module
   'hr-employees': 'hr_employees',
   'hr-attendance': 'hr_attendance',
@@ -1686,6 +1696,8 @@ const navItemToScreen: Record<string, string> = {
   'cash-flow-statement': 'Accounting',
   'group-summary': 'Accounting',
   'budget-variance': 'Accounting',
+  // CRM Module
+  'crm-leads': 'CRM & Leads',
   // HR Module
   'hr-employees': 'HR & Payroll',
   'hr-attendance': 'HR & Payroll',
@@ -1965,6 +1977,13 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       items: [
         { id: "maintenance", label: "PM Schedule", icon: Wrench, onClick: () => setLocation('/') },
         { id: "pm-history", label: "PM History", icon: History, onClick: () => setLocation('/') },
+      ],
+    },
+    {
+      id: "crm-section",
+      label: "CRM & Leads",
+      items: [
+        { id: "crm-leads", label: "Lead Management", icon: Target, onClick: () => setLocation('/crm/leads') },
       ],
     },
     {
@@ -3507,6 +3526,22 @@ function HRTdsDeclarationsWrapper() {
   );
 }
 
+function CRMLeadsWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('crm-leads');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Lead Management" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation('/'); }}>
+      <CRMLeadsPage />
+    </DashboardShell>
+  );
+}
+
 function HRRecruitmentWrapper() {
   const { logoutMutation } = useAuth();
   const [, setLocation] = useLocation();
@@ -3631,6 +3666,7 @@ function Router() {
       <ProtectedRoute path="/hr/exit-management" component={HRExitManagementWrapper} />
       <ProtectedRoute path="/hr/loans" component={HRLoansWrapper} />
       <ProtectedRoute path="/hr/tds-declarations" component={HRTdsDeclarationsWrapper} />
+      <ProtectedRoute path="/crm/leads" component={CRMLeadsWrapper} />
       <ProtectedRoute path="/hr/recruitment" component={HRRecruitmentWrapper} />
       <ProtectedRoute path="/hr/reports" component={HRReportsWrapper} />
       <Route path="/hr/payslip/:id" component={HRPayslipPage} />

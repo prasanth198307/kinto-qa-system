@@ -20,6 +20,7 @@ import { whatsappService } from "./whatsappService";
 import { whatsappWebhookRouter } from "./whatsappWebhook";
 import hrRouter from "./hr-routes";
 import essRouter from "./ess-routes";
+import crmRouter from "./crm-routes";
 import { whatsappConversationService } from "./whatsappConversationService";
 import { calculateBOMSuggestions } from "@shared/calculations";
 import { importVyapaarData, clearImportedData, importPaymentsOnly } from "./vyapaar-import";
@@ -1204,6 +1205,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // HR Module routes
   app.use('/api/hr', hrRouter);
+  app.use('/api/crm', crmRouter);
   app.use('/api/ess', essRouter);
 
   // Auth routes are handled by setupAuth() in auth.ts
