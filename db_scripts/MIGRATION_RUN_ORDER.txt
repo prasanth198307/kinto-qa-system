@@ -6,55 +6,55 @@
 
 ----- GROUP 1: Feature additions (Apr 3–7) -----
 
-psql $DATABASE_URL -f db_scripts/2026-04-03_customer_advances_advance_type.sql
-psql $DATABASE_URL -f db_scripts/2026-04-03_invoice_item_discount_mode.sql
-psql $DATABASE_URL -f db_scripts/2026-04-03_invoice_items_discount_mode.sql
-psql $DATABASE_URL -f db_scripts/2026-04-03_sales_officers.sql
-psql $DATABASE_URL -f db_scripts/2026-04-03_sales_order_items_discount.sql
-psql $DATABASE_URL -f db_scripts/2026-04-04_monthly_expenses.sql
-psql $DATABASE_URL -f db_scripts/2026-04-04_monthly_expense_payments.sql
-psql $DATABASE_URL -f db_scripts/2026-04-06_monthly_expenses_type.sql
-psql $DATABASE_URL -f db_scripts/2026-04-06_seed_monthly_expenses_permissions.sql
-psql $DATABASE_URL -f db_scripts/2026-04-07_audit_logs_table.sql
+psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-03_customer_advances_advance_type.sql
+psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-03_invoice_item_discount_mode.sql
+psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-03_invoice_items_discount_mode.sql
+psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-03_sales_officers.sql
+psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-03_sales_order_items_discount.sql
+psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-04_monthly_expenses.sql
+psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-04_monthly_expense_payments.sql
+psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-06_monthly_expenses_type.sql
+psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-06_seed_monthly_expenses_permissions.sql
+psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-07_audit_logs_table.sql
 
 ----- GROUP 2: SaaS Core Infrastructure (run in phase order) -----
 
-psql $DATABASE_URL -f db_scripts/2026-04-08_saas-phase1-tenants.sql
-psql $DATABASE_URL -f db_scripts/2026-04-08_saas-phase2-session-store.sql
-psql $DATABASE_URL -f db_scripts/2026-04-08_saas-phase3-tenant-isolation.sql
-psql $DATABASE_URL -f db_scripts/2026-04-08_saas-phase4-rbac.sql
-psql $DATABASE_URL -f db_scripts/2026-04-08_saas-phase5-subscription-plans.sql
-psql $DATABASE_URL -f db_scripts/2026-04-08_saas-phase6-subscription-lifecycle.sql
-psql $DATABASE_URL -f db_scripts/2026-04-08_saas-phase7-white-labeling.sql
-psql $DATABASE_URL -f db_scripts/2026-04-08_saas-phase8-billing-tables.sql
-psql $DATABASE_URL -f db_scripts/2026-04-08_saas-phase9-deletion-audit.sql
-psql $DATABASE_URL -f db_scripts/2026-04-08_saas-phase10-automated-backups.sql
-psql $DATABASE_URL -f db_scripts/2026-04-08_saas-phase11-super-admin.sql
-psql $DATABASE_URL -f db_scripts/2026-04-08_saas-plan-per-user-pricing.sql
-psql $DATABASE_URL -f db_scripts/2026-04-08_saas-subscription-lifecycle.sql
-psql $DATABASE_URL -f db_scripts/2026-04-08_seed-super-admin.sql
-psql $DATABASE_URL -f db_scripts/2026-04-08_flag-kinto-internal-tenants.sql
+psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-08_saas-phase1-tenants.sql
+psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-08_saas-phase2-session-store.sql
+psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-08_saas-phase3-tenant-isolation.sql
+psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-08_saas-phase4-rbac.sql
+psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-08_saas-phase5-subscription-plans.sql
+psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-08_saas-phase6-subscription-lifecycle.sql
+psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-08_saas-phase7-white-labeling.sql
+psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-08_saas-phase8-billing-tables.sql
+psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-08_saas-phase9-deletion-audit.sql
+psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-08_saas-phase10-automated-backups.sql
+psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-08_saas-phase11-super-admin.sql
+psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-08_saas-plan-per-user-pricing.sql
+psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-08_saas-subscription-lifecycle.sql
+psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-08_seed-super-admin.sql
+psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-08_flag-kinto-internal-tenants.sql
 
 ----- GROUP 3: Other Apr 8 additions -----
 
-psql $DATABASE_URL -f db_scripts/2026-04-08_demo-requests-table.sql
-psql $DATABASE_URL -f db_scripts/2026-04-08_add-vendor-address-to-purchase-orders.sql
+psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-08_demo-requests-table.sql
+psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-08_add-vendor-address-to-purchase-orders.sql
 
 ----- GROUP 4: HR & Payroll module (run in this order) -----
 
-psql $DATABASE_URL -f db_scripts/2026-04-08_hr-module-tables.sql
-psql $DATABASE_URL -f db_scripts/hr_phase4_family_salary_revisions.sql
-psql $DATABASE_URL -f db_scripts/phase4_tds_declarations.sql
-psql $DATABASE_URL -f db_scripts/add_special_allowance_to_employees.sql
-psql $DATABASE_URL -f db_scripts/hr_loans_settings.sql
-psql $DATABASE_URL -f db_scripts/backfill-hr-permissions.sql
+psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-08_hr-module-tables.sql
+psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/hr_phase4_family_salary_revisions.sql
+psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/phase4_tds_declarations.sql
+psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/add_special_allowance_to_employees.sql
+psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/hr_loans_settings.sql
+psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/backfill-hr-permissions.sql
 
 ----- GROUP 5: CRM & Permissions (Apr 9) -----
 
-psql $DATABASE_URL -f db_scripts/2026-04-09_crm_leads_table.sql
-psql $DATABASE_URL -f db_scripts/2026-04-09_hr_ess_admin_permission_rows.sql
-psql $DATABASE_URL -f db_scripts/2026-04-09_seed_role_permissions_plan_aware.sql
-psql $DATABASE_URL -f db_scripts/2026-04-09_add_crm_to_plan_modules.sql
+psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-09_crm_leads_table.sql
+psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-09_hr_ess_admin_permission_rows.sql
+psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-09_seed_role_permissions_plan_aware.sql
+psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-09_add_crm_to_plan_modules.sql
 
 ============================================================
   END OF MIGRATION LIST
