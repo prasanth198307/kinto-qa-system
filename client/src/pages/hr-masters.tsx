@@ -12,7 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Building2, Briefcase, Clock, Calendar, CalendarDays, DollarSign, Layers } from "lucide-react";
+import { Plus, Pencil, Trash2, Building2, Briefcase, Clock, Calendar, CalendarDays, DollarSign, Layers, FileText, MapPin } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 function MasterTable({ columns, rows, onEdit, onDelete }: any) {
   return (
@@ -370,6 +371,240 @@ function SalaryComponentsTab() {
   );
 }
 
+// ── Salary Structures Tab ─────────────────────────────────────────────────────
+function SalaryStructuresTab() {
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<any>(null);
+  const [structName, setStructName] = useState("");
+  const [selectedComps, setSelectedComps] = useState<Record<number, boolean>>({});
+  const [overrides, setOverrides] = useState<Record<number, { formula_type: string; formula_value: string }>>({});
+
+  const { data: structures = [] } = useQuery<any[]>({ queryKey: ["/api/hr/salary-structures"] });
+  const { data: components = [] } = useQuery<any[]>({ queryKey: ["/api/hr/salary-components"] });
+  const earningComponents = (components as any[]).filter((c: any) => c.type === "earning");
+
+  const save = useMutation({
+    mutationFn: (d: any) => apiRequest(editing ? "PUT" : "POST", editing ? `/api/hr/salary-structures/${editing.id}` : "/api/hr/salary-structures", d),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/hr/salary-structures"] }); setOpen(false); toast({ title: "Salary structure saved" }); },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+  const del = useMutation({
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/hr/salary-structures/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/hr/salary-structures"] }),
+  });
+
+  function openAdd() {
+    setEditing(null); setStructName(""); setSelectedComps({}); setOverrides({}); setOpen(true);
+  }
+  function openEdit(r: any) {
+    setEditing(r); setStructName(r.name);
+    const comps: any[] = typeof r.components === "string" ? JSON.parse(r.components) : (r.components || []);
+    const sel: Record<number, boolean> = {};
+    const ov: Record<number, { formula_type: string; formula_value: string }> = {};
+    comps.forEach((c: any) => {
+      if (c.component_id) { sel[c.component_id] = true; ov[c.component_id] = { formula_type: c.formula_type, formula_value: String(c.formula_value) }; }
+    });
+    setSelectedComps(sel); setOverrides(ov); setOpen(true);
+  }
+  function toggleComp(comp: any) {
+    setSelectedComps(s => {
+      const next = { ...s, [comp.id]: !s[comp.id] };
+      if (!next[comp.id]) { const o = { ...overrides }; delete o[comp.id]; setOverrides(o); }
+      else { setOverrides(o => ({ ...o, [comp.id]: { formula_type: comp.formula_type, formula_value: String(comp.formula_value) } })); }
+      return next;
+    });
+  }
+  function handleSave() {
+    const compsPayload = earningComponents
+      .filter((c: any) => selectedComps[c.id])
+      .map((c: any) => ({
+        component_id: c.id, name: c.name, code: c.code, type: "earning",
+        formula_type: overrides[c.id]?.formula_type ?? c.formula_type,
+        formula_value: Number(overrides[c.id]?.formula_value ?? c.formula_value),
+      }));
+    save.mutate({ name: structName, components: compsPayload });
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex justify-between items-center">
+        <p className="text-sm text-muted-foreground">Define salary structures by selecting which earning components apply and their formulas.</p>
+        <Button size="sm" onClick={openAdd} data-testid="btn-add-structure"><Plus className="h-4 w-4 mr-1" />Add Structure</Button>
+      </div>
+      {(structures as any[]).length === 0 && <p className="text-center py-8 text-muted-foreground text-sm">No salary structures yet. Create one to assign to employees.</p>}
+      <div className="space-y-2">
+        {(structures as any[]).map((s: any) => {
+          const comps: any[] = typeof s.components === "string" ? JSON.parse(s.components || "[]") : (s.components || []);
+          return (
+            <div key={s.id} className="flex items-start justify-between gap-3 rounded-md border p-3">
+              <div>
+                <p className="font-medium text-sm">{s.name}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {comps.length === 0 ? "No components" : comps.map((c: any) =>
+                    `${c.name} (${c.formula_type === "percent_of_basic" ? `${c.formula_value}%` : `₹${c.formula_value}`})`
+                  ).join(", ")}
+                </p>
+              </div>
+              <div className="flex gap-1 shrink-0">
+                <Button size="icon" variant="ghost" onClick={() => openEdit(s)} data-testid={`btn-edit-struct-${s.id}`}><Pencil className="h-3.5 w-3.5" /></Button>
+                <Button size="icon" variant="ghost" onClick={() => del.mutate(s.id)} data-testid={`btn-delete-struct-${s.id}`}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>{editing ? "Edit" : "Create"} Salary Structure</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Structure Name *</Label>
+              <Input value={structName} onChange={e => setStructName(e.target.value)} placeholder="e.g. Staff Grade A, Management" data-testid="input-structure-name" />
+            </div>
+            <div>
+              <Label className="mb-2 block">Earning Components</Label>
+              {earningComponents.length === 0 && <p className="text-xs text-muted-foreground">No earning components found. Add them in the Salary Components tab first.</p>}
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {earningComponents.map((c: any) => (
+                  <div key={c.id} className="rounded border p-2.5 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Checkbox id={`comp-${c.id}`} checked={!!selectedComps[c.id]} onCheckedChange={() => toggleComp(c)} data-testid={`check-comp-${c.id}`} />
+                      <label htmlFor={`comp-${c.id}`} className="text-sm font-medium cursor-pointer">{c.name} <span className="text-muted-foreground font-normal">({c.code})</span></label>
+                    </div>
+                    {selectedComps[c.id] && (
+                      <div className="grid grid-cols-2 gap-2 pl-6">
+                        <div>
+                          <Label className="text-xs">Formula</Label>
+                          <Select value={overrides[c.id]?.formula_type ?? c.formula_type} onValueChange={v => setOverrides(o => ({ ...o, [c.id]: { ...o[c.id], formula_type: v } }))}>
+                            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="percent_of_basic">% of Basic</SelectItem>
+                              <SelectItem value="fixed">Fixed Amount</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label className="text-xs">{(overrides[c.id]?.formula_type ?? c.formula_type) === "percent_of_basic" ? "Percent (%)" : "Amount (₹)"}</Label>
+                          <Input className="h-8 text-xs" type="number" value={overrides[c.id]?.formula_value ?? String(c.formula_value)} onChange={e => setOverrides(o => ({ ...o, [c.id]: { ...o[c.id], formula_value: e.target.value } }))} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <Button className="w-full" disabled={!structName || save.isPending} onClick={handleSave} data-testid="btn-save-structure">
+              {save.isPending ? "Saving..." : "Save Structure"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// ── PT Slabs Tab ──────────────────────────────────────────────────────────────
+function PTSlabsTab() {
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<any>(null);
+  const [form, setForm] = useState({ state: "", income_from: "0", income_to: "", pt_amount: "0" });
+
+  const { data: slabs = [] } = useQuery<any[]>({ queryKey: ["/api/hr/pt-slabs"] });
+  const save = useMutation({
+    mutationFn: (d: any) => apiRequest(editing ? "PUT" : "POST", editing ? `/api/hr/pt-slabs/${editing.id}` : "/api/hr/pt-slabs", d),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/hr/pt-slabs"] }); setOpen(false); toast({ title: "PT slab saved" }); },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+  const del = useMutation({
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/hr/pt-slabs/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/hr/pt-slabs"] }),
+  });
+  function openAdd() { setEditing(null); setForm({ state: "", income_from: "0", income_to: "", pt_amount: "0" }); setOpen(true); }
+  function openEdit(r: any) { setEditing(r); setForm({ state: r.state, income_from: String(r.income_from), income_to: r.income_to != null ? String(r.income_to) : "", pt_amount: String(r.pt_amount) }); setOpen(true); }
+
+  const byState: Record<string, any[]> = {};
+  (slabs as any[]).forEach((s: any) => { if (!byState[s.state]) byState[s.state] = []; byState[s.state].push(s); });
+
+  return (
+    <div className="space-y-3">
+      <div className="flex justify-between items-center">
+        <p className="text-sm text-muted-foreground">Configure Professional Tax slabs by state. Employee's state (from profile) is matched during payroll processing.</p>
+        <Button size="sm" onClick={openAdd} data-testid="btn-add-pt-slab"><Plus className="h-4 w-4 mr-1" />Add Slab</Button>
+      </div>
+      {(slabs as any[]).length === 0 && (
+        <p className="text-center py-8 text-muted-foreground text-sm">No PT slabs configured. Hardcoded defaults will be used. Add slabs to override for specific states.</p>
+      )}
+      {Object.entries(byState).map(([state, rows]) => (
+        <div key={state}>
+          <p className="text-xs font-semibold text-muted-foreground uppercase mb-1">{state}</p>
+          <div className="rounded-md border overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="px-3 py-2 text-left font-medium text-muted-foreground">Income From (₹/month)</th>
+                  <th className="px-3 py-2 text-left font-medium text-muted-foreground">Income To (₹/month)</th>
+                  <th className="px-3 py-2 text-left font-medium text-muted-foreground">PT Amount (₹/month)</th>
+                  <th className="px-3 py-2 w-20"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r: any) => (
+                  <tr key={r.id} className="border-t">
+                    <td className="px-3 py-2">{Number(r.income_from).toLocaleString("en-IN")}</td>
+                    <td className="px-3 py-2">{r.income_to != null ? Number(r.income_to).toLocaleString("en-IN") : "& above"}</td>
+                    <td className="px-3 py-2 font-medium">₹{Number(r.pt_amount).toLocaleString("en-IN")}</td>
+                    <td className="px-3 py-2">
+                      <div className="flex gap-1">
+                        <Button size="icon" variant="ghost" onClick={() => openEdit(r)}><Pencil className="h-3.5 w-3.5" /></Button>
+                        <Button size="icon" variant="ghost" onClick={() => del.mutate(r.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ))}
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>{editing ? "Edit" : "Add"} PT Slab</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>State *</Label>
+              <Input value={form.state} onChange={e => setForm(f => ({ ...f, state: e.target.value }))} placeholder="e.g. Maharashtra, Karnataka" data-testid="input-pt-state" />
+              <p className="text-xs text-muted-foreground mt-1">Must match the state field on the employee's profile (case-insensitive).</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Monthly Income From (₹)</Label>
+                <Input type="number" value={form.income_from} onChange={e => setForm(f => ({ ...f, income_from: e.target.value }))} data-testid="input-pt-from" />
+              </div>
+              <div>
+                <Label>Monthly Income To (₹)</Label>
+                <Input type="number" value={form.income_to} onChange={e => setForm(f => ({ ...f, income_to: e.target.value }))} placeholder="Leave blank for 'and above'" data-testid="input-pt-to" />
+              </div>
+            </div>
+            <div>
+              <Label>PT Amount per Month (₹)</Label>
+              <Input type="number" value={form.pt_amount} onChange={e => setForm(f => ({ ...f, pt_amount: e.target.value }))} data-testid="input-pt-amount" />
+            </div>
+            <Button className="w-full" disabled={!form.state || save.isPending}
+              onClick={() => save.mutate({ state: form.state, income_from: Number(form.income_from), income_to: form.income_to ? Number(form.income_to) : null, pt_amount: Number(form.pt_amount) })}
+              data-testid="btn-save-pt-slab">
+              {save.isPending ? "Saving..." : "Save Slab"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function HRMastersPage() {
   const tabs = [
@@ -379,13 +614,15 @@ export default function HRMastersPage() {
     { value: "leave-types", label: "Leave Types", icon: Calendar, component: LeaveTypesTab },
     { value: "holidays", label: "Holidays", icon: CalendarDays, component: HolidaysTab },
     { value: "salary-components", label: "Salary Components", icon: DollarSign, component: SalaryComponentsTab },
+    { value: "salary-structures", label: "Salary Structures", icon: Layers, component: SalaryStructuresTab },
+    { value: "pt-slabs", label: "PT Slabs", icon: MapPin, component: PTSlabsTab },
   ];
 
   return (
     <div className="p-4 space-y-4">
       <div>
         <h1 className="text-xl font-semibold">HR Masters</h1>
-        <p className="text-sm text-muted-foreground">Configure departments, designations, shifts, leave types, holidays and salary components</p>
+        <p className="text-sm text-muted-foreground">Configure departments, designations, shifts, leave types, holidays, salary components, salary structures, and Professional Tax slabs</p>
       </div>
       <Tabs defaultValue="departments">
         <TabsList className="flex-wrap h-auto gap-1">

@@ -282,6 +282,41 @@ router.delete("/salary-structures/:id", requireHR, async (req: any, res) => {
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 
+// ── PT SLABS ────────────────────────────────────────────────────────────────
+router.get("/pt-slabs", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  try {
+    const rows = await db.execute(sql`SELECT * FROM hr_pt_slabs WHERE tenant_id=${tid} AND record_status=1 ORDER BY state, income_from`);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/pt-slabs", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  const { state, income_from, income_to, pt_amount } = req.body;
+  try {
+    const r = await db.execute(sql`INSERT INTO hr_pt_slabs (tenant_id, state, income_from, income_to, pt_amount) VALUES (${tid}, ${state}, ${income_from}, ${income_to ?? null}, ${pt_amount}) RETURNING *`);
+    res.json(r.rows[0]);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.put("/pt-slabs/:id", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  const { state, income_from, income_to, pt_amount } = req.body;
+  try {
+    const r = await db.execute(sql`UPDATE hr_pt_slabs SET state=${state}, income_from=${income_from}, income_to=${income_to ?? null}, pt_amount=${pt_amount} WHERE id=${req.params.id} AND tenant_id=${tid} RETURNING *`);
+    res.json(r.rows[0]);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.delete("/pt-slabs/:id", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  try {
+    await db.execute(sql`UPDATE hr_pt_slabs SET record_status=0 WHERE id=${req.params.id} AND tenant_id=${tid}`);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
 // ── EMPLOYEES ────────────────────────────────────────────────────────────────
 router.get("/employees", requireHR, async (req: any, res) => {
   const tid = getTenantId(req);
@@ -852,7 +887,7 @@ router.post("/payroll-runs/:id/process", requireHR, async (req: any, res) => {
             continue;
           }
           let amount = 0;
-          if (comp.formula_type === 'percentage') {
+          if (comp.formula_type === 'percent_of_basic' || comp.formula_type === 'percentage') {
             amount = Math.round(basicSalary * (Number(comp.formula_value) / 100) * attendancePct);
           } else {
             amount = Math.round(Number(comp.formula_value || 0) * attendancePct);
