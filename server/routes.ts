@@ -21,7 +21,7 @@ import { whatsappWebhookRouter } from "./whatsappWebhook";
 import hrRouter from "./hr-routes";
 import essRouter from "./ess-routes";
 import crmRouter from "./crm-routes";
-import { seedTenantPermissions } from "./seed-permissions";
+import { seedTenantPermissions, syncAndUnlockByPlan } from "./seed-permissions";
 import { whatsappConversationService } from "./whatsappConversationService";
 import { calculateBOMSuggestions } from "@shared/calculations";
 import { importVyapaarData, clearImportedData, importPaymentsOnly } from "./vyapaar-import";
@@ -1138,8 +1138,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(403).json({ message: 'Forbidden' });
     try {
       const tenantId = parseInt(req.params.tenantId);
-      const result = await seedTenantPermissions(tenantId);
-      res.json({ message: `Sync complete: ${result.inserted} new rows added, ${result.skipped} already existed.`, ...result });
+      const result = await syncAndUnlockByPlan(tenantId);
+      res.json({
+        message: `Sync complete: ${result.inserted} new rows added, ${result.unlocked} screens unlocked by plan upgrade, ${result.skipped} already up-to-date.`,
+        ...result
+      });
     } catch (err: any) {
       res.status(500).json({ message: err.message });
     }
@@ -1153,8 +1156,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(403).json({ message: 'Forbidden: Only tenant admins can sync permissions' });
     try {
       const tenantId = currentUser.tenantId;
-      const result = await seedTenantPermissions(tenantId);
-      res.json({ message: `Sync complete: ${result.inserted} new rows added, ${result.skipped} already existed.`, ...result });
+      const result = await syncAndUnlockByPlan(tenantId);
+      res.json({
+        message: `Sync complete: ${result.inserted} new rows added, ${result.unlocked} screens unlocked by plan, ${result.skipped} already up-to-date.`,
+        ...result
+      });
     } catch (err: any) {
       res.status(500).json({ message: err.message });
     }

@@ -134,6 +134,7 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
     "hr-recruitment",
     "hr-reports",
     "hr-masters",
+    "hr-ess-admin",
   ],
 };
 
