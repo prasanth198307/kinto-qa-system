@@ -245,6 +245,169 @@ CREATE TABLE IF NOT EXISTS purchase_return_items (
   tenant_id INTEGER DEFAULT 1
 );
 
+-- 13. required_spares (depends on checklist_submissions, spare_parts_catalog)
+CREATE TABLE IF NOT EXISTS required_spares (
+  id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::varchar,
+  submission_id VARCHAR REFERENCES checklist_submissions(id),
+  submission_task_id VARCHAR REFERENCES submission_tasks(id),
+  spare_part_id VARCHAR REFERENCES spare_parts_catalog(id),
+  spare_item VARCHAR(255) NOT NULL,
+  quantity INTEGER NOT NULL DEFAULT 1,
+  urgency VARCHAR(50) NOT NULL DEFAULT 'medium',
+  status VARCHAR(50) DEFAULT 'pending',
+  approved_by VARCHAR REFERENCES users(id),
+  approved_at TIMESTAMP,
+  rejection_reason TEXT,
+  created_at TIMESTAMP DEFAULT NOW(),
+  tenant_id INTEGER DEFAULT 1
+);
+
+-- 14. user_assignments
+CREATE TABLE IF NOT EXISTS user_assignments (
+  id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::varchar,
+  operator_id VARCHAR REFERENCES users(id),
+  reviewer_id VARCHAR REFERENCES users(id),
+  manager_id VARCHAR REFERENCES users(id),
+  machine_ids TEXT[],
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  tenant_id INTEGER DEFAULT 1
+);
+
+-- 15. finished_goods (depends on products, uom, machines)
+CREATE TABLE IF NOT EXISTS finished_goods (
+  id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::varchar,
+  product_id VARCHAR NOT NULL REFERENCES products(id),
+  batch_number VARCHAR(100) NOT NULL,
+  original_batch_number VARCHAR(100),
+  production_date TIMESTAMP NOT NULL,
+  quantity INTEGER NOT NULL,
+  uom_id VARCHAR REFERENCES uom(id),
+  quality_status VARCHAR(50) DEFAULT 'pending',
+  machine_id VARCHAR REFERENCES machines(id),
+  operator_id VARCHAR REFERENCES users(id),
+  inspected_by VARCHAR REFERENCES users(id),
+  inspection_date TIMESTAMP,
+  storage_location VARCHAR(255),
+  remarks TEXT,
+  source VARCHAR(50) DEFAULT 'production',
+  sales_return_item_id VARCHAR,
+  repacking_date TIMESTAMP,
+  record_status INTEGER NOT NULL DEFAULT 1,
+  created_by VARCHAR REFERENCES users(id),
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  tenant_id INTEGER DEFAULT 1
+);
+
+-- 16. raw_material_issuance_items (depends on raw_material_issuance, raw_materials, products)
+CREATE TABLE IF NOT EXISTS raw_material_issuance_items (
+  id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::varchar,
+  issuance_id VARCHAR NOT NULL REFERENCES raw_material_issuance(id),
+  raw_material_id VARCHAR NOT NULL REFERENCES raw_materials(id),
+  product_id VARCHAR REFERENCES products(id),
+  quantity_issued NUMERIC(12,6) NOT NULL,
+  suggested_quantity NUMERIC(12,6),
+  calculation_basis VARCHAR(50),
+  uom_id VARCHAR REFERENCES uom(id),
+  remarks TEXT,
+  record_status INTEGER NOT NULL DEFAULT 1,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  tenant_id INTEGER DEFAULT 1
+);
+
+-- 17. scrap_inventory (depends on sales_returns, sales_return_items, invoices, products)
+CREATE TABLE IF NOT EXISTS scrap_inventory (
+  id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::varchar,
+  scrap_number VARCHAR(100) NOT NULL UNIQUE,
+  scrap_date TIMESTAMP NOT NULL,
+  sales_return_id VARCHAR REFERENCES sales_returns(id),
+  sales_return_item_id VARCHAR REFERENCES sales_return_items(id),
+  invoice_id VARCHAR REFERENCES invoices(id),
+  product_id VARCHAR NOT NULL REFERENCES products(id),
+  product_name VARCHAR(255) NOT NULL,
+  batch_number VARCHAR(100),
+  quantity INTEGER NOT NULL,
+  unit_cost INTEGER NOT NULL,
+  selling_price INTEGER NOT NULL,
+  total_cost_value INTEGER NOT NULL,
+  total_selling_value INTEGER NOT NULL,
+  loss_amount INTEGER NOT NULL,
+  damage_reason VARCHAR(50) NOT NULL,
+  condition_description TEXT,
+  damage_evidence_url VARCHAR(500),
+  approval_status VARCHAR(30) NOT NULL DEFAULT 'pending',
+  approved_by VARCHAR REFERENCES users(id),
+  approval_date TIMESTAMP,
+  approval_remarks TEXT,
+  processed_status VARCHAR(30) NOT NULL DEFAULT 'pending',
+  processed_date TIMESTAMP,
+  disposal_method VARCHAR(50),
+  disposal_value INTEGER DEFAULT 0,
+  gst_reversal INTEGER DEFAULT 0,
+  gst_reversal_status VARCHAR(30) DEFAULT 'pending',
+  remarks TEXT,
+  record_status INTEGER NOT NULL DEFAULT 1,
+  created_by VARCHAR REFERENCES users(id),
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  tenant_id INTEGER DEFAULT 1
+);
+
+-- 18. advance_applications (depends on customer_advances, invoices, invoice_payments)
+CREATE TABLE IF NOT EXISTS advance_applications (
+  id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::varchar,
+  advance_id VARCHAR NOT NULL REFERENCES customer_advances(id),
+  invoice_id VARCHAR NOT NULL REFERENCES invoices(id),
+  invoice_payment_id VARCHAR REFERENCES invoice_payments(id),
+  applied_amount INTEGER NOT NULL,
+  application_date DATE NOT NULL,
+  applied_by VARCHAR REFERENCES users(id),
+  remarks TEXT,
+  reversed_at TIMESTAMP,
+  reversal_remarks TEXT,
+  reversed_by VARCHAR REFERENCES users(id),
+  record_status INTEGER NOT NULL DEFAULT 1,
+  created_at TIMESTAMP DEFAULT NOW(),
+  tenant_id INTEGER DEFAULT 1
+);
+
+-- 19. tds_rates
+CREATE TABLE IF NOT EXISTS tds_rates (
+  id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::varchar,
+  section VARCHAR(20) NOT NULL,
+  description TEXT,
+  individual_rate INTEGER NOT NULL,
+  company_rate INTEGER NOT NULL,
+  threshold INTEGER DEFAULT 0,
+  record_status INTEGER NOT NULL DEFAULT 1,
+  tenant_id INTEGER DEFAULT 1
+);
+
+-- 20. tds_entries (depends on tds_rates, vendors, purchase_orders)
+CREATE TABLE IF NOT EXISTS tds_entries (
+  id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::varchar,
+  entry_date TIMESTAMP NOT NULL,
+  vendor_id VARCHAR REFERENCES vendors(id),
+  vendor_name VARCHAR(255) NOT NULL,
+  tds_rate_id VARCHAR REFERENCES tds_rates(id),
+  section VARCHAR(20) NOT NULL,
+  gross_amount INTEGER NOT NULL,
+  tds_rate INTEGER NOT NULL,
+  tds_amount INTEGER NOT NULL,
+  net_amount INTEGER NOT NULL,
+  purchase_order_id VARCHAR REFERENCES purchase_orders(id),
+  description TEXT,
+  deposit_status VARCHAR(30) DEFAULT 'pending',
+  deposit_date TIMESTAMP,
+  challan_number VARCHAR(100),
+  record_status INTEGER NOT NULL DEFAULT 1,
+  created_by VARCHAR REFERENCES users(id),
+  created_at TIMESTAMP DEFAULT NOW(),
+  tenant_id INTEGER DEFAULT 1
+);
+
 -- ============================================================
 -- END OF PREREQUISITE SCRIPT
 -- After running this, run: 2026-04-08_saas-phase3-tenant-isolation.sql
