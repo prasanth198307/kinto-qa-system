@@ -948,6 +948,17 @@ function AdminDashboard() {
       ],
     },
     {
+      id: "hr-section",
+      label: "HR & Payroll",
+      items: [
+        { id: "hr-employees", label: "Employees", icon: Users, onClick: () => setLocation('/hr/employees') },
+        { id: "hr-attendance", label: "Attendance", icon: Calendar, onClick: () => setLocation('/hr/attendance') },
+        { id: "hr-leaves", label: "Leave Management", icon: ClipboardList, onClick: () => setLocation('/hr/leaves') },
+        { id: "hr-payroll", label: "Payroll", icon: IndianRupee, onClick: () => setLocation('/hr/payroll') },
+        { id: "hr-masters", label: "HR Masters", icon: Settings, onClick: () => setLocation('/hr/masters') },
+      ],
+    },
+    {
       id: "master-section",
       label: "Master Data",
       items: [
@@ -1783,14 +1794,15 @@ function filterNavSectionsByRole(sections: NavSection[], role: string): NavSecti
 }
 
 // System roles always have full access — no DB permission rows needed
-const SYSTEM_ROLES_FULL_ACCESS = ['admin', 'manager', 'AccountsManager'];
+const SYSTEM_ROLES_FULL_ACCESS = ['admin', 'manager', 'accountsmanager'];
 
 // Filter nav sections using database permissions (for custom roles)
 function filterNavSectionsWithDbPermissions(sections: NavSection[], dbPermissions: Permission[], roleName?: string): NavSection[] {
   if (!sections || !Array.isArray(sections)) return [];
 
-  // System roles (admin, manager, AccountsManager) see ALL nav items — no DB filter
-  if (roleName && SYSTEM_ROLES_FULL_ACCESS.includes(roleName)) {
+  // System roles (admin, manager, accountsmanager) see ALL nav items — no DB filter
+  const roleNameLower = roleName?.toLowerCase() || '';
+  if (roleName && SYSTEM_ROLES_FULL_ACCESS.includes(roleNameLower)) {
     return sections;
   }
 
