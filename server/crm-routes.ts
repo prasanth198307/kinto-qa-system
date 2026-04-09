@@ -16,14 +16,32 @@ function requireCRM(req: any, res: any, next: any) {
   next();
 }
 
-/** Returns true if the current user has full (unrestricted) access to all leads */
+/**
+ * Returns true if the current user has full (unrestricted) access to all leads.
+ * Full access is granted when:
+ *   (a) the user's role name is in FULL_ACCESS_ROLES (admin/manager/accountsmanager), OR
+ *   (b) the user's role has can_edit = 1 for the crm_leads screen in role_permissions
+ *       — this makes any custom role with edit rights automatically get full access.
+ */
 async function hasFullAccess(req: any): Promise<boolean> {
   try {
     const user = await storage.getUser(req.user.id);
     if (!user || !user.roleId) return false;
     const role = await storage.getUserRole(user.roleId);
     if (!role) return false;
-    return FULL_ACCESS_ROLES.includes(role.name.toLowerCase());
+
+    // Standard full-access roles bypass DB permission checks
+    if (FULL_ACCESS_ROLES.includes(role.name.toLowerCase())) return true;
+
+    // Custom roles: check if they have can_edit on crm_leads
+    const perm = await db.execute(sql`
+      SELECT can_edit FROM role_permissions
+      WHERE role_id=${user.roleId} AND screen_key='crm_leads' AND record_status=1
+      LIMIT 1
+    `);
+    if (perm.rows.length && Number((perm.rows[0] as any).can_edit) === 1) return true;
+
+    return false;
   } catch {
     return false;
   }
