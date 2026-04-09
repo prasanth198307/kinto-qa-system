@@ -104,6 +104,12 @@ Add the nav item ID mapped to an existing screen key (used for DB-permission-bas
 ### Double-Navigation Bug (FIXED — do not revert)
 `VerticalNavSidebar.handleItemClick` only calls `item.onClick()` when `onClick` is defined — it does NOT also call `onItemClick`. This prevents the wrapper's `onNavigate` (which calls `setLocation('/')`) from overriding the intended route navigation.
 
+### Nav Items MUST always have `onClick` in `getAdminNavSections()`
+Every nav item in `getAdminNavSections()` **must** have an `onClick` handler. Items without `onClick` fall to the `else` branch in `VerticalNavSidebar.handleItemClick`, which calls both `navigate('/?tab=itemId')` AND `onItemClick(itemId)`. From within a wrapper page, `onItemClick` triggers `onNavigate → setLocation('/')`, causing unexpected navigation back to root. Always provide `onClick: () => setLocation('/your/path')`.
+
+### Browser Caching of Plan Features (FIXED — do not revert)
+`/api/tenant/features` has `Cache-Control: no-store` header. **Do not remove this.** Without it, the browser caches the response and serves stale plan data that may be missing newly added nav items — causing sidebar items to disappear ~1 second after page load. This was the root cause of HR Reports and Exit Management disappearing from the sidebar.
+
 ### Role name comparison
 `/api/user` returns `role: "Admin"` (capital A). Always use `.toLowerCase()` when comparing role names.
 
