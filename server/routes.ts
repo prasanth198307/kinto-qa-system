@@ -215,6 +215,9 @@ const endpointToScreenKey: Record<string, string> = {
   '/api/payment-evidence': 'payments',
   '/api/terms-conditions': 'template_management',
   
+  // CRM
+  '/api/crm/leads': 'crm_leads',
+
   // HR & Payroll
   '/api/hr/employees': 'hr_employees',
   '/api/hr/attendance': 'hr_attendance',

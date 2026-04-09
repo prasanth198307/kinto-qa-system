@@ -167,6 +167,9 @@ const AVAILABLE_SCREENS: ScreenDefinition[] = [
   { key: 'hpcl_migration', label: 'HPCL Data Migration', allowedActions: ['view', 'create'] },
   { key: 'payment_writeoff', label: 'Payment Write-Off', allowedActions: ['view', 'create', 'delete'] },
 
+  // CRM
+  { key: 'crm_leads', label: 'CRM: Lead Management', allowedActions: ['view', 'create', 'edit', 'delete'] },
+
   // HR & Payroll
   { key: 'hr_employees', label: 'HR: Employee Master', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'hr_attendance', label: 'HR: Attendance', allowedActions: ['view', 'create', 'edit'] },

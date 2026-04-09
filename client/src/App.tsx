@@ -1611,7 +1611,7 @@ const navItemToScreenKey: Record<string, string> = {
   'raw-material-types': 'raw_material_types',
   'template-management': 'template_management',
   // CRM Module
-  'crm-leads': 'dashboard',
+  'crm-leads': 'crm_leads',
   // HR Module
   'hr-employees': 'hr_employees',
   'hr-attendance': 'hr_attendance',

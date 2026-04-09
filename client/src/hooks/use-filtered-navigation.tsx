@@ -101,8 +101,9 @@ const navItemToScreenKey: Record<string, string> = {
   'create-gatepass': 'gatepasses',
   'add-purchase-order': 'purchase_orders',
   'schedule-maintenance': 'maintenance_plans',
+  // CRM
+  'crm-leads': 'crm_leads',
   // HR & Payroll
-  'crm-leads': 'dashboard',
   'hr-employees': 'hr_employees',
   'hr-attendance': 'hr_attendance',
   'hr-leaves': 'hr_leaves',
