@@ -68,7 +68,13 @@ CREATE TABLE IF NOT EXISTS subscriptions (
 );
 
 -- Unique: one subscription record per tenant (upserted on payment)
-ALTER TABLE subscriptions ADD CONSTRAINT IF NOT EXISTS subscriptions_tenant_id_unique UNIQUE (tenant_id);
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'subscriptions_tenant_id_unique'
+  ) THEN
+    ALTER TABLE subscriptions ADD CONSTRAINT subscriptions_tenant_id_unique UNIQUE (tenant_id);
+  END IF;
+END $$;
 
 -- 5. Billing Events (immutable audit log of every plan change and payment)
 -- event_type values: trial_started | plan_activated | plan_upgraded | plan_downgraded |
