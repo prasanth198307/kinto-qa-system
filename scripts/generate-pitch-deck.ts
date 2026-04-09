@@ -158,31 +158,58 @@ function bullet(slide: any, x: number, y: number, w: number, items: string[], si
 // ══════════════════════════════════════════════════════════════
 {
   const s = pptx.addSlide();
-  addNavyHeader(s, "15+ Integrated Modules", "Everything your factory needs — all in one place");
+  addNavyHeader(s, "15+ Integrated Modules", "Full platform unlocked at Enterprise — ₹2,599/month");
   s.addShape(pptx.ShapeType.rect, { x: 0, y: 1.2, w: "100%", h: 6.1, fill: { color: C.lightBlue } });
 
-  const modules = [
-    "Production Management", "Inventory Control", "Purchase Orders",
-    "GST Invoicing", "Dispatch & Gatepasses", "Quality & Returns",
-    "Double-Entry Accounting", "MIS Analytics", "Preventive Maintenance",
-    "WhatsApp Integration", "Expenses & Cash Register", "Document Management",
-    "CRM Lead Management", "HR & Payroll", "Employee Self-Service",
+  // Plan legend
+  const legend = [["BASIC", C.muted, "F1F5F9"], ["PRO", "0369A1", "DBEAFE"], ["ENTERPRISE", C.navy, C.navy]];
+  legend.forEach(([lbl, txtColor, bg], i) => {
+    s.addShape(pptx.ShapeType.rect, { x: 7.5 + i * 1.85, y: 1.28, w: 1.7, h: 0.26, fill: { color: bg as string }, rectRadius: 0.04 });
+    s.addText(lbl as string, { x: 7.5 + i * 1.85, y: 1.28, w: 1.7, h: 0.26, fontSize: 7.5, bold: true,
+      color: i === 2 ? C.white : txtColor as string, fontFace: "Calibri", align: "center", valign: "middle" });
+  });
+  s.addText("Plan:", { x: 6.9, y: 1.28, w: 0.6, h: 0.26, fontSize: 7.5, color: C.muted, fontFace: "Calibri", valign: "middle" });
+
+  const modules: { name: string; plan: "BASIC" | "PRO" | "ENTERPRISE" }[] = [
+    { name: "GST Invoicing",           plan: "BASIC"      },
+    { name: "Inventory Control",       plan: "BASIC"      },
+    { name: "Purchase Orders",         plan: "BASIC"      },
+    { name: "Dispatch & Gatepasses",   plan: "BASIC"      },
+    { name: "Expenses & Cash Register",plan: "BASIC"      },
+    { name: "Production Management",   plan: "PRO"        },
+    { name: "Quality & Returns",       plan: "PRO"        },
+    { name: "Double-Entry Accounting", plan: "PRO"        },
+    { name: "MIS Analytics",           plan: "PRO"        },
+    { name: "WhatsApp Integration",    plan: "PRO"        },
+    { name: "Preventive Maintenance",  plan: "PRO"        },
+    { name: "CRM Lead Management",     plan: "PRO"        },
+    { name: "HR & Payroll",            plan: "ENTERPRISE" },
+    { name: "Employee Self-Service",   plan: "ENTERPRISE" },
+    { name: "Document Management",     plan: "ENTERPRISE" },
   ];
+
+  const planStyle: Record<string, { bg: string; text: string; badge: string; badgeTxt: string }> = {
+    BASIC:      { bg: C.white,     text: C.navy,  badge: "F1F5F9", badgeTxt: C.muted  },
+    PRO:        { bg: "EFF6FF",    text: "0369A1", badge: "DBEAFE", badgeTxt: "0369A1" },
+    ENTERPRISE: { bg: C.navy,     text: C.white, badge: C.accent, badgeTxt: C.dark   },
+  };
 
   modules.forEach((mod, i) => {
     const col = i % 5;
     const row = Math.floor(i / 5);
-    const isNew = ["CRM Lead Management","HR & Payroll","Employee Self-Service"].includes(mod);
-    s.addShape(pptx.ShapeType.rect, { x: 0.25 + col * 2.57, y: 1.35 + row * 1.75, w: 2.4, h: 1.55,
-      fill: { color: isNew ? C.navy : C.white }, line: { color: isNew ? C.blue : C.border, width: isNew ? 2 : 1 }, rectRadius: 0.08 });
-    s.addText(mod, { x: 0.25 + col * 2.57, y: 1.45 + row * 1.75, w: 2.4, h: 1.35,
-      fontSize: 10.5, bold: true, color: isNew ? C.white : C.navy, fontFace: "Calibri", align: "center", valign: "middle" });
-    if (isNew) {
-      s.addShape(pptx.ShapeType.rect, { x: 0.25 + col * 2.57 + 1.5, y: 1.35 + row * 1.75 - 0.15, w: 0.7, h: 0.22,
-        fill: { color: C.accent }, rectRadius: 0.04 });
-      s.addText("NEW", { x: 0.25 + col * 2.57 + 1.5, y: 1.35 + row * 1.75 - 0.15, w: 0.7, h: 0.22,
-        fontSize: 7, bold: true, color: C.dark, fontFace: "Calibri", align: "center" });
-    }
+    const st = planStyle[mod.plan];
+    const cx = 0.25 + col * 2.57;
+    const cy = 1.62 + row * 1.88;
+
+    s.addShape(pptx.ShapeType.rect, { x: cx, y: cy, w: 2.4, h: 1.68,
+      fill: { color: st.bg }, line: { color: mod.plan === "ENTERPRISE" ? C.blue : C.border, width: mod.plan === "ENTERPRISE" ? 2 : 1 }, rectRadius: 0.08 });
+    s.addText(mod.name, { x: cx + 0.08, y: cy + 0.12, w: 2.24, h: 1.1,
+      fontSize: 10.5, bold: true, color: st.text, fontFace: "Calibri", align: "center", valign: "middle" });
+    // Plan badge
+    s.addShape(pptx.ShapeType.rect, { x: cx + 0.08, y: cy + 1.22, w: 2.24, h: 0.28,
+      fill: { color: st.badge }, rectRadius: 0.04 });
+    s.addText(mod.plan, { x: cx + 0.08, y: cy + 1.22, w: 2.24, h: 0.28,
+      fontSize: 7.5, bold: true, color: st.badgeTxt, fontFace: "Calibri", align: "center", valign: "middle" });
   });
 }
 
