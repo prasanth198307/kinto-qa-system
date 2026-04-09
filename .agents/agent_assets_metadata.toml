@@ -42,3 +42,9 @@ id = "GRpzDTB0HgXnORufeb9Yc"
 uri = "file://db_scripts/MIGRATION_RUN_ORDER.txt"
 type = "text"
 title = "DB Migration Run Order — kinto_ops"
+
+[[outputs]]
+id = "wt7ziCMhAuNV_JIVzB87I"
+uri = "file://Kinto_Smart_Ops_Pitch_Deck_V3.pptx"
+type = "slides"
+title = "Kinto Smart Ops — Sales Pitch Deck V3"
