@@ -7,8 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Save, ChevronLeft, ChevronRight, Plus, Trash2, Clock } from "lucide-react";
+import { Save, ChevronLeft, ChevronRight, Plus, Trash2, Clock, AlertCircle } from "lucide-react";
 
 const STATUSES = [
   { value: "present",    label: "P",  color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
@@ -23,29 +24,51 @@ const STATUSES = [
 const STATUS_MAP = Object.fromEntries(STATUSES.map(s => [s.value, s]));
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
+const FULL_MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
 // ── OT Register Tab ──────────────────────────────────────────────────────────
 function OTRegisterTab({ month, year, employees }: { month: number; year: number; employees: any[] }) {
   const { toast } = useToast();
   const [empId, setEmpId] = useState("");
   const [date, setDate] = useState("");
   const [otHours, setOtHours] = useState("");
+  const [isArrear, setIsArrear] = useState(false);
+  const [arrearMonth, setArrearMonth] = useState(month === 1 ? 12 : month - 1);
+  const [arrearYear, setArrearYear] = useState(month === 1 ? year - 1 : year);
 
   const { data: otEntries = [], refetch } = useQuery<any[]>({
     queryKey: ["/api/hr/attendance/ot", month, year],
     queryFn: () => fetch(`/api/hr/attendance/ot?month=${month}&year=${year}`, { credentials: "include" }).then(r => r.json()),
   });
 
+  // When arrear mode is toggled on, auto-set date to last day of current month
+  const handleArrearToggle = (on: boolean) => {
+    setIsArrear(on);
+    if (on) {
+      const lastDay = new Date(year, month, 0).getDate();
+      setDate(`${year}-${String(month).padStart(2,"0")}-${String(lastDay).padStart(2,"0")}`);
+    } else {
+      setDate("");
+    }
+  };
+
+  const arrearRemarks = isArrear
+    ? `Arrear OT from ${FULL_MONTHS[arrearMonth - 1]} ${arrearYear}`
+    : undefined;
+
   const addMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/hr/attendance/ot", {
       employeeId: Number(empId),
       date,
       otHours: Number(otHours),
+      remarks: arrearRemarks ?? null,
     }),
     onSuccess: () => {
       refetch();
       queryClient.invalidateQueries({ queryKey: ["/api/hr/attendance/summary", month, year] });
-      setEmpId(""); setDate(""); setOtHours("");
-      toast({ title: "OT entry saved" });
+      setEmpId(""); setOtHours("");
+      if (!isArrear) setDate("");
+      toast({ title: isArrear ? "Arrear OT saved — will be paid in this month's payroll" : "OT entry saved" });
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
@@ -59,13 +82,13 @@ function OTRegisterTab({ month, year, employees }: { month: number; year: number
     },
   });
 
-  const activeEmps = employees.filter(e => e.status === "active");
-
-  // Month bounds for date input
+  const activeEmps = employees.filter((e: any) => e.status === "active");
   const minDate = `${year}-${String(month).padStart(2, "0")}-01`;
   const maxDate = `${year}-${String(month).padStart(2, "0")}-${new Date(year, month, 0).getDate()}`;
-
   const totalOT = (otEntries as any[]).reduce((s: number, e: any) => s + Number(e.ot_hours), 0);
+  const arrearCount = (otEntries as any[]).filter((e: any) => e.remarks?.startsWith("Arrear OT")).length;
+
+  const yearOptions = [year - 2, year - 1, year];
 
   return (
     <div className="space-y-4">
@@ -77,12 +100,61 @@ function OTRegisterTab({ month, year, employees }: { month: number; year: number
             Register Overtime — {MONTHS[month - 1]} {year}
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <p className="text-xs text-muted-foreground mb-4">
-            OT pay = <strong>(Basic ÷ 26 ÷ 8) × 1.5 × OT hours</strong>.
-            Works for any month — navigate with ← → arrows above.
-            Full day OT (Sunday/holiday) = <strong>8 hrs</strong>.
-          </p>
+        <CardContent className="space-y-4">
+
+          {/* Arrear toggle */}
+          <div className="flex items-center gap-3 p-3 rounded-md bg-muted/50">
+            <Switch
+              checked={isArrear}
+              onCheckedChange={handleArrearToggle}
+              data-testid="switch-arrear-ot"
+            />
+            <div>
+              <p className="text-sm font-medium">Arrear / Carry-Forward OT</p>
+              <p className="text-xs text-muted-foreground">
+                OT earned in a previous month that wasn't paid then — will be included in <strong>{MONTHS[month - 1]} {year}</strong> payroll
+              </p>
+            </div>
+          </div>
+
+          {/* Arrear source month picker */}
+          {isArrear && (
+            <div className="flex items-start gap-3 p-3 rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950">
+              <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+              <div className="flex-1">
+                <p className="text-xs font-medium text-amber-800 dark:text-amber-200 mb-2">
+                  OT was originally earned in which month?
+                </p>
+                <div className="flex gap-2">
+                  <Select value={String(arrearMonth)} onValueChange={v => setArrearMonth(Number(v))}>
+                    <SelectTrigger className="w-36">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {FULL_MONTHS.map((m, i) => (
+                        <SelectItem key={i + 1} value={String(i + 1)}>{m}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={String(arrearYear)} onValueChange={v => setArrearYear(Number(v))}>
+                    <SelectTrigger className="w-28">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {yearOptions.map(y => (
+                        <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                  Will be recorded as: <em>"{FULL_MONTHS[arrearMonth - 1]} {arrearYear} arrear OT"</em> in {MONTHS[month - 1]} {year} payroll
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Main form row */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <Label className="text-xs">Employee *</Label>
@@ -99,8 +171,11 @@ function OTRegisterTab({ month, year, employees }: { month: number; year: number
                 </SelectContent>
               </Select>
             </div>
+
             <div>
-              <Label className="text-xs">Date *</Label>
+              <Label className="text-xs">
+                {isArrear ? "Pay Date (in current month)" : "Date *"}
+              </Label>
               <Input
                 type="date"
                 value={date}
@@ -109,14 +184,20 @@ function OTRegisterTab({ month, year, employees }: { month: number; year: number
                 onChange={e => setDate(e.target.value)}
                 data-testid="input-ot-date"
               />
+              {isArrear && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Date within {MONTHS[month - 1]} {year} — payroll picks it up for this month
+                </p>
+              )}
             </div>
+
             <div>
               <Label className="text-xs">OT Hours *</Label>
-              <div className="flex gap-1.5">
+              <div className="flex gap-1.5 flex-wrap">
                 <Input
                   type="number"
                   min="0.5"
-                  max="24"
+                  max="200"
                   step="0.5"
                   placeholder="hrs"
                   value={otHours}
@@ -128,7 +209,7 @@ function OTRegisterTab({ month, year, employees }: { month: number; year: number
                   {[
                     { label: "2h",  value: "2" },
                     { label: "4h",  value: "4" },
-                    { label: "Full day (8h)", value: "8" },
+                    { label: "8h (full day)", value: "8" },
                   ].map(opt => (
                     <Button
                       key={opt.value}
@@ -145,14 +226,20 @@ function OTRegisterTab({ month, year, employees }: { month: number; year: number
               </div>
             </div>
           </div>
-          <div className="mt-3">
+
+          <div>
             <Button
               onClick={() => addMutation.mutate()}
               disabled={!empId || !date || !otHours || addMutation.isPending}
               data-testid="btn-add-ot"
             >
               <Plus className="h-4 w-4 mr-1" />
-              {addMutation.isPending ? "Saving..." : "Save OT Entry"}
+              {addMutation.isPending
+                ? "Saving..."
+                : isArrear
+                  ? `Save Arrear OT (from ${FULL_MONTHS[arrearMonth - 1]} ${arrearYear})`
+                  : "Save OT Entry"
+              }
             </Button>
           </div>
         </CardContent>
@@ -162,10 +249,19 @@ function OTRegisterTab({ month, year, employees }: { month: number; year: number
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between flex-wrap gap-2">
-            <CardTitle className="text-sm">OT Entries — {MONTHS[month - 1]} {year}</CardTitle>
-            {(otEntries as any[]).length > 0 && (
-              <Badge variant="secondary">Total: {totalOT.toFixed(1)} hrs</Badge>
-            )}
+            <CardTitle className="text-sm">
+              OT Entries — {MONTHS[month - 1]} {year}
+            </CardTitle>
+            <div className="flex gap-2">
+              {arrearCount > 0 && (
+                <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900">
+                  {arrearCount} arrear {arrearCount === 1 ? "entry" : "entries"}
+                </Badge>
+              )}
+              {(otEntries as any[]).length > 0 && (
+                <Badge variant="secondary">Total: {totalOT.toFixed(1)} hrs</Badge>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -180,7 +276,7 @@ function OTRegisterTab({ month, year, employees }: { month: number; year: number
                   <tr>
                     <th className="px-3 py-2 text-left font-medium text-muted-foreground">Employee</th>
                     <th className="px-3 py-2 text-left font-medium text-muted-foreground">Date</th>
-                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">Day</th>
+                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">Type / Remarks</th>
                     <th className="px-3 py-2 text-center font-medium text-muted-foreground">Attendance</th>
                     <th className="px-3 py-2 text-center font-medium text-muted-foreground">OT Hours</th>
                     <th className="px-3 py-2 text-right font-medium text-muted-foreground"></th>
@@ -191,16 +287,30 @@ function OTRegisterTab({ month, year, employees }: { month: number; year: number
                     const d = new Date(entry.date);
                     const dayName = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][d.getDay()];
                     const st = STATUS_MAP[entry.status];
+                    const isArrearEntry = entry.remarks?.startsWith("Arrear OT");
                     return (
                       <tr key={entry.id} className="border-t">
                         <td className="px-3 py-2">
                           <p className="font-medium">{entry.first_name} {entry.last_name}</p>
                           <p className="text-xs text-muted-foreground">{entry.emp_code}</p>
                         </td>
-                        <td className="px-3 py-2">{d.toLocaleDateString("en-IN")}</td>
-                        <td className="px-3 py-2 text-muted-foreground">{dayName}</td>
+                        <td className="px-3 py-2">
+                          <p>{d.toLocaleDateString("en-IN")}</p>
+                          <p className="text-xs text-muted-foreground">{dayName}</p>
+                        </td>
+                        <td className="px-3 py-2">
+                          {isArrearEntry ? (
+                            <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900 text-xs">
+                              {entry.remarks}
+                            </Badge>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">Regular OT</span>
+                          )}
+                        </td>
                         <td className="px-3 py-2 text-center">
-                          {st ? <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${st.color}`}>{st.label}</span> : "—"}
+                          {st ? (
+                            <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${st.color}`}>{st.label}</span>
+                          ) : "—"}
                         </td>
                         <td className="px-3 py-2 text-center font-semibold">
                           {Number(entry.ot_hours).toFixed(1)} hrs

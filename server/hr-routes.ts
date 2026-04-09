@@ -472,7 +472,7 @@ router.get("/attendance/ot", requireHR, async (req: any, res) => {
   const { month, year } = req.query;
   try {
     const rows = await db.execute(sql`
-      SELECT a.id, a.employee_id, a.date, a.ot_hours, a.status,
+      SELECT a.id, a.employee_id, a.date, a.ot_hours, a.status, a.remarks,
              e.first_name, e.last_name, e.emp_code
       FROM hr_attendance a
       JOIN hr_employees e ON e.id = a.employee_id
@@ -489,7 +489,7 @@ router.get("/attendance/ot", requireHR, async (req: any, res) => {
 // OT register — POST upsert OT hours for an employee on a date (preserves attendance status)
 router.post("/attendance/ot", requireHR, async (req: any, res) => {
   const tid = getTenantId(req);
-  const { employeeId, date, otHours } = req.body;
+  const { employeeId, date, otHours, remarks } = req.body;
   if (!employeeId || !date) return res.status(400).json({ message: "employeeId and date required" });
   try {
     const existing = await db.execute(sql`
@@ -498,15 +498,15 @@ router.post("/attendance/ot", requireHR, async (req: any, res) => {
     `);
     if (existing.rows.length) {
       const r = await db.execute(sql`
-        UPDATE hr_attendance SET ot_hours=${Number(otHours) || 0}
+        UPDATE hr_attendance SET ot_hours=${Number(otHours) || 0}, remarks=${remarks ?? null}
         WHERE id=${(existing.rows[0] as any).id} RETURNING *
       `);
       return res.json(r.rows[0]);
     }
     // No attendance record yet — create with present + OT hours
     const r = await db.execute(sql`
-      INSERT INTO hr_attendance (tenant_id, employee_id, date, status, ot_hours)
-      VALUES (${tid}, ${employeeId}, ${date}, 'present', ${Number(otHours) || 0}) RETURNING *
+      INSERT INTO hr_attendance (tenant_id, employee_id, date, status, ot_hours, remarks)
+      VALUES (${tid}, ${employeeId}, ${date}, 'present', ${Number(otHours) || 0}, ${remarks ?? null}) RETURNING *
     `);
     res.json(r.rows[0]);
   } catch (e: any) { res.status(500).json({ message: e.message }); }
