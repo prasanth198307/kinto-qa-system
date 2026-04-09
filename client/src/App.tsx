@@ -1331,10 +1331,7 @@ function VendorManagementPage() {
   
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
+  const resolvedNav = isLoading ? allNavSections : navSections;
   
   return (
     <DashboardShell
@@ -1360,10 +1357,7 @@ function ReportsPage() {
   
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
+  const resolvedNav = isLoading ? allNavSections : navSections;
   
   return (
     <DashboardShell
@@ -1389,10 +1383,7 @@ function PendingPaymentsPage() {
   
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
+  const resolvedNav = isLoading ? allNavSections : navSections;
   
   return (
     <DashboardShell
@@ -1418,10 +1409,7 @@ function PaymentManagementPage() {
   
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
+  const resolvedNav = isLoading ? allNavSections : navSections;
   
   return (
     <DashboardShell
@@ -1447,10 +1435,7 @@ function VendorHistoryPage() {
   
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
+  const resolvedNav = isLoading ? allNavSections : navSections;
   
   return (
     <DashboardShell
@@ -1476,10 +1461,7 @@ function VendorHistoryDetailPage() {
   
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
+  const resolvedNav = isLoading ? allNavSections : navSections;
   
   return (
     <DashboardShell
@@ -1504,10 +1486,7 @@ function VendorGroupDetailPage() {
 
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
+  const resolvedNav = isLoading ? allNavSections : navSections;
 
   return (
     <DashboardShell
@@ -2056,10 +2035,7 @@ function VendorAnalyticsPage() {
   
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
+  const resolvedNav = isLoading ? allNavSections : navSections;
   
   return (
     <DashboardShell
@@ -2085,10 +2061,7 @@ function VendorDebitNotesPage() {
   
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
+  const resolvedNav = isLoading ? allNavSections : navSections;
   
   return (
     <DashboardShell
@@ -2114,10 +2087,7 @@ function CustomerAdvancesPageWrapper() {
   
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
+  const resolvedNav = isLoading ? allNavSections : navSections;
   
   return (
     <DashboardShell
@@ -2143,10 +2113,7 @@ function DocumentsPageWrapper() {
   
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
+  const resolvedNav = isLoading ? allNavSections : navSections;
   
   return (
     <DashboardShell
@@ -2172,9 +2139,7 @@ function ExpenseCategoriesPageWrapper() {
   const [activeView, setActiveView] = useState('expense-categories');
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
+  const resolvedNav = isLoading ? allNavSections : navSections;
   return (
     <DashboardShell
       title="Expense Categories"
@@ -2197,10 +2162,7 @@ function ExpensesPageWrapper() {
   
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
+  const resolvedNav = isLoading ? allNavSections : navSections;
   
   return (
     <DashboardShell
@@ -2224,9 +2186,7 @@ function MonthlyExpensesPageWrapper() {
   const [activeView, setActiveView] = useState('monthly-expenses');
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
+  const resolvedNav = isLoading ? allNavSections : navSections;
   return (
     <DashboardShell
       title="Monthly Expenses"
@@ -2249,10 +2209,7 @@ function CashRegisterPageWrapper() {
   
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
+  const resolvedNav = isLoading ? allNavSections : navSections;
   
   return (
     <DashboardShell
@@ -2517,10 +2474,7 @@ function CashRegisterReportWrapper() {
   
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
+  const resolvedNav = isLoading ? allNavSections : navSections;
   
   return (
     <DashboardShell
@@ -2546,10 +2500,7 @@ function CreditNotesPageWrapper() {
   
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
+  const resolvedNav = isLoading ? allNavSections : navSections;
   
   return (
     <DashboardShell
@@ -2575,10 +2526,7 @@ function SalesReturnsPageWrapper() {
   
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
+  const resolvedNav = isLoading ? allNavSections : navSections;
   
   return (
     <DashboardShell
@@ -2604,10 +2552,7 @@ function WriteOffReportPageWrapper() {
   
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
+  const resolvedNav = isLoading ? allNavSections : navSections;
   
   return (
     <DashboardShell
@@ -2633,10 +2578,7 @@ function DispatchTrackingPageWrapper() {
   
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
+  const resolvedNav = isLoading ? allNavSections : navSections;
   
   return (
     <DashboardShell
@@ -2662,10 +2604,7 @@ function CancelledInvoicesPageWrapper() {
   
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
+  const resolvedNav = isLoading ? allNavSections : navSections;
   
   return (
     <DashboardShell
@@ -2691,10 +2630,7 @@ function ChecklistsPageWrapper() {
   
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
+  const resolvedNav = isLoading ? allNavSections : navSections;
   
   return (
     <DashboardShell
@@ -2720,10 +2656,7 @@ function ReviewerDashboardPageWrapper() {
   
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
+  const resolvedNav = isLoading ? allNavSections : navSections;
   
   return (
     <DashboardShell
@@ -2749,10 +2682,7 @@ function VendorTypesPageWrapper() {
   
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
+  const resolvedNav = isLoading ? allNavSections : navSections;
   
   return (
     <DashboardShell
@@ -2778,10 +2708,7 @@ function HPCLMigrationPageWrapper() {
   
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
+  const resolvedNav = isLoading ? allNavSections : navSections;
   
   return (
     <DashboardShell
@@ -2807,10 +2734,7 @@ function DispatchMastersPageWrapper() {
   
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
+  const resolvedNav = isLoading ? allNavSections : navSections;
   
   return (
     <DashboardShell
@@ -2836,10 +2760,7 @@ function InvoiceDetailPageWrapper() {
   
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
+  const resolvedNav = isLoading ? allNavSections : navSections;
   
   return (
     <DashboardShell
@@ -2865,10 +2786,7 @@ function SalesOrdersPageWrapper() {
 
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
+  const resolvedNav = isLoading ? allNavSections : navSections;
 
   return (
     <DashboardShell
@@ -2891,10 +2809,7 @@ function SalesOfficersPageWrapper() {
 
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
+  const resolvedNav = isLoading ? allNavSections : navSections;
 
   return (
     <DashboardShell
@@ -2917,10 +2832,7 @@ function SalesOrderDetailWrapper() {
 
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
+  const resolvedNav = isLoading ? allNavSections : navSections;
 
   return (
     <DashboardShell
@@ -2943,10 +2855,7 @@ function RawMaterialDetailWrapper() {
   
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
+  const resolvedNav = isLoading ? allNavSections : navSections;
   
   return (
     <DashboardShell
@@ -2972,10 +2881,7 @@ function RawMaterialTypeDetailWrapper() {
   
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
+  const resolvedNav = isLoading ? allNavSections : navSections;
   
   return (
     <DashboardShell
@@ -3001,10 +2907,7 @@ function ProductDetailWrapper() {
   
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
+  const resolvedNav = isLoading ? allNavSections : navSections;
   
   return (
     <DashboardShell
@@ -3030,10 +2933,7 @@ function FinishedGoodDetailWrapper() {
   
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
+  const resolvedNav = isLoading ? allNavSections : navSections;
   
   return (
     <DashboardShell
@@ -3059,10 +2959,7 @@ function ProductionManagementPageWrapper() {
   
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
+  const resolvedNav = isLoading ? allNavSections : navSections;
   
   return (
     <DashboardShell
@@ -3088,10 +2985,7 @@ function ProductionReconciliationReportWrapper() {
   
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
+  const resolvedNav = isLoading ? allNavSections : navSections;
   
   return (
     <DashboardShell
@@ -3117,10 +3011,7 @@ function FinishedGoodsReportWrapper() {
   
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
+  const resolvedNav = isLoading ? allNavSections : navSections;
   
   return (
     <DashboardShell
@@ -3146,10 +3037,7 @@ function MISDashboardPageWrapper() {
   
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
+  const resolvedNav = isLoading ? allNavSections : navSections;
   
   return (
     <DashboardShell
@@ -3173,10 +3061,7 @@ function MISProductionPageWrapper() {
   
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
+  const resolvedNav = isLoading ? allNavSections : navSections;
   
   return (
     <DashboardShell
@@ -3200,10 +3085,7 @@ function MISInventoryPageWrapper() {
   
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
+  const resolvedNav = isLoading ? allNavSections : navSections;
   
   return (
     <DashboardShell
@@ -3227,10 +3109,7 @@ function MISSalesPageWrapper() {
   
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
+  const resolvedNav = isLoading ? allNavSections : navSections;
   
   return (
     <DashboardShell
@@ -3253,9 +3132,7 @@ function MISFinancialPageWrapper() {
   const [activeView, setActiveView] = useState('mis-financial');
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
+  const resolvedNav = isLoading ? allNavSections : navSections;
   return (
     <DashboardShell
       title="Financial Analytics"
@@ -3277,9 +3154,7 @@ function MISCashPageWrapper() {
   const [activeView, setActiveView] = useState('mis-cash');
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
+  const resolvedNav = isLoading ? allNavSections : navSections;
   return (
     <DashboardShell
       title="Cash Analytics"
@@ -3302,10 +3177,7 @@ function MISDeliveryPageWrapper() {
   
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
-  
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
-  }
+  const resolvedNav = isLoading ? allNavSections : navSections;
   
   return (
     <DashboardShell
