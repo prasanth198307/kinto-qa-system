@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Plus, Edit, Trash2, Shield, Check, X, AlertTriangle } from "lucide-react";
+import { Plus, Edit, Trash2, Shield, Check, X, AlertTriangle, RefreshCw } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
@@ -286,6 +286,20 @@ export default function RoleManagement() {
   });
 
   // Update permissions mutation
+  const syncPermissionsMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', '/api/tenant/sync-permissions', {});
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/role-permissions'] });
+      toast({ title: "Permissions synced", description: data.message });
+    },
+    onError: (error: any) => {
+      toast({ title: "Sync failed", description: error.message || "Failed to sync permissions.", variant: "destructive" });
+    },
+  });
+
   const updatePermissionsMutation = useMutation({
     mutationFn: async ({ roleId, permissions }: { roleId: string; permissions: any[] }) => {
       return await apiRequest('PUT', `/api/roles/${roleId}/permissions`, { permissions });
@@ -478,13 +492,24 @@ export default function RoleManagement() {
           <h1 className="text-2xl font-bold">Role Management</h1>
           <p className="text-muted-foreground">Manage roles and their permissions</p>
         </div>
-        <Button 
-          onClick={() => setIsCreateDialogOpen(true)}
-          data-testid="button-create-role"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Create Role
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => syncPermissionsMutation.mutate()}
+            disabled={syncPermissionsMutation.isPending}
+            data-testid="button-sync-permissions"
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${syncPermissionsMutation.isPending ? 'animate-spin' : ''}`} />
+            {syncPermissionsMutation.isPending ? 'Syncing...' : 'Sync New Screens'}
+          </Button>
+          <Button 
+            onClick={() => setIsCreateDialogOpen(true)}
+            data-testid="button-create-role"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Create Role
+          </Button>
+        </div>
       </div>
 
       {rolesLoading ? (

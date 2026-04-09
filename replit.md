@@ -28,6 +28,7 @@ Preferred communication style: Simple, everyday language.
 - **WhatsApp Integration:** Utilizes Colloki Flow API with Meta Cloud API fallback for AI-assisted responses, checklist Q&A, and photo storage capabilities.
 - **Billing:** Integrates with Razorpay for order creation and webhook processing.
 - **Backups:** Automated daily cron jobs for database backups, including pre-deletion backups and a 30-file rotation policy, manageable via a super-admin UI.
+- **Role Permissions:** All 73+ screens registered in `AVAILABLE_SCREENS` (RoleManagement.tsx), `endpointToScreenKey` (routes.ts), `navItemToScreenKey` (use-filtered-navigation.tsx, App.tsx). Permission auto-seeding on tenant creation via `server/seed-permissions.ts` — creates 5 default roles (admin/manager/operator/reviewer/accountsmanager) with sensible defaults. "Sync New Screens" button in Role Management UI calls `POST /api/tenant/sync-permissions` to add new screen rows without overwriting existing customisations. Super-admin can sync any tenant via `POST /api/admin/tenants/:tenantId/sync-permissions`.
 
 ### System Design Choices
 - **Authentication:** Supports username or email-based login.

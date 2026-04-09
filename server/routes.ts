@@ -21,6 +21,7 @@ import { whatsappWebhookRouter } from "./whatsappWebhook";
 import hrRouter from "./hr-routes";
 import essRouter from "./ess-routes";
 import crmRouter from "./crm-routes";
+import { seedTenantPermissions } from "./seed-permissions";
 import { whatsappConversationService } from "./whatsappConversationService";
 import { calculateBOMSuggestions } from "@shared/calculations";
 import { importVyapaarData, clearImportedData, importPaymentsOnly } from "./vyapaar-import";
@@ -1108,10 +1109,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdBy: currentUser.username,
       });
 
+      // Seed default roles for the new tenant
+      const defaultRoles = ['admin', 'manager', 'operator', 'reviewer', 'accountsmanager'];
+      for (const roleName of defaultRoles) {
+        await db.execute(sql`
+          INSERT INTO roles (name, tenant_id, description)
+          VALUES (${roleName}, ${newTenant.id}, ${`Default ${roleName} role`})
+          ON CONFLICT (name, tenant_id) DO NOTHING
+        `);
+      }
+
+      // Seed role permissions for all default roles
+      const seedResult = await seedTenantPermissions(newTenant.id);
+      console.log(`[TENANT SETUP] Seeded ${seedResult.inserted} permission rows for tenant ${newTenant.id}`);
+
       res.json({ message: 'Tenant created successfully', tenant: newTenant });
     } catch (err: any) {
       console.error('POST /api/admin/tenants error:', err);
       res.status(500).json({ message: err.message ?? 'Failed to create tenant' });
+    }
+  });
+
+  // ── Sync role permissions for a tenant (adds missing rows, skips existing) ──
+  app.post('/api/admin/tenants/:tenantId/sync-permissions', async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' });
+    const currentUser = req.user as any;
+    if (!currentUser?.isSuperAdmin && currentUser?.role?.toLowerCase() !== 'admin')
+      return res.status(403).json({ message: 'Forbidden' });
+    try {
+      const tenantId = parseInt(req.params.tenantId);
+      const result = await seedTenantPermissions(tenantId);
+      res.json({ message: `Sync complete: ${result.inserted} new rows added, ${result.skipped} already existed.`, ...result });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ── Tenant admin: self-service sync (own tenant only) ────────────────────────
+  app.post('/api/tenant/sync-permissions', async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' });
+    const currentUser = req.user as any;
+    if (currentUser?.role?.toLowerCase() !== 'admin')
+      return res.status(403).json({ message: 'Forbidden: Only tenant admins can sync permissions' });
+    try {
+      const tenantId = currentUser.tenantId;
+      const result = await seedTenantPermissions(tenantId);
+      res.json({ message: `Sync complete: ${result.inserted} new rows added, ${result.skipped} already existed.`, ...result });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
     }
   });
 
