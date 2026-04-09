@@ -1,83 +1,48 @@
 # Kinto Smart Ops — Manufacturing ERP SaaS
 
 ## Overview
-Kinto Smart Ops is a comprehensive SaaS ERP platform for Indian manufacturing companies, managing core operations like production, inventory, purchase orders, GST-compliant invoicing, and accounting. It provides MIS analytics, supports multi-tenancy with isolated data, and integrates two-way WhatsApp for machine startup and checklist management. The platform aims to modernize Indian industrial operations through a cloud-based, subscription model, offering a comprehensive suite of modules including HR & Payroll, Quality & Returns, and Preventive Maintenance.
+Kinto Smart Ops is a comprehensive SaaS ERP platform for Indian manufacturing companies. It manages core operations like production, inventory, purchase orders, GST-compliant invoicing, gatepasses, quality assurance, preventive maintenance, and double-entry accounting. The platform provides MIS analytics and supports multi-tenancy with isolated data spaces. A key feature is its two-way WhatsApp integration for machine startup and checklist management, enhancing operational efficiency and real-time communication. The project aims to become the leading ERP solution in the Indian manufacturing sector, empowering businesses with robust, scalable, and user-friendly tools to optimize their operations and drive growth.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
 ## System Architecture
 
-### UI/UX Decisions
-The frontend utilizes React 18, TypeScript, Vite, Wouter, `shadcn/ui` (Radix UI), and Tailwind CSS ("New York" theme). It follows Material Design principles with a mobile-first approach, emphasizing custom styling, a Vertical Sidebar for role-based navigation, dedicated detail pages, and form validation. The design prioritizes a sleek, space-efficient interface suitable for data-intensive industrial operations, using compact typography and accessible components.
-
 ### Technical Implementations
-The backend is built with Express.js, TypeScript, and Node.js, leveraging Neon Serverless PostgreSQL and Drizzle ORM. It features Email/Password Authentication with `scrypt` and `Passport.js`, and a Dynamic Role-Based Access Control (RBAC) system. A critical architectural decision is the use of `AsyncLocalStorage` for tenant data isolation, propagating `tenantId` across async chains. Plan-based module gating is enforced at both backend and frontend levels. SaaS operational features include trial expiry enforcement, tenant status middleware, max user enforcement, comprehensive company settings, and white-labeling capabilities. Super-admin features include tenant impersonation, deletion with audit logging, and demo tenant seeding.
+- **Backend:** Express.js with TypeScript and Node.js.
+- **Database:** Neon Serverless PostgreSQL with Drizzle ORM.
+- **Authentication:** Email/Password using `scrypt` and `Passport.js`.
+- **Multi-tenancy:** Achieved using `AsyncLocalStorage` to propagate `tenantId` automatically.
+- **Plan Gating:** Enforced on both backend (middleware) and frontend (`usePlanFeatures` hook).
+- **File Uploads:** Scoped to `uploads/tenants/{tenantId}/{type}/`.
+- **Schema Management:** Raw SQL commands for database changes, with scripts saved in `db_scripts/`.
+- **Frontend Build:** Vite.
+- **Backend Build:** `tsx` for development, `esbuild` for production.
 
-### Feature Specifications
-- **Core ERP Modules:** Production, inventory, purchase orders, sales orders, GST-compliant invoicing, gatepasses, quality/returns, accounting (COA, ledger, P&L, Balance Sheet), preventive maintenance, expenses, cash register, document management, and HR & Payroll.
-- **HR & Payroll Module:** Comprehensive employee master, department/designation/shift masters, attendance, leave management, payroll processing (PF/ESI/PT auto-calculation), and printable payslips.
-- **Reporting & Analytics:** Printable reports, sales/overview dashboards, unified operational/GST reports, and MIS analytics across various departments.
-- **Workflow Automation:** Automated WhatsApp/Email reminders for machine startup and missed checklists.
-- **Interactive Systems:** WhatsApp interactive checklist system with Q&A and photo uploads.
-- **Financial Management:** Pending payments tracking, credit notes, customer advances, vendor debit notes, per-item discounts, and payment evidence.
-- **Inventory & Production:** Raw material and product master systems with BOMs, BOM-driven production with variance analysis, and FIFO batch allocation.
-- **Quality & Returns:** Sales returns and damage handling with a three-stage workflow, traceability, and direct finished goods scrap module.
-- **Access Control:** Granular screen and API-level role permissions management.
-- **Data Management:** Master data management, advanced search/filter, Vyapaar data import, server-side/client-side pagination, and a document management system.
-- **SaaS Specifics:** Multitenancy, plan-based module gating, trial management, user limits, and tenant-specific notification configuration.
-- **File Upload Scoping:** All file uploads are scoped by `tenantId` for security.
-- **Razorpay Billing:** Handles order creation, payment verification, webhook processing, billing history, and manual upgrade requests.
-- **Automated Backups:** Daily cron-based JSON exports of tenant data, pre-deletion backups, and super-admin managed backup/restore.
+### Feature Modules
+- **Core ERP:** Production, inventory, purchase orders, sales orders, GST invoicing, gatepasses, quality control, returns, double-entry accounting (COA, ledger, P&L, Balance Sheet), preventive maintenance, expenses, cash register, document management.
+- **HR & Payroll:** Employee master, department/designation/shift masters, attendance management, leave management with approval workflows, payroll processing (PF/ESI/PT auto-calculation), and printable payslips.
+- **Reporting:** Customizable reports, sales dashboards, vendor analytics, and various MIS reports covering executive KPIs, production, inventory, sales, delivery, cash, and financial performance.
+- **WhatsApp Integration:** Utilizes Colloki Flow API with Meta Cloud API fallback for AI-assisted responses, checklist Q&A, and photo storage capabilities.
+- **Billing:** Integrates with Razorpay for order creation and webhook processing.
+- **Backups:** Automated daily cron jobs for database backups, including pre-deletion backups and a 30-file rotation policy, manageable via a super-admin UI.
 
 ### System Design Choices
-- **Authentication:** Username or email login.
-- **Dispatch Workflow:** Invoice-first, tamper-proof state machine with backend validation, race condition prevention, and optional digital signatures.
-- **Inventory Logic:** Inventory deduction on gatepass, varied raw material inventory modes, explicit finished goods approval, automatic returns on cancellation, and logical stock reservation.
-- **WhatsApp Integration:** Colloki Flow API with Meta WhatsApp Business Cloud API fallback, AI-assisted response interpretation, and secure photo storage.
-- **Build & Deployment:** Vite for frontend, `tsx` for Express development, `esbuild` for backend production, Drizzle Kit for schema management.
-- **Environment:** Automatic Replit environment detection for cookie settings.
-- **Database Schema Changes:** Direct SQL commands via `psql` are used for schema changes, avoiding `db:push`.
+- **Authentication:** Supports username or email-based login.
+- **Dispatch Workflow:** Implements an invoice-first, tamper-proof state machine.
+- **Inventory Logic:** Features deduction on gatepass, FIFO batch allocation, and logical stock reservation.
+- **UI/UX:** Uses Radix UI, Lucide React, shadcn/ui for components, and Tailwind CSS for styling.
+- **Navigation:** Employs `VerticalNavSidebar` with a `navSections` array, supporting both tab-based (in-dashboard) and route-based (dedicated page) navigation patterns. All new navigation items require explicit registration in `getAdminNavSections()`, `AdminDashboard`'s hardcoded navSections, `SCREEN_TO_PERMISSION_MAP`, and `VIEW_TO_MODULE_MAP`.
+- **Role Management:** Role names are compared using `.toLowerCase()` for consistency across the system.
+- **Page Wrappers:** Follow a specific pattern to ensure the sidebar remains visible during data loading, avoiding full-page spinners.
 
 ## External Dependencies
-
-### Database
-- Neon Serverless PostgreSQL
-
-### Authentication
-- Replit Auth (OpenID Connect)
-- `openid-client`
-- `passport`
-
-### UI Libraries
-- Radix UI
-- Lucide React
-- date-fns
-- cmdk
-- vaul
-- shadcn/ui
-
-### Form Management
-- react-hook-form
-- @hookform/resolvers
-- zod
-- drizzle-zod
-
-### Development Tools
-- TypeScript
-- Vite
-- esbuild
-- Tailwind CSS
-- class-variance-authority
-- tailwind-merge
-
-### Notification Services
-- SendGrid (Email)
-- Twilio (WhatsApp)
-
-### QR Code Generation
-- qrcode
-
-### Other
-- Wouter (Routing)
-- TanStack Query (Server State Management)
+- **Database:** Neon Serverless PostgreSQL
+- **UI Frameworks:** Radix UI, Lucide React, shadcn/ui, date-fns, cmdk, vaul
+- **Form Management:** react-hook-form, @hookform/resolvers, zod, drizzle-zod
+- **Routing:** Wouter
+- **State Management:** TanStack Query v5
+- **Styling:** Tailwind CSS, class-variance-authority, tailwind-merge
+- **Notifications:** SendGrid (email), Twilio (WhatsApp)
+- **Payment Gateway:** Razorpay
+- **Other:** qrcode, node-cron, passport, openid-client, Colloki Flow API, Meta Cloud API (WhatsApp)
