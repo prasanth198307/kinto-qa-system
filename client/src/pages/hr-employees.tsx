@@ -15,7 +15,7 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import {
   Plus, Search, Upload, FileText, Trash2, Camera, Eye,
-  Download, ArrowLeft, TrendingUp, IndianRupee, Users, X, ExternalLink
+  Download, ArrowLeft, TrendingUp, IndianRupee, Users, X, ExternalLink, KeyRound
 } from "lucide-react";
 
 const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
@@ -887,6 +887,9 @@ export default function HrEmployees() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [viewingEmp, setViewingEmp] = useState<any>(null);
+  const [essPasswordEmp, setEssPasswordEmp] = useState<any>(null);
+  const [essPassword, setEssPassword] = useState("");
+  const [essPasswordConfirm, setEssPasswordConfirm] = useState("");
   const { data: employees = [], isLoading } = useQuery<any[]>({ queryKey: ["/api/hr/employees"] });
   const { data: depts = [] } = useQuery<any[]>({ queryKey: ["/api/hr/departments"] });
   const { data: desigs = [] } = useQuery<any[]>({ queryKey: ["/api/hr/designations"] });
@@ -908,6 +911,20 @@ export default function HrEmployees() {
   const del = useMutation({
     mutationFn: (id: number) => apiRequest("DELETE", `/api/hr/employees/${id}`),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/hr/employees"] }); toast({ title: "Employee removed" }); }
+  });
+
+  const setEssMutation = useMutation({
+    mutationFn: ({ employeeId, password }: { employeeId: number; password: string }) =>
+      fetch("/api/ess/admin/set-password", {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ employeeId, password }),
+      }).then(r => r.json().then(d => { if (!r.ok) throw new Error(d.message); return d; })),
+    onSuccess: () => {
+      toast({ title: "ESS password set", description: "Employee can now log into the ESS portal." });
+      setEssPasswordEmp(null); setEssPassword(""); setEssPasswordConfirm("");
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const managers = employees.filter((e: any) => e.status === "active");
@@ -1026,6 +1043,9 @@ export default function HrEmployees() {
                       <Button size="icon" variant="ghost" title="Edit employee" onClick={() => { setEditing(emp); setShowForm(true); }} data-testid={`btn-edit-employee-${emp.id}`}>
                         <FileText className="h-3.5 w-3.5" />
                       </Button>
+                      <Button size="icon" variant="ghost" title="Set ESS Password" onClick={() => { setEssPasswordEmp(emp); setEssPassword(""); setEssPasswordConfirm(""); }} data-testid={`btn-ess-password-${emp.id}`}>
+                        <KeyRound className="h-3.5 w-3.5 text-blue-600" />
+                      </Button>
                       <Button size="icon" variant="ghost" onClick={() => del.mutate(emp.id)} data-testid={`btn-delete-employee-${emp.id}`}>
                         <Trash2 className="h-3.5 w-3.5 text-destructive" />
                       </Button>
@@ -1054,6 +1074,58 @@ export default function HrEmployees() {
             onSave={(p: any) => saveMutation.mutate(p)}
             onCancel={() => { setShowForm(false); setEditing(null); }}
           />
+        </DialogContent>
+      </Dialog>
+
+      {/* ESS Password Dialog */}
+      <Dialog open={!!essPasswordEmp} onOpenChange={v => { if (!v) { setEssPasswordEmp(null); setEssPassword(""); setEssPasswordConfirm(""); } }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Set ESS Portal Password</DialogTitle>
+          </DialogHeader>
+          {essPasswordEmp && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Set portal login credentials for <span className="font-medium">{essPasswordEmp.first_name} {essPasswordEmp.last_name}</span> ({essPasswordEmp.emp_code}).
+                They will use their employee code + this password to log into the ESS portal.
+              </p>
+              <div className="space-y-1.5">
+                <Label>New Password <span className="text-destructive">*</span></Label>
+                <Input
+                  type="password"
+                  className="h-9"
+                  placeholder="Minimum 6 characters"
+                  value={essPassword}
+                  onChange={e => setEssPassword(e.target.value)}
+                  data-testid="input-ess-set-password"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Confirm Password <span className="text-destructive">*</span></Label>
+                <Input
+                  type="password"
+                  className="h-9"
+                  placeholder="Re-enter password"
+                  value={essPasswordConfirm}
+                  onChange={e => setEssPasswordConfirm(e.target.value)}
+                  data-testid="input-ess-confirm-password"
+                />
+              </div>
+              {essPassword && essPasswordConfirm && essPassword !== essPasswordConfirm && (
+                <p className="text-sm text-destructive">Passwords do not match</p>
+              )}
+              <div className="flex justify-end gap-2 pt-1">
+                <Button variant="outline" onClick={() => setEssPasswordEmp(null)}>Cancel</Button>
+                <Button
+                  onClick={() => setEssMutation.mutate({ employeeId: essPasswordEmp.id, password: essPassword })}
+                  disabled={setEssMutation.isPending || !essPassword || essPassword.length < 6 || essPassword !== essPasswordConfirm}
+                  data-testid="btn-ess-save-password"
+                >
+                  {setEssMutation.isPending ? "Setting..." : "Set Password & Enable"}
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

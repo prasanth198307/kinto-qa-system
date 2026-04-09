@@ -154,6 +154,8 @@ import HRTdsDeclarationsPage from "@/pages/hr-tds-declarations";
 import HRRecruitmentPage from "@/pages/hr-recruitment";
 import HRPayslipPage from "@/pages/hr-payslip";
 import PricingPage from "@/pages/pricing";
+import EssLogin from "@/pages/ess-login";
+import EssPortal from "@/pages/ess-portal";
 import { parseISO } from "date-fns";
 
 type Role = 'admin' | 'operator' | 'reviewer' | 'manager';
@@ -3632,6 +3634,8 @@ function Router() {
       <ProtectedRoute path="/hr/recruitment" component={HRRecruitmentWrapper} />
       <ProtectedRoute path="/hr/reports" component={HRReportsWrapper} />
       <Route path="/hr/payslip/:id" component={HRPayslipPage} />
+      <Route path="/ess" component={EssLogin} />
+      <Route path="/ess/portal" component={EssPortal} />
       <ProtectedRoute path="/pricing" component={() => (
         <div className="flex-1 overflow-auto">
           <PricingPage />
