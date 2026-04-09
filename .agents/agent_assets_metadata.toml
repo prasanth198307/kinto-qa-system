@@ -54,3 +54,9 @@ id = "U-gKfhhsYnMj_aG4AFHIg"
 uri = "file://Kinto_Smart_Ops_Pitch_Deck_V4.pptx"
 type = "slides"
 title = "Kinto Smart Ops — Sales Pitch Deck V4 (with Competitive Slides)"
+
+[[outputs]]
+id = "lzR5aVoxv0icWVJgADtA8"
+uri = "file://Kinto_Smart_Ops_Pitch_Deck_V5.pptx"
+type = "slides"
+title = "Kinto Smart Ops — Sales Pitch Deck V5 (Complete)"

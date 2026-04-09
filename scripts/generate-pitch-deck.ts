@@ -639,6 +639,162 @@ function bullet(slide: any, x: number, y: number, w: number, items: string[], si
   });
 }
 
+// ══════════════════════════════════════════════════════════════
+// SLIDE 16 — ROI & TIME SAVINGS
+// ══════════════════════════════════════════════════════════════
+{
+  const s = pptx.addSlide();
+  addNavyHeader(s, "The ROI Is Clear", "Time saved. Errors eliminated. Revenue protected.");
+  s.addShape(pptx.ShapeType.rect, { x: 0, y: 1.2, w: "100%", h: 6.1, fill: { color: C.white } });
+
+  // Top stats row
+  const stats = [
+    { val: "40+", unit: "hrs/month", label: "saved on payroll &\nHR admin work" },
+    { val: "90%", unit: "reduction", label: "in GST invoice\nerrors & rework" },
+    { val: "3×", unit: "faster", label: "month-end closing\nvs manual Excel" },
+    { val: "₹0", unit: "extra cost", label: "for WhatsApp, HR,\nCRM vs competitors" },
+  ];
+
+  stats.forEach((st, i) => {
+    const x = 0.3 + i * 3.18;
+    s.addShape(pptx.ShapeType.rect, { x, y: 1.35, w: 3.0, h: 2.1, fill: { color: C.navy }, rectRadius: 0.1 });
+    s.addText(st.val, { x, y: 1.5, w: 3.0, h: 0.75, fontSize: 36, bold: true, color: C.accent, fontFace: "Calibri", align: "center" });
+    s.addText(st.unit, { x, y: 2.22, w: 3.0, h: 0.28, fontSize: 11, color: "93C5FD", fontFace: "Calibri", align: "center" });
+    s.addText(st.label, { x, y: 2.52, w: 3.0, h: 0.5, fontSize: 9.5, color: "7DD3FC", fontFace: "Calibri", align: "center" });
+  });
+
+  // Before / After comparison
+  s.addText("Before Kinto  vs  After Kinto", {
+    x: 0.3, y: 3.65, w: 12.5, h: 0.35, fontSize: 13, bold: true, color: C.navy, fontFace: "Calibri", align: "center",
+  });
+
+  const comparisons = [
+    ["Payroll calculated on Excel — errors, corrections, delays", "Auto-calculated payroll with PF/ESI/TDS — one-click payslips"],
+    ["GST invoices made manually — wrong tax codes, filing stress", "GST-validated invoices auto-generated from sales orders"],
+    ["Sales leads tracked on WhatsApp chats — deals forgotten", "CRM pipeline with follow-up dates — zero leads slip through"],
+    ["Employees call HR for payslips, leave balance, Form 16", "Employees access everything self-serve — HR freed up"],
+    ["Machine checklists on paper — no digital record", "WhatsApp checklists — auto-logged, AI-interpreted, auditable"],
+  ];
+
+  comparisons.forEach(([before, after], i) => {
+    const y = 4.1 + i * 0.58;
+    // Before
+    s.addShape(pptx.ShapeType.rect, { x: 0.3, y, w: 5.8, h: 0.5, fill: { color: "FEF2F2" }, line: { color: "FECACA", width: 1 }, rectRadius: 0.05 });
+    s.addText(`✘  ${before}`, { x: 0.42, y, w: 5.58, h: 0.5, fontSize: 9, color: "991B1B", fontFace: "Calibri", valign: "middle" });
+    // Arrow
+    s.addText("→", { x: 6.15, y, w: 0.3, h: 0.5, fontSize: 14, color: C.blue, fontFace: "Calibri", align: "center", valign: "middle" });
+    // After
+    s.addShape(pptx.ShapeType.rect, { x: 6.5, y, w: 6.1, h: 0.5, fill: { color: "F0FDF4" }, line: { color: "BBF7D0", width: 1 }, rectRadius: 0.05 });
+    s.addText(`✔  ${after}`, { x: 6.62, y, w: 5.88, h: 0.5, fontSize: 9, color: "15803D", fontFace: "Calibri", valign: "middle" });
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// SLIDE 17 — SECURITY & TRUST
+// ══════════════════════════════════════════════════════════════
+{
+  const s = pptx.addSlide();
+  addNavyHeader(s, "Your Data Is Safe With Us", "Enterprise-grade security — at an SME price");
+  s.addShape(pptx.ShapeType.rect, { x: 0, y: 1.2, w: "100%", h: 6.1, fill: { color: C.lightBlue } });
+
+  const trust = [
+    {
+      title: "Complete Data Isolation",
+      body: "Every company gets its own isolated database space. Your data is never mixed with any other tenant. Even our engineers cannot accidentally access your records.",
+    },
+    {
+      title: "Daily Automated Backups",
+      body: "Automatic backups run every night. Last 30 backups retained. Pre-deletion backups triggered before any major change. Restore any data from any point in time.",
+    },
+    {
+      title: "Role-Based Access Control",
+      body: "73+ screens with granular permissions. Each user sees only what their role allows. Full audit log of every action taken — who changed what and when.",
+    },
+    {
+      title: "Secure Authentication",
+      body: "Passwords hashed with industry-standard scrypt. Session management with 7-day expiry. Secure cookies with SameSite and Secure flags enforced.",
+    },
+    {
+      title: "Cloud Infrastructure",
+      body: "Hosted on enterprise-grade cloud infrastructure with 99.9% uptime SLA. No server to manage, no IT team needed, always on the latest version.",
+    },
+    {
+      title: "Audit Trail",
+      body: "Every login, data change, and permission update is logged with user identity, timestamp, and IP. Full compliance trail for internal and external audits.",
+    },
+  ];
+
+  trust.forEach((item, i) => {
+    const col = i % 3;
+    const row = Math.floor(i / 3);
+    card(s, 0.25 + col * 4.3, 1.35 + row * 2.55, 4.1, 2.38, item.title, item.body, C.navy);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// SLIDE 18 — HOW TO GET STARTED
+// ══════════════════════════════════════════════════════════════
+{
+  const s = pptx.addSlide();
+  addNavyHeader(s, "Getting Started Is Simple", "Most teams are fully live within one week");
+  s.addShape(pptx.ShapeType.rect, { x: 0, y: 1.2, w: "100%", h: 6.1, fill: { color: C.white } });
+
+  const steps = [
+    {
+      day: "Day 1",
+      title: "Sign Up & Company Setup",
+      items: ["Register your company (2 minutes)", "Add your GSTIN, address, logo", "Invite your team members", "Set roles and permissions"],
+      color: C.blue,
+    },
+    {
+      day: "Day 2–3",
+      title: "Master Data & Configuration",
+      items: ["Add products, raw materials, vendors", "Configure salary structures for payroll", "Set up Chart of Accounts", "Import existing data if needed"],
+      color: C.navy,
+    },
+    {
+      day: "Day 4–5",
+      title: "Go Live on Core Operations",
+      items: ["Start raising GST invoices", "Record purchase orders & GRNs", "Begin production entries", "Enable WhatsApp checklists"],
+      color: "0369A1",
+    },
+    {
+      day: "Week 2",
+      title: "HR, CRM & Advanced Modules",
+      items: ["Add employees & run first payroll", "Add sales leads to CRM pipeline", "Enable ESS for employees", "Review first MIS dashboard"],
+      color: C.green,
+    },
+  ];
+
+  // Connector line
+  s.addShape(pptx.ShapeType.rect, { x: 1.6, y: 2.44, w: 10.2, h: 0.06, fill: { color: C.border } });
+
+  steps.forEach((step, i) => {
+    const x = 0.25 + i * 3.25;
+
+    // Circle step number
+    s.addShape(pptx.ShapeType.ellipse, { x: x + 0.85, y: 2.1, w: 0.7, h: 0.7, fill: { color: step.color } });
+    s.addText(String(i + 1), { x: x + 0.85, y: 2.1, w: 0.7, h: 0.7, fontSize: 16, bold: true, color: C.white, fontFace: "Calibri", align: "center", valign: "middle" });
+
+    // Day badge
+    s.addShape(pptx.ShapeType.rect, { x: x + 0.5, y: 1.38, w: 1.4, h: 0.3, fill: { color: step.color }, rectRadius: 0.06 });
+    s.addText(step.day, { x: x + 0.5, y: 1.38, w: 1.4, h: 0.3, fontSize: 9, bold: true, color: C.white, fontFace: "Calibri", align: "center" });
+
+    // Card
+    s.addShape(pptx.ShapeType.rect, { x, y: 2.95, w: 3.1, h: 4.1, fill: { color: C.cardBg }, line: { color: step.color, width: 2 }, rectRadius: 0.08 });
+    s.addText(step.title, { x: x + 0.12, y: 3.05, w: 2.86, h: 0.45, fontSize: 11, bold: true, color: step.color, fontFace: "Calibri", valign: "middle" });
+
+    step.items.forEach((item, ii) => {
+      s.addShape(pptx.ShapeType.ellipse, { x: x + 0.15, y: 3.62 + ii * 0.72, w: 0.14, h: 0.14, fill: { color: step.color } });
+      s.addText(item, { x: x + 0.34, y: 3.55 + ii * 0.72, w: 2.62, h: 0.58, fontSize: 9.5, color: C.dark, fontFace: "Calibri", valign: "middle" });
+    });
+  });
+
+  s.addText("Need help? Our onboarding team is available via chat and email throughout your setup.", {
+    x: 0.3, y: 7.1, w: 12.5, h: 0.22, fontSize: 9.5, color: C.muted, fontFace: "Calibri", align: "center", italic: true,
+  });
+}
+
 // ── Write file ────────────────────────────────────────────────
-await pptx.writeFile({ fileName: "Kinto_Smart_Ops_Pitch_Deck_V4.pptx" });
-console.log("Done: Kinto_Smart_Ops_Pitch_Deck_V4.pptx");
+await pptx.writeFile({ fileName: "Kinto_Smart_Ops_Pitch_Deck_V5.pptx" });
+console.log("Done: Kinto_Smart_Ops_Pitch_Deck_V5.pptx");
