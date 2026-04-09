@@ -5,6 +5,8 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { whatsappService } from "./whatsappService";
+import archiver from "archiver";
+import PDFDocument from "pdfkit";
 
 const router = Router();
 
@@ -656,14 +658,30 @@ router.get("/leave-applications", requireHR, async (req: any, res) => {
 
 router.post("/leave-applications", requireHR, async (req: any, res) => {
   const tid = getTenantId(req);
-  const { employeeId, leaveTypeId, fromDate, toDate, days, reason } = req.body;
+  const { employeeId, leaveTypeId, fromDate, toDate, reason } = req.body;
   try {
+    // Auto-calculate days excluding public holidays
+    const holidayRows = await db.execute(sql`
+      SELECT date::text FROM hr_holidays
+      WHERE tenant_id=${tid} AND record_status=1 AND date >= ${fromDate} AND date <= ${toDate}
+    `);
+    const holidayDates = new Set(
+      (holidayRows.rows as any[]).map((h: any) => (h.date || '').split('T')[0])
+    );
+    let calcDays = 0;
+    const start = new Date(fromDate);
+    const end = new Date(toDate);
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const ds = d.toISOString().split('T')[0];
+      if (!holidayDates.has(ds)) calcDays++;
+    }
+    const actualDays = Math.max(1, calcDays);
     const r = await db.execute(sql`
       INSERT INTO hr_leave_applications (tenant_id, employee_id, leave_type_id, from_date, to_date, days, reason)
-      VALUES (${tid}, ${employeeId}, ${leaveTypeId}, ${fromDate}, ${toDate}, ${days}, ${reason ?? null})
+      VALUES (${tid}, ${employeeId}, ${leaveTypeId}, ${fromDate}, ${toDate}, ${actualDays}, ${reason ?? null})
       RETURNING *
     `);
-    res.json(r.rows[0]);
+    res.json({ ...r.rows[0], holidaysExcluded: holidayDates.size });
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 
@@ -1064,6 +1082,253 @@ router.get("/payroll-runs/:id/bank-file", requireHR, async (req: any, res) => {
     res.setHeader('Content-Disposition', `attachment; filename="salary_bank_${MONTHS[month]}_${year}.csv"`);
     res.send(csv);
   } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// ── Bulk payslip ZIP download ────────────────────────────────────────────────
+router.get("/payroll-runs/:id/payslips/zip", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  const MONTHS_ARR = ["","January","February","March","April","May","June","July","August","September","October","November","December"];
+  try {
+    const runRow = await db.execute(sql`SELECT month, year FROM hr_payroll_runs WHERE id=${req.params.id} AND tenant_id=${tid}`);
+    if (!runRow.rows.length) return res.status(404).json({ message: "Run not found" });
+    const { month, year } = runRow.rows[0] as any;
+    const monthName = MONTHS_ARR[month];
+
+    const rows = await db.execute(sql`
+      SELECT p.*, e.first_name, e.last_name, e.emp_code, e.pan, e.pf_number,
+        e.bank_account_number, e.bank_ifsc, e.bank_name,
+        dep.name as department_name, des.name as designation_name,
+        t.name as tenant_name
+      FROM hr_payslips p
+      JOIN hr_employees e ON p.employee_id = e.id
+      LEFT JOIN hr_departments dep ON e.department_id = dep.id
+      LEFT JOIN hr_designations des ON e.designation_id = des.id
+      JOIN tenants t ON p.tenant_id = t.id
+      WHERE p.payroll_run_id=${req.params.id} AND p.tenant_id=${tid}
+      ORDER BY e.emp_code
+    `);
+
+    res.setHeader("Content-Type", "application/zip");
+    res.setHeader("Content-Disposition", `attachment; filename="Payslips_${monthName}_${year}.zip"`);
+
+    const archive = archiver("zip", { zlib: { level: 6 } });
+    archive.pipe(res);
+    archive.on("error", (err: any) => { if (!res.headersSent) res.status(500).end(); });
+
+    const fmtN = (n: any) => Number(n || 0).toLocaleString("en-IN");
+    const fmtRs = (n: any) => `&#8377;${fmtN(n)}`;
+
+    for (const p of rows.rows as any[]) {
+      const comps = p.components ? (typeof p.components === "string" ? JSON.parse(p.components) : p.components) : [];
+      const earnings = comps.filter((c: any) => c.type === "earning");
+      const deductions = comps.filter((c: any) => c.type === "deduction");
+      const maxRows = Math.max(earnings.length, deductions.length, 1);
+
+      const compRows = Array.from({ length: maxRows }, (_, i) => {
+        const e = earnings[i]; const d = deductions[i];
+        return `<tr>
+          <td>${e ? e.name : ""}</td><td class="r">${e ? fmtRs(e.amount) : ""}</td>
+          <td>${d ? d.name : ""}</td><td class="r">${d ? fmtRs(d.amount) : ""}</td>
+        </tr>`;
+      }).join("");
+
+      const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>Payslip ${p.emp_code} ${monthName} ${year}</title>
+<style>
+  body{font-family:Arial,sans-serif;font-size:12px;margin:24px;color:#222}
+  h1{text-align:center;font-size:16px;margin:0}
+  .sub{text-align:center;color:#555;font-size:11px;margin-bottom:16px}
+  table{width:100%;border-collapse:collapse;margin-bottom:10px}
+  th,td{border:1px solid #ccc;padding:5px 8px}
+  th{background:#f0f0f0;text-align:left}
+  .r{text-align:right}
+  .total{font-weight:bold;background:#f9f9f9}
+  .netpay{background:#1e40af;color:#fff;font-weight:bold;text-align:center}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px 16px;margin-bottom:12px;font-size:11px}
+  .lbl{color:#666}
+</style></head><body>
+<h1>${p.tenant_name || "Company"}</h1>
+<p class="sub">Pay Slip — ${monthName} ${year}</p>
+<div class="grid">
+  <div><span class="lbl">Employee:</span> <b>${p.first_name} ${p.last_name}</b></div>
+  <div><span class="lbl">Code:</span> ${p.emp_code}</div>
+  <div><span class="lbl">Department:</span> ${p.department_name || "—"}</div>
+  <div><span class="lbl">Designation:</span> ${p.designation_name || "—"}</div>
+  <div><span class="lbl">PAN:</span> ${p.pan || "—"}</div>
+  <div><span class="lbl">PF No:</span> ${p.pf_number || "—"}</div>
+  <div><span class="lbl">Days Worked:</span> ${p.days_worked}/${p.days_in_month}</div>
+  <div><span class="lbl">LOP Days:</span> ${p.lop_days || 0}</div>
+  <div><span class="lbl">Bank:</span> ${p.bank_name || "—"}</div>
+</div>
+<table>
+  <tr><th>Earnings</th><th class="r">Amount</th><th>Deductions</th><th class="r">Amount</th></tr>
+  ${compRows}
+  <tr class="total">
+    <td>Gross Salary</td><td class="r">${fmtRs(p.gross_salary)}</td>
+    <td>Total Deductions</td><td class="r" style="color:#c00">${fmtRs(p.total_deductions)}</td>
+  </tr>
+  <tr><td colspan="4" class="netpay">Net Pay: ${fmtRs(p.net_salary)}</td></tr>
+</table>
+<p style="font-size:10px;color:#888;text-align:center">System generated on ${new Date().toLocaleDateString("en-IN")}. Not valid without company seal.</p>
+</body></html>`;
+
+      archive.append(html, { name: `${p.emp_code}_${p.first_name}_${p.last_name}_${monthName}_${year}.html` });
+    }
+    await archive.finalize();
+  } catch (e: any) { if (!res.headersSent) res.status(500).json({ message: e.message }); }
+});
+
+// ── Form 16 PDF download ─────────────────────────────────────────────────────
+router.get("/form16/:employeeId/:fiscalYear/pdf", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  const { employeeId, fiscalYear } = req.params;
+  const MONTHS_ARR = ["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  try {
+    const empRow = await db.execute(sql`
+      SELECT e.*, des.name as designation_name, dep.name as department_name, t.name as tenant_name
+      FROM hr_employees e
+      LEFT JOIN hr_designations des ON e.designation_id = des.id
+      LEFT JOIN hr_departments dep ON e.department_id = dep.id
+      JOIN tenants t ON t.id = e.tenant_id
+      WHERE e.id=${Number(employeeId)} AND e.tenant_id=${tid}
+    `);
+    if (!empRow.rows.length) return res.status(404).json({ message: "Employee not found" });
+    const emp = empRow.rows[0] as any;
+
+    const startYear = Number(fiscalYear.split("-")[0]);
+    const endYear = startYear + 1;
+
+    const psRows = await db.execute(sql`
+      SELECT p.*, r.month, r.year FROM hr_payslips p
+      JOIN hr_payroll_runs r ON p.payroll_run_id = r.id
+      WHERE p.employee_id=${Number(employeeId)} AND p.tenant_id=${tid}
+        AND ((r.year=${startYear} AND r.month >= 4) OR (r.year=${endYear} AND r.month <= 3))
+      ORDER BY r.year, r.month
+    `);
+    const payslips = psRows.rows as any[];
+    const decl = ((await db.execute(sql`
+      SELECT * FROM hr_tds_declarations WHERE employee_id=${Number(employeeId)} AND tenant_id=${tid} AND fiscal_year=${fiscalYear}
+    `)).rows[0] || null) as any;
+
+    const totalGross = payslips.reduce((s, p) => s + Number(p.gross_salary || 0), 0);
+    const totalPF = payslips.reduce((s, p) => s + Number(p.pf_employee || 0), 0);
+    const totalPT = payslips.reduce((s, p) => s + Number(p.pt || 0), 0);
+    const totalTDS = payslips.reduce((s, p) => s + Number(p.tds || 0), 0);
+    const stdDed = emp.tax_regime === "old" ? 50000 : 75000;
+    const fmtN = (n: any) => Number(n || 0).toLocaleString("en-IN");
+    const fmtRs = (n: any) => `Rs.${fmtN(n)}`;
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="Form16_${emp.emp_code}_${fiscalYear}.pdf"`);
+
+    const doc = new PDFDocument({ size: "A4", margin: 45 });
+    doc.pipe(res);
+
+    const W = 505; // usable width (595 - 45*2)
+
+    // Header
+    doc.fontSize(13).font("Helvetica-Bold").text(emp.tenant_name || "Company", { align: "center" });
+    doc.fontSize(11).font("Helvetica-Bold").text("FORM 16 — Certificate of Tax Deducted at Source", { align: "center" });
+    doc.fontSize(9).font("Helvetica").fillColor("#555").text(`Financial Year: ${fiscalYear}  |  Assessment Year: ${endYear}-${String(endYear + 1).slice(2)}`, { align: "center" });
+    doc.fillColor("#000").moveDown(0.8);
+
+    // Section divider helper
+    const sectionTitle = (title: string) => {
+      doc.fontSize(9).font("Helvetica-Bold").fillColor("#1e3a5f")
+        .rect(45, doc.y, W, 14).fill("#e8f0fe")
+        .fillColor("#1e3a5f").text("  " + title, 45, doc.y - 11);
+      doc.fillColor("#000").moveDown(0.4);
+    };
+
+    // Employee Details
+    sectionTitle("EMPLOYEE DETAILS");
+    const empInfo = [
+      ["Name", `${emp.first_name} ${emp.last_name}`, "Emp Code", emp.emp_code],
+      ["Designation", emp.designation_name || "—", "Department", emp.department_name || "—"],
+      ["PAN", emp.pan || "Not Provided", "Tax Regime", emp.tax_regime === "old" ? "Old Regime" : "New Regime"],
+      ["PF Number", emp.pf_number || "—", "Period", `Apr ${startYear} – Mar ${endYear}`],
+    ];
+    for (const [l1, v1, l2, v2] of empInfo) {
+      const ey = doc.y;
+      doc.font("Helvetica").fontSize(8).fillColor("#555").text(l1 + ":", 45, ey, { width: 70 });
+      doc.font("Helvetica-Bold").fontSize(8).fillColor("#000").text(String(v1), 115, ey, { width: 140 });
+      doc.font("Helvetica").fontSize(8).fillColor("#555").text(String(l2) + ":", 295, ey, { width: 70 });
+      doc.font("Helvetica-Bold").fontSize(8).fillColor("#000").text(String(v2), 365, ey, { width: 185 });
+      doc.moveDown(0.5);
+    }
+    doc.moveDown(0.5);
+
+    // Part A
+    sectionTitle("PART A — TDS SUMMARY (MONTH-WISE)");
+    const colX = [45, 175, 285, 355, 425];
+    const colW = [130, 110, 70, 70, 125];
+    const ths = ["Month", "Gross Salary", "PF", "PT", "TDS Deducted"];
+    const thY = doc.y;
+    ths.forEach((h, i) => doc.font("Helvetica-Bold").fontSize(8).text(h, colX[i], thY, { width: colW[i], align: i > 0 ? "right" : "left" }));
+    doc.moveDown(0.3);
+    doc.moveTo(45, doc.y).lineTo(550, doc.y).lineWidth(0.5).stroke();
+    doc.moveDown(0.2);
+
+    const MONTHS_ORDER = [4,5,6,7,8,9,10,11,12,1,2,3];
+    for (const m of MONTHS_ORDER) {
+      const ps = payslips.find((p: any) => p.month === m);
+      if (!ps) continue;
+      const ry = doc.y;
+      const rowData = [
+        `${MONTHS_ARR[m]} ${m >= 4 ? startYear : endYear}`,
+        fmtRs(ps.gross_salary), fmtRs(ps.pf_employee), fmtRs(ps.pt), fmtRs(ps.tds)
+      ];
+      rowData.forEach((v, i) => doc.font("Helvetica").fontSize(8).text(v, colX[i], ry, { width: colW[i], align: i > 0 ? "right" : "left" }));
+      doc.moveDown(0.4);
+    }
+    doc.moveTo(45, doc.y).lineTo(550, doc.y).lineWidth(0.5).stroke();
+    doc.moveDown(0.2);
+    const ty = doc.y;
+    const totRow = ["TOTAL", fmtRs(totalGross), fmtRs(totalPF), fmtRs(totalPT), fmtRs(totalTDS)];
+    totRow.forEach((v, i) => doc.font("Helvetica-Bold").fontSize(8).text(v, colX[i], ty, { width: colW[i], align: i > 0 ? "right" : "left" }));
+    doc.moveDown(1);
+
+    // Part B
+    sectionTitle("PART B — INCOME COMPUTATION");
+    const items: [string, string][] = [
+      ["1. Gross Salary", fmtRs(totalGross)],
+      ["2.  Less: Standard Deduction", `(${fmtRs(stdDed)})`],
+      ["3.  Less: PF Contribution (Employee)", `(${fmtRs(totalPF)})`],
+      ["4.  Less: Professional Tax Paid", `(${fmtRs(totalPT)})`],
+    ];
+    if (decl && emp.tax_regime !== "new") {
+      const t80c = Math.min(150000, ["lic_premium","ppf","elss","nsc","home_loan_principal","fd_tax_saving","other_80c"].reduce((s, k) => s + Number(decl[k]||0), 0));
+      const t80d = Number(decl.sec_80d_self||0) + Number(decl.sec_80d_parents||0);
+      const nps = Math.min(50000, Number(decl.nps_80ccd||0));
+      if (t80c) items.push(["5.  Less: Section 80C Investments (capped at 1.5L)", `(${fmtRs(t80c)})`]);
+      if (t80d) items.push(["6.  Less: Section 80D Health Insurance", `(${fmtRs(t80d)})`]);
+      if (Number(decl.home_loan_interest)) items.push(["7.  Less: Home Loan Interest (Sec 24)", `(${fmtRs(Math.min(200000, Number(decl.home_loan_interest)))})`]);
+      if (nps) items.push(["8.  Less: NPS Self Contribution (80CCD-1B)", `(${fmtRs(nps)})`]);
+    } else if (!decl) {
+      items.push(["5. Investment Declaration", "Not submitted"]);
+    } else {
+      items.push(["5. Deductions", "Not applicable (New Regime)"]);
+    }
+
+    for (const [l, v] of items) {
+      const iy = doc.y;
+      doc.font("Helvetica").fontSize(8).fillColor("#000").text(l, 45, iy, { width: 360 });
+      doc.font("Helvetica").fontSize(8).text(v, 405, iy, { width: 145, align: "right" });
+      doc.moveDown(0.45);
+    }
+    doc.moveTo(45, doc.y).lineTo(550, doc.y).lineWidth(0.5).stroke();
+    doc.moveDown(0.3);
+    const netY = doc.y;
+    doc.font("Helvetica-Bold").fontSize(9).text("Total TDS Deducted at Source", 45, netY, { width: 360 });
+    doc.font("Helvetica-Bold").fontSize(9).text(fmtRs(totalTDS), 405, netY, { width: 145, align: "right" });
+    doc.moveDown(1.5);
+
+    // Footer
+    doc.fontSize(7).font("Helvetica").fillColor("#888")
+      .text(`This is a system-generated Form 16. Generated on ${new Date().toLocaleDateString("en-IN")}. For queries, contact HR.`, { align: "center" });
+
+    doc.end();
+  } catch (e: any) { if (!res.headersSent) res.status(500).json({ message: e.message }); }
 });
 
 // Send payslip via WhatsApp to all employees in a run

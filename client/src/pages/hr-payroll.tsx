@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import {
   Play, CheckCircle, Lock, Eye, Plus, Unlock, Download,
-  MessageCircle, Mail, IndianRupee, Users, ExternalLink, Settings2
+  MessageCircle, Mail, IndianRupee, Users, ExternalLink, Settings2, FileArchive
 } from "lucide-react";
 
 const MONTHS = ["", "January", "February", "March", "April", "May", "June",
@@ -247,6 +247,11 @@ export default function HRPayrollPage() {
                       {hasData && (
                         <Button size="sm" variant="ghost" onClick={() => window.open(`/api/hr/payroll-runs/${run.id}/bank-file`, "_blank")} data-testid={`btn-bank-file-${run.id}`}>
                           <Download className="h-3.5 w-3.5 mr-1" />Bank File
+                        </Button>
+                      )}
+                      {hasData && (
+                        <Button size="sm" variant="ghost" onClick={() => window.open(`/api/hr/payroll-runs/${run.id}/payslips/zip`, "_blank")} data-testid={`btn-zip-${run.id}`}>
+                          <FileArchive className="h-3.5 w-3.5 mr-1" />ZIP
                         </Button>
                       )}
                     </div>

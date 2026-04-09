@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { FileText, Plus, Printer, Search, IndianRupee, Shield } from "lucide-react";
+import { FileText, Plus, Printer, Search, IndianRupee, Shield, AlertCircle, Download } from "lucide-react";
 
 const FISCAL_YEARS = ["2024-25", "2023-24", "2025-26"];
 const fmt = (n: any) => Number(n || 0).toLocaleString("en-IN");
@@ -140,87 +140,136 @@ function DeclarationForm({ employees, employee, fiscalYear, existing, onSave, on
         </div>
       </div>
 
+      {/* Regime notice banner */}
+      {form.regime === "new" && (
+        <div className="flex items-start gap-2.5 rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 px-3 py-2.5 text-sm">
+          <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+          <div className="space-y-0.5">
+            <p className="font-medium text-amber-800 dark:text-amber-200">New Regime selected — investment deductions not applicable</p>
+            <p className="text-amber-700 dark:text-amber-300 text-xs">Under the New Tax Regime, deductions under 80C, 80D, HRA, home loan interest, 80E, 80G, 80TTA etc. are <strong>not available</strong>. A standard deduction of ₹75,000 is automatically applied. Switch to Old Regime to declare investments.</p>
+          </div>
+        </div>
+      )}
+
       <Tabs defaultValue="80c">
         <TabsList className="flex-wrap h-auto gap-1">
-          <TabsTrigger value="80c">Section 80C</TabsTrigger>
-          <TabsTrigger value="80d">Section 80D</TabsTrigger>
-          <TabsTrigger value="hra">HRA Exemption</TabsTrigger>
-          <TabsTrigger value="other">Other Deductions</TabsTrigger>
+          <TabsTrigger value="80c" className="relative">
+            Section 80C {form.regime === "new" && <span className="ml-1 text-[10px] text-amber-600">N/A</span>}
+          </TabsTrigger>
+          <TabsTrigger value="80d" className="relative">
+            Section 80D {form.regime === "new" && <span className="ml-1 text-[10px] text-amber-600">N/A</span>}
+          </TabsTrigger>
+          <TabsTrigger value="hra" className="relative">
+            HRA Exemption {form.regime === "new" && <span className="ml-1 text-[10px] text-amber-600">N/A</span>}
+          </TabsTrigger>
+          <TabsTrigger value="other" className="relative">
+            Other Deductions {form.regime === "new" && <span className="ml-1 text-[10px] text-amber-600">N/A</span>}
+          </TabsTrigger>
           <TabsTrigger value="summary">Tax Summary</TabsTrigger>
         </TabsList>
 
         <TabsContent value="80c" className="space-y-3 mt-4">
-          <p className="text-xs text-muted-foreground">Max ₹1,50,000 under Section 80C. Total declared: <span className="font-semibold text-foreground">{fmtRs(Number(form.licPremium)+Number(form.ppf)+Number(form.elss)+Number(form.nsc)+Number(form.homeLoanPrincipal)+Number(form.fdTaxSaving)+Number(form.other80c))}</span> → Eligible: <span className="font-semibold text-foreground">{fmtRs(total80c)}</span></p>
-          <div className="grid grid-cols-2 gap-3">
-            {[["licPremium","LIC Premium"], ["ppf","PPF Contribution"], ["elss","ELSS / Mutual Funds"], ["nsc","NSC (National Savings Certificate)"], ["homeLoanPrincipal","Home Loan Principal (80C)"], ["fdTaxSaving","Tax-Saving FD (5 yr)"], ["other80c","Others under 80C"]].map(([k, label]) => (
-              <div key={k} className="space-y-1.5">
-                <Label className="text-sm">{label}</Label>
-                <Input className={numCls} type="number" min="0" value={(form as any)[k]} onChange={f(k)} />
+          {form.regime === "new" ? (
+            <div className="rounded-md bg-muted/50 border border-dashed p-6 text-center text-sm text-muted-foreground">
+              Section 80C deductions (LIC, PPF, ELSS, NSC, etc.) are <strong>not available</strong> under the New Regime.<br />Switch to Old Regime to declare these investments.
+            </div>
+          ) : (
+            <>
+              <p className="text-xs text-muted-foreground">Max ₹1,50,000 under Section 80C. Total declared: <span className="font-semibold text-foreground">{fmtRs(Number(form.licPremium)+Number(form.ppf)+Number(form.elss)+Number(form.nsc)+Number(form.homeLoanPrincipal)+Number(form.fdTaxSaving)+Number(form.other80c))}</span> → Eligible: <span className="font-semibold text-foreground">{fmtRs(total80c)}</span></p>
+              <div className="grid grid-cols-2 gap-3">
+                {[["licPremium","LIC Premium"], ["ppf","PPF Contribution"], ["elss","ELSS / Mutual Funds"], ["nsc","NSC (National Savings Certificate)"], ["homeLoanPrincipal","Home Loan Principal (80C)"], ["fdTaxSaving","Tax-Saving FD (5 yr)"], ["other80c","Others under 80C"]].map(([k, label]) => (
+                  <div key={k} className="space-y-1.5">
+                    <Label className="text-sm">{label}</Label>
+                    <Input className={numCls} type="number" min="0" value={(form as any)[k]} onChange={f(k)} />
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </>
+          )}
         </TabsContent>
 
         <TabsContent value="80d" className="space-y-3 mt-4">
-          <p className="text-xs text-muted-foreground">Medical insurance premium deduction. Self & family: up to ₹25,000. Parents: up to ₹25,000 (₹50,000 if senior citizens).</p>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Self & Family Medical Insurance Premium</Label>
-              <Input className={numCls} type="number" min="0" value={form.sec80dSelf} onChange={f("sec80dSelf")} />
+          {form.regime === "new" ? (
+            <div className="rounded-md bg-muted/50 border border-dashed p-6 text-center text-sm text-muted-foreground">
+              Section 80D (health insurance premium) is <strong>not available</strong> under the New Regime.<br />Switch to Old Regime to claim this deduction.
             </div>
-            <div className="space-y-1.5">
-              <Label>Parents Medical Insurance Premium</Label>
-              <Input className={numCls} type="number" min="0" value={form.sec80dParents} onChange={f("sec80dParents")} />
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Checkbox id="seniorParent" checked={form.parentsSeniorCitizen} onCheckedChange={v => setForm(p => ({ ...p, parentsSeniorCitizen: !!v }))} />
-            <Label htmlFor="seniorParent" className="text-sm">Parents are Senior Citizens (increases limit to ₹50,000)</Label>
-          </div>
+          ) : (
+            <>
+              <p className="text-xs text-muted-foreground">Medical insurance premium deduction. Self & family: up to ₹25,000. Parents: up to ₹25,000 (₹50,000 if senior citizens).</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Self & Family Medical Insurance Premium</Label>
+                  <Input className={numCls} type="number" min="0" value={form.sec80dSelf} onChange={f("sec80dSelf")} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Parents Medical Insurance Premium</Label>
+                  <Input className={numCls} type="number" min="0" value={form.sec80dParents} onChange={f("sec80dParents")} />
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox id="seniorParent" checked={form.parentsSeniorCitizen} onCheckedChange={v => setForm(p => ({ ...p, parentsSeniorCitizen: !!v }))} />
+                <Label htmlFor="seniorParent" className="text-sm">Parents are Senior Citizens (increases limit to ₹50,000)</Label>
+              </div>
+            </>
+          )}
         </TabsContent>
 
         <TabsContent value="hra" className="space-y-3 mt-4">
-          <p className="text-xs text-muted-foreground">HRA exemption is calculated as: minimum of (HRA received, Actual rent − 10% of basic, 50%/40% of basic for metro/non-metro).</p>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Monthly Rent Paid (₹)</Label>
-              <Input className={numCls} type="number" min="0" value={form.rentPerMonth} onChange={f("rentPerMonth")} />
+          {form.regime === "new" ? (
+            <div className="rounded-md bg-muted/50 border border-dashed p-6 text-center text-sm text-muted-foreground">
+              HRA exemption is <strong>not available</strong> under the New Regime.<br />Switch to Old Regime to claim HRA deduction.
             </div>
-            <div className="space-y-1.5">
-              <Label>City Type</Label>
-              <Select value={form.cityType} onValueChange={s("cityType")}>
-                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="metro">Metro (Mumbai, Delhi, Kolkata, Chennai)</SelectItem>
-                  <SelectItem value="non_metro">Non-Metro</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          {Number(form.rentPerMonth) > 0 && (
-            <div className="p-3 rounded-md bg-muted text-sm space-y-1">
-              <p>Employee Basic Salary: <span className="font-medium">{fmtRs(empBasic)}/month</span></p>
-              <p>HRA Exemption Estimate: <span className="font-semibold text-foreground">{fmtRs(hraExemption)}/year</span></p>
-            </div>
+          ) : (
+            <>
+              <p className="text-xs text-muted-foreground">HRA exemption is calculated as: minimum of (HRA received, Actual rent − 10% of basic, 50%/40% of basic for metro/non-metro).</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Monthly Rent Paid (₹)</Label>
+                  <Input className={numCls} type="number" min="0" value={form.rentPerMonth} onChange={f("rentPerMonth")} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>City Type</Label>
+                  <Select value={form.cityType} onValueChange={s("cityType")}>
+                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="metro">Metro (Mumbai, Delhi, Kolkata, Chennai)</SelectItem>
+                      <SelectItem value="non_metro">Non-Metro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {Number(form.rentPerMonth) > 0 && (
+                <div className="p-3 rounded-md bg-muted text-sm space-y-1">
+                  <p>Employee Basic Salary: <span className="font-medium">{fmtRs(empBasic)}/month</span></p>
+                  <p>HRA Exemption Estimate: <span className="font-semibold text-foreground">{fmtRs(hraExemption)}/year</span></p>
+                </div>
+              )}
+            </>
           )}
         </TabsContent>
 
         <TabsContent value="other" className="space-y-3 mt-4">
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              ["homeLoanInterest", "Home Loan Interest (Sec 24) — Max ₹2,00,000"],
-              ["eduLoanInterest", "Education Loan Interest (Sec 80E) — No limit"],
-              ["nps80ccd", "NPS Contribution (Sec 80CCD 1B) — Max ₹50,000"],
-              ["sec80g", "Donations (Sec 80G)"],
-              ["sec80tta", "Savings Bank Interest (Sec 80TTA) — Max ₹10,000"],
-              ["otherDeductions", "Other Deductions"],
-            ].map(([k, label]) => (
-              <div key={k} className="space-y-1.5">
-                <Label className="text-sm">{label}</Label>
-                <Input className={numCls} type="number" min="0" value={(form as any)[k]} onChange={f(k)} />
-              </div>
-            ))}
-          </div>
+          {form.regime === "new" ? (
+            <div className="rounded-md bg-muted/50 border border-dashed p-6 text-center text-sm text-muted-foreground">
+              Deductions under Sections 24 (home loan interest), 80E, 80G, 80TTA are <strong>not available</strong> under the New Regime.<br />Switch to Old Regime to declare these deductions.
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                ["homeLoanInterest", "Home Loan Interest (Sec 24) — Max ₹2,00,000"],
+                ["eduLoanInterest", "Education Loan Interest (Sec 80E) — No limit"],
+                ["nps80ccd", "NPS Contribution (Sec 80CCD 1B) — Max ₹50,000"],
+                ["sec80g", "Donations (Sec 80G)"],
+                ["sec80tta", "Savings Bank Interest (Sec 80TTA) — Max ₹10,000"],
+                ["otherDeductions", "Other Deductions"],
+              ].map(([k, label]) => (
+                <div key={k} className="space-y-1.5">
+                  <Label className="text-sm">{label}</Label>
+                  <Input className={numCls} type="number" min="0" value={(form as any)[k]} onChange={f(k)} />
+                </div>
+              ))}
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="summary" className="mt-4">
@@ -300,9 +349,16 @@ function Form16View({ employeeId, fiscalYear }: { employeeId: number; fiscalYear
           <h2 className="text-lg font-semibold">Form 16 — Part B</h2>
           <p className="text-sm text-muted-foreground">Financial Year: {fiscalYear}</p>
         </div>
-        <Button size="sm" variant="outline" onClick={() => window.print()}>
-          <Printer className="h-3.5 w-3.5 mr-1.5" />Print / Download
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline"
+            onClick={() => window.open(`/api/hr/form16/${employeeId}/${fiscalYear}/pdf`, "_blank")}
+            data-testid="btn-form16-pdf">
+            <Download className="h-3.5 w-3.5 mr-1.5" />Download PDF
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => window.print()}>
+            <Printer className="h-3.5 w-3.5 mr-1.5" />Print
+          </Button>
+        </div>
       </div>
 
       <Card><CardContent className="pt-4">
