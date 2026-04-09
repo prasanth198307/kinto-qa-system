@@ -21,6 +21,7 @@ psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-07_audit_logs
 
 psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-08_saas-phase1-tenants.sql
 psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-08_saas-phase2-session-store.sql
+psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-08_saas-phase3-prereq-missing-tables.sql
 psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-08_saas-phase3-tenant-isolation.sql
 psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-08_saas-phase4-rbac.sql
 psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-08_saas-phase5-subscription-plans.sql
