@@ -125,8 +125,10 @@ export function VerticalNavSidebar({
 
   const handleItemClick = (item: NavItem) => {
     if (item.onClick) {
+      // item.onClick handles its own navigation (e.g. setLocation('/hr/employees'))
+      // Do NOT call onItemClick here — it would trigger the wrapper's onNavigate
+      // which may call setLocation('/') and override the intended navigation.
       item.onClick();
-      onItemClick(item.id);
     } else {
       navigate(`/?tab=${item.id}`);
       onItemClick(item.id);

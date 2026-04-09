@@ -6,6 +6,95 @@ Kinto Smart Ops is a comprehensive SaaS ERP platform designed for Indian manufac
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
+---
+
+## CRITICAL: Sidebar Navigation Architecture (READ BEFORE BUILDING ANY NEW MODULE)
+
+This is the most important section. Misunderstanding this causes hidden bugs where nav items disappear or pages don't load.
+
+### How the Sidebar Works
+
+The app uses `VerticalNavSidebar` with a `navSections` array of `NavSection` objects. Each section has `items: NavItem[]`. A `NavItem` can have either:
+
+**Pattern A — Tab-based item (stays in same dashboard, no `onClick`):**
+```ts
+{ id: "production", label: "Production", icon: Factory }
+// → sidebar calls navigate('/?tab=production'), parent's onNavigate('production') fires
+// → parent does setActiveView('production') → renderContent() switch handles it inline
+```
+
+**Pattern B — Route-based item (navigates to a dedicated page, has `onClick`):**
+```ts
+{ id: "hr-employees", label: "Employees", icon: Users, onClick: () => setLocation('/hr/employees') }
+// → sidebar calls item.onClick() ONLY — does NOT call onNavigate/onItemClick
+// → setLocation routes to a full-page wrapper component like HREmployeesWrapper
+```
+
+**RULE: When `item.onClick` is defined, VerticalNavSidebar does NOT call `onItemClick` (the onNavigate prop).** This is by design to prevent double-navigation conflicts. The dedicated page component manages its own active state.
+
+### Dashboard Components and Their Sidebar Sources
+
+| Component | Nav Source | Plan Filtered? | Role Filtered? |
+|---|---|---|---|
+| `AdminDashboard` | Hardcoded `navSections` array inside the component | NO | NO (admin sees all) |
+| `ManagerDashboard` | `getAdminNavSections(setLocation)` + `useFilteredNavigation` | YES | YES |
+| `CustomRoleDashboard` | `getAdminNavSections(setLocation)` + `useFilteredNavigation` | YES | YES |
+| `HREmployeesWrapper` etc. | `getAdminNavSections(setLocation)` + `useFilteredNavigation` | YES | YES |
+
+**CRITICAL BUG TRAP — `AdminDashboard` is HARDCODED:**
+`AdminDashboard` (rendered when `user.role === 'admin'`, lowercase, which is the role NAME not UUID) has its own hardcoded `navSections` array — it does NOT use `getAdminNavSections`. Therefore:
+- **Every new module section MUST be manually added to both:**
+  1. `getAdminNavSections()` function (used by Manager, Custom roles, HR wrappers)
+  2. The hardcoded `navSections` inside `AdminDashboard` component
+- New route-based items in `AdminDashboard.navSections` MUST include `onClick: () => setLocation('/your-route')`
+- New tab-based items in `AdminDashboard.navSections` MUST be handled in `AdminDashboard.renderContent()` switch
+
+### How `/api/user` Returns `role`
+`server/auth.ts` line 678-680:
+```ts
+if (user.roleId) {
+  const roleData = await storage.getRole(user.roleId);
+  res.json({ ...user, role: roleData?.name, isDemo });
+}
+```
+So `user.role` in the frontend is the **role name string** (e.g. `"Admin"`, `"Manager"`), NOT a UUID. Role routing in `App.tsx` uses `.toLowerCase()` to compare:
+- `"admin"` → `AdminDashboard`
+- `"manager"` → `ManagerDashboard`
+- anything else → `CustomRoleDashboard`
+
+### Adding a New Module — Checklist
+
+When adding a new module (e.g. "Finance", "CRM"), do ALL of the following:
+
+1. **Backend**: Add routes in a new `server/xxx-routes.ts`, register in `server/routes.ts`
+2. **Schema**: Add tables in `shared/xxx-schema.ts`, run SQL via `psql $DATABASE_URL -c "..."` (NOT `db:push`)
+3. **Frontend pages**: Create `client/src/pages/xxx-*.tsx` with a Wrapper component that uses `useFilteredNavigation`
+4. **Register routes in `App.tsx`**: Add `<ProtectedRoute path="/xxx/..." component={XxxWrapper} />`
+5. **Add to `getAdminNavSections()`**: Add the new section with `onClick` handlers pointing to routes
+6. **Add to `AdminDashboard.navSections`**: Manually add the same section (this is what gets missed!)
+7. **Plan gating**: Add the module key to `server/plan-features.ts` in the appropriate plan(s)
+8. **Permissions**: Add permission entries to `SCREEN_TO_PERMISSION_MAP` and `VIEW_TO_MODULE_MAP` in `App.tsx`
+9. **DB**: Insert permission rows for the new screens into `role_permissions` for all system roles
+
+### `useFilteredNavigation` Hook
+Located in `client/src/hooks/use-filtered-navigation.tsx`. It:
+1. Gets `allNavSections` from caller
+2. Filters by plan features (`allowedNavItems` from `usePlanFeatures`)
+3. For system roles (`admin`, `manager`, `accountsmanager`) → returns ALL plan-allowed sections (no DB filter)
+4. For custom roles → additionally filters by `dbPermissions` from `/api/my-permissions`
+
+**Case sensitivity**: `SYSTEM_ROLES_FULL_ACCESS = ['admin', 'manager', 'accountsmanager']` must be compared with `.toLowerCase()` because `user.role` comes back as "Admin" (capital A from DB).
+
+### `SCREEN_TO_PERMISSION_MAP` and `VIEW_TO_MODULE_MAP` (App.tsx ~line 1589)
+Every new nav item ID must be mapped:
+```ts
+'hr-employees': 'hr_employees',   // SCREEN_TO_PERMISSION_MAP: nav id → permission screen name
+'hr-employees': 'HR & Payroll',   // VIEW_TO_MODULE_MAP: nav id → sidebar section label
+```
+This controls plan-level sidebar filtering.
+
+---
+
 ## System Architecture
 
 ### UI/UX Decisions
@@ -37,6 +126,24 @@ The backend uses Express.js with TypeScript and Node.js, leveraging Neon Serverl
 - **WhatsApp Integration:** Colloki Flow API with Meta WhatsApp Business Cloud API fallback, AI-assisted response interpretation, and secure photo storage.
 - **Build & Deployment:** Vite for frontend, `tsx` for Express development, `esbuild` for backend production, Drizzle Kit for schema management.
 - **Environment:** Automatic Replit environment detection for cookie settings.
+- **Database Schema Changes:** NEVER use `db:push`. Always run raw SQL via `psql $DATABASE_URL -c "ALTER TABLE..."` and save a matching script in `db_scripts/`. Changing ID column types (serial ↔ varchar) is forbidden.
+
+### Known Tenants (Development)
+| ID | Slug | Admin | Password | Plan |
+|---|---|---|---|---|
+| 1 | kinto | admin | admin123 | Enterprise |
+| 4 | test-corp | admin | admin123 | Professional |
+| 5 | alpha | admin | admin123 | Basic |
+| 6 | kinto-admin | superadmin | superadmin123 | Super-Admin |
+| 7 | acme-demo | admin | admin123 | Enterprise (Demo) |
+
+Super-admin login: username=`superadmin`, password=`superadmin123`, slug=`kinto-admin`
+
+### Session / Cookie Notes
+- SameSite=None; Secure=true in Replit → cookies are blocked inside the Replit iframe
+- Always use "Open in New Tab" when testing authenticated flows
+
+---
 
 ## External Dependencies
 
