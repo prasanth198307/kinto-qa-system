@@ -233,6 +233,7 @@ const endpointToScreenKey: Record<string, string> = {
   '/api/hr/job-openings': 'hr_recruitment',
   '/api/hr/candidates': 'hr_recruitment',
   '/api/hr/reports': 'hr_reports',
+  '/api/ess/admin': 'hr_ess_admin',
   '/api/hr/departments': 'hr_masters',
   '/api/hr/designations': 'hr_masters',
   '/api/hr/shifts': 'hr_masters',

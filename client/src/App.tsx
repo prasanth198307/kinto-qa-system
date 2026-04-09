@@ -1622,6 +1622,7 @@ const navItemToScreenKey: Record<string, string> = {
   'hr-tds': 'hr_tds',
   'hr-recruitment': 'hr_recruitment',
   'hr-reports': 'hr_reports',
+  'hr-ess-admin': 'hr_ess_admin',
   'hr-masters': 'hr_masters',
   // Settings
   'notification-settings': 'notification_settings',

@@ -180,6 +180,7 @@ const AVAILABLE_SCREENS: ScreenDefinition[] = [
   { key: 'hr_tds', label: 'HR: TDS & Compliance', allowedActions: ['view', 'create', 'edit'] },
   { key: 'hr_recruitment', label: 'HR: Recruitment', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'hr_reports', label: 'HR: Reports', allowedActions: ['view'] },
+  { key: 'hr_ess_admin', label: 'HR: ESS Portal Management (Set Passwords / Enable Access)', allowedActions: ['view', 'create', 'edit'] },
   { key: 'hr_masters', label: 'HR: Masters (Dept/Designation/Shift/Leave Types)', allowedActions: ['view', 'create', 'edit', 'delete'] },
 ];
 
