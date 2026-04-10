@@ -221,6 +221,21 @@ app.use((req, res, next) => {
     console.error('[USER_ROLES MIGRATION ERROR]', err);
   }
 
+  // ─── manual_credit_note_requests missing columns migration ───────────────
+  // notes and processing_notes may be absent on older OCI installs.
+  try {
+    const { db: dbMcn } = await import("./db");
+    const { sql: sqlMcn } = await import("drizzle-orm");
+    await dbMcn.execute(sqlMcn`
+      ALTER TABLE manual_credit_note_requests
+        ADD COLUMN IF NOT EXISTS notes TEXT,
+        ADD COLUMN IF NOT EXISTS processing_notes TEXT
+    `);
+    console.log('[MCN_REQUESTS MIGRATION] Columns OK');
+  } catch (err) {
+    console.error('[MCN_REQUESTS MIGRATION ERROR]', err);
+  }
+
   // ─── sales_return_items missing columns migration ────────────────────────
   // Adds bottles_per_case, cases_returned, loose_bottles_returned,
   // verified_quantity, variance_reason columns if they are missing.

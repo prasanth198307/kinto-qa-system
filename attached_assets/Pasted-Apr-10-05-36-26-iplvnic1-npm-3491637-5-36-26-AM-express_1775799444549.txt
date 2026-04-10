@@ -1,0 +1,28 @@
+Apr 10 05:36:26 iplvnic1 npm[3491637]: 5:36:26 AM [express] GET /api/sales-returns/b0337bb1-1e91-4d25-9631-fe77f8d674f6 304 in 8ms :: {"id"…
+Apr 10 05:36:34 iplvnic1 npm[3491637]: [INVENTORY] Restocked 4 cases (96 bottles) of product c10dbc46-dfc2-470e-8ee0-096ff424c265 batch C2246092602 (Sales Return - Good condition)
+Apr 10 05:36:34 iplvnic1 npm[3491637]: Error inspecting sales return: error: column "notes" of relation "manual_credit_note_requests" does not exist
+Apr 10 05:36:34 iplvnic1 npm[3491637]:     at /home/kinto/kinto-qa-system/node_modules/pg/lib/client.js:545:17
+Apr 10 05:36:34 iplvnic1 npm[3491637]:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+Apr 10 05:36:34 iplvnic1 npm[3491637]:     at async file:///home/kinto/kinto-qa-system/dist/index.js:27972:11
+Apr 10 05:36:34 iplvnic1 npm[3491637]:     at async NodePgSession.transaction (file:///home/kinto/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:142:22)
+Apr 10 05:36:34 iplvnic1 npm[3491637]:     at async file:///home/kinto/kinto-qa-system/dist/index.js:27751:7 {
+Apr 10 05:36:34 iplvnic1 npm[3491637]:   length: 146,
+Apr 10 05:36:34 iplvnic1 npm[3491637]:   severity: 'ERROR',
+Apr 10 05:36:34 iplvnic1 npm[3491637]:   code: '42703',
+Apr 10 05:36:34 iplvnic1 npm[3491637]:   detail: undefined,
+Apr 10 05:36:34 iplvnic1 npm[3491637]:   hint: undefined,
+Apr 10 05:36:34 iplvnic1 npm[3491637]:   position: '245',
+Apr 10 05:36:34 iplvnic1 npm[3491637]:   internalPosition: undefined,
+Apr 10 05:36:34 iplvnic1 npm[3491637]:   internalQuery: undefined,
+Apr 10 05:36:34 iplvnic1 npm[3491637]:   where: undefined,
+Apr 10 05:36:34 iplvnic1 npm[3491637]:   schema: undefined,
+Apr 10 05:36:34 iplvnic1 npm[3491637]:   table: undefined,
+Apr 10 05:36:34 iplvnic1 npm[3491637]:   column: undefined,
+Apr 10 05:36:34 iplvnic1 npm[3491637]:   dataType: undefined,
+Apr 10 05:36:34 iplvnic1 npm[3491637]:   constraint: undefined,
+Apr 10 05:36:34 iplvnic1 npm[3491637]:   file: 'parse_target.c',
+Apr 10 05:36:34 iplvnic1 npm[3491637]:   line: '1066',
+Apr 10 05:36:34 iplvnic1 npm[3491637]:   routine: 'checkInsertTargets'
+Apr 10 05:36:34 iplvnic1 npm[3491637]: }
+Apr 10 05:36:34 iplvnic1 npm[3491637]: 5:36:34 AM [express] PATCH /api/sales-returns/b0337bb1-1e91-4d25-9631-fe77f8d674f6/inspect 500 in 37…
+[kinto@iplvnic1 ~]$ 
