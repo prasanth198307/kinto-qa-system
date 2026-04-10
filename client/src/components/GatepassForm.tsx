@@ -1202,7 +1202,14 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
                 // Get available quantity for current batch
                 const currentBatchId = items[index]?.finishedGoodId;
                 const currentBatch = finishedGoods.find(fg => fg.id === currentBatchId);
-                const availableQty = (currentBatch as any)?.availableQuantity ?? currentBatch?.quantity ?? 0;
+                const apiAvailableQty = (currentBatch as any)?.availableQuantity ?? currentBatch?.quantity ?? 0;
+                // When editing an existing gatepass, stock was already deducted on creation.
+                // Add back this gatepass's original dispatched quantity so the validation
+                // correctly shows those units as available (they're reserved for this gatepass).
+                const existingGatepassQty = gatepass
+                  ? (gatepassItems.find(gi => gi.finishedGoodId === currentBatchId)?.quantityDispatched || 0)
+                  : 0;
+                const availableQty = apiAvailableQty + existingGatepassQty;
                 
                 return (
               <Card key={index} className="p-4">
