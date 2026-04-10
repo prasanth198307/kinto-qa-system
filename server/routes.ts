@@ -12512,6 +12512,27 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
           });
         }
 
+        // Recalculate invoice outstanding and update paymentStatus
+        const [invRow] = await tx.select().from(invoices).where(eq(invoices.id, salesReturn.invoiceId!));
+        if (invRow) {
+          const allCNs = await tx.select().from(creditNotes)
+            .where(and(eq(creditNotes.invoiceId, invRow.id), eq(creditNotes.recordStatus, 1)));
+          const allDNs = await tx.select().from(debitNotes)
+            .where(and(eq(debitNotes.invoiceId, invRow.id), eq(debitNotes.recordStatus, 1)));
+          const totalCreditNotes = allCNs.reduce((s, c) => s + (c.grandTotal || 0), 0);
+          const totalDebitNotes  = allDNs.reduce((s, d) => s + (d.grandTotal || 0), 0);
+          const effectiveTotal   = invRow.totalAmount + totalDebitNotes - totalCreditNotes;
+          const outstanding      = effectiveTotal - (invRow.amountReceived || 0);
+          const newStatus = outstanding <= 0 ? 'paid'
+            : (invRow.amountReceived || 0) > 0 || totalCreditNotes > 0 ? 'partially_paid'
+            : invRow.paymentStatus;
+          if (newStatus !== invRow.paymentStatus) {
+            await tx.update(invoices)
+              .set({ paymentStatus: newStatus, updatedAt: new Date().toISOString() })
+              .where(eq(invoices.id, invRow.id));
+          }
+        }
+
         creditNoteCreated = true;
       });
       
@@ -12636,6 +12657,24 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
         await tx.update(salesReturns)
           .set({ creditNoteStatus: 'auto_created', updatedAt: new Date().toISOString() })
           .where(eq(salesReturns.id, id));
+
+        // Recalculate invoice outstanding and update paymentStatus
+        const allCNs = await tx.select().from(creditNotes)
+          .where(and(eq(creditNotes.invoiceId, invoice.id), eq(creditNotes.recordStatus, 1)));
+        const allDNs = await tx.select().from(debitNotes)
+          .where(and(eq(debitNotes.invoiceId, invoice.id), eq(debitNotes.recordStatus, 1)));
+        const totalCreditNotes = allCNs.reduce((s, c) => s + (c.grandTotal || 0), 0);
+        const totalDebitNotes  = allDNs.reduce((s, d) => s + (d.grandTotal || 0), 0);
+        const effectiveTotal   = invoice.totalAmount + totalDebitNotes - totalCreditNotes;
+        const outstanding      = effectiveTotal - (invoice.amountReceived || 0);
+        const newStatus = outstanding <= 0 ? 'paid'
+          : (invoice.amountReceived || 0) > 0 || totalCreditNotes > 0 ? 'partially_paid'
+          : invoice.paymentStatus;
+        if (newStatus !== invoice.paymentStatus) {
+          await tx.update(invoices)
+            .set({ paymentStatus: newStatus, updatedAt: new Date().toISOString() })
+            .where(eq(invoices.id, invoice.id));
+        }
       });
 
       await logAudit(req.user?.id, 'CREATE', 'credit_notes', id, `Retroactively generated credit note ${creditNoteNumber} for return ${salesReturn.returnNumber}`);
