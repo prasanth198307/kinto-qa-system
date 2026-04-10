@@ -277,6 +277,29 @@ app.use((req, res, next) => {
     console.error('[SALES_RETURN_ITEMS MIGRATION ERROR]', err);
   }
 
+  // ─── finished_goods_return_log table ─────────────────────────────────────
+  try {
+    const { db: dbFgrl } = await import("./db");
+    const { sql: sqlFgrl } = await import("drizzle-orm");
+    await dbFgrl.execute(sqlFgrl`
+      CREATE TABLE IF NOT EXISTS finished_goods_return_log (
+        id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+        finished_good_id VARCHAR NOT NULL REFERENCES finished_goods(id),
+        sales_return_id VARCHAR NOT NULL,
+        sales_return_item_id VARCHAR,
+        quantity_added INTEGER NOT NULL,
+        description TEXT,
+        restocked_by VARCHAR REFERENCES users(id),
+        restocked_at TIMESTAMP DEFAULT NOW(),
+        record_status INTEGER NOT NULL DEFAULT 1,
+        tenant_id INTEGER DEFAULT 1
+      )
+    `);
+    console.log('[FG_RETURN_LOG MIGRATION] Table OK');
+  } catch (err) {
+    console.error('[FG_RETURN_LOG MIGRATION ERROR]', err);
+  }
+
   // ─── Daily tenant backup cron (2:00 AM daily) ────────────────────────────
   try {
     const cron = (await import('node-cron')).default;

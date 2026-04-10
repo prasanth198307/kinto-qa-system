@@ -7,7 +7,7 @@ import { tenantMiddleware } from "./tenant-middleware";
 import { planEnforcementMiddleware } from "./plan-middleware";
 import { getPlanFeatures, getPlanFeaturesFromModules, ALL_MODULE_KEYS } from "./plan-features";
 import { tc } from "./tenant-context";
-import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertPurchaseOrderItemSchema, purchaseOrders, purchaseOrderItems, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesOrderSchema, insertSalesOrderItemSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, insertVendorTypeSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, paymentEvidence, salesOrders, salesOrderItems, salesReturns, salesReturnItems, creditNotes, creditNoteItems, debitNotes, debitNoteItems, manualCreditNoteRequests, products, productBom, whatsappConversationSessions, vendorTypes, vendorVendorTypes, vendors, users, uom, insertDocumentCategorySchema, insertDocumentSchema, insertExpenseCategorySchema, insertExpenseVoucherSchema, insertExpenseItemSchema, insertExpenseAttachmentSchema, rolePermissions, vendorDebitNotes, vendorDebitNoteItems, vendorDebitNoteAdjustments, transporters, vehicles, drivers, insertTransporterSchema, insertVehicleSchema, insertDriverSchema, scrapInventory, insertSparePartEntrySchema, insertSparePartIssuanceSchema, insertScrapInventorySchema, sparePartEntries, sparePartsCatalog, accountSubtypes, insertSalesOfficerSchema, purchaseReturns, purchaseReturnItems, tdsRates, tdsEntries } from "@shared/schema";
+import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertPurchaseOrderItemSchema, purchaseOrders, purchaseOrderItems, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesOrderSchema, insertSalesOrderItemSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, insertVendorTypeSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, paymentEvidence, salesOrders, salesOrderItems, salesReturns, salesReturnItems, creditNotes, creditNoteItems, debitNotes, debitNoteItems, manualCreditNoteRequests, products, productBom, whatsappConversationSessions, vendorTypes, vendorVendorTypes, vendors, users, uom, insertDocumentCategorySchema, insertDocumentSchema, insertExpenseCategorySchema, insertExpenseVoucherSchema, insertExpenseItemSchema, insertExpenseAttachmentSchema, rolePermissions, vendorDebitNotes, vendorDebitNoteItems, vendorDebitNoteAdjustments, transporters, vehicles, drivers, insertTransporterSchema, insertVehicleSchema, insertDriverSchema, scrapInventory, insertSparePartEntrySchema, insertSparePartIssuanceSchema, insertScrapInventorySchema, sparePartEntries, sparePartsCatalog, accountSubtypes, insertSalesOfficerSchema, purchaseReturns, purchaseReturnItems, tdsRates, tdsEntries, finishedGoodsReturnLog } from "@shared/schema";
 import { format } from "date-fns";
 import { z } from "zod";
 import path from "path";
@@ -12267,20 +12267,57 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
           const originalBatch = item.batchNumber || 'RETURN';
           
           if (inspection.disposition === 'restock' && inspection.condition === 'good') {
-            // Return good items to finished goods inventory with ORIGINAL batch number
+            // Return good items: find existing batch row and increment quantity (preserves production date)
             if (product) {
-              await tx.insert(finishedGoods).values([{
-                productId: item.productId,
-                batchNumber: originalBatch, // Keep original batch - bottle label unchanged
-                productionDate: new Date().toISOString(),
-                quantity: processQtyCases, // Store in CASES (same unit as production/invoice)
-                qualityStatus: 'approved',
-                remarks: `Returned goods from sales return - Good condition`,
-                source: 'sales_return_restock', // Track source for reporting
-                salesReturnItemId: item.id, // Link to sales return item for traceability
-                createdBy: req.user?.id,
-              }]);
-              console.log(`[INVENTORY] Restocked ${processQtyCases} cases (${processQtyBottles} bottles) of product ${item.productId} batch ${originalBatch} (Sales Return - Good condition)`);
+              const [existingBatch] = await tx.select().from(finishedGoods)
+                .where(and(
+                  eq(finishedGoods.productId, item.productId),
+                  eq(finishedGoods.batchNumber, originalBatch),
+                  eq(finishedGoods.qualityStatus, 'approved'),
+                  eq(finishedGoods.recordStatus, 1),
+                  tc(finishedGoods)
+                ))
+                .orderBy(finishedGoods.productionDate)
+                .limit(1);
+
+              let targetFgId: string;
+
+              if (existingBatch) {
+                // Update existing row — production_date unchanged
+                await tx.update(finishedGoods)
+                  .set({
+                    quantity: existingBatch.quantity + processQtyCases,
+                    updatedAt: new Date().toISOString(),
+                  })
+                  .where(eq(finishedGoods.id, existingBatch.id));
+                targetFgId = existingBatch.id;
+                console.log(`[INVENTORY] Restocked ${processQtyCases} cases into existing batch ${originalBatch} (production date preserved: ${existingBatch.productionDate})`);
+              } else {
+                // Batch not in current stock — insert new row using return date as production date
+                const [newFg] = await tx.insert(finishedGoods).values([{
+                  productId: item.productId,
+                  batchNumber: originalBatch,
+                  productionDate: salesReturn.returnDate || new Date().toISOString(),
+                  quantity: processQtyCases,
+                  qualityStatus: 'approved',
+                  remarks: `Returned goods - batch not found in current stock`,
+                  source: 'sales_return_restock',
+                  salesReturnItemId: item.id,
+                  createdBy: req.user?.id,
+                }]).returning();
+                targetFgId = newFg.id;
+                console.log(`[INVENTORY] Restocked ${processQtyCases} cases (new row) batch ${originalBatch} — original batch not in current stock`);
+              }
+
+              // Log the return event in the child table
+              await tx.insert(finishedGoodsReturnLog).values({
+                finishedGoodId: targetFgId,
+                salesReturnId: id,
+                salesReturnItemId: item.id,
+                quantityAdded: processQtyCases,
+                description: `Restocked ${processQtyCases} case(s) of batch ${originalBatch} from sales return ${salesReturn.returnNumber} — Good condition`,
+                restockedBy: req.user?.id,
+              });
             } else {
               console.warn(`[INVENTORY] Skipping restock for product ${item.productId} - product not found in master data`);
             }

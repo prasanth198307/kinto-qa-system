@@ -1463,6 +1463,22 @@ export const finishedGoods = pgTable("finished_goods", {
   tenantId: integer("tenant_id").default(1),
 });
 
+// Child table: records every sales-return restock event against finished_goods
+export const finishedGoodsReturnLog = pgTable("finished_goods_return_log", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  finishedGoodId: varchar("finished_good_id").references(() => finishedGoods.id).notNull(),
+  salesReturnId: varchar("sales_return_id").notNull(),
+  salesReturnItemId: varchar("sales_return_item_id"),
+  quantityAdded: integer("quantity_added").notNull(),  // cases added back
+  description: text("description"),
+  restockedBy: varchar("restocked_by").references(() => users.id),
+  restockedAt: timestamp("restocked_at", { mode: 'string' }).defaultNow(),
+  recordStatus: integer("record_status").default(1).notNull(),
+  tenantId: integer("tenant_id").default(1),
+});
+
+export type FinishedGoodsReturnLog = typeof finishedGoodsReturnLog.$inferSelect;
+
 export const insertFinishedGoodSchema = createInsertSchema(finishedGoods, {
   quantity: z.number().min(0, "Quantity cannot be negative"), // Allow 0 for manual entry
   productionDate: z.union([z.string(), z.date()]).transform(val => {
