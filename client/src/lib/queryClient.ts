@@ -7,23 +7,15 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
-export async function apiRequest(
-  method: string,
-  url: string,
-  data?: unknown | undefined,
-): Promise<Response> {
-  const res = await fetch(url, {
-    method,
-    headers: data ? { "Content-Type": "application/json" } : {},
-    body: data ? JSON.stringify(data) : undefined,
-    credentials: "include",
-  });
+type UnauthorizedBehavior = "returnNull" | "throw";
 
-  await throwIfResNotOk(res);
-  return res;
+// Helper called whenever any API response is 401 — clears auth state so the
+// app automatically routes back to login (proper SaaS session expiry handling).
+function handleUnexpected401() {
+  queryClient.setQueryData(["/api/user"], null);
+  sessionStorage.setItem("session_expired", "1");
 }
 
-type UnauthorizedBehavior = "returnNull" | "throw";
 export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
 }) => QueryFunction<T> =
@@ -66,7 +58,12 @@ export const getQueryFn: <T>(options: {
       credentials: "include",
     });
 
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
+    if (res.status === 401) {
+      if (unauthorizedBehavior === "returnNull") {
+        return null;
+      }
+      // Any unexpected 401 = stale/expired session — redirect to login automatically
+      handleUnexpected401();
       return null;
     }
 
@@ -88,3 +85,25 @@ export const queryClient = new QueryClient({
     },
   },
 });
+
+export async function apiRequest(
+  method: string,
+  url: string,
+  data?: unknown | undefined,
+): Promise<Response> {
+  const res = await fetch(url, {
+    method,
+    headers: data ? { "Content-Type": "application/json" } : {},
+    body: data ? JSON.stringify(data) : undefined,
+    credentials: "include",
+  });
+
+  if (res.status === 401) {
+    // Stale/expired session on a mutation — clear auth state and redirect to login
+    handleUnexpected401();
+    throw new Error("Session expired. Please log in again.");
+  }
+
+  await throwIfResNotOk(res);
+  return res;
+}

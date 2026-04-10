@@ -112,8 +112,18 @@ export function setupAuth(app: Express) {
 
   passport.serializeUser((user, done) => done(null, user.id));
   passport.deserializeUser(async (id: string, done) => {
-    const user = await storage.getUser(id);
-    done(null, user);
+    try {
+      const user = await storage.getUser(id);
+      if (!user) {
+        // User no longer exists or is deactivated — expire the session cleanly
+        return done(null, false);
+      }
+      done(null, user);
+    } catch (err) {
+      // DB error during deserialization — fail gracefully, don't leave session in zombie state
+      console.error("[Auth] deserializeUser error for id", id, err);
+      done(null, false);
+    }
   });
 
   // ─── Public: Look up which companies an email/username belongs to ────────────

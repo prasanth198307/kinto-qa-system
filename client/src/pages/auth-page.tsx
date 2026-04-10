@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Redirect, useLocation } from "wouter";
-import { Loader2, Lock, Mail, Building2, ArrowLeft } from "lucide-react";
+import { Loader2, Lock, Mail, Building2, ArrowLeft, AlertCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -22,6 +22,14 @@ export default function AuthPage() {
   const [companySlug, setCompanySlug] = useState(prefilledSlug);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [sessionExpired, setSessionExpired] = useState(false);
+
+  useEffect(() => {
+    if (sessionStorage.getItem("session_expired") === "1") {
+      sessionStorage.removeItem("session_expired");
+      setSessionExpired(true);
+    }
+  }, []);
 
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
@@ -75,6 +83,13 @@ export default function AuthPage() {
           >
             <ArrowLeft className="h-3.5 w-3.5" /> Back to Home
           </a>
+
+          {sessionExpired && (
+            <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 mb-4" data-testid="banner-session-expired">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+              <span>Your session has expired. Please log in again to continue.</span>
+            </div>
+          )}
 
           <Card>
             <CardHeader>
