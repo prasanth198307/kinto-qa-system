@@ -951,6 +951,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllUsers(): Promise<any[]> {
+    const tenantId = getCurrentTenantId() ?? 1;
     const results = await db.execute(sql`
       SELECT
         u.id, u.username, u.email, u.first_name AS "firstName", u.last_name AS "lastName",
@@ -968,7 +969,7 @@ export class DatabaseStorage implements IStorage {
         ) AS "roleNames"
       FROM users u
       LEFT JOIN roles r ON r.id = u.role_id
-      WHERE u.record_status = 1 AND u.tenant_id = current_setting('app.tenant_id', true)::int
+      WHERE u.record_status = 1 AND u.tenant_id = ${tenantId}
       ORDER BY u.created_at
     `);
     return (results.rows as any[]).map(r => ({
