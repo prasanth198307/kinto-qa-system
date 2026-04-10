@@ -363,9 +363,9 @@ ${invoice.shipToName || invoice.shipToAddress ? `
           </tfoot>
         </table>
 
-        <!-- Tax Summary Section -->
-        <div class="summary-section">
-          <!-- HSN Tax Breakdown (LEFT) -->
+        <!-- Combined Layout: HSN (top-left) + T&C (bottom-left) + Totals+Payment (right, spans both rows) -->
+        <div class="invoice-summary-grid">
+          <!-- Top-left: HSN Tax Breakdown -->
           <div class="hsn-table-wrapper">
             <table class="hsn-table">
               <thead>
@@ -429,8 +429,8 @@ ${invoice.shipToName || invoice.shipToAddress ? `
             </table>
           </div>
 
-          <!-- Sub Total / Total (RIGHT) -->
-          <div class="totals-box">
+          <!-- Right column (spans both rows): Totals + Payment Summary -->
+          <div class="totals-payment-col">
             <table class="totals-table">
               <tbody>
                 ${hasDiscount ? `
@@ -475,23 +475,7 @@ ${invoice.shipToName || invoice.shipToAddress ? `
                 </tr>
               </tbody>
             </table>
-          </div>
-        </div>
-
-        <!-- Terms & Conditions (Left) and Received/Balance (Right) -->
-        <div class="terms-payment-grid">
-          <!-- Terms & Conditions (Left Column) -->
-          <div class="${activeTermsConditions && activeTermsConditions.terms && activeTermsConditions.terms.length > 0 ? 'terms-section' : ''}">
-            ${activeTermsConditions && activeTermsConditions.terms && activeTermsConditions.terms.length > 0 ? `
-              <div class="terms-title">Terms & Conditions:</div>
-              <ol>
-                ${activeTermsConditions.terms.map(term => `<li>${term}</li>`).join('')}
-              </ol>
-            ` : ''}
-          </div>
-          
-          <!-- Received and Balance (Right Column) -->
-          <div class="payment-summary">
+            <div class="payment-divider"></div>
             <div class="payment-grid">
               ${directReceived > 0 ? `
               <div>Received:</div>
@@ -512,6 +496,16 @@ ${invoice.shipToName || invoice.shipToAddress ? `
               <div style="border-top:1px solid #000; padding-top:3px;"><strong>Balance Due:</strong></div>
               <div style="text-align:right; border-top:1px solid #000; padding-top:3px;"><strong>${formatCurrency(balanceDue)}</strong></div>
             </div>
+          </div>
+
+          <!-- Bottom-left: Terms & Conditions -->
+          <div class="${activeTermsConditions && activeTermsConditions.terms && activeTermsConditions.terms.length > 0 ? 'terms-section' : ''}">
+            ${activeTermsConditions && activeTermsConditions.terms && activeTermsConditions.terms.length > 0 ? `
+              <div class="terms-title">Terms & Conditions:</div>
+              <ol>
+                ${activeTermsConditions.terms.map(term => `<li>${term}</li>`).join('')}
+              </ol>
+            ` : ''}
           </div>
         </div>
 
@@ -775,21 +769,24 @@ ${invoice.shipToName || invoice.shipToAddress ? `
               background: #f5f5f5;
             }
 
-            /* Summary Section */
-            .summary-section {
-              display: flex;
-              justify-content: space-between;
-              align-items: flex-start;
-              margin-bottom: 10px;
+            /* Combined Invoice Summary Grid
+               Left col: HSN table (top) + T&C (bottom)
+               Right col: Totals + Payment — spans both rows, no gap */
+            .invoice-summary-grid {
+              display: grid;
+              grid-template-columns: 1fr 205px;
               gap: 10px;
+              margin-bottom: 10px;
             }
 
             .hsn-table-wrapper {
-              flex: 1;
+              /* top-left cell — natural height */
             }
 
-            .totals-box {
-              flex: 0 0 200px;
+            .totals-payment-col {
+              grid-row: span 2;
+              border: 1px solid #000;
+              padding: 8px;
             }
 
             .totals-table {
@@ -801,6 +798,11 @@ ${invoice.shipToName || invoice.shipToAddress ? `
             .totals-table td {
               border: 1px solid #000;
               padding: 4px 6px;
+            }
+
+            .payment-divider {
+              border-top: 1px solid #ccc;
+              margin: 8px 0 6px;
             }
 
             /* HSN Table */
@@ -825,21 +827,6 @@ ${invoice.shipToName || invoice.shipToAddress ? `
             .hsn-table .total-row td {
               font-weight: bold;
               background: #f5f5f5;
-            }
-
-            /* Terms & Payment Grid (Two Columns) */
-            .terms-payment-grid {
-              display: grid;
-              grid-template-columns: 1fr 200px;
-              align-items: start;
-              gap: 10px;
-              margin-bottom: 10px;
-            }
-
-            /* Payment Summary */
-            .payment-summary {
-              border: 1px solid #000;
-              padding: 8px;
             }
 
             .payment-grid {

@@ -465,7 +465,7 @@ export default function PrintInvoicePage() {
         </tfoot>
       </table>
 
-      <div style={{ display: 'flex', gap: '20px', marginBottom: '15px' }}>
+      <div style={{ display: 'flex', gap: '20px', marginBottom: '15px', alignItems: 'flex-start' }}>
         <div style={{ width: '55%' }}>
           {activeTermsConditions && activeTermsConditions.terms && activeTermsConditions.terms.length > 0 && (
             <div style={{ marginBottom: '10px' }}>
