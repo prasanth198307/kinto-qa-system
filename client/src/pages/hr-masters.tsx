@@ -605,7 +605,7 @@ function PTSlabsTab() {
   );
 }
 
-// ── Statutory Rates Tab (PF / ESI) ────────────────────────────────────────────
+// ── Statutory Rates Tab (PF / ESI / PT) ───────────────────────────────────────
 function StatutoryRatesTab() {
   const { toast } = useToast();
   const { data: s, isLoading } = useQuery<any>({ queryKey: ["/api/hr/statutory-settings"] });
@@ -613,45 +613,55 @@ function StatutoryRatesTab() {
 
   if (!isLoading && s && !form) {
     setForm({
+      pfEnabled: s.pf_enabled !== false,
       pfEmployeeRate: (Number(s.pf_employee_rate) * 100).toFixed(2),
       pfEmployerRate: (Number(s.pf_employer_rate) * 100).toFixed(2),
       pfCeilingBasic: String(s.pf_ceiling_basic),
+      esiEnabled: s.esi_enabled !== false,
       esiEmployeeRate: (Number(s.esi_employee_rate) * 100).toFixed(2),
       esiEmployerRate: (Number(s.esi_employer_rate) * 100).toFixed(2),
       esiGrossCeiling: String(s.esi_gross_ceiling),
+      ptEnabled: s.pt_enabled !== false,
     });
   }
 
   const save = useMutation({
     mutationFn: () => apiRequest("PUT", "/api/hr/statutory-settings", {
+      pfEnabled: form.pfEnabled,
       pfEmployeeRate: Number(form.pfEmployeeRate) / 100,
       pfEmployerRate: Number(form.pfEmployerRate) / 100,
       pfCeilingBasic: Number(form.pfCeilingBasic),
+      esiEnabled: form.esiEnabled,
       esiEmployeeRate: Number(form.esiEmployeeRate) / 100,
       esiEmployerRate: Number(form.esiEmployerRate) / 100,
       esiGrossCeiling: Number(form.esiGrossCeiling),
+      ptEnabled: form.ptEnabled,
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/hr/statutory-settings"] });
-      toast({ title: "Statutory rates saved" });
+      toast({ title: "Statutory settings saved" });
     },
   });
 
   const f = form || {
-    pfEmployeeRate: "12.00", pfEmployerRate: "12.00", pfCeilingBasic: "15000",
-    esiEmployeeRate: "0.75", esiEmployerRate: "3.25", esiGrossCeiling: "21000",
+    pfEnabled: true, pfEmployeeRate: "12.00", pfEmployerRate: "12.00", pfCeilingBasic: "15000",
+    esiEnabled: true, esiEmployeeRate: "0.75", esiEmployerRate: "3.25", esiGrossCeiling: "21000",
+    ptEnabled: true,
   };
 
-  const row = (label: string, key: string, suffix: string, hint: string) => (
+  const set = (key: string, val: any) => setForm((p: any) => ({ ...p, [key]: val }));
+
+  const rateRow = (label: string, key: string, suffix: string, hint: string, disabled: boolean) => (
     <div className="grid grid-cols-3 items-center gap-4">
-      <Label className="text-right text-sm">{label}</Label>
+      <Label className="text-right text-sm text-muted-foreground">{label}</Label>
       <div className="col-span-2 flex items-center gap-2">
         <Input
           type="number"
           step="0.01"
           className="w-32"
           value={f[key]}
-          onChange={e => setForm((p: any) => ({ ...p, [key]: e.target.value }))}
+          disabled={disabled}
+          onChange={e => set(key, e.target.value)}
           data-testid={`input-${key}`}
         />
         <span className="text-sm text-muted-foreground">{suffix}</span>
@@ -660,28 +670,68 @@ function StatutoryRatesTab() {
     </div>
   );
 
+  const sectionHeader = (title: string, subtitle: string, enabledKey: string, badge: string) => (
+    <div className="flex items-start justify-between gap-4 mb-3">
+      <div>
+        <h3 className="font-medium text-sm">{title}</h3>
+        <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        <Label className="text-xs text-muted-foreground">{f[enabledKey] ? "Enabled" : "Disabled"}</Label>
+        <Switch
+          checked={f[enabledKey]}
+          onCheckedChange={v => set(enabledKey, v)}
+          data-testid={`toggle-${enabledKey}`}
+        />
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-6 max-w-xl">
+      {/* PF */}
       <div>
-        <h3 className="font-medium text-sm mb-1">Provident Fund (PF)</h3>
-        <p className="text-xs text-muted-foreground mb-4">Currently 12% for both employee and employer on basic ≤ ₹15,000</p>
-        <div className="space-y-3">
-          {row("Employee Contribution", "pfEmployeeRate", "%", "Standard: 12%")}
-          {row("Employer Contribution", "pfEmployerRate", "%", "Standard: 12%")}
-          {row("Basic Salary Ceiling", "pfCeilingBasic", "₹", "Standard: ₹15,000")}
-        </div>
+        {sectionHeader("Provident Fund (PF)", "12% of basic salary (employee + employer) on basic ≤ ceiling", "pfEnabled", "PF")}
+        {f.pfEnabled && (
+          <div className="space-y-3 pl-2">
+            {rateRow("Employee Contribution", "pfEmployeeRate", "%", "Standard: 12%", false)}
+            {rateRow("Employer Contribution", "pfEmployerRate", "%", "Standard: 12%", false)}
+            {rateRow("Basic Salary Ceiling", "pfCeilingBasic", "₹", "Standard: ₹15,000", false)}
+          </div>
+        )}
+        {!f.pfEnabled && (
+          <p className="text-xs text-muted-foreground pl-2">PF will not be calculated or deducted in payroll runs.</p>
+        )}
       </div>
-      <div className="border-t pt-4">
-        <h3 className="font-medium text-sm mb-1">Employee State Insurance (ESI)</h3>
-        <p className="text-xs text-muted-foreground mb-4">Applied only if gross salary ≤ ceiling amount</p>
-        <div className="space-y-3">
-          {row("Employee Contribution", "esiEmployeeRate", "%", "Standard: 0.75%")}
-          {row("Employer Contribution", "esiEmployerRate", "%", "Standard: 3.25%")}
-          {row("Gross Salary Ceiling", "esiGrossCeiling", "₹", "Standard: ₹21,000")}
-        </div>
+
+      {/* ESI */}
+      <div className="border-t pt-5">
+        {sectionHeader("Employee State Insurance (ESI)", "Applied only if gross salary ≤ ceiling; otherwise ₹0", "esiEnabled", "ESI")}
+        {f.esiEnabled && (
+          <div className="space-y-3 pl-2">
+            {rateRow("Employee Contribution", "esiEmployeeRate", "%", "Standard: 0.75%", false)}
+            {rateRow("Employer Contribution", "esiEmployerRate", "%", "Standard: 3.25%", false)}
+            {rateRow("Gross Salary Ceiling", "esiGrossCeiling", "₹", "Standard: ₹21,000", false)}
+          </div>
+        )}
+        {!f.esiEnabled && (
+          <p className="text-xs text-muted-foreground pl-2">ESI will not be calculated or deducted in payroll runs.</p>
+        )}
       </div>
+
+      {/* PT */}
+      <div className="border-t pt-5">
+        {sectionHeader("Professional Tax (PT)", "Calculated from PT Slabs configured per state", "ptEnabled", "PT")}
+        {!f.ptEnabled && (
+          <p className="text-xs text-muted-foreground pl-2">PT will not be calculated or deducted in payroll runs.</p>
+        )}
+        {f.ptEnabled && (
+          <p className="text-xs text-muted-foreground pl-2">PT rates are managed under the PT Slabs tab.</p>
+        )}
+      </div>
+
       <Button onClick={() => save.mutate()} disabled={save.isPending} data-testid="btn-save-statutory">
-        {save.isPending ? "Saving…" : "Save Rates"}
+        {save.isPending ? "Saving…" : "Save Settings"}
       </Button>
     </div>
   );

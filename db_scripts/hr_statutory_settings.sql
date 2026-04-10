@@ -10,3 +10,9 @@ CREATE TABLE IF NOT EXISTS hr_statutory_settings (
   updated_at TIMESTAMP DEFAULT NOW(),
   UNIQUE (tenant_id)
 );
+
+-- Add enable/disable toggles (Phase 2)
+ALTER TABLE hr_statutory_settings
+  ADD COLUMN IF NOT EXISTS pf_enabled BOOLEAN NOT NULL DEFAULT true,
+  ADD COLUMN IF NOT EXISTS esi_enabled BOOLEAN NOT NULL DEFAULT true,
+  ADD COLUMN IF NOT EXISTS pt_enabled BOOLEAN NOT NULL DEFAULT true;
