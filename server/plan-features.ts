@@ -68,6 +68,9 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
     "production-reconciliations",
     "production-reconciliation-report",
     "variance-analytics",
+    "scrap-management",
+    "purchase-returns",
+    "tds-management",
   ],
   quality_returns: [
     "sales-returns",

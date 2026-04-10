@@ -887,6 +887,7 @@ function AdminDashboard() {
         { id: "production-reconciliation-report", label: "Reconciliation Report", icon: FileStack },
         { id: "variance-analytics", label: "Variance Analytics", icon: TrendingUp },
         { id: "spare-parts-stock", label: "Spare Parts Stock", icon: Wrench },
+        { id: "scrap-management", label: "Scrap Management", icon: Trash2, onClick: () => setLocation('/scrap-management') },
       ],
       quickActions: [
         { id: "add-product", label: "Add Product", icon: Package, onClick: () => setActiveView("products") },
@@ -932,6 +933,7 @@ function AdminDashboard() {
       label: "Purchases",
       items: [
         { id: "purchase-orders", label: "Purchase Orders", icon: ShoppingCart },
+        { id: "purchase-returns", label: "Purchase Returns", icon: PackageX, onClick: () => setLocation('/purchase-returns') },
       ],
       quickActions: [
         { id: "add-purchase-order", label: "Create PO", icon: ShoppingCart, onClick: () => setActiveView("purchase-orders") },
@@ -971,6 +973,7 @@ function AdminDashboard() {
         { id: "cash-flow-statement", label: "Cash Flow Statement", icon: TrendingUp, onClick: () => setLocation('/cash-flow-statement') },
         { id: "group-summary", label: "Group Summary", icon: Layers, onClick: () => setLocation('/group-summary') },
         { id: "budget-variance", label: "Budget & Variance", icon: Scale, onClick: () => setLocation('/budget-variance') },
+        { id: "tds-management", label: "TDS Management", icon: Calculator, onClick: () => setLocation('/tds-management') },
       ],
     },
     {
@@ -1613,9 +1616,9 @@ const navItemToScreenKey: Record<string, string> = {
   'maintenance': 'maintenance_plans',
   'pm-history': 'pm_history',
   'purchase-orders': 'purchase_orders',
-  'purchase-returns': 'purchase_orders',
-  'scrap-management': 'production_entries',
-  'tds-management': 'journal_entries',
+  'purchase-returns': 'purchase_returns',
+  'scrap-management': 'scrap_inventory',
+  'tds-management': 'tds_management',
   // Master Data
   'users': 'users',
   'role-permissions': 'roles',
@@ -2033,10 +2036,6 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "hpcl-migration", label: "HPCL Migration", icon: Building2, onClick: () => setLocation('/hpcl-migration') },
         { id: "machines", label: "Machines", icon: Settings, onClick: () => setLocation('/?tab=machines') },
         { id: "machine-types", label: "Machine Types", icon: Layers, onClick: () => setLocation('/?tab=machine-types') },
-        { id: "spare-parts", label: "Spare Parts", icon: Package, onClick: () => setLocation('/spare-parts') },
-        { id: "scrap-management", label: "Scrap Management", icon: Trash2, onClick: () => setLocation('/scrap-management') },
-        { id: "purchase-returns", label: "Purchase Returns", icon: PackageX, onClick: () => setLocation('/purchase-returns') },
-        { id: "tds-management", label: "TDS Management", icon: Calculator, onClick: () => setLocation('/tds-management') },
         { id: "pm-templates", label: "PM Templates", icon: ListChecks, onClick: () => setLocation('/?tab=pm-templates') },
         { id: "uom", label: "Unit of Measurement", icon: Layers, onClick: () => setLocation('/?tab=uom') },
         { id: "raw-material-types", label: "Raw Material Types", icon: Archive, onClick: () => setLocation('/?tab=raw-material-types') },

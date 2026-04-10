@@ -63,6 +63,9 @@ const NAV_ITEM_TO_SCREEN_KEY: Record<string, string> = {
   'production-reconciliations': 'production_reconciliations',
   'production-reconciliation-report': 'production_reconciliation_report',
   'variance-analytics': 'variance_analytics',
+  'purchase-returns': 'purchase_returns',
+  'scrap-management': 'scrap_inventory',
+  'tds-management': 'tds_management',
   // Quality / Returns
   'sales-returns': 'sales_returns',
   // Accounting

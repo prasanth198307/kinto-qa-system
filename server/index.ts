@@ -324,6 +324,26 @@ app.use((req, res, next) => {
     console.error('[ROLE_PERMS TENANT FIX ERROR]', err);
   }
 
+  // ─── New screen keys migration: insert missing purchase_returns / tds_management rows ──
+  try {
+    const { db: dbNewScreens } = await import("./db");
+    const { sql: sqlNewScreens } = await import("drizzle-orm");
+    for (const screenKey of ['purchase_returns', 'tds_management']) {
+      await dbNewScreens.execute(sqlNewScreens`
+        INSERT INTO role_permissions (role_id, tenant_id, screen_key, can_view, can_create, can_edit, can_delete, record_status)
+        SELECT r.id, r.tenant_id, ${screenKey}, 0, 0, 0, 0, 1
+        FROM roles r
+        WHERE NOT EXISTS (
+          SELECT 1 FROM role_permissions rp2
+          WHERE rp2.role_id = r.id AND rp2.screen_key = ${screenKey}
+        )
+      `);
+    }
+    console.log('[NEW_SCREEN_KEYS MIGRATION] purchase_returns / tds_management rows ensured');
+  } catch (err) {
+    console.error('[NEW_SCREEN_KEYS MIGRATION ERROR]', err);
+  }
+
   // ─── Daily tenant backup cron (2:00 AM daily) ────────────────────────────
   try {
     const cron = (await import('node-cron')).default;

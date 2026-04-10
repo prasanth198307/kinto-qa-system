@@ -118,6 +118,7 @@ const AVAILABLE_SCREENS: ScreenDefinition[] = [
   
   // Operations & Transactions
   { key: 'purchase_orders', label: 'Purchase Orders', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'purchase_returns', label: 'Purchase Returns', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'raw_material_issuance', label: 'Raw Material Issuance', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'production_entries', label: 'Production Entries', allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'production_reconciliations', label: 'Production Reconciliation', allowedActions: ['view', 'create', 'edit', 'delete'] },
@@ -154,7 +155,8 @@ const AVAILABLE_SCREENS: ScreenDefinition[] = [
   { key: 'cash_flow_statement', label: 'Cash Flow Statement', allowedActions: ['view'] },
   { key: 'group_summary', label: 'Group Summary', allowedActions: ['view'] },
   { key: 'budget_variance', label: 'Budget & Variance', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'scrap_inventory', label: 'Scrap Inventory', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'tds_management', label: 'TDS Management', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'scrap_inventory', label: 'Scrap Inventory / Scrap Management', allowedActions: ['view', 'create', 'edit', 'delete'] },
   
   // System & Configuration
   { key: 'users', label: 'User Management', allowedActions: ['view', 'create', 'edit', 'delete'] },
