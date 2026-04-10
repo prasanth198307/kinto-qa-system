@@ -341,7 +341,18 @@ function ManagerDashboard() {
     
     if (tab) {
       // Map valid tab values to activeView
-      const validTabs = ['invoices', 'gatepasses', 'raw-material-issuance', 'sales-orders'];
+      const validTabs = [
+        'overview', 'invoices', 'gatepasses', 'raw-material-issuance', 'products', 'inventory',
+        'production', 'finished-goods', 'raw-materials', 'checklists', 'users', 'machines',
+        'maintenance', 'reports', 'sales-dashboard', 'vendor-analytics', 'sales-orders',
+        'checklist-assignments', 'machine-startup-reminders', 'whatsapp-analytics',
+        'product-categories', 'product-types', 'production-entries', 'production-reconciliations',
+        'variance-analytics', 'purchase-orders', 'pm-history', 'role-permissions',
+        'machine-types', 'pm-templates', 'uom', 'raw-material-types', 'template-management',
+        'notification-settings', 'data-import', 'spare-parts-stock', 'roles', 'templates',
+        'sales-returns', 'pending-payments', 'payment-management', 'credit-notes',
+        'cancelled-invoices', 'write-off-report', 'dispatch-tracking',
+      ];
       if (validTabs.includes(tab)) {
         setActiveView(tab);
       }
@@ -475,7 +486,18 @@ function CustomRoleDashboard({ roleName }: { roleName: string }) {
     const tab = params.get('tab');
     
     if (tab) {
-      const validTabs = ['overview', 'invoices', 'gatepasses', 'raw-material-issuance', 'products', 'inventory', 'production', 'finished-goods', 'raw-materials', 'checklists', 'users', 'machines', 'maintenance', 'reports', 'sales-dashboard', 'vendor-analytics', 'sales-orders'];
+      const validTabs = [
+        'overview', 'invoices', 'gatepasses', 'raw-material-issuance', 'products', 'inventory',
+        'production', 'finished-goods', 'raw-materials', 'checklists', 'users', 'machines',
+        'maintenance', 'reports', 'sales-dashboard', 'vendor-analytics', 'sales-orders',
+        'checklist-assignments', 'machine-startup-reminders', 'whatsapp-analytics',
+        'product-categories', 'product-types', 'production-entries', 'production-reconciliations',
+        'variance-analytics', 'purchase-orders', 'pm-history', 'role-permissions',
+        'machine-types', 'pm-templates', 'uom', 'raw-material-types', 'template-management',
+        'notification-settings', 'data-import', 'spare-parts-stock', 'roles', 'templates',
+        'sales-returns', 'pending-payments', 'payment-management', 'credit-notes',
+        'cancelled-invoices', 'write-off-report', 'dispatch-tracking',
+      ];
       if (validTabs.includes(tab)) {
         setActiveView(tab);
       }
@@ -764,7 +786,18 @@ function AdminDashboard() {
     
     if (tab) {
       // Map valid tab values to activeView - include all tab values used in navigation
-      const validTabs = ['overview', 'invoices', 'gatepasses', 'raw-material-issuance', 'products', 'inventory', 'production', 'finished-goods', 'raw-materials', 'checklists', 'users', 'machines', 'maintenance', 'reports', 'sales-dashboard', 'vendor-analytics', 'sales-orders'];
+      const validTabs = [
+        'overview', 'invoices', 'gatepasses', 'raw-material-issuance', 'products', 'inventory',
+        'production', 'finished-goods', 'raw-materials', 'checklists', 'users', 'machines',
+        'maintenance', 'reports', 'sales-dashboard', 'vendor-analytics', 'sales-orders',
+        'checklist-assignments', 'machine-startup-reminders', 'whatsapp-analytics',
+        'product-categories', 'product-types', 'production-entries', 'production-reconciliations',
+        'variance-analytics', 'purchase-orders', 'pm-history', 'role-permissions',
+        'machine-types', 'pm-templates', 'uom', 'raw-material-types', 'template-management',
+        'notification-settings', 'data-import', 'spare-parts-stock', 'roles', 'templates',
+        'sales-returns', 'pending-payments', 'payment-management', 'credit-notes',
+        'cancelled-invoices', 'write-off-report', 'dispatch-tracking',
+      ];
       if (validTabs.includes(tab)) {
         setActiveView(tab);
       }
@@ -1838,7 +1871,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       label: "Dashboard & Analytics",
       items: [
         { id: "overview", label: "Overview", icon: LayoutDashboard, onClick: () => setLocation('/') },
-        { id: "sales-dashboard", label: "Sales Dashboard", icon: TrendingUp, onClick: () => setLocation('/') },
+        { id: "sales-dashboard", label: "Sales Dashboard", icon: TrendingUp, onClick: () => setLocation('/?tab=sales-dashboard') },
         { id: "vendor-analytics", label: "Vendor Analytics", icon: Building2, onClick: () => setLocation('/vendor-analytics') },
         { id: "reports", label: "Reports", icon: FileText, onClick: () => setLocation('/reports') },
       ],
@@ -1861,25 +1894,25 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       label: "Quality & Checklists",
       items: [
         { id: "checklists", label: "Checklist Builder", icon: FileText, onClick: () => setLocation('/checklists') },
-        { id: "checklist-assignments", label: "Checklist Assignments", icon: ClipboardList, onClick: () => setLocation('/') },
-        { id: "machine-startup-reminders", label: "Machine Startup Reminders", icon: Bell, onClick: () => setLocation('/') },
-        { id: "whatsapp-analytics", label: "WhatsApp Analytics", icon: TrendingUp, onClick: () => setLocation('/') },
+        { id: "checklist-assignments", label: "Checklist Assignments", icon: ClipboardList, onClick: () => setLocation('/?tab=checklist-assignments') },
+        { id: "machine-startup-reminders", label: "Machine Startup Reminders", icon: Bell, onClick: () => setLocation('/?tab=machine-startup-reminders') },
+        { id: "whatsapp-analytics", label: "WhatsApp Analytics", icon: TrendingUp, onClick: () => setLocation('/?tab=whatsapp-analytics') },
       ],
     },
     {
       id: "production-section",
       label: "Production & Inventory",
       items: [
-        { id: "products", label: "Product Master", icon: Package, onClick: () => setLocation('/') },
-        { id: "product-categories", label: "Product Categories", icon: Layers, onClick: () => setLocation('/') },
-        { id: "product-types", label: "Product Types", icon: Archive, onClick: () => setLocation('/') },
-        { id: "raw-materials", label: "Raw Materials", icon: Box, onClick: () => setLocation('/') },
-        { id: "finished-goods", label: "Finished Goods", icon: CheckCircle2, onClick: () => setLocation('/') },
-        { id: "raw-material-issuance", label: "Raw Material Issuance", icon: Package, onClick: () => setLocation('/') },
-        { id: "production-entries", label: "Production Entries", icon: ListChecks, onClick: () => setLocation('/') },
-        { id: "production-reconciliations", label: "Production Reconciliation", icon: Calculator, onClick: () => setLocation('/') },
+        { id: "products", label: "Product Master", icon: Package, onClick: () => setLocation('/?tab=products') },
+        { id: "product-categories", label: "Product Categories", icon: Layers, onClick: () => setLocation('/?tab=product-categories') },
+        { id: "product-types", label: "Product Types", icon: Archive, onClick: () => setLocation('/?tab=product-types') },
+        { id: "raw-materials", label: "Raw Materials", icon: Box, onClick: () => setLocation('/?tab=raw-materials') },
+        { id: "finished-goods", label: "Finished Goods", icon: CheckCircle2, onClick: () => setLocation('/?tab=finished-goods') },
+        { id: "raw-material-issuance", label: "Raw Material Issuance", icon: Package, onClick: () => setLocation('/?tab=raw-material-issuance') },
+        { id: "production-entries", label: "Production Entries", icon: ListChecks, onClick: () => setLocation('/?tab=production-entries') },
+        { id: "production-reconciliations", label: "Production Reconciliation", icon: Calculator, onClick: () => setLocation('/?tab=production-reconciliations') },
         { id: "production-reconciliation-report", label: "Reconciliation Report", icon: FileStack, onClick: () => setLocation('/reports/production-reconciliation') },
-        { id: "variance-analytics", label: "Variance Analytics", icon: TrendingUp, onClick: () => setLocation('/') },
+        { id: "variance-analytics", label: "Variance Analytics", icon: TrendingUp, onClick: () => setLocation('/?tab=variance-analytics') },
         { id: "spare-parts", label: "Spare Parts", icon: Wrench, onClick: () => setLocation('/spare-parts') },
         { id: "scrap-management", label: "Scrap Management", icon: Trash2, onClick: () => setLocation('/scrap-management') },
         { id: "purchase-returns", label: "Purchase Returns", icon: PackageX, onClick: () => setLocation('/purchase-returns') },
@@ -1891,7 +1924,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       label: "Finance & Sales",
       items: [
         { id: "sales-orders", label: "Sales Orders", icon: ClipboardList, onClick: () => setLocation('/sales-orders') },
-        { id: "invoices", label: "Sales Invoices", icon: Receipt, onClick: () => setLocation('/') },
+        { id: "invoices", label: "Sales Invoices", icon: Receipt, onClick: () => setLocation('/?tab=invoices') },
         { id: "vendor-history", label: "Vendor History", icon: History, onClick: () => setLocation('/vendor-history') },
         { id: "vendor-debit-notes", label: "Vendor Debit Notes", icon: FileX, onClick: () => setLocation('/vendor-debit-notes') },
         { id: "pending-payments", label: "Pending Payments", icon: IndianRupee, onClick: () => setLocation('/pending-payments') },
@@ -1907,7 +1940,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       id: "dispatch-section",
       label: "Dispatch & Logistics",
       items: [
-        { id: "gatepasses", label: "Gatepasses", icon: FileText, onClick: () => setLocation('/') },
+        { id: "gatepasses", label: "Gatepasses", icon: FileText, onClick: () => setLocation('/?tab=gatepasses') },
         { id: "dispatch-tracking", label: "Dispatch Tracking", icon: Truck, onClick: () => setLocation('/dispatch-tracking') },
         { id: "dispatch-masters", label: "Dispatch Masters", icon: Car, onClick: () => setLocation('/dispatch-masters') },
       ],
@@ -1916,7 +1949,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       id: "purchases-section",
       label: "Purchases",
       items: [
-        { id: "purchase-orders", label: "Purchase Orders", icon: ShoppingCart, onClick: () => setLocation('/') },
+        { id: "purchase-orders", label: "Purchase Orders", icon: ShoppingCart, onClick: () => setLocation('/?tab=purchase-orders') },
       ],
     },
     {
@@ -1959,8 +1992,8 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       id: "maintenance-section",
       label: "Maintenance",
       items: [
-        { id: "maintenance", label: "PM Schedule", icon: Wrench, onClick: () => setLocation('/') },
-        { id: "pm-history", label: "PM History", icon: History, onClick: () => setLocation('/') },
+        { id: "maintenance", label: "PM Schedule", icon: Wrench, onClick: () => setLocation('/?tab=maintenance') },
+        { id: "pm-history", label: "PM History", icon: History, onClick: () => setLocation('/?tab=pm-history') },
       ],
     },
     {
@@ -1990,30 +2023,30 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       id: "master-section",
       label: "Master Data",
       items: [
-        { id: "users", label: "Users", icon: Users, onClick: () => setLocation('/') },
-        { id: "role-permissions", label: "Role Permissions", icon: Shield, onClick: () => setLocation('/') },
+        { id: "users", label: "Users", icon: Users, onClick: () => setLocation('/?tab=users') },
+        { id: "role-permissions", label: "Role Permissions", icon: Shield, onClick: () => setLocation('/?tab=role-permissions') },
         { id: "sales-officers", label: "Sales Officers", icon: Users, onClick: () => setLocation('/sales-officers') },
         { id: "vendors", label: "Vendor Master", icon: Building2, onClick: () => setLocation('/vendor-management') },
         { id: "vendor-types", label: "Vendor Types", icon: Shield, onClick: () => setLocation('/vendor-types') },
         { id: "hpcl-migration", label: "HPCL Migration", icon: Building2, onClick: () => setLocation('/hpcl-migration') },
-        { id: "machines", label: "Machines", icon: Settings, onClick: () => setLocation('/') },
-        { id: "machine-types", label: "Machine Types", icon: Layers, onClick: () => setLocation('/') },
+        { id: "machines", label: "Machines", icon: Settings, onClick: () => setLocation('/?tab=machines') },
+        { id: "machine-types", label: "Machine Types", icon: Layers, onClick: () => setLocation('/?tab=machine-types') },
         { id: "spare-parts", label: "Spare Parts", icon: Package, onClick: () => setLocation('/spare-parts') },
         { id: "scrap-management", label: "Scrap Management", icon: Trash2, onClick: () => setLocation('/scrap-management') },
         { id: "purchase-returns", label: "Purchase Returns", icon: PackageX, onClick: () => setLocation('/purchase-returns') },
         { id: "tds-management", label: "TDS Management", icon: Calculator, onClick: () => setLocation('/tds-management') },
-        { id: "pm-templates", label: "PM Templates", icon: ListChecks, onClick: () => setLocation('/') },
-        { id: "uom", label: "Unit of Measurement", icon: Layers, onClick: () => setLocation('/') },
-        { id: "raw-material-types", label: "Raw Material Types", icon: Archive, onClick: () => setLocation('/') },
-        { id: "template-management", label: "Invoice Templates", icon: FileStack, onClick: () => setLocation('/') },
+        { id: "pm-templates", label: "PM Templates", icon: ListChecks, onClick: () => setLocation('/?tab=pm-templates') },
+        { id: "uom", label: "Unit of Measurement", icon: Layers, onClick: () => setLocation('/?tab=uom') },
+        { id: "raw-material-types", label: "Raw Material Types", icon: Archive, onClick: () => setLocation('/?tab=raw-material-types') },
+        { id: "template-management", label: "Invoice Templates", icon: FileStack, onClick: () => setLocation('/?tab=template-management') },
       ],
     },
     {
       id: "settings-section",
       label: "Settings",
       items: [
-        { id: "notification-settings", label: "Notification Settings", icon: Bell, onClick: () => setLocation('/') },
-        { id: "data-import", label: "Data Import", icon: Upload, onClick: () => setLocation('/') },
+        { id: "notification-settings", label: "Notification Settings", icon: Bell, onClick: () => setLocation('/?tab=notification-settings') },
+        { id: "data-import", label: "Data Import", icon: Upload, onClick: () => setLocation('/?tab=data-import') },
         { id: "admin-tools", label: "Admin Tools", icon: Wrench, onClick: () => setLocation('/admin-tools') },
         { id: "company-settings", label: "Company Settings", icon: Building2, onClick: () => setLocation('/company-settings') },
       ],
