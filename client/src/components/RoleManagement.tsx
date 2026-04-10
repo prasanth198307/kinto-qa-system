@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Plus, Edit, Trash2, Shield, Check, X, AlertTriangle, RefreshCw } from "lucide-react";
+import { Plus, Edit, Trash2, Shield, Check, X, AlertTriangle, RefreshCw, Copy, Eye, EyeOff } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
@@ -205,6 +206,8 @@ export default function RoleManagement() {
   // Permissions state
   const [permissions, setPermissions] = useState<Map<string, RolePermission>>(new Map());
   const [originalPermissions, setOriginalPermissions] = useState<Map<string, RolePermission>>(new Map());
+  const [copyFromRoleId, setCopyFromRoleId] = useState<string>('');
+  const [isCopying, setIsCopying] = useState(false);
 
   // Fetch roles
   const { data: roles = [], isLoading: rolesLoading } = useQuery<Role[]>({
@@ -400,6 +403,7 @@ export default function RoleManagement() {
 
   const handleEditPermissions = (role: Role) => {
     setPermissionsRole(role);
+    setCopyFromRoleId('');
     
     const rolePerms = allPermissions.filter(p => p.roleId === role.id);
     const permsMap = new Map<string, RolePermission>();
@@ -410,6 +414,54 @@ export default function RoleManagement() {
     setPermissions(permsMap);
     setOriginalPermissions(new Map(permsMap));
     setIsPermissionsDialogOpen(true);
+  };
+
+  const handleCopyFromRole = async () => {
+    if (!copyFromRoleId || !permissionsRole) return;
+    setIsCopying(true);
+    try {
+      const res = await apiRequest('GET', `/api/roles/${copyFromRoleId}/permissions`);
+      const sourcePerms: RolePermission[] = await res.json();
+      const newPermissions = new Map(permissions);
+      for (const p of sourcePerms) {
+        newPermissions.set(p.screenKey, {
+          ...p,
+          id: permissions.get(p.screenKey)?.id || '',
+          roleId: permissionsRole.id,
+        });
+      }
+      setPermissions(newPermissions);
+      const sourceName = roles.find(r => r.id === copyFromRoleId)?.name ?? 'role';
+      toast({ title: "Permissions copied", description: `Permissions copied from ${sourceName}. Click Save to apply.` });
+    } catch {
+      toast({ title: "Error", description: "Failed to copy permissions.", variant: "destructive" });
+    } finally {
+      setIsCopying(false);
+    }
+  };
+
+  const handleEnableAllView = () => {
+    const newPermissions = new Map(permissions);
+    for (const screen of AVAILABLE_SCREENS) {
+      if (!screen.allowedActions.includes('view')) continue;
+      const existing = newPermissions.get(screen.key) || {
+        id: '', roleId: permissionsRole?.id || '', screenKey: screen.key,
+        canView: 0, canCreate: 0, canEdit: 0, canDelete: 0,
+      };
+      newPermissions.set(screen.key, { ...existing, canView: 1 });
+    }
+    setPermissions(newPermissions);
+  };
+
+  const handleClearAll = () => {
+    const newPermissions = new Map(permissions);
+    for (const screen of AVAILABLE_SCREENS) {
+      const existing = newPermissions.get(screen.key);
+      if (existing) {
+        newPermissions.set(screen.key, { ...existing, canView: 0, canCreate: 0, canEdit: 0, canDelete: 0 });
+      }
+    }
+    setPermissions(newPermissions);
   };
 
   const handleTogglePermission = (screenKey: string, permType: 'canView' | 'canCreate' | 'canEdit' | 'canDelete') => {
@@ -707,6 +759,55 @@ export default function RoleManagement() {
               </span>
             </div>
           )}
+
+          {/* Quick-action toolbar */}
+          <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/40 px-3 py-2">
+            <span className="text-sm font-medium text-muted-foreground">Quick actions:</span>
+            <div className="flex items-center gap-2">
+              <Select value={copyFromRoleId} onValueChange={setCopyFromRoleId}>
+                <SelectTrigger className="h-8 w-[160px]" data-testid="select-copy-from-role">
+                  <SelectValue placeholder="Copy from role…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {roles
+                    .filter(r => r.id !== permissionsRole?.id)
+                    .map(r => (
+                      <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleCopyFromRole}
+                disabled={!copyFromRoleId || isCopying}
+                data-testid="button-apply-copy-from-role"
+              >
+                <Copy className="w-3 h-3 mr-1" />
+                {isCopying ? "Copying…" : "Apply"}
+              </Button>
+            </div>
+            <div className="h-5 w-px bg-border" />
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleEnableAllView}
+              data-testid="button-enable-all-view"
+            >
+              <Eye className="w-3 h-3 mr-1" />
+              Enable all view
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleClearAll}
+              data-testid="button-clear-all-permissions"
+            >
+              <EyeOff className="w-3 h-3 mr-1" />
+              Clear all
+            </Button>
+          </div>
+
           <div className="py-4">
             <div className="overflow-x-auto">
               <table className="w-full">

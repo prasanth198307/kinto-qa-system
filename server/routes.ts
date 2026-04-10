@@ -17956,6 +17956,22 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
     }
   });
 
+  // Get all permissions for a specific role (used by "Copy from role" feature)
+  app.get('/api/roles/:roleId/permissions', requireRole('admin'), async (req: any, res) => {
+    try {
+      const { roleId } = req.params;
+      const existingRole = await storage.getRole(roleId);
+      if (!existingRole) {
+        return res.status(404).json({ message: "Role not found" });
+      }
+      const perms = await storage.getRolePermissions(roleId);
+      res.json(perms);
+    } catch (error) {
+      console.error("Error fetching role permissions:", error);
+      res.status(500).json({ message: "Failed to fetch role permissions" });
+    }
+  });
+
   // Batch update role permissions (for easier bulk updates)
   app.put('/api/roles/:roleId/permissions', requireRole('admin'), async (req: any, res) => {
     try {
