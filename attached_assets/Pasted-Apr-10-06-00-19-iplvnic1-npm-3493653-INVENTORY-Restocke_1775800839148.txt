@@ -1,0 +1,27 @@
+Apr 10 06:00:19 iplvnic1 npm[3493653]: [INVENTORY] Restocked 186 cases (2232 bottles) of product a4de2b77-b570-4f77-b537-2174e9f2caf7 batch K20850525034 (Sales Return - Good condition)
+Apr 10 06:00:19 iplvnic1 npm[3493653]: Error inspecting sales return: error: null value in column "days_since_invoice" of relation "manual_credit_note_requests" violates not-null constraint
+Apr 10 06:00:19 iplvnic1 npm[3493653]:     at /home/kinto/kinto-qa-system/node_modules/pg/lib/client.js:545:17
+Apr 10 06:00:19 iplvnic1 npm[3493653]:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+Apr 10 06:00:19 iplvnic1 npm[3493653]:     at async file:///home/kinto/kinto-qa-system/dist/index.js:27987:11
+Apr 10 06:00:19 iplvnic1 npm[3493653]:     at async NodePgSession.transaction (file:///home/kinto/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:142:22)
+Apr 10 06:00:19 iplvnic1 npm[3493653]:     at async file:///home/kinto/kinto-qa-system/dist/index.js:27758:7 {
+Apr 10 06:00:19 iplvnic1 npm[3493653]:   length: 730,
+Apr 10 06:00:19 iplvnic1 npm[3493653]:   severity: 'ERROR',
+Apr 10 06:00:19 iplvnic1 npm[3493653]:   code: '23502',
+Apr 10 06:00:19 iplvnic1 npm[3493653]:   detail: 'Failing row contains (a5cf23ef-72eb-450f-8e5a-3e93bda78e45, MCR-20260410-001, 2f148c21-9c8b-4bf8-a5ae-9c34af652eaf, 8778c0f7-2c1f-43fc-8b81-52f10b892da7, 2026-04-10, null, user-admin, 2026-04-10 06:00:19.375426, pending, null, null, null, null, 1, 2026-04-10 06:00:19.375426, 2026-04-10 06:00:19.375426, old_return, null, normal, null, null, null, null, 1, Return is 36 days old (>30 days). Requires manual GST-compliant ..., RET-1775796527967, Bora Dhanunjaya Naidu_Aadhar, 2026-03-05 00:00:00).',
+Apr 10 06:00:19 iplvnic1 npm[3493653]:   hint: undefined,
+Apr 10 06:00:19 iplvnic1 npm[3493653]:   position: undefined,
+Apr 10 06:00:19 iplvnic1 npm[3493653]:   internalPosition: undefined,
+Apr 10 06:00:19 iplvnic1 npm[3493653]:   internalQuery: undefined,
+Apr 10 06:00:19 iplvnic1 npm[3493653]:   where: undefined,
+Apr 10 06:00:19 iplvnic1 npm[3493653]:   schema: 'public',
+Apr 10 06:00:19 iplvnic1 npm[3493653]:   table: 'manual_credit_note_requests',
+Apr 10 06:00:19 iplvnic1 npm[3493653]:   column: 'days_since_invoice',
+Apr 10 06:00:19 iplvnic1 npm[3493653]:   dataType: undefined,
+Apr 10 06:00:19 iplvnic1 npm[3493653]:   constraint: undefined,
+Apr 10 06:00:19 iplvnic1 npm[3493653]:   file: 'execMain.c',
+Apr 10 06:00:19 iplvnic1 npm[3493653]:   line: '2005',
+Apr 10 06:00:19 iplvnic1 npm[3493653]:   routine: 'ExecConstraints'
+Apr 10 06:00:19 iplvnic1 npm[3493653]: }
+Apr 10 06:00:19 iplvnic1 npm[3493653]: 6:00:19 AM [express] PATCH /api/sales-returns/2f148c21-9c8b-4bf8-a5ae-9c34af652eaf/inspect 500 in 45…
+[kinto@iplvnic1 kinto-qa-system]$ 

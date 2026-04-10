@@ -12558,6 +12558,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
             requestNumber,
             invoiceId: salesReturn.invoiceId,
             returnDate: salesReturn.returnDate,
+            daysSinceInvoice: daysDifference,
             invoiceDate: invoice.invoiceDate,
             returnNumber: salesReturn.returnNumber,
             customerName: invoice.buyerName,

@@ -2644,6 +2644,7 @@ export const manualCreditNoteRequests = pgTable("manual_credit_note_requests", {
   requestNumber: varchar("request_number", { length: 50 }), // e.g. MCR-20260410-001
   invoiceId: varchar("invoice_id"),
   returnDate: timestamp("return_date", { mode: 'string' }),
+  daysSinceInvoice: integer("days_since_invoice"),
   invoiceDate: timestamp("invoice_date", { mode: 'string' }),
   returnNumber: varchar("return_number", { length: 100 }),
   customerName: varchar("customer_name", { length: 255 }),
