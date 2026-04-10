@@ -12410,8 +12410,9 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
             .where(eq(salesReturnItems.id, itemId));
         }
         
-        // Determine credit note handling: BOTH same month AND within 30 days required for auto
-        const shouldAutoGenerateCreditNote = isSameMonth && isWithinOneMonth;
+        // Auto-generate credit note if within 30 days — month boundary doesn't matter for automation
+        // Manual processing only required for returns older than 30 days
+        const shouldAutoGenerateCreditNote = isWithinOneMonth;
         const requiresManualProcessing = !shouldAutoGenerateCreditNote;
         
         // Recalculate totalCreditAmount based on verified quantities
@@ -12539,11 +12540,8 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
           
           creditNoteCreated = true;
         } else {
-          // Create manual credit note request for ANY return that can't be auto-processed
-          // This includes: different month (even if <30 days) OR >30 days old
-          const reason = !isSameMonth 
-            ? `Return is in different month than invoice (${daysDifference} days old). GST compliance requires manual processing.`
-            : `Return is ${daysDifference} days old (>30 days). Requires manual GST-compliant credit note processing.`;
+          // Create manual credit note request — only triggered when return is >30 days old
+          const reason = `Return is ${daysDifference} days old (>30 days). Requires manual GST-compliant credit note processing.`;
             
           // Generate sequential request number MCR-YYYYMMDD-NNN
           const mcrDate = format(new Date(), 'yyyyMMdd');
@@ -12561,7 +12559,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
             invoiceId: salesReturn.invoiceId,
             returnNumber: salesReturn.returnNumber,
             customerName: invoice.buyerName,
-            reasonCode: !isSameMonth ? 'different_month' : 'old_return',
+            reasonCode: 'old_return',
             requestedBy: req.user?.id,
             notes: reason,
             priority: daysDifference > 90 ? 'urgent' : 'normal',
@@ -12577,9 +12575,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       if (creditNoteCreated) {
         message = `Return inspected, inventory updated, and credit note ${creditNoteNumber} created automatically`;
       } else if (manualProcessingRequired) {
-        message = `Return inspected and inventory updated. MANUAL CREDIT NOTE REQUIRED - Return is ${daysDifference} days old (>30 days from invoice). Please process credit note manually for GST compliance.`;
-      } else if (!isWithinOneMonth) {
-        message = "Return inspected and inventory updated (no credit note - outside same month)";
+        message = `Return inspected and inventory updated. MANUAL CREDIT NOTE REQUIRED — Return is ${daysDifference} days old (>30 days). Please process credit note manually for GST compliance.`;
       }
       
       res.json({ 
