@@ -12543,6 +12543,109 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
   });
 
   // Delete sales return (soft delete)
+  // Retroactively generate a credit note for an already-inspected return that has none
+  app.post('/api/sales-returns/:id/generate-credit-note', requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const salesReturn = await storage.getSalesReturn(id);
+      if (!salesReturn) return res.status(404).json({ message: "Sales return not found" });
+      if (salesReturn.status !== 'inspected') return res.status(400).json({ message: "Return must be inspected before generating a credit note" });
+
+      // Check if credit note already exists
+      const existing = await db.select().from(creditNotes)
+        .where(and(eq(creditNotes.salesReturnId, id), eq(creditNotes.recordStatus, 1), tc(creditNotes)));
+      if (existing.length > 0) return res.status(400).json({ message: `Credit note ${existing[0].noteNumber} already exists for this return` });
+
+      if (!salesReturn.invoiceId) return res.status(400).json({ message: "Return has no linked invoice — cannot generate credit note" });
+
+      const [invoice] = await db.select().from(invoices).where(eq(invoices.id, salesReturn.invoiceId));
+      if (!invoice) return res.status(404).json({ message: "Linked invoice not found" });
+
+      const returnItems = await db.select().from(salesReturnItems)
+        .where(and(eq(salesReturnItems.returnId, id), eq(salesReturnItems.recordStatus, 1), tc(salesReturnItems)));
+
+      const existingCNs = await db.select().from(creditNotes)
+        .where(and(eq(creditNotes.invoiceId, salesReturn.invoiceId), eq(creditNotes.recordStatus, 1), tc(creditNotes)));
+
+      const seq = existingCNs.length + 1;
+      const creditNoteNumber = `CN-${invoice.invoiceNumber}-${seq}`;
+
+      let subtotal = 0, cgstAmount = 0, sgstAmount = 0, igstAmount = 0;
+      const cnItemsData = [];
+
+      for (const returnItem of returnItems) {
+        const effectiveQtyBottles = returnItem.verifiedQuantity ?? returnItem.quantityReturned;
+        const itemBpc = returnItem.bottlesPerCase || 1;
+        const effectiveQtyCases = Math.round(effectiveQtyBottles / itemBpc);
+        const itemSubtotal = returnItem.unitPrice * effectiveQtyCases;
+        subtotal += itemSubtotal;
+
+        const [invoiceItem] = await db.select().from(invoiceItems)
+          .where(and(eq(invoiceItems.invoiceId, salesReturn.invoiceId), eq(invoiceItems.productId, returnItem.productId))).limit(1);
+
+        if (invoiceItem) {
+          const safeCgstRate = invoiceItem.cgstRate || 0;
+          const safeSgstRate = invoiceItem.sgstRate || 0;
+          const safeIgstRate = invoiceItem.igstRate || 0;
+          const itemCgst = Math.round(itemSubtotal * safeCgstRate / 10000);
+          const itemSgst = Math.round(itemSubtotal * safeSgstRate / 10000);
+          cgstAmount += itemCgst;
+          sgstAmount += itemSgst;
+          cnItemsData.push({
+            productId: returnItem.productId,
+            invoiceItemId: invoiceItem.id,
+            description: invoiceItem.description || '',
+            quantity: effectiveQtyCases,
+            unitPrice: returnItem.unitPrice,
+            discountAmount: 0,
+            taxableValue: itemSubtotal,
+            cgstRate: safeCgstRate,
+            cgstAmount: itemCgst,
+            sgstRate: safeSgstRate,
+            sgstAmount: itemSgst,
+            igstRate: safeIgstRate,
+            igstAmount: 0,
+            totalAmount: itemSubtotal + itemCgst + itemSgst,
+          });
+        }
+      }
+
+      const grandTotal = subtotal + cgstAmount + sgstAmount + igstAmount;
+
+      await db.transaction(async (tx) => {
+        const [creditNote] = await tx.insert(creditNotes).values({
+          noteNumber: creditNoteNumber,
+          invoiceId: salesReturn.invoiceId,
+          salesReturnId: id,
+          creditDate: format(new Date(), 'yyyy-MM-dd'),
+          reason: 'sales_return',
+          status: 'issued',
+          subtotal,
+          cgstAmount,
+          sgstAmount,
+          igstAmount,
+          grandTotal,
+          issuedBy: req.user?.id,
+          notes: `Credit note generated retroactively for sales return ${salesReturn.returnNumber}`,
+        }).returning();
+
+        for (const itemData of cnItemsData) {
+          await tx.insert(creditNoteItems).values({ creditNoteId: creditNote.id, ...itemData });
+        }
+
+        await tx.update(salesReturns)
+          .set({ creditNoteStatus: 'auto_created', updatedAt: new Date().toISOString() })
+          .where(eq(salesReturns.id, id));
+      });
+
+      await logAudit(req.user?.id, 'CREATE', 'credit_notes', id, `Retroactively generated credit note ${creditNoteNumber} for return ${salesReturn.returnNumber}`);
+      res.json({ message: `Credit note ${creditNoteNumber} created successfully`, creditNoteNumber });
+    } catch (err) {
+      console.error('Error generating credit note:', err);
+      res.status(500).json({ message: (err as Error).message });
+    }
+  });
+
   app.delete('/api/sales-returns/:id', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const { id } = req.params;

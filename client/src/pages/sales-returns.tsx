@@ -17,7 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Package, CheckCircle, AlertCircle, Trash2, Search, Loader2, Camera, Image, Upload, X, Printer, ArrowLeft } from "lucide-react";
+import { Plus, Package, CheckCircle, AlertCircle, Trash2, Search, Loader2, Camera, Image, Upload, X, Printer, ArrowLeft, FileText } from "lucide-react";
 import PrintableSalesReturn from "@/components/PrintableSalesReturn";
 import PrintableScrapInventory from "@/components/PrintableScrapInventory";
 import { format } from "date-fns";
@@ -238,6 +238,19 @@ export default function SalesReturnsPage() {
     },
     onError: (error: any) => {
       toast({ title: "Failed to inspect return", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const generateCreditNoteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest('POST', `/api/sales-returns/${id}/generate-credit-note`);
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/sales-returns'] });
+      toast({ title: "Credit note created", description: data.creditNoteNumber });
+    },
+    onError: (error: any) => {
+      toast({ title: "Failed to generate credit note", description: error.message, variant: "destructive" });
     },
   });
 
@@ -835,6 +848,18 @@ export default function SalesReturnsPage() {
                             data-testid={`button-inspect-${returnRecord.id}`}
                           >
                             Inspect
+                          </Button>
+                        )}
+                        {returnRecord.status === 'inspected' && returnRecord.creditNoteStatus !== 'auto_created' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => generateCreditNoteMutation.mutate(returnRecord.id)}
+                            disabled={generateCreditNoteMutation.isPending}
+                            data-testid={`button-generate-cn-${returnRecord.id}`}
+                          >
+                            <FileText className="h-3 w-3 mr-1" />
+                            Generate Credit Note
                           </Button>
                         )}
                         {(returnRecord.status === 'pending' || returnRecord.status === 'pending_receipt') && canDelete && (
