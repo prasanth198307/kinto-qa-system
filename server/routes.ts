@@ -243,6 +243,7 @@ const endpointToScreenKey: Record<string, string> = {
   '/api/hr/salary-components': 'hr_masters',
   '/api/hr/salary-structures': 'hr_masters',
   '/api/hr/pt-slabs': 'hr_masters',
+  '/api/hr/statutory-settings': 'hr_masters',
 
   // Administration
   '/api/users': 'users',

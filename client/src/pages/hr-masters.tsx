@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Building2, Briefcase, Clock, Calendar, CalendarDays, DollarSign, Layers, FileText, MapPin } from "lucide-react";
+import { Plus, Pencil, Trash2, Building2, Briefcase, Clock, Calendar, CalendarDays, DollarSign, Layers, FileText, MapPin, Shield } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
 function MasterTable({ columns, rows, onEdit, onDelete }: any) {
@@ -605,6 +605,88 @@ function PTSlabsTab() {
   );
 }
 
+// ── Statutory Rates Tab (PF / ESI) ────────────────────────────────────────────
+function StatutoryRatesTab() {
+  const { toast } = useToast();
+  const { data: s, isLoading } = useQuery<any>({ queryKey: ["/api/hr/statutory-settings"] });
+  const [form, setForm] = useState<any>(null);
+
+  if (!isLoading && s && !form) {
+    setForm({
+      pfEmployeeRate: (Number(s.pf_employee_rate) * 100).toFixed(2),
+      pfEmployerRate: (Number(s.pf_employer_rate) * 100).toFixed(2),
+      pfCeilingBasic: String(s.pf_ceiling_basic),
+      esiEmployeeRate: (Number(s.esi_employee_rate) * 100).toFixed(2),
+      esiEmployerRate: (Number(s.esi_employer_rate) * 100).toFixed(2),
+      esiGrossCeiling: String(s.esi_gross_ceiling),
+    });
+  }
+
+  const save = useMutation({
+    mutationFn: () => apiRequest("PUT", "/api/hr/statutory-settings", {
+      pfEmployeeRate: Number(form.pfEmployeeRate) / 100,
+      pfEmployerRate: Number(form.pfEmployerRate) / 100,
+      pfCeilingBasic: Number(form.pfCeilingBasic),
+      esiEmployeeRate: Number(form.esiEmployeeRate) / 100,
+      esiEmployerRate: Number(form.esiEmployerRate) / 100,
+      esiGrossCeiling: Number(form.esiGrossCeiling),
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/hr/statutory-settings"] });
+      toast({ title: "Statutory rates saved" });
+    },
+  });
+
+  const f = form || {
+    pfEmployeeRate: "12.00", pfEmployerRate: "12.00", pfCeilingBasic: "15000",
+    esiEmployeeRate: "0.75", esiEmployerRate: "3.25", esiGrossCeiling: "21000",
+  };
+
+  const row = (label: string, key: string, suffix: string, hint: string) => (
+    <div className="grid grid-cols-3 items-center gap-4">
+      <Label className="text-right text-sm">{label}</Label>
+      <div className="col-span-2 flex items-center gap-2">
+        <Input
+          type="number"
+          step="0.01"
+          className="w-32"
+          value={f[key]}
+          onChange={e => setForm((p: any) => ({ ...p, [key]: e.target.value }))}
+          data-testid={`input-${key}`}
+        />
+        <span className="text-sm text-muted-foreground">{suffix}</span>
+        <span className="text-xs text-muted-foreground ml-2">{hint}</span>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-6 max-w-xl">
+      <div>
+        <h3 className="font-medium text-sm mb-1">Provident Fund (PF)</h3>
+        <p className="text-xs text-muted-foreground mb-4">Currently 12% for both employee and employer on basic ≤ ₹15,000</p>
+        <div className="space-y-3">
+          {row("Employee Contribution", "pfEmployeeRate", "%", "Standard: 12%")}
+          {row("Employer Contribution", "pfEmployerRate", "%", "Standard: 12%")}
+          {row("Basic Salary Ceiling", "pfCeilingBasic", "₹", "Standard: ₹15,000")}
+        </div>
+      </div>
+      <div className="border-t pt-4">
+        <h3 className="font-medium text-sm mb-1">Employee State Insurance (ESI)</h3>
+        <p className="text-xs text-muted-foreground mb-4">Applied only if gross salary ≤ ceiling amount</p>
+        <div className="space-y-3">
+          {row("Employee Contribution", "esiEmployeeRate", "%", "Standard: 0.75%")}
+          {row("Employer Contribution", "esiEmployerRate", "%", "Standard: 3.25%")}
+          {row("Gross Salary Ceiling", "esiGrossCeiling", "₹", "Standard: ₹21,000")}
+        </div>
+      </div>
+      <Button onClick={() => save.mutate()} disabled={save.isPending} data-testid="btn-save-statutory">
+        {save.isPending ? "Saving…" : "Save Rates"}
+      </Button>
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function HRMastersPage() {
   const tabs = [
@@ -616,6 +698,7 @@ export default function HRMastersPage() {
     { value: "salary-components", label: "Salary Components", icon: DollarSign, component: SalaryComponentsTab },
     { value: "salary-structures", label: "Salary Structures", icon: Layers, component: SalaryStructuresTab },
     { value: "pt-slabs", label: "PT Slabs", icon: MapPin, component: PTSlabsTab },
+    { value: "statutory-rates", label: "Statutory Rates", icon: Shield, component: StatutoryRatesTab },
   ];
 
   return (

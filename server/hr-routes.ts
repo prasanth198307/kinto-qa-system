@@ -788,6 +788,33 @@ router.post("/leave-balances/carry-forward", requireHR, async (req: any, res) =>
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 
+// ── Statutory Settings (PF / ESI rates) ──────────────────────────────────────
+router.get("/statutory-settings", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  try {
+    const r = await db.execute(sql`SELECT * FROM hr_statutory_settings WHERE tenant_id=${tid}`);
+    if (r.rows.length) return res.json(r.rows[0]);
+    // Return defaults if not configured yet
+    res.json({ pf_employee_rate: 0.12, pf_employer_rate: 0.12, pf_ceiling_basic: 15000, esi_employee_rate: 0.0075, esi_employer_rate: 0.0325, esi_gross_ceiling: 21000 });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.put("/statutory-settings", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  const { pfEmployeeRate, pfEmployerRate, pfCeilingBasic, esiEmployeeRate, esiEmployerRate, esiGrossCeiling } = req.body;
+  try {
+    await db.execute(sql`
+      INSERT INTO hr_statutory_settings (tenant_id, pf_employee_rate, pf_employer_rate, pf_ceiling_basic, esi_employee_rate, esi_employer_rate, esi_gross_ceiling, updated_at)
+      VALUES (${tid}, ${pfEmployeeRate}, ${pfEmployerRate}, ${pfCeilingBasic}, ${esiEmployeeRate}, ${esiEmployerRate}, ${esiGrossCeiling}, NOW())
+      ON CONFLICT (tenant_id) DO UPDATE SET
+        pf_employee_rate=${pfEmployeeRate}, pf_employer_rate=${pfEmployerRate}, pf_ceiling_basic=${pfCeilingBasic},
+        esi_employee_rate=${esiEmployeeRate}, esi_employer_rate=${esiEmployerRate}, esi_gross_ceiling=${esiGrossCeiling},
+        updated_at=NOW()
+    `);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
 // ── PAYROLL ───────────────────────────────────────────────────────────────────
 router.get("/payroll-runs", requireHR, async (req: any, res) => {
   const tid = getTenantId(req);
@@ -857,6 +884,16 @@ router.post("/payroll-runs/:id/process", requireHR, async (req: any, res) => {
 
     // Get PT slabs for tenant
     const ptSlabs = await db.execute(sql`SELECT * FROM hr_pt_slabs WHERE tenant_id=${tid} AND record_status=1 ORDER BY income_from`);
+
+    // Load statutory rates (PF / ESI) — configurable, defaults to current statutory rates
+    const statRow = await db.execute(sql`SELECT * FROM hr_statutory_settings WHERE tenant_id=${tid}`);
+    const stat = statRow.rows[0] as any || {};
+    const PF_EMP_RATE    = Number(stat.pf_employee_rate   ?? 0.12);
+    const PF_EMPR_RATE   = Number(stat.pf_employer_rate   ?? 0.12);
+    const PF_CEILING     = Number(stat.pf_ceiling_basic   ?? 15000);
+    const ESI_EMP_RATE   = Number(stat.esi_employee_rate  ?? 0.0075);
+    const ESI_EMPR_RATE  = Number(stat.esi_employer_rate  ?? 0.0325);
+    const ESI_CEILING    = Number(stat.esi_gross_ceiling  ?? 21000);
 
     let totalGross = 0, totalDeductions = 0, totalNet = 0;
 
@@ -938,13 +975,14 @@ router.post("/payroll-runs/:id/process", requireHR, async (req: any, res) => {
 
       const totalGrossSalary = totalEarnings;
 
-      // PF: 12% of basic (employee), capped at 1800
-      const pfEmployee = basicSalary <= 15000 ? Math.round(basicSalary * 0.12) : 1800;
-      const pfEmployer = pfEmployee;
+      // PF: configurable rate of basic, capped at ceiling
+      const pfBase = Math.min(basicSalary, PF_CEILING);
+      const pfEmployee = Math.round(pfBase * PF_EMP_RATE);
+      const pfEmployer = Math.round(pfBase * PF_EMPR_RATE);
 
-      // ESI: 0.75% if gross <= 21000
-      const esiEmployee = totalGrossSalary <= 21000 ? Math.round(totalGrossSalary * 0.0075) : 0;
-      const esiEmployer = totalGrossSalary <= 21000 ? Math.round(totalGrossSalary * 0.0325) : 0;
+      // ESI: configurable rate, applied only if gross <= ESI ceiling
+      const esiEmployee = totalGrossSalary <= ESI_CEILING ? Math.round(totalGrossSalary * ESI_EMP_RATE) : 0;
+      const esiEmployer = totalGrossSalary <= ESI_CEILING ? Math.round(totalGrossSalary * ESI_EMPR_RATE) : 0;
 
       // PT: from state slabs or fallback
       let pt = 0;
