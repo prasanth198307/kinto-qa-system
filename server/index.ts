@@ -222,14 +222,22 @@ app.use((req, res, next) => {
   }
 
   // ─── manual_credit_note_requests missing columns migration ───────────────
-  // notes and processing_notes may be absent on older OCI installs.
+  // notes, processing_notes may be absent on dev; request_number may be
+  // NOT NULL on OCI (added manually) — drop the constraint so our insert
+  // (which now supplies a value) works consistently everywhere.
   try {
     const { db: dbMcn } = await import("./db");
     const { sql: sqlMcn } = await import("drizzle-orm");
     await dbMcn.execute(sqlMcn`
       ALTER TABLE manual_credit_note_requests
         ADD COLUMN IF NOT EXISTS notes TEXT,
-        ADD COLUMN IF NOT EXISTS processing_notes TEXT
+        ADD COLUMN IF NOT EXISTS processing_notes TEXT,
+        ADD COLUMN IF NOT EXISTS request_number VARCHAR(50)
+    `);
+    // Drop NOT NULL if OCI had it defined that way (idempotent — safe if already nullable)
+    await dbMcn.execute(sqlMcn`
+      ALTER TABLE manual_credit_note_requests
+        ALTER COLUMN request_number DROP NOT NULL
     `);
     console.log('[MCN_REQUESTS MIGRATION] Columns OK');
   } catch (err) {

@@ -2641,6 +2641,7 @@ export type DebitNoteItem = typeof debitNoteItems.$inferSelect;
 export const manualCreditNoteRequests = pgTable("manual_credit_note_requests", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   salesReturnId: varchar("sales_return_id").references(() => salesReturns.id).notNull(),
+  requestNumber: varchar("request_number", { length: 50 }), // e.g. MCR-20260410-001
   
   // Request details
   reasonCode: varchar("reason_code", { length: 50 }).notNull(), // old_return, gst_compliance, etc

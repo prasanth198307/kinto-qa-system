@@ -12545,8 +12545,19 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
             ? `Return is in different month than invoice (${daysDifference} days old). GST compliance requires manual processing.`
             : `Return is ${daysDifference} days old (>30 days). Requires manual GST-compliant credit note processing.`;
             
+          // Generate sequential request number MCR-YYYYMMDD-NNN
+          const mcrDate = format(new Date(), 'yyyyMMdd');
+          const mcrCountResult = await tx.execute(sql`
+            SELECT COALESCE(MAX(CAST(SUBSTRING(request_number FROM 13 FOR 3) AS INTEGER)), 0) + 1 AS next_seq
+            FROM manual_credit_note_requests
+            WHERE request_number LIKE ${'MCR-' + mcrDate + '-%'}
+          `);
+          const mcrSeq = mcrCountResult.rows?.[0]?.next_seq || 1;
+          const requestNumber = `MCR-${mcrDate}-${String(mcrSeq).padStart(3, '0')}`;
+
           await tx.insert(manualCreditNoteRequests).values({
             salesReturnId: id,
+            requestNumber,
             reasonCode: !isSameMonth ? 'different_month' : 'old_return',
             requestedBy: req.user?.id,
             notes: reason,
