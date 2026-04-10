@@ -315,28 +315,31 @@ function requireRole(...allowedRoles: string[]) {
         return next();
       }
 
-      if (!user.roleId) {
-        console.log(`[AUDIT] User ${user.id} has no role assigned, denying access to ${req.path}`);
-        return res.status(403).json({ message: "Forbidden: No role assigned" });
+      // Get ALL roles assigned to this user (multi-role support)
+      const userRoles = await storage.getUserRoles(user.id);
+      if (userRoles.length === 0) {
+        // Fall back to legacy single role_id
+        if (!user.roleId) {
+          console.log(`[AUDIT] User ${user.id} has no role assigned, denying access to ${req.path}`);
+          return res.status(403).json({ message: "Forbidden: No role assigned" });
+        }
+        const legacyRole = await storage.getUserRole(user.roleId);
+        if (legacyRole) userRoles.push(legacyRole);
       }
 
-      // Get the user's role name from database
-      const role = await storage.getUserRole(user.roleId);
-      if (!role) {
-        console.error(`[AUDIT] Invalid roleId ${user.roleId} for user ${user.id}`);
-        return res.status(403).json({ message: "Forbidden: Invalid role" });
+      if (userRoles.length === 0) {
+        return res.status(403).json({ message: "Forbidden: No valid role found" });
       }
 
-      // System role bypass: if the role name is explicitly in the allowed list, grant access immediately.
-      // This means admin/manager/AccountsManager never need a DB permission row for any endpoint
-      // that explicitly lists them in requireRole(). Custom roles still go through DB permissions below.
-      if (allowedRoles.includes(role.name)) {
-        console.log(`[AUDIT] Role ${role.name} granted access to ${req.path} (system role match)`);
-        req.userRole = role.name;
+      // System role bypass: if ANY of the user's roles is in the allowed list, grant access immediately.
+      const matchingSystemRole = userRoles.find(r => allowedRoles.includes(r.name));
+      if (matchingSystemRole) {
+        console.log(`[AUDIT] Role ${matchingSystemRole.name} granted access to ${req.path} (system role match)`);
+        req.userRole = matchingSystemRole.name;
         return next();
       }
 
-      // Custom role path: check database permissions
+      // Custom role path: check database permissions across ALL roles (OR logic)
       const pathBase = req.path.split('?')[0]; // Remove query params
       let screenKey: string | undefined;
       
@@ -363,49 +366,48 @@ function requireRole(...allowedRoles: string[]) {
       }
       
       if (screenKey) {
-        // Check if the role has the appropriate permission for this action
-        const permission = await db.select()
+        // Check permissions across ALL the user's roles — grant if ANY role has the required permission
+        const roleIds = userRoles.map(r => r.id);
+        const allPerms = await db.select()
           .from(rolePermissions)
           .where(and(
-            eq(rolePermissions.roleId, user.roleId),
+            sql`${rolePermissions.roleId} = ANY(ARRAY[${sql.join(roleIds.map(id => sql`${id}`), sql`, `)}]::text[])`,
             eq(rolePermissions.screenKey, screenKey),
             eq(rolePermissions.recordStatus, 1), tc(rolePermissions)
-          ))
-          .limit(1);
+          ));
         
-        if (permission.length > 0) {
-          const perm = permission[0];
+        if (allPerms.length > 0) {
           const method = req.method.toUpperCase();
-          
-          // Check the appropriate permission based on HTTP method
           let hasRequiredPermission = false;
           let requiredAction = 'view';
           
           if (method === 'GET') {
-            hasRequiredPermission = perm.canView === 1;
+            hasRequiredPermission = allPerms.some(p => p.canView === 1);
             requiredAction = 'view';
           } else if (method === 'POST') {
-            hasRequiredPermission = perm.canCreate === 1;
+            hasRequiredPermission = allPerms.some(p => p.canCreate === 1);
             requiredAction = 'create';
           } else if (method === 'PUT' || method === 'PATCH') {
-            hasRequiredPermission = perm.canEdit === 1;
+            hasRequiredPermission = allPerms.some(p => p.canEdit === 1);
             requiredAction = 'edit';
           } else if (method === 'DELETE') {
-            hasRequiredPermission = perm.canDelete === 1;
+            hasRequiredPermission = allPerms.some(p => p.canDelete === 1);
             requiredAction = 'delete';
           }
           
           if (hasRequiredPermission) {
-            console.log(`[AUDIT] Role ${role.name} granted ${requiredAction} access to ${req.path} via screen permission ${screenKey}`);
-            req.userRole = role.name;
+            const roleNames = userRoles.map(r => r.name).join(', ');
+            console.log(`[AUDIT] Roles [${roleNames}] granted ${requiredAction} access to ${req.path} via screen permission ${screenKey}`);
+            req.userRole = userRoles[0].name;
             return next();
           } else {
-            console.log(`[AUDIT] Role ${role.name} denied ${requiredAction} access to ${req.path} - missing ${requiredAction} permission for ${screenKey}`);
+            console.log(`[AUDIT] Roles denied ${requiredAction} access to ${req.path} - missing ${requiredAction} permission for ${screenKey}`);
           }
         }
       }
       
-      console.log(`[AUDIT] User ${user.id} with role ${role.name} denied access to ${req.path} (requires: ${allowedRoles.join(', ')} or database permissions)`);
+      const roleNames = userRoles.map(r => r.name).join(', ');
+      console.log(`[AUDIT] User ${user.id} with roles [${roleNames}] denied access to ${req.path} (requires: ${allowedRoles.join(', ')} or database permissions)`);
       return res.status(403).json({ message: "Forbidden: Insufficient permissions" });
 
     } catch (error) {
@@ -435,22 +437,23 @@ async function hrPermissionMiddleware(req: any, res: any, next: any) {
     // Super-admin bypass
     if ((user as any).isSuperAdmin) return next();
 
-    if (!user.roleId) return res.status(403).json({ message: "Forbidden: No role assigned" });
+    // Get ALL roles assigned to this user (multi-role support)
+    const userRoles = await storage.getUserRoles(user.id);
+    if (userRoles.length === 0 && user.roleId) {
+      const lr = await storage.getUserRole(user.roleId);
+      if (lr) userRoles.push(lr);
+    }
+    if (userRoles.length === 0) return res.status(403).json({ message: "Forbidden: No role assigned" });
 
-    const role = await storage.getUserRole(user.roleId);
-    if (!role) return res.status(403).json({ message: "Forbidden: Invalid role" });
+    // If ANY role is a system role, grant full HR access
+    if (userRoles.some(r => HR_SYSTEM_ROLES_FULL_ACCESS.includes(r.name.toLowerCase()))) return next();
 
-    // System roles get full HR access without DB permission check
-    if (HR_SYSTEM_ROLES_FULL_ACCESS.includes(role.name.toLowerCase())) return next();
-
-    // Custom role: build the full path for lookup
-    const fullPath = req.originalUrl.split('?')[0]; // e.g. /api/hr/leave-applications/5/action
+    // Custom role path: build the full path for lookup
+    const fullPath = req.originalUrl.split('?')[0];
     let screenKey: string | undefined;
 
-    // Exact match first
     screenKey = endpointToScreenKey[fullPath];
 
-    // Prefix match (e.g. /api/hr/leave-applications/5/action → /api/hr/leave-applications)
     if (!screenKey) {
       for (const [endpoint, key] of Object.entries(endpointToScreenKey)) {
         if (fullPath.startsWith(endpoint + '/') || fullPath === endpoint) {
@@ -460,34 +463,33 @@ async function hrPermissionMiddleware(req: any, res: any, next: any) {
       }
     }
 
-    // No screen key means it's reference/lookup data — allow GET, deny writes for custom roles
+    // No screen key = reference/lookup data — allow GET, deny writes
     if (!screenKey) {
       if (req.method === 'GET') return next();
       return res.status(403).json({ message: "Forbidden: Insufficient permissions" });
     }
 
-    // Check DB permission for this role & screen
-    const permission = await db.select()
+    // Check DB permissions across ALL the user's roles (OR logic)
+    const roleIds = userRoles.map(r => r.id);
+    const allPerms = await db.select()
       .from(rolePermissions)
       .where(and(
-        eq(rolePermissions.roleId, user.roleId),
+        sql`${rolePermissions.roleId} = ANY(ARRAY[${sql.join(roleIds.map(id => sql`${id}`), sql`, `)}]::text[])`,
         eq(rolePermissions.screenKey, screenKey),
         eq(rolePermissions.recordStatus, 1), tc(rolePermissions)
-      ))
-      .limit(1);
+      ));
 
-    if (!permission.length) {
+    if (!allPerms.length) {
       return res.status(403).json({ message: "Forbidden: No permissions configured for this section" });
     }
 
-    const perm = permission[0];
     const method = req.method.toUpperCase();
     let hasPermission = false;
 
-    if (method === 'GET') hasPermission = perm.canView === 1;
-    else if (method === 'POST') hasPermission = perm.canCreate === 1;
-    else if (method === 'PUT' || method === 'PATCH') hasPermission = perm.canEdit === 1;
-    else if (method === 'DELETE') hasPermission = perm.canDelete === 1;
+    if (method === 'GET') hasPermission = allPerms.some(p => p.canView === 1);
+    else if (method === 'POST') hasPermission = allPerms.some(p => p.canCreate === 1);
+    else if (method === 'PUT' || method === 'PATCH') hasPermission = allPerms.some(p => p.canEdit === 1);
+    else if (method === 'DELETE') hasPermission = allPerms.some(p => p.canDelete === 1);
 
     if (hasPermission) return next();
     return res.status(403).json({ message: "Forbidden: Insufficient permissions for this action" });
@@ -1694,6 +1696,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const user = await storage.createUser(userData);
 
+      // Populate user_roles junction table for multi-role support
+      await storage.setUserRoles(user.id, [validRole.id], tenantId);
+
       // Audit log
       console.log(`[AUDIT] Admin ${req.user.id} created new user ${user.id} with role ${role}`);
 
@@ -1739,6 +1744,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ message: "Invalid role" });
         }
         await storage.updateUserRole(id, validRole.id);
+        // Sync user_roles for multi-role support
+        const tid: number = (req.session as any)?.tenantId ?? req.user?.tenantId ?? 1;
+        await storage.setUserRoles(id, [validRole.id], tid);
       }
 
       // Update other fields
@@ -1786,10 +1794,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
+      // Sync user_roles table too
+      const tenantId: number = (req.session as any)?.tenantId ?? req.user?.tenantId ?? 1;
+      await storage.setUserRoles(id, [validRole.id], tenantId);
       res.json(user);
     } catch (error) {
       console.error("Error updating user role:", error);
       res.status(500).json({ message: "Failed to update user role" });
+    }
+  });
+
+  // ── Multi-role assignment ──────────────────────────────────────────────────
+  // GET /api/users/:id/roles — returns all roles currently assigned to a user
+  app.get('/api/users/:id/roles', requireRole('admin'), async (req: any, res) => {
+    try {
+      const roles = await storage.getUserRoles(req.params.id);
+      res.json(roles);
+    } catch (error) {
+      console.error("Error fetching user roles:", error);
+      res.status(500).json({ message: "Failed to fetch user roles" });
+    }
+  });
+
+  // PUT /api/users/:id/roles — replaces all role assignments for a user
+  app.put('/api/users/:id/roles', requireRole('admin'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { roleIds } = req.body; // array of role IDs
+      if (!Array.isArray(roleIds) || roleIds.length === 0) {
+        return res.status(400).json({ message: "roleIds must be a non-empty array" });
+      }
+      const tenantId: number = (req.session as any)?.tenantId ?? req.user?.tenantId ?? 1;
+      await storage.setUserRoles(id, roleIds, tenantId);
+      const updatedRoles = await storage.getUserRoles(id);
+      console.log(`[AUDIT] Admin ${req.user.id} set roles for user ${id}: ${updatedRoles.map(r => r.name).join(', ')}`);
+      res.json(updatedRoles);
+    } catch (error) {
+      console.error("Error updating user roles:", error);
+      res.status(500).json({ message: "Failed to update user roles" });
     }
   });
 
@@ -17729,29 +17771,54 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       }
 
       const user = await storage.getUser(req.user.id);
-      if (!user || !user.roleId) {
-        return res.status(404).json({ message: "User or role not found" });
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
 
-      // Get the role details
-      const role = await storage.getRole(user.roleId);
-      if (!role) {
-        return res.status(404).json({ message: "Role not found" });
+      // Get ALL roles assigned to this user (multi-role support)
+      const userRoles = await storage.getUserRoles(user.id);
+      if (userRoles.length === 0 && user.roleId) {
+        const lr = await storage.getUserRole(user.roleId);
+        if (lr) userRoles.push(lr);
+      }
+      if (userRoles.length === 0) {
+        return res.status(404).json({ message: "No roles assigned" });
       }
 
-      // Get permissions for this role
-      const permissions = await storage.getRolePermissions(user.roleId);
+      // Determine the primary role name for display.
+      // System roles take precedence; otherwise use first assigned role.
+      const PRIO_ORDER = ['admin', 'manager', 'accountsmanager', 'operator', 'reviewer'];
+      const primaryRole = userRoles.sort((a, b) => {
+        const ai = PRIO_ORDER.indexOf(a.name.toLowerCase());
+        const bi = PRIO_ORDER.indexOf(b.name.toLowerCase());
+        return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+      })[0];
 
-      // Return role name and permissions
+      // Fetch permissions for ALL roles and union them (OR logic per screenKey)
+      const allRoleIds = userRoles.map(r => r.id);
+      const allPermsRaw = await db.select().from(rolePermissions).where(and(
+        sql`${rolePermissions.roleId} = ANY(ARRAY[${sql.join(allRoleIds.map(id => sql`${id}`), sql`, `)}]::text[])`,
+        eq(rolePermissions.recordStatus, 1), tc(rolePermissions)
+      ));
+
+      // Union: for each screenKey, OR all canView/canCreate/canEdit/canDelete across roles
+      const permMap = new Map<string, { canView: boolean; canCreate: boolean; canEdit: boolean; canDelete: boolean }>();
+      for (const p of allPermsRaw) {
+        const existing = permMap.get(p.screenKey) ?? { canView: false, canCreate: false, canEdit: false, canDelete: false };
+        permMap.set(p.screenKey, {
+          canView: existing.canView || p.canView === 1,
+          canCreate: existing.canCreate || p.canCreate === 1,
+          canEdit: existing.canEdit || p.canEdit === 1,
+          canDelete: existing.canDelete || p.canDelete === 1,
+        });
+      }
+
       res.json({
-        role: role.name,
-        roleId: user.roleId,
-        permissions: permissions.map(p => ({
-          screenKey: p.screenKey,
-          canView: p.canView === 1,
-          canCreate: p.canCreate === 1,
-          canEdit: p.canEdit === 1,
-          canDelete: p.canDelete === 1,
+        role: primaryRole.name,
+        roleId: primaryRole.id,
+        roles: userRoles.map(r => r.name),
+        permissions: Array.from(permMap.entries()).map(([screenKey, perms]) => ({
+          screenKey, ...perms
         }))
       });
     } catch (error) {

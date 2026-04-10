@@ -12,6 +12,7 @@ interface Permission {
 interface UserPermissions {
   role: string;
   roleId: string;
+  roles: string[];
   permissions: Permission[];
 }
 
@@ -26,10 +27,8 @@ export function usePermissions() {
 
   const hasPermission = (screenKey: string, action: 'view' | 'create' | 'edit' | 'delete' = 'view'): boolean => {
     if (!data?.permissions) return false;
-    
     const permission = data.permissions.find(p => p.screenKey === screenKey);
     if (!permission) return false;
-
     switch (action) {
       case 'view': return permission.canView;
       case 'create': return permission.canCreate;
@@ -52,14 +51,13 @@ export function usePermissions() {
 
   const canAccessScreen = (screenKey: string): boolean => {
     if (!data) return false;
-    
-    // 100% database driven - check database permissions only
     return hasPermission(screenKey, 'view');
   };
 
   return {
     role: data?.role || '',
     roleId: data?.roleId || '',
+    roles: data?.roles || (data?.role ? [data.role] : []),
     permissions: data?.permissions || [],
     isLoading,
     error,

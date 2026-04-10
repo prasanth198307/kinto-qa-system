@@ -305,7 +305,7 @@ function filterNavSectionsByPlan(sections: NavSection[], allowedNavItems: string
 }
 
 export function useFilteredNavigation(allNavSections: NavSection[]) {
-  const { permissions, role: roleName, isLoading: permissionsLoading } = usePermissions();
+  const { permissions, role: roleName, roles: allRoles, isLoading: permissionsLoading } = usePermissions();
   const { allowedNavItems, isLoading: planLoading } = usePlanFeatures();
   const lastValidRef = useRef<NavSection[]>([]);
   
@@ -316,7 +316,9 @@ export function useFilteredNavigation(allNavSections: NavSection[]) {
       : allNavSections;
 
     // System roles bypass role/permission filtering — only plan gating applies
-    if (roleName && SYSTEM_ROLES_FULL_ACCESS.includes(roleName.toLowerCase())) {
+    // Check ALL assigned roles: if ANY is a system role, grant full nav access
+    const rolesToCheck = allRoles.length > 0 ? allRoles : (roleName ? [roleName] : []);
+    if (rolesToCheck.some(r => SYSTEM_ROLES_FULL_ACCESS.includes(r.toLowerCase()))) {
       lastValidRef.current = planFiltered;
       return planFiltered;
     }

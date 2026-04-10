@@ -250,6 +250,8 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   getUserByResetToken(token: string): Promise<User | undefined>;
   getUserRole(roleId: string): Promise<{ id: string; name: string } | undefined>;
+  getUserRoles(userId: string): Promise<{ id: string; name: string }[]>;
+  setUserRoles(userId: string, roleIds: string[], tenantId: number): Promise<void>;
   getRoleByName(roleName: string): Promise<{ id: string; name: string } | undefined>;
   createUser(user: InsertUser): Promise<User>;
   upsertUser(user: UpsertUser): Promise<User>;
@@ -949,26 +951,30 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllUsers(): Promise<any[]> {
-    const results = await db
-      .select({
-        id: users.id,
-        username: users.username,
-        email: users.email,
-        firstName: users.firstName,
-        lastName: users.lastName,
-        profileImageUrl: users.profileImageUrl,
-        roleId: users.roleId,
-        roleName: roles.name,
-        recordStatus: users.recordStatus,
-        createdAt: users.createdAt,
-        updatedAt: users.updatedAt,
-      })
-      .from(users)
-      .leftJoin(roles, eq(users.roleId, roles.id))
-      .where(and(eq(users.recordStatus, 1), tc(users)));
-    return results.map(r => ({
+    const results = await db.execute(sql`
+      SELECT
+        u.id, u.username, u.email, u.first_name AS "firstName", u.last_name AS "lastName",
+        u.profile_image_url AS "profileImageUrl", u.role_id AS "roleId",
+        r.name AS "roleName", u.record_status AS "recordStatus",
+        u.created_at AS "createdAt", u.updated_at AS "updatedAt",
+        COALESCE(
+          (
+            SELECT ARRAY_AGG(r2.name ORDER BY r2.name)
+            FROM user_roles ur2
+            JOIN roles r2 ON r2.id = ur2.role_id
+            WHERE ur2.user_id = u.id AND ur2.record_status = 1 AND r2.record_status = 1
+          ),
+          CASE WHEN r.name IS NOT NULL THEN ARRAY[r.name] ELSE ARRAY[]::text[] END
+        ) AS "roleNames"
+      FROM users u
+      LEFT JOIN roles r ON r.id = u.role_id
+      WHERE u.record_status = 1 AND u.tenant_id = current_setting('app.tenant_id', true)::int
+      ORDER BY u.created_at
+    `);
+    return (results.rows as any[]).map(r => ({
       ...r,
-      role: r.roleName || 'operator'
+      role: r.roleName || 'operator',
+      roleNames: r.roleNames || (r.roleName ? [r.roleName] : ['operator']),
     }));
   }
 
@@ -1014,6 +1020,35 @@ export class DatabaseStorage implements IStorage {
       .from(roles)
       .where(and(eq(roles.id, roleId), eq(roles.recordStatus, 1), tc(roles)));
     return role;
+  }
+
+  async getUserRoles(userId: string): Promise<{ id: string; name: string }[]> {
+    const result = await db.execute(sql`
+      SELECT r.id, r.name
+      FROM user_roles ur
+      JOIN roles r ON r.id = ur.role_id
+      WHERE ur.user_id = ${userId}
+        AND ur.record_status = 1
+        AND r.record_status = 1
+      ORDER BY r.name
+    `);
+    return result.rows as { id: string; name: string }[];
+  }
+
+  async setUserRoles(userId: string, roleIds: string[], tenantId: number): Promise<void> {
+    // Remove all current role assignments for this user
+    await db.execute(sql`DELETE FROM user_roles WHERE user_id = ${userId}`);
+    // Insert the new set
+    for (const roleId of roleIds) {
+      await db.execute(sql`
+        INSERT INTO user_roles (user_id, role_id, tenant_id)
+        VALUES (${userId}, ${roleId}, ${tenantId})
+        ON CONFLICT (user_id, role_id) DO UPDATE SET record_status = 1
+      `);
+    }
+    // Keep users.role_id pointing to the primary (first) role for backward compat
+    const primaryRoleId = roleIds[0] ?? null;
+    await db.execute(sql`UPDATE users SET role_id = ${primaryRoleId} WHERE id = ${userId}`);
   }
 
   async getRoleByName(roleName: string): Promise<{ id: string; name: string } | undefined> {
