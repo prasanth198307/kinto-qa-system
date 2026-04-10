@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Switch, Route, useLocation, useSearch } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider, useMutation, useQuery } from "@tanstack/react-query";
@@ -286,10 +286,35 @@ function OperatorDashboard() {
   );
 }
 
+const DASHBOARD_VALID_TABS = [
+  'overview', 'invoices', 'gatepasses', 'raw-material-issuance', 'products', 'inventory',
+  'production', 'finished-goods', 'raw-materials', 'checklists', 'users', 'machines',
+  'maintenance', 'reports', 'sales-dashboard', 'vendor-analytics', 'sales-orders',
+  'checklist-assignments', 'machine-startup-reminders', 'whatsapp-analytics',
+  'product-categories', 'product-types', 'production-entries', 'production-reconciliations',
+  'variance-analytics', 'purchase-orders', 'pm-history', 'role-permissions',
+  'machine-types', 'pm-templates', 'uom', 'raw-material-types', 'template-management',
+  'notification-settings', 'data-import', 'spare-parts-stock', 'roles', 'templates',
+  'sales-returns', 'pending-payments', 'payment-management', 'credit-notes',
+  'cancelled-invoices', 'write-off-report', 'dispatch-tracking', 'vendor-types',
+  'spare-parts', 'tds-management', 'purchase-returns', 'scrap-management',
+  'hr-employees', 'hr-attendance', 'hr-leaves', 'hr-payroll', 'hr-reports',
+  'hr-departments', 'hr-settings', 'hr-recruitment', 'hr-exit', 'hr-tds',
+  'crm-leads', 'accounting', 'chart-of-accounts', 'ledger-entries', 'expense-management',
+  'cash-register', 'document-management',
+];
+
 function ReviewerDashboard() {
   const { logoutMutation } = useAuth();
   const [, setLocation] = useLocation();
-  const [activeView, setActiveView] = useState('overview');
+  const search = useSearch();
+
+  const urlTab = new URLSearchParams(search).get('tab');
+  const activeView = (urlTab && DASHBOARD_VALID_TABS.includes(urlTab)) ? urlTab : 'overview';
+
+  const setActiveView = useCallback((view: string) => {
+    setLocation(view === 'overview' ? '/' : `/?tab=${view}`);
+  }, [setLocation]);
 
   const handleLogout = () => {
     logoutMutation.mutate();
@@ -317,9 +342,7 @@ function ReviewerDashboard() {
       notificationCount={0}
       navSections={resolvedNav}
       activeView={activeView}
-      onNavigate={(viewId) => {
-        setActiveView(viewId);
-      }}
+      onNavigate={setActiveView}
     >
       {renderContent()}
     </DashboardShell>
@@ -330,35 +353,18 @@ function ManagerDashboard() {
   const { logoutMutation } = useAuth();
   const [location, setLocation] = useLocation();
   const search = useSearch();
-  const [activeView, setActiveView] = useState('overview');
   const mockRecords = [
     { id: '1', machine: 'RFC Machine', date: 'Oct 31, 2025', shift: 'Morning', operator: 'Ramesh Kumar', status: 'in_review' as const },
   ];
 
-  // Handle tab parameter from URL (for Cancel & Reissue flow and other deep links)
-  useEffect(() => {
-    const params = new URLSearchParams(search);
-    const tab = params.get('tab');
-    
-    if (tab) {
-      // Map valid tab values to activeView
-      const validTabs = [
-        'overview', 'invoices', 'gatepasses', 'raw-material-issuance', 'products', 'inventory',
-        'production', 'finished-goods', 'raw-materials', 'checklists', 'users', 'machines',
-        'maintenance', 'reports', 'sales-dashboard', 'vendor-analytics', 'sales-orders',
-        'checklist-assignments', 'machine-startup-reminders', 'whatsapp-analytics',
-        'product-categories', 'product-types', 'production-entries', 'production-reconciliations',
-        'variance-analytics', 'purchase-orders', 'pm-history', 'role-permissions',
-        'machine-types', 'pm-templates', 'uom', 'raw-material-types', 'template-management',
-        'notification-settings', 'data-import', 'spare-parts-stock', 'roles', 'templates',
-        'sales-returns', 'pending-payments', 'payment-management', 'credit-notes',
-        'cancelled-invoices', 'write-off-report', 'dispatch-tracking',
-      ];
-      if (validTabs.includes(tab)) {
-        setActiveView(tab);
-      }
-    }
-  }, [search]);
+  // Derive activeView directly from URL — synchronous, no useEffect timing issues
+  const urlTab = new URLSearchParams(search).get('tab');
+  const activeView = (urlTab && DASHBOARD_VALID_TABS.includes(urlTab)) ? urlTab : 'overview';
+
+  // setActiveView updates URL so activeView derives correctly on next render
+  const setActiveView = useCallback((view: string) => {
+    setLocation(view === 'overview' ? '/' : `/?tab=${view}`);
+  }, [setLocation]);
 
   const handleLogout = () => {
     logoutMutation.mutate();
@@ -439,6 +445,103 @@ function ManagerDashboard() {
         return <SalesOrdersPage showHeader={false} />;
       case 'write-off-report':
         return <WriteOffReport />;
+      case 'sales-dashboard':
+        return (
+          <div className="p-4">
+            <SalesDashboard />
+          </div>
+        );
+      case 'sales-returns':
+        return <SalesReturns />;
+      case 'pending-payments':
+        return <PendingPayments />;
+      case 'payment-management':
+        return <PaymentManagement />;
+      case 'credit-notes':
+        return <CreditNotes />;
+      case 'product-categories':
+        return <ProductCategories />;
+      case 'product-types':
+        return <ProductTypes />;
+      case 'vendor-types':
+        return <VendorTypes />;
+      case 'spare-parts':
+        return (
+          <div className="p-4">
+            <AdminSparePartsManagement />
+          </div>
+        );
+      case 'machines':
+        return (
+          <div className="p-4">
+            <AdminMachineConfig />
+          </div>
+        );
+      case 'machine-types':
+        return (
+          <div className="p-4">
+            <AdminMachineTypeConfig />
+          </div>
+        );
+      case 'pm-templates':
+        return (
+          <div className="p-4">
+            <AdminPMTaskListTemplates />
+          </div>
+        );
+      case 'pm-history':
+        return (
+          <div className="p-4">
+            <PMHistoryView />
+          </div>
+        );
+      case 'maintenance':
+        return (
+          <div className="p-4">
+            <MaintenanceSchedule tasks={[]} onComplete={() => {}} />
+          </div>
+        );
+      case 'checklists':
+        return (
+          <div className="p-4">
+            <AdminChecklistBuilder />
+          </div>
+        );
+      case 'checklist-assignments':
+        return (
+          <div className="p-4">
+            <ManagerChecklistAssignment />
+          </div>
+        );
+      case 'machine-startup-reminders':
+        return <MachineStartupReminders />;
+      case 'whatsapp-analytics':
+        return <WhatsAppAnalytics />;
+      case 'notification-settings':
+        return <NotificationSettings />;
+      case 'data-import':
+        return <DataImport />;
+      case 'users':
+        return (
+          <div className="p-4">
+            <AdminUserManagement />
+          </div>
+        );
+      case 'role-permissions':
+        return (
+          <div className="p-4">
+            <RoleManagement />
+          </div>
+        );
+      case 'template-management':
+        return (
+          <div className="p-4">
+            <TemplateManagement />
+          </div>
+        );
+      case 'vendor-analytics':
+        setLocation('/vendor-analytics');
+        return null;
       case 'reports':
         return <Reports showHeader={false} />;
       default:
@@ -477,34 +580,18 @@ function CustomRoleDashboard({ roleName }: { roleName: string }) {
   const { permissions, role: userRoleName, isLoading: permissionsLoading, error: permissionsError } = usePermissions();
   const [location, setLocation] = useLocation();
   const search = useSearch();
-  const [activeView, setActiveView] = useState('overview');
   const [isPMDialogOpen, setIsPMDialogOpen] = useState(false);
   const [isExecutionDialogOpen, setIsExecutionDialogOpen] = useState(false);
   const [selectedPlanForExecution, setSelectedPlanForExecution] = useState<any>(null);
 
-  // Handle tab parameter from URL - useSearch() from wouter tracks query string reactively
-  useEffect(() => {
-    const params = new URLSearchParams(search);
-    const tab = params.get('tab');
-    
-    if (tab) {
-      const validTabs = [
-        'overview', 'invoices', 'gatepasses', 'raw-material-issuance', 'products', 'inventory',
-        'production', 'finished-goods', 'raw-materials', 'checklists', 'users', 'machines',
-        'maintenance', 'reports', 'sales-dashboard', 'vendor-analytics', 'sales-orders',
-        'checklist-assignments', 'machine-startup-reminders', 'whatsapp-analytics',
-        'product-categories', 'product-types', 'production-entries', 'production-reconciliations',
-        'variance-analytics', 'purchase-orders', 'pm-history', 'role-permissions',
-        'machine-types', 'pm-templates', 'uom', 'raw-material-types', 'template-management',
-        'notification-settings', 'data-import', 'spare-parts-stock', 'roles', 'templates',
-        'sales-returns', 'pending-payments', 'payment-management', 'credit-notes',
-        'cancelled-invoices', 'write-off-report', 'dispatch-tracking',
-      ];
-      if (validTabs.includes(tab)) {
-        setActiveView(tab);
-      }
-    }
-  }, [search]);
+  // Derive activeView directly from URL — synchronous, no useEffect timing issues
+  const urlTab = new URLSearchParams(search).get('tab');
+  const activeView = (urlTab && DASHBOARD_VALID_TABS.includes(urlTab)) ? urlTab : 'overview';
+
+  // setActiveView updates URL so activeView derives correctly on next render
+  const setActiveView = useCallback((view: string) => {
+    setLocation(view === 'overview' ? '/' : `/?tab=${view}`);
+  }, [setLocation]);
 
   const { data: maintenancePlans = [] } = useQuery<any[]>({
     queryKey: ['/api/maintenance-plans'],
@@ -776,35 +863,18 @@ function AdminDashboard() {
   const { logoutMutation } = useAuth();
   const [location, setLocation] = useLocation();
   const search = useSearch();
-  const [activeView, setActiveView] = useState('overview');
   const [isPMDialogOpen, setIsPMDialogOpen] = useState(false);
   const [isExecutionDialogOpen, setIsExecutionDialogOpen] = useState(false);
   const [selectedPlanForExecution, setSelectedPlanForExecution] = useState<any>(null);
 
-  // Handle tab parameter from URL - useSearch() from wouter tracks query string reactively
-  useEffect(() => {
-    const params = new URLSearchParams(search);
-    const tab = params.get('tab');
-    
-    if (tab) {
-      // Map valid tab values to activeView - include all tab values used in navigation
-      const validTabs = [
-        'overview', 'invoices', 'gatepasses', 'raw-material-issuance', 'products', 'inventory',
-        'production', 'finished-goods', 'raw-materials', 'checklists', 'users', 'machines',
-        'maintenance', 'reports', 'sales-dashboard', 'vendor-analytics', 'sales-orders',
-        'checklist-assignments', 'machine-startup-reminders', 'whatsapp-analytics',
-        'product-categories', 'product-types', 'production-entries', 'production-reconciliations',
-        'variance-analytics', 'purchase-orders', 'pm-history', 'role-permissions',
-        'machine-types', 'pm-templates', 'uom', 'raw-material-types', 'template-management',
-        'notification-settings', 'data-import', 'spare-parts-stock', 'roles', 'templates',
-        'sales-returns', 'pending-payments', 'payment-management', 'credit-notes',
-        'cancelled-invoices', 'write-off-report', 'dispatch-tracking',
-      ];
-      if (validTabs.includes(tab)) {
-        setActiveView(tab);
-      }
-    }
-  }, [search]);
+  // Derive activeView directly from URL — synchronous, no useEffect timing issues
+  const urlTab = new URLSearchParams(search).get('tab');
+  const activeView = (urlTab && DASHBOARD_VALID_TABS.includes(urlTab)) ? urlTab : 'overview';
+
+  // setActiveView updates URL so activeView derives correctly on next render
+  const setActiveView = useCallback((view: string) => {
+    setLocation(view === 'overview' ? '/' : `/?tab=${view}`);
+  }, [setLocation]);
 
   const { data: maintenancePlans = [] } = useQuery<any[]>({
     queryKey: ['/api/maintenance-plans'],
