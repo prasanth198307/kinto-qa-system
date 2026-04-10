@@ -153,12 +153,73 @@ router.get("/attendance", requireESS, async (req: any, res) => {
   const tid = getEssTenantId(req);
   const { month, year } = req.query;
   try {
-    let q = sql`SELECT * FROM hr_attendance WHERE employee_id=${eid} AND tenant_id=${tid}`;
+    let rows;
     if (month && year) {
-      q = sql`${q} AND month=${Number(month)} AND year=${Number(year)}`;
+      rows = await db.execute(sql`
+        SELECT * FROM hr_attendance
+        WHERE employee_id=${eid} AND tenant_id=${tid} AND record_status=1
+          AND EXTRACT(MONTH FROM date)=${Number(month)} AND EXTRACT(YEAR FROM date)=${Number(year)}
+        ORDER BY date DESC
+      `);
+    } else {
+      rows = await db.execute(sql`
+        SELECT * FROM hr_attendance
+        WHERE employee_id=${eid} AND tenant_id=${tid} AND record_status=1
+        ORDER BY date DESC LIMIT 60
+      `);
     }
-    q = sql`${q} ORDER BY year DESC, month DESC, date DESC`;
-    res.json((await db.execute(q)).rows);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// Self attendance marking — Check In / Check Out
+router.post("/attendance/mark", requireESS, async (req: any, res) => {
+  const eid = getEssEmployeeId(req);
+  const tid = getEssTenantId(req);
+  try {
+    const now = new Date();
+    const todayStr = now.toISOString().split("T")[0]; // YYYY-MM-DD
+    const timeStr = now.toTimeString().split(" ")[0].substring(0, 5); // HH:MM
+
+    // Check if record already exists for today
+    const existing = await db.execute(sql`
+      SELECT * FROM hr_attendance
+      WHERE employee_id=${eid} AND tenant_id=${tid} AND date=${todayStr} AND record_status=1
+    `);
+
+    if (existing.rows.length === 0) {
+      // No record yet → Check In
+      await db.execute(sql`
+        INSERT INTO hr_attendance (tenant_id, employee_id, date, status, check_in_time, marked_by)
+        VALUES (${tid}, ${eid}, ${todayStr}, 'present', ${timeStr}, 'employee')
+      `);
+      return res.json({ action: "checked_in", time: timeStr });
+    }
+
+    const rec = existing.rows[0] as any;
+    if (rec.check_in_time && !rec.check_out_time) {
+      // Already checked in, not yet out → Check Out
+      // Calculate working hours
+      const [inH, inM] = (rec.check_in_time as string).split(":").map(Number);
+      const [outH, outM] = timeStr.split(":").map(Number);
+      const hrs = Math.round(((outH * 60 + outM) - (inH * 60 + inM)) / 6) / 10; // 1 decimal
+      await db.execute(sql`
+        UPDATE hr_attendance
+        SET check_out_time=${timeStr}, working_hours=${hrs > 0 ? hrs : 0}, marked_by='employee'
+        WHERE id=${rec.id} AND tenant_id=${tid}
+      `);
+      return res.json({ action: "checked_out", time: timeStr, hours: hrs > 0 ? hrs : 0 });
+    }
+
+    if (rec.check_in_time && rec.check_out_time) {
+      return res.json({ action: "already_done", check_in: rec.check_in_time, check_out: rec.check_out_time });
+    }
+
+    // Record exists but no check_in_time (admin-created) → update with check-in
+    await db.execute(sql`
+      UPDATE hr_attendance SET check_in_time=${timeStr}, marked_by='employee', status='present' WHERE id=${rec.id} AND tenant_id=${tid}
+    `);
+    return res.json({ action: "checked_in", time: timeStr });
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 

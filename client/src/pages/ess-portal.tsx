@@ -364,6 +364,21 @@ export default function EssPortal() {
     enabled: !!me,
   });
 
+  // Today's attendance status (for check-in/out card)
+  const todayStr = new Date().toISOString().split("T")[0];
+  const todayMonth = String(new Date().getMonth() + 1);
+  const todayYear = String(new Date().getFullYear());
+  const todayRec = (attendanceData as any[]).find((a: any) => String(a.date).split("T")[0] === todayStr);
+
+  const markAttendance = useMutation({
+    mutationFn: () => essFetch("/attendance/mark", { method: "POST" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["ess-attendance"] });
+      toast({ title: "Attendance marked successfully" });
+    },
+    onError: () => toast({ title: "Failed to mark attendance", variant: "destructive" }),
+  });
+
   // Redirect to login if not authenticated
   useEffect(() => {
     if (meError) setLocation("/ess");
@@ -406,9 +421,9 @@ export default function EssPortal() {
   const ALL_NAV_ITEMS = [
     { id: "home",        label: "Home",            icon: Home,         types: ["permanent", "consultant", "contract", "intern"] },
     { id: "payslips",    label: "Pay Slips",        icon: IndianRupee,  types: ["permanent", "consultant", "contract", "intern"] },
-    { id: "attendance",  label: "Attendance",       icon: Calendar,     types: ["permanent", "contract", "intern"] },
+    { id: "attendance",  label: "Attendance",       icon: Calendar,     types: ["permanent", "consultant", "contract", "intern"] },
     { id: "leaves",      label: "Leave",            icon: Clock,        types: ["permanent", "intern"] },
-    { id: "declaration", label: "Tax Declaration",  icon: Shield,       types: ["permanent"] },
+    { id: "declaration", label: "Tax Declaration",  icon: Shield,       types: ["permanent", "consultant", "contract", "intern"] },
     { id: "profile",     label: "My Profile",       icon: User,         types: ["permanent", "consultant", "contract", "intern"] },
   ];
 
@@ -582,8 +597,57 @@ export default function EssPortal() {
         {/* ── ATTENDANCE ── */}
         {tab === "attendance" && (
           <div className="space-y-4">
+            {/* ── Today's Check-In / Check-Out Card ── */}
+            {attMonth === todayMonth && attYear === todayYear && (
+              <Card className="border-primary/20 bg-primary/5">
+                <CardContent className="pt-4">
+                  <div className="flex items-center justify-between flex-wrap gap-3">
+                    <div>
+                      <p className="text-sm font-semibold">Today — {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}</p>
+                      {todayRec?.check_in_time && (
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          In: <span className="font-medium text-foreground">{todayRec.check_in_time}</span>
+                          {todayRec.check_out_time && <> &nbsp;·&nbsp; Out: <span className="font-medium text-foreground">{todayRec.check_out_time}</span></>}
+                          {todayRec.working_hours && <> &nbsp;·&nbsp; <span className="font-medium text-green-600">{todayRec.working_hours}h worked</span></>}
+                        </p>
+                      )}
+                      {!todayRec?.check_in_time && (
+                        <p className="text-xs text-muted-foreground mt-0.5">Not yet checked in today</p>
+                      )}
+                    </div>
+                    <div>
+                      {(!todayRec || !todayRec.check_in_time) && (
+                        <Button
+                          size="sm"
+                          onClick={() => markAttendance.mutate()}
+                          disabled={markAttendance.isPending}
+                          data-testid="btn-check-in"
+                        >
+                          Check In
+                        </Button>
+                      )}
+                      {todayRec?.check_in_time && !todayRec?.check_out_time && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => markAttendance.mutate()}
+                          disabled={markAttendance.isPending}
+                          data-testid="btn-check-out"
+                        >
+                          Check Out
+                        </Button>
+                      )}
+                      {todayRec?.check_in_time && todayRec?.check_out_time && (
+                        <span className="text-xs text-muted-foreground">Attendance complete for today</span>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             <div className="flex items-center justify-between flex-wrap gap-2">
-              <h2 className="font-semibold">Attendance</h2>
+              <h2 className="font-semibold">Monthly View</h2>
               <div className="flex gap-2">
                 <Select value={attMonth} onValueChange={setAttMonth}>
                   <SelectTrigger className="h-9 w-36"><SelectValue /></SelectTrigger>
@@ -591,7 +655,7 @@ export default function EssPortal() {
                 </Select>
                 <Select value={attYear} onValueChange={setAttYear}>
                   <SelectTrigger className="h-9 w-28"><SelectValue /></SelectTrigger>
-                  <SelectContent>{[2025,2024,2023].map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
+                  <SelectContent>{[2026,2025,2024,2023].map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
             </div>
