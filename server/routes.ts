@@ -415,6 +415,89 @@ function requireRole(...allowedRoles: string[]) {
   };
 }
 
+// ── HR Permission Middleware ──────────────────────────────────────────────────
+// Applies role-based permissions to all HR module routes.
+// System roles (admin, manager, accountsmanager) get full access.
+// Custom roles are checked against the DB role_permissions table.
+// Endpoints NOT in endpointToScreenKey (e.g., reference-data like /departments)
+// are treated as "view-only reference data" — any authenticated user can GET them,
+// but POST/PUT/DELETE require explicit permissions for custom roles.
+const HR_SYSTEM_ROLES_FULL_ACCESS = ['admin', 'manager', 'accountsmanager'];
+
+async function hrPermissionMiddleware(req: any, res: any, next: any) {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  try {
+    const user = await storage.getUser(req.user.id);
+    if (!user) return res.status(401).json({ message: "Unauthorized: User not found" });
+
+    // Super-admin bypass
+    if ((user as any).isSuperAdmin) return next();
+
+    if (!user.roleId) return res.status(403).json({ message: "Forbidden: No role assigned" });
+
+    const role = await storage.getUserRole(user.roleId);
+    if (!role) return res.status(403).json({ message: "Forbidden: Invalid role" });
+
+    // System roles get full HR access without DB permission check
+    if (HR_SYSTEM_ROLES_FULL_ACCESS.includes(role.name.toLowerCase())) return next();
+
+    // Custom role: build the full path for lookup
+    const fullPath = req.originalUrl.split('?')[0]; // e.g. /api/hr/leave-applications/5/action
+    let screenKey: string | undefined;
+
+    // Exact match first
+    screenKey = endpointToScreenKey[fullPath];
+
+    // Prefix match (e.g. /api/hr/leave-applications/5/action → /api/hr/leave-applications)
+    if (!screenKey) {
+      for (const [endpoint, key] of Object.entries(endpointToScreenKey)) {
+        if (fullPath.startsWith(endpoint + '/') || fullPath === endpoint) {
+          screenKey = key;
+          break;
+        }
+      }
+    }
+
+    // No screen key means it's reference/lookup data — allow GET, deny writes for custom roles
+    if (!screenKey) {
+      if (req.method === 'GET') return next();
+      return res.status(403).json({ message: "Forbidden: Insufficient permissions" });
+    }
+
+    // Check DB permission for this role & screen
+    const permission = await db.select()
+      .from(rolePermissions)
+      .where(and(
+        eq(rolePermissions.roleId, user.roleId),
+        eq(rolePermissions.screenKey, screenKey),
+        eq(rolePermissions.recordStatus, 1), tc(rolePermissions)
+      ))
+      .limit(1);
+
+    if (!permission.length) {
+      return res.status(403).json({ message: "Forbidden: No permissions configured for this section" });
+    }
+
+    const perm = permission[0];
+    const method = req.method.toUpperCase();
+    let hasPermission = false;
+
+    if (method === 'GET') hasPermission = perm.canView === 1;
+    else if (method === 'POST') hasPermission = perm.canCreate === 1;
+    else if (method === 'PUT' || method === 'PATCH') hasPermission = perm.canEdit === 1;
+    else if (method === 'DELETE') hasPermission = perm.canDelete === 1;
+
+    if (hasPermission) return next();
+    return res.status(403).json({ message: "Forbidden: Insufficient permissions for this action" });
+
+  } catch (err) {
+    console.error('[HR PERM] Error:', err);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+}
+
 // Helper function to auto-calculate product fields
 function calculateProductFields(data: any) {
   const result = { ...data };
@@ -1277,8 +1360,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register WhatsApp webhook routes (must be before authentication)
   app.use('/api/whatsapp', whatsappWebhookRouter);
 
-  // HR Module routes
-  app.use('/api/hr', hrRouter);
+  // HR Module routes — permission middleware enforces role-based access for custom roles
+  app.use('/api/hr', hrPermissionMiddleware, hrRouter);
   app.use('/api/crm', crmRouter);
   app.use('/api/ess', essRouter);
 
