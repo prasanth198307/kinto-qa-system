@@ -221,6 +221,26 @@ app.use((req, res, next) => {
     console.error('[USER_ROLES MIGRATION ERROR]', err);
   }
 
+  // ─── sales_return_items missing columns migration ────────────────────────
+  // Adds bottles_per_case, cases_returned, loose_bottles_returned,
+  // verified_quantity, variance_reason columns if they are missing.
+  // These exist in the Drizzle schema but were never applied to older DBs.
+  try {
+    const { db: dbInst2 } = await import("./db");
+    const { sql: sqlTag2 } = await import("drizzle-orm");
+    await dbInst2.execute(sqlTag2`
+      ALTER TABLE sales_return_items
+        ADD COLUMN IF NOT EXISTS bottles_per_case INTEGER,
+        ADD COLUMN IF NOT EXISTS cases_returned INTEGER,
+        ADD COLUMN IF NOT EXISTS loose_bottles_returned INTEGER DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS verified_quantity INTEGER,
+        ADD COLUMN IF NOT EXISTS variance_reason VARCHAR(255)
+    `);
+    console.log('[SALES_RETURN_ITEMS MIGRATION] Columns OK');
+  } catch (err) {
+    console.error('[SALES_RETURN_ITEMS MIGRATION ERROR]', err);
+  }
+
   // ─── Daily tenant backup cron (2:00 AM daily) ────────────────────────────
   try {
     const cron = (await import('node-cron')).default;
