@@ -701,7 +701,7 @@ ${invoice.shipToName || invoice.shipToAddress ? `
             .items-table th { background: #e8e8e8; font-weight: bold; font-size: 9px; }
             .total-row td { font-weight: bold; background: #f5f5f5; }
 
-            .summary-section { display: flex; justify-content: space-between; margin-bottom: 10px; gap: 10px; }
+            .summary-section { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; gap: 10px; }
             .hsn-table-wrapper { flex: 1; }
             .totals-box { flex: 0 0 200px; }
             .totals-table { width: 100%; border-collapse: collapse; font-size: 10px; }
@@ -712,7 +712,7 @@ ${invoice.shipToName || invoice.shipToAddress ? `
             .hsn-table .total-row td { font-weight: bold; background: #f5f5f5; }
 
             /* Terms & Payment Grid (Two Columns) */
-            .terms-payment-grid { display: grid; grid-template-columns: 1fr 200px; gap: 10px; margin-bottom: 10px; }
+            .terms-payment-grid { display: grid; grid-template-columns: 1fr 200px; align-items: start; gap: 10px; margin-bottom: 10px; }
 
             /* Payment Summary */
             .payment-summary { border: 1px solid #000; padding: 8px; }

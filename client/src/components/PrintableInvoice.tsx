@@ -779,6 +779,7 @@ ${invoice.shipToName || invoice.shipToAddress ? `
             .summary-section {
               display: flex;
               justify-content: space-between;
+              align-items: flex-start;
               margin-bottom: 10px;
               gap: 10px;
             }
@@ -830,6 +831,7 @@ ${invoice.shipToName || invoice.shipToAddress ? `
             .terms-payment-grid {
               display: grid;
               grid-template-columns: 1fr 200px;
+              align-items: start;
               gap: 10px;
               margin-bottom: 10px;
             }
