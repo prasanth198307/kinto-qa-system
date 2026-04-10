@@ -314,7 +314,7 @@ export default function VendorHistoryDetailPage() {
       { key: 'c4', width: 18 }, { key: 'c5', width: 18 }, { key: 'c6', width: 18 },
     ];
     addHeaderBlock(ws1, 6, 'UNPAID INVOICES — CLUSTER WISE');
-    const h1 = ws1.addRow(['Invoice #', 'Date', 'Cluster / Buyer', 'Invoice Amount', 'Settled', 'Outstanding']); h1.height = 20;
+    const h1 = ws1.addRow(['Invoice #', 'Date', 'Cluster / Buyer', 'Invoice Amount', 'Settled (incl. CN)', 'Outstanding']); h1.height = 20;
     h1.eachCell(c => { c.font = { bold: true, size: 10, color: { argb: WHITE } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } }; c.alignment = { vertical: 'middle', indent: 1 }; });
     [4,5,6].forEach(i => { h1.getCell(i).alignment = { vertical: 'middle', horizontal: 'right' }; });
 
@@ -328,7 +328,7 @@ export default function VendorHistoryDetailPage() {
       cr.getCell(6).numFmt = '₹#,##0.00'; cr.getCell(6).alignment = { vertical: 'middle', horizontal: 'right' };
       // Invoice detail rows — level 1 (collapsible under the cluster)
       invs.forEach(inv => {
-        const dr = ws1.addRow([inv.invoiceNumber, new Date(inv.invoiceDate).toLocaleDateString('en-IN'), inv.buyerName, inv.effectiveTotal / 100, inv.totalSettled / 100, inv.outstanding / 100]);
+        const dr = ws1.addRow([inv.invoiceNumber, new Date(inv.invoiceDate).toLocaleDateString('en-IN'), inv.buyerName, inv.totalAmount / 100, (inv.totalSettled + (inv.totalCredits || 0)) / 100, inv.outstanding / 100]);
         dr.height = 15;
         dr.outlineLevel = 1;           // ← collapsible group
         dr.hidden = true;              // ← starts collapsed; click [+] in Excel to expand
@@ -1841,7 +1841,7 @@ export default function VendorHistoryDetailPage() {
                           <TableHead>Date</TableHead>
                           <TableHead>Cluster / Buyer</TableHead>
                           <TableHead className="text-right">Invoice Amt</TableHead>
-                          <TableHead className="text-right">Settled</TableHead>
+                          <TableHead className="text-right">Settled (incl. CN)</TableHead>
                           <TableHead className="text-right">Outstanding</TableHead>
                           <TableHead>Status</TableHead>
                         </TableRow>
@@ -1864,8 +1864,8 @@ export default function VendorHistoryDetailPage() {
                                     <Badge variant="outline" className="text-xs">{invs.length} invoice{invs.length !== 1 ? 's' : ''}</Badge>
                                   </div>
                                 </TableCell>
-                                <TableCell className="text-right font-medium">{formatCurrency(invs.reduce((s, i) => s + i.effectiveTotal, 0))}</TableCell>
-                                <TableCell className="text-right text-green-600 font-medium">{formatCurrency(invs.reduce((s, i) => s + i.totalSettled, 0))}</TableCell>
+                                <TableCell className="text-right font-medium">{formatCurrency(invs.reduce((s, i) => s + i.totalAmount, 0))}</TableCell>
+                                <TableCell className="text-right text-green-600 font-medium">{formatCurrency(invs.reduce((s, i) => s + i.totalSettled + (i.totalCredits || 0), 0))}</TableCell>
                                 <TableCell className="text-right font-bold text-orange-600">{formatCurrency(clusterOutstanding)}</TableCell>
                                 <TableCell></TableCell>
                               </TableRow>
@@ -1876,12 +1876,19 @@ export default function VendorHistoryDetailPage() {
                                   <TableCell className="font-mono font-medium">{inv.invoiceNumber}</TableCell>
                                   <TableCell className="text-muted-foreground">{formatDate(inv.invoiceDate)}</TableCell>
                                   <TableCell className="text-muted-foreground">{inv.buyerName}{inv.isChildVendor && <Badge variant="outline" className="ml-1 text-xs">Child</Badge>}</TableCell>
-                                  <TableCell className="text-right">{formatCurrency(inv.effectiveTotal)}</TableCell>
-                                  <TableCell className="text-right text-green-600">{formatCurrency(inv.totalSettled)}</TableCell>
+                                  <TableCell className="text-right">{formatCurrency(inv.totalAmount)}</TableCell>
+                                  <TableCell className="text-right text-green-600">
+                                    <div className="flex flex-col items-end gap-0.5">
+                                      <span>{formatCurrency(inv.totalSettled + (inv.totalCredits || 0))}</span>
+                                      {(inv.totalCredits || 0) > 0 && (
+                                        <span className="text-xs text-muted-foreground">CN: {formatCurrency(inv.totalCredits)}</span>
+                                      )}
+                                    </div>
+                                  </TableCell>
                                   <TableCell className="text-right font-bold text-orange-600">{formatCurrency(inv.outstanding)}</TableCell>
                                   <TableCell>
-                                    <Badge variant="outline" className={inv.totalSettled > 0 ? 'text-yellow-600 border-yellow-300' : 'text-red-600 border-red-300'}>
-                                      {inv.totalSettled > 0 ? 'Partial' : 'Unpaid'}
+                                    <Badge variant="outline" className={(inv.totalSettled > 0 || (inv.totalCredits || 0) > 0) ? 'text-yellow-600 border-yellow-300' : 'text-red-600 border-red-300'}>
+                                      {(inv.totalSettled > 0 || (inv.totalCredits || 0) > 0) ? 'Partial' : 'Unpaid'}
                                     </Badge>
                                   </TableCell>
                                 </TableRow>
