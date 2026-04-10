@@ -1604,7 +1604,7 @@ export default function VendorHistoryDetailPage() {
                     const isExpanded = expandedInvoices[inv.invoiceId];
                     const statusIcon = inv.outstanding <= 0 
                       ? <CheckCircle className="h-4 w-4 text-green-500" />
-                      : inv.totalSettled > 0 
+                      : (inv.totalSettled > 0 || (inv.totalCredits || 0) > 0)
                         ? <Clock className="h-4 w-4 text-yellow-500" /> 
                         : <AlertCircle className="h-4 w-4 text-red-500" />;
                     
@@ -1618,7 +1618,7 @@ export default function VendorHistoryDetailPage() {
                           <div className="flex-shrink-0">
                             {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                           </div>
-                          <div className="flex-shrink-0">{statusIcon}</div>
+                          <div className="flex-shrink-0" data-testid={`txn-status-icon-${inv.invoiceId}`}>{statusIcon}</div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="font-mono font-medium text-sm">{inv.invoiceNumber}</span>
@@ -1631,11 +1631,16 @@ export default function VendorHistoryDetailPage() {
                           <div className="flex items-center gap-4 text-sm">
                             <div className="text-right">
                               <span className="text-muted-foreground">Total: </span>
-                              <span className="font-medium">{formatCurrency(inv.effectiveTotal)}</span>
+                              <span className="font-medium">{formatCurrency(inv.totalAmount)}</span>
                             </div>
                             <div className="text-right">
                               <span className="text-muted-foreground">Settled: </span>
-                              <span className="font-medium text-green-600">{formatCurrency(inv.totalSettled)}</span>
+                              <span className="font-medium text-green-600">
+                                {formatCurrency(inv.totalSettled + (inv.totalCredits || 0))}
+                              </span>
+                              {(inv.totalCredits || 0) > 0 && (
+                                <span className="block text-xs text-muted-foreground">CN: {formatCurrency(inv.totalCredits)}</span>
+                              )}
                             </div>
                             <div className="text-right min-w-[100px]">
                               <span className={`font-semibold ${inv.outstanding > 0 ? 'text-orange-600' : 'text-green-600'}`}>
