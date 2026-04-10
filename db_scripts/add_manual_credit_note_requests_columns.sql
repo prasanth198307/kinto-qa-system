@@ -1,12 +1,16 @@
--- Add missing columns to manual_credit_note_requests
--- notes and processing_notes were added in schema but missing on older installs
--- request_number added as nullable (OCI had it as NOT NULL — drop that constraint)
+-- Add all missing columns to manual_credit_note_requests
+-- Safe to run multiple times (IF NOT EXISTS / DROP NOT NULL is idempotent)
 ALTER TABLE manual_credit_note_requests
   ADD COLUMN IF NOT EXISTS notes TEXT,
   ADD COLUMN IF NOT EXISTS processing_notes TEXT,
-  ADD COLUMN IF NOT EXISTS request_number VARCHAR(50);
+  ADD COLUMN IF NOT EXISTS request_number VARCHAR(50),
+  ADD COLUMN IF NOT EXISTS invoice_id VARCHAR,
+  ADD COLUMN IF NOT EXISTS return_number VARCHAR(100),
+  ADD COLUMN IF NOT EXISTS customer_name VARCHAR(255);
 
--- Drop NOT NULL on request_number if it was defined that way on OCI
--- (idempotent — safe if column is already nullable)
+-- Drop NOT NULL on any column OCI may have defined that way
 ALTER TABLE manual_credit_note_requests
-  ALTER COLUMN request_number DROP NOT NULL;
+  ALTER COLUMN request_number DROP NOT NULL,
+  ALTER COLUMN invoice_id DROP NOT NULL,
+  ALTER COLUMN return_number DROP NOT NULL,
+  ALTER COLUMN customer_name DROP NOT NULL;

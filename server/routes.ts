@@ -12558,6 +12558,9 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
           await tx.insert(manualCreditNoteRequests).values({
             salesReturnId: id,
             requestNumber,
+            invoiceId: salesReturn.invoiceId,
+            returnNumber: salesReturn.returnNumber,
+            customerName: invoice.buyerName,
             reasonCode: !isSameMonth ? 'different_month' : 'old_return',
             requestedBy: req.user?.id,
             notes: reason,

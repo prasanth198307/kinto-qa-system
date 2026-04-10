@@ -232,12 +232,19 @@ app.use((req, res, next) => {
       ALTER TABLE manual_credit_note_requests
         ADD COLUMN IF NOT EXISTS notes TEXT,
         ADD COLUMN IF NOT EXISTS processing_notes TEXT,
-        ADD COLUMN IF NOT EXISTS request_number VARCHAR(50)
+        ADD COLUMN IF NOT EXISTS request_number VARCHAR(50),
+        ADD COLUMN IF NOT EXISTS invoice_id VARCHAR,
+        ADD COLUMN IF NOT EXISTS return_number VARCHAR(100),
+        ADD COLUMN IF NOT EXISTS customer_name VARCHAR(255)
     `);
-    // Drop NOT NULL if OCI had it defined that way (idempotent — safe if already nullable)
+    // Drop NOT NULL on any column OCI may have defined as NOT NULL
+    // These are idempotent — safe to run even if the column is already nullable
     await dbMcn.execute(sqlMcn`
       ALTER TABLE manual_credit_note_requests
-        ALTER COLUMN request_number DROP NOT NULL
+        ALTER COLUMN request_number DROP NOT NULL,
+        ALTER COLUMN invoice_id DROP NOT NULL,
+        ALTER COLUMN return_number DROP NOT NULL,
+        ALTER COLUMN customer_name DROP NOT NULL
     `);
     console.log('[MCN_REQUESTS MIGRATION] Columns OK');
   } catch (err) {
