@@ -12218,23 +12218,16 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
         return res.status(404).json({ message: "Invoice not found" });
       }
       
-      // Check if return is within 1 month of invoice (30 days)
-      // GST Compliance: Credit notes for same tax period can be auto-generated.
-      // Returns >1 month old require manual GST-compliant processing.
       const invoiceDate = new Date(invoice.invoiceDate);
-      const inspectionDate = new Date(); // Current date = when inspection is being recorded
-      
-      // Calculate days between invoice and inspection
+      const inspectionDate = new Date();
       const daysDifference = Math.floor((inspectionDate.getTime() - invoiceDate.getTime()) / (1000 * 60 * 60 * 24));
-      const isWithinOneMonth = daysDifference <= 30;
-      
-      const isSameMonth = 
+
+      const isSameMonth =
         invoiceDate.getFullYear() === inspectionDate.getFullYear() &&
         invoiceDate.getMonth() === inspectionDate.getMonth();
       
       let creditNoteCreated = false;
       let creditNoteNumber = '';
-      let manualProcessingRequired = false;
       
       await db.transaction(async (tx) => {
         // Group inspections by itemId to track overall disposition per item
@@ -12410,10 +12403,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
             .where(eq(salesReturnItems.id, itemId));
         }
         
-        // Auto-generate credit note if within 30 days — month boundary doesn't matter for automation
-        // Manual processing only required for returns older than 30 days
-        const shouldAutoGenerateCreditNote = isWithinOneMonth;
-        const requiresManualProcessing = !shouldAutoGenerateCreditNote;
+        // Always auto-generate credit note regardless of age
         
         // Recalculate totalCreditAmount based on verified quantities
         const updatedReturnItems = await tx.select().from(salesReturnItems)
@@ -12429,163 +12419,110 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
             status: 'inspected',
             inspectedDate: new Date().toISOString(),
             inspectedBy: req.user?.id,
-            creditNoteStatus: shouldAutoGenerateCreditNote ? 'auto_created' : 'manual_required',
+            creditNoteStatus: 'auto_created',
             totalCreditAmount: recalcTotalCredit,
             updatedAt: new Date().toISOString(),
           })
           .where(eq(salesReturns.id, id));
         
-        // Auto-create credit note ONLY if same month AND within 30 days
-        if (shouldAutoGenerateCreditNote) {
-          // Get all return items to calculate credit amounts
-          const returnItems = await tx.select().from(salesReturnItems)
+        // Auto-generate credit note for every inspection regardless of age
+        const returnItems = await tx.select().from(salesReturnItems)
+          .where(and(
+            eq(salesReturnItems.returnId, id),
+            eq(salesReturnItems.recordStatus, 1), tc(salesReturnItems)
+          ));
+
+        const existingCreditNotes = await tx.select().from(creditNotes)
+          .where(and(
+            eq(creditNotes.invoiceId, salesReturn.invoiceId),
+            eq(creditNotes.recordStatus, 1), tc(creditNotes)
+          ));
+
+        const seq = existingCreditNotes.length + 1;
+        creditNoteNumber = `CN-${invoice.invoiceNumber}-${seq}`;
+
+        let subtotal = 0;
+        let cgstAmount = 0;
+        let sgstAmount = 0;
+        let igstAmount = 0;
+
+        const creditNoteItems_data = [];
+        for (const returnItem of returnItems) {
+          const effectiveQtyBottles = returnItem.verifiedQuantity ?? returnItem.quantityReturned;
+          const itemBpc = returnItem.bottlesPerCase || 1;
+          const effectiveQtyCases = Math.round(effectiveQtyBottles / itemBpc);
+          const itemSubtotal = returnItem.unitPrice * effectiveQtyCases;
+          subtotal += itemSubtotal;
+
+          const [invoiceItem] = await tx.select().from(invoiceItems)
             .where(and(
-              eq(salesReturnItems.returnId, id),
-              eq(salesReturnItems.recordStatus, 1), tc(salesReturnItems)
-            ));
-          
-          // Get existing credit notes for this invoice to generate sequence number
-          const existingCreditNotes = await tx.select().from(creditNotes)
-            .where(and(
-              eq(creditNotes.invoiceId, salesReturn.invoiceId),
-              eq(creditNotes.recordStatus, 1), tc(creditNotes)
-            ));
-          
-          const seq = existingCreditNotes.length + 1;
-          creditNoteNumber = `CN-${invoice.invoiceNumber}-${seq}`;
-          
-          // Calculate totals
-          let subtotal = 0;
-          let cgstAmount = 0;
-          let sgstAmount = 0;
-          let igstAmount = 0;
-          
-          // Create credit note items and calculate totals
-          // Use verifiedQuantity (actual inspector count) when available, otherwise fall back to reported quantity
-          // NOTE: verifiedQuantity and quantityReturned are in BOTTLES; unitPrice is per CASE
-          // Convert to cases before calculating amounts to match invoice item units
-          const creditNoteItems_data = [];
-          for (const returnItem of returnItems) {
-            const effectiveQtyBottles = returnItem.verifiedQuantity ?? returnItem.quantityReturned;
-            const itemBpc = returnItem.bottlesPerCase || 1;
-            // Convert bottles → cases (inventory and invoice items are tracked in cases)
-            const effectiveQtyCases = Math.round(effectiveQtyBottles / itemBpc);
-            const itemSubtotal = returnItem.unitPrice * effectiveQtyCases; // price per case × cases
-            subtotal += itemSubtotal;
-            
-            // Calculate GST based on invoice item rates
-            const [invoiceItem] = await tx.select().from(invoiceItems)
-              .where(and(
-                eq(invoiceItems.invoiceId, salesReturn.invoiceId),
-                eq(invoiceItems.productId, returnItem.productId)
-              )).limit(1);
-            
-            if (invoiceItem) {
-              // Handle null/undefined tax rates for old/ported invoices
-              const safeCgstRate = invoiceItem.cgstRate || 0;
-              const safeSgstRate = invoiceItem.sgstRate || 0;
-              const safeIgstRate = invoiceItem.igstRate || 0;
-              
-              const itemCgst = Math.round(itemSubtotal * safeCgstRate / 10000); // cgstRate is in basis points
-              const itemSgst = Math.round(itemSubtotal * safeSgstRate / 10000); // sgstRate is in basis points
-              
-              cgstAmount += itemCgst;
-              sgstAmount += itemSgst;
-              
-              creditNoteItems_data.push({
-                productId: returnItem.productId,
-                invoiceItemId: invoiceItem.id,
-                description: invoiceItem.description || '',
-                quantity: effectiveQtyCases, // Store in CASES (same unit as invoice items)
-                unitPrice: returnItem.unitPrice, // Price per case
-                discountAmount: 0,
-                taxableValue: itemSubtotal,
-                cgstRate: safeCgstRate,
-                cgstAmount: itemCgst,
-                sgstRate: safeSgstRate,
-                sgstAmount: itemSgst,
-                igstRate: safeIgstRate,
-                igstAmount: 0,
-                totalAmount: itemSubtotal + itemCgst + itemSgst,
-              });
-            }
-          }
-          
-          const grandTotal = subtotal + cgstAmount + sgstAmount + igstAmount;
-          
-          // Create credit note
-          const [creditNote] = await tx.insert(creditNotes).values({
-            noteNumber: creditNoteNumber,
-            invoiceId: salesReturn.invoiceId,
-            salesReturnId: id,
-            creditDate: format(new Date(), 'yyyy-MM-dd'),
-            reason: 'sales_return',
-            status: 'issued',
-            subtotal,
-            cgstAmount,
-            sgstAmount,
-            igstAmount,
-            grandTotal,
-            issuedBy: req.user?.id,
-            notes: `Auto-generated credit note for sales return ${salesReturn.returnNumber}`,
-          }).returning();
-          
-          // Create credit note items
-          for (const itemData of creditNoteItems_data) {
-            await tx.insert(creditNoteItems).values({
-              creditNoteId: creditNote.id,
-              ...itemData,
+              eq(invoiceItems.invoiceId, salesReturn.invoiceId),
+              eq(invoiceItems.productId, returnItem.productId)
+            )).limit(1);
+
+          if (invoiceItem) {
+            const safeCgstRate = invoiceItem.cgstRate || 0;
+            const safeSgstRate = invoiceItem.sgstRate || 0;
+            const safeIgstRate = invoiceItem.igstRate || 0;
+            const itemCgst = Math.round(itemSubtotal * safeCgstRate / 10000);
+            const itemSgst = Math.round(itemSubtotal * safeSgstRate / 10000);
+            cgstAmount += itemCgst;
+            sgstAmount += itemSgst;
+            creditNoteItems_data.push({
+              productId: returnItem.productId,
+              invoiceItemId: invoiceItem.id,
+              description: invoiceItem.description || '',
+              quantity: effectiveQtyCases,
+              unitPrice: returnItem.unitPrice,
+              discountAmount: 0,
+              taxableValue: itemSubtotal,
+              cgstRate: safeCgstRate,
+              cgstAmount: itemCgst,
+              sgstRate: safeSgstRate,
+              sgstAmount: itemSgst,
+              igstRate: safeIgstRate,
+              igstAmount: 0,
+              totalAmount: itemSubtotal + itemCgst + itemSgst,
             });
           }
-          
-          creditNoteCreated = true;
-        } else {
-          // Create manual credit note request — only triggered when return is >30 days old
-          const reason = `Return is ${daysDifference} days old (>30 days). Requires manual GST-compliant credit note processing.`;
-            
-          // Generate sequential request number MCR-YYYYMMDD-NNN
-          const mcrDate = format(new Date(), 'yyyyMMdd');
-          const mcrCountResult = await tx.execute(sql`
-            SELECT COALESCE(MAX(CAST(SUBSTRING(request_number FROM 13 FOR 3) AS INTEGER)), 0) + 1 AS next_seq
-            FROM manual_credit_note_requests
-            WHERE request_number LIKE ${'MCR-' + mcrDate + '-%'}
-          `);
-          const mcrSeq = mcrCountResult.rows?.[0]?.next_seq || 1;
-          const requestNumber = `MCR-${mcrDate}-${String(mcrSeq).padStart(3, '0')}`;
-
-          await tx.insert(manualCreditNoteRequests).values({
-            salesReturnId: id,
-            requestNumber,
-            invoiceId: salesReturn.invoiceId,
-            returnDate: salesReturn.returnDate,
-            daysSinceInvoice: daysDifference,
-            invoiceDate: invoice.invoiceDate,
-            returnNumber: salesReturn.returnNumber,
-            customerName: invoice.buyerName,
-            reasonCode: 'old_return',
-            requestedBy: req.user?.id,
-            notes: reason,
-            priority: daysDifference > 90 ? 'urgent' : 'normal',
-          });
-          
-          manualProcessingRequired = true;
         }
+
+        const grandTotal = subtotal + cgstAmount + sgstAmount + igstAmount;
+
+        const [creditNote] = await tx.insert(creditNotes).values({
+          noteNumber: creditNoteNumber,
+          invoiceId: salesReturn.invoiceId,
+          salesReturnId: id,
+          creditDate: format(new Date(), 'yyyy-MM-dd'),
+          reason: 'sales_return',
+          status: 'issued',
+          subtotal,
+          cgstAmount,
+          sgstAmount,
+          igstAmount,
+          grandTotal,
+          issuedBy: req.user?.id,
+          notes: `Auto-generated credit note for sales return ${salesReturn.returnNumber} (${daysDifference} days since invoice)`,
+        }).returning();
+
+        for (const itemData of creditNoteItems_data) {
+          await tx.insert(creditNoteItems).values({
+            creditNoteId: creditNote.id,
+            ...itemData,
+          });
+        }
+
+        creditNoteCreated = true;
       });
       
-      await logAudit(req.user?.id, 'UPDATE', 'sales_returns', id, `Inspected return and updated inventory${creditNoteCreated ? `, created credit note ${creditNoteNumber}` : ''}${manualProcessingRequired ? `, flagged for manual credit note processing` : ''}`);
+      await logAudit(req.user?.id, 'UPDATE', 'sales_returns', id, `Inspected return and updated inventory, created credit note ${creditNoteNumber}`);
       
-      let message = "Return inspected and inventory updated successfully";
-      if (creditNoteCreated) {
-        message = `Return inspected, inventory updated, and credit note ${creditNoteNumber} created automatically`;
-      } else if (manualProcessingRequired) {
-        message = `Return inspected and inventory updated. MANUAL CREDIT NOTE REQUIRED — Return is ${daysDifference} days old (>30 days). Please process credit note manually for GST compliance.`;
-      }
+      const message = `Return inspected, inventory updated, and credit note ${creditNoteNumber} created automatically`;
       
       res.json({ 
         message,
         creditNoteCreated,
         creditNoteNumber: creditNoteCreated ? creditNoteNumber : null,
-        manualProcessingRequired,
         daysSinceInvoice: daysDifference,
       });
       
