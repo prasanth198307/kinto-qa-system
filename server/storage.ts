@@ -3565,7 +3565,8 @@ export class DatabaseStorage implements IStorage {
 
   // Role Permissions Management
   async createRolePermission(permissionData: InsertRolePermission): Promise<RolePermission> {
-    const [created] = await db.insert(rolePermissions).values(permissionData).returning();
+    const tenantId = getCurrentTenantId() ?? permissionData.tenantId ?? 1;
+    const [created] = await db.insert(rolePermissions).values({ ...permissionData, tenantId }).returning();
     return created;
   }
 

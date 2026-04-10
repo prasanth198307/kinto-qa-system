@@ -300,6 +300,30 @@ app.use((req, res, next) => {
     console.error('[FG_RETURN_LOG MIGRATION ERROR]', err);
   }
 
+  // ─── Fix role_permissions tenant_id mismatch ─────────────────────────────
+  // Rows created via the Role Management UI were inserted with tenant_id=1
+  // (schema default) instead of the role's actual tenant. This query corrects
+  // any mismatched rows so custom-role permissions work correctly.
+  try {
+    const { db: dbRpFix } = await import("./db");
+    const { sql: sqlRpFix } = await import("drizzle-orm");
+    const rpFixResult = await dbRpFix.execute(sqlRpFix`
+      UPDATE role_permissions rp
+      SET tenant_id = r.tenant_id
+      FROM roles r
+      WHERE rp.role_id = r.id
+        AND rp.tenant_id != r.tenant_id
+    `);
+    const fixed = (rpFixResult as any).rowCount ?? 0;
+    if (fixed > 0) {
+      console.log(`[ROLE_PERMS TENANT FIX] Corrected ${fixed} role_permissions row(s) with wrong tenant_id`);
+    } else {
+      console.log('[ROLE_PERMS TENANT FIX] All role_permissions rows OK');
+    }
+  } catch (err) {
+    console.error('[ROLE_PERMS TENANT FIX ERROR]', err);
+  }
+
   // ─── Daily tenant backup cron (2:00 AM daily) ────────────────────────────
   try {
     const cron = (await import('node-cron')).default;
