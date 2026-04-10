@@ -154,18 +154,20 @@ router.get("/leave-types", requireHR, async (req: any, res) => {
 
 router.post("/leave-types", requireHR, async (req: any, res) => {
   const tid = getTenantId(req);
-  const { name, code, annualDays, isCarryForward, maxCarryForward, isEncashable, isPaidLeave } = req.body;
+  const { name, code, annualDays, isCarryForward, maxCarryForward, isEncashable, isPaidLeave, applicableEmpTypes } = req.body;
+  const empTypes = applicableEmpTypes || 'permanent,consultant,contract,intern';
   try {
-    const r = await db.execute(sql`INSERT INTO hr_leave_types (tenant_id, name, code, annual_days, is_carry_forward, max_carry_forward, is_encashable, is_paid_leave) VALUES (${tid}, ${name}, ${code}, ${annualDays ?? 0}, ${isCarryForward ?? false}, ${maxCarryForward ?? 0}, ${isEncashable ?? false}, ${isPaidLeave ?? true}) RETURNING *`);
+    const r = await db.execute(sql`INSERT INTO hr_leave_types (tenant_id, name, code, annual_days, is_carry_forward, max_carry_forward, is_encashable, is_paid_leave, applicable_emp_types) VALUES (${tid}, ${name}, ${code}, ${annualDays ?? 0}, ${isCarryForward ?? false}, ${maxCarryForward ?? 0}, ${isEncashable ?? false}, ${isPaidLeave ?? true}, ${empTypes}) RETURNING *`);
     res.json(r.rows[0]);
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 
 router.put("/leave-types/:id", requireHR, async (req: any, res) => {
   const tid = getTenantId(req);
-  const { name, code, annualDays, isCarryForward, maxCarryForward, isEncashable, isPaidLeave } = req.body;
+  const { name, code, annualDays, isCarryForward, maxCarryForward, isEncashable, isPaidLeave, applicableEmpTypes } = req.body;
+  const empTypes = applicableEmpTypes || 'permanent,consultant,contract,intern';
   try {
-    const r = await db.execute(sql`UPDATE hr_leave_types SET name=${name}, code=${code}, annual_days=${annualDays ?? 0}, is_carry_forward=${isCarryForward ?? false}, max_carry_forward=${maxCarryForward ?? 0}, is_encashable=${isEncashable ?? false}, is_paid_leave=${isPaidLeave ?? true} WHERE id=${req.params.id} AND tenant_id=${tid} RETURNING *`);
+    const r = await db.execute(sql`UPDATE hr_leave_types SET name=${name}, code=${code}, annual_days=${annualDays ?? 0}, is_carry_forward=${isCarryForward ?? false}, max_carry_forward=${maxCarryForward ?? 0}, is_encashable=${isEncashable ?? false}, is_paid_leave=${isPaidLeave ?? true}, applicable_emp_types=${empTypes} WHERE id=${req.params.id} AND tenant_id=${tid} RETURNING *`);
     res.json(r.rows[0]);
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });

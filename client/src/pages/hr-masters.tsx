@@ -182,11 +182,19 @@ function ShiftsTab() {
 }
 
 // ── Leave Types ──────────────────────────────────────────────────────────────
+const EMP_TYPES = [
+  { value: "permanent", label: "Permanent" },
+  { value: "consultant", label: "Consultant" },
+  { value: "contract", label: "Contract" },
+  { value: "intern", label: "Intern" },
+];
+
 function LeaveTypesTab() {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
-  const [form, setForm] = useState({ name: "", code: "", annualDays: "0", isCarryForward: false, maxCarryForward: "0", isEncashable: false, isPaidLeave: true });
+  const defaultForm = { name: "", code: "", annualDays: "0", isCarryForward: false, maxCarryForward: "0", isEncashable: false, isPaidLeave: true, applicableEmpTypes: ["permanent", "consultant", "contract", "intern"] as string[] };
+  const [form, setForm] = useState(defaultForm);
 
   const { data = [] } = useQuery({ queryKey: ["/api/hr/leave-types"] });
   const save = useMutation({
@@ -199,8 +207,27 @@ function LeaveTypesTab() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/hr/leave-types"] }),
   });
 
-  const openAdd = () => { setEditing(null); setForm({ name: "", code: "", annualDays: "0", isCarryForward: false, maxCarryForward: "0", isEncashable: false, isPaidLeave: true }); setOpen(true); };
-  const openEdit = (r: any) => { setEditing(r); setForm({ name: r.name, code: r.code, annualDays: String(r.annual_days), isCarryForward: r.is_carry_forward, maxCarryForward: String(r.max_carry_forward), isEncashable: r.is_encashable, isPaidLeave: r.is_paid_leave }); setOpen(true); };
+  const parseTypes = (raw: string | null | undefined) =>
+    raw ? raw.split(",").map(t => t.trim()).filter(Boolean) : ["permanent", "consultant", "contract", "intern"];
+
+  const openAdd = () => { setEditing(null); setForm(defaultForm); setOpen(true); };
+  const openEdit = (r: any) => {
+    setEditing(r);
+    setForm({ name: r.name, code: r.code, annualDays: String(r.annual_days), isCarryForward: r.is_carry_forward, maxCarryForward: String(r.max_carry_forward), isEncashable: r.is_encashable, isPaidLeave: r.is_paid_leave, applicableEmpTypes: parseTypes(r.applicable_emp_types) });
+    setOpen(true);
+  };
+
+  const toggleType = (val: string) => setForm(f => ({
+    ...f,
+    applicableEmpTypes: f.applicableEmpTypes.includes(val)
+      ? f.applicableEmpTypes.filter(t => t !== val)
+      : [...f.applicableEmpTypes, val],
+  }));
+
+  const handleSave = () => {
+    if (!form.applicableEmpTypes.length) return toast({ title: "Select at least one employee type", variant: "destructive" });
+    save.mutate({ ...form, annualDays: Number(form.annualDays), maxCarryForward: Number(form.maxCarryForward), applicableEmpTypes: form.applicableEmpTypes.join(",") });
+  };
 
   return (
     <div className="space-y-3">
@@ -208,7 +235,11 @@ function LeaveTypesTab() {
       <MasterTable columns={[
         { key: "name", label: "Leave Type" }, { key: "code", label: "Code" }, { key: "annual_days", label: "Days/Year" },
         { key: "is_paid_leave", label: "Paid", render: (v: boolean) => <Badge variant={v ? "default" : "secondary"}>{v ? "Paid" : "Unpaid"}</Badge> },
-        { key: "is_encashable", label: "Encashable", render: (v: boolean) => v ? "Yes" : "No" },
+        { key: "applicable_emp_types", label: "Applies To", render: (v: string) => (
+          <div className="flex flex-wrap gap-1">
+            {parseTypes(v).map(t => <Badge key={t} variant="outline" className="capitalize text-xs">{t}</Badge>)}
+          </div>
+        )},
       ]} rows={data as any[]} onEdit={openEdit} onDelete={(id: number) => del.mutate(id)} />
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
@@ -223,7 +254,22 @@ function LeaveTypesTab() {
             <div className="flex items-center gap-2"><Switch checked={form.isCarryForward} onCheckedChange={v => setForm(f => ({ ...f, isCarryForward: v }))} /><Label>Allow Carry Forward</Label></div>
             {form.isCarryForward && <div><Label>Max Carry Forward Days</Label><Input type="number" value={form.maxCarryForward} onChange={e => setForm(f => ({ ...f, maxCarryForward: e.target.value }))} /></div>}
             <div className="flex items-center gap-2"><Switch checked={form.isEncashable} onCheckedChange={v => setForm(f => ({ ...f, isEncashable: v }))} /><Label>Encashable on Exit</Label></div>
-            <Button className="w-full" disabled={!form.name || !form.code || save.isPending} onClick={() => save.mutate({ ...form, annualDays: Number(form.annualDays), maxCarryForward: Number(form.maxCarryForward) })}>Save</Button>
+            <div>
+              <Label className="mb-2 block">Applicable To <span className="text-xs text-muted-foreground">(which employee types can apply this leave)</span></Label>
+              <div className="flex flex-wrap gap-3">
+                {EMP_TYPES.map(et => (
+                  <div key={et.value} className="flex items-center gap-1.5">
+                    <Checkbox
+                      id={`emptype-${et.value}`}
+                      checked={form.applicableEmpTypes.includes(et.value)}
+                      onCheckedChange={() => toggleType(et.value)}
+                    />
+                    <Label htmlFor={`emptype-${et.value}`} className="font-normal cursor-pointer">{et.label}</Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <Button className="w-full" disabled={!form.name || !form.code || save.isPending} onClick={handleSave}>Save</Button>
           </div>
         </DialogContent>
       </Dialog>
