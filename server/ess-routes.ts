@@ -304,7 +304,7 @@ router.post("/declaration", requireESS, async (req: any, res) => {
         lic_premium, ppf, elss, nsc, home_loan_principal, fd_tax_saving, other_80c,
         sec_80d_self, sec_80d_parents, parents_senior_citizen,
         rent_per_month, city_type, home_loan_interest, edu_loan_interest,
-        nps_80ccd, sec_80g, sec_80tta, other_deductions, notes)
+        nps_80ccd, sec_80g, sec_80tta, other_deductions, notes, status)
       VALUES (${tid}, ${eid}, ${d.fiscalYear || getCurrentFiscalYear()}, ${d.regime || 'new'},
         ${Number(d.licPremium||0)}, ${Number(d.ppf||0)}, ${Number(d.elss||0)}, ${Number(d.nsc||0)},
         ${Number(d.homeLoanPrincipal||0)}, ${Number(d.fdTaxSaving||0)}, ${Number(d.other80c||0)},
@@ -312,7 +312,7 @@ router.post("/declaration", requireESS, async (req: any, res) => {
         ${Number(d.rentPerMonth||0)}, ${d.cityType||'non_metro'},
         ${Number(d.homeLoanInterest||0)}, ${Number(d.eduLoanInterest||0)},
         ${Number(d.nps80ccd||0)}, ${Number(d.sec80g||0)}, ${Number(d.sec80tta||0)},
-        ${Number(d.otherDeductions||0)}, ${d.notes||null})
+        ${Number(d.otherDeductions||0)}, ${d.notes||null}, 'submitted')
       ON CONFLICT (tenant_id, employee_id, fiscal_year) DO UPDATE SET
         regime=${d.regime||'new'}, lic_premium=${Number(d.licPremium||0)}, ppf=${Number(d.ppf||0)},
         elss=${Number(d.elss||0)}, nsc=${Number(d.nsc||0)}, home_loan_principal=${Number(d.homeLoanPrincipal||0)},
@@ -322,7 +322,9 @@ router.post("/declaration", requireESS, async (req: any, res) => {
         city_type=${d.cityType||'non_metro'}, home_loan_interest=${Number(d.homeLoanInterest||0)},
         edu_loan_interest=${Number(d.eduLoanInterest||0)}, nps_80ccd=${Number(d.nps80ccd||0)},
         sec_80g=${Number(d.sec80g||0)}, sec_80tta=${Number(d.sec80tta||0)},
-        other_deductions=${Number(d.otherDeductions||0)}, notes=${d.notes||null}, updated_at=NOW()
+        other_deductions=${Number(d.otherDeductions||0)}, notes=${d.notes||null}, updated_at=NOW(),
+        status=CASE WHEN hr_tds_declarations.status='approved' THEN 'resubmitted' ELSE 'submitted' END,
+        approved_by=NULL, approver_comment=NULL, approved_at=NULL
       RETURNING *
     `);
     res.json(r.rows[0]);

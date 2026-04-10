@@ -207,6 +207,39 @@ function EssDeclarationTab({ employee }: { employee: any }) {
 
   return (
     <div className="space-y-4">
+      {/* ── Declaration status banner ── */}
+      {decl?.status === "approved" && (
+        <div className="flex items-center gap-2 p-3 rounded-md bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800">
+          <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-green-800 dark:text-green-200">Declaration Approved for {fy}</p>
+            <p className="text-xs text-green-700 dark:text-green-300">Your investment declaration has been reviewed and approved by HR. Any updates will require re-approval.</p>
+          </div>
+        </div>
+      )}
+      {decl?.status === "rejected" && (
+        <div className="flex items-center gap-2 p-3 rounded-md bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800">
+          <XCircle className="h-4 w-4 text-destructive shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-destructive">Declaration Rejected</p>
+            {decl.approver_comment && <p className="text-xs text-muted-foreground mt-0.5">HR note: {decl.approver_comment}</p>}
+            <p className="text-xs text-muted-foreground mt-0.5">Please update your declaration and resubmit.</p>
+          </div>
+        </div>
+      )}
+      {decl?.status === "resubmitted" && (
+        <div className="flex items-center gap-2 p-3 rounded-md bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800">
+          <Clock className="h-4 w-4 text-amber-600 shrink-0" />
+          <p className="text-sm text-amber-800 dark:text-amber-200">Declaration resubmitted — pending HR review</p>
+        </div>
+      )}
+      {decl?.status === "submitted" && (
+        <div className="flex items-center gap-2 p-3 rounded-md bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800">
+          <Clock className="h-4 w-4 text-blue-600 shrink-0" />
+          <p className="text-sm text-blue-800 dark:text-blue-200">Declaration submitted — pending HR review for {fy}</p>
+        </div>
+      )}
+
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h3 className="font-medium">Investment Declaration</h3>
@@ -217,7 +250,7 @@ function EssDeclarationTab({ employee }: { employee: any }) {
             <SelectTrigger className="h-9 w-32"><SelectValue /></SelectTrigger>
             <SelectContent>{FISCAL_YEARS.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}</SelectContent>
           </Select>
-          <Badge variant={decl ? "default" : "outline"}>{decl ? "Submitted" : "Not submitted"}</Badge>
+          {!decl && <Badge variant="outline">Not submitted</Badge>}
         </div>
       </div>
 

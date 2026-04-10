@@ -1,0 +1,5 @@
+ALTER TABLE hr_tds_declarations
+  ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'submitted',
+  ADD COLUMN IF NOT EXISTS approved_by INTEGER,
+  ADD COLUMN IF NOT EXISTS approver_comment TEXT,
+  ADD COLUMN IF NOT EXISTS approved_at TIMESTAMP;

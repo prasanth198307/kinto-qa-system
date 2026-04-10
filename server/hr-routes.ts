@@ -2019,6 +2019,24 @@ router.post("/tds-declarations", requireHR, async (req: any, res) => {
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 
+// Approve / Reject TDS declaration
+router.put("/tds-declarations/:id/action", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  const userId = (req as any).user?.id ?? null;
+  const { status, approverComment } = req.body;
+  if (!["approved", "rejected"].includes(status)) return res.status(400).json({ message: "Invalid status" });
+  try {
+    const r = await db.execute(sql`
+      UPDATE hr_tds_declarations
+      SET status=${status}, approved_by=${userId}, approver_comment=${approverComment ?? null}, approved_at=NOW()
+      WHERE id=${req.params.id} AND tenant_id=${tid}
+      RETURNING *
+    `);
+    if (!r.rows[0]) return res.status(404).json({ message: "Not found" });
+    res.json(r.rows[0]);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
 router.get("/form16/:employeeId/:fiscalYear", requireHR, async (req: any, res) => {
   const tid = getTenantId(req);
   const { employeeId, fiscalYear } = req.params;

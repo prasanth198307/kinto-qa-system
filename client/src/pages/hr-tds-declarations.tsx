@@ -12,7 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { FileText, Plus, Printer, Search, IndianRupee, Shield, AlertCircle, Download } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { FileText, Plus, Printer, Search, IndianRupee, Shield, AlertCircle, Download, CheckCircle, XCircle, Clock } from "lucide-react";
 
 const FISCAL_YEARS = ["2024-25", "2023-24", "2025-26"];
 const fmt = (n: any) => Number(n || 0).toLocaleString("en-IN");
@@ -439,6 +440,9 @@ export default function HrTdsDeclarations() {
   const [form16Emp, setForm16Emp] = useState("");
   const [form16FY, setForm16FY] = useState("2024-25");
   const [search, setSearch] = useState("");
+  const [actionOpen, setActionOpen] = useState(false);
+  const [actionDecl, setActionDecl] = useState<any>(null);
+  const [actionComment, setActionComment] = useState("");
 
   const { data: employees = [] } = useQuery<any[]>({ queryKey: ["/api/hr/employees"] });
   const { data: declarations = [] } = useQuery<any[]>({
@@ -454,10 +458,32 @@ export default function HrTdsDeclarations() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/hr/tds-declarations"] }); toast({ title: "Declaration removed" }); },
   });
 
+  const actionMutation = useMutation({
+    mutationFn: ({ id, status }: { id: number; status: string }) =>
+      apiRequest("PUT", `/api/hr/tds-declarations/${id}/action`, { status, approverComment: actionComment }),
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/hr/tds-declarations"] });
+      setActionOpen(false);
+      setActionComment("");
+      toast({ title: vars.status === "approved" ? "Declaration approved" : "Declaration rejected" });
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const openAction = (d: any) => { setActionDecl(d); setActionComment(""); setActionOpen(true); };
+
   const activeEmpList = (employees as any[]).filter((e: any) => e.status === "active");
   const filteredDecl = (declarations as any[]).filter((d: any) =>
     !search || `${d.first_name} ${d.last_name} ${d.emp_code}`.toLowerCase().includes(search.toLowerCase())
   );
+  const pendingDecl = (declarations as any[]).filter((d: any) => d.status === "submitted" || d.status === "resubmitted");
+
+  const DECL_STATUS: Record<string, { label: string; variant: any }> = {
+    submitted:    { label: "Pending Review", variant: "secondary" },
+    resubmitted:  { label: "Resubmitted",   variant: "outline"   },
+    approved:     { label: "Approved",       variant: "default"   },
+    rejected:     { label: "Rejected",       variant: "destructive" },
+  };
 
   return (
     <div className="p-4 md:p-6 space-y-4">
@@ -467,6 +493,15 @@ export default function HrTdsDeclarations() {
           <p className="text-sm text-muted-foreground">Manage investment declarations and generate Form 16</p>
         </div>
       </div>
+
+      {pendingDecl.length > 0 && (
+        <div className="flex items-center gap-2 p-3 rounded-md bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800">
+          <Clock className="h-4 w-4 text-amber-600 shrink-0" />
+          <span className="text-sm text-amber-800 dark:text-amber-200">
+            {pendingDecl.length} investment declaration{pendingDecl.length > 1 ? "s" : ""} pending approval for {fiscalYear}
+          </span>
+        </div>
+      )}
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="flex-wrap h-auto gap-1">
@@ -510,6 +545,8 @@ export default function HrTdsDeclarations() {
                 <tbody>
                   {filteredDecl.map((d: any) => {
                     const total80c = Number(d.lic_premium||0)+Number(d.ppf||0)+Number(d.elss||0)+Number(d.nsc||0)+Number(d.home_loan_principal||0)+Number(d.fd_tax_saving||0)+Number(d.other_80c||0);
+                    const st = DECL_STATUS[d.status] || DECL_STATUS["submitted"];
+                    const needsAction = d.status === "submitted" || d.status === "resubmitted";
                     return (
                       <tr key={d.id} className="border-t hover-elevate" data-testid={`row-declaration-${d.id}`}>
                         <td className="px-3 py-2.5 font-medium">{d.first_name} {d.last_name}<br/><span className="text-xs text-muted-foreground">{d.emp_code}</span></td>
@@ -518,9 +555,24 @@ export default function HrTdsDeclarations() {
                         <td className="px-3 py-2.5">{fmtRs(total80c)} {total80c > 150000 && <Badge variant="secondary" className="ml-1">Capped</Badge>}</td>
                         <td className="px-3 py-2.5">{fmtRs(Number(d.sec_80d_self||0)+Number(d.sec_80d_parents||0))}</td>
                         <td className="px-3 py-2.5">{Number(d.rent_per_month) ? fmtRs(d.rent_per_month) : "—"}</td>
-                        <td className="px-3 py-2.5"><Badge variant="default">Submitted</Badge></td>
+                        <td className="px-3 py-2.5">
+                          <Badge variant={st.variant}>{st.label}</Badge>
+                          {d.approver_comment && <p className="text-xs text-muted-foreground mt-0.5 max-w-40 truncate" title={d.approver_comment}>{d.approver_comment}</p>}
+                        </td>
                         <td className="px-3 py-2.5 text-right">
-                          <Button size="sm" variant="ghost" onClick={() => { setSelectedEmp(d); setShowForm(true); }}>Edit</Button>
+                          <div className="flex gap-1 justify-end">
+                            {needsAction && (
+                              <>
+                                <Button size="icon" variant="ghost" title="Approve" onClick={() => actionMutation.mutate({ id: d.id, status: "approved" })} disabled={actionMutation.isPending} data-testid={`btn-approve-decl-${d.id}`}>
+                                  <CheckCircle className="h-4 w-4 text-green-600" />
+                                </Button>
+                                <Button size="icon" variant="ghost" title="Reject with comment" onClick={() => openAction(d)} disabled={actionMutation.isPending} data-testid={`btn-reject-decl-${d.id}`}>
+                                  <XCircle className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </>
+                            )}
+                            <Button size="sm" variant="ghost" onClick={() => { setSelectedEmp(d); setShowForm(true); }}>Edit</Button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -559,6 +611,44 @@ export default function HrTdsDeclarations() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* ── Rejection Comment Dialog ── */}
+      <Dialog open={actionOpen} onOpenChange={v => { if (!v) setActionOpen(false); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reject Declaration</DialogTitle>
+          </DialogHeader>
+          {actionDecl && (
+            <div className="space-y-4">
+              <div className="p-3 rounded-md bg-muted text-sm">
+                <p className="font-medium">{actionDecl.first_name} {actionDecl.last_name} <span className="text-muted-foreground">({actionDecl.emp_code})</span></p>
+                <p className="text-muted-foreground mt-0.5">FY {actionDecl.fiscal_year} — {actionDecl.regime === "new" ? "New Regime" : "Old Regime"}</p>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Reason for rejection (optional)</label>
+                <Textarea
+                  placeholder="e.g. Supporting documents required for HRA claim..."
+                  value={actionComment}
+                  onChange={e => setActionComment(e.target.value)}
+                  rows={3}
+                />
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setActionOpen(false)}>Cancel</Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => actionMutation.mutate({ id: actionDecl.id, status: "rejected" })}
+                  disabled={actionMutation.isPending}
+                  data-testid="btn-confirm-reject-decl"
+                >
+                  <XCircle className="h-4 w-4 mr-1.5" />
+                  Reject Declaration
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showForm} onOpenChange={v => { if (!v) { setShowForm(false); setSelectedEmp(null); } }}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
