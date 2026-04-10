@@ -400,14 +400,23 @@ export default function EssPortal() {
   const totalEL = leaveBalances.find((b: any) => b.type_code === "EL")?.balance || 0;
   const totalSL = leaveBalances.find((b: any) => b.type_code === "SL")?.balance || 0;
 
-  const NAV_ITEMS = [
-    { id: "home", label: "Home", icon: Home },
-    { id: "payslips", label: "Pay Slips", icon: IndianRupee },
-    { id: "attendance", label: "Attendance", icon: Calendar },
-    { id: "leaves", label: "Leave", icon: Clock },
-    { id: "declaration", label: "Tax Declaration", icon: Shield },
-    { id: "profile", label: "My Profile", icon: User },
+  // Define which tabs each employee type gets
+  const empType = (me.employee_type || "permanent").toLowerCase();
+
+  const ALL_NAV_ITEMS = [
+    { id: "home",        label: "Home",            icon: Home,         types: ["permanent", "consultant", "contract", "intern"] },
+    { id: "payslips",    label: "Pay Slips",        icon: IndianRupee,  types: ["permanent", "consultant", "contract", "intern"] },
+    { id: "attendance",  label: "Attendance",       icon: Calendar,     types: ["permanent", "contract", "intern"] },
+    { id: "leaves",      label: "Leave",            icon: Clock,        types: ["permanent", "intern"] },
+    { id: "declaration", label: "Tax Declaration",  icon: Shield,       types: ["permanent"] },
+    { id: "profile",     label: "My Profile",       icon: User,         types: ["permanent", "consultant", "contract", "intern"] },
   ];
+
+  const NAV_ITEMS = ALL_NAV_ITEMS.filter(item => item.types.includes(empType));
+
+  // If the current tab isn't accessible for this employee type, reset to home
+  const allowedTabIds = NAV_ITEMS.map(n => n.id);
+  const activeTab = allowedTabIds.includes(tab) ? tab : "home";
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -419,7 +428,10 @@ export default function EssPortal() {
               <User className="h-4 w-4 text-primary" />
             </div>
             <div>
-              <p className="text-sm font-semibold leading-tight">{me.first_name} {me.last_name}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold leading-tight">{me.first_name} {me.last_name}</p>
+                <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground capitalize font-medium">{empType}</span>
+              </div>
               <p className="text-xs text-muted-foreground leading-tight">{me.emp_code} · {me.tenant_name}</p>
             </div>
           </div>
@@ -442,7 +454,7 @@ export default function EssPortal() {
               key={item.id}
               onClick={() => setTab(item.id)}
               className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors ${
-                tab === item.id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                activeTab === item.id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground hover:bg-muted"
               }`}
               data-testid={`nav-ess-${item.id}`}
             >

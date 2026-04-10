@@ -89,6 +89,7 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
     motherAadhaar: editing.mother_aadhaar || "",
     numberOfChildren: String(editing.number_of_children || "0"),
     status: editing.status || "active",
+    employeeType: editing.employee_type || "permanent",
   } : {
     empCode: "", firstName: "", lastName: "", gender: "", dateOfBirth: "", bloodGroup: "",
     departmentId: "", designationId: "", shiftId: "", salaryStructureId: "",
@@ -101,7 +102,7 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
     maritalStatus: "", spouseName: "", spouseDob: "", spouseAadhaar: "",
     fatherName: "", fatherDob: "", fatherAadhaar: "",
     motherName: "", motherDob: "", motherAadhaar: "",
-    numberOfChildren: "0", status: "active",
+    numberOfChildren: "0", status: "active", employeeType: "permanent",
   });
 
   const f = (key: string) => (e: any) => setForm(p => ({ ...p, [key]: e.target.value }));
@@ -261,6 +262,18 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
           <div className="space-y-1.5">
             <Label>Date of Joining <span className="text-destructive">*</span></Label>
             <Input className={inputCls} type="date" value={form.joinDate} onChange={f("joinDate")} data-testid="input-join-date" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Employee Type</Label>
+            <Select value={form.employeeType} onValueChange={s("employeeType")}>
+              <SelectTrigger className={inputCls} data-testid="select-employee-type"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="permanent">Permanent</SelectItem>
+                <SelectItem value="consultant">Consultant</SelectItem>
+                <SelectItem value="contract">Contract</SelectItem>
+                <SelectItem value="intern">Intern</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -749,7 +762,12 @@ function EmployeeDetail({ emp, onBack, onEdit }: any) {
             <p className="text-xs text-muted-foreground">Click photo to change</p>
           </div>
         </div>
-        <Badge variant={emp.status === "active" ? "default" : "secondary"} className="capitalize">{emp.status}</Badge>
+        <div className="flex items-center gap-2">
+          {emp.employee_type && emp.employee_type !== "permanent" && (
+            <Badge variant="outline" className="capitalize">{emp.employee_type}</Badge>
+          )}
+          <Badge variant={emp.status === "active" ? "default" : "secondary"} className="capitalize">{emp.status}</Badge>
+        </div>
         <Button size="sm" variant="outline" onClick={onEdit}>Edit</Button>
       </div>
 
@@ -1040,7 +1058,12 @@ export default function HrEmployees() {
                   <td className="px-3 py-2.5 text-muted-foreground">{emp.phone || "—"}</td>
                   <td className="px-3 py-2.5 text-muted-foreground">{emp.join_date || "—"}</td>
                   <td className="px-3 py-2.5">
-                    <Badge variant={emp.status === "active" ? "default" : "secondary"} className="capitalize">{emp.status?.replace("_", " ")}</Badge>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {emp.employee_type && emp.employee_type !== "permanent" && (
+                        <Badge variant="outline" className="capitalize">{emp.employee_type}</Badge>
+                      )}
+                      <Badge variant={emp.status === "active" ? "default" : "secondary"} className="capitalize">{emp.status?.replace("_", " ")}</Badge>
+                    </div>
                   </td>
                   <td className="px-3 py-2.5" onClick={e => e.stopPropagation()}>
                     <div className="flex gap-1 justify-end">

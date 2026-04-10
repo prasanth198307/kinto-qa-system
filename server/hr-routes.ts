@@ -376,7 +376,7 @@ router.post("/employees", requireHR, async (req: any, res) => {
         pan, aadhaar, pf_number, esi_number, uan, bank_account, ifsc, bank_name, tax_regime,
         marital_status, spouse_name, spouse_dob, spouse_aadhaar,
         father_name, father_dob, father_aadhaar,
-        mother_name, mother_dob, mother_aadhaar, number_of_children, status
+        mother_name, mother_dob, mother_aadhaar, number_of_children, status, employee_type
       ) VALUES (
         ${tid}, ${d.empCode}, ${d.firstName}, ${d.lastName ?? null}, ${d.gender ?? null},
         ${d.dateOfBirth ?? null}, ${d.bloodGroup ?? null},
@@ -392,7 +392,7 @@ router.post("/employees", requireHR, async (req: any, res) => {
         ${d.maritalStatus ?? null}, ${d.spouseName ?? null}, ${d.spouseDob ?? null}, ${d.spouseAadhaar ?? null},
         ${d.fatherName ?? null}, ${d.fatherDob ?? null}, ${d.fatherAadhaar ?? null},
         ${d.motherName ?? null}, ${d.motherDob ?? null}, ${d.motherAadhaar ?? null},
-        ${d.numberOfChildren ?? 0}, ${d.status ?? 'active'}
+        ${d.numberOfChildren ?? 0}, ${d.status ?? 'active'}, ${d.employeeType ?? 'permanent'}
       ) RETURNING *
     `);
     res.json(r.rows[0]);
@@ -428,7 +428,7 @@ router.put("/employees/:id", requireHR, async (req: any, res) => {
         father_aadhaar=${d.fatherAadhaar ?? null}, mother_name=${d.motherName ?? null},
         mother_dob=${d.motherDob ?? null}, mother_aadhaar=${d.motherAadhaar ?? null},
         number_of_children=${d.numberOfChildren ?? 0},
-        status=${d.status ?? 'active'}, updated_at=NOW()
+        status=${d.status ?? 'active'}, employee_type=${d.employeeType ?? 'permanent'}, updated_at=NOW()
       WHERE id=${req.params.id} AND tenant_id=${tid} RETURNING *
     `);
     res.json(r.rows[0]);
