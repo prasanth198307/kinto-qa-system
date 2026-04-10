@@ -70,7 +70,6 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
     "variance-analytics",
     "scrap-management",
     "purchase-returns",
-    "tds-management",
   ],
   quality_returns: [
     "sales-returns",
@@ -89,6 +88,7 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
     "cash-flow-statement",
     "group-summary",
     "budget-variance",
+    "tds-management",
   ],
   mis: [
     "mis-dashboard",

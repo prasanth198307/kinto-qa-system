@@ -1921,7 +1921,6 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "spare-parts", label: "Spare Parts", icon: Wrench, onClick: () => setLocation('/spare-parts') },
         { id: "scrap-management", label: "Scrap Management", icon: Trash2, onClick: () => setLocation('/scrap-management') },
         { id: "purchase-returns", label: "Purchase Returns", icon: PackageX, onClick: () => setLocation('/purchase-returns') },
-        { id: "tds-management", label: "TDS Management", icon: Calculator, onClick: () => setLocation('/tds-management') },
       ],
     },
     {
@@ -1991,6 +1990,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "cash-flow-statement", label: "Cash Flow Statement", icon: TrendingUp, onClick: () => setLocation('/cash-flow-statement') },
         { id: "group-summary", label: "Group Summary", icon: Layers, onClick: () => setLocation('/group-summary') },
         { id: "budget-variance", label: "Budget & Variance", icon: Scale, onClick: () => setLocation('/budget-variance') },
+        { id: "tds-management", label: "TDS Management", icon: Calculator, onClick: () => setLocation('/tds-management') },
       ],
     },
     {
