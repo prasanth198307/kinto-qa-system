@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Switch, Route, useLocation } from "wouter";
+import { Switch, Route, useLocation, useSearch } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider, useMutation, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -329,6 +329,7 @@ function ReviewerDashboard() {
 function ManagerDashboard() {
   const { logoutMutation } = useAuth();
   const [location, setLocation] = useLocation();
+  const search = useSearch();
   const [activeView, setActiveView] = useState('overview');
   const mockRecords = [
     { id: '1', machine: 'RFC Machine', date: 'Oct 31, 2025', shift: 'Morning', operator: 'Ramesh Kumar', status: 'in_review' as const },
@@ -336,7 +337,7 @@ function ManagerDashboard() {
 
   // Handle tab parameter from URL (for Cancel & Reissue flow and other deep links)
   useEffect(() => {
-    const params = new URLSearchParams(location.split('?')[1] || '');
+    const params = new URLSearchParams(search);
     const tab = params.get('tab');
     
     if (tab) {
@@ -357,7 +358,7 @@ function ManagerDashboard() {
         setActiveView(tab);
       }
     }
-  }, [location]);
+  }, [search]);
 
   const handleLogout = () => {
     logoutMutation.mutate();
@@ -475,14 +476,15 @@ function CustomRoleDashboard({ roleName }: { roleName: string }) {
   const { logoutMutation } = useAuth();
   const { permissions, role: userRoleName, isLoading: permissionsLoading, error: permissionsError } = usePermissions();
   const [location, setLocation] = useLocation();
+  const search = useSearch();
   const [activeView, setActiveView] = useState('overview');
   const [isPMDialogOpen, setIsPMDialogOpen] = useState(false);
   const [isExecutionDialogOpen, setIsExecutionDialogOpen] = useState(false);
   const [selectedPlanForExecution, setSelectedPlanForExecution] = useState<any>(null);
 
-  // Handle tab parameter from URL - wouter's location only contains pathname, not query string
+  // Handle tab parameter from URL - useSearch() from wouter tracks query string reactively
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(search);
     const tab = params.get('tab');
     
     if (tab) {
@@ -502,7 +504,7 @@ function CustomRoleDashboard({ roleName }: { roleName: string }) {
         setActiveView(tab);
       }
     }
-  }, [location]);
+  }, [search]);
 
   const { data: maintenancePlans = [] } = useQuery<any[]>({
     queryKey: ['/api/maintenance-plans'],
@@ -773,15 +775,15 @@ function CustomRoleDashboard({ roleName }: { roleName: string }) {
 function AdminDashboard() {
   const { logoutMutation } = useAuth();
   const [location, setLocation] = useLocation();
+  const search = useSearch();
   const [activeView, setActiveView] = useState('overview');
   const [isPMDialogOpen, setIsPMDialogOpen] = useState(false);
   const [isExecutionDialogOpen, setIsExecutionDialogOpen] = useState(false);
   const [selectedPlanForExecution, setSelectedPlanForExecution] = useState<any>(null);
 
-  // Handle tab parameter from URL (for Cancel & Reissue flow and other deep links)
-  // Note: wouter's location only contains pathname, not query string, so we use window.location.search
+  // Handle tab parameter from URL - useSearch() from wouter tracks query string reactively
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(search);
     const tab = params.get('tab');
     
     if (tab) {
@@ -802,7 +804,7 @@ function AdminDashboard() {
         setActiveView(tab);
       }
     }
-  }, [location]);
+  }, [search]);
 
   const { data: maintenancePlans = [] } = useQuery<any[]>({
     queryKey: ['/api/maintenance-plans'],
