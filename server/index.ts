@@ -184,6 +184,43 @@ app.use((req, res, next) => {
     console.error('[CREDITOR RECTIFY ERROR]', error);
   }
 
+  // ─── Multi-role migration: create user_roles table and backfill ──────────
+  // Idempotent — safe to run on every startup. Creates the junction table
+  // if it doesn't exist and backfills any users whose role_id is set but
+  // who don't yet have a row in user_roles (handles OCI / production deploys).
+  try {
+    const { db: dbInst } = await import("./db");
+    const { sql: sqlTag } = await import("drizzle-orm");
+    await dbInst.execute(sqlTag`
+      CREATE TABLE IF NOT EXISTS user_roles (
+        id SERIAL PRIMARY KEY,
+        user_id VARCHAR NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        role_id VARCHAR NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+        tenant_id INTEGER NOT NULL,
+        record_status INTEGER DEFAULT 1,
+        created_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(user_id, role_id)
+      )
+    `);
+    const backfill = await dbInst.execute(sqlTag`
+      INSERT INTO user_roles (user_id, role_id, tenant_id)
+      SELECT id, role_id, tenant_id
+      FROM users
+      WHERE role_id IS NOT NULL
+        AND role_id != ''
+        AND id NOT IN (SELECT user_id FROM user_roles)
+      ON CONFLICT (user_id, role_id) DO NOTHING
+    `);
+    const count = (backfill as any).rowCount ?? 0;
+    if (count > 0) {
+      console.log(`[USER_ROLES MIGRATION] Backfilled ${count} user(s) into user_roles table`);
+    } else {
+      console.log('[USER_ROLES MIGRATION] Table OK — no backfill needed');
+    }
+  } catch (err) {
+    console.error('[USER_ROLES MIGRATION ERROR]', err);
+  }
+
   // ─── Daily tenant backup cron (2:00 AM daily) ────────────────────────────
   try {
     const cron = (await import('node-cron')).default;
