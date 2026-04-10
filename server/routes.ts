@@ -1855,6 +1855,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Force-logout: delete all active sessions for a specific user
+  app.post('/api/users/:id/clear-sessions', requireRole('admin'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const result = await db.execute(
+        sql`DELETE FROM session WHERE sess->'passport'->>'user' = ${id}`
+      );
+      const count = (result as any).rowCount ?? 0;
+      console.log(`[AUDIT] Admin ${req.user.id} cleared ${count} session(s) for user ${id}`);
+      res.json({ message: `Cleared ${count} session(s) for user`, count });
+    } catch (error) {
+      console.error("Error clearing sessions:", error);
+      res.status(500).json({ message: "Failed to clear sessions" });
+    }
+  });
+
   // Machines API
   app.get('/api/machines', isAuthenticated, async (req: any, res) => {
     try {

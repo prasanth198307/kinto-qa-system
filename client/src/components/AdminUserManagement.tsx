@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search, Plus, Trash2, Edit } from "lucide-react";
+import { Search, Plus, Trash2, Edit, LogOut } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -172,6 +172,24 @@ export default function AdminUserManagement() {
     },
   });
 
+  const clearSessionsMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest('POST', `/api/users/${id}/clear-sessions`);
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Sessions cleared",
+        description: data.count > 0
+          ? `${data.count} active session(s) removed. The user will need to log in again.`
+          : "No active sessions found for this user.",
+      });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to clear sessions.", variant: "destructive" });
+    },
+  });
+
   const handleEditUser = (user: UserWithRole) => {
     setEditingUser(user);
     setEditFirstName(user.firstName || '');
@@ -318,6 +336,16 @@ export default function AdminUserManagement() {
                       >
                         <Edit className="h-4 w-4 mr-2" />
                         Edit User
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => clearSessionsMutation.mutate(user.id)}
+                        disabled={clearSessionsMutation.isPending}
+                        title="Force logout — clears all active sessions for this user"
+                        data-testid={`button-clear-sessions-${index}`}
+                      >
+                        <LogOut className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="destructive"
