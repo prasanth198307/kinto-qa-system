@@ -2642,9 +2642,11 @@ export const manualCreditNoteRequests = pgTable("manual_credit_note_requests", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   salesReturnId: varchar("sales_return_id").references(() => salesReturns.id).notNull(),
   requestNumber: varchar("request_number", { length: 50 }), // e.g. MCR-20260410-001
-  invoiceId: varchar("invoice_id"),           // OCI had this as NOT NULL — now nullable
-  returnNumber: varchar("return_number", { length: 100 }), // OCI extra column
-  customerName: varchar("customer_name", { length: 255 }), // OCI extra column
+  invoiceId: varchar("invoice_id"),
+  returnDate: timestamp("return_date", { mode: 'string' }),
+  invoiceDate: timestamp("invoice_date", { mode: 'string' }),
+  returnNumber: varchar("return_number", { length: 100 }),
+  customerName: varchar("customer_name", { length: 255 }),
   
   // Request details
   reasonCode: varchar("reason_code", { length: 50 }).notNull(), // old_return, gst_compliance, etc

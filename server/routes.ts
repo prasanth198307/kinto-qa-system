@@ -12557,6 +12557,8 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
             salesReturnId: id,
             requestNumber,
             invoiceId: salesReturn.invoiceId,
+            returnDate: salesReturn.returnDate,
+            invoiceDate: invoice.invoiceDate,
             returnNumber: salesReturn.returnNumber,
             customerName: invoice.buyerName,
             reasonCode: 'old_return',
