@@ -250,6 +250,11 @@ export default function HRPayrollPage() {
                         </Button>
                       )}
                       {hasData && (
+                        <Button size="sm" variant="ghost" onClick={() => window.open(`/api/hr/payroll-runs/${run.id}/salary-sheet`, "_blank")} data-testid={`btn-salary-sheet-${run.id}`}>
+                          <Download className="h-3.5 w-3.5 mr-1" />Salary Sheet
+                        </Button>
+                      )}
+                      {hasData && (
                         <Button size="sm" variant="ghost" onClick={() => window.open(`/api/hr/payroll-runs/${run.id}/payslips/zip`, "_blank")} data-testid={`btn-zip-${run.id}`}>
                           <FileArchive className="h-3.5 w-3.5 mr-1" />ZIP
                         </Button>

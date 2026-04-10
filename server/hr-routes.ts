@@ -1094,6 +1094,157 @@ router.get("/payroll-runs/:id/bank-file", requireHR, async (req: any, res) => {
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 
+// ── Salary Sheet Excel Export ────────────────────────────────────────────────
+router.get("/payroll-runs/:id/salary-sheet", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  try {
+    const runRow = await db.execute(sql`SELECT month, year FROM hr_payroll_runs WHERE id=${req.params.id} AND tenant_id=${tid}`);
+    if (!runRow.rows.length) return res.status(404).json({ message: "Run not found" });
+    const { month, year } = runRow.rows[0] as any;
+    const MONTHS = ["","January","February","March","April","May","June","July","August","September","October","November","December"];
+    const monthName = MONTHS[month];
+
+    const rows = await db.execute(sql`
+      SELECT p.*, e.emp_code, e.first_name, e.last_name,
+        e.join_date, e.exit_date, e.bank_name, e.bank_account, e.ifsc,
+        des.name as designation_name
+      FROM hr_payslips p
+      JOIN hr_employees e ON p.employee_id = e.id
+      LEFT JOIN hr_designations des ON e.designation_id = des.id
+      WHERE p.payroll_run_id=${req.params.id} AND p.tenant_id=${tid}
+      ORDER BY e.emp_code
+    `);
+
+    const ExcelJS = (await import('exceljs')).default;
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet(`Salary ${monthName} ${year}`);
+
+    const COLS = [
+      { header: 'Sl.No', key: 'sl', width: 6 },
+      { header: 'Emp ID', key: 'emp_code', width: 12 },
+      { header: 'Employee Name', key: 'name', width: 22 },
+      { header: 'Date of Joining', key: 'doj', width: 14 },
+      { header: 'Date of Leaving', key: 'dol', width: 14 },
+      { header: 'Bank Name', key: 'bank_name', width: 18 },
+      { header: 'Bank A/C No.', key: 'bank_account', width: 18 },
+      { header: 'IFSC', key: 'ifsc', width: 13 },
+      { header: 'Designation', key: 'designation', width: 18 },
+      { header: 'Sal Calendar Days', key: 'cal_days', width: 10 },
+      { header: 'Present Days', key: 'pay_days', width: 10 },
+      { header: 'Derivable Days', key: 'deriv_days', width: 10 },
+      { header: 'BASIC', key: 'basic', width: 12 },
+      { header: 'HRA', key: 'hra', width: 12 },
+      { header: 'LTA', key: 'lta', width: 12 },
+      { header: 'OT1', key: 'ot1', width: 10 },
+      { header: 'Total Earning', key: 'gross', width: 13 },
+      { header: 'PF', key: 'pf', width: 10 },
+      { header: 'ESI', key: 'esi', width: 10 },
+      { header: 'PT', key: 'pt', width: 10 },
+      { header: 'Total Deductions', key: 'total_ded', width: 14 },
+      { header: 'Net Amount', key: 'net', width: 13 },
+    ];
+
+    ws.columns = COLS.map(c => ({ header: '', key: c.key, width: c.width }));
+
+    // Title row
+    ws.mergeCells(1, 1, 1, COLS.length);
+    const titleCell = ws.getCell('A1');
+    titleCell.value = `Salary Sheet Report for the month of ${monthName}/${year}`;
+    titleCell.font = { bold: true, size: 12 };
+    titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9E1F2' } };
+    ws.getRow(1).height = 22;
+
+    // Header row (row 2)
+    const headerRow = ws.getRow(2);
+    COLS.forEach((c, i) => {
+      const cell = headerRow.getCell(i + 1);
+      cell.value = c.header;
+      cell.font = { bold: true, size: 9 };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD6DCE4' } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+      cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+    });
+    headerRow.height = 28;
+
+    const fmt = (v: any) => Number(v || 0);
+    const fmtDate = (d: any) => d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
+
+    let slNo = 1;
+    let totBasic = 0, totHRA = 0, totLTA = 0, totOT1 = 0, totGross = 0;
+    let totPF = 0, totESI = 0, totPT = 0, totDed = 0, totNet = 0;
+
+    for (const r of rows.rows as any[]) {
+      const comps: any[] = r.components
+        ? (typeof r.components === 'string' ? JSON.parse(r.components) : r.components)
+        : [];
+
+      const getComp = (code: string) => {
+        const c = comps.find((x: any) => x.code?.toUpperCase() === code.toUpperCase() || x.name?.toUpperCase().includes(code.toUpperCase()));
+        return c ? Number(c.amount || 0) : 0;
+      };
+
+      const basic   = getComp('BASIC') || fmt(r.basic_salary);
+      const hra     = getComp('HRA');
+      const lta     = getComp('LTA');
+      const ot1     = getComp('OT1') || getComp('OT') || getComp('OVERTIME');
+      const gross   = fmt(r.gross_salary);
+      const pf      = fmt(r.pf_employee);
+      const esi     = fmt(r.esi_employee);
+      const pt      = fmt(r.pt);
+      const totDedR = fmt(r.total_deductions);
+      const net     = fmt(r.net_salary);
+
+      totBasic += basic; totHRA += hra; totLTA += lta; totOT1 += ot1;
+      totGross += gross; totPF += pf; totESI += esi; totPT += pt;
+      totDed += totDedR; totNet += net;
+
+      const dataRow = ws.addRow([
+        slNo++,
+        r.emp_code,
+        `${r.first_name} ${r.last_name || ''}`.trim(),
+        fmtDate(r.join_date),
+        fmtDate(r.exit_date),
+        r.bank_name || '',
+        r.bank_account || '',
+        r.ifsc || '',
+        r.designation_name || '',
+        fmt(r.days_in_month),
+        fmt(r.days_worked),
+        fmt(r.days_worked),
+        basic, hra, lta, ot1, gross, pf, esi, pt, totDedR, net,
+      ]);
+
+      dataRow.eachCell((cell, colNum) => {
+        cell.font = { size: 9 };
+        cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+        if (colNum >= 10) cell.alignment = { horizontal: 'right' };
+        if (colNum >= 13) cell.numFmt = '#,##0.00';
+      });
+      dataRow.getCell(1).alignment = { horizontal: 'center' };
+    }
+
+    // Totals row
+    const totRow = ws.addRow([
+      '', '', 'TOTAL', '', '', '', '', '', '',
+      '', '', '',
+      totBasic, totHRA, totLTA, totOT1, totGross, totPF, totESI, totPT, totDed, totNet,
+    ]);
+    totRow.eachCell((cell, colNum) => {
+      cell.font = { bold: true, size: 9 };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
+      cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'medium' }, right: { style: 'thin' } };
+      if (colNum >= 10) cell.alignment = { horizontal: 'right' };
+      if (colNum >= 13) cell.numFmt = '#,##0.00';
+    });
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="Salary_Sheet_${monthName}_${year}.xlsx"`);
+    await wb.xlsx.write(res);
+    res.end();
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
 // ── Bulk payslip ZIP download ────────────────────────────────────────────────
 router.get("/payroll-runs/:id/payslips/zip", requireHR, async (req: any, res) => {
   const tid = getTenantId(req);
