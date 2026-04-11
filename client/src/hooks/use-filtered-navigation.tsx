@@ -299,18 +299,15 @@ function filterNavSectionsWithDbPermissions(sections: NavSection[], dbPermission
 const SYSTEM_ROLES_FULL_ACCESS = ['admin', 'manager', 'accountsmanager'];
 
 // These nav items are available on every plan — user/role management and
-// core admin settings must never be hidden, regardless of which modules a
-// tenant has subscribed to.
+// core company settings must never be hidden, regardless of which modules a
+// tenant has subscribed to. Keep this list minimal: only items that make
+// sense for ANY plan (including HR-only, accounting-only, etc.).
 const CORE_ADMIN_NAV = new Set([
   'overview',
   'users',
   'role-permissions',
-  'admin-tools',
   'company-settings',
   'notification-settings',
-  'data-import',
-  'template-management',
-  'hpcl-migration',
 ]);
 
 function filterNavSectionsByPlan(sections: NavSection[], allowedNavItems: string[]): NavSection[] {
