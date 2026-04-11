@@ -388,6 +388,54 @@ app.use((req, res, next) => {
     console.error('[COA CONSTRAINT MIGRATION ERROR]', err);
   }
 
+  // ─── Ensure subscriptions(tenant_id) unique constraint ───────────────────
+  // Required by seed-demo-tenant.ts ON CONFLICT (tenant_id). Missing on
+  // production DBs created before this constraint was added.
+  try {
+    const { db: dbSubFix } = await import("./db");
+    const { sql: sqlSubFix } = await import("drizzle-orm");
+    await dbSubFix.execute(sqlSubFix`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.table_constraints
+          WHERE table_name = 'subscriptions'
+            AND constraint_name = 'subscriptions_tenant_id_unique'
+            AND constraint_type = 'UNIQUE'
+        ) THEN
+          ALTER TABLE subscriptions ADD CONSTRAINT subscriptions_tenant_id_unique UNIQUE (tenant_id);
+        END IF;
+      END $$;
+    `);
+    console.log('[SUBSCRIPTIONS MIGRATION] subscriptions(tenant_id) unique constraint OK');
+  } catch (err) {
+    console.error('[SUBSCRIPTIONS MIGRATION ERROR]', err);
+  }
+
+  // ─── Ensure role_permissions(role_id, screen_key) unique constraint ───────
+  // Required by seed-demo-tenant.ts and seed-tenant.ts ON CONFLICT (role_id, screen_key).
+  // Missing on production DBs created before this constraint was added.
+  try {
+    const { db: dbRpFix } = await import("./db");
+    const { sql: sqlRpFix } = await import("drizzle-orm");
+    await dbRpFix.execute(sqlRpFix`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.table_constraints
+          WHERE table_name = 'role_permissions'
+            AND constraint_name = 'role_permissions_role_screen_unique'
+            AND constraint_type = 'UNIQUE'
+        ) THEN
+          ALTER TABLE role_permissions ADD CONSTRAINT role_permissions_role_screen_unique UNIQUE (role_id, screen_key);
+        END IF;
+      END $$;
+    `);
+    console.log('[ROLE_PERMS MIGRATION] role_permissions(role_id, screen_key) unique constraint OK');
+  } catch (err) {
+    console.error('[ROLE_PERMS MIGRATION ERROR]', err);
+  }
+
   // ─── Daily tenant backup cron (2:00 AM daily) ────────────────────────────
   try {
     const cron = (await import('node-cron')).default;
