@@ -1111,6 +1111,7 @@ function AdminDashboard() {
         { id: "notification-settings", label: "Notification Settings", icon: Bell },
         { id: "data-import", label: "Data Import", icon: Upload },
         { id: "admin-tools", label: "Admin Tools", icon: Wrench, onClick: () => setLocation('/admin-tools') },
+        { id: "company-settings", label: "Company Settings", icon: Building2, onClick: () => setLocation('/company-settings') },
       ],
     },
   ];
@@ -1990,7 +1991,6 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "variance-analytics", label: "Variance Analytics", icon: TrendingUp, onClick: () => setLocation('/?tab=variance-analytics') },
         { id: "spare-parts", label: "Spare Parts", icon: Wrench, onClick: () => setLocation('/spare-parts') },
         { id: "scrap-management", label: "Scrap Management", icon: Trash2, onClick: () => setLocation('/scrap-management') },
-        { id: "purchase-returns", label: "Purchase Returns", icon: PackageX, onClick: () => setLocation('/purchase-returns') },
       ],
     },
     {
@@ -2024,6 +2024,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       label: "Purchases",
       items: [
         { id: "purchase-orders", label: "Purchase Orders", icon: ShoppingCart, onClick: () => setLocation('/?tab=purchase-orders') },
+        { id: "purchase-returns", label: "Purchase Returns", icon: PackageX, onClick: () => setLocation('/purchase-returns') },
       ],
     },
     {
@@ -3389,7 +3390,7 @@ function HREmployeesWrapper() {
   return (
     <DashboardShell title="Employees" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
       navSections={resolvedNav} activeView={activeView}
-      onNavigate={(v) => { setActiveView(v); setLocation('/'); }}>
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
       <HREmployeesPage />
     </DashboardShell>
   );
@@ -3405,7 +3406,7 @@ function HRAttendanceWrapper() {
   return (
     <DashboardShell title="Attendance" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
       navSections={resolvedNav} activeView={activeView}
-      onNavigate={(v) => { setActiveView(v); setLocation('/'); }}>
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
       <HRAttendancePage />
     </DashboardShell>
   );
@@ -3421,7 +3422,7 @@ function HRLeavesWrapper() {
   return (
     <DashboardShell title="Leave Management" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
       navSections={resolvedNav} activeView={activeView}
-      onNavigate={(v) => { setActiveView(v); setLocation('/'); }}>
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
       <HRLeavesPage />
     </DashboardShell>
   );
@@ -3437,7 +3438,7 @@ function HRPayrollWrapper() {
   return (
     <DashboardShell title="Payroll" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
       navSections={resolvedNav} activeView={activeView}
-      onNavigate={(v) => { setActiveView(v); setLocation('/'); }}>
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
       <HRPayrollPage />
     </DashboardShell>
   );
@@ -3453,7 +3454,7 @@ function HRMastersWrapper() {
   return (
     <DashboardShell title="HR Masters" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
       navSections={resolvedNav} activeView={activeView}
-      onNavigate={(v) => { setActiveView(v); setLocation('/'); }}>
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
       <HRMastersPage />
     </DashboardShell>
   );
@@ -3469,7 +3470,7 @@ function HRReportsWrapper() {
   return (
     <DashboardShell title="HR Reports" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
       navSections={resolvedNav} activeView={activeView}
-      onNavigate={(v) => { setActiveView(v); setLocation('/'); }}>
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
       <HRReportsPage />
     </DashboardShell>
   );
@@ -3485,7 +3486,7 @@ function HRExitManagementWrapper() {
   return (
     <DashboardShell title="Exit Management" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
       navSections={resolvedNav} activeView={activeView}
-      onNavigate={(v) => { setActiveView(v); setLocation('/'); }}>
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
       <HRExitManagementPage />
     </DashboardShell>
   );
@@ -3501,7 +3502,7 @@ function HRTdsDeclarationsWrapper() {
   return (
     <DashboardShell title="TDS & Compliance" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
       navSections={resolvedNav} activeView={activeView}
-      onNavigate={(v) => { setActiveView(v); setLocation('/'); }}>
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
       <HRTdsDeclarationsPage />
     </DashboardShell>
   );
@@ -3517,7 +3518,7 @@ function CRMLeadsWrapper() {
   return (
     <DashboardShell title="Lead Management" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
       navSections={resolvedNav} activeView={activeView}
-      onNavigate={(v) => { setActiveView(v); setLocation('/'); }}>
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
       <CRMLeadsPage />
     </DashboardShell>
   );
@@ -3533,7 +3534,7 @@ function HRRecruitmentWrapper() {
   return (
     <DashboardShell title="Recruitment" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
       navSections={resolvedNav} activeView={activeView}
-      onNavigate={(v) => { setActiveView(v); setLocation('/'); }}>
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
       <HRRecruitmentPage />
     </DashboardShell>
   );
@@ -3549,7 +3550,7 @@ function HRLoansWrapper() {
   return (
     <DashboardShell title="Loans & Advances" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
       navSections={resolvedNav} activeView={activeView}
-      onNavigate={(v) => { setActiveView(v); setLocation('/'); }}>
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
       <HRLoansPage />
     </DashboardShell>
   );

@@ -94,6 +94,7 @@ const navItemToScreenKey: Record<string, string> = {
   'group-summary': 'group_summary',
   'budget-variance': 'budget_variance',
   'admin-tools': 'admin_tools',
+  'company-settings': 'admin_tools',
   'hpcl-migration': 'admin_tools',
   // Spare parts stock page
   'spare-parts-stock': 'spare_parts',
@@ -218,6 +219,7 @@ const navItemToScreen: Record<string, string> = {
   'group-summary': 'Accounting & Ledger',
   'budget-variance': 'Accounting & Ledger',
   'admin-tools': 'User Management',
+  'company-settings': 'User Management',
 };
 
 function canAccessNavItemForDefaultRole(itemId: string, role: string): boolean {
