@@ -685,12 +685,10 @@ export function setupAuth(app: Express) {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const user = req.user as any;
     const isDemo = !!(req.session as any).isDemo;
-    if (user.roleId) {
-      const roleData = await storage.getRole(user.roleId);
-      res.json({ ...user, role: roleData?.name, isDemo });
-    } else {
-      res.json({ ...user, isDemo });
-    }
+    // getUser() already joins roles and returns role: COALESCE(roles.name, users.role)
+    // so we just pass it through — no need for a second getRole() lookup that
+    // can silently return undefined and overwrite the correct role name.
+    res.json({ ...user, isDemo });
   });
 
   // ─── Forgot password ───────────────────────────────────────────────────────
