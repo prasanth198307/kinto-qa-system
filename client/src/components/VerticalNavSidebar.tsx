@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Plus, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, ChevronDown, ChevronRight } from "lucide-react";
 import { type LucideIcon } from "lucide-react";
 import {
   DropdownMenu,
@@ -47,8 +47,6 @@ interface VerticalNavSidebarProps {
   onMobileClose?: () => void;
 }
 
-const SCROLL_STORAGE_KEY = 'sidebarScrollPosition';
-
 export function VerticalNavSidebar({
   sections = [],
   activeItem,
@@ -61,7 +59,6 @@ export function VerticalNavSidebar({
   const [, navigate] = useLocation();
   const safeSections = sections || [];
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const scrollRestoredRef = useRef(false);
 
   // Lock body scroll when mobile menu is open (Android + iOS)
   useEffect(() => {
@@ -80,22 +77,6 @@ export function VerticalNavSidebar({
       };
     }
   }, [isMobileOpen]);
-
-  // Restore sidebar scroll position on mount
-  useEffect(() => {
-    if (scrollRestoredRef.current) return;
-    scrollRestoredRef.current = true;
-    const saved = sessionStorage.getItem(SCROLL_STORAGE_KEY);
-    if (saved && scrollContainerRef.current) {
-      const pos = parseInt(saved, 10);
-      // Use rAF to ensure DOM is laid out before restoring
-      requestAnimationFrame(() => {
-        if (scrollContainerRef.current) {
-          scrollContainerRef.current.scrollTop = pos;
-        }
-      });
-    }
-  }, []);
 
   // Initialize collapsed state - default all collapsed
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>(() => {
@@ -136,17 +117,23 @@ export function VerticalNavSidebar({
     }
   }, [activeItem, safeSections]);
 
+  // Scroll active item into view after section expansion animation completes
+  useEffect(() => {
+    if (!scrollContainerRef.current) return;
+    const timer = setTimeout(() => {
+      const activeEl = scrollContainerRef.current?.querySelector<HTMLElement>('[data-active="true"]');
+      if (activeEl) {
+        activeEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [activeItem]);
+
   const toggleSection = (sectionId: string) => {
     setCollapsedSections(prev => ({
       ...prev,
       [sectionId]: !prev[sectionId]
     }));
-  };
-
-  const handleSidebarScroll = () => {
-    if (scrollContainerRef.current) {
-      sessionStorage.setItem(SCROLL_STORAGE_KEY, String(scrollContainerRef.current.scrollTop));
-    }
   };
 
   const handleItemClick = (item: NavItem) => {
@@ -184,6 +171,7 @@ export function VerticalNavSidebar({
         }`}
         onClick={() => handleItemClick(item)}
         data-testid={`nav-${item.id}`}
+        data-active={isActive ? "true" : undefined}
       >
         <Icon className="w-4 h-4 mr-2 flex-shrink-0" />
         <span className="flex-1 text-sm leading-tight break-words">{item.label}</span>
@@ -204,7 +192,6 @@ export function VerticalNavSidebar({
         overscrollBehavior: 'contain',
         outline: 'none',
       }}
-      onScroll={handleSidebarScroll}
       onKeyDown={(e) => {
         const container = e.currentTarget;
         if (e.key === 'ArrowDown') {
