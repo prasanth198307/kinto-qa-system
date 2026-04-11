@@ -1147,81 +1147,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(400).json({ message: 'name, slug, adminUsername, adminPassword are required' });
     }
     try {
-      // Check slug uniqueness
-      const [existing] = await db.select({ id: tenants.id }).from(tenants).where(eq(tenants.slug, slug));
-      if (existing) return res.status(409).json({ message: `Slug "${slug}" is already taken` });
+      // Pre-validate slug uniqueness
+      const [existingSlug] = await db.select({ id: tenants.id }).from(tenants).where(eq(tenants.slug, slug));
+      if (existingSlug) return res.status(409).json({ message: `Slug "${slug}" is already taken` });
+
+      // Pre-validate username uniqueness (check globally and per-tenant-id)
+      const existingUsers = await db.select({ id: users.id }).from(users).where(eq(users.username, adminUsername));
+      if (existingUsers.length > 0) {
+        return res.status(409).json({ message: `Username "${adminUsername}" is already taken. Please choose a different admin username.` });
+      }
 
       const planSlug = plan ?? 'trial';
       const [planRow] = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.slug, planSlug));
-
       const trialEnd = trialDays ? new Date(Date.now() + parseInt(trialDays) * 24 * 60 * 60 * 1000).toISOString() : null;
 
-      // Create tenant
-      const [newTenant] = await db.insert(tenants).values({
-        name,
-        slug,
-        plan: planSlug,
-        status: planSlug === 'trial' ? 'trial' : 'active',
-        maxUsers: maxUsers ?? planRow?.maxUsers ?? 5,
-        billingEmail: adminEmail ?? null,
-        trialEndsAt: trialEnd,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }).returning();
-
-      // Create subscription
-      const [newSub] = await db.insert(subscriptions).values({
-        tenantId: newTenant.id,
-        planId: planRow?.id ?? null,
-        planSlug,
-        billingCycle: planSlug === 'trial' ? 'trial' : 'monthly',
-        status: planSlug === 'trial' ? 'trial' : 'active',
-        startedAt: new Date().toISOString(),
-        currentPeriodStart: new Date().toISOString(),
-        currentPeriodEnd: trialEnd,
-      }).returning();
-
-      // Hash password and create admin user
+      // Hash password before transaction (async work outside tx is safer)
       const { hashPassword } = await import('./auth');
       const hashed = await hashPassword(adminPassword);
-      await db.insert(users).values({
-        username: adminUsername,
-        email: adminEmail ?? null,
-        password: hashed,
-        tenantId: newTenant.id,
-        roleId: null,
-      } as any);
 
-      // Log billing event
-      await db.insert(billingEvents).values({
-        tenantId: newTenant.id,
-        subscriptionId: newSub.id,
-        eventType: 'plan_activated',
-        fromPlan: null,
-        toPlan: planSlug,
-        billingCycle: planSlug === 'trial' ? 'trial' : 'monthly',
-        amount: 0,
-        notes: `Tenant created manually by super-admin ${currentUser.username}`,
-        createdBy: currentUser.username,
+      // Wrap everything in a transaction so partial failures don't leave orphaned tenants
+      const result = await db.transaction(async (tx) => {
+        // Create tenant
+        const [newTenant] = await tx.insert(tenants).values({
+          name,
+          slug,
+          plan: planSlug,
+          status: planSlug === 'trial' ? 'trial' : 'active',
+          maxUsers: maxUsers ?? planRow?.maxUsers ?? 5,
+          billingEmail: adminEmail ?? null,
+          trialEndsAt: trialEnd,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }).returning();
+
+        // Create subscription
+        const [newSub] = await tx.insert(subscriptions).values({
+          tenantId: newTenant.id,
+          planId: planRow?.id ?? null,
+          planSlug,
+          billingCycle: planSlug === 'trial' ? 'trial' : 'monthly',
+          status: planSlug === 'trial' ? 'trial' : 'active',
+          startedAt: new Date().toISOString(),
+          currentPeriodStart: new Date().toISOString(),
+          currentPeriodEnd: trialEnd,
+        }).returning();
+
+        // Create admin user
+        await tx.insert(users).values({
+          username: adminUsername,
+          email: adminEmail ?? null,
+          password: hashed,
+          tenantId: newTenant.id,
+          roleId: null,
+        } as any);
+
+        // Log billing event
+        await tx.insert(billingEvents).values({
+          tenantId: newTenant.id,
+          subscriptionId: newSub.id,
+          eventType: 'plan_activated',
+          fromPlan: null,
+          toPlan: planSlug,
+          billingCycle: planSlug === 'trial' ? 'trial' : 'monthly',
+          amount: 0,
+          notes: `Tenant created manually by super-admin ${currentUser.username}`,
+          createdBy: currentUser.username,
+        });
+
+        // Seed default roles — use safe INSERT...WHERE NOT EXISTS to avoid ON CONFLICT issues
+        const defaultRoles = ['admin', 'manager', 'operator', 'reviewer', 'accountsmanager'];
+        for (const roleName of defaultRoles) {
+          await tx.execute(sql`
+            INSERT INTO roles (name, tenant_id, description)
+            SELECT ${roleName}, ${newTenant.id}, ${'Default ' + roleName + ' role'}
+            WHERE NOT EXISTS (
+              SELECT 1 FROM roles WHERE name = ${roleName} AND tenant_id = ${newTenant.id}
+            )
+          `);
+        }
+
+        return { newTenant, newSub };
       });
 
-      // Seed default roles for the new tenant
-      const defaultRoles = ['admin', 'manager', 'operator', 'reviewer', 'accountsmanager'];
-      for (const roleName of defaultRoles) {
-        await db.execute(sql`
-          INSERT INTO roles (name, tenant_id, description)
-          VALUES (${roleName}, ${newTenant.id}, ${`Default ${roleName} role`})
-          ON CONFLICT (name, tenant_id) DO NOTHING
-        `);
+      // Seed role permissions outside the transaction (non-critical, can fail independently)
+      try {
+        const seedResult = await seedTenantPermissions(result.newTenant.id);
+        console.log(`[TENANT SETUP] Seeded ${seedResult.inserted} permission rows for tenant ${result.newTenant.id}`);
+      } catch (seedErr: any) {
+        console.error(`[TENANT SETUP] Permission seeding failed (non-fatal):`, seedErr.message);
       }
 
-      // Seed role permissions for all default roles
-      const seedResult = await seedTenantPermissions(newTenant.id);
-      console.log(`[TENANT SETUP] Seeded ${seedResult.inserted} permission rows for tenant ${newTenant.id}`);
-
-      res.json({ message: 'Tenant created successfully', tenant: newTenant });
+      res.json({ message: 'Tenant created successfully', tenant: result.newTenant });
     } catch (err: any) {
       console.error('POST /api/admin/tenants error:', err);
+      // Provide friendly messages for known constraint violations
+      if (err.code === '23505') {
+        if (err.constraint?.includes('username')) {
+          return res.status(409).json({ message: `Username "${adminUsername}" is already taken. Please choose a different admin username.` });
+        }
+        if (err.constraint?.includes('slug') || err.detail?.includes('slug')) {
+          return res.status(409).json({ message: `Slug "${slug}" is already taken.` });
+        }
+      }
       res.status(500).json({ message: err.message ?? 'Failed to create tenant' });
     }
   });
