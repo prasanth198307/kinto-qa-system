@@ -13,6 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 import { usePlanFeatures } from "@/hooks/use-plan-features";
+import { ROLE_MODULE_RELEVANCE } from "@/lib/role-module-relevance";
 
 interface Role {
   id: string;
@@ -39,12 +40,6 @@ interface ScreenDefinition {
   module?: string; // undefined = always shown (core admin screens)
 }
 
-// Role → which modules make it relevant. Roles not in this map are always shown.
-const ROLE_MODULE_RELEVANCE: Record<string, string[]> = {
-  operator:       ['whatsapp', 'maintenance', 'production'],
-  reviewer:       ['whatsapp', 'maintenance', 'production'],
-  accountsmanager:['accounting', 'invoicing', 'expenses'],
-};
 
 // Available screens in the system - comprehensive list of all modules/pages
 // Keys use snake_case format for database storage (backward compatible with existing role_permissions records)

@@ -11,6 +11,8 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
+import { usePlanFeatures } from "@/hooks/use-plan-features";
+import { ROLE_MODULE_RELEVANCE } from "@/lib/role-module-relevance";
 
 interface UserWithRole {
   id: string;
@@ -106,13 +108,21 @@ export default function AdminUserManagement() {
   const [newUserRoleIds, setNewUserRoleIds] = useState<string[]>([]);
 
   const { toast } = useToast();
+  const { modules } = usePlanFeatures();
 
   const { data: users = [], isLoading } = useQuery<UserWithRole[]>({
     queryKey: ['/api/users'],
   });
 
-  const { data: roles = [] } = useQuery<Role[]>({
+  const { data: allRoles = [] } = useQuery<Role[]>({
     queryKey: ['/api/roles'],
+  });
+
+  // Filter roles to only those relevant to the tenant's active plan modules
+  const roles = allRoles.filter(role => {
+    const relevantModules = ROLE_MODULE_RELEVANCE[role.name.toLowerCase()];
+    if (!relevantModules) return true;
+    return relevantModules.some(m => modules.includes(m));
   });
 
   // Update user profile + roles
