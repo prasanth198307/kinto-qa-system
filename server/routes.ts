@@ -1192,14 +1192,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
           currentPeriodEnd: trialEnd,
         }).returning();
 
-        // Create admin user
-        await tx.insert(users).values({
+        // Seed default roles FIRST so we can assign the admin role to the user
+        const defaultRoles = ['admin', 'manager', 'operator', 'reviewer', 'accountsmanager'];
+        for (const roleName of defaultRoles) {
+          await tx.execute(sql`
+            INSERT INTO roles (name, tenant_id, description)
+            SELECT ${roleName}, ${newTenant.id}, ${'Default ' + roleName + ' role'}
+            WHERE NOT EXISTS (
+              SELECT 1 FROM roles WHERE name = ${roleName} AND tenant_id = ${newTenant.id}
+            )
+          `);
+        }
+
+        // Fetch the admin role ID for this tenant
+        const adminRoleRows = await tx.execute(sql`
+          SELECT id FROM roles WHERE name = 'admin' AND tenant_id = ${newTenant.id} LIMIT 1
+        `);
+        const adminRoleId = (adminRoleRows.rows?.[0] as any)?.id ?? null;
+
+        // Create admin user with the admin role assigned
+        const [newUser] = await tx.insert(users).values({
           username: adminUsername,
           email: adminEmail ?? null,
           password: hashed,
           tenantId: newTenant.id,
-          roleId: null,
-        } as any);
+          roleId: adminRoleId,
+        } as any).returning();
+
+        // Also insert into user_roles junction table for multi-role support
+        if (adminRoleId && newUser?.id) {
+          await tx.execute(sql`
+            INSERT INTO user_roles (user_id, role_id, tenant_id)
+            VALUES (${newUser.id}, ${adminRoleId}, ${newTenant.id})
+            ON CONFLICT (user_id, role_id) DO NOTHING
+          `);
+        }
 
         // Log billing event
         await tx.insert(billingEvents).values({
@@ -1214,19 +1241,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           createdBy: currentUser.username,
         });
 
-        // Seed default roles — use safe INSERT...WHERE NOT EXISTS to avoid ON CONFLICT issues
-        const defaultRoles = ['admin', 'manager', 'operator', 'reviewer', 'accountsmanager'];
-        for (const roleName of defaultRoles) {
-          await tx.execute(sql`
-            INSERT INTO roles (name, tenant_id, description)
-            SELECT ${roleName}, ${newTenant.id}, ${'Default ' + roleName + ' role'}
-            WHERE NOT EXISTS (
-              SELECT 1 FROM roles WHERE name = ${roleName} AND tenant_id = ${newTenant.id}
-            )
-          `);
-        }
-
-        return { newTenant, newSub };
+        return { newTenant, newSub, adminRoleId, adminUserId: newUser?.id };
       });
 
       // Seed role permissions outside the transaction (non-critical, can fail independently)
