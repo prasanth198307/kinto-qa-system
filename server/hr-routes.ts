@@ -37,6 +37,7 @@ function makeStorage(subdir: string) {
 }
 const photoUpload = multer({ storage: makeStorage("hr_photos"), limits: { fileSize: 5 * 1024 * 1024 } });
 const docUpload = multer({ storage: makeStorage("hr_docs"), limits: { fileSize: 20 * 1024 * 1024 } });
+const xlsxUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
 // ── DEPARTMENTS ──────────────────────────────────────────────────────────────
 router.get("/departments", requireHR, async (req: any, res) => {
@@ -379,6 +380,142 @@ router.get("/employees", requireHR, async (req: any, res) => {
     `);
     res.json(rows.rows);
   } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// ── Employee Bulk Upload — Excel template download ────────────────────────────
+router.get("/employees/template", requireHR, (_req, res) => {
+  try {
+    const XLSX = require("xlsx");
+    const headers = [
+      "emp_code*", "first_name*", "join_date*",
+      "last_name", "gender", "date_of_birth", "blood_group", "marital_status",
+      "department_name", "designation_name", "employee_type",
+      "phone", "alternate_phone", "email",
+      "address", "city", "state", "pincode",
+      "basic_salary", "ctc", "special_allowance",
+      "pan", "aadhaar", "pf_number", "uan", "esi_number",
+      "bank_account", "ifsc", "bank_name", "tax_regime",
+    ];
+    const notes = [
+      "Required", "Required", "Required (YYYY-MM-DD)",
+      "", "Male/Female/Other", "YYYY-MM-DD", "A+/A-/B+/B-/AB+/AB-/O+/O-", "Single/Married/Divorced/Widowed",
+      "Must match exact dept name", "Must match exact designation name", "permanent/contract/intern/trainee",
+      "", "", "",
+      "", "", "", "",
+      "Number", "Number", "Number",
+      "", "12-digit number", "", "", "",
+      "", "", "", "new/old (default: new)",
+    ];
+    const example = [
+      "EMP001", "Ravi", "2024-01-15",
+      "Kumar", "Male", "1990-05-10", "B+", "Married",
+      "Production", "Operator", "permanent",
+      "9876543210", "", "ravi@example.com",
+      "123 MG Road", "Pune", "Maharashtra", "411001",
+      "25000", "35000", "5000",
+      "ABCDE1234F", "123456789012", "", "100123456789", "",
+      "987654321012", "HDFC0001234", "HDFC Bank", "new",
+    ];
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet([headers, notes, example]);
+    ws["!cols"] = headers.map((_h: string, i: number) => ({ wch: i < 3 ? 20 : 18 }));
+    XLSX.utils.book_append_sheet(wb, ws, "Employees");
+    const buf: Buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+    res.setHeader("Content-Disposition", "attachment; filename=employee_upload_template.xlsx");
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.send(buf);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// ── Employee Bulk Upload — parse & insert ─────────────────────────────────────
+router.post("/employees/bulk-upload", requireHR, xlsxUpload.single("file"), async (req: any, res) => {
+  if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+  const tid = getTenantId(req);
+  try {
+    const XLSX = require("xlsx");
+    const wb = XLSX.read(req.file.buffer, { type: "buffer" });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    // Skip the notes row (row 2) by using range starting from row 3 — but sheet_to_json uses header row auto
+    const rows: any[] = XLSX.utils.sheet_to_json(ws, { defval: "" });
+    // Remove the notes row if it was included (first data row has "Required" in emp_code* col)
+    const dataRows = rows.filter((r: any) => {
+      const code = String(r["emp_code*"] || r["emp_code"] || "").trim();
+      return code !== "" && code.toLowerCase() !== "required";
+    });
+
+    // Load departments and designations for lookup
+    const [deptRows, desigRows] = await Promise.all([
+      db.execute(sql`SELECT id, name FROM hr_departments WHERE tenant_id=${tid} AND record_status=1`),
+      db.execute(sql`SELECT id, name FROM hr_designations WHERE tenant_id=${tid} AND record_status=1`),
+    ]);
+    const deptMap: Record<string, number> = {};
+    for (const d of deptRows.rows) deptMap[(d.name as string).trim().toLowerCase()] = d.id as number;
+    const desigMap: Record<string, number> = {};
+    for (const d of desigRows.rows) desigMap[(d.name as string).trim().toLowerCase()] = d.id as number;
+
+    let created = 0;
+    const errors: { row: number; reason: string }[] = [];
+
+    for (let i = 0; i < dataRows.length; i++) {
+      const r = dataRows[i];
+      const rowNum = i + 3; // header=1, notes=2, data starts at 3
+      const empCode = String(r["emp_code*"] || r["emp_code"] || "").trim();
+      const firstName = String(r["first_name*"] || r["first_name"] || "").trim();
+      const joinDate = String(r["join_date*"] || r["join_date"] || "").trim();
+
+      if (!empCode) { errors.push({ row: rowNum, reason: "emp_code is required" }); continue; }
+      if (!firstName) { errors.push({ row: rowNum, reason: "first_name is required" }); continue; }
+      if (!joinDate) { errors.push({ row: rowNum, reason: "join_date is required" }); continue; }
+
+      const deptName = String(r["department_name"] || "").trim().toLowerCase();
+      const desigName = String(r["designation_name"] || "").trim().toLowerCase();
+      const departmentId = deptName ? (deptMap[deptName] ?? null) : null;
+      const designationId = desigName ? (desigMap[desigName] ?? null) : null;
+
+      if (deptName && departmentId === null) {
+        errors.push({ row: rowNum, reason: `Department "${r["department_name"]}" not found` }); continue;
+      }
+      if (desigName && designationId === null) {
+        errors.push({ row: rowNum, reason: `Designation "${r["designation_name"]}" not found` }); continue;
+      }
+
+      const num = (v: any) => { const n = parseFloat(String(v)); return isNaN(n) ? 0 : n; };
+      const str = (v: any) => { const s = String(v || "").trim(); return s === "" ? null : s; };
+
+      try {
+        await db.execute(sql`
+          INSERT INTO hr_employees (
+            tenant_id, emp_code, first_name, last_name, gender, date_of_birth, blood_group,
+            marital_status, department_id, designation_id, employee_type, join_date,
+            phone, alternate_phone, email, address, city, state, pincode,
+            basic_salary, ctc, special_allowance,
+            pan, aadhaar, pf_number, uan, esi_number,
+            bank_account, ifsc, bank_name, tax_regime, status
+          ) VALUES (
+            ${tid}, ${empCode}, ${firstName},
+            ${str(r["last_name"])}, ${str(r["gender"])}, ${str(r["date_of_birth"])}, ${str(r["blood_group"])},
+            ${str(r["marital_status"])}, ${departmentId}, ${designationId},
+            ${str(r["employee_type"]) ?? "permanent"}, ${joinDate},
+            ${str(r["phone"])}, ${str(r["alternate_phone"])}, ${str(r["email"])},
+            ${str(r["address"])}, ${str(r["city"])}, ${str(r["state"])}, ${str(r["pincode"])},
+            ${num(r["basic_salary"])}, ${num(r["ctc"])}, ${num(r["special_allowance"])},
+            ${str(r["pan"])}, ${str(r["aadhaar"])}, ${str(r["pf_number"])}, ${str(r["uan"])}, ${str(r["esi_number"])},
+            ${str(r["bank_account"])}, ${str(r["ifsc"])}, ${str(r["bank_name"])},
+            ${str(r["tax_regime"]) ?? "new"}, 'active'
+          )
+        `);
+        created++;
+      } catch (e: any) {
+        let reason = e.message;
+        if (e.message?.includes("unique") || e.message?.includes("duplicate")) {
+          reason = `emp_code "${empCode}" already exists`;
+        }
+        errors.push({ row: rowNum, reason });
+      }
+    }
+
+    res.json({ created, errors });
+  } catch (e: any) { res.status(400).json({ message: `Failed to parse file: ${e.message}` }); }
 });
 
 router.get("/employees/:id", requireHR, async (req: any, res) => {

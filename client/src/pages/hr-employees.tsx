@@ -15,7 +15,8 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import {
   Plus, Search, Upload, FileText, Trash2, Camera, Eye,
-  Download, ArrowLeft, TrendingUp, IndianRupee, Users, X, ExternalLink, KeyRound
+  Download, ArrowLeft, TrendingUp, IndianRupee, Users, X, ExternalLink, KeyRound,
+  FileSpreadsheet, CheckCircle, AlertCircle
 } from "lucide-react";
 
 const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
@@ -915,6 +916,10 @@ export default function HrEmployees() {
   const [essPasswordEmp, setEssPasswordEmp] = useState<any>(null);
   const [essPassword, setEssPassword] = useState("");
   const [essPasswordConfirm, setEssPasswordConfirm] = useState("");
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadResult, setUploadResult] = useState<{ created: number; errors: { row: number; reason: string }[] } | null>(null);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
   const { data: employees = [], isLoading } = useQuery<any[]>({ queryKey: ["/api/hr/employees"] });
   const { data: depts = [] } = useQuery<any[]>({ queryKey: ["/api/hr/departments"] });
   const { data: desigs = [] } = useQuery<any[]>({ queryKey: ["/api/hr/designations"] });
@@ -952,6 +957,37 @@ export default function HrEmployees() {
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
+  const bulkUploadMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      const r = await fetch("/api/hr/employees/bulk-upload", {
+        method: "POST", credentials: "include", body: formData,
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.message || "Upload failed");
+      return d as { created: number; errors: { row: number; reason: string }[] };
+    },
+    onSuccess: (data) => {
+      setUploadResult(data);
+      queryClient.invalidateQueries({ queryKey: ["/api/hr/employees"] });
+    },
+    onError: (e: any) => toast({ title: "Upload failed", description: e.message, variant: "destructive" }),
+  });
+
+  function handleDownloadTemplate() {
+    const a = document.createElement("a");
+    a.href = "/api/hr/employees/template";
+    a.download = "employee_upload_template.xlsx";
+    a.click();
+  }
+
+  function handleUploadSubmit() {
+    if (!uploadFile) return;
+    setUploadResult(null);
+    bulkUploadMutation.mutate(uploadFile);
+  }
+
   const managers = employees.filter((e: any) => e.status === "active");
 
   const filtered = employees.filter((e: any) => {
@@ -986,9 +1022,17 @@ export default function HrEmployees() {
           <h1 className="text-xl font-semibold">Employees</h1>
           <p className="text-sm text-muted-foreground">{activeCount} active · {inactiveCount} inactive</p>
         </div>
-        <Button onClick={() => { setEditing(null); setShowForm(true); }} data-testid="btn-add-employee">
-          <Plus className="h-4 w-4 mr-1.5" />Add Employee
-        </Button>
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" onClick={handleDownloadTemplate} data-testid="btn-download-template">
+            <Download className="h-4 w-4 mr-1.5" />Template
+          </Button>
+          <Button variant="outline" onClick={() => { setUploadFile(null); setUploadResult(null); setShowUploadDialog(true); }} data-testid="btn-bulk-upload">
+            <FileSpreadsheet className="h-4 w-4 mr-1.5" />Bulk Upload
+          </Button>
+          <Button onClick={() => { setEditing(null); setShowForm(true); }} data-testid="btn-add-employee">
+            <Plus className="h-4 w-4 mr-1.5" />Add Employee
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -1156,6 +1200,103 @@ export default function HrEmployees() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Upload Dialog */}
+      <Dialog open={showUploadDialog} onOpenChange={open => { setShowUploadDialog(open); if (!open) { setUploadFile(null); setUploadResult(null); } }}>
+        <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Bulk Upload Employees</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            {!uploadResult ? (
+              <>
+                <div className="rounded-md border bg-muted/40 p-4 space-y-2 text-sm text-muted-foreground">
+                  <p className="font-medium text-foreground">How it works</p>
+                  <ol className="list-decimal list-inside space-y-1">
+                    <li>Download the template using the <span className="font-medium text-foreground">Template</span> button.</li>
+                    <li>Fill in employee details. Row 1 = column headers, Row 2 = notes, Row 3 onwards = data.</li>
+                    <li>Department and designation names must match exactly what is in the system.</li>
+                    <li>Upload the filled file below.</li>
+                  </ol>
+                </div>
+                <div className="space-y-2">
+                  <Label>Select Excel File (.xlsx)</Label>
+                  <input
+                    ref={uploadInputRef}
+                    type="file"
+                    accept=".xlsx,.xls"
+                    className="hidden"
+                    data-testid="input-bulk-upload-file"
+                    onChange={e => setUploadFile(e.target.files?.[0] ?? null)}
+                  />
+                  <div
+                    className="border-2 border-dashed rounded-md p-6 text-center cursor-pointer hover-elevate"
+                    onClick={() => uploadInputRef.current?.click()}
+                    data-testid="dropzone-bulk-upload"
+                  >
+                    {uploadFile ? (
+                      <div className="flex items-center justify-center gap-2 text-sm">
+                        <FileSpreadsheet className="h-5 w-5 text-green-600" />
+                        <span className="font-medium">{uploadFile.name}</span>
+                        <span className="text-muted-foreground">({(uploadFile.size / 1024).toFixed(1)} KB)</span>
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        <Upload className="h-8 w-8 mx-auto text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground">Click to select an Excel file</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setShowUploadDialog(false)}>Cancel</Button>
+                  <Button
+                    onClick={handleUploadSubmit}
+                    disabled={!uploadFile || bulkUploadMutation.isPending}
+                    data-testid="btn-bulk-upload-submit"
+                  >
+                    {bulkUploadMutation.isPending ? "Uploading..." : "Upload"}
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="space-y-3">
+                  {uploadResult.created > 0 && (
+                    <div className="flex items-center gap-2 rounded-md bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 p-3 text-sm">
+                      <CheckCircle className="h-4 w-4 text-green-600 shrink-0" />
+                      <span className="font-medium text-green-800 dark:text-green-400">{uploadResult.created} employee{uploadResult.created !== 1 ? "s" : ""} created successfully</span>
+                    </div>
+                  )}
+                  {uploadResult.errors.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm font-medium text-destructive">
+                        <AlertCircle className="h-4 w-4 shrink-0" />
+                        {uploadResult.errors.length} row{uploadResult.errors.length !== 1 ? "s" : ""} had errors
+                      </div>
+                      <div className="max-h-48 overflow-y-auto rounded-md border divide-y text-sm">
+                        {uploadResult.errors.map((err, i) => (
+                          <div key={i} className="flex gap-3 px-3 py-2">
+                            <span className="text-muted-foreground shrink-0">Row {err.row}</span>
+                            <span className="text-destructive">{err.reason}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {uploadResult.created === 0 && uploadResult.errors.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-4">No data rows found in the file.</p>
+                  )}
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => { setUploadFile(null); setUploadResult(null); }}>Upload Another</Button>
+                  <Button onClick={() => setShowUploadDialog(false)}>Done</Button>
+                </div>
+              </>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
