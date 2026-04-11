@@ -12,6 +12,7 @@ import { Plus, Edit, Trash2, Shield, Check, X, AlertTriangle, RefreshCw, Copy, E
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
+import { usePlanFeatures } from "@/hooks/use-plan-features";
 
 interface Role {
   id: string;
@@ -35,159 +36,168 @@ interface ScreenDefinition {
   key: string;
   label: string;
   allowedActions: ('view' | 'create' | 'edit' | 'delete')[];
+  module?: string; // undefined = always shown (core admin screens)
 }
+
+// Role → which modules make it relevant. Roles not in this map are always shown.
+const ROLE_MODULE_RELEVANCE: Record<string, string[]> = {
+  operator:       ['whatsapp', 'maintenance', 'production'],
+  reviewer:       ['whatsapp', 'maintenance', 'production'],
+  accountsmanager:['accounting', 'invoicing', 'expenses'],
+};
 
 // Available screens in the system - comprehensive list of all modules/pages
 // Keys use snake_case format for database storage (backward compatible with existing role_permissions records)
 const AVAILABLE_SCREENS: ScreenDefinition[] = [
-  // Dashboards & Overview (Read-only)
-  { key: 'dashboard', label: 'Dashboard', allowedActions: ['view'] },
-  { key: 'sales_dashboard', label: 'Sales Dashboard', allowedActions: ['view'] },
-  { key: 'reports', label: 'Reports (All Tabs)', allowedActions: ['view'] },
+  // Dashboards & Overview — always visible (core admin)
+  { key: 'dashboard',       label: 'Dashboard',       allowedActions: ['view'] },
+  { key: 'sales_dashboard', label: 'Sales Dashboard', allowedActions: ['view'], module: 'invoicing' },
+  { key: 'reports',         label: 'Reports (All Tabs)', allowedActions: ['view'] },
   
   // Individual Report Tabs
-  { key: 'report_gatepasses', label: 'Report: Gatepasses', allowedActions: ['view'] },
-  { key: 'report_invoices', label: 'Report: Invoices', allowedActions: ['view'] },
-  { key: 'report_issuances', label: 'Report: Issuances', allowedActions: ['view'] },
-  { key: 'report_purchase_orders', label: 'Report: Purchase Orders', allowedActions: ['view'] },
-  { key: 'report_maintenance', label: 'Report: Maintenance', allowedActions: ['view'] },
-  { key: 'report_expenses', label: 'Report: Expenses', allowedActions: ['view'] },
-  { key: 'report_cash_register', label: 'Report: Cash Register', allowedActions: ['view'] },
-  { key: 'report_gst', label: 'Report: GST Reports', allowedActions: ['view'] },
-  { key: 'report_payments', label: 'Report: Payments', allowedActions: ['view'] },
-  { key: 'report_finished_goods', label: 'Report: Finished Goods', allowedActions: ['view'] },
-  { key: 'report_monthly_sales', label: 'Report: Monthly Sales', allowedActions: ['view'] },
-  { key: 'report_machines', label: 'Report: Machine Reports', allowedActions: ['view'] },
-  { key: 'report_scrap', label: 'Report: Scrap Report', allowedActions: ['view'] },
-  { key: 'report_sales_returns', label: 'Report: Sales Returns', allowedActions: ['view'] },
-  { key: 'report_repacking', label: 'Report: Repacking', allowedActions: ['view'] },
-  { key: 'report_vendor_report', label: 'Report: Vendor Report', allowedActions: ['view'] },
-  { key: 'report_monthly_production', label: 'Report: Monthly Production', allowedActions: ['view'] },
+  { key: 'report_gatepasses',          label: 'Report: Gatepasses',          allowedActions: ['view'], module: 'gatepasses' },
+  { key: 'report_invoices',            label: 'Report: Invoices',             allowedActions: ['view'], module: 'invoicing' },
+  { key: 'report_issuances',           label: 'Report: Issuances',            allowedActions: ['view'], module: 'production' },
+  { key: 'report_purchase_orders',     label: 'Report: Purchase Orders',      allowedActions: ['view'], module: 'purchase_orders' },
+  { key: 'report_maintenance',         label: 'Report: Maintenance',          allowedActions: ['view'], module: 'maintenance' },
+  { key: 'report_expenses',            label: 'Report: Expenses',             allowedActions: ['view'], module: 'expenses' },
+  { key: 'report_cash_register',       label: 'Report: Cash Register',        allowedActions: ['view'], module: 'expenses' },
+  { key: 'report_gst',                 label: 'Report: GST Reports',          allowedActions: ['view'], module: 'invoicing' },
+  { key: 'report_payments',            label: 'Report: Payments',             allowedActions: ['view'], module: 'invoicing' },
+  { key: 'report_finished_goods',      label: 'Report: Finished Goods',       allowedActions: ['view'], module: 'production' },
+  { key: 'report_monthly_sales',       label: 'Report: Monthly Sales',        allowedActions: ['view'], module: 'invoicing' },
+  { key: 'report_machines',            label: 'Report: Machine Reports',      allowedActions: ['view'], module: 'maintenance' },
+  { key: 'report_scrap',               label: 'Report: Scrap Report',         allowedActions: ['view'], module: 'production' },
+  { key: 'report_sales_returns',       label: 'Report: Sales Returns',        allowedActions: ['view'], module: 'quality_returns' },
+  { key: 'report_repacking',           label: 'Report: Repacking',            allowedActions: ['view'], module: 'production' },
+  { key: 'report_vendor_report',       label: 'Report: Vendor Report',        allowedActions: ['view'], module: 'purchase_orders' },
+  { key: 'report_monthly_production',  label: 'Report: Monthly Production',   allowedActions: ['view'], module: 'production' },
   
-  // Analytics & Reports (Read-only)
-  { key: 'production_reconciliation_report', label: 'Production Reconciliation Report', allowedActions: ['view'] },
-  { key: 'variance_analytics', label: 'Variance Analytics', allowedActions: ['view'] },
-  { key: 'whatsapp_analytics', label: 'WhatsApp Analytics', allowedActions: ['view'] },
-  { key: 'pm_history', label: 'PM History', allowedActions: ['view'] },
-  { key: 'vendor_analytics', label: 'Vendor Analytics', allowedActions: ['view'] },
-  { key: 'vendor_history', label: 'Vendor History', allowedActions: ['view'] },
-  { key: 'pending_payments', label: 'Pending Payments', allowedActions: ['view'] },
-  { key: 'write_off_report', label: 'Write-Off Report', allowedActions: ['view'] },
-  { key: 'reviewer_dashboard', label: 'Reviewer Dashboard', allowedActions: ['view'] },
-  { key: 'payments', label: 'Payment Management', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'payment_management', label: 'Payment Management (Admin Tools)', allowedActions: ['edit', 'delete'] },
-  { key: 'bulk_payment_report', label: 'Bulk Payment Report (Download)', allowedActions: ['view'] },
-  { key: 'customer_advances', label: 'Customer Advances', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'cancelled_invoices_report', label: 'Cancelled Invoices Report', allowedActions: ['view'] },
-  { key: 'cash_register_report', label: 'Cash Register Report', allowedActions: ['view'] },
+  // Analytics & Reports
+  { key: 'production_reconciliation_report', label: 'Production Reconciliation Report', allowedActions: ['view'], module: 'production' },
+  { key: 'variance_analytics',         label: 'Variance Analytics',           allowedActions: ['view'], module: 'production' },
+  { key: 'whatsapp_analytics',         label: 'WhatsApp Analytics',           allowedActions: ['view'], module: 'whatsapp' },
+  { key: 'pm_history',                 label: 'PM History',                   allowedActions: ['view'], module: 'maintenance' },
+  { key: 'vendor_analytics',           label: 'Vendor Analytics',             allowedActions: ['view'], module: 'purchase_orders' },
+  { key: 'vendor_history',             label: 'Vendor History',               allowedActions: ['view'], module: 'purchase_orders' },
+  { key: 'pending_payments',           label: 'Pending Payments',             allowedActions: ['view'], module: 'invoicing' },
+  { key: 'write_off_report',           label: 'Write-Off Report',             allowedActions: ['view'], module: 'invoicing' },
+  { key: 'reviewer_dashboard',         label: 'Reviewer Dashboard',           allowedActions: ['view'], module: 'whatsapp' },
+  { key: 'payments',                   label: 'Payment Management',           allowedActions: ['view', 'create', 'edit', 'delete'], module: 'invoicing' },
+  { key: 'payment_management',         label: 'Payment Management (Admin Tools)', allowedActions: ['edit', 'delete'], module: 'invoicing' },
+  { key: 'bulk_payment_report',        label: 'Bulk Payment Report (Download)', allowedActions: ['view'], module: 'invoicing' },
+  { key: 'customer_advances',          label: 'Customer Advances',            allowedActions: ['view', 'create', 'edit', 'delete'], module: 'invoicing' },
+  { key: 'cancelled_invoices_report',  label: 'Cancelled Invoices Report',    allowedActions: ['view'], module: 'invoicing' },
+  { key: 'cash_register_report',       label: 'Cash Register Report',         allowedActions: ['view'], module: 'expenses' },
   
-  // MIS (Management Information System)
-  { key: 'mis_dashboard', label: 'MIS Executive Dashboard', allowedActions: ['view'] },
-  { key: 'mis_production', label: 'MIS Production Analytics', allowedActions: ['view'] },
-  { key: 'mis_inventory', label: 'MIS Inventory Intelligence', allowedActions: ['view'] },
-  { key: 'mis_sales', label: 'MIS Sales Analysis', allowedActions: ['view'] },
-  { key: 'mis_delivery', label: 'MIS Delivery Performance', allowedActions: ['view'] },
-  { key: 'mis_cash', label: 'MIS Cash Analytics', allowedActions: ['view'] },
-  { key: 'mis_financial', label: 'MIS Financial Analytics', allowedActions: ['view'] },
+  // MIS
+  { key: 'mis_dashboard',  label: 'MIS Executive Dashboard',     allowedActions: ['view'], module: 'mis' },
+  { key: 'mis_production', label: 'MIS Production Analytics',    allowedActions: ['view'], module: 'mis' },
+  { key: 'mis_inventory',  label: 'MIS Inventory Intelligence',  allowedActions: ['view'], module: 'mis' },
+  { key: 'mis_sales',      label: 'MIS Sales Analysis',          allowedActions: ['view'], module: 'mis' },
+  { key: 'mis_delivery',   label: 'MIS Delivery Performance',    allowedActions: ['view'], module: 'mis' },
+  { key: 'mis_cash',       label: 'MIS Cash Analytics',          allowedActions: ['view'], module: 'mis' },
+  { key: 'mis_financial',  label: 'MIS Financial Analytics',     allowedActions: ['view'], module: 'mis' },
   
   // Master Data - Products & Materials
-  { key: 'products', label: 'Products', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'raw_materials', label: 'Raw Materials', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'finished_goods', label: 'Finished Goods', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'raw_material_types', label: 'Raw Material Types', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'product_categories', label: 'Product Categories', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'product_types', label: 'Product Types', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'products',           label: 'Products',            allowedActions: ['view', 'create', 'edit', 'delete'], module: 'basic_inventory' },
+  { key: 'raw_materials',      label: 'Raw Materials',       allowedActions: ['view', 'create', 'edit', 'delete'], module: 'basic_inventory' },
+  { key: 'finished_goods',     label: 'Finished Goods',      allowedActions: ['view', 'create', 'edit', 'delete'], module: 'basic_inventory' },
+  { key: 'raw_material_types', label: 'Raw Material Types',  allowedActions: ['view', 'create', 'edit', 'delete'], module: 'basic_inventory' },
+  { key: 'product_categories', label: 'Product Categories',  allowedActions: ['view', 'create', 'edit', 'delete'], module: 'basic_inventory' },
+  { key: 'product_types',      label: 'Product Types',       allowedActions: ['view', 'create', 'edit', 'delete'], module: 'basic_inventory' },
   
   // Master Data - Supporting
-  { key: 'uom', label: 'Units of Measure', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'vendors', label: 'Vendor Master', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'vendor_types', label: 'Vendor Types', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'inventory', label: 'Inventory Management', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'uom',          label: 'Units of Measure',     allowedActions: ['view', 'create', 'edit', 'delete'], module: 'basic_inventory' },
+  { key: 'vendors',      label: 'Vendor Master',        allowedActions: ['view', 'create', 'edit', 'delete'], module: 'purchase_orders' },
+  { key: 'vendor_types', label: 'Vendor Types',         allowedActions: ['view', 'create', 'edit', 'delete'], module: 'purchase_orders' },
+  { key: 'inventory',    label: 'Inventory Management', allowedActions: ['view', 'create', 'edit', 'delete'], module: 'basic_inventory' },
   
   // Quality & Maintenance
-  { key: 'machines', label: 'Machines', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'machine_types', label: 'Machine Types', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'spare_parts', label: 'Spare Parts (Catalog)', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'spare_parts_stock', label: 'Spare Parts Stock', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'checklist_templates', label: 'Checklist Templates', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'checklist_assignments', label: 'Checklist Assignments', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'checklists', label: 'Checklists', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'maintenance_plans', label: 'Maintenance Plans', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'pm_templates', label: 'PM Task Templates', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'pm_execution', label: 'PM Execution', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'machines',               label: 'Machines',                  allowedActions: ['view', 'create', 'edit', 'delete'], module: 'maintenance' },
+  { key: 'machine_types',          label: 'Machine Types',             allowedActions: ['view', 'create', 'edit', 'delete'], module: 'maintenance' },
+  { key: 'spare_parts',            label: 'Spare Parts (Catalog)',     allowedActions: ['view', 'create', 'edit', 'delete'], module: 'maintenance' },
+  { key: 'spare_parts_stock',      label: 'Spare Parts Stock',         allowedActions: ['view', 'create', 'edit', 'delete'], module: 'maintenance' },
+  { key: 'checklist_templates',    label: 'Checklist Templates',       allowedActions: ['view', 'create', 'edit', 'delete'], module: 'whatsapp' },
+  { key: 'checklist_assignments',  label: 'Checklist Assignments',     allowedActions: ['view', 'create', 'edit', 'delete'], module: 'whatsapp' },
+  { key: 'checklists',             label: 'Checklists',                allowedActions: ['view', 'create', 'edit', 'delete'], module: 'whatsapp' },
+  { key: 'maintenance_plans',      label: 'Maintenance Plans',         allowedActions: ['view', 'create', 'edit', 'delete'], module: 'maintenance' },
+  { key: 'pm_templates',           label: 'PM Task Templates',         allowedActions: ['view', 'create', 'edit', 'delete'], module: 'maintenance' },
+  { key: 'pm_execution',           label: 'PM Execution',              allowedActions: ['view', 'create', 'edit', 'delete'], module: 'maintenance' },
   
   // Operations & Transactions
-  { key: 'purchase_orders', label: 'Purchase Orders', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'purchase_returns', label: 'Purchase Returns', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'raw_material_issuance', label: 'Raw Material Issuance', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'production_entries', label: 'Production Entries', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'production_reconciliations', label: 'Production Reconciliation', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'production_management', label: 'Production Management', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'sales_orders', label: 'Sales Orders', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'sales_officers', label: 'Sales Officers (Master)', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'gatepasses', label: 'Gatepasses', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'invoices', label: 'Sales Invoices', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'credit_notes', label: 'Credit Notes', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'vendor_debit_notes', label: 'Vendor Debit Notes', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'dispatch_tracking', label: 'Dispatch Tracking', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'dispatch_masters', label: 'Dispatch Masters (Vehicles/Drivers/Transporters)', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'sales_returns', label: 'Sales Returns', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'purchase_orders',            label: 'Purchase Orders',                        allowedActions: ['view', 'create', 'edit', 'delete'], module: 'purchase_orders' },
+  { key: 'purchase_returns',           label: 'Purchase Returns',                       allowedActions: ['view', 'create', 'edit', 'delete'], module: 'production' },
+  { key: 'raw_material_issuance',      label: 'Raw Material Issuance',                  allowedActions: ['view', 'create', 'edit', 'delete'], module: 'production' },
+  { key: 'production_entries',         label: 'Production Entries',                     allowedActions: ['view', 'create', 'edit', 'delete'], module: 'production' },
+  { key: 'production_reconciliations', label: 'Production Reconciliation',              allowedActions: ['view', 'create', 'edit', 'delete'], module: 'production' },
+  { key: 'production_management',      label: 'Production Management',                  allowedActions: ['view', 'create', 'edit', 'delete'], module: 'production' },
+  { key: 'sales_orders',               label: 'Sales Orders',                           allowedActions: ['view', 'create', 'edit', 'delete'], module: 'sales_orders' },
+  { key: 'sales_officers',             label: 'Sales Officers (Master)',                allowedActions: ['view', 'create', 'edit', 'delete'], module: 'sales_orders' },
+  { key: 'gatepasses',                 label: 'Gatepasses',                             allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gatepasses' },
+  { key: 'invoices',                   label: 'Sales Invoices',                         allowedActions: ['view', 'create', 'edit', 'delete'], module: 'invoicing' },
+  { key: 'credit_notes',               label: 'Credit Notes',                           allowedActions: ['view', 'create', 'edit', 'delete'], module: 'quality_returns' },
+  { key: 'vendor_debit_notes',         label: 'Vendor Debit Notes',                     allowedActions: ['view', 'create', 'edit', 'delete'], module: 'purchase_orders' },
+  { key: 'dispatch_tracking',          label: 'Dispatch Tracking',                      allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gatepasses' },
+  { key: 'dispatch_masters',           label: 'Dispatch Masters (Vehicles/Drivers/Transporters)', allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gatepasses' },
+  { key: 'sales_returns',              label: 'Sales Returns',                          allowedActions: ['view', 'create', 'edit', 'delete'], module: 'quality_returns' },
   
   // Document & Expense Management
-  { key: 'documents', label: 'Documents', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'document_categories', label: 'Document Categories', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'expenses', label: 'Expense Vouchers', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'expense_categories', label: 'Expense Categories', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'monthly_expenses', label: 'Monthly Expenses', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'cash_register', label: 'Cash Register', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'documents',          label: 'Documents',          allowedActions: ['view', 'create', 'edit', 'delete'], module: 'documents' },
+  { key: 'document_categories',label: 'Document Categories', allowedActions: ['view', 'create', 'edit', 'delete'], module: 'documents' },
+  { key: 'expenses',           label: 'Expense Vouchers',   allowedActions: ['view', 'create', 'edit', 'delete'], module: 'expenses' },
+  { key: 'expense_categories', label: 'Expense Categories', allowedActions: ['view', 'create', 'edit', 'delete'], module: 'expenses' },
+  { key: 'monthly_expenses',   label: 'Monthly Expenses',   allowedActions: ['view', 'create', 'edit', 'delete'], module: 'expenses' },
+  { key: 'cash_register',      label: 'Cash Register',      allowedActions: ['view', 'create', 'edit', 'delete'], module: 'expenses' },
   
   // Accounting & Ledger
-  { key: 'chart_of_accounts', label: 'Chart of Accounts', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'journal_entries', label: 'Journal Entries', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'manual_journal_entry', label: 'Manual Journal Entry', allowedActions: ['view', 'create'] },
-  { key: 'trial_balance', label: 'Trial Balance', allowedActions: ['view'] },
-  { key: 'profit_loss', label: 'Profit & Loss Statement', allowedActions: ['view'] },
-  { key: 'balance_sheet', label: 'Balance Sheet', allowedActions: ['view'] },
-  { key: 'bank_transactions', label: 'Bank Statements & Transactions', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'ledger_view', label: 'Ledger View', allowedActions: ['view'] },
-  { key: 'day_book', label: 'Day Book', allowedActions: ['view'] },
-  { key: 'aging_report', label: 'Outstanding / Aging Report', allowedActions: ['view'] },
-  { key: 'cash_flow_statement', label: 'Cash Flow Statement', allowedActions: ['view'] },
-  { key: 'group_summary', label: 'Group Summary', allowedActions: ['view'] },
-  { key: 'budget_variance', label: 'Budget & Variance', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'tds_management', label: 'TDS Management', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'scrap_inventory', label: 'Scrap Inventory / Scrap Management', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'chart_of_accounts',   label: 'Chart of Accounts',               allowedActions: ['view', 'create', 'edit', 'delete'], module: 'accounting' },
+  { key: 'journal_entries',     label: 'Journal Entries',                  allowedActions: ['view', 'create', 'edit', 'delete'], module: 'accounting' },
+  { key: 'manual_journal_entry',label: 'Manual Journal Entry',             allowedActions: ['view', 'create'],                  module: 'accounting' },
+  { key: 'trial_balance',       label: 'Trial Balance',                    allowedActions: ['view'],                            module: 'accounting' },
+  { key: 'profit_loss',         label: 'Profit & Loss Statement',          allowedActions: ['view'],                            module: 'accounting' },
+  { key: 'balance_sheet',       label: 'Balance Sheet',                    allowedActions: ['view'],                            module: 'accounting' },
+  { key: 'bank_transactions',   label: 'Bank Statements & Transactions',   allowedActions: ['view', 'create', 'edit', 'delete'], module: 'accounting' },
+  { key: 'ledger_view',         label: 'Ledger View',                      allowedActions: ['view'],                            module: 'accounting' },
+  { key: 'day_book',            label: 'Day Book',                         allowedActions: ['view'],                            module: 'accounting' },
+  { key: 'aging_report',        label: 'Outstanding / Aging Report',       allowedActions: ['view'],                            module: 'accounting' },
+  { key: 'cash_flow_statement', label: 'Cash Flow Statement',              allowedActions: ['view'],                            module: 'accounting' },
+  { key: 'group_summary',       label: 'Group Summary',                    allowedActions: ['view'],                            module: 'accounting' },
+  { key: 'budget_variance',     label: 'Budget & Variance',                allowedActions: ['view', 'create', 'edit', 'delete'], module: 'accounting' },
+  { key: 'tds_management',      label: 'TDS Management',                   allowedActions: ['view', 'create', 'edit', 'delete'], module: 'accounting' },
+  { key: 'scrap_inventory',     label: 'Scrap Inventory / Scrap Management', allowedActions: ['view', 'create', 'edit', 'delete'], module: 'production' },
   
-  // System & Configuration
-  { key: 'users', label: 'User Management', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'roles', label: 'Role Management', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'invoice_templates', label: 'Invoice Templates', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'template_management', label: 'Template Management', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'notification_settings', label: 'Notification Settings', allowedActions: ['view', 'edit'] },
-  { key: 'machine_startup_reminders', label: 'Machine Startup Reminders', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'vyapaar_import', label: 'Vyapaar Data Import', allowedActions: ['view', 'create'] },
-  { key: 'data_import', label: 'Data Import', allowedActions: ['view', 'create'] },
-  { key: 'payment_writeoff', label: 'Payment Write-Off', allowedActions: ['view', 'create', 'delete'] },
+  // System & Configuration — always visible (core admin)
+  { key: 'users',                    label: 'User Management',         allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'roles',                    label: 'Role Management',         allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'notification_settings',    label: 'Notification Settings',   allowedActions: ['view', 'edit'] },
+  { key: 'invoice_templates',        label: 'Invoice Templates',       allowedActions: ['view', 'create', 'edit', 'delete'], module: 'invoicing' },
+  { key: 'template_management',      label: 'Template Management',     allowedActions: ['view', 'create', 'edit', 'delete'], module: 'basic_inventory' },
+  { key: 'machine_startup_reminders',label: 'Machine Startup Reminders', allowedActions: ['view', 'create', 'edit', 'delete'], module: 'whatsapp' },
+  { key: 'vyapaar_import',           label: 'Vyapaar Data Import',     allowedActions: ['view', 'create'], module: 'basic_inventory' },
+  { key: 'data_import',              label: 'Data Import',             allowedActions: ['view', 'create'], module: 'basic_inventory' },
+  { key: 'payment_writeoff',         label: 'Payment Write-Off',       allowedActions: ['view', 'create', 'delete'], module: 'invoicing' },
 
   // CRM
-  { key: 'crm_leads', label: 'CRM: Lead Management', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'crm_leads', label: 'CRM: Lead Management', allowedActions: ['view', 'create', 'edit', 'delete'], module: 'crm' },
 
   // HR & Payroll
-  { key: 'hr_employees', label: 'HR: Employee Master', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'hr_attendance', label: 'HR: Attendance', allowedActions: ['view', 'create', 'edit'] },
-  { key: 'hr_leaves', label: 'HR: Leave Management', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'hr_payroll', label: 'HR: Payroll Processing', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'hr_exit_management', label: 'HR: Exit Management & F&F', allowedActions: ['view', 'create', 'edit'] },
-  { key: 'hr_loans', label: 'HR: Loans & Advances', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'hr_tds', label: 'HR: TDS & Compliance', allowedActions: ['view', 'create', 'edit'] },
-  { key: 'hr_recruitment', label: 'HR: Recruitment', allowedActions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'hr_reports', label: 'HR: Reports', allowedActions: ['view'] },
-  { key: 'hr_ess_admin', label: 'HR: ESS Portal Management (Set Passwords / Enable Access)', allowedActions: ['view', 'create', 'edit'] },
-  { key: 'hr_masters', label: 'HR: Masters (Dept/Designation/Shift/Leave Types)', allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'hr_employees',      label: 'HR: Employee Master',                              allowedActions: ['view', 'create', 'edit', 'delete'], module: 'hr_payroll' },
+  { key: 'hr_attendance',     label: 'HR: Attendance',                                   allowedActions: ['view', 'create', 'edit'],           module: 'hr_payroll' },
+  { key: 'hr_leaves',         label: 'HR: Leave Management',                             allowedActions: ['view', 'create', 'edit', 'delete'], module: 'hr_payroll' },
+  { key: 'hr_payroll',        label: 'HR: Payroll Processing',                           allowedActions: ['view', 'create', 'edit', 'delete'], module: 'hr_payroll' },
+  { key: 'hr_exit_management',label: 'HR: Exit Management & F&F',                        allowedActions: ['view', 'create', 'edit'],           module: 'hr_payroll' },
+  { key: 'hr_loans',          label: 'HR: Loans & Advances',                             allowedActions: ['view', 'create', 'edit', 'delete'], module: 'hr_payroll' },
+  { key: 'hr_tds',            label: 'HR: TDS & Compliance',                             allowedActions: ['view', 'create', 'edit'],           module: 'hr_payroll' },
+  { key: 'hr_recruitment',    label: 'HR: Recruitment',                                  allowedActions: ['view', 'create', 'edit', 'delete'], module: 'hr_payroll' },
+  { key: 'hr_reports',        label: 'HR: Reports',                                      allowedActions: ['view'],                             module: 'hr_payroll' },
+  { key: 'hr_ess_admin',      label: 'HR: ESS Portal Management (Set Passwords / Enable Access)', allowedActions: ['view', 'create', 'edit'], module: 'hr_payroll' },
+  { key: 'hr_masters',        label: 'HR: Masters (Dept/Designation/Shift/Leave Types)', allowedActions: ['view', 'create', 'edit', 'delete'], module: 'hr_payroll' },
 ];
 
 export default function RoleManagement() {
   const { toast } = useToast();
+  const { modules } = usePlanFeatures();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isPermissionsDialogOpen, setIsPermissionsDialogOpen] = useState(false);
@@ -210,9 +220,22 @@ export default function RoleManagement() {
   const [copyFromRoleId, setCopyFromRoleId] = useState<string>('');
   const [isCopying, setIsCopying] = useState(false);
 
+  // Filter screens to only those relevant to the tenant's plan modules
+  const activeScreens = AVAILABLE_SCREENS.filter(
+    s => !s.module || modules.includes(s.module)
+  );
+
   // Fetch roles
-  const { data: roles = [], isLoading: rolesLoading } = useQuery<Role[]>({
+  const { data: allRoles = [], isLoading: rolesLoading } = useQuery<Role[]>({
     queryKey: ['/api/roles'],
+  });
+
+  // Filter roles list: hide plan-irrelevant default roles (operator, reviewer, accountsmanager)
+  // so HR-only tenants don't see manufacturing/accounting roles they'll never use.
+  const roles = allRoles.filter(role => {
+    const relevantModules = ROLE_MODULE_RELEVANCE[role.name.toLowerCase()];
+    if (!relevantModules) return true; // no restriction = always show
+    return relevantModules.some(m => modules.includes(m));
   });
 
   // Fetch all role permissions
@@ -443,7 +466,7 @@ export default function RoleManagement() {
 
   const handleEnableAllView = () => {
     const newPermissions = new Map(permissions);
-    for (const screen of AVAILABLE_SCREENS) {
+    for (const screen of activeScreens) {
       if (!screen.allowedActions.includes('view')) continue;
       const existing = newPermissions.get(screen.key) || {
         id: '', roleId: permissionsRole?.id || '', screenKey: screen.key,
@@ -456,7 +479,7 @@ export default function RoleManagement() {
 
   const handleClearAll = () => {
     const newPermissions = new Map(permissions);
-    for (const screen of AVAILABLE_SCREENS) {
+    for (const screen of activeScreens) {
       const existing = newPermissions.get(screen.key);
       if (existing) {
         newPermissions.set(screen.key, { ...existing, canView: 0, canCreate: 0, canEdit: 0, canDelete: 0 });
@@ -489,7 +512,7 @@ export default function RoleManagement() {
   const handleSavePermissions = () => {
     if (!permissionsRole) return;
 
-    const permissionsArray = AVAILABLE_SCREENS.reduce<{ screenKey: string; canView: boolean; canCreate: boolean; canEdit: boolean; canDelete: boolean }[]>((acc, screen) => {
+    const permissionsArray = activeScreens.reduce<{ screenKey: string; canView: boolean; canCreate: boolean; canEdit: boolean; canDelete: boolean }[]>((acc, screen) => {
       const perm = permissions.get(screen.key) || {
         screenKey: screen.key,
         canView: 0,
@@ -822,7 +845,7 @@ export default function RoleManagement() {
                   </tr>
                 </thead>
                 <tbody>
-                  {AVAILABLE_SCREENS.map((screen, index) => (
+                  {activeScreens.map((screen, index) => (
                     <tr key={screen.key} className="border-b hover-elevate" data-testid={`row-permission-${index}`}>
                       <td className="py-3 px-2 font-medium">{screen.label}</td>
                       <td className="text-center py-3 px-2">
