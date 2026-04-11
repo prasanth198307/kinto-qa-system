@@ -8,29 +8,44 @@ interface TodayStats {
   gatepassesCount: number;
 }
 
+interface PlanFeatures {
+  plan: string;
+  modules: string[];
+  allowedNavItems: string[];
+}
+
 export default function TodayProductionStats() {
+  const { data: planFeatures } = useQuery<PlanFeatures>({
+    queryKey: ['/api/tenant/features'],
+  });
+
+  const modules: string[] = planFeatures?.modules ?? [];
+  const showProduction = modules.includes('invoicing') || modules.includes('production') || modules.includes('gatepasses');
+
   const { data: stats, isLoading } = useQuery<TodayStats>({
     queryKey: ['/api/stats/today'],
+    enabled: showProduction,
   });
 
-  // Fetch invoices to show count
   const { data: invoices = [] } = useQuery<Invoice[]>({
     queryKey: ['/api/invoices'],
+    enabled: showProduction,
   });
 
-  // Fetch finished goods for current stock
   const { data: finishedGoods = [] } = useQuery<FinishedGood[]>({
     queryKey: ['/api/finished-goods'],
+    enabled: showProduction,
   });
 
-  // Calculate total stock
+  // Don't render at all for non-manufacturing plans (HR-only, etc.)
+  if (!showProduction) return null;
+
   const totalStock = finishedGoods
     .filter(fg => fg.recordStatus === 1)
     .reduce((sum, fg) => sum + fg.quantity, 0);
 
-  // Count today's invoices
   const today = new Date().toDateString();
-  const todaysInvoices = invoices.filter(inv => 
+  const todaysInvoices = invoices.filter(inv =>
     new Date(inv.invoiceDate).toDateString() === today && inv.recordStatus === 1
   ).length;
 

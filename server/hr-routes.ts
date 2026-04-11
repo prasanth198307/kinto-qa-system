@@ -321,6 +321,46 @@ router.delete("/pt-slabs/:id", requireHR, async (req: any, res) => {
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 
+// ── DASHBOARD STATS ───────────────────────────────────────────────────────────
+router.get("/employees/stats", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  try {
+    const result = await db.execute(sql`
+      SELECT
+        COUNT(*) AS total,
+        COUNT(*) FILTER (WHERE status = 'active') AS active
+      FROM hr_employees
+      WHERE tenant_id = ${tid} AND record_status = 1
+    `);
+    const row = result.rows[0] as any;
+    res.json({ total: parseInt(row.total) || 0, active: parseInt(row.active) || 0 });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.get("/leave-applications/pending-count", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  try {
+    const result = await db.execute(sql`
+      SELECT COUNT(*) AS count FROM hr_leave_applications
+      WHERE tenant_id = ${tid} AND status = 'pending'
+    `);
+    const row = result.rows[0] as any;
+    res.json({ count: parseInt(row.count) || 0 });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.get("/payroll/draft-count", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  try {
+    const result = await db.execute(sql`
+      SELECT COUNT(DISTINCT employee_id) AS count FROM hr_payroll
+      WHERE tenant_id = ${tid} AND status = 'draft'
+    `);
+    const row = result.rows[0] as any;
+    res.json({ draftCount: parseInt(row.count) || 0 });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
 // ── EMPLOYEES ────────────────────────────────────────────────────────────────
 router.get("/employees", requireHR, async (req: any, res) => {
   const tid = getTenantId(req);
