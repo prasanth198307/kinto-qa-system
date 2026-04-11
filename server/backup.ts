@@ -1,6 +1,6 @@
 import path from "path";
 import fs from "fs";
-import { execFile } from "child_process";
+import { execFile, spawn } from "child_process";
 import { promisify } from "util";
 import { createGzip } from "zlib";
 import { pipeline } from "stream";
@@ -220,7 +220,6 @@ export async function runPostgresBackup(label: "scheduled" | "manual" = "manual"
   const filePath = path.join(POSTGRES_BACKUP_DIR, filename);
 
   await new Promise<void>((resolve, reject) => {
-    const { spawn } = require("child_process");
     const pgDump = spawn(pgDumpBin, [
       `--dbname=${databaseUrl}`,
       "--no-password",

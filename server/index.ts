@@ -349,7 +349,7 @@ app.use((req, res, next) => {
     const cron = (await import('node-cron')).default;
     cron.schedule('0 2 * * *', async () => {
       try {
-        const { runDailyBackups } = await import('./backup');
+        const { runDailyBackups } = await import('./backup.js');
         await runDailyBackups();
       } catch (err) {
         console.error('[BACKUP CRON ERROR]', err);
@@ -366,7 +366,7 @@ app.use((req, res, next) => {
     const pgCron = (await import('node-cron')).default;
     pgCron.schedule('0 1 * * *', async () => {
       try {
-        const { runPostgresBackup } = await import('./backup');
+        const { runPostgresBackup } = await import('./backup.js');
         const filename = await runPostgresBackup('scheduled');
         log(`✅ Scheduled PostgreSQL backup: ${filename}`);
       } catch (err) {
