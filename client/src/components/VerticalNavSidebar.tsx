@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Menu, X, Plus, ChevronDown, ChevronRight } from "lucide-react";
@@ -47,6 +47,8 @@ interface VerticalNavSidebarProps {
   onMobileClose?: () => void;
 }
 
+const SCROLL_STORAGE_KEY = 'sidebarScrollPosition';
+
 export function VerticalNavSidebar({
   sections = [],
   activeItem,
@@ -58,6 +60,8 @@ export function VerticalNavSidebar({
 }: VerticalNavSidebarProps) {
   const [, navigate] = useLocation();
   const safeSections = sections || [];
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const scrollRestoredRef = useRef(false);
 
   // Lock body scroll when mobile menu is open (Android + iOS)
   useEffect(() => {
@@ -76,6 +80,22 @@ export function VerticalNavSidebar({
       };
     }
   }, [isMobileOpen]);
+
+  // Restore sidebar scroll position on mount
+  useEffect(() => {
+    if (scrollRestoredRef.current) return;
+    scrollRestoredRef.current = true;
+    const saved = sessionStorage.getItem(SCROLL_STORAGE_KEY);
+    if (saved && scrollContainerRef.current) {
+      const pos = parseInt(saved, 10);
+      // Use rAF to ensure DOM is laid out before restoring
+      requestAnimationFrame(() => {
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTop = pos;
+        }
+      });
+    }
+  }, []);
 
   // Initialize collapsed state - default all collapsed
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>(() => {
@@ -123,6 +143,12 @@ export function VerticalNavSidebar({
     }));
   };
 
+  const handleSidebarScroll = () => {
+    if (scrollContainerRef.current) {
+      sessionStorage.setItem(SCROLL_STORAGE_KEY, String(scrollContainerRef.current.scrollTop));
+    }
+  };
+
   const handleItemClick = (item: NavItem) => {
     if (item.onClick) {
       // item.onClick handles its own navigation (e.g. setLocation('/hr/employees'))
@@ -134,18 +160,11 @@ export function VerticalNavSidebar({
       onItemClick(item.id);
     }
 
-    // Scroll main content to top
-    window.scrollTo({ top: 0, behavior: 'instant' });
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
-    const mainContent = document.querySelector('.flex-1.pt-16');
-    if (mainContent) mainContent.scrollTop = 0;
-    setTimeout(() => {
-      window.scrollTo({ top: 0, behavior: 'instant' });
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
+    // Scroll only the main content area to top — NOT the window or sidebar
+    requestAnimationFrame(() => {
+      const mainContent = document.querySelector<HTMLElement>('.flex-1.pt-16');
       if (mainContent) mainContent.scrollTop = 0;
-    }, 50);
+    });
 
     if (onMobileClose) {
       onMobileClose();
@@ -174,6 +193,7 @@ export function VerticalNavSidebar({
 
   const sidebarContent = (
     <div
+      ref={scrollContainerRef}
       className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-visible"
       tabIndex={0}
       style={{
@@ -184,6 +204,7 @@ export function VerticalNavSidebar({
         overscrollBehavior: 'contain',
         outline: 'none',
       }}
+      onScroll={handleSidebarScroll}
       onKeyDown={(e) => {
         const container = e.currentTarget;
         if (e.key === 'ArrowDown') {
