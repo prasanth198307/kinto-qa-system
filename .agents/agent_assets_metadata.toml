@@ -90,3 +90,9 @@ id = "NUsm8dYXAnfAXdwE29EGB"
 uri = "file://docs/website-module-copy.docx"
 type = "word_document"
 title = "Website Module Copy — Updated with Differentiators"
+
+[[outputs]]
+id = "7ueTxKh5IaCLryGhOPgGH"
+uri = "file://employee_upload_template.xlsx"
+type = "table"
+title = "Employee Upload Template"
