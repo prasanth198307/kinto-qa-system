@@ -15,7 +15,7 @@ Preferred communication style: Simple, everyday language.
 - **Database:** Neon Serverless PostgreSQL with Drizzle ORM.
 - **Authentication:** Email/Password using `scrypt` and `Passport.js`.
 - **Multi-tenancy:** Implemented using `AsyncLocalStorage` for automatic `tenantId` propagation.
-- **Plan Gating:** Enforced on both backend (middleware) and frontend (`usePlanFeatures` hook).
+- **Plan Gating:** Enforced on both backend (middleware) and frontend (`usePlanFeatures` hook). **DB is the authoritative source** — `subscription_plans.modules` drives both the nav filter (`/api/tenant/features`) and the API route enforcement (`plan-middleware.ts`). Code constants in `plan-features.ts` are fallbacks only. Trial plan gets full enterprise-level access (all 15 modules).
 - **File Uploads:** Scoped to `uploads/tenants/{tenantId}/{type}/`.
 - **Schema Management:** Raw SQL commands via `psql $DATABASE_URL` with scripts saved in `db_scripts/`.
 - **Build Systems:** Vite for frontend, `tsx` (development) and `esbuild` (production) for backend.

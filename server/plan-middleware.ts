@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { ROUTE_PLAN_REQUIREMENTS, planMeetsMinimum, MODULE_NAV_ITEMS } from "./plan-features";
+import { ROUTE_PLAN_REQUIREMENTS, planMeetsMinimum } from "./plan-features";
 import { db } from "./db";
 import { tenants, subscriptionPlans } from "@shared/schema";
 import { eq } from "drizzle-orm";
@@ -34,14 +34,12 @@ async function getModulesForPlan(planSlug: string): Promise<string[] | null> {
  * Express middleware that blocks API requests for modules not included
  * in the tenant's active subscription plan.
  *
- * For standard plans (trial/basic/professional/enterprise): uses the hardcoded
- * plan hierarchy (planMeetsMinimum).
- *
- * For custom plan slugs (e.g. "humane"): looks up the plan's modules array from
- * the subscription_plans table in the DB and checks whether the required module
- * is explicitly included.
- *
+ * DB modules are the single source of truth — whatever modules are stored in
+ * the subscription_plans table for a plan slug are the ones that are allowed.
  * Super-admins bypass all plan checks.
+ *
+ * Fallback: if the plan slug has no DB record, uses the hardcoded hierarchical
+ * planMeetsMinimum() check so the system never blocks on a DB miss.
  */
 export async function planEnforcementMiddleware(req: Request, res: Response, next: NextFunction) {
   // Only gate authenticated requests
@@ -65,15 +63,27 @@ export async function planEnforcementMiddleware(req: Request, res: Response, nex
     }
   }
 
-  // Standard plan slugs — use hierarchical check
-  const STANDARD_PLANS = ['trial', 'basic', 'professional', 'enterprise'];
-  const isStandardPlan = STANDARD_PLANS.includes(tenantPlan);
-
   for (const rule of ROUTE_PLAN_REQUIREMENTS) {
     if (req.path.startsWith(rule.prefix)) {
-      if (isStandardPlan) {
-        // Standard path: compare plan levels
-        if (!planMeetsMinimum(tenantPlan, rule.minPlan)) {
+      // Always try DB modules first — DB is the single source of truth
+      const dbModules = await getModulesForPlan(tenantPlan);
+
+      if (dbModules !== null) {
+        // DB record found — check if the required module is explicitly granted
+        if (!dbModules.includes(rule.module)) {
+          return res.status(403).json({
+            message: `Your current plan (${tenantPlan}) does not include access to this module. Please upgrade to access this feature.`,
+            planRequired: rule.minPlan,
+            currentPlan: tenantPlan,
+            module: rule.module,
+          });
+        }
+        // Module is in DB modules list — allow
+      } else {
+        // No DB record for this plan slug — use hardcoded hierarchy for known plan names,
+        // fail open (allow) for completely unknown slugs to avoid locking out custom tenants.
+        const KNOWN_PLANS = ['trial', 'basic', 'professional', 'enterprise'];
+        if (KNOWN_PLANS.includes(tenantPlan) && !planMeetsMinimum(tenantPlan, rule.minPlan)) {
           return res.status(403).json({
             message: `Your current plan (${tenantPlan}) does not include access to this module. Please upgrade to ${rule.minPlan} or higher.`,
             planRequired: rule.minPlan,
@@ -81,21 +91,7 @@ export async function planEnforcementMiddleware(req: Request, res: Response, nex
             module: rule.module,
           });
         }
-      } else {
-        // Custom plan slug — check if required module is in the plan's modules list from DB
-        const dbModules = await getModulesForPlan(tenantPlan);
-        if (dbModules !== null) {
-          if (!dbModules.includes(rule.module)) {
-            return res.status(403).json({
-              message: `Your current plan does not include access to this module.`,
-              planRequired: rule.minPlan,
-              currentPlan: tenantPlan,
-              module: rule.module,
-            });
-          }
-          // Module is explicitly granted — allow
-        }
-        // If plan not found in DB at all, fail open (don't block)
+        // Unknown plan slug with no DB record — fail open (don't block)
       }
       break;
     }

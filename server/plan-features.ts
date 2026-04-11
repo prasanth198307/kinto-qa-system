@@ -143,13 +143,13 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
 
 // ── Plan → module list ────────────────────────────────────────────────────────
 
-// Trial gets full enterprise access — "14-day free trial, full access to all features"
-// matches the landing page promise. Paid plans (basic/professional/enterprise) define
-// the tiered access after the trial converts.
-const TRIAL_MODULES       = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "production", "quality_returns", "accounting", "mis", "expenses", "documents", "crm", "whatsapp", "maintenance", "hr_payroll"];
-const BASIC_MODULES       = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders"];
-const PROFESSIONAL_MODULES= [...BASIC_MODULES,       "production", "quality_returns", "accounting", "mis", "expenses", "documents", "crm"];
-const ENTERPRISE_MODULES  = [...PROFESSIONAL_MODULES,"whatsapp",   "maintenance", "hr_payroll"];
+// DB subscription_plans.modules is the authoritative source — these code constants
+// serve as the fallback when a plan slug has no DB record.
+// Keep in sync with the subscription_plans table values.
+const TRIAL_MODULES        = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "production", "quality_returns", "accounting", "mis", "expenses", "documents", "crm", "whatsapp", "maintenance", "hr_payroll"];
+const BASIC_MODULES        = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "expenses", "documents"];
+const PROFESSIONAL_MODULES = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "production", "quality_returns", "accounting", "mis", "expenses", "documents", "whatsapp", "maintenance", "crm"];
+const ENTERPRISE_MODULES   = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "production", "quality_returns", "accounting", "mis", "expenses", "documents", "whatsapp", "maintenance", "hr_payroll", "crm"];
 
 export const PLAN_MODULES: Record<string, string[]> = {
   trial:        TRIAL_MODULES,
@@ -193,26 +193,26 @@ export const ROUTE_PLAN_REQUIREMENTS: Array<{ prefix: string; module: string; mi
   // MIS
   { prefix: "/api/mis",                 module: "mis",            minPlan: "professional" },
 
-  // Expenses & Cash Register
-  { prefix: "/api/expense-vouchers",    module: "expenses",       minPlan: "professional" },
-  { prefix: "/api/expense-categories",  module: "expenses",       minPlan: "professional" },
-  { prefix: "/api/monthly-expenses",    module: "expenses",       minPlan: "professional" },
-  { prefix: "/api/cash-register",       module: "expenses",       minPlan: "professional" },
+  // Expenses & Cash Register (basic+)
+  { prefix: "/api/expense-vouchers",    module: "expenses",       minPlan: "basic" },
+  { prefix: "/api/expense-categories",  module: "expenses",       minPlan: "basic" },
+  { prefix: "/api/monthly-expenses",    module: "expenses",       minPlan: "basic" },
+  { prefix: "/api/cash-register",       module: "expenses",       minPlan: "basic" },
 
-  // Documents
-  { prefix: "/api/documents",           module: "documents",      minPlan: "professional" },
-  { prefix: "/api/document-categories", module: "documents",      minPlan: "professional" },
+  // Documents (basic+)
+  { prefix: "/api/documents",           module: "documents",      minPlan: "basic" },
+  { prefix: "/api/document-categories", module: "documents",      minPlan: "basic" },
 
-  // WhatsApp / Checklists (Enterprise)
-  { prefix: "/api/checklist",           module: "whatsapp",       minPlan: "enterprise" },
-  { prefix: "/api/whatsapp",            module: "whatsapp",       minPlan: "enterprise" },
+  // WhatsApp / Checklists (professional+)
+  { prefix: "/api/checklist",           module: "whatsapp",       minPlan: "professional" },
+  { prefix: "/api/whatsapp",            module: "whatsapp",       minPlan: "professional" },
 
-  // Maintenance / PM (Enterprise)
-  { prefix: "/api/maintenance",         module: "maintenance",    minPlan: "enterprise" },
-  { prefix: "/api/pm-",                 module: "maintenance",    minPlan: "enterprise" },
-  { prefix: "/api/machines",            module: "maintenance",    minPlan: "enterprise" },
-  { prefix: "/api/machine-types",       module: "maintenance",    minPlan: "enterprise" },
-  { prefix: "/api/spare-parts",         module: "maintenance",    minPlan: "enterprise" },
+  // Maintenance / PM (professional+)
+  { prefix: "/api/maintenance",         module: "maintenance",    minPlan: "professional" },
+  { prefix: "/api/pm-",                 module: "maintenance",    minPlan: "professional" },
+  { prefix: "/api/machines",            module: "maintenance",    minPlan: "professional" },
+  { prefix: "/api/machine-types",       module: "maintenance",    minPlan: "professional" },
+  { prefix: "/api/spare-parts",         module: "maintenance",    minPlan: "professional" },
 
   // CRM (Professional)
   { prefix: "/api/crm",                 module: "crm",            minPlan: "professional" },
