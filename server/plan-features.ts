@@ -143,8 +143,11 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
 
 // ── Plan → module list ────────────────────────────────────────────────────────
 
-const TRIAL_MODULES       = ["invoicing", "purchase_orders", "basic_inventory"];
-const BASIC_MODULES       = [...TRIAL_MODULES,       "gatepasses", "sales_orders"];
+// Trial gets full enterprise access — "14-day free trial, full access to all features"
+// matches the landing page promise. Paid plans (basic/professional/enterprise) define
+// the tiered access after the trial converts.
+const TRIAL_MODULES       = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "production", "quality_returns", "accounting", "mis", "expenses", "documents", "crm", "whatsapp", "maintenance", "hr_payroll"];
+const BASIC_MODULES       = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders"];
 const PROFESSIONAL_MODULES= [...BASIC_MODULES,       "production", "quality_returns", "accounting", "mis", "expenses", "documents", "crm"];
 const ENTERPRISE_MODULES  = [...PROFESSIONAL_MODULES,"whatsapp",   "maintenance", "hr_payroll"];
 
@@ -225,6 +228,8 @@ const PLAN_ORDER: Record<string, number> = {
 };
 
 export function planMeetsMinimum(tenantPlan: string, minPlan: string): boolean {
+  // Trial gets full enterprise-level access — matches the "14-day full access" promise
+  if (tenantPlan === "trial") return true;
   const tenantLevel = PLAN_ORDER[tenantPlan] ?? 0;
   const requiredLevel = PLAN_ORDER[minPlan] ?? 0;
   return tenantLevel >= requiredLevel;
