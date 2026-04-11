@@ -72,3 +72,15 @@ id = "_4aR-tMMoUZUMZEEfczZn"
 uri = "file://docs/module-guide.md"
 type = "text"
 title = "Kinto Smart Ops — Module Guide"
+
+[[outputs]]
+id = "IGzKa2bP5w-RDv8Za9Ti0"
+uri = "file://docs/industry-fit.docx"
+type = "word_document"
+title = "Industry Fit Guide"
+
+[[outputs]]
+id = "wty5Tb9CwUQQ-vSkG6e9g"
+uri = "file://docs/module-guide.docx"
+type = "word_document"
+title = "Module Guide"
