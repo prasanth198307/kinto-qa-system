@@ -344,6 +344,50 @@ app.use((req, res, next) => {
     console.error('[NEW_SCREEN_KEYS MIGRATION ERROR]', err);
   }
 
+  // ─── Fix chart_of_accounts unique constraint (multi-tenant) ─────────────
+  // Production may still have the old single-column unique constraint
+  // 'chart_of_accounts_code_key' on just (code), which blocks seeding COA for
+  // any tenant beyond the first. Replace it with the correct composite
+  // constraint (code, tenant_id) so each tenant can have its own COA.
+  try {
+    const { db: dbCoaFix } = await import("./db");
+    const { sql: sqlCoaFix } = await import("drizzle-orm");
+
+    // Drop old single-column constraint if it still exists
+    await dbCoaFix.execute(sqlCoaFix`
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM information_schema.table_constraints
+          WHERE table_name = 'chart_of_accounts'
+            AND constraint_name = 'chart_of_accounts_code_key'
+            AND constraint_type = 'UNIQUE'
+        ) THEN
+          ALTER TABLE chart_of_accounts DROP CONSTRAINT chart_of_accounts_code_key;
+        END IF;
+      END $$;
+    `);
+
+    // Ensure composite (code, tenant_id) constraint exists
+    await dbCoaFix.execute(sqlCoaFix`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.table_constraints
+          WHERE table_name = 'chart_of_accounts'
+            AND constraint_name = 'coa_code_tenant_unique'
+            AND constraint_type = 'UNIQUE'
+        ) THEN
+          ALTER TABLE chart_of_accounts
+            ADD CONSTRAINT coa_code_tenant_unique UNIQUE (code, tenant_id);
+        END IF;
+      END $$;
+    `);
+    console.log('[COA CONSTRAINT MIGRATION] chart_of_accounts constraint OK (code, tenant_id)');
+  } catch (err) {
+    console.error('[COA CONSTRAINT MIGRATION ERROR]', err);
+  }
+
   // ─── Daily tenant backup cron (2:00 AM daily) ────────────────────────────
   try {
     const cron = (await import('node-cron')).default;

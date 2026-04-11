@@ -164,24 +164,38 @@ export async function seedTenantCOA(tenantId: number): Promise<void> {
 
     const parentId = row.parentCode ? (codeToId[row.parentCode] ?? null) : null;
 
-    const [inserted] = await db
-      .insert(chartOfAccounts)
-      .values({
-        code: row.code,
-        name: row.name,
-        accountType: row.accountType,
-        nodeType: row.nodeType,
-        level: row.level,
-        subType: row.subType ?? null,
-        parentId,
-        isActive: 1,
-        isSystemAccount: 1,
-        tenantId,
-        recordStatus: 1,
-      })
-      .returning({ id: chartOfAccounts.id });
-
-    codeToId[row.code] = inserted.id;
+    try {
+      const [inserted] = await db
+        .insert(chartOfAccounts)
+        .values({
+          code: row.code,
+          name: row.name,
+          accountType: row.accountType,
+          nodeType: row.nodeType,
+          level: row.level,
+          subType: row.subType ?? null,
+          parentId,
+          isActive: 1,
+          isSystemAccount: 1,
+          tenantId,
+          recordStatus: 1,
+        })
+        .returning({ id: chartOfAccounts.id });
+      codeToId[row.code] = inserted.id;
+    } catch (insertErr: any) {
+      // Handle duplicate key errors gracefully — can occur if the DB still has
+      // the old single-column unique constraint 'chart_of_accounts_code_key'.
+      // In that case, look up the record that caused the conflict.
+      if (insertErr?.code === '23505') {
+        const [conflict] = await db
+          .select({ id: chartOfAccounts.id })
+          .from(chartOfAccounts)
+          .where(and(eq(chartOfAccounts.code, row.code), eq(chartOfAccounts.tenantId, tenantId)));
+        if (conflict) codeToId[row.code] = conflict.id;
+      } else {
+        throw insertErr;
+      }
+    }
   }
 }
 
