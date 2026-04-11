@@ -44,7 +44,6 @@ const NAV_ITEM_TO_SCREEN_KEY: Record<string, string> = {
   'notification-settings': 'notification_settings',
   'data-import': 'data_import',
   'admin-tools': 'admin_tools',
-  'hpcl-migration': 'admin_tools',
   'spare-parts': 'spare_parts',
   'spare-parts-stock': 'spare_parts',
   'company-settings': 'admin_tools',
