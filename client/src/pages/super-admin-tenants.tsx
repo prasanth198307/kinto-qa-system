@@ -665,7 +665,7 @@ export default function SuperAdminTenants() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label>Plan</Label>
-                <Select value={createForm.plan} onValueChange={(v) => setCreateForm((f) => ({ ...f, plan: v }))}>
+                <Select value={createForm.plan} onValueChange={(v) => setCreateForm((f) => ({ ...f, plan: v, trialDays: v === "trial" ? (f.trialDays || "14") : "" }))}>
                   <SelectTrigger data-testid="select-create-plan"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {allPlans.map((p) => (
