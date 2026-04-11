@@ -84,3 +84,9 @@ id = "wty5Tb9CwUQQ-vSkG6e9g"
 uri = "file://docs/module-guide.docx"
 type = "word_document"
 title = "Module Guide"
+
+[[outputs]]
+id = "NUsm8dYXAnfAXdwE29EGB"
+uri = "file://docs/website-module-copy.docx"
+type = "word_document"
+title = "Website Module Copy — Kinto Smart Ops"
