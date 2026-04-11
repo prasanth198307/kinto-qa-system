@@ -5384,14 +5384,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get all approved finished goods with stock > 0, ordered by production date (oldest first - FIFO)
       const allFinishedGoods = await storage.getAllFinishedGoods();
       
-      // Debug: Log all finished goods with their production dates
-      console.log("[FIFO DEBUG] All approved finished goods before sort:");
-      allFinishedGoods
-        .filter(fg => fg.qualityStatus === 'approved' && fg.quantity > 0 && fg.recordStatus === 1)
-        .forEach(fg => {
-          console.log(`  Batch: ${fg.batchNumber}, ProductId: ${fg.productId}, Date: ${fg.productionDate}, Qty: ${fg.quantity}`);
-        });
-      
       const approvedGoods = allFinishedGoods
         .filter(fg => fg.qualityStatus === 'approved' && fg.quantity > 0 && fg.recordStatus === 1)
         .sort((a, b) => {
@@ -5410,12 +5402,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           return dateA.getTime() - dateB.getTime(); // Oldest first (FIFO)
         });
-      
-      // Debug: Log sorted order
-      console.log("[FIFO DEBUG] Sorted finished goods (should be oldest first):");
-      approvedGoods.forEach((fg, idx) => {
-        console.log(`  ${idx + 1}. Batch: ${fg.batchNumber}, Date: ${fg.productionDate}, Qty: ${fg.quantity}`);
-      });
       
       // Get reserved quantities from pending invoices (draft/ready_for_gatepass)
       // This prevents double-allocation when multiple gatepasses are created before dispatch
@@ -5448,7 +5434,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         filteredInvoices = filteredInvoices.filter(inv => inv.id !== excludeInvoiceId);
       }
       
-      console.log(`[FIFO DEBUG] Pending invoices: ${pendingInvoicesList.length}, With gatepasses: ${invoiceIdsWithGatepass.size}, After filter: ${filteredInvoices.length}, ExcludeId: ${excludeInvoiceId || 'none'}`);
       
       // Get invoice items for pending invoices
       let reservedByBatch = new Map<string, number>(); // finishedGoodId -> reserved qty
@@ -5504,10 +5489,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const reserved = reservedByBatch.get(fg.id) || 0;
         const available = Math.max(0, fg.quantity - reserved);
         stockTracker.set(fg.id, available);
-        console.log(`[FIFO DEBUG] Batch ${fg.batchNumber}: Physical=${fg.quantity}, Reserved=${reserved}, Available=${available}`);
       });
       
-      console.log(`[FIFO DEBUG] Request items:`, JSON.stringify(items));
       
       // For each invoice item, allocate from oldest batches first (FIFO)
       for (const item of items) {
@@ -5541,8 +5524,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      console.log(`[FIFO DEBUG] Allocated items:`, JSON.stringify(allocatedItems));
-      console.log(`[FIFO DEBUG] Total allocated: ${allocatedItems.length} items`);
       
       res.json({
         allocatedItems,
@@ -19151,7 +19132,6 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
 
                   // TODO: Notify reviewer if assigned
                   if (assignment.reviewerId) {
-                    console.log(`TODO: Notify reviewer ${assignment.reviewerId} for submission ${submission.id}`);
                   }
 
                 } catch (error) {
