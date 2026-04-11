@@ -100,6 +100,11 @@ export default function SuperAdminTenants() {
     queryKey: ["/api/admin/tenants"],
   });
 
+  const { data: plansData } = useQuery<{ plans: { id: number; name: string; slug: string; isActive: boolean; displayOrder: number }[] }>({
+    queryKey: ["/api/admin/subscription-plans"],
+  });
+  const allPlans = plansData?.plans ?? [];
+
   const { data: deletionAuditRecords = [], isLoading: auditLoading } = useQuery<DeletionAuditRecord[]>({
     queryKey: ["/api/admin/deletion-audit"],
     enabled: showDeletionAudit,
@@ -529,10 +534,9 @@ export default function SuperAdminTenants() {
                   <SelectValue placeholder="Select plan" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="trial">Trial</SelectItem>
-                  <SelectItem value="basic">Basic</SelectItem>
-                  <SelectItem value="professional">Professional</SelectItem>
-                  <SelectItem value="enterprise">Enterprise</SelectItem>
+                  {allPlans.map((p) => (
+                    <SelectItem key={p.slug} value={p.slug}>{p.name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -662,10 +666,9 @@ export default function SuperAdminTenants() {
                 <Select value={createForm.plan} onValueChange={(v) => setCreateForm((f) => ({ ...f, plan: v }))}>
                   <SelectTrigger data-testid="select-create-plan"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="trial">Trial</SelectItem>
-                    <SelectItem value="basic">Basic</SelectItem>
-                    <SelectItem value="professional">Professional</SelectItem>
-                    <SelectItem value="enterprise">Enterprise</SelectItem>
+                    {allPlans.map((p) => (
+                      <SelectItem key={p.slug} value={p.slug}>{p.name}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
