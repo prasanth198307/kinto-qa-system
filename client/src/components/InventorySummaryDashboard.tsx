@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { usePlanFeatures } from "@/hooks/use-plan-features";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, Package, TrendingDown, TrendingUp, CheckCircle } from "lucide-react";
@@ -31,17 +32,26 @@ type Product = {
 };
 
 export default function InventorySummaryDashboard() {
+  const { hasModule } = usePlanFeatures();
+  const hasInventory = hasModule('basic_inventory');
+
   const { data: rawMaterials = [] } = useQuery<RawMaterial[]>({
     queryKey: ['/api/raw-materials'],
+    enabled: hasInventory,
   });
 
   const { data: finishedGoods = [] } = useQuery<FinishedGood[]>({
     queryKey: ['/api/finished-goods'],
+    enabled: hasInventory,
   });
 
   const { data: products = [] } = useQuery<Product[]>({
     queryKey: ['/api/products'],
+    enabled: hasInventory,
   });
+
+  // Don't render for plans that don't include inventory (e.g. HR-only)
+  if (!hasInventory) return null;
 
   const calculateStockPercentage = (current: number, max: number) => {
     if (!max || max === 0) return 100;

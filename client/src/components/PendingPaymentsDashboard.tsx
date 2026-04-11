@@ -1,4 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { usePlanFeatures } from "@/hooks/use-plan-features";
 import { Link, useLocation, useSearch } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -59,6 +60,7 @@ interface PendingPaymentsDashboardProps {
 }
 
 export default function PendingPaymentsDashboard({ customerFilter }: PendingPaymentsDashboardProps) {
+  const { hasModule } = usePlanFeatures();
   const { toast } = useToast();
   const search = useSearch();
   const [, setLocation] = useLocation();
@@ -85,6 +87,7 @@ export default function PendingPaymentsDashboard({ customerFilter }: PendingPaym
       if (!response.ok) throw new Error('Failed to fetch pending payments');
       return response.json();
     },
+    enabled: hasModule('invoicing'),
   });
 
   const writeOffMutation = useMutation({
@@ -130,6 +133,9 @@ export default function PendingPaymentsDashboard({ customerFilter }: PendingPaym
     newParams.set('pageSize', newPageSize.toString());
     setLocation(`?${newParams.toString()}`);
   };
+
+  // Don't render for plans that don't include invoicing (e.g. HR-only)
+  if (!hasModule('invoicing')) return null;
 
   // Extract data from paginated response - use Array.isArray for safety
   const pendingInvoices = Array.isArray(pendingPaymentsData?.data) ? pendingPaymentsData.data : [];

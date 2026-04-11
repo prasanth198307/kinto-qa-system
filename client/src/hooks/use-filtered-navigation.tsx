@@ -298,13 +298,28 @@ function filterNavSectionsWithDbPermissions(sections: NavSection[], dbPermission
 // System roles always get full nav — no DB permission rows needed
 const SYSTEM_ROLES_FULL_ACCESS = ['admin', 'manager', 'accountsmanager'];
 
+// These nav items are available on every plan — user/role management and
+// core admin settings must never be hidden, regardless of which modules a
+// tenant has subscribed to.
+const CORE_ADMIN_NAV = new Set([
+  'overview',
+  'users',
+  'role-permissions',
+  'admin-tools',
+  'company-settings',
+  'notification-settings',
+  'data-import',
+  'template-management',
+  'hpcl-migration',
+]);
+
 function filterNavSectionsByPlan(sections: NavSection[], allowedNavItems: string[]): NavSection[] {
   if (!allowedNavItems || allowedNavItems.length === 0) return sections;
   const allowed = new Set(allowedNavItems);
   return sections
     .map(section => ({
       ...section,
-      items: section.items.filter(item => allowed.has(item.id)),
+      items: section.items.filter(item => allowed.has(item.id) || CORE_ADMIN_NAV.has(item.id)),
     }))
     .filter(section => section.items.length > 0);
 }
