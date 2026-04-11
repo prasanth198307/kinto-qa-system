@@ -37,15 +37,15 @@
 
   --sidebar-border: 0 0% 92%;
 
-  --sidebar-primary: 16 95% 55%;
+  --sidebar-primary: 221 83% 53%;
 
   --sidebar-primary-foreground: 0 0% 100%;
 
-  --sidebar-accent: 16 100% 97%;
+  --sidebar-accent: 221 100% 97%;
 
-  --sidebar-accent-foreground: 16 95% 45%;
+  --sidebar-accent-foreground: 221 83% 38%;
 
-  --sidebar-ring: 16 95% 55%;
+  --sidebar-ring: 221 83% 53%;
 
   --popover: 0 0% 100%;
 
@@ -53,7 +53,7 @@
 
   --popover-border: 0 0% 90%;
 
-  --primary: 16 95% 55%;
+  --primary: 221 83% 53%;
 
   --primary-foreground: 0 0% 100%;
 
@@ -65,17 +65,17 @@
 
   --muted-foreground: 0 0% 45%;
 
-  --accent: 16 100% 97%;
+  --accent: 221 100% 97%;
 
-  --accent-foreground: 16 95% 45%;
+  --accent-foreground: 221 83% 38%;
 
   --destructive: 0 84% 60%;
 
   --destructive-foreground: 0 0% 100%;
 
   --input: 0 0% 85%;
-  --ring: 16 95% 55%;
-  --chart-1: 16 95% 55%;
+  --ring: 221 83% 53%;
+  --chart-1: 221 83% 53%;
   --chart-2: 142 76% 36%;
   --chart-3: 262 83% 58%;
   --chart-4: 45 93% 47%;
@@ -155,15 +155,15 @@
 
   --sidebar-border: 0 0% 19%;
 
-  --sidebar-primary: 16 95% 55%;
+  --sidebar-primary: 217 91% 60%;
 
   --sidebar-primary-foreground: 0 0% 100%;
 
-  --sidebar-accent: 16 10% 20%;
+  --sidebar-accent: 221 30% 20%;
 
-  --sidebar-accent-foreground: 16 70% 75%;
+  --sidebar-accent-foreground: 217 80% 75%;
 
-  --sidebar-ring: 16 95% 55%;
+  --sidebar-ring: 217 91% 60%;
 
   --popover: 0 0% 16%;
 
@@ -171,7 +171,7 @@
 
   --popover-border: 0 0% 22%;
 
-  --primary: 16 95% 55%;
+  --primary: 217 91% 60%;
 
   --primary-foreground: 0 0% 100%;
 
@@ -183,17 +183,17 @@
 
   --muted-foreground: 217 10% 75%;
 
-  --accent: 16 10% 19%;
+  --accent: 221 30% 19%;
 
-  --accent-foreground: 16 70% 75%;
+  --accent-foreground: 217 80% 75%;
 
   --destructive: 0 72% 35%;
 
   --destructive-foreground: 0 0% 98%;
 
   --input: 0 0% 35%;
-  --ring: 16 95% 55%;
-  --chart-1: 16 95% 65%;
+  --ring: 217 91% 60%;
+  --chart-1: 217 91% 65%;
   --chart-2: 30 85% 65%;
   --chart-3: 270 65% 68%;
   --chart-4: 150 60% 65%;
