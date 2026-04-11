@@ -1,0 +1,31 @@
+Apr 11 03:49:59 iplvnic1 npm[3562505]: 3:49:59 AM [express] GET /api/admin/subscription-plans 304 in 14ms :: {"plans":[{"id":1,"name":"Tria…
+Apr 11 03:51:22 iplvnic1 npm[3562505]: POST /api/admin/tenants error: error: duplicate key value violates unique constraint "roles_name_key"
+Apr 11 03:51:22 iplvnic1 npm[3562505]:     at /home/kinto/kinto-qa-system/node_modules/pg/lib/client.js:545:17
+Apr 11 03:51:22 iplvnic1 npm[3562505]:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+Apr 11 03:51:22 iplvnic1 npm[3562505]:     at async file:///home/kinto/kinto-qa-system/dist/index.js:19264:11
+Apr 11 03:51:22 iplvnic1 npm[3562505]:     at async NodePgSession.transaction (file:///home/kinto/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:142:22)
+Apr 11 03:51:22 iplvnic1 npm[3562505]:     at async file:///home/kinto/kinto-qa-system/dist/index.js:19222:22 {
+Apr 11 03:51:22 iplvnic1 npm[3562505]:   length: 194,
+Apr 11 03:51:22 iplvnic1 npm[3562505]:   severity: 'ERROR',
+Apr 11 03:51:22 iplvnic1 npm[3562505]:   code: '23505',
+Apr 11 03:51:22 iplvnic1 npm[3562505]:   detail: 'Key (name)=(admin) already exists.',
+Apr 11 03:51:22 iplvnic1 npm[3562505]:   hint: undefined,
+Apr 11 03:51:22 iplvnic1 npm[3562505]:   position: undefined,
+Apr 11 03:51:22 iplvnic1 npm[3562505]:   internalPosition: undefined,
+Apr 11 03:51:22 iplvnic1 npm[3562505]:   internalQuery: undefined,
+Apr 11 03:51:22 iplvnic1 npm[3562505]:   where: undefined,
+Apr 11 03:51:22 iplvnic1 npm[3562505]:   schema: 'public',
+Apr 11 03:51:22 iplvnic1 npm[3562505]:   table: 'roles',
+Apr 11 03:51:22 iplvnic1 npm[3562505]:   column: undefined,
+Apr 11 03:51:22 iplvnic1 npm[3562505]:   dataType: undefined,
+Apr 11 03:51:22 iplvnic1 npm[3562505]:   constraint: 'roles_name_key',
+Apr 11 03:51:22 iplvnic1 npm[3562505]:   file: 'nbtinsert.c',
+Apr 11 03:51:22 iplvnic1 npm[3562505]:   line: '666',
+Apr 11 03:51:22 iplvnic1 npm[3562505]:   routine: '_bt_check_unique'
+Apr 11 03:51:22 iplvnic1 npm[3562505]: }
+Apr 11 03:51:22 iplvnic1 npm[3562505]: 3:51:22 AM [express] POST /api/admin/tenants 500 in 107ms :: {"message":"duplicate key value violate…
+Apr 11 03:51:35 iplvnic1 npm[3562505]: 3:51:35 AM [express] GET /api/admin/subscription-plans 304 in 35ms :: {"plans":[{"id":1,"name":"Tria…
+Apr 11 03:51:35 iplvnic1 npm[3562505]: 3:51:35 AM [express] GET /api/admin/subscriptions 200 in 36ms :: []
+Apr 11 03:51:35 iplvnic1 npm[3562505]: 3:51:35 AM [express] GET /api/admin/upgrade-requests 304 in 43ms :: []
+Apr 11 03:51:35 iplvnic1 npm[3562505]: 3:51:35 AM [express] GET /api/admin/subscription-plans 304 in 10ms :: {"plans":[{"id":1,"name":"Tria…
+Apr 11 03:51:35 iplvnic1 npm[3562505]: 3:51:35 AM [express] GET /api/admin/tenants 200 in 9ms :: [{"id":2,"name":"Kinto Admin","slug":"kint…
