@@ -482,7 +482,7 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
                   <Info className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm font-medium">Issuance Information</span>
                 </div>
-                <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
                   <div>
                     <span className="text-muted-foreground">Product:</span>{" "}
                     <span className="font-medium">
@@ -680,7 +680,7 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
             {/* Preform Issuance & Hopper Analysis */}
             {bottlesFromIssuance.total > 0 && (
               <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-md">
-                <div className="grid grid-cols-5 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
                   {/* Potential from Issuance (full conversion) */}
                   <div>
                     <span className="text-sm font-medium text-amber-700 dark:text-amber-300">Potential (100%)</span>
@@ -791,7 +791,7 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
               </div>
             )}
             
-            <div className="grid grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
               <FormField
                 control={form.control}
                 name="emptyBottlesOpening"

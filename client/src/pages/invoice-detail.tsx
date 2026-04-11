@@ -510,7 +510,7 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
     return (
       <>
         {showHeader && <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />}
-        <div className={showHeader ? "min-h-screen p-6 mt-16 flex items-center justify-center" : "min-h-screen p-6 flex items-center justify-center"}>
+        <div className={showHeader ? "min-h-screen p-4 sm:p-6 mt-16 flex items-center justify-center" : "min-h-screen p-4 sm:p-6 flex items-center justify-center"}>
           <div className="text-muted-foreground">Loading invoice...</div>
         </div>
       </>
@@ -521,7 +521,7 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
     return (
       <>
         {showHeader && <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />}
-        <div className={showHeader ? "min-h-screen p-6 mt-16" : "min-h-screen p-6"}>
+        <div className={showHeader ? "min-h-screen p-4 sm:p-6 mt-16" : "min-h-screen p-4 sm:p-6"}>
           <Card className="max-w-md mx-auto p-8 text-center">
             <h2 className="text-2xl font-bold text-destructive mb-4">Invoice Not Found</h2>
             <p className="text-muted-foreground mb-6">The requested invoice could not be found.</p>
@@ -641,7 +641,7 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
   return (
     <>
       {showHeader && <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />}
-      <div className={showHeader ? "min-h-screen p-6 mt-16 space-y-6" : "min-h-screen p-6 space-y-6"}>
+      <div className={showHeader ? "min-h-screen p-4 sm:p-6 mt-16 space-y-4 sm:space-y-6" : "min-h-screen p-4 sm:p-6 space-y-4 sm:space-y-6"}>
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">

@@ -425,7 +425,7 @@ export function ManagerChecklistAssignment() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
                     <div>
                       <span className={assignmentIsOverdue ? 'text-red-600' : 'text-muted-foreground'}>Operator:</span>
                       <div className={`font-medium ${assignmentIsOverdue ? 'text-red-900' : ''}`} data-testid={`text-operator-${assignment.id}`}>

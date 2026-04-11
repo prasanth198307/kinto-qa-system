@@ -152,7 +152,7 @@ export function PhotoCapture({ taskId, onPhotoCapture, photos = [], onPhotoRemov
       )}
 
       {photos.length > 0 && (
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {photos.map((photo, index) => (
             <Card key={index} className="relative p-2">
               <img 

@@ -520,7 +520,7 @@ function SalaryStructuresTab() {
                       <label htmlFor={`comp-${c.id}`} className="text-sm font-medium cursor-pointer">{c.name} <span className="text-muted-foreground font-normal">({c.code})</span></label>
                     </div>
                     {selectedComps[c.id] && (
-                      <div className="grid grid-cols-2 gap-2 pl-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-6">
                         <div>
                           <Label className="text-xs">Formula</Label>
                           <Select value={overrides[c.id]?.formula_type ?? c.formula_type} onValueChange={v => setOverrides(o => ({ ...o, [c.id]: { ...o[c.id], formula_type: v } }))}>
@@ -698,7 +698,7 @@ function StatutoryRatesTab() {
   const set = (key: string, val: any) => setForm((p: any) => ({ ...p, [key]: val }));
 
   const rateRow = (label: string, key: string, suffix: string, hint: string, disabled: boolean) => (
-    <div className="grid grid-cols-3 items-center gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-3 items-center gap-4">
       <Label className="text-right text-sm text-muted-foreground">{label}</Label>
       <div className="col-span-2 flex items-center gap-2">
         <Input

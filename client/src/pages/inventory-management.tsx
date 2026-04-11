@@ -5031,7 +5031,7 @@ function RecordScrapDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-2 gap-3 p-3 rounded-md bg-muted/50 text-sm mb-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-md bg-muted/50 text-sm mb-2">
           <div>
             <span className="text-muted-foreground">Product</span>
             <p className="font-medium">{productName}</p>

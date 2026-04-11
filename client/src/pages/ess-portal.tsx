@@ -59,7 +59,7 @@ function PayslipDetail({ payslipId, onClose }: { payslipId: number; onClose: () 
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 text-sm">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
         {[
           ["Employee", `${ps.first_name} ${ps.last_name}`], ["Emp Code", ps.emp_code],
           ["Designation", ps.designation_name || "—"], ["Department", ps.department_name || "—"],
@@ -100,7 +100,7 @@ function PayslipDetail({ payslipId, onClose }: { payslipId: number; onClose: () 
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-2 text-sm">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-sm">
         {[["Days Worked", ps.days_worked], ["LOP Days", ps.lop_days], ["OT Hours", ps.ot_hours]].map(([l, v]) => (
           <div key={l} className="p-2 rounded-md bg-muted/50 text-center">
             <p className="font-semibold">{v || 0}</p>
@@ -693,7 +693,7 @@ export default function EssPortal() {
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
               {[["Present", presentDays, "text-green-600"], ["Absent", absentDays, "text-destructive"], ["Half Day", halfDays, "text-orange-600"]].map(([l, v, c]) => (
                 <Card key={l as string}><CardContent className="pt-4 text-center">
                   <p className={`text-2xl font-bold ${c}`}>{v}</p>

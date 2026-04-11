@@ -193,7 +193,7 @@ export default function InventorySummaryDashboard() {
                     </div>
                     <div className="space-y-2">
                       <Progress value={percentage} className="h-2" data-testid="progress-material-stock" />
-                      <div className="grid grid-cols-3 gap-2 text-xs">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-xs">
                         <div className="text-center">
                           <p className="text-muted-foreground">Current</p>
                           <p className="font-semibold" data-testid="text-current">{material.currentStock}</p>

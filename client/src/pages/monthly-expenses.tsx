@@ -664,7 +664,7 @@ export default function MonthlyExpensesPage() {
           </DialogHeader>
 
           {displayExpense && (
-            <div className="grid grid-cols-3 gap-3 rounded-md border bg-muted/30 p-3 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 rounded-md border bg-muted/30 p-3 text-sm">
               <div>
                 <div className="text-xs text-muted-foreground mb-0.5">Total Bill</div>
                 <div className="font-semibold font-mono">{fmtCurrency(displayExpense.amount)}</div>
@@ -866,7 +866,7 @@ export default function MonthlyExpensesPage() {
             {/* Expense Type Toggle */}
             <div className="space-y-2">
               <Label>Expense Type</Label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => setExpForm(f => ({ ...f, expenseType: 'fixed' }))}

@@ -114,7 +114,7 @@ function DeclarationForm({ employees, employee, fiscalYear, existing, onSave, on
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
         <div className="space-y-1.5">
           <Label>Employee</Label>
           <Select value={form.employeeId} onValueChange={s("employeeId")}>
@@ -364,7 +364,7 @@ function Form16View({ employeeId, fiscalYear }: { employeeId: number; fiscalYear
 
       <Card><CardContent className="pt-4">
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Employee Details</p>
-        <div className="grid grid-cols-3 gap-x-8 gap-y-1.5 text-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-1.5 text-sm">
           {[["Name", `${emp.first_name} ${emp.last_name}`], ["Emp Code", emp.emp_code], ["Designation", emp.designation_name || "—"], ["PAN", emp.pan || "Not provided"], ["Tax Regime", emp.tax_regime === "old" ? "Old Regime" : "New Regime"]].map(([l, v]) => (
             <div key={l}><span className="text-muted-foreground">{l}: </span><span className="font-medium">{v}</span></div>
           ))}

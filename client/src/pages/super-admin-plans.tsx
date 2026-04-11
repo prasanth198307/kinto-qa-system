@@ -467,7 +467,7 @@ export default function SuperAdminPlans() {
                     })()}
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                   <div className="space-y-1">
                     <Label htmlFor="base-users">Base Users (included)</Label>
                     <Input id="base-users" type="number" min="0" value={editPlan.baseUsers ?? 0}

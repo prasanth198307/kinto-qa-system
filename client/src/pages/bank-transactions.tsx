@@ -794,7 +794,7 @@ export default function BankTransactionsPage() {
                 return directorAccounts.length > 0 ? (
                   <div className="space-y-1">
                     <Label>Assign to Director</Label>
-                    <div className="grid grid-cols-2 gap-1">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
                       {directorAccounts.map(da => (
                         <Button
                           key={da.id}

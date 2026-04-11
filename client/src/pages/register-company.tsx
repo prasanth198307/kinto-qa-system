@@ -90,7 +90,7 @@ export default function RegisterCompanyPage() {
 
   if (step === "success" && registeredData) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-8 bg-background">
+      <div className="min-h-screen flex items-center justify-center p-4 sm:p-8 bg-background">
         <div className="w-full max-w-md text-center space-y-6">
           <KintoLogo className="justify-center" variant="full" />
           <div className="rounded-full bg-green-100 dark:bg-green-900/20 p-4 w-20 h-20 mx-auto flex items-center justify-center">
@@ -139,7 +139,7 @@ export default function RegisterCompanyPage() {
 
   return (
     <div className="min-h-screen flex">
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-background">
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-8 bg-background">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
             <KintoLogo className="justify-center" variant="full" />

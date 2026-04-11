@@ -238,7 +238,7 @@ function PayrollSummaryReport() {
   return (
     <div className="space-y-4">
       {rows.length > 0 && (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           <Card><CardContent className="pt-4">
             <p className="text-xs text-muted-foreground">Total Net Pay (all runs)</p>
             <p className="text-2xl font-semibold mt-1">{fmt(totalNet)}</p>

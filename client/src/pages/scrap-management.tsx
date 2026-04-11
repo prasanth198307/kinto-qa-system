@@ -270,7 +270,7 @@ export default function ScrapManagementPage() {
         <DialogContent data-testid="dialog-approve-scrap">
           <DialogHeader><DialogTitle>Review Scrap — {selected?.scrapNumber}</DialogTitle></DialogHeader>
           <div className="space-y-3 py-2">
-            <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
               <div><span className="text-muted-foreground">Product:</span><p className="font-medium">{selected?.productName}</p></div>
               <div><span className="text-muted-foreground">Quantity:</span><p className="font-medium">{selected?.quantity}</p></div>
               <div><span className="text-muted-foreground">Loss Amount:</span><p className="font-medium text-destructive">{fmt(selected?.lossAmount)}</p></div>

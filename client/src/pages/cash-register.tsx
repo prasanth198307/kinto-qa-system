@@ -786,7 +786,7 @@ export default function CashRegisterPage() {
             <CardContent>
               {isAddingCash && (
                 <div className="mb-4 p-3 border rounded-lg bg-muted/30 space-y-2">
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <Input
                       type="number"
                       placeholder="Amount"

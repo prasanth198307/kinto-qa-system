@@ -125,7 +125,7 @@ export default function CompanySelectPage() {
           <p className="text-lg opacity-80 leading-relaxed">
             Kinto Smart Ops brings together production, inventory, quality, finance, and compliance in one unified system built for Indian manufacturers.
           </p>
-          <div className="grid grid-cols-2 gap-4 text-sm opacity-70 mt-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm opacity-70 mt-8">
             <div className="bg-primary-foreground/10 rounded-md p-3">GST-compliant invoicing</div>
             <div className="bg-primary-foreground/10 rounded-md p-3">BOM-driven production</div>
             <div className="bg-primary-foreground/10 rounded-md p-3">FIFO batch allocation</div>

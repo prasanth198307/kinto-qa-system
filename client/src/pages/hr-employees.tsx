@@ -400,7 +400,7 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
 
       {/* Tab 5: Family Details */}
       <TabsContent value="family" className="space-y-4 mt-0">
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           <div className="space-y-1.5">
             <Label>Marital Status</Label>
             <Select value={form.maritalStatus} onValueChange={s("maritalStatus")}>
@@ -418,7 +418,7 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
           <>
             <Separator />
             <p className="text-sm font-medium text-muted-foreground">Spouse Details</p>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
               <div className="space-y-1.5">
                 <Label>Spouse Name</Label>
                 <Input className={inputCls} value={form.spouseName} onChange={f("spouseName")} />
@@ -437,7 +437,7 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
 
         <Separator />
         <p className="text-sm font-medium text-muted-foreground">Father's Details</p>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           <div className="space-y-1.5">
             <Label>Father's Name</Label>
             <Input className={inputCls} value={form.fatherName} onChange={f("fatherName")} />
@@ -454,7 +454,7 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
 
         <Separator />
         <p className="text-sm font-medium text-muted-foreground">Mother's Details</p>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           <div className="space-y-1.5">
             <Label>Mother's Name</Label>
             <Input className={inputCls} value={form.motherName} onChange={f("motherName")} />

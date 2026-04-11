@@ -290,7 +290,7 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
   };
 
   const pageContent = (
-    <div className={showHeader ? "container mx-auto p-6 mt-16" : "p-4"}>
+    <div className={showHeader ? "container mx-auto p-4 sm:p-6 mt-16" : "p-4"}>
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-3">
           {showHeader && (

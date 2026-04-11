@@ -277,7 +277,7 @@ export default function TDSManagementPage() {
         <DialogContent data-testid="dialog-deposit-tds">
           <DialogHeader><DialogTitle>Mark TDS as Deposited</DialogTitle></DialogHeader>
           <div className="space-y-3 py-2">
-            <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
               <div><span className="text-muted-foreground">Vendor:</span><p className="font-medium">{depositOpen?.vendorName}</p></div>
               <div><span className="text-muted-foreground">Section:</span><p className="font-medium">{depositOpen?.section}</p></div>
               <div><span className="text-muted-foreground">TDS Amount:</span><p className="font-medium text-destructive">{depositOpen ? fmt(depositOpen.tdsAmount) : "-"}</p></div>
