@@ -377,7 +377,9 @@ export default function SuperAdminTenants() {
                 <TableBody>
                   {filtered.map((tenant) => {
                     const statusConf = STATUS_CONFIG[tenant.status] ?? STATUS_CONFIG.trial;
-                    const planConf   = PLAN_CONFIG[tenant.plan]   ?? PLAN_CONFIG.trial;
+                    const dynamicPlan = allPlans.find((p) => p.slug === tenant.plan);
+                    const planLabel   = dynamicPlan?.name ?? tenant.plan ?? 'Trial';
+                    const planVariant = (PLAN_CONFIG[tenant.plan] ?? PLAN_CONFIG.trial).variant;
                     return (
                       <TableRow key={tenant.id} data-testid={`row-tenant-${tenant.id}`}>
                         <TableCell>
@@ -397,7 +399,7 @@ export default function SuperAdminTenants() {
                         <TableCell>
                           {tenant.isInternal
                             ? <Badge variant="outline" className="capitalize text-muted-foreground">Platform Owner</Badge>
-                            : <Badge variant={planConf.variant} className="capitalize">{planConf.label}</Badge>
+                            : <Badge variant={planVariant} className="capitalize">{planLabel}</Badge>
                           }
                         </TableCell>
                         <TableCell>
