@@ -541,7 +541,7 @@ export default function CashRegisterVoucherPrint() {
     return (
       <div className="p-6 max-w-4xl mx-auto">
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <div className="space-y-4">
               <Skeleton className="h-8 w-64" />
               <Skeleton className="h-4 w-full" />

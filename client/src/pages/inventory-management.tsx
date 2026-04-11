@@ -133,7 +133,7 @@ export default function InventoryManagement({ activeTab: externalActiveTab }: In
       <div className="bg-background">
         <div className="border-b bg-card">
           <div className="max-w-7xl mx-auto px-4 py-4">
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-3">
               <Button
                 variant="ghost"
                 size="icon"
@@ -1412,7 +1412,7 @@ function ProductDialog({
               </div>
 
               {activeTab === 'info' && (<div className="space-y-4 mt-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="productCode"
@@ -1455,7 +1455,7 @@ function ProductDialog({
                   )}
                 />
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="categoryId"
@@ -1520,7 +1520,7 @@ function ProductDialog({
                   )}
                 />
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="uomId"
@@ -1589,7 +1589,7 @@ function ProductDialog({
               </div>)}
 
               {activeTab === 'packaging' && (<div className="space-y-4 mt-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="baseUnit"
@@ -1665,7 +1665,7 @@ function ProductDialog({
                 />
 
                 {(conversionMethod === 'Direct' || conversionMethod === 'multiply') && (
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
                       name="derivedValuePerBase"
@@ -1713,7 +1713,7 @@ function ProductDialog({
 
                 {conversionMethod === 'Formula-Based' && (
                   <>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="weightPerBase"
@@ -1798,7 +1798,7 @@ function ProductDialog({
               </div>)}
 
               {activeTab === 'pricing' && (<div className="space-y-4 mt-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="basePrice"
@@ -1859,7 +1859,7 @@ function ProductDialog({
                   </FormItem>
                 )}
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="hsnCode"
@@ -1888,7 +1888,7 @@ function ProductDialog({
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="taxType"
@@ -1930,7 +1930,7 @@ function ProductDialog({
                 {/* BOM Configuration Management - Only show for editing existing products */}
                 {item?.id && (
                   <div className="space-y-4 p-4 rounded-lg border bg-muted/30">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
                       <div className="space-y-1">
                         <Label className="text-sm font-medium">BOM Configurations</Label>
                         <p className="text-xs text-muted-foreground">
@@ -1952,7 +1952,7 @@ function ProductDialog({
                     {/* New Configuration Form */}
                     {showNewConfigForm && (
                       <div className="space-y-3 p-3 rounded border bg-background">
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div className="space-y-1">
                             <Label className="text-xs">Configuration Name *</Label>
                             <Input
@@ -2079,7 +2079,7 @@ function ProductDialog({
                         {editingConfigId && (
                           <div className="space-y-3 p-3 rounded border bg-muted/50">
                             <Label className="text-xs font-medium">Edit Configuration</Label>
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <div className="space-y-1">
                                 <Label className="text-xs">Configuration Name *</Label>
                                 <Input
@@ -3509,7 +3509,7 @@ function RawMaterialDialog({
 
             {/* Stock Management Section */}
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <h3 className="text-sm font-medium text-foreground">Stock Management</h3>
                   {!item && existingTypeStock > 0 && (
@@ -4636,7 +4636,7 @@ function FinishedGoodsTab({ searchTerm, onSearchChange }: { searchTerm: string; 
               </div>
             )}
             {consolidatedData?.summary && (
-              <div className="grid grid-cols-3 gap-4 mt-4 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4 text-sm">
                 <div className="border p-3 rounded-md">
                   <p className="text-muted-foreground">From Production</p>
                   <p className="text-lg font-semibold">{consolidatedData.summary.fromProduction.toLocaleString()}</p>
@@ -5048,7 +5048,7 @@ function RecordScrapDialog({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField control={form.control} name="quantity" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Quantity to Scrap</FormLabel>

@@ -143,7 +143,7 @@ export default function PurchaseReturnsPage() {
   );
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2"><PackageX className="h-6 w-6 text-primary" />Purchase Returns</h1>
@@ -187,7 +187,7 @@ export default function PurchaseReturnsPage() {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="dialog-add-return">
           <DialogHeader><DialogTitle>New Purchase Return</DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Return Date *</Label>
                 <Input type="date" value={form.returnDate} onChange={e => setForm(f => ({ ...f, returnDate: e.target.value }))} data-testid="input-return-date" />
@@ -224,7 +224,7 @@ export default function PurchaseReturnsPage() {
             </div>
 
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <Label>Items Being Returned</Label>
                 <Button size="sm" variant="outline" onClick={addItemRow} data-testid="button-add-return-item"><Plus className="h-3 w-3 mr-1" />Add Row</Button>
               </div>

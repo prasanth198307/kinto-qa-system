@@ -50,14 +50,14 @@ export default function WhatsAppAnalytics() {
   if (isLoading) {
     return (
       <>
-        <div className="p-8">Loading WhatsApp analytics...</div>
+        <div className="p-4 sm:p-8">Loading WhatsApp analytics...</div>
       </>
     );
   }
 
   return (
     <>
-      <div className="p-6 space-y-6" data-testid="page-whatsapp-analytics">
+      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6" data-testid="page-whatsapp-analytics">
       <div>
         <h1 className="text-3xl font-bold" data-testid="text-page-title">WhatsApp Response Analytics</h1>
         <p className="text-muted-foreground" data-testid="text-page-description">

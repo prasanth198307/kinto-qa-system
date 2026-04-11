@@ -379,7 +379,7 @@ export default function SuperAdminPlans() {
               {/* ── Basic info ── */}
               <section className="space-y-3">
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Basic Info</h3>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label htmlFor="plan-name">Plan Name *</Label>
                     <Input id="plan-name" value={editPlan.name ?? ""} onChange={(e) => setEditPlan((p) => p ? { ...p, name: e.target.value } : p)} placeholder="Professional" data-testid="input-plan-name" />
@@ -407,7 +407,7 @@ export default function SuperAdminPlans() {
               {/* ── Pricing ── */}
               <section className="space-y-3">
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Pricing (in ₹ Rupees)</h3>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {/* Monthly */}
                   <div className="space-y-1">
                     <Label htmlFor="price-monthly">Monthly Price (₹)</Label>
@@ -487,7 +487,7 @@ export default function SuperAdminPlans() {
                       data-testid="input-max-users" />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label htmlFor="trial-days">Trial Days</Label>
                     <Input id="trial-days" type="number" min="0" value={editPlan.trialDays ?? 0}

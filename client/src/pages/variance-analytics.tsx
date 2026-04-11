@@ -149,10 +149,10 @@ export default function VarianceAnalytics() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="p-6 space-y-6">
+      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-3">
             <Button
               variant="ghost"
               size="icon"

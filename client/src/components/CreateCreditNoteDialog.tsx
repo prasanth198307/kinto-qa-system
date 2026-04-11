@@ -344,7 +344,7 @@ export function CreateCreditNoteDialog({
 
                       {/* Editable quantity and unit price when selected */}
                       {isSelected && (
-                        <div className="grid grid-cols-2 gap-3 ml-8">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 ml-8">
                           <FormField
                             control={form.control}
                             name={`items.${form.watch("items").findIndex(i => i.invoiceItemId === item.id)}.quantity`}

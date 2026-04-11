@@ -487,7 +487,7 @@ export default function CashRegisterReport() {
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
           <Button
             variant="ghost"
             size="icon"
@@ -1168,7 +1168,7 @@ export default function CashRegisterReport() {
 
           {isLoadingDocs ? (
             <Card>
-              <CardContent className="p-6">
+              <CardContent className="p-4 sm:p-6">
                 <div className="space-y-4">
                   {[1, 2, 3].map((i) => (
                     <div key={i} className="flex gap-4">

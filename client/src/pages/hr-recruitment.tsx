@@ -67,7 +67,7 @@ function JobOpeningForm({ editing, depts, onSave, onCancel }: any) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1.5 col-span-2">
           <Label>Job Title <span className="text-destructive">*</span></Label>
           <Input className="h-9" value={form.title} onChange={f("title")} placeholder="e.g. CNC Machine Operator" />
@@ -184,7 +184,7 @@ function ApplicationForm({ openings, editing, preOpeningId, onSave, onCancel }: 
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1.5 col-span-2">
           <Label>Job Opening <span className="text-destructive">*</span></Label>
           <Select value={form.openingId} onValueChange={s("openingId")}>

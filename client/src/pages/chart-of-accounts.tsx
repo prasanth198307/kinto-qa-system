@@ -422,7 +422,7 @@ export default function ChartOfAccountsPage() {
                 <DialogTitle>{editAccount ? "Edit Account" : "Add New Account"}</DialogTitle>
               </DialogHeader>
               <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <Label>Account Code</Label>
                     <Input

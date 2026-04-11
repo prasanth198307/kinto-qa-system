@@ -44,8 +44,8 @@ export default function ChecklistsPage({ showHeader = true }: ChecklistsPageProp
     <>
       {showHeader && <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />}
       <div className={showHeader ? "flex-1 space-y-4 p-4 md:p-8 pt-6 mt-16" : "flex-1 space-y-4 p-4 md:p-8 pt-6"}>
-      <div className="flex items-center justify-between space-y-2">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-3">
           <Button
             variant="ghost"
             size="icon"

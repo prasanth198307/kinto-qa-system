@@ -400,7 +400,7 @@ export function VendorDebitNoteDialog({
               ))}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="vendorId"
@@ -520,7 +520,7 @@ export function VendorDebitNoteDialog({
               );
             })()}
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="reason"
@@ -593,7 +593,7 @@ export function VendorDebitNoteDialog({
 
             {entryMode === "lumpsum" ? (
               <Card className="p-4 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="lumpSumAmount"

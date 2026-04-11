@@ -273,7 +273,7 @@ export default function HRPayrollPage() {
         <DialogContent>
           <DialogHeader><DialogTitle>Create Payroll Run</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label>Month *</Label>
                 <Select value={newMonth} onValueChange={setNewMonth}>
@@ -305,7 +305,7 @@ export default function HRPayrollPage() {
 
       {/* Payslips View Dialog */}
       <Dialog open={!!viewRun} onOpenChange={() => setViewRun(null)}>
-        <DialogContent className="max-w-5xl">
+        <DialogContent className="max-w-5xl max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Payslips — {viewRun ? `${MONTHS[viewRun.month]} ${viewRun.year}` : ""}</DialogTitle>
           </DialogHeader>
@@ -402,7 +402,7 @@ export default function HRPayrollPage() {
         <DialogContent>
           <DialogHeader><DialogTitle>Payslip Settings</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label>Signatory Name</Label>
                 <Input value={settingsForm.signatoryName} onChange={e => setSettingsForm(f => ({ ...f, signatoryName: e.target.value }))} placeholder="e.g. Rajesh Kumar" data-testid="input-signatory-name" />
@@ -412,14 +412,14 @@ export default function HRPayrollPage() {
                 <Input value={settingsForm.signatoryDesignation} onChange={e => setSettingsForm(f => ({ ...f, signatoryDesignation: e.target.value }))} placeholder="e.g. HR Manager" data-testid="input-signatory-designation" />
               </div>
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-medium">Show Employer Contributions</p>
                 <p className="text-xs text-muted-foreground">Display employer PF/ESI on payslip</p>
               </div>
               <Switch checked={settingsForm.showEmployerContributions} onCheckedChange={v => setSettingsForm(f => ({ ...f, showEmployerContributions: v }))} data-testid="switch-employer-contributions" />
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-medium">Show Loan Deductions</p>
                 <p className="text-xs text-muted-foreground">Display loan EMI deductions section</p>
@@ -456,7 +456,7 @@ export default function HRPayrollPage() {
             <p className="text-sm text-muted-foreground">
               Send salary summaries to all <strong>{sendRun?.employee_count}</strong> employees. WhatsApp needs a phone number; Email needs an email address on each employee's profile.
             </p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <button
                 className="flex flex-col items-center gap-1 border rounded-md p-4 hover-elevate disabled:opacity-50"
                 onClick={() => sendWhatsApp.mutate(sendRun?.id)}

@@ -335,7 +335,7 @@ export default function CustomerAdvancesPage() {
     <div className="space-y-4 p-4" data-testid="customer-advances-page">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
           <Button
             variant="ghost"
             size="icon"
@@ -586,7 +586,7 @@ export default function CustomerAdvancesPage() {
               </Popover>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Amount (₹) *</Label>
                 <Input
@@ -610,7 +610,7 @@ export default function CustomerAdvancesPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Payment Method *</Label>
                 <Select
@@ -707,7 +707,7 @@ export default function CustomerAdvancesPage() {
           </DialogHeader>
           {selectedAdvance && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label className="text-muted-foreground">Advance Number</Label>
                   <p className="font-medium">{selectedAdvance.advanceNumber}</p>

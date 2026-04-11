@@ -170,7 +170,7 @@ export default function ScrapManagementPage() {
   );
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2"><Trash2 className="h-6 w-6 text-primary" />Scrap Management</h1>
@@ -214,7 +214,7 @@ export default function ScrapManagementPage() {
         <DialogContent className="max-w-lg" data-testid="dialog-add-scrap">
           <DialogHeader><DialogTitle>New Scrap Entry</DialogTitle></DialogHeader>
           <div className="space-y-3 py-2">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Scrap Date *</Label>
                 <Input type="date" value={form.scrapDate} onChange={e => setForm(f => ({ ...f, scrapDate: e.target.value }))} data-testid="input-scrap-date" />
@@ -234,7 +234,7 @@ export default function ScrapManagementPage() {
                 <SelectContent>{products.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Unit Cost (₹) *</Label>
                 <Input type="number" min="0" step="0.01" placeholder="0.00" value={form.unitCost} onChange={e => setForm(f => ({ ...f, unitCost: e.target.value }))} data-testid="input-scrap-cost" />

@@ -91,7 +91,7 @@ export default function SparePartsPage() {
   const fmt = (paise: number | null | undefined) => paise != null ? `₹${(paise / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}` : "-";
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2"><Wrench className="h-6 w-6 text-primary" />Spare Parts Management</h1>
@@ -255,7 +255,7 @@ export default function SparePartsPage() {
               <Label>Part Name *</Label>
               <Input placeholder="e.g. V-Belt A45" value={partForm.partName} onChange={e => setPartForm(f => ({ ...f, partName: e.target.value }))} data-testid="input-part-name" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Part Number</Label>
                 <Input placeholder="e.g. VB-A45-001" value={partForm.partNumber} onChange={e => setPartForm(f => ({ ...f, partNumber: e.target.value }))} data-testid="input-part-number" />
@@ -272,7 +272,7 @@ export default function SparePartsPage() {
                 <SelectContent>{machines.map((m: any) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Unit Price (₹)</Label>
                 <Input type="number" min="0" step="0.01" placeholder="0.00" value={partForm.unitPrice} onChange={e => setPartForm(f => ({ ...f, unitPrice: e.target.value }))} data-testid="input-part-price" />
@@ -297,7 +297,7 @@ export default function SparePartsPage() {
         <DialogContent data-testid="dialog-add-entry">
           <DialogHeader><DialogTitle>Stock In — {selectedPart?.partName}</DialogTitle></DialogHeader>
           <div className="space-y-3 py-2">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Purchase Date *</Label>
                 <Input type="date" value={entryForm.purchaseDate} onChange={e => setEntryForm(f => ({ ...f, purchaseDate: e.target.value }))} data-testid="input-entry-date" />
@@ -307,7 +307,7 @@ export default function SparePartsPage() {
                 <Input type="number" min="1" placeholder="0" value={entryForm.quantity} onChange={e => setEntryForm(f => ({ ...f, quantity: e.target.value }))} data-testid="input-entry-qty" />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Unit Price (₹) *</Label>
                 <Input type="number" min="0" step="0.01" placeholder="0.00" value={entryForm.unitPrice} onChange={e => setEntryForm(f => ({ ...f, unitPrice: e.target.value }))} data-testid="input-entry-price" />
@@ -344,7 +344,7 @@ export default function SparePartsPage() {
           <DialogHeader><DialogTitle>Issue Part — {selectedPart?.partName}</DialogTitle></DialogHeader>
           <p className="text-sm text-muted-foreground px-1">Current stock: <span className="font-semibold">{selectedPart?.currentStock ?? 0}</span></p>
           <div className="space-y-3 py-2">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Issue Date *</Label>
                 <Input type="date" value={issueForm.issueDate} onChange={e => setIssueForm(f => ({ ...f, issueDate: e.target.value }))} data-testid="input-issue-date" />

@@ -789,7 +789,7 @@ export default function VendorManagement() {
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="vendorCode">Vendor Code *</Label>
                   <Input
@@ -823,7 +823,7 @@ export default function VendorManagement() {
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 <div>
                   <Label htmlFor="city">City</Label>
                   <Input
@@ -853,7 +853,7 @@ export default function VendorManagement() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="gstNumber">GST Number</Label>
                   <div className="flex gap-2">
@@ -941,7 +941,7 @@ export default function VendorManagement() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="mobileNumber">Mobile Number *</Label>
                   <Input
@@ -975,7 +975,7 @@ export default function VendorManagement() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="vendorType">Vendor Type (Legacy)</Label>
                   <Select
@@ -1204,7 +1204,7 @@ export default function VendorManagement() {
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="isActive">Status</Label>
                   <Select
@@ -1241,7 +1241,7 @@ export default function VendorManagement() {
                   Different delivery location for invoices. Used when billing address differs from shipping address.
                 </p>
                 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="shipToName">Ship-To Name</Label>
                     <Input
@@ -1276,7 +1276,7 @@ export default function VendorManagement() {
                   />
                 </div>
 
-                <div className="grid grid-cols-3 gap-4 mt-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-3">
                   <div>
                     <Label htmlFor="shipToCity">City</Label>
                     <Input

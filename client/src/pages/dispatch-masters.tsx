@@ -68,8 +68,8 @@ export default function DispatchMasters() {
 
   return (
     <div className="p-4 space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Button
             variant="ghost"
             size="icon"
@@ -290,7 +290,7 @@ function TransportersTab() {
             <DialogDescription>Enter transporter details below</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="transporterCode">Code *</Label>
                 <Input id="transporterCode" value={formData.transporterCode} onChange={(e) => setFormData({ ...formData, transporterCode: e.target.value.toUpperCase() })} required data-testid="input-transporter-code" />
@@ -300,7 +300,7 @@ function TransportersTab() {
                 <Input id="transporterName" value={formData.transporterName} onChange={(e) => setFormData({ ...formData, transporterName: e.target.value })} required data-testid="input-transporter-name" />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="contactPerson">Contact Person</Label>
                 <Input id="contactPerson" value={formData.contactPerson} onChange={(e) => setFormData({ ...formData, contactPerson: e.target.value })} data-testid="input-contact-person" />
@@ -318,7 +318,7 @@ function TransportersTab() {
               <Label htmlFor="address">Address</Label>
               <Textarea id="address" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} data-testid="input-address" />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="gstNumber">GST Number</Label>
                 <Input id="gstNumber" value={formData.gstNumber} onChange={(e) => setFormData({ ...formData, gstNumber: e.target.value.toUpperCase() })} maxLength={15} data-testid="input-gst" />
@@ -577,7 +577,7 @@ function VehiclesTab() {
             <DialogDescription>Enter vehicle details below</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="vehicleNumber">Vehicle Number *</Label>
                 <Input id="vehicleNumber" value={formData.vehicleNumber} onChange={(e) => setFormData({ ...formData, vehicleNumber: e.target.value.toUpperCase() })} required placeholder="AP09AB1234" data-testid="input-vehicle-number" />
@@ -599,7 +599,7 @@ function VehiclesTab() {
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="capacity">Capacity</Label>
                 <Input id="capacity" value={formData.capacity} onChange={(e) => setFormData({ ...formData, capacity: e.target.value })} placeholder="e.g., 10 Ton, 500 cases" data-testid="input-capacity" />
@@ -618,7 +618,7 @@ function VehiclesTab() {
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="ownerName">Owner Name</Label>
                 <Input id="ownerName" value={formData.ownerName} onChange={(e) => setFormData({ ...formData, ownerName: e.target.value })} data-testid="input-owner-name" />
@@ -628,7 +628,7 @@ function VehiclesTab() {
                 <Input id="ownerPhone" value={formData.ownerPhone} onChange={(e) => setFormData({ ...formData, ownerPhone: e.target.value })} data-testid="input-owner-phone" />
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="insuranceExpiry">Insurance Expiry</Label>
                 <Input id="insuranceExpiry" type="date" value={formData.insuranceExpiry} onChange={(e) => setFormData({ ...formData, insuranceExpiry: e.target.value })} data-testid="input-insurance-expiry" />
@@ -880,7 +880,7 @@ function DriversTab() {
             <DialogDescription>Enter driver details below</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="driverCode">Code *</Label>
                 <Input id="driverCode" value={formData.driverCode} onChange={(e) => setFormData({ ...formData, driverCode: e.target.value.toUpperCase() })} required placeholder="DRV001" data-testid="input-driver-code" />
@@ -890,7 +890,7 @@ function DriversTab() {
                 <Input id="driverName" value={formData.driverName} onChange={(e) => setFormData({ ...formData, driverName: e.target.value })} required data-testid="input-driver-name" />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="phone">Phone *</Label>
                 <Input id="phone" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} required data-testid="input-driver-phone" />
@@ -900,7 +900,7 @@ function DriversTab() {
                 <Input id="alternatePhone" value={formData.alternatePhone} onChange={(e) => setFormData({ ...formData, alternatePhone: e.target.value })} data-testid="input-alt-phone" />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="licenseNumber">License Number</Label>
                 <Input id="licenseNumber" value={formData.licenseNumber} onChange={(e) => setFormData({ ...formData, licenseNumber: e.target.value.toUpperCase() })} data-testid="input-license-number" />

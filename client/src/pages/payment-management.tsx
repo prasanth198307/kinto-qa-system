@@ -889,7 +889,7 @@ export default function PaymentManagement() {
 
   return (
     <div className="space-y-4 p-4">
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-3">
         <Button
           variant="ghost"
           size="icon"
@@ -1545,7 +1545,7 @@ export default function PaymentManagement() {
                 </PopoverContent>
               </Popover>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Payment Date *</label>
                 <Input
@@ -1568,7 +1568,7 @@ export default function PaymentManagement() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Payment Method *</label>
                 <Select
@@ -1738,7 +1738,7 @@ export default function PaymentManagement() {
                 )}
               />
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={editForm.control}
                   name="paymentMethod"

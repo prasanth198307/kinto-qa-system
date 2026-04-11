@@ -1123,7 +1123,7 @@ export default function VendorHistoryDetailPage() {
     <div className="p-4 md:p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
           <Button 
             variant="ghost" 
             size="icon" 
@@ -1589,7 +1589,7 @@ export default function VendorHistoryDetailPage() {
             </CardHeader>
             <CardContent className="p-0">
               {txnLoading ? (
-                <div className="p-6 space-y-4">
+                <div className="p-4 sm:p-6 space-y-4">
                   {Array.from({ length: 3 }).map((_, i) => (
                     <Skeleton key={i} className="h-16 w-full" />
                   ))}

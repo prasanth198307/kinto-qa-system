@@ -7,7 +7,7 @@ export default function SalesDashboardPage() {
 
   return (
     <>
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <SalesDashboard />
       </div>
     </>

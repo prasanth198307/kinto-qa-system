@@ -438,7 +438,7 @@ export default function MachineSpareEntryView() {
                   data-testid="input-part-name"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="partNumber">Part Number</Label>
                   <Input
@@ -466,7 +466,7 @@ export default function MachineSpareEntryView() {
                   </Select>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="currentStock">Opening Stock *</Label>
                   <Input
@@ -535,7 +535,7 @@ export default function MachineSpareEntryView() {
                   data-testid="input-edit-part-name"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="editPartNumber">Part Number</Label>
                   <Input
@@ -563,7 +563,7 @@ export default function MachineSpareEntryView() {
                   </Select>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="editCurrentStock">Opening Stock *</Label>
                   <Input

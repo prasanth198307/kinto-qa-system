@@ -96,7 +96,7 @@ export default function ChecklistForm({ machineName, tasks: initialTasks, onSubm
         <div>
           <h2 className="text-lg font-semibold mb-4" data-testid="text-machine-name">{machineName}</h2>
           
-          <div className="grid grid-cols-2 gap-4 mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             <div>
               <Label htmlFor="date" className="text-sm font-medium">Date</Label>
               <Input

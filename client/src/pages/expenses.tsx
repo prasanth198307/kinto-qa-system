@@ -293,7 +293,7 @@ export default function ExpensesPage() {
   return (
     <div className="p-4 space-y-4">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
           <Button
             variant="ghost"
             size="icon"
@@ -336,7 +336,7 @@ export default function ExpensesPage() {
               <DialogDescription>Record a new expense with line items</DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="voucherDate">Voucher Date</Label>
                   <Input
@@ -366,7 +366,7 @@ export default function ExpensesPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="payeeName">Payee Name</Label>
                   <Input
@@ -613,7 +613,7 @@ export default function ExpensesPage() {
       </Card>
 
       <Dialog open={!!selectedVoucher} onOpenChange={() => setSelectedVoucher(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Receipt className="h-5 w-5" />
@@ -622,7 +622,7 @@ export default function ExpensesPage() {
           </DialogHeader>
           {selectedVoucher && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                   <span className="text-muted-foreground">Date:</span>

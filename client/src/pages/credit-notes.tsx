@@ -124,8 +124,8 @@ export default function CreditNotes() {
   };
 
   return (
-    <div className="p-6">
-      <div className="mb-6 flex items-center gap-4">
+    <div className="p-4 sm:p-6">
+      <div className="mb-4 flex flex-wrap items-center gap-3">
         <Button
           variant="ghost"
           size="icon"
@@ -144,7 +144,7 @@ export default function CreditNotes() {
 
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="h-5 w-5" />
@@ -244,7 +244,7 @@ export default function CreditNotes() {
       <Dialog open={isViewOpen} onOpenChange={handleClose}>
         <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <DialogTitle>Credit Note Details</DialogTitle>
                 <DialogDescription>
@@ -259,7 +259,7 @@ export default function CreditNotes() {
 
           {selectedCreditNote && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Invoice Number</p>
                   <p className="font-medium">{selectedCreditNote.invoiceNumber}</p>

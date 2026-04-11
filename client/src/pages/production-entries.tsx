@@ -48,7 +48,7 @@ export default function ProductionEntries() {
 
   if (isLoading) {
     return (
-      <div className="p-8">
+      <div className="p-4 sm:p-8">
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-muted rounded w-1/4"></div>
           <div className="h-64 bg-muted rounded"></div>
@@ -60,8 +60,8 @@ export default function ProductionEntries() {
   return (
     <div className="p-8 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Button
             variant="ghost"
             size="icon"
@@ -85,17 +85,17 @@ export default function ProductionEntries() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="p-6">
+        <Card className="p-4 sm:p-6">
           <div className="text-sm text-muted-foreground">Total Entries</div>
           <div className="text-3xl font-bold mt-2">{productionEntries.length}</div>
         </Card>
-        <Card className="p-6">
+        <Card className="p-4 sm:p-6">
           <div className="text-sm text-muted-foreground">Total Produced</div>
           <div className="text-3xl font-bold mt-2">
             {productionEntries.reduce((sum, entry) => sum + Number(entry.producedQuantity || 0), 0).toFixed(2)}
           </div>
         </Card>
-        <Card className="p-6">
+        <Card className="p-4 sm:p-6">
           <div className="text-sm text-muted-foreground">Total Rejected</div>
           <div className="text-3xl font-bold mt-2 text-destructive">
             {productionEntries.reduce((sum, entry) => sum + Number(entry.rejectedQuantity || 0), 0).toFixed(2)}
@@ -104,7 +104,7 @@ export default function ProductionEntries() {
       </div>
 
       {/* Production Entries Table */}
-      <Card className="p-6">
+      <Card className="p-4 sm:p-6">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>

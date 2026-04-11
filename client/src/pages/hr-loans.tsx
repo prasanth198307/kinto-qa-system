@@ -84,7 +84,7 @@ export default function HRLoansPage() {
   const totalOutstanding = (loans as any[]).filter(l => l.status === 'active').reduce((s, l) => s + Number(l.outstanding), 0);
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-4 sm:p-6 space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-semibold">Loans & Advances</h1>
@@ -267,7 +267,7 @@ export default function HRLoansPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label>Type *</Label>
                 <Select value={form.loanType} onValueChange={v => setForm(f => ({ ...f, loanType: v }))}>
@@ -288,7 +288,7 @@ export default function HRLoansPage() {
               <Input placeholder="e.g. Medical emergency, House purchase" value={form.purpose}
                 onChange={e => setForm(f => ({ ...f, purpose: e.target.value }))} />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label>Sanctioned Amount (₹) *</Label>
                 <Input type="number" placeholder="50000" value={form.sanctionedAmount}
@@ -300,7 +300,7 @@ export default function HRLoansPage() {
                   onChange={e => setForm(f => ({ ...f, emi: e.target.value }))} />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label>Recovery Start Month *</Label>
                 <Select value={form.startMonth} onValueChange={v => setForm(f => ({ ...f, startMonth: v }))}>

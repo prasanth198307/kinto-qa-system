@@ -273,7 +273,7 @@ export default function HRLeavesPage() {
                 <SelectContent>{(leaveTypes as any[]).map((lt: any) => <SelectItem key={lt.id} value={String(lt.id)}>{lt.name} ({lt.code})</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div><Label>From Date *</Label>
                 <Input type="date" value={applyForm.fromDate} onChange={e => {
                   const from = e.target.value;

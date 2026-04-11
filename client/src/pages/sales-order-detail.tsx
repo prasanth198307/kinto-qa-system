@@ -389,7 +389,7 @@ function EditSalesOrderDialog({ salesOrder, open, onClose }: EditDialogProps) {
 
             {/* Line Items */}
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <h3 className="font-medium">Line Items</h3>
                 <Button type="button" variant="outline" size="sm" onClick={() => append({ productId: "", description: "", hsnCode: "22011010", quantity: 1, unitPrice: 0, cgstRate: 9, sgstRate: 9, igstRate: 0, discount: 0, discountMode: '%' as '%' | '₹' })} data-testid="button-edit-add-item">
                   <Plus className="w-4 h-4 mr-1" />Add Item
@@ -644,7 +644,7 @@ export default function SalesOrderDetail({ showHeader = true }: { showHeader?: b
 
         {/* Header */}
         <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-3">
             <Button variant="ghost" size="icon" onClick={() => setLocation('/?tab=sales-orders')} data-testid="button-back">
               <ArrowLeft className="w-5 h-5" />
             </Button>

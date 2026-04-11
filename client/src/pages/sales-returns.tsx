@@ -327,12 +327,12 @@ export default function SalesReturnsPage() {
   };
 
   if (isLoading) {
-    return <div className="p-6">Loading...</div>;
+    return <div className="p-4 sm:p-6">Loading...</div>;
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center gap-4">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+      <div className="flex flex-wrap items-center gap-3">
         <Button
           variant="ghost"
           size="icon"
@@ -352,7 +352,7 @@ export default function SalesReturnsPage() {
           <p className="text-muted-foreground">Manage post-delivery returns and damaged goods</p>
         </div>
       </div>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex-1"></div>
         <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
           {canCreate && (
@@ -369,7 +369,7 @@ export default function SalesReturnsPage() {
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="invoiceId"
@@ -509,7 +509,7 @@ export default function SalesReturnsPage() {
                 />
 
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
                     <h3 className="font-semibold">Return Items</h3>
                     {loadingInvoiceItems && (
                       <div className="flex items-center gap-2 text-muted-foreground">
@@ -642,7 +642,7 @@ export default function SalesReturnsPage() {
                               </div>
                             </div>
                             ) : (
-                            <div className="grid grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                               <FormField
                                 control={form.control}
                                 name={`items.${index}.casesReturned`}
@@ -682,7 +682,7 @@ export default function SalesReturnsPage() {
                             </div>
                             )}
                             
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                               <FormField
                                 control={form.control}
                                 name={`items.${index}.batchNumber`}
@@ -892,7 +892,7 @@ export default function SalesReturnsPage() {
 
       {/* Inspect Dialog */}
       <Dialog open={inspectDialogOpen} onOpenChange={setInspectDialogOpen}>
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="max-w-4xl max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Inspect Return - {selectedReturn?.returnNumber}</DialogTitle>
           </DialogHeader>
@@ -1496,7 +1496,7 @@ function ScrapInventorySection() {
 
       {/* Image Preview Dialog */}
       <Dialog open={!!previewUrl} onOpenChange={() => setPreviewUrl(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Damage Evidence</DialogTitle>
           </DialogHeader>

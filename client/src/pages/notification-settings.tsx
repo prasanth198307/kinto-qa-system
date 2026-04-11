@@ -132,7 +132,7 @@ export default function NotificationSettings() {
   if (isLoading) {
     return (
       <>
-        <div className="p-6 space-y-6">
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
           <div className="flex justify-center items-center py-12">
             <div className="text-muted-foreground">Loading configuration...</div>
           </div>
@@ -143,8 +143,8 @@ export default function NotificationSettings() {
 
   return (
     <>
-      <div className="p-6 space-y-6">
-      <div className="flex items-center gap-4">
+      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+      <div className="flex flex-wrap items-center gap-3">
         <Button
           variant="ghost"
           size="icon"
@@ -187,7 +187,7 @@ export default function NotificationSettings() {
         {/* Email Configuration */}
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <Mail className="w-5 h-5" />
                 <div>
@@ -364,7 +364,7 @@ export default function NotificationSettings() {
         {/* WhatsApp Configuration */}
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <MessageSquare className="w-5 h-5" />
                 <div>
@@ -441,7 +441,7 @@ export default function NotificationSettings() {
         {/* Test Mode */}
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <CardTitle>Test Mode</CardTitle>
                 <CardDescription>

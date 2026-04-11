@@ -161,7 +161,7 @@ export default function ReviewerDashboard() {
   const renderSubmissionCard = (submission: ChecklistSubmission) => (
     <Card key={submission.id} className="hover-elevate" data-testid={`card-submission-${submission.id}`}>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <CardTitle className="text-base">
             {getTemplateName(submission.templateId)}
           </CardTitle>
@@ -169,7 +169,7 @@ export default function ReviewerDashboard() {
         </div>
       </CardHeader>
       <CardContent className="space-y-2">
-        <div className="grid grid-cols-2 gap-2 text-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
           <div>
             <span className="text-muted-foreground">Machine:</span>
             <p className="font-medium" data-testid={`text-machine-${submission.id}`}>{getMachineName(submission.machineId)}</p>
@@ -234,7 +234,7 @@ export default function ReviewerDashboard() {
 
         <TabsContent value="pending" className="space-y-4 mt-4">
           {pendingSubmissions.length === 0 ? (
-            <Card className="p-6">
+            <Card className="p-4 sm:p-6">
               <p className="text-center text-muted-foreground" data-testid="text-empty-pending">
                 No submissions pending review
               </p>
@@ -248,7 +248,7 @@ export default function ReviewerDashboard() {
 
         <TabsContent value="reviewed" className="space-y-4 mt-4">
           {reviewedSubmissions.length === 0 ? (
-            <Card className="p-6">
+            <Card className="p-4 sm:p-6">
               <p className="text-center text-muted-foreground" data-testid="text-empty-reviewed">
                 No reviewed submissions
               </p>
@@ -262,7 +262,7 @@ export default function ReviewerDashboard() {
 
         <TabsContent value="all" className="space-y-4 mt-4">
           {submissions.length === 0 ? (
-            <Card className="p-6">
+            <Card className="p-4 sm:p-6">
               <p className="text-center text-muted-foreground" data-testid="text-empty-all">
                 No submissions assigned to you
               </p>
@@ -287,7 +287,7 @@ export default function ReviewerDashboard() {
           {selectedSubmission && (
             <div className="space-y-4">
               {/* Submission Info */}
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-muted-foreground">Machine:</span>
                   <p className="font-medium">{getMachineName(selectedSubmission.machineId)}</p>

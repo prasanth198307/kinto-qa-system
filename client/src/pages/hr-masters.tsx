@@ -158,7 +158,7 @@ function ShiftsTab() {
           <DialogHeader><DialogTitle>{editing ? "Edit" : "Add"} Shift</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div><Label>Shift Name *</Label><Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Day Shift, Night Shift" /></div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div><Label>Start Time</Label><Input type="time" value={form.startTime} onChange={e => setForm(f => ({ ...f, startTime: e.target.value }))} /></div>
               <div><Label>End Time</Label><Input type="time" value={form.endTime} onChange={e => setForm(f => ({ ...f, endTime: e.target.value }))} /></div>
             </div>
@@ -245,7 +245,7 @@ function LeaveTypesTab() {
         <DialogContent>
           <DialogHeader><DialogTitle>{editing ? "Edit" : "Add"} Leave Type</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div><Label>Name *</Label><Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Casual Leave" /></div>
               <div><Label>Code *</Label><Input value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value.toUpperCase() }))} placeholder="CL, SL, EL" maxLength={10} /></div>
             </div>
@@ -386,7 +386,7 @@ function SalaryComponentsTab() {
         <DialogContent>
           <DialogHeader><DialogTitle>{editing ? "Edit" : "Add"} Salary Component</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div><Label>Name *</Label><Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. HRA, Basic" /></div>
               <div><Label>Code *</Label><Input value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value.toUpperCase() }))} placeholder="HRA, BASIC" /></div>
             </div>
@@ -625,7 +625,7 @@ function PTSlabsTab() {
               <Input value={form.state} onChange={e => setForm(f => ({ ...f, state: e.target.value }))} placeholder="e.g. Maharashtra, Karnataka" data-testid="input-pt-state" />
               <p className="text-xs text-muted-foreground mt-1">Must match the state field on the employee's profile (case-insensitive).</p>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label>Monthly Income From (₹)</Label>
                 <Input type="number" value={form.income_from} onChange={e => setForm(f => ({ ...f, income_from: e.target.value }))} data-testid="input-pt-from" />

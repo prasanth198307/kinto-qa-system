@@ -201,9 +201,9 @@ export default function VendorAnalytics() {
 
   if (isLoading) {
     return (
-      <div className="p-6 space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <Button
               variant="ghost"
               size="icon"
@@ -238,9 +238,9 @@ export default function VendorAnalytics() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
           <Button
             variant="ghost"
             size="icon"
@@ -396,7 +396,7 @@ export default function VendorAnalytics() {
             <div className="grid gap-4 md:grid-cols-3" data-testid="vendor-type-breakdown">
               {analyticsData.typeBreakdown.map((type) => (
                 <Card key={type.type} className="p-4" data-testid={`card-type-${type.type.toLowerCase().replace(/\s+/g, '-')}`}>
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <h3 className="font-semibold" data-testid={`text-type-name-${type.type.toLowerCase().replace(/\s+/g, '-')}`}>
                         {type.type}

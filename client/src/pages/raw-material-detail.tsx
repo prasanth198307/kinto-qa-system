@@ -215,7 +215,7 @@ export default function RawMaterialDetail({ showHeader = true }: RawMaterialDeta
             <CardDescription>Details about this raw material</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-muted-foreground">Material Code</p>
                 <p className="font-medium" data-testid="text-material-code">{rawMaterial.materialCode}</p>
@@ -257,7 +257,7 @@ export default function RawMaterialDetail({ showHeader = true }: RawMaterialDeta
                 <Separator />
                 <div className="space-y-3">
                   <p className="text-sm font-semibold text-primary">Calculation & Conversion</p>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {rawMaterial.conversionType && (
                       <div>
                         <p className="text-sm text-muted-foreground">Conversion Type</p>
@@ -289,7 +289,7 @@ export default function RawMaterialDetail({ showHeader = true }: RawMaterialDeta
 
             <Separator />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-muted-foreground">Created</p>
                 <p className="font-medium">

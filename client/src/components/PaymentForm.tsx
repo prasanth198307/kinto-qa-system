@@ -117,7 +117,7 @@ export default function PaymentForm({ invoice, onSuccess, onCancel }: PaymentFor
   return (
     <div className="space-y-4">
       <div className="rounded-md border p-4 bg-muted/50">
-        <div className="grid grid-cols-2 gap-4 text-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
           <div>
             <span className="text-muted-foreground">Invoice Number:</span>
             <span className="ml-2 font-medium" data-testid="text-invoice-number">{invoice.invoiceNumber}</span>
@@ -139,7 +139,7 @@ export default function PaymentForm({ invoice, onSuccess, onCancel }: PaymentFor
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField
               control={form.control}
               name="paymentDate"
@@ -179,7 +179,7 @@ export default function PaymentForm({ invoice, onSuccess, onCancel }: PaymentFor
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField
               control={form.control}
               name="paymentMethod"
@@ -232,7 +232,7 @@ export default function PaymentForm({ invoice, onSuccess, onCancel }: PaymentFor
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField
               control={form.control}
               name="paidBy"
@@ -286,7 +286,7 @@ export default function PaymentForm({ invoice, onSuccess, onCancel }: PaymentFor
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField
               control={form.control}
               name="referenceNumber"

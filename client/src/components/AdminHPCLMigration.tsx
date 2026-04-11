@@ -123,7 +123,7 @@ export default function AdminHPCLMigration() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
             <div>
               <span className="font-medium">Vendor Name:</span>
               <p className="text-muted-foreground">VISAKH RETAIL RO Petronilayam, HPCL</p>

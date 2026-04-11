@@ -160,8 +160,8 @@ export default function CancelledInvoices({ showHeader = true }: CancelledInvoic
   return (
     <>
       {showHeader && <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />}
-      <div className={showHeader ? "p-6 mt-16" : "p-6"}>
-        <div className="mb-6 flex items-center gap-4">
+      <div className={showHeader ? "p-4 sm:p-6 mt-16" : "p-4 sm:p-6"}>
+        <div className="mb-4 flex flex-wrap items-center gap-3">
           <Button
             variant="ghost"
             size="icon"

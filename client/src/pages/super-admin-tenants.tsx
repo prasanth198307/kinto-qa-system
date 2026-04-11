@@ -642,7 +642,7 @@ export default function SuperAdminTenants() {
             <DialogDescription>Manually provision a new company account.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label>Company Name *</Label>
                 <Input
@@ -662,7 +662,7 @@ export default function SuperAdminTenants() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label>Plan</Label>
                 <Select value={createForm.plan} onValueChange={(v) => setCreateForm((f) => ({ ...f, plan: v, trialDays: v === "trial" ? (f.trialDays || "14") : "" }))}>
@@ -707,7 +707,7 @@ export default function SuperAdminTenants() {
                 data-testid="input-create-email"
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label>Admin Username *</Label>
                 <Input

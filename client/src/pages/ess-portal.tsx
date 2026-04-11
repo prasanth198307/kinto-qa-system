@@ -130,7 +130,7 @@ function ApplyLeaveForm({ leaveTypes, onSave, onCancel }: any) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1.5 col-span-2">
           <Label>Leave Type <span className="text-destructive">*</span></Label>
           <Select value={form.leaveTypeId} onValueChange={v => setForm(p => ({ ...p, leaveTypeId: v }))}>
@@ -267,7 +267,7 @@ function EssDeclarationTab({ employee }: { employee: any }) {
             <span>Total 80C Declared: {fmtRs(["licPremium","ppf","elss","nsc","homeLoanPrincipal","fdTaxSaving","other80c"].reduce((s, k) => s + Number(form[k]||0), 0))}</span>
             <span className="font-medium">Eligible (capped ₹1.5L): {fmtRs(total80c)}</span>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {[["licPremium","LIC Premium"],["ppf","PPF"],["elss","ELSS / Mutual Funds"],["nsc","NSC"],["homeLoanPrincipal","Home Loan Principal"],["fdTaxSaving","Tax-Saving FD (5 yr)"],["other80c","Others under 80C"]].map(([k,l]) => (
               <div key={k} className="space-y-1.5"><Label className="text-sm">{l}</Label><Input className={numCls} type="number" min="0" value={form[k]||"0"} onChange={f(k)} /></div>
             ))}
@@ -275,7 +275,7 @@ function EssDeclarationTab({ employee }: { employee: any }) {
         </TabsContent>
 
         <TabsContent value="80d" className="mt-4 space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5"><Label>Self & Family Premium (max ₹25,000)</Label><Input className={numCls} type="number" min="0" value={form.sec80dSelf||"0"} onChange={f("sec80dSelf")} /></div>
             <div className="space-y-1.5"><Label>Parents Premium</Label><Input className={numCls} type="number" min="0" value={form.sec80dParents||"0"} onChange={f("sec80dParents")} /></div>
           </div>
@@ -286,7 +286,7 @@ function EssDeclarationTab({ employee }: { employee: any }) {
         </TabsContent>
 
         <TabsContent value="hra" className="mt-4 space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5"><Label>Monthly Rent Paid (₹)</Label><Input className={numCls} type="number" min="0" value={form.rentPerMonth||"0"} onChange={f("rentPerMonth")} /></div>
             <div className="space-y-1.5">
               <Label>City Type</Label>
@@ -299,7 +299,7 @@ function EssDeclarationTab({ employee }: { employee: any }) {
         </TabsContent>
 
         <TabsContent value="other" className="mt-4 space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {[["homeLoanInterest","Home Loan Interest (Sec 24, max ₹2L)"],["eduLoanInterest","Education Loan Interest (80E)"],["nps80ccd","NPS (80CCD 1B, max ₹50K)"],["sec80g","Donations (80G)"],["sec80tta","Savings Interest (80TTA, max ₹10K)"],["otherDeductions","Other Deductions"]].map(([k,l]) => (
               <div key={k} className="space-y-1.5"><Label className="text-sm">{l}</Label><Input className={numCls} type="number" min="0" value={form[k]||"0"} onChange={f(k)} /></div>
             ))}
@@ -739,7 +739,7 @@ export default function EssPortal() {
         {/* ── LEAVES ── */}
         {tab === "leaves" && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="font-semibold">Leave Management</h2>
               <Button onClick={() => setShowLeaveForm(true)} data-testid="btn-ess-apply-leave">
                 Apply for Leave

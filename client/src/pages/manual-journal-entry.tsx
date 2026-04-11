@@ -273,7 +273,7 @@ export default function ManualJournalEntryPage() {
           ))}
 
           <div className="flex items-center justify-between pt-3 border-t gap-4 flex-wrap">
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="text-sm">
                 <span className="text-muted-foreground">Debit: </span>
                 <span className="font-mono font-medium" data-testid="text-total-debit">{formatAmount(totalDebit)}</span>

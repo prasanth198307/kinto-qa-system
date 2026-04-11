@@ -493,13 +493,13 @@ export default function MonthlyExpensesPage() {
         <Card><CardContent className="pt-4 pb-3 px-4">
           <div className="text-xs text-muted-foreground mb-2 flex items-center gap-1"><Pin className="w-3 h-3" /> By Type</div>
           <div className="flex flex-col gap-1">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <span className="text-xs text-purple-600 dark:text-purple-400 flex items-center gap-1">
                 <RefreshCw className="w-2.5 h-2.5" /> Recurring ({summary.recurringCount})
               </span>
               <span className="text-sm font-bold text-purple-600 dark:text-purple-400">{fmtCurrency(summary.recurringAmount)}</span>
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <span className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
                 <MinusCircle className="w-2.5 h-2.5" /> Fixed ({summary.fixedCount})
               </span>
@@ -747,7 +747,7 @@ export default function MonthlyExpensesPage() {
                   Record New Payment <span className="text-orange-600 dark:text-orange-400">(Balance: {fmtCurrency(remainingBalance)})</span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label>Amount (₹) *</Label>
                     <Input
@@ -769,7 +769,7 @@ export default function MonthlyExpensesPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label>Paid By (Person / Company)</Label>
                     <Input
@@ -799,7 +799,7 @@ export default function MonthlyExpensesPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label>Payment Mode</Label>
                     <Select value={payForm.paymentMode} onValueChange={v => setPayForm(f => ({ ...f, paymentMode: v }))}>
@@ -917,9 +917,9 @@ export default function MonthlyExpensesPage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   <Label>Category</Label>
                   <a
                     href="/expense-categories"
@@ -981,7 +981,7 @@ export default function MonthlyExpensesPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>{isRecurring ? 'Monthly Amount (₹) *' : 'Total Amount (₹) *'}</Label>
                 <Input type="number" step="0.01" min="0" placeholder="0.00" value={expForm.amount}

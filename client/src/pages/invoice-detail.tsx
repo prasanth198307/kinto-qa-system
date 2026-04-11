@@ -643,8 +643,8 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
       {showHeader && <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />}
       <div className={showHeader ? "min-h-screen p-6 mt-16 space-y-6" : "min-h-screen p-6 space-y-6"}>
         {/* Header */}
-        <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Button
             variant="ghost"
             size="icon"
@@ -1211,7 +1211,7 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
                   {totalAvailableAdvance > 0 && invoice.paymentStatus !== 'paid' && invoice.status !== 'cancelled' && (
                     <>
                       <Separator />
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                           <div className="text-sm font-medium text-green-700 dark:text-green-400">Advance Available</div>
                           <div className="text-xs text-muted-foreground">

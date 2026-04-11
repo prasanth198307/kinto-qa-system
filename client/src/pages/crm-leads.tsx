@@ -33,7 +33,7 @@ function LeadForm({ form, setForm, onSave, onCancel, isSaving, users }: any) {
   const cls = "h-9";
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <Label>Name <span className="text-destructive">*</span></Label>
           <Input className={cls} value={form.name} onChange={f("name")} placeholder="Lead name" data-testid="input-lead-name" />
@@ -331,7 +331,7 @@ export default function CRMLeadsPage() {
 
       {/* Add/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={v => { if (!v) { setDialogOpen(false); setEditing(null); setForm({ ...EMPTY_FORM }); } }}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? "Edit Lead" : "Add New Lead"}</DialogTitle>
           </DialogHeader>

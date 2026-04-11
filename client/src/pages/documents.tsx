@@ -490,7 +490,7 @@ export default function DocumentsPage() {
   return (
     <div className="p-4 space-y-4">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate('/?tab=overview')} data-testid="button-back">
             <ArrowLeft className="w-5 h-5" />
           </Button>
@@ -810,7 +810,7 @@ export default function DocumentsPage() {
               <Label htmlFor="description">Description</Label>
               <Textarea id="description" value={uploadData.description} onChange={(e) => setUploadData(prev => ({ ...prev, description: e.target.value }))} placeholder="Brief description" className="resize-none" data-testid="input-description" />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="documentDate">Document Date</Label>
                 <Input id="documentDate" type="date" value={uploadData.documentDate} onChange={(e) => setUploadData(prev => ({ ...prev, documentDate: e.target.value }))} data-testid="input-document-date" />
@@ -935,13 +935,13 @@ export default function DocumentsPage() {
       </Dialog>
 
       <Dialog open={!!previewDocument} onOpenChange={() => setPreviewDocument(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{previewDocument?.title}</DialogTitle>
           </DialogHeader>
           {previewDocument && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-muted-foreground">Folder:</span>
                   <span className="ml-2 font-medium">{getCategoryName(previewDocument.categoryId)}</span>

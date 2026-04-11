@@ -136,7 +136,7 @@ export default function MISSales() {
   return (
     <div className="p-4 md:p-6 space-y-6" data-testid="mis-sales-page">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
           <Link href="/mis">
             <Button variant="ghost" size="icon" data-testid="button-back">
               <ArrowLeft className="w-4 h-4" />

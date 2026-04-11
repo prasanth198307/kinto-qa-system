@@ -206,7 +206,7 @@ export default function FinishedGoodDetail({ showHeader = true }: FinishedGoodDe
             <CardDescription>Details about this finished goods batch</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-muted-foreground">Batch Number</p>
                 <p className="font-medium" data-testid="text-batch-number">{finishedGood.batchNumber}</p>
@@ -236,7 +236,7 @@ export default function FinishedGoodDetail({ showHeader = true }: FinishedGoodDe
 
             <Separator />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-muted-foreground">Storage Location</p>
                 <p className="font-medium flex items-center gap-1">

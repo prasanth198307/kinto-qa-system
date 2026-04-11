@@ -191,7 +191,7 @@ export default function MISDelivery() {
             <Card>
               <CardHeader><CardTitle className="text-base">Pending &amp; In Transit</CardTitle><CardDescription>Dispatches requiring attention</CardDescription></CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="p-5 bg-amber-50 border border-amber-200 rounded-lg text-center dark:bg-amber-900/20 dark:border-amber-800">
                     <Clock className="w-6 h-6 mx-auto text-amber-600 mb-2" />
                     <p className="text-4xl font-bold text-amber-700 dark:text-amber-300">{data.summary.pending}</p>

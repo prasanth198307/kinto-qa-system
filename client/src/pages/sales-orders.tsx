@@ -595,7 +595,7 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                   </div>
 
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
                       <h3 className="text-lg font-medium">Line Items</h3>
                       <Button
                         type="button"

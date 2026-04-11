@@ -252,7 +252,7 @@ export default function InventorySummaryDashboard() {
                       <p className="text-xs text-muted-foreground" data-testid="text-batches">{batches} batch(es)</p>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4 mt-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
                     <div className="bg-green-50 rounded p-3">
                       <p className="text-xs text-green-700 mb-1">Approved</p>
                       <p className="text-lg font-semibold text-green-900" data-testid="text-approved">{approvedQuantity}</p>

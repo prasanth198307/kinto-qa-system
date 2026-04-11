@@ -277,9 +277,9 @@ export default function RawMaterialTypeMaster() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Button
             variant="ghost"
             size="icon"
@@ -428,7 +428,7 @@ export default function RawMaterialTypeMaster() {
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="typeName"
@@ -496,7 +496,7 @@ export default function RawMaterialTypeMaster() {
                 )}
               />
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="baseUnit"
@@ -553,7 +553,7 @@ export default function RawMaterialTypeMaster() {
                   <div className="text-sm font-medium text-muted-foreground">
                     Formula: (Base Unit Weight × 1000) ÷ Weight Per Derived Unit
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
                       name="derivedUnit"
@@ -638,7 +638,7 @@ export default function RawMaterialTypeMaster() {
                     </label>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
                       name="derivedUnit"
@@ -730,7 +730,7 @@ export default function RawMaterialTypeMaster() {
                   <div className="text-sm font-medium text-muted-foreground">
                     Define how many output units one base unit can cover
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
                       name="outputType"
@@ -817,7 +817,7 @@ export default function RawMaterialTypeMaster() {
               {/* Auto-Calculation Display */}
               <div className="p-4 border rounded-md bg-primary/5">
                 <div className="text-sm font-medium mb-2">Auto-Calculated Values:</div>
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                   <div>
                     <div className="text-muted-foreground">Conversion Value:</div>
                     <div className="font-medium" data-testid="display-conversion-value">{Math.round(conversionValue)}</div>

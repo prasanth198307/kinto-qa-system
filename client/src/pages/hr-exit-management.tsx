@@ -102,7 +102,7 @@ function ProcessExitDialog({ emp, open, onClose }: { emp: any; open: boolean; on
         </div>
 
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Resignation / Notice Date</Label>
               <Input className="h-9" type="date" value={form.resignationDate} onChange={f("resignationDate")} />

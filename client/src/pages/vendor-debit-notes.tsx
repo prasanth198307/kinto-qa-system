@@ -146,8 +146,8 @@ export default function VendorDebitNotesPage() {
 
   return (
     <div className="container mx-auto p-4 space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Button
             variant="ghost"
             size="icon"

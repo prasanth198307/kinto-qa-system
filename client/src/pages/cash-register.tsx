@@ -659,7 +659,7 @@ export default function CashRegisterPage() {
 
     return (
       <div className="p-4 space-y-4">
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => setSelectedDay(null)} data-testid="button-back">
             <ArrowLeft className="h-5 w-5" />
           </Button>
@@ -720,7 +720,7 @@ export default function CashRegisterPage() {
         {(selectedDay as any).hasDiscrepancy === 1 && (selectedDay as any).discrepancyDetails && (
           <Card className="border-amber-500 bg-amber-50 dark:bg-amber-950">
             <CardHeader className="py-3">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <CardTitle className="text-sm flex items-center gap-2 text-amber-700 dark:text-amber-400">
                   <AlertTriangle className="w-4 h-4" />
                   Import Discrepancy Detected
@@ -771,7 +771,7 @@ export default function CashRegisterPage() {
           {/* Cash Received */}
           <Card>
             <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <TrendingUp className="w-5 h-5 text-green-600" />
                   Cash Received
@@ -919,7 +919,7 @@ export default function CashRegisterPage() {
           {/* Expenses */}
           <Card>
             <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <TrendingDown className="w-5 h-5 text-red-600" />
                   Expenses
@@ -1120,7 +1120,7 @@ export default function CashRegisterPage() {
           {/* Transfers */}
           <Card>
             <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <ArrowUpRight className="w-5 h-5 text-blue-600" />
                   Transfers
@@ -1544,7 +1544,7 @@ export default function CashRegisterPage() {
   return (
     <div className="p-4 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
           <Button
             variant="ghost"
             size="icon"

@@ -142,7 +142,7 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
 
       {/* Tab 1: Personal */}
       <TabsContent value="personal" className="space-y-4 mt-0">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label>Employee Code <span className="text-destructive">*</span></Label>
             <Input className={inputCls} value={form.empCode} onChange={f("empCode")} placeholder="EMP001" data-testid="input-emp-code" />
@@ -205,7 +205,7 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
 
       {/* Tab 2: Employment */}
       <TabsContent value="employment" className="space-y-4 mt-0">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label>Department</Label>
             <Select value={form.departmentId} onValueChange={s("departmentId")}>
@@ -279,7 +279,7 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
 
         <Separator />
         <p className="text-sm font-medium text-muted-foreground">Exit Details (fill only if applicable)</p>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label>Resignation Date</Label>
             <Input className={inputCls} type="date" value={form.resignationDate} onChange={f("resignationDate")} />
@@ -304,7 +304,7 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
 
       {/* Tab 3: Contact & Address */}
       <TabsContent value="contact" className="space-y-4 mt-0">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5 col-span-2">
             <Label>Address</Label>
             <Textarea value={form.address} onChange={f("address")} placeholder="Street address..." className="min-h-[70px]" />
@@ -328,7 +328,7 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
 
         <Separator />
         <p className="text-sm font-medium text-muted-foreground">Emergency Contact</p>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label>Contact Name</Label>
             <Input className={inputCls} value={form.emergencyContactName} onChange={f("emergencyContactName")} />
@@ -347,7 +347,7 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
       {/* Tab 4: Statutory & Bank */}
       <TabsContent value="statutory" className="space-y-4 mt-0">
         <p className="text-sm font-medium text-muted-foreground">Identity & Statutory</p>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label>PAN Number</Label>
             <Input className={inputCls} value={form.pan} onChange={f("pan")} placeholder="ABCDE1234F" maxLength={10} />
@@ -382,7 +382,7 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
 
         <Separator />
         <p className="text-sm font-medium text-muted-foreground">Bank Details</p>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5 col-span-2">
             <Label>Bank Name</Label>
             <Input className={inputCls} value={form.bankName} onChange={f("bankName")} placeholder="State Bank of India" />
@@ -528,7 +528,7 @@ function DocumentsPanel({ emp }: { emp: any }) {
           <CardTitle className="text-sm">Upload Document</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Document Type</Label>
               <Select value={docType} onValueChange={setDocType}>
@@ -639,7 +639,7 @@ function SalaryRevisionPanel({ emp }: { emp: any }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm text-muted-foreground">Current Basic: <span className="font-medium text-foreground">{fmt(emp.basic_salary)}</span></p>
           <p className="text-sm text-muted-foreground">Current CTC: <span className="font-medium text-foreground">{fmt(emp.ctc)}</span></p>
@@ -652,7 +652,7 @@ function SalaryRevisionPanel({ emp }: { emp: any }) {
       {showAdd && (
         <Card>
           <CardContent className="pt-4 space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Effective Date <span className="text-destructive">*</span></Label>
                 <Input className="h-9" type="date" value={form.effectiveDate} onChange={e => setForm(p => ({ ...p, effectiveDate: e.target.value }))} />
@@ -782,7 +782,7 @@ function EmployeeDetail({ emp, onBack, onEdit }: any) {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4 mt-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Card><CardContent className="pt-4">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Employment</p>
               <InfoRow label="Join Date" value={emp.join_date} />
@@ -812,7 +812,7 @@ function EmployeeDetail({ emp, onBack, onEdit }: any) {
         </TabsContent>
 
         <TabsContent value="contact" className="space-y-4 mt-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Card><CardContent className="pt-4">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Personal Contact</p>
               <InfoRow label="Phone" value={emp.phone} />
@@ -839,7 +839,7 @@ function EmployeeDetail({ emp, onBack, onEdit }: any) {
         </TabsContent>
 
         <TabsContent value="statutory" className="space-y-4 mt-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Card><CardContent className="pt-4">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Identity</p>
               <InfoRow label="PAN Number" value={emp.pan} />
@@ -858,7 +858,7 @@ function EmployeeDetail({ emp, onBack, onEdit }: any) {
         </TabsContent>
 
         <TabsContent value="family" className="space-y-4 mt-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Card><CardContent className="pt-4">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">General</p>
               <InfoRow label="Marital Status" value={emp.marital_status} />

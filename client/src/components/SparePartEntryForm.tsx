@@ -371,7 +371,7 @@ export default function SparePartEntryForm({ part, onClose }: SparePartEntryForm
                 data-testid="input-entry-date"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Quantity</Label>
                 <Input 
@@ -395,7 +395,7 @@ export default function SparePartEntryForm({ part, onClose }: SparePartEntryForm
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>GST %</Label>
                 <Select value={entryFormData.gstPercent} onValueChange={v => setEntryFormData({...entryFormData, gstPercent: v})}>
@@ -450,7 +450,7 @@ export default function SparePartEntryForm({ part, onClose }: SparePartEntryForm
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleIssueSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Issue Date</Label>
                 <Input 
@@ -474,7 +474,7 @@ export default function SparePartEntryForm({ part, onClose }: SparePartEntryForm
                 />
               </div>
             </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Machine</Label>
                     <Select 

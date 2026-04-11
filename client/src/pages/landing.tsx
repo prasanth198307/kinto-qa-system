@@ -340,7 +340,7 @@ export default function LandingPage() {
                     <Badge className="px-3 text-xs">Most Popular</Badge>
                   </div>
                 )}
-                <CardContent className="p-6">
+                <CardContent className="p-4 sm:p-6">
                   <div className="mb-5">
                     <p className="font-bold text-base">{plan.name}</p>
                     <div className="flex items-end gap-1 mt-1">

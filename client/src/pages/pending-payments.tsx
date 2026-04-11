@@ -21,7 +21,7 @@ export default function PendingPayments() {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <div className="mb-6">
         <Button 
           variant="ghost" 

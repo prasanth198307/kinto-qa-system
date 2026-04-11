@@ -3024,7 +3024,7 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
               {/* Report Preview */}
               <div className="border rounded-lg p-4 bg-muted/50">
                 <h4 className="font-semibold mb-3">Report Details</h4>
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="text-muted-foreground">GSTIN:</span>
                     <span className="ml-2 font-mono">{companyGSTIN}</span>
@@ -4249,7 +4249,7 @@ function RepackingReportContent() {
                 <CardTitle className="text-base">Status Breakdown</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-3 gap-4 text-center">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
                   <div>
                     <div className="text-xl font-bold text-yellow-600">{reportData.summary.byStatus.pending}</div>
                     <div className="text-sm text-muted-foreground">Pending</div>

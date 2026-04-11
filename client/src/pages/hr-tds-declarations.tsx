@@ -177,7 +177,7 @@ function DeclarationForm({ employees, employee, fiscalYear, existing, onSave, on
           ) : (
             <>
               <p className="text-xs text-muted-foreground">Max ₹1,50,000 under Section 80C. Total declared: <span className="font-semibold text-foreground">{fmtRs(Number(form.licPremium)+Number(form.ppf)+Number(form.elss)+Number(form.nsc)+Number(form.homeLoanPrincipal)+Number(form.fdTaxSaving)+Number(form.other80c))}</span> → Eligible: <span className="font-semibold text-foreground">{fmtRs(total80c)}</span></p>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {[["licPremium","LIC Premium"], ["ppf","PPF Contribution"], ["elss","ELSS / Mutual Funds"], ["nsc","NSC (National Savings Certificate)"], ["homeLoanPrincipal","Home Loan Principal (80C)"], ["fdTaxSaving","Tax-Saving FD (5 yr)"], ["other80c","Others under 80C"]].map(([k, label]) => (
                   <div key={k} className="space-y-1.5">
                     <Label className="text-sm">{label}</Label>
@@ -197,7 +197,7 @@ function DeclarationForm({ employees, employee, fiscalYear, existing, onSave, on
           ) : (
             <>
               <p className="text-xs text-muted-foreground">Medical insurance premium deduction. Self & family: up to ₹25,000. Parents: up to ₹25,000 (₹50,000 if senior citizens).</p>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>Self & Family Medical Insurance Premium</Label>
                   <Input className={numCls} type="number" min="0" value={form.sec80dSelf} onChange={f("sec80dSelf")} />
@@ -223,7 +223,7 @@ function DeclarationForm({ employees, employee, fiscalYear, existing, onSave, on
           ) : (
             <>
               <p className="text-xs text-muted-foreground">HRA exemption is calculated as: minimum of (HRA received, Actual rent − 10% of basic, 50%/40% of basic for metro/non-metro).</p>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>Monthly Rent Paid (₹)</Label>
                   <Input className={numCls} type="number" min="0" value={form.rentPerMonth} onChange={f("rentPerMonth")} />
@@ -255,7 +255,7 @@ function DeclarationForm({ employees, employee, fiscalYear, existing, onSave, on
               Deductions under Sections 24 (home loan interest), 80E, 80G, 80TTA are <strong>not available</strong> under the New Regime.<br />Switch to Old Regime to declare these deductions.
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {[
                 ["homeLoanInterest", "Home Loan Interest (Sec 24) — Max ₹2,00,000"],
                 ["eduLoanInterest", "Education Loan Interest (Sec 80E) — No limit"],
@@ -345,7 +345,7 @@ function Form16View({ employeeId, fiscalYear }: { employeeId: number; fiscalYear
 
   return (
     <div className="space-y-4 print:p-4" id="form16-print">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold">Form 16 — Part B</h2>
           <p className="text-sm text-muted-foreground">Financial Year: {fiscalYear}</p>
@@ -371,7 +371,7 @@ function Form16View({ employeeId, fiscalYear }: { employeeId: number; fiscalYear
         </div>
       </CardContent></Card>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Card><CardContent className="pt-4">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Part A — TDS Summary</p>
           <table className="w-full text-sm">

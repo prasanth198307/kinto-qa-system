@@ -218,7 +218,7 @@ export default function DemoPage() {
               </Card>
             ) : (
               <Card>
-                <CardContent className="p-6">
+                <CardContent className="p-4 sm:p-6">
                   <p className="font-semibold text-sm mb-5">Book your personalised demo</p>
                   <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

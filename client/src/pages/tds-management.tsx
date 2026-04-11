@@ -138,7 +138,7 @@ export default function TDSManagementPage() {
   const { tds: calcedTds, net: calcedNet } = calcTds();
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2"><Calculator className="h-6 w-6 text-primary" />TDS Management</h1>
@@ -210,7 +210,7 @@ export default function TDSManagementPage() {
         <DialogContent className="max-w-lg" data-testid="dialog-add-tds">
           <DialogHeader><DialogTitle>Record TDS Deduction</DialogTitle></DialogHeader>
           <div className="space-y-3 py-2">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Entry Date *</Label>
                 <Input type="date" value={form.entryDate} onChange={e => setForm(f => ({ ...f, entryDate: e.target.value }))} data-testid="input-tds-date" />
@@ -246,7 +246,7 @@ export default function TDSManagementPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>TDS Rate (basis pts) *</Label>
                 <Input type="number" min="0" value={form.tdsRate} onChange={e => setForm(f => ({ ...f, tdsRate: e.target.value }))} data-testid="input-tds-rate" />
@@ -282,7 +282,7 @@ export default function TDSManagementPage() {
               <div><span className="text-muted-foreground">Section:</span><p className="font-medium">{depositOpen?.section}</p></div>
               <div><span className="text-muted-foreground">TDS Amount:</span><p className="font-medium text-destructive">{depositOpen ? fmt(depositOpen.tdsAmount) : "-"}</p></div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Deposit Date *</Label>
                 <Input type="date" value={depositDate} onChange={e => setDepositDate(e.target.value)} data-testid="input-deposit-date" />

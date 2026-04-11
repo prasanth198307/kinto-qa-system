@@ -64,8 +64,8 @@ export default function TemplateManagement({ activeTab: externalActiveTab }: Tem
   return (
     <>
       <div className="min-h-screen p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Button
             variant="ghost"
             size="icon"
@@ -606,7 +606,7 @@ function TemplateDialog({
               )}
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-2">
                 <Checkbox
                   id="isActive"
@@ -629,7 +629,7 @@ function TemplateDialog({
 
             <div className="border-t pt-4">
               <h3 className="text-lg font-semibold mb-3">Seller Details</h3>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="defaultSellerName">Seller Name *</Label>
                   <Input
@@ -701,7 +701,7 @@ function TemplateDialog({
 
             <div className="border-t pt-4">
               <h3 className="text-lg font-semibold mb-3">Bank Details</h3>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="defaultBankName">Bank Name</Label>
                   <Input
@@ -743,7 +743,7 @@ function TemplateDialog({
 
             <div className="border-t pt-4">
               <h3 className="text-lg font-semibold mb-3">Authorized Signatory</h3>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="authorizedSignatoryName">Signature 1 - Name</Label>
                   <Input
@@ -1183,7 +1183,7 @@ function TCDialog({
               />
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-2">
                 <Checkbox
                   id="isActive"
@@ -1205,7 +1205,7 @@ function TCDialog({
             </div>
 
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <Label>Points *</Label>
                 <Button type="button" variant="outline" size="sm" onClick={addPoint} data-testid="button-add-point">
                   <Plus className="w-4 h-4 mr-2" />

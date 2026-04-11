@@ -177,10 +177,10 @@ export default function WriteOffReport({ showHeader = true }: WriteOffReportProp
   return (
     <>
       {showHeader && <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />}
-      <div className={showHeader ? "p-6 mt-16" : "p-6"}>
+      <div className={showHeader ? "p-4 sm:p-6 mt-16" : "p-4 sm:p-6"}>
         <div className="mb-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <Button
                 variant="ghost"
                 size="icon"

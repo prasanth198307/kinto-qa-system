@@ -304,7 +304,7 @@ export function VerticalNavSidebar({
       {/* Mobile Sidebar Overlay — touch-action:none prevents background scroll-through */}
       {isMobileOpen && (
         <div
-          className="lg:hidden fixed inset-0 bg-black/50 z-30"
+          className="lg:hidden fixed inset-0 bg-black/50 z-[55]"
           onClick={onMobileClose}
           style={{ touchAction: 'none' }}
           data-testid="sidebar-overlay"
@@ -314,7 +314,7 @@ export function VerticalNavSidebar({
       {/* Sidebar */}
       <div
         className={`
-          fixed top-0 left-0 bottom-0 w-72 bg-card border-r border-border z-40 px-3 pb-4
+          fixed top-0 left-0 bottom-0 w-72 bg-card border-r border-border z-[60] px-3 pb-4
           flex flex-col sidebar-full-height panel-slide
           ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
           lg:translate-x-0

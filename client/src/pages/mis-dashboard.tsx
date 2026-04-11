@@ -710,7 +710,7 @@ export default function MISDashboard() {
                   <p className="text-xs text-amber-700 dark:text-amber-400">
                     {totalDispatches} units dispatched but {totalDelivered} delivered recorded. Likely a tracking/system gap, not actual non-delivery.
                   </p>
-                  <div className="grid grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {[
                       { label: 'Dispatched', value: `${totalDispatches} units` },
                       { label: 'Delivered (recorded)', value: `${totalDelivered} units`, dim: totalDelivered === 0 },
@@ -777,7 +777,7 @@ export default function MISDashboard() {
             </div>
           ) : alertsData && alertsData.alerts.length > 0 ? (
             <>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <Card className="bg-destructive/5 border-destructive/20">
                   <CardContent className="p-4 text-center">
                     <p className="text-3xl font-bold text-destructive">{alertsData.bySeverity.high}</p>

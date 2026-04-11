@@ -217,8 +217,8 @@ export default function VendorTypes() {
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-6xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <Button
               variant="ghost"
               size="icon"
@@ -370,7 +370,7 @@ export default function VendorTypes() {
                   data-testid="input-vendor-type-description"
                 />
               </div>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <Label htmlFor="isActive">Active</Label>
                 <Switch
                   id="isActive"
@@ -451,7 +451,7 @@ export default function VendorTypes() {
                   data-testid="input-edit-vendor-type-description"
                 />
               </div>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <Label htmlFor="edit-isActive">Active</Label>
                 <Switch
                   id="edit-isActive"
