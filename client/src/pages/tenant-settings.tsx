@@ -38,6 +38,7 @@ interface TenantInfo {
   address: string | null;
   createdAt: string;
   userCount: number;
+  planName?: string;
 }
 
 interface PlanFeatures {
@@ -82,11 +83,11 @@ const MODULE_LABELS: Record<string, string> = {
   hr_payroll: "HR & Payroll",
 };
 
-const PLAN_LABELS: Record<string, { label: string; color: string }> = {
-  trial:        { label: "Trial",        color: "text-amber-600" },
-  basic:        { label: "Basic",        color: "text-blue-600" },
-  professional: { label: "Professional", color: "text-violet-600" },
-  enterprise:   { label: "Enterprise",   color: "text-emerald-600" },
+const PLAN_COLORS: Record<string, string> = {
+  trial:        "text-amber-600",
+  basic:        "text-blue-600",
+  professional: "text-violet-600",
+  enterprise:   "text-emerald-600",
 };
 
 const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; icon: ReactNode }> = {
@@ -251,7 +252,8 @@ export default function TenantSettings() {
     ? differenceInDays(new Date(tenantInfo.trialEndsAt), new Date())
     : null;
 
-  const planConf   = PLAN_LABELS[tenantInfo?.plan ?? "trial"] ?? PLAN_LABELS.trial;
+  const planLabel  = tenantInfo?.planName ?? tenantInfo?.plan ?? "Trial";
+  const planColor  = PLAN_COLORS[tenantInfo?.plan ?? "trial"] ?? "text-foreground";
   const statusConf = STATUS_CONFIG[tenantInfo?.status ?? "trial"] ?? STATUS_CONFIG.trial;
 
   return (
@@ -290,7 +292,7 @@ export default function TenantSettings() {
             <Card>
               <CardContent className="p-4">
                 <p className="text-xs text-muted-foreground mb-1">Current Plan</p>
-                <p className={`text-xl font-bold ${planConf.color}`}>{planConf.label}</p>
+                <p className={`text-xl font-bold ${planColor}`}>{planLabel}</p>
                 {trialDaysLeft !== null && trialDaysLeft >= 0 && (
                   <p className="text-xs text-amber-600 mt-1">{trialDaysLeft} days left in trial</p>
                 )}
@@ -327,7 +329,7 @@ export default function TenantSettings() {
               <CardTitle className="text-base flex items-center gap-2">
                 <Package className="h-4 w-4" /> Included Modules
               </CardTitle>
-              <CardDescription>Features available on your {planConf.label} plan</CardDescription>
+              <CardDescription>Features available on your {planLabel} plan</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-2">
@@ -715,7 +717,7 @@ export default function TenantSettings() {
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Plan</p>
-                  <p className={`font-medium ${planConf.color}`}>{planConf.label}</p>
+                  <p className={`font-medium ${planColor}`}>{planLabel}</p>
                 </div>
               </div>
             </CardContent>

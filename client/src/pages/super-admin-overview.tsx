@@ -74,10 +74,13 @@ export default function SuperAdminOverview() {
     expired:   realTenants.filter((t) => t.status === "expired").length,
   };
 
-  const planBreakdown = ["trial", "basic", "professional", "enterprise"].map((slug) => ({
-    slug,
-    count: realTenants.filter((t) => t.plan === slug).length,
-  }));
+  // Build plan breakdown dynamically from all unique plan slugs across tenants
+  const planBreakdown = Array.from(new Set(realTenants.map((t) => t.plan)))
+    .sort()
+    .map((slug) => ({
+      slug,
+      count: realTenants.filter((t) => t.plan === slug).length,
+    }));
 
   const recentTenants = [...realTenants]
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())

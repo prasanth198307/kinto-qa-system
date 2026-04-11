@@ -81,11 +81,11 @@ const EVENT_CONFIG: Record<string, { label: string; icon: ReactNode; color: stri
   plan_reactivated:   { label: "Plan Reactivated",    icon: <CheckCircle2 className="h-3.5 w-3.5" />,  color: "text-emerald-600" },
 };
 
-const PLAN_LABEL: Record<string, { label: string; color: string }> = {
-  trial:        { label: "Trial",        color: "text-amber-600" },
-  basic:        { label: "Basic",        color: "text-blue-600" },
-  professional: { label: "Professional", color: "text-violet-600" },
-  enterprise:   { label: "Enterprise",   color: "text-emerald-600" },
+const PLAN_COLOR: Record<string, string> = {
+  trial:        "text-amber-600",
+  basic:        "text-blue-600",
+  professional: "text-violet-600",
+  enterprise:   "text-emerald-600",
 };
 
 function formatRupees(paise: number): string {
@@ -110,7 +110,8 @@ export default function SubscriptionManagement() {
   const history = subData?.history ?? [];
 
   const statusConf = STATUS_CONFIG[sub?.status ?? "trial"] ?? STATUS_CONFIG.trial;
-  const planConf = PLAN_LABEL[sub?.planSlug ?? "trial"] ?? PLAN_LABEL.trial;
+  const planColor = PLAN_COLOR[sub?.planSlug ?? "trial"] ?? "text-foreground";
+  const planLabel = plan?.name ?? sub?.planSlug ?? "—";
 
   if (isLoading) {
     return (
@@ -142,7 +143,7 @@ export default function SubscriptionManagement() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Plan</p>
-                  <p className={`text-lg font-bold ${planConf.color}`}>{planConf.label}</p>
+                  <p className={`text-lg font-bold ${planColor}`}>{planLabel}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Status</p>
@@ -263,10 +264,10 @@ export default function SubscriptionManagement() {
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className={`text-sm font-medium ${cfg.color}`}>{cfg.label}</span>
                             {event.fromPlan && event.toPlan && event.fromPlan !== event.toPlan && (
-                              <span className="text-xs text-muted-foreground">
-                                {PLAN_LABEL[event.fromPlan]?.label ?? event.fromPlan}
+                              <span className="text-xs text-muted-foreground capitalize">
+                                {event.fromPlan}
                                 {" → "}
-                                {PLAN_LABEL[event.toPlan]?.label ?? event.toPlan}
+                                {event.toPlan}
                               </span>
                             )}
                             {event.amount > 0 && (

@@ -666,7 +666,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Include current user count
       const [{ userCount }] = await db.select({ userCount: sql<number>`COUNT(*)` }).from(users).where(and(eq(users.tenantId, tenantId), eq(users.recordStatus, 1)));
 
-      res.json({ ...tenant, userCount: Number(userCount) });
+      // Resolve human-readable plan name from subscription_plans table
+      let planName: string = tenant.plan;
+      try {
+        const [planRecord] = await db
+          .select({ name: subscriptionPlans.name })
+          .from(subscriptionPlans)
+          .where(eq(subscriptionPlans.slug, tenant.plan))
+          .limit(1);
+        if (planRecord?.name) planName = planRecord.name;
+      } catch { /* fallback to slug */ }
+
+      res.json({ ...tenant, userCount: Number(userCount), planName });
     } catch (err) {
       console.error('GET /api/tenant/info error:', err);
       res.status(500).json({ message: 'Failed to fetch tenant info' });
