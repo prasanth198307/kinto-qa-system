@@ -4,7 +4,7 @@ import crypto from "crypto";
 import { storage } from "./storage";
 import { setupAuth, hashPassword } from "./auth";
 import { tenantMiddleware } from "./tenant-middleware";
-import { planEnforcementMiddleware } from "./plan-middleware";
+import { planEnforcementMiddleware, invalidatePlanCache } from "./plan-middleware";
 import { getPlanFeatures, getPlanFeaturesFromModules, ALL_MODULE_KEYS } from "./plan-features";
 import { tc } from "./tenant-context";
 import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertPurchaseOrderItemSchema, purchaseOrders, purchaseOrderItems, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesOrderSchema, insertSalesOrderItemSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, insertVendorTypeSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, paymentEvidence, salesOrders, salesOrderItems, salesReturns, salesReturnItems, creditNotes, creditNoteItems, debitNotes, debitNoteItems, manualCreditNoteRequests, products, productBom, whatsappConversationSessions, vendorTypes, vendorVendorTypes, vendors, users, uom, insertDocumentCategorySchema, insertDocumentSchema, insertExpenseCategorySchema, insertExpenseVoucherSchema, insertExpenseItemSchema, insertExpenseAttachmentSchema, rolePermissions, vendorDebitNotes, vendorDebitNoteItems, vendorDebitNoteAdjustments, transporters, vehicles, drivers, insertTransporterSchema, insertVehicleSchema, insertDriverSchema, scrapInventory, insertSparePartEntrySchema, insertSparePartIssuanceSchema, insertScrapInventorySchema, sparePartEntries, sparePartsCatalog, accountSubtypes, insertSalesOfficerSchema, purchaseReturns, purchaseReturnItems, tdsRates, tdsEntries, finishedGoodsReturnLog } from "@shared/schema";
@@ -829,6 +829,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         displayOrder: displayOrder ?? 99,
         trialDays: trialDays ?? 0,
       }).returning();
+      invalidatePlanCache(plan.slug);
       res.json(plan);
     } catch (err: any) {
       if (err.code === '23505') return res.status(400).json({ message: 'A plan with that slug already exists' });
@@ -862,6 +863,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const [plan] = await db.update(subscriptionPlans).set(updates).where(eq(subscriptionPlans.id, id)).returning();
       if (!plan) return res.status(404).json({ message: 'Plan not found' });
+      // Immediately evict from enforcement cache so the change takes effect on the next request
+      invalidatePlanCache(plan.slug);
       res.json(plan);
     } catch (err) {
       res.status(500).json({ message: 'Failed to update plan' });

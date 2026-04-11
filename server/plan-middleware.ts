@@ -8,6 +8,15 @@ import { eq } from "drizzle-orm";
 const planModuleCache = new Map<string, { modules: string[]; at: number }>();
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
+/**
+ * Immediately evict a plan's modules from the cache.
+ * Call this whenever a plan's modules are created or updated so the
+ * enforcement middleware picks up the change on the very next request.
+ */
+export function invalidatePlanCache(planSlug: string) {
+  planModuleCache.delete(planSlug);
+}
+
 async function getModulesForPlan(planSlug: string): Promise<string[] | null> {
   const cached = planModuleCache.get(planSlug);
   if (cached && Date.now() - cached.at < CACHE_TTL_MS) return cached.modules;
