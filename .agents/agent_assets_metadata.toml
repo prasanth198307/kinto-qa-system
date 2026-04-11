@@ -66,3 +66,9 @@ id = "vsA4rx0F1EeA_aGXihIXa"
 uri = "file://docs/industry-fit.md"
 type = "text"
 title = "Kinto Smart Ops — Industry Fit Guide"
+
+[[outputs]]
+id = "_4aR-tMMoUZUMZEEfczZn"
+uri = "file://docs/module-guide.md"
+type = "text"
+title = "Kinto Smart Ops — Module Guide"
