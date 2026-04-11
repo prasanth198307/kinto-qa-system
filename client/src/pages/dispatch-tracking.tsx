@@ -264,7 +264,7 @@ export default function DispatchTracking({ showHeader = true }: DispatchTracking
   return (
     <>
       {showHeader && <GlobalHeader onLogoutClick={() => logoutMutation.mutate()} />}
-      <div className={showHeader ? "p-6 mt-16 space-y-6" : "p-6 space-y-6"}>
+      <div className={showHeader ? "p-4 sm:p-6 mt-16 space-y-4 sm:space-y-6" : "p-4 sm:p-6 space-y-4 sm:space-y-6"}>
         <div className="flex flex-wrap items-center gap-3">
           <Button
             variant="ghost"

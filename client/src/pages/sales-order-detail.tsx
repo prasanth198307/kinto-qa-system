@@ -591,7 +591,7 @@ export default function SalesOrderDetail({ showHeader = true }: { showHeader?: b
   const content = (() => {
     if (isLoadingSO) {
       return (
-        <div className="p-6 max-w-7xl mx-auto w-full space-y-4">
+        <div className="p-4 sm:p-6 max-w-7xl mx-auto w-full space-y-4">
           <Skeleton className="h-10 w-64" />
           <Skeleton className="h-64 w-full" />
         </div>
@@ -600,7 +600,7 @@ export default function SalesOrderDetail({ showHeader = true }: { showHeader?: b
 
     if (!salesOrder) {
       return (
-        <div className="p-6 max-w-4xl mx-auto w-full">
+        <div className="p-4 sm:p-6 max-w-4xl mx-auto w-full">
           <Card className="p-8 text-center">
             <h2 className="text-2xl font-bold text-destructive mb-4">Sales Order Not Found</h2>
             <Button onClick={() => setLocation('/?tab=sales-orders')}>

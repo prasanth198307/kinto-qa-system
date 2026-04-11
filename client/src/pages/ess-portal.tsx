@@ -70,8 +70,8 @@ function PayslipDetail({ payslipId, onClose }: { payslipId: number; onClose: () 
         ))}
       </div>
 
-      <div className="rounded-md border overflow-hidden">
-        <div className="grid grid-cols-2 divide-x">
+      <div className="rounded-md border overflow-x-auto">
+        <div className="grid grid-cols-2 divide-x min-w-[420px]">
           <div>
             <div className="bg-muted/50 px-3 py-2 text-xs font-semibold uppercase text-muted-foreground">Earnings</div>
             {earnings.map((c: any) => (
