@@ -1,0 +1,27 @@
+Apr 14 12:12:26 iplvnic1 npm[3841209]: 12:12:26 PM [express] POST /api/scrap-inventory/direct 500 in 46ms :: {"message":"Failed to create sc…
+Apr 14 12:12:36 iplvnic1 npm[3841209]: [AUDIT] Role admin granted access to /api/scrap-inventory/direct (system role match)
+Apr 14 12:12:36 iplvnic1 npm[3841209]: Error creating direct scrap: error: duplicate key value violates unique constraint "scrap_inventory_scrap_number_key"
+Apr 14 12:12:36 iplvnic1 npm[3841209]:     at /home/kinto/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+Apr 14 12:12:36 iplvnic1 npm[3841209]:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+Apr 14 12:12:36 iplvnic1 npm[3841209]:     at async file:///home/kinto/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+Apr 14 12:12:36 iplvnic1 npm[3841209]:     at async file:///home/kinto/kinto-qa-system/dist/index.js:28577:25 {
+Apr 14 12:12:36 iplvnic1 npm[3841209]:   length: 261,
+Apr 14 12:12:36 iplvnic1 npm[3841209]:   severity: 'ERROR',
+Apr 14 12:12:36 iplvnic1 npm[3841209]:   code: '23505',
+Apr 14 12:12:36 iplvnic1 npm[3841209]:   detail: 'Key (scrap_number)=(SCRAP-20260414-001) already exists.',
+Apr 14 12:12:36 iplvnic1 npm[3841209]:   hint: undefined,
+Apr 14 12:12:36 iplvnic1 npm[3841209]:   position: undefined,
+Apr 14 12:12:36 iplvnic1 npm[3841209]:   internalPosition: undefined,
+Apr 14 12:12:36 iplvnic1 npm[3841209]:   internalQuery: undefined,
+Apr 14 12:12:36 iplvnic1 npm[3841209]:   where: undefined,
+Apr 14 12:12:36 iplvnic1 npm[3841209]:   schema: 'public',
+Apr 14 12:12:36 iplvnic1 npm[3841209]:   table: 'scrap_inventory',
+Apr 14 12:12:36 iplvnic1 npm[3841209]:   column: undefined,
+Apr 14 12:12:36 iplvnic1 npm[3841209]:   dataType: undefined,
+Apr 14 12:12:36 iplvnic1 npm[3841209]:   constraint: 'scrap_inventory_scrap_number_key',
+Apr 14 12:12:36 iplvnic1 npm[3841209]:   file: 'nbtinsert.c',
+Apr 14 12:12:36 iplvnic1 npm[3841209]:   line: '666',
+Apr 14 12:12:36 iplvnic1 npm[3841209]:   routine: '_bt_check_unique'
+Apr 14 12:12:36 iplvnic1 npm[3841209]: }
+Apr 14 12:12:36 iplvnic1 npm[3841209]: 12:12:36 PM [express] POST /api/scrap-inventory/direct 500 in 29ms :: {"message":"Failed to create sc…
+[kinto@iplvnic1 ~]$ 

@@ -12397,7 +12397,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
               // Generate scrap number with atomic sequence
               const today = format(new Date(), 'yyyyMMdd');
               const scrapCountResult = await tx.execute(sql`
-                SELECT COALESCE(MAX(CAST(SUBSTRING(scrap_number FROM 15 FOR 3) AS INTEGER)), 0) + 1 as next_seq
+                SELECT COALESCE(MAX(CAST(SUBSTRING(scrap_number FROM 16 FOR 3) AS INTEGER)), 0) + 1 as next_seq
                 FROM scrap_inventory 
                 WHERE scrap_number LIKE ${'SCRAP-' + today + '-%'}
               `);
@@ -12842,7 +12842,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
 
       const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
       const seqResult = await db.execute(sql`
-        SELECT COALESCE(MAX(CAST(SUBSTRING(scrap_number FROM 15 FOR 3) AS INTEGER)), 0) + 1 as next_seq
+        SELECT COALESCE(MAX(CAST(SUBSTRING(scrap_number FROM 16 FOR 3) AS INTEGER)), 0) + 1 as next_seq
         FROM scrap_inventory
         WHERE scrap_number LIKE ${'SCRAP-' + today + '-%'}
       `);
