@@ -418,41 +418,15 @@ router.get("/employees/template", requireHR, (_req, res) => {
     ];
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet([headers, notes, example]);
+
+    // Column widths
     ws["!cols"] = headers.map((_h: string, i: number) => ({ wch: i < 3 ? 22 : 20 }));
 
-    // Style header row: bold + light blue fill
-    const headerFill = { fgColor: { rgb: "DBEAFE" } }; // Tailwind blue-100
-    const headerFont = { bold: true };
-    const noteFont  = { italic: true, color: { rgb: "6B7280" } };
-    for (let c = 0; c < headers.length; c++) {
-      const cellAddr = XLSX.utils.encode_cell({ r: 0, c });
-      if (ws[cellAddr]) {
-        ws[cellAddr].s = { fill: headerFill, font: headerFont };
-      }
-      // Notes row italic
-      const noteAddr = XLSX.utils.encode_cell({ r: 1, c });
-      if (ws[noteAddr]) {
-        ws[noteAddr].s = { font: noteFont };
-      }
-    }
-
-    // Force text format (@) on date columns and ID-like columns to prevent Excel auto-conversion
-    // Column indices: 2=join_date*, 5=date_of_birth, 11=phone, 12=alternate_phone,
-    //                 22=aadhaar, 23=pf_number, 24=uan, 25=esi_number, 26=bank_account
-    const textCols = new Set([2, 5, 11, 12, 22, 23, 24, 25, 26]);
-    for (const c of textCols) {
-      // Apply text format to rows 3 onwards (up to 100 pre-formatted rows for user convenience)
-      for (let r = 2; r < 102; r++) {
-        const addr = XLSX.utils.encode_cell({ r, c });
-        if (!ws[addr]) {
-          ws[addr] = { t: "z" }; // empty cell, mark type
-        }
-        ws[addr].z = "@"; // text format
-      }
-    }
+    // Freeze the header row so it stays visible while scrolling
+    ws["!freeze"] = { xSplit: 0, ySplit: 1, topLeftCell: "A2", activeCell: "A3", sqref: "A3" };
 
     XLSX.utils.book_append_sheet(wb, ws, "Employees");
-    const buf: Buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx", cellStyles: true });
+    const buf: Buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
     res.setHeader("Content-Disposition", "attachment; filename=employee_upload_template.xlsx");
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.send(buf);
