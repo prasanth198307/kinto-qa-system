@@ -1214,11 +1214,12 @@ export default function HrEmployees() {
               <>
                 <div className="rounded-md border bg-muted/40 p-4 space-y-2 text-sm text-muted-foreground">
                   <p className="font-medium text-foreground">How it works</p>
-                  <ol className="list-decimal list-inside space-y-1">
-                    <li>Download the template using the <span className="font-medium text-foreground">Template</span> button.</li>
-                    <li>Fill in employee details. Row 1 = column headers, Row 2 = notes, Row 3 onwards = data.</li>
-                    <li>Department and designation names must match exactly what is in the system.</li>
-                    <li>Upload the filled file below.</li>
+                  <ol className="list-decimal list-inside space-y-1.5">
+                    <li>Download the template — it includes all column headers, notes, and an example row.</li>
+                    <li>Fill your data from <strong className="text-foreground">Row 3</strong> onwards. Rows 1 &amp; 2 are headers/notes.</li>
+                    <li><strong className="text-foreground">Dates</strong> (join_date, date_of_birth): type as <code className="bg-muted px-1 rounded text-xs">YYYY-MM-DD</code> or <code className="bg-muted px-1 rounded text-xs">DD/MM/YYYY</code>.</li>
+                    <li><strong className="text-foreground">Department &amp; designation names</strong> must match exactly what is in the system.</li>
+                    <li>Required fields: emp_code, first_name, join_date. All others are optional.</li>
                   </ol>
                 </div>
                 <div className="space-y-2">

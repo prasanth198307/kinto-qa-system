@@ -418,9 +418,41 @@ router.get("/employees/template", requireHR, (_req, res) => {
     ];
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet([headers, notes, example]);
-    ws["!cols"] = headers.map((_h: string, i: number) => ({ wch: i < 3 ? 20 : 18 }));
+    ws["!cols"] = headers.map((_h: string, i: number) => ({ wch: i < 3 ? 22 : 20 }));
+
+    // Style header row: bold + light blue fill
+    const headerFill = { fgColor: { rgb: "DBEAFE" } }; // Tailwind blue-100
+    const headerFont = { bold: true };
+    const noteFont  = { italic: true, color: { rgb: "6B7280" } };
+    for (let c = 0; c < headers.length; c++) {
+      const cellAddr = XLSX.utils.encode_cell({ r: 0, c });
+      if (ws[cellAddr]) {
+        ws[cellAddr].s = { fill: headerFill, font: headerFont };
+      }
+      // Notes row italic
+      const noteAddr = XLSX.utils.encode_cell({ r: 1, c });
+      if (ws[noteAddr]) {
+        ws[noteAddr].s = { font: noteFont };
+      }
+    }
+
+    // Force text format (@) on date columns and ID-like columns to prevent Excel auto-conversion
+    // Column indices: 2=join_date*, 5=date_of_birth, 11=phone, 12=alternate_phone,
+    //                 22=aadhaar, 23=pf_number, 24=uan, 25=esi_number, 26=bank_account
+    const textCols = new Set([2, 5, 11, 12, 22, 23, 24, 25, 26]);
+    for (const c of textCols) {
+      // Apply text format to rows 3 onwards (up to 100 pre-formatted rows for user convenience)
+      for (let r = 2; r < 102; r++) {
+        const addr = XLSX.utils.encode_cell({ r, c });
+        if (!ws[addr]) {
+          ws[addr] = { t: "z" }; // empty cell, mark type
+        }
+        ws[addr].z = "@"; // text format
+      }
+    }
+
     XLSX.utils.book_append_sheet(wb, ws, "Employees");
-    const buf: Buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+    const buf: Buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx", cellStyles: true });
     res.setHeader("Content-Disposition", "attachment; filename=employee_upload_template.xlsx");
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.send(buf);
@@ -428,16 +460,44 @@ router.get("/employees/template", requireHR, (_req, res) => {
 });
 
 // ── Employee Bulk Upload — parse & insert ─────────────────────────────────────
+// Helper: convert an Excel cell value that may be a Date object, serial number, or string → "YYYY-MM-DD" | null
+function excelToDateStr(val: any): string | null {
+  if (val === null || val === undefined || val === "") return null;
+  // JS Date (from cellDates:true)
+  if (val instanceof Date) {
+    const d = new Date(Date.UTC(val.getFullYear(), val.getMonth(), val.getDate()));
+    return d.toISOString().split("T")[0];
+  }
+  const s = String(val).trim();
+  if (!s) return null;
+  // Already YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  // DD/MM/YYYY or DD-MM-YYYY
+  const dmy = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (dmy) return `${dmy[3]}-${dmy[2].padStart(2, "0")}-${dmy[1].padStart(2, "0")}`;
+  // Excel serial number (without cellDates:true)
+  const n = Number(s);
+  if (!isNaN(n) && n > 1000 && n < 60000) {
+    // Excel epoch is Jan 0 1900; JS epoch is Jan 1 1970
+    const d = new Date((n - 25569) * 86400 * 1000);
+    return d.toISOString().split("T")[0];
+  }
+  // Fallback: try JS Date parse
+  const parsed = new Date(s);
+  if (!isNaN(parsed.getTime())) return parsed.toISOString().split("T")[0];
+  return s; // return as-is and let Postgres validate
+}
+
 router.post("/employees/bulk-upload", requireHR, xlsxUpload.single("file"), async (req: any, res) => {
   if (!req.file) return res.status(400).json({ message: "No file uploaded" });
   const tid = getTenantId(req);
   try {
     const XLSX = require("xlsx");
-    const wb = XLSX.read(req.file.buffer, { type: "buffer" });
+    // cellDates:true converts Excel date-formatted cells to JS Date objects automatically
+    const wb = XLSX.read(req.file.buffer, { type: "buffer", cellDates: true });
     const ws = wb.Sheets[wb.SheetNames[0]];
-    // Skip the notes row (row 2) by using range starting from row 3 — but sheet_to_json uses header row auto
     const rows: any[] = XLSX.utils.sheet_to_json(ws, { defval: "" });
-    // Remove the notes row if it was included (first data row has "Required" in emp_code* col)
+    // Remove the notes row (row 2: has "Required" in emp_code* col) and any blank rows
     const dataRows = rows.filter((r: any) => {
       const code = String(r["emp_code*"] || r["emp_code"] || "").trim();
       return code !== "" && code.toLowerCase() !== "required";
@@ -461,7 +521,8 @@ router.post("/employees/bulk-upload", requireHR, xlsxUpload.single("file"), asyn
       const rowNum = i + 3; // header=1, notes=2, data starts at 3
       const empCode = String(r["emp_code*"] || r["emp_code"] || "").trim();
       const firstName = String(r["first_name*"] || r["first_name"] || "").trim();
-      const joinDate = String(r["join_date*"] || r["join_date"] || "").trim();
+      const joinDateRaw = r["join_date*"] ?? r["join_date"] ?? "";
+      const joinDate = excelToDateStr(joinDateRaw);
 
       if (!empCode) { errors.push({ row: rowNum, reason: "emp_code is required" }); continue; }
       if (!firstName) { errors.push({ row: rowNum, reason: "first_name is required" }); continue; }
@@ -480,7 +541,12 @@ router.post("/employees/bulk-upload", requireHR, xlsxUpload.single("file"), asyn
       }
 
       const num = (v: any) => { const n = parseFloat(String(v)); return isNaN(n) ? 0 : n; };
-      const str = (v: any) => { const s = String(v || "").trim(); return s === "" ? null : s; };
+      // str: converts to string but also handles numbers like aadhaar/phone that Excel stores as integers
+      const str = (v: any) => {
+        if (v === null || v === undefined || v === "") return null;
+        const s = String(v).trim();
+        return s === "" ? null : s;
+      };
 
       try {
         await db.execute(sql`
@@ -493,7 +559,7 @@ router.post("/employees/bulk-upload", requireHR, xlsxUpload.single("file"), asyn
             bank_account, ifsc, bank_name, tax_regime, status
           ) VALUES (
             ${tid}, ${empCode}, ${firstName},
-            ${str(r["last_name"])}, ${str(r["gender"])}, ${str(r["date_of_birth"])}, ${str(r["blood_group"])},
+            ${str(r["last_name"])}, ${str(r["gender"])}, ${excelToDateStr(r["date_of_birth"])}, ${str(r["blood_group"])},
             ${str(r["marital_status"])}, ${departmentId}, ${designationId},
             ${str(r["employee_type"]) ?? "permanent"}, ${joinDate},
             ${str(r["phone"])}, ${str(r["alternate_phone"])}, ${str(r["email"])},
