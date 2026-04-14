@@ -284,10 +284,10 @@ export default function ScrapManagementPage() {
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setApproveOpen(false)}>Cancel</Button>
-            <Button variant="outline" onClick={() => approveMutation.mutate({ id: selected!.id, status: "rejected" })} disabled={approveMutation.isPending} className="border-destructive text-destructive" data-testid="button-reject-scrap">
+            <Button variant="outline" onClick={() => approveMutation.mutate({ id: selected!.id, status: "reject" })} disabled={approveMutation.isPending} className="border-destructive text-destructive" data-testid="button-reject-scrap">
               <XCircle className="h-4 w-4 mr-1" />Reject
             </Button>
-            <Button onClick={() => approveMutation.mutate({ id: selected!.id, status: "approved" })} disabled={approveMutation.isPending} data-testid="button-approve-scrap">
+            <Button onClick={() => approveMutation.mutate({ id: selected!.id, status: "approve" })} disabled={approveMutation.isPending} data-testid="button-approve-scrap">
               {approveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-1" />}Approve
             </Button>
           </DialogFooter>
