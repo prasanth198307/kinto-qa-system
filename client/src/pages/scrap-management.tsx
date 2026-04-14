@@ -84,7 +84,7 @@ export default function ScrapManagementPage() {
 
   const approveMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const res = await apiRequest("PATCH", `/api/scrap-inventory/${id}/approve`, { approvalStatus: status, approvalRemarks });
+      const res = await apiRequest("PATCH", `/api/scrap-inventory/${id}/approve`, { action: status, remarks: approvalRemarks });
       return res.json();
     },
     onSuccess: () => {
