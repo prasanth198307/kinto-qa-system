@@ -422,9 +422,6 @@ router.get("/employees/template", requireHR, (_req, res) => {
     // Column widths
     ws["!cols"] = headers.map((_h: string, i: number) => ({ wch: i < 3 ? 22 : 20 }));
 
-    // Freeze the header row so it stays visible while scrolling
-    ws["!freeze"] = { xSplit: 0, ySplit: 1, topLeftCell: "A2", activeCell: "A3", sqref: "A3" };
-
     XLSX.utils.book_append_sheet(wb, ws, "Employees");
     const buf: Buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
     res.setHeader("Content-Disposition", "attachment; filename=employee_upload_template.xlsx");
