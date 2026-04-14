@@ -7,6 +7,7 @@ import fs from "fs";
 import { whatsappService } from "./whatsappService";
 import archiver from "archiver";
 import PDFDocument from "pdfkit";
+import XLSX from "xlsx";
 
 const router = Router();
 
@@ -385,7 +386,6 @@ router.get("/employees", requireHR, async (req: any, res) => {
 // ── Employee Bulk Upload — Excel template download ────────────────────────────
 router.get("/employees/template", requireHR, (_req, res) => {
   try {
-    const XLSX = require("xlsx");
     const headers = [
       "emp_code*", "first_name*", "join_date*",
       "last_name", "gender", "date_of_birth", "blood_group", "marital_status",
@@ -463,7 +463,6 @@ router.post("/employees/bulk-upload", requireHR, xlsxUpload.single("file"), asyn
   if (!req.file) return res.status(400).json({ message: "No file uploaded" });
   const tid = getTenantId(req);
   try {
-    const XLSX = require("xlsx");
     // cellDates:true converts Excel date-formatted cells to JS Date objects automatically
     const wb = XLSX.read(req.file.buffer, { type: "buffer", cellDates: true });
     const ws = wb.Sheets[wb.SheetNames[0]];
