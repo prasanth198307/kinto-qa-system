@@ -483,6 +483,12 @@ router.post("/employees/bulk-upload", requireHR, xlsxUpload.single("file"), asyn
     const desigMap: Record<string, number> = {};
     for (const d of desigRows.rows) desigMap[(d.name as string).trim().toLowerCase()] = d.id as number;
 
+    // Pre-load all existing emp_codes for this tenant to detect duplicates without relying on DB constraints
+    const existingCodesRes = await db.execute(sql`
+      SELECT emp_code FROM hr_employees WHERE tenant_id=${tid} AND record_status=1
+    `);
+    const existingCodes = new Set(existingCodesRes.rows.map((r: any) => String(r.emp_code).trim().toLowerCase()));
+
     let created = 0;
     const errors: { row: number; reason: string }[] = [];
 
@@ -497,6 +503,12 @@ router.post("/employees/bulk-upload", requireHR, xlsxUpload.single("file"), asyn
       if (!empCode) { errors.push({ row: rowNum, reason: "emp_code is required" }); continue; }
       if (!firstName) { errors.push({ row: rowNum, reason: "first_name is required" }); continue; }
       if (!joinDate) { errors.push({ row: rowNum, reason: "join_date is required" }); continue; }
+
+      // Duplicate check — against existing DB records AND earlier rows in the same upload
+      if (existingCodes.has(empCode.toLowerCase())) {
+        errors.push({ row: rowNum, reason: `emp_code "${empCode}" already exists — skipped` });
+        continue;
+      }
 
       const deptName = String(r["department_name"] || "").trim().toLowerCase();
       const desigName = String(r["designation_name"] || "").trim().toLowerCase();
@@ -540,11 +552,12 @@ router.post("/employees/bulk-upload", requireHR, xlsxUpload.single("file"), asyn
             ${str(r["tax_regime"]) ?? "new"}, 'active'
           )
         `);
+        existingCodes.add(empCode.toLowerCase()); // prevent same-file duplicates
         created++;
       } catch (e: any) {
         let reason = e.message;
         if (e.message?.includes("unique") || e.message?.includes("duplicate")) {
-          reason = `emp_code "${empCode}" already exists`;
+          reason = `emp_code "${empCode}" already exists — skipped`;
         }
         errors.push({ row: rowNum, reason });
       }
