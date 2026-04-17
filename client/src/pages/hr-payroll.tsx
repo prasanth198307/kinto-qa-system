@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import {
   Play, CheckCircle, Lock, Eye, Plus, Unlock, Download,
-  MessageCircle, Mail, IndianRupee, Users, ExternalLink, Settings2, FileArchive
+  MessageCircle, Mail, IndianRupee, Users, ExternalLink, Settings2, FileArchive, SlidersHorizontal
 } from "lucide-react";
 
 const MONTHS = ["", "January", "February", "March", "April", "May", "June",
@@ -45,6 +45,9 @@ export default function HRPayrollPage() {
   const [newYear, setNewYear] = useState(String(currentYear));
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsForm, setSettingsForm] = useState({ signatoryName: "", signatoryDesignation: "", showEmployerContributions: true, showLoanDeductions: true, footerNote: "" });
+  const [adjustOpen, setAdjustOpen] = useState(false);
+  const [adjustPayslip, setAdjustPayslip] = useState<any>(null);
+  const [adjustComps, setAdjustComps] = useState<any[]>([]);
 
   const { data: runs = [], isLoading } = useQuery<any[]>({ queryKey: ["/api/hr/payroll-runs"] });
 
@@ -123,6 +126,26 @@ export default function HRPayrollPage() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/hr/payslip-settings"] }); setSettingsOpen(false); toast({ title: "Payslip settings saved" }); },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
+
+  const adjustMutation = useMutation({
+    mutationFn: ({ id, adjustments }: any) => apiRequest("PUT", `/api/hr/payslips/${id}/adjust`, { adjustments }),
+    onSuccess: () => {
+      if (viewRun) queryClient.invalidateQueries({ queryKey: ["/api/hr/payroll-runs", viewRun.id, "payslips"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/hr/payroll-runs"] });
+      setAdjustOpen(false);
+      toast({ title: "Payslip adjustments saved" });
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  function openAdjust(p: any) {
+    const comps = p.components
+      ? (typeof p.components === "string" ? JSON.parse(p.components) : p.components)
+      : [];
+    setAdjustPayslip(p);
+    setAdjustComps(comps.filter((c: any) => c.type === "earning").map((c: any) => ({ ...c })));
+    setAdjustOpen(true);
+  }
 
   function openSettings() {
     if (psSettings) {
@@ -345,9 +368,16 @@ export default function HRPayrollPage() {
                       <td className="px-3 py-2 text-right text-muted-foreground">₹{fmt(p.tds)}</td>
                       <td className="px-3 py-2 text-right font-semibold text-green-700">₹{fmt(p.net_salary)}</td>
                       <td className="px-3 py-2 text-center">
-                        <Button size="icon" variant="ghost" onClick={() => { setViewRun(null); setLocation(`/hr/payslip/${p.id}`); }} title="Open Payslip">
-                          <ExternalLink className="h-3.5 w-3.5" />
-                        </Button>
+                        <div className="flex items-center justify-center gap-1">
+                          {viewRun?.status !== "locked" && (
+                            <Button size="icon" variant="ghost" onClick={() => openAdjust(p)} title="Adjust components (TA/DA etc.)">
+                              <SlidersHorizontal className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                          <Button size="icon" variant="ghost" onClick={() => { setViewRun(null); setLocation(`/hr/payslip/${p.id}`); }} title="Open Payslip">
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -477,6 +507,64 @@ export default function HRPayrollPage() {
                 <span className="text-xs text-muted-foreground">Salary summary email</span>
                 {sendEmail.isPending && <span className="text-xs text-primary mt-1">Sending...</span>}
               </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Adjust Components Dialog */}
+      <Dialog open={adjustOpen} onOpenChange={v => !v && setAdjustOpen(false)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Adjust Earnings — {adjustPayslip?.first_name} {adjustPayslip?.last_name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Toggle or adjust component amounts for this month only. Set to <strong>0</strong> to exclude a component (e.g. TA/DA when employee didn't visit the field).
+            </p>
+            <div className="space-y-2">
+              {adjustComps.map((comp, i) => (
+                <div key={comp.code} className="flex items-center gap-3 p-2.5 rounded-md border">
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{comp.name}</p>
+                    <p className="text-xs text-muted-foreground">{comp.code}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={Number(comp.amount) > 0}
+                      onCheckedChange={v => {
+                        setAdjustComps(prev => prev.map((c, idx) =>
+                          idx === i ? { ...c, amount: v ? (comp._origAmount || comp.amount || 0) : 0 } : c
+                        ));
+                      }}
+                    />
+                    <Input
+                      className="h-8 w-24 text-right"
+                      type="number"
+                      min="0"
+                      value={comp.amount}
+                      onChange={e => {
+                        const val = Number(e.target.value);
+                        setAdjustComps(prev => prev.map((c, idx) =>
+                          idx === i ? { ...c, amount: val, _origAmount: val > 0 ? val : c._origAmount } : c
+                        ));
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setAdjustOpen(false)}>Cancel</Button>
+              <Button
+                disabled={adjustMutation.isPending}
+                onClick={() => adjustMutation.mutate({
+                  id: adjustPayslip?.id,
+                  adjustments: adjustComps.map(c => ({ code: c.code, name: c.name, amount: Number(c.amount) || 0 })),
+                })}
+              >
+                {adjustMutation.isPending ? "Saving..." : "Save Adjustments"}
+              </Button>
             </div>
           </div>
         </DialogContent>

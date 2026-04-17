@@ -1907,6 +1907,73 @@ router.get("/payslips/:id", requireHR, async (req: any, res) => {
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 
+// Adjust earning components on a draft/approved payslip (e.g. remove TA/DA for no-field-visit)
+router.put("/payslips/:id/adjust", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  try {
+    // Fetch current payslip
+    const r = await db.execute(sql`SELECT * FROM hr_payslips WHERE id=${req.params.id} AND tenant_id=${tid}`);
+    if (!r.rows.length) return res.status(404).json({ message: "Payslip not found" });
+    const ps = r.rows[0] as any;
+    if (ps.status === 'locked') return res.status(400).json({ message: "Payslip is locked and cannot be adjusted" });
+
+    const { adjustments } = req.body; // [{code, amount}]  amount=null means remove that component
+    if (!Array.isArray(adjustments)) return res.status(400).json({ message: "adjustments must be an array" });
+
+    // Parse current components
+    let comps: any[] = ps.components
+      ? (typeof ps.components === 'string' ? JSON.parse(ps.components) : ps.components)
+      : [];
+
+    // Apply adjustments: update amounts or remove components where amount = null/undefined
+    for (const adj of adjustments) {
+      const idx = comps.findIndex((c: any) => c.code === adj.code);
+      if (adj.amount === null || adj.amount === undefined || Number(adj.amount) === 0) {
+        // Remove this component
+        if (idx >= 0) comps.splice(idx, 1);
+      } else {
+        if (idx >= 0) {
+          comps[idx] = { ...comps[idx], amount: Number(adj.amount) };
+        } else {
+          // Add if doesn't exist (e.g. adding a component that was missing)
+          comps.push({ code: adj.code, name: adj.name || adj.code, amount: Number(adj.amount), type: 'earning' });
+        }
+      }
+    }
+
+    // Recalculate totals from updated components
+    const newGross = comps.filter((c: any) => c.type === 'earning').reduce((s: number, c: any) => s + Number(c.amount || 0), 0);
+    const pfEmployee = Number(ps.pf_employee || 0);
+    const esiEmployee = Number(ps.esi_employee || 0);
+    const pt = Number(ps.pt || 0);
+    const tds = Number(ps.tds || 0);
+    const otherDed = Number(ps.other_deductions || 0);
+    const newTotalDed = pfEmployee + esiEmployee + pt + tds + otherDed;
+    const newNet = newGross - newTotalDed;
+
+    await db.execute(sql`
+      UPDATE hr_payslips
+      SET components=${JSON.stringify(comps)},
+          gross_salary=${newGross},
+          total_deductions=${newTotalDed},
+          net_salary=${newNet}
+      WHERE id=${req.params.id} AND tenant_id=${tid}
+    `);
+
+    // Also update payroll_run totals
+    const runTotals = await db.execute(sql`
+      SELECT SUM(gross_salary) as total_gross, SUM(total_deductions) as total_ded
+      FROM hr_payslips WHERE payroll_run_id=${ps.payroll_run_id} AND tenant_id=${tid}
+    `);
+    const rt = runTotals.rows[0] as any;
+    await db.execute(sql`
+      UPDATE hr_payroll_runs SET total_gross=${Number(rt.total_gross||0)}, total_deductions=${Number(rt.total_ded||0)} WHERE id=${ps.payroll_run_id} AND tenant_id=${tid}
+    `);
+
+    res.json({ message: "Payslip adjusted", gross: newGross, net: newNet });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
 // All payslips for an employee (history)
 router.get("/employees/:id/payslips", requireHR, async (req: any, res) => {
   const tid = getTenantId(req);
