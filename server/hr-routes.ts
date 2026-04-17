@@ -39,6 +39,7 @@ function makeStorage(subdir: string) {
 const photoUpload = multer({ storage: makeStorage("hr_photos"), limits: { fileSize: 5 * 1024 * 1024 } });
 const docUpload = multer({ storage: makeStorage("hr_docs"), limits: { fileSize: 20 * 1024 * 1024 } });
 const xlsxUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
+const logoUpload = multer({ storage: makeStorage("hr_logos"), limits: { fileSize: 3 * 1024 * 1024 }, fileFilter: (_req, file, cb) => cb(null, /image/.test(file.mimetype)) });
 
 // ── DEPARTMENTS ──────────────────────────────────────────────────────────────
 router.get("/departments", requireHR, async (req: any, res) => {
@@ -1558,11 +1559,15 @@ router.get("/payroll-runs/:id/payslips/zip", requireHR, async (req: any, res) =>
     const { month, year } = runRow.rows[0] as any;
     const monthName = MONTHS_ARR[month];
 
+    // Fetch payslip template settings
+    const settRow = await db.execute(sql`SELECT * FROM hr_payslip_settings WHERE tenant_id=${tid}`);
+    const sett = (settRow.rows[0] || {}) as any;
+
     const rows = await db.execute(sql`
       SELECT p.*, e.first_name, e.last_name, e.emp_code, e.pan, e.pf_number,
-        e.bank_account_number, e.bank_ifsc, e.bank_name,
+        e.bank_account, e.ifsc as bank_ifsc, e.bank_name,
         dep.name as department_name, des.name as designation_name,
-        t.name as tenant_name
+        t.name as tenant_name, t.address as tenant_address
       FROM hr_payslips p
       JOIN hr_employees e ON p.employee_id = e.id
       LEFT JOIN hr_departments dep ON e.department_id = dep.id
@@ -1596,23 +1601,43 @@ router.get("/payroll-runs/:id/payslips/zip", requireHR, async (req: any, res) =>
         </tr>`;
       }).join("");
 
+      // Build company header from settings or fall back to tenant name
+      const coName = sett.company_name || p.tenant_name || "Company";
+      const coAddr = [sett.company_address, sett.company_city, sett.company_state, sett.company_pin].filter(Boolean).join(", ");
+      const coContact = [sett.company_phone ? `Ph: ${sett.company_phone}` : "", sett.company_email || ""].filter(Boolean).join(" | ");
+      const coReg = [sett.company_gstin ? `GSTIN: ${sett.company_gstin}` : "", sett.company_cin ? `CIN: ${sett.company_cin}` : ""].filter(Boolean).join(" | ");
+      const logoHtml = sett.logo_path ? `<img src="data:image/png;base64,${(() => { try { return fs.readFileSync(sett.logo_path).toString("base64"); } catch { return ""; } })()}" style="height:48px;object-fit:contain;">` : "";
+      const signatory = sett.signatory_name ? `<div style="margin-top:24px;text-align:right;font-size:11px;"><b>${sett.signatory_name}</b>${sett.signatory_designation ? `<br>${sett.signatory_designation}` : ""}<br>Authorised Signatory</div>` : "";
+      const footerNote = sett.footer_note || "This is a system-generated payslip. Not valid without company seal.";
+
       const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
 <title>Payslip ${p.emp_code} ${monthName} ${year}</title>
 <style>
   body{font-family:Arial,sans-serif;font-size:12px;margin:24px;color:#222}
-  h1{text-align:center;font-size:16px;margin:0}
-  .sub{text-align:center;color:#555;font-size:11px;margin-bottom:16px}
+  .header{display:flex;align-items:center;gap:16px;border-bottom:2px solid #1e40af;padding-bottom:10px;margin-bottom:12px}
+  .co-info{flex:1}
+  .co-name{font-size:16px;font-weight:bold;color:#1e40af}
+  .co-addr,.co-reg{font-size:10px;color:#555;margin-top:2px}
+  .slip-title{background:#1e40af;color:#fff;text-align:center;padding:4px 0;font-size:13px;font-weight:bold;margin-bottom:10px}
   table{width:100%;border-collapse:collapse;margin-bottom:10px}
-  th,td{border:1px solid #ccc;padding:5px 8px}
-  th{background:#f0f0f0;text-align:left}
+  th,td{border:1px solid #ccc;padding:5px 8px;font-size:11px}
+  th{background:#e8edf8;text-align:left;font-size:11px}
   .r{text-align:right}
-  .total{font-weight:bold;background:#f9f9f9}
-  .netpay{background:#1e40af;color:#fff;font-weight:bold;text-align:center}
-  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px 16px;margin-bottom:12px;font-size:11px}
+  .total{font-weight:bold;background:#f0f4ff}
+  .netpay{background:#1e40af;color:#fff;font-weight:bold;text-align:center;font-size:13px}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px 12px;margin-bottom:10px;font-size:11px}
   .lbl{color:#666}
 </style></head><body>
-<h1>${p.tenant_name || "Company"}</h1>
-<p class="sub">Pay Slip — ${monthName} ${year}</p>
+<div class="header">
+  ${logoHtml}
+  <div class="co-info">
+    <div class="co-name">${coName}</div>
+    ${coAddr ? `<div class="co-addr">${coAddr}</div>` : ""}
+    ${coContact ? `<div class="co-addr">${coContact}</div>` : ""}
+    ${coReg ? `<div class="co-reg">${coReg}</div>` : ""}
+  </div>
+</div>
+<div class="slip-title">SALARY SLIP — ${monthName.toUpperCase()} ${year}</div>
 <div class="grid">
   <div><span class="lbl">Employee:</span> <b>${p.first_name} ${p.last_name}</b></div>
   <div><span class="lbl">Code:</span> ${p.emp_code}</div>
@@ -1625,7 +1650,7 @@ router.get("/payroll-runs/:id/payslips/zip", requireHR, async (req: any, res) =>
   <div><span class="lbl">Bank:</span> ${p.bank_name || "—"}</div>
 </div>
 <table>
-  <tr><th>Earnings</th><th class="r">Amount</th><th>Deductions</th><th class="r">Amount</th></tr>
+  <tr><th>Earnings</th><th class="r">Amount (&#8377;)</th><th>Deductions</th><th class="r">Amount (&#8377;)</th></tr>
   ${compRows}
   <tr class="total">
     <td>Gross Salary</td><td class="r">${fmtRs(p.gross_salary)}</td>
@@ -1633,7 +1658,8 @@ router.get("/payroll-runs/:id/payslips/zip", requireHR, async (req: any, res) =>
   </tr>
   <tr><td colspan="4" class="netpay">Net Pay: ${fmtRs(p.net_salary)}</td></tr>
 </table>
-<p style="font-size:10px;color:#888;text-align:center">System generated on ${new Date().toLocaleDateString("en-IN")}. Not valid without company seal.</p>
+${signatory}
+<p style="font-size:10px;color:#888;text-align:center;margin-top:16px">${footerNote}<br>Generated on ${new Date().toLocaleDateString("en-IN")}</p>
 </body></html>`;
 
       archive.append(html, { name: `${p.emp_code}_${p.first_name}_${p.last_name}_${monthName}_${year}.html` });
@@ -2131,8 +2157,8 @@ router.get("/reports/payroll-summary", requireHR, async (req: any, res) => {
         SUM(p.pf_employer) as total_pf_employer,
         SUM(p.esi_employee) as total_esi_employee,
         SUM(p.esi_employer) as total_esi_employer,
-        SUM(p.professional_tax) as total_pt,
-        SUM(p.income_tax) as total_tds
+        SUM(p.pt) as total_pt,
+        SUM(p.tds) as total_tds
       FROM hr_payroll_runs r
       LEFT JOIN hr_payslips p ON p.payroll_run_id = r.id AND p.tenant_id=${tid}
       WHERE r.tenant_id=${tid}
@@ -2272,17 +2298,43 @@ router.get("/payslip-settings", requireHR, async (req: any, res) => {
 
 router.put("/payslip-settings", requireHR, async (req: any, res) => {
   const tid = getTenantId(req);
-  const { signatoryName, signatoryDesignation, showEmployerContributions, showLoanDeductions, footerNote } = req.body;
+  const { signatoryName, signatoryDesignation, showEmployerContributions, showLoanDeductions, footerNote,
+    companyName, companyAddress, companyCity, companyState, companyPin, companyPhone, companyEmail,
+    companyGstin, companyCin, templateStyle } = req.body;
   try {
     await db.execute(sql`
-      INSERT INTO hr_payslip_settings (tenant_id, signatory_name, signatory_designation, show_employer_contributions, show_loan_deductions, footer_note, updated_at)
-      VALUES (${tid}, ${signatoryName ?? null}, ${signatoryDesignation ?? null}, ${showEmployerContributions ?? true}, ${showLoanDeductions ?? true}, ${footerNote ?? null}, NOW())
+      INSERT INTO hr_payslip_settings (tenant_id, signatory_name, signatory_designation, show_employer_contributions, show_loan_deductions, footer_note,
+        company_name, company_address, company_city, company_state, company_pin, company_phone, company_email,
+        company_gstin, company_cin, template_style, updated_at)
+      VALUES (${tid}, ${signatoryName ?? null}, ${signatoryDesignation ?? null}, ${showEmployerContributions ?? true}, ${showLoanDeductions ?? true}, ${footerNote ?? null},
+        ${companyName ?? null}, ${companyAddress ?? null}, ${companyCity ?? null}, ${companyState ?? null}, ${companyPin ?? null},
+        ${companyPhone ?? null}, ${companyEmail ?? null}, ${companyGstin ?? null}, ${companyCin ?? null}, ${templateStyle ?? 'classic'}, NOW())
       ON CONFLICT (tenant_id) DO UPDATE SET
         signatory_name=${signatoryName ?? null}, signatory_designation=${signatoryDesignation ?? null},
         show_employer_contributions=${showEmployerContributions ?? true}, show_loan_deductions=${showLoanDeductions ?? true},
-        footer_note=${footerNote ?? null}, updated_at=NOW()
+        footer_note=${footerNote ?? null},
+        company_name=${companyName ?? null}, company_address=${companyAddress ?? null},
+        company_city=${companyCity ?? null}, company_state=${companyState ?? null},
+        company_pin=${companyPin ?? null}, company_phone=${companyPhone ?? null},
+        company_email=${companyEmail ?? null}, company_gstin=${companyGstin ?? null},
+        company_cin=${companyCin ?? null}, template_style=${templateStyle ?? 'classic'}, updated_at=NOW()
     `);
     res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// Upload payslip company logo
+router.post("/payslip-settings/logo", requireHR, logoUpload.single("logo"), async (req: any, res) => {
+  const tid = getTenantId(req);
+  if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+  const logoPath = req.file.path;
+  try {
+    await db.execute(sql`
+      INSERT INTO hr_payslip_settings (tenant_id, logo_path, updated_at)
+      VALUES (${tid}, ${logoPath}, NOW())
+      ON CONFLICT (tenant_id) DO UPDATE SET logo_path=${logoPath}, updated_at=NOW()
+    `);
+    res.json({ logoPath });
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 

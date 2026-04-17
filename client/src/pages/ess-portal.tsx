@@ -906,7 +906,7 @@ export default function EssPortal() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Card><CardHeader className="pb-2"><CardTitle className="text-sm">Employment Details</CardTitle></CardHeader>
                 <CardContent className="space-y-2">
-                  {[["Employee Code", me.emp_code], ["Join Date", me.join_date], ["Employment Type", me.employment_type || "—"], ["Shift", me.shift_name || "—"], ["Status", me.status]].map(([l, v]) => (
+                  {[["Employee Code", me.emp_code], ["Join Date", me.join_date], ["Shift", me.shift_name || "—"], ["Status", me.status]].map(([l, v]) => (
                     <div key={l as string} className="flex justify-between text-sm py-1 border-b last:border-0">
                       <span className="text-muted-foreground">{l}</span><span className="font-medium">{v}</span>
                     </div>
@@ -924,7 +924,7 @@ export default function EssPortal() {
               </Card>
               <Card><CardHeader className="pb-2"><CardTitle className="text-sm">Bank Details</CardTitle></CardHeader>
                 <CardContent className="space-y-2">
-                  {[["Bank Name", me.bank_name || "—"], ["Account Number", me.bank_account_number || "—"], ["IFSC Code", me.bank_ifsc || "—"]].map(([l, v]) => (
+                  {[["Bank Name", me.bank_name || "—"], ["Account Number", me.bank_account || "—"], ["IFSC Code", me.ifsc || "—"]].map(([l, v]) => (
                     <div key={l as string} className="flex justify-between text-sm py-1 border-b last:border-0">
                       <span className="text-muted-foreground">{l}</span><span className="font-medium">{v}</span>
                     </div>

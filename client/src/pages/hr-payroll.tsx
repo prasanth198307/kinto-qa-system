@@ -44,10 +44,19 @@ export default function HRPayrollPage() {
   const [newMonth, setNewMonth] = useState(String(new Date().getMonth() + 1));
   const [newYear, setNewYear] = useState(String(currentYear));
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [settingsForm, setSettingsForm] = useState({ signatoryName: "", signatoryDesignation: "", showEmployerContributions: true, showLoanDeductions: true, footerNote: "" });
+  const [settingTab, setSettingTab] = useState<"company"|"options"|"signatory">("company");
+  const [settingsForm, setSettingsForm] = useState({
+    signatoryName: "", signatoryDesignation: "", showEmployerContributions: true, showLoanDeductions: true, footerNote: "",
+    companyName: "", companyAddress: "", companyCity: "", companyState: "", companyPin: "", companyPhone: "", companyEmail: "",
+    companyGstin: "", companyCin: "", templateStyle: "classic",
+  });
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string>("");
   const [adjustOpen, setAdjustOpen] = useState(false);
   const [adjustPayslip, setAdjustPayslip] = useState<any>(null);
   const [adjustComps, setAdjustComps] = useState<any[]>([]);
+  const [newCompName, setNewCompName] = useState("");
+  const [newCompAmt, setNewCompAmt] = useState("");
 
   const { data: runs = [], isLoading } = useQuery<any[]>({ queryKey: ["/api/hr/payroll-runs"] });
 
@@ -155,9 +164,30 @@ export default function HRPayrollPage() {
         showEmployerContributions: psSettings.show_employer_contributions !== false,
         showLoanDeductions: psSettings.show_loan_deductions !== false,
         footerNote: psSettings.footer_note || "",
+        companyName: psSettings.company_name || "",
+        companyAddress: psSettings.company_address || "",
+        companyCity: psSettings.company_city || "",
+        companyState: psSettings.company_state || "",
+        companyPin: psSettings.company_pin || "",
+        companyPhone: psSettings.company_phone || "",
+        companyEmail: psSettings.company_email || "",
+        companyGstin: psSettings.company_gstin || "",
+        companyCin: psSettings.company_cin || "",
+        templateStyle: psSettings.template_style || "classic",
       });
+      if (psSettings.logo_path) setLogoPreview(`/${psSettings.logo_path}`);
     }
+    setSettingTab("company");
     setSettingsOpen(true);
+  }
+
+  async function uploadLogo() {
+    if (!logoFile) return;
+    const fd = new FormData();
+    fd.append("logo", logoFile);
+    await fetch("/api/hr/payslip-settings/logo", { method: "POST", body: fd, credentials: "include" });
+    queryClient.invalidateQueries({ queryKey: ["/api/hr/payslip-settings"] });
+    toast({ title: "Logo uploaded" });
   }
 
   return (
@@ -427,51 +457,140 @@ export default function HRPayrollPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Payslip Settings Dialog */}
+      {/* Payslip Template Builder Dialog */}
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Payslip Settings</DialogTitle></DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Payslip Template Builder</DialogTitle></DialogHeader>
+
+          {/* Tab Nav */}
+          <div className="flex gap-1 border-b mb-4">
+            {(["company", "options", "signatory"] as const).map(t => (
+              <button key={t} onClick={() => setSettingTab(t)}
+                className={`px-3 py-1.5 text-sm capitalize font-medium border-b-2 transition-colors ${settingTab === t ? "border-primary text-primary" : "border-transparent text-muted-foreground"}`}>
+                {t === "company" ? "Company & Logo" : t === "options" ? "Display Options" : "Signatory"}
+              </button>
+            ))}
+          </div>
+
+          {/* Company & Logo Tab */}
+          {settingTab === "company" && (
+            <div className="space-y-4">
+              {/* Logo */}
+              <div className="space-y-2">
+                <Label>Company Logo</Label>
+                <div className="flex items-center gap-3">
+                  {logoPreview ? <img src={logoPreview} className="h-12 object-contain rounded border p-1" alt="logo" /> : <div className="h-12 w-24 rounded border border-dashed flex items-center justify-center text-xs text-muted-foreground">No logo</div>}
+                  <div className="space-y-1">
+                    <Input type="file" accept="image/*" className="text-xs" onChange={e => {
+                      const f = e.target.files?.[0];
+                      if (f) { setLogoFile(f); setLogoPreview(URL.createObjectURL(f)); }
+                    }} />
+                    {logoFile && <Button size="sm" variant="outline" onClick={uploadLogo}>Upload Logo</Button>}
+                    <p className="text-xs text-muted-foreground">PNG/JPG, max 3MB. Appears on top of payslip.</p>
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1 sm:col-span-2">
+                  <Label>Company Name <span className="text-xs text-muted-foreground">(as shown on payslip)</span></Label>
+                  <Input value={settingsForm.companyName} onChange={e => setSettingsForm(f => ({ ...f, companyName: e.target.value }))} placeholder="e.g. Kinto Water Technologies Pvt Ltd" />
+                </div>
+                <div className="space-y-1 sm:col-span-2">
+                  <Label>Address Line</Label>
+                  <Input value={settingsForm.companyAddress} onChange={e => setSettingsForm(f => ({ ...f, companyAddress: e.target.value }))} placeholder="Street / Area / Locality" />
+                </div>
+                <div className="space-y-1">
+                  <Label>City</Label>
+                  <Input value={settingsForm.companyCity} onChange={e => setSettingsForm(f => ({ ...f, companyCity: e.target.value }))} placeholder="Hyderabad" />
+                </div>
+                <div className="space-y-1">
+                  <Label>State</Label>
+                  <Input value={settingsForm.companyState} onChange={e => setSettingsForm(f => ({ ...f, companyState: e.target.value }))} placeholder="Telangana" />
+                </div>
+                <div className="space-y-1">
+                  <Label>PIN Code</Label>
+                  <Input value={settingsForm.companyPin} onChange={e => setSettingsForm(f => ({ ...f, companyPin: e.target.value }))} placeholder="500001" maxLength={6} />
+                </div>
+                <div className="space-y-1">
+                  <Label>Phone</Label>
+                  <Input value={settingsForm.companyPhone} onChange={e => setSettingsForm(f => ({ ...f, companyPhone: e.target.value }))} placeholder="+91 40 1234 5678" />
+                </div>
+                <div className="space-y-1">
+                  <Label>Email</Label>
+                  <Input value={settingsForm.companyEmail} onChange={e => setSettingsForm(f => ({ ...f, companyEmail: e.target.value }))} placeholder="hr@company.com" />
+                </div>
+                <div className="space-y-1">
+                  <Label>GSTIN</Label>
+                  <Input value={settingsForm.companyGstin} onChange={e => setSettingsForm(f => ({ ...f, companyGstin: e.target.value }))} placeholder="36AABCK1234A1Z5" maxLength={15} />
+                </div>
+                <div className="space-y-1 sm:col-span-2">
+                  <Label>CIN</Label>
+                  <Input value={settingsForm.companyCin} onChange={e => setSettingsForm(f => ({ ...f, companyCin: e.target.value }))} placeholder="U12345TG2020PTC123456" />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Display Options Tab */}
+          {settingTab === "options" && (
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-md border">
+                <div>
+                  <p className="text-sm font-medium">Show Employer Contributions</p>
+                  <p className="text-xs text-muted-foreground">Display employer PF/ESI section on payslip</p>
+                </div>
+                <Switch checked={settingsForm.showEmployerContributions} onCheckedChange={v => setSettingsForm(f => ({ ...f, showEmployerContributions: v }))} data-testid="switch-employer-contributions" />
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-md border">
+                <div>
+                  <p className="text-sm font-medium">Show Loan Deductions</p>
+                  <p className="text-xs text-muted-foreground">Display loan EMI deductions section on payslip</p>
+                </div>
+                <Switch checked={settingsForm.showLoanDeductions} onCheckedChange={v => setSettingsForm(f => ({ ...f, showLoanDeductions: v }))} data-testid="switch-loan-deductions" />
+              </div>
+              <div className="space-y-1">
+                <Label>Footer Note</Label>
+                <Textarea value={settingsForm.footerNote} onChange={e => setSettingsForm(f => ({ ...f, footerNote: e.target.value }))} rows={2} placeholder="e.g. This is a system-generated payslip. Not valid without company seal." data-testid="input-footer-note" />
+              </div>
+            </div>
+          )}
+
+          {/* Signatory Tab */}
+          {settingTab === "signatory" && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">The signatory details appear at the bottom right of each payslip as the authorised signatory.</p>
               <div className="space-y-1">
                 <Label>Signatory Name</Label>
                 <Input value={settingsForm.signatoryName} onChange={e => setSettingsForm(f => ({ ...f, signatoryName: e.target.value }))} placeholder="e.g. Rajesh Kumar" data-testid="input-signatory-name" />
               </div>
               <div className="space-y-1">
                 <Label>Signatory Designation</Label>
-                <Input value={settingsForm.signatoryDesignation} onChange={e => setSettingsForm(f => ({ ...f, signatoryDesignation: e.target.value }))} placeholder="e.g. HR Manager" data-testid="input-signatory-designation" />
+                <Input value={settingsForm.signatoryDesignation} onChange={e => setSettingsForm(f => ({ ...f, signatoryDesignation: e.target.value }))} placeholder="e.g. HR Manager / Director" data-testid="input-signatory-designation" />
               </div>
             </div>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-medium">Show Employer Contributions</p>
-                <p className="text-xs text-muted-foreground">Display employer PF/ESI on payslip</p>
-              </div>
-              <Switch checked={settingsForm.showEmployerContributions} onCheckedChange={v => setSettingsForm(f => ({ ...f, showEmployerContributions: v }))} data-testid="switch-employer-contributions" />
-            </div>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-medium">Show Loan Deductions</p>
-                <p className="text-xs text-muted-foreground">Display loan EMI deductions section</p>
-              </div>
-              <Switch checked={settingsForm.showLoanDeductions} onCheckedChange={v => setSettingsForm(f => ({ ...f, showLoanDeductions: v }))} data-testid="switch-loan-deductions" />
-            </div>
-            <div className="space-y-1">
-              <Label>Footer Note</Label>
-              <Textarea value={settingsForm.footerNote} onChange={e => setSettingsForm(f => ({ ...f, footerNote: e.target.value }))} rows={2} placeholder="e.g. This is a computer generated payslip." data-testid="input-footer-note" />
-            </div>
-            <div className="flex gap-2 pt-1">
-              <Button variant="outline" className="flex-1" onClick={() => setSettingsOpen(false)}>Cancel</Button>
-              <Button className="flex-1" disabled={saveSettings.isPending} onClick={() => saveSettings.mutate({
-                signatory_name: settingsForm.signatoryName,
-                signatory_designation: settingsForm.signatoryDesignation,
-                show_employer_contributions: settingsForm.showEmployerContributions,
-                show_loan_deductions: settingsForm.showLoanDeductions,
-                footer_note: settingsForm.footerNote,
-              })} data-testid="btn-save-payslip-settings">
-                {saveSettings.isPending ? "Saving..." : "Save Settings"}
-              </Button>
-            </div>
+          )}
+
+          <div className="flex gap-2 pt-3 border-t mt-2">
+            <Button variant="outline" className="flex-1" onClick={() => setSettingsOpen(false)}>Cancel</Button>
+            <Button className="flex-1" disabled={saveSettings.isPending} onClick={() => saveSettings.mutate({
+              signatoryName: settingsForm.signatoryName,
+              signatoryDesignation: settingsForm.signatoryDesignation,
+              showEmployerContributions: settingsForm.showEmployerContributions,
+              showLoanDeductions: settingsForm.showLoanDeductions,
+              footerNote: settingsForm.footerNote,
+              companyName: settingsForm.companyName,
+              companyAddress: settingsForm.companyAddress,
+              companyCity: settingsForm.companyCity,
+              companyState: settingsForm.companyState,
+              companyPin: settingsForm.companyPin,
+              companyPhone: settingsForm.companyPhone,
+              companyEmail: settingsForm.companyEmail,
+              companyGstin: settingsForm.companyGstin,
+              companyCin: settingsForm.companyCin,
+              templateStyle: settingsForm.templateStyle,
+            })} data-testid="btn-save-payslip-settings">
+              {saveSettings.isPending ? "Saving..." : "Save Template"}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -575,6 +694,22 @@ export default function HRPayrollPage() {
                   </div>
                 );
               })}
+            </div>
+            {/* Add new component (incentive / bonus) */}
+            <div className="rounded-md border border-dashed p-3 space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">Add Incentive / Bonus / Other</p>
+              <div className="flex gap-2">
+                <Input placeholder="Name (e.g. Incentive, Bonus)" value={newCompName} onChange={e => setNewCompName(e.target.value)} className="flex-1 h-8 text-sm" />
+                <Input placeholder="Amount ₹" type="number" min="0" value={newCompAmt} onChange={e => setNewCompAmt(e.target.value)} className="w-28 h-8 text-sm text-right" />
+                <Button size="sm" variant="outline" onClick={() => {
+                  if (!newCompName.trim() || !Number(newCompAmt)) return;
+                  const code = newCompName.trim().toUpperCase().replace(/\s+/g, "_");
+                  setAdjustComps(prev => [...prev, { code, name: newCompName.trim(), amount: Number(newCompAmt), type: "earning" }]);
+                  setNewCompName(""); setNewCompAmt("");
+                }}>
+                  <Plus className="h-3.5 w-3.5" />
+                </Button>
+              </div>
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => setAdjustOpen(false)}>Cancel</Button>
