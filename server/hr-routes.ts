@@ -1577,6 +1577,27 @@ router.get("/payroll-runs/:id/payslips/zip", requireHR, async (req: any, res) =>
       ORDER BY e.emp_code
     `);
 
+    // Fetch leave balances for all employees in this run (batch — avoid N+1)
+    const empIds = (rows.rows as any[]).map((r: any) => r.employee_id);
+    const leaveBalRows = empIds.length
+      ? await db.execute(sql`
+          SELECT lb.employee_id, lb.entitled, lb.used, lb.balance,
+                 lt.name as leave_type_name, lt.code
+          FROM hr_leave_balances lb
+          JOIN hr_leave_types lt ON lb.leave_type_id = lt.id
+          WHERE lb.tenant_id=${tid} AND lb.year=${year}
+            AND lb.employee_id = ANY(ARRAY[${sql.raw(empIds.join(","))}]::int[])
+          ORDER BY lt.name
+        `)
+      : { rows: [] };
+
+    // Group balances by employee_id
+    const balancesByEmp: Record<number, any[]> = {};
+    for (const b of leaveBalRows.rows as any[]) {
+      if (!balancesByEmp[b.employee_id]) balancesByEmp[b.employee_id] = [];
+      balancesByEmp[b.employee_id].push(b);
+    }
+
     res.setHeader("Content-Type", "application/zip");
     res.setHeader("Content-Disposition", `attachment; filename="Payslips_${monthName}_${year}.zip"`);
 
@@ -1600,6 +1621,24 @@ router.get("/payroll-runs/:id/payslips/zip", requireHR, async (req: any, res) =>
           <td>${d ? d.name : ""}</td><td class="r">${d ? fmtRs(d.amount) : ""}</td>
         </tr>`;
       }).join("");
+
+      // Build leave balance table for this employee
+      const empLeaves = balancesByEmp[p.employee_id] || [];
+      const leaveTableHtml = empLeaves.length > 0 ? `
+<table style="margin-top:10px">
+  <tr>
+    <th colspan="4" style="background:#e8edf8;text-align:left;font-size:11px">Leave Balance Summary — ${year}</th>
+  </tr>
+  <tr>
+    <th>Leave Type</th><th class="r">Entitled</th><th class="r">Used</th><th class="r">Balance</th>
+  </tr>
+  ${empLeaves.map((b: any) => `<tr>
+    <td>${b.leave_type_name} (${b.code})</td>
+    <td class="r">${Number(b.entitled || 0).toFixed(1)}</td>
+    <td class="r">${Number(b.used || 0).toFixed(1)}</td>
+    <td class="r" style="font-weight:bold;color:${Number(b.balance) > 0 ? "#166534" : "#c00"}">${Number(b.balance || 0).toFixed(1)}</td>
+  </tr>`).join("")}
+</table>` : "";
 
       // Build company header from settings or fall back to tenant name
       const coName = sett.company_name || p.tenant_name || "Company";
@@ -1658,6 +1697,7 @@ router.get("/payroll-runs/:id/payslips/zip", requireHR, async (req: any, res) =>
   </tr>
   <tr><td colspan="4" class="netpay">Net Pay: ${fmtRs(p.net_salary)}</td></tr>
 </table>
+${leaveTableHtml}
 ${signatory}
 <p style="font-size:10px;color:#888;text-align:center;margin-top:16px">${footerNote}<br>Generated on ${new Date().toLocaleDateString("en-IN")}</p>
 </body></html>`;

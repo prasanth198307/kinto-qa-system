@@ -627,6 +627,14 @@ export default function HRPayrollPage() {
   <tr><td colspan="4" class="netpay">Net Pay: ₹42,450</td></tr>
 </table>
 ${f.showEmployerContributions ? `<table><tr><th colspan="2">Employer Contributions</th></tr><tr><td>PF (Employer)</td><td class="r">₹3,000</td></tr><tr><td>ESI (Employer)</td><td class="r">₹1,991</td></tr></table>` : ""}
+<table style="margin-top:10px">
+  <tr><th colspan="4" style="background:#e8edf8;text-align:left;font-size:11px">Leave Balance Summary — ${new Date().getFullYear()}</th></tr>
+  <tr><th>Leave Type</th><th class="r">Entitled</th><th class="r">Used</th><th class="r">Balance</th></tr>
+  <tr><td>Casual Leave (CL)</td><td class="r">12.0</td><td class="r">2.0</td><td class="r" style="font-weight:bold;color:#166534">10.0</td></tr>
+  <tr><td>Sick Leave (SL)</td><td class="r">12.0</td><td class="r">0.0</td><td class="r" style="font-weight:bold;color:#166534">12.0</td></tr>
+  <tr><td>Earned Leave (EL)</td><td class="r">15.0</td><td class="r">3.0</td><td class="r" style="font-weight:bold;color:#166534">12.0</td></tr>
+  <tr><td>Loss of Pay (LOP)</td><td class="r">0.0</td><td class="r">0.0</td><td class="r" style="font-weight:bold;color:#c00">0.0</td></tr>
+</table>
 ${signatory}
 <p style="font-size:10px;color:#888;text-align:center;margin-top:12px">${footer}<br>Generated on ${new Date().toLocaleDateString("en-IN")}</p>
 </body></html>`;
