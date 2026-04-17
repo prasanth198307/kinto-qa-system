@@ -113,14 +113,47 @@ function PayslipDetail({ payslipId, onClose }: { payslipId: number; onClose: () 
 }
 
 // ── Leave Application Form ────────────────────────────────────────────────────
-function ApplyLeaveForm({ leaveTypes, onSave, onCancel }: any) {
+function ApplyLeaveForm({ leaveTypes, leaveBalances, onSave, onCancel }: any) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [form, setForm] = useState({ leaveTypeId: "", fromDate: "", toDate: "", reason: "" });
+  const [balanceWarning, setBalanceWarning] = useState("");
 
   const days = form.fromDate && form.toDate
     ? Math.max(0, Math.ceil((new Date(form.toDate).getTime() - new Date(form.fromDate).getTime()) / 86400000) + 1)
     : 0;
+
+  const lopType = leaveTypes.find((lt: any) => lt.code === "LOP");
+  const selectedType = leaveTypes.find((lt: any) => String(lt.id) === form.leaveTypeId);
+
+  // When leave type or days change, validate balance for SL/CL
+  const handleLeaveTypeChange = (v: string) => {
+    setBalanceWarning("");
+    const lt = leaveTypes.find((l: any) => String(l.id) === v);
+    if (lt && (lt.code === "SL" || lt.code === "CL")) {
+      const bal = leaveBalances?.find((b: any) => b.leave_type_id === lt.id);
+      const available = Number(bal?.balance ?? 0);
+      if (available <= 0) {
+        const lopId = lopType ? String(lopType.id) : "";
+        setBalanceWarning(`No ${lt.name} balance available. Switching to Loss of Pay (LOP).`);
+        setForm(p => ({ ...p, leaveTypeId: lopId }));
+        return;
+      }
+    }
+    setForm(p => ({ ...p, leaveTypeId: v }));
+  };
+
+  // Re-validate when days change
+  const checkBalanceForDays = (d: number) => {
+    if (!selectedType || !["SL", "CL"].includes(selectedType.code)) { setBalanceWarning(""); return; }
+    const bal = leaveBalances?.find((b: any) => b.leave_type_id === selectedType.id);
+    const available = Number(bal?.balance ?? 0);
+    if (d > available) {
+      setBalanceWarning(`Only ${available} day(s) of ${selectedType.name} available. Consider Loss of Pay for excess days.`);
+    } else {
+      setBalanceWarning("");
+    }
+  };
 
   const mutation = useMutation({
     mutationFn: () => essFetch("/leaves", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) }),
@@ -128,29 +161,73 @@ function ApplyLeaveForm({ leaveTypes, onSave, onCancel }: any) {
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
+  const balanceMap: Record<string, number> = {};
+  (leaveBalances || []).forEach((b: any) => { balanceMap[b.leave_type_id] = Number(b.balance ?? 0); });
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1.5 col-span-2">
           <Label>Leave Type <span className="text-destructive">*</span></Label>
-          <Select value={form.leaveTypeId} onValueChange={v => setForm(p => ({ ...p, leaveTypeId: v }))}>
+          <Select value={form.leaveTypeId} onValueChange={handleLeaveTypeChange}>
             <SelectTrigger className="h-9"><SelectValue placeholder="Select leave type" /></SelectTrigger>
-            <SelectContent>{leaveTypes.map((lt: any) => <SelectItem key={lt.id} value={String(lt.id)}>{lt.name}</SelectItem>)}</SelectContent>
+            <SelectContent>
+              {leaveTypes.length === 0 && (
+                <div className="px-3 py-2 text-sm text-muted-foreground">No leave types configured. Contact HR.</div>
+              )}
+              {leaveTypes.map((lt: any) => {
+                const bal = balanceMap[lt.id];
+                const showBal = lt.code !== "LOP" && lt.code !== "COMP" && bal !== undefined;
+                return (
+                  <SelectItem key={lt.id} value={String(lt.id)}>
+                    <span>{lt.name}</span>
+                    {showBal && <span className="ml-2 text-xs text-muted-foreground">({bal} day{bal !== 1 ? "s" : ""} left)</span>}
+                    {lt.code === "COMP" && <span className="ml-2 text-xs text-muted-foreground">(for OT/holiday work)</span>}
+                    {lt.code === "LOP" && <span className="ml-2 text-xs text-muted-foreground">(unpaid)</span>}
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
           </Select>
+          {balanceWarning && (
+            <p className="text-xs text-amber-600 flex items-center gap-1 mt-1">
+              <AlertCircle className="h-3.5 w-3.5 shrink-0" />{balanceWarning}
+            </p>
+          )}
         </div>
         <div className="space-y-1.5">
           <Label>From Date <span className="text-destructive">*</span></Label>
-          <Input className="h-9" type="date" value={form.fromDate} onChange={e => setForm(p => ({ ...p, fromDate: e.target.value }))} />
+          <Input className="h-9" type="date" value={form.fromDate} onChange={e => {
+            setForm(p => ({ ...p, fromDate: e.target.value }));
+            if (form.toDate) {
+              const d = Math.max(0, Math.ceil((new Date(form.toDate).getTime() - new Date(e.target.value).getTime()) / 86400000) + 1);
+              checkBalanceForDays(d);
+            }
+          }} />
         </div>
         <div className="space-y-1.5">
           <Label>To Date <span className="text-destructive">*</span></Label>
-          <Input className="h-9" type="date" value={form.toDate} min={form.fromDate} onChange={e => setForm(p => ({ ...p, toDate: e.target.value }))} />
+          <Input className="h-9" type="date" value={form.toDate} min={form.fromDate} onChange={e => {
+            setForm(p => ({ ...p, toDate: e.target.value }));
+            if (form.fromDate) {
+              const d = Math.max(0, Math.ceil((new Date(e.target.value).getTime() - new Date(form.fromDate).getTime()) / 86400000) + 1);
+              checkBalanceForDays(d);
+            }
+          }} />
         </div>
       </div>
-      {days > 0 && <p className="text-sm text-muted-foreground">{days} day{days > 1 ? "s" : ""} selected</p>}
+      {days > 0 && (
+        <p className="text-sm text-muted-foreground">
+          {days} day{days > 1 ? "s" : ""} selected
+          {selectedType?.code === "LOP" && " · Unpaid"}
+          {selectedType?.code === "COMP" && " · Compensatory Off (OT adjustment)"}
+        </p>
+      )}
       <div className="space-y-1.5">
-        <Label>Reason</Label>
-        <Textarea value={form.reason} onChange={e => setForm(p => ({ ...p, reason: e.target.value }))} placeholder="Optional reason..." className="min-h-[70px]" />
+        <Label>Reason{selectedType?.code === "COMP" ? " (mention OT date worked)" : ""}</Label>
+        <Textarea value={form.reason} onChange={e => setForm(p => ({ ...p, reason: e.target.value }))}
+          placeholder={selectedType?.code === "COMP" ? "e.g. Worked on 14-Apr holiday..." : "Optional reason..."}
+          className="min-h-[70px]" />
       </div>
       <div className="flex justify-end gap-2">
         <Button variant="outline" onClick={onCancel}>Cancel</Button>
@@ -865,7 +942,7 @@ export default function EssPortal() {
       <Dialog open={showLeaveForm} onOpenChange={v => !v && setShowLeaveForm(false)}>
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>Apply for Leave</DialogTitle></DialogHeader>
-          <ApplyLeaveForm leaveTypes={leaveTypes} onSave={() => setShowLeaveForm(false)} onCancel={() => setShowLeaveForm(false)} />
+          <ApplyLeaveForm leaveTypes={leaveTypes} leaveBalances={leaveBalances} onSave={() => setShowLeaveForm(false)} onCancel={() => setShowLeaveForm(false)} />
         </DialogContent>
       </Dialog>
 
