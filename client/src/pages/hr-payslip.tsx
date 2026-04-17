@@ -44,6 +44,14 @@ export default function HRPayslipPage() {
     queryFn: () => fetch("/api/hr/payslip-settings", { credentials: "include" }).then(r => r.json()),
   });
 
+  const { data: leaveBalances = [] } = useQuery<any[]>({
+    queryKey: ["/api/hr/leave-balances", ps?.employee_id, ps?.year],
+    queryFn: () =>
+      fetch(`/api/hr/leave-balances?employeeId=${ps.employee_id}&year=${ps.year}`, { credentials: "include" })
+        .then(r => r.json()),
+    enabled: !!ps?.employee_id && !!ps?.year,
+  });
+
   const sendWA = useMutation({
     mutationFn: () => apiRequest("POST", `/api/hr/payslips/${params.id}/send-whatsapp`, {}),
     onSuccess: () => toast({ title: "Payslip sent via WhatsApp" }),
@@ -276,6 +284,33 @@ export default function HRPayslipPage() {
               </div>
             </div>
           </div>
+
+          {/* Leave Balance Summary */}
+          {leaveBalances.length > 0 && (
+            <div className="p-5 border-b">
+              <h3 className="font-semibold text-sm mb-2 border-b pb-1">LEAVE BALANCE SUMMARY — {ps.year}</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {leaveBalances.map((b: any) => (
+                  <div key={b.id} className="rounded border p-2 text-sm text-center">
+                    <p className="text-xs text-gray-500">{b.leave_type_name}</p>
+                    <p className="text-xs text-gray-400 mb-1">({b.code})</p>
+                    <div className="flex justify-between text-xs text-gray-500 mt-1">
+                      <span>Entitled</span><span className="font-medium text-black">{Number(b.entitled || 0).toFixed(1)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-500">
+                      <span>Used</span><span className="font-medium text-black">{Number(b.used || 0).toFixed(1)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs font-semibold mt-1 border-t pt-1">
+                      <span>Balance</span>
+                      <span className={Number(b.balance) > 0 ? "text-green-700" : "text-red-600"}>
+                        {Number(b.balance || 0).toFixed(1)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Signatory */}
           {(psSettings?.signatory_name || psSettings?.footer_note) && (
