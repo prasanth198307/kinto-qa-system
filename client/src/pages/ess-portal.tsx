@@ -17,7 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   FileText, Calendar, Clock, Shield, User, LogOut,
   IndianRupee, Printer, CheckCircle2, XCircle, ChevronRight,
-  Home, Lock, AlertCircle, Download
+  Home, Lock, AlertCircle, Download, Info
 } from "lucide-react";
 
 const MONTH_NAMES = ["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -331,68 +331,86 @@ function EssDeclarationTab({ employee }: { employee: any }) {
         </div>
       </div>
 
-      <Tabs defaultValue="80c">
-        <TabsList className="flex-wrap h-auto gap-1">
-          <TabsTrigger value="80c">Section 80C</TabsTrigger>
-          <TabsTrigger value="80d">Section 80D</TabsTrigger>
-          <TabsTrigger value="hra">HRA</TabsTrigger>
-          <TabsTrigger value="other">Other</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="80c" className="mt-4 space-y-3">
-          <div className="flex justify-between text-sm p-2 rounded-md bg-muted/50">
-            <span>Total 80C Declared: {fmtRs(["licPremium","ppf","elss","nsc","homeLoanPrincipal","fdTaxSaving","other80c"].reduce((s, k) => s + Number(form[k]||0), 0))}</span>
-            <span className="font-medium">Eligible (capped ₹1.5L): {fmtRs(total80c)}</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {[["licPremium","LIC Premium"],["ppf","PPF"],["elss","ELSS / Mutual Funds"],["nsc","NSC"],["homeLoanPrincipal","Home Loan Principal"],["fdTaxSaving","Tax-Saving FD (5 yr)"],["other80c","Others under 80C"]].map(([k,l]) => (
-              <div key={k} className="space-y-1.5"><Label className="text-sm">{l}</Label><Input className={numCls} type="number" min="0" value={form[k]||"0"} onChange={f(k)} /></div>
-            ))}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="80d" className="mt-4 space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-1.5"><Label>Self & Family Premium (max ₹25,000)</Label><Input className={numCls} type="number" min="0" value={form.sec80dSelf||"0"} onChange={f("sec80dSelf")} /></div>
-            <div className="space-y-1.5"><Label>Parents Premium</Label><Input className={numCls} type="number" min="0" value={form.sec80dParents||"0"} onChange={f("sec80dParents")} /></div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Checkbox id="seniorCitizen" checked={!!form.parentsSeniorCitizen} onCheckedChange={v => setForm((p: any) => ({ ...p, parentsSeniorCitizen: !!v }))} />
-            <Label htmlFor="seniorCitizen" className="text-sm">Parents are Senior Citizens (higher limit ₹50,000)</Label>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="hra" className="mt-4 space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-1.5"><Label>Monthly Rent Paid (₹)</Label><Input className={numCls} type="number" min="0" value={form.rentPerMonth||"0"} onChange={f("rentPerMonth")} /></div>
-            <div className="space-y-1.5">
-              <Label>City Type</Label>
-              <Select value={form.cityType||"non_metro"} onValueChange={s("cityType")}>
-                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                <SelectContent><SelectItem value="metro">Metro City</SelectItem><SelectItem value="non_metro">Non-Metro</SelectItem></SelectContent>
-              </Select>
-            </div>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="other" className="mt-4 space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {[["homeLoanInterest","Home Loan Interest (Sec 24, max ₹2L)"],["eduLoanInterest","Education Loan Interest (80E)"],["nps80ccd","NPS (80CCD 1B, max ₹50K)"],["sec80g","Donations (80G)"],["sec80tta","Savings Interest (80TTA, max ₹10K)"],["otherDeductions","Other Deductions"]].map(([k,l]) => (
-              <div key={k} className="space-y-1.5"><Label className="text-sm">{l}</Label><Input className={numCls} type="number" min="0" value={form[k]||"0"} onChange={f(k)} /></div>
-            ))}
-          </div>
-        </TabsContent>
-      </Tabs>
-
-      <div className="flex items-center gap-3">
-        <div className="flex-1 space-y-1.5">
-          <Label>Tax Regime</Label>
-          <Select value={form.regime||"new"} onValueChange={s("regime")}>
-            <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-            <SelectContent><SelectItem value="new">New Regime (Default)</SelectItem><SelectItem value="old">Old Regime</SelectItem></SelectContent>
-          </Select>
+      {/* ── Tax Regime selector (always visible, controls what's shown below) ── */}
+      <div className="flex items-center justify-between flex-wrap gap-3 p-3 rounded-md bg-muted/40 border">
+        <div className="space-y-0.5">
+          <Label className="text-sm font-medium">Tax Regime</Label>
+          <p className="text-xs text-muted-foreground">Your choice affects which deductions are available</p>
         </div>
-        <Button className="mt-6" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
+        <Select value={form.regime||"new"} onValueChange={s("regime")}>
+          <SelectTrigger className="h-9 w-52"><SelectValue /></SelectTrigger>
+          <SelectContent><SelectItem value="new">New Regime (Default)</SelectItem><SelectItem value="old">Old Regime</SelectItem></SelectContent>
+        </Select>
+      </div>
+
+      {/* ── New Regime notice — no deductions available ── */}
+      {(form.regime||"new") === "new" ? (
+        <div className="flex items-start gap-3 p-4 rounded-md bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800">
+          <Info className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-blue-800 dark:text-blue-200">No investment declarations required under New Regime</p>
+            <p className="text-xs text-blue-700 dark:text-blue-300">Deductions under Section 80C, 80D, HRA, Home Loan Interest, etc. are <strong>not available</strong> in the New Tax Regime.</p>
+            <p className="text-xs text-blue-700 dark:text-blue-300">A standard deduction of <strong>₹75,000</strong> is automatically applied. Your TDS will be computed using the new slab rates.</p>
+            <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">To claim investment deductions, switch to <strong>Old Regime</strong> above.</p>
+          </div>
+        </div>
+      ) : (
+        <Tabs defaultValue="80c">
+          <TabsList className="flex-wrap h-auto gap-1">
+            <TabsTrigger value="80c">Section 80C</TabsTrigger>
+            <TabsTrigger value="80d">Section 80D</TabsTrigger>
+            <TabsTrigger value="hra">HRA</TabsTrigger>
+            <TabsTrigger value="other">Other</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="80c" className="mt-4 space-y-3">
+            <div className="flex justify-between text-sm p-2 rounded-md bg-muted/50">
+              <span>Total 80C Declared: {fmtRs(["licPremium","ppf","elss","nsc","homeLoanPrincipal","fdTaxSaving","other80c"].reduce((s, k) => s + Number(form[k]||0), 0))}</span>
+              <span className="font-medium">Eligible (capped ₹1.5L): {fmtRs(total80c)}</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {[["licPremium","LIC Premium"],["ppf","PPF"],["elss","ELSS / Mutual Funds"],["nsc","NSC"],["homeLoanPrincipal","Home Loan Principal"],["fdTaxSaving","Tax-Saving FD (5 yr)"],["other80c","Others under 80C"]].map(([k,l]) => (
+                <div key={k} className="space-y-1.5"><Label className="text-sm">{l}</Label><Input className={numCls} type="number" min="0" value={form[k]||"0"} onChange={f(k)} /></div>
+              ))}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="80d" className="mt-4 space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5"><Label>Self & Family Premium (max ₹25,000)</Label><Input className={numCls} type="number" min="0" value={form.sec80dSelf||"0"} onChange={f("sec80dSelf")} /></div>
+              <div className="space-y-1.5"><Label>Parents Premium</Label><Input className={numCls} type="number" min="0" value={form.sec80dParents||"0"} onChange={f("sec80dParents")} /></div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox id="seniorCitizen" checked={!!form.parentsSeniorCitizen} onCheckedChange={v => setForm((p: any) => ({ ...p, parentsSeniorCitizen: !!v }))} />
+              <Label htmlFor="seniorCitizen" className="text-sm">Parents are Senior Citizens (higher limit ₹50,000)</Label>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="hra" className="mt-4 space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5"><Label>Monthly Rent Paid (₹)</Label><Input className={numCls} type="number" min="0" value={form.rentPerMonth||"0"} onChange={f("rentPerMonth")} /></div>
+              <div className="space-y-1.5">
+                <Label>City Type</Label>
+                <Select value={form.cityType||"non_metro"} onValueChange={s("cityType")}>
+                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="metro">Metro City</SelectItem><SelectItem value="non_metro">Non-Metro</SelectItem></SelectContent>
+                </Select>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="other" className="mt-4 space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {[["homeLoanInterest","Home Loan Interest (Sec 24, max ₹2L)"],["eduLoanInterest","Education Loan Interest (80E)"],["nps80ccd","NPS (80CCD 1B, max ₹50K)"],["sec80g","Donations (80G)"],["sec80tta","Savings Interest (80TTA, max ₹10K)"],["otherDeductions","Other Deductions"]].map(([k,l]) => (
+                <div key={k} className="space-y-1.5"><Label className="text-sm">{l}</Label><Input className={numCls} type="number" min="0" value={form[k]||"0"} onChange={f(k)} /></div>
+              ))}
+            </div>
+          </TabsContent>
+        </Tabs>
+      )}
+
+      <div className="flex justify-end">
+        <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
           {saveMutation.isPending ? "Saving..." : "Save Declaration"}
         </Button>
       </div>
