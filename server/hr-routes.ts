@@ -1203,26 +1203,20 @@ router.post("/payroll-runs/:id/process", requireHR, async (req: any, res) => {
         totalEarnings = proRataBasic;
       }
 
-      // TA (Travel Allowance) — per-employee amount, pro-rated; only if set and not already in structure
+      // TA (Travel Allowance) — fixed monthly amount, NOT pro-rated by attendance
       const taFromEmp = Number(emp.ta_amount || 0);
       const taAlreadyInStructure = componentBreakdown.some((c: any) => c.code === 'TA');
       if (taFromEmp > 0 && !taAlreadyInStructure) {
-        const taAmount = Math.round(taFromEmp * attendancePct);
-        if (taAmount > 0) {
-          componentBreakdown.push({ name: 'Travel Allowance', code: 'TA', amount: taAmount, type: 'earning' });
-          totalEarnings += taAmount;
-        }
+        componentBreakdown.push({ name: 'Travel Allowance', code: 'TA', amount: taFromEmp, type: 'earning' });
+        totalEarnings += taFromEmp;
       }
 
-      // DA (Dearness Allowance) — per-employee amount, pro-rated; only if set and not already in structure
+      // DA (Dearness Allowance) — fixed monthly amount, NOT pro-rated by attendance
       const daFromEmp = Number(emp.da_amount || 0);
       const daAlreadyInStructure = componentBreakdown.some((c: any) => c.code === 'DA');
       if (daFromEmp > 0 && !daAlreadyInStructure) {
-        const daAmount = Math.round(daFromEmp * attendancePct);
-        if (daAmount > 0) {
-          componentBreakdown.push({ name: 'Dearness Allowance', code: 'DA', amount: daAmount, type: 'earning' });
-          totalEarnings += daAmount;
-        }
+        componentBreakdown.push({ name: 'Dearness Allowance', code: 'DA', amount: daFromEmp, type: 'earning' });
+        totalEarnings += daFromEmp;
       }
 
       if (otPay > 0) {
