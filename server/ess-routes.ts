@@ -243,10 +243,11 @@ router.get("/leaves", requireESS, async (req: any, res) => {
         WHERE la.employee_id=${eid} AND la.tenant_id=${tid}
         ORDER BY la.created_at DESC LIMIT 30
       `),
-      db.execute(sql`SELECT * FROM hr_leave_types WHERE tenant_id=${tid} AND record_status=1 ORDER BY name`),
+      db.execute(sql`SELECT * FROM hr_leave_types WHERE tenant_id=${tid} AND (record_status IS NULL OR record_status != 0) ORDER BY name`),
     ]);
 
-    // Return all active leave types for this tenant — balances already reflect entitlement
+    // Return all active leave types for this tenant — no employee-type filtering
+    // Balances already reflect per-employee entitlement
     const leaveTypes = allLeaveTypes.rows;
 
     res.json({ balances: balances.rows, applications: applications.rows, leaveTypes });

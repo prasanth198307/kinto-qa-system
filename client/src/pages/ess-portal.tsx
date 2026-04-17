@@ -113,7 +113,7 @@ function PayslipDetail({ payslipId, onClose }: { payslipId: number; onClose: () 
 }
 
 // ── Leave Application Form ────────────────────────────────────────────────────
-function ApplyLeaveForm({ leaveTypes, leaveBalances, onSave, onCancel }: any) {
+function ApplyLeaveForm({ leaveTypes, leaveBalances, leavesError, onSave, onCancel }: any) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [form, setForm] = useState({ leaveTypeId: "", fromDate: "", toDate: "", reason: "" });
@@ -172,7 +172,10 @@ function ApplyLeaveForm({ leaveTypes, leaveBalances, onSave, onCancel }: any) {
           <Select value={form.leaveTypeId} onValueChange={handleLeaveTypeChange}>
             <SelectTrigger className="h-9"><SelectValue placeholder="Select leave type" /></SelectTrigger>
             <SelectContent>
-              {leaveTypes.length === 0 && (
+              {leaveTypes.length === 0 && leavesError && (
+                <div className="px-3 py-2 text-sm text-destructive">Failed to load leave types. Please close and try again.</div>
+              )}
+              {leaveTypes.length === 0 && !leavesError && (
                 <div className="px-3 py-2 text-sm text-muted-foreground">No leave types configured. Contact HR.</div>
               )}
               {leaveTypes.map((lt: any) => {
@@ -486,10 +489,11 @@ export default function EssPortal() {
     enabled: !!me,
   });
 
-  const { data: leavesData } = useQuery({
+  const { data: leavesData, error: leavesError } = useQuery({
     queryKey: ["ess-leaves"],
     queryFn: () => essFetch("/leaves"),
     enabled: !!me,
+    retry: 1,
   });
 
   // Today's attendance status (for check-in/out card)
@@ -960,7 +964,7 @@ export default function EssPortal() {
       <Dialog open={showLeaveForm} onOpenChange={v => !v && setShowLeaveForm(false)}>
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>Apply for Leave</DialogTitle></DialogHeader>
-          <ApplyLeaveForm leaveTypes={leaveTypes} leaveBalances={leaveBalances} onSave={() => setShowLeaveForm(false)} onCancel={() => setShowLeaveForm(false)} />
+          <ApplyLeaveForm leaveTypes={leaveTypes} leaveBalances={leaveBalances} leavesError={leavesError} onSave={() => setShowLeaveForm(false)} onCancel={() => setShowLeaveForm(false)} />
         </DialogContent>
       </Dialog>
 
