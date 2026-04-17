@@ -228,10 +228,6 @@ router.get("/leaves", requireESS, async (req: any, res) => {
   const eid = getEssEmployeeId(req);
   const tid = getEssTenantId(req);
   try {
-    // Get employee type to filter applicable leave types
-    const empRow = await db.execute(sql`SELECT employee_type FROM hr_employees WHERE id=${eid} AND tenant_id=${tid}`);
-    const empType = (empRow.rows[0] as any)?.employee_type || 'permanent';
-
     const [balances, applications, allLeaveTypes] = await Promise.all([
       db.execute(sql`
         SELECT lb.*, lt.name as leave_type_name, lt.code as type_code
@@ -250,17 +246,10 @@ router.get("/leaves", requireESS, async (req: any, res) => {
       db.execute(sql`SELECT * FROM hr_leave_types WHERE tenant_id=${tid} AND record_status=1 ORDER BY name`),
     ]);
 
-    // Filter leave types applicable to this employee type
-    const leaveTypes = (allLeaveTypes.rows as any[]).filter(lt => {
-      const types = (lt.applicable_emp_types || 'permanent,consultant,contract,intern').split(',').map((t: string) => t.trim());
-      return types.includes(empType);
-    });
+    // Return all active leave types for this tenant — balances already reflect entitlement
+    const leaveTypes = allLeaveTypes.rows;
 
-    // Also filter balances to only applicable leave types
-    const applicableLtIds = new Set(leaveTypes.map((lt: any) => lt.id));
-    const filteredBalances = (balances.rows as any[]).filter(b => applicableLtIds.has(b.leave_type_id));
-
-    res.json({ balances: filteredBalances, applications: applications.rows, leaveTypes, empType });
+    res.json({ balances: balances.rows, applications: applications.rows, leaveTypes });
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 
