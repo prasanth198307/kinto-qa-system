@@ -596,7 +596,7 @@ router.post("/employees", requireHR, async (req: any, res) => {
     const r = await db.execute(sql`
       INSERT INTO hr_employees (
         tenant_id, emp_code, first_name, last_name, gender, date_of_birth, blood_group,
-        department_id, designation_id, shift_id, salary_structure_id, basic_salary, special_allowance, ctc,
+        department_id, designation_id, shift_id, salary_structure_id, basic_salary, special_allowance, ta_amount, da_amount, ctc,
         join_date, exit_date, exit_type, exit_reason, resignation_date,
         reporting_manager_id, phone, alternate_phone, email,
         address, city, state, pincode,
@@ -609,7 +609,7 @@ router.post("/employees", requireHR, async (req: any, res) => {
         ${tid}, ${d.empCode}, ${d.firstName}, ${d.lastName ?? null}, ${d.gender ?? null},
         ${d.dateOfBirth ?? null}, ${d.bloodGroup ?? null},
         ${d.departmentId ?? null}, ${d.designationId ?? null}, ${d.shiftId ?? null},
-        ${d.salaryStructureId ?? null}, ${d.basicSalary ?? 0}, ${d.specialAllowance ?? 0}, ${d.ctc ?? 0},
+        ${d.salaryStructureId ?? null}, ${d.basicSalary ?? 0}, ${d.specialAllowance ?? 0}, ${d.taAmount ?? 0}, ${d.daAmount ?? 0}, ${d.ctc ?? 0},
         ${d.joinDate}, ${d.exitDate ?? null}, ${d.exitType ?? null}, ${d.exitReason ?? null}, ${d.resignationDate ?? null},
         ${d.reportingManagerId ?? null}, ${d.phone ?? null}, ${d.alternatePhone ?? null}, ${d.email ?? null},
         ${d.address ?? null}, ${d.city ?? null}, ${d.state ?? null}, ${d.pincode ?? null},
@@ -641,7 +641,7 @@ router.put("/employees/:id", requireHR, async (req: any, res) => {
         gender=${s(d.gender)}, date_of_birth=${s(d.dateOfBirth)}, blood_group=${s(d.bloodGroup)},
         department_id=${i(d.departmentId)}, designation_id=${i(d.designationId)},
         shift_id=${i(d.shiftId)}, salary_structure_id=${i(d.salaryStructureId)},
-        basic_salary=${n(d.basicSalary)}, special_allowance=${n(d.specialAllowance)}, ctc=${n(d.ctc)}, join_date=${s(d.joinDate)},
+        basic_salary=${n(d.basicSalary)}, special_allowance=${n(d.specialAllowance)}, ta_amount=${n(d.taAmount)}, da_amount=${n(d.daAmount)}, ctc=${n(d.ctc)}, join_date=${s(d.joinDate)},
         exit_date=${s(d.exitDate)}, exit_type=${s(d.exitType)},
         exit_reason=${s(d.exitReason)}, resignation_date=${s(d.resignationDate)},
         reporting_manager_id=${i(d.reportingManagerId)},
@@ -1203,6 +1203,28 @@ router.post("/payroll-runs/:id/process", requireHR, async (req: any, res) => {
         totalEarnings = proRataBasic;
       }
 
+      // TA (Travel Allowance) — per-employee amount, pro-rated; only if set and not already in structure
+      const taFromEmp = Number(emp.ta_amount || 0);
+      const taAlreadyInStructure = componentBreakdown.some((c: any) => c.code === 'TA');
+      if (taFromEmp > 0 && !taAlreadyInStructure) {
+        const taAmount = Math.round(taFromEmp * attendancePct);
+        if (taAmount > 0) {
+          componentBreakdown.push({ name: 'Travel Allowance', code: 'TA', amount: taAmount, type: 'earning' });
+          totalEarnings += taAmount;
+        }
+      }
+
+      // DA (Dearness Allowance) — per-employee amount, pro-rated; only if set and not already in structure
+      const daFromEmp = Number(emp.da_amount || 0);
+      const daAlreadyInStructure = componentBreakdown.some((c: any) => c.code === 'DA');
+      if (daFromEmp > 0 && !daAlreadyInStructure) {
+        const daAmount = Math.round(daFromEmp * attendancePct);
+        if (daAmount > 0) {
+          componentBreakdown.push({ name: 'Dearness Allowance', code: 'DA', amount: daAmount, type: 'earning' });
+          totalEarnings += daAmount;
+        }
+      }
+
       if (otPay > 0) {
         componentBreakdown.push({ name: 'Overtime Pay', code: 'OT', amount: otPay, type: 'earning' });
         totalEarnings += otPay;
@@ -1410,6 +1432,8 @@ router.get("/payroll-runs/:id/salary-sheet", requireHR, async (req: any, res) =>
       { header: 'BASIC', key: 'basic', width: 12 },
       { header: 'HRA', key: 'hra', width: 12 },
       { header: 'LTA', key: 'lta', width: 12 },
+      { header: 'TA', key: 'ta', width: 12 },
+      { header: 'DA', key: 'da', width: 12 },
       { header: 'OT1', key: 'ot1', width: 10 },
       { header: 'Total Earning', key: 'gross', width: 13 },
       { header: 'PF', key: 'pf', width: 10 },
@@ -1446,7 +1470,7 @@ router.get("/payroll-runs/:id/salary-sheet", requireHR, async (req: any, res) =>
     const fmtDate = (d: any) => d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
 
     let slNo = 1;
-    let totBasic = 0, totHRA = 0, totLTA = 0, totOT1 = 0, totGross = 0;
+    let totBasic = 0, totHRA = 0, totLTA = 0, totTA = 0, totDA = 0, totOT1 = 0, totGross = 0;
     let totPF = 0, totESI = 0, totPT = 0, totDed = 0, totNet = 0;
 
     for (const r of rows.rows as any[]) {
@@ -1462,6 +1486,8 @@ router.get("/payroll-runs/:id/salary-sheet", requireHR, async (req: any, res) =>
       const basic   = getComp('BASIC') || fmt(r.basic_salary);
       const hra     = getComp('HRA');
       const lta     = getComp('LTA');
+      const ta      = getComp('TA');
+      const da      = getComp('DA');
       const ot1     = getComp('OT1') || getComp('OT') || getComp('OVERTIME');
       const gross   = fmt(r.gross_salary);
       const pf      = fmt(r.pf_employee);
@@ -1470,7 +1496,7 @@ router.get("/payroll-runs/:id/salary-sheet", requireHR, async (req: any, res) =>
       const totDedR = fmt(r.total_deductions);
       const net     = fmt(r.net_salary);
 
-      totBasic += basic; totHRA += hra; totLTA += lta; totOT1 += ot1;
+      totBasic += basic; totHRA += hra; totLTA += lta; totTA += ta; totDA += da; totOT1 += ot1;
       totGross += gross; totPF += pf; totESI += esi; totPT += pt;
       totDed += totDedR; totNet += net;
 
@@ -1487,7 +1513,7 @@ router.get("/payroll-runs/:id/salary-sheet", requireHR, async (req: any, res) =>
         fmt(r.days_in_month),
         fmt(r.days_worked),
         fmt(r.days_worked),
-        basic, hra, lta, ot1, gross, pf, esi, pt, totDedR, net,
+        basic, hra, lta, ta, da, ot1, gross, pf, esi, pt, totDedR, net,
       ]);
 
       dataRow.eachCell((cell, colNum) => {
@@ -1503,7 +1529,7 @@ router.get("/payroll-runs/:id/salary-sheet", requireHR, async (req: any, res) =>
     const totRow = ws.addRow([
       '', '', 'TOTAL', '', '', '', '', '', '',
       '', '', '',
-      totBasic, totHRA, totLTA, totOT1, totGross, totPF, totESI, totPT, totDed, totNet,
+      totBasic, totHRA, totLTA, totTA, totDA, totOT1, totGross, totPF, totESI, totPT, totDed, totNet,
     ]);
     totRow.eachCell((cell, colNum) => {
       cell.font = { bold: true, size: 9 };

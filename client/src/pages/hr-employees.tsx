@@ -52,6 +52,8 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
     salaryStructureId: String(editing.salary_structure_id || ""),
     basicSalary: String(editing.basic_salary || ""),
     specialAllowance: String(editing.special_allowance || ""),
+    taAmount: String(editing.ta_amount || ""),
+    daAmount: String(editing.da_amount || ""),
     ctc: String(editing.ctc || ""),
     joinDate: editing.join_date || "",
     exitDate: editing.exit_date || "",
@@ -94,7 +96,7 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
   } : {
     empCode: "", firstName: "", lastName: "", gender: "", dateOfBirth: "", bloodGroup: "",
     departmentId: "", designationId: "", shiftId: "", salaryStructureId: "",
-    basicSalary: "", specialAllowance: "", ctc: "", joinDate: "", exitDate: "", exitType: "", exitReason: "",
+    basicSalary: "", specialAllowance: "", taAmount: "", daAmount: "", ctc: "", joinDate: "", exitDate: "", exitType: "", exitReason: "",
     resignationDate: "", reportingManagerId: "", phone: "", alternatePhone: "",
     email: "", address: "", city: "", state: "", pincode: "",
     emergencyContact: "", emergencyContactName: "", emergencyContactRelation: "",
@@ -118,6 +120,8 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
       salaryStructureId: form.salaryStructureId ? Number(form.salaryStructureId) : null,
       basicSalary: form.basicSalary ? Number(form.basicSalary) : 0,
       specialAllowance: form.specialAllowance ? Number(form.specialAllowance) : 0,
+      taAmount: form.taAmount ? Number(form.taAmount) : 0,
+      daAmount: form.daAmount ? Number(form.daAmount) : 0,
       ctc: form.ctc ? Number(form.ctc) : 0,
       reportingManagerId: form.reportingManagerId ? Number(form.reportingManagerId) : null,
       numberOfChildren: form.numberOfChildren ? Number(form.numberOfChildren) : 0,
@@ -242,6 +246,14 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
           <div className="space-y-1.5">
             <Label>Special Allowance (₹) <span className="text-xs text-muted-foreground">— per employee balancing figure</span></Label>
             <Input className={inputCls} type="number" value={form.specialAllowance} onChange={f("specialAllowance")} placeholder="0" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Travel Allowance / TA (₹) <span className="text-xs text-muted-foreground">— leave 0 if not applicable</span></Label>
+            <Input className={inputCls} type="number" value={form.taAmount} onChange={f("taAmount")} placeholder="0" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Dearness Allowance / DA (₹) <span className="text-xs text-muted-foreground">— leave 0 if not applicable</span></Label>
+            <Input className={inputCls} type="number" value={form.daAmount} onChange={f("daAmount")} placeholder="0" />
           </div>
           <div className="space-y-1.5">
             <Label>CTC (₹)</Label>
@@ -796,6 +808,8 @@ function EmployeeDetail({ emp, onBack, onEdit }: any) {
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Compensation</p>
               <InfoRow label="Basic Salary" value={fmt(emp.basic_salary)} />
               {Number(emp.special_allowance) > 0 && <InfoRow label="Special Allowance" value={fmt(emp.special_allowance)} />}
+              {Number(emp.ta_amount) > 0 && <InfoRow label="Travel Allowance (TA)" value={fmt(emp.ta_amount)} />}
+              {Number(emp.da_amount) > 0 && <InfoRow label="Dearness Allowance (DA)" value={fmt(emp.da_amount)} />}
               <InfoRow label="CTC" value={fmt(emp.ctc)} />
               <InfoRow label="Salary Structure" value={emp.salary_structure_name} />
               <InfoRow label="Tax Regime" value={emp.tax_regime === "new" ? "New Regime" : "Old Regime"} />
