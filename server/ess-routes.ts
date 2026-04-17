@@ -241,7 +241,7 @@ router.get("/leaves", requireESS, async (req: any, res) => {
         FROM hr_leave_applications la
         JOIN hr_leave_types lt ON la.leave_type_id = lt.id
         WHERE la.employee_id=${eid} AND la.tenant_id=${tid}
-        ORDER BY la.created_at DESC LIMIT 30
+        ORDER BY la.applied_at DESC LIMIT 30
       `),
       db.execute(sql`SELECT * FROM hr_leave_types WHERE tenant_id=${tid} AND (record_status IS NULL OR record_status != 0) ORDER BY name`),
     ]);
