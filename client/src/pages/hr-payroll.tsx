@@ -520,39 +520,61 @@ export default function HRPayrollPage() {
           </DialogHeader>
           <div className="space-y-3">
             <p className="text-xs text-muted-foreground">
-              Toggle or adjust component amounts for this month only. Set to <strong>0</strong> to exclude a component (e.g. TA/DA when employee didn't visit the field).
+              For TA/DA, enter the actual number of field-visit days. For other components, edit the amount directly. Set days/amount to <strong>0</strong> to exclude.
             </p>
             <div className="space-y-2">
-              {adjustComps.map((comp, i) => (
-                <div key={comp.code} className="flex items-center gap-3 p-2.5 rounded-md border">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">{comp.name}</p>
-                    <p className="text-xs text-muted-foreground">{comp.code}</p>
+              {adjustComps.map((comp, i) => {
+                const isDaily = !!comp.daily_rate;
+                return (
+                  <div key={comp.code} className="rounded-md border p-2.5 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium">{comp.name}</p>
+                        {isDaily && (
+                          <p className="text-xs text-muted-foreground">₹{comp.daily_rate}/day × {comp.field_days ?? 0} days = ₹{Number(comp.amount).toLocaleString()}</p>
+                        )}
+                      </div>
+                      <span className="text-sm font-semibold">₹{Number(comp.amount).toLocaleString()}</span>
+                    </div>
+                    {isDaily ? (
+                      <div className="flex items-center gap-2">
+                        <Label className="text-xs whitespace-nowrap">Field-visit days:</Label>
+                        <Input
+                          className="h-8 w-20 text-right"
+                          type="number"
+                          min="0"
+                          max="31"
+                          value={comp.field_days ?? 0}
+                          onChange={e => {
+                            const days = Math.max(0, Number(e.target.value));
+                            const newAmount = Math.round(comp.daily_rate * days);
+                            setAdjustComps(prev => prev.map((c, idx) =>
+                              idx === i ? { ...c, field_days: days, amount: newAmount } : c
+                            ));
+                          }}
+                        />
+                        <span className="text-xs text-muted-foreground">days</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <Label className="text-xs whitespace-nowrap">Amount (₹):</Label>
+                        <Input
+                          className="h-8 w-28 text-right"
+                          type="number"
+                          min="0"
+                          value={comp.amount}
+                          onChange={e => {
+                            const val = Number(e.target.value);
+                            setAdjustComps(prev => prev.map((c, idx) =>
+                              idx === i ? { ...c, amount: val } : c
+                            ));
+                          }}
+                        />
+                      </div>
+                    )}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={Number(comp.amount) > 0}
-                      onCheckedChange={v => {
-                        setAdjustComps(prev => prev.map((c, idx) =>
-                          idx === i ? { ...c, amount: v ? (comp._origAmount || comp.amount || 0) : 0 } : c
-                        ));
-                      }}
-                    />
-                    <Input
-                      className="h-8 w-24 text-right"
-                      type="number"
-                      min="0"
-                      value={comp.amount}
-                      onChange={e => {
-                        const val = Number(e.target.value);
-                        setAdjustComps(prev => prev.map((c, idx) =>
-                          idx === i ? { ...c, amount: val, _origAmount: val > 0 ? val : c._origAmount } : c
-                        ));
-                      }}
-                    />
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => setAdjustOpen(false)}>Cancel</Button>
@@ -560,7 +582,12 @@ export default function HRPayrollPage() {
                 disabled={adjustMutation.isPending}
                 onClick={() => adjustMutation.mutate({
                   id: adjustPayslip?.id,
-                  adjustments: adjustComps.map(c => ({ code: c.code, name: c.name, amount: Number(c.amount) || 0 })),
+                  adjustments: adjustComps.map(c => ({
+                    code: c.code,
+                    name: c.name,
+                    amount: Number(c.amount) || 0,
+                    ...(c.daily_rate ? { daily_rate: c.daily_rate, field_days: c.field_days ?? 0 } : {}),
+                  })),
                 })}
               >
                 {adjustMutation.isPending ? "Saving..." : "Save Adjustments"}

@@ -1203,24 +1203,26 @@ router.post("/payroll-runs/:id/process", requireHR, async (req: any, res) => {
         totalEarnings = proRataBasic;
       }
 
-      // TA (Travel Allowance) — daily rate × actual days worked (not paid on absent/LOP days)
+      // TA (Travel Allowance) — daily rate × field-visit days (defaults to daysWorked; HR can adjust later)
       const taFromEmp = Number(emp.ta_amount || 0); // stored as daily rate (₹ per day)
       const taAlreadyInStructure = componentBreakdown.some((c: any) => c.code === 'TA');
       if (taFromEmp > 0 && !taAlreadyInStructure) {
-        const taAmount = Math.round(taFromEmp * daysWorked);
+        const taDays = Math.round(daysWorked); // HR can override via Adjust
+        const taAmount = Math.round(taFromEmp * taDays);
         if (taAmount > 0) {
-          componentBreakdown.push({ name: 'Travel Allowance', code: 'TA', amount: taAmount, type: 'earning' });
+          componentBreakdown.push({ name: 'Travel Allowance', code: 'TA', amount: taAmount, type: 'earning', daily_rate: taFromEmp, field_days: taDays });
           totalEarnings += taAmount;
         }
       }
 
-      // DA (Dearness Allowance) — daily rate × actual days worked (not paid on absent/LOP days)
+      // DA (Dearness Allowance) — daily rate × field-visit days (defaults to daysWorked; HR can adjust later)
       const daFromEmp = Number(emp.da_amount || 0); // stored as daily rate (₹ per day)
       const daAlreadyInStructure = componentBreakdown.some((c: any) => c.code === 'DA');
       if (daFromEmp > 0 && !daAlreadyInStructure) {
-        const daAmount = Math.round(daFromEmp * daysWorked);
+        const daDays = Math.round(daysWorked); // HR can override via Adjust
+        const daAmount = Math.round(daFromEmp * daDays);
         if (daAmount > 0) {
-          componentBreakdown.push({ name: 'Dearness Allowance', code: 'DA', amount: daAmount, type: 'earning' });
+          componentBreakdown.push({ name: 'Dearness Allowance', code: 'DA', amount: daAmount, type: 'earning', daily_rate: daFromEmp, field_days: daDays });
           totalEarnings += daAmount;
         }
       }
