@@ -248,11 +248,11 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
             <Input className={inputCls} type="number" value={form.specialAllowance} onChange={f("specialAllowance")} placeholder="0" />
           </div>
           <div className="space-y-1.5">
-            <Label>Travel Allowance / TA (₹) <span className="text-xs text-muted-foreground">— leave 0 if not applicable</span></Label>
+            <Label>TA Daily Rate (₹/day) <span className="text-xs text-muted-foreground">— multiplied by days worked each month</span></Label>
             <Input className={inputCls} type="number" value={form.taAmount} onChange={f("taAmount")} placeholder="0" />
           </div>
           <div className="space-y-1.5">
-            <Label>Dearness Allowance / DA (₹) <span className="text-xs text-muted-foreground">— leave 0 if not applicable</span></Label>
+            <Label>DA Daily Rate (₹/day) <span className="text-xs text-muted-foreground">— multiplied by days worked each month</span></Label>
             <Input className={inputCls} type="number" value={form.daAmount} onChange={f("daAmount")} placeholder="0" />
           </div>
           <div className="space-y-1.5">
@@ -808,8 +808,8 @@ function EmployeeDetail({ emp, onBack, onEdit }: any) {
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Compensation</p>
               <InfoRow label="Basic Salary" value={fmt(emp.basic_salary)} />
               {Number(emp.special_allowance) > 0 && <InfoRow label="Special Allowance" value={fmt(emp.special_allowance)} />}
-              {Number(emp.ta_amount) > 0 && <InfoRow label="Travel Allowance (TA)" value={fmt(emp.ta_amount)} />}
-              {Number(emp.da_amount) > 0 && <InfoRow label="Dearness Allowance (DA)" value={fmt(emp.da_amount)} />}
+              {Number(emp.ta_amount) > 0 && <InfoRow label="TA Daily Rate" value={`₹${fmt(emp.ta_amount)}/day`} />}
+              {Number(emp.da_amount) > 0 && <InfoRow label="DA Daily Rate" value={`₹${fmt(emp.da_amount)}/day`} />}
               <InfoRow label="CTC" value={fmt(emp.ctc)} />
               <InfoRow label="Salary Structure" value={emp.salary_structure_name} />
               <InfoRow label="Tax Regime" value={emp.tax_regime === "new" ? "New Regime" : "Old Regime"} />
