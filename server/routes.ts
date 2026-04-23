@@ -288,7 +288,9 @@ const endpointToScreenKey: Record<string, string> = {
 const STANDARD_ROLES = ['admin', 'manager', 'operator', 'reviewer'];
 
 // Role-based authorization middleware
-function requireRole(...allowedRoles: string[]) {
+function requireRole(...args: (string | { treatAsView?: boolean })[]) {
+  const allowedRoles = args.filter(a => typeof a === 'string') as string[];
+  const opts = args.find(a => typeof a === 'object') as { treatAsView?: boolean } | undefined;
   return async (req: any, res: Response, next: NextFunction) => {
     if (!req.isAuthenticated()) {
       console.log(`[AUDIT] Unauthorized access attempt to ${req.path}`);
@@ -377,7 +379,7 @@ function requireRole(...allowedRoles: string[]) {
           ));
         
         if (allPerms.length > 0) {
-          const method = req.method.toUpperCase();
+          const method = opts?.treatAsView ? 'GET' : req.method.toUpperCase();
           let hasRequiredPermission = false;
           let requiredAction = 'view';
           
@@ -10606,7 +10608,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
 
   // GST Reports - Get invoices with items and HSN summary for a period
   // Allow admin, manager, billing manager, and accounts manager roles
-  app.post('/api/gst-reports', requireRole('admin', 'manager', 'accountsmanager'), async (req: any, res) => {
+  app.post('/api/gst-reports', requireRole('admin', 'manager', 'accountsmanager', { treatAsView: true }), async (req: any, res) => {
     try {
       const { periodType, month, year } = req.body;
       
