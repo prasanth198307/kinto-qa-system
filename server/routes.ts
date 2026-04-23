@@ -428,6 +428,11 @@ function requireRole(...args: (string | { treatAsView?: boolean })[]) {
 // but POST/PUT/DELETE require explicit permissions for custom roles.
 const HR_SYSTEM_ROLES_FULL_ACCESS = ['admin', 'manager', 'accountsmanager'];
 
+// POST endpoints that are semantically read-only (calculation/preview) — treat as GET for permissions
+const VIEW_ONLY_POST_PATHS = new Set([
+  '/api/hr/fnf/calculate',
+]);
+
 async function hrPermissionMiddleware(req: any, res: any, next: any) {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ message: "Unauthorized" });
@@ -485,7 +490,7 @@ async function hrPermissionMiddleware(req: any, res: any, next: any) {
       return res.status(403).json({ message: "Forbidden: No permissions configured for this section" });
     }
 
-    const method = req.method.toUpperCase();
+    const method = VIEW_ONLY_POST_PATHS.has(fullPath) ? 'GET' : req.method.toUpperCase();
     let hasPermission = false;
 
     if (method === 'GET') hasPermission = allPerms.some(p => p.canView === 1);
