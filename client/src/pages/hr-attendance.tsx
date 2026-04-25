@@ -365,7 +365,9 @@ export default function HRAttendancePage() {
   const attMap: Record<string, Record<string, string>> = {};
   (attendance as any[]).forEach((a: any) => {
     if (!attMap[a.employee_id]) attMap[a.employee_id] = {};
-    const day = new Date(a.date).getDate();
+    // Parse date as local date to avoid UTC midnight shifting to previous day in IST
+    const dateParts = String(a.date).split("T")[0].split("-");
+    const day = parseInt(dateParts[2], 10);
     attMap[a.employee_id][day] = a.status;
   });
 
@@ -385,8 +387,8 @@ export default function HRAttendancePage() {
     mutationFn: async () => {
       const records = Object.entries(changes).map(([key, status]) => {
         const [empId, day] = key.split("_");
-        const d = new Date(year, month - 1, Number(day));
-        const dateStr = d.toISOString().split("T")[0];
+        // Build date string directly to avoid UTC timezone shift (e.g. IST midnight → previous UTC day)
+        const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
         return { employeeId: Number(empId), date: dateStr, status };
       });
       return apiRequest("POST", "/api/hr/attendance/bulk", { records });
