@@ -185,7 +185,7 @@ function OperatorDashboard() {
 
   const bottomNav = (
     <div
-      className="fixed bottom-0 left-0 right-0 bg-card border-t"
+      className="fixed bottom-0 left-0 right-0 bg-card border-t z-50"
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       data-testid="mobile-bottom-nav"
     >
