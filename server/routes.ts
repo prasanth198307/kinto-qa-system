@@ -122,6 +122,7 @@ const endpointToScreenKey: Record<string, string> = {
   '/api/reports/sales-returns-summary': 'reports',
   '/api/reports/vendor-report': 'report_vendor_report',
   '/api/reports/repacking': 'reports',
+  '/api/reports/write-offs': 'payment_writeoff',
   '/api/scrap-inventory/report': 'reports',
   '/api/gst-reports': 'report_gst',
   
@@ -151,6 +152,7 @@ const endpointToScreenKey: Record<string, string> = {
   '/api/production-reconciliations': 'production_reconciliations',
   '/api/production': 'production_entries',
   '/api/variance': 'variance_analytics',
+  '/api/analytics/variance': 'variance_analytics',
   
   // Sales & Invoicing
   '/api/invoices': 'invoices',
@@ -334,7 +336,9 @@ function requireRole(...args: (string | { treatAsView?: boolean })[]) {
       }
 
       // System role bypass: if ANY of the user's roles is in the allowed list, grant access immediately.
-      const matchingSystemRole = userRoles.find(r => allowedRoles.includes(r.name));
+      // Case-insensitive so "Admin"/"Manager" capitals work the same as "admin"/"manager".
+      const allowedLower = allowedRoles.map(r => r.toLowerCase());
+      const matchingSystemRole = userRoles.find(r => allowedLower.includes(r.name.toLowerCase()));
       if (matchingSystemRole) {
         console.log(`[AUDIT] Role ${matchingSystemRole.name} granted access to ${req.path} (system role match)`);
         req.userRole = matchingSystemRole.name;
