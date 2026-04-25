@@ -433,6 +433,11 @@ const VIEW_ONLY_POST_PATHS = new Set([
   '/api/hr/fnf/calculate',
 ]);
 
+// HR screen keys that are reference/lookup data needed by multiple modules.
+// A custom role that has view access to ANY HR module can GET these.
+// Write operations (POST/PUT/DELETE) still require explicit hr_employees/hr_masters permission.
+const HR_SHARED_READ_KEYS = new Set(['hr_employees', 'hr_masters']);
+
 async function hrPermissionMiddleware(req: any, res: any, next: any) {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ message: "Unauthorized" });
@@ -476,8 +481,25 @@ async function hrPermissionMiddleware(req: any, res: any, next: any) {
       return res.status(403).json({ message: "Forbidden: Insufficient permissions" });
     }
 
-    // Check DB permissions across ALL the user's roles (OR logic)
     const roleIds = userRoles.map(r => r.id);
+
+    // Shared reference data (employee list, master tables) — any custom role that has
+    // view access to at least one HR module can read these via GET.
+    // Writes still require explicit permission on the specific screen key.
+    if (req.method === 'GET' && HR_SHARED_READ_KEYS.has(screenKey)) {
+      const anyHRPerm = await db.select({ id: rolePermissions.id })
+        .from(rolePermissions)
+        .where(and(
+          sql`${rolePermissions.roleId} = ANY(ARRAY[${sql.join(roleIds.map(id => sql`${id}`), sql`, `)}]::text[])`,
+          eq(rolePermissions.canView, 1),
+          eq(rolePermissions.recordStatus, 1), tc(rolePermissions)
+        ))
+        .limit(1);
+      if (anyHRPerm.length > 0) return next();
+      return res.status(403).json({ message: "Forbidden: Insufficient permissions" });
+    }
+
+    // Check DB permissions across ALL the user's roles (OR logic)
     const allPerms = await db.select()
       .from(rolePermissions)
       .where(and(
