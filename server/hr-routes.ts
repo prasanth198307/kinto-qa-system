@@ -602,7 +602,7 @@ router.post("/employees", requireHR, async (req: any, res) => {
         reporting_manager_id, phone, alternate_phone, email,
         address, city, state, pincode,
         emergency_contact, emergency_contact_name, emergency_contact_relation,
-        pan, aadhaar, pf_number, esi_number, uan, bank_account, ifsc, bank_name, tax_regime,
+        pan, aadhaar, pf_enabled, esi_enabled, pf_number, esi_number, uan, bank_account, ifsc, bank_name, tax_regime,
         marital_status, spouse_name, spouse_dob, spouse_aadhaar,
         father_name, father_dob, father_aadhaar,
         mother_name, mother_dob, mother_aadhaar, number_of_children, status, employee_type
@@ -615,8 +615,8 @@ router.post("/employees", requireHR, async (req: any, res) => {
         ${d.reportingManagerId ?? null}, ${d.phone ?? null}, ${d.alternatePhone ?? null}, ${d.email ?? null},
         ${d.address ?? null}, ${d.city ?? null}, ${d.state ?? null}, ${d.pincode ?? null},
         ${d.emergencyContact ?? null}, ${d.emergencyContactName ?? null}, ${d.emergencyContactRelation ?? null},
-        ${d.pan ?? null}, ${d.aadhaar ?? null}, ${d.pfNumber ?? null},
-        ${d.esiNumber ?? null}, ${d.uan ?? null}, ${d.bankAccount ?? null},
+        ${d.pan ?? null}, ${d.aadhaar ?? null}, ${d.pfEnabled !== false}, ${d.esiEnabled !== false},
+        ${d.pfNumber ?? null}, ${d.esiNumber ?? null}, ${d.uan ?? null}, ${d.bankAccount ?? null},
         ${d.ifsc ?? null}, ${d.bankName ?? null}, ${d.taxRegime ?? 'new'},
         ${d.maritalStatus ?? null}, ${d.spouseName ?? null}, ${d.spouseDob ?? null}, ${d.spouseAadhaar ?? null},
         ${d.fatherName ?? null}, ${d.fatherDob ?? null}, ${d.fatherAadhaar ?? null},
@@ -652,8 +652,9 @@ router.put("/employees/:id", requireHR, async (req: any, res) => {
         emergency_contact=${s(d.emergencyContact)},
         emergency_contact_name=${s(d.emergencyContactName)},
         emergency_contact_relation=${s(d.emergencyContactRelation)},
-        pan=${s(d.pan)}, aadhaar=${s(d.aadhaar)}, pf_number=${s(d.pfNumber)},
-        esi_number=${s(d.esiNumber)}, uan=${s(d.uan)}, bank_account=${s(d.bankAccount)},
+        pan=${s(d.pan)}, aadhaar=${s(d.aadhaar)},
+        pf_enabled=${d.pfEnabled !== false}, esi_enabled=${d.esiEnabled !== false},
+        pf_number=${s(d.pfNumber)}, esi_number=${s(d.esiNumber)}, uan=${s(d.uan)}, bank_account=${s(d.bankAccount)},
         ifsc=${s(d.ifsc)}, bank_name=${s(d.bankName)}, tax_regime=${s(d.taxRegime) ?? 'new'},
         marital_status=${s(d.maritalStatus)}, spouse_name=${s(d.spouseName)},
         spouse_dob=${s(d.spouseDob)}, spouse_aadhaar=${s(d.spouseAadhaar)},
@@ -1235,14 +1236,16 @@ router.post("/payroll-runs/:id/process", requireHR, async (req: any, res) => {
 
       const totalGrossSalary = totalEarnings;
 
-      // PF: configurable rate of basic, capped at ceiling (skipped if PF disabled)
+      // PF: global flag AND per-employee flag both must be enabled
+      const empPfEnabled = PF_ENABLED && (emp.pf_enabled !== false);
       const pfBase = Math.min(basicSalary, PF_CEILING);
-      const pfEmployee = PF_ENABLED ? Math.round(pfBase * PF_EMP_RATE) : 0;
-      const pfEmployer = PF_ENABLED ? Math.round(pfBase * PF_EMPR_RATE) : 0;
+      const pfEmployee = empPfEnabled ? Math.round(pfBase * PF_EMP_RATE) : 0;
+      const pfEmployer = empPfEnabled ? Math.round(pfBase * PF_EMPR_RATE) : 0;
 
-      // ESI: configurable rate, applied only if gross <= ESI ceiling (skipped if ESI disabled)
-      const esiEmployee = ESI_ENABLED && totalGrossSalary <= ESI_CEILING ? Math.round(totalGrossSalary * ESI_EMP_RATE) : 0;
-      const esiEmployer = ESI_ENABLED && totalGrossSalary <= ESI_CEILING ? Math.round(totalGrossSalary * ESI_EMPR_RATE) : 0;
+      // ESI: global flag AND per-employee flag both must be enabled
+      const empEsiEnabled = ESI_ENABLED && (emp.esi_enabled !== false);
+      const esiEmployee = empEsiEnabled && totalGrossSalary <= ESI_CEILING ? Math.round(totalGrossSalary * ESI_EMP_RATE) : 0;
+      const esiEmployer = empEsiEnabled && totalGrossSalary <= ESI_CEILING ? Math.round(totalGrossSalary * ESI_EMPR_RATE) : 0;
 
       // PT: from state slabs or fallback (skipped if PT disabled)
       let pt = 0;

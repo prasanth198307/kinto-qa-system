@@ -73,6 +73,8 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
     emergencyContactRelation: editing.emergency_contact_relation || "",
     pan: editing.pan || "",
     aadhaar: editing.aadhaar || "",
+    pfEnabled: editing.pf_enabled !== false,
+    esiEnabled: editing.esi_enabled !== false,
     pfNumber: editing.pf_number || "",
     esiNumber: editing.esi_number || "",
     uan: editing.uan || "",
@@ -100,7 +102,7 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
     resignationDate: "", reportingManagerId: "", phone: "", alternatePhone: "",
     email: "", address: "", city: "", state: "", pincode: "",
     emergencyContact: "", emergencyContactName: "", emergencyContactRelation: "",
-    pan: "", aadhaar: "", pfNumber: "", esiNumber: "", uan: "",
+    pan: "", aadhaar: "", pfEnabled: true, esiEnabled: true, pfNumber: "", esiNumber: "", uan: "",
     bankAccount: "", ifsc: "", bankName: "", taxRegime: "new",
     maritalStatus: "", spouseName: "", spouseDob: "", spouseAadhaar: "",
     fatherName: "", fatherDob: "", fatherAadhaar: "",
@@ -371,7 +373,18 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
           </div>
           <div className="space-y-1.5">
             <Label>PF Number</Label>
-            <Input className={inputCls} value={form.pfNumber} onChange={f("pfNumber")} />
+            <div className="flex items-center gap-2">
+              <Input className={`${inputCls} flex-1`} value={form.pfNumber} onChange={f("pfNumber")} disabled={!form.pfEnabled} />
+              <button
+                type="button"
+                data-testid="toggle-pf-enabled"
+                onClick={() => setForm(p => ({ ...p, pfEnabled: !p.pfEnabled }))}
+                className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${form.pfEnabled ? 'bg-primary' : 'bg-input'}`}
+              >
+                <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${form.pfEnabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
+              </button>
+              <span className="text-xs text-muted-foreground w-12">{form.pfEnabled ? "Active" : "Exempt"}</span>
+            </div>
           </div>
           <div className="space-y-1.5">
             <Label>UAN</Label>
@@ -379,7 +392,18 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
           </div>
           <div className="space-y-1.5">
             <Label>ESI Number</Label>
-            <Input className={inputCls} value={form.esiNumber} onChange={f("esiNumber")} />
+            <div className="flex items-center gap-2">
+              <Input className={`${inputCls} flex-1`} value={form.esiNumber} onChange={f("esiNumber")} disabled={!form.esiEnabled} />
+              <button
+                type="button"
+                data-testid="toggle-esi-enabled"
+                onClick={() => setForm(p => ({ ...p, esiEnabled: !p.esiEnabled }))}
+                className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${form.esiEnabled ? 'bg-primary' : 'bg-input'}`}
+              >
+                <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${form.esiEnabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
+              </button>
+              <span className="text-xs text-muted-foreground w-12">{form.esiEnabled ? "Active" : "Exempt"}</span>
+            </div>
           </div>
           <div className="space-y-1.5">
             <Label>Tax Regime</Label>
@@ -859,9 +883,9 @@ function EmployeeDetail({ emp, onBack, onEdit }: any) {
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Identity</p>
               <InfoRow label="PAN Number" value={emp.pan} />
               <InfoRow label="Aadhaar Number" value={emp.aadhaar} />
-              <InfoRow label="PF Number" value={emp.pf_number} />
+              <InfoRow label="PF" value={emp.pf_enabled === false ? "Exempt" : `Active${emp.pf_number ? ` — ${emp.pf_number}` : ""}`} />
               <InfoRow label="UAN" value={emp.uan} />
-              <InfoRow label="ESI Number" value={emp.esi_number} />
+              <InfoRow label="ESI" value={emp.esi_enabled === false ? "Exempt" : `Active${emp.esi_number ? ` — ${emp.esi_number}` : ""}`} />
             </CardContent></Card>
             <Card><CardContent className="pt-4">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Bank Details</p>
