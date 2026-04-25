@@ -22257,7 +22257,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
         endDate = `${reportYear + 1}-03-31`;
       }
       
-      // Fetch invoices within date range
+      // Fetch invoices within date range — must filter by tenant and record_status
       const invoicesData = await db.select({
         id: invoices.id,
         invoiceNumber: invoices.invoiceNumber,
@@ -22268,13 +22268,15 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       })
         .from(invoices)
         .where(and(
+          eq(invoices.recordStatus, 1),
+          tc(invoices),
           gte(invoices.invoiceDate, startDate),
           lte(invoices.invoiceDate, endDate),
           ne(invoices.status, 'cancelled')
         ))
         .orderBy(invoices.invoiceDate);
       
-      // Fetch invoice items for all invoices
+      // Fetch invoice items for all invoices — filter by record_status to exclude deleted/amended lines
       const invoiceIds = invoicesData.map(inv => inv.id);
       
       const itemsData = invoiceIds.length > 0 ? await db.select({
@@ -22285,7 +22287,10 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
         totalAmount: invoiceItems.totalAmount,
       })
         .from(invoiceItems)
-        .where(inArray(invoiceItems.invoiceId, invoiceIds)) : [];
+        .where(and(
+          eq(invoiceItems.recordStatus, 1),
+          inArray(invoiceItems.invoiceId, invoiceIds)
+        )) : [];
       
       // Create invoice lookup
       const invoiceLookup: Record<string, typeof invoicesData[0]> = {};
