@@ -365,9 +365,9 @@ export default function HRAttendancePage() {
   const attMap: Record<string, Record<string, string>> = {};
   (attendance as any[]).forEach((a: any) => {
     if (!attMap[a.employee_id]) attMap[a.employee_id] = {};
-    // Parse date as local date to avoid UTC midnight shifting to previous day in IST
-    const dateParts = String(a.date).split("T")[0].split("-");
-    const day = parseInt(dateParts[2], 10);
+    // a.date may be a JS Date object or an ISO string — use toISOString() to get UTC date safely
+    const iso: string = a.date instanceof Date ? a.date.toISOString() : String(a.date);
+    const day = parseInt(iso.split("T")[0].split("-")[2], 10);
     attMap[a.employee_id][day] = a.status;
   });
 
