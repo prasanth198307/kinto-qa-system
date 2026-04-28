@@ -27389,29 +27389,32 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
   // Response amounts are in RUPEES (paise ÷ 100, 2 dp)
   app.get('/api/external/customer-outstanding', async (req: any, res) => {
     try {
-      // ── 1. Authenticate via Bearer token ──
+      // ── 1. Authenticate — accept Bearer token (external) OR authenticated session (internal UI) ──
+      let tenantId: number;
       const authHeader = req.headers['authorization'] || '';
       const rawKey = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
-      if (!rawKey) {
+
+      if (rawKey) {
+        // External path: verify API key
+        const keyHash = crypto.createHash('sha256').update(rawKey).digest('hex');
+        const [keyRecord] = await db.select().from(externalApiKeys)
+          .where(and(eq(externalApiKeys.keyHash, keyHash), eq(externalApiKeys.isActive, 1)))
+          .limit(1);
+        if (!keyRecord) {
+          return res.status(401).json({ error: 'Unauthorized', message: 'Invalid or revoked API key' });
+        }
+        db.update(externalApiKeys)
+          .set({ lastUsedAt: new Date().toISOString() })
+          .where(eq(externalApiKeys.id, keyRecord.id))
+          .catch(() => {});
+        tenantId = keyRecord.tenantId;
+      } else if (req.isAuthenticated && req.isAuthenticated()) {
+        // Internal path: use session tenant
+        tenantId = req.user?.tenantId;
+        if (!tenantId) return res.status(401).json({ error: 'Unauthorized' });
+      } else {
         return res.status(401).json({ error: 'Unauthorized', message: 'Missing Authorization: Bearer <key> header' });
       }
-
-      const keyHash = crypto.createHash('sha256').update(rawKey).digest('hex');
-      const [keyRecord] = await db.select().from(externalApiKeys)
-        .where(and(eq(externalApiKeys.keyHash, keyHash), eq(externalApiKeys.isActive, 1)))
-        .limit(1);
-
-      if (!keyRecord) {
-        return res.status(401).json({ error: 'Unauthorized', message: 'Invalid or revoked API key' });
-      }
-
-      // Update last-used timestamp (fire and forget)
-      db.update(externalApiKeys)
-        .set({ lastUsedAt: new Date().toISOString() })
-        .where(eq(externalApiKeys.id, keyRecord.id))
-        .catch(() => {});
-
-      const tenantId = keyRecord.tenantId;
 
       // ── 2. Load all active vendors for this tenant ──
       const allVendors = await db.select().from(vendors)

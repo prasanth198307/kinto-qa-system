@@ -57,6 +57,7 @@ import SalesReturns from "@/pages/sales-returns";
 import MachineStartupReminders from "@/pages/machine-startup-reminders";
 import NotificationSettings from "@/pages/notification-settings";
 import ApiKeysPage from "@/pages/api-keys";
+import CustomerOutstandingReport from "@/pages/customer-outstanding-report";
 import Reports from "@/pages/reports";
 import WhatsAppAnalytics from "@/pages/WhatsAppAnalytics";
 import TemplateManagement from "@/pages/template-management";
@@ -299,7 +300,7 @@ const DASHBOARD_VALID_TABS = [
   'machine-types', 'pm-templates', 'uom', 'raw-material-types', 'template-management',
   'notification-settings', 'data-import', 'spare-parts-stock', 'roles', 'templates', 'api-keys',
   'sales-returns', 'pending-payments', 'payment-management', 'credit-notes',
-  'cancelled-invoices', 'write-off-report', 'dispatch-tracking', 'vendor-types',
+  'cancelled-invoices', 'write-off-report', 'dispatch-tracking', 'vendor-types', 'customer-outstanding-report',
   'spare-parts', 'tds-management', 'purchase-returns', 'scrap-management',
   'hr-employees', 'hr-attendance', 'hr-leaves', 'hr-payroll', 'hr-reports',
   'hr-departments', 'hr-settings', 'hr-recruitment', 'hr-exit', 'hr-tds',
@@ -524,6 +525,8 @@ function ManagerDashboard() {
         return <NotificationSettings />;
       case 'api-keys':
         return <ApiKeysPage />;
+      case 'customer-outstanding-report':
+        return <CustomerOutstandingReport />;
       case 'data-import':
         return <DataImport />;
       case 'users':
@@ -979,6 +982,7 @@ function AdminDashboard() {
         { id: "vendor-history", label: "Vendor History", icon: History, onClick: () => setLocation('/vendor-history') },
         { id: "vendor-debit-notes", label: "Vendor Debit Notes", icon: FileX, onClick: () => setLocation('/vendor-debit-notes') },
         { id: "pending-payments", label: "Pending Payments", icon: IndianRupee, onClick: () => setLocation('/pending-payments') },
+        { id: "customer-outstanding-report", label: "Customer Outstanding", icon: BarChart3, onClick: () => setLocation('/customer-outstanding-report') },
         { id: "payment-management", label: "Payment Management", icon: CreditCard, onClick: () => setLocation('/payment-management') },
         { id: "customer-advances", label: "Customer Advances", icon: Wallet, onClick: () => setLocation('/customer-advances') },
         { id: "credit-notes", label: "Credit Notes", icon: FileText, onClick: () => setLocation('/credit-notes') },
@@ -1272,6 +1276,8 @@ function AdminDashboard() {
         return <NotificationSettings />;
       case 'api-keys':
         return <ApiKeysPage />;
+      case 'customer-outstanding-report':
+        return <CustomerOutstandingReport />;
       case 'data-import':
         return <DataImport />;
       case 'sales-dashboard':
@@ -1513,6 +1519,27 @@ function PendingPaymentsPage() {
       }}
     >
       <PendingPayments />
+    </DashboardShell>
+  );
+}
+
+function CustomerOutstandingReportPage() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('customer-outstanding-report');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell
+      title="Customer Outstanding"
+      onLogoutClick={() => logoutMutation.mutate()}
+      notificationCount={0}
+      navSections={resolvedNav}
+      activeView={activeView}
+      onNavigate={(viewId) => { setActiveView(viewId); }}
+    >
+      <CustomerOutstandingReport />
     </DashboardShell>
   );
 }
@@ -2009,6 +2036,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "vendor-history", label: "Vendor History", icon: History, onClick: () => setLocation('/vendor-history') },
         { id: "vendor-debit-notes", label: "Vendor Debit Notes", icon: FileX, onClick: () => setLocation('/vendor-debit-notes') },
         { id: "pending-payments", label: "Pending Payments", icon: IndianRupee, onClick: () => setLocation('/pending-payments') },
+        { id: "customer-outstanding-report", label: "Customer Outstanding", icon: BarChart3, onClick: () => setLocation('/customer-outstanding-report') },
         { id: "payment-management", label: "Payment Management", icon: CreditCard, onClick: () => setLocation('/payment-management') },
         { id: "customer-advances", label: "Customer Advances", icon: Wallet, onClick: () => setLocation('/customer-advances') },
         { id: "credit-notes", label: "Credit Notes", icon: FileText, onClick: () => setLocation('/credit-notes') },
@@ -3579,6 +3607,7 @@ function Router() {
       <ProtectedRoute path="/cancelled-invoices" component={CancelledInvoicesPageWrapper} />
       <ProtectedRoute path="/write-off-report" component={WriteOffReportPageWrapper} />
       <ProtectedRoute path="/pending-payments" component={PendingPaymentsPage} />
+      <ProtectedRoute path="/customer-outstanding-report" component={CustomerOutstandingReportPage} />
       <ProtectedRoute path="/payment-management" component={PaymentManagementPage} />
       <ProtectedRoute path="/vendor-analytics" component={VendorAnalyticsPage} />
       <ProtectedRoute path="/spare-parts" component={SparePartsPageWrapper} />
