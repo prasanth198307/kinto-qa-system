@@ -55,6 +55,7 @@ import VarianceAnalytics from "@/pages/variance-analytics";
 import SalesReturns from "@/pages/sales-returns";
 import MachineStartupReminders from "@/pages/machine-startup-reminders";
 import NotificationSettings from "@/pages/notification-settings";
+import ApiKeysPage from "@/pages/api-keys";
 import Reports from "@/pages/reports";
 import WhatsAppAnalytics from "@/pages/WhatsAppAnalytics";
 import TemplateManagement from "@/pages/template-management";
@@ -75,7 +76,7 @@ import { ManagerChecklistAssignment } from "@/components/ManagerChecklistAssignm
 import PendingPaymentsDashboard from "@/components/PendingPaymentsDashboard";
 import { OperatorAssignedChecklists } from "@/components/OperatorAssignedChecklists";
 import { VerticalNavSidebar, type NavSection } from "@/components/VerticalNavSidebar";
-import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, ClipboardList, Settings, Calendar, Users, FileText, FileX, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator, IndianRupee, CreditCard, Upload, FolderOpen, Wallet, Car, BookOpen, Scale, BarChart3, Landmark, Tag, Trash2, PackageX, Loader2, Play, UserX, Briefcase, Target, Lock } from "lucide-react";
+import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, ClipboardList, Settings, Calendar, Users, FileText, FileX, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator, IndianRupee, CreditCard, Upload, FolderOpen, Wallet, Car, BookOpen, Scale, BarChart3, Landmark, Tag, Trash2, PackageX, Loader2, Play, UserX, Briefcase, Target, Lock, Key } from "lucide-react";
 import CRMLeadsPage from "@/pages/crm-leads";
 import SalesDashboard from "@/components/SalesDashboard";
 import SalesOrdersPage from "@/pages/sales-orders";
@@ -295,7 +296,7 @@ const DASHBOARD_VALID_TABS = [
   'variance-analytics', 'purchase-orders', 'pm-history', 'role-permissions',
   'vendors', 'assignments',
   'machine-types', 'pm-templates', 'uom', 'raw-material-types', 'template-management',
-  'notification-settings', 'data-import', 'spare-parts-stock', 'roles', 'templates',
+  'notification-settings', 'data-import', 'spare-parts-stock', 'roles', 'templates', 'api-keys',
   'sales-returns', 'pending-payments', 'payment-management', 'credit-notes',
   'cancelled-invoices', 'write-off-report', 'dispatch-tracking', 'vendor-types',
   'spare-parts', 'tds-management', 'purchase-returns', 'scrap-management',
@@ -520,6 +521,8 @@ function ManagerDashboard() {
         return <WhatsAppAnalytics />;
       case 'notification-settings':
         return <NotificationSettings />;
+      case 'api-keys':
+        return <ApiKeysPage />;
       case 'data-import':
         return <DataImport />;
       case 'users':
@@ -1110,6 +1113,7 @@ function AdminDashboard() {
       items: [
         { id: "notification-settings", label: "Notification Settings", icon: Bell },
         { id: "data-import", label: "Data Import", icon: Upload },
+        { id: "api-keys", label: "API Keys", icon: Key },
         { id: "admin-tools", label: "Admin Tools", icon: Wrench, onClick: () => setLocation('/admin-tools') },
         { id: "company-settings", label: "Company Settings", icon: Building2, onClick: () => setLocation('/company-settings') },
       ],
@@ -1265,6 +1269,8 @@ function AdminDashboard() {
         return <WhatsAppAnalytics />;
       case 'notification-settings':
         return <NotificationSettings />;
+      case 'api-keys':
+        return <ApiKeysPage />;
       case 'data-import':
         return <DataImport />;
       case 'sales-dashboard':
@@ -2118,6 +2124,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       items: [
         { id: "notification-settings", label: "Notification Settings", icon: Bell, onClick: () => setLocation('/?tab=notification-settings') },
         { id: "data-import", label: "Data Import", icon: Upload, onClick: () => setLocation('/?tab=data-import') },
+        { id: "api-keys", label: "API Keys", icon: Key, onClick: () => setLocation('/?tab=api-keys') },
         { id: "admin-tools", label: "Admin Tools", icon: Wrench, onClick: () => setLocation('/admin-tools') },
         { id: "company-settings", label: "Company Settings", icon: Building2, onClick: () => setLocation('/company-settings') },
       ],
