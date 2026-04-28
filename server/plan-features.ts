@@ -17,6 +17,7 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
     "invoices",
     "vendor-history",
     "pending-payments",
+    "customer-outstanding-report",
     "payment-management",
     "customer-advances",
     "credit-notes",
