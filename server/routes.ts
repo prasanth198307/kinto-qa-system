@@ -27364,21 +27364,27 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
   // GET /api/external/customer-outstanding
   // Authorization: Bearer <api_key>
   //
-  // Business Rules:
-  //   COD vendor        → include ALL pending invoices
-  //   Bill-to-Bill      → exclude latest (most recent) invoice
-  //   Bill-to-Bill with ANY invoice > 30 days old → override: include ALL invoices
+  // Outstanding Calculation (mirrors the in-app Vendor Ledger formula):
+  //   For each vendor family (parent + children):
+  //     1. Match ALL invoices where buyer_name OR ship_to_name matches any vendor name in family
+  //     2. Load invoice_payments for those invoices (actual cash / DN adjustments)
+  //     3. Per invoice: outstanding = total_amount + debit_notes - credit_notes - SUM(invoice_payments)
+  //     4. Load customer advances and reduce from total
+  //     5. Net balance = totalInvoiced + totalDebitNotes - totalCreditNotes
+  //                      - actualPayments - dnAdjustments - advances
+  //
+  //   This matches the Vendor Ledger "Current Balance" exactly.
+  //
+  // Business Rules (applied to the invoice breakdown list):
+  //   COD vendor        → include ALL outstanding invoices
+  //   Bill-to-Bill      → exclude latest (most recent) outstanding invoice
+  //   Bill-to-Bill with ANY outstanding invoice > 30 days old → include ALL
   //
   // Parent-Child vendor roll-up:
-  //   Child vendors (parentVendorId set) are NOT shown as standalone entries.
-  //   Their invoices are pooled with the parent's invoices and summed together.
-  //   Parent entry includes `hasChildren: true`, `childAccountNames: [...]`, and
-  //   each invoice line carries a `sourceAccount` field showing which account it came from.
+  //   Child vendors are pooled under the parent.
+  //   `hasChildren`, `childAccountNames`, `sourceAccount` per invoice indicate origin.
   //
-  // HP Retail (HPCL) customers:
-  //   Identified by buyer_name containing "HPCL" (case-insensitive).
-  //   Response includes an extra `shippingAddress` object (from most recent invoice with ship_to data).
-  //   `isHpRetail: true` flag is also set in the customer record.
+  // HP Retail (HPCL) customers: `isHpRetail: true` + `shippingAddress` object.
   //
   // Response amounts are in RUPEES (paise ÷ 100, 2 dp)
   app.get('/api/external/customer-outstanding', async (req: any, res) => {
@@ -27422,20 +27428,36 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
         }
       }
 
-      // ── 3. Load all unpaid invoices for this tenant ──
-      const unpaidInvoicesRaw = await db.execute(sql`
-        SELECT id, invoice_number, invoice_date, buyer_name, total_amount, amount_received, status,
-               ship_to_name, ship_to_address, ship_to_city, ship_to_state, ship_to_pincode
+      // ── 3. Load ALL invoices for this tenant (not just unpaid — mirrors vendor ledger) ──
+      const allInvoicesRaw = await db.execute(sql`
+        SELECT id, invoice_number, invoice_date, buyer_name, ship_to_name,
+               total_amount, amount_received, status,
+               ship_to_address, ship_to_city, ship_to_state, ship_to_pincode
         FROM invoices
         WHERE tenant_id = ${tenantId}
           AND record_status = 1
           AND status != 'cancelled'
-          AND COALESCE(amount_received, 0) < total_amount
         ORDER BY invoice_date ASC
       `);
-      const unpaidInvoices: any[] = unpaidInvoicesRaw.rows || [];
+      const allInvoicesList: any[] = allInvoicesRaw.rows || [];
 
-      // ── 4. Load credit notes & debit notes for accurate outstanding ──
+      // ── 4. Load invoice_payments (actual received amounts — mirrors vendor ledger) ──
+      const pmtRows = await db.execute(sql`
+        SELECT invoice_id,
+               SUM(CASE WHEN payment_method != 'Debit Note Adjustment' THEN amount ELSE 0 END) AS actual_paid,
+               SUM(CASE WHEN payment_method  = 'Debit Note Adjustment' THEN amount ELSE 0 END) AS dn_adj
+        FROM invoice_payments
+        WHERE tenant_id = ${tenantId} AND record_status = 1
+        GROUP BY invoice_id
+      `);
+      const actualPaidByInvoice = new Map<string, number>();
+      const dnAdjByInvoice = new Map<string, number>();
+      (pmtRows.rows || []).forEach((r: any) => {
+        actualPaidByInvoice.set(r.invoice_id, Number(r.actual_paid) || 0);
+        dnAdjByInvoice.set(r.invoice_id, Number(r.dn_adj) || 0);
+      });
+
+      // ── 5. Load credit notes & debit notes ──
       const cnRows = await db.execute(sql`
         SELECT invoice_id, SUM(grand_total) AS total
         FROM credit_notes
@@ -27448,128 +27470,160 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
         WHERE tenant_id = ${tenantId} AND record_status = 1 AND status = 'issued'
         GROUP BY invoice_id
       `);
-
       const creditByInvoice = new Map<string, number>();
       (cnRows.rows || []).forEach((r: any) => creditByInvoice.set(r.invoice_id, Number(r.total) || 0));
       const debitByInvoice = new Map<string, number>();
       (dnRows.rows || []).forEach((r: any) => debitByInvoice.set(r.invoice_id, Number(r.total) || 0));
 
-      // ── 5. Enrich invoices with outstanding balances ──
+      // ── 6. Load customer advances (available balance = amount - usedAmount) ──
+      const advRows = await db.execute(sql`
+        SELECT vendor_id, SUM(amount - COALESCE(used_amount, 0)) AS available
+        FROM customer_advances
+        WHERE tenant_id = ${tenantId} AND record_status = 1 AND status = 'active'
+        GROUP BY vendor_id
+      `);
+      const advancesByVendor = new Map<string, number>();
+      (advRows.rows || []).forEach((r: any) => advancesByVendor.set(r.vendor_id, Number(r.available) || 0));
+
+      // ── 7. Enrich every invoice with per-invoice outstanding ──
+      //   Use invoice_payments as source of truth for received amount.
+      //   Fallback: amount_received from invoice table if no payment records exist.
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      const enriched = unpaidInvoices.map((inv: any) => {
+      const enriched = allInvoicesList.map((inv: any) => {
         const total = Number(inv.total_amount) || 0;
-        const received = Number(inv.amount_received) || 0;
         const creditAdj = creditByInvoice.get(inv.id) || 0;
         const debitAdj = debitByInvoice.get(inv.id) || 0;
-        const effectiveTotal = total + debitAdj - creditAdj;
-        const outstanding = Math.max(0, effectiveTotal - received);
+        // Use SUM of invoice_payments as received; fall back to amount_received if no payment records
+        const paidFromPayments = (actualPaidByInvoice.get(inv.id) || 0) + (dnAdjByInvoice.get(inv.id) || 0);
+        const amtRcvd = Number(inv.amount_received) || 0;
+        const effectiveReceived = Math.max(amtRcvd, paidFromPayments);
+        const outstanding = Math.max(0, total + debitAdj - creditAdj - effectiveReceived);
         const invoiceDate = new Date(inv.invoice_date);
         const daysOld = Math.floor((today.getTime() - invoiceDate.getTime()) / 86400000);
         return {
           id: inv.id,
           invoiceNumber: inv.invoice_number,
           invoiceDate: inv.invoice_date,
-          buyerName: inv.buyer_name,
+          buyerName: inv.buyer_name as string,
+          shipToName: (inv.ship_to_name as string) || null,
           totalAmount: total,
-          amountReceived: received,
           outstanding,
           daysOld,
-          // Shipping address fields from invoice
-          shipToName: inv.ship_to_name || null,
           shipToAddress: inv.ship_to_address || null,
           shipToCity: inv.ship_to_city || null,
           shipToState: inv.ship_to_state || null,
           shipToPincode: inv.ship_to_pincode || null,
         };
-      }).filter(i => i.outstanding > 0);
+      });
 
-      // ── 6. Group invoices by buyerName → match to vendor ──
-      const invoicesByBuyer = new Map<string, typeof enriched>();
+      // ── 8. Build lookup: name (lower) → list of enriched invoices with outstanding ──
+      //   An invoice belongs to a name if buyer_name OR ship_to_name matches.
+      const invoicesByName = new Map<string, typeof enriched>();
+      const addToName = (name: string | null | undefined, inv: typeof enriched[0]) => {
+        const k = (name || '').toLowerCase().trim();
+        if (!k) return;
+        if (!invoicesByName.has(k)) invoicesByName.set(k, []);
+        invoicesByName.get(k)!.push(inv);
+      };
       for (const inv of enriched) {
-        const key = inv.buyerName?.toLowerCase().trim() || '';
-        if (!invoicesByBuyer.has(key)) invoicesByBuyer.set(key, []);
-        invoicesByBuyer.get(key)!.push(inv);
+        addToName(inv.buyerName, inv);
+        if (inv.shipToName && inv.shipToName.toLowerCase() !== inv.buyerName?.toLowerCase()) {
+          addToName(inv.shipToName, inv);
+        }
       }
 
-      // ── 7. Apply business rules per vendor ──
-      // Child vendors are skipped as standalone entries; their invoices are rolled up under the parent.
+      // ── 9. Apply business rules per vendor ──
       const results: any[] = [];
 
       for (const vendor of allVendors) {
-        // Skip child vendors — they are rolled up under their parent
-        if (childVendorIds.has(vendor.id)) continue;
+        if (childVendorIds.has(vendor.id)) continue; // rolled up under parent
 
-        const key = vendor.vendorName?.toLowerCase().trim() || '';
-        const ownInvoices = invoicesByBuyer.get(key) || [];
-
-        // Collect invoices from all children and merge with parent's own invoices
+        // Gather all name keys for this vendor family (parent + ship_to + children + their ship_to)
         const children = childrenByParentId.get(vendor.id) || [];
-        const childInvoices: typeof enriched = [];
-        const childNames: string[] = [];
-        for (const child of children) {
-          const childKey = child.vendorName?.toLowerCase().trim() || '';
-          const ci = invoicesByBuyer.get(childKey) || [];
-          childInvoices.push(...ci);
-          if (ci.length > 0) childNames.push(child.vendorName || '');
+        const hasChildren = children.length > 0;
+        const nameKeys = [
+          vendor.vendorName,
+          (vendor as any).shipToName,
+          ...children.map(c => c.vendorName),
+          ...children.map(c => (c as any).shipToName),
+        ]
+          .filter(Boolean)
+          .map((n: string) => n.toLowerCase().trim());
+
+        // Collect invoices (deduplicate by invoice id — an invoice might match on both buyer and ship_to)
+        const seen = new Set<string>();
+        const vendorInvoices: typeof enriched = [];
+        const childNames = new Set<string>();
+        for (const key of nameKeys) {
+          for (const inv of invoicesByName.get(key) || []) {
+            if (!seen.has(inv.id)) {
+              seen.add(inv.id);
+              vendorInvoices.push(inv);
+              // Track which child name this invoice came from
+              const childMatch = children.find(c =>
+                c.vendorName?.toLowerCase() === key || (c as any).shipToName?.toLowerCase() === key
+              );
+              if (childMatch) childNames.add(childMatch.vendorName || '');
+            }
+          }
         }
 
-        const vendorInvoices = [...ownInvoices, ...childInvoices];
-        const hasChildren = children.length > 0;
+        // Only consider invoices that have a balance > 0
+        const outstandingInvoices = vendorInvoices.filter(i => i.outstanding > 0);
+        if (outstandingInvoices.length === 0) continue;
 
-        if (vendorInvoices.length === 0) continue; // skip vendors with no pending invoices
+        // Customer advances for this vendor family
+        const familyAdvances = [vendor.id, ...children.map(c => c.id)]
+          .reduce((s, id) => s + (advancesByVendor.get(id) || 0), 0);
 
+        // Apply bill-to-bill / COD rules
         const paymentMode = (vendor as any).paymentMode || 'bill_to_bill';
-        let includedInvoices: typeof vendorInvoices;
+        let includedInvoices: typeof outstandingInvoices;
         let latestInvoiceExcluded = false;
         let allIncludedDueToOverdue = false;
 
         if (paymentMode === 'cod') {
-          // Rule: COD — include ALL invoices
-          includedInvoices = vendorInvoices;
+          includedInvoices = outstandingInvoices;
         } else {
-          // Bill to Bill rules
-          // Sort by date desc to find latest
-          const sorted = [...vendorInvoices].sort(
+          const sorted = [...outstandingInvoices].sort(
             (a, b) => new Date(b.invoiceDate).getTime() - new Date(a.invoiceDate).getTime()
           );
-          // Check if ANY invoice (including latest) is > 30 days old
           const anyOverdue = sorted.some(inv => inv.daysOld > 30);
-
           if (anyOverdue) {
-            // Rule 3: Any invoice > 30 days — include ALL
-            includedInvoices = vendorInvoices;
+            includedInvoices = outstandingInvoices;
             allIncludedDueToOverdue = true;
           } else {
-            // Rule 1: No overdue — exclude latest invoice
-            includedInvoices = sorted.slice(1); // remove latest
+            includedInvoices = sorted.slice(1); // exclude latest (current cycle)
             latestInvoiceExcluded = true;
           }
         }
 
-        const pendingAmountPaise = includedInvoices.reduce((s, i) => s + i.outstanding, 0);
+        // pendingAmountPaise = sum of included invoice outstandings minus advances
+        const grossPaise = includedInvoices.reduce((s, i) => s + i.outstanding, 0);
+        const pendingAmountPaise = Math.max(0, grossPaise - familyAdvances);
 
-        // ── HP Retail detection: buyer name contains "HPCL" (case-insensitive) ──
-        const isHpRetail = vendorInvoices.some(i => i.buyerName?.toUpperCase().includes('HPCL'));
-        // Use shipping address from the most recent invoice that has one
+        // HP Retail detection
+        const isHpRetail = outstandingInvoices.some(i => (i.buyerName || '').toUpperCase().includes('HPCL'));
         let shippingAddress: Record<string, string | null> | null = null;
         if (isHpRetail) {
-          const sortedAll = [...vendorInvoices].sort(
+          const sortedAll = [...outstandingInvoices].sort(
             (a, b) => new Date(b.invoiceDate).getTime() - new Date(a.invoiceDate).getTime()
           );
-          const withShipping = sortedAll.find(i => i.shipToAddress || i.shipToName);
-          if (withShipping) {
+          const withShip = sortedAll.find(i => i.shipToAddress || i.shipToName);
+          if (withShip) {
             shippingAddress = {
-              name: withShipping.shipToName,
-              address: withShipping.shipToAddress,
-              city: withShipping.shipToCity,
-              state: withShipping.shipToState,
-              pincode: withShipping.shipToPincode,
+              name: withShip.shipToName,
+              address: withShip.shipToAddress,
+              city: withShip.shipToCity,
+              state: withShip.shipToState,
+              pincode: withShip.shipToPincode,
             };
           }
         }
 
+        const childNameList = [...childNames];
         const entry: any = {
           vendorId: vendor.id,
           vendorCode: vendor.vendorCode,
@@ -27578,10 +27632,11 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
           paymentMode,
           isHpRetail,
           hasChildren,
-          ...(hasChildren && { childAccountNames: childNames }),
+          ...(hasChildren && childNameList.length > 0 && { childAccountNames: childNameList }),
           invoiceCount: includedInvoices.length,
-          totalUnpaidInvoices: vendorInvoices.length,
+          totalOutstandingInvoices: outstandingInvoices.length,
           pendingAmountRupees: parseFloat((pendingAmountPaise / 100).toFixed(2)),
+          advancesAppliedRupees: parseFloat((Math.min(grossPaise, familyAdvances) / 100).toFixed(2)),
           latestInvoiceExcluded,
           allIncludedDueToOverdue,
           invoices: includedInvoices.map(i => ({
@@ -27592,11 +27647,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
             daysOld: i.daysOld,
           })),
         };
-
-        if (isHpRetail) {
-          entry.shippingAddress = shippingAddress;
-        }
-
+        if (isHpRetail && shippingAddress) entry.shippingAddress = shippingAddress;
         results.push(entry);
       }
 
