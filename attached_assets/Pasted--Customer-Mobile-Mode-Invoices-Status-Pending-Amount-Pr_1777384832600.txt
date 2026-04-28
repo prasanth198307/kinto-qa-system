@@ -1,0 +1,360 @@
+	Customer	Mobile	Mode	Invoices	Status	Pending Amount
+Prasanth Dusi
+9000151199	Bill-To-Bill	60	
+Overdue
+₹19,93,788.69
+PUREJAL TECHNOLOGIES PRIVATE LIMITED
++ Purejal technologies Pvt Ltd Hydrabad
+7766059995	Bill-To-Bill	7	
+Overdue
+₹5,27,228.13
+SRI TARAKARAMA SCMALC CO PO SOCIETY
+9963015905	Bill-To-Bill	1	
+Overdue
+₹4,37,773.00
+Kinto- Isukathota Warehouse
++ DUBA JAGADEESH, VIJAY DURGA AGENCY
+7093027105	Bill-To-Bill	13	
+Overdue
+₹3,04,887.69
+Tulasi Beverages
+9030560377	Bill-To-Bill	4	
+Overdue
+₹2,86,158.06
+Kinto- Rajam Warehouse
++ Sri Kanthamma Talli Agencies
+8500962029	Bill-To-Bill	3	
+Overdue
+₹2,43,174.03
+KINTO-MADUGULA WAREHOUSE
++ PADALA CHANIKYA, PADALA SRINIVASA RAO
+9705455632	Bill-To-Bill	5	
+Overdue
+Adv ₹50,000.00
+₹2,29,670.75
+PAMPANA HEMANTH
+9182451634	Bill-To-Bill	3	
+Overdue
+₹1,95,329.33
+KINTO-KANCHARAPALEM WARE HOUSE
+9052540399	Bill-To-Bill	6	
+Overdue
+₹1,33,201.00
+SRI LAXMI GANESH AGENCY
+9515105545	Bill-To-Bill	1	
+Overdue
+₹1,07,999.85
+VENKATA SIMHADRI TRADERS
+96765 36789	Bill-To-Bill	2	
+Overdue
+₹1,04,998.08
+Vinni Enterprises
+9985324690	Bill-To-Bill	1	
+Overdue
+₹99,998.85
+Nadipena Ganesh
+9030993375	Bill-To-Bill	5	
+Overdue
+₹97,128.38
+Sivaramakrishna Enterprises
+0000000000	Bill-To-Bill	2	
+Overdue
+₹90,059.00
+KINTO-ANAKAPALLE WAREHOUSE-2
++ K L L MAHALAKSHMI
+8523023054	Bill-To-Bill	1/2	
+1 held
+₹78,933.32
+KINTO-SRIKAKULAM WAREHOUSE
++ VENKATA VAISHNAVI ENTERPRISES, Bora Dhanunjaya Naidu_Aadhar
+7036358319	Bill-To-Bill	1	
+Overdue
+₹71,086.40
+KINTO-YANAM WAREHOUSE
+9908881483	Bill-To-Bill	1	
+Overdue
+₹69,100.00
+Basava Srinivasa Rao
+9676536789	Bill-To-Bill	1	
+Overdue
+₹57,500.00
+GEDELA SRINIVASARAO
+9652830791	Bill-To-Bill	2	
+Overdue
+₹57,500.00
+KINTO-VIZIANAGARAM WAREHOUSE
++ SRI SUDHARSAN TRADERS, Madhu VZM
+9553393838	Bill-To-Bill	5	
+Overdue
+₹52,779.53
+Guttula Nageswararao
+7995427520	Bill-To-Bill	1	
+Overdue
+₹47,998.40
+KINTO- BOBBILI WAREHOUSE
++ PEDDINTI SATISH KUMAR
+9494878668	Bill-To-Bill	1	
+Overdue
+₹47,428.47
+VISAKH RETAIL RO Petronilayam, HPCL
+MSHSD MILLENNIUM COMCO SIRIPURAM JNT.
+9603136523	Bill-To-Bill	4	
+Overdue
+₹40,291.80
+NAMADI RAJENDRA PRASAD
+7013210122	Bill-To-Bill	1	
+Overdue
+₹39,500.00
+Tenneti Manirathnam
+9603646123	Bill-To-Bill	1	
+Overdue
+₹36,086.00
+JSN TRADERS
+7815850457	Bill-To-Bill	1	
+Overdue
+₹33,500.00
+SURAGALA RAMARAO
+9492014467	Bill-To-Bill	1	
+Overdue
+₹33,202.77
+Mutyala Naveen Kumar
+6302489177	Bill-To-Bill	1	
+Overdue
+₹32,000.00
+VISAKH RETAIL RO Petronilayam, HPCL
+ADHOC SREE MAHALAKSHMI FUEL STATION
+9010686996	Bill-To-Bill	2	
+Overdue
+₹31,598.85
+SAI SURENDRA VELAGA
+8106661044	Bill-To-Bill	1	
+Overdue
+₹30,800.00
+KEERTHI ICE CREAM PARLOUR-NAIDU
+7989319553	Bill-To-Bill	3	
+Overdue
+₹28,803.00
+VISAKH RETAIL RO Petronilayam, HPCL
+MSHSD HP AUTOCARE MILLENNIUM CLASSIC YP
+9163404034	Bill-To-Bill	4	
+Overdue
+₹28,092.52
+SRI VENKATESWARA GAS & GENERAL AGEN
+9440030778	Bill-To-Bill	1	
+Overdue
+₹26,713.00
+Yelleti Santoshi
+9381851185	Bill-To-Bill	2	
+Overdue
+₹26,000.00
+Dhulipudi Venkateswara Rao
+9542724979	Bill-To-Bill	1	
+Overdue
+₹25,280.00
+VISAKH RETAIL RO Petronilayam, HPCL
+VISAKHA FILLING STATION
+8985364848	Bill-To-Bill	4	
+Overdue
+₹22,274.20
+KINTO-VIZIANAGARAM WAREHOUSE 2
+9642233993	Bill-To-Bill	1	
+Overdue
+₹22,000.00
+Polamarasetti
+—	Bill-To-Bill	1/2	
+1 held
+₹21,999.60
+MANISHA ENTERPRISES
+9440509366	Bill-To-Bill	1	
+Overdue
+₹20,041.00
+KORADA RAMANANDAM
+7036264900	Bill-To-Bill	3	
+Overdue
+₹20,024.00
+Uttarakavatam Lakshmi Tarun
+9490267623	Bill-To-Bill	2	
+Overdue
+₹20,001.00
+SVVSJSRN GANESH
+7013210122	Bill-To-Bill	1	
+Overdue
+₹18,000.00
+INDHU DRINKING WATER SUPPLY
+7013919861	Bill-To-Bill	1	
+Overdue
+₹17,000.00
+ESWAR KUMAR
+9966064767	Bill-To-Bill	1	
+Overdue
+₹15,768.00
+Vuggina Narasingarao
+7207638760	Bill-To-Bill	1	
+Overdue
+₹15,663.00
+Koyilada kiran teja
+6303551129	Bill-To-Bill	1	
+Overdue
+₹14,499.45
+VISAKH RETAIL RO Petronilayam, HPCL
+MSHSD MILLENNIUM PLUS COMCO MULLAGADDA
+9163404034	Bill-To-Bill	3	
+Overdue
+₹13,598.86
+Dadi Suresh
+9396949999	Bill-To-Bill	2	
+Overdue
+₹13,150.10
+VISAKH RETAIL RO Petronilayam, HPCL
+ADHOC JAGANNADHA FUEL STATION
+8977379797	Bill-To-Bill	1	
+Overdue
+₹13,034.55
+Ramana Tummaganti
+—	Bill-To-Bill	1/2	
+1 held
+₹11,999.40
+Jagadeeshwarao Ganapathiraju
+—	Bill-To-Bill	1	
+Overdue
+₹11,254.06
+Golla Nagendra Rao
+8008819315	Bill-To-Bill	1	
+Overdue
+₹10,000.00
+DUDI SRINU
+7032244363	Bill-To-Bill	1	
+Overdue
+₹9,500.30
+KINTO-ANAKAPALLE WAREHOUSE
+8464837394	Bill-To-Bill	1	
+Overdue
+₹8,777.00
+Pediredla Thavithi Naidu
+9492725660	Bill-To-Bill	1	
+Overdue
+₹8,400.32
+VISAKH RETAIL RO Petronilayam, HPCL
+SRI VENKATESWARA SERVICE STATION
+7386769555	Bill-To-Bill	2	
+Overdue
+₹7,562.00
+Vonna Srinivasarao
+9032226056	Bill-To-Bill	1	
+Overdue
+₹6,001.00
+KOLLI SATYANARAYANA
+8500396259	Bill-To-Bill	1	
+Overdue
+₹6,000.00
+C.I. KOTHAVALASA POLICE STATION
+9121109421	Bill-To-Bill	1	
+Overdue
+₹4,800.00
+SRI VARALAKSHMI AGENCIES
+9912621338	Bill-To-Bill	1	
+Overdue
+₹3,852.00
+VISAKH RETAIL RO Petronilayam, HPCL
+MSHSD VISALAKSHI FILLING STATION RAMPURM
+8985071118	Bill-To-Bill	1	
+Overdue
+₹3,442.00
+N Eswara Rao
+9000151199	Bill-To-Bill	1	
+Overdue
+₹3,299.94
+SHRI SATYAMAHALAXMI GAS AGENCY
+9550348480	Bill-To-Bill	1	
+Overdue
+₹2,668.00
+P.T.NAIDU
+9885497800	Bill-To-Bill	1	
+Overdue
+₹2,299.97
+SD ENTERPRISES
+9676364949	Bill-To-Bill	1	
+Overdue
+₹2,201.00
+Madasi Bhaskar
+9052025787	Bill-To-Bill	1	
+Overdue
+₹2,000.91
+Bhuvaneswari Agencies
+8985705768	Bill-To-Bill	1	
+Overdue
+₹1,996.00
+Shiva
+9985696321	Bill-To-Bill	1	
+Overdue
+₹1,300.01
+Prasanth Dusi Brother Sivaram krishna
+9000151199	Bill-To-Bill	1	
+Overdue
+₹1,200.05
+SIRIPURAPU DEVUDU
+9885302565	Bill-To-Bill	1	
+Overdue
+₹900.00
+Kollati Ratnam
+0000000000	Bill-To-Bill	1	
+Overdue
+₹394.00
+SS Srinivasa Rao
+0000000000	Bill-To-Bill	1	
+Overdue
+₹80.00
+SRI VENKATESWARA AGENCIES
+9440193997	Bill-To-Bill	1	
+Overdue
+₹64.00
+Kapuganti Anuradha
+0000000000	Bill-To-Bill	1	
+Overdue
+₹22.00
+Yalla Vasanth
+9381023787	Bill-To-Bill	1	
+Overdue
+₹3.00
+Palacharala Venuprasad
+8341569999	Bill-To-Bill	1	
+Overdue
+₹2.00
+P VENKATA MUKHESWARA RAO
+9394258271	Bill-To-Bill	1	
+Overdue
+₹1.00
+Mullangi Shalem Raju
+9704108566	Bill-To-Bill	1	
+Overdue
+₹0.85
+AMMAYAMMA HP GAS GRAMIN VITRAK
+9666209443	Bill-To-Bill	1	
+Overdue
+₹0.66
+KINTO-PARVATHIPURAM WAREHOUSE
++ Raja Rao Bhaskara, RR TRADERS
+9440383611	Bill-To-Bill	2/3	
+1 held
+Adv ₹1,29,527.39
+₹0.00
+Mr.Sumanth
+—	Bill-To-Bill	0/1	
+1 held
+₹0.00
+BHANU AGENCY
+—	Bill-To-Bill	0/1	
+1 held
+₹0.00
+Uday Bhaskar Rao
+—	Bill-To-Bill	0/1	
+1 held
+₹0.00
+VINJIMURI KISHOR
+—	Bill-To-Bill	0/1	
+1 held
+₹0.00
+K K L MAHALAKSHMI
+—	Bill-To-Bill	0/1	
+1 held
+₹0.00
