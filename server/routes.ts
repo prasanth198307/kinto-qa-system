@@ -29,6 +29,7 @@ import { importCreditNotesFromExcel } from "./creditnote-import";
 import { parseExcelFile, commitImport } from "./cashRegisterImport";
 import { importCashRegisterFromExcel } from "./importCashRegisterFromExcel";
 import archiver from "archiver";
+import { processMessage as chatAgentProcess } from "./chatAgent";
 import { insertCashRegisterDaySchema, insertCashRegisterTransactionSchema, insertCashRegisterExpenseItemSchema, insertSalespersonMappingSchema, cashRegisterDays, cashRegisterTransactions, cashRegisterExpenseItems, expenseVouchers, expenseItems, customerAdvances, advanceApplications, insertCustomerAdvanceSchema, insertAdvanceApplicationSchema, journalEntries, journalLines, chartOfAccounts, budgets, budgetItems, tenants, subscriptionPlans, subscriptions, billingEvents, deletionAudit } from "@shared/schema";
 import { sql, and, eq, ne, gte, lte, gt, asc, desc, inArray, isNotNull, isNull, or, ilike, type SQL } from "drizzle-orm";
 
@@ -27272,6 +27273,23 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
     } catch (err: any) {
       console.error('List demo requests error:', err);
       return res.status(500).json({ message: 'Failed to fetch demo requests.' });
+    }
+  });
+
+  // ─── ERP Chat Agent ─────────────────────────────────────────────────────────
+  // POST /api/chat  — local 80-intent agent, no external AI needed
+  app.post('/api/chat', isAuthenticated, async (req: any, res) => {
+    try {
+      const tenantId: number = (req.session as any).tenantId ?? req.user?.tenantId ?? 1;
+      const { message } = req.body;
+      if (!message || typeof message !== 'string' || !message.trim()) {
+        return res.status(400).json({ error: 'message is required' });
+      }
+      const response = await chatAgentProcess(pool, tenantId, message.trim());
+      res.json(response);
+    } catch (err) {
+      console.error('[ChatAgent Route] error:', err);
+      res.status(500).json({ text: 'Something went wrong. Please try again.', intent: 'error' });
     }
   });
 
