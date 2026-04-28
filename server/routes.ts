@@ -27428,6 +27428,20 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
         }
       }
 
+      // Pre-aggregate: collect ALL mobile numbers per unique vendor name.
+      // When N vendor records share the same name (e.g. 96 HPCL outlets), we process
+      // the name only once but surface all mobile numbers so the caller can notify all contacts.
+      const mobilesByVendorName = new Map<string, string[]>();
+      for (const v of allVendors) {
+        if (childVendorIds.has(v.id)) continue;
+        const nk = (v.vendorName || '').toLowerCase().trim();
+        if (!mobilesByVendorName.has(nk)) mobilesByVendorName.set(nk, []);
+        const mobile = (v as any).mobileNumber || (v as any).mobile || '';
+        if (mobile && mobile !== '0000000000' && !mobilesByVendorName.get(nk)!.includes(mobile)) {
+          mobilesByVendorName.get(nk)!.push(mobile);
+        }
+      }
+
       // ── 3. Load ALL invoices for this tenant (not just unpaid — mirrors vendor ledger) ──
       const allInvoicesRaw = await db.execute(sql`
         SELECT id, invoice_number, invoice_date, buyer_name, ship_to_name,
@@ -27535,10 +27549,19 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       }
 
       // ── 9. Apply business rules per vendor ──
+      // seenVendorNames ensures vendors sharing the same name (e.g. 96 HPCL records) are
+      // processed only ONCE — the same invoices would be matched to all of them, so
+      // processing all would inflate the outstanding N-fold.
+      const seenVendorNames = new Set<string>();
       const results: any[] = [];
 
       for (const vendor of allVendors) {
         if (childVendorIds.has(vendor.id)) continue; // rolled up under parent
+
+        // Deduplicate by vendor name — skip subsequent records with an already-seen name
+        const nameKey = (vendor.vendorName || '').toLowerCase().trim();
+        if (seenVendorNames.has(nameKey)) continue;
+        seenVendorNames.add(nameKey);
 
         // Gather all name keys for this vendor family (parent + ship_to + children + their ship_to)
         const children = childrenByParentId.get(vendor.id) || [];
@@ -27624,11 +27647,15 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
         }
 
         const childNameList = [...childNames];
+        // Collect all mobile numbers for this vendor name (handles multiple vendor records with same name)
+        const allMobiles = mobilesByVendorName.get(nameKey) || [];
         const entry: any = {
           vendorId: vendor.id,
           vendorCode: vendor.vendorCode,
           customerName: vendor.vendorName,
-          mobileNumber: vendor.mobileNumber,
+          // Primary mobile for backward compat; allMobileNumbers for bulk-notify use cases
+          mobileNumber: allMobiles[0] || vendor.mobileNumber || '',
+          ...(allMobiles.length > 1 && { allMobileNumbers: allMobiles }),
           paymentMode,
           isHpRetail,
           hasChildren,
