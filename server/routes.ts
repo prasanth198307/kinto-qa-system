@@ -27351,6 +27351,12 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
   //   Bill-to-Bill      → exclude latest (most recent) invoice
   //   Bill-to-Bill with ANY invoice > 30 days old → override: include ALL invoices
   //
+  // Parent-Child vendor roll-up:
+  //   Child vendors (parentVendorId set) are NOT shown as standalone entries.
+  //   Their invoices are pooled with the parent's invoices and summed together.
+  //   Parent entry includes `hasChildren: true`, `childAccountNames: [...]`, and
+  //   each invoice line carries a `sourceAccount` field showing which account it came from.
+  //
   // HP Retail (HPCL) customers:
   //   Identified by buyer_name containing "HPCL" (case-insensitive).
   //   Response includes an extra `shippingAddress` object (from most recent invoice with ship_to data).
@@ -27386,6 +27392,17 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       // ── 2. Load all active vendors for this tenant ──
       const allVendors = await db.select().from(vendors)
         .where(and(eq(vendors.tenantId, tenantId), eq(vendors.recordStatus, 1)));
+
+      // Build parent → children map for roll-up logic
+      const childrenByParentId = new Map<string, typeof allVendors>();
+      const childVendorIds = new Set<string>();
+      for (const v of allVendors) {
+        if (v.parentVendorId) {
+          childVendorIds.add(v.id);
+          if (!childrenByParentId.has(v.parentVendorId)) childrenByParentId.set(v.parentVendorId, []);
+          childrenByParentId.get(v.parentVendorId)!.push(v);
+        }
+      }
 
       // ── 3. Load all unpaid invoices for this tenant ──
       const unpaidInvoicesRaw = await db.execute(sql`
@@ -27459,11 +27476,29 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       }
 
       // ── 7. Apply business rules per vendor ──
+      // Child vendors are skipped as standalone entries; their invoices are rolled up under the parent.
       const results: any[] = [];
 
       for (const vendor of allVendors) {
+        // Skip child vendors — they are rolled up under their parent
+        if (childVendorIds.has(vendor.id)) continue;
+
         const key = vendor.vendorName?.toLowerCase().trim() || '';
-        const vendorInvoices = invoicesByBuyer.get(key) || [];
+        const ownInvoices = invoicesByBuyer.get(key) || [];
+
+        // Collect invoices from all children and merge with parent's own invoices
+        const children = childrenByParentId.get(vendor.id) || [];
+        const childInvoices: typeof enriched = [];
+        const childNames: string[] = [];
+        for (const child of children) {
+          const childKey = child.vendorName?.toLowerCase().trim() || '';
+          const ci = invoicesByBuyer.get(childKey) || [];
+          childInvoices.push(...ci);
+          if (ci.length > 0) childNames.push(child.vendorName || '');
+        }
+
+        const vendorInvoices = [...ownInvoices, ...childInvoices];
+        const hasChildren = children.length > 0;
 
         if (vendorInvoices.length === 0) continue; // skip vendors with no pending invoices
 
@@ -27524,6 +27559,8 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
           mobileNumber: vendor.mobileNumber,
           paymentMode,
           isHpRetail,
+          hasChildren,
+          ...(hasChildren && { childAccountNames: childNames }),
           invoiceCount: includedInvoices.length,
           totalUnpaidInvoices: vendorInvoices.length,
           pendingAmountRupees: parseFloat((pendingAmountPaise / 100).toFixed(2)),
@@ -27532,6 +27569,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
           invoices: includedInvoices.map(i => ({
             invoiceNumber: i.invoiceNumber,
             invoiceDate: i.invoiceDate,
+            sourceAccount: i.buyerName,
             outstandingRupees: parseFloat((i.outstanding / 100).toFixed(2)),
             daysOld: i.daysOld,
           })),
