@@ -46,6 +46,7 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
     "notification-settings",
     "data-import",
     "admin-tools",
+    "api-keys",
     "spare-parts",
     "spare-parts-stock",
     "company-settings",

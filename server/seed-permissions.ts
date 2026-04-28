@@ -47,6 +47,7 @@ const NAV_ITEM_TO_SCREEN_KEY: Record<string, string> = {
   'spare-parts': 'spare_parts',
   'spare-parts-stock': 'spare_parts',
   'company-settings': 'admin_tools',
+  'api-keys': 'api_keys',
   // Gatepasses
   'gatepasses': 'gatepasses',
   'create-gatepass': 'gatepasses',

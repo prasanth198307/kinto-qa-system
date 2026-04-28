@@ -344,6 +344,24 @@ app.use((req, res, next) => {
     console.error('[NEW_SCREEN_KEYS MIGRATION ERROR]', err);
   }
 
+  // ─── api_keys screen key migration ───────────────────────────────────────────
+  try {
+    const { db: dbApiKeys } = await import("./db");
+    const { sql: sqlApiKeys } = await import("drizzle-orm");
+    await dbApiKeys.execute(sqlApiKeys`
+      INSERT INTO role_permissions (role_id, tenant_id, screen_key, can_view, can_create, can_edit, can_delete, record_status)
+      SELECT r.id, r.tenant_id, 'api_keys', 0, 0, 0, 0, 1
+      FROM roles r
+      WHERE NOT EXISTS (
+        SELECT 1 FROM role_permissions rp2
+        WHERE rp2.role_id = r.id AND rp2.screen_key = 'api_keys'
+      )
+    `);
+    console.log('[API_KEYS MIGRATION] api_keys rows ensured for all roles');
+  } catch (err) {
+    console.error('[API_KEYS MIGRATION ERROR]', err);
+  }
+
   // ─── Fix chart_of_accounts unique constraint (multi-tenant) ─────────────
   // Production may still have the old single-column unique constraint
   // 'chart_of_accounts_code_key' on just (code), which blocks seeding COA for

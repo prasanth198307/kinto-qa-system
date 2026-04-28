@@ -241,7 +241,7 @@ export const ALL_ADMIN_SCREEN_KEYS = [
   'spare_parts','banks','scrap_inventory',
   // Admin & Settings
   'users','roles','admin_tools','template_management',
-  'notification_settings','data_import',
+  'notification_settings','data_import','api_keys',
   // Accounting
   'chart_of_accounts','account_subtypes','journal_entries','manual_journal_entry',
   'trial_balance','profit_loss','balance_sheet','ledger_view','day_book',

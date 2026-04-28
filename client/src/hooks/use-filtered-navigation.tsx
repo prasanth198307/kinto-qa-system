@@ -95,7 +95,7 @@ const navItemToScreenKey: Record<string, string> = {
   'budget-variance': 'budget_variance',
   'admin-tools': 'admin_tools',
   'company-settings': 'admin_tools',
-  'api-keys': 'admin_tools',
+  'api-keys': 'api_keys',
   // Spare parts stock page
   'spare-parts-stock': 'spare_parts',
   // Action shortcut nav items — inherit parent screen permission
