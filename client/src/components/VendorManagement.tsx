@@ -154,6 +154,7 @@ export default function VendorManagement() {
   const [vendorTypePopoverOpen, setVendorTypePopoverOpen] = useState(false);
   const [parentVendorId, setParentVendorId] = useState<string | null>(null);
   const [parentVendorPopoverOpen, setParentVendorPopoverOpen] = useState(false);
+  const [paymentMode, setPaymentMode] = useState<string>('bill_to_bill');
   const [gstVerifying, setGstVerifying] = useState(false);
   const [gstVerificationResult, setGstVerificationResult] = useState<{
     status: string;
@@ -511,6 +512,7 @@ export default function VendorManagement() {
       contactPerson: formData.get("contactPerson") as string || null,
       vendorType: formData.get("vendorType") as string || null,
       isCluster: formData.get("isCluster") === "on" ? 1 : 0,
+      paymentMode: formData.get("paymentMode") as string || 'bill_to_bill',
       isActive: formData.get("isActive") as string || 'true',
       shipToName: formData.get("shipToName") as string || null,
       shipToAddress: formData.get("shipToAddress") as string || null,
@@ -547,6 +549,7 @@ export default function VendorManagement() {
     setPrimaryVendorTypeId(primary?.vendorTypeId || null);
     // Set parent vendor
     setParentVendorId(vendor.parentVendorId || null);
+    setPaymentMode((vendor as any).paymentMode || 'bill_to_bill');
     setIsDialogOpen(true);
   };
 
@@ -571,6 +574,7 @@ export default function VendorManagement() {
     setGstVerificationResult(null);
     setParentVendorId(null);
     setParentVendorPopoverOpen(false);
+    setPaymentMode('bill_to_bill');
   };
 
   const verifyGst = async (gstin: string) => {
@@ -671,6 +675,7 @@ export default function VendorManagement() {
         'State': v.state || '',
         'Ship To Name': v.shipToName || '',
         'Ship To Address': v.shipToAddress || '',
+        'Payment Mode': v.paymentMode === 'cod' ? 'COD' : 'Bill to Bill',
         'Active': v.isActive === 1 ? 'Yes' : 'No',
       }));
 
@@ -1234,6 +1239,28 @@ export default function VendorManagement() {
                 </div>
               </div>
 
+              {/* Payment Mode */}
+              <div>
+                <Label className="text-sm font-medium">Payment Mode</Label>
+                <p className="text-xs text-muted-foreground mb-2">How this vendor receives payment</p>
+                <input type="hidden" name="paymentMode" value={paymentMode} />
+                <RadioGroup
+                  value={paymentMode}
+                  onValueChange={setPaymentMode}
+                  className="flex gap-6"
+                  data-testid="radio-payment-mode"
+                >
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem value="bill_to_bill" id="pm-b2b" data-testid="radio-bill-to-bill" />
+                    <Label htmlFor="pm-b2b" className="cursor-pointer font-normal">Bill to Bill</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem value="cod" id="pm-cod" data-testid="radio-cod" />
+                    <Label htmlFor="pm-cod" className="cursor-pointer font-normal">COD</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
               {/* Ship-To Address Section */}
               <div className="border-t pt-4 mt-4">
                 <Label className="text-base font-semibold">Ship-To Address (Optional)</Label>
@@ -1455,6 +1482,7 @@ export default function VendorManagement() {
                   <TableHead>Type</TableHead>
                   <TableHead>Classifications</TableHead>
                   <TableHead>Cluster</TableHead>
+                  <TableHead>Payment</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -1491,6 +1519,17 @@ export default function VendorManagement() {
                       ) : (
                         <span className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-600">
                           No
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {(vendor as any).paymentMode === 'cod' ? (
+                        <span className="text-xs px-2 py-1 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" data-testid={`payment-mode-${vendor.id}`}>
+                          COD
+                        </span>
+                      ) : (
+                        <span className="text-xs px-2 py-1 rounded bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300" data-testid={`payment-mode-${vendor.id}`}>
+                          B2B
                         </span>
                       )}
                     </TableCell>

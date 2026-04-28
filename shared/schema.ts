@@ -1100,6 +1100,7 @@ export const vendors = pgTable("vendors", {
   contactPerson: varchar("contact_person", { length: 255 }),
   vendorType: varchar("vendor_type", { length: 50 }),
   isCluster: integer("is_cluster").default(0).notNull(), // 0 = No, 1 = Yes
+  paymentMode: varchar("payment_mode", { length: 20 }).default('bill_to_bill'), // 'bill_to_bill' or 'cod'
   isActive: varchar("is_active").default('true'),
   parentVendorId: varchar("parent_vendor_id", { length: 255 }), // Links child vendors to a parent account for advances
   // Default shipping address fields (for auto-filling invoices)
