@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Plus, Edit, Trash2, Shield, Check, X, AlertTriangle, RefreshCw, Copy, Eye, EyeOff } from "lucide-react";
+import { Plus, Edit, Trash2, Shield, Check, X, AlertTriangle, RefreshCw, Copy, Eye, EyeOff, Search } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
@@ -215,6 +215,7 @@ export default function RoleManagement() {
   const [originalPermissions, setOriginalPermissions] = useState<Map<string, RolePermission>>(new Map());
   const [copyFromRoleId, setCopyFromRoleId] = useState<string>('');
   const [isCopying, setIsCopying] = useState(false);
+  const [permSearch, setPermSearch] = useState('');
 
   // Filter screens to only those relevant to the tenant's plan modules
   const activeScreens = AVAILABLE_SCREENS.filter(
@@ -331,6 +332,7 @@ export default function RoleManagement() {
       queryClient.invalidateQueries({ queryKey: ['/api/role-permissions'] });
       setIsPermissionsDialogOpen(false);
       setPermissionsRole(null);
+      setPermSearch('');
       toast({
         title: "Permissions updated",
         description: "Role permissions have been updated successfully.",
@@ -828,7 +830,29 @@ export default function RoleManagement() {
             </Button>
           </div>
 
-          <div className="py-4">
+          <div className="pt-3 pb-2">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+              <Input
+                placeholder="Search screens…"
+                value={permSearch}
+                onChange={e => setPermSearch(e.target.value)}
+                className="pl-8 pr-8"
+                data-testid="input-perm-search"
+              />
+              {permSearch && (
+                <button
+                  onClick={() => setPermSearch('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  aria-label="Clear search"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="pb-4">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -841,7 +865,9 @@ export default function RoleManagement() {
                   </tr>
                 </thead>
                 <tbody>
-                  {activeScreens.map((screen, index) => (
+                  {activeScreens
+                    .filter(s => !permSearch.trim() || s.label.toLowerCase().includes(permSearch.trim().toLowerCase()))
+                    .map((screen, index) => (
                     <tr key={screen.key} className="border-b hover-elevate" data-testid={`row-permission-${index}`}>
                       <td className="py-3 px-2 font-medium">{screen.label}</td>
                       <td className="text-center py-3 px-2">
@@ -897,7 +923,7 @@ export default function RoleManagement() {
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setIsPermissionsDialogOpen(false)}
+              onClick={() => { setIsPermissionsDialogOpen(false); setPermSearch(''); }}
               data-testid="button-cancel-permissions"
             >
               Cancel
