@@ -7,7 +7,7 @@ import { tenantMiddleware } from "./tenant-middleware";
 import { planEnforcementMiddleware, invalidatePlanCache } from "./plan-middleware";
 import { getPlanFeatures, getPlanFeaturesFromModules, ALL_MODULE_KEYS } from "./plan-features";
 import { tc } from "./tenant-context";
-import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertPurchaseOrderItemSchema, purchaseOrders, purchaseOrderItems, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesOrderSchema, insertSalesOrderItemSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, insertVendorTypeSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, paymentEvidence, salesOrders, salesOrderItems, salesReturns, salesReturnItems, creditNotes, creditNoteItems, debitNotes, debitNoteItems, manualCreditNoteRequests, products, productBom, whatsappConversationSessions, vendorTypes, vendorVendorTypes, vendors, users, uom, insertDocumentCategorySchema, insertDocumentSchema, insertExpenseCategorySchema, insertExpenseVoucherSchema, insertExpenseItemSchema, insertExpenseAttachmentSchema, rolePermissions, vendorDebitNotes, vendorDebitNoteItems, vendorDebitNoteAdjustments, transporters, vehicles, drivers, insertTransporterSchema, insertVehicleSchema, insertDriverSchema, scrapInventory, insertSparePartEntrySchema, insertSparePartIssuanceSchema, insertScrapInventorySchema, sparePartEntries, sparePartsCatalog, accountSubtypes, insertSalesOfficerSchema, purchaseReturns, purchaseReturnItems, tdsRates, tdsEntries, finishedGoodsReturnLog } from "@shared/schema";
+import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertPurchaseOrderItemSchema, purchaseOrders, purchaseOrderItems, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesOrderSchema, insertSalesOrderItemSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, insertVendorTypeSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, paymentEvidence, salesOrders, salesOrderItems, salesReturns, salesReturnItems, creditNotes, creditNoteItems, debitNotes, debitNoteItems, manualCreditNoteRequests, products, productBom, whatsappConversationSessions, vendorTypes, vendorVendorTypes, vendors, users, uom, insertDocumentCategorySchema, insertDocumentSchema, insertExpenseCategorySchema, insertExpenseVoucherSchema, insertExpenseItemSchema, insertExpenseAttachmentSchema, rolePermissions, vendorDebitNotes, vendorDebitNoteItems, vendorDebitNoteAdjustments, transporters, vehicles, drivers, insertTransporterSchema, insertVehicleSchema, insertDriverSchema, scrapInventory, insertSparePartEntrySchema, insertSparePartIssuanceSchema, insertScrapInventorySchema, sparePartEntries, sparePartsCatalog, accountSubtypes, insertSalesOfficerSchema, purchaseReturns, purchaseReturnItems, tdsRates, tdsEntries, finishedGoodsReturnLog, externalApiKeys } from "@shared/schema";
 import { format } from "date-fns";
 import { z } from "zod";
 import path from "path";
@@ -27272,6 +27272,252 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
     } catch (err: any) {
       console.error('List demo requests error:', err);
       return res.status(500).json({ message: 'Failed to fetch demo requests.' });
+    }
+  });
+
+  // ─── External API Key Management (admin only) ──────────────────────────────
+  // POST /api/external-api-keys  — create a new key (returns raw key ONCE)
+  app.post('/api/external-api-keys', isAuthenticated, requireRole('admin'), async (req: any, res) => {
+    try {
+      const { name } = req.body;
+      if (!name?.trim()) return res.status(400).json({ message: 'Key name is required' });
+
+      const tenantId: number = req.session?.tenantId ?? req.user?.tenantId ?? 1;
+      const rawKey = `kinto_${crypto.randomBytes(32).toString('hex')}`;
+      const keyHash = crypto.createHash('sha256').update(rawKey).digest('hex');
+
+      const [record] = await db.insert(externalApiKeys).values({
+        tenantId,
+        name: name.trim(),
+        keyHash,
+        isActive: 1,
+        createdBy: req.user?.id ?? null,
+      }).returning();
+
+      res.json({
+        id: record.id,
+        name: record.name,
+        createdAt: record.createdAt,
+        rawKey,
+        message: 'Save this key securely — it will not be shown again.',
+      });
+    } catch (err) {
+      console.error('[API Keys] Create error:', err);
+      res.status(500).json({ message: 'Failed to create API key' });
+    }
+  });
+
+  // GET /api/external-api-keys — list all keys for this tenant
+  app.get('/api/external-api-keys', isAuthenticated, requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const tenantId: number = req.session?.tenantId ?? req.user?.tenantId ?? 1;
+      const keys = await db.select({
+        id: externalApiKeys.id,
+        name: externalApiKeys.name,
+        isActive: externalApiKeys.isActive,
+        createdBy: externalApiKeys.createdBy,
+        createdAt: externalApiKeys.createdAt,
+        lastUsedAt: externalApiKeys.lastUsedAt,
+      }).from(externalApiKeys)
+        .where(eq(externalApiKeys.tenantId, tenantId))
+        .orderBy(externalApiKeys.createdAt);
+      res.json(keys);
+    } catch (err) {
+      console.error('[API Keys] List error:', err);
+      res.status(500).json({ message: 'Failed to fetch API keys' });
+    }
+  });
+
+  // DELETE /api/external-api-keys/:id — revoke a key
+  app.delete('/api/external-api-keys/:id', isAuthenticated, requireRole('admin'), async (req: any, res) => {
+    try {
+      const tenantId: number = req.session?.tenantId ?? req.user?.tenantId ?? 1;
+      await db.update(externalApiKeys)
+        .set({ isActive: 0 })
+        .where(and(eq(externalApiKeys.id, req.params.id), eq(externalApiKeys.tenantId, tenantId)));
+      res.json({ message: 'Key revoked' });
+    } catch (err) {
+      console.error('[API Keys] Revoke error:', err);
+      res.status(500).json({ message: 'Failed to revoke API key' });
+    }
+  });
+
+  // ─── External REST API — Customer Outstanding ───────────────────────────────
+  // GET /api/external/customer-outstanding
+  // Authorization: Bearer <api_key>
+  //
+  // Business Rules:
+  //   COD vendor        → include ALL pending invoices
+  //   Bill-to-Bill      → exclude latest (most recent) invoice
+  //   Bill-to-Bill with ANY invoice > 30 days old → override: include ALL invoices
+  //
+  // Response amounts are in RUPEES (paise ÷ 100, 2 dp)
+  app.get('/api/external/customer-outstanding', async (req: any, res) => {
+    try {
+      // ── 1. Authenticate via Bearer token ──
+      const authHeader = req.headers['authorization'] || '';
+      const rawKey = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+      if (!rawKey) {
+        return res.status(401).json({ error: 'Unauthorized', message: 'Missing Authorization: Bearer <key> header' });
+      }
+
+      const keyHash = crypto.createHash('sha256').update(rawKey).digest('hex');
+      const [keyRecord] = await db.select().from(externalApiKeys)
+        .where(and(eq(externalApiKeys.keyHash, keyHash), eq(externalApiKeys.isActive, 1)))
+        .limit(1);
+
+      if (!keyRecord) {
+        return res.status(401).json({ error: 'Unauthorized', message: 'Invalid or revoked API key' });
+      }
+
+      // Update last-used timestamp (fire and forget)
+      db.update(externalApiKeys)
+        .set({ lastUsedAt: new Date().toISOString() })
+        .where(eq(externalApiKeys.id, keyRecord.id))
+        .catch(() => {});
+
+      const tenantId = keyRecord.tenantId;
+
+      // ── 2. Load all active vendors for this tenant ──
+      const allVendors = await db.select().from(vendors)
+        .where(and(eq(vendors.tenantId, tenantId), eq(vendors.recordStatus, 1)));
+
+      // ── 3. Load all unpaid invoices for this tenant ──
+      const unpaidInvoicesRaw = await db.execute(sql`
+        SELECT id, invoice_number, invoice_date, buyer_name, total_amount, amount_received, status
+        FROM invoices
+        WHERE tenant_id = ${tenantId}
+          AND record_status = 1
+          AND status != 'cancelled'
+          AND COALESCE(amount_received, 0) < total_amount
+        ORDER BY invoice_date ASC
+      `);
+      const unpaidInvoices: any[] = unpaidInvoicesRaw.rows || [];
+
+      // ── 4. Load credit notes & debit notes for accurate outstanding ──
+      const cnRows = await db.execute(sql`
+        SELECT invoice_id, SUM(grand_total) AS total
+        FROM credit_notes
+        WHERE tenant_id = ${tenantId} AND record_status = 1 AND status = 'issued'
+        GROUP BY invoice_id
+      `);
+      const dnRows = await db.execute(sql`
+        SELECT invoice_id, SUM(grand_total) AS total
+        FROM debit_notes
+        WHERE tenant_id = ${tenantId} AND record_status = 1 AND status = 'issued'
+        GROUP BY invoice_id
+      `);
+
+      const creditByInvoice = new Map<string, number>();
+      (cnRows.rows || []).forEach((r: any) => creditByInvoice.set(r.invoice_id, Number(r.total) || 0));
+      const debitByInvoice = new Map<string, number>();
+      (dnRows.rows || []).forEach((r: any) => debitByInvoice.set(r.invoice_id, Number(r.total) || 0));
+
+      // ── 5. Enrich invoices with outstanding balances ──
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const enriched = unpaidInvoices.map((inv: any) => {
+        const total = Number(inv.total_amount) || 0;
+        const received = Number(inv.amount_received) || 0;
+        const creditAdj = creditByInvoice.get(inv.id) || 0;
+        const debitAdj = debitByInvoice.get(inv.id) || 0;
+        const effectiveTotal = total + debitAdj - creditAdj;
+        const outstanding = Math.max(0, effectiveTotal - received);
+        const invoiceDate = new Date(inv.invoice_date);
+        const daysOld = Math.floor((today.getTime() - invoiceDate.getTime()) / 86400000);
+        return {
+          id: inv.id,
+          invoiceNumber: inv.invoice_number,
+          invoiceDate: inv.invoice_date,
+          buyerName: inv.buyer_name,
+          totalAmount: total,
+          amountReceived: received,
+          outstanding,
+          daysOld,
+        };
+      }).filter(i => i.outstanding > 0);
+
+      // ── 6. Group invoices by buyerName → match to vendor ──
+      const invoicesByBuyer = new Map<string, typeof enriched>();
+      for (const inv of enriched) {
+        const key = inv.buyerName?.toLowerCase().trim() || '';
+        if (!invoicesByBuyer.has(key)) invoicesByBuyer.set(key, []);
+        invoicesByBuyer.get(key)!.push(inv);
+      }
+
+      // ── 7. Apply business rules per vendor ──
+      const results: any[] = [];
+
+      for (const vendor of allVendors) {
+        const key = vendor.vendorName?.toLowerCase().trim() || '';
+        const vendorInvoices = invoicesByBuyer.get(key) || [];
+
+        if (vendorInvoices.length === 0) continue; // skip vendors with no pending invoices
+
+        const paymentMode = (vendor as any).paymentMode || 'bill_to_bill';
+        let includedInvoices: typeof vendorInvoices;
+        let latestInvoiceExcluded = false;
+        let allIncludedDueToOverdue = false;
+
+        if (paymentMode === 'cod') {
+          // Rule: COD — include ALL invoices
+          includedInvoices = vendorInvoices;
+        } else {
+          // Bill to Bill rules
+          // Sort by date desc to find latest
+          const sorted = [...vendorInvoices].sort(
+            (a, b) => new Date(b.invoiceDate).getTime() - new Date(a.invoiceDate).getTime()
+          );
+          // Check if ANY invoice (including latest) is > 30 days old
+          const anyOverdue = sorted.some(inv => inv.daysOld > 30);
+
+          if (anyOverdue) {
+            // Rule 3: Any invoice > 30 days — include ALL
+            includedInvoices = vendorInvoices;
+            allIncludedDueToOverdue = true;
+          } else {
+            // Rule 1: No overdue — exclude latest invoice
+            includedInvoices = sorted.slice(1); // remove latest
+            latestInvoiceExcluded = true;
+          }
+        }
+
+        const pendingAmountPaise = includedInvoices.reduce((s, i) => s + i.outstanding, 0);
+
+        results.push({
+          vendorId: vendor.id,
+          vendorCode: vendor.vendorCode,
+          customerName: vendor.vendorName,
+          mobileNumber: vendor.mobileNumber,
+          paymentMode,
+          invoiceCount: includedInvoices.length,
+          totalUnpaidInvoices: vendorInvoices.length,
+          pendingAmountRupees: parseFloat((pendingAmountPaise / 100).toFixed(2)),
+          latestInvoiceExcluded,
+          allIncludedDueToOverdue,
+          invoices: includedInvoices.map(i => ({
+            invoiceNumber: i.invoiceNumber,
+            invoiceDate: i.invoiceDate,
+            outstandingRupees: parseFloat((i.outstanding / 100).toFixed(2)),
+            daysOld: i.daysOld,
+          })),
+        });
+      }
+
+      // Sort by pending amount descending
+      results.sort((a, b) => b.pendingAmountRupees - a.pendingAmountRupees);
+
+      res.json({
+        timestamp: new Date().toISOString(),
+        tenantId,
+        totalCustomers: results.length,
+        totalPendingRupees: parseFloat(results.reduce((s, r) => s + r.pendingAmountRupees, 0).toFixed(2)),
+        customers: results,
+      });
+    } catch (err) {
+      console.error('[External API] customer-outstanding error:', err);
+      res.status(500).json({ error: 'Internal Server Error', message: 'Failed to compute outstanding' });
     }
   });
 

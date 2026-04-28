@@ -4208,3 +4208,19 @@ export const insertTdsEntrySchema = createInsertSchema(tdsEntries).omit({
 });
 export type InsertTdsEntry = z.infer<typeof insertTdsEntrySchema>;
 export type TdsEntry = typeof tdsEntries.$inferSelect;
+
+
+// ─── External API Keys ────────────────────────────────────────────────────────
+// OAuth-style Bearer token keys for external integrations (e.g. customer outstanding API)
+export const externalApiKeys = pgTable("external_api_keys", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: integer("tenant_id").notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  keyHash: varchar("key_hash", { length: 64 }).notNull(), // SHA-256 hex of the raw key
+  isActive: integer("is_active").default(1).notNull(),
+  createdBy: varchar("created_by"),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+  lastUsedAt: timestamp("last_used_at", { mode: 'string' }),
+});
+
+export type ExternalApiKey = typeof externalApiKeys.$inferSelect;
