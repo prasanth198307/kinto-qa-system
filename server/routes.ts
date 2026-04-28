@@ -27351,6 +27351,11 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
   //   Bill-to-Bill      → exclude latest (most recent) invoice
   //   Bill-to-Bill with ANY invoice > 30 days old → override: include ALL invoices
   //
+  // HP Retail (HPCL) customers:
+  //   Identified by buyer_name containing "HPCL" (case-insensitive).
+  //   Response includes an extra `shippingAddress` object (from most recent invoice with ship_to data).
+  //   `isHpRetail: true` flag is also set in the customer record.
+  //
   // Response amounts are in RUPEES (paise ÷ 100, 2 dp)
   app.get('/api/external/customer-outstanding', async (req: any, res) => {
     try {
@@ -27384,7 +27389,8 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
 
       // ── 3. Load all unpaid invoices for this tenant ──
       const unpaidInvoicesRaw = await db.execute(sql`
-        SELECT id, invoice_number, invoice_date, buyer_name, total_amount, amount_received, status
+        SELECT id, invoice_number, invoice_date, buyer_name, total_amount, amount_received, status,
+               ship_to_name, ship_to_address, ship_to_city, ship_to_state, ship_to_pincode
         FROM invoices
         WHERE tenant_id = ${tenantId}
           AND record_status = 1
@@ -27435,6 +27441,12 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
           amountReceived: received,
           outstanding,
           daysOld,
+          // Shipping address fields from invoice
+          shipToName: inv.ship_to_name || null,
+          shipToAddress: inv.ship_to_address || null,
+          shipToCity: inv.ship_to_city || null,
+          shipToState: inv.ship_to_state || null,
+          shipToPincode: inv.ship_to_pincode || null,
         };
       }).filter(i => i.outstanding > 0);
 
@@ -27485,12 +27497,33 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
 
         const pendingAmountPaise = includedInvoices.reduce((s, i) => s + i.outstanding, 0);
 
-        results.push({
+        // ── HP Retail detection: buyer name contains "HPCL" (case-insensitive) ──
+        const isHpRetail = vendorInvoices.some(i => i.buyerName?.toUpperCase().includes('HPCL'));
+        // Use shipping address from the most recent invoice that has one
+        let shippingAddress: Record<string, string | null> | null = null;
+        if (isHpRetail) {
+          const sortedAll = [...vendorInvoices].sort(
+            (a, b) => new Date(b.invoiceDate).getTime() - new Date(a.invoiceDate).getTime()
+          );
+          const withShipping = sortedAll.find(i => i.shipToAddress || i.shipToName);
+          if (withShipping) {
+            shippingAddress = {
+              name: withShipping.shipToName,
+              address: withShipping.shipToAddress,
+              city: withShipping.shipToCity,
+              state: withShipping.shipToState,
+              pincode: withShipping.shipToPincode,
+            };
+          }
+        }
+
+        const entry: any = {
           vendorId: vendor.id,
           vendorCode: vendor.vendorCode,
           customerName: vendor.vendorName,
           mobileNumber: vendor.mobileNumber,
           paymentMode,
+          isHpRetail,
           invoiceCount: includedInvoices.length,
           totalUnpaidInvoices: vendorInvoices.length,
           pendingAmountRupees: parseFloat((pendingAmountPaise / 100).toFixed(2)),
@@ -27502,7 +27535,13 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
             outstandingRupees: parseFloat((i.outstanding / 100).toFixed(2)),
             daysOld: i.daysOld,
           })),
-        });
+        };
+
+        if (isHpRetail) {
+          entry.shippingAddress = shippingAddress;
+        }
+
+        results.push(entry);
       }
 
       // Sort by pending amount descending
