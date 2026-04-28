@@ -27428,19 +27428,19 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
         }
       }
 
-      // Pre-aggregate: collect ALL mobile numbers per unique vendor name.
-      // When N vendor records share the same name (e.g. 96 HPCL outlets), we process
-      // the name only once but surface all mobile numbers so the caller can notify all contacts.
-      const mobilesByVendorName = new Map<string, string[]>();
+      // Identify "shared-name groups" — vendor names used by more than one record.
+      // Example: 96 HPCL records all have the same vendor_name but different ship_to_name / mobile.
+      // These vendors get INDIVIDUAL entries matched by ship_to_name (not buyer_name),
+      // so each outlet shows only its own invoices.
+      const vendorNameCount = new Map<string, number>();
       for (const v of allVendors) {
         if (childVendorIds.has(v.id)) continue;
         const nk = (v.vendorName || '').toLowerCase().trim();
-        if (!mobilesByVendorName.has(nk)) mobilesByVendorName.set(nk, []);
-        const mobile = (v as any).mobileNumber || (v as any).mobile || '';
-        if (mobile && mobile !== '0000000000' && !mobilesByVendorName.get(nk)!.includes(mobile)) {
-          mobilesByVendorName.get(nk)!.push(mobile);
-        }
+        vendorNameCount.set(nk, (vendorNameCount.get(nk) || 0) + 1);
       }
+      const sharedNameGroups = new Set<string>(
+        [...vendorNameCount.entries()].filter(([, c]) => c > 1).map(([n]) => n)
+      );
 
       // ── 3. Load ALL invoices for this tenant (not just unpaid — mirrors vendor ledger) ──
       const allInvoicesRaw = await db.execute(sql`
@@ -27549,31 +27549,46 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       }
 
       // ── 9. Apply business rules per vendor ──
-      // seenVendorNames ensures vendors sharing the same name (e.g. 96 HPCL records) are
-      // processed only ONCE — the same invoices would be matched to all of them, so
-      // processing all would inflate the outstanding N-fold.
-      const seenVendorNames = new Set<string>();
+      // Vendors with a UNIQUE name → processed once, matched by vendorName OR shipToName.
+      // Vendors in a SHARED-NAME group (e.g. 96 HPCL records) → each processed individually,
+      // matched by shipToName only (their own delivery point), so each outlet shows its own invoices.
+      const seenVendorNames = new Set<string>(); // used only for unique-name vendors
       const results: any[] = [];
 
       for (const vendor of allVendors) {
         if (childVendorIds.has(vendor.id)) continue; // rolled up under parent
 
-        // Deduplicate by vendor name — skip subsequent records with an already-seen name
         const nameKey = (vendor.vendorName || '').toLowerCase().trim();
-        if (seenVendorNames.has(nameKey)) continue;
-        seenVendorNames.add(nameKey);
+        const isSharedName = sharedNameGroups.has(nameKey);
 
-        // Gather all name keys for this vendor family (parent + ship_to + children + their ship_to)
+        if (!isSharedName) {
+          // Unique-name vendor: deduplicate (belt-and-suspenders guard)
+          if (seenVendorNames.has(nameKey)) continue;
+          seenVendorNames.add(nameKey);
+        }
+
+        // Build invoice name-keys for this vendor
         const children = childrenByParentId.get(vendor.id) || [];
         const hasChildren = children.length > 0;
-        const nameKeys = [
-          vendor.vendorName,
-          (vendor as any).shipToName,
-          ...children.map(c => c.vendorName),
-          ...children.map(c => (c as any).shipToName),
-        ]
-          .filter(Boolean)
-          .map((n: string) => n.toLowerCase().trim());
+
+        let nameKeys: string[];
+        if (isSharedName) {
+          // Shared-name vendor (e.g. HPCL outlet): only match by their specific ship_to_name.
+          // Using buyer_name would pull ALL sibling outlets' invoices.
+          nameKeys = [(vendor as any).shipToName]
+            .filter(Boolean)
+            .map((n: string) => n.toLowerCase().trim());
+        } else {
+          // Unique-name vendor: match by vendorName OR shipToName, plus any children
+          nameKeys = [
+            vendor.vendorName,
+            (vendor as any).shipToName,
+            ...children.map(c => c.vendorName),
+            ...children.map(c => (c as any).shipToName),
+          ]
+            .filter(Boolean)
+            .map((n: string) => n.toLowerCase().trim());
+        }
 
         // Collect invoices (deduplicate by invoice id — an invoice might match on both buyer and ship_to)
         const seen = new Set<string>();
@@ -27647,15 +27662,15 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
         }
 
         const childNameList = [...childNames];
-        // Collect all mobile numbers for this vendor name (handles multiple vendor records with same name)
-        const allMobiles = mobilesByVendorName.get(nameKey) || [];
+        // For shared-name vendors (e.g. HPCL outlets), show the dealer's own name as outletName.
+        const vendorShipToName = (vendor as any).shipToName || null;
         const entry: any = {
           vendorId: vendor.id,
           vendorCode: vendor.vendorCode,
+          // For shared-name vendors customerName is the company name; outletName is the specific dealer
           customerName: vendor.vendorName,
-          // Primary mobile for backward compat; allMobileNumbers for bulk-notify use cases
-          mobileNumber: allMobiles[0] || vendor.mobileNumber || '',
-          ...(allMobiles.length > 1 && { allMobileNumbers: allMobiles }),
+          ...(isSharedName && vendorShipToName && { outletName: vendorShipToName }),
+          mobileNumber: vendor.mobileNumber || '',
           paymentMode,
           isHpRetail,
           hasChildren,
