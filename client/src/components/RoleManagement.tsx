@@ -166,6 +166,7 @@ const AVAILABLE_SCREENS: ScreenDefinition[] = [
   { key: 'users',                    label: 'User Management',         allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'roles',                    label: 'Role Management',         allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'notification_settings',    label: 'Notification Settings',   allowedActions: ['view', 'edit'] },
+  { key: 'api_keys',                 label: 'API Keys',                allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'invoice_templates',        label: 'Invoice Templates',       allowedActions: ['view', 'create', 'edit', 'delete'], module: 'invoicing' },
   { key: 'template_management',      label: 'Template Management',     allowedActions: ['view', 'create', 'edit', 'delete'], module: 'basic_inventory' },
   { key: 'machine_startup_reminders',label: 'Machine Startup Reminders', allowedActions: ['view', 'create', 'edit', 'delete'], module: 'whatsapp' },

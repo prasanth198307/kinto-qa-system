@@ -348,14 +348,31 @@ app.use((req, res, next) => {
   try {
     const { db: dbApiKeys } = await import("./db");
     const { sql: sqlApiKeys } = await import("drizzle-orm");
+    // Insert missing rows — admin/accountsmanager get full access, others get none
     await dbApiKeys.execute(sqlApiKeys`
       INSERT INTO role_permissions (role_id, tenant_id, screen_key, can_view, can_create, can_edit, can_delete, record_status)
-      SELECT r.id, r.tenant_id, 'api_keys', 0, 0, 0, 0, 1
+      SELECT
+        r.id, r.tenant_id, 'api_keys',
+        CASE WHEN lower(r.name) IN ('admin','accountsmanager') THEN 1 ELSE 0 END,
+        CASE WHEN lower(r.name) IN ('admin','accountsmanager') THEN 1 ELSE 0 END,
+        CASE WHEN lower(r.name) IN ('admin','accountsmanager') THEN 1 ELSE 0 END,
+        CASE WHEN lower(r.name) IN ('admin','accountsmanager') THEN 1 ELSE 0 END,
+        1
       FROM roles r
       WHERE NOT EXISTS (
         SELECT 1 FROM role_permissions rp2
         WHERE rp2.role_id = r.id AND rp2.screen_key = 'api_keys'
       )
+    `);
+    // Also fix any existing admin rows that were inserted with all-zero by a prior migration run
+    await dbApiKeys.execute(sqlApiKeys`
+      UPDATE role_permissions rp
+      SET can_view=1, can_create=1, can_edit=1, can_delete=1
+      FROM roles r
+      WHERE rp.role_id = r.id
+        AND rp.screen_key = 'api_keys'
+        AND lower(r.name) IN ('admin','accountsmanager')
+        AND rp.can_view = 0
     `);
     console.log('[API_KEYS MIGRATION] api_keys rows ensured for all roles');
   } catch (err) {
