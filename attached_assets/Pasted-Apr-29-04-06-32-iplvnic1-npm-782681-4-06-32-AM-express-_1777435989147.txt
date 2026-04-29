@@ -1,0 +1,53 @@
+Apr 29 04:06:32 iplvnic1 npm[782681]: 4:06:32 AM [express] GET /api/my-permissions 304 in 40ms :: {"role":"admin","roleId":"role-admin","r…
+Apr 29 04:06:32 iplvnic1 npm[782681]: [API Keys] List error: error: column "scopes" does not exist
+Apr 29 04:06:32 iplvnic1 npm[782681]:     at /home/kinto/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+Apr 29 04:06:32 iplvnic1 npm[782681]:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+Apr 29 04:06:32 iplvnic1 npm[782681]:     at async file:///home/kinto/kinto-qa-system/dist/index.js:42305:20 {
+Apr 29 04:06:32 iplvnic1 npm[782681]:   length: 106,
+Apr 29 04:06:32 iplvnic1 npm[782681]:   severity: 'ERROR',
+Apr 29 04:06:32 iplvnic1 npm[782681]:   code: '42703',
+Apr 29 04:06:32 iplvnic1 npm[782681]:   detail: undefined,
+Apr 29 04:06:32 iplvnic1 npm[782681]:   hint: undefined,
+Apr 29 04:06:32 iplvnic1 npm[782681]:   position: '76',
+Apr 29 04:06:32 iplvnic1 npm[782681]:   internalPosition: undefined,
+Apr 29 04:06:32 iplvnic1 npm[782681]:   internalQuery: undefined,
+Apr 29 04:06:32 iplvnic1 npm[782681]:   where: undefined,
+Apr 29 04:06:32 iplvnic1 npm[782681]:   schema: undefined,
+Apr 29 04:06:32 iplvnic1 npm[782681]:   table: undefined,
+Apr 29 04:06:32 iplvnic1 npm[782681]:   column: undefined,
+Apr 29 04:06:32 iplvnic1 npm[782681]:   dataType: undefined,
+Apr 29 04:06:32 iplvnic1 npm[782681]:   constraint: undefined,
+Apr 29 04:06:32 iplvnic1 npm[782681]:   file: 'parse_relation.c',
+Apr 29 04:06:32 iplvnic1 npm[782681]:   line: '3722',
+Apr 29 04:06:32 iplvnic1 npm[782681]:   routine: 'errorMissingColumn'
+Apr 29 04:06:32 iplvnic1 npm[782681]: }
+Apr 29 04:06:32 iplvnic1 npm[782681]: 4:06:32 AM [express] GET /api/users 304 in 33ms :: [{"id":"user-admin","username":"admin","email":"a…
+Apr 29 04:06:32 iplvnic1 npm[782681]: 4:06:32 AM [express] GET /api/external-api-keys 500 in 45ms :: {"message":"Failed to fetch API keys"}
+Apr 29 04:06:32 iplvnic1 npm[782681]: 4:06:32 AM [express] GET /api/maintenance-plans 304 in 36ms :: []
+Apr 29 04:06:32 iplvnic1 npm[782681]: 4:06:32 AM [express] GET /api/pm-task-list-templates 304 in 72ms :: []
+Apr 29 04:06:32 iplvnic1 npm[782681]: 4:06:32 AM [express] GET /api/machines 304 in 79ms :: [{"id":"80649cc4-2677-493d-a712-63f0833ae39d",…
+Apr 29 04:08:13 iplvnic1 npm[782681]: [AUDIT] Role admin granted access to /api/external-api-keys (system role match)
+Apr 29 04:08:13 iplvnic1 npm[782681]: [API Keys] Create error: error: column "scopes" of relation "external_api_keys" does not exist
+Apr 29 04:08:13 iplvnic1 npm[782681]:     at /home/kinto/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+Apr 29 04:08:13 iplvnic1 npm[782681]:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+Apr 29 04:08:13 iplvnic1 npm[782681]:     at async file:///home/kinto/kinto-qa-system/dist/index.js:42279:7 {
+Apr 29 04:08:13 iplvnic1 npm[782681]:   length: 136,
+Apr 29 04:08:13 iplvnic1 npm[782681]:   severity: 'ERROR',
+Apr 29 04:08:13 iplvnic1 npm[782681]:   code: '42703',
+Apr 29 04:08:13 iplvnic1 npm[782681]:   detail: undefined,
+Apr 29 04:08:13 iplvnic1 npm[782681]:   hint: undefined,
+Apr 29 04:08:13 iplvnic1 npm[782681]:   position: '91',
+Apr 29 04:08:13 iplvnic1 npm[782681]:   internalPosition: undefined,
+Apr 29 04:08:13 iplvnic1 npm[782681]:   internalQuery: undefined,
+Apr 29 04:08:13 iplvnic1 npm[782681]:   where: undefined,
+Apr 29 04:08:13 iplvnic1 npm[782681]:   schema: undefined,
+Apr 29 04:08:13 iplvnic1 npm[782681]:   table: undefined,
+Apr 29 04:08:13 iplvnic1 npm[782681]:   column: undefined,
+Apr 29 04:08:13 iplvnic1 npm[782681]:   dataType: undefined,
+Apr 29 04:08:13 iplvnic1 npm[782681]:   constraint: undefined,
+Apr 29 04:08:13 iplvnic1 npm[782681]:   file: 'parse_target.c',
+Apr 29 04:08:13 iplvnic1 npm[782681]:   line: '1066',
+Apr 29 04:08:13 iplvnic1 npm[782681]:   routine: 'checkInsertTargets'
+Apr 29 04:08:13 iplvnic1 npm[782681]: }
+Apr 29 04:08:13 iplvnic1 npm[782681]: 4:08:13 AM [express] POST /api/external-api-keys 500 in 43ms :: {"message":"Failed to create API key…
+[kinto@iplvnic1 ~]$ 
