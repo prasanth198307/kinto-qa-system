@@ -570,6 +570,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // This prevents users from being logged out during development or after deployments
   console.log('✅ Session persistence enabled - sessions expire after 7 days of inactivity');
 
+  // ─── Public: tenant branding by origin (no auth needed) ─────────────────
+  // Used by the sign-in page to show the tenant logo when accessed via a custom domain.
+  app.get('/api/public/tenant-branding', async (req: any, res) => {
+    const origin = (req.query.origin as string ?? '').trim().toLowerCase().replace(/\/$/, '');
+    if (!origin) return res.json(null);
+    try {
+      const result = await pool.query(
+        `SELECT name, logo_url FROM tenants WHERE $1 = ANY(cors_origins) AND status <> 'deleted' LIMIT 1`,
+        [origin]
+      );
+      if (!result.rows.length) return res.json(null);
+      const row = result.rows[0];
+      return res.json({ name: row.name, logoUrl: row.logo_url ?? null });
+    } catch (err: any) {
+      return res.json(null);
+    }
+  });
+
   // Serve deployment guide files
   app.get('/download.html', (req, res) => {
     const filePath = path.join(process.cwd(), 'public', 'download.html');

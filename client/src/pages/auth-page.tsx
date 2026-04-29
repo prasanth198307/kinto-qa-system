@@ -31,15 +31,15 @@ export default function AuthPage() {
       sessionStorage.removeItem("session_expired");
       setSessionExpired(true);
     }
-    // Load tenant branding from sessionStorage (set by company-select page)
-    const stored = sessionStorage.getItem("selectedTenant");
-    if (stored) {
-      try {
-        const t = JSON.parse(stored);
-        if (t.logoUrl) setTenantLogoUrl(t.logoUrl);
-        if (t.name) setTenantDisplayName(t.name);
-      } catch {}
-    }
+    // Show tenant branding only when accessed via their whitelisted custom domain
+    const currentOrigin = window.location.origin;
+    fetch(`/api/public/tenant-branding?origin=${encodeURIComponent(currentOrigin)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.logoUrl) setTenantLogoUrl(data.logoUrl);
+        if (data?.name) setTenantDisplayName(data.name);
+      })
+      .catch(() => {});
   }, []);
 
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
