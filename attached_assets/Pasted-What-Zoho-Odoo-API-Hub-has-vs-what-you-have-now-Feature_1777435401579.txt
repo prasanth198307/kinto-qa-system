@@ -1,0 +1,51 @@
+What Zoho/Odoo API Hub has — vs what you have now:
+
+Feature	Zoho/Odoo	You now	Gap
+API Catalog with docs	Full Swagger-style docs	Nothing	Build it
+"Try it" — test from browser	Yes — live tester built in	No	Build it
+Scoped keys — per-API access	Yes	No — key = full access	Build it
+Usage analytics per key	Calls/day, errors, latency	No	Build it
+Rate limiting	Set max calls/day per key	No	Build it
+Webhooks	Get notified on events	No	Future
+Versioning (v1, v2)	Yes	No	Future
+What it would look like in your system — 4 tabs:
+
+Tab 1 — API Catalog
+Every endpoint listed with:
+
+Method badge (GET / POST)
+Description of what it does
+Parameters table (name, type, required, description)
+Example request (copy-paste curl command)
+Example response (real JSON structure)
+"Try It" button — opens a panel, fill parameters, hit Send, see live response
+Tab 2 — My API Keys
+
+Create key → choose a name + select which APIs this key can call (checkboxes)
+Each key card shows: name, scopes, created date, last used, total calls this month
+Revoke button
+Tab 3 — Usage Analytics
+
+Graph: API calls per day for last 30 days
+Table: per endpoint — total calls, success rate, last called
+Per key: which key is calling what
+Tab 4 — Webhooks (future)
+
+Register a URL
+Pick events: invoice.created, payment.received, stock.low
+System POSTs to your URL when that event happens
+What needs to be built in the DB:
+
+api_key_scopes       — which endpoints each key can access
+api_call_logs        — every API call logged (key, endpoint, timestamp, status)
+webhooks             — registered webhook URLs and events (future)
+
+The "Try It" feature is the biggest differentiator. In Zoho you can literally open the docs, fill in a customer name and date range, click Send, and see real data come back — without writing any code. That alone converts developers into paying customers.
+
+Realistic build plan:
+
+Phase	What	Time
+Phase 1	Catalog + scoped keys + usage logs	1-2 days
+Phase 2	"Try It" live tester in browser	1 day
+Phase 3	Usage analytics graphs	1 day
+Phase 4	Webhooks	Later
