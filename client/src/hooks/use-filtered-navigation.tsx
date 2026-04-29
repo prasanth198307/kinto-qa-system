@@ -142,6 +142,7 @@ const screenPermissions: Record<string, { admin: boolean; manager: boolean; oper
   'MIS Reports': { admin: true, manager: true, operator: false, reviewer: false },
   'Accounting & Ledger': { admin: true, manager: true, operator: false, reviewer: false },
   'Sales Officers': { admin: true, manager: true, operator: false, reviewer: false },
+  'API Hub': { admin: true, manager: true, operator: false, reviewer: false },
 };
 
 const navItemToScreen: Record<string, string> = {
@@ -222,6 +223,7 @@ const navItemToScreen: Record<string, string> = {
   'budget-variance': 'Accounting & Ledger',
   'admin-tools': 'User Management',
   'company-settings': 'User Management',
+  'api-keys': 'API Hub',
 };
 
 function canAccessNavItemForDefaultRole(itemId: string, role: string): boolean {

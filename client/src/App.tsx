@@ -1113,12 +1113,18 @@ function AdminDashboard() {
       ],
     },
     {
+      id: "api-hub-section",
+      label: "API Hub",
+      items: [
+        { id: "api-keys", label: "API Management", icon: Key },
+      ],
+    },
+    {
       id: "settings-section",
       label: "Settings",
       items: [
         { id: "notification-settings", label: "Notification Settings", icon: Bell },
         { id: "data-import", label: "Data Import", icon: Upload },
-        { id: "api-keys", label: "API Keys", icon: Key },
         { id: "admin-tools", label: "Admin Tools", icon: Wrench, onClick: () => setLocation('/admin-tools') },
         { id: "company-settings", label: "Company Settings", icon: Building2, onClick: () => setLocation('/company-settings') },
       ],
@@ -2148,12 +2154,18 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       ],
     },
     {
+      id: "api-hub-section",
+      label: "API Hub",
+      items: [
+        { id: "api-keys", label: "API Management", icon: Key, onClick: () => setLocation('/?tab=api-keys') },
+      ],
+    },
+    {
       id: "settings-section",
       label: "Settings",
       items: [
         { id: "notification-settings", label: "Notification Settings", icon: Bell, onClick: () => setLocation('/?tab=notification-settings') },
         { id: "data-import", label: "Data Import", icon: Upload, onClick: () => setLocation('/?tab=data-import') },
-        { id: "api-keys", label: "API Keys", icon: Key, onClick: () => setLocation('/?tab=api-keys') },
         { id: "admin-tools", label: "Admin Tools", icon: Wrench, onClick: () => setLocation('/admin-tools') },
         { id: "company-settings", label: "Company Settings", icon: Building2, onClick: () => setLocation('/company-settings') },
       ],
