@@ -55,7 +55,7 @@ export function useTenantBranding() {
   return {
     logoUrl: tenantInfo?.logoUrl ?? null,
     primaryColor: tenantInfo?.primaryColor ?? null,
-    tenantName: tenantInfo?.name ?? "Kinto Smart Ops",
+    tenantName: tenantInfo?.name ?? "SwachERP",
   };
 }
 

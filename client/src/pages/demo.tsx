@@ -92,12 +92,7 @@ export default function DemoPage() {
             data-testid="demo-back-home"
           >
             <ArrowLeft className="w-4 h-4" />
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-md bg-primary flex items-center justify-center">
-                <Factory className="w-3 h-3 text-primary-foreground" />
-              </div>
-              <span className="font-bold">Kinto Smart Ops</span>
-            </div>
+            <img src="/swacherp-logo.png" alt="SwachERP" className="h-6 w-auto" />
           </button>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={() => setLocation("/auth")} data-testid="demo-nav-login">
@@ -116,7 +111,7 @@ export default function DemoPage() {
             <Video className="w-3 h-3 text-primary" />
             Product Demo
           </Badge>
-          <h1 className="text-3xl md:text-4xl font-bold mb-3">See Kinto Smart Ops in action</h1>
+          <h1 className="text-3xl md:text-4xl font-bold mb-3">See SwachERP in action</h1>
           <p className="text-muted-foreground text-sm max-w-xl mx-auto">
             Book a personalised demo with our team. We'll walk you through the platform
             tailored to your manufacturing process — no generic slides.

@@ -99,7 +99,7 @@ export default function RegisterCompanyPage() {
           <div className="space-y-2">
             <h2 className="text-2xl font-bold">Registration Successful!</h2>
             <p className="text-muted-foreground">
-              Welcome to Kinto Smart Ops. Your company account has been created.
+              Welcome to SwachERP. Your company account has been created.
             </p>
           </div>
           <Card>

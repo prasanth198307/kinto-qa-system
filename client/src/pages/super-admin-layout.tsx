@@ -38,7 +38,7 @@ export default function SuperAdminLayout({ children, title, subtitle, actions }:
             <ShieldAlert className="h-4 w-4" />
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-bold leading-tight truncate">Kinto Admin</p>
+            <p className="text-sm font-bold leading-tight truncate">SwachERP Admin</p>
             <p className="text-xs text-muted-foreground leading-tight">Super Admin Portal</p>
           </div>
         </div>

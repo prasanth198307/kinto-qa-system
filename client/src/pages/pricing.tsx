@@ -231,7 +231,7 @@ export default function PricingPage({ onUpgrade }: { onUpgrade?: (plan: string) 
         key:         razorpayKeyId,
         amount:      order.amount,
         currency:    order.currency,
-        name:        "Kinto Smart Ops",
+        name:        "SwachERP",
         description: order.planLabel,
         order_id:    order.orderId,
         prefill: {

@@ -24,7 +24,7 @@ interface Message {
 const WELCOME: Message = {
   id: "welcome",
   role: "assistant",
-  text: "Hello! I'm your Kinto ERP assistant. Ask me anything about your sales, inventory, production, finances, or operations.",
+  text: "Hello! I'm your SwachERP assistant. Ask me anything about your sales, inventory, production, finances, or operations.",
   suggestions: ["Total outstanding", "Today's sales", "Low stock items", "Pending POs", "Help"],
 };
 
@@ -192,7 +192,7 @@ export function ChatAgent() {
             <div className="flex items-center gap-2">
               <Bot className="w-5 h-5" />
               <div>
-                <p className="text-sm font-semibold leading-none">Kinto ERP Assistant</p>
+                <p className="text-sm font-semibold leading-none">SwachERP Assistant</p>
                 <p className="text-xs opacity-75 mt-0.5">80 intents · local · instant</p>
               </div>
             </div>

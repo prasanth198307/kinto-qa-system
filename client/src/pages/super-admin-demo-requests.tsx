@@ -111,7 +111,7 @@ export default function SuperAdminDemoRequests() {
                   <p className="text-xs text-muted-foreground">
                     {format(new Date(req.created_at), "d MMM yyyy, h:mm a")}
                   </p>
-                  <a href={`mailto:${req.email}?subject=Your Kinto Smart Ops Demo Request&body=Hi ${req.name},%0D%0A%0D%0AThank you for your interest in Kinto Smart Ops!`}>
+                  <a href={`mailto:${req.email}?subject=Your SwachERP Demo Request&body=Hi ${req.name},%0D%0A%0D%0AThank you for your interest in SwachERP!`}>
                     <Button size="sm" variant="outline" className="mt-2" data-testid={`demo-contact-${req.id}`}>
                       <Mail className="w-3 h-3 mr-1.5" />
                       Contact

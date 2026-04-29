@@ -512,7 +512,7 @@ export default function TenantSettings() {
                   <CardTitle className="text-base">Email Notifications</CardTitle>
                   <CardDescription>
                     Configure the sender name shown on emails sent from this company account.
-                    By default, emails are sent from the Kinto platform address.
+                    By default, emails are sent from the SwachERP platform address.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -558,7 +558,7 @@ export default function TenantSettings() {
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base">WhatsApp Notifications</CardTitle>
                   <CardDescription>
-                    Configure your own WhatsApp Business number, or leave blank to use the Kinto platform number.
+                    Configure your own WhatsApp Business number, or leave blank to use the SwachERP platform number.
                     Requires a Meta WhatsApp Business API account.
                   </CardDescription>
                 </CardHeader>

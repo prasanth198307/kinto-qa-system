@@ -129,7 +129,7 @@ const STRENGTHS = [
     iconColor: "bg-orange-100 dark:bg-orange-900 text-orange-600 dark:text-orange-400",
     tag: "Not a bolt-on",
     title: "Full HR & payroll — not a separate product",
-    desc: "Most ERPs make you buy a separate HR software. In Kinto, HR is native. Employee masters, attendance, leave management, salary structures, PF/ESI, TDS projection, payslips, Form 16, recruitment, and the Employee Self-Service portal are all included — at every plan level.",
+    desc: "Most ERPs make you buy a separate HR software. In SwachERP, HR is native. Employee masters, attendance, leave management, salary structures, PF/ESI, TDS projection, payslips, Form 16, recruitment, and the Employee Self-Service portal are all included — at every plan level.",
     points: ["Configurable salary structures with arrears handling", "Automated PF, ESI, and TDS deduction", "Form 16 generation and e-distribution via ESS", "Recruitment pipeline integrated with employee onboarding"],
   },
 ];
@@ -287,7 +287,7 @@ function DashboardPreview() {
           </div>
           <div className="mx-4 flex-1">
             <div className="bg-white dark:bg-zinc-700 rounded px-3 py-0.5 text-[10px] text-muted-foreground w-52 mx-auto text-center border">
-              ops.kintowater.com/dashboard
+              ops.swacherp.com/dashboard
             </div>
           </div>
         </div>
@@ -365,11 +365,8 @@ export default function LandingPage() {
       {/* ── NAV ─────────────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center gap-6">
-          <a href="/" className="flex items-center gap-2 shrink-0">
-            <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center">
-              <Factory className="w-4 h-4 text-white" />
-            </div>
-            <span className="font-bold text-sm tracking-tight">Kinto Smart Ops</span>
+          <a href="/" className="flex items-center shrink-0">
+            <img src="/swacherp-logo.png" alt="SwachERP" className="h-8 w-auto" />
           </a>
 
           <nav className="hidden lg:flex items-center gap-1">
@@ -473,7 +470,7 @@ export default function LandingPage() {
       <section className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-14">
-            <h2 className="text-2xl md:text-3xl font-bold mb-3">What makes Kinto genuinely different</h2>
+            <h2 className="text-2xl md:text-3xl font-bold mb-3">What makes SwachERP genuinely different</h2>
             <p className="text-muted-foreground max-w-xl mx-auto text-sm">
               Not just a feature list — these are real capabilities that no other Indian manufacturing ERP offers in a single product.
             </p>
@@ -663,10 +660,10 @@ export default function LandingPage() {
                 Professional & Enterprise
               </div>
               <h2 className="text-2xl md:text-3xl font-bold mb-4 leading-snug">
-                Build on Kinto with a<br className="hidden md:block" /> full REST API platform
+                Build on SwachERP with a<br className="hidden md:block" /> full REST API platform
               </h2>
               <p className="text-muted-foreground text-sm leading-relaxed mb-6">
-                Every module in Kinto — invoicing, inventory, production, HR — exposes clean REST APIs. Create scoped keys per integration, test endpoints live without leaving the browser, and track every call with full request logs and usage analytics.
+                Every module in SwachERP — invoicing, inventory, production, HR — exposes clean REST APIs. Create scoped keys per integration, test endpoints live without leaving the browser, and track every call with full request logs and usage analytics.
               </p>
               <ul className="space-y-3 mb-8">
                 {[
@@ -692,7 +689,7 @@ export default function LandingPage() {
                 <span className="w-3 h-3 rounded-full bg-red-500/80" />
                 <span className="w-3 h-3 rounded-full bg-yellow-500/80" />
                 <span className="w-3 h-3 rounded-full bg-green-500/80" />
-                <span className="ml-3 text-xs text-zinc-500 font-mono">Kinto API Hub — Try It</span>
+                <span className="ml-3 text-xs text-zinc-500 font-mono">SwachERP API Hub — Try It</span>
               </div>
               <div className="p-5 font-mono text-xs space-y-4">
                 {/* Auth header */}
@@ -701,7 +698,7 @@ export default function LandingPage() {
                   <p className="text-zinc-300">
                     <span className="text-purple-400">Authorization</span>
                     <span className="text-zinc-400">: Bearer </span>
-                    <span className="text-green-400">kinto_sk_••••••••6f3a</span>
+                    <span className="text-green-400">swacherp_sk_••••••••6f3a</span>
                   </p>
                 </div>
                 {/* Request 1 */}
@@ -774,7 +771,7 @@ export default function LandingPage() {
       <section id="solutions" className="py-16 border-t">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-2xl md:text-3xl font-bold mb-3">Why Indian manufacturers choose Kinto</h2>
+            <h2 className="text-2xl md:text-3xl font-bold mb-3">Why Indian manufacturers choose SwachERP</h2>
             <p className="text-muted-foreground max-w-xl mx-auto text-sm">Designed from scratch for how Indian factories actually work — not a global ERP adapted for India.</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -895,11 +892,8 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-10">
             <div className="col-span-2 md:col-span-1">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center">
-                  <Factory className="w-4 h-4 text-white" />
-                </div>
-                <span className="font-bold text-sm">Kinto Smart Ops</span>
+              <div className="mb-3">
+                <img src="/swacherp-logo.png" alt="SwachERP" className="h-8 w-auto" />
               </div>
               <p className="text-xs text-muted-foreground leading-relaxed">Cloud ERP for Indian manufacturing — GST-compliant, WhatsApp-connected, and HR-ready.</p>
             </div>
@@ -937,7 +931,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="border-t pt-6 flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
-            <p>© {new Date().getFullYear()} Kinto Smart Ops. Made in India.</p>
+            <p>© {new Date().getFullYear()} SwachERP. Cleaner Business. Better Future.</p>
             <div className="flex gap-4">
               <a href="#" className="hover:text-foreground transition-colors">Privacy Policy</a>
               <a href="#" className="hover:text-foreground transition-colors">Terms of Service</a>

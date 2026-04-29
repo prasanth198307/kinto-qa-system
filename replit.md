@@ -1,7 +1,7 @@
-# Kinto Smart Ops — Manufacturing ERP SaaS
+# SwachERP — Manufacturing ERP SaaS
 
 ## Overview
-Kinto Smart Ops is a comprehensive SaaS ERP platform designed for Indian manufacturing companies. It streamlines core operations including production, inventory, purchase orders, GST-compliant invoicing, gatepasses, quality assurance, preventive maintenance, and double-entry accounting. The platform provides MIS analytics, supports multi-tenancy with isolated data spaces, and features a two-way WhatsApp integration for machine startup and checklist management. Key features include an invoice-first, tamper-proof dispatch workflow, FIFO batch allocation for inventory, and extensive reporting capabilities. The platform also offers granular role-based permissions, HR & Payroll, CRM, and an Employee Self-Service (ESS) Portal.
+SwachERP (formerly Kinto Smart Ops) is a comprehensive SaaS ERP platform designed for Indian manufacturing companies. It streamlines core operations including production, inventory, purchase orders, GST-compliant invoicing, gatepasses, quality assurance, preventive maintenance, and double-entry accounting. The platform provides MIS analytics, supports multi-tenancy with isolated data spaces, and features a two-way WhatsApp integration for machine startup and checklist management. Key features include an invoice-first, tamper-proof dispatch workflow, FIFO batch allocation for inventory, and extensive reporting capabilities. The platform also offers granular role-based permissions, HR & Payroll, CRM, and an Employee Self-Service (ESS) Portal.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
