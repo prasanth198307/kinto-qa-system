@@ -25,7 +25,7 @@ import {
   Building2, Users, MoreVertical, Search, RefreshCw, ShieldAlert,
   CheckCircle2, Clock, XCircle, Loader2, FlaskConical, CreditCard,
   Eye, Trash2, AlertTriangle, Archive, Download, Database, CalendarClock,
-  HardDrive, LogOut, Plus, ScrollText, AlertCircle,
+  HardDrive, LogOut, Plus, ScrollText, AlertCircle, Shield, X,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -89,6 +89,9 @@ export default function SuperAdminTenants() {
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleteReason, setDeleteReason]   = useState("");
   const [backupTenant, setBackupTenant]   = useState<Tenant | null>(null);
+  const [corsOriginsTenant, setCorsOriginsTenant] = useState<Tenant | null>(null);
+  const [corsOriginsList, setCorsOriginsList] = useState<string[]>([]);
+  const [corsNewOrigin, setCorsNewOrigin] = useState("");
   const [showCreateTenant, setShowCreateTenant] = useState(false);
   const [showDeletionAudit, setShowDeletionAudit] = useState(false);
   const [createForm, setCreateForm] = useState({
@@ -200,6 +203,20 @@ export default function SuperAdminTenants() {
     },
   });
 
+  const saveCorsOriginsMutation = useMutation({
+    mutationFn: async ({ tenantId, origins }: { tenantId: number; origins: string[] }) => {
+      const res = await apiRequest("PUT", `/api/admin/tenants/${tenantId}/cors-origins`, { origins });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "CORS origins saved", description: "Changes take effect within 60 seconds." });
+      setCorsOriginsTenant(null);
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed to save", description: err.message, variant: "destructive" });
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async ({ tenantId, reason }: { tenantId: number; reason: string }) => {
       const res = await apiRequest("POST", `/api/admin/tenants/${tenantId}/delete-data`, {
@@ -229,6 +246,18 @@ export default function SuperAdminTenants() {
     setDeleteTenant(tenant);
     setDeleteConfirm("");
     setDeleteReason("");
+  };
+
+  const openCorsOrigins = async (tenant: Tenant) => {
+    setCorsOriginsTenant(tenant);
+    setCorsNewOrigin("");
+    try {
+      const res = await fetch(`/api/admin/tenants/${tenant.id}/cors-origins`, { credentials: 'include' });
+      const data = await res.json();
+      setCorsOriginsList(data.corsOrigins ?? []);
+    } catch {
+      setCorsOriginsList([]);
+    }
   };
 
   const handleSaveEdit = () => {
@@ -437,6 +466,9 @@ export default function SuperAdminTenants() {
                               <DropdownMenuItem onClick={() => openEdit(tenant)}>
                                 Edit Tenant
                               </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openCorsOrigins(tenant)}>
+                                <Shield className="h-4 w-4 mr-2" /> CORS Origins
+                              </DropdownMenuItem>
                               {!tenant.isSuperAdmin && (
                                 <DropdownMenuItem
                                   onClick={() => impersonateMutation.mutate(tenant.id)}
@@ -556,6 +588,85 @@ export default function SuperAdminTenants() {
             <Button variant="outline" onClick={() => setEditTenant(null)}>Cancel</Button>
             <Button onClick={handleSaveEdit} disabled={isPending} data-testid="button-save-tenant">
               {isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* CORS Origins Dialog */}
+      <Dialog open={!!corsOriginsTenant} onOpenChange={(open) => !open && setCorsOriginsTenant(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-primary" />
+              CORS Origins — {corsOriginsTenant?.name}
+            </DialogTitle>
+            <DialogDescription>
+              Add the exact origins (protocol + domain) that are allowed to call this tenant's APIs from a browser.
+              Example: <code className="text-xs bg-muted px-1 rounded">https://kinto.kintowater.com</code>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="flex gap-2">
+              <Input
+                placeholder="https://example.kintowater.com"
+                value={corsNewOrigin}
+                onChange={(e) => setCorsNewOrigin(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const val = corsNewOrigin.trim().toLowerCase().replace(/\/$/, '');
+                    if (val && (val.startsWith('http://') || val.startsWith('https://')) && !corsOriginsList.includes(val)) {
+                      setCorsOriginsList((prev) => [...prev, val]);
+                      setCorsNewOrigin('');
+                    }
+                  }
+                }}
+                data-testid="input-cors-origin"
+              />
+              <Button
+                variant="outline"
+                onClick={() => {
+                  const val = corsNewOrigin.trim().toLowerCase().replace(/\/$/, '');
+                  if (val && (val.startsWith('http://') || val.startsWith('https://')) && !corsOriginsList.includes(val)) {
+                    setCorsOriginsList((prev) => [...prev, val]);
+                    setCorsNewOrigin('');
+                  }
+                }}
+                data-testid="button-add-cors-origin"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+            {corsOriginsList.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">No origins whitelisted yet. All cross-origin requests will be blocked.</p>
+            ) : (
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {corsOriginsList.map((origin) => (
+                  <div key={origin} className="flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
+                    <span className="font-mono text-xs break-all">{origin}</span>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => setCorsOriginsList((prev) => prev.filter((o) => o !== origin))}
+                      data-testid={`button-remove-cors-${origin}`}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">Changes are cached for up to 60 seconds on the server.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCorsOriginsTenant(null)}>Cancel</Button>
+            <Button
+              onClick={() => corsOriginsTenant && saveCorsOriginsMutation.mutate({ tenantId: corsOriginsTenant.id, origins: corsOriginsList })}
+              disabled={saveCorsOriginsMutation.isPending}
+              data-testid="button-save-cors-origins"
+            >
+              {saveCorsOriginsMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : "Save Origins"}
             </Button>
           </DialogFooter>
         </DialogContent>

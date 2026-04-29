@@ -64,6 +64,51 @@ const { Request, Response, NextFunction } = expressModule;
 
 const app = express();
 
+// ── Dynamic per-tenant CORS whitelist ─────────────────────────────────────
+let _corsCache: Set<string> = new Set();
+let _corsCacheAt = 0;
+const CORS_TTL = 60_000;
+
+async function getAllowedOrigins(): Promise<Set<string>> {
+  if (Date.now() - _corsCacheAt < CORS_TTL) return _corsCache;
+  try {
+    const { pool } = await import('./db');
+    const { rows } = await pool.query<{ cors_origins: string[] | null }>(
+      'SELECT cors_origins FROM tenants WHERE cors_origins IS NOT NULL AND array_length(cors_origins,1) > 0'
+    );
+    const fresh = new Set<string>();
+    for (const row of rows) {
+      for (const o of row.cors_origins ?? []) {
+        if (o) fresh.add(o.trim().toLowerCase());
+      }
+    }
+    _corsCache = fresh;
+    _corsCacheAt = Date.now();
+  } catch { /* keep old cache on transient DB errors */ }
+  return _corsCache;
+}
+
+app.use(cors({
+  origin: async (incoming, callback) => {
+    if (!incoming) return callback(null, true); // same-origin / server-to-server
+    const normalized = incoming.toLowerCase();
+    // Always allow Replit preview, localhost, and the app's own domain
+    if (
+      normalized.includes('.replit.dev') ||
+      normalized.includes('.replit.app') ||
+      normalized.includes('localhost') ||
+      normalized.includes('127.0.0.1')
+    ) {
+      return callback(null, true);
+    }
+    const allowed = await getAllowedOrigins();
+    return callback(null, allowed.has(normalized));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Api-Key'],
+}));
+
 declare module "http" {
   interface IncomingMessage {
     rawBody: unknown;

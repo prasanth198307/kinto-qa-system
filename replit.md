@@ -26,6 +26,7 @@ Preferred communication style: Simple, everyday language.
 - **Plan System:** The `subscription_plans` table in the DB is the single source of truth for plan module assignments, driving both sidebar navigation and API route enforcement. Custom plans are supported.
 - **Database Changes:** `db:push` is blocked; all schema changes must use `psql $DATABASE_URL -c "..."` commands, with scripts saved in `db_scripts/`.
 - **Role Permissions:** `can_view/can_create/can_edit/can_delete` are INTEGER (0/1), not boolean.
+- **CORS Whitelisting:** Per-tenant CORS origin whitelisting is stored in `tenants.cors_origins text[]`. The dynamic CORS middleware in `server/index.ts` caches all origins with a 60-second TTL. Super-admins manage origins via `GET/PUT /api/admin/tenants/:id/cors-origins` and the "CORS Origins" option in the super-admin tenant dropdown menu. Replit/localhost origins are always allowed without being stored.
 
 ## External Dependencies
 - **Database:** Neon Serverless PostgreSQL

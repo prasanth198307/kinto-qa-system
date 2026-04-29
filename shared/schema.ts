@@ -47,6 +47,7 @@ export const tenants = pgTable("tenants", {
   address: text("address"),
   isSuperAdmin: boolean("is_super_admin").default(false),
   isInternal: boolean("is_internal").notNull().default(false),
+  corsOrigins: text("cors_origins").array().default([]),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 });

@@ -27207,6 +27207,45 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
     }
   });
 
+  // ─── Admin: GET CORS origins for a tenant ────────────────────────────────
+  app.get('/api/admin/tenants/:id/cors-origins', async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.user?.isSuperAdmin) return res.status(403).json({ message: 'Super-admin only' });
+    const tenantId = parseInt(req.params.id);
+    try {
+      const { db: dbInst } = await import('./db');
+      const { tenants: tenantsTable } = await import('../shared/schema');
+      const { eq } = await import('drizzle-orm');
+      const [row] = await dbInst.select({ corsOrigins: tenantsTable.corsOrigins }).from(tenantsTable).where(eq(tenantsTable.id, tenantId));
+      res.json({ corsOrigins: row?.corsOrigins ?? [] });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ─── Admin: PUT (replace) CORS origins for a tenant ──────────────────────
+  app.put('/api/admin/tenants/:id/cors-origins', async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.user?.isSuperAdmin) return res.status(403).json({ message: 'Super-admin only' });
+    const tenantId = parseInt(req.params.id);
+    const { origins } = req.body as { origins: string[] };
+    if (!Array.isArray(origins)) return res.status(400).json({ message: 'origins must be an array' });
+    // Normalise: trim, lowercase, ensure https:// prefix
+    const cleaned = origins
+      .map((o: string) => o.trim().toLowerCase().replace(/\/$/, ''))
+      .filter((o: string) => o.length > 0 && (o.startsWith('http://') || o.startsWith('https://')));
+    try {
+      const { db: dbInst } = await import('./db');
+      const { tenants: tenantsTable } = await import('../shared/schema');
+      const { eq } = await import('drizzle-orm');
+      const { sql: sqlRaw } = await import('drizzle-orm');
+      await dbInst.execute(sqlRaw`UPDATE tenants SET cors_origins = ${cleaned}::text[] WHERE id = ${tenantId}`);
+      res.json({ corsOrigins: cleaned });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   // ─── Admin: list PostgreSQL dump backups ─────────────────────────────────
   app.get('/api/admin/postgres-backups', async (req: any, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
