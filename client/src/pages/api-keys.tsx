@@ -47,6 +47,56 @@ const MODULE_LABELS: Record<string, string> = {
   api_hub:         'API Hub',
 };
 
+// ── Suggested parameter presets per use-case ─────────────────────────────────
+interface ParamPreset { name: string; in: 'query' | 'body' | 'path'; required: boolean; description: string; }
+const PARAM_PRESETS: { group: string; params: ParamPreset[] }[] = [
+  {
+    group: 'Date / Period',
+    params: [
+      { name: 'month',     in: 'query', required: false, description: 'Month number (1–12)' },
+      { name: 'year',      in: 'query', required: false, description: 'Year e.g. 2025' },
+      { name: 'from_date', in: 'query', required: false, description: 'Start date YYYY-MM-DD' },
+      { name: 'to_date',   in: 'query', required: false, description: 'End date YYYY-MM-DD' },
+      { name: 'date',      in: 'body',  required: true,  description: 'Date in YYYY-MM-DD format' },
+    ],
+  },
+  {
+    group: 'HR / Attendance',
+    params: [
+      { name: 'employeeId',   in: 'body',  required: true,  description: 'Employee ID (numeric)' },
+      { name: 'status',       in: 'body',  required: true,  description: 'present / absent / half_day / late' },
+      { name: 'checkInTime',  in: 'body',  required: false, description: 'Punch-in time HH:MM (e.g. 09:02)' },
+      { name: 'checkOutTime', in: 'body',  required: false, description: 'Punch-out time HH:MM (e.g. 18:15)' },
+      { name: 'otHours',      in: 'body',  required: false, description: 'Overtime hours (decimal)' },
+      { name: 'markedBy',     in: 'body',  required: false, description: 'Source: biometric / admin / manual' },
+    ],
+  },
+  {
+    group: 'Inventory / SKU',
+    params: [
+      { name: 'sku',        in: 'query', required: false, description: 'SKU or material code' },
+      { name: 'warehouseId',in: 'query', required: false, description: 'Warehouse ID' },
+      { name: 'quantity',   in: 'body',  required: true,  description: 'Quantity (numeric)' },
+      { name: 'batchNo',    in: 'body',  required: false, description: 'Batch number' },
+    ],
+  },
+  {
+    group: 'Sales / Customer',
+    params: [
+      { name: 'customer',   in: 'query', required: false, description: 'Customer name (partial match)' },
+      { name: 'invoiceNo',  in: 'query', required: false, description: 'Invoice number e.g. INV-001' },
+      { name: 'status',     in: 'query', required: false, description: 'Invoice status: paid / unpaid / draft' },
+    ],
+  },
+  {
+    group: 'Purchase / Vendor',
+    params: [
+      { name: 'vendor',     in: 'query', required: false, description: 'Vendor name (partial match)' },
+      { name: 'poNumber',   in: 'query', required: false, description: 'Purchase order number' },
+    ],
+  },
+];
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface ApiParam {
   name: string;
@@ -502,6 +552,7 @@ function RegisterApiDialog({ open, onOpenChange, onSuccess, tenantModules = [] }
     params: [],
   });
   const [form, setForm] = useState<RegisterApiForm>(emptyForm());
+  const [showPresets, setShowPresets] = useState(false);
 
   const mutation = useMutation({
     mutationFn: (data: RegisterApiForm) =>
@@ -520,6 +571,12 @@ function RegisterApiDialog({ open, onOpenChange, onSuccess, tenantModules = [] }
 
   const addParam = () =>
     setForm(f => ({ ...f, params: [...f.params, { name: '', in: 'query', required: false, description: '' }] }));
+  const addPresetParam = (preset: ParamPreset) => {
+    setForm(f => {
+      if (f.params.some(p => p.name === preset.name)) return f;
+      return { ...f, params: [...f.params, { ...preset }] };
+    });
+  };
   const removeParam = (i: number) =>
     setForm(f => ({ ...f, params: f.params.filter((_, idx) => idx !== i) }));
   const updateParam = (i: number, key: keyof RegisterApiForm['params'][0], val: any) =>
@@ -589,8 +646,8 @@ function RegisterApiDialog({ open, onOpenChange, onSuccess, tenantModules = [] }
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">None</SelectItem>
-                  {tenantModules.filter(m => m !== 'api_hub').map(m => (
-                    <SelectItem key={m} value={m}>{MODULE_LABELS[m] ?? m}</SelectItem>
+                  {Object.entries(MODULE_LABELS).filter(([k]) => k !== 'api_hub').map(([k, label]) => (
+                    <SelectItem key={k} value={k}>{label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -612,12 +669,62 @@ function RegisterApiDialog({ open, onOpenChange, onSuccess, tenantModules = [] }
           <div>
             <div className="flex items-center justify-between mb-2">
               <Label className="text-xs">Parameters</Label>
-              <Button size="sm" variant="outline" onClick={addParam} data-testid="button-add-param">
-                <PlusCircle className="h-3.5 w-3.5 mr-1" />Add Parameter
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm" variant="ghost"
+                  onClick={() => setShowPresets(v => !v)}
+                  data-testid="button-toggle-presets"
+                  className="text-xs text-muted-foreground"
+                >
+                  {showPresets ? <ChevronUp className="h-3 w-3 mr-1" /> : <ChevronDown className="h-3 w-3 mr-1" />}
+                  Suggestions
+                </Button>
+                <Button size="sm" variant="outline" onClick={addParam} data-testid="button-add-param">
+                  <PlusCircle className="h-3.5 w-3.5 mr-1" />Add Parameter
+                </Button>
+              </div>
             </div>
-            {form.params.length === 0 && (
-              <p className="text-xs text-muted-foreground italic">No parameters defined. Click "Add Parameter" to add one.</p>
+
+            {/* Preset suggestions panel */}
+            {showPresets && (
+              <div className="border rounded-md p-3 mb-3 bg-muted/30 space-y-3">
+                <p className="text-xs text-muted-foreground font-medium">Click any parameter to add it instantly. Already-added params are greyed out.</p>
+                {PARAM_PRESETS.map(group => (
+                  <div key={group.group}>
+                    <p className="text-xs font-semibold text-foreground mb-1.5">{group.group}</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {group.params.map(preset => {
+                        const alreadyAdded = form.params.some(p => p.name === preset.name);
+                        return (
+                          <button
+                            key={preset.name}
+                            type="button"
+                            disabled={alreadyAdded}
+                            onClick={() => addPresetParam(preset)}
+                            title={`${preset.in} · ${preset.required ? 'required' : 'optional'} — ${preset.description}`}
+                            className={`text-xs px-2.5 py-1 rounded-md border transition-colors flex items-center gap-1 ${
+                              alreadyAdded
+                                ? 'bg-muted/50 text-muted-foreground border-border opacity-50 cursor-not-allowed'
+                                : 'bg-background hover:bg-accent border-border cursor-pointer'
+                            }`}
+                            data-testid={`preset-param-${preset.name}`}
+                          >
+                            <span className="font-mono">{preset.name}</span>
+                            <span className={`text-[10px] px-1 rounded ${preset.in === 'body' ? 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300' : 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300'}`}>
+                              {preset.in}
+                            </span>
+                            {alreadyAdded && <CheckCheck className="h-3 w-3 text-green-600" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {form.params.length === 0 && !showPresets && (
+              <p className="text-xs text-muted-foreground italic">No parameters defined. Click "Add Parameter" to add one, or use "Suggestions" to pick from common patterns.</p>
             )}
             {form.params.map((p, i) => (
               <div key={i} className="border rounded-md p-3 space-y-2 mb-2" data-testid={`param-row-${i}`}>
