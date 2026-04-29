@@ -1,0 +1,32 @@
+lvnic1 npm[786275]: [AUDIT] Role admin granted access to /api/external-api-keys (system role match)
+Apr 29 05:14:09 iplvnic1 npm[786275]: 5:14:09 AM [express] GET /api/tenant/info 304 in 43ms :: {"id":1,"name":"KINTO","slug":"kinto","plan…
+Apr 29 05:14:09 iplvnic1 npm[786275]: 5:14:09 AM [express] GET /api/external-api-keys 304 in 51ms :: [{"id":"6c1c0295-754d-415a-8696-b6c7b…
+Apr 29 05:14:09 iplvnic1 npm[786275]: 5:14:09 AM [express] GET /api/tenant/features 200 in 99ms :: {"plan":"enterprise","modules":["invoic…
+Apr 29 05:14:09 iplvnic1 npm[786275]: [Catalogue] List error: error: column "module" does not exist
+Apr 29 05:14:09 iplvnic1 npm[786275]:     at /home/kinto/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+Apr 29 05:14:09 iplvnic1 npm[786275]:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+Apr 29 05:14:09 iplvnic1 npm[786275]:     at async file:///home/kinto/kinto-qa-system/dist/index.js:42359:20 {
+Apr 29 05:14:09 iplvnic1 npm[786275]:   length: 106,
+Apr 29 05:14:09 iplvnic1 npm[786275]:   severity: 'ERROR',
+Apr 29 05:14:09 iplvnic1 npm[786275]:   code: '42703',
+Apr 29 05:14:09 iplvnic1 npm[786275]:   detail: undefined,
+Apr 29 05:14:09 iplvnic1 npm[786275]:   hint: undefined,
+Apr 29 05:14:09 iplvnic1 npm[786275]:   position: '77',
+Apr 29 05:14:09 iplvnic1 npm[786275]:   internalPosition: undefined,
+Apr 29 05:14:09 iplvnic1 npm[786275]:   internalQuery: undefined,
+Apr 29 05:14:09 iplvnic1 npm[786275]:   where: undefined,
+Apr 29 05:14:09 iplvnic1 npm[786275]:   schema: undefined,
+Apr 29 05:14:09 iplvnic1 npm[786275]:   table: undefined,
+Apr 29 05:14:09 iplvnic1 npm[786275]:   column: undefined,
+Apr 29 05:14:09 iplvnic1 npm[786275]:   dataType: undefined,
+Apr 29 05:14:09 iplvnic1 npm[786275]:   constraint: undefined,
+Apr 29 05:14:09 iplvnic1 npm[786275]:   file: 'parse_relation.c',
+Apr 29 05:14:09 iplvnic1 npm[786275]:   line: '3722',
+Apr 29 05:14:09 iplvnic1 npm[786275]:   routine: 'errorMissingColumn'
+Apr 29 05:14:09 iplvnic1 npm[786275]: }
+Apr 29 05:14:09 iplvnic1 npm[786275]: 5:14:09 AM [express] GET /api/machines 304 in 122ms :: [{"id":"80649cc4-2677-493d-a712-63f0833ae39d"…
+Apr 29 05:14:09 iplvnic1 npm[786275]: 5:14:09 AM [express] GET /api/external-api-catalogue 304 in 139ms :: {"entries":[{"id":"customer_out…
+Apr 29 05:14:09 iplvnic1 npm[786275]: 5:14:09 AM [express] GET /api/pm-task-list-templates 304 in 135ms :: []
+Apr 29 05:14:09 iplvnic1 npm[786275]: 5:14:09 AM [express] GET /api/maintenance-plans 304 in 125ms :: []
+Apr 29 05:14:09 iplvnic1 npm[786275]: 5:14:09 AM [express] GET /api/users 304 in 125ms :: [{"id":"user-admin","username":"admin","email":"…
+Apr 29 05:14:09 iplvnic1 npm[786275]: 5:14:09 AM [express] GET /api/my-permissions 304 in 129ms :: {"role":"admin","roleId":"role-admin","…

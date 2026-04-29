@@ -18,5 +18,11 @@ CREATE TABLE IF NOT EXISTS external_api_definitions (
   is_active   INTEGER       DEFAULT 1,
   created_by  VARCHAR(64),
   created_at  TIMESTAMP     DEFAULT NOW(),
+  module      VARCHAR(80)   DEFAULT NULL,
   UNIQUE(tenant_id, api_id)
 );
+
+-- Add module column if this table was created before this column was introduced
+-- (safe to run on both fresh and existing installs)
+ALTER TABLE external_api_definitions
+  ADD COLUMN IF NOT EXISTS module VARCHAR(80) DEFAULT NULL;

@@ -63,6 +63,9 @@ psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-29_api_hub_sc
 psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-29_api_hub_module_plan_assignment.sql
 psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-29_api_hub_custom_definitions.sql
 
+-- PATCH: Run this on any server that already has external_api_definitions but is missing the module column
+psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-29_api_hub_add_module_column.sql
+
 ============================================================
   END OF MIGRATION LIST
 ============================================================
