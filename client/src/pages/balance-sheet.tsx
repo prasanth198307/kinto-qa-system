@@ -206,7 +206,7 @@ export default function BalanceSheetPage() {
   function handleExcelDownload() {
     const fmtRupees = (paise: number) => paise === 0 ? 0 : Number((paise / 100).toFixed(2));
     const data: (string | number | null)[][] = [
-      ["KINTO Smart Ops - Balance Sheet"],
+      ["SwachERP - Balance Sheet"],
       [`${currentPeriodLabel} (${periodSubLabel})`],
       [],
       ["Code", "Account Name", "Amount (Rs.)"],
@@ -261,8 +261,8 @@ export default function BalanceSheetPage() {
     <div className="p-4 space-y-4 max-w-6xl mx-auto" data-testid="page-balance-sheet">
       <div className="hidden print-only" style={{ display: "none" }}>
         <div style={{ textAlign: "center", marginBottom: "16px", borderBottom: "2px solid #000", paddingBottom: "12px" }}>
-          <div style={{ fontSize: "18px", fontWeight: "bold", letterSpacing: "1px" }}>KINTO Smart Ops</div>
-          <div style={{ fontSize: "11px", color: "#555", marginTop: "2px" }}>Manufacturing Excellence</div>
+          <div style={{ fontSize: "18px", fontWeight: "bold", letterSpacing: "1px" }}>SwachERP</div>
+          <div style={{ fontSize: "11px", color: "#555", marginTop: "2px" }}>Cleaner Business. Better Future.</div>
           <div style={{ fontSize: "16px", fontWeight: "600", marginTop: "10px" }}>Balance Sheet</div>
           <div style={{ fontSize: "11px", color: "#555", marginTop: "4px" }}>
             {currentPeriodLabel} ({periodSubLabel})
@@ -469,7 +469,7 @@ export default function BalanceSheetPage() {
 
       <div className="hidden print-only" style={{ display: "none" }}>
         <div style={{ textAlign: "right", fontSize: "10px", color: "#666", marginTop: "16px", borderTop: "1px solid #ccc", paddingTop: "8px" }}>
-          Printed on: {printDate} &middot; KINTO Smart Ops &middot; {isBalanced ? "Balanced" : "Out of Balance"}
+          Printed on: {printDate} &middot; SwachERP &middot; {isBalanced ? "Balanced" : "Out of Balance"}
         </div>
       </div>
     </div>

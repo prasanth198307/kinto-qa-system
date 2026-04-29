@@ -245,7 +245,7 @@ export default function NotificationSettings() {
                   <Input
                     id="senderName"
                     type="text"
-                    placeholder="KINTO QA System"
+                    placeholder="SwachERP System"
                     value={formData.senderName}
                     onChange={(e) => setFormData({ ...formData, senderName: e.target.value })}
                     disabled={!formData.emailEnabled}
@@ -338,7 +338,7 @@ export default function NotificationSettings() {
                   <Input
                     id="smtpFromName"
                     type="text"
-                    placeholder="KINTO QA System"
+                    placeholder="SwachERP System"
                     value={formData.smtpFromName}
                     onChange={(e) => setFormData({ ...formData, smtpFromName: e.target.value })}
                     disabled={!formData.emailEnabled}

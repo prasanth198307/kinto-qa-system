@@ -162,7 +162,7 @@ export default function GroupSummaryPage() {
     if (!data) return;
     const fmtRupees = (paise: number) => paise === 0 ? 0 : Number((paise / 100).toFixed(2));
     const rows: (string | number | null)[][] = [
-      ["KINTO Smart Ops - Group Summary (Hierarchical)"],
+      ["SwachERP - Group Summary (Hierarchical)"],
       [currentPeriodLabel],
       [],
       ["Code", "Account / Group Name", "Type", "Opening Balance (Rs.)", "Period Debit (Rs.)", "Period Credit (Rs.)", "Closing Balance (Rs.)"],

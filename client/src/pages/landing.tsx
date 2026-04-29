@@ -767,7 +767,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── WHY KINTO ───────────────────────────────────────────────────── */}
+      {/* ── WHY SWACHERP ───────────────────────────────────────────────────── */}
       <section id="solutions" className="py-16 border-t">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">

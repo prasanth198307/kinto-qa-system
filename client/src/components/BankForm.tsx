@@ -98,7 +98,7 @@ export default function BankForm({ bank, onClose }: BankFormProps) {
             <Input
               id="accountHolderName"
               {...form.register("accountHolderName")}
-              placeholder="KINTO Manufacturing"
+              placeholder="SwachERP"
               data-testid="input-account-holder-name"
             />
             {form.formState.errors.accountHolderName && (

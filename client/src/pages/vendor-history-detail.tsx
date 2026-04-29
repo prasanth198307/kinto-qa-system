@@ -239,11 +239,11 @@ export default function VendorHistoryDetailPage() {
     if (!data || !txnData) return;
     const ExcelJS = (await import('exceljs')).default;
     const wb = new ExcelJS.Workbook();
-    wb.creator = 'KINTO Ops';
+    wb.creator = 'SwachERP';
     wb.created = new Date();
 
     // Fetch company info from default template
-    let companyName = 'KINTO Smart Ops', companyAddress = '', companyGstin = '', companyPhone = '', companyEmail = '';
+    let companyName = 'SwachERP', companyAddress = '', companyGstin = '', companyPhone = '', companyEmail = '';
     try {
       const tmplRes = await fetch('/api/invoice-templates/default', { credentials: 'include' });
       if (tmplRes.ok) {
@@ -577,7 +577,7 @@ export default function VendorHistoryDetailPage() {
       </head>
       <body>
         <div class="header">
-          <h1>KINTO Smart Ops</h1>
+          <h1>SwachERP</h1>
           <p>Vendor Ledger Report</p>
         </div>
         
@@ -680,11 +680,11 @@ export default function VendorHistoryDetailPage() {
 
     const ExcelJS = (await import('exceljs')).default;
     const wb = new ExcelJS.Workbook();
-    wb.creator = 'KINTO Ops';
+    wb.creator = 'SwachERP';
     wb.created = new Date();
 
     // Fetch company info
-    let companyName = 'KINTO Smart Ops', companyAddress = '', companyGstin = '', companyPhone = '', companyEmail = '';
+    let companyName = 'SwachERP', companyAddress = '', companyGstin = '', companyPhone = '', companyEmail = '';
     try {
       const tmplRes = await fetch('/api/invoice-templates/default', { credentials: 'include' });
       if (tmplRes.ok) {
@@ -888,7 +888,7 @@ export default function VendorHistoryDetailPage() {
       </head>
       <body>
         <div class="header">
-          <h1>KINTO Smart Ops</h1>
+          <h1>SwachERP</h1>
           <p>Invoice Transactions Report</p>
         </div>
         <h2 style="font-size: 18px; margin-bottom: 15px;">${data.vendor.vendorName} (${data.vendor.vendorCode})</h2>
@@ -941,11 +941,11 @@ export default function VendorHistoryDetailPage() {
 
     const ExcelJS = (await import('exceljs')).default;
     const wb = new ExcelJS.Workbook();
-    wb.creator = 'KINTO Ops';
+    wb.creator = 'SwachERP';
     wb.created = new Date();
 
     // Fetch company info
-    let companyName = 'KINTO Smart Ops', companyAddress = '', companyGstin = '', companyPhone = '', companyEmail = '';
+    let companyName = 'SwachERP', companyAddress = '', companyGstin = '', companyPhone = '', companyEmail = '';
     try {
       const tmplRes = await fetch('/api/invoice-templates/default', { credentials: 'include' });
       if (tmplRes.ok) {

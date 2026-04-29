@@ -13,7 +13,7 @@ interface MobileHeaderProps {
 export default function MobileHeader({ 
   onLogoutClick, 
   notificationCount = 0,
-  title = "KINTO QA"
+  title = "SwachERP"
 }: MobileHeaderProps) {
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
 

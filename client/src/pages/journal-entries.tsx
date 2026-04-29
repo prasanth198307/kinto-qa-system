@@ -110,7 +110,7 @@ export default function JournalEntriesPage() {
   const [exportDateFrom, setExportDateFrom] = useState("");
   const [exportDateTo, setExportDateTo] = useState("");
   const [exportSource, setExportSource] = useState("all");
-  const [exportCompany, setExportCompany] = useState("KINTO Operations");
+  const [exportCompany, setExportCompany] = useState("SwachERP");
   const [exportFormat, setExportFormat] = useState<"xml" | "csv">("xml");
   const [isExporting, setIsExporting] = useState(false);
   const { toast } = useToast();

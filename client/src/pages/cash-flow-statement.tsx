@@ -231,7 +231,7 @@ export default function CashFlowStatementPage() {
       ? `${formatDateDisplay(data.dateStart)} to ${formatDateDisplay(data.dateEnd)}`
       : `${getFYLabel(selectedFY)} (${formatDateDisplay(data.dateStart)} to ${formatDateDisplay(data.dateEnd)})`;
     const rows: (string | number | null)[][] = [
-      ["KINTO Smart Ops - Cash Flow Statement"],
+      ["SwachERP - Cash Flow Statement"],
       [periodStr],
       [],
       ["Category", "Source", "Amount (Rs.)"],
