@@ -646,8 +646,11 @@ function RegisterApiDialog({ open, onOpenChange, onSuccess, tenantModules = [] }
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">None</SelectItem>
-                  {Object.entries(MODULE_LABELS).filter(([k]) => k !== 'api_hub').map(([k, label]) => (
-                    <SelectItem key={k} value={k}>{label}</SelectItem>
+                  {(tenantModules.length > 0
+                    ? tenantModules.filter(m => m !== 'api_hub')
+                    : Object.keys(MODULE_LABELS).filter(k => k !== 'api_hub')
+                  ).map(m => (
+                    <SelectItem key={m} value={m}>{MODULE_LABELS[m] ?? m}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
