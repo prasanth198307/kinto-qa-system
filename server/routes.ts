@@ -27294,28 +27294,78 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
   });
 
   // ─── External API Key Management (admin only) ──────────────────────────────
+  // ── Catalogue of all external APIs — single source of truth ─────────────────
+  const EXTERNAL_API_CATALOGUE = [
+    {
+      id: 'customer_outstanding',
+      method: 'GET',
+      path: '/api/external/customer-outstanding',
+      label: 'Customer Outstanding',
+      description: 'Returns outstanding receivable amounts per customer with invoice breakdown. Mirrors the in-app vendor ledger formula including credit notes, debit notes, and advances.',
+      category: 'Finance & Sales',
+      params: [
+        { name: 'customer', in: 'query', required: false, description: 'Filter by customer name (partial match)' },
+      ],
+    },
+    {
+      id: 'allocate_cash_sales',
+      method: 'POST',
+      path: '/api/external/allocate-cash-sales',
+      label: 'Allocate Cash Sales',
+      description: 'Marks cash-mode invoices as paid by creating payment records. Accepts a customer name and date range. Supports dry_run preview before committing.',
+      category: 'Finance & Sales',
+      params: [
+        { name: 'customer',  in: 'body', required: true,  description: 'Customer/buyer name (partial match, case-insensitive)' },
+        { name: 'from_date', in: 'body', required: true,  description: 'Start of invoice date range (YYYY-MM-DD)' },
+        { name: 'to_date',   in: 'body', required: true,  description: 'End of invoice date range (YYYY-MM-DD)' },
+        { name: 'dry_run',   in: 'body', required: false, description: 'true = preview only, false = apply (default: false)' },
+        { name: 'remarks',   in: 'body', required: false, description: 'Note attached to each created payment record' },
+      ],
+    },
+  ] as const;
+
+  // GET /api/external-api-catalogue — public list of available APIs for this tenant
+  app.get('/api/external-api-catalogue', isAuthenticated, async (_req: any, res) => {
+    res.json(EXTERNAL_API_CATALOGUE);
+  });
+
   // POST /api/external-api-keys  — create a new key (returns raw key ONCE)
-  app.post('/api/external-api-keys', isAuthenticated, requireRole('admin'), async (req: any, res) => {
+  // Accepts optional: scopes (string[] of API IDs), description (string)
+  app.post('/api/external-api-keys', isAuthenticated, requireRole('admin', 'manager'), async (req: any, res) => {
     try {
-      const { name } = req.body;
+      const { name, scopes, description } = req.body;
       if (!name?.trim()) return res.status(400).json({ message: 'Key name is required' });
+
+      // Validate scopes — must be valid API IDs or null (= all access)
+      const validIds = EXTERNAL_API_CATALOGUE.map(a => a.id);
+      let scopesJson: string | null = null;
+      if (Array.isArray(scopes) && scopes.length > 0) {
+        const invalid = scopes.filter((s: string) => !validIds.includes(s));
+        if (invalid.length > 0) return res.status(400).json({ message: `Invalid scope(s): ${invalid.join(', ')}` });
+        scopesJson = JSON.stringify(scopes);
+      }
 
       const tenantId: number = req.session?.tenantId ?? req.user?.tenantId ?? 1;
       const rawKey = `kinto_${crypto.randomBytes(32).toString('hex')}`;
       const keyHash = crypto.createHash('sha256').update(rawKey).digest('hex');
 
-      const [record] = await db.insert(externalApiKeys).values({
-        tenantId,
-        name: name.trim(),
-        keyHash,
-        isActive: 1,
-        createdBy: req.user?.id ?? null,
-      }).returning();
+      await db.execute(sql`
+        INSERT INTO external_api_keys (tenant_id, name, key_hash, is_active, created_by, scopes, description)
+        VALUES (${tenantId}, ${name.trim()}, ${keyHash}, 1, ${req.user?.id ?? null},
+                ${scopesJson}, ${description?.trim() ?? null})
+      `);
+
+      const [record] = await db.execute(sql`
+        SELECT id, name, created_at FROM external_api_keys
+        WHERE key_hash = ${keyHash} AND tenant_id = ${tenantId}
+        LIMIT 1
+      `).then(r => r.rows as any[]);
 
       res.json({
         id: record.id,
         name: record.name,
-        createdAt: record.createdAt,
+        scopes: scopes ?? null,
+        createdAt: record.created_at,
         rawKey,
         message: 'Save this key securely — it will not be shown again.',
       });
@@ -27329,16 +27379,22 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
   app.get('/api/external-api-keys', isAuthenticated, requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const tenantId: number = req.session?.tenantId ?? req.user?.tenantId ?? 1;
-      const keys = await db.select({
-        id: externalApiKeys.id,
-        name: externalApiKeys.name,
-        isActive: externalApiKeys.isActive,
-        createdBy: externalApiKeys.createdBy,
-        createdAt: externalApiKeys.createdAt,
-        lastUsedAt: externalApiKeys.lastUsedAt,
-      }).from(externalApiKeys)
-        .where(eq(externalApiKeys.tenantId, tenantId))
-        .orderBy(externalApiKeys.createdAt);
+      const rows = await db.execute(sql`
+        SELECT id, name, is_active, created_by, created_at, last_used_at, scopes, description
+        FROM external_api_keys
+        WHERE tenant_id = ${tenantId}
+        ORDER BY created_at ASC
+      `);
+      const keys = (rows.rows as any[]).map(k => ({
+        id: k.id,
+        name: k.name,
+        isActive: k.is_active,
+        createdBy: k.created_by,
+        createdAt: k.created_at,
+        lastUsedAt: k.last_used_at,
+        scopes: k.scopes ? JSON.parse(k.scopes) : null,
+        description: k.description,
+      }));
       res.json(keys);
     } catch (err) {
       console.error('[API Keys] List error:', err);
@@ -27395,21 +27451,23 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       const rawKey = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
 
       if (rawKey) {
-        // External path: verify API key
         const keyHash = crypto.createHash('sha256').update(rawKey).digest('hex');
-        const [keyRecord] = await db.select().from(externalApiKeys)
-          .where(and(eq(externalApiKeys.keyHash, keyHash), eq(externalApiKeys.isActive, 1)))
-          .limit(1);
+        const keyRows = await db.execute(sql`
+          SELECT id, tenant_id, scopes FROM external_api_keys
+          WHERE key_hash = ${keyHash} AND is_active = 1 LIMIT 1
+        `);
+        const keyRecord = (keyRows.rows as any[])[0];
         if (!keyRecord) {
           return res.status(401).json({ error: 'Unauthorized', message: 'Invalid or revoked API key' });
         }
-        db.update(externalApiKeys)
-          .set({ lastUsedAt: new Date().toISOString() })
-          .where(eq(externalApiKeys.id, keyRecord.id))
-          .catch(() => {});
-        tenantId = keyRecord.tenantId;
+        // Scope check — null scopes = full access
+        const keyScopes: string[] | null = keyRecord.scopes ? JSON.parse(keyRecord.scopes) : null;
+        if (keyScopes && !keyScopes.includes('customer_outstanding')) {
+          return res.status(403).json({ error: 'Forbidden', message: 'This API key does not have access to customer_outstanding. Update the key scopes in API Keys settings.' });
+        }
+        db.execute(sql`UPDATE external_api_keys SET last_used_at = NOW() WHERE id = ${keyRecord.id}`).catch(() => {});
+        tenantId = keyRecord.tenant_id;
       } else if (req.isAuthenticated && req.isAuthenticated()) {
-        // Internal path: use session tenant
         tenantId = req.user?.tenantId;
         if (!tenantId) return res.status(401).json({ error: 'Unauthorized' });
       } else {
@@ -27746,17 +27804,21 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
 
       if (rawKey) {
         const keyHash = crypto.createHash('sha256').update(rawKey).digest('hex');
-        const [keyRecord] = await db.select().from(externalApiKeys)
-          .where(and(eq(externalApiKeys.keyHash, keyHash), eq(externalApiKeys.isActive, 1)))
-          .limit(1);
+        const keyRows = await db.execute(sql`
+          SELECT id, tenant_id, scopes FROM external_api_keys
+          WHERE key_hash = ${keyHash} AND is_active = 1 LIMIT 1
+        `);
+        const keyRecord = (keyRows.rows as any[])[0];
         if (!keyRecord) {
           return res.status(401).json({ error: 'Unauthorized', message: 'Invalid or revoked API key' });
         }
-        db.update(externalApiKeys)
-          .set({ lastUsedAt: new Date().toISOString() })
-          .where(eq(externalApiKeys.id, keyRecord.id))
-          .catch(() => {});
-        tenantId = keyRecord.tenantId;
+        // Scope check — null scopes = full access
+        const keyScopes: string[] | null = keyRecord.scopes ? JSON.parse(keyRecord.scopes) : null;
+        if (keyScopes && !keyScopes.includes('allocate_cash_sales')) {
+          return res.status(403).json({ error: 'Forbidden', message: 'This API key does not have access to allocate_cash_sales. Update the key scopes in API Keys settings.' });
+        }
+        db.execute(sql`UPDATE external_api_keys SET last_used_at = NOW() WHERE id = ${keyRecord.id}`).catch(() => {});
+        tenantId = keyRecord.tenant_id;
       } else if (req.isAuthenticated && req.isAuthenticated()) {
         tenantId = req.user?.tenantId;
         callerUserId = req.user?.id || null;
