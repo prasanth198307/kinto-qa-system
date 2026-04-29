@@ -92,7 +92,7 @@ export default function DemoPage() {
             data-testid="demo-back-home"
           >
             <ArrowLeft className="w-4 h-4" />
-            <img src="/swacherp-logo.png" alt="SwachERP" className="h-8 w-auto" />
+            <img src="/swacherp-logo.png" alt="SwachERP" className="h-12 w-auto" />
           </button>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={() => setLocation("/auth")} data-testid="demo-nav-login">
