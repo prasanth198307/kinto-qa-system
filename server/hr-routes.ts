@@ -730,15 +730,43 @@ router.get("/attendance", requireHR, async (req: any, res) => {
 
 router.post("/attendance", requireHR, async (req: any, res) => {
   const tid = getTenantId(req);
-  const { employeeId, date, status, otHours, shiftId, remarks } = req.body;
+  const { employeeId, date, status, otHours, shiftId, remarks, checkInTime, checkOutTime, markedBy } = req.body;
+  // Auto-calculate working hours from in/out times if provided
+  let workingHours: number | null = null;
+  if (checkInTime && checkOutTime) {
+    const [inH, inM] = checkInTime.split(':').map(Number);
+    const [outH, outM] = checkOutTime.split(':').map(Number);
+    const diff = (outH * 60 + outM) - (inH * 60 + inM);
+    if (diff > 0) workingHours = Math.round((diff / 60) * 100) / 100;
+  }
+  // Auto-derive status from working hours if not provided
+  let finalStatus = status ?? 'present';
+  if (!status && workingHours !== null) {
+    if (workingHours === 0) finalStatus = 'absent';
+    else if (workingHours < 4) finalStatus = 'half_day';
+    else finalStatus = 'present';
+  }
   try {
-    // Upsert — if record for that employee+date exists, update it
     const existing = await db.execute(sql`SELECT id FROM hr_attendance WHERE employee_id=${employeeId} AND date=${date} AND tenant_id=${tid}`);
     if (existing.rows.length) {
-      const r = await db.execute(sql`UPDATE hr_attendance SET status=${status}, ot_hours=${otHours ?? 0}, shift_id=${shiftId ?? null}, remarks=${remarks ?? null} WHERE id=${(existing.rows[0] as any).id} RETURNING *`);
+      const r = await db.execute(sql`
+        UPDATE hr_attendance SET
+          status=${finalStatus}, ot_hours=${otHours ?? 0}, shift_id=${shiftId ?? null},
+          remarks=${remarks ?? null}, check_in_time=${checkInTime ?? null},
+          check_out_time=${checkOutTime ?? null}, working_hours=${workingHours},
+          marked_by=${markedBy ?? 'admin'}
+        WHERE id=${(existing.rows[0] as any).id} RETURNING *`);
       return res.json(r.rows[0]);
     }
-    const r = await db.execute(sql`INSERT INTO hr_attendance (tenant_id, employee_id, date, status, ot_hours, shift_id, remarks) VALUES (${tid}, ${employeeId}, ${date}, ${status}, ${otHours ?? 0}, ${shiftId ?? null}, ${remarks ?? null}) RETURNING *`);
+    const r = await db.execute(sql`
+      INSERT INTO hr_attendance
+        (tenant_id, employee_id, date, status, ot_hours, shift_id, remarks,
+         check_in_time, check_out_time, working_hours, marked_by)
+      VALUES
+        (${tid}, ${employeeId}, ${date}, ${finalStatus}, ${otHours ?? 0}, ${shiftId ?? null},
+         ${remarks ?? null}, ${checkInTime ?? null}, ${checkOutTime ?? null},
+         ${workingHours}, ${markedBy ?? 'admin'})
+      RETURNING *`);
     res.json(r.rows[0]);
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
@@ -746,20 +774,45 @@ router.post("/attendance", requireHR, async (req: any, res) => {
 // Bulk attendance
 router.post("/attendance/bulk", requireHR, async (req: any, res) => {
   const tid = getTenantId(req);
-  const { records } = req.body; // [{employeeId, date, status, otHours}]
+  const { records } = req.body; // [{employeeId, date, status?, otHours?, checkInTime?, checkOutTime?, markedBy?}]
   try {
     const results = [];
     for (const rec of records) {
+      // Auto-calculate working hours per record
+      let wh: number | null = null;
+      if (rec.checkInTime && rec.checkOutTime) {
+        const [inH, inM] = rec.checkInTime.split(':').map(Number);
+        const [outH, outM] = rec.checkOutTime.split(':').map(Number);
+        const diff = (outH * 60 + outM) - (inH * 60 + inM);
+        if (diff > 0) wh = Math.round((diff / 60) * 100) / 100;
+      }
+      let finalStatus = rec.status ?? 'present';
+      if (!rec.status && wh !== null) {
+        if (wh === 0) finalStatus = 'absent';
+        else if (wh < 4) finalStatus = 'half_day';
+        else finalStatus = 'present';
+      }
       const existing = await db.execute(sql`SELECT id FROM hr_attendance WHERE employee_id=${rec.employeeId} AND date=${rec.date} AND tenant_id=${tid}`);
       if (existing.rows.length) {
-        const r = await db.execute(sql`UPDATE hr_attendance SET status=${rec.status}, ot_hours=${rec.otHours ?? 0} WHERE id=${(existing.rows[0] as any).id} RETURNING *`);
+        const r = await db.execute(sql`
+          UPDATE hr_attendance SET
+            status=${finalStatus}, ot_hours=${rec.otHours ?? 0},
+            check_in_time=${rec.checkInTime ?? null}, check_out_time=${rec.checkOutTime ?? null},
+            working_hours=${wh}, marked_by=${rec.markedBy ?? 'biometric'}
+          WHERE id=${(existing.rows[0] as any).id} RETURNING *`);
         results.push(r.rows[0]);
       } else {
-        const r = await db.execute(sql`INSERT INTO hr_attendance (tenant_id, employee_id, date, status, ot_hours) VALUES (${tid}, ${rec.employeeId}, ${rec.date}, ${rec.status}, ${rec.otHours ?? 0}) RETURNING *`);
+        const r = await db.execute(sql`
+          INSERT INTO hr_attendance
+            (tenant_id, employee_id, date, status, ot_hours, check_in_time, check_out_time, working_hours, marked_by)
+          VALUES
+            (${tid}, ${rec.employeeId}, ${rec.date}, ${finalStatus}, ${rec.otHours ?? 0},
+             ${rec.checkInTime ?? null}, ${rec.checkOutTime ?? null}, ${wh}, ${rec.markedBy ?? 'biometric'})
+          RETURNING *`);
         results.push(r.rows[0]);
       }
     }
-    res.json({ saved: results.length });
+    res.json({ saved: results.length, records: results });
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 
