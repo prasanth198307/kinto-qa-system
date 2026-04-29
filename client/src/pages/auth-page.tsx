@@ -23,11 +23,22 @@ export default function AuthPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [sessionExpired, setSessionExpired] = useState(false);
+  const [tenantLogoUrl, setTenantLogoUrl] = useState<string | null>(null);
+  const [tenantDisplayName, setTenantDisplayName] = useState<string | null>(null);
 
   useEffect(() => {
     if (sessionStorage.getItem("session_expired") === "1") {
       sessionStorage.removeItem("session_expired");
       setSessionExpired(true);
+    }
+    // Load tenant branding from sessionStorage (set by company-select page)
+    const stored = sessionStorage.getItem("selectedTenant");
+    if (stored) {
+      try {
+        const t = JSON.parse(stored);
+        if (t.logoUrl) setTenantLogoUrl(t.logoUrl);
+        if (t.name) setTenantDisplayName(t.name);
+      } catch {}
     }
   }, []);
 
@@ -70,10 +81,24 @@ export default function AuthPage() {
       {/* Left side — form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-8 bg-background">
         <div className="w-full max-w-md">
-          <div className="text-center mb-8">
+          <div className="text-center mb-8 space-y-3">
             <a href="/" aria-label="Back to home">
               <KintoLogo className="justify-center" variant="full" />
             </a>
+            {tenantLogoUrl && (
+              <div className="flex flex-col items-center gap-2">
+                <div className="h-px w-16 bg-border" />
+                <img
+                  src={tenantLogoUrl}
+                  alt={tenantDisplayName ?? "Company Logo"}
+                  className="h-10 w-auto object-contain max-w-[160px]"
+                  data-testid="img-tenant-logo-auth"
+                />
+                {tenantDisplayName && (
+                  <p className="text-sm font-medium text-foreground">{tenantDisplayName}</p>
+                )}
+              </div>
+            )}
           </div>
 
           <a

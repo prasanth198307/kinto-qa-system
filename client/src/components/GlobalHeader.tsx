@@ -53,15 +53,20 @@ export function GlobalHeader({
             <Menu className="w-5 h-5" />
           </Button>
         )}
-        {logoUrl ? (
-          <img
-            src={logoUrl}
-            alt={tenantName}
-            className="h-8 object-contain max-w-[140px]"
-            data-testid="img-tenant-logo"
-          />
-        ) : (
-          <KintoLogo variant="compact" layout="horizontal" />
+        {/* SwachERP platform logo — always visible */}
+        <KintoLogo variant="compact" layout="horizontal" />
+
+        {/* Tenant logo — shown alongside when set */}
+        {logoUrl && (
+          <>
+            <div className="h-6 w-px bg-border flex-shrink-0" />
+            <img
+              src={logoUrl}
+              alt={tenantName}
+              className="h-8 object-contain max-w-[120px]"
+              data-testid="img-tenant-logo"
+            />
+          </>
         )}
         {title && (
           <h1 className="text-lg font-semibold text-foreground truncate">
