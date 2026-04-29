@@ -27397,9 +27397,81 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
     },
   ] as const;
 
-  // GET /api/external-api-catalogue — public list of available APIs for this tenant
-  app.get('/api/external-api-catalogue', isAuthenticated, async (_req: any, res) => {
-    res.json(EXTERNAL_API_CATALOGUE);
+  // GET /api/external-api-catalogue — built-in APIs + tenant-registered custom APIs
+  app.get('/api/external-api-catalogue', isAuthenticated, async (req: any, res) => {
+    try {
+      const tenantId: number = req.session?.tenantId ?? req.user?.tenantId ?? 1;
+      const rows = await db.execute(sql`
+        SELECT api_id, method, path, label, description, category, params
+        FROM external_api_definitions
+        WHERE tenant_id = ${tenantId} AND is_active = 1
+        ORDER BY created_at ASC
+      `);
+      const custom = (rows.rows as any[]).map(r => ({
+        id: r.api_id,
+        method: r.method,
+        path: r.path,
+        label: r.label,
+        description: r.description ?? '',
+        category: r.category ?? 'Custom',
+        params: r.params ?? [],
+        isCustom: true,
+        dbId: null as null, // not needed but consistent
+      }));
+      // Built-in entries first, then custom
+      const builtIn = EXTERNAL_API_CATALOGUE.map(a => ({ ...a, isCustom: false }));
+      res.json([...builtIn, ...custom]);
+    } catch (err) {
+      console.error('[Catalogue] List error:', err);
+      res.json(EXTERNAL_API_CATALOGUE.map(a => ({ ...a, isCustom: false })));
+    }
+  });
+
+  // POST /api/external-api-catalogue — register a custom API definition
+  app.post('/api/external-api-catalogue', isAuthenticated, requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const tenantId: number = req.session?.tenantId ?? req.user?.tenantId ?? 1;
+      const { method, path: apiPath, label, description, category, params } = req.body;
+      if (!method || !apiPath || !label) {
+        return res.status(400).json({ message: 'method, path, and label are required' });
+      }
+      const validMethods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
+      if (!validMethods.includes(method.toUpperCase())) {
+        return res.status(400).json({ message: `method must be one of: ${validMethods.join(', ')}` });
+      }
+      // Generate a stable api_id from label
+      const apiId = label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') + '_' + Date.now();
+      await db.execute(sql`
+        INSERT INTO external_api_definitions
+          (tenant_id, api_id, method, path, label, description, category, params, is_active, created_by, created_at)
+        VALUES
+          (${tenantId}, ${apiId}, ${method.toUpperCase()}, ${apiPath.trim()},
+           ${label.trim()}, ${description?.trim() ?? null}, ${category?.trim() ?? 'Custom'},
+           ${JSON.stringify(params ?? [])}, 1, ${req.user?.id ?? null}, NOW())
+      `);
+      const [created] = await db.execute(sql`
+        SELECT * FROM external_api_definitions WHERE api_id = ${apiId} AND tenant_id = ${tenantId} LIMIT 1
+      `).then(r => r.rows as any[]);
+      res.json({ ...created, isCustom: true });
+    } catch (err) {
+      console.error('[Catalogue] Create error:', err);
+      res.status(500).json({ message: 'Failed to register API' });
+    }
+  });
+
+  // DELETE /api/external-api-catalogue/:apiId — remove a custom API definition
+  app.delete('/api/external-api-catalogue/:apiId', isAuthenticated, requireRole('admin'), async (req: any, res) => {
+    try {
+      const tenantId: number = req.session?.tenantId ?? req.user?.tenantId ?? 1;
+      await db.execute(sql`
+        UPDATE external_api_definitions SET is_active = 0
+        WHERE api_id = ${req.params.apiId} AND tenant_id = ${tenantId}
+      `);
+      res.json({ message: 'API definition removed' });
+    } catch (err) {
+      console.error('[Catalogue] Delete error:', err);
+      res.status(500).json({ message: 'Failed to remove API definition' });
+    }
   });
 
   // POST /api/external-api-keys  — create a new key (returns raw key ONCE)

@@ -11,6 +11,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import {
@@ -23,7 +26,7 @@ import {
   Plus, Copy, Trash2, Key, CheckCircle, Clock, AlertCircle,
   BookOpen, Shield, ChevronDown, ChevronUp, Globe, Lock,
   Play, Loader2, BarChart3, Zap, CheckCheck, XCircle,
-  FlaskConical,
+  FlaskConical, PlusCircle, MinusCircle, Pencil,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -41,6 +44,15 @@ interface ApiCatalogEntry {
   description: string;
   category: string;
   params: ApiParam[];
+  isCustom?: boolean;
+}
+interface RegisterApiForm {
+  method: string;
+  path: string;
+  label: string;
+  description: string;
+  category: string;
+  params: { name: string; in: string; required: boolean; description: string }[];
 }
 interface ApiKey {
   id: string;
@@ -228,11 +240,13 @@ function TryItPanel({ api }: { api: ApiCatalogEntry }) {
 }
 
 // ── Catalog Card ─────────────────────────────────────────────────────────────
-function ApiCatalogCard({ api }: { api: ApiCatalogEntry }) {
+function ApiCatalogCard({ api, onDelete }: { api: ApiCatalogEntry; onDelete?: (id: string) => void }) {
   const [expanded, setExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState<'docs' | 'try'>('docs');
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   return (
+    <>
     <Card data-testid={`card-api-${api.id}`}>
       <CardContent className="p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -244,6 +258,9 @@ function ApiCatalogCard({ api }: { api: ApiCatalogEntry }) {
               <div className="flex flex-wrap items-center gap-2">
                 <p className="font-medium text-sm">{api.label}</p>
                 <Badge variant="outline" className="text-xs">{api.category}</Badge>
+                {api.isCustom && (
+                  <Badge variant="secondary" className="text-xs">Custom</Badge>
+                )}
               </div>
               <code className="text-xs text-muted-foreground font-mono">{api.path}</code>
               <p className="text-xs text-muted-foreground mt-1">{api.description}</p>
@@ -259,6 +276,15 @@ function ApiCatalogCard({ api }: { api: ApiCatalogEntry }) {
               <FlaskConical className="h-3.5 w-3.5" />
               Try It
             </Button>
+            {api.isCustom && onDelete && (
+              <Button
+                size="icon" variant="ghost"
+                onClick={() => setConfirmDelete(true)}
+                data-testid={`button-delete-api-${api.id}`}
+              >
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </Button>
+            )}
             <Button
               size="icon" variant="ghost"
               onClick={() => setExpanded(!expanded)}
@@ -317,6 +343,214 @@ function ApiCatalogCard({ api }: { api: ApiCatalogEntry }) {
         )}
       </CardContent>
     </Card>
+    <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Remove API from catalog?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This will remove <strong>{api.label}</strong> from the catalog. Existing API keys with this scope will still work if the endpoint exists.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-destructive text-destructive-foreground"
+            onClick={() => { setConfirmDelete(false); onDelete?.(api.id); }}
+          >
+            Remove
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
+  );
+}
+
+// ── Register API Dialog ───────────────────────────────────────────────────────
+function RegisterApiDialog({ open, onOpenChange, onSuccess }: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  onSuccess: () => void;
+}) {
+  const { toast } = useToast();
+  const emptyForm = (): RegisterApiForm => ({
+    method: 'GET', path: '', label: '', description: '', category: 'Custom',
+    params: [],
+  });
+  const [form, setForm] = useState<RegisterApiForm>(emptyForm());
+
+  const mutation = useMutation({
+    mutationFn: (data: RegisterApiForm) =>
+      apiRequest('POST', '/api/external-api-catalogue', data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/external-api-catalogue'] });
+      toast({ title: 'API registered', description: `${form.label} added to the catalog.` });
+      setForm(emptyForm());
+      onSuccess();
+      onOpenChange(false);
+    },
+    onError: (err: any) => {
+      toast({ variant: 'destructive', title: 'Failed', description: err?.message ?? 'Could not register API' });
+    },
+  });
+
+  const addParam = () =>
+    setForm(f => ({ ...f, params: [...f.params, { name: '', in: 'query', required: false, description: '' }] }));
+  const removeParam = (i: number) =>
+    setForm(f => ({ ...f, params: f.params.filter((_, idx) => idx !== i) }));
+  const updateParam = (i: number, key: keyof RegisterApiForm['params'][0], val: any) =>
+    setForm(f => ({ ...f, params: f.params.map((p, idx) => idx === i ? { ...p, [key]: val } : p) }));
+
+  const isValid = form.method && form.path.trim() && form.label.trim();
+
+  return (
+    <Dialog open={open} onOpenChange={v => { if (!mutation.isPending) { setForm(emptyForm()); onOpenChange(v); } }}>
+      <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Register Custom API</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="grid grid-cols-3 gap-3">
+            <div className="col-span-1">
+              <Label className="text-xs mb-1.5 block">Method *</Label>
+              <Select value={form.method} onValueChange={v => setForm(f => ({ ...f, method: v }))}>
+                <SelectTrigger data-testid="select-api-method">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {['GET','POST','PUT','PATCH','DELETE'].map(m => (
+                    <SelectItem key={m} value={m}>
+                      <span className={`font-mono text-xs font-bold ${METHOD_COLORS[m] ?? ''}`}>{m}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="col-span-2">
+              <Label className="text-xs mb-1.5 block">Path *</Label>
+              <Input
+                placeholder="/api/external/my-endpoint"
+                value={form.path}
+                onChange={e => setForm(f => ({ ...f, path: e.target.value }))}
+                data-testid="input-api-path"
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label className="text-xs mb-1.5 block">Label (human-readable name) *</Label>
+            <Input
+              placeholder="e.g. Inventory Stock Levels"
+              value={form.label}
+              onChange={e => setForm(f => ({ ...f, label: e.target.value }))}
+              data-testid="input-api-label"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs mb-1.5 block">Category</Label>
+              <Input
+                placeholder="Custom"
+                value={form.category}
+                onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
+                data-testid="input-api-category"
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label className="text-xs mb-1.5 block">Description</Label>
+            <Textarea
+              placeholder="What does this endpoint do?"
+              rows={2}
+              value={form.description}
+              onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+              data-testid="input-api-description"
+            />
+          </div>
+
+          {/* Parameters */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <Label className="text-xs">Parameters</Label>
+              <Button size="sm" variant="outline" onClick={addParam} data-testid="button-add-param">
+                <PlusCircle className="h-3.5 w-3.5 mr-1" />Add Parameter
+              </Button>
+            </div>
+            {form.params.length === 0 && (
+              <p className="text-xs text-muted-foreground italic">No parameters defined. Click "Add Parameter" to add one.</p>
+            )}
+            {form.params.map((p, i) => (
+              <div key={i} className="border rounded-md p-3 space-y-2 mb-2" data-testid={`param-row-${i}`}>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="col-span-2">
+                    <Input
+                      placeholder="Parameter name"
+                      value={p.name}
+                      onChange={e => updateParam(i, 'name', e.target.value)}
+                      className="text-xs"
+                      data-testid={`input-param-name-${i}`}
+                    />
+                  </div>
+                  <div>
+                    <Select value={p.in} onValueChange={v => updateParam(i, 'in', v)}>
+                      <SelectTrigger className="text-xs" data-testid={`select-param-in-${i}`}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="query">query</SelectItem>
+                        <SelectItem value="body">body</SelectItem>
+                        <SelectItem value="header">header</SelectItem>
+                        <SelectItem value="path">path</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Input
+                    placeholder="Description"
+                    value={p.description}
+                    onChange={e => updateParam(i, 'description', e.target.value)}
+                    className="text-xs flex-1"
+                    data-testid={`input-param-desc-${i}`}
+                  />
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <Checkbox
+                      checked={p.required}
+                      onCheckedChange={v => updateParam(i, 'required', !!v)}
+                      id={`req-${i}`}
+                      data-testid={`checkbox-param-required-${i}`}
+                    />
+                    <Label htmlFor={`req-${i}`} className="text-xs cursor-pointer">Required</Label>
+                  </div>
+                  <Button
+                    size="icon" variant="ghost"
+                    onClick={() => removeParam(i)}
+                    data-testid={`button-remove-param-${i}`}
+                  >
+                    <MinusCircle className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={mutation.isPending}>
+            Cancel
+          </Button>
+          <Button
+            onClick={() => mutation.mutate(form)}
+            disabled={!isValid || mutation.isPending}
+            data-testid="button-register-api-submit"
+          >
+            {mutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+            Register API
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -489,6 +723,7 @@ function AnalyticsTab({ catalogue }: { catalogue: ApiCatalogEntry[] }) {
 export default function ApiKeysPage() {
   const { toast } = useToast();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [registerApiOpen, setRegisterApiOpen] = useState(false);
   const [newKeyName, setNewKeyName] = useState("");
   const [newKeyDescription, setNewKeyDescription] = useState("");
   const [selectedScopes, setSelectedScopes] = useState<string[]>([]);
@@ -527,6 +762,15 @@ export default function ApiKeysPage() {
       toast({ title: "API key revoked" });
     },
     onError: () => toast({ title: "Failed to revoke key", variant: "destructive" }),
+  });
+
+  const deleteApiMutation = useMutation({
+    mutationFn: async (apiId: string) => { await apiRequest("DELETE", `/api/external-api-catalogue/${apiId}`); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/external-api-catalogue"] });
+      toast({ title: "API removed from catalog" });
+    },
+    onError: () => toast({ title: "Failed to remove API", variant: "destructive" }),
   });
 
   const handleCreate = () => {
@@ -606,16 +850,42 @@ export default function ApiKeysPage() {
             </CardContent>
           </Card>
 
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              {catalogue.length} API{catalogue.length !== 1 ? 's' : ''} available
+            </p>
+            <Button
+              size="sm" variant="outline"
+              onClick={() => setRegisterApiOpen(true)}
+              data-testid="button-register-api"
+            >
+              <Plus className="h-3.5 w-3.5 mr-1.5" />Register API
+            </Button>
+          </div>
+
           {catalogue.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4">Loading...</p>
+            <div className="text-center py-8 text-muted-foreground">
+              <BookOpen className="h-10 w-10 mx-auto mb-3 opacity-30" />
+              <p className="text-sm">No APIs registered yet.</p>
+              <p className="text-xs mt-1">Click "Register API" to add your first endpoint to the catalog.</p>
+            </div>
           ) : (
             <div className="space-y-3">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                {catalogue.length} API{catalogue.length !== 1 ? 's' : ''} available
-              </p>
-              {catalogue.map(api => <ApiCatalogCard key={api.id} api={api} />)}
+              {catalogue.map(api => (
+                <ApiCatalogCard
+                  key={api.id}
+                  api={api}
+                  onDelete={id => deleteApiMutation.mutate(id)}
+                />
+              ))}
             </div>
           )}
+
+          <RegisterApiDialog
+            open={registerApiOpen}
+            onOpenChange={setRegisterApiOpen}
+            onSuccess={() => {}}
+          />
         </TabsContent>
 
         {/* ── Tab 2: API Keys ── */}
