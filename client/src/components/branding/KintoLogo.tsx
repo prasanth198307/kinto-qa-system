@@ -14,7 +14,7 @@ export function KintoLogo({ className = "", variant = "full", layout = "horizont
         <img
           src="/swacherp-logo.png"
           alt="SwachERP"
-          className={`${isCompact ? "h-6" : "h-9"} w-auto object-contain`}
+          className={`${isCompact ? "h-8" : "h-16"} w-auto object-contain`}
         />
         {!isCompact && (
           <div className={`flex flex-col leading-tight ${isVertical ? "items-center" : ""}`}>

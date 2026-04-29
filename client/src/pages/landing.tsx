@@ -366,7 +366,7 @@ export default function LandingPage() {
       <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center gap-6">
           <a href="/" className="flex items-center shrink-0">
-            <img src="/swacherp-logo.png" alt="SwachERP" className="h-8 w-auto" />
+            <img src="/swacherp-logo.png" alt="SwachERP" className="h-10 w-auto" />
           </a>
 
           <nav className="hidden lg:flex items-center gap-1">
@@ -893,7 +893,7 @@ export default function LandingPage() {
           <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-10">
             <div className="col-span-2 md:col-span-1">
               <div className="mb-3">
-                <img src="/swacherp-logo.png" alt="SwachERP" className="h-8 w-auto" />
+                <img src="/swacherp-logo.png" alt="SwachERP" className="h-10 w-auto" />
               </div>
               <p className="text-xs text-muted-foreground leading-relaxed">Cloud ERP for Indian manufacturing — GST-compliant, WhatsApp-connected, and HR-ready.</p>
             </div>
