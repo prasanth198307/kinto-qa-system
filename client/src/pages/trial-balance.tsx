@@ -116,6 +116,11 @@ export default function TrialBalancePage() {
     queryKey: [`/api/chart-of-accounts?${apiQueryParams}`],
   });
 
+  const { data: invoiceTemplate } = useQuery<any>({
+    queryKey: ['/api/invoice-templates/default'],
+  });
+  const companyName = invoiceTemplate?.defaultSellerName || '';
+
   const currentPeriodLabel = (() => {
     if (dateMode === "custom" && isCustomValid) {
       return `${formatDateDisplay(customFrom)} to ${formatDateDisplay(customTo)}`;
@@ -273,7 +278,7 @@ export default function TrialBalancePage() {
   function handleExcelDownload() {
     const fmtRupees = (paise: number) => paise === 0 ? 0 : Number((paise / 100).toFixed(2));
     const data: (string | number | null)[][] = [
-      ["SwachERP - Trial Balance"],
+      [`${companyName} - Trial Balance`],
       [currentPeriodLabel],
       [],
       ["Code", "Account Name", "Debit (Rs.)", "Credit (Rs.)"],
@@ -335,7 +340,7 @@ export default function TrialBalancePage() {
     <div className="p-4 space-y-4 max-w-5xl mx-auto" data-testid="page-trial-balance">
       <div className="hidden print-only" style={{ display: "none" }}>
         <div style={{ textAlign: "center", marginBottom: "16px", borderBottom: "2px solid #000", paddingBottom: "12px" }}>
-          <div style={{ fontSize: "18px", fontWeight: "bold", letterSpacing: "1px" }}>SwachERP</div>
+          <div style={{ fontSize: "18px", fontWeight: "bold", letterSpacing: "1px" }}>{companyName}</div>
           <div style={{ fontSize: "11px", color: "#555", marginTop: "2px" }}>Cleaner Business. Better Future.</div>
           <div style={{ fontSize: "16px", fontWeight: "600", marginTop: "10px" }}>Trial Balance</div>
           <div style={{ fontSize: "11px", color: "#555", marginTop: "4px" }}>
@@ -541,7 +546,7 @@ export default function TrialBalancePage() {
 
       <div className="hidden print-only" style={{ display: "none" }}>
         <div style={{ textAlign: "right", fontSize: "10px", color: "#666", marginTop: "16px", borderTop: "1px solid #ccc", paddingTop: "8px" }}>
-          Printed on: {printDate} &middot; SwachERP &middot; {isBalanced ? "Books Balanced" : `Out of balance by \u20B9${formatAmount(Math.abs(difference))}`}
+          Printed on: {printDate} &middot; {companyName} &middot; {isBalanced ? "Books Balanced" : `Out of balance by \u20B9${formatAmount(Math.abs(difference))}`}
         </div>
       </div>
     </div>

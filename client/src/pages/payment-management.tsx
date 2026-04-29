@@ -402,7 +402,7 @@ export default function PaymentManagement() {
     try {
       const ExcelJS = (await import('exceljs')).default;
       const wb = new ExcelJS.Workbook();
-      wb.creator = 'SwachERP';
+      wb.creator = '';
       wb.created = new Date();
 
       const headerStyle = { font: { bold: true, color: { argb: 'FFFFFFFF' } }, fill: { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FF1E3A5F' } }, alignment: { vertical: 'middle' as const } };
@@ -420,7 +420,7 @@ export default function PaymentManagement() {
         const selectedVendor = (vendors as any[]).find(v => v.id === bulkVendorId);
         const vendorName = selectedVendor?.vendorName || 'Vendor';
 
-        const companyName    = tmpl?.defaultSellerName    || 'SwachERP';
+        const companyName    = tmpl?.defaultSellerName || '';
         const companyAddress = tmpl?.defaultSellerAddress || '';
         const companyGstin   = tmpl?.defaultSellerGstin   || '';
         const companyPhone   = tmpl?.defaultSellerPhone   || '';
@@ -603,7 +603,7 @@ export default function PaymentManagement() {
         const groups: any[] = json.data || [];
         const tmpl   = tmplRes.ok ? await tmplRes.json() : null;
 
-        const companyName    = tmpl?.defaultSellerName    || 'SwachERP';
+        const companyName    = tmpl?.defaultSellerName || '';
         const companyAddress = tmpl?.defaultSellerAddress || '';
         const companyGstin   = tmpl?.defaultSellerGstin   || '';
         const companyPhone   = tmpl?.defaultSellerPhone   || '';

@@ -130,6 +130,11 @@ export default function ProfitLossPage() {
     queryKey: [`/api/group-summary?fromDate=${fromDate}&toDate=${toDate}`],
   });
 
+  const { data: invoiceTemplate } = useQuery<any>({
+    queryKey: ['/api/invoice-templates/default'],
+  });
+  const companyName = invoiceTemplate?.defaultSellerName || '';
+
   const tree = summaryData?.tree || [];
 
   const revenueTree = useMemo(() => pruneZeroNodes(filterTreeByType(tree, 'Income')), [tree]);
@@ -192,7 +197,7 @@ export default function ProfitLossPage() {
   function handleExcelDownload() {
     const fmtRupees = (paise: number) => paise === 0 ? 0 : Number((paise / 100).toFixed(2));
     const data: (string | number | null)[][] = [
-      ["SwachERP - Profit & Loss Statement"],
+      [`${companyName} - Profit & Loss Statement`],
       [currentPeriodLabel],
       [],
       ["Code", "Account Name", "Amount (Rs.)"],
@@ -241,7 +246,7 @@ export default function ProfitLossPage() {
     <div className="p-4 space-y-4 max-w-6xl mx-auto" data-testid="page-profit-loss">
       <div className="hidden print-only" style={{ display: "none" }}>
         <div style={{ textAlign: "center", marginBottom: "16px", borderBottom: "2px solid #000", paddingBottom: "12px" }}>
-          <div style={{ fontSize: "18px", fontWeight: "bold", letterSpacing: "1px" }}>SwachERP</div>
+          <div style={{ fontSize: "18px", fontWeight: "bold", letterSpacing: "1px" }}>{companyName}</div>
           <div style={{ fontSize: "11px", color: "#555", marginTop: "2px" }}>Cleaner Business. Better Future.</div>
           <div style={{ fontSize: "16px", fontWeight: "600", marginTop: "10px" }}>Profit & Loss Statement</div>
           <div style={{ fontSize: "11px", color: "#555", marginTop: "4px" }}>
@@ -401,7 +406,7 @@ export default function ProfitLossPage() {
 
       <div className="hidden print-only" style={{ display: "none" }}>
         <div style={{ textAlign: "right", fontSize: "10px", color: "#666", marginTop: "16px", borderTop: "1px solid #ccc", paddingTop: "8px" }}>
-          Printed on: {printDate} &middot; SwachERP &middot; Net {isProfit ? "Profit" : "Loss"}: {"\u20B9"}{formatAmount(Math.abs(netProfit))}
+          Printed on: {printDate} &middot; {companyName} &middot; Net {isProfit ? "Profit" : "Loss"}: {"\u20B9"}{formatAmount(Math.abs(netProfit))}
         </div>
       </div>
     </div>

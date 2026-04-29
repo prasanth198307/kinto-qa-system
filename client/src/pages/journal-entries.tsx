@@ -110,7 +110,7 @@ export default function JournalEntriesPage() {
   const [exportDateFrom, setExportDateFrom] = useState("");
   const [exportDateTo, setExportDateTo] = useState("");
   const [exportSource, setExportSource] = useState("all");
-  const [exportCompany, setExportCompany] = useState("SwachERP");
+  const [exportCompany, setExportCompany] = useState("");
   const [exportFormat, setExportFormat] = useState<"xml" | "csv">("xml");
   const [isExporting, setIsExporting] = useState(false);
   const { toast } = useToast();
@@ -186,6 +186,11 @@ export default function JournalEntriesPage() {
     if (searchQuery) ledgerQueryParams.set("search", searchQuery);
     if (filterSource !== "all") ledgerQueryParams.set("sourceType", filterSource);
   }
+
+  const { data: invoiceTemplate } = useQuery<any>({
+    queryKey: ['/api/invoice-templates/default'],
+  });
+  const tenantCompanyName = invoiceTemplate?.defaultSellerName || '';
 
   const { data, isLoading } = useQuery<{
     entries: JournalEntry[];
@@ -293,6 +298,7 @@ export default function JournalEntriesPage() {
               setExportDateFrom(dateFrom);
               setExportDateTo(dateTo);
               setExportSource(filterSource);
+              setExportCompany(tenantCompanyName);
               setShowExportDialog(true);
             }}
             data-testid="button-export-tally"

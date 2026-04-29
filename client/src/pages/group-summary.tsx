@@ -80,6 +80,11 @@ export default function GroupSummaryPage() {
     return { fromDate: dates.start, toDate: dates.end };
   })();
 
+  const { data: invoiceTemplate } = useQuery<any>({
+    queryKey: ['/api/invoice-templates/default'],
+  });
+  const companyName = invoiceTemplate?.defaultSellerName || '';
+
   const { data, isLoading } = useQuery<GroupSummaryResponse>({
     queryKey: ['/api/group-summary', fromDate, toDate],
     queryFn: async () => {
@@ -162,7 +167,7 @@ export default function GroupSummaryPage() {
     if (!data) return;
     const fmtRupees = (paise: number) => paise === 0 ? 0 : Number((paise / 100).toFixed(2));
     const rows: (string | number | null)[][] = [
-      ["SwachERP - Group Summary (Hierarchical)"],
+      [`${companyName} - Group Summary (Hierarchical)`],
       [currentPeriodLabel],
       [],
       ["Code", "Account / Group Name", "Type", "Opening Balance (Rs.)", "Period Debit (Rs.)", "Period Credit (Rs.)", "Closing Balance (Rs.)"],

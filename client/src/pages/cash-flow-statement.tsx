@@ -206,6 +206,11 @@ export default function CashFlowStatementPage() {
     return `/api/cash-flow-statement?fy=${selectedFY}`;
   })();
 
+  const { data: invoiceTemplate } = useQuery<any>({
+    queryKey: ['/api/invoice-templates/default'],
+  });
+  const companyName = invoiceTemplate?.defaultSellerName || '';
+
   const { data, isLoading, isError } = useQuery<CashFlowData>({
     queryKey: ["/api/cash-flow-statement", dateMode, selectedFY, customFrom, customTo],
     queryFn: async () => {
@@ -231,7 +236,7 @@ export default function CashFlowStatementPage() {
       ? `${formatDateDisplay(data.dateStart)} to ${formatDateDisplay(data.dateEnd)}`
       : `${getFYLabel(selectedFY)} (${formatDateDisplay(data.dateStart)} to ${formatDateDisplay(data.dateEnd)})`;
     const rows: (string | number | null)[][] = [
-      ["SwachERP - Cash Flow Statement"],
+      [`${companyName} - Cash Flow Statement`],
       [periodStr],
       [],
       ["Category", "Source", "Amount (Rs.)"],
