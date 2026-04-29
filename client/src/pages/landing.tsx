@@ -287,7 +287,7 @@ function DashboardPreview() {
           </div>
           <div className="mx-4 flex-1">
             <div className="bg-white dark:bg-zinc-700 rounded px-3 py-0.5 text-[10px] text-muted-foreground w-52 mx-auto text-center border">
-              ops.swacherp.com/dashboard
+              ops.kintowater.com/dashboard
             </div>
           </div>
         </div>
