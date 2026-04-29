@@ -47,10 +47,12 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
     "notification-settings",
     "data-import",
     "admin-tools",
-    "api-keys",
     "spare-parts",
     "spare-parts-stock",
     "company-settings",
+  ],
+  api_hub: [
+    "api-keys",
   ],
   gatepasses: [
     "gatepasses",
@@ -149,8 +151,8 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
 // Keep in sync with the subscription_plans table values.
 const TRIAL_MODULES        = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "production", "quality_returns", "accounting", "mis", "expenses", "documents", "crm", "whatsapp", "maintenance", "hr_payroll"];
 const BASIC_MODULES        = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "expenses", "documents"];
-const PROFESSIONAL_MODULES = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "production", "quality_returns", "accounting", "mis", "expenses", "documents", "whatsapp", "maintenance", "crm"];
-const ENTERPRISE_MODULES   = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "production", "quality_returns", "accounting", "mis", "expenses", "documents", "whatsapp", "maintenance", "hr_payroll", "crm"];
+const PROFESSIONAL_MODULES = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "production", "quality_returns", "accounting", "mis", "expenses", "documents", "whatsapp", "maintenance", "crm", "api_hub"];
+const ENTERPRISE_MODULES   = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "production", "quality_returns", "accounting", "mis", "expenses", "documents", "whatsapp", "maintenance", "hr_payroll", "crm", "api_hub"];
 
 export const PLAN_MODULES: Record<string, string[]> = {
   trial:        TRIAL_MODULES,

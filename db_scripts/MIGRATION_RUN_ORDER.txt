@@ -57,9 +57,10 @@ psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-09_hr_ess_adm
 psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-09_seed_role_permissions_plan_aware.sql
 psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-09_add_crm_to_plan_modules.sql
 
------ GROUP 6: API Hub — scoped keys + call logging (Apr 29) -----
+----- GROUP 6: API Hub — scoped keys, call logging, module assignment (Apr 29) -----
 
 psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-29_api_hub_scopes_and_call_logs.sql
+psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-29_api_hub_module_plan_assignment.sql
 
 ============================================================
   END OF MIGRATION LIST
