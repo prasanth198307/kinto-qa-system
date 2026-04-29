@@ -10,7 +10,7 @@ import {
   IndianRupee, Star, ChevronRight, Play, Loader2, Target, UserCheck,
   BookOpen, MonitorSmartphone, Menu, X, Zap, Building2, Award,
   HeadphonesIcon, LayoutDashboard, Briefcase, Settings, ChevronDown,
-  Database, Link2, Cpu, Lock,
+  Database, Link2, Cpu, Lock, Key, Code2, Webhook,
 } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -45,6 +45,13 @@ const NAV_PRODUCTS = [
       { icon: MonitorSmartphone,label: "Employee Self-Service", desc: "Payslips, leaves, tax declarations" },
       { icon: Target,           label: "CRM",                  desc: "Lead pipeline, follow-ups, conversions" },
       { icon: MessageCircle,    label: "WhatsApp Integration",  desc: "Checklists & machine startup on WhatsApp" },
+    ],
+  },
+  {
+    group: "Platform",
+    items: [
+      { icon: Key,     label: "API Hub",           desc: "Scoped keys, live tester, call logs & analytics" },
+      { icon: Webhook, label: "Custom Integrations", desc: "Register your own endpoints alongside built-ins" },
     ],
   },
 ];
@@ -85,6 +92,7 @@ const MODULES = [
   { icon: Target,           label: "CRM",                   desc: "Lead pipeline, follow-ups & conversions" },
   { icon: UserCheck,        label: "HR & Payroll",          desc: "Attendance, leaves, payroll, TDS, Form 16" },
   { icon: MonitorSmartphone,label: "ESS Portal",            desc: "Payslips, leaves & tax declarations for staff" },
+  { icon: Key,              label: "API Hub",               desc: "Scoped keys, live tester, call logs & analytics" },
 ];
 
 const STRENGTHS = [
@@ -133,7 +141,7 @@ const PLANS = [
   },
   {
     name: "Professional", price: "₹1,499", period: "/month", highlight: true, tag: "Most Popular",
-    features: ["15 users included", "All Basic features", "Production & BOM tracking", "Double-entry accounting", "MIS analytics dashboards", "CRM lead management", "WhatsApp checklists", "Preventive maintenance", "Priority support"],
+    features: ["15 users included", "All Basic features", "Production & BOM tracking", "Double-entry accounting", "MIS analytics dashboards", "CRM lead management", "WhatsApp checklists", "Preventive maintenance", "API Hub — developer access", "Priority support"],
   },
   {
     name: "Enterprise", price: "₹2,599", period: "/month", highlight: false, tag: "",
@@ -626,7 +634,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-2xl md:text-3xl font-bold mb-3">Every module your factory needs</h2>
-            <p className="text-muted-foreground max-w-xl mx-auto text-sm">15 integrated modules. One login. One database. No integrations to maintain.</p>
+            <p className="text-muted-foreground max-w-xl mx-auto text-sm">16 integrated modules. One login. One database. No integrations to maintain.</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
             {MODULES.map(m => (
@@ -640,6 +648,124 @@ export default function LandingPage() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── API HUB SHOWCASE ────────────────────────────────────────────── */}
+      <section className="py-20 border-t overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            {/* Left: copy */}
+            <div>
+              <div className="inline-flex items-center gap-2 bg-primary/10 text-primary text-xs font-semibold px-3 py-1.5 rounded-full mb-4">
+                <Key className="w-3.5 h-3.5" />
+                Professional & Enterprise
+              </div>
+              <h2 className="text-2xl md:text-3xl font-bold mb-4 leading-snug">
+                Build on Kinto with a<br className="hidden md:block" /> full REST API platform
+              </h2>
+              <p className="text-muted-foreground text-sm leading-relaxed mb-6">
+                Every module in Kinto — invoicing, inventory, production, HR — exposes clean REST APIs. Create scoped keys per integration, test endpoints live without leaving the browser, and track every call with full request logs and usage analytics.
+              </p>
+              <ul className="space-y-3 mb-8">
+                {[
+                  { icon: Key,      text: "Scoped API keys — limit each key to exactly the modules it needs" },
+                  { icon: Code2,    text: "Live \"Try It\" tester — fill params and fire real requests in-browser" },
+                  { icon: BarChart3,text: "Usage analytics — calls per day, top endpoints, error rates" },
+                  { icon: Webhook,  text: "Register custom endpoints — tag your own APIs alongside built-ins" },
+                ].map(pt => (
+                  <li key={pt.text} className="flex items-start gap-3 text-sm">
+                    <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                      <pt.icon className="w-3.5 h-3.5 text-primary" />
+                    </div>
+                    <span className="text-muted-foreground leading-snug">{pt.text}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Right: code mockup */}
+            <div className="rounded-2xl border bg-zinc-950 overflow-hidden shadow-xl">
+              {/* window chrome */}
+              <div className="flex items-center gap-1.5 px-4 py-3 border-b border-zinc-800">
+                <span className="w-3 h-3 rounded-full bg-red-500/80" />
+                <span className="w-3 h-3 rounded-full bg-yellow-500/80" />
+                <span className="w-3 h-3 rounded-full bg-green-500/80" />
+                <span className="ml-3 text-xs text-zinc-500 font-mono">Kinto API Hub — Try It</span>
+              </div>
+              <div className="p-5 font-mono text-xs space-y-4">
+                {/* Auth header */}
+                <div>
+                  <p className="text-zinc-500 mb-1">// Authentication</p>
+                  <p className="text-zinc-300">
+                    <span className="text-purple-400">Authorization</span>
+                    <span className="text-zinc-400">: Bearer </span>
+                    <span className="text-green-400">kinto_sk_••••••••6f3a</span>
+                  </p>
+                </div>
+                {/* Request 1 */}
+                <div className="rounded-lg bg-zinc-900 border border-zinc-800 p-3 space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="bg-blue-500/20 text-blue-400 text-xs font-bold px-1.5 py-0.5 rounded">GET</span>
+                    <span className="text-zinc-300">/api/invoices</span>
+                    <span className="text-zinc-600 ml-auto">Invoicing</span>
+                  </div>
+                  <p className="text-zinc-500">?status=<span className="text-amber-400">paid</span>&amp;from=<span className="text-amber-400">2025-01-01</span></p>
+                  <div className="flex items-center gap-2 pt-1 border-t border-zinc-800">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                    <span className="text-green-400">200 OK</span>
+                    <span className="text-zinc-600 ml-auto">124ms · 48 records</span>
+                  </div>
+                </div>
+                {/* Request 2 */}
+                <div className="rounded-lg bg-zinc-900 border border-zinc-800 p-3 space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="bg-green-500/20 text-green-400 text-xs font-bold px-1.5 py-0.5 rounded">POST</span>
+                    <span className="text-zinc-300">/api/invoices</span>
+                    <span className="text-zinc-600 ml-auto">Invoicing</span>
+                  </div>
+                  <p className="text-zinc-500">body: <span className="text-amber-400">&#123; "party": "Acme Ltd", … &#125;</span></p>
+                  <div className="flex items-center gap-2 pt-1 border-t border-zinc-800">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                    <span className="text-green-400">201 Created</span>
+                    <span className="text-zinc-600 ml-auto">89ms · INV-0412</span>
+                  </div>
+                </div>
+                {/* Request 3 */}
+                <div className="rounded-lg bg-zinc-900 border border-zinc-800 p-3 space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="bg-blue-500/20 text-blue-400 text-xs font-bold px-1.5 py-0.5 rounded">GET</span>
+                    <span className="text-zinc-300">/api/inventory/items</span>
+                    <span className="text-zinc-600 ml-auto">Inventory</span>
+                  </div>
+                  <p className="text-zinc-500">?sku=<span className="text-amber-400">RM-001</span>&amp;warehouse=<span className="text-amber-400">Main</span></p>
+                  <div className="flex items-center gap-2 pt-1 border-t border-zinc-800">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                    <span className="text-green-400">200 OK</span>
+                    <span className="text-zinc-600 ml-auto">67ms · qty: 1,240</span>
+                  </div>
+                </div>
+              </div>
+              {/* footer stats */}
+              <div className="flex items-center gap-6 px-5 py-3 border-t border-zinc-800 bg-zinc-900/50">
+                <div className="text-center">
+                  <p className="text-xs font-bold text-zinc-200">2,847</p>
+                  <p className="text-zinc-600" style={{ fontSize: '10px' }}>calls today</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs font-bold text-green-400">99.8%</p>
+                  <p className="text-zinc-600" style={{ fontSize: '10px' }}>success rate</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs font-bold text-zinc-200">94ms</p>
+                  <p className="text-zinc-600" style={{ fontSize: '10px' }}>avg latency</p>
+                </div>
+                <div className="ml-auto">
+                  <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded-full font-medium">Live</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -662,6 +788,7 @@ export default function LandingPage() {
               { icon: HeadphonesIcon, title: "Guided onboarding",           desc: "We help you migrate masters, configure salary structures, and train your team. Not just a login link." },
               { icon: Link2,          title: "No integration overhead",      desc: "Production, accounts, HR, and CRM share one database. No Zapier. No CSV exports. No double-entry." },
               { icon: BookOpen,       title: "Employee Self-Service portal", desc: "Staff view payslips, apply for leave, check attendance, and submit tax declarations on their own." },
+              { icon: Key,            title: "Open API platform",            desc: "Every module exposes secure REST APIs. Create scoped keys, test endpoints live, and track every call — built right into the platform." },
             ].map(item => (
               <div key={item.title} className="flex items-start gap-4">
                 <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
