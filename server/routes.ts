@@ -27294,6 +27294,79 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
   });
 
   // ─── External API Key Management (admin only) ──────────────────────────────
+  // ── Helper: log every external API call ──────────────────────────────────────
+  async function logApiCall(opts: {
+    tenantId: number;
+    keyId?: string;
+    apiId: string;
+    method: string;
+    statusCode: number;
+    durationMs: number;
+    isTryIt?: boolean;
+  }) {
+    try {
+      await db.execute(sql`
+        INSERT INTO api_call_logs (tenant_id, key_id, api_id, method, status_code, duration_ms, is_try_it, called_at)
+        VALUES (${opts.tenantId}, ${opts.keyId ?? null}, ${opts.apiId}, ${opts.method},
+                ${opts.statusCode}, ${opts.durationMs}, ${opts.isTryIt ? 1 : 0}, NOW())
+      `);
+    } catch (_) { /* never fail the request */ }
+  }
+
+  // GET /api/external-api-logs — recent call logs for this tenant (last 200)
+  app.get('/api/external-api-logs', isAuthenticated, requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const tenantId: number = req.session?.tenantId ?? req.user?.tenantId ?? 1;
+      const limit = Math.min(parseInt(String(req.query.limit ?? '100'), 10) || 100, 500);
+      const rows = await db.execute(sql`
+        SELECT l.id, l.api_id, l.method, l.status_code, l.duration_ms, l.is_try_it, l.called_at,
+               l.key_id, k.name AS key_name
+        FROM api_call_logs l
+        LEFT JOIN external_api_keys k ON k.id = l.key_id
+        WHERE l.tenant_id = ${tenantId}
+        ORDER BY l.called_at DESC
+        LIMIT ${limit}
+      `);
+      res.json(rows.rows);
+    } catch (err) {
+      console.error('[API Logs] Error:', err);
+      res.status(500).json({ message: 'Failed to fetch logs' });
+    }
+  });
+
+  // GET /api/external-api-logs/summary — per-API totals for the last 30 days
+  app.get('/api/external-api-logs/summary', isAuthenticated, requireRole('admin', 'manager'), async (req: any, res) => {
+    try {
+      const tenantId: number = req.session?.tenantId ?? req.user?.tenantId ?? 1;
+      const rows = await db.execute(sql`
+        SELECT api_id,
+               COUNT(*)                                                     AS total_calls,
+               SUM(CASE WHEN status_code < 400 THEN 1 ELSE 0 END)          AS success_calls,
+               ROUND(AVG(duration_ms))                                      AS avg_duration_ms,
+               MAX(called_at)                                               AS last_called,
+               SUM(CASE WHEN is_try_it = 1 THEN 1 ELSE 0 END)              AS try_it_calls
+        FROM api_call_logs
+        WHERE tenant_id = ${tenantId}
+          AND called_at >= NOW() - INTERVAL '30 days'
+        GROUP BY api_id
+        ORDER BY total_calls DESC
+      `);
+      // Calls per day for last 14 days
+      const daily = await db.execute(sql`
+        SELECT DATE(called_at) AS day, api_id, COUNT(*) AS calls
+        FROM api_call_logs
+        WHERE tenant_id = ${tenantId}
+          AND called_at >= NOW() - INTERVAL '14 days'
+        GROUP BY DATE(called_at), api_id
+        ORDER BY day ASC
+      `);
+      res.json({ summary: rows.rows, daily: daily.rows });
+    } catch (err) {
+      console.error('[API Logs Summary] Error:', err);
+      res.status(500).json({ message: 'Failed to fetch summary' });
+    }
+  });
+
   // ── Catalogue of all external APIs — single source of truth ─────────────────
   const EXTERNAL_API_CATALOGUE = [
     {
@@ -27445,6 +27518,8 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
   // Response amounts are in RUPEES (paise ÷ 100, 2 dp)
   app.get('/api/external/customer-outstanding', async (req: any, res) => {
     try {
+      const _co_start = Date.now();
+      let _co_keyId: string | undefined;
       // ── 1. Authenticate — accept Bearer token (external) OR authenticated session (internal UI) ──
       let tenantId: number;
       const authHeader = req.headers['authorization'] || '';
@@ -27460,19 +27535,26 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
         if (!keyRecord) {
           return res.status(401).json({ error: 'Unauthorized', message: 'Invalid or revoked API key' });
         }
-        // Scope check — null scopes = full access
         const keyScopes: string[] | null = keyRecord.scopes ? JSON.parse(keyRecord.scopes) : null;
         if (keyScopes && !keyScopes.includes('customer_outstanding')) {
           return res.status(403).json({ error: 'Forbidden', message: 'This API key does not have access to customer_outstanding. Update the key scopes in API Keys settings.' });
         }
         db.execute(sql`UPDATE external_api_keys SET last_used_at = NOW() WHERE id = ${keyRecord.id}`).catch(() => {});
         tenantId = keyRecord.tenant_id;
+        _co_keyId = String(keyRecord.id);
       } else if (req.isAuthenticated && req.isAuthenticated()) {
         tenantId = req.user?.tenantId;
         if (!tenantId) return res.status(401).json({ error: 'Unauthorized' });
       } else {
         return res.status(401).json({ error: 'Unauthorized', message: 'Missing Authorization: Bearer <key> header' });
       }
+
+      // Register call-logging on response finish (fires after headers are sent)
+      res.on('finish', () => {
+        logApiCall({ tenantId, keyId: _co_keyId, apiId: 'customer_outstanding', method: 'GET',
+          statusCode: res.statusCode, durationMs: Date.now() - _co_start,
+          isTryIt: req.headers['x-try-it'] === '1' });
+      });
 
       // ── 2. Load all active vendors for this tenant ──
       const allVendors = await db.select().from(vendors)
@@ -27796,6 +27878,8 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
   // ──────────────────────────────────────────────────────────────────────────
   app.post('/api/external/allocate-cash-sales', async (req: any, res) => {
     try {
+      const _acs_start = Date.now();
+      let _acs_keyId: string | undefined;
       // ── 1. Authenticate ──
       let tenantId: number;
       let callerUserId: string | null = null;
@@ -27812,13 +27896,13 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
         if (!keyRecord) {
           return res.status(401).json({ error: 'Unauthorized', message: 'Invalid or revoked API key' });
         }
-        // Scope check — null scopes = full access
         const keyScopes: string[] | null = keyRecord.scopes ? JSON.parse(keyRecord.scopes) : null;
         if (keyScopes && !keyScopes.includes('allocate_cash_sales')) {
           return res.status(403).json({ error: 'Forbidden', message: 'This API key does not have access to allocate_cash_sales. Update the key scopes in API Keys settings.' });
         }
         db.execute(sql`UPDATE external_api_keys SET last_used_at = NOW() WHERE id = ${keyRecord.id}`).catch(() => {});
         tenantId = keyRecord.tenant_id;
+        _acs_keyId = String(keyRecord.id);
       } else if (req.isAuthenticated && req.isAuthenticated()) {
         tenantId = req.user?.tenantId;
         callerUserId = req.user?.id || null;
@@ -27826,6 +27910,13 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       } else {
         return res.status(401).json({ error: 'Unauthorized', message: 'Missing Authorization: Bearer <key> header' });
       }
+
+      // Register call-logging on response finish
+      res.on('finish', () => {
+        logApiCall({ tenantId, keyId: _acs_keyId, apiId: 'allocate_cash_sales', method: 'POST',
+          statusCode: res.statusCode, durationMs: Date.now() - _acs_start,
+          isTryIt: req.headers['x-try-it'] === '1' });
+      });
 
       // ── 2. Validate inputs ──
       const { customer, from_date, to_date, dry_run = false, remarks } = req.body;
