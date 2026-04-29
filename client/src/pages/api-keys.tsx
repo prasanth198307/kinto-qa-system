@@ -126,6 +126,80 @@ const METHOD_COLORS: Record<string, string> = {
   POST: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
 };
 
+// ── Param hint type resolver ─────────────────────────────────────────────────
+const PARAM_HINT_MAP: Record<string, string> = {
+  customer: 'customer', buyer: 'customer', buyer_name: 'customer', party: 'customer',
+  vendor: 'vendor', vendor_name: 'vendor', supplier: 'vendor',
+  sku: 'sku', item: 'sku', material: 'sku', item_code: 'sku',
+  transporter: 'transporter',
+};
+function getParamHintType(name: string): string | null {
+  return PARAM_HINT_MAP[name.toLowerCase()] ?? null;
+}
+
+// ── Smart Param Input with suggestion chips ──────────────────────────────────
+function SmartParamInput({ param, apiId, value, onChange }: {
+  param: ApiParam; apiId: string; value: string;
+  onChange: (v: string) => void;
+}) {
+  const hintType = getParamHintType(param.name);
+  const isDate = param.name.includes('date');
+  const [showAll, setShowAll] = useState(false);
+
+  const { data: hintData } = useQuery<{ suggestions: string[] }>({
+    queryKey: [`/api/external/param-suggestions?type=${hintType}`],
+    enabled: !!hintType,
+  });
+  const allSuggestions = hintData?.suggestions ?? [];
+  const filtered = value.trim()
+    ? allSuggestions.filter(s => s.toLowerCase().includes(value.toLowerCase()))
+    : allSuggestions;
+  const visible = showAll ? filtered : filtered.slice(0, 6);
+
+  return (
+    <div className="space-y-1.5">
+      <Input
+        id={`tryit-${apiId}-${param.name}`}
+        type={isDate ? 'date' : 'text'}
+        placeholder={isDate ? 'YYYY-MM-DD' : (allSuggestions.length > 0 ? `e.g. ${allSuggestions[0]}` : param.description)}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className="text-sm"
+        data-testid={`input-tryit-${apiId}-${param.name}`}
+      />
+      {hintType && allSuggestions.length > 0 && (
+        <div>
+          <p className="text-xs text-muted-foreground mb-1">
+            {allSuggestions.length} {hintType}{allSuggestions.length !== 1 ? 's' : ''} in your database — click to use:
+          </p>
+          <div className="flex flex-wrap gap-1">
+            {visible.map(s => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => onChange(s)}
+                className={`text-xs px-2 py-0.5 rounded-full border transition-colors ${value === s ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted hover:bg-accent border-border'}`}
+                data-testid={`chip-hint-${apiId}-${param.name}-${s}`}
+              >
+                {s}
+              </button>
+            ))}
+            {filtered.length > 6 && !showAll && (
+              <button
+                type="button"
+                onClick={() => setShowAll(true)}
+                className="text-xs px-2 py-0.5 rounded-full border border-dashed border-border text-muted-foreground hover:bg-accent"
+              >
+                +{filtered.length - 6} more
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Try It Panel ──────────────────────────────────────────────────────────────
 function TryItPanel({ api }: { api: ApiCatalogEntry }) {
   const [params, setParams] = useState<Record<string, string>>({});
@@ -179,22 +253,29 @@ function TryItPanel({ api }: { api: ApiCatalogEntry }) {
 
   return (
     <div className="space-y-4 mt-3" data-testid={`try-it-${api.id}`}>
+      {/* How to use banner */}
+      <div className="flex items-start gap-2 p-3 rounded-md bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+        <FlaskConical className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
+        <p className="text-xs text-blue-700 dark:text-blue-300 leading-relaxed">
+          Fill in the parameters below and click <strong>Send Request</strong> — the call runs against your live data right here in the browser. Parameters with a dropdown show values from your own database.
+        </p>
+      </div>
+
       {/* Parameters */}
       <div className="space-y-3">
-        {api.params.map(p => (
+        {api.params.filter(p => p.name !== 'dry_run').map(p => (
           <div key={p.name} className="space-y-1">
-            <Label htmlFor={`tryit-${api.id}-${p.name}`} className="flex items-center gap-1.5 text-xs">
+            <Label htmlFor={`tryit-${api.id}-${p.name}`} className="flex flex-wrap items-center gap-1.5 text-xs">
               <code className="font-mono bg-muted px-1.5 py-0.5 rounded text-xs">{p.name}</code>
-              {p.required && <span className="text-destructive text-xs">required</span>}
+              <Badge variant="outline" className="text-xs py-0">{p.in}</Badge>
+              {p.required && <Badge variant="destructive" className="text-xs py-0">required</Badge>}
               <span className="text-muted-foreground font-normal">{p.description}</span>
             </Label>
-            <Input
-              id={`tryit-${api.id}-${p.name}`}
-              placeholder={p.name === 'from_date' || p.name === 'to_date' ? 'YYYY-MM-DD' : p.description}
+            <SmartParamInput
+              param={p}
+              apiId={api.id}
               value={params[p.name] ?? ''}
-              onChange={e => setParam(p.name, e.target.value)}
-              className="text-sm"
-              data-testid={`input-tryit-${api.id}-${p.name}`}
+              onChange={v => setParam(p.name, v)}
             />
           </div>
         ))}
@@ -217,6 +298,10 @@ function TryItPanel({ api }: { api: ApiCatalogEntry }) {
             </div>
           </div>
         )}
+
+        {api.params.length === 0 && (
+          <p className="text-xs text-muted-foreground italic">No parameters required for this endpoint.</p>
+        )}
       </div>
 
       <div className="flex items-center gap-2">
@@ -232,7 +317,7 @@ function TryItPanel({ api }: { api: ApiCatalogEntry }) {
         </Button>
         {!canSend && (
           <p className="text-xs text-muted-foreground">
-            Fill in: {missingRequired.map(p => p.name).join(', ')}
+            Fill required fields: {missingRequired.map(p => p.name).join(', ')}
           </p>
         )}
       </div>
@@ -297,13 +382,22 @@ function ApiCatalogCard({ api, onDelete }: { api: ApiCatalogEntry; onDelete?: (i
           </div>
           <div className="flex items-center gap-1.5">
             <Button
-              size="sm" variant="outline"
+              size="sm"
               onClick={() => { setExpanded(true); setActiveTab('try'); }}
-              className="text-xs gap-1"
+              className="text-xs gap-1.5"
               data-testid={`button-tryit-open-${api.id}`}
             >
               <FlaskConical className="h-3.5 w-3.5" />
               Try It
+            </Button>
+            <Button
+              size="sm" variant="outline"
+              onClick={() => { setExpanded(true); setActiveTab('docs'); }}
+              className="text-xs gap-1.5"
+              data-testid={`button-docs-open-${api.id}`}
+            >
+              <BookOpen className="h-3.5 w-3.5" />
+              Docs
             </Button>
             {api.isCustom && onDelete && (
               <Button

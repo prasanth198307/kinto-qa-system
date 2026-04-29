@@ -27436,10 +27436,10 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       const tenantModules = await getTenantModules(tenantId, req);
       const moduleSet = new Set(tenantModules);
 
-      // Filter built-in entries — keep those whose module is in the tenant's plan
-      // (untagged entries are always shown as a safety fallback)
+      // Filter built-in entries — keep those whose module is in the tenant's plan.
+      // If tenantModules is empty (resolution failed), show everything rather than nothing.
       const builtIn = EXTERNAL_API_CATALOGUE
-        .filter(a => !a.module || moduleSet.has(a.module))
+        .filter(a => tenantModules.length === 0 || !a.module || moduleSet.has(a.module))
         .map(a => ({ ...a, isCustom: false }));
 
       // Custom entries registered by this tenant
@@ -27449,9 +27449,9 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
         WHERE tenant_id = ${tenantId} AND is_active = 1
         ORDER BY created_at ASC
       `);
-      // Filter custom entries by module too (if they have one set)
+      // Filter custom entries by module (if they have one set); permissive when tenantModules unknown
       const custom = (rows.rows as any[])
-        .filter(r => !r.module || moduleSet.has(r.module))
+        .filter(r => tenantModules.length === 0 || !r.module || moduleSet.has(r.module))
         .map(r => ({
           id: r.api_id,
           module: r.module ?? null,
@@ -27516,6 +27516,53 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
     } catch (err) {
       console.error('[Catalogue] Delete error:', err);
       res.status(500).json({ message: 'Failed to remove API definition' });
+    }
+  });
+
+  // GET /api/external/param-suggestions — returns autocomplete hint values for known parameter types
+  // Supports: customer, vendor, sku, item, transporter
+  app.get('/api/external/param-suggestions', isAuthenticated, async (req: any, res) => {
+    try {
+      const tenantId: number = req.session?.tenantId ?? req.user?.tenantId ?? 1;
+      const type = (req.query.type as string ?? '').toLowerCase();
+      let suggestions: string[] = [];
+
+      if (type === 'customer' || type === 'buyer') {
+        const rows = await db.execute(sql`
+          SELECT DISTINCT buyer_name AS name
+          FROM invoices
+          WHERE tenant_id = ${tenantId} AND record_status = 1 AND buyer_name IS NOT NULL AND buyer_name <> ''
+          ORDER BY name
+          LIMIT 100
+        `);
+        suggestions = (rows.rows as any[]).map(r => r.name).filter(Boolean);
+      } else if (type === 'vendor') {
+        const rows = await db.execute(sql`
+          SELECT vendor_name AS name FROM vendors
+          WHERE tenant_id = ${tenantId} AND record_status = 1
+          ORDER BY name LIMIT 100
+        `);
+        suggestions = (rows.rows as any[]).map(r => r.name).filter(Boolean);
+      } else if (type === 'sku' || type === 'item' || type === 'material') {
+        const rows = await db.execute(sql`
+          SELECT material_name AS name FROM raw_materials
+          WHERE tenant_id = ${tenantId} AND record_status = 1
+          ORDER BY name LIMIT 100
+        `);
+        suggestions = (rows.rows as any[]).map(r => r.name).filter(Boolean);
+      } else if (type === 'transporter') {
+        const rows = await db.execute(sql`
+          SELECT transporter_name AS name FROM transporters
+          WHERE tenant_id = ${tenantId}
+          ORDER BY name LIMIT 50
+        `);
+        suggestions = (rows.rows as any[]).map(r => r.name).filter(Boolean);
+      }
+
+      res.json({ type, suggestions });
+    } catch (err) {
+      console.error('[ParamSuggestions] Error:', err);
+      res.json({ type: req.query.type ?? '', suggestions: [] });
     }
   });
 
