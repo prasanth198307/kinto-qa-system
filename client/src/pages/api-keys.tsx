@@ -29,6 +29,24 @@ import {
   FlaskConical, PlusCircle, MinusCircle, Pencil,
 } from "lucide-react";
 
+// ── Module label map ─────────────────────────────────────────────────────────
+const MODULE_LABELS: Record<string, string> = {
+  invoicing:       'Invoicing',
+  purchase_orders: 'Purchase Orders',
+  basic_inventory: 'Inventory',
+  production:      'Production',
+  quality_returns: 'Quality & Returns',
+  accounting:      'Accounting',
+  mis:             'MIS Analytics',
+  expenses:        'Expenses',
+  documents:       'Documents',
+  whatsapp:        'WhatsApp',
+  maintenance:     'Maintenance',
+  crm:             'CRM',
+  hr_payroll:      'HR & Payroll',
+  api_hub:         'API Hub',
+};
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface ApiParam {
   name: string;
@@ -38,6 +56,7 @@ interface ApiParam {
 }
 interface ApiCatalogEntry {
   id: string;
+  module?: string | null;
   method: string;
   path: string;
   label: string;
@@ -46,12 +65,17 @@ interface ApiCatalogEntry {
   params: ApiParam[];
   isCustom?: boolean;
 }
+interface CatalogueResponse {
+  entries: ApiCatalogEntry[];
+  tenantModules: string[];
+}
 interface RegisterApiForm {
   method: string;
   path: string;
   label: string;
   description: string;
   category: string;
+  module: string;
   params: { name: string; in: string; required: boolean; description: string }[];
 }
 interface ApiKey {
@@ -258,7 +282,12 @@ function ApiCatalogCard({ api, onDelete }: { api: ApiCatalogEntry; onDelete?: (i
               <div className="flex flex-wrap items-center gap-2">
                 <p className="font-medium text-sm">{api.label}</p>
                 <Badge variant="outline" className="text-xs">{api.category}</Badge>
-                {api.isCustom && (
+                {api.module && (
+                  <Badge variant="secondary" className="text-xs">
+                    {MODULE_LABELS[api.module] ?? api.module}
+                  </Badge>
+                )}
+                {api.isCustom && !api.module && (
                   <Badge variant="secondary" className="text-xs">Custom</Badge>
                 )}
               </div>
@@ -367,14 +396,15 @@ function ApiCatalogCard({ api, onDelete }: { api: ApiCatalogEntry; onDelete?: (i
 }
 
 // ── Register API Dialog ───────────────────────────────────────────────────────
-function RegisterApiDialog({ open, onOpenChange, onSuccess }: {
+function RegisterApiDialog({ open, onOpenChange, onSuccess, tenantModules = [] }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onSuccess: () => void;
+  tenantModules?: string[];
 }) {
   const { toast } = useToast();
   const emptyForm = (): RegisterApiForm => ({
-    method: 'GET', path: '', label: '', description: '', category: 'Custom',
+    method: 'GET', path: '', label: '', description: '', category: 'Custom', module: '',
     params: [],
   });
   const [form, setForm] = useState<RegisterApiForm>(emptyForm());
@@ -456,6 +486,20 @@ function RegisterApiDialog({ open, onOpenChange, onSuccess }: {
                 onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
                 data-testid="input-api-category"
               />
+            </div>
+            <div>
+              <Label className="text-xs mb-1.5 block">Module (optional)</Label>
+              <Select value={form.module || '__none__'} onValueChange={v => setForm(f => ({ ...f, module: v === '__none__' ? '' : v }))}>
+                <SelectTrigger data-testid="select-api-module">
+                  <SelectValue placeholder="None" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">None</SelectItem>
+                  {tenantModules.filter(m => m !== 'api_hub').map(m => (
+                    <SelectItem key={m} value={m}>{MODULE_LABELS[m] ?? m}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -732,9 +776,12 @@ export default function ApiKeysPage() {
   const [revokeId, setRevokeId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const { data: catalogue = [] } = useQuery<ApiCatalogEntry[]>({
+  const { data: catalogueResp } = useQuery<CatalogueResponse>({
     queryKey: ["/api/external-api-catalogue"],
   });
+  const catalogue: ApiCatalogEntry[] = catalogueResp?.entries ?? [];
+  const tenantModules: string[] = catalogueResp?.tenantModules ?? [];
+
   const { data: keys = [], isLoading } = useQuery<ApiKey[]>({
     queryKey: ["/api/external-api-keys"],
   });
@@ -852,7 +899,7 @@ export default function ApiKeysPage() {
 
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              {catalogue.length} API{catalogue.length !== 1 ? 's' : ''} available
+              {catalogue.length} API{catalogue.length !== 1 ? 's' : ''} available · {tenantModules.filter(m => m !== 'api_hub').length} active modules
             </p>
             <Button
               size="sm" variant="outline"
@@ -866,25 +913,47 @@ export default function ApiKeysPage() {
           {catalogue.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <BookOpen className="h-10 w-10 mx-auto mb-3 opacity-30" />
-              <p className="text-sm">No APIs registered yet.</p>
-              <p className="text-xs mt-1">Click "Register API" to add your first endpoint to the catalog.</p>
+              <p className="text-sm">No APIs available for your current plan.</p>
+              <p className="text-xs mt-1">APIs appear here based on your active plan modules. Use "Register API" to add custom endpoints.</p>
             </div>
           ) : (
-            <div className="space-y-3">
-              {catalogue.map(api => (
-                <ApiCatalogCard
-                  key={api.id}
-                  api={api}
-                  onDelete={id => deleteApiMutation.mutate(id)}
-                />
-              ))}
-            </div>
+            /* Group entries by module */
+            (() => {
+              const groups = new Map<string, ApiCatalogEntry[]>();
+              catalogue.forEach(api => {
+                const key = api.module ?? 'custom';
+                if (!groups.has(key)) groups.set(key, []);
+                groups.get(key)!.push(api);
+              });
+              return (
+                <div className="space-y-6">
+                  {Array.from(groups.entries()).map(([moduleKey, apis]) => (
+                    <div key={moduleKey} className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                          {MODULE_LABELS[moduleKey] ?? (moduleKey === 'custom' ? 'Custom' : moduleKey)}
+                        </p>
+                        <Badge variant="secondary" className="text-xs">{apis.length}</Badge>
+                      </div>
+                      {apis.map(api => (
+                        <ApiCatalogCard
+                          key={api.id}
+                          api={api}
+                          onDelete={id => deleteApiMutation.mutate(id)}
+                        />
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              );
+            })()
           )}
 
           <RegisterApiDialog
             open={registerApiOpen}
             onOpenChange={setRegisterApiOpen}
             onSuccess={() => {}}
+            tenantModules={tenantModules}
           />
         </TabsContent>
 

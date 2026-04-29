@@ -27368,9 +27368,13 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
   });
 
   // ── Catalogue of all external APIs — single source of truth ─────────────────
+  // Built-in API catalogue — each entry tagged with the module it belongs to.
+  // The GET /api/external-api-catalogue endpoint filters this list to only
+  // return APIs whose module is active in the tenant's current plan.
   const EXTERNAL_API_CATALOGUE = [
     {
       id: 'customer_outstanding',
+      module: 'invoicing',
       method: 'GET',
       path: '/api/external/customer-outstanding',
       label: 'Customer Outstanding',
@@ -27382,6 +27386,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
     },
     {
       id: 'allocate_cash_sales',
+      module: 'invoicing',
       method: 'POST',
       path: '/api/external/allocate-cash-sales',
       label: 'Allocate Cash Sales',
@@ -27395,35 +27400,75 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
         { name: 'remarks',   in: 'body', required: false, description: 'Note attached to each created payment record' },
       ],
     },
-  ] as const;
+  ];
 
-  // GET /api/external-api-catalogue — built-in APIs + tenant-registered custom APIs
+  // Helper — resolves active module list for a tenant (mirrors plan-features logic)
+  async function getTenantModules(tenantId: number, req: any): Promise<string[]> {
+    try {
+      let tenantPlan: string = req.session?.tenantPlan;
+      if (!tenantPlan) {
+        const rows = await db.select({ plan: tenants.plan }).from(tenants).where(eq(tenants.id, tenantId)).limit(1);
+        tenantPlan = rows[0]?.plan ?? 'enterprise';
+        if (req.session) req.session.tenantPlan = tenantPlan;
+      }
+      const [planRecord] = await db
+        .select({ modules: subscriptionPlans.modules })
+        .from(subscriptionPlans)
+        .where(eq(subscriptionPlans.slug, tenantPlan))
+        .limit(1);
+      if (planRecord?.modules && Array.isArray(planRecord.modules) && planRecord.modules.length > 0) {
+        return planRecord.modules as string[];
+      }
+      // Fallback: use code-based plan features
+      const { getPlanFeatures } = await import('./plan-features');
+      return getPlanFeatures(tenantPlan).modules;
+    } catch {
+      return [];
+    }
+  }
+
+  // GET /api/external-api-catalogue — module-filtered built-ins + tenant custom APIs
   app.get('/api/external-api-catalogue', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId: number = req.session?.tenantId ?? req.user?.tenantId ?? 1;
+
+      // Resolve tenant's active modules so we only show relevant built-in APIs
+      const tenantModules = await getTenantModules(tenantId, req);
+      const moduleSet = new Set(tenantModules);
+
+      // Filter built-in entries — keep those whose module is in the tenant's plan
+      // (untagged entries are always shown as a safety fallback)
+      const builtIn = EXTERNAL_API_CATALOGUE
+        .filter(a => !a.module || moduleSet.has(a.module))
+        .map(a => ({ ...a, isCustom: false }));
+
+      // Custom entries registered by this tenant
       const rows = await db.execute(sql`
-        SELECT api_id, method, path, label, description, category, params
+        SELECT api_id, method, path, label, description, category, params, module
         FROM external_api_definitions
         WHERE tenant_id = ${tenantId} AND is_active = 1
         ORDER BY created_at ASC
       `);
-      const custom = (rows.rows as any[]).map(r => ({
-        id: r.api_id,
-        method: r.method,
-        path: r.path,
-        label: r.label,
-        description: r.description ?? '',
-        category: r.category ?? 'Custom',
-        params: r.params ?? [],
-        isCustom: true,
-        dbId: null as null, // not needed but consistent
-      }));
-      // Built-in entries first, then custom
-      const builtIn = EXTERNAL_API_CATALOGUE.map(a => ({ ...a, isCustom: false }));
-      res.json([...builtIn, ...custom]);
+      // Filter custom entries by module too (if they have one set)
+      const custom = (rows.rows as any[])
+        .filter(r => !r.module || moduleSet.has(r.module))
+        .map(r => ({
+          id: r.api_id,
+          module: r.module ?? null,
+          method: r.method,
+          path: r.path,
+          label: r.label,
+          description: r.description ?? '',
+          category: r.category ?? 'Custom',
+          params: r.params ?? [],
+          isCustom: true,
+        }));
+
+      res.json({ entries: [...builtIn, ...custom], tenantModules });
     } catch (err) {
       console.error('[Catalogue] List error:', err);
-      res.json(EXTERNAL_API_CATALOGUE.map(a => ({ ...a, isCustom: false })));
+      // Graceful fallback — return all built-ins unfiltered
+      res.json({ entries: EXTERNAL_API_CATALOGUE.map(a => ({ ...a, isCustom: false })), tenantModules: [] });
     }
   });
 
@@ -27431,7 +27476,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
   app.post('/api/external-api-catalogue', isAuthenticated, requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const tenantId: number = req.session?.tenantId ?? req.user?.tenantId ?? 1;
-      const { method, path: apiPath, label, description, category, params } = req.body;
+      const { method, path: apiPath, label, description, category, params, module: apiModule } = req.body;
       if (!method || !apiPath || !label) {
         return res.status(400).json({ message: 'method, path, and label are required' });
       }
@@ -27443,11 +27488,11 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       const apiId = label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') + '_' + Date.now();
       await db.execute(sql`
         INSERT INTO external_api_definitions
-          (tenant_id, api_id, method, path, label, description, category, params, is_active, created_by, created_at)
+          (tenant_id, api_id, method, path, label, description, category, params, module, is_active, created_by, created_at)
         VALUES
           (${tenantId}, ${apiId}, ${method.toUpperCase()}, ${apiPath.trim()},
            ${label.trim()}, ${description?.trim() ?? null}, ${category?.trim() ?? 'Custom'},
-           ${JSON.stringify(params ?? [])}, 1, ${req.user?.id ?? null}, NOW())
+           ${JSON.stringify(params ?? [])}, ${apiModule ?? null}, 1, ${req.user?.id ?? null}, NOW())
       `);
       const [created] = await db.execute(sql`
         SELECT * FROM external_api_definitions WHERE api_id = ${apiId} AND tenant_id = ${tenantId} LIMIT 1
