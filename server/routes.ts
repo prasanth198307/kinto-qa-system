@@ -27712,6 +27712,218 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
     }
   });
 
+  // ──────────────────────────────────────────────────────────────────────────
+  // POST /api/external/allocate-cash-sales
+  // Authorization: Bearer <api_key>  OR  authenticated session
+  //
+  // Marks cash-mode invoices as paid by creating invoice_payments records.
+  //
+  // Body (JSON):
+  //   customer   (string, required) — exact or partial buyer_name match (case-insensitive)
+  //   from_date  (string, required) — YYYY-MM-DD  invoice_date range start (inclusive)
+  //   to_date    (string, required) — YYYY-MM-DD  invoice_date range end   (inclusive)
+  //   dry_run    (boolean, optional, default false) — preview without writing to DB
+  //   remarks    (string, optional) — note attached to each created payment record
+  //
+  // Logic:
+  //   1. Find all invoices where payment_mode = 'Cash' (case-insensitive)
+  //      AND buyer_name ILIKE %customer%
+  //      AND invoice_date BETWEEN from_date AND to_date
+  //      AND record_status = 1 AND status != 'cancelled'
+  //   2. For each invoice, compute outstanding = total_amount - SUM(invoice_payments.amount)
+  //   3. If outstanding > 0 → create an invoice_payment record (unless dry_run=true)
+  //   4. Returns: allocated[], skipped[], summary totals
+  //
+  // All amounts in RUPEES (₹) — paise ÷ 100
+  // ──────────────────────────────────────────────────────────────────────────
+  app.post('/api/external/allocate-cash-sales', async (req: any, res) => {
+    try {
+      // ── 1. Authenticate ──
+      let tenantId: number;
+      let callerUserId: string | null = null;
+      const authHeader = req.headers['authorization'] || '';
+      const rawKey = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+
+      if (rawKey) {
+        const keyHash = crypto.createHash('sha256').update(rawKey).digest('hex');
+        const [keyRecord] = await db.select().from(externalApiKeys)
+          .where(and(eq(externalApiKeys.keyHash, keyHash), eq(externalApiKeys.isActive, 1)))
+          .limit(1);
+        if (!keyRecord) {
+          return res.status(401).json({ error: 'Unauthorized', message: 'Invalid or revoked API key' });
+        }
+        db.update(externalApiKeys)
+          .set({ lastUsedAt: new Date().toISOString() })
+          .where(eq(externalApiKeys.id, keyRecord.id))
+          .catch(() => {});
+        tenantId = keyRecord.tenantId;
+      } else if (req.isAuthenticated && req.isAuthenticated()) {
+        tenantId = req.user?.tenantId;
+        callerUserId = req.user?.id || null;
+        if (!tenantId) return res.status(401).json({ error: 'Unauthorized' });
+      } else {
+        return res.status(401).json({ error: 'Unauthorized', message: 'Missing Authorization: Bearer <key> header' });
+      }
+
+      // ── 2. Validate inputs ──
+      const { customer, from_date, to_date, dry_run = false, remarks } = req.body;
+
+      if (!customer || typeof customer !== 'string' || customer.trim() === '') {
+        return res.status(400).json({
+          error: 'Bad Request',
+          message: '`customer` is required — provide the customer/buyer name',
+        });
+      }
+      if (!from_date || !to_date) {
+        return res.status(400).json({
+          error: 'Bad Request',
+          message: '`from_date` and `to_date` are required (YYYY-MM-DD)',
+        });
+      }
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dateRegex.test(from_date) || !dateRegex.test(to_date)) {
+        return res.status(400).json({
+          error: 'Bad Request',
+          message: '`from_date` and `to_date` must be in YYYY-MM-DD format',
+        });
+      }
+      if (from_date > to_date) {
+        return res.status(400).json({
+          error: 'Bad Request',
+          message: '`from_date` must be on or before `to_date`',
+        });
+      }
+      const isDryRun = dry_run === true || dry_run === 'true';
+
+      // ── 3. Fetch cash-mode invoices for the customer in date range ──
+      const cashInvoicesRaw = await db.execute(sql`
+        SELECT id, invoice_number, invoice_date, buyer_name, total_amount, amount_received, status
+        FROM invoices
+        WHERE tenant_id = ${tenantId}
+          AND record_status = 1
+          AND status != 'cancelled'
+          AND LOWER(TRIM(payment_mode)) = 'cash'
+          AND LOWER(buyer_name) LIKE LOWER(${`%${customer.trim()}%`})
+          AND invoice_date BETWEEN ${from_date}::date AND ${to_date}::date
+        ORDER BY invoice_date ASC, invoice_number ASC
+      `);
+      const cashInvoices: any[] = cashInvoicesRaw.rows || [];
+
+      if (cashInvoices.length === 0) {
+        return res.status(200).json({
+          success: true,
+          dryRun: isDryRun,
+          message: `No cash-mode invoices found for customer matching "${customer}" between ${from_date} and ${to_date}.`,
+          summary: { invoicesFound: 0, invoicesAllocated: 0, invoicesSkipped: 0, totalAllocatedRupees: 0 },
+          allocated: [],
+          skipped: [],
+        });
+      }
+
+      // ── 4. Fetch existing payments for these invoices ──
+      const invoiceIds = cashInvoices.map((inv: any) => inv.id);
+      const existingPaymentsRaw = await db.execute(sql`
+        SELECT invoice_id, SUM(amount) AS total_paid
+        FROM invoice_payments
+        WHERE tenant_id = ${tenantId}
+          AND record_status = 1
+          AND invoice_id = ANY(${sql.raw(`ARRAY['${invoiceIds.join("','")}']::varchar[]`)})
+        GROUP BY invoice_id
+      `);
+      const paidByInvoice = new Map<string, number>();
+      (existingPaymentsRaw.rows || []).forEach((r: any) => {
+        paidByInvoice.set(r.invoice_id, Number(r.total_paid) || 0);
+      });
+
+      // ── 5. Process each invoice ──
+      const allocated: any[] = [];
+      const skipped: any[] = [];
+      const bulkAllocationId = `CASH-${format(new Date(), 'yyyyMMdd-HHmmss')}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+      const paymentDate = new Date().toISOString();
+
+      for (const inv of cashInvoices) {
+        const totalPaid = paidByInvoice.get(inv.id) || 0;
+        const outstanding = Number(inv.total_amount) - totalPaid;
+
+        if (outstanding <= 0) {
+          skipped.push({
+            invoiceId: inv.id,
+            invoiceNumber: inv.invoice_number,
+            invoiceDate: inv.invoice_date,
+            buyerName: inv.buyer_name,
+            totalAmountRupees: parseFloat((Number(inv.total_amount) / 100).toFixed(2)),
+            alreadyPaidRupees: parseFloat((totalPaid / 100).toFixed(2)),
+            reason: 'Already fully paid',
+          });
+          continue;
+        }
+
+        // Create payment record unless dry_run
+        if (!isDryRun) {
+          await db.execute(sql`
+            INSERT INTO invoice_payments (
+              invoice_id, payment_date, amount, payment_method, payment_type,
+              paid_by, payer_name, remarks, bulk_allocation_id, recorded_by, tenant_id
+            ) VALUES (
+              ${inv.id},
+              ${paymentDate},
+              ${outstanding},
+              'Cash',
+              ${outstanding >= Number(inv.total_amount) ? 'Full' : 'Partial'},
+              'buyer',
+              ${inv.buyer_name},
+              ${remarks || `Cash sale allocation via API (${from_date} to ${to_date})`},
+              ${bulkAllocationId},
+              ${callerUserId},
+              ${tenantId}
+            )
+          `);
+          // Update invoice.amount_received
+          await db.execute(sql`
+            UPDATE invoices
+            SET amount_received = amount_received + ${outstanding},
+                updated_at = NOW()
+            WHERE id = ${inv.id} AND tenant_id = ${tenantId}
+          `);
+        }
+
+        allocated.push({
+          invoiceId: inv.id,
+          invoiceNumber: inv.invoice_number,
+          invoiceDate: inv.invoice_date,
+          buyerName: inv.buyer_name,
+          totalAmountRupees: parseFloat((Number(inv.total_amount) / 100).toFixed(2)),
+          alreadyPaidRupees: parseFloat((totalPaid / 100).toFixed(2)),
+          allocatedRupees: parseFloat((outstanding / 100).toFixed(2)),
+          paymentType: outstanding >= Number(inv.total_amount) ? 'Full' : 'Partial',
+        });
+      }
+
+      const totalAllocatedPaise = allocated.reduce((s, a) => s + Math.round(a.allocatedRupees * 100), 0);
+
+      res.json({
+        success: true,
+        dryRun: isDryRun,
+        bulkAllocationId: isDryRun ? null : bulkAllocationId,
+        message: isDryRun
+          ? `Dry run: ${allocated.length} invoice(s) would be marked as paid (₹${(totalAllocatedPaise / 100).toFixed(2)}). Pass dry_run: false to apply.`
+          : `${allocated.length} invoice(s) marked as paid (₹${(totalAllocatedPaise / 100).toFixed(2)}).`,
+        summary: {
+          invoicesFound: cashInvoices.length,
+          invoicesAllocated: allocated.length,
+          invoicesSkipped: skipped.length,
+          totalAllocatedRupees: parseFloat((totalAllocatedPaise / 100).toFixed(2)),
+        },
+        allocated,
+        skipped,
+      });
+
+    } catch (err) {
+      console.error('[External API] allocate-cash-sales error:', err);
+      res.status(500).json({ error: 'Internal Server Error', message: 'Failed to allocate cash sales' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
