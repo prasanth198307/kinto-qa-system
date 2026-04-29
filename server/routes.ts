@@ -27238,8 +27238,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       const { db: dbInst } = await import('./db');
       const { tenants: tenantsTable } = await import('../shared/schema');
       const { eq } = await import('drizzle-orm');
-      const { sql: sqlRaw } = await import('drizzle-orm');
-      await dbInst.execute(sqlRaw`UPDATE tenants SET cors_origins = ${cleaned}::text[] WHERE id = ${tenantId}`);
+      await dbInst.update(tenantsTable).set({ corsOrigins: cleaned }).where(eq(tenantsTable.id, tenantId));
       res.json({ corsOrigins: cleaned });
     } catch (err: any) {
       res.status(500).json({ message: err.message });
