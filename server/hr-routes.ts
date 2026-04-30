@@ -356,7 +356,7 @@ router.get("/payroll/draft-count", requireHR, async (req: any, res) => {
   const tid = getTenantId(req);
   try {
     const result = await db.execute(sql`
-      SELECT COUNT(DISTINCT employee_id) AS count FROM hr_payroll
+      SELECT COUNT(*) AS count FROM hr_payroll_runs
       WHERE tenant_id = ${tid} AND status = 'draft'
     `);
     const row = result.rows[0] as any;
