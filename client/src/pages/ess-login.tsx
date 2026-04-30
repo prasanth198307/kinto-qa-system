@@ -102,11 +102,11 @@ export default function EssLogin() {
             )}
 
             <h1 className="text-2xl font-bold">
-              {brandName ? brandName : "Employee Self-Service"}
+              Employee Self-Service
             </h1>
             {brandName && (
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
-                Employee Self-Service Portal
+                {brandName}
               </p>
             )}
             <p className="text-sm text-muted-foreground">
