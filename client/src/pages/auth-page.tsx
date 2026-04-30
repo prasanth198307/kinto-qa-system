@@ -274,9 +274,9 @@ export default function AuthPage() {
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary to-blue-700 flex-col items-center justify-center p-12 text-white">
         <div className="w-full max-w-lg">
 
-          {/* Logo */}
+          {/* Logo — original brand colours on the blue panel */}
           <div className="flex flex-col items-start mb-10">
-            <img src="/swacherp-logo.png" alt="SwachERP" className="h-14 w-auto object-contain brightness-0 invert mb-1" />
+            <img src="/swacherp-logo.png" alt="SwachERP" className="h-14 w-auto object-contain mb-1" />
             <span className="text-xs text-blue-200 font-medium">Cleaner Business. Better Future.</span>
           </div>
 
