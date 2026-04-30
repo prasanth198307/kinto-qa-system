@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -112,6 +112,73 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
 
   const f = (key: string) => (e: any) => setForm(p => ({ ...p, [key]: e.target.value }));
   const s = (key: string) => (v: string) => setForm(p => ({ ...p, [key]: v }));
+
+  // ── Auto-calculate salary breakdown from CTC + salary structure ──────────
+  const [ctcAutoCalc, setCtcAutoCalc] = useState(false);
+
+  // Find selected structure's component array
+  const selectedStructure = useMemo(() =>
+    (structures || []).find((st: any) => String(st.id) === form.salaryStructureId),
+    [structures, form.salaryStructureId]
+  );
+
+  useEffect(() => {
+    const ctcVal = Number(form.ctc);
+    if (!ctcVal || !selectedStructure) { setCtcAutoCalc(false); return; }
+
+    const comps: any[] = typeof selectedStructure.components === 'string'
+      ? JSON.parse(selectedStructure.components)
+      : (selectedStructure.components || []);
+
+    const earnings = comps.filter((c: any) => c.type === 'earning');
+    const hasPercent = earnings.some((c: any) =>
+      c.formula_type === 'percentage' || c.formula_type === 'percent_of_basic' || c.formula_type === 'percent_of_ctc'
+    );
+    if (!hasPercent) { setCtcAutoCalc(false); return; }
+
+    const monthlyCTC = ctcVal / 12;
+
+    // 1. Calculate BASIC
+    const basicComp = earnings.find((c: any) =>
+      c.code === 'BASIC' || c.name?.toLowerCase().includes('basic')
+    );
+    let basic = 0;
+    if (basicComp) {
+      if (basicComp.formula_type === 'fixed') {
+        basic = Number(basicComp.formula_value || 0);
+      } else if (basicComp.formula_type === 'percentage' || basicComp.formula_type === 'percent_of_ctc') {
+        basic = Math.round(monthlyCTC * Number(basicComp.formula_value || 0) / 100);
+      } else {
+        basic = Math.round(monthlyCTC * Number(basicComp.formula_value || 0) / 100);
+      }
+    }
+
+    // 2. Calculate other non-BASIC, non-SPEC earnings
+    let otherTotal = 0;
+    for (const c of earnings) {
+      if (c.code === 'BASIC' || c.name?.toLowerCase().includes('basic')) continue;
+      if (c.code === 'SPEC' || c.name?.toLowerCase().includes('special allowance')) continue;
+      let amt = 0;
+      if (c.formula_type === 'percent_of_basic') {
+        amt = Math.round(basic * Number(c.formula_value || 0) / 100);
+      } else if (c.formula_type === 'percentage' || c.formula_type === 'percent_of_ctc') {
+        amt = Math.round(monthlyCTC * Number(c.formula_value || 0) / 100);
+      } else {
+        amt = Number(c.formula_value || 0);
+      }
+      otherTotal += amt;
+    }
+
+    // 3. Special Allowance = residual
+    const specialAllowance = Math.max(0, Math.round(monthlyCTC - basic - otherTotal));
+
+    setForm(p => ({
+      ...p,
+      basicSalary: basic > 0 ? String(basic) : p.basicSalary,
+      specialAllowance: String(specialAllowance),
+    }));
+    setCtcAutoCalc(true);
+  }, [form.ctc, form.salaryStructureId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSave = () => {
     const payload = {
@@ -242,12 +309,50 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label>Basic Salary (₹)</Label>
-            <Input className={inputCls} type="number" value={form.basicSalary} onChange={f("basicSalary")} placeholder="0" />
+            <div className="flex items-center gap-2">
+              <Label>CTC (Annual ₹)</Label>
+              {ctcAutoCalc && (
+                <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-1.5 py-0.5 rounded font-medium">
+                  Auto-calculating below
+                </span>
+              )}
+            </div>
+            <Input
+              className={inputCls} type="number" value={form.ctc}
+              onChange={e => { setCtcAutoCalc(false); f("ctc")(e); }}
+              placeholder="e.g. 600000 for ₹6 LPA"
+              data-testid="input-ctc"
+            />
+            {ctcAutoCalc && (
+              <p className="text-xs text-muted-foreground">Monthly = ₹{Math.round(Number(form.ctc) / 12).toLocaleString('en-IN')} · Salary fields auto-filled from structure percentages</p>
+            )}
           </div>
           <div className="space-y-1.5">
-            <Label>Special Allowance (₹) <span className="text-xs text-muted-foreground">— per employee balancing figure</span></Label>
-            <Input className={inputCls} type="number" value={form.specialAllowance} onChange={f("specialAllowance")} placeholder="0" />
+            <div className="flex items-center gap-2">
+              <Label>Basic Salary (₹/month)</Label>
+              {ctcAutoCalc && form.basicSalary && (
+                <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-1.5 py-0.5 rounded font-medium">Auto</span>
+              )}
+            </div>
+            <Input
+              className={inputCls} type="number" value={form.basicSalary}
+              onChange={e => { setCtcAutoCalc(false); f("basicSalary")(e); }}
+              placeholder="0"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <Label>Special Allowance (₹/month)</Label>
+              {ctcAutoCalc && (
+                <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-1.5 py-0.5 rounded font-medium">Auto</span>
+              )}
+            </div>
+            <Input
+              className={inputCls} type="number" value={form.specialAllowance}
+              onChange={e => { setCtcAutoCalc(false); f("specialAllowance")(e); }}
+              placeholder="0"
+            />
+            <p className="text-xs text-muted-foreground">Balancing figure = Monthly CTC − Basic − other structure components</p>
           </div>
           <div className="space-y-1.5">
             <Label>TA Daily Rate (₹/day) <span className="text-xs text-muted-foreground">— multiplied by days worked each month</span></Label>
@@ -256,10 +361,6 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
           <div className="space-y-1.5">
             <Label>DA Daily Rate (₹/day) <span className="text-xs text-muted-foreground">— multiplied by days worked each month</span></Label>
             <Input className={inputCls} type="number" value={form.daAmount} onChange={f("daAmount")} placeholder="0" />
-          </div>
-          <div className="space-y-1.5">
-            <Label>CTC (₹)</Label>
-            <Input className={inputCls} type="number" value={form.ctc} onChange={f("ctc")} placeholder="0" />
           </div>
           <div className="space-y-1.5">
             <Label>Reporting Manager</Label>
