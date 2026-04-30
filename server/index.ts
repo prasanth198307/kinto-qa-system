@@ -130,6 +130,7 @@ app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
 // Serve static files
 app.use(express.static("public"));
+app.use('/uploads', express.static('uploads'));
 
 // --- Logging middleware for API requests ---
 app.use((req, res, next) => {

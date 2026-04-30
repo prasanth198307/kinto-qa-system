@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useState, useRef, type ReactNode } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -15,6 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import {
   Building2, Users, Package, CheckCircle2, Clock, XCircle,
   Loader2, Save, Palette, CreditCard, Download, Bell, FileJson, AlertCircle,
+  Upload, ImageIcon, X,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -126,6 +127,8 @@ export default function TenantSettings() {
   const { toast } = useToast();
   const [colorPreview, setColorPreview] = useState<string>("");
   const [exportLoading, setExportLoading] = useState(false);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   const { data: tenantInfo, isLoading: infoLoading } = useQuery<TenantInfo>({
     queryKey: ["/api/tenant/info"],
@@ -441,17 +444,77 @@ export default function TenantSettings() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField control={form.control} name="logoUrl" render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Logo URL</FormLabel>
-                        <FormControl><Input placeholder="https://cdn.example.com/logo.png" {...field} data-testid="input-logo-url" /></FormControl>
+                        <FormLabel>Company Logo</FormLabel>
+                        {/* Hidden file input */}
+                        <input
+                          ref={logoInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          data-testid="input-logo-file"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            setLogoUploading(true);
+                            const formData = new FormData();
+                            formData.append('logo', file);
+                            try {
+                              const res = await fetch('/api/tenant/upload-logo', { method: 'POST', body: formData, credentials: 'include' });
+                              const data = await res.json();
+                              if (!res.ok) throw new Error(data.message || 'Upload failed');
+                              field.onChange(data.logoUrl);
+                              queryClient.invalidateQueries({ queryKey: ['/api/tenant/info'] });
+                              toast({ title: 'Logo uploaded successfully' });
+                            } catch (err: any) {
+                              toast({ title: 'Upload failed', description: err.message, variant: 'destructive' });
+                            } finally {
+                              setLogoUploading(false);
+                              e.target.value = '';
+                            }
+                          }}
+                        />
+                        {/* Logo preview + upload button */}
+                        <div className="flex items-center gap-3">
+                          <div className="h-16 w-32 rounded-md border border-border bg-muted flex items-center justify-center overflow-hidden shrink-0">
+                            {field.value ? (
+                              <img
+                                src={field.value}
+                                alt="Company logo"
+                                className="h-full w-full object-contain p-1"
+                                onError={(e) => (e.currentTarget.style.display = 'none')}
+                              />
+                            ) : (
+                              <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                            )}
+                          </div>
+                          <div className="flex flex-col gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              disabled={logoUploading}
+                              data-testid="button-upload-logo"
+                              onClick={() => logoInputRef.current?.click()}
+                            >
+                              {logoUploading
+                                ? <><Loader2 className="mr-2 h-3 w-3 animate-spin" />Uploading...</>
+                                : <><Upload className="mr-2 h-3 w-3" />Upload Logo</>}
+                            </Button>
+                            {field.value && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                data-testid="button-remove-logo"
+                                onClick={() => field.onChange('')}
+                              >
+                                <X className="mr-2 h-3 w-3" />Remove
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                        <FormDescription>PNG, JPG or SVG · max 5 MB</FormDescription>
                         <FormMessage />
-                        {field.value && (
-                          <img
-                            src={field.value}
-                            alt="Logo preview"
-                            className="h-10 mt-1 rounded object-contain border border-border bg-card p-1"
-                            onError={(e) => (e.currentTarget.style.display = "none")}
-                          />
-                        )}
                       </FormItem>
                     )} />
                     <FormField control={form.control} name="primaryColor" render={({ field }) => (

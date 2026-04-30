@@ -770,6 +770,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ─── Tenant: Upload logo ──────────────────────────────────────────────────
+  const logoStorage = multer.diskStorage({
+    destination: (req: any, _file, cb) => {
+      const tenantId: number = (req.session as any)?.tenantId ?? req.user?.tenantId ?? 1;
+      const dir = path.join(process.cwd(), 'uploads', 'tenants', String(tenantId), 'logo');
+      fs.mkdirSync(dir, { recursive: true });
+      cb(null, dir);
+    },
+    filename: (_req, file, cb) => {
+      const ext = path.extname(file.originalname).toLowerCase() || '.png';
+      cb(null, `logo${ext}`);
+    },
+  });
+  const logoUpload = multer({
+    storage: logoStorage,
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => {
+      if (file.mimetype.startsWith('image/')) cb(null, true);
+      else cb(new Error('Only image files are allowed'));
+    },
+  });
+
+  app.post('/api/tenant/upload-logo', logoUpload.single('logo'), async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' });
+    if (req.user?.role !== 'admin' && !req.user?.isSuperAdmin) return res.status(403).json({ message: 'Admin only' });
+    if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+
+    const tenantId: number = (req.session as any).tenantId ?? req.user?.tenantId ?? 1;
+    const ext = path.extname(req.file.originalname).toLowerCase() || '.png';
+    const logoUrl = `/uploads/tenants/${tenantId}/logo/logo${ext}`;
+
+    try {
+      await db.update(tenants).set({ logoUrl, updatedAt: new Date().toISOString() }).where(eq(tenants.id, tenantId));
+      res.json({ logoUrl });
+    } catch (err) {
+      console.error('Logo upload error:', err);
+      res.status(500).json({ message: 'Failed to save logo URL' });
+    }
+  });
+
   // ─── Tenant: Export all company data as JSON ─────────────────────────────
   app.get('/api/tenant/export', async (req: any, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' });
