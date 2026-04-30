@@ -82,22 +82,22 @@ export default function AuthPage() {
       <div className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-8 bg-background">
         <div className="w-full max-w-md">
           <div className="text-center mb-8 space-y-3">
-            <a href="/" aria-label="Back to home">
-              <KintoLogo className="justify-center" variant="full" />
-            </a>
-            {tenantLogoUrl && (
-              <div className="flex flex-col items-center gap-2">
-                <div className="h-px w-16 bg-border" />
+            {tenantLogoUrl ? (
+              <div className="flex flex-col items-center gap-1">
                 <img
                   src={tenantLogoUrl}
                   alt={tenantDisplayName ?? "Company Logo"}
-                  className="h-10 w-auto object-contain max-w-[160px]"
+                  className="h-14 w-auto object-contain max-w-[200px]"
                   data-testid="img-tenant-logo-auth"
                 />
                 {tenantDisplayName && (
                   <p className="text-sm font-medium text-foreground">{tenantDisplayName}</p>
                 )}
               </div>
+            ) : (
+              <a href="/" aria-label="Back to home">
+                <KintoLogo className="justify-center" variant="full" />
+              </a>
             )}
           </div>
 
