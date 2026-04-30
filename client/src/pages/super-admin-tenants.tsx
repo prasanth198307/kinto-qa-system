@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,7 @@ import {
   Building2, Users, MoreVertical, Search, RefreshCw, ShieldAlert,
   CheckCircle2, Clock, XCircle, Loader2, FlaskConical, CreditCard,
   Eye, Trash2, AlertTriangle, Archive, Download, Database, CalendarClock,
-  HardDrive, LogOut, Plus, ScrollText, AlertCircle, Shield, X,
+  HardDrive, LogOut, Plus, ScrollText, AlertCircle, Shield, X, ImageIcon, Upload,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -48,6 +48,7 @@ type Tenant = {
   isInternal: boolean;
   createdAt: string;
   userCount: number;
+  logoUrl: string | null;
 };
 
 const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; icon: React.ReactNode }> = {
@@ -92,6 +93,9 @@ export default function SuperAdminTenants() {
   const [corsOriginsTenant, setCorsOriginsTenant] = useState<Tenant | null>(null);
   const [corsOriginsList, setCorsOriginsList] = useState<string[]>([]);
   const [corsNewOrigin, setCorsNewOrigin] = useState("");
+  const [logoTenant, setLogoTenant] = useState<Tenant | null>(null);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const logoFileRef = useRef<HTMLInputElement>(null);
   const [showCreateTenant, setShowCreateTenant] = useState(false);
   const [showDeletionAudit, setShowDeletionAudit] = useState(false);
   const [createForm, setCreateForm] = useState({
@@ -469,6 +473,9 @@ export default function SuperAdminTenants() {
                               <DropdownMenuItem onClick={() => openCorsOrigins(tenant)}>
                                 <Shield className="h-4 w-4 mr-2" /> CORS Origins
                               </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setLogoTenant(tenant)}>
+                                <ImageIcon className="h-4 w-4 mr-2" /> Upload Logo
+                              </DropdownMenuItem>
                               {!tenant.isSuperAdmin && (
                                 <DropdownMenuItem
                                   onClick={() => impersonateMutation.mutate(tenant.id)}
@@ -667,6 +674,68 @@ export default function SuperAdminTenants() {
               data-testid="button-save-cors-origins"
             >
               {saveCorsOriginsMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : "Save Origins"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Logo Upload Dialog */}
+      <Dialog open={!!logoTenant} onOpenChange={(open) => !open && setLogoTenant(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ImageIcon className="h-4 w-4" /> Upload Logo — {logoTenant?.name}
+            </DialogTitle>
+            <DialogDescription>Upload a PNG, JPG or SVG logo (max 5 MB). It will appear on the login page and app header.</DialogDescription>
+          </DialogHeader>
+
+          <input
+            ref={logoFileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file || !logoTenant) return;
+              setLogoUploading(true);
+              const formData = new FormData();
+              formData.append('logo', file);
+              try {
+                const res = await fetch(`/api/admin/tenants/${logoTenant.id}/upload-logo`, {
+                  method: 'POST', body: formData, credentials: 'include',
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.message || 'Upload failed');
+                queryClient.invalidateQueries({ queryKey: ['/api/admin/tenants'] });
+                toast({ title: 'Logo uploaded', description: `Logo set for ${logoTenant.name}` });
+                setLogoTenant(null);
+              } catch (err: any) {
+                toast({ title: 'Upload failed', description: err.message, variant: 'destructive' });
+              } finally {
+                setLogoUploading(false);
+                e.target.value = '';
+              }
+            }}
+          />
+
+          {/* Current logo preview */}
+          {logoTenant?.logoUrl && (
+            <div className="flex items-center gap-3 p-3 rounded-md border border-border bg-muted">
+              <img src={logoTenant.logoUrl} alt="Current logo" className="h-10 w-auto object-contain max-w-[120px]" onError={(e) => (e.currentTarget.style.display = 'none')} />
+              <span className="text-sm text-muted-foreground truncate">{logoTenant.logoUrl}</span>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setLogoTenant(null)}>Cancel</Button>
+            <Button
+              disabled={logoUploading}
+              onClick={() => logoFileRef.current?.click()}
+              data-testid="button-upload-tenant-logo"
+            >
+              {logoUploading
+                ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Uploading...</>
+                : <><Upload className="mr-2 h-4 w-4" />Choose File & Upload</>}
             </Button>
           </DialogFooter>
         </DialogContent>

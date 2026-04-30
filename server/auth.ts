@@ -359,6 +359,7 @@ export function setupAuth(app: Express) {
           t.is_super_admin  AS "isSuperAdmin",
           t.is_internal     AS "isInternal",
           t.created_at      AS "createdAt",
+          t.logo_url        AS "logoUrl",
           (SELECT COUNT(*)::int
              FROM users u
             WHERE u.tenant_id = t.id

@@ -27314,6 +27314,52 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
     }
   });
 
+  // ─── Admin: upload logo for any tenant ───────────────────────────────────
+  const adminLogoStorage = multer.diskStorage({
+    destination: (_req, _file, cb) => {
+      // Will be replaced per-request below; use temp dir for now
+      cb(null, '/tmp');
+    },
+    filename: (_req, file, cb) => {
+      const ext = path.extname(file.originalname).toLowerCase() || '.png';
+      cb(null, `logo${ext}`);
+    },
+  });
+  const adminLogoUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => {
+      if (file.mimetype.startsWith('image/')) cb(null, true);
+      else cb(new Error('Only image files are allowed'));
+    },
+  });
+
+  app.post('/api/admin/tenants/:id/upload-logo', adminLogoUpload.single('logo'), async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.user?.isSuperAdmin) return res.status(403).json({ message: 'Super-admin only' });
+    if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+
+    const tenantId = parseInt(req.params.id);
+    if (isNaN(tenantId)) return res.status(400).json({ message: 'Invalid tenant ID' });
+
+    const ext = path.extname(req.file.originalname).toLowerCase() || '.png';
+    const logoDir = path.join(process.cwd(), 'client', 'public', 'logos');
+    fs.mkdirSync(logoDir, { recursive: true });
+    const filename = `tenant-${tenantId}${ext}`;
+    fs.writeFileSync(path.join(logoDir, filename), req.file.buffer);
+    const logoUrl = `/logos/${filename}`;
+
+    try {
+      const { db: dbInst } = await import('./db');
+      const { tenants: tenantsTable } = await import('../shared/schema');
+      const { eq } = await import('drizzle-orm');
+      await dbInst.update(tenantsTable).set({ logoUrl, updatedAt: new Date().toISOString() }).where(eq(tenantsTable.id, tenantId));
+      res.json({ logoUrl });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   // ─── Admin: list PostgreSQL dump backups ─────────────────────────────────
   app.get('/api/admin/postgres-backups', async (req: any, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
