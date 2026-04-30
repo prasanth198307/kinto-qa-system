@@ -115,7 +115,10 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
 
   // ── Auto-calculate salary breakdown from CTC + salary structure ──────────
   const [ctcAutoCalc, setCtcAutoCalc] = useState(false);
-  const [calcBreakdown, setCalcBreakdown] = useState<{ name: string; formula: string; amount: number }[]>([]);
+  const [calcBreakdown, setCalcBreakdown] = useState<{ name: string; formula: string; amount: number; type: 'earning' | 'deduction' }[]>([]);
+
+  // Fetch statutory settings for PF/ESI/PT estimates in the preview
+  const { data: statutory } = useQuery<any>({ queryKey: ['/api/hr/statutory-settings'] });
 
   // Find selected structure's component array
   const selectedStructure = useMemo(() =>
@@ -155,10 +158,10 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
       }
     }
 
-    // 2. Calculate each other earning component individually
-    const breakdown: { name: string; formula: string; amount: number }[] = [];
+    // 2. Calculate each other earning component (HRA, LTA, etc.)
+    const breakdown: { name: string; formula: string; amount: number; type: 'earning' | 'deduction' }[] = [];
     if (basic > 0) {
-      breakdown.push({ name: basicComp?.name || 'Basic Salary', formula: basicFormula, amount: basic });
+      breakdown.push({ name: basicComp?.name || 'Basic Salary', formula: basicFormula, amount: basic, type: 'earning' });
     }
 
     let otherTotal = 0;
@@ -178,12 +181,43 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
         formula = `Fixed ₹${amt.toLocaleString('en-IN')}`;
       }
       otherTotal += amt;
-      breakdown.push({ name: c.name, formula, amount: amt });
+      breakdown.push({ name: c.name, formula, amount: amt, type: 'earning' });
     }
 
     // 3. Special Allowance = residual balancing figure
     const specialAllowance = Math.max(0, Math.round(monthlyCTC - basic - otherTotal));
-    breakdown.push({ name: 'Special Allowance', formula: 'Balancing figure', amount: specialAllowance });
+    breakdown.push({ name: 'Special Allowance', formula: 'Balancing figure (CTC − all others)', amount: specialAllowance, type: 'earning' });
+
+    // 4. Statutory deductions estimated from current settings + employee flags
+    const pfEnabled  = statutory?.pf_enabled  !== false && form.pfEnabled  !== false;
+    const esiEnabled = statutory?.esi_enabled !== false && form.esiEnabled !== false;
+    const ptEnabled  = statutory?.pt_enabled  !== false;
+
+    const pfRate     = Number(statutory?.pf_employee_rate  ?? 12) / 100;
+    const pfCeiling  = Number(statutory?.pf_ceiling_basic  ?? 15000);
+    const esiRate    = Number(statutory?.esi_employee_rate ?? 0.75) / 100;
+    const esiCeiling = Number(statutory?.esi_gross_ceiling ?? 21000);
+
+    const grossEarnings = basic + otherTotal + specialAllowance;
+
+    if (pfEnabled) {
+      const pfBase = Math.min(basic, pfCeiling);
+      const pf = Math.round(pfBase * pfRate);
+      breakdown.push({ name: 'PF (Employee)', formula: `${(pfRate * 100).toFixed(0)}% of Basic (≤ ₹${pfCeiling.toLocaleString('en-IN')})`, amount: pf, type: 'deduction' });
+    }
+    if (esiEnabled && grossEarnings <= esiCeiling) {
+      const esi = Math.round(grossEarnings * esiRate);
+      breakdown.push({ name: 'ESI (Employee)', formula: `${(esiRate * 100).toFixed(2)}% of Gross (Gross ≤ ₹${esiCeiling.toLocaleString('en-IN')})`, amount: esi, type: 'deduction' });
+    } else if (esiEnabled && grossEarnings > esiCeiling) {
+      breakdown.push({ name: 'ESI (Employee)', formula: `Not applicable — Gross > ₹${esiCeiling.toLocaleString('en-IN')}`, amount: 0, type: 'deduction' });
+    }
+    if (ptEnabled) {
+      let pt = 0;
+      if (grossEarnings > 15000) pt = 200;
+      else if (grossEarnings > 10000) pt = 150;
+      else if (grossEarnings > 7500) pt = 100;
+      if (pt > 0) breakdown.push({ name: 'Professional Tax (PT)', formula: 'From state slab / fallback estimate', amount: pt, type: 'deduction' });
+    }
 
     setCalcBreakdown(breakdown);
     setForm(p => ({
@@ -192,7 +226,7 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
       specialAllowance: String(specialAllowance),
     }));
     setCtcAutoCalc(true);
-  }, [form.ctc, form.salaryStructureId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [form.ctc, form.salaryStructureId, form.pfEnabled, form.esiEnabled, statutory]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSave = () => {
     const payload = {
@@ -337,42 +371,67 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
               placeholder="e.g. 600000 for ₹6 LPA"
               data-testid="input-ctc"
             />
-            {ctcAutoCalc && calcBreakdown.length > 0 && (
-              <div className="mt-2 rounded-md border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 overflow-hidden">
-                <div className="px-3 py-1.5 bg-blue-100 dark:bg-blue-900/40 border-b border-blue-200 dark:border-blue-800">
-                  <p className="text-xs font-semibold text-blue-700 dark:text-blue-300">
-                    Monthly Breakdown — ₹{Math.round(Number(form.ctc) / 12).toLocaleString('en-IN')}/month
+            {ctcAutoCalc && calcBreakdown.length > 0 && (() => {
+              const earningRows  = calcBreakdown.filter(r => r.type === 'earning');
+              const deductRows   = calcBreakdown.filter(r => r.type === 'deduction' && r.amount > 0);
+              const grossTotal   = earningRows.reduce((s, r) => s + r.amount, 0);
+              const deductTotal  = deductRows.reduce((s, r) => s + r.amount, 0);
+              const netSalary    = grossTotal - deductTotal;
+              return (
+                <div className="mt-2 rounded-md border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 overflow-hidden text-xs">
+                  {/* Earnings */}
+                  <div className="px-3 py-1 bg-green-50 dark:bg-green-900/20 border-b border-blue-200 dark:border-blue-800">
+                    <span className="font-semibold text-green-700 dark:text-green-400">Earnings — Monthly</span>
+                  </div>
+                  <table className="w-full">
+                    <tbody>
+                      {earningRows.map((row, i) => (
+                        <tr key={i} className="border-b border-blue-100 dark:border-blue-900">
+                          <td className="px-3 py-1 text-foreground">{row.name}</td>
+                          <td className="px-3 py-1 text-muted-foreground text-center">{row.formula}</td>
+                          <td className="px-3 py-1 text-right font-medium tabular-nums text-green-700 dark:text-green-400">₹{row.amount.toLocaleString('en-IN')}</td>
+                        </tr>
+                      ))}
+                      <tr className="bg-green-100 dark:bg-green-900/30 font-semibold">
+                        <td className="px-3 py-1.5 text-green-800 dark:text-green-200" colSpan={2}>Gross Monthly Salary</td>
+                        <td className="px-3 py-1.5 text-right tabular-nums text-green-800 dark:text-green-200">₹{grossTotal.toLocaleString('en-IN')}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  {/* Deductions */}
+                  {deductRows.length > 0 && <>
+                    <div className="px-3 py-1 bg-red-50 dark:bg-red-900/20 border-t border-b border-blue-200 dark:border-blue-800">
+                      <span className="font-semibold text-red-700 dark:text-red-400">Statutory Deductions (estimated)</span>
+                    </div>
+                    <table className="w-full">
+                      <tbody>
+                        {deductRows.map((row, i) => (
+                          <tr key={i} className="border-b border-blue-100 dark:border-blue-900">
+                            <td className="px-3 py-1 text-foreground">{row.name}</td>
+                            <td className="px-3 py-1 text-muted-foreground text-center">{row.formula}</td>
+                            <td className="px-3 py-1 text-right font-medium tabular-nums text-red-600 dark:text-red-400">−₹{row.amount.toLocaleString('en-IN')}</td>
+                          </tr>
+                        ))}
+                        <tr className="bg-red-50 dark:bg-red-900/20 font-semibold">
+                          <td className="px-3 py-1.5 text-red-800 dark:text-red-200" colSpan={2}>Total Deductions</td>
+                          <td className="px-3 py-1.5 text-right tabular-nums text-red-800 dark:text-red-200">−₹{deductTotal.toLocaleString('en-IN')}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </>}
+
+                  {/* Net */}
+                  <div className="px-3 py-2 bg-blue-100 dark:bg-blue-900/40 border-t border-blue-200 dark:border-blue-800 flex justify-between items-center font-bold text-blue-800 dark:text-blue-200">
+                    <span>Estimated Net Take-Home / Month</span>
+                    <span className="tabular-nums">₹{netSalary.toLocaleString('en-IN')}</span>
+                  </div>
+                  <p className="px-3 py-1.5 text-muted-foreground italic">
+                    HRA, LTA and all other components are auto-calculated at payroll run time. PF/ESI/PT are based on statutory settings and employee flags above.
                   </p>
                 </div>
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="text-blue-600 dark:text-blue-400 border-b border-blue-200 dark:border-blue-800">
-                      <th className="text-left px-3 py-1 font-medium">Component</th>
-                      <th className="text-center px-3 py-1 font-medium">Formula</th>
-                      <th className="text-right px-3 py-1 font-medium">Amount / Month</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {calcBreakdown.map((row, i) => (
-                      <tr key={i} className={`border-b border-blue-100 dark:border-blue-900 last:border-0 ${row.name === 'Special Allowance' ? 'italic text-muted-foreground' : ''}`}>
-                        <td className="px-3 py-1">{row.name}</td>
-                        <td className="px-3 py-1 text-center text-muted-foreground">{row.formula}</td>
-                        <td className="px-3 py-1 text-right font-medium tabular-nums">₹{row.amount.toLocaleString('en-IN')}</td>
-                      </tr>
-                    ))}
-                    <tr className="bg-blue-100 dark:bg-blue-900/40 font-semibold text-blue-800 dark:text-blue-200">
-                      <td className="px-3 py-1.5" colSpan={2}>Total Monthly Gross</td>
-                      <td className="px-3 py-1.5 text-right tabular-nums">
-                        ₹{calcBreakdown.reduce((s, r) => s + r.amount, 0).toLocaleString('en-IN')}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-                <p className="text-xs text-blue-600 dark:text-blue-400 px-3 py-1.5">
-                  All components calculated automatically during payroll run from this structure.
-                </p>
-              </div>
-            )}
+              );
+            })()}
           </div>
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
@@ -402,12 +461,20 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
             <p className="text-xs text-muted-foreground">Balancing figure = Monthly CTC − Basic − other structure components</p>
           </div>
           <div className="space-y-1.5">
-            <Label>TA Daily Rate (₹/day) <span className="text-xs text-muted-foreground">— multiplied by days worked each month</span></Label>
-            <Input className={inputCls} type="number" value={form.taAmount} onChange={f("taAmount")} placeholder="0" />
+            <div className="flex items-center gap-2">
+              <Label>TA Daily Rate (₹/day)</Label>
+              <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">Optional</span>
+            </div>
+            <Input className={inputCls} type="number" value={form.taAmount} onChange={f("taAmount")} placeholder="0 — leave blank if not applicable" />
+            <p className="text-xs text-muted-foreground">Only for employees with travel allowance outside the salary structure. Leave 0 if not applicable.</p>
           </div>
           <div className="space-y-1.5">
-            <Label>DA Daily Rate (₹/day) <span className="text-xs text-muted-foreground">— multiplied by days worked each month</span></Label>
-            <Input className={inputCls} type="number" value={form.daAmount} onChange={f("daAmount")} placeholder="0" />
+            <div className="flex items-center gap-2">
+              <Label>DA Daily Rate (₹/day)</Label>
+              <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">Optional</span>
+            </div>
+            <Input className={inputCls} type="number" value={form.daAmount} onChange={f("daAmount")} placeholder="0 — leave blank if not applicable" />
+            <p className="text-xs text-muted-foreground">Only for employees with dearness allowance outside the salary structure. Leave 0 if not applicable.</p>
           </div>
           <div className="space-y-1.5">
             <Label>Reporting Manager</Label>
