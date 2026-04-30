@@ -3389,7 +3389,26 @@ function ScrollToTop() {
 
 function SmartRoot() {
   const { user, isLoading } = useAuth();
-  if (isLoading) {
+  const [, setLocation] = useLocation();
+  const [domainChecked, setDomainChecked] = useState(false);
+
+  useEffect(() => {
+    if (user || isLoading) { setDomainChecked(true); return; }
+    // Check if we're on a tenant custom domain — if so, go straight to login
+    const origin = window.location.origin;
+    fetch(`/api/public/tenant-branding?origin=${encodeURIComponent(origin)}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data?.slug) {
+          setLocation(`/auth?tenant=${encodeURIComponent(data.slug)}`);
+        } else {
+          setDomainChecked(true);
+        }
+      })
+      .catch(() => setDomainChecked(true));
+  }, [user, isLoading]);
+
+  if (isLoading || !domainChecked) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-border" />

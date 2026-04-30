@@ -576,13 +576,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const origin = (req.query.origin as string ?? '').trim().toLowerCase().replace(/\/$/, '');
     if (!origin) return res.json(null);
     try {
+      // Supports exact match and wildcard entries like *.swacherp.com
       const result = await pool.query(
-        `SELECT name, logo_url FROM tenants WHERE $1 = ANY(cors_origins) AND status <> 'deleted' LIMIT 1`,
+        `SELECT name, slug, logo_url FROM tenants
+         WHERE status <> 'deleted'
+           AND EXISTS (
+             SELECT 1 FROM unnest(cors_origins) AS o
+             WHERE o = $1
+                OR (o LIKE '*%' AND $1 LIKE '%' || substring(o FROM 2))
+           )
+         LIMIT 1`,
         [origin]
       );
       if (!result.rows.length) return res.json(null);
       const row = result.rows[0];
-      return res.json({ name: row.name, logoUrl: row.logo_url ?? null });
+      return res.json({ name: row.name, slug: row.slug, logoUrl: row.logo_url ?? null });
     } catch (err: any) {
       return res.json(null);
     }
