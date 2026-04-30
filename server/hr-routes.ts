@@ -593,6 +593,10 @@ router.get("/employees/:id", requireHR, async (req: any, res) => {
 router.post("/employees", requireHR, async (req: any, res) => {
   const tid = getTenantId(req);
   const d = req.body;
+  // Convert empty strings to null (same helpers as PUT endpoint)
+  const s = (v: any) => (v === '' || v == null) ? null : v;
+  const n = (v: any, def = 0) => (v === '' || v == null) ? def : Number(v);
+  const i = (v: any) => (v === '' || v == null) ? null : parseInt(v);
   try {
     const r = await db.execute(sql`
       INSERT INTO hr_employees (
@@ -607,21 +611,21 @@ router.post("/employees", requireHR, async (req: any, res) => {
         father_name, father_dob, father_aadhaar,
         mother_name, mother_dob, mother_aadhaar, number_of_children, status, employee_type
       ) VALUES (
-        ${tid}, ${d.empCode}, ${d.firstName}, ${d.lastName ?? null}, ${d.gender ?? null},
-        ${d.dateOfBirth ?? null}, ${d.bloodGroup ?? null},
-        ${d.departmentId ?? null}, ${d.designationId ?? null}, ${d.shiftId ?? null},
-        ${d.salaryStructureId ?? null}, ${d.basicSalary ?? 0}, ${d.specialAllowance ?? 0}, ${d.taAmount ?? 0}, ${d.daAmount ?? 0}, ${d.ctc ?? 0},
-        ${d.joinDate}, ${d.exitDate ?? null}, ${d.exitType ?? null}, ${d.exitReason ?? null}, ${d.resignationDate ?? null},
-        ${d.reportingManagerId ?? null}, ${d.phone ?? null}, ${d.alternatePhone ?? null}, ${d.email ?? null},
-        ${d.address ?? null}, ${d.city ?? null}, ${d.state ?? null}, ${d.pincode ?? null},
-        ${d.emergencyContact ?? null}, ${d.emergencyContactName ?? null}, ${d.emergencyContactRelation ?? null},
-        ${d.pan ?? null}, ${d.aadhaar ?? null}, ${d.pfEnabled !== false}, ${d.esiEnabled !== false},
-        ${d.pfNumber ?? null}, ${d.esiNumber ?? null}, ${d.uan ?? null}, ${d.bankAccount ?? null},
-        ${d.ifsc ?? null}, ${d.bankName ?? null}, ${d.taxRegime ?? 'new'},
-        ${d.maritalStatus ?? null}, ${d.spouseName ?? null}, ${d.spouseDob ?? null}, ${d.spouseAadhaar ?? null},
-        ${d.fatherName ?? null}, ${d.fatherDob ?? null}, ${d.fatherAadhaar ?? null},
-        ${d.motherName ?? null}, ${d.motherDob ?? null}, ${d.motherAadhaar ?? null},
-        ${d.numberOfChildren ?? 0}, ${d.status ?? 'active'}, ${d.employeeType ?? 'permanent'}
+        ${tid}, ${d.empCode}, ${d.firstName}, ${s(d.lastName)}, ${s(d.gender)},
+        ${s(d.dateOfBirth)}, ${s(d.bloodGroup)},
+        ${i(d.departmentId)}, ${i(d.designationId)}, ${i(d.shiftId)},
+        ${i(d.salaryStructureId)}, ${n(d.basicSalary)}, ${n(d.specialAllowance)}, ${n(d.taAmount)}, ${n(d.daAmount)}, ${n(d.ctc)},
+        ${s(d.joinDate)}, ${s(d.exitDate)}, ${s(d.exitType)}, ${s(d.exitReason)}, ${s(d.resignationDate)},
+        ${i(d.reportingManagerId)}, ${s(d.phone)}, ${s(d.alternatePhone)}, ${s(d.email)},
+        ${s(d.address)}, ${s(d.city)}, ${s(d.state)}, ${s(d.pincode)},
+        ${s(d.emergencyContact)}, ${s(d.emergencyContactName)}, ${s(d.emergencyContactRelation)},
+        ${s(d.pan)}, ${s(d.aadhaar)}, ${d.pfEnabled !== false}, ${d.esiEnabled !== false},
+        ${s(d.pfNumber)}, ${s(d.esiNumber)}, ${s(d.uan)}, ${s(d.bankAccount)},
+        ${s(d.ifsc)}, ${s(d.bankName)}, ${s(d.taxRegime) ?? 'new'},
+        ${s(d.maritalStatus)}, ${s(d.spouseName)}, ${s(d.spouseDob)}, ${s(d.spouseAadhaar)},
+        ${s(d.fatherName)}, ${s(d.fatherDob)}, ${s(d.fatherAadhaar)},
+        ${s(d.motherName)}, ${s(d.motherDob)}, ${s(d.motherAadhaar)},
+        ${n(d.numberOfChildren)}, ${s(d.status) ?? 'active'}, ${s(d.employeeType) ?? 'permanent'}
       ) RETURNING *
     `);
     res.json(r.rows[0]);
