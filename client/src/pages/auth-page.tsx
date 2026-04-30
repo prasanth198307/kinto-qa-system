@@ -271,25 +271,25 @@ export default function AuthPage() {
       </div>
 
       {/* Right side — Hero */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary to-blue-700 flex-col justify-between p-10 text-white">
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary to-blue-700 flex-col items-center justify-center p-12 text-white">
+        <div className="w-full max-w-lg">
 
-        {/* Top: logo */}
-        <div className="flex items-center gap-3">
-          <img src="/swacherp-logo.png" alt="SwachERP" className="h-10 w-auto object-contain brightness-0 invert" />
-          <span className="text-white/70 text-xs font-medium tracking-wide">Cleaner Business. Better Future.</span>
-        </div>
+          {/* Logo */}
+          <div className="flex flex-col items-start mb-10">
+            <img src="/swacherp-logo.png" alt="SwachERP" className="h-14 w-auto object-contain brightness-0 invert mb-1" />
+            <span className="text-xs text-blue-200 font-medium">Cleaner Business. Better Future.</span>
+          </div>
 
-        {/* Middle: headline + modules */}
-        <div>
-          <h2 className="text-3xl font-bold leading-tight mb-2">
+          {/* Headline */}
+          <h2 className="text-4xl font-extrabold leading-tight mb-3">
             One platform.<br />Every operation.
           </h2>
-          <p className="text-blue-100 text-sm mb-8">
-            Built for Indian manufacturers — GST-ready, WhatsApp-connected, fully integrated.
+          <p className="text-blue-100 text-sm mb-8 leading-relaxed">
+            Built for Indian manufacturers — GST-ready, WhatsApp-connected,<br />fully integrated from shop floor to finance.
           </p>
 
-          {/* Module chips — 3 per row */}
-          <div className="flex flex-wrap gap-2">
+          {/* Module chips */}
+          <div className="flex flex-wrap gap-2 mb-10">
             {[
               "Production Planning",
               "Inventory & Stock",
@@ -315,22 +315,22 @@ export default function AuthPage() {
               </span>
             ))}
           </div>
-        </div>
 
-        {/* Bottom: stat strip */}
-        <div className="flex items-center gap-6 pt-6 border-t border-white/20">
-          {[
-            { value: "25+", label: "Modules" },
-            { value: "GST", label: "Compliant" },
-            { value: "100%", label: "Web-based" },
-          ].map((stat) => (
-            <div key={stat.label}>
-              <div className="text-xl font-bold">{stat.value}</div>
-              <div className="text-xs text-blue-200">{stat.label}</div>
-            </div>
-          ))}
-        </div>
+          {/* Stat strip */}
+          <div className="flex items-center gap-8 pt-6 border-t border-white/20">
+            {[
+              { value: "25+", label: "Modules" },
+              { value: "GST", label: "Compliant" },
+              { value: "100%", label: "Web-based" },
+            ].map((stat) => (
+              <div key={stat.label}>
+                <div className="text-2xl font-bold">{stat.value}</div>
+                <div className="text-xs text-blue-200 mt-0.5">{stat.label}</div>
+              </div>
+            ))}
+          </div>
 
+        </div>
       </div>
     </div>
   );
