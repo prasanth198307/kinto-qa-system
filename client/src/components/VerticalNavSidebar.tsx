@@ -45,6 +45,8 @@ interface VerticalNavSidebarProps {
   title?: string;
   isMobileOpen?: boolean;
   onMobileClose?: () => void;
+  logoUrl?: string | null;
+  tenantName?: string | null;
 }
 
 export function VerticalNavSidebar({
@@ -55,6 +57,8 @@ export function VerticalNavSidebar({
   title = "Dashboard",
   isMobileOpen = false,
   onMobileClose,
+  logoUrl,
+  tenantName,
 }: VerticalNavSidebarProps) {
   const [, navigate] = useLocation();
   const safeSections = sections || [];
@@ -179,126 +183,6 @@ export function VerticalNavSidebar({
     );
   };
 
-  const sidebarContent = (
-    <div
-      ref={scrollContainerRef}
-      className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-visible"
-      tabIndex={0}
-      style={{
-        scrollbarWidth: 'thin' as any,
-        scrollbarColor: 'hsl(var(--muted-foreground) / 0.3) transparent',
-        WebkitOverflowScrolling: 'touch',
-        touchAction: 'pan-y',
-        overscrollBehavior: 'contain',
-        outline: 'none',
-      }}
-      onKeyDown={(e) => {
-        const container = e.currentTarget;
-        if (e.key === 'ArrowDown') {
-          e.preventDefault();
-          container.scrollBy({ top: 60, behavior: 'smooth' });
-        } else if (e.key === 'ArrowUp') {
-          e.preventDefault();
-          container.scrollBy({ top: -60, behavior: 'smooth' });
-        } else if (e.key === 'PageDown') {
-          e.preventDefault();
-          container.scrollBy({ top: 300, behavior: 'smooth' });
-        } else if (e.key === 'PageUp') {
-          e.preventDefault();
-          container.scrollBy({ top: -300, behavior: 'smooth' });
-        } else if (e.key === 'Home') {
-          e.preventDefault();
-          container.scrollTo({ top: 0, behavior: 'smooth' });
-        } else if (e.key === 'End') {
-          e.preventDefault();
-          container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
-        }
-      }}
-    >
-      <div className="space-y-1">
-        {safeSections.map((section, index) => {
-          const isCollapsed = collapsedSections[section.id] ?? false;
-          const hasActiveItem = section.items.some(item => item.id === activeItem);
-
-          return (
-            <div key={section.id}>
-              {section.label ? (
-                <Collapsible open={!isCollapsed} onOpenChange={() => toggleSection(section.id)}>
-                  <div className="flex items-center justify-between mb-1 px-1">
-                    <CollapsibleTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className={`flex-1 justify-start h-8 px-2 touch-manipulation hover-elevate ${
-                          hasActiveItem && isCollapsed ? 'bg-primary/10 text-primary' : ''
-                        }`}
-                        data-testid={`toggle-section-${section.id}`}
-                      >
-                        {isCollapsed ? (
-                          <ChevronRight className="h-4 w-4 mr-1.5 flex-shrink-0" />
-                        ) : (
-                          <ChevronDown className="h-4 w-4 mr-1.5 flex-shrink-0" />
-                        )}
-                        <span className="text-xs font-semibold uppercase tracking-wide">
-                          {section.label}
-                        </span>
-                        {hasActiveItem && isCollapsed && (
-                          <span className="ml-auto w-2 h-2 rounded-full bg-primary" />
-                        )}
-                      </Button>
-                    </CollapsibleTrigger>
-                    {section.quickActions && section.quickActions.length > 0 && !isCollapsed && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 hover-elevate flex-shrink-0 touch-manipulation"
-                            aria-label={`Add ${section.label?.toLowerCase()} item`}
-                            data-testid={`button-quick-action-${section.id}`}
-                          >
-                            <Plus className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-56">
-                          {section.quickActions.map((action) => {
-                            const ActionIcon = action.icon;
-                            return (
-                              <DropdownMenuItem
-                                key={action.id}
-                                onClick={action.onClick}
-                                data-testid={`quick-action-${action.id}`}
-                              >
-                                <ActionIcon className="h-4 w-4 mr-2" />
-                                {action.label}
-                              </DropdownMenuItem>
-                            );
-                          })}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
-                  </div>
-                  <CollapsibleContent>
-                    <div className="space-y-0.5 pl-2">
-                      {section.items.map((item) => renderNavItem(item))}
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
-              ) : (
-                <div className="space-y-0.5">
-                  {section.items.map((item) => renderNavItem(item))}
-                </div>
-              )}
-              {index < sections.length - 1 && (
-                <div className="border-t border-border my-2" />
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-
   return (
     <>
       {/* Mobile Sidebar Overlay — touch-action:none prevents background scroll-through */}
@@ -314,18 +198,135 @@ export function VerticalNavSidebar({
       {/* Sidebar */}
       <div
         className={`
-          fixed top-0 left-0 bottom-0 w-72 bg-card border-r border-border z-[60] px-3 pb-4
+          fixed top-0 left-0 bottom-0 w-72 bg-card border-r border-border z-[60]
           flex flex-col sidebar-full-height panel-slide
           ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
           lg:translate-x-0
         `}
-        style={{
-          paddingTop: 'calc(env(safe-area-inset-top, 0px) + 5rem)',
-          transition: 'transform 300ms ease-in-out',
-        }}
+        style={{ transition: 'transform 300ms ease-in-out' }}
         data-testid="vertical-nav-sidebar"
       >
-        {sidebarContent}
+        {/* Sidebar logo header — same height as GlobalHeader */}
+        <div
+          className="flex-shrink-0 flex items-center px-3 border-b border-border"
+          style={{ height: 'calc(env(safe-area-inset-top, 0px) + 4rem)', paddingTop: 'env(safe-area-inset-top, 0px)' }}
+        >
+          {logoUrl ? (
+            <img
+              src={logoUrl}
+              alt={tenantName ?? "Company Logo"}
+              className="h-10 w-auto object-contain max-w-[160px]"
+              data-testid="img-tenant-logo-sidebar"
+            />
+          ) : (
+            <img
+              src="/swacherp-logo.png"
+              alt="SwachERP"
+              className="h-8 w-auto object-contain"
+            />
+          )}
+        </div>
+
+        {/* Nav content */}
+        <div className="flex-1 min-h-0 px-3 pb-4 overflow-y-auto overflow-x-hidden scrollbar-visible"
+          ref={scrollContainerRef}
+          tabIndex={0}
+          style={{
+            scrollbarWidth: 'thin' as any,
+            scrollbarColor: 'hsl(var(--muted-foreground) / 0.3) transparent',
+            WebkitOverflowScrolling: 'touch',
+            touchAction: 'pan-y',
+            overscrollBehavior: 'contain',
+            outline: 'none',
+          }}
+          onKeyDown={(e) => {
+            const container = e.currentTarget;
+            if (e.key === 'ArrowDown') { e.preventDefault(); container.scrollBy({ top: 60, behavior: 'smooth' }); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); container.scrollBy({ top: -60, behavior: 'smooth' }); }
+          }}
+        >
+          <div className="space-y-1 pt-2">
+            {safeSections.map((section, index) => {
+              const isCollapsed = collapsedSections[section.id] ?? false;
+              const hasActiveItem = section.items.some(item => item.id === activeItem);
+
+              return (
+                <div key={section.id}>
+                  {section.label ? (
+                    <Collapsible open={!isCollapsed} onOpenChange={() => toggleSection(section.id)}>
+                      <div className="flex items-center justify-between mb-1 px-1">
+                        <CollapsibleTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className={`flex-1 justify-start h-8 px-2 touch-manipulation hover-elevate ${
+                              hasActiveItem && isCollapsed ? 'bg-primary/10 text-primary' : ''
+                            }`}
+                            data-testid={`toggle-section-${section.id}`}
+                          >
+                            {isCollapsed ? (
+                              <ChevronRight className="h-4 w-4 mr-1.5 flex-shrink-0" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4 mr-1.5 flex-shrink-0" />
+                            )}
+                            <span className="text-xs font-semibold uppercase tracking-wide">
+                              {section.label}
+                            </span>
+                            {hasActiveItem && isCollapsed && (
+                              <span className="ml-auto w-2 h-2 rounded-full bg-primary" />
+                            )}
+                          </Button>
+                        </CollapsibleTrigger>
+                        {section.quickActions && section.quickActions.length > 0 && !isCollapsed && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 hover-elevate flex-shrink-0 touch-manipulation"
+                                aria-label={`Add ${section.label?.toLowerCase()} item`}
+                                data-testid={`button-quick-action-${section.id}`}
+                              >
+                                <Plus className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-56">
+                              {section.quickActions.map((action) => {
+                                const ActionIcon = action.icon;
+                                return (
+                                  <DropdownMenuItem
+                                    key={action.id}
+                                    onClick={action.onClick}
+                                    data-testid={`quick-action-${action.id}`}
+                                  >
+                                    <ActionIcon className="h-4 w-4 mr-2" />
+                                    {action.label}
+                                  </DropdownMenuItem>
+                                );
+                              })}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </div>
+                      <CollapsibleContent>
+                        <div className="space-y-0.5 pl-2">
+                          {section.items.map((item) => renderNavItem(item))}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  ) : (
+                    <div className="space-y-0.5">
+                      {section.items.map((item) => renderNavItem(item))}
+                    </div>
+                  )}
+                  {index < sections.length - 1 && (
+                    <div className="border-t border-border my-2" />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       {/* Spacer for desktop layout */}

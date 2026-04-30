@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { GlobalHeader } from "@/components/GlobalHeader";
 import { VerticalNavSidebar, type NavSection } from "@/components/VerticalNavSidebar";
+import { useTenantBranding } from "@/hooks/use-tenant-branding";
 
 interface DashboardShellProps {
   title: string;
@@ -22,6 +23,7 @@ export function DashboardShell({
   children,
 }: DashboardShellProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { logoUrl, tenantName } = useTenantBranding();
 
   return (
     <>
@@ -41,13 +43,24 @@ export function DashboardShell({
           title={title}
           isMobileOpen={isMobileMenuOpen}
           onMobileClose={() => setIsMobileMenuOpen(false)}
+          logoUrl={logoUrl}
+          tenantName={tenantName}
         />
         
         <div
-          className="flex-1 overflow-x-auto min-w-0"
+          className="flex-1 overflow-x-auto min-w-0 flex flex-col"
           style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 4rem)' }}
         >
-          {children}
+          <div className="flex-1">
+            {children}
+          </div>
+
+          {/* Footer */}
+          <footer className="border-t border-border px-6 py-3 flex flex-wrap items-center justify-center gap-x-2 text-xs text-muted-foreground">
+            <span>© 2026 Inmoisture Pvt Ltd. All rights reserved.</span>
+            <span className="hidden sm:inline text-border">|</span>
+            <span className="hidden sm:inline">Powered by <strong className="text-foreground/70">SwachERP</strong></span>
+          </footer>
         </div>
       </div>
     </>
