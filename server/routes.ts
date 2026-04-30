@@ -573,6 +573,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ─── Public: tenant branding by origin (no auth needed) ─────────────────
   // Used by the sign-in page to show the tenant logo when accessed via a custom domain.
   app.get('/api/public/tenant-branding', async (req: any, res) => {
+    // Never cache — the logo/slug can change anytime
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
     const origin = (req.query.origin as string ?? '').trim().toLowerCase().replace(/\/$/, '');
     if (!origin) return res.json(null);
     try {

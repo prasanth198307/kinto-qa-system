@@ -3400,7 +3400,7 @@ function SmartRoot() {
     if (user) { setDomainChecked(true); return; }
     // Auth done, no user — check if this origin belongs to a tenant
     const origin = window.location.origin;
-    fetch(`/api/public/tenant-branding?origin=${encodeURIComponent(origin)}`)
+    fetch(`/api/public/tenant-branding?origin=${encodeURIComponent(origin)}&_=${Date.now()}`, { cache: 'no-store' })
       .then(r => r.json())
       .then(data => {
         if (data?.slug) {

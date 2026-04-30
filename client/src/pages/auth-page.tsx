@@ -33,7 +33,7 @@ export default function AuthPage() {
     }
     // Show tenant branding only when accessed via their whitelisted custom domain
     const currentOrigin = window.location.origin;
-    fetch(`/api/public/tenant-branding?origin=${encodeURIComponent(currentOrigin)}`)
+    fetch(`/api/public/tenant-branding?origin=${encodeURIComponent(currentOrigin)}&_=${Date.now()}`, { cache: 'no-store' })
       .then((r) => r.json())
       .then((data) => {
         if (data?.logoUrl) setTenantLogoUrl(data.logoUrl);
