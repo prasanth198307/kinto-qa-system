@@ -25,6 +25,8 @@ export default function AuthPage() {
   const [sessionExpired, setSessionExpired] = useState(false);
   const [tenantLogoUrl, setTenantLogoUrl] = useState<string | null>(null);
   const [tenantDisplayName, setTenantDisplayName] = useState<string | null>(null);
+  // true when slug was auto-detected from the custom domain — hide Company ID field
+  const [slugAutoDetected, setSlugAutoDetected] = useState(false);
 
   useEffect(() => {
     if (sessionStorage.getItem("session_expired") === "1") {
@@ -36,8 +38,14 @@ export default function AuthPage() {
     fetch(`/api/public/tenant-branding?origin=${encodeURIComponent(currentOrigin)}&_=${Date.now()}`, { cache: 'no-store' })
       .then((r) => r.json())
       .then((data) => {
-        if (data?.logoUrl) setTenantLogoUrl(data.logoUrl);
-        if (data?.name) setTenantDisplayName(data.name);
+        if (!data) return;
+        if (data.logoUrl) setTenantLogoUrl(data.logoUrl);
+        if (data.name) setTenantDisplayName(data.name);
+        // Auto-fill slug from the detected tenant — user doesn't need to type it
+        if (data.slug) {
+          setCompanySlug(data.slug);
+          setSlugAutoDetected(true);
+        }
       })
       .catch(() => {});
   }, []);
@@ -123,24 +131,27 @@ export default function AuthPage() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4" data-testid="form-login">
-                <div className="space-y-2">
-                  <Label htmlFor="company-slug">Company ID</Label>
-                  <div className="relative">
-                    <Building2 className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="company-slug"
-                      data-testid="input-company-slug"
-                      type="text"
-                      placeholder="e.g. acme-manufacturing"
-                      className="pl-10"
-                      value={companySlug}
-                      onChange={(e) => setCompanySlug(e.target.value)}
-                      autoComplete="organization"
-                      autoFocus
-                      required
-                    />
+                {/* Company ID — hidden when slug is auto-detected from the custom domain */}
+                {!slugAutoDetected && (
+                  <div className="space-y-2">
+                    <Label htmlFor="company-slug">Company ID</Label>
+                    <div className="relative">
+                      <Building2 className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="company-slug"
+                        data-testid="input-company-slug"
+                        type="text"
+                        placeholder="e.g. acme-manufacturing"
+                        className="pl-10"
+                        value={companySlug}
+                        onChange={(e) => setCompanySlug(e.target.value)}
+                        autoComplete="organization"
+                        autoFocus
+                        required
+                      />
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div className="space-y-2">
                   <Label htmlFor="username-input">Username or Email</Label>
@@ -155,6 +166,7 @@ export default function AuthPage() {
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       autoComplete="username"
+                      autoFocus={slugAutoDetected}
                       required
                     />
                   </div>
