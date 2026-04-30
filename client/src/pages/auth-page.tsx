@@ -273,46 +273,47 @@ export default function AuthPage() {
       {/* Right side — Hero */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary to-blue-700 flex-col p-12 text-white">
 
-        {/* SwachERP logo — true vertical centre of blue panel */}
-        <div className="flex flex-1 items-center justify-center">
-          <div className="flex flex-col items-center gap-3">
-            <img
-              src="/swacherp-logo.png"
-              alt="SwachERP"
-              className="h-20 w-auto object-contain brightness-0 invert"
-            />
-            <span className="text-white/90 font-medium text-sm tracking-wide">
-              Cleaner Business. Better Future.
-            </span>
-          </div>
+        {/* SwachERP logo */}
+        <div className="flex items-center gap-3 mb-8">
+          <img
+            src="/swacherp-logo.png"
+            alt="SwachERP"
+            className="h-12 w-auto object-contain brightness-0 invert"
+          />
+          <span className="text-white/80 text-sm font-medium tracking-wide">Cleaner Business. Better Future.</span>
         </div>
 
-        {/* Marketing content — bottom section */}
-        <div className="max-w-lg">
-          <h2 className="text-3xl font-bold mb-4">Complete Manufacturing Operations</h2>
-          <p className="text-base mb-6 text-blue-100">
-            Manage your entire manufacturing operations from inventory to quality assurance. Handle
-            production, materials, invoicing, gatepasses, and ensure product excellence — all in one system.
+        {/* Heading */}
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold mb-2">Everything your factory needs</h2>
+          <p className="text-sm text-blue-100">
+            One platform for the entire manufacturing operation — from raw material to dispatch.
           </p>
-          <div className="space-y-3">
-            {[
-              { title: "Operations Management", desc: "Handle production, inventory, purchase orders, invoicing, and gatepasses seamlessly" },
-              { title: "Quality Assurance", desc: "Create checklists, track inspections, and manage preventive maintenance tasks" },
-              { title: "Comprehensive Reporting", desc: "Generate printable reports for invoices, gatepasses, materials, and quality data" },
-            ].map((item) => (
-              <div key={item.title} className="flex items-start gap-3">
-                <div className="bg-white/20 p-1.5 rounded-md shrink-0">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-sm">{item.title}</h3>
-                  <p className="text-xs text-blue-100">{item.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+        </div>
+
+        {/* Module grid */}
+        <div className="grid grid-cols-2 gap-2 flex-1">
+          {[
+            { icon: "M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4", label: "Production" },
+            { icon: "M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4", label: "Inventory" },
+            { icon: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z", label: "Purchase Orders" },
+            { icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2", label: "GST Invoicing" },
+            { icon: "M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1", label: "Gatepasses" },
+            { icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0", label: "Quality Assurance" },
+            { icon: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z", label: "Preventive Maintenance" },
+            { icon: "M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 11h.01M12 11h.01M15 11h.01M12 7h.01M9 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2h-4M9 3a2 2 0 002 2h2a2 2 0 002-2M9 3a2 2 0 012-2h2a2 2 0 012 2", label: "Accounting" },
+            { icon: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z", label: "HR & Payroll" },
+            { icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z", label: "Employee Self-Service" },
+            { icon: "M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z", label: "WhatsApp Integration" },
+            { icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z", label: "MIS & Analytics" },
+          ].map((item) => (
+            <div key={item.label} className="flex items-center gap-2 bg-white/10 rounded-md px-3 py-2">
+              <svg className="w-4 h-4 shrink-0 text-blue-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d={item.icon} />
+              </svg>
+              <span className="text-xs font-medium text-white">{item.label}</span>
+            </div>
+          ))}
         </div>
 
       </div>
