@@ -115,6 +115,7 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
 
   // ── Auto-calculate salary breakdown from CTC + salary structure ──────────
   const [ctcAutoCalc, setCtcAutoCalc] = useState(false);
+  const [calcBreakdown, setCalcBreakdown] = useState<{ name: string; formula: string; amount: number }[]>([]);
 
   // Find selected structure's component array
   const selectedStructure = useMemo(() =>
@@ -124,7 +125,7 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
 
   useEffect(() => {
     const ctcVal = Number(form.ctc);
-    if (!ctcVal || !selectedStructure) { setCtcAutoCalc(false); return; }
+    if (!ctcVal || !selectedStructure) { setCtcAutoCalc(false); setCalcBreakdown([]); return; }
 
     const comps: any[] = typeof selectedStructure.components === 'string'
       ? JSON.parse(selectedStructure.components)
@@ -134,7 +135,7 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
     const hasPercent = earnings.some((c: any) =>
       c.formula_type === 'percentage' || c.formula_type === 'percent_of_basic' || c.formula_type === 'percent_of_ctc'
     );
-    if (!hasPercent) { setCtcAutoCalc(false); return; }
+    if (!hasPercent) { setCtcAutoCalc(false); setCalcBreakdown([]); return; }
 
     const monthlyCTC = ctcVal / 12;
 
@@ -143,35 +144,48 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
       c.code === 'BASIC' || c.name?.toLowerCase().includes('basic')
     );
     let basic = 0;
+    let basicFormula = '';
     if (basicComp) {
       if (basicComp.formula_type === 'fixed') {
         basic = Number(basicComp.formula_value || 0);
-      } else if (basicComp.formula_type === 'percentage' || basicComp.formula_type === 'percent_of_ctc') {
-        basic = Math.round(monthlyCTC * Number(basicComp.formula_value || 0) / 100);
+        basicFormula = `Fixed ₹${basic.toLocaleString('en-IN')}`;
       } else {
         basic = Math.round(monthlyCTC * Number(basicComp.formula_value || 0) / 100);
+        basicFormula = `${basicComp.formula_value}% of Monthly CTC`;
       }
     }
 
-    // 2. Calculate other non-BASIC, non-SPEC earnings
+    // 2. Calculate each other earning component individually
+    const breakdown: { name: string; formula: string; amount: number }[] = [];
+    if (basic > 0) {
+      breakdown.push({ name: basicComp?.name || 'Basic Salary', formula: basicFormula, amount: basic });
+    }
+
     let otherTotal = 0;
     for (const c of earnings) {
       if (c.code === 'BASIC' || c.name?.toLowerCase().includes('basic')) continue;
       if (c.code === 'SPEC' || c.name?.toLowerCase().includes('special allowance')) continue;
       let amt = 0;
+      let formula = '';
       if (c.formula_type === 'percent_of_basic') {
         amt = Math.round(basic * Number(c.formula_value || 0) / 100);
+        formula = `${c.formula_value}% of Basic`;
       } else if (c.formula_type === 'percentage' || c.formula_type === 'percent_of_ctc') {
         amt = Math.round(monthlyCTC * Number(c.formula_value || 0) / 100);
+        formula = `${c.formula_value}% of Monthly CTC`;
       } else {
         amt = Number(c.formula_value || 0);
+        formula = `Fixed ₹${amt.toLocaleString('en-IN')}`;
       }
       otherTotal += amt;
+      breakdown.push({ name: c.name, formula, amount: amt });
     }
 
-    // 3. Special Allowance = residual
+    // 3. Special Allowance = residual balancing figure
     const specialAllowance = Math.max(0, Math.round(monthlyCTC - basic - otherTotal));
+    breakdown.push({ name: 'Special Allowance', formula: 'Balancing figure', amount: specialAllowance });
 
+    setCalcBreakdown(breakdown);
     setForm(p => ({
       ...p,
       basicSalary: basic > 0 ? String(basic) : p.basicSalary,
@@ -323,8 +337,41 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
               placeholder="e.g. 600000 for ₹6 LPA"
               data-testid="input-ctc"
             />
-            {ctcAutoCalc && (
-              <p className="text-xs text-muted-foreground">Monthly = ₹{Math.round(Number(form.ctc) / 12).toLocaleString('en-IN')} · Salary fields auto-filled from structure percentages</p>
+            {ctcAutoCalc && calcBreakdown.length > 0 && (
+              <div className="mt-2 rounded-md border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 overflow-hidden">
+                <div className="px-3 py-1.5 bg-blue-100 dark:bg-blue-900/40 border-b border-blue-200 dark:border-blue-800">
+                  <p className="text-xs font-semibold text-blue-700 dark:text-blue-300">
+                    Monthly Breakdown — ₹{Math.round(Number(form.ctc) / 12).toLocaleString('en-IN')}/month
+                  </p>
+                </div>
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-blue-600 dark:text-blue-400 border-b border-blue-200 dark:border-blue-800">
+                      <th className="text-left px-3 py-1 font-medium">Component</th>
+                      <th className="text-center px-3 py-1 font-medium">Formula</th>
+                      <th className="text-right px-3 py-1 font-medium">Amount / Month</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {calcBreakdown.map((row, i) => (
+                      <tr key={i} className={`border-b border-blue-100 dark:border-blue-900 last:border-0 ${row.name === 'Special Allowance' ? 'italic text-muted-foreground' : ''}`}>
+                        <td className="px-3 py-1">{row.name}</td>
+                        <td className="px-3 py-1 text-center text-muted-foreground">{row.formula}</td>
+                        <td className="px-3 py-1 text-right font-medium tabular-nums">₹{row.amount.toLocaleString('en-IN')}</td>
+                      </tr>
+                    ))}
+                    <tr className="bg-blue-100 dark:bg-blue-900/40 font-semibold text-blue-800 dark:text-blue-200">
+                      <td className="px-3 py-1.5" colSpan={2}>Total Monthly Gross</td>
+                      <td className="px-3 py-1.5 text-right tabular-nums">
+                        ₹{calcBreakdown.reduce((s, r) => s + r.amount, 0).toLocaleString('en-IN')}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+                <p className="text-xs text-blue-600 dark:text-blue-400 px-3 py-1.5">
+                  All components calculated automatically during payroll run from this structure.
+                </p>
+              </div>
             )}
           </div>
           <div className="space-y-1.5">
