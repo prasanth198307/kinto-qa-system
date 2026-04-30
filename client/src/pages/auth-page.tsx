@@ -87,7 +87,8 @@ export default function AuthPage() {
   return (
     <div className="min-h-screen flex">
       {/* Left side — form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-8 bg-background">
+      <div className="w-full lg:w-1/2 flex flex-col bg-background">
+        <div className="flex-1 flex items-center justify-center p-4 sm:p-8">
         <div className="w-full max-w-md">
           <div className="text-center mb-8 space-y-3">
             {tenantLogoUrl ? (
@@ -247,6 +248,25 @@ export default function AuthPage() {
               </p>
             </CardFooter>
           </Card>
+        </div>
+        </div>{/* end flex-1 center wrapper */}
+
+        {/* Footer — copyright + powered by */}
+        <div className="px-4 py-4 text-center border-t border-border">
+          <p className="text-xs text-muted-foreground">
+            &copy; {new Date().getFullYear()} Inmoisture Pvt Ltd. All rights reserved.
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Powered by{" "}
+            <a
+              href="https://swacherp.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-primary hover:underline"
+            >
+              SwachERP
+            </a>
+          </p>
         </div>
       </div>
 
