@@ -3390,24 +3390,31 @@ function ScrollToTop() {
 function SmartRoot() {
   const { user, isLoading } = useAuth();
   const [, setLocation] = useLocation();
+  // domainChecked stays false until we know whether this origin is a tenant subdomain
   const [domainChecked, setDomainChecked] = useState(false);
 
   useEffect(() => {
-    if (user || isLoading) { setDomainChecked(true); return; }
-    // Check if we're on a tenant custom domain — if so, go straight to login
+    // Wait for auth to finish first
+    if (isLoading) return;
+    // User is logged in — no need to check domain
+    if (user) { setDomainChecked(true); return; }
+    // Auth done, no user — check if this origin belongs to a tenant
     const origin = window.location.origin;
     fetch(`/api/public/tenant-branding?origin=${encodeURIComponent(origin)}`)
       .then(r => r.json())
       .then(data => {
         if (data?.slug) {
+          // Tenant subdomain → send directly to their login page
           setLocation(`/auth?tenant=${encodeURIComponent(data.slug)}`);
         } else {
+          // Not a tenant domain → show the public landing page
           setDomainChecked(true);
         }
       })
       .catch(() => setDomainChecked(true));
   }, [user, isLoading]);
 
+  // Show spinner while auth is resolving OR while domain check is pending
   if (isLoading || !domainChecked) {
     return (
       <div className="flex items-center justify-center min-h-screen">
