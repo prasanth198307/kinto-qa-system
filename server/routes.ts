@@ -120,6 +120,7 @@ const endpointToScreenKey: Record<string, string> = {
   '/api/reports/finished-goods': 'report_finished_goods',
   '/api/reports/monthly-sales': 'reports',
   '/api/reports/production-sku-monthly': 'report_monthly_production',
+  '/api/reports/production-sku-daily': 'report_monthly_production',
   '/api/reports/sales-returns-summary': 'reports',
   '/api/reports/vendor-report': 'report_vendor_report',
   '/api/reports/repacking': 'reports',
