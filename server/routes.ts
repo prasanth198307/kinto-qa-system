@@ -22289,6 +22289,72 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
     }
   });
 
+  // ==================== DAILY PRODUCTION PER SKU REPORT ====================
+  app.get('/api/reports/production-sku-daily', isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const today = new Date();
+      const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      const dateFrom = (req.query.dateFrom as string) || firstOfMonth.toISOString().slice(0, 10);
+      const dateTo   = (req.query.dateTo   as string) || today.toISOString().slice(0, 10);
+
+      const rows = await db.execute(sql`
+        SELECT
+          fg.product_id,
+          p.product_name,
+          p.product_code,
+          TO_CHAR(fg.production_date::date, 'YYYY-MM-DD') AS production_day,
+          COALESCE(SUM(fg.quantity), 0)
+            + COALESCE(SUM(gp_total.total_dispatched), 0) AS total_produced
+        FROM finished_goods fg
+        LEFT JOIN products p ON fg.product_id = p.id
+        LEFT JOIN (
+          SELECT gi.finished_good_id, SUM(gi.quantity_dispatched) AS total_dispatched
+          FROM gatepass_items gi
+          INNER JOIN gatepasses gp ON gi.gatepass_id = gp.id AND gp.record_status = 1
+          WHERE gi.record_status = 1
+          GROUP BY gi.finished_good_id
+        ) gp_total ON fg.id = gp_total.finished_good_id
+        WHERE
+          fg.production_date::date BETWEEN ${dateFrom}::date AND ${dateTo}::date
+          AND (fg.source = 'production' OR fg.source IS NULL)
+        GROUP BY
+          fg.product_id, p.product_name, p.product_code,
+          TO_CHAR(fg.production_date::date, 'YYYY-MM-DD')
+        ORDER BY p.product_name, production_day
+      `);
+
+      // Collect all unique dates in range
+      const dateSet = new Set<string>();
+      for (const row of rows.rows as any[]) dateSet.add(row.production_day);
+      const allDates = Array.from(dateSet).sort();
+
+      // Pivot by product
+      const pivot: Record<string, { productName: string; productCode: string; days: Record<string, number> }> = {};
+      for (const row of rows.rows as any[]) {
+        const pid: string = row.product_id || 'unknown';
+        if (!pivot[pid]) pivot[pid] = { productName: row.product_name || 'Unknown', productCode: row.product_code || '', days: {} };
+        pivot[pid].days[row.production_day] = Number(row.total_produced);
+      }
+
+      const tableRows = Object.entries(pivot).map(([productId, data]) => ({
+        productId,
+        productName: data.productName,
+        productCode: data.productCode,
+        daily: allDates.map(d => data.days[d] || 0),
+        total: allDates.reduce((s, d) => s + (data.days[d] || 0), 0),
+      }));
+
+      const columnTotals = allDates.map((_, i) =>
+        tableRows.reduce((s, r) => s + r.daily[i], 0)
+      );
+
+      res.json({ dateFrom, dateTo, dates: allDates, rows: tableRows, columnTotals });
+    } catch (error: any) {
+      console.error('[REPORTS] Error in production-sku-daily:', error);
+      res.status(500).json({ message: error.message || 'Failed to fetch daily production report' });
+    }
+  });
+
   // ==================== MONTHLY SALES REPORT ====================
   
   // Monthly sales report with product-wise breakdown
