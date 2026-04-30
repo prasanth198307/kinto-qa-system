@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,11 +14,35 @@ export default function EssLogin() {
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const [autoTenant, setAutoTenant]   = useState<string | null>(null);
+  const [brandName, setBrandName]     = useState<string | null>(null);
+  const [brandLogoUrl, setBrandLogoUrl] = useState<string | null>(null);
+  const [brandDetected, setBrandDetected] = useState(false);
+
+  const empCodeRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    fetch("/api/public/tenant-branding", { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.tenantSlug) {
+          setAutoTenant(data.tenantSlug);
+          setBrandName(data.companyName || null);
+          setBrandLogoUrl(data.logoUrl || null);
+          setForm(p => ({ ...p, tenantSlug: data.tenantSlug }));
+          setBrandDetected(true);
+          setTimeout(() => empCodeRef.current?.focus(), 100);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const f = (k: string) => (e: any) => setForm(p => ({ ...p, [k]: e.target.value }));
 
   const handleLogin = async (e: any) => {
     e.preventDefault();
-    if (!form.tenantSlug || !form.empCode || !form.password) {
+    const slug = autoTenant || form.tenantSlug;
+    if (!slug || !form.empCode || !form.password) {
       toast({ title: "All fields required", variant: "destructive" });
       return;
     }
@@ -28,7 +52,7 @@ export default function EssLogin() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(form),
+        body: JSON.stringify({ tenantSlug: slug, empCode: form.empCode, password: form.password }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -48,36 +72,63 @@ export default function EssLogin() {
       <div className="w-full max-w-md space-y-6">
         {/* Header */}
         <div className="text-center space-y-2">
-          <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-            <User className="h-7 w-7 text-primary" />
-          </div>
-          <h1 className="text-2xl font-bold">Employee Self-Service</h1>
-          <p className="text-sm text-muted-foreground">View payslips, apply for leave, and manage your tax declarations</p>
+          {brandLogoUrl ? (
+            <img
+              src={brandLogoUrl}
+              alt={brandName || "Company logo"}
+              className="h-14 mx-auto object-contain"
+            />
+          ) : (
+            <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+              <User className="h-7 w-7 text-primary" />
+            </div>
+          )}
+          <h1 className="text-2xl font-bold">
+            {brandName ? `${brandName}` : "Employee Self-Service"}
+          </h1>
+          {brandName && (
+            <p className="text-xs text-muted-foreground font-medium tracking-wide uppercase">
+              Employee Self-Service Portal
+            </p>
+          )}
+          <p className="text-sm text-muted-foreground">
+            View payslips, apply for leave, and manage your tax declarations
+          </p>
         </div>
 
         <Card>
           <CardHeader className="pb-4">
             <CardTitle className="text-base">Sign In</CardTitle>
-            <CardDescription>Enter your company ID and employee credentials</CardDescription>
+            <CardDescription>
+              {brandDetected
+                ? "Enter your employee credentials to continue"
+                : "Enter your company ID and employee credentials"}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="tenantSlug">Company ID</Label>
-                <div className="relative">
-                  <Building2 className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="tenantSlug"
-                    className="pl-9 h-10"
-                    placeholder="e.g. acme-manufacturing"
-                    value={form.tenantSlug}
-                    onChange={f("tenantSlug")}
-                    autoComplete="organization"
-                    data-testid="input-ess-tenant"
-                  />
+              {/* Company ID — hidden when auto-detected from tenant URL */}
+              {!brandDetected && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="tenantSlug">Company ID</Label>
+                  <div className="relative">
+                    <Building2 className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="tenantSlug"
+                      className="pl-9 h-10"
+                      placeholder="e.g. acme-manufacturing"
+                      value={form.tenantSlug}
+                      onChange={f("tenantSlug")}
+                      autoComplete="organization"
+                      autoFocus
+                      data-testid="input-ess-tenant"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Your company's unique identifier — ask your HR team if unsure
+                  </p>
                 </div>
-                <p className="text-xs text-muted-foreground">Your company's unique identifier — ask your HR team if unsure</p>
-              </div>
+              )}
 
               <div className="space-y-1.5">
                 <Label htmlFor="empCode">Employee Code</Label>
@@ -85,11 +136,13 @@ export default function EssLogin() {
                   <User className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="empCode"
+                    ref={empCodeRef}
                     className="pl-9 h-10"
                     placeholder="e.g. EMP001"
                     value={form.empCode}
                     onChange={f("empCode")}
                     autoComplete="username"
+                    autoFocus={!brandDetected ? undefined : false}
                     data-testid="input-ess-empcode"
                   />
                 </div>
