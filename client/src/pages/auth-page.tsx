@@ -240,49 +240,49 @@ export default function AuthPage() {
 
       {/* Right side — Hero */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary to-blue-700 flex-col p-12 text-white">
-        {/* SwachERP logo top-right of blue panel */}
-        <div className="flex justify-end mb-auto">
-          <div className="flex items-center gap-2">
+
+        {/* SwachERP logo — true vertical centre of blue panel */}
+        <div className="flex flex-1 items-center justify-center">
+          <div className="flex flex-col items-center gap-3">
             <img
               src="/swacherp-logo.png"
               alt="SwachERP"
-              className="h-10 w-auto object-contain brightness-0 invert"
+              className="h-20 w-auto object-contain brightness-0 invert"
             />
-            <span className="text-white/80 text-xs font-medium leading-tight">
-              Cleaner Business.<br />Better Future.
+            <span className="text-white/90 font-medium text-sm tracking-wide">
+              Cleaner Business. Better Future.
             </span>
           </div>
         </div>
 
-        {/* Marketing content — centered vertically */}
-        <div className="flex flex-1 items-center">
-          <div className="max-w-lg">
-            <h2 className="text-4xl font-bold mb-6">Complete Manufacturing Operations</h2>
-            <p className="text-lg mb-8 text-blue-100">
-              Manage your entire manufacturing operations from inventory to quality assurance. Handle
-              production, materials, invoicing, gatepasses, and ensure product excellence — all in one system.
-            </p>
-            <div className="space-y-4">
-              {[
-                { title: "Operations Management", desc: "Handle production, inventory, purchase orders, invoicing, and gatepasses seamlessly" },
-                { title: "Quality Assurance", desc: "Create checklists, track inspections, and manage preventive maintenance tasks" },
-                { title: "Comprehensive Reporting", desc: "Generate printable reports for invoices, gatepasses, materials, and quality data" },
-              ].map((item) => (
-                <div key={item.title} className="flex items-start gap-3">
-                  <div className="bg-white/20 p-2 rounded-md shrink-0">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold">{item.title}</h3>
-                    <p className="text-sm text-blue-100">{item.desc}</p>
-                  </div>
+        {/* Marketing content — bottom section */}
+        <div className="max-w-lg">
+          <h2 className="text-3xl font-bold mb-4">Complete Manufacturing Operations</h2>
+          <p className="text-base mb-6 text-blue-100">
+            Manage your entire manufacturing operations from inventory to quality assurance. Handle
+            production, materials, invoicing, gatepasses, and ensure product excellence — all in one system.
+          </p>
+          <div className="space-y-3">
+            {[
+              { title: "Operations Management", desc: "Handle production, inventory, purchase orders, invoicing, and gatepasses seamlessly" },
+              { title: "Quality Assurance", desc: "Create checklists, track inspections, and manage preventive maintenance tasks" },
+              { title: "Comprehensive Reporting", desc: "Generate printable reports for invoices, gatepasses, materials, and quality data" },
+            ].map((item) => (
+              <div key={item.title} className="flex items-start gap-3">
+                <div className="bg-white/20 p-1.5 rounded-md shrink-0">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
                 </div>
-              ))}
-            </div>
+                <div>
+                  <h3 className="font-semibold text-sm">{item.title}</h3>
+                  <p className="text-xs text-blue-100">{item.desc}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
+
       </div>
     </div>
   );
