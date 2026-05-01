@@ -174,6 +174,12 @@ import GoodsReceiptNotesPage from "@/pages/goods-receipt-notes";
 import PriceListsPage from "@/pages/price-lists";
 import GSTRReportsPage from "@/pages/gstr-reports";
 import AuditLogPage from "@/pages/audit-log";
+import HealthcarePage from "@/pages/healthcare";
+import EducationPage from "@/pages/education";
+import LogisticsPage from "@/pages/logistics";
+import RealEstatePage from "@/pages/real-estate";
+import POSPage from "@/pages/pos";
+import AgriculturePage from "@/pages/agriculture";
 import { parseISO } from "date-fns";
 
 type Role = 'admin' | 'operator' | 'reviewer' | 'manager';
@@ -321,6 +327,7 @@ const DASHBOARD_VALID_TABS = [
   'hr-departments', 'hr-settings', 'hr-recruitment', 'hr-exit', 'hr-tds',
   'crm-leads', 'accounting', 'chart-of-accounts', 'ledger-entries', 'expense-management',
   'cash-register', 'document-management',
+  'healthcare', 'education', 'logistics', 'real-estate', 'pos', 'agriculture',
 ];
 
 function ReviewerDashboard() {
@@ -2193,6 +2200,18 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       ],
     },
     {
+      id: "industry-section",
+      label: "Industry Verticals",
+      items: [
+        { id: "healthcare", label: "Healthcare", icon: Briefcase, onClick: () => setLocation('/healthcare') },
+        { id: "education", label: "Education", icon: BookOpen, onClick: () => setLocation('/education') },
+        { id: "logistics", label: "Logistics & Transport", icon: Truck, onClick: () => setLocation('/logistics') },
+        { id: "real-estate", label: "Real Estate", icon: Building2, onClick: () => setLocation('/real-estate') },
+        { id: "pos", label: "Point of Sale", icon: ShoppingCart, onClick: () => setLocation('/pos') },
+        { id: "agriculture", label: "Agriculture", icon: Layers, onClick: () => setLocation('/agriculture') },
+      ],
+    },
+    {
       id: "api-hub-section",
       label: "API Hub",
       items: [
@@ -3756,6 +3775,12 @@ function Router() {
       <ProtectedRoute path="/price-lists" component={PriceListsWrapper} />
       <ProtectedRoute path="/gstr-reports" component={GSTRReportsWrapper} />
       <ProtectedRoute path="/audit-log" component={AuditLogWrapper} />
+      <ProtectedRoute path="/healthcare" component={HealthcareWrapper} />
+      <ProtectedRoute path="/education" component={EducationWrapper} />
+      <ProtectedRoute path="/logistics" component={LogisticsWrapper} />
+      <ProtectedRoute path="/real-estate" component={RealEstateWrapper} />
+      <ProtectedRoute path="/pos" component={POSWrapper} />
+      <ProtectedRoute path="/agriculture" component={AgricultureWrapper} />
       <Route path="/ess" component={EssLogin} />
       <Route path="/ess/portal" component={EssPortal} />
       <ProtectedRoute path="/pricing" component={() => (
@@ -4007,6 +4032,102 @@ function AuditLogWrapper() {
       navSections={resolvedNav} activeView={activeView}
       onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
       <AuditLogPage />
+    </DashboardShell>
+  );
+}
+
+function HealthcareWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('healthcare');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Healthcare" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
+      <HealthcarePage />
+    </DashboardShell>
+  );
+}
+
+function EducationWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('education');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Education" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
+      <EducationPage />
+    </DashboardShell>
+  );
+}
+
+function LogisticsWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('logistics');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Logistics & Transport" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
+      <LogisticsPage />
+    </DashboardShell>
+  );
+}
+
+function RealEstateWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('real-estate');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Real Estate" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
+      <RealEstatePage />
+    </DashboardShell>
+  );
+}
+
+function POSWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('pos');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Point of Sale" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
+      <POSPage />
+    </DashboardShell>
+  );
+}
+
+function AgricultureWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('agriculture');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Agriculture" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
+      <AgriculturePage />
     </DashboardShell>
   );
 }

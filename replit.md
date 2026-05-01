@@ -28,11 +28,21 @@ SwachERP is a comprehensive SaaS ERP platform for Indian manufacturing companies
 - **T015 Bulk Operations:** Bulk approve/reject expenses; bulk record payment on invoices; bulk cancel POs
 - **T016 Inline Attachments:** Attachment upload directly on invoice, PO, and expense forms using existing upload infrastructure
 
+### Industry Vertical Modules (Phase 6)
+- **Healthcare:** `patients`, `wards`, `appointments`, `ipd_admissions` tables; `/healthcare` page with Patients/OPD/IPD/Wards tabs; `server/healthcare-routes.ts` → `/api/healthcare/*`
+- **Education:** `classes`, `students`, `fee_structures`, `fee_payments` tables; `/education` page with Students/Classes/Fees tabs; `server/education-routes.ts` → `/api/education/*`
+- **Logistics:** `logistics_vehicles`, `trips`, `consignment_notes` tables; `/logistics` page with Trips/Vehicles/LR tabs; `server/logistics-routes.ts` → `/api/logistics/*`
+- **Real Estate:** `re_projects`, `re_units`, `re_bookings`, `re_payment_schedules` tables; `/real-estate` page with Projects/Units/Bookings tabs; `server/realestate-routes.ts` → `/api/real-estate/*`
+- **Retail/POS:** `pos_sessions`, `pos_transactions`, `pos_transaction_items` tables; `/pos` page with POS Terminal/Sales History/Sessions tabs; `server/retail-routes.ts` → `/api/pos/*`
+- **Agriculture:** `farms`, `crop_cycles`, `commodity_prices`, `agri_procurement` tables; `/agriculture` page with Crop Cycles/Farms/Procurement/Commodity Prices tabs; `server/agriculture-routes.ts` → `/api/agriculture/*`
+- All 6 vertical modules are gated under `enterprise` plan and registered in `server/plan-features.ts`, `client/src/hooks/use-filtered-navigation.tsx`, and `client/src/App.tsx` with `Industry Verticals` nav section.
+
 ### New Backend Routes
 - `server/warehouse-routes.ts` → `/api/inventory/*` (warehouses, stock-transfers, uom, serial)
 - `server/project-routes.ts` → `/api/projects/*` (projects, boq, milestones, timesheets, P&L)
 - `server/asset-routes.ts` → `/api/assets/*` (fixed-assets, recurring-invoices, currencies, exchange-rates)
 - `server/hr-routes.ts` extended with expense-claims, timesheets, appraisal-cycles, appraisals, module-labels, custom-fields
+- `server/healthcare-routes.ts`, `server/education-routes.ts`, `server/logistics-routes.ts`, `server/realestate-routes.ts`, `server/retail-routes.ts`, `server/agriculture-routes.ts` — all industry vertical routes (requireAuth defined inline)
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.

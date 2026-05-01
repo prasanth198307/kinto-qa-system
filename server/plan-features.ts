@@ -168,6 +168,24 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
   multi_currency: [
     "currency-management",
   ],
+  healthcare: [
+    "healthcare",
+  ],
+  education: [
+    "education",
+  ],
+  logistics_transport: [
+    "logistics",
+  ],
+  real_estate: [
+    "real-estate",
+  ],
+  pos: [
+    "pos",
+  ],
+  agriculture: [
+    "agriculture",
+  ],
 };
 
 // ── Plan → module list ────────────────────────────────────────────────────────
@@ -175,10 +193,11 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
 // DB subscription_plans.modules is the authoritative source — these code constants
 // serve as the fallback when a plan slug has no DB record.
 // Keep in sync with the subscription_plans table values.
-const TRIAL_MODULES        = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "production", "quality_returns", "accounting", "mis", "expenses", "documents", "crm", "whatsapp", "maintenance", "hr_payroll", "recurring_invoices", "warehouses", "projects", "fixed_assets", "multi_currency"];
+const INDUSTRY_MODULES     = ["healthcare", "education", "logistics_transport", "real_estate", "pos", "agriculture"];
+const TRIAL_MODULES        = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "production", "quality_returns", "accounting", "mis", "expenses", "documents", "crm", "whatsapp", "maintenance", "hr_payroll", "recurring_invoices", "warehouses", "projects", "fixed_assets", "multi_currency", ...INDUSTRY_MODULES];
 const BASIC_MODULES        = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "expenses", "documents"];
 const PROFESSIONAL_MODULES = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "production", "quality_returns", "accounting", "mis", "expenses", "documents", "whatsapp", "maintenance", "crm", "api_hub", "recurring_invoices", "warehouses"];
-const ENTERPRISE_MODULES   = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "production", "quality_returns", "accounting", "mis", "expenses", "documents", "whatsapp", "maintenance", "hr_payroll", "crm", "api_hub", "recurring_invoices", "warehouses", "projects", "fixed_assets", "multi_currency"];
+const ENTERPRISE_MODULES   = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "production", "quality_returns", "accounting", "mis", "expenses", "documents", "whatsapp", "maintenance", "hr_payroll", "crm", "api_hub", "recurring_invoices", "warehouses", "projects", "fixed_assets", "multi_currency", ...INDUSTRY_MODULES];
 
 export const PLAN_MODULES: Record<string, string[]> = {
   trial:        TRIAL_MODULES,
@@ -265,8 +284,16 @@ export const ROUTE_PLAN_REQUIREMENTS: Array<{ prefix: string; module: string; mi
   { prefix: "/api/assets/fixed-assets",      module: "fixed_assets",  minPlan: "enterprise" },
 
   // Multi-currency (Enterprise)
-  { prefix: "/api/assets/currencies",        module: "multi_currency", minPlan: "enterprise" },
-  { prefix: "/api/assets/exchange-rates",    module: "multi_currency", minPlan: "enterprise" },
+  { prefix: "/api/assets/currencies",        module: "multi_currency",     minPlan: "enterprise" },
+  { prefix: "/api/assets/exchange-rates",    module: "multi_currency",     minPlan: "enterprise" },
+
+  // Industry Verticals (Enterprise add-ons)
+  { prefix: "/api/healthcare",               module: "healthcare",          minPlan: "enterprise" },
+  { prefix: "/api/education",                module: "education",           minPlan: "enterprise" },
+  { prefix: "/api/logistics",                module: "logistics_transport", minPlan: "enterprise" },
+  { prefix: "/api/real-estate",              module: "real_estate",         minPlan: "enterprise" },
+  { prefix: "/api/pos",                      module: "pos",                 minPlan: "enterprise" },
+  { prefix: "/api/agriculture",              module: "agriculture",         minPlan: "enterprise" },
 ];
 
 // ── Plan order for comparison ─────────────────────────────────────────────────

@@ -25,6 +25,12 @@ import warehouseRouter from "./warehouse-routes";
 import genericRouter from "./generic-routes";
 import projectRouter from "./project-routes";
 import assetRouter from "./asset-routes";
+import healthcareRouter from "./healthcare-routes";
+import educationRouter from "./education-routes";
+import logisticsRouter from "./logistics-routes";
+import realestateRouter from "./realestate-routes";
+import retailRouter from "./retail-routes";
+import agricultureRouter from "./agriculture-routes";
 import { seedTenantPermissions, syncAndUnlockByPlan } from "./seed-permissions";
 import { whatsappConversationService } from "./whatsappConversationService";
 import { calculateBOMSuggestions } from "@shared/calculations";
@@ -1528,6 +1534,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/projects', projectRouter);
   app.use('/api/assets', assetRouter);
   app.use('/api/generic', genericRouter);
+
+  // Industry Vertical routes
+  app.use('/api/healthcare', healthcareRouter);
+  app.use('/api/education', educationRouter);
+  app.use('/api/logistics', logisticsRouter);
+  app.use('/api/real-estate', realestateRouter);
+  app.use('/api/pos', retailRouter);
+  app.use('/api/agriculture', agricultureRouter);
 
   // Auth routes are handled by setupAuth() in auth.ts
   // /api/register, /api/login, /api/logout, /api/user are automatically set up

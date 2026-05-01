@@ -138,6 +138,13 @@ const navItemToScreenKey: Record<string, string> = {
   'price-lists': 'basic_inventory',
   'approval-workflows': 'basic_inventory',
   'audit-log': 'basic_inventory',
+  // Industry Verticals
+  'healthcare': 'healthcare',
+  'education': 'education',
+  'logistics': 'logistics_transport',
+  'real-estate': 'real_estate',
+  'pos': 'pos',
+  'agriculture': 'agriculture',
 };
 
 const screenPermissions: Record<string, { admin: boolean; manager: boolean; operator: boolean; reviewer: boolean }> = {
@@ -163,6 +170,7 @@ const screenPermissions: Record<string, { admin: boolean; manager: boolean; oper
   'API Hub': { admin: true, manager: true, operator: false, reviewer: false },
   'HR & Payroll': { admin: true, manager: true, operator: false, reviewer: false },
   'Projects & Assets': { admin: true, manager: true, operator: false, reviewer: false },
+  'Industry Verticals': { admin: true, manager: true, operator: false, reviewer: false },
 };
 
 const navItemToScreen: Record<string, string> = {
@@ -261,6 +269,13 @@ const navItemToScreen: Record<string, string> = {
   'price-lists': 'Inventory Management',
   'approval-workflows': 'User Management',
   'audit-log': 'User Management',
+  // Industry Verticals
+  'healthcare': 'Industry Verticals',
+  'education': 'Industry Verticals',
+  'logistics': 'Industry Verticals',
+  'real-estate': 'Industry Verticals',
+  'pos': 'Industry Verticals',
+  'agriculture': 'Industry Verticals',
 };
 
 function canAccessNavItemForDefaultRole(itemId: string, role: string): boolean {
