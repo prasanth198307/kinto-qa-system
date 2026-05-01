@@ -2747,5 +2747,244 @@ router.delete("/job-applications/:id", requireHR, async (req: any, res) => {
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 
+// ═══════════════════════════════════════════════════════════════════════════
+// PHASE 2 — Expense Claims
+// ═══════════════════════════════════════════════════════════════════════════
+router.get("/expense-claims", requireHR, async (req: any, res) => {
+  const tid = req.session?.tenantId;
+  const { employeeId, status } = req.query;
+  let q = `SELECT ec.*, e.first_name||' '||e.last_name AS employee_name
+           FROM hr_expense_claims ec
+           JOIN hr_employees e ON e.id = ec.employee_id
+           WHERE ec.tenant_id=${tid} AND ec.record_status=1`;
+  if (employeeId) q += ` AND ec.employee_id=${Number(employeeId)}`;
+  if (status)     q += ` AND ec.status='${status}'`;
+  q += ` ORDER BY ec.created_at DESC`;
+  const claims = await db.execute(sql.raw(q));
+  const ids = (claims.rows as any[]).map(c => c.id);
+  const items = ids.length > 0
+    ? await db.execute(sql`SELECT * FROM hr_expense_claim_items WHERE claim_id = ANY(${ids}::int[]) AND tenant_id=${tid}`)
+    : { rows: [] };
+  res.json({ claims: claims.rows, items: items.rows });
+});
+
+router.post("/expense-claims", requireHR, async (req: any, res) => {
+  const tid = req.session?.tenantId;
+  const { employeeId, title, claimDate, items: claimItems, notes } = req.body;
+  const total = (claimItems || []).reduce((s: number, i: any) => s + Number(i.amount || 0), 0);
+  const claim = await db.execute(sql`INSERT INTO hr_expense_claims
+    (tenant_id, employee_id, title, claim_date, total_amount, notes, status)
+    VALUES (${tid}, ${employeeId}, ${title}, ${claimDate}, ${total}, ${notes||null}, 'pending')
+    RETURNING *`);
+  const claimId = (claim.rows[0] as any).id;
+  for (const it of claimItems || []) {
+    await db.execute(sql`INSERT INTO hr_expense_claim_items
+      (tenant_id, claim_id, category, description, amount, receipt_url, expense_date)
+      VALUES (${tid}, ${claimId}, ${it.category}, ${it.description||null}, ${it.amount}, ${it.receiptUrl||null}, ${it.expenseDate||null})`);
+  }
+  res.json(claim.rows[0]);
+});
+
+router.put("/expense-claims/:id/action", requireHR, async (req: any, res) => {
+  const tid = req.session?.tenantId;
+  const { action, rejectionReason } = req.body;
+  const userId = req.user?.id;
+  if (!['approved','rejected','paid'].includes(action)) return res.status(400).json({ message: 'Invalid action' });
+  await db.execute(sql`UPDATE hr_expense_claims SET
+    status=${action}, approved_by=${userId},
+    approved_at=${action !== 'paid' ? sql`NOW()` : sql`approved_at`},
+    paid_at=${action === 'paid' ? sql`NOW()` : sql`paid_at`},
+    rejection_reason=${rejectionReason||null}
+    WHERE id=${req.params.id} AND tenant_id=${tid}`);
+  res.json({ success: true });
+});
+
+router.delete("/expense-claims/:id", requireHR, async (req: any, res) => {
+  const tid = req.session?.tenantId;
+  await db.execute(sql`UPDATE hr_expense_claims SET record_status=0 WHERE id=${req.params.id} AND tenant_id=${tid}`);
+  res.json({ success: true });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PHASE 4 — Timesheets
+// ═══════════════════════════════════════════════════════════════════════════
+router.get("/timesheets", requireHR, async (req: any, res) => {
+  const tid = req.session?.tenantId;
+  const { employeeId, projectId, fromDate, toDate } = req.query;
+  let q = `SELECT t.*, e.first_name||' '||e.last_name AS employee_name, p.name AS project_name
+           FROM timesheets t
+           JOIN hr_employees e ON e.id = t.employee_id
+           LEFT JOIN projects p ON p.id = t.project_id
+           WHERE t.tenant_id=${tid} AND t.record_status=1`;
+  if (employeeId) q += ` AND t.employee_id=${Number(employeeId)}`;
+  if (projectId)  q += ` AND t.project_id=${Number(projectId)}`;
+  if (fromDate)   q += ` AND t.work_date >= '${fromDate}'`;
+  if (toDate)     q += ` AND t.work_date <= '${toDate}'`;
+  q += ` ORDER BY t.work_date DESC`;
+  const rows = await db.execute(sql.raw(q));
+  res.json(rows.rows);
+});
+
+router.post("/timesheets", requireHR, async (req: any, res) => {
+  const tid = req.session?.tenantId;
+  const { employeeId, projectId, clientName, workDate, hours, description, isBillable } = req.body;
+  const r = await db.execute(sql`INSERT INTO timesheets
+    (tenant_id, employee_id, project_id, client_name, work_date, hours, description, is_billable)
+    VALUES (${tid}, ${employeeId}, ${projectId||null}, ${clientName||null}, ${workDate}, ${hours}, ${description||null}, ${isBillable !== false})
+    RETURNING *`);
+  res.json(r.rows[0]);
+});
+
+router.put("/timesheets/:id", requireHR, async (req: any, res) => {
+  const tid = req.session?.tenantId;
+  const { projectId, clientName, workDate, hours, description, isBillable, approved } = req.body;
+  const r = await db.execute(sql`UPDATE timesheets SET
+    project_id=${projectId||null}, client_name=${clientName||null}, work_date=${workDate},
+    hours=${hours}, description=${description||null}, is_billable=${isBillable !== false},
+    approved=${approved||false}, approved_by=${approved ? req.user?.id : null}
+    WHERE id=${req.params.id} AND tenant_id=${tid} RETURNING *`);
+  res.json(r.rows[0]);
+});
+
+router.delete("/timesheets/:id", requireHR, async (req: any, res) => {
+  const tid = req.session?.tenantId;
+  await db.execute(sql`UPDATE timesheets SET record_status=0 WHERE id=${req.params.id} AND tenant_id=${tid}`);
+  res.json({ success: true });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PHASE 5 — Performance Appraisal
+// ═══════════════════════════════════════════════════════════════════════════
+router.get("/appraisal-cycles", requireHR, async (req: any, res) => {
+  const tid = req.session?.tenantId;
+  const rows = await db.execute(sql`SELECT * FROM appraisal_cycles WHERE tenant_id=${tid} AND record_status=1 ORDER BY created_at DESC`);
+  res.json(rows.rows);
+});
+
+router.post("/appraisal-cycles", requireHR, async (req: any, res) => {
+  const tid = req.session?.tenantId;
+  const { name, periodFrom, periodTo } = req.body;
+  const r = await db.execute(sql`INSERT INTO appraisal_cycles (tenant_id, name, period_from, period_to) VALUES (${tid}, ${name}, ${periodFrom||null}, ${periodTo||null}) RETURNING *`);
+  res.json(r.rows[0]);
+});
+
+router.put("/appraisal-cycles/:id", requireHR, async (req: any, res) => {
+  const tid = req.session?.tenantId;
+  const { name, periodFrom, periodTo, status } = req.body;
+  const r = await db.execute(sql`UPDATE appraisal_cycles SET name=${name}, period_from=${periodFrom||null}, period_to=${periodTo||null}, status=${status||'draft'} WHERE id=${req.params.id} AND tenant_id=${tid} RETURNING *`);
+  res.json(r.rows[0]);
+});
+
+router.get("/appraisals", requireHR, async (req: any, res) => {
+  const tid = req.session?.tenantId;
+  const { cycleId } = req.query;
+  let q = `SELECT a.*, e.first_name||' '||e.last_name AS employee_name,
+           mgr.first_name||' '||mgr.last_name AS appraiser_name
+           FROM appraisals a
+           JOIN hr_employees e ON e.id = a.employee_id
+           LEFT JOIN hr_employees mgr ON mgr.id = a.appraiser_id
+           WHERE a.tenant_id=${tid} AND a.record_status=1`;
+  if (cycleId) q += ` AND a.cycle_id=${Number(cycleId)}`;
+  q += ` ORDER BY e.first_name`;
+  const rows = await db.execute(sql.raw(q));
+  const ids = (rows.rows as any[]).map((r: any) => r.id);
+  const kras = ids.length > 0
+    ? await db.execute(sql`SELECT * FROM appraisal_kras WHERE appraisal_id = ANY(${ids}::int[]) AND tenant_id=${tid}`)
+    : { rows: [] };
+  res.json({ appraisals: rows.rows, kras: kras.rows });
+});
+
+router.post("/appraisals", requireHR, async (req: any, res) => {
+  const tid = req.session?.tenantId;
+  const { cycleId, employeeId, appraiserId, kras } = req.body;
+  const r = await db.execute(sql`INSERT INTO appraisals (tenant_id, cycle_id, employee_id, appraiser_id, status)
+    VALUES (${tid}, ${cycleId}, ${employeeId}, ${appraiserId||null}, 'pending') RETURNING *`);
+  const appraisalId = (r.rows[0] as any).id;
+  for (const kra of kras || []) {
+    await db.execute(sql`INSERT INTO appraisal_kras (tenant_id, appraisal_id, kra, weightage)
+      VALUES (${tid}, ${appraisalId}, ${kra.kra}, ${kra.weightage||null})`);
+  }
+  res.json(r.rows[0]);
+});
+
+router.put("/appraisals/:id", requireHR, async (req: any, res) => {
+  const tid = req.session?.tenantId;
+  const { selfRating, managerRating, finalRating, strengths, improvements, goals, status, kras } = req.body;
+  const r = await db.execute(sql`UPDATE appraisals SET
+    self_rating=${selfRating||null}, manager_rating=${managerRating||null},
+    final_rating=${finalRating||null}, strengths=${strengths||null},
+    improvements=${improvements||null}, goals=${goals||null}, status=${status||'pending'}
+    WHERE id=${req.params.id} AND tenant_id=${tid} RETURNING *`);
+  if (kras) {
+    for (const k of kras) {
+      if (k.id) {
+        await db.execute(sql`UPDATE appraisal_kras SET self_score=${k.selfScore||null}, manager_score=${k.managerScore||null} WHERE id=${k.id}`);
+      }
+    }
+  }
+  res.json(r.rows[0]);
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PHASE 1 — Tenant Module Labels
+// ═══════════════════════════════════════════════════════════════════════════
+router.get("/module-labels", requireHR, async (req: any, res) => {
+  const tid = req.session?.tenantId;
+  const rows = await db.execute(sql`SELECT * FROM tenant_module_labels WHERE tenant_id=${tid}`);
+  res.json(rows.rows);
+});
+
+router.put("/module-labels", requireHR, async (req: any, res) => {
+  const tid = req.session?.tenantId;
+  const { labels } = req.body; // [{moduleKey, customLabel}]
+  for (const { moduleKey, customLabel } of labels || []) {
+    await db.execute(sql`INSERT INTO tenant_module_labels (tenant_id, module_key, custom_label)
+      VALUES (${tid}, ${moduleKey}, ${customLabel})
+      ON CONFLICT (tenant_id, module_key) DO UPDATE SET custom_label=${customLabel}`);
+  }
+  res.json({ success: true });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PHASE 1 — Custom Field Definitions
+// ═══════════════════════════════════════════════════════════════════════════
+router.get("/custom-fields", requireHR, async (req: any, res) => {
+  const tid = req.session?.tenantId;
+  const { entityType } = req.query;
+  let q = sql`SELECT * FROM custom_field_definitions WHERE tenant_id=${tid} AND record_status=1`;
+  const rows = await db.execute(q);
+  const filtered = entityType
+    ? (rows.rows as any[]).filter(r => r.entity_type === entityType)
+    : rows.rows;
+  res.json(filtered);
+});
+
+router.post("/custom-fields", requireHR, async (req: any, res) => {
+  const tid = req.session?.tenantId;
+  const { entityType, fieldName, fieldLabel, fieldType, options, isRequired, sortOrder } = req.body;
+  const r = await db.execute(sql`INSERT INTO custom_field_definitions
+    (tenant_id, entity_type, field_name, field_label, field_type, options, is_required, sort_order)
+    VALUES (${tid}, ${entityType}, ${fieldName}, ${fieldLabel}, ${fieldType||'text'}, ${options ? JSON.stringify(options) : null}, ${isRequired||false}, ${sortOrder||0})
+    RETURNING *`);
+  res.json(r.rows[0]);
+});
+
+router.put("/custom-fields/:id", requireHR, async (req: any, res) => {
+  const tid = req.session?.tenantId;
+  const { fieldLabel, fieldType, options, isRequired, sortOrder } = req.body;
+  const r = await db.execute(sql`UPDATE custom_field_definitions SET
+    field_label=${fieldLabel}, field_type=${fieldType||'text'}, options=${options ? JSON.stringify(options) : null},
+    is_required=${isRequired||false}, sort_order=${sortOrder||0}
+    WHERE id=${req.params.id} AND tenant_id=${tid} RETURNING *`);
+  res.json(r.rows[0]);
+});
+
+router.delete("/custom-fields/:id", requireHR, async (req: any, res) => {
+  const tid = req.session?.tenantId;
+  await db.execute(sql`UPDATE custom_field_definitions SET record_status=0 WHERE id=${req.params.id} AND tenant_id=${tid}`);
+  res.json({ success: true });
+});
+
 export default router;
+
 

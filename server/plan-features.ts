@@ -92,6 +92,7 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
     "group-summary",
     "budget-variance",
     "tds-management",
+    "currency-management",
   ],
   mis: [
     "mis-dashboard",
@@ -141,6 +142,24 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
     "hr-reports",
     "hr-masters",
     "hr-ess-admin",
+    "hr-expense-claims",
+    "timesheets",
+    "hr-appraisals",
+  ],
+  recurring_invoices: [
+    "recurring-invoices",
+  ],
+  warehouses: [
+    "warehouses",
+  ],
+  projects: [
+    "projects",
+  ],
+  fixed_assets: [
+    "fixed-assets",
+  ],
+  multi_currency: [
+    "currency-management",
   ],
 };
 
@@ -149,10 +168,10 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
 // DB subscription_plans.modules is the authoritative source — these code constants
 // serve as the fallback when a plan slug has no DB record.
 // Keep in sync with the subscription_plans table values.
-const TRIAL_MODULES        = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "production", "quality_returns", "accounting", "mis", "expenses", "documents", "crm", "whatsapp", "maintenance", "hr_payroll"];
+const TRIAL_MODULES        = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "production", "quality_returns", "accounting", "mis", "expenses", "documents", "crm", "whatsapp", "maintenance", "hr_payroll", "recurring_invoices", "warehouses", "projects", "fixed_assets", "multi_currency"];
 const BASIC_MODULES        = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "expenses", "documents"];
-const PROFESSIONAL_MODULES = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "production", "quality_returns", "accounting", "mis", "expenses", "documents", "whatsapp", "maintenance", "crm", "api_hub"];
-const ENTERPRISE_MODULES   = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "production", "quality_returns", "accounting", "mis", "expenses", "documents", "whatsapp", "maintenance", "hr_payroll", "crm", "api_hub"];
+const PROFESSIONAL_MODULES = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "production", "quality_returns", "accounting", "mis", "expenses", "documents", "whatsapp", "maintenance", "crm", "api_hub", "recurring_invoices", "warehouses"];
+const ENTERPRISE_MODULES   = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "production", "quality_returns", "accounting", "mis", "expenses", "documents", "whatsapp", "maintenance", "hr_payroll", "crm", "api_hub", "recurring_invoices", "warehouses", "projects", "fixed_assets", "multi_currency"];
 
 export const PLAN_MODULES: Record<string, string[]> = {
   trial:        TRIAL_MODULES,
@@ -222,6 +241,25 @@ export const ROUTE_PLAN_REQUIREMENTS: Array<{ prefix: string; module: string; mi
 
   // HR & Payroll (Enterprise)
   { prefix: "/api/hr",                  module: "hr_payroll",     minPlan: "enterprise" },
+
+  // Recurring Invoices (Professional+)
+  { prefix: "/api/assets/recurring-invoices", module: "recurring_invoices", minPlan: "professional" },
+
+  // Warehouses & Multi-location Inventory (Professional+)
+  { prefix: "/api/inventory/warehouses",     module: "warehouses",    minPlan: "professional" },
+  { prefix: "/api/inventory/stock-transfers",module: "warehouses",    minPlan: "professional" },
+  { prefix: "/api/inventory/uom",            module: "warehouses",    minPlan: "professional" },
+  { prefix: "/api/inventory/serial",         module: "warehouses",    minPlan: "professional" },
+
+  // Projects (Enterprise)
+  { prefix: "/api/projects",                 module: "projects",      minPlan: "enterprise" },
+
+  // Fixed Assets (Enterprise)
+  { prefix: "/api/assets/fixed-assets",      module: "fixed_assets",  minPlan: "enterprise" },
+
+  // Multi-currency (Enterprise)
+  { prefix: "/api/assets/currencies",        module: "multi_currency", minPlan: "enterprise" },
+  { prefix: "/api/assets/exchange-rates",    module: "multi_currency", minPlan: "enterprise" },
 ];
 
 // ── Plan order for comparison ─────────────────────────────────────────────────

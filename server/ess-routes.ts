@@ -348,6 +348,45 @@ router.post("/admin/set-password", async (req: any, res) => {
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 
+// ─── ESS Expense Claims ───────────────────────────────────────────────────────
+router.get("/expense-claims", requireESS, async (req: any, res) => {
+  const tid = getEssTenantId(req);
+  const eid = getEssEmployeeId(req);
+  const claims = await db.execute(sql`SELECT ec.*, e.first_name||' '||e.last_name AS employee_name
+    FROM hr_expense_claims ec JOIN hr_employees e ON e.id = ec.employee_id
+    WHERE ec.tenant_id=${tid} AND ec.employee_id=${eid} AND ec.record_status=1 ORDER BY ec.created_at DESC`);
+  const ids = (claims.rows as any[]).map((c: any) => c.id);
+  const items = ids.length > 0
+    ? await db.execute(sql`SELECT * FROM hr_expense_claim_items WHERE claim_id = ANY(${ids}::int[]) AND tenant_id=${tid}`)
+    : { rows: [] };
+  res.json({ claims: claims.rows, items: items.rows });
+});
+
+router.post("/expense-claims", requireESS, async (req: any, res) => {
+  const tid = getEssTenantId(req);
+  const eid = getEssEmployeeId(req);
+  const { title, claimDate, items: claimItems, notes } = req.body;
+  if (!title || !claimDate) return res.status(400).json({ message: "Title and claim date are required" });
+  const total = (claimItems || []).reduce((s: number, i: any) => s + Number(i.amount || 0), 0);
+  const claim = await db.execute(sql`INSERT INTO hr_expense_claims
+    (tenant_id, employee_id, title, claim_date, total_amount, notes, status)
+    VALUES (${tid}, ${eid}, ${title}, ${claimDate}, ${total}, ${notes||null}, 'pending') RETURNING *`);
+  const claimId = (claim.rows[0] as any).id;
+  for (const it of claimItems || []) {
+    await db.execute(sql`INSERT INTO hr_expense_claim_items
+      (tenant_id, claim_id, category, description, amount, receipt_url, expense_date)
+      VALUES (${tid}, ${claimId}, ${it.category}, ${it.description||null}, ${it.amount}, ${it.receiptUrl||null}, ${it.expenseDate||null})`);
+  }
+  res.json(claim.rows[0]);
+});
+
+router.delete("/expense-claims/:id", requireESS, async (req: any, res) => {
+  const tid = getEssTenantId(req);
+  const eid = getEssEmployeeId(req);
+  await db.execute(sql`UPDATE hr_expense_claims SET record_status=0 WHERE id=${req.params.id} AND tenant_id=${tid} AND employee_id=${eid} AND status='pending'`);
+  res.json({ success: true });
+});
+
 function getCurrentFiscalYear(): string {
   const now = new Date();
   const m = now.getMonth() + 1;

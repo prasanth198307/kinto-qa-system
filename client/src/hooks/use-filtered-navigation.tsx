@@ -120,6 +120,15 @@ const navItemToScreenKey: Record<string, string> = {
   'hr-reports': 'hr_reports',
   'hr-ess-admin': 'hr_ess_admin',
   'hr-masters': 'hr_masters',
+  // New Phase features
+  'hr-expense-claims': 'hr_expense_claims',
+  'timesheets': 'timesheets',
+  'hr-appraisals': 'hr_appraisals',
+  'recurring-invoices': 'recurring_invoices',
+  'warehouses': 'warehouses',
+  'projects': 'projects',
+  'fixed-assets': 'fixed_assets',
+  'currency-management': 'currency_management',
 };
 
 const screenPermissions: Record<string, { admin: boolean; manager: boolean; operator: boolean; reviewer: boolean }> = {
@@ -143,6 +152,8 @@ const screenPermissions: Record<string, { admin: boolean; manager: boolean; oper
   'Accounting & Ledger': { admin: true, manager: true, operator: false, reviewer: false },
   'Sales Officers': { admin: true, manager: true, operator: false, reviewer: false },
   'API Hub': { admin: true, manager: true, operator: false, reviewer: false },
+  'HR & Payroll': { admin: true, manager: true, operator: false, reviewer: false },
+  'Projects & Assets': { admin: true, manager: true, operator: false, reviewer: false },
 };
 
 const navItemToScreen: Record<string, string> = {
@@ -224,6 +235,15 @@ const navItemToScreen: Record<string, string> = {
   'admin-tools': 'User Management',
   'company-settings': 'User Management',
   'api-keys': 'API Hub',
+  // New Phase features
+  'hr-expense-claims': 'HR & Payroll',
+  'timesheets': 'HR & Payroll',
+  'hr-appraisals': 'HR & Payroll',
+  'recurring-invoices': 'Purchase Orders',
+  'warehouses': 'Inventory Management',
+  'projects': 'Projects & Assets',
+  'fixed-assets': 'Projects & Assets',
+  'currency-management': 'Accounting & Ledger',
 };
 
 function canAccessNavItemForDefaultRole(itemId: string, role: string): boolean {

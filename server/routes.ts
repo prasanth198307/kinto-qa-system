@@ -21,6 +21,9 @@ import { whatsappWebhookRouter } from "./whatsappWebhook";
 import hrRouter from "./hr-routes";
 import essRouter from "./ess-routes";
 import crmRouter from "./crm-routes";
+import warehouseRouter from "./warehouse-routes";
+import projectRouter from "./project-routes";
+import assetRouter from "./asset-routes";
 import { seedTenantPermissions, syncAndUnlockByPlan } from "./seed-permissions";
 import { whatsappConversationService } from "./whatsappConversationService";
 import { calculateBOMSuggestions } from "@shared/calculations";
@@ -1518,6 +1521,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/hr', hrPermissionMiddleware, hrRouter);
   app.use('/api/crm', crmRouter);
   app.use('/api/ess', essRouter);
+
+  // Phase 3-5 new module routes
+  app.use('/api/inventory', warehouseRouter);
+  app.use('/api/projects', projectRouter);
+  app.use('/api/assets', assetRouter);
 
   // Auth routes are handled by setupAuth() in auth.ts
   // /api/register, /api/login, /api/logout, /api/user are automatically set up

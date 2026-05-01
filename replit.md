@@ -1,7 +1,20 @@
 # SwachERP — Manufacturing ERP SaaS
 
 ## Overview
-SwachERP (formerly Kinto Smart Ops) is a comprehensive SaaS ERP platform designed for Indian manufacturing companies. It streamlines core operations including production, inventory, purchase orders, GST-compliant invoicing, gatepasses, quality assurance, preventive maintenance, and double-entry accounting. The platform provides MIS analytics, supports multi-tenancy with isolated data spaces, and features a two-way WhatsApp integration for machine startup and checklist management. Key features include an invoice-first, tamper-proof dispatch workflow, FIFO batch allocation for inventory, and extensive reporting capabilities. The platform also offers granular role-based permissions, HR & Payroll, CRM, and an Employee Self-Service (ESS) Portal.
+SwachERP is a comprehensive SaaS ERP platform for Indian manufacturing companies and beyond (industry-agnostic). It covers production, inventory, purchase orders, GST-compliant invoicing, gatepasses, quality assurance, preventive maintenance, double-entry accounting, HR & Payroll, CRM, and an Employee Self-Service (ESS) Portal. Additional enterprise features include: Expense Claims, Timesheets, Performance Appraisals, Recurring Invoices, Multi-location Warehouses & Stock Transfers, UOM Conversions, Serial/Lot Tracking, Project Management (with BOQ, milestones, P&L), Fixed Asset Register & Depreciation, Multi-currency with Exchange Rates, and Configurable Module Labels & Custom Fields. The platform provides MIS analytics, supports multi-tenancy with isolated data spaces, and features two-way WhatsApp integration.
+
+### New Modules Added (Generic ERP Phases 1–5)
+- **Phase 1:** Configurable Module Labels (rename any module), Custom Field Definitions (extend any entity) — accessible via Company Settings tabs
+- **Phase 2:** Expense Claims (`/hr/expense-claims`), Recurring Invoice Schedules (`/recurring-invoices`)
+- **Phase 3:** Multi-location Warehouses & Stock Transfers (`/warehouses`), UOM Conversions, Serial/Lot Register
+- **Phase 4:** Project Management with BOQ, Milestones, Timesheets (`/projects`, `/hr/timesheets`)
+- **Phase 5:** Fixed Asset Register + Depreciation (`/fixed-assets`), Performance Appraisal Cycles (`/hr/appraisals`), Multi-currency Management (`/currency-management`)
+
+### New Backend Routes
+- `server/warehouse-routes.ts` → `/api/inventory/*` (warehouses, stock-transfers, uom, serial)
+- `server/project-routes.ts` → `/api/projects/*` (projects, boq, milestones, timesheets, P&L)
+- `server/asset-routes.ts` → `/api/assets/*` (fixed-assets, recurring-invoices, currencies, exchange-rates)
+- `server/hr-routes.ts` extended with expense-claims, timesheets, appraisal-cycles, appraisals, module-labels, custom-fields
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.

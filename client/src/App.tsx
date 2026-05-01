@@ -159,6 +159,14 @@ import HRPayslipPage from "@/pages/hr-payslip";
 import PricingPage from "@/pages/pricing";
 import EssLogin from "@/pages/ess-login";
 import EssPortal from "@/pages/ess-portal";
+import HRExpenseClaimsPage from "@/pages/hr-expense-claims";
+import RecurringInvoicesPage from "@/pages/recurring-invoices";
+import WarehousesPage from "@/pages/warehouses";
+import ProjectManagementPage from "@/pages/project-management";
+import TimesheetsPage from "@/pages/timesheets";
+import FixedAssetsPage from "@/pages/fixed-assets";
+import PerformanceAppraisalPage from "@/pages/performance-appraisal";
+import CurrencyManagementPage from "@/pages/currency-management";
 import { parseISO } from "date-fns";
 
 type Role = 'admin' | 'operator' | 'reviewer' | 'manager';
@@ -2031,6 +2039,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "variance-analytics", label: "Variance Analytics", icon: TrendingUp, onClick: () => setLocation('/?tab=variance-analytics') },
         { id: "spare-parts", label: "Spare Parts", icon: Wrench, onClick: () => setLocation('/spare-parts') },
         { id: "scrap-management", label: "Scrap Management", icon: Trash2, onClick: () => setLocation('/scrap-management') },
+        { id: "warehouses", label: "Warehouses & Stock", icon: Archive, onClick: () => setLocation('/warehouses') },
       ],
     },
     {
@@ -2049,6 +2058,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "cancelled-invoices", label: "Cancelled Invoices", icon: FileX, onClick: () => setLocation('/cancelled-invoices') },
         { id: "write-off-report", label: "Write-Off Report", icon: XCircle, onClick: () => setLocation('/write-off-report') },
         { id: "sales-returns", label: "Sales Returns", icon: Package, onClick: () => setLocation('/sales-returns') },
+        { id: "recurring-invoices", label: "Recurring Invoices", icon: History, onClick: () => setLocation('/recurring-invoices') },
       ],
     },
     {
@@ -2103,6 +2113,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "group-summary", label: "Group Summary", icon: Layers, onClick: () => setLocation('/group-summary') },
         { id: "budget-variance", label: "Budget & Variance", icon: Scale, onClick: () => setLocation('/budget-variance') },
         { id: "tds-management", label: "TDS Management", icon: Calculator, onClick: () => setLocation('/tds-management') },
+        { id: "currency-management", label: "Multi-currency", icon: IndianRupee, onClick: () => setLocation('/currency-management') },
       ],
     },
     {
@@ -2134,6 +2145,23 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "hr-recruitment", label: "Recruitment", icon: Briefcase, onClick: () => setLocation('/hr/recruitment') },
         { id: "hr-reports", label: "HR Reports", icon: BarChart3, onClick: () => setLocation('/hr/reports') },
         { id: "hr-masters", label: "HR Masters", icon: Settings, onClick: () => setLocation('/hr/masters') },
+        { id: "hr-expense-claims", label: "Expense Claims", icon: Wallet, onClick: () => setLocation('/hr/expense-claims') },
+        { id: "timesheets", label: "Timesheets", icon: Clock, onClick: () => setLocation('/hr/timesheets') },
+        { id: "hr-appraisals", label: "Performance Appraisal", icon: Target, onClick: () => setLocation('/hr/appraisals') },
+      ],
+    },
+    {
+      id: "projects-section",
+      label: "Projects",
+      items: [
+        { id: "projects", label: "Project Management", icon: FolderOpen, onClick: () => setLocation('/projects') },
+      ],
+    },
+    {
+      id: "assets-section",
+      label: "Fixed Assets",
+      items: [
+        { id: "fixed-assets", label: "Asset Register", icon: Landmark, onClick: () => setLocation('/fixed-assets') },
       ],
     },
     {
@@ -3699,6 +3727,14 @@ function Router() {
       <ProtectedRoute path="/hr/recruitment" component={HRRecruitmentWrapper} />
       <ProtectedRoute path="/hr/reports" component={HRReportsWrapper} />
       <Route path="/hr/payslip/:id" component={HRPayslipPage} />
+      <ProtectedRoute path="/hr/expense-claims" component={HRExpenseClaimsWrapper} />
+      <ProtectedRoute path="/hr/timesheets" component={TimesheetsWrapper} />
+      <ProtectedRoute path="/hr/appraisals" component={PerformanceAppraisalWrapper} />
+      <ProtectedRoute path="/recurring-invoices" component={RecurringInvoicesWrapper} />
+      <ProtectedRoute path="/warehouses" component={WarehousesWrapper} />
+      <ProtectedRoute path="/projects" component={ProjectManagementWrapper} />
+      <ProtectedRoute path="/fixed-assets" component={FixedAssetsWrapper} />
+      <ProtectedRoute path="/currency-management" component={CurrencyManagementWrapper} />
       <Route path="/ess" component={EssLogin} />
       <Route path="/ess/portal" component={EssPortal} />
       <ProtectedRoute path="/pricing" component={() => (
@@ -3711,6 +3747,134 @@ function Router() {
       <Route path="/" component={SmartRoot} />
       <Route component={NotFound} />
     </Switch>
+  );
+}
+
+function HRExpenseClaimsWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('hr-expense-claims');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Expense Claims" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
+      <HRExpenseClaimsPage />
+    </DashboardShell>
+  );
+}
+
+function RecurringInvoicesWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('recurring-invoices');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Recurring Invoices" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
+      <RecurringInvoicesPage />
+    </DashboardShell>
+  );
+}
+
+function WarehousesWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('warehouses');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Warehouses & Stock" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
+      <WarehousesPage />
+    </DashboardShell>
+  );
+}
+
+function ProjectManagementWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('projects');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Project Management" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
+      <ProjectManagementPage />
+    </DashboardShell>
+  );
+}
+
+function TimesheetsWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('timesheets');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Timesheets" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
+      <TimesheetsPage />
+    </DashboardShell>
+  );
+}
+
+function FixedAssetsWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('fixed-assets');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Fixed Assets" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
+      <FixedAssetsPage />
+    </DashboardShell>
+  );
+}
+
+function PerformanceAppraisalWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('hr-appraisals');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Performance Appraisal" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
+      <PerformanceAppraisalPage />
+    </DashboardShell>
+  );
+}
+
+function CurrencyManagementWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('currency-management');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Currency Management" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
+      <CurrencyManagementPage />
+    </DashboardShell>
   );
 }
 

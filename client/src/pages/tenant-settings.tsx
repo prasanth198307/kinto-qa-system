@@ -6,16 +6,19 @@ import { z } from "zod";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import {
   Building2, Users, Package, CheckCircle2, Clock, XCircle,
   Loader2, Save, Palette, CreditCard, Download, Bell, FileJson, AlertCircle,
-  Upload, ImageIcon, X,
+  Upload, ImageIcon, X, Tags, Sliders, Trash2, Plus,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -286,6 +289,12 @@ export default function TenantSettings() {
           </TabsTrigger>
           <TabsTrigger value="data"          data-testid="tab-settings-data">
             <Download className="h-3.5 w-3.5 mr-1.5" />Data & Export
+          </TabsTrigger>
+          <TabsTrigger value="labels"        data-testid="tab-settings-labels">
+            <Tags className="h-3.5 w-3.5 mr-1.5" />Module Labels
+          </TabsTrigger>
+          <TabsTrigger value="custom-fields" data-testid="tab-settings-custom-fields">
+            <Sliders className="h-3.5 w-3.5 mr-1.5" />Custom Fields
           </TabsTrigger>
         </TabsList>
 
@@ -786,7 +795,202 @@ export default function TenantSettings() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* ── Module Labels ── */}
+        <TabsContent value="labels" className="mt-4">
+          <ModuleLabelsTab />
+        </TabsContent>
+
+        {/* ── Custom Fields ── */}
+        <TabsContent value="custom-fields" className="mt-4">
+          <CustomFieldsTab />
+        </TabsContent>
+
       </Tabs>
+    </div>
+  );
+}
+
+// ─── Module Labels Component ─────────────────────────────────────────────────
+const DEFAULT_MODULE_LABELS = [
+  { key: "invoices", label: "Invoices" },
+  { key: "purchase_orders", label: "Purchase Orders" },
+  { key: "customers", label: "Customers" },
+  { key: "vendors", label: "Vendors" },
+  { key: "products", label: "Products / Items" },
+  { key: "raw_materials", label: "Raw Materials" },
+  { key: "gatepasses", label: "Gate Passes" },
+  { key: "production", label: "Production Orders" },
+  { key: "quality", label: "Quality Checks" },
+  { key: "maintenance", label: "Preventive Maintenance" },
+  { key: "hr", label: "HR & Payroll" },
+  { key: "projects", label: "Projects" },
+  { key: "assets", label: "Fixed Assets" },
+  { key: "expenses", label: "Expense Claims" },
+  { key: "timesheets", label: "Timesheets" },
+];
+
+function ModuleLabelsTab() {
+  const { toast } = useToast();
+  const { data: saved = [] } = useQuery<any[]>({ queryKey: ["/api/hr/module-labels"] });
+  const [labels, setLabels] = useState<Record<string, string>>({});
+
+  const savedMap = (saved as any[]).reduce((m: any, r: any) => { m[r.module_key] = r.custom_label; return m; }, {});
+  const currentLabels = DEFAULT_MODULE_LABELS.reduce((m: any, d) => { m[d.key] = labels[d.key] ?? (savedMap[d.key] || d.label); return m; }, {});
+
+  const saveMutation = useMutation({
+    mutationFn: () => apiRequest("PUT", "/api/hr/module-labels", {
+      labels: DEFAULT_MODULE_LABELS
+        .filter(d => currentLabels[d.key] !== d.label)
+        .map(d => ({ moduleKey: d.key, customLabel: currentLabels[d.key] })),
+    }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/hr/module-labels"] }); toast({ title: "Module labels saved" }); },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardContent className="p-4 space-y-1">
+          <p className="font-medium">Customise Module Names</p>
+          <p className="text-sm text-muted-foreground">Rename any module to match your industry terminology. E.g., rename "Products" to "SKUs" or "Gate Passes" to "Delivery Notes".</p>
+        </CardContent>
+      </Card>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {DEFAULT_MODULE_LABELS.map(d => (
+          <div key={d.key} className="flex items-center gap-2">
+            <div className="w-36 text-sm text-muted-foreground shrink-0">{d.label}</div>
+            <Input
+              value={currentLabels[d.key]}
+              onChange={e => setLabels(p => ({ ...p, [d.key]: e.target.value }))}
+              placeholder={d.label}
+              className="flex-1"
+              data-testid={`input-label-${d.key}`}
+            />
+          </div>
+        ))}
+      </div>
+      <div className="flex justify-end">
+        <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending} data-testid="button-save-labels">
+          {saveMutation.isPending ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" />Saving...</> : <><Save className="w-4 h-4 mr-1" />Save Labels</>}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Custom Fields Component ─────────────────────────────────────────────────
+const ENTITY_TYPES = [
+  { value: "invoice", label: "Invoice" },
+  { value: "invoice_item", label: "Invoice Line Item" },
+  { value: "purchase_order", label: "Purchase Order" },
+  { value: "customer", label: "Customer" },
+  { value: "vendor", label: "Vendor" },
+  { value: "item", label: "Product / Item" },
+  { value: "employee", label: "Employee" },
+  { value: "project", label: "Project" },
+  { value: "asset", label: "Fixed Asset" },
+];
+
+const FIELD_TYPES = [
+  { value: "text", label: "Text" },
+  { value: "number", label: "Number" },
+  { value: "date", label: "Date" },
+  { value: "select", label: "Dropdown" },
+  { value: "checkbox", label: "Checkbox" },
+  { value: "textarea", label: "Text Area" },
+];
+
+function CustomFieldsTab() {
+  const { toast } = useToast();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [form, setForm] = useState({ entityType: "invoice", fieldName: "", fieldLabel: "", fieldType: "text", isRequired: false, sortOrder: "0" });
+  const { data: fields = [], isLoading } = useQuery<any[]>({ queryKey: ["/api/hr/custom-fields"] });
+
+  const saveMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/hr/custom-fields", {
+      entityType: form.entityType, fieldName: form.fieldName.toLowerCase().replace(/\s+/g, "_"),
+      fieldLabel: form.fieldLabel, fieldType: form.fieldType, isRequired: form.isRequired, sortOrder: Number(form.sortOrder),
+    }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/hr/custom-fields"] }); toast({ title: "Custom field created" }); setDialogOpen(false); setForm({ entityType: "invoice", fieldName: "", fieldLabel: "", fieldType: "text", isRequired: false, sortOrder: "0" }); },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/hr/custom-fields/${id}`),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/hr/custom-fields"] }); toast({ title: "Field removed" }); },
+  });
+
+  const byEntity = (fields as any[]).reduce((m: any, f: any) => { if (!m[f.entity_type]) m[f.entity_type] = []; m[f.entity_type].push(f); return m; }, {});
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <Button onClick={() => setDialogOpen(true)} data-testid="button-new-custom-field"><Plus className="w-4 h-4 mr-1" />Add Custom Field</Button>
+      </div>
+      {isLoading ? <p className="text-center py-8 text-muted-foreground">Loading...</p> : (fields as any[]).length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground"><Sliders className="w-10 h-10 mx-auto mb-2 opacity-40" /><p>No custom fields defined</p><p className="text-xs mt-1">Add fields to extend invoices, items, employees, and more</p></div>
+      ) : (
+        <div className="space-y-4">
+          {Object.entries(byEntity).map(([entityType, entityFields]: [string, any]) => (
+            <div key={entityType}>
+              <p className="text-sm font-medium mb-2">{ENTITY_TYPES.find(e => e.value === entityType)?.label || entityType}</p>
+              <Card><CardContent className="p-0">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50"><tr><th className="text-left p-3">Label</th><th className="text-left p-3">Field Name</th><th className="text-left p-3">Type</th><th className="p-3">Required</th><th className="p-3"></th></tr></thead>
+                  <tbody>
+                    {entityFields.map((f: any) => (
+                      <tr key={f.id} className="border-t">
+                        <td className="p-3 font-medium">{f.field_label}</td>
+                        <td className="p-3 font-mono text-xs text-muted-foreground">{f.field_name}</td>
+                        <td className="p-3 text-muted-foreground">{FIELD_TYPES.find(t => t.value === f.field_type)?.label || f.field_type}</td>
+                        <td className="p-3 text-center">{f.is_required ? "Yes" : "No"}</td>
+                        <td className="p-3 text-right"><Button size="icon" variant="ghost" onClick={() => deleteMutation.mutate(f.id)} data-testid={`button-delete-field-${f.id}`}><Trash2 className="w-4 h-4 text-destructive" /></Button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </CardContent></Card>
+            </div>
+          ))}
+        </div>
+      )}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Add Custom Field</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>Entity (which form?) <span className="text-destructive">*</span></Label>
+              <Select value={form.entityType} onValueChange={v => setForm(p => ({ ...p, entityType: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{ENTITY_TYPES.map(e => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div><Label>Field Label <span className="text-destructive">*</span></Label><Input value={form.fieldLabel} onChange={e => setForm(p => ({ ...p, fieldLabel: e.target.value, fieldName: e.target.value.toLowerCase().replace(/\s+/g, "_") }))} placeholder="e.g. Customer PO Number" data-testid="input-field-label" /></div>
+            <div><Label>Field Name (auto)</Label><Input value={form.fieldName} readOnly className="font-mono text-xs bg-muted" /></div>
+            <div>
+              <Label>Field Type</Label>
+              <Select value={form.fieldType} onValueChange={v => setForm(p => ({ ...p, fieldType: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{FIELD_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="isRequired" checked={form.isRequired} onChange={e => setForm(p => ({ ...p, isRequired: e.target.checked }))} />
+                <label htmlFor="isRequired" className="text-sm">Required field</label>
+              </div>
+              <div><Label>Sort Order</Label><Input type="number" value={form.sortOrder} onChange={e => setForm(p => ({ ...p, sortOrder: e.target.value }))} /></div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+              <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || !form.fieldLabel} data-testid="button-save-custom-field">
+                {saveMutation.isPending ? "Saving..." : "Create Field"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
