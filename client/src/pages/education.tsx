@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Search, Users, BookOpen, GraduationCap, ClipboardList, Library, Receipt, Pencil, Trash2, X } from "lucide-react";
+import { Plus, Search, Users, BookOpen, GraduationCap, ClipboardList, Library, Receipt, Pencil, Trash2, X, AlertTriangle, BookMarked } from "lucide-react";
 
 const fmt = (n: any) => Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
 function F({ label, children }: any) { return <div className="space-y-1"><Label className="text-xs">{label}</Label>{children}</div>; }
@@ -22,11 +22,13 @@ function SC({ title, value, icon: Icon, color }: any) {
 function OverviewTab() {
   const { data: stats } = useQuery<any>({ queryKey: ["/api/education/stats"] });
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
       <SC title="Total Students" value={stats?.totalStudents ?? 0} icon={Users} color="bg-blue-100 text-blue-600" />
       <SC title="Total Teachers" value={stats?.totalTeachers ?? 0} icon={GraduationCap} color="bg-green-100 text-green-600" />
       <SC title="Total Classes" value={stats?.totalClasses ?? 0} icon={BookOpen} color="bg-purple-100 text-purple-600" />
       <SC title="Monthly Collection" value={`₹${fmt(stats?.monthlyCollection)}`} icon={Receipt} color="bg-orange-100 text-orange-600" />
+      <SC title="Overdue Books" value={stats?.overdueBooks ?? 0} icon={AlertTriangle} color="bg-red-100 text-red-600" />
+      <SC title="Monthly Fee Target" value={`₹${fmt(stats?.monthlyFeeTarget)}`} icon={BookMarked} color="bg-teal-100 text-teal-600" />
     </div>
   );
 }

@@ -90,6 +90,13 @@ router.put("/units/:id", requireAuth, async (req: any, res) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
+router.delete("/units/:id", requireAuth, async (req: any, res) => {
+  try {
+    await db.execute(sql`UPDATE re_units SET status='cancelled' WHERE id=${req.params.id} AND tenant_id=${tid(req)}`);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
 // ── Bookings ──────────────────────────────────────────────────────────────────
 router.get("/bookings", requireAuth, async (req: any, res) => {
   try {
@@ -255,7 +262,7 @@ router.delete("/construction-progress/:id", requireAuth, async (req: any, res) =
 // ── Demand Letters ────────────────────────────────────────────────────────────
 router.get("/demand-letters", requireAuth, async (req: any, res) => {
   try {
-    const rows = await db.execute(sql`SELECT * FROM re_demand_letters WHERE tenant_id=${tid(req)} AND record_status=1 ORDER BY demand_date DESC`);
+    const rows = await db.execute(sql`SELECT * FROM re_demand_letters WHERE tenant_id=${Number(tid(req))} AND record_status=1 ORDER BY demand_date DESC`);
     res.json(rows.rows);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
@@ -266,7 +273,7 @@ router.post("/demand-letters", requireAuth, async (req: any, res) => {
     const no = "DL-" + Date.now();
     const rows = await db.execute(sql`
       INSERT INTO re_demand_letters (tenant_id, demand_number, booking_id, customer_name, unit_number, demand_date, due_date, milestone, amount, notes)
-      VALUES (${tid(req)}, ${no}, ${booking_id||null}, ${customer_name||null}, ${unit_number||null},
+      VALUES (${Number(tid(req))}, ${no}, ${booking_id||null}, ${customer_name||null}, ${unit_number||null},
               ${demand_date}, ${due_date||null}, ${milestone||null}, ${amount||0}, ${notes||null})
       RETURNING *`);
     res.json(rows.rows[0]);
@@ -279,14 +286,14 @@ router.put("/demand-letters/:id", requireAuth, async (req: any, res) => {
     const rows = await db.execute(sql`
       UPDATE re_demand_letters SET due_date=${due_date||null}, milestone=${milestone||null},
         amount=${amount||0}, paid_amount=${paid_amount||0}, status=${status||'pending'}, notes=${notes||null}
-      WHERE id=${req.params.id} AND tenant_id=${tid(req)} RETURNING *`);
+      WHERE id=${req.params.id} AND tenant_id=${Number(tid(req))} RETURNING *`);
     res.json(rows.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
 router.delete("/demand-letters/:id", requireAuth, async (req: any, res) => {
   try {
-    await db.execute(sql`UPDATE re_demand_letters SET record_status=0 WHERE id=${req.params.id} AND tenant_id=${tid(req)}`);
+    await db.execute(sql`UPDATE re_demand_letters SET record_status=0 WHERE id=${req.params.id} AND tenant_id=${Number(tid(req))}`);
     res.json({ success: true });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });

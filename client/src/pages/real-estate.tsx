@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Search, Building2, Home, FileText, BarChart3, Users, Receipt, Pencil, Trash2, X } from "lucide-react";
+import { Plus, Search, Building2, Home, FileText, BarChart3, Users, Receipt, Pencil, Trash2, X, Mail } from "lucide-react";
 
 const fmt = (n: any) => Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
 function F({ label, children }: any) { return <div className="space-y-1"><Label className="text-xs">{label}</Label>{children}</div>; }
@@ -94,6 +94,7 @@ function UnitsTab() {
   const { data: units = [] } = useQuery<any[]>({ queryKey: ["/api/real-estate/units"] });
   const { data: projects = [] } = useQuery<any[]>({ queryKey: ["/api/real-estate/projects"] });
   const saveMut = useMutation({ mutationFn: (d: any) => editing ? apiRequest("PUT", `/api/real-estate/units/${editing.id}`, d) : apiRequest("POST", "/api/real-estate/units", d), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/real-estate/units"] }); setShowForm(false); toast({ title: "Saved" }); } });
+  const delMut = useMutation({ mutationFn: (id: any) => apiRequest("DELETE", `/api/real-estate/units/${id}`), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/real-estate/units"] }) });
   const openNew = () => { setEditing(null); setForm({ status: "available" }); setShowForm(true); };
   const openEdit = (u: any) => { setEditing(u); setForm({ ...u }); setShowForm(true); };
   const filtered = (units as any[]).filter(u => (!filterProject || String(u.project_id) === filterProject) && (u.unit_no?.toLowerCase().includes(search.toLowerCase()) || u.project_name?.toLowerCase().includes(search.toLowerCase())));
@@ -114,7 +115,7 @@ function UnitsTab() {
             <td className="px-3 py-2">₹{fmt(u.base_price)}</td><td className="px-3 py-2 font-medium">₹{fmt(u.current_price)}</td>
             <td className="px-3 py-2">{u.facing||"—"}</td>
             <td className="px-3 py-2"><Badge className={STATUS_C[u.status]||""}>{u.status}</Badge></td>
-            <td className="px-3 py-2"><Button size="icon" variant="ghost" onClick={()=>openEdit(u)}><Pencil className="h-3.5 w-3.5"/></Button></td>
+            <td className="px-3 py-2"><div className="flex gap-1"><Button size="icon" variant="ghost" onClick={()=>openEdit(u)}><Pencil className="h-3.5 w-3.5"/></Button><Button size="icon" variant="ghost" onClick={()=>delMut.mutate(u.id)}><Trash2 className="h-3.5 w-3.5"/></Button></div></td>
           </tr>
         ))}{!filtered.length&&<tr><td colSpan={10} className="px-3 py-6 text-center text-muted-foreground">No units found</td></tr>}</tbody>
       </table></div>
@@ -141,7 +142,7 @@ function UnitsTab() {
 
 function BookingsTab() {
   const { toast } = useToast();
-  const [search, setSearch] = useState(""); const [showForm, setShowForm] = useState(false); const [editing, setEditing] = useState<any>(null); const [form, setForm] = useState<any>({}); const [showPayments, setShowPayments] = useState<any>(null); const [payForm, setPayForm] = useState<any>({});
+  const [search, setSearch] = useState(""); const [showForm, setShowForm] = useState(false); const [editing, setEditing] = useState<any>(null); const [form, setForm] = useState<any>({}); const [showPayments, setShowPayments] = useState<any>(null); const [payForm, setPayForm] = useState<any>({}); const [partialId, setPartialId] = useState<any>(null); const [partialAmt, setPartialAmt] = useState("");
   const { data: bookings = [] } = useQuery<any[]>({ queryKey: ["/api/real-estate/bookings"] });
   const { data: units = [] } = useQuery<any[]>({ queryKey: ["/api/real-estate/units"] });
   const { data: brokers = [] } = useQuery<any[]>({ queryKey: ["/api/real-estate/brokers"] });
@@ -205,7 +206,22 @@ function BookingsTab() {
                 <td className="px-3 py-2 font-medium">{s.milestone}</td><td className="px-3 py-2">{s.due_date?.split("T")[0]||"—"}</td>
                 <td className="px-3 py-2">₹{fmt(s.amount)}</td><td className="px-3 py-2">₹{fmt(s.paid_amount)}</td>
                 <td className="px-3 py-2"><Badge className={s.status==="paid"?"bg-green-100 text-green-700":s.status==="partial"?"bg-orange-100 text-orange-700":"bg-gray-100 text-gray-700"}>{s.status||"pending"}</Badge></td>
-                <td className="px-3 py-2">{s.status!=="paid"&&<Button size="sm" variant="outline" onClick={()=>updateSchedule.mutate({id:s.id,...s,paid_amount:s.amount,status:"paid",paid_date:new Date().toISOString().split("T")[0]})}>Mark Paid</Button>}</td>
+                <td className="px-3 py-2">
+                  {s.status!=="paid"&&(
+                    partialId===s.id ? (
+                      <div className="flex items-center gap-1">
+                        <Input className="h-7 w-24 text-xs" type="number" placeholder={String(s.amount)} value={partialAmt} onChange={e=>setPartialAmt(e.target.value)}/>
+                        <Button size="sm" onClick={()=>{const amt=Number(partialAmt)||Number(s.amount);const st=amt>=Number(s.amount)?"paid":"partial";updateSchedule.mutate({id:s.id,...s,paid_amount:amt,status:st,paid_date:new Date().toISOString().split("T")[0]});setPartialId(null);setPartialAmt("");}}>Save</Button>
+                        <Button size="sm" variant="ghost" onClick={()=>{setPartialId(null);setPartialAmt("");}}>✕</Button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-1">
+                        <Button size="sm" variant="outline" onClick={()=>updateSchedule.mutate({id:s.id,...s,paid_amount:s.amount,status:"paid",paid_date:new Date().toISOString().split("T")[0]})}>Mark Paid</Button>
+                        <Button size="sm" variant="ghost" onClick={()=>{setPartialId(s.id);setPartialAmt(String(s.paid_amount||""));}}>Partial</Button>
+                      </div>
+                    )
+                  )}
+                </td>
               </tr>
             ))}{!(schedules as any[]).length&&<tr><td colSpan={6} className="px-3 py-4 text-center text-muted-foreground">No schedule entries</td></tr>}</tbody>
           </table></div>
@@ -253,6 +269,59 @@ function BrokersTab() {
             <F label="Email"><Input value={form.email||""} onChange={e=>setForm({...form,email:e.target.value})}/></F>
             <F label="Commission %"><Input type="number" value={form.commission_pct||""} onChange={e=>setForm({...form,commission_pct:e.target.value})}/></F>
             <div className="col-span-2"><F label="RERA Number"><Input value={form.rera_number||""} onChange={e=>setForm({...form,rera_number:e.target.value})}/></F></div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2"><Button variant="outline" onClick={()=>setShowForm(false)}>Cancel</Button><Button onClick={()=>saveMut.mutate(form)} disabled={saveMut.isPending}>Save</Button></div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function DemandLettersTab() {
+  const { toast } = useToast();
+  const [showForm, setShowForm] = useState(false); const [editing, setEditing] = useState<any>(null); const [form, setForm] = useState<any>({});
+  const { data: letters = [] } = useQuery<any[]>({ queryKey: ["/api/real-estate/demand-letters"] });
+  const { data: bookings = [] } = useQuery<any[]>({ queryKey: ["/api/real-estate/bookings"] });
+  const saveMut = useMutation({ mutationFn: (d: any) => editing ? apiRequest("PUT", `/api/real-estate/demand-letters/${editing.id}`, d) : apiRequest("POST", "/api/real-estate/demand-letters", d), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/real-estate/demand-letters"] }); setShowForm(false); toast({ title: "Saved" }); } });
+  const delMut = useMutation({ mutationFn: (id: any) => apiRequest("DELETE", `/api/real-estate/demand-letters/${id}`), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/real-estate/demand-letters"] }) });
+  const markPaid = useMutation({ mutationFn: ({ id, ...d }: any) => apiRequest("PUT", `/api/real-estate/demand-letters/${id}`, d), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/real-estate/demand-letters"] }) });
+  const openNew = () => { setEditing(null); setForm({ demand_date: new Date().toISOString().split("T")[0], status: "pending" }); setShowForm(true); };
+  const openEdit = (l: any) => { setEditing(l); setForm({ ...l, demand_date: l.demand_date?.split("T")[0], due_date: l.due_date?.split("T")[0] }); setShowForm(true); };
+  const onBooking = (id: string) => { const b = (bookings as any[]).find(b => String(b.id) === id); setForm((f: any) => ({ ...f, booking_id: id, customer_name: b?.customer_name || f.customer_name, unit_number: b?.unit_no || f.unit_number })); };
+  const STATUS_C: Record<string, string> = { pending: "bg-orange-100 text-orange-700", paid: "bg-green-100 text-green-700", overdue: "bg-red-100 text-red-700", partial: "bg-blue-100 text-blue-700" };
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-end"><Button onClick={openNew}><Plus className="h-4 w-4 mr-1"/>New Demand Letter</Button></div>
+      <div className="rounded-md border overflow-x-auto"><table className="w-full text-sm">
+        <thead className="bg-muted/50"><tr>{["Demand No.","Customer","Unit","Milestone","Demand Date","Due Date","Amount","Paid","Status",""].map(h=><th key={h} className="px-3 py-2 text-left font-medium">{h}</th>)}</tr></thead>
+        <tbody>{(letters as any[]).map(l=>(
+          <tr key={l.id} className="border-t hover:bg-muted/30">
+            <td className="px-3 py-2 font-mono text-xs">{l.demand_number}</td><td className="px-3 py-2 font-medium">{l.customer_name||"—"}</td>
+            <td className="px-3 py-2">{l.unit_number||"—"}</td><td className="px-3 py-2">{l.milestone||"—"}</td>
+            <td className="px-3 py-2">{l.demand_date?.split("T")[0]}</td><td className="px-3 py-2">{l.due_date?.split("T")[0]||"—"}</td>
+            <td className="px-3 py-2 font-medium">₹{fmt(l.amount)}</td><td className="px-3 py-2">₹{fmt(l.paid_amount)}</td>
+            <td className="px-3 py-2"><Badge className={STATUS_C[l.status]||"bg-gray-100 text-gray-700"}>{l.status||"pending"}</Badge></td>
+            <td className="px-3 py-2"><div className="flex gap-1">
+              {l.status!=="paid"&&<Button size="sm" variant="outline" onClick={()=>markPaid.mutate({id:l.id,...l,paid_amount:l.amount,status:"paid"})}>Mark Paid</Button>}
+              <Button size="icon" variant="ghost" onClick={()=>openEdit(l)}><Pencil className="h-3.5 w-3.5"/></Button>
+              <Button size="icon" variant="ghost" onClick={()=>delMut.mutate(l.id)}><Trash2 className="h-3.5 w-3.5"/></Button>
+            </div></td>
+          </tr>
+        ))}{!(letters as any[]).length&&<tr><td colSpan={10} className="px-3 py-6 text-center text-muted-foreground">No demand letters</td></tr>}</tbody>
+      </table></div>
+      <Dialog open={showForm} onOpenChange={setShowForm}>
+        <DialogContent className="max-w-xl max-h-[90dvh] overflow-y-auto"><DialogHeader><DialogTitle>{editing?"Edit":"New"} Demand Letter</DialogTitle></DialogHeader>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2"><F label="Booking (optional)"><Select value={String(form.booking_id||"")} onValueChange={onBooking}><SelectTrigger><SelectValue placeholder="Select booking"/></SelectTrigger><SelectContent><SelectItem value="">None / Manual</SelectItem>{(bookings as any[]).map((b:any)=><SelectItem key={b.id} value={String(b.id)}>{b.booking_no} — {b.customer_name}</SelectItem>)}</SelectContent></Select></F></div>
+            <F label="Customer Name *"><Input value={form.customer_name||""} onChange={e=>setForm({...form,customer_name:e.target.value})}/></F>
+            <F label="Unit Number"><Input value={form.unit_number||""} onChange={e=>setForm({...form,unit_number:e.target.value})}/></F>
+            <F label="Milestone / Description"><Input value={form.milestone||""} onChange={e=>setForm({...form,milestone:e.target.value})}/></F>
+            <F label="Amount (₹) *"><Input type="number" value={form.amount||""} onChange={e=>setForm({...form,amount:e.target.value})}/></F>
+            <F label="Demand Date"><Input type="date" value={form.demand_date||""} onChange={e=>setForm({...form,demand_date:e.target.value})}/></F>
+            <F label="Due Date"><Input type="date" value={form.due_date||""} onChange={e=>setForm({...form,due_date:e.target.value})}/></F>
+            <F label="Status"><Select value={form.status||"pending"} onValueChange={v=>setForm({...form,status:v})}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{["pending","partial","paid","overdue"].map(s=><SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select></F>
+            <F label="Paid Amount (₹)"><Input type="number" value={form.paid_amount||""} onChange={e=>setForm({...form,paid_amount:e.target.value})}/></F>
+            <div className="col-span-2"><F label="Notes"><Textarea rows={2} value={form.notes||""} onChange={e=>setForm({...form,notes:e.target.value})}/></F></div>
           </div>
           <div className="flex justify-end gap-2 pt-2"><Button variant="outline" onClick={()=>setShowForm(false)}>Cancel</Button><Button onClick={()=>saveMut.mutate(form)} disabled={saveMut.isPending}>Save</Button></div>
         </DialogContent>
@@ -312,6 +381,7 @@ export default function RealEstatePage() {
           <TabsTrigger value="units"><Home className="h-3.5 w-3.5 mr-1"/>Units</TabsTrigger>
           <TabsTrigger value="bookings"><FileText className="h-3.5 w-3.5 mr-1"/>Bookings</TabsTrigger>
           <TabsTrigger value="brokers"><Users className="h-3.5 w-3.5 mr-1"/>Brokers</TabsTrigger>
+          <TabsTrigger value="demand-letters"><Mail className="h-3.5 w-3.5 mr-1"/>Demand Letters</TabsTrigger>
           <TabsTrigger value="progress"><BarChart3 className="h-3.5 w-3.5 mr-1"/>Construction Progress</TabsTrigger>
         </TabsList>
         <div className="mt-4">
@@ -320,6 +390,7 @@ export default function RealEstatePage() {
           <TabsContent value="units"><UnitsTab/></TabsContent>
           <TabsContent value="bookings"><BookingsTab/></TabsContent>
           <TabsContent value="brokers"><BrokersTab/></TabsContent>
+          <TabsContent value="demand-letters"><DemandLettersTab/></TabsContent>
           <TabsContent value="progress"><ProgressTab/></TabsContent>
         </div>
       </Tabs>

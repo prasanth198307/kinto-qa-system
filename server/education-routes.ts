@@ -387,17 +387,21 @@ router.post("/fee-payments", requireAuth, async (req: any, res) => {
 // ── Stats ────────────────────────────────────────────────────────────────────
 router.get("/stats", requireAuth, async (req: any, res) => {
   try {
-    const [students, teachers, payments, classes] = await Promise.all([
+    const [students, teachers, payments, classes, overdue, pendingFees] = await Promise.all([
       db.execute(sql`SELECT COUNT(*) as count FROM students WHERE tenant_id=${tid(req)} AND status='active'`),
       db.execute(sql`SELECT COUNT(*) as count FROM teachers WHERE tenant_id=${tid(req)} AND status='active' AND record_status=1`),
       db.execute(sql`SELECT COALESCE(SUM(amount),0) as total FROM fee_payments WHERE tenant_id=${tid(req)} AND EXTRACT(MONTH FROM paid_date)=EXTRACT(MONTH FROM CURRENT_DATE)`),
       db.execute(sql`SELECT COUNT(*) as count FROM classes WHERE tenant_id=${tid(req)} AND is_active=1`),
+      db.execute(sql`SELECT COUNT(*) as count FROM book_issues WHERE tenant_id=${Number(tid(req))} AND status='issued' AND due_date < CURRENT_DATE`),
+      db.execute(sql`SELECT COALESCE(SUM(amount),0) as total FROM fee_structures WHERE (tenant_id=${Number(tid(req))} OR tenant_id=${tid(req)}::integer) AND is_active=1`),
     ]);
     res.json({
       totalStudents: Number(students.rows[0]?.count||0),
       totalTeachers: Number(teachers.rows[0]?.count||0),
       monthlyCollection: Number(payments.rows[0]?.total||0),
       totalClasses: Number(classes.rows[0]?.count||0),
+      overdueBooks: Number(overdue.rows[0]?.count||0),
+      monthlyFeeTarget: Number(pendingFees.rows[0]?.total||0),
     });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
