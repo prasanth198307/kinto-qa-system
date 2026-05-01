@@ -11,6 +11,8 @@ import {
   BookOpen, MonitorSmartphone, Menu, X, Zap, Building2, Award,
   HeadphonesIcon, LayoutDashboard, Briefcase, Settings, ChevronDown,
   Database, Link2, Cpu, Lock, Key, Code2, Webhook,
+  HeartPulse, GraduationCap, MapPin, Home, ShoppingBag, Leaf,
+  Warehouse, FolderKanban, PiggyBank, GitBranch, ClipboardCheck,
 } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -21,37 +23,52 @@ const NAV_PRODUCTS = [
   {
     group: "Operations",
     items: [
-      { icon: Factory,       label: "Production & BOM",      desc: "Orders, BOM, variance tracking" },
-      { icon: Package,       label: "Inventory Control",     desc: "Raw material, FG, FIFO batching" },
-      { icon: ShoppingCart,  label: "Purchase Orders",       desc: "Vendors, GRN, debit notes" },
-      { icon: Truck,         label: "Dispatch & Gatepasses", desc: "Invoice-first dispatch, e-signatures" },
-      { icon: ClipboardList, label: "Quality Control",       desc: "Returns workflow, traceability" },
-      { icon: Wrench,        label: "Preventive Maintenance",desc: "Machine schedules, spare parts" },
+      { icon: Factory,        label: "Production & BOM",       desc: "Orders, BOM, variance tracking" },
+      { icon: Package,        label: "Inventory Control",      desc: "Multi-warehouse, FIFO, serial/lot tracking" },
+      { icon: ShoppingCart,   label: "Purchase Orders",        desc: "Requisitions, GRN, three-way matching" },
+      { icon: Truck,          label: "Dispatch & Gatepasses",  desc: "Invoice-first dispatch, e-signatures" },
+      { icon: ClipboardList,  label: "Quality Control",        desc: "Returns workflow, traceability" },
+      { icon: Wrench,         label: "Preventive Maintenance", desc: "Machine schedules, spare parts" },
+      { icon: FolderKanban,   label: "Project Management",     desc: "BOQ, milestones, timesheets, P&L" },
     ],
   },
   {
     group: "Finance",
     items: [
-      { icon: FileText,      label: "GST Invoicing",         desc: "Tax invoices, credit notes, e-way bills" },
-      { icon: Receipt,       label: "Double-Entry Accounting",desc: "COA, P&L, Balance Sheet, journals" },
-      { icon: IndianRupee,   label: "Expenses & Cash",       desc: "Cash register, petty cash, vouchers" },
-      { icon: BarChart3,     label: "MIS Analytics",         desc: "Executive KPIs, dashboards, reports" },
+      { icon: FileText,       label: "GST Invoicing",          desc: "Tax, proforma, credit notes, GSTR reports" },
+      { icon: Receipt,        label: "Double-Entry Accounting", desc: "COA, P&L, Balance Sheet, journals" },
+      { icon: IndianRupee,    label: "Expenses & Cash",        desc: "Cost centres, claims, cash register" },
+      { icon: BarChart3,      label: "MIS Analytics",          desc: "Executive KPIs, dashboards, reports" },
+      { icon: PiggyBank,      label: "Fixed Assets",           desc: "Asset register, depreciation schedules" },
     ],
   },
   {
     group: "People & CRM",
     items: [
-      { icon: UserCheck,        label: "HR & Payroll",         desc: "Attendance, leaves, payroll, TDS, Form 16" },
-      { icon: MonitorSmartphone,label: "Employee Self-Service", desc: "Payslips, leaves, tax declarations" },
-      { icon: Target,           label: "CRM",                  desc: "Lead pipeline, follow-ups, conversions" },
-      { icon: MessageCircle,    label: "WhatsApp Integration",  desc: "Checklists & machine startup on WhatsApp" },
+      { icon: UserCheck,         label: "HR & Payroll",          desc: "Attendance, leaves, payroll, TDS, Form 16" },
+      { icon: MonitorSmartphone, label: "Employee Self-Service",  desc: "Payslips, leaves, expense claims, appraisals" },
+      { icon: Target,            label: "CRM",                   desc: "Lead pipeline, follow-ups, conversions" },
+      { icon: MessageCircle,     label: "WhatsApp Integration",   desc: "Checklists & machine startup on WhatsApp" },
+    ],
+  },
+  {
+    group: "Industry Verticals",
+    items: [
+      { icon: HeartPulse,   label: "Healthcare",   desc: "Patients, OPD/IPD, wards, billing" },
+      { icon: GraduationCap,label: "Education",    desc: "Students, classes, fee collection" },
+      { icon: Truck,        label: "Logistics",    desc: "Fleet, trips, consignment notes (LR)" },
+      { icon: Home,         label: "Real Estate",  desc: "Projects, units, bookings, payment schedule" },
+      { icon: ShoppingBag,  label: "Retail / POS", desc: "Live billing terminal, sessions, sales history" },
+      { icon: Leaf,         label: "Agriculture",  desc: "Farms, crop cycles, procurement, commodity prices" },
     ],
   },
   {
     group: "Platform",
     items: [
-      { icon: Key,     label: "API Hub",           desc: "Scoped keys, live tester, call logs & analytics" },
-      { icon: Webhook, label: "Custom Integrations", desc: "Register your own endpoints alongside built-ins" },
+      { icon: Key,            label: "API Hub",             desc: "Scoped keys, live tester, call logs & analytics" },
+      { icon: GitBranch,      label: "Approval Workflows",  desc: "Amount-based rules, multi-level approvals" },
+      { icon: ClipboardCheck, label: "Audit Trail",         desc: "Full change log across all entities" },
+      { icon: Webhook,        label: "Custom Integrations", desc: "Register your own endpoints alongside built-ins" },
     ],
   },
 ];
@@ -70,29 +87,53 @@ const NAV_SOLUTIONS_BY_INDUSTRY = [
   { label: "Engineering Goods" },
   { label: "Food & Beverages" },
   { label: "Fabrication Shops" },
-  { label: "Plastic & Packaging" },
   { label: "Pharmaceuticals" },
-  { label: "Chemical Mfg." },
-  { label: "HR & Services" },
+  { label: "Healthcare & Clinics" },
+  { label: "Schools & Colleges" },
+  { label: "Logistics & Transport" },
+  { label: "Real Estate / Builders" },
+  { label: "Retail & Distribution" },
+  { label: "Agriculture & Agri-processing" },
+  { label: "Service Businesses" },
 ];
 
 const MODULES = [
-  { icon: Factory,          label: "Production & BOM",      desc: "Manufacturing orders, BOM, variance tracking" },
-  { icon: Package,          label: "Inventory Control",     desc: "Raw material & FG with FIFO batch allocation" },
-  { icon: ShoppingCart,     label: "Purchase Orders",       desc: "Vendor management, GRN and debit notes" },
-  { icon: FileText,         label: "GST Invoicing",         desc: "Tax invoices, credit notes & e-receipts" },
-  { icon: Truck,            label: "Dispatch & Gatepasses", desc: "Invoice-first dispatch, digital signatures" },
-  { icon: ClipboardList,    label: "Quality Control",       desc: "Three-stage return workflow, traceability" },
-  { icon: Receipt,          label: "Accounting",            desc: "Double-entry COA, P&L and Balance Sheet" },
-  { icon: BarChart3,        label: "MIS Analytics",         desc: "Executive KPIs, sales & production dashboards" },
-  { icon: Wrench,           label: "Maintenance",           desc: "Machine schedules, checklists, spare parts" },
-  { icon: MessageCircle,    label: "WhatsApp",              desc: "Machine startup & checklists on WhatsApp" },
-  { icon: IndianRupee,      label: "Expenses & Cash",       desc: "Daily cash register with voucher printing" },
-  { icon: Layers,           label: "Documents",             desc: "Versioned documents with expiry alerts" },
-  { icon: Target,           label: "CRM",                   desc: "Lead pipeline, follow-ups & conversions" },
-  { icon: UserCheck,        label: "HR & Payroll",          desc: "Attendance, leaves, payroll, TDS, Form 16" },
-  { icon: MonitorSmartphone,label: "ESS Portal",            desc: "Payslips, leaves & tax declarations for staff" },
-  { icon: Key,              label: "API Hub",               desc: "Scoped keys, live tester, call logs & analytics" },
+  // Core operations
+  { icon: Factory,          label: "Production & BOM",        desc: "Manufacturing orders, BOM, variance tracking" },
+  { icon: Package,          label: "Inventory Control",        desc: "Multi-warehouse, FIFO, serial/lot tracking" },
+  { icon: Warehouse,        label: "Warehouses & Transfers",   desc: "Multi-location stock with transfer orders" },
+  { icon: ShoppingCart,     label: "Purchase Orders",          desc: "Requisitions, GRN, three-way matching" },
+  { icon: FileText,         label: "GST Invoicing",            desc: "Tax, proforma, credit notes, GSTR-1/3B" },
+  { icon: Truck,            label: "Dispatch & Gatepasses",    desc: "Invoice-first dispatch, digital signatures" },
+  { icon: ClipboardList,    label: "Quality Control",          desc: "Three-stage return workflow, traceability" },
+  { icon: Wrench,           label: "Maintenance",              desc: "Machine schedules, checklists, spare parts" },
+  // Finance
+  { icon: Receipt,          label: "Accounting",               desc: "Double-entry COA, P&L and Balance Sheet" },
+  { icon: BarChart3,        label: "MIS Analytics",            desc: "Executive KPIs, sales & production dashboards" },
+  { icon: IndianRupee,      label: "Expenses & Cost Centres",  desc: "Cash register, vouchers, departmental tracking" },
+  { icon: PiggyBank,        label: "Fixed Assets",             desc: "Asset register, straight-line depreciation" },
+  { icon: Globe,            label: "Multi-currency",           desc: "Exchange rates & foreign currency invoicing" },
+  { icon: FileText,         label: "Recurring Invoices",       desc: "Auto-generate invoices on a schedule" },
+  // People
+  { icon: UserCheck,        label: "HR & Payroll",             desc: "Attendance, leaves, payroll, TDS, Form 16" },
+  { icon: MonitorSmartphone,label: "ESS Portal",               desc: "Payslips, leaves, expense claims & appraisals" },
+  { icon: Target,           label: "CRM",                      desc: "Lead pipeline, follow-ups & conversions" },
+  { icon: MessageCircle,    label: "WhatsApp",                 desc: "Machine startup & checklists on WhatsApp" },
+  // Projects
+  { icon: FolderKanban,     label: "Project Management",       desc: "BOQ, billing milestones, timesheets, P&L" },
+  // Procurement
+  { icon: GitBranch,        label: "Approval Workflows",       desc: "Amount-based rules, multi-level approvals" },
+  // Platform
+  { icon: Layers,           label: "Documents",                desc: "Versioned documents with expiry alerts" },
+  { icon: ClipboardCheck,   label: "Audit Trail",              desc: "Full change log across all entities" },
+  { icon: Key,              label: "API Hub",                  desc: "Scoped keys, live tester, call logs & analytics" },
+  // Industry verticals
+  { icon: HeartPulse,       label: "Healthcare",               desc: "Patients, OPD/IPD appointments, ward billing" },
+  { icon: GraduationCap,    label: "Education",                desc: "Students, classes, fee collection & receipts" },
+  { icon: Truck,            label: "Logistics & Transport",    desc: "Fleet, trips, Lorry Receipts (LR)" },
+  { icon: Home,             label: "Real Estate",              desc: "Projects, units, bookings, payment schedule" },
+  { icon: ShoppingBag,      label: "Retail / POS",             desc: "Live billing terminal, sessions, sales history" },
+  { icon: Leaf,             label: "Agriculture",              desc: "Farms, crop cycles, procurement, commodity prices" },
 ];
 
 const STRENGTHS = [
@@ -141,11 +182,11 @@ const PLANS = [
   },
   {
     name: "Professional", price: "₹1,499", period: "/month", highlight: true, tag: "Most Popular",
-    features: ["15 users included", "All Basic features", "Production & BOM tracking", "Double-entry accounting", "MIS analytics dashboards", "CRM lead management", "WhatsApp checklists", "Preventive maintenance", "API Hub — developer access", "Priority support"],
+    features: ["15 users included", "All Basic features", "Production & BOM tracking", "Multi-warehouse & stock transfers", "Recurring invoices", "Double-entry accounting", "MIS analytics dashboards", "CRM lead management", "WhatsApp checklists", "Preventive maintenance", "API Hub — developer access", "Priority support"],
   },
   {
     name: "Enterprise", price: "₹2,599", period: "/month", highlight: false, tag: "",
-    features: ["20 users included", "All Professional features", "HR & Payroll module", "Employee Self-Service portal", "TDS & compliance (Form 16)", "Recruitment management", "Custom branding", "Dedicated support"],
+    features: ["20 users included", "All Professional features", "HR & Payroll + ESS portal", "Project management (BOQ, milestones)", "Fixed assets & depreciation", "Approval workflows", "Multi-currency & exchange rates", "Performance appraisals", "Industry verticals (Healthcare, Education, Logistics, Real Estate, POS, Agriculture)", "Custom branding", "Dedicated support"],
   },
 ];
 
@@ -203,7 +244,7 @@ function ProductsDropdown() {
             ))}
           </div>
           <div className="border-t bg-muted/30 px-5 py-3 flex items-center justify-between">
-            <p className="text-xs text-muted-foreground">15 integrated modules — one database, zero sync issues</p>
+            <p className="text-xs text-muted-foreground">30+ integrated modules — one database, zero sync issues</p>
             <a href="#modules" onClick={() => setOpen(false)} className="text-xs text-primary font-medium hover:underline flex items-center gap-1">
               View all modules <ChevronRight className="w-3 h-3" />
             </a>
@@ -415,7 +456,7 @@ export default function LandingPage() {
             <div>
               <div className="inline-flex items-center gap-2 bg-primary/10 text-primary text-xs font-semibold px-3 py-1.5 rounded-full mb-6">
                 <Zap className="w-3.5 h-3.5" />
-                Built for Indian Manufacturing
+                Built for Indian Businesses
               </div>
               <h1 className="text-4xl sm:text-5xl font-bold tracking-tight leading-[1.15] mb-5">
                 One platform.<br />
@@ -452,7 +493,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center divide-x divide-border">
             {[
-              { value: "15+", label: "Integrated modules" },
+              { value: "30+", label: "Integrated modules" },
               { value: "GST", label: "Compliant invoicing" },
               { value: "100%", label: "Cloud & mobile ready" },
               { value: "WhatsApp", label: "Native integration" },
@@ -472,7 +513,7 @@ export default function LandingPage() {
           <div className="text-center mb-14">
             <h2 className="text-2xl md:text-3xl font-bold mb-3">What makes SwachERP genuinely different</h2>
             <p className="text-muted-foreground max-w-xl mx-auto text-sm">
-              Not just a feature list — these are real capabilities that no other Indian manufacturing ERP offers in a single product.
+              Not just a feature list — these are real capabilities that no other Indian ERP offers in a single product across this many industries.
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -630,8 +671,8 @@ export default function LandingPage() {
       <section id="modules" className="py-16 border-t bg-muted/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-2xl md:text-3xl font-bold mb-3">Every module your factory needs</h2>
-            <p className="text-muted-foreground max-w-xl mx-auto text-sm">16 integrated modules. One login. One database. No integrations to maintain.</p>
+            <h2 className="text-2xl md:text-3xl font-bold mb-3">Every module your business needs</h2>
+            <p className="text-muted-foreground max-w-xl mx-auto text-sm">30+ integrated modules. One login. One database. No integrations to maintain.</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
             {MODULES.map(m => (
@@ -771,8 +812,8 @@ export default function LandingPage() {
       <section id="solutions" className="py-16 border-t">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-2xl md:text-3xl font-bold mb-3">Why Indian manufacturers choose SwachERP</h2>
-            <p className="text-muted-foreground max-w-xl mx-auto text-sm">Designed from scratch for how Indian factories actually work — not a global ERP adapted for India.</p>
+            <h2 className="text-2xl md:text-3xl font-bold mb-3">Why Indian businesses choose SwachERP</h2>
+            <p className="text-muted-foreground max-w-xl mx-auto text-sm">Designed from scratch for how Indian businesses actually work — GST-native, multi-industry, and built on one unified database.</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {[
@@ -848,8 +889,8 @@ export default function LandingPage() {
       <section id="testimonials" className="py-16 border-t">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
-            <h2 className="text-2xl md:text-3xl font-bold mb-2">Trusted by Indian manufacturers</h2>
-            <p className="text-muted-foreground text-sm">Real feedback from production floors, finance teams, and HR departments</p>
+            <h2 className="text-2xl md:text-3xl font-bold mb-2">Trusted by Indian businesses</h2>
+            <p className="text-muted-foreground text-sm">Real feedback from operations, finance, and HR teams across industries</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {TESTIMONIALS.map(t => (
@@ -874,7 +915,7 @@ export default function LandingPage() {
       {/* ── FINAL CTA ───────────────────────────────────────────────────── */}
       <section className="py-20 border-t bg-primary/5">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 text-center">
-          <h2 className="text-2xl md:text-3xl font-bold mb-3">Ready to modernise your factory?</h2>
+          <h2 className="text-2xl md:text-3xl font-bold mb-3">Ready to modernise your business?</h2>
           <p className="text-muted-foreground text-sm mb-8 max-w-lg mx-auto">14-day free trial. No credit card. No commitment. We will help you get set up.</p>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Button size="lg" onClick={() => setLocation("/register-company")} data-testid="footer-cta-btn" className="gap-2">
@@ -895,12 +936,12 @@ export default function LandingPage() {
               <div className="mb-3">
                 <img src="/swacherp-logo.png" alt="SwachERP" className="h-12 w-auto" />
               </div>
-              <p className="text-xs text-muted-foreground leading-relaxed">Cloud ERP for Indian manufacturing — GST-compliant, WhatsApp-connected, and HR-ready.</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">Cloud ERP for Indian businesses — GST-compliant, 30+ modules, WhatsApp-connected, and HR-ready.</p>
             </div>
             <div>
               <p className="font-semibold text-xs uppercase tracking-wide mb-4">Products</p>
               <ul className="space-y-2 text-xs text-muted-foreground">
-                {["Production & BOM","Inventory Control","GST Invoicing","Accounting","HR & Payroll","CRM","MIS Analytics","WhatsApp Integration"].map(l => (
+                {["Production & BOM","Inventory Control","GST Invoicing","Accounting","HR & Payroll","CRM","Project Management","Fixed Assets","Multi-warehouse","Approval Workflows","Industry Verticals","WhatsApp Integration"].map(l => (
                   <li key={l}><a href="#modules" className="hover:text-foreground transition-colors">{l}</a></li>
                 ))}
               </ul>

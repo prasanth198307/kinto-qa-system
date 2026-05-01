@@ -122,3 +122,4 @@ psql $DATABASE_URL -f db_scripts/2026-05-01_seed_new_module_role_permissions.sql
 -- Misc patches (can be run standalone if needed):
 -- 2026-04-29_add_cors_origins.sql
 -- 2026-04-30_kinto_branding_cors.sql
+2026-05-01_update_plan_features_taglines.sql

@@ -285,7 +285,7 @@ export default function AuthPage() {
             One platform.<br />Every operation.
           </h2>
           <p className="text-blue-100 text-sm mb-8 leading-relaxed">
-            Built for Indian manufacturers — GST-ready, WhatsApp-connected,<br />fully integrated from shop floor to finance.
+            Built for Indian businesses — GST-ready, WhatsApp-connected,<br />30+ modules from operations to industry verticals.
           </p>
 
           {/* Module chips */}
@@ -297,14 +297,20 @@ export default function AuthPage() {
               "GST Invoicing",
               "Dispatch & Gatepasses",
               "Quality Assurance",
-              "Preventive Maintenance",
+              "Approval Workflows",
               "Double-Entry Accounting",
               "HR & Payroll",
               "Employee Self-Service",
+              "Project Management",
+              "Fixed Assets",
               "CRM",
               "WhatsApp Integration",
-              "MIS & Analytics",
-              "Multi-Tenant SaaS",
+              "Healthcare",
+              "Education",
+              "Logistics",
+              "Real Estate",
+              "Retail / POS",
+              "Agriculture",
             ].map((mod) => (
               <span
                 key={mod}
@@ -319,7 +325,7 @@ export default function AuthPage() {
           {/* Stat strip */}
           <div className="flex items-center gap-8 pt-6 border-t border-white/20">
             {[
-              { value: "25+", label: "Modules" },
+              { value: "30+", label: "Modules" },
               { value: "GST", label: "Compliant" },
               { value: "100%", label: "Web-based" },
             ].map((stat) => (

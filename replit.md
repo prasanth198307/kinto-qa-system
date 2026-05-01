@@ -1,7 +1,7 @@
-# SwachERP — Manufacturing ERP SaaS
+# SwachERP — Industry-Agnostic ERP SaaS
 
 ## Overview
-SwachERP is a comprehensive SaaS ERP platform for Indian manufacturing companies and beyond (industry-agnostic). It covers production, inventory, purchase orders, GST-compliant invoicing, gatepasses, quality assurance, preventive maintenance, double-entry accounting, HR & Payroll, CRM, and an Employee Self-Service (ESS) Portal. Additional enterprise features include: Expense Claims, Timesheets, Performance Appraisals, Recurring Invoices, Multi-location Warehouses & Stock Transfers, UOM Conversions, Serial/Lot Tracking, Project Management (with BOQ, milestones, P&L), Fixed Asset Register & Depreciation, Multi-currency with Exchange Rates, and Configurable Module Labels & Custom Fields. The platform provides MIS analytics, supports multi-tenancy with isolated data spaces, and features two-way WhatsApp integration.
+SwachERP is a comprehensive SaaS ERP platform for Indian businesses across all industries (manufacturing, services, trading, healthcare, education, logistics, real estate, retail, agriculture). It covers production, inventory, purchase orders, GST-compliant invoicing, gatepasses, quality assurance, preventive maintenance, double-entry accounting, HR & Payroll, CRM, and an Employee Self-Service (ESS) Portal. Additional enterprise features include: Expense Claims, Timesheets, Performance Appraisals, Recurring Invoices, Multi-location Warehouses & Stock Transfers, UOM Conversions, Serial/Lot Tracking, Project Management (with BOQ, milestones, P&L), Fixed Asset Register & Depreciation, Multi-currency with Exchange Rates, and Configurable Module Labels & Custom Fields. The platform provides MIS analytics, supports multi-tenancy with isolated data spaces, and features two-way WhatsApp integration.
 
 ### New Modules Added (Generic ERP Phases 1–5 + Industry-Agnostic Gaps)
 - **Phase 1:** Configurable Module Labels (rename any module), Custom Field Definitions (extend any entity) — accessible via Company Settings tabs
@@ -36,6 +36,12 @@ SwachERP is a comprehensive SaaS ERP platform for Indian manufacturing companies
 - **Retail/POS:** `pos_sessions`, `pos_transactions`, `pos_transaction_items` tables; `/pos` page with POS Terminal/Sales History/Sessions tabs; `server/retail-routes.ts` → `/api/pos/*`
 - **Agriculture:** `farms`, `crop_cycles`, `commodity_prices`, `agri_procurement` tables; `/agriculture` page with Crop Cycles/Farms/Procurement/Commodity Prices tabs; `server/agriculture-routes.ts` → `/api/agriculture/*`
 - All 6 vertical modules are gated under `enterprise` plan and registered in `server/plan-features.ts`, `client/src/hooks/use-filtered-navigation.tsx`, and `client/src/App.tsx` with `Industry Verticals` nav section.
+
+### Marketing Pages (Phase 7 — Landing & Pricing)
+- **landing.tsx:** Updated to industry-agnostic messaging — "Built for Indian Businesses", "30+ integrated modules", 6 industry verticals in NAV_PRODUCTS + MODULES grid, Solutions dropdown expanded to 12 industries, all plan features updated, footer extended with new module links.
+- **pricing.tsx:** Plan cards pull from DB (`subscription_plans.features`). DB updated with comprehensive feature lists for Trial/Basic/Professional/Enterprise via `2026-05-01_update_plan_features_taglines.sql`.
+- **auth-page.tsx:** Updated module chips to include industry verticals + new modules, stat "25+" → "30+", description "manufacturers" → "businesses".
+- **company-select.tsx:** Updated description to be industry-agnostic.
 
 ### New Backend Routes
 - `server/warehouse-routes.ts` → `/api/inventory/*` (warehouses, stock-transfers, uom, serial)

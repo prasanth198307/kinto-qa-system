@@ -123,7 +123,7 @@ export default function CompanySelectPage() {
             One Platform. Every Operation.
           </h2>
           <p className="text-lg opacity-80 leading-relaxed">
-            SwachERP brings together production, inventory, quality, finance, and compliance in one unified system built for Indian manufacturers.
+            SwachERP brings together production, inventory, quality, finance, and compliance in one unified system built for Indian businesses across every industry.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm opacity-70 mt-8">
             <div className="bg-primary-foreground/10 rounded-md p-3">GST-compliant invoicing</div>
