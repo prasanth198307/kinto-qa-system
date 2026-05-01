@@ -153,8 +153,8 @@ router.post("/attendance", requireAuth, async (req: any, res) => {
     const { student_id, class_id, attendance_date, status, remarks } = req.body;
     const rows = await db.execute(sql`
       INSERT INTO student_attendance (tenant_id, student_id, class_id, attendance_date, status, remarks)
-      VALUES (${tid(req)}, ${student_id}, ${class_id||null}, ${attendance_date}, ${status||'present'}, ${remarks||null})
-      ON CONFLICT (student_id, attendance_date) DO UPDATE SET status=EXCLUDED.status, remarks=EXCLUDED.remarks
+      VALUES (${Number(tid(req))}, ${student_id}, ${class_id||null}, ${attendance_date}, ${status||'present'}, ${remarks||null})
+      ON CONFLICT (tenant_id, student_id, attendance_date) DO UPDATE SET status=EXCLUDED.status, remarks=EXCLUDED.remarks
       RETURNING *`);
     res.json(rows.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -166,8 +166,8 @@ router.post("/attendance/bulk", requireAuth, async (req: any, res) => {
     for (const r of records) {
       await db.execute(sql`
         INSERT INTO student_attendance (tenant_id, student_id, class_id, attendance_date, status, remarks)
-        VALUES (${tid(req)}, ${r.student_id}, ${class_id||null}, ${attendance_date}, ${r.status||'present'}, ${r.remarks||null})
-        ON CONFLICT (student_id, attendance_date) DO UPDATE SET status=EXCLUDED.status, remarks=EXCLUDED.remarks`);
+        VALUES (${Number(tid(req))}, ${r.student_id}, ${class_id||null}, ${attendance_date}, ${r.status||'present'}, ${r.remarks||null})
+        ON CONFLICT (tenant_id, student_id, attendance_date) DO UPDATE SET status=EXCLUDED.status, remarks=EXCLUDED.remarks`);
     }
     res.json({ success: true, count: records.length });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
