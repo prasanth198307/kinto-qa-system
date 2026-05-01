@@ -59,17 +59,14 @@ export async function planEnforcementMiddleware(req: Request, res: Response, nex
   // Super-admins bypass plan gating entirely
   if (user?.isSuperAdmin) return next();
 
-  // Use session-cached plan; if missing (old sessions), fetch from DB once and cache
-  let tenantPlan: string = (req.session as any).tenantPlan;
-  if (!tenantPlan) {
-    const tenantId: number = (req.session as any).tenantId ?? user?.tenantId ?? 1;
-    try {
-      const rows = await db.select({ plan: tenants.plan }).from(tenants).where(eq(tenants.id, tenantId)).limit(1);
-      tenantPlan = rows[0]?.plan ?? "enterprise";
-      (req.session as any).tenantPlan = tenantPlan;
-    } catch {
-      tenantPlan = "enterprise"; // Fail open — don't block on DB error
-    }
+  // Always fetch plan fresh from DB — never use session cache which can be stale
+  const tenantId: number = (req.session as any).tenantId ?? user?.tenantId ?? 1;
+  let tenantPlan: string = "enterprise";
+  try {
+    const rows = await db.select({ plan: tenants.plan }).from(tenants).where(eq(tenants.id, tenantId)).limit(1);
+    tenantPlan = rows[0]?.plan ?? "enterprise";
+  } catch {
+    tenantPlan = "enterprise"; // Fail open — don't block on DB error
   }
 
   for (const rule of ROUTE_PLAN_REQUIREMENTS) {

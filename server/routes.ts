@@ -679,17 +679,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return;
     }
 
-    // Use session-cached plan; if missing (e.g. old sessions), fetch from DB and cache
-    let tenantPlan: string = (req.session as any).tenantPlan;
-    if (!tenantPlan) {
-      const tenantId: number = (req.session as any).tenantId ?? req.user?.tenantId ?? 1;
-      try {
-        const rows = await db.select({ plan: tenants.plan }).from(tenants).where(eq(tenants.id, tenantId)).limit(1);
-        tenantPlan = rows[0]?.plan ?? 'enterprise';
-        (req.session as any).tenantPlan = tenantPlan;
-      } catch {
-        tenantPlan = 'enterprise';
-      }
+    // Always fetch plan fresh from DB — never use session cache which can be stale
+    const tenantId: number = (req.session as any).tenantId ?? req.user?.tenantId ?? 1;
+    let tenantPlan: string = 'enterprise';
+    try {
+      const rows = await db.select({ plan: tenants.plan }).from(tenants).where(eq(tenants.id, tenantId)).limit(1);
+      tenantPlan = rows[0]?.plan ?? 'enterprise';
+    } catch {
+      tenantPlan = 'enterprise';
     }
 
     // Try to read module list from the DB plan record (DB-driven, so super-admin edits take effect)
@@ -27643,12 +27640,9 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
   // Helper — resolves active module list for a tenant (mirrors plan-features logic)
   async function getTenantModules(tenantId: number, req: any): Promise<string[]> {
     try {
-      let tenantPlan: string = req.session?.tenantPlan;
-      if (!tenantPlan) {
-        const rows = await db.select({ plan: tenants.plan }).from(tenants).where(eq(tenants.id, tenantId)).limit(1);
-        tenantPlan = rows[0]?.plan ?? 'enterprise';
-        if (req.session) req.session.tenantPlan = tenantPlan;
-      }
+      // Always fetch plan fresh from DB — never use session cache which can be stale
+      const rows = await db.select({ plan: tenants.plan }).from(tenants).where(eq(tenants.id, tenantId)).limit(1);
+      let tenantPlan: string = rows[0]?.plan ?? 'enterprise';
       const [planRecord] = await db
         .select({ modules: subscriptionPlans.modules })
         .from(subscriptionPlans)
