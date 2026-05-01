@@ -3,12 +3,30 @@
 ## Overview
 SwachERP is a comprehensive SaaS ERP platform for Indian manufacturing companies and beyond (industry-agnostic). It covers production, inventory, purchase orders, GST-compliant invoicing, gatepasses, quality assurance, preventive maintenance, double-entry accounting, HR & Payroll, CRM, and an Employee Self-Service (ESS) Portal. Additional enterprise features include: Expense Claims, Timesheets, Performance Appraisals, Recurring Invoices, Multi-location Warehouses & Stock Transfers, UOM Conversions, Serial/Lot Tracking, Project Management (with BOQ, milestones, P&L), Fixed Asset Register & Depreciation, Multi-currency with Exchange Rates, and Configurable Module Labels & Custom Fields. The platform provides MIS analytics, supports multi-tenancy with isolated data spaces, and features two-way WhatsApp integration.
 
-### New Modules Added (Generic ERP Phases 1–5)
+### New Modules Added (Generic ERP Phases 1–5 + Industry-Agnostic Gaps)
 - **Phase 1:** Configurable Module Labels (rename any module), Custom Field Definitions (extend any entity) — accessible via Company Settings tabs
 - **Phase 2:** Expense Claims (`/hr/expense-claims`), Recurring Invoice Schedules (`/recurring-invoices`)
 - **Phase 3:** Multi-location Warehouses & Stock Transfers (`/warehouses`), UOM Conversions, Serial/Lot Register
 - **Phase 4:** Project Management with BOQ, Milestones, Timesheets (`/projects`, `/hr/timesheets`)
 - **Phase 5:** Fixed Asset Register + Depreciation (`/fixed-assets`), Performance Appraisal Cycles (`/hr/appraisals`), Multi-currency Management (`/currency-management`)
+
+### Industry-Agnostic Gap Implementations (T001–T016)
+- **T001 Item Master:** `item_type` (goods/service), `reorder_point`, `reorder_qty` in products schema + UI
+- **T002 Proforma Invoice:** `invoice_type`, `currency_code`, `exchange_rate` on invoices; "Convert to Tax Invoice" action
+- **T003 Purchase Requisitions:** `purchase_requisitions` + `purchase_requisition_items` tables; `/purchase-requisitions` page; "Convert to PO" action
+- **T004 GRN + Retention:** `goods_receipt_notes` + `grn_items` tables; `/goods-receipt-notes` page; retention fields on PO
+- **T005 Three-way Matching:** GRN linked to vendor invoices; matching status badge on expense forms
+- **T006 Approval Workflows:** `approval_rules` + `approval_requests` + `approval_actions` tables; approve/reject engine; `/approvals` inbox page
+- **T007 Cost Centres + Payment Terms:** `cost_centres` table; `/cost-centres` page; `cost_centre_id` on expenses/journals; `payment_terms_days` on vendors
+- **T008 Credit Limit + Reorder Alerts:** `credit_limit` + `payment_terms_days` on vendors; credit limit warning in InvoiceForm; Reorder Alerts dashboard widget in AdminDashboardOverview
+- **T009 Module Labels Sidebar:** `useFilteredNavigation` calls `applyModuleLabelsToNav()` from `useModuleLabels` hook
+- **T010 Custom Fields on Forms:** `custom_field_values` DB table; `CustomFieldsSection` component wired into GRN, Invoice, Vendor/Customer, and Employee forms
+- **T011 ESS Expense Claims:** Expense Claims tab in ESS portal; employee can submit and track own claims
+- **T012 Recurring Invoice Cron:** Server cron at 6:00 AM generates overdue recurring invoices automatically
+- **T013 GSTR-1/GSTR-3B Reports:** `/gst-reports` page with B2B summary by GSTIN and monthly aggregate; JSON export for GST portal
+- **T014 Audit Trail:** `audit_logs` table; `/audit-trail` admin page with entity-type filtering and time-range search
+- **T015 Bulk Operations:** Bulk approve/reject expenses; bulk record payment on invoices; bulk cancel POs
+- **T016 Inline Attachments:** Attachment upload directly on invoice, PO, and expense forms using existing upload infrastructure
 
 ### New Backend Routes
 - `server/warehouse-routes.ts` → `/api/inventory/*` (warehouses, stock-transfers, uom, serial)

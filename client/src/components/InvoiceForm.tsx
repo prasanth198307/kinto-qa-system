@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import type { Gatepass, Product, Vendor, GatepassItem, FinishedGood, Bank, Invoice, InvoiceTemplate, TermsConditions, VendorType, VendorVendorType } from "@shared/schema";
 import InvoiceItemRow from "./InvoiceItemRow";
 import InvoiceTaxSummary from "./InvoiceTaxSummary";
+import { CustomFieldsSection } from "@/components/custom-fields-section";
 
 // Type for available stock API response
 interface AvailableStockItem extends FinishedGood {
@@ -83,6 +84,11 @@ const invoiceFormSchema = z.object({
   includeSignature: z.number().optional(),
   signatureType: z.string().optional(), // 'default', 'hpcl', 'alternate'
   
+  // Invoice type and currency
+  invoiceType: z.string().optional(),
+  currencyCode: z.string().optional(),
+  exchangeRate: z.number().optional(),
+
   // Invoice status
   status: z.string().optional(),
   
@@ -290,6 +296,9 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
       upiId: invoice.upiId || "",
       includeSignature: invoice.includeSignature ?? 1,
       signatureType: (invoice as any).signatureType || 'default',
+      invoiceType: (invoice as any).invoiceType || 'tax_invoice',
+      currencyCode: (invoice as any).currencyCode || 'INR',
+      exchangeRate: (invoice as any).exchangeRate ? Number((invoice as any).exchangeRate) : 1,
     } : {
       salesOrderId: "",
       gatepassId: gatepass?.id || "",
@@ -332,6 +341,9 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
       upiId: "",
       includeSignature: 1,
       signatureType: 'default',
+      invoiceType: 'tax_invoice',
+      currencyCode: 'INR',
+      exchangeRate: 1,
     },
   });
 
@@ -508,6 +520,23 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
     enabled: !!selectedVendorId && !invoice, // only for new invoices
   });
   const totalAvailableAdvance = availableAdvancesData?.totalAvailable ?? 0; // in paise
+
+  // Credit limit check
+  const selectedVendor = vendors.find(v => v.id === selectedVendorId);
+  const vendorCreditLimit = selectedVendor ? Number((selectedVendor as any).creditLimit || 0) : 0;
+  const { data: outstandingData } = useQuery<{ totalOutstanding: number }>({
+    queryKey: ['/api/customer-outstanding', selectedVendorId],
+    queryFn: async () => {
+      if (!selectedVendorId) return { totalOutstanding: 0 };
+      const res = await fetch(`/api/customer-outstanding-report?vendorId=${selectedVendorId}`, { credentials: 'include' });
+      if (!res.ok) return { totalOutstanding: 0 };
+      const rows = await res.json();
+      const outstanding = Array.isArray(rows) ? rows.reduce((sum: number, r: any) => sum + Number(r.outstanding_amount || r.outstandingAmount || 0), 0) : 0;
+      return { totalOutstanding: outstanding };
+    },
+    enabled: !!selectedVendorId && vendorCreditLimit > 0,
+  });
+  const creditLimitExceeded = vendorCreditLimit > 0 && (outstandingData?.totalOutstanding ?? 0) > vendorCreditLimit;
 
   // Auto-select default template and terms & conditions on load
   useEffect(() => {
@@ -926,6 +955,9 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
         remarks: data.remarks || null,
         includeSignature: data.includeSignature ?? 1,
         signatureType: data.signatureType || 'default',
+        invoiceType: data.invoiceType || 'tax_invoice',
+        currencyCode: data.currencyCode || 'INR',
+        exchangeRate: data.exchangeRate || 1,
         // Include original invoice ID for reissue tracking
         // In reissue mode, the cancelled invoice's ID is stored as originalInvoiceId on the invoice prop
         originalInvoiceId: isReissueMode ? (invoice?.id || (invoice as any)?.originalInvoiceId) : null,
@@ -1425,19 +1457,63 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
           </div>
         )}
 
-        {/* Invoice Date */}
-        <div>
-          <Label htmlFor="invoiceDate">Invoice Date *</Label>
-          <Input
-            id="invoiceDate"
-            type="date"
-            {...form.register("invoiceDate")}
-            className="h-9 text-sm"
-            data-testid="input-invoice-date"
-          />
-          {form.formState.errors.invoiceDate && (
-            <p className="text-sm text-destructive mt-1">{form.formState.errors.invoiceDate.message}</p>
-          )}
+        {/* Invoice Date + Type + Currency row */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <Label htmlFor="invoiceDate">Invoice Date *</Label>
+            <Input
+              id="invoiceDate"
+              type="date"
+              {...form.register("invoiceDate")}
+              className="h-9 text-sm"
+              data-testid="input-invoice-date"
+            />
+            {form.formState.errors.invoiceDate && (
+              <p className="text-sm text-destructive mt-1">{form.formState.errors.invoiceDate.message}</p>
+            )}
+          </div>
+          <div>
+            <Label>Invoice Type</Label>
+            <Select value={form.watch("invoiceType") || 'tax_invoice'} onValueChange={v => form.setValue("invoiceType", v)}>
+              <SelectTrigger data-testid="select-invoice-type">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="tax_invoice">Tax Invoice</SelectItem>
+                <SelectItem value="proforma">Proforma Invoice</SelectItem>
+                <SelectItem value="credit_note">Credit Note</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Currency</Label>
+            <Select value={form.watch("currencyCode") || 'INR'} onValueChange={v => form.setValue("currencyCode", v)}>
+              <SelectTrigger data-testid="select-currency-code">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="INR">INR – Indian Rupee</SelectItem>
+                <SelectItem value="USD">USD – US Dollar</SelectItem>
+                <SelectItem value="EUR">EUR – Euro</SelectItem>
+                <SelectItem value="GBP">GBP – British Pound</SelectItem>
+                <SelectItem value="AED">AED – UAE Dirham</SelectItem>
+                <SelectItem value="SGD">SGD – Singapore Dollar</SelectItem>
+              </SelectContent>
+            </Select>
+            {form.watch("currencyCode") && form.watch("currencyCode") !== 'INR' && (
+              <div className="mt-1.5">
+                <Label className="text-xs text-muted-foreground">Exchange Rate (1 {form.watch("currencyCode")} = ₹)</Label>
+                <Input
+                  type="number"
+                  step="0.0001"
+                  placeholder="83.5"
+                  value={form.watch("exchangeRate") || ''}
+                  onChange={e => form.setValue("exchangeRate", parseFloat(e.target.value) || 1)}
+                  data-testid="input-exchange-rate"
+                />
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Vendor/Customer Selection */}
@@ -1934,6 +2010,17 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
         </div>
 
 
+        {/* Credit Limit Warning */}
+        {creditLimitExceeded && (
+          <Alert variant="destructive" data-testid="alert-credit-limit">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Credit Limit Exceeded</AlertTitle>
+            <AlertDescription>
+              {selectedVendor?.vendorName} has an outstanding balance of ₹{((outstandingData?.totalOutstanding ?? 0) / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })} which exceeds their credit limit of ₹{(vendorCreditLimit / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}. Please review before creating this invoice.
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Tax Summary */}
         <InvoiceTaxSummary taxes={taxes} isIntrastateSupply={isIntrastateSupply} />
 
@@ -2118,6 +2205,12 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
             data-testid="input-remarks"
           />
         </div>
+
+        {/* Custom Fields */}
+        <CustomFieldsSection
+          entityType="invoice"
+          entityId={invoice?.id ?? null}
+        />
 
         {/* Form Actions */}
         <div className="flex justify-end gap-2 pt-3">

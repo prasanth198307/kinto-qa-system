@@ -18,6 +18,7 @@ import {
   Download, ArrowLeft, TrendingUp, IndianRupee, Users, X, ExternalLink, KeyRound,
   FileSpreadsheet, CheckCircle, AlertCircle
 } from "lucide-react";
+import { CustomFieldsSection } from "@/components/custom-fields-section";
 
 const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
 const DOCUMENT_TYPES = [
@@ -721,6 +722,12 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
           </div>
         </div>
       </TabsContent>
+
+      {/* Custom Fields for employee */}
+      <CustomFieldsSection
+        entityType="employee"
+        entityId={editing?.id ?? null}
+      />
 
       <div className="flex justify-end gap-2 pt-4 border-t mt-4">
         <Button variant="outline" onClick={onCancel}>Cancel</Button>

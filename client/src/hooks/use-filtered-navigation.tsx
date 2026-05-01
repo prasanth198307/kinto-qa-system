@@ -3,6 +3,7 @@ import { usePermissions } from "@/hooks/use-permissions";
 import { useAuth } from "@/hooks/use-auth";
 import { usePlanFeatures } from "@/hooks/use-plan-features";
 import { type NavSection } from "@/components/VerticalNavSidebar";
+import { useModuleLabels } from "@/hooks/use-module-labels";
 
 interface Permission {
   screenKey: string;
@@ -129,6 +130,14 @@ const navItemToScreenKey: Record<string, string> = {
   'projects': 'projects',
   'fixed-assets': 'fixed_assets',
   'currency-management': 'currency_management',
+  // Generic ERP gap features
+  'purchase-requisitions': 'purchase_orders',
+  'goods-receipt-notes': 'purchase_orders',
+  'cost-centres': 'accounting',
+  'gstr-reports': 'accounting',
+  'price-lists': 'basic_inventory',
+  'approval-workflows': 'basic_inventory',
+  'audit-log': 'basic_inventory',
 };
 
 const screenPermissions: Record<string, { admin: boolean; manager: boolean; operator: boolean; reviewer: boolean }> = {
@@ -244,6 +253,14 @@ const navItemToScreen: Record<string, string> = {
   'projects': 'Projects & Assets',
   'fixed-assets': 'Projects & Assets',
   'currency-management': 'Accounting & Ledger',
+  // Generic ERP gap features
+  'purchase-requisitions': 'Purchase Orders',
+  'goods-receipt-notes': 'Purchase Orders',
+  'cost-centres': 'Accounting & Ledger',
+  'gstr-reports': 'Accounting & Ledger',
+  'price-lists': 'Inventory Management',
+  'approval-workflows': 'User Management',
+  'audit-log': 'User Management',
 };
 
 function canAccessNavItemForDefaultRole(itemId: string, role: string): boolean {
@@ -348,6 +365,7 @@ function filterNavSectionsByPlan(sections: NavSection[], allowedNavItems: string
 export function useFilteredNavigation(allNavSections: NavSection[]) {
   const { permissions, role: roleName, roles: allRoles, isLoading: permissionsLoading } = usePermissions();
   const { allowedNavItems, isLoading: planLoading } = usePlanFeatures();
+  const { applyModuleLabelsToNav } = useModuleLabels();
   const lastValidRef = useRef<NavSection[]>([]);
   
   const navSections = useMemo(() => {
@@ -360,19 +378,21 @@ export function useFilteredNavigation(allNavSections: NavSection[]) {
     // Check ALL assigned roles: if ANY is a system role, grant full nav access
     const rolesToCheck = allRoles.length > 0 ? allRoles : (roleName ? [roleName] : []);
     if (rolesToCheck.some(r => SYSTEM_ROLES_FULL_ACCESS.includes(r.toLowerCase()))) {
-      lastValidRef.current = planFiltered;
-      return planFiltered;
+      const labeled = applyModuleLabelsToNav(planFiltered);
+      lastValidRef.current = labeled;
+      return labeled;
     }
 
     if (permissionsLoading || !permissions || permissions.length === 0) {
       return lastValidRef.current;
     }
     const filtered = filterNavSectionsWithDbPermissions(planFiltered, permissions);
-    if (filtered.length > 0) {
-      lastValidRef.current = filtered;
+    const labeled = applyModuleLabelsToNav(filtered);
+    if (labeled.length > 0) {
+      lastValidRef.current = labeled;
     }
-    return filtered.length > 0 ? filtered : lastValidRef.current;
-  }, [allNavSections, permissions, permissionsLoading, roleName, allowedNavItems]);
+    return labeled.length > 0 ? labeled : lastValidRef.current;
+  }, [allNavSections, permissions, permissionsLoading, roleName, allowedNavItems, applyModuleLabelsToNav]);
 
   return { 
     navSections,

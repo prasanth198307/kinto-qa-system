@@ -53,6 +53,7 @@ export default function ExpensesPage() {
     payeeType: 'other',
     purpose: '',
     remarks: '',
+    grnId: '' as string | '',
   });
   const [lineItems, setLineItems] = useState<ExpenseItemForm[]>([
     { description: '', categoryId: '', amount: '', gstAmount: '0', notes: '' }
@@ -66,6 +67,11 @@ export default function ExpensesPage() {
 
   const { data: vouchers = [], isLoading: vouchersLoading } = useQuery<ExpenseVoucher[]>({
     queryKey: ['/api/expense-vouchers'],
+  });
+
+  const { data: grns = [] } = useQuery<any[]>({
+    queryKey: ['/api/generic/grns'],
+    staleTime: 5 * 60 * 1000,
   });
 
   const createMutation = useMutation({
@@ -205,6 +211,8 @@ export default function ExpensesPage() {
     
     createMutation.mutate({
       ...voucherData,
+      grn_id: voucherData.grnId ? parseInt(voucherData.grnId) : null,
+      matching_status: voucherData.grnId ? 'three_way_matched' : 'not_matched',
       subtotal: Math.round(subtotal * 100), // Convert to paise
       gstAmount: Math.round(gstTotal * 100),
       totalAmount: Math.round(totalAmount * 100),
@@ -389,6 +397,27 @@ export default function ExpensesPage() {
                 </div>
               </div>
 
+              {/* Three-way matching: Link to GRN */}
+              <div>
+                <Label htmlFor="grnLink">Link to GRN (Three-way Match)</Label>
+                <Select value={voucherData.grnId} onValueChange={(v) => setVoucherData(prev => ({ ...prev, grnId: v }))}>
+                  <SelectTrigger id="grnLink" data-testid="select-grn-link">
+                    <SelectValue placeholder="Select GRN (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">None</SelectItem>
+                    {grns.map((grn: any) => (
+                      <SelectItem key={grn.id} value={String(grn.id)}>
+                        {grn.grn_number} — {grn.received_date ? format(new Date(grn.received_date), 'dd MMM yyyy') : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {voucherData.grnId && (
+                  <p className="text-xs text-muted-foreground mt-1">Three-way match: PO → GRN → Vendor Invoice</p>
+                )}
+              </div>
+
               <div>
                 <div className="flex justify-between items-center mb-2">
                   <Label>Expense Items</Label>
@@ -555,7 +584,17 @@ export default function ExpensesPage() {
                       <TableCell className="text-right font-medium">
                         <IndianRupee className="h-3 w-3 inline" />{formatAmount(voucher.totalAmount)}
                       </TableCell>
-                      <TableCell>{getStatusBadge(voucher.status)}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-col gap-1">
+                          {getStatusBadge(voucher.status)}
+                          {(voucher as any).matchingStatus === 'three_way_matched' && (
+                            <Badge variant="outline" className="text-xs border-green-500/30 text-green-600 dark:text-green-400">3-Way Matched</Badge>
+                          )}
+                          {(voucher as any).matchingStatus === 'po_matched' && (
+                            <Badge variant="outline" className="text-xs border-blue-500/30 text-blue-600 dark:text-blue-400">PO Matched</Badge>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
                           <Button

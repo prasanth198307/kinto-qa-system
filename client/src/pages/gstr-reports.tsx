@@ -1,0 +1,264 @@
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { FileText, Download } from "lucide-react";
+
+const MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
+
+const YEARS = ["2025-26", "2024-25", "2023-24"];
+
+export default function GSTRReportsPage() {
+  const now = new Date();
+  const [month, setMonth] = useState(String(now.getMonth() + 1).padStart(2, "0"));
+  const [year, setYear] = useState(now.getFullYear().toString());
+
+  const { data: gstr1Data, isLoading: gstr1Loading } = useQuery<any>({
+    queryKey: ["/api/generic/gstr-1", month, year],
+    queryFn: () => fetch(`/api/generic/gstr-1?month=${month}&year=${year}`, { credentials: "include" }).then(r => r.json()),
+    staleTime: 60 * 1000,
+  });
+
+  const { data: gstr3bData, isLoading: gstr3bLoading } = useQuery<any>({
+    queryKey: ["/api/generic/gstr-3b", month, year],
+    queryFn: () => fetch(`/api/generic/gstr-3b?month=${month}&year=${year}`, { credentials: "include" }).then(r => r.json()),
+    staleTime: 60 * 1000,
+  });
+
+  function downloadJSON(data: any, filename: string) {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  const b2b = gstr1Data?.b2b || [];
+  const b2c = gstr1Data?.b2c || [];
+  const sup_details = gstr3bData?.sup_details || {};
+  const itc_elg = gstr3bData?.itc_elg || {};
+
+  return (
+    <div className="p-4 sm:p-6 space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <FileText className="h-5 w-5 text-muted-foreground" />
+          <h1 className="text-xl font-semibold" data-testid="text-page-title">GST Returns</h1>
+        </div>
+      </div>
+
+      {/* Period selector */}
+      <Card>
+        <CardContent className="pt-4">
+          <div className="flex flex-wrap gap-4 items-end">
+            <div className="space-y-1.5">
+              <Label>Month</Label>
+              <Select value={month} onValueChange={setMonth}>
+                <SelectTrigger className="w-40" data-testid="select-month"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {MONTHS.map((m, i) => (
+                    <SelectItem key={i} value={String(i + 1).padStart(2, "0")}>{m}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Year</Label>
+              <Select value={year} onValueChange={setYear}>
+                <SelectTrigger className="w-32" data-testid="select-year"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 5 }, (_, i) => now.getFullYear() - i).map(y => (
+                    <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Tabs defaultValue="gstr1">
+        <TabsList>
+          <TabsTrigger value="gstr1" data-testid="tab-gstr1">GSTR-1 (Sales)</TabsTrigger>
+          <TabsTrigger value="gstr3b" data-testid="tab-gstr3b">GSTR-3B (Summary)</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="gstr1" className="mt-4 space-y-4">
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={() => downloadJSON(gstr1Data, `GSTR1_${month}_${year}.json`)} disabled={!gstr1Data} data-testid="button-download-gstr1">
+              <Download className="h-4 w-4 mr-1" /> Export JSON
+            </Button>
+          </div>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">B2B — Registered Business Invoices</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              {gstr1Loading ? (
+                <div className="p-6 text-center text-muted-foreground">Loading...</div>
+              ) : b2b.length === 0 ? (
+                <div className="p-6 text-center text-muted-foreground text-sm">No B2B invoices for selected period</div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>GSTIN</TableHead>
+                      <TableHead>Buyer Name</TableHead>
+                      <TableHead>Invoice No.</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead className="text-right">Taxable Value</TableHead>
+                      <TableHead className="text-right">IGST</TableHead>
+                      <TableHead className="text-right">CGST</TableHead>
+                      <TableHead className="text-right">SGST</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {b2b.map((inv: any, i: number) => (
+                      <TableRow key={i} data-testid={`row-b2b-${i}`}>
+                        <TableCell className="font-mono text-xs">{inv.buyer_gstin || "—"}</TableCell>
+                        <TableCell>{inv.buyer_name}</TableCell>
+                        <TableCell className="font-mono text-sm">{inv.invoice_number}</TableCell>
+                        <TableCell>{inv.invoice_date ? new Date(inv.invoice_date).toLocaleDateString() : "—"}</TableCell>
+                        <TableCell className="text-right">₹{Number(inv.taxable_value || inv.subtotal || 0).toLocaleString("en-IN")}</TableCell>
+                        <TableCell className="text-right">₹{Number(inv.igst || 0).toLocaleString("en-IN")}</TableCell>
+                        <TableCell className="text-right">₹{Number(inv.cgst || 0).toLocaleString("en-IN")}</TableCell>
+                        <TableCell className="text-right">₹{Number(inv.sgst || 0).toLocaleString("en-IN")}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">B2C — Consumer Invoices</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              {b2c.length === 0 ? (
+                <div className="p-6 text-center text-muted-foreground text-sm">No B2C invoices for selected period</div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Invoice No.</TableHead>
+                      <TableHead>Buyer Name</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead className="text-right">Taxable Value</TableHead>
+                      <TableHead className="text-right">Total Tax</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {b2c.map((inv: any, i: number) => (
+                      <TableRow key={i} data-testid={`row-b2c-${i}`}>
+                        <TableCell className="font-mono text-sm">{inv.invoice_number}</TableCell>
+                        <TableCell>{inv.buyer_name}</TableCell>
+                        <TableCell>{inv.invoice_date ? new Date(inv.invoice_date).toLocaleDateString() : "—"}</TableCell>
+                        <TableCell className="text-right">₹{Number(inv.subtotal || 0).toLocaleString("en-IN")}</TableCell>
+                        <TableCell className="text-right">₹{Number(inv.tax_amount || 0).toLocaleString("en-IN")}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="gstr3b" className="mt-4 space-y-4">
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={() => downloadJSON(gstr3bData, `GSTR3B_${month}_${year}.json`)} disabled={!gstr3bData} data-testid="button-download-gstr3b">
+              <Download className="h-4 w-4 mr-1" /> Export JSON
+            </Button>
+          </div>
+
+          {gstr3bLoading ? (
+            <div className="p-8 text-center text-muted-foreground">Loading...</div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">3.1 — Outward Supplies</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm">
+                  <div className="flex justify-between py-1 border-b">
+                    <span className="text-muted-foreground">Total Taxable Value</span>
+                    <span className="font-medium">₹{Number(sup_details.taxable_value || 0).toLocaleString("en-IN")}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b">
+                    <span className="text-muted-foreground">IGST</span>
+                    <span className="font-medium">₹{Number(sup_details.igst || 0).toLocaleString("en-IN")}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b">
+                    <span className="text-muted-foreground">CGST</span>
+                    <span className="font-medium">₹{Number(sup_details.cgst || 0).toLocaleString("en-IN")}</span>
+                  </div>
+                  <div className="flex justify-between py-1">
+                    <span className="text-muted-foreground">SGST</span>
+                    <span className="font-medium">₹{Number(sup_details.sgst || 0).toLocaleString("en-IN")}</span>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">4 — Eligible ITC</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm">
+                  <div className="flex justify-between py-1 border-b">
+                    <span className="text-muted-foreground">ITC on Inputs</span>
+                    <span className="font-medium">₹{Number(itc_elg.inputs || 0).toLocaleString("en-IN")}</span>
+                  </div>
+                  <div className="flex justify-between py-1">
+                    <span className="text-muted-foreground">ITC on Capital Goods</span>
+                    <span className="font-medium">₹{Number(itc_elg.capital_goods || 0).toLocaleString("en-IN")}</span>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {gstr3bData?.tax_rate_summary && (
+                <Card className="md:col-span-2">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Tax Rate-wise Summary</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Tax Rate</TableHead>
+                          <TableHead className="text-right">Taxable Value</TableHead>
+                          <TableHead className="text-right">Total Tax</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {gstr3bData.tax_rate_summary.map((row: any, i: number) => (
+                          <TableRow key={i} data-testid={`row-tax-rate-${i}`}>
+                            <TableCell><Badge variant="secondary">{row.tax_rate}%</Badge></TableCell>
+                            <TableCell className="text-right">₹{Number(row.taxable_value || 0).toLocaleString("en-IN")}</TableCell>
+                            <TableCell className="text-right">₹{Number(row.tax_amount || 0).toLocaleString("en-IN")}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}

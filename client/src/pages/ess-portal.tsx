@@ -17,7 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   FileText, Calendar, Clock, Shield, User, LogOut,
   IndianRupee, Printer, CheckCircle2, XCircle, ChevronRight,
-  Home, Lock, AlertCircle, Download, Info
+  Home, Lock, AlertCircle, Download, Info, Receipt, Plus, Trash2
 } from "lucide-react";
 
 const MONTH_NAMES = ["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -421,6 +421,121 @@ function EssDeclarationTab({ employee }: { employee: any }) {
   );
 }
 
+// ── ESS Expense Claims Tab ────────────────────────────────────────────────────
+function EssExpensesTab({ employee }: { employee: any }) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ title: "", category: "", amount: "", expense_date: new Date().toISOString().split("T")[0], notes: "" });
+
+  const { data: claims = [], isLoading } = useQuery<any[]>({
+    queryKey: ["ess-expense-claims"],
+    queryFn: () => essFetch("/expense-claims"),
+  });
+
+  const submitMutation = useMutation({
+    mutationFn: () => essFetch("/expense-claims", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...form, amount: Number(form.amount) }),
+    }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["ess-expense-claims"] });
+      toast({ title: "Expense claim submitted" });
+      setOpen(false);
+      setForm({ title: "", category: "", amount: "", expense_date: new Date().toISOString().split("T")[0], notes: "" });
+    },
+    onError: () => toast({ title: "Failed to submit", variant: "destructive" }),
+  });
+
+  const STATUS_COLOR: Record<string, any> = { draft: "secondary", submitted: "default", approved: "default", rejected: "destructive", paid: "default" };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-semibold">My Expense Claims</h2>
+        <Button size="sm" onClick={() => setOpen(true)} data-testid="button-new-claim">
+          <Plus className="h-3.5 w-3.5 mr-1" /> New Claim
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <div className="p-8 text-center text-muted-foreground">Loading...</div>
+      ) : (claims as any[]).length === 0 ? (
+        <div className="p-8 text-center text-muted-foreground">
+          <Receipt className="h-8 w-8 mx-auto mb-2" />
+          <p>No expense claims yet</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {(claims as any[]).map((claim: any) => (
+            <Card key={claim.id} data-testid={`card-claim-${claim.id}`}>
+              <CardContent className="py-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="font-medium text-sm">{claim.title}</p>
+                    <p className="text-xs text-muted-foreground">{claim.category} · {claim.expense_date ? new Date(claim.expense_date).toLocaleDateString() : "—"}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-sm">₹{Number(claim.amount || 0).toLocaleString("en-IN")}</span>
+                    <Badge variant={STATUS_COLOR[claim.status] || "secondary"}>{claim.status}</Badge>
+                  </div>
+                </div>
+                {claim.notes && <p className="text-xs text-muted-foreground mt-1">{claim.notes}</p>}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-md max-h-[90dvh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Submit Expense Claim</DialogTitle></DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-1.5">
+              <Label>Title</Label>
+              <input className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm" data-testid="input-title" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Client meeting travel" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Category</Label>
+                <select className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm" data-testid="select-category" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
+                  <option value="">Select...</option>
+                  <option value="Travel">Travel</option>
+                  <option value="Accommodation">Accommodation</option>
+                  <option value="Meals">Meals</option>
+                  <option value="Office Supplies">Office Supplies</option>
+                  <option value="Communication">Communication</option>
+                  <option value="Training">Training</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Amount (₹)</Label>
+                <input className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm" type="number" min={0} data-testid="input-amount" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} placeholder="0.00" />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Expense Date</Label>
+              <input className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm" type="date" data-testid="input-expense-date" value={form.expense_date} onChange={e => setForm(f => ({ ...f, expense_date: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Notes</Label>
+              <textarea className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm min-h-[80px]" data-testid="input-notes" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Additional details" />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button onClick={() => submitMutation.mutate()} disabled={submitMutation.isPending || !form.title || !form.amount || !form.category} data-testid="button-submit-claim">
+                {submitMutation.isPending ? "Submitting..." : "Submit Claim"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
 // ── Change Password Dialog ────────────────────────────────────────────────────
 function ChangePasswordDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { toast } = useToast();
@@ -556,6 +671,7 @@ export default function EssPortal() {
     { id: "attendance",  label: "Attendance",       icon: Calendar,     types: ["permanent", "consultant", "contract", "intern"] },
     { id: "leaves",      label: "Leave",            icon: Clock,        types: ["permanent", "intern"] },
     { id: "declaration", label: "Tax Declaration",  icon: Shield,       types: ["permanent", "consultant", "contract", "intern"] },
+    { id: "expenses",    label: "Expense Claims",   icon: Receipt,      types: ["permanent", "consultant", "contract", "intern"] },
     { id: "profile",     label: "My Profile",       icon: User,         types: ["permanent", "consultant", "contract", "intern"] },
   ];
 
@@ -892,6 +1008,9 @@ export default function EssPortal() {
 
         {/* ── DECLARATION ── */}
         {tab === "declaration" && <EssDeclarationTab employee={me} />}
+
+        {/* ── EXPENSE CLAIMS ── */}
+        {tab === "expenses" && <EssExpensesTab employee={me} />}
 
         {/* ── PROFILE ── */}
         {tab === "profile" && (

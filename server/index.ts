@@ -568,6 +568,37 @@ app.use((req, res, next) => {
     console.error('[SUBSCRIPTION EXPIRY CRON SETUP ERROR]', err);
   }
 
+  // ─── Recurring Invoice auto-generate cron (6:00 AM daily) ──────────────────
+  try {
+    const recurCron = (await import('node-cron')).default;
+    recurCron.schedule('0 6 * * *', async () => {
+      try {
+        const { db: cronDb } = await import('./db');
+        const { sql: cronSql } = await import('drizzle-orm');
+        const today = new Date().toISOString().split('T')[0];
+        const due = await cronDb.execute(cronSql`SELECT * FROM recurring_invoice_schedules WHERE next_due <= ${today} AND status='active' AND record_status=1`);
+        for (const sched of due.rows as any[]) {
+          try {
+            const nextDue = new Date(sched.next_due);
+            const freq = sched.frequency;
+            if (freq === 'monthly') nextDue.setMonth(nextDue.getMonth() + 1);
+            else if (freq === 'quarterly') nextDue.setMonth(nextDue.getMonth() + 3);
+            else if (freq === 'weekly') nextDue.setDate(nextDue.getDate() + 7);
+            else if (freq === 'yearly') nextDue.setFullYear(nextDue.getFullYear() + 1);
+            const invNum = `INV-REC-${Date.now()}`;
+            await cronDb.execute(cronSql`INSERT INTO invoices (tenant_id,invoice_number,invoice_date,buyer_name,subtotal,tax_amount,total_amount,status,invoice_type)
+              VALUES (${sched.tenant_id},${invNum},${today},${sched.customer_name||''},${sched.amount},0,${sched.amount},'draft','tax_invoice')`);
+            await cronDb.execute(cronSql`UPDATE recurring_invoice_schedules SET next_due=${nextDue.toISOString().split('T')[0]},last_generated=${today} WHERE id=${sched.id}`);
+          } catch (e) { console.error('[RECUR INVOICE CRON] Row error', e); }
+        }
+        if (due.rows.length > 0) log(`[RECUR INVOICE CRON] Generated ${due.rows.length} invoices`);
+      } catch (e) { console.error('[RECUR INVOICE CRON ERROR]', e); }
+    });
+    log('✅ Recurring invoice cron initialized (runs at 6:00 AM)');
+  } catch (err) {
+    console.error('[RECUR INVOICE CRON SETUP ERROR]', err);
+  }
+
   const port = parseInt(process.env.PORT || "5000", 10);
   server.listen(port, "0.0.0.0", () => {
     log(`🚀 Server running on port ${port}`);

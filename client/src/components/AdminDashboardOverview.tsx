@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Users, Settings, ClipboardCheck, Wrench, AlertTriangle,
   CheckCircle2, Clock, Plus, ArrowRight, UserCheck,
-  CalendarCheck, CreditCard, FileText, BarChart2,
+  CalendarCheck, CreditCard, FileText, BarChart2, ShoppingCart, Package,
 } from "lucide-react";
 import type { User, Machine, ChecklistTemplate, SparePartCatalog, MaintenancePlan } from "@shared/schema";
 
@@ -70,6 +70,12 @@ export default function AdminDashboardOverview({ onNavigateToTab }: AdminDashboa
   const { data: payrollData } = useQuery<{ draftCount: number }>({
     queryKey: ['/api/hr/payroll/draft-count'],
     enabled: hasHR,
+  });
+
+  const { data: reorderAlerts = [] } = useQuery<any[]>({
+    queryKey: ['/api/generic/reorder-alerts'],
+    enabled: hasInventory,
+    staleTime: 5 * 60 * 1000,
   });
 
   const activeUsers      = users.filter(u => u.role).length;
@@ -160,6 +166,19 @@ export default function AdminDashboardOverview({ onNavigateToTab }: AdminDashboa
         color: "text-orange-600",
         bgColor: "bg-orange-100",
         testId: "stat-low-stock-alerts",
+        always: false,
+      },
+    ] : []),
+    ...(hasInventory ? [
+      {
+        title: "Reorder Alerts",
+        value: reorderAlerts.length,
+        subtitle: reorderAlerts.length > 0 ? "Items below reorder point" : "All stock levels OK",
+        icon: ShoppingCart,
+        color: reorderAlerts.length > 0 ? "text-red-600" : "text-green-600",
+        bgColor: reorderAlerts.length > 0 ? "bg-red-100" : "bg-green-100",
+        testId: "stat-reorder-alerts",
+        action: "inventory",
         always: false,
       },
     ] : []),
@@ -292,6 +311,58 @@ export default function AdminDashboardOverview({ onNavigateToTab }: AdminDashboa
           );
         })}
       </div>
+
+      {/* Reorder Alerts Panel */}
+      {hasInventory && reorderAlerts.length > 0 && (
+        <Card data-testid="card-reorder-alerts">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ShoppingCart className="h-5 w-5 text-red-500" />
+              Reorder Alerts
+              <span className="ml-2 text-xs font-normal bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
+                {reorderAlerts.length} item{reorderAlerts.length !== 1 ? 's' : ''}
+              </span>
+            </CardTitle>
+            <CardDescription>Items whose current stock has dropped to or below the reorder point</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Item</th>
+                    <th className="text-left py-2 pr-4 font-medium text-muted-foreground">SKU</th>
+                    <th className="text-right py-2 pr-4 font-medium text-muted-foreground">Current Stock</th>
+                    <th className="text-right py-2 pr-4 font-medium text-muted-foreground">Reorder Point</th>
+                    <th className="text-right py-2 font-medium text-muted-foreground">Reorder Qty</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {reorderAlerts.map((item: any, i: number) => (
+                    <tr key={item.id} className={i % 2 === 0 ? 'bg-muted/30' : ''} data-testid={`row-reorder-${item.id}`}>
+                      <td className="py-2 pr-4 font-medium">{item.name}</td>
+                      <td className="py-2 pr-4 text-muted-foreground">{item.sku || '-'}</td>
+                      <td className="py-2 pr-4 text-right text-red-600 font-semibold">{Number(item.current_stock || 0).toFixed(2)}</td>
+                      <td className="py-2 pr-4 text-right">{Number(item.reorder_point || 0).toFixed(2)}</td>
+                      <td className="py-2 text-right text-blue-600 font-medium">{Number(item.reorder_qty || 0).toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="mt-3 pt-3 border-t">
+              <button
+                className="text-sm text-primary hover:underline flex items-center gap-1"
+                onClick={() => onNavigateToTab('inventory')}
+                data-testid="link-view-inventory"
+              >
+                <Package className="h-4 w-4" />
+                View Inventory &rarr;
+              </button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Quick Actions */}
       <Card>

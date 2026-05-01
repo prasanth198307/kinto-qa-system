@@ -1184,6 +1184,8 @@ function ProductDialog({
       hsnCode: '',
       sacCode: '',
       taxType: '',
+      itemType: 'goods',
+      reorderQty: undefined,
       minimumStockLevel: undefined,
       isActive: 'true',
       bomItems: [],
@@ -1236,6 +1238,8 @@ function ProductDialog({
           hsnCode: item.hsnCode || '',
           sacCode: item.sacCode || '',
           taxType: item.taxType || '',
+          itemType: (item as any).itemType || 'goods',
+          reorderQty: (item as any).reorderQty || undefined,
           minimumStockLevel: item.minimumStockLevel || undefined,
           isActive: item.isActive || 'true',
           bomItems: [], // Initialize empty BOM array - will be hydrated by separate effect
@@ -1904,10 +1908,34 @@ function ProductDialog({
                   />
                   <FormField
                     control={form.control}
+                    name="itemType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Item Type</FormLabel>
+                        <Select value={field.value || 'goods'} onValueChange={field.onChange}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-item-type">
+                              <SelectValue placeholder="Select type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="goods">Goods</SelectItem>
+                            <SelectItem value="service">Service</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
                     name="minimumStockLevel"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Minimum Stock Level</FormLabel>
+                        <FormLabel>Reorder Point (Min Stock)</FormLabel>
                         <FormControl>
                           <Input 
                             type="number" 
@@ -1917,6 +1945,27 @@ function ProductDialog({
                             value={field.value || ''} 
                             onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
                             data-testid="input-min-stock"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="reorderQty"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Reorder Quantity</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            step="0.01"
+                            placeholder="500" 
+                            {...field} 
+                            value={field.value || ''} 
+                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                            data-testid="input-reorder-qty"
                           />
                         </FormControl>
                         <FormMessage />

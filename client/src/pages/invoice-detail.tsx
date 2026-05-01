@@ -280,6 +280,19 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
     }
   });
 
+  // Convert Proforma to Tax Invoice
+  const convertToTaxInvoiceMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('PATCH', `/api/invoices/${id}`, { invoice_type: 'tax_invoice' });
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Converted", description: "Proforma converted to Tax Invoice." });
+      queryClient.invalidateQueries({ queryKey: ['/api/invoices', id] });
+    },
+    onError: (error: any) => toast({ title: "Error", description: error.message, variant: "destructive" }),
+  });
+
   // Cancel & Reissue mutation - MUST be before early returns to avoid hooks ordering violation
   const cancelAndReissueMutation = useMutation({
     mutationFn: async () => {
@@ -740,6 +753,19 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
                 Email
               </Button>
             </>
+          )}
+          {/* Convert Proforma to Tax Invoice */}
+          {(invoice as any).invoiceType === 'proforma' && invoice.status !== 'cancelled' && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => convertToTaxInvoiceMutation.mutate()}
+              disabled={convertToTaxInvoiceMutation.isPending}
+              data-testid="button-convert-to-tax-invoice"
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              {convertToTaxInvoiceMutation.isPending ? 'Converting...' : 'Convert to Tax Invoice'}
+            </Button>
           )}
           {/* Print is always available, even for cancelled invoices */}
           <PrintableInvoice invoice={invoice} />

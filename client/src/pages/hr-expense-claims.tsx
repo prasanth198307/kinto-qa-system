@@ -4,6 +4,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2, CheckCircle, XCircle, Wallet, Receipt, ChevronDown, ChevronUp } from "lucide-react";
+import { InlineAttachments } from "@/components/inline-attachments";
 
 const EXPENSE_CATEGORIES = ["Travel", "Accommodation", "Meals", "Fuel", "Communication", "Office Supplies", "Medical", "Training", "Client Entertainment", "Other"];
 
@@ -141,6 +143,7 @@ function ClaimCard({ claim, items, onAction }: any) {
             </table>
             {claim.notes && <p className="text-xs text-muted-foreground">Note: {claim.notes}</p>}
             {claim.rejection_reason && <p className="text-xs text-destructive">Rejection reason: {claim.rejection_reason}</p>}
+            <InlineAttachments entityType="expense_claim" entityId={claim.id} label="Receipts & Documents" />
             {claim.status === "pending" && (
               <div className="flex gap-2 mt-2">
                 <Button size="sm" onClick={() => onAction(claim.id, "approved")} data-testid={`button-approve-${claim.id}`}>
@@ -167,6 +170,7 @@ export default function HRExpenseClaimsPage() {
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
+  const [selected, setSelected] = useState<Set<number>>(new Set());
 
   const { data, isLoading } = useQuery<any>({ queryKey: ["/api/hr/expense-claims"] });
   const { data: employees = [] } = useQuery<any[]>({ queryKey: ["/api/hr/employees"] });
@@ -177,10 +181,31 @@ export default function HRExpenseClaimsPage() {
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
+  const bulkApproveMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/generic/bulk/expenses/approve", { ids: Array.from(selected) }),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/hr/expense-claims"] });
+      toast({ title: `${data.updated || selected.size} claim(s) approved` });
+      setSelected(new Set());
+    },
+    onError: () => toast({ title: "Bulk approve failed", variant: "destructive" }),
+  });
+
+  const bulkRejectMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/generic/bulk/expenses/reject", { ids: Array.from(selected) }),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/hr/expense-claims"] });
+      toast({ title: `${data.updated || selected.size} claim(s) rejected` });
+      setSelected(new Set());
+    },
+    onError: () => toast({ title: "Bulk reject failed", variant: "destructive" }),
+  });
+
   const claims: any[] = data?.claims || [];
   const items: any[] = data?.items || [];
 
   const filteredClaims = activeTab === "all" ? claims : claims.filter(c => c.status === activeTab);
+  const pendingInView = filteredClaims.filter(c => c.status === "pending");
 
   const stats = {
     pending: claims.filter(c => c.status === "pending").length,
@@ -196,9 +221,21 @@ export default function HRExpenseClaimsPage() {
           <h1 className="text-xl font-semibold">Expense Claims</h1>
           <p className="text-sm text-muted-foreground">Manage employee expense reimbursements</p>
         </div>
-        <Button onClick={() => setDialogOpen(true)} data-testid="button-new-claim">
-          <Plus className="w-4 h-4 mr-1" />New Claim
-        </Button>
+        <div className="flex items-center gap-2 flex-wrap">
+          {selected.size > 0 && (
+            <>
+              <Button variant="outline" size="sm" onClick={() => bulkApproveMutation.mutate()} disabled={bulkApproveMutation.isPending} data-testid="button-bulk-approve">
+                <CheckCircle className="w-4 h-4 mr-1" /> Approve {selected.size}
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => bulkRejectMutation.mutate()} disabled={bulkRejectMutation.isPending} data-testid="button-bulk-reject">
+                <XCircle className="w-4 h-4 mr-1" /> Reject {selected.size}
+              </Button>
+            </>
+          )}
+          <Button onClick={() => setDialogOpen(true)} data-testid="button-new-claim">
+            <Plus className="w-4 h-4 mr-1" />New Claim
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -227,6 +264,19 @@ export default function HRExpenseClaimsPage() {
           <TabsTrigger value="rejected" data-testid="tab-rejected">Rejected</TabsTrigger>
         </TabsList>
         <TabsContent value={activeTab} className="space-y-3 mt-3">
+          {pendingInView.length > 0 && (
+            <div className="flex items-center gap-2 pb-1">
+              <Checkbox
+                checked={pendingInView.every(c => selected.has(c.id))}
+                onCheckedChange={(v) => {
+                  if (v) setSelected(prev => new Set([...prev, ...pendingInView.map(c => c.id)]));
+                  else setSelected(prev => { const next = new Set(prev); pendingInView.forEach(c => next.delete(c.id)); return next; });
+                }}
+                data-testid="checkbox-select-all-pending"
+              />
+              <span className="text-sm text-muted-foreground">Select all pending</span>
+            </div>
+          )}
           {isLoading ? (
             <div className="text-center py-10 text-muted-foreground">Loading...</div>
           ) : filteredClaims.length === 0 ? (
@@ -236,8 +286,24 @@ export default function HRExpenseClaimsPage() {
             </div>
           ) : (
             filteredClaims.map(claim => (
-              <ClaimCard key={claim.id} claim={claim} items={items}
-                onAction={(id: number, action: string) => actionMutation.mutate({ id, action })} />
+              <div key={claim.id} className="flex items-start gap-2">
+                {claim.status === "pending" && (
+                  <Checkbox
+                    className="mt-4"
+                    checked={selected.has(claim.id)}
+                    onCheckedChange={() => setSelected(prev => {
+                      const next = new Set(prev);
+                      if (next.has(claim.id)) next.delete(claim.id); else next.add(claim.id);
+                      return next;
+                    })}
+                    data-testid={`checkbox-claim-${claim.id}`}
+                  />
+                )}
+                <div className={claim.status === "pending" ? "flex-1" : "w-full"}>
+                  <ClaimCard claim={claim} items={items}
+                    onAction={(id: number, action: string) => actionMutation.mutate({ id, action })} />
+                </div>
+              </div>
             ))
           )}
         </TabsContent>

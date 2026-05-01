@@ -960,7 +960,10 @@ export const products = pgTable("products", {
   sacCode: varchar("sac_code", { length: 50 }),
   taxType: varchar("tax_type", { length: 50 }),
   minimumStockLevel: numeric("minimum_stock_level", { precision: 10, scale: 2 }),
-  
+  itemType: text("item_type").default('goods'), // 'goods' | 'service'
+  reorderPoint: numeric("reorder_point", { precision: 15, scale: 3 }).default('0'),
+  reorderQty: numeric("reorder_qty", { precision: 15, scale: 3 }).default('0'),
+
   // Legacy fields (kept for backward compatibility)
   uomId: varchar("uom_id").references(() => uom.id),
   standardCost: integer("standard_cost"),
@@ -1111,6 +1114,8 @@ export const vendors = pgTable("vendors", {
   shipToState: varchar("ship_to_state", { length: 100 }),
   shipToPincode: varchar("ship_to_pincode", { length: 20 }),
   shipToGstin: varchar("ship_to_gstin", { length: 20 }),
+  creditLimit: numeric("credit_limit", { precision: 15, scale: 2 }).default('0'),
+  paymentTermsDays: integer("payment_terms_days").default(30),
   recordStatus: integer("record_status").default(1).notNull(),
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),

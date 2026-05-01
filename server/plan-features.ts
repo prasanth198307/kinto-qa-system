@@ -30,6 +30,8 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
     "vendors",
     "vendor-types",
     "vendor-debit-notes",
+    "purchase-requisitions",
+    "goods-receipt-notes",
   ],
   basic_inventory: [
     "products",
@@ -50,6 +52,11 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
     "spare-parts",
     "spare-parts-stock",
     "company-settings",
+    "price-lists",
+    "approval-workflows",
+    "audit-log",
+    "cost-centres",
+    "gstr-reports",
   ],
   api_hub: [
     "api-keys",

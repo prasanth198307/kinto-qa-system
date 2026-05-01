@@ -365,17 +365,20 @@ router.get("/expense-claims", requireESS, async (req: any, res) => {
 router.post("/expense-claims", requireESS, async (req: any, res) => {
   const tid = getEssTenantId(req);
   const eid = getEssEmployeeId(req);
-  const { title, claimDate, items: claimItems, notes } = req.body;
-  if (!title || !claimDate) return res.status(400).json({ message: "Title and claim date are required" });
-  const total = (claimItems || []).reduce((s: number, i: any) => s + Number(i.amount || 0), 0);
+  const { title, claimDate, expense_date, category, amount, items: claimItems, notes } = req.body;
+  if (!title) return res.status(400).json({ message: "Title is required" });
+  const actualDate = claimDate || expense_date || new Date().toISOString().split("T")[0];
+  // Support simple single-item format from ESS portal
+  const resolvedItems = claimItems || (category ? [{ category, amount: amount || 0, expenseDate: expense_date }] : []);
+  const total = resolvedItems.reduce((s: number, i: any) => s + Number(i.amount || 0), 0) || Number(amount || 0);
   const claim = await db.execute(sql`INSERT INTO hr_expense_claims
     (tenant_id, employee_id, title, claim_date, total_amount, notes, status)
-    VALUES (${tid}, ${eid}, ${title}, ${claimDate}, ${total}, ${notes||null}, 'pending') RETURNING *`);
+    VALUES (${tid}, ${eid}, ${title}, ${actualDate}, ${total}, ${notes||null}, 'pending') RETURNING *`);
   const claimId = (claim.rows[0] as any).id;
-  for (const it of claimItems || []) {
+  for (const it of resolvedItems) {
     await db.execute(sql`INSERT INTO hr_expense_claim_items
       (tenant_id, claim_id, category, description, amount, receipt_url, expense_date)
-      VALUES (${tid}, ${claimId}, ${it.category}, ${it.description||null}, ${it.amount}, ${it.receiptUrl||null}, ${it.expenseDate||null})`);
+      VALUES (${tid}, ${claimId}, ${it.category||category||null}, ${it.description||null}, ${it.amount||amount||0}, ${it.receiptUrl||null}, ${it.expenseDate||expense_date||null})`);
   }
   res.json(claim.rows[0]);
 });

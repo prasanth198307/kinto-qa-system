@@ -167,6 +167,13 @@ import TimesheetsPage from "@/pages/timesheets";
 import FixedAssetsPage from "@/pages/fixed-assets";
 import PerformanceAppraisalPage from "@/pages/performance-appraisal";
 import CurrencyManagementPage from "@/pages/currency-management";
+import CostCentresPage from "@/pages/cost-centres";
+import PurchaseRequisitionsPage from "@/pages/purchase-requisitions";
+import ApprovalWorkflowsPage from "@/pages/approval-workflows";
+import GoodsReceiptNotesPage from "@/pages/goods-receipt-notes";
+import PriceListsPage from "@/pages/price-lists";
+import GSTRReportsPage from "@/pages/gstr-reports";
+import AuditLogPage from "@/pages/audit-log";
 import { parseISO } from "date-fns";
 
 type Role = 'admin' | 'operator' | 'reviewer' | 'manager';
@@ -2076,6 +2083,8 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       items: [
         { id: "purchase-orders", label: "Purchase Orders", icon: ShoppingCart, onClick: () => setLocation('/?tab=purchase-orders') },
         { id: "purchase-returns", label: "Purchase Returns", icon: PackageX, onClick: () => setLocation('/purchase-returns') },
+        { id: "purchase-requisitions", label: "Purchase Requisitions", icon: ClipboardList, onClick: () => setLocation('/purchase-requisitions') },
+        { id: "goods-receipt-notes", label: "Goods Receipt Notes", icon: Package, onClick: () => setLocation('/goods-receipt-notes') },
       ],
     },
     {
@@ -2114,6 +2123,8 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "budget-variance", label: "Budget & Variance", icon: Scale, onClick: () => setLocation('/budget-variance') },
         { id: "tds-management", label: "TDS Management", icon: Calculator, onClick: () => setLocation('/tds-management') },
         { id: "currency-management", label: "Multi-currency", icon: IndianRupee, onClick: () => setLocation('/currency-management') },
+        { id: "cost-centres", label: "Cost Centres", icon: Building2, onClick: () => setLocation('/cost-centres') },
+        { id: "gstr-reports", label: "GST Returns (GSTR)", icon: FileText, onClick: () => setLocation('/gstr-reports') },
       ],
     },
     {
@@ -2196,6 +2207,9 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "data-import", label: "Data Import", icon: Upload, onClick: () => setLocation('/?tab=data-import') },
         { id: "admin-tools", label: "Admin Tools", icon: Wrench, onClick: () => setLocation('/admin-tools') },
         { id: "company-settings", label: "Company Settings", icon: Building2, onClick: () => setLocation('/company-settings') },
+        { id: "price-lists", label: "Price Lists", icon: Tag, onClick: () => setLocation('/price-lists') },
+        { id: "approval-workflows", label: "Approval Workflows", icon: CheckCircle, onClick: () => setLocation('/approval-workflows') },
+        { id: "audit-log", label: "Audit Log", icon: Shield, onClick: () => setLocation('/audit-log') },
       ],
     },
   ];
@@ -3735,6 +3749,13 @@ function Router() {
       <ProtectedRoute path="/projects" component={ProjectManagementWrapper} />
       <ProtectedRoute path="/fixed-assets" component={FixedAssetsWrapper} />
       <ProtectedRoute path="/currency-management" component={CurrencyManagementWrapper} />
+      <ProtectedRoute path="/cost-centres" component={CostCentresWrapper} />
+      <ProtectedRoute path="/purchase-requisitions" component={PurchaseRequisitionsWrapper} />
+      <ProtectedRoute path="/approval-workflows" component={ApprovalWorkflowsWrapper} />
+      <ProtectedRoute path="/goods-receipt-notes" component={GoodsReceiptNotesWrapper} />
+      <ProtectedRoute path="/price-lists" component={PriceListsWrapper} />
+      <ProtectedRoute path="/gstr-reports" component={GSTRReportsWrapper} />
+      <ProtectedRoute path="/audit-log" component={AuditLogWrapper} />
       <Route path="/ess" component={EssLogin} />
       <Route path="/ess/portal" component={EssPortal} />
       <ProtectedRoute path="/pricing" component={() => (
@@ -3874,6 +3895,118 @@ function CurrencyManagementWrapper() {
       navSections={resolvedNav} activeView={activeView}
       onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
       <CurrencyManagementPage />
+    </DashboardShell>
+  );
+}
+
+function CostCentresWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('cost-centres');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Cost Centres" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
+      <CostCentresPage />
+    </DashboardShell>
+  );
+}
+
+function PurchaseRequisitionsWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('purchase-requisitions');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Purchase Requisitions" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
+      <PurchaseRequisitionsPage />
+    </DashboardShell>
+  );
+}
+
+function ApprovalWorkflowsWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('approval-workflows');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Approval Workflows" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
+      <ApprovalWorkflowsPage />
+    </DashboardShell>
+  );
+}
+
+function GoodsReceiptNotesWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('goods-receipt-notes');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Goods Receipt Notes" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
+      <GoodsReceiptNotesPage />
+    </DashboardShell>
+  );
+}
+
+function PriceListsWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('price-lists');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Price Lists" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
+      <PriceListsPage />
+    </DashboardShell>
+  );
+}
+
+function GSTRReportsWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('gstr-reports');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="GST Returns" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
+      <GSTRReportsPage />
+    </DashboardShell>
+  );
+}
+
+function AuditLogWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('audit-log');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Audit Log" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
+      <AuditLogPage />
     </DashboardShell>
   );
 }

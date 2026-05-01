@@ -22,6 +22,7 @@ import hrRouter from "./hr-routes";
 import essRouter from "./ess-routes";
 import crmRouter from "./crm-routes";
 import warehouseRouter from "./warehouse-routes";
+import genericRouter from "./generic-routes";
 import projectRouter from "./project-routes";
 import assetRouter from "./asset-routes";
 import { seedTenantPermissions, syncAndUnlockByPlan } from "./seed-permissions";
@@ -1526,6 +1527,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/inventory', warehouseRouter);
   app.use('/api/projects', projectRouter);
   app.use('/api/assets', assetRouter);
+  app.use('/api/generic', genericRouter);
 
   // Auth routes are handled by setupAuth() in auth.ts
   // /api/register, /api/login, /api/logout, /api/user are automatically set up

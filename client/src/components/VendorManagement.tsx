@@ -51,6 +51,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import type { Vendor } from "@shared/schema";
+import { CustomFieldsSection } from "@/components/custom-fields-section";
 
 interface VendorType {
   id: string;
@@ -521,6 +522,8 @@ export default function VendorManagement() {
       shipToPincode: formData.get("shipToPincode") as string || null,
       shipToGstin: formData.get("shipToGstin") as string || null,
       parentVendorId: parentVendorId || null,
+      creditLimit: parseFloat(formData.get("creditLimit") as string || '0') || 0,
+      paymentTermsDays: parseInt(formData.get("paymentTermsDays") as string || '30') || 30,
     };
 
     if (editingVendor) {
@@ -1261,6 +1264,39 @@ export default function VendorManagement() {
                 </RadioGroup>
               </div>
 
+              {/* Credit Limit & Payment Terms */}
+              <div className="border-t pt-4 mt-4">
+                <Label className="text-base font-semibold">Credit & Payment Settings</Label>
+                <p className="text-sm text-muted-foreground mb-3">Set credit limit and payment terms for this customer/vendor.</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="creditLimit">Credit Limit (₹)</Label>
+                    <Input
+                      id="creditLimit"
+                      name="creditLimit"
+                      type="number"
+                      step="0.01"
+                      defaultValue={editingVendor ? Number((editingVendor as any).creditLimit || 0).toFixed(2) : '0'}
+                      placeholder="0 = no limit"
+                      data-testid="input-credit-limit"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">Set to 0 for no credit limit</p>
+                  </div>
+                  <div>
+                    <Label htmlFor="paymentTermsDays">Payment Terms (Days)</Label>
+                    <Input
+                      id="paymentTermsDays"
+                      name="paymentTermsDays"
+                      type="number"
+                      defaultValue={editingVendor ? ((editingVendor as any).paymentTermsDays || 30) : 30}
+                      placeholder="30"
+                      data-testid="input-payment-terms-days"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">Net payment days (e.g., Net 30)</p>
+                  </div>
+                </div>
+              </div>
+
               {/* Ship-To Address Section */}
               <div className="border-t pt-4 mt-4">
                 <Label className="text-base font-semibold">Ship-To Address (Optional)</Label>
@@ -1333,6 +1369,12 @@ export default function VendorManagement() {
                   </div>
                 </div>
               </div>
+
+              {/* Custom Fields for vendor/customer */}
+              <CustomFieldsSection
+                entityType="vendor"
+                entityId={editingVendor?.id ?? null}
+              />
 
               <div className="flex justify-end gap-2">
                 <Button
