@@ -280,61 +280,104 @@ function AttendanceTab() {
   const localDate = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
   const [subTab, setSubTab] = useState<"students"|"staff">("students");
   const [selectedDate, setSelectedDate] = useState(localDate);
-  const [selectedClass, setSelectedClass] = useState("");
+  const [selectedClass, setSelectedClass] = useState("all");
   const [overrides, setOverrides] = useState<Record<string,string>>({});
   const [staffOverrides, setStaffOverrides] = useState<Record<string,any>>({});
   const { data: classes = [] } = useQuery<any[]>({ queryKey: ["/api/education/classes"] });
   const { data: students = [] } = useQuery<any[]>({ queryKey: ["/api/education/students"] });
-  const { data: savedAttendance = [] } = useQuery<any[]>({
-    queryKey: ["/api/education/attendance", selectedDate, selectedClass],
-    queryFn: () => {
+
+  const classFilterId = selectedClass === "all" ? "" : selectedClass;
+
+  const { data: rawAttendance, isError: attError } = useQuery<any[]>({
+    queryKey: ["/api/education/attendance", selectedDate, classFilterId],
+    queryFn: async () => {
       const params = new URLSearchParams({ date: selectedDate });
-      if (selectedClass) params.set("class_id", selectedClass);
-      return fetch(`/api/education/attendance?${params}`, { credentials: "include" }).then(r => r.json());
+      if (classFilterId) params.set("class_id", classFilterId);
+      const r = await fetch(`/api/education/attendance?${params}`, { credentials: "include" });
+      if (!r.ok) throw new Error(`${r.status}: ${r.statusText}`);
+      return r.json();
     },
   });
+  const savedAttendance: any[] = Array.isArray(rawAttendance) ? rawAttendance : [];
+
   const { data: staff = [] } = useQuery<any[]>({ queryKey: ["/api/education/teachers"] });
-  const { data: staffAttendance = [] } = useQuery<any[]>({
+  const { data: rawStaffAttendance, isError: staffAttError } = useQuery<any[]>({
     queryKey: ["/api/education/staff-attendance", selectedDate],
-    queryFn: () => fetch(`/api/education/staff-attendance?date=${selectedDate}`, { credentials: "include" }).then(r => r.json()),
+    queryFn: async () => {
+      const r = await fetch(`/api/education/staff-attendance?date=${selectedDate}`, { credentials: "include" });
+      if (!r.ok) throw new Error(`${r.status}: ${r.statusText}`);
+      return r.json();
+    },
     enabled: subTab === "staff",
   });
+  const staffAttendance: any[] = Array.isArray(rawStaffAttendance) ? rawStaffAttendance : [];
 
-  useEffect(() => { setOverrides({}); }, [selectedDate, selectedClass]);
+  useEffect(() => { setOverrides({}); setStaffOverrides({}); }, [selectedDate]);
+  useEffect(() => { setOverrides({}); }, [selectedClass]);
 
-  const classStudents = selectedClass
-    ? (students as any[]).filter((s: any) => String(s.class_id) === selectedClass)
+  const classStudents = classFilterId
+    ? (students as any[]).filter((s: any) => String(s.class_id) === classFilterId)
     : (students as any[]);
 
   const getStatus = (studentId: string) => {
     if (overrides[studentId] !== undefined) return overrides[studentId];
-    const saved = (savedAttendance as any[]).find((a: any) => String(a.student_id) === studentId);
+    const saved = savedAttendance.find((a: any) => String(a.student_id) === String(studentId));
     return saved?.status || "present";
   };
 
   const bulkSaveMut = useMutation({
-    mutationFn: (records: any) => apiRequest("POST", "/api/education/attendance/bulk", { class_id: selectedClass || null, attendance_date: selectedDate, records }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/education/attendance"] }); setOverrides({}); toast({ title: `Attendance saved for ${selectedDate}` }); },
+    mutationFn: (records: any[]) => apiRequest("POST", "/api/education/attendance/bulk", {
+      class_id: classFilterId || null,
+      attendance_date: selectedDate,
+      records,
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/education/attendance"] });
+      setOverrides({});
+      toast({ title: `Attendance saved for ${selectedDate}` });
+    },
+    onError: (e: any) => toast({ title: "Save failed", description: e.message, variant: "destructive" }),
   });
 
   const staffBulkMut = useMutation({
-    mutationFn: (records: any) => apiRequest("POST", "/api/education/staff-attendance/bulk", { attendance_date: selectedDate, records }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/education/staff-attendance"] }); setStaffOverrides({}); toast({ title: "Staff attendance saved" }); },
+    mutationFn: (records: any[]) => apiRequest("POST", "/api/education/staff-attendance/bulk", {
+      attendance_date: selectedDate,
+      records,
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/education/staff-attendance"] });
+      setStaffOverrides({});
+      toast({ title: "Staff attendance saved" });
+    },
+    onError: (e: any) => toast({ title: "Save failed", description: e.message, variant: "destructive" }),
   });
 
   const markAll = (status: string) => {
     const n: Record<string,string> = {};
-    classStudents.forEach((s: any) => { n[s.id] = status; });
+    classStudents.forEach((s: any) => { n[String(s.id)] = status; });
     setOverrides(n);
   };
 
-  const getStaffStatus = (staffId: number) => {
-    if (staffOverrides[staffId]?.status !== undefined) return staffOverrides[staffId]?.status;
-    const saved = (staffAttendance as any[]).find((a: any) => Number(a.staff_id) === staffId);
-    return saved?.status || "present";
+  const changedCount = Object.keys(overrides).length;
+
+  const handleSaveStudentAttendance = () => {
+    if (!classStudents.length) { toast({ title: "No students to save attendance for" }); return; }
+    bulkSaveMut.mutate(classStudents.map((s: any) => ({ student_id: String(s.id), status: getStatus(s.id) })));
   };
 
-  const changedCount = Object.keys(overrides).length;
+  const handleSaveStaffAttendance = () => {
+    const records = (staff as any[]).map((t: any) => {
+      const ov = staffOverrides[t.id] || {};
+      const saved = staffAttendance.find((a: any) => Number(a.staff_id) === Number(t.id));
+      return {
+        staff_id: Number(t.id),
+        status: ov.status ?? saved?.status ?? "present",
+        check_in: ov.check_in ?? saved?.check_in ?? null,
+        check_out: ov.check_out ?? saved?.check_out ?? null,
+      };
+    });
+    staffBulkMut.mutate(records);
+  };
 
   return (
     <div className="space-y-4">
@@ -342,17 +385,26 @@ function AttendanceTab() {
         <Button variant={subTab==="students"?"default":"outline"} onClick={()=>setSubTab("students")}>Student Attendance</Button>
         <Button variant={subTab==="staff"?"default":"outline"} onClick={()=>setSubTab("staff")}>Staff Attendance</Button>
         <div className="flex-1"/>
-        <Input type="date" value={selectedDate} onChange={e=>setSelectedDate(e.target.value)} className="w-40"/>
-        {subTab==="students"&&<Select value={selectedClass} onValueChange={setSelectedClass}><SelectTrigger className="w-40"><SelectValue placeholder="All classes"/></SelectTrigger><SelectContent><SelectItem value="">All Classes</SelectItem>{(classes as any[]).map((c:any)=><SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}</SelectContent></Select>}
+        <Input type="date" value={selectedDate} onChange={e=>setSelectedDate(e.target.value)} className="w-40" data-testid="input-attendance-date"/>
+        {subTab==="students"&&(
+          <Select value={selectedClass} onValueChange={setSelectedClass}>
+            <SelectTrigger className="w-40" data-testid="select-attendance-class"><SelectValue placeholder="All Classes"/></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Classes</SelectItem>
+              {(classes as any[]).map((c:any)=><SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {subTab==="students"&&(
         <>
+          {attError&&<p className="text-sm text-destructive">Failed to load saved attendance. Please refresh.</p>}
           <div className="flex flex-wrap gap-2 items-center">
-            <Button size="sm" variant="outline" onClick={()=>markAll("present")}>All Present</Button>
-            <Button size="sm" variant="outline" onClick={()=>markAll("absent")}>All Absent</Button>
+            <Button size="sm" variant="outline" onClick={()=>markAll("present")} data-testid="button-mark-all-present">All Present</Button>
+            <Button size="sm" variant="outline" onClick={()=>markAll("absent")} data-testid="button-mark-all-absent">All Absent</Button>
             <div className="flex-1"/>
-            <Button onClick={()=>bulkSaveMut.mutate(classStudents.map((s:any)=>({student_id:s.id,status:getStatus(s.id)})))} disabled={bulkSaveMut.isPending}>
+            <Button onClick={handleSaveStudentAttendance} disabled={bulkSaveMut.isPending} data-testid="button-save-attendance">
               {bulkSaveMut.isPending?"Saving…":changedCount>0?`Save (${changedCount} changed)`:"Save Attendance"}
             </Button>
           </div>
@@ -361,20 +413,20 @@ function AttendanceTab() {
             <tbody>{classStudents.map((s: any) => {
               const status = getStatus(s.id);
               return (
-                <tr key={s.id} className="border-t hover:bg-muted/30">
+                <tr key={s.id} className="border-t hover:bg-muted/30" data-testid={`row-student-${s.id}`}>
                   <td className="px-3 py-2 text-muted-foreground">{s.roll_number||"—"}</td>
                   <td className="px-3 py-2 font-medium">{s.name}</td>
                   <td className="px-3 py-2">{s.section||s.class_section||"—"}</td>
                   <td className="px-3 py-2"><Badge variant={status==="present"?"default":status==="absent"?"destructive":"secondary"} className="capitalize">{status}</Badge></td>
                   <td className="px-3 py-2">
                     <div className="flex gap-1 flex-wrap">{STATUSES.map(st=>(
-                      <Button key={st} size="sm" variant={status===st?"default":"outline"} className="h-7 text-xs px-2 capitalize"
-                        onClick={()=>setOverrides({...overrides,[s.id]:st})}>{st}</Button>
+                      <Button key={st} size="sm" variant={status===st?"default":"outline"} className="capitalize"
+                        onClick={()=>setOverrides(prev=>({...prev,[String(s.id)]:st}))}>{st}</Button>
                     ))}</div>
                   </td>
                 </tr>
               );
-            })}{!classStudents.length&&<tr><td colSpan={5} className="px-3 py-6 text-center text-muted-foreground">No students{selectedClass?" in this class":""}</td></tr>}</tbody>
+            })}{!classStudents.length&&<tr><td colSpan={5} className="px-3 py-6 text-center text-muted-foreground">No students{classFilterId?" in this class":""}</td></tr>}</tbody>
           </table></div>
           {classStudents.length>0&&(
             <div className="flex gap-4 text-sm text-muted-foreground">
@@ -386,30 +438,31 @@ function AttendanceTab() {
 
       {subTab==="staff"&&(
         <>
+          {staffAttError&&<p className="text-sm text-destructive">Failed to load staff attendance. Please refresh.</p>}
           <div className="flex justify-end">
-            <Button onClick={()=>staffBulkMut.mutate((staff as any[]).map((t:any)=>{const ov=staffOverrides[t.id]||{};const saved=(staffAttendance as any[]).find((a:any)=>Number(a.staff_id)===t.id);return{staff_id:t.id,status:ov.status??saved?.status??"present",check_in:ov.check_in??saved?.check_in??null,check_out:ov.check_out??saved?.check_out??null};}))} disabled={staffBulkMut.isPending}>
+            <Button onClick={handleSaveStaffAttendance} disabled={staffBulkMut.isPending} data-testid="button-save-staff-attendance">
               {staffBulkMut.isPending?"Saving…":"Save Staff Attendance"}
             </Button>
           </div>
           <div className="rounded-md border overflow-x-auto"><table className="w-full text-sm">
             <thead className="bg-muted/50"><tr>{["Name","Department","Designation","Check-In","Check-Out","Status"].map(h=><th key={h} className="px-3 py-2 text-left font-medium">{h}</th>)}</tr></thead>
             <tbody>{(staff as any[]).map((t: any) => {
-              const saved = (staffAttendance as any[]).find((a: any) => Number(a.staff_id) === t.id);
+              const saved = staffAttendance.find((a: any) => Number(a.staff_id) === Number(t.id));
               const ov = staffOverrides[t.id] || {};
               const status = ov.status ?? saved?.status ?? "present";
-              const checkIn = ov.check_in ?? saved?.check_in ?? "";
-              const checkOut = ov.check_out ?? saved?.check_out ?? "";
-              const update = (patch: any) => setStaffOverrides({ ...staffOverrides, [t.id]: { staff_id: t.id, status, check_in: checkIn, check_out: checkOut, ...ov, ...patch } });
+              const checkIn = ov.check_in ?? (saved?.check_in ? String(saved.check_in).substring(0,5) : "");
+              const checkOut = ov.check_out ?? (saved?.check_out ? String(saved.check_out).substring(0,5) : "");
+              const update = (patch: any) => setStaffOverrides(prev => ({ ...prev, [t.id]: { ...ov, staff_id: Number(t.id), status, check_in: checkIn, check_out: checkOut, ...patch } }));
               return (
-                <tr key={t.id} className="border-t hover:bg-muted/30">
+                <tr key={t.id} className="border-t hover:bg-muted/30" data-testid={`row-staff-${t.id}`}>
                   <td className="px-3 py-2 font-medium">{t.name}</td>
                   <td className="px-3 py-2">{t.department||"—"}</td>
                   <td className="px-3 py-2">{t.designation||"—"}</td>
-                  <td className="px-3 py-2"><Input type="time" value={checkIn} onChange={e=>update({check_in:e.target.value})} className="h-8 w-28"/></td>
-                  <td className="px-3 py-2"><Input type="time" value={checkOut} onChange={e=>update({check_out:e.target.value})} className="h-8 w-28"/></td>
+                  <td className="px-3 py-2"><Input type="time" value={checkIn} onChange={e=>update({check_in:e.target.value})} className="w-28"/></td>
+                  <td className="px-3 py-2"><Input type="time" value={checkOut} onChange={e=>update({check_out:e.target.value})} className="w-28"/></td>
                   <td className="px-3 py-2">
                     <Select value={status} onValueChange={v=>update({status:v})}>
-                      <SelectTrigger className="h-8 w-28"><SelectValue/></SelectTrigger>
+                      <SelectTrigger className="w-28"><SelectValue/></SelectTrigger>
                       <SelectContent>{STATUSES.map(s=><SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}</SelectContent>
                     </Select>
                   </td>
