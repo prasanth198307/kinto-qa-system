@@ -106,6 +106,12 @@ psql $DATABASE_URL -f db_scripts/2026-05-01_industry_realestate.sql
 psql $DATABASE_URL -f db_scripts/2026-05-01_industry_retail_pos.sql
 psql $DATABASE_URL -f db_scripts/2026-05-01_industry_agriculture.sql
 
+----- GROUP 10: Seed role_permissions for all new modules (May 1) -----
+-- MUST run AFTER Groups 7-9 (tables must exist first)
+-- Seeds 23 new screen_keys for every role in every tenant
+-- Idempotent: skips rows that already exist
+psql $DATABASE_URL -f db_scripts/2026-05-01_seed_new_module_role_permissions.sql
+
 ============================================================
   END OF MIGRATION LIST
 ============================================================
