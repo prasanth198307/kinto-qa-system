@@ -66,8 +66,49 @@ psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-29_api_hub_cu
 -- PATCH: Run this on any server that already has external_api_definitions but is missing the module column
 psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-04-29_api_hub_add_module_column.sql
 
+----- GROUP 7: Generic ERP Phase 1–5 (May 1) -----
+-- Phase 1: Configurable Module Labels + Custom Field Definitions/Values
+psql $DATABASE_URL -f db_scripts/2026-05-01_phase1_module_labels_custom_fields.sql
+
+-- Phase 2: HR Expense Claims + Recurring Invoice Schedules
+psql $DATABASE_URL -f db_scripts/2026-05-01_phase2_expense_claims_recurring_invoices.sql
+
+-- Phase 3: Multi-location Warehouses, UOM, Serial/Lot, Stock Transfers
+psql $DATABASE_URL -f db_scripts/2026-05-01_phase3_warehouses_uom_serial_stock.sql
+
+-- Phase 4: Project Management — Projects, BOQ, Billing Milestones, Timesheets
+psql $DATABASE_URL -f db_scripts/2026-05-01_phase4_projects_boq_milestones_timesheets.sql
+
+-- Phase 5: Fixed Assets + Depreciation, Performance Appraisals, Multi-currency
+psql $DATABASE_URL -f db_scripts/2026-05-01_phase5_assets_appraisals_currencies.sql
+
+----- GROUP 8: Industry-Agnostic ERP Gaps T001–T016 (May 1) -----
+-- T001: Item Master — HSN/SAC, item_type, reorder, Item Variants, Price Lists
+psql $DATABASE_URL -f db_scripts/2026-05-01_t001_item_master_variants_pricelists.sql
+
+-- T002: Proforma Invoice + Multi-currency on invoices (ALTER TABLE invoices)
+psql $DATABASE_URL -f db_scripts/2026-05-01_t002_proforma_multicurrency_invoices.sql
+
+-- T003+T004: Purchase Requisitions + GRN + Retention on POs
+psql $DATABASE_URL -f db_scripts/2026-05-01_t003_t004_purchase_requisitions_grn.sql
+
+-- T005–T008: Three-way matching, Approval Workflows, Cost Centres, Credit Limit
+psql $DATABASE_URL -f db_scripts/2026-05-01_t005_t008_approvals_cost_centres_credit.sql
+
+-- T014+T016: Audit Trail + Inline Entity Attachments
+psql $DATABASE_URL -f db_scripts/2026-05-01_t014_t016_audit_logs_attachments.sql
+
+----- GROUP 9: Industry Vertical Modules (May 1) -----
+psql $DATABASE_URL -f db_scripts/2026-05-01_industry_healthcare.sql
+psql $DATABASE_URL -f db_scripts/2026-05-01_industry_education.sql
+psql $DATABASE_URL -f db_scripts/2026-05-01_industry_logistics.sql
+psql $DATABASE_URL -f db_scripts/2026-05-01_industry_realestate.sql
+psql $DATABASE_URL -f db_scripts/2026-05-01_industry_retail_pos.sql
+psql $DATABASE_URL -f db_scripts/2026-05-01_industry_agriculture.sql
+
 ============================================================
   END OF MIGRATION LIST
 ============================================================
-2026-04-29_add_cors_origins.sql
-2026-04-30_kinto_branding_cors.sql
+-- Misc patches (can be run standalone if needed):
+-- 2026-04-29_add_cors_origins.sql
+-- 2026-04-30_kinto_branding_cors.sql
