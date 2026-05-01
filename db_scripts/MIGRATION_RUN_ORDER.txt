@@ -106,7 +106,11 @@ psql $DATABASE_URL -f db_scripts/2026-05-01_industry_realestate.sql
 psql $DATABASE_URL -f db_scripts/2026-05-01_industry_retail_pos.sql
 psql $DATABASE_URL -f db_scripts/2026-05-01_industry_agriculture.sql
 
------ GROUP 10: Seed role_permissions for all new modules (May 1) -----
+----- GROUP 10: Sync subscription_plans modules list (May 1) -----
+-- Updates Trial/Professional/Enterprise plan module arrays to include new keys
+psql $DATABASE_URL -f db_scripts/2026-05-01_sync_plan_modules_phase1_5_verticals.sql
+
+----- GROUP 11: Seed role_permissions for all new modules (May 1) -----
 -- MUST run AFTER Groups 7-9 (tables must exist first)
 -- Seeds 23 new screen_keys for every role in every tenant
 -- Idempotent: skips rows that already exist
