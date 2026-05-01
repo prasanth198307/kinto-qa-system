@@ -49,7 +49,26 @@ type Tenant = {
   createdAt: string;
   userCount: number;
   logoUrl: string | null;
+  industry: string | null;
 };
+
+const INDUSTRIES = [
+  "Manufacturing",
+  "Healthcare",
+  "Education",
+  "Logistics & Transport",
+  "Real Estate",
+  "Retail & Distribution",
+  "Agriculture",
+  "Services",
+  "Trading",
+  "Construction",
+  "Pharmaceuticals",
+  "Food & Beverages",
+  "Hospitality",
+  "IT & Software",
+  "Other",
+];
 
 const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; icon: React.ReactNode }> = {
   active:    { label: "Active",    variant: "default",     icon: <CheckCircle2 className="h-3 w-3" /> },
@@ -100,7 +119,7 @@ export default function SuperAdminTenants() {
   const [showDeletionAudit, setShowDeletionAudit] = useState(false);
   const [createForm, setCreateForm] = useState({
     name: "", slug: "", plan: "trial", adminUsername: "", adminPassword: "",
-    adminEmail: "", maxUsers: "5", trialDays: "14",
+    adminEmail: "", maxUsers: "5", trialDays: "14", industry: "",
   });
 
   const { data: tenants = [], isLoading, isError, refetch } = useQuery<Tenant[]>({
@@ -130,7 +149,7 @@ export default function SuperAdminTenants() {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/tenants"] });
       toast({ title: "Tenant created", description: data.message });
       setShowCreateTenant(false);
-      setCreateForm({ name: "", slug: "", plan: "trial", adminUsername: "", adminPassword: "", adminEmail: "", maxUsers: "5", trialDays: "14" });
+      setCreateForm({ name: "", slug: "", plan: "trial", adminUsername: "", adminPassword: "", adminEmail: "", maxUsers: "5", trialDays: "14", industry: "" });
     },
     onError: (err: any) => toast({ title: "Creation failed", description: err.message, variant: "destructive" }),
   });
@@ -423,9 +442,10 @@ export default function SuperAdminTenants() {
                                 <Badge variant="secondary" className="text-xs">{tenant.isSuperAdmin ? "Super Admin" : "Internal"}</Badge>
                               )}
                             </div>
-                            <div className="text-xs text-muted-foreground">
+                            <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-0.5">
                               <code>{tenant.slug}</code>
-                              {tenant.billingEmail && <span className="ml-2">{tenant.billingEmail}</span>}
+                              {tenant.industry && <span className="text-muted-foreground">· {tenant.industry}</span>}
+                              {tenant.billingEmail && <span>{tenant.billingEmail}</span>}
                             </div>
                           </div>
                         </TableCell>
@@ -841,6 +861,19 @@ export default function SuperAdminTenants() {
                   data-testid="input-create-slug"
                 />
               </div>
+            </div>
+            <div className="space-y-1">
+              <Label>Industry</Label>
+              <Select value={createForm.industry} onValueChange={(v) => setCreateForm((f) => ({ ...f, industry: v }))}>
+                <SelectTrigger data-testid="select-create-industry">
+                  <SelectValue placeholder="Select industry (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {INDUSTRIES.map((ind) => (
+                    <SelectItem key={ind} value={ind}>{ind}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">

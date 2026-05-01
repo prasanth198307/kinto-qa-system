@@ -764,7 +764,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (req.user?.role !== 'admin' && !req.user?.isSuperAdmin) return res.status(403).json({ message: 'Admin only' });
 
     const tenantId: number = (req.session as any).tenantId ?? req.user?.tenantId ?? 1;
-    const { billingEmail, contactName, contactPhone, gstNumber, address, logoUrl, primaryColor } = req.body;
+    const { billingEmail, contactName, contactPhone, gstNumber, address, logoUrl, primaryColor, industry } = req.body;
 
     try {
       const updates: Record<string, any> = { updatedAt: new Date().toISOString() };
@@ -775,6 +775,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (address !== undefined) updates.address = address;
       if (logoUrl !== undefined) updates.logoUrl = logoUrl;
       if (primaryColor !== undefined) updates.primaryColor = primaryColor;
+      if (industry !== undefined) updates.industry = industry;
 
       const [updated] = await db.update(tenants).set(updates).where(eq(tenants.id, tenantId)).returning();
       res.json(updated);
@@ -1262,7 +1263,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const currentUser = req.user as any;
     if (!currentUser?.isSuperAdmin) return res.status(403).json({ message: 'Super-admin only' });
-    const { name, slug, plan, adminUsername, adminPassword, adminEmail, maxUsers, trialDays } = req.body;
+    const { name, slug, plan, adminUsername, adminPassword, adminEmail, maxUsers, trialDays, industry } = req.body;
     if (!name || !slug || !adminUsername || !adminPassword) {
       return res.status(400).json({ message: 'name, slug, adminUsername, adminPassword are required' });
     }
@@ -1298,7 +1299,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           trialEndsAt: trialEnd,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-        }).returning();
+          ...(industry ? { industry } : {}),
+        } as any).returning();
 
         // Create subscription
         const [newSub] = await tx.insert(subscriptions).values({

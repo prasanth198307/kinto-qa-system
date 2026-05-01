@@ -40,6 +40,7 @@ interface TenantInfo {
   contactPhone: string | null;
   gstNumber: string | null;
   address: string | null;
+  industry: string | null;
   createdAt: string;
   userCount: number;
   planName?: string;
@@ -101,12 +102,20 @@ const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secon
   expired:   { label: "Expired",    variant: "outline",     icon: <XCircle className="h-3 w-3" /> },
 };
 
+const INDUSTRIES = [
+  "Manufacturing", "Healthcare", "Education", "Logistics & Transport",
+  "Real Estate", "Retail & Distribution", "Agriculture", "Services",
+  "Trading", "Construction", "Pharmaceuticals", "Food & Beverages",
+  "Hospitality", "IT & Software", "Other",
+];
+
 const settingsSchema = z.object({
   billingEmail: z.string().email("Invalid email").or(z.literal("")),
   contactName:  z.string().max(255).optional(),
   contactPhone: z.string().max(20).optional(),
   gstNumber:    z.string().max(20).optional(),
   address:      z.string().optional(),
+  industry:     z.string().optional(),
   logoUrl:      z.string().url("Must be a valid URL").or(z.literal("")).optional(),
   primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a hex color e.g. #2563eb").optional(),
 });
@@ -153,6 +162,7 @@ export default function TenantSettings() {
       contactPhone: tenantInfo?.contactPhone ?? "",
       gstNumber:    tenantInfo?.gstNumber ?? "",
       address:      tenantInfo?.address ?? "",
+      industry:     tenantInfo?.industry ?? "",
       logoUrl:      tenantInfo?.logoUrl ?? "",
       primaryColor: tenantInfo?.primaryColor ?? "#1a56db",
     },
@@ -419,6 +429,25 @@ export default function TenantSettings() {
                     <FormItem>
                       <FormLabel>Company Address</FormLabel>
                       <FormControl><Textarea placeholder="Full registered address..." rows={2} {...field} data-testid="input-address" /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+
+                  <FormField control={form.control} name="industry" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Industry</FormLabel>
+                      <Select value={field.value ?? ""} onValueChange={field.onChange}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-industry">
+                            <SelectValue placeholder="Select your industry" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {INDUSTRIES.map((ind) => (
+                            <SelectItem key={ind} value={ind}>{ind}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )} />
