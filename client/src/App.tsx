@@ -1135,6 +1135,18 @@ function AdminDashboard() {
       ],
     },
     {
+      id: "industry-section",
+      label: "Industry Verticals",
+      items: [
+        { id: "healthcare", label: "Healthcare", icon: Briefcase, onClick: () => setLocation('/healthcare') },
+        { id: "education", label: "Education", icon: BookOpen, onClick: () => setLocation('/education') },
+        { id: "logistics", label: "Logistics & Transport", icon: Truck, onClick: () => setLocation('/logistics') },
+        { id: "real-estate", label: "Real Estate", icon: Building2, onClick: () => setLocation('/real-estate') },
+        { id: "pos", label: "Point of Sale", icon: ShoppingCart, onClick: () => setLocation('/pos') },
+        { id: "agriculture", label: "Agriculture", icon: Layers, onClick: () => setLocation('/agriculture') },
+      ],
+    },
+    {
       id: "api-hub-section",
       label: "API Hub",
       items: [
