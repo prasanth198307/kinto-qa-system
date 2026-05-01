@@ -5,6 +5,7 @@ import { db } from "./db";
 const router = Router();
 const requireAuth = (req: any, res: any, next: any) => { if (!req.isAuthenticated?.() && !req.user) return res.status(401).json({ error: "Unauthorized" }); next(); };
 const tid = (req: any) => String(req.tenantId || req.user?.tenantId || 1);
+const ntid = (req: any) => Number(req.tenantId || req.user?.tenantId || 1);
 
 // ── Classes ──────────────────────────────────────────────────────────────────
 router.get("/classes", requireAuth, async (req: any, res) => {
@@ -49,7 +50,7 @@ router.delete("/classes/:id", requireAuth, async (req: any, res) => {
 // ── Teachers ─────────────────────────────────────────────────────────────────
 router.get("/teachers", requireAuth, async (req: any, res) => {
   try {
-    const rows = await db.execute(sql`SELECT * FROM teachers WHERE tenant_id=${tid(req)} AND record_status=1 ORDER BY name`);
+    const rows = await db.execute(sql`SELECT * FROM teachers WHERE tenant_id=${ntid(req)} AND record_status=1 ORDER BY name`);
     res.json(rows.rows);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
@@ -60,7 +61,7 @@ router.post("/teachers", requireAuth, async (req: any, res) => {
     const code = "TCH-" + Date.now();
     const rows = await db.execute(sql`
       INSERT INTO teachers (tenant_id, teacher_code, name, subject, qualification, phone, email, date_of_joining, salary, status)
-      VALUES (${tid(req)}, ${code}, ${name}, ${subject||null}, ${qualification||null},
+      VALUES (${ntid(req)}, ${code}, ${name}, ${subject||null}, ${qualification||null},
               ${phone||null}, ${email||null}, ${date_of_joining||null}, ${salary||0}, ${status||'active'})
       RETURNING *`);
     res.json(rows.rows[0]);
@@ -74,14 +75,14 @@ router.put("/teachers/:id", requireAuth, async (req: any, res) => {
       UPDATE teachers SET name=${name}, subject=${subject||null}, qualification=${qualification||null},
         phone=${phone||null}, email=${email||null}, date_of_joining=${date_of_joining||null},
         salary=${salary||0}, status=${status||'active'}
-      WHERE id=${req.params.id} AND tenant_id=${tid(req)} RETURNING *`);
+      WHERE id=${req.params.id} AND tenant_id=${ntid(req)} RETURNING *`);
     res.json(rows.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
 router.delete("/teachers/:id", requireAuth, async (req: any, res) => {
   try {
-    await db.execute(sql`UPDATE teachers SET record_status=0 WHERE id=${req.params.id} AND tenant_id=${tid(req)}`);
+    await db.execute(sql`UPDATE teachers SET record_status=0 WHERE id=${req.params.id} AND tenant_id=${ntid(req)}`);
     res.json({ success: true });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
@@ -197,7 +198,7 @@ router.get("/examinations", requireAuth, async (req: any, res) => {
     const rows = await db.execute(sql`
       SELECT e.*, c.name as class_name, c.grade, c.section
       FROM examinations e LEFT JOIN classes c ON c.id::text=e.class_id::text
-      WHERE e.tenant_id=${tid(req)} AND e.record_status=1 ORDER BY e.exam_date DESC`);
+      WHERE e.tenant_id=${ntid(req)} AND e.record_status=1 ORDER BY e.exam_date DESC`);
     res.json(rows.rows);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
@@ -207,7 +208,7 @@ router.post("/examinations", requireAuth, async (req: any, res) => {
     const { class_id, exam_name, subject, exam_date, max_marks, pass_marks, academic_year } = req.body;
     const rows = await db.execute(sql`
       INSERT INTO examinations (tenant_id, class_id, exam_name, subject, exam_date, max_marks, pass_marks, academic_year)
-      VALUES (${tid(req)}, ${class_id||null}, ${exam_name}, ${subject}, ${exam_date||null},
+      VALUES (${ntid(req)}, ${class_id||null}, ${exam_name}, ${subject}, ${exam_date||null},
               ${max_marks||100}, ${pass_marks||35}, ${academic_year||null}) RETURNING *`);
     res.json(rows.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -220,14 +221,14 @@ router.put("/examinations/:id", requireAuth, async (req: any, res) => {
       UPDATE examinations SET class_id=${class_id||null}, exam_name=${exam_name}, subject=${subject},
         exam_date=${exam_date||null}, max_marks=${max_marks||100}, pass_marks=${pass_marks||35},
         academic_year=${academic_year||null}
-      WHERE id=${req.params.id} AND tenant_id=${tid(req)} RETURNING *`);
+      WHERE id=${req.params.id} AND tenant_id=${ntid(req)} RETURNING *`);
     res.json(rows.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
 router.delete("/examinations/:id", requireAuth, async (req: any, res) => {
   try {
-    await db.execute(sql`UPDATE examinations SET record_status=0 WHERE id=${req.params.id} AND tenant_id=${tid(req)}`);
+    await db.execute(sql`UPDATE examinations SET record_status=0 WHERE id=${req.params.id} AND tenant_id=${ntid(req)}`);
     res.json({ success: true });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
@@ -260,7 +261,7 @@ router.post("/exam-marks/bulk", requireAuth, async (req: any, res) => {
 // ── Library Books ─────────────────────────────────────────────────────────────
 router.get("/library-books", requireAuth, async (req: any, res) => {
   try {
-    const rows = await db.execute(sql`SELECT * FROM library_books WHERE tenant_id=${tid(req)} AND record_status=1 ORDER BY title`);
+    const rows = await db.execute(sql`SELECT * FROM library_books WHERE tenant_id=${ntid(req)} AND record_status=1 ORDER BY title`);
     res.json(rows.rows);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
@@ -271,7 +272,7 @@ router.post("/library-books", requireAuth, async (req: any, res) => {
     const code = "BK-" + Date.now();
     const rows = await db.execute(sql`
       INSERT INTO library_books (tenant_id, book_code, title, author, isbn, category, publisher, total_copies, available_copies, rack_number)
-      VALUES (${tid(req)}, ${code}, ${title}, ${author||null}, ${isbn||null}, ${category||null},
+      VALUES (${ntid(req)}, ${code}, ${title}, ${author||null}, ${isbn||null}, ${category||null},
               ${publisher||null}, ${total_copies||1}, ${total_copies||1}, ${rack_number||null})
       RETURNING *`);
     res.json(rows.rows[0]);
@@ -285,14 +286,14 @@ router.put("/library-books/:id", requireAuth, async (req: any, res) => {
       UPDATE library_books SET title=${title}, author=${author||null}, isbn=${isbn||null},
         category=${category||null}, publisher=${publisher||null}, total_copies=${total_copies||1},
         available_copies=${available_copies||0}, rack_number=${rack_number||null}
-      WHERE id=${req.params.id} AND tenant_id=${tid(req)} RETURNING *`);
+      WHERE id=${req.params.id} AND tenant_id=${ntid(req)} RETURNING *`);
     res.json(rows.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
 router.delete("/library-books/:id", requireAuth, async (req: any, res) => {
   try {
-    await db.execute(sql`UPDATE library_books SET record_status=0 WHERE id=${req.params.id} AND tenant_id=${tid(req)}`);
+    await db.execute(sql`UPDATE library_books SET record_status=0 WHERE id=${req.params.id} AND tenant_id=${ntid(req)}`);
     res.json({ success: true });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
@@ -305,7 +306,7 @@ router.get("/book-issues", requireAuth, async (req: any, res) => {
       FROM book_issues bi
       LEFT JOIN library_books lb ON lb.id=bi.book_id
       LEFT JOIN students s ON s.id::text=bi.student_id::text
-      WHERE bi.tenant_id=${tid(req)} ORDER BY bi.created_at DESC`);
+      WHERE bi.tenant_id=${ntid(req)} ORDER BY bi.created_at DESC`);
     res.json(rows.rows);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
@@ -316,7 +317,7 @@ router.post("/book-issues", requireAuth, async (req: any, res) => {
     await db.execute(sql`UPDATE library_books SET available_copies=available_copies-1 WHERE id=${book_id}`);
     const rows = await db.execute(sql`
       INSERT INTO book_issues (tenant_id, book_id, student_id, student_name, issue_date, due_date, status)
-      VALUES (${tid(req)}, ${book_id}, ${student_id||null}, ${student_name||null},
+      VALUES (${ntid(req)}, ${book_id}, ${student_id||null}, ${student_name||null},
               ${issue_date}, ${due_date||null}, 'issued') RETURNING *`);
     res.json(rows.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -331,7 +332,7 @@ router.put("/book-issues/:id/return", requireAuth, async (req: any, res) => {
     }
     const rows = await db.execute(sql`
       UPDATE book_issues SET return_date=${return_date}, fine_amount=${fine_amount||0}, status='returned'
-      WHERE id=${req.params.id} AND tenant_id=${tid(req)} RETURNING *`);
+      WHERE id=${req.params.id} AND tenant_id=${ntid(req)} RETURNING *`);
     res.json(rows.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
@@ -407,10 +408,10 @@ router.get("/stats", requireAuth, async (req: any, res) => {
   try {
     const [students, teachers, payments, classes, overdue, pendingFees] = await Promise.all([
       db.execute(sql`SELECT COUNT(*) as count FROM students WHERE tenant_id=${tid(req)} AND status='active'`),
-      db.execute(sql`SELECT COUNT(*) as count FROM teachers WHERE tenant_id=${tid(req)} AND status='active' AND record_status=1`),
+      db.execute(sql`SELECT COUNT(*) as count FROM teachers WHERE tenant_id=${ntid(req)} AND status='active' AND record_status=1`),
       db.execute(sql`SELECT COALESCE(SUM(amount),0) as total FROM fee_payments WHERE tenant_id=${tid(req)} AND EXTRACT(MONTH FROM paid_date)=EXTRACT(MONTH FROM CURRENT_DATE)`),
       db.execute(sql`SELECT COUNT(*) as count FROM classes WHERE tenant_id=${tid(req)} AND is_active=1`),
-      db.execute(sql`SELECT COUNT(*) as count FROM book_issues WHERE tenant_id=${Number(tid(req))} AND status='issued' AND due_date < CURRENT_DATE`),
+      db.execute(sql`SELECT COUNT(*) as count FROM book_issues WHERE tenant_id=${ntid(req)} AND status='issued' AND due_date < CURRENT_DATE`),
       db.execute(sql`SELECT COALESCE(SUM(amount),0) as total FROM fee_structures WHERE tenant_id=${tid(req)} AND is_active=1`),
     ]);
     res.json({
