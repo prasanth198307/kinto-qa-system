@@ -278,12 +278,12 @@ router.get("/audit-log", requireAuth, async (req: any, res) => {
 // ─── Reorder Alerts ───────────────────────────────────────────────────────────
 router.get("/reorder-alerts", requireAuth, async (req: any, res) => {
   const rows = await db.execute(sql`
-    SELECT p.id, p.name, p.sku, p.reorder_point, p.reorder_qty,
+    SELECT p.id, p.product_name as name, p.sku_code as sku, p.reorder_point, p.reorder_qty,
       COALESCE(SUM(CASE WHEN rmt.transaction_type='in' THEN rmt.quantity WHEN rmt.transaction_type='out' THEN -rmt.quantity ELSE 0 END),0) as current_stock
     FROM products p
     LEFT JOIN raw_material_transactions rmt ON rmt.material_id=p.id AND rmt.tenant_id=${tid(req)}
     WHERE p.tenant_id=${tid(req)} AND p.record_status=1 AND p.reorder_point > 0
-    GROUP BY p.id, p.name, p.sku, p.reorder_point, p.reorder_qty
+    GROUP BY p.id, p.product_name, p.sku_code, p.reorder_point, p.reorder_qty
     HAVING COALESCE(SUM(CASE WHEN rmt.transaction_type='in' THEN rmt.quantity WHEN rmt.transaction_type='out' THEN -rmt.quantity ELSE 0 END),0) <= p.reorder_point`);
   res.json(rows.rows);
 });
