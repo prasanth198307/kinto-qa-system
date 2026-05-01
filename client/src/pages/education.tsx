@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -178,37 +178,151 @@ function StudentsTab() {
 
 function AttendanceTab() {
   const { toast } = useToast();
-  const [selectedClass, setSelectedClass] = useState(""); const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]); const [attendance, setAttendance] = useState<Record<string, string>>({}); const [saving, setSaving] = useState(false);
+  const [selectedClass, setSelectedClass] = useState("");
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  });
+  const [overrides, setOverrides] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+
   const { data: classes = [] } = useQuery<any[]>({ queryKey: ["/api/education/classes"] });
   const { data: students = [] } = useQuery<any[]>({ queryKey: ["/api/education/students"] });
-  const { data: existing = [] } = useQuery<any[]>({ queryKey: ["/api/education/attendance", selectedDate, selectedClass], queryFn: () => { const p = new URLSearchParams({ date: selectedDate }); if (selectedClass) p.set("class_id", selectedClass); return fetch(`/api/education/attendance?${p}`, { credentials: "include" }).then(r => r.json()); }, enabled: !!selectedDate });
+  const { data: existing = [], isFetching } = useQuery<any[]>({
+    queryKey: ["/api/education/attendance", selectedDate, selectedClass],
+    queryFn: () => {
+      const p = new URLSearchParams({ date: selectedDate });
+      if (selectedClass) p.set("class_id", selectedClass);
+      return fetch(`/api/education/attendance?${p}`, { credentials: "include" }).then(r => r.json());
+    },
+    enabled: !!selectedDate,
+  });
+
+  useEffect(() => { setOverrides({}); }, [selectedDate, selectedClass]);
+
   const classStudents = (students as any[]).filter(s => !selectedClass || String(s.class_id) === selectedClass);
-  const getStatus = (id: string) => { if (attendance[id]) return attendance[id]; const f = (existing as any[]).find(e => String(e.student_id) === id); return f?.status || "present"; };
-  const toggle = (id: string, st: string) => setAttendance(p => ({ ...p, [id]: st }));
+  const savedMap: Record<string, string> = {};
+  (existing as any[]).forEach(e => { savedMap[String(e.student_id)] = e.status; });
+
+  const getStatus = (id: string) => overrides[id] ?? savedMap[id] ?? "present";
+  const toggle = (id: string, st: string) => setOverrides(p => ({ ...p, [id]: st }));
+  const markAll = (st: string) => {
+    const next: Record<string, string> = {};
+    classStudents.forEach(s => { next[String(s.id)] = st; });
+    setOverrides(next);
+  };
+
   const save = async () => {
+    if (!classStudents.length) { toast({ title: "No students to save", variant: "destructive" }); return; }
     setSaving(true);
-    try { await apiRequest("POST", "/api/education/attendance/bulk", { class_id: selectedClass || null, attendance_date: selectedDate, records: classStudents.map(s => ({ student_id: s.id, status: getStatus(String(s.id)) })) }); toast({ title: "Attendance saved" }); queryClient.invalidateQueries({ queryKey: ["/api/education/attendance"] }); }
-    catch (e: any) { toast({ title: "Error", description: e.message, variant: "destructive" }); }
+    try {
+      await apiRequest("POST", "/api/education/attendance/bulk", {
+        class_id: selectedClass || null,
+        attendance_date: selectedDate,
+        records: classStudents.map(s => ({ student_id: s.id, status: getStatus(String(s.id)) })),
+      });
+      toast({ title: `Attendance saved for ${classStudents.length} student${classStudents.length !== 1 ? "s" : ""}` });
+      queryClient.invalidateQueries({ queryKey: ["/api/education/attendance"] });
+      setOverrides({});
+    } catch (e: any) { toast({ title: "Error saving attendance", description: e.message, variant: "destructive" }); }
     setSaving(false);
   };
-  const sc: Record<string, string> = { present: "bg-green-100 text-green-700 border-green-200", absent: "bg-red-100 text-red-700 border-red-200", late: "bg-yellow-100 text-yellow-700 border-yellow-200", leave: "bg-gray-100 text-gray-700 border-gray-200" };
+
+  const sc: Record<string, string> = {
+    present: "bg-green-100 text-green-700 border-green-300 dark:bg-green-900 dark:text-green-200",
+    absent:  "bg-red-100 text-red-700 border-red-300 dark:bg-red-900 dark:text-red-200",
+    late:    "bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900 dark:text-yellow-200",
+    leave:   "bg-gray-100 text-gray-600 border-gray-300 dark:bg-gray-800 dark:text-gray-300",
+  };
+  const changed = Object.keys(overrides).length;
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <F label="Date"><Input type="date" value={selectedDate} onChange={e=>setSelectedDate(e.target.value)} className="w-auto"/></F>
-        <F label="Class"><Select value={selectedClass} onValueChange={setSelectedClass}><SelectTrigger className="w-44"><SelectValue placeholder="All classes"/></SelectTrigger><SelectContent><SelectItem value="">All</SelectItem>{(classes as any[]).map((c:any)=><SelectItem key={c.id} value={String(c.id)}>{c.name}{c.section?`-${c.section}`:""}</SelectItem>)}</SelectContent></Select></F>
-        <div className="pt-5"><Button onClick={save} disabled={saving}>Save Attendance</Button></div>
+        <F label="Date">
+          <Input type="date" value={selectedDate} onChange={e => { setSelectedDate(e.target.value); }} className="w-auto"/>
+        </F>
+        <F label="Class">
+          <Select value={selectedClass} onValueChange={v => { setSelectedClass(v); }}>
+            <SelectTrigger className="w-44"><SelectValue placeholder="All classes"/></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All Classes</SelectItem>
+              {(classes as any[]).map((c:any) => <SelectItem key={c.id} value={String(c.id)}>{c.name}{c.section ? `-${c.section}` : ""}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </F>
+        {classStudents.length > 0 && (
+          <div className="flex gap-1 pt-5 flex-wrap">
+            <Button size="sm" variant="outline" onClick={() => markAll("present")}>All Present</Button>
+            <Button size="sm" variant="outline" onClick={() => markAll("absent")}>All Absent</Button>
+          </div>
+        )}
+        <div className="pt-5">
+          <Button onClick={save} disabled={saving || !classStudents.length}>
+            {saving ? "Saving..." : changed > 0 ? `Save (${changed} changed)` : "Save Attendance"}
+          </Button>
+        </div>
       </div>
-      <div className="rounded-md border overflow-x-auto"><table className="w-full text-sm">
-        <thead className="bg-muted/50"><tr><th className="px-3 py-2 text-left">Student</th><th className="px-3 py-2 text-left">Class</th>{["present","absent","late","leave"].map(s=><th key={s} className="px-3 py-2 text-center capitalize">{s}</th>)}</tr></thead>
-        <tbody>{classStudents.map(s => {
-          const st = getStatus(String(s.id));
-          return <tr key={s.id} className="border-t hover:bg-muted/30">
-            <td className="px-3 py-2 font-medium">{s.name}</td><td className="px-3 py-2 text-muted-foreground">{s.class_name}{s.section?`-${s.section}`:""}</td>
-            {["present","absent","late","leave"].map(status=><td key={status} className="px-3 py-2 text-center"><button onClick={()=>toggle(String(s.id),status)} className={`w-7 h-7 rounded-full border-2 text-xs font-medium transition-all ${st===status?sc[status]:"border-muted bg-transparent"}`}>{status[0].toUpperCase()}</button></td>)}
-          </tr>;
-        })}{!classStudents.length&&<tr><td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">No students for selected filter</td></tr>}</tbody>
-      </table></div>
+
+      {isFetching && <p className="text-sm text-muted-foreground">Loading saved data...</p>}
+
+      <div className="rounded-md border overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/50">
+            <tr>
+              <th className="px-3 py-2 text-left font-medium">Student</th>
+              <th className="px-3 py-2 text-left font-medium">Class</th>
+              {["present","absent","late","leave"].map(s => (
+                <th key={s} className="px-3 py-2 text-center font-medium capitalize">{s}</th>
+              ))}
+              <th className="px-3 py-2 text-left font-medium">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {classStudents.map(s => {
+              const sid = String(s.id);
+              const st = getStatus(sid);
+              const isChanged = overrides[sid] !== undefined;
+              return (
+                <tr key={s.id} className={`border-t hover:bg-muted/30 ${isChanged ? "bg-muted/20" : ""}`}>
+                  <td className="px-3 py-2 font-medium">{s.name}</td>
+                  <td className="px-3 py-2 text-muted-foreground text-xs">{s.class_name}{s.section ? `-${s.section}` : ""}</td>
+                  {["present","absent","late","leave"].map(status => (
+                    <td key={status} className="px-3 py-2 text-center">
+                      <button
+                        onClick={() => toggle(sid, status)}
+                        className={`w-7 h-7 rounded-full border-2 text-xs font-medium transition-all ${st === status ? sc[status] : "border-muted bg-transparent text-muted-foreground hover:border-muted-foreground"}`}
+                      >
+                        {status[0].toUpperCase()}
+                      </button>
+                    </td>
+                  ))}
+                  <td className="px-3 py-2">
+                    <Badge variant="secondary" className={`text-xs ${sc[st] || ""}`}>
+                      {st}
+                    </Badge>
+                  </td>
+                </tr>
+              );
+            })}
+            {!classStudents.length && (
+              <tr><td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">
+                {(students as any[]).length === 0 ? "No students added yet. Add students first." : "No students for the selected class."}
+              </td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {classStudents.length > 0 && (
+        <div className="flex gap-4 text-sm text-muted-foreground flex-wrap">
+          {["present","absent","late","leave"].map(s => (
+            <span key={s} className="capitalize">
+              {s}: <strong>{classStudents.filter(st => getStatus(String(st.id)) === s).length}</strong>
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

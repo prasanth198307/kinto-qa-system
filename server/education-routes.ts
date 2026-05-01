@@ -135,15 +135,33 @@ router.delete("/students/:id", requireAuth, async (req: any, res) => {
 router.get("/attendance", requireAuth, async (req: any, res) => {
   try {
     const { date, class_id } = req.query;
-    let q = `SELECT sa.*, s.name as student_name, s.student_code, c.name as class_name
-      FROM student_attendance sa
-      LEFT JOIN students s ON s.id::text=sa.student_id::text
-      LEFT JOIN classes c ON c.id::text=sa.class_id::text
-      WHERE sa.tenant_id='${tid(req)}'`;
-    if (date) q += ` AND sa.attendance_date='${date}'`;
-    if (class_id) q += ` AND sa.class_id='${class_id}'`;
-    q += ' ORDER BY sa.attendance_date DESC, s.name';
-    const rows = await db.execute(sql.raw(q));
+    const tenantId = Number(tid(req));
+    let rows;
+    if (date && class_id) {
+      rows = await db.execute(sql`
+        SELECT sa.*, s.name as student_name, s.student_code, c.name as class_name
+        FROM student_attendance sa
+        LEFT JOIN students s ON s.id::text=sa.student_id
+        LEFT JOIN classes c ON c.id::text=sa.class_id
+        WHERE sa.tenant_id=${tenantId} AND sa.attendance_date=${String(date)} AND sa.class_id=${String(class_id)}
+        ORDER BY s.name`);
+    } else if (date) {
+      rows = await db.execute(sql`
+        SELECT sa.*, s.name as student_name, s.student_code, c.name as class_name
+        FROM student_attendance sa
+        LEFT JOIN students s ON s.id::text=sa.student_id
+        LEFT JOIN classes c ON c.id::text=sa.class_id
+        WHERE sa.tenant_id=${tenantId} AND sa.attendance_date=${String(date)}
+        ORDER BY s.name`);
+    } else {
+      rows = await db.execute(sql`
+        SELECT sa.*, s.name as student_name, s.student_code, c.name as class_name
+        FROM student_attendance sa
+        LEFT JOIN students s ON s.id::text=sa.student_id
+        LEFT JOIN classes c ON c.id::text=sa.class_id
+        WHERE sa.tenant_id=${tenantId}
+        ORDER BY sa.attendance_date DESC, s.name`);
+    }
     res.json(rows.rows);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
@@ -393,7 +411,7 @@ router.get("/stats", requireAuth, async (req: any, res) => {
       db.execute(sql`SELECT COALESCE(SUM(amount),0) as total FROM fee_payments WHERE tenant_id=${tid(req)} AND EXTRACT(MONTH FROM paid_date)=EXTRACT(MONTH FROM CURRENT_DATE)`),
       db.execute(sql`SELECT COUNT(*) as count FROM classes WHERE tenant_id=${tid(req)} AND is_active=1`),
       db.execute(sql`SELECT COUNT(*) as count FROM book_issues WHERE tenant_id=${Number(tid(req))} AND status='issued' AND due_date < CURRENT_DATE`),
-      db.execute(sql`SELECT COALESCE(SUM(amount),0) as total FROM fee_structures WHERE (tenant_id=${Number(tid(req))} OR tenant_id=${tid(req)}::integer) AND is_active=1`),
+      db.execute(sql`SELECT COALESCE(SUM(amount),0) as total FROM fee_structures WHERE tenant_id=${tid(req)} AND is_active=1`),
     ]);
     res.json({
       totalStudents: Number(students.rows[0]?.count||0),
