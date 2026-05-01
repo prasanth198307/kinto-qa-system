@@ -116,6 +116,17 @@ psql $DATABASE_URL -f db_scripts/2026-05-01_sync_plan_modules_phase1_5_verticals
 -- Idempotent: skips rows that already exist
 psql $DATABASE_URL -f db_scripts/2026-05-01_seed_new_module_role_permissions.sql
 
+----- GROUP 12: T001 Extended Vertical Tables (May 1) -----
+-- All additional tables for 6 industry verticals (doctors, teachers, drivers, etc.)
+-- MUST run AFTER GROUP 9 (industry_* base tables must exist first)
+-- Idempotent: uses IF NOT EXISTS throughout
+psql $DATABASE_URL -f db_scripts/2026-05-01_t001_extended_vertical_tables.sql
+
+----- GROUP 13: Schema fixes — education & healthcare (May 1) -----
+-- Adds doctor_id to appointments, unique index on student_attendance
+-- Safe to re-run (uses IF NOT EXISTS / IF EXISTS)
+psql $DATABASE_URL -f db_scripts/2026-05-01_fix_education_healthcare_schema.sql
+
 ============================================================
   END OF MIGRATION LIST
 ============================================================
