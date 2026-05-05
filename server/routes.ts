@@ -5168,13 +5168,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
         
+        // If FIFO fully absorbs this batch (effectiveQuantity=0), still show it with
+        // its physical quantity — soft reservations from other invoices have not physically
+        // moved any stock yet, so the batch is still selectable in a gatepass.
+        const displayQuantity = effectiveQuantity > 0 ? effectiveQuantity : fg.quantity;
         return {
           ...fg,
           physicalQuantity: fg.quantity,
           reservedQuantity: fg.quantity - effectiveQuantity,
-          availableQuantity: effectiveQuantity
+          availableQuantity: displayQuantity
         };
-      }).filter(fg => fg.availableQuantity > 0); // Only return batches with available stock
+      }).filter(fg => fg.quantity > 0); // Show all physically-stocked batches
 
       res.json({
         items: result,
