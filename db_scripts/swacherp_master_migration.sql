@@ -1010,3 +1010,43 @@ UPDATE subscription_plans SET features = '[
 --  END OF MASTER MIGRATION
 --  Safe to re-run at any time — all statements are idempotent.
 -- ============================================================
+
+-- ─────────────────────────────────────────────────────────────
+-- GROUP 18: May 6 — Post-master delta changes
+-- ─────────────────────────────────────────────────────────────
+
+-- Education: named unique constraints (required for ON CONFLICT upserts)
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'exam_marks_exam_student_uidx' AND conrelid = 'exam_marks'::regclass
+  ) THEN
+    ALTER TABLE exam_marks ADD CONSTRAINT exam_marks_exam_student_uidx UNIQUE (examination_id, student_id);
+  END IF;
+EXCEPTION WHEN others THEN
+  RAISE NOTICE 'exam_marks constraint: %', SQLERRM;
+END $$;
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'fsc_structure_component_uidx' AND conrelid = 'fee_structure_components'::regclass
+  ) THEN
+    ALTER TABLE fee_structure_components ADD CONSTRAINT fsc_structure_component_uidx UNIQUE (structure_id, component_id);
+  END IF;
+EXCEPTION WHEN others THEN
+  RAISE NOTICE 'fee_structure_components constraint: %', SQLERRM;
+END $$;
+
+-- Education Fees: track gross amount and scholarship/discount per payment
+ALTER TABLE fee_payments ADD COLUMN IF NOT EXISTS gross_amount INTEGER DEFAULT 0;
+ALTER TABLE fee_payments ADD COLUMN IF NOT EXISTS discount_amount INTEGER DEFAULT 0;
+
+-- Module Marketplace: per-tenant module selection on subscriptions
+ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS selected_modules JSONB DEFAULT '[]';
+ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS monthly_amount INTEGER DEFAULT 0;
+
+-- ============================================================
+--  END OF MASTER MIGRATION (updated 2026-05-06)
+--  Safe to re-run at any time — all statements are idempotent.
+-- ============================================================
