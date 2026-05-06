@@ -689,6 +689,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       tenantPlan = 'enterprise';
     }
 
+    // Fetch per-tenant purchased modules from Module Marketplace (selected_modules override)
+    let purchasedModules: string[] = [];
+    try {
+      const subRows = await db.execute(
+        sql`SELECT selected_modules FROM subscriptions WHERE tenant_id = ${tenantId} LIMIT 1`
+      );
+      const raw = (subRows.rows as any[])[0]?.selected_modules;
+      if (Array.isArray(raw) && raw.length > 0) {
+        purchasedModules = raw as string[];
+      }
+    } catch {
+      // ignore — fall back to plan modules only
+    }
+
+    // Build merged module list: plan modules UNION purchased modules
+    const mergeWithPurchased = (planMods: string[]): string[] => {
+      if (purchasedModules.length === 0) return planMods;
+      const merged = new Set([...planMods, ...purchasedModules]);
+      return [...merged];
+    };
+
     // Try to read module list from the DB plan record (DB-driven, so super-admin edits take effect)
     try {
       const [planRecord] = await db
@@ -698,15 +719,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .limit(1);
 
       if (planRecord?.modules && Array.isArray(planRecord.modules) && planRecord.modules.length > 0) {
-        res.json(getPlanFeaturesFromModules(tenantPlan, planRecord.modules as string[]));
+        const merged = mergeWithPurchased(planRecord.modules as string[]);
+        res.json(getPlanFeaturesFromModules(tenantPlan, merged));
         return;
       }
     } catch {
       // Fall through to code-based fallback
     }
 
-    // Fallback: use hardcoded plan features
-    res.json(getPlanFeatures(tenantPlan));
+    // Fallback: use hardcoded plan features merged with purchased modules
+    const fallback = getPlanFeatures(tenantPlan);
+    if (purchasedModules.length > 0) {
+      const merged = mergeWithPurchased(fallback.modules);
+      res.json(getPlanFeaturesFromModules(tenantPlan, merged));
+      return;
+    }
+    res.json(fallback);
   });
 
   // ─── Tenant info endpoint (for settings page + white-labeling) ─────────────
