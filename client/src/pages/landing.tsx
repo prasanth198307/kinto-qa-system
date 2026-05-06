@@ -338,7 +338,7 @@ function DashboardPreview() {
           </div>
           <div className="mx-4 flex-1">
             <div className="bg-white dark:bg-zinc-700 rounded px-3 py-0.5 text-[10px] text-muted-foreground w-52 mx-auto text-center border">
-              ops.kintowater.com/dashboard
+              app.swacherp.com/dashboard
             </div>
           </div>
         </div>
@@ -937,7 +937,7 @@ export default function LandingPage() {
             <p className="text-xs text-muted-foreground mt-3">No credit card needed · No commitment · Cancel anytime</p>
             <p className="text-xs text-muted-foreground mt-1">
               Want a custom quote?{" "}
-              <a href="mailto:hello@kintoops.in" className="text-primary underline underline-offset-2">Contact us</a>
+              <a href="mailto:sales@swacherp.com" className="text-primary underline underline-offset-2">Contact us</a>
             </p>
           </div>
         </div>

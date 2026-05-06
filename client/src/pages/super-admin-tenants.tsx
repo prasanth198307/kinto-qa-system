@@ -630,13 +630,13 @@ export default function SuperAdminTenants() {
             </DialogTitle>
             <DialogDescription>
               Add the exact origins (protocol + domain) that are allowed to call this tenant's APIs from a browser.
-              Example: <code className="text-xs bg-muted px-1 rounded">https://kinto.kintowater.com</code>
+              Example: <code className="text-xs bg-muted px-1 rounded">https://tenant.swacherp.com</code>
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="flex gap-2">
               <Input
-                placeholder="https://example.kintowater.com"
+                placeholder="https://example.swacherp.com"
                 value={corsNewOrigin}
                 onChange={(e) => setCorsNewOrigin(e.target.value)}
                 onKeyDown={(e) => {
