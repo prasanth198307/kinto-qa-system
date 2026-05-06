@@ -9,11 +9,16 @@ async function throwIfResNotOk(res: Response) {
 
 type UnauthorizedBehavior = "returnNull" | "throw";
 
-// Helper called whenever any API response is 401 — clears auth state so the
-// app automatically routes back to login (proper SaaS session expiry handling).
+// Helper called whenever any API response is 401.
+// Only marks the session as expired when the user was previously authenticated
+// (i.e. there is cached user data). A plain unauthenticated visitor hitting a
+// protected endpoint should NOT see the "session expired" banner on /auth.
 function handleUnexpected401() {
+  const wasAuthenticated = !!queryClient.getQueryData(["/api/user"]);
   queryClient.setQueryData(["/api/user"], null);
-  sessionStorage.setItem("session_expired", "1");
+  if (wasAuthenticated) {
+    sessionStorage.setItem("session_expired", "1");
+  }
 }
 
 export const getQueryFn: <T>(options: {
