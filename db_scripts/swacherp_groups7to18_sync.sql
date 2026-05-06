@@ -689,8 +689,7 @@ DO $$ BEGIN
 END $$;
 
 CREATE UNIQUE INDEX IF NOT EXISTS student_attendance_unique_idx
-  ON public.student_attendance (student_id, attendance_date)
-  WHERE record_status IS NOT DISTINCT FROM 1;
+  ON public.student_attendance (student_id, attendance_date);
 
 -- ─────────────────────────────────────────────────────────────
 -- GROUP 15: May 1 — Plan modules sync + tenant industry
