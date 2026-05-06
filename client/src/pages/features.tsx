@@ -2,296 +2,521 @@ import { useEffect } from "react";
 import { useLocation } from "wouter";
 import {
   Factory, Package, ShoppingCart, FileText, BarChart3, Wrench,
-  MessageCircle, Shield, Users, ClipboardList, Truck, Receipt,
+  MessageCircle, Users, ClipboardList, Truck, Receipt,
   IndianRupee, ArrowRight, CheckCircle2, Warehouse, FolderKanban,
-  PiggyBank, GitBranch, ClipboardCheck, BookOpen, HeartPulse,
-  GraduationCap, MapPin, Home, ShoppingBag, Leaf, Star, Zap,
-  UserCheck, Building2, Settings, Bell, CreditCard, FileBarChart,
-  Layers, Lock, TrendingUp, Calendar, MessageSquare,
+  PiggyBank, GitBranch, ClipboardCheck, HeartPulse,
+  GraduationCap, Home, ShoppingBag, Leaf, Zap,
+  UserCheck, Building2, Settings, Key, Webhook, MonitorSmartphone,
+  Target, ChevronLeft, Globe, Layers, LayoutDashboard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-// ─── Module definitions ───────────────────────────────────────────────────────
+// ─── All module groups matching the nav ───────────────────────────────────────
 
-const MODULES = [
+const GROUPS = [
   {
-    id: "production",
-    icon: Factory,
-    name: "Production & BOM",
-    category: "Operations",
-    tagline: "Run your shop floor end-to-end.",
-    description:
-      "Plan and track manufacturing orders from raw material to finished goods. Define multi-level Bills of Materials, record actual vs standard consumption, and analyse production variance — all in one screen.",
-    features: [
-      "Multi-level Bills of Material (BOM) with sub-assemblies",
-      "Work-order scheduling and shop-floor tracking",
-      "Actual vs standard material consumption with variance reports",
-      "Yield, scrap, and rework capture",
-      "Real-time WIP inventory visibility",
+    id: "operations",
+    label: "Operations",
+    headline: "Run your entire shop floor — end to end",
+    sub: "From raw material receipt to finished goods dispatch, every workflow is connected.",
+    modules: [
+      {
+        id: "production",
+        icon: Factory,
+        name: "Production & BOM",
+        tagline: "Orders, BOM, variance tracking",
+        description:
+          "Plan and execute manufacturing orders against multi-level Bills of Material. Record actual vs standard material consumption, capture yield and scrap, and analyse production variance — all without spreadsheets.",
+        features: [
+          "Multi-level Bills of Material (BOM) with sub-assemblies",
+          "Work-order scheduling with shift-wise tracking",
+          "Actual vs standard material consumption reporting",
+          "Scrap, rework, and yield capture per batch",
+          "Real-time WIP inventory visibility",
+        ],
+        how: "Define BOM → raise Work Order → issue raw materials → record output → inventory auto-updated.",
+      },
+      {
+        id: "inventory",
+        icon: Package,
+        name: "Inventory Control",
+        tagline: "Multi-warehouse, FIFO, serial/lot tracking",
+        description:
+          "Maintain accurate stock across all locations with FIFO batch costing, serial & lot tracking, reorder alerts, and a full audit trail. Every transaction — production, purchase, dispatch — updates inventory instantly.",
+        features: [
+          "Multi-warehouse & multi-location stock management",
+          "FIFO batch costing for accurate valuation",
+          "Serial number and lot/batch tracking",
+          "Configurable reorder points and alerts",
+          "Physical stock verification with variance reports",
+        ],
+        how: "Receive via GRN → batches assigned → consumed in production or dispatched via gatepass → ledger always current.",
+      },
+      {
+        id: "purchase",
+        icon: ShoppingCart,
+        name: "Purchase Orders",
+        tagline: "Requisitions, GRN, three-way matching",
+        description:
+          "Manage the full purchase cycle: raise requisitions, get approvals, convert to POs, receive goods via GRN, and do three-way matching before releasing vendor payments. Retention and advance amounts tracked automatically.",
+        features: [
+          "Purchase Requisitions with approval workflow",
+          "Automated PO generation from approved requisitions",
+          "Goods Receipt Notes (GRN) linked to POs",
+          "Three-way matching: PO ↔ GRN ↔ Vendor Invoice",
+          "Vendor credit limits, retention & advance tracking",
+        ],
+        how: "Raise PR → approve → generate PO → receive GRN → match vendor bill → release payment.",
+      },
+      {
+        id: "dispatch",
+        icon: Truck,
+        name: "Dispatch & Gatepasses",
+        tagline: "Invoice-first dispatch, e-signatures",
+        description:
+          "Issue returnable and non-returnable gatepasses tied to invoices. Capture vehicle, driver, and e-way bill details. Stock is automatically deducted on dispatch; pending returns tracked and followed up automatically.",
+        features: [
+          "Returnable & non-returnable gatepass types",
+          "Invoice-linked dispatch — no orphan shipments",
+          "E-way bill number and vehicle details capture",
+          "Automatic stock deduction on gatepass issue",
+          "Pending return alerts and follow-up tracking",
+        ],
+        how: "Create invoice → issue gatepass → stock deducted → open returns tracked → alerts sent.",
+      },
+      {
+        id: "quality",
+        icon: ClipboardList,
+        name: "Quality Control",
+        tagline: "Three-stage inspection, traceability",
+        description:
+          "Inspect at three stages — incoming, in-process, and outgoing. Record accept, reject, or rework decisions per batch. Raise Non-Conformance Reports and link Corrective Actions to close the loop.",
+        features: [
+          "Incoming, in-process, and outgoing inspection",
+          "Accept / Reject / Rework decisions per lot",
+          "Non-Conformance Reports (NCR) with root-cause capture",
+          "Corrective & Preventive Action (CAPA) tracking",
+          "Rejection trend analysis and quality dashboards",
+        ],
+        how: "Material received → QC inspection triggered → decision recorded → rejection quarantined → NCR raised if needed.",
+      },
+      {
+        id: "maintenance",
+        icon: Wrench,
+        name: "Preventive Maintenance",
+        tagline: "Machine schedules, spare parts",
+        description:
+          "Set up maintenance schedules for every machine. Auto-generate daily checklists for operators. Record breakdown history, downtime, and spare-part consumption — all linked to your inventory.",
+        features: [
+          "Machine master with PM schedule templates",
+          "Daily operator checklist auto-generation",
+          "Breakdown log with downtime capture",
+          "Spare-part consumption linked to inventory stock",
+          "Maintenance cost tracking per machine",
+        ],
+        how: "Define schedule → daily checklist created → operator fills in → manager reviews → spares consumed from stock.",
+      },
+      {
+        id: "projects",
+        icon: FolderKanban,
+        name: "Project Management",
+        tagline: "BOQ, milestones, timesheets, P&L",
+        description:
+          "Track projects from planning to delivery. Define Bill of Quantities, set milestones, capture daily timesheets, and get real-time project P&L. Ideal for contractors, engineers, and service companies.",
+        features: [
+          "Bill of Quantities (BOQ) with line-item budgets",
+          "Milestone definition and completion tracking",
+          "Timesheet capture linked to employees and tasks",
+          "Revenue recognition on milestone billing",
+          "Planned vs actual cost — live project P&L",
+        ],
+        how: "Define BOQ & milestones → team logs timesheets → milestone completed → invoice raised → P&L computed.",
+      },
     ],
-    how: "Create a BOM → raise a Work Order → issue raw materials → record production output → auto-update inventory.",
   },
   {
-    id: "inventory",
-    icon: Package,
-    name: "Inventory Control",
-    category: "Operations",
-    tagline: "Know exactly what you have, where, and when to reorder.",
-    description:
-      "Multi-warehouse inventory with FIFO batch costing, serial & lot tracking, reorder alerts, and full audit trail. Integrates natively with production, purchase, and dispatch.",
-    features: [
-      "Multi-warehouse & multi-location stock management",
-      "FIFO batch costing and serial / lot tracking",
-      "Automatic reorder alerts based on configurable thresholds",
-      "Stock ageing and slow-moving item reports",
-      "Physical stock verification with variance capture",
+    id: "finance",
+    label: "Finance",
+    headline: "Keep your books accurate and audit-ready",
+    sub: "Every transaction auto-posts to the right ledger. GST compliance is built in — not bolted on.",
+    modules: [
+      {
+        id: "invoicing",
+        icon: FileText,
+        name: "GST Invoicing",
+        tagline: "Tax, proforma, credit notes, GSTR reports",
+        description:
+          "Generate GST-compliant tax invoices, proforma invoices, credit notes, and debit notes in seconds. CGST, SGST, IGST, and TDS computed automatically. Export GSTR-1 and GSTR-3B directly in the government's JSON format.",
+        features: [
+          "Tax invoice, proforma, credit note & debit note",
+          "Auto CGST / SGST / IGST / TDS computation",
+          "E-invoice QR code generation",
+          "GSTR-1 and GSTR-3B summary & JSON export",
+          "Recurring invoice scheduler for subscriptions",
+        ],
+        how: "Add line items → taxes auto-applied → PDF generated → share via WhatsApp or email → payment recorded.",
+      },
+      {
+        id: "accounting",
+        icon: Receipt,
+        name: "Double-Entry Accounting",
+        tagline: "COA, P&L, Balance Sheet, journals",
+        description:
+          "Every sale, purchase, payment, and journal entry posts to the correct ledger automatically using double-entry bookkeeping. Get instant Profit & Loss, Balance Sheet, and Trial Balance — no manual consolidation needed.",
+        features: [
+          "Double-entry bookkeeping with auto-posting",
+          "Full Chart of Accounts (COA) management",
+          "Profit & Loss, Balance Sheet, Trial Balance",
+          "Bank reconciliation and cash-flow statements",
+          "TDS management and advance tax tracking",
+        ],
+        how: "Transact → journals auto-post → run P&L or Balance Sheet any time — no month-end scramble.",
+      },
+      {
+        id: "expenses",
+        icon: IndianRupee,
+        name: "Expenses & Cash",
+        tagline: "Cost centres, claims, cash register",
+        description:
+          "Manage petty cash, employee expense claims, and departmental cost centres from one screen. All payments are posted to accounts automatically and mapped to the correct cost centre for management reporting.",
+        features: [
+          "Petty cash register with voucher management",
+          "Employee expense claim submission & approval",
+          "Cost centre mapping for department-wise P&L",
+          "Auto-journal posting on reimbursement or payment",
+          "Expense analytics by category, department & employee",
+        ],
+        how: "Employee submits claim → manager approves → finance pays → journal auto-posts to cost centre.",
+      },
+      {
+        id: "mis",
+        icon: BarChart3,
+        name: "MIS Analytics",
+        tagline: "Executive KPIs, dashboards, reports",
+        description:
+          "Get a real-time view of the business with role-based dashboards. Sales trends, production targets, inventory ageing, collection efficiency — all in one screen. Export any report to Excel in one click.",
+        features: [
+          "Executive dashboard with 20+ KPI cards",
+          "Sales, production, and dispatch trend charts",
+          "Inventory ageing and slow-mover reports",
+          "Collection efficiency and debtor analysis",
+          "One-click Excel export for all reports",
+        ],
+        how: "Login → select role-based dashboard → drill down from KPI to transaction level → export or share.",
+      },
+      {
+        id: "assets",
+        icon: PiggyBank,
+        name: "Fixed Assets",
+        tagline: "Asset register, depreciation schedules",
+        description:
+          "Maintain a complete fixed asset register with SLM and WDV depreciation schedules. Record additions, revaluations, and disposals — every entry auto-posts to the general ledger.",
+        features: [
+          "Fixed asset register with category grouping",
+          "SLM and WDV depreciation computation",
+          "Asset addition, revaluation & disposal entries",
+          "Depreciation schedule reports",
+          "Auto-posting to general ledger",
+        ],
+        how: "Add asset → assign method → run monthly depreciation → journals auto-post → net book value updated.",
+      },
     ],
-    how: "Receive goods via GRN → batches assigned → consumed in production or dispatched via gatepass → stock ledger always up to date.",
   },
   {
-    id: "purchase",
-    icon: ShoppingCart,
-    name: "Purchase Orders",
-    category: "Operations",
-    tagline: "From requisition to payment — fully traceable.",
-    description:
-      "Raise purchase requisitions, get approvals, convert to POs, receive goods via GRN, and perform three-way matching before releasing vendor payments. Track retention and advance amounts.",
-    features: [
-      "Purchase requisitions with configurable approval workflow",
-      "Automated PO generation from approved requisitions",
-      "Goods Receipt Notes (GRN) linked to POs",
-      "Three-way matching: PO ↔ GRN ↔ Vendor Invoice",
-      "Retention, advance, and credit-limit management",
+    id: "people",
+    label: "People & CRM",
+    headline: "Manage your team and grow your customer base",
+    sub: "HR, payroll, CRM, and WhatsApp — all connected to the same data.",
+    modules: [
+      {
+        id: "hr",
+        icon: UserCheck,
+        name: "HR & Payroll",
+        tagline: "Attendance, leaves, payroll, TDS, Form 16",
+        description:
+          "Handle the full employee lifecycle — from onboarding to full-and-final settlement. Attendance (manual or biometric), leave management, and monthly payroll with PF, ESI, PT, and TDS computed automatically.",
+        features: [
+          "Employee master with documents and org-chart",
+          "Attendance: manual, bulk import, or biometric",
+          "Leave management with configurable leave types",
+          "Payroll with PF, ESI, PT, TDS auto-computation",
+          "Payslip generation and bank transfer export",
+        ],
+        how: "Onboard employee → mark attendance → approve leaves → run payroll → generate payslips in one click.",
+      },
+      {
+        id: "ess",
+        icon: MonitorSmartphone,
+        name: "Employee Self-Service",
+        tagline: "Payslips, leaves, expense claims, appraisals",
+        description:
+          "Give every employee their own portal to view payslips, apply for leave, submit expense claims, and track appraisal status — without HR involvement for routine requests.",
+        features: [
+          "Payslip download (PDF) with salary breakdown",
+          "Leave application and balance view",
+          "Expense claim submission with receipt upload",
+          "Appraisal self-assessment form",
+          "Holiday calendar and company announcements",
+        ],
+        how: "Employee logs in → views payslip / applies leave / submits claim → manager gets notified → approved instantly.",
+      },
+      {
+        id: "crm",
+        icon: Target,
+        name: "CRM",
+        tagline: "Lead pipeline, follow-ups, conversions",
+        description:
+          "Capture leads from any source, track them through the pipeline, send quotations, and convert to sales orders in one click. Set follow-up reminders so no opportunity is missed.",
+        features: [
+          "Lead capture and visual pipeline board",
+          "Quotation builder linked to product catalogue",
+          "Follow-up reminders and activity log",
+          "One-click conversion: quotation → sales order",
+          "Customer credit-limit check at order stage",
+        ],
+        how: "Log lead → create quotation → follow up → convert to order → invoice → payment collected.",
+      },
+      {
+        id: "whatsapp",
+        icon: MessageCircle,
+        name: "WhatsApp Integration",
+        tagline: "Checklists, startup alerts & notifications",
+        description:
+          "Send invoices, payslips, POs, and reminders directly via WhatsApp. Machine startup checklists and breakdown alerts reach operators on their phones. Approval notifications let managers approve without logging in.",
+        features: [
+          "Send invoices, POs & quotes via WhatsApp",
+          "Payment reminder automation with schedule",
+          "Machine startup and breakdown alerts",
+          "Approval notification with one-tap response",
+          "Inbound WhatsApp queries (e.g. stock balance)",
+        ],
+        how: "Configure WhatsApp number → link Meta Cloud API → all document actions trigger automatic messages.",
+      },
     ],
-    how: "Raise PR → approve → generate PO → receive GRN → match vendor bill → release payment.",
   },
   {
-    id: "invoicing",
-    icon: FileText,
-    name: "GST Invoicing",
-    category: "Finance",
-    tagline: "100 % GST-compliant invoices in seconds.",
-    description:
-      "Generate tax invoices, proforma invoices, credit notes, and debit notes. Auto-calculate CGST, SGST, IGST, and TDS. Export GSTR-1 and GSTR-3B data directly to the GST portal JSON format.",
-    features: [
-      "Tax invoice, proforma, credit note, and debit note support",
-      "Automatic CGST / SGST / IGST / TDS computation",
-      "E-invoice QR code generation",
-      "GSTR-1 and GSTR-3B summary & JSON export",
-      "Recurring invoice scheduler for subscription billing",
+    id: "verticals",
+    label: "Industry Verticals",
+    headline: "Purpose-built for your industry",
+    sub: "Activate the vertical module that matches your business — healthcare, education, logistics, and more.",
+    modules: [
+      {
+        id: "healthcare",
+        icon: HeartPulse,
+        name: "Healthcare",
+        tagline: "Patients, OPD/IPD, wards, billing",
+        description:
+          "Manage the full patient journey — from appointment booking to discharge. OPD consultations, IPD admissions, ward assignments, pharmacy inventory, and patient billing all in one system.",
+        features: [
+          "Patient registration with medical history",
+          "OPD appointment scheduling and consultation notes",
+          "IPD admission, ward assignment & discharge",
+          "Pharmacy inventory with expiry-date tracking",
+          "Patient billing with insurance support",
+        ],
+        how: "Register patient → book appointment → consult → admit to ward if needed → discharge → bill raised.",
+      },
+      {
+        id: "education",
+        icon: GraduationCap,
+        name: "Education",
+        tagline: "Students, classes, fee collection",
+        description:
+          "A 12-tab ERP for schools and colleges covering admissions, attendance, timetables, assessments, library, transport, hostel, and fee collection — including scholarships and fee ledger.",
+        features: [
+          "Student admission, profile & academic record",
+          "Fee collection with scholarships and discounts",
+          "Class attendance and staff check-in/out",
+          "Timetable, subjects & assessment management",
+          "Library, transport & hostel modules",
+        ],
+        how: "Admit student → assign class → collect fees → track attendance → run exams → generate report cards.",
+      },
+      {
+        id: "logistics",
+        icon: Truck,
+        name: "Logistics & Transport",
+        tagline: "Fleet, trips, consignment notes (LR)",
+        description:
+          "Track trips from loading to delivery. Generate Lorry Receipts (LR / consignment notes), assign vehicles, monitor fuel and maintenance costs, and calculate profitability per trip.",
+        features: [
+          "Vehicle master with document expiry tracking",
+          "Trip creation and route assignment",
+          "Lorry Receipt (LR) generation and tracking",
+          "Driver attendance and payment management",
+          "Trip-wise cost and profitability reports",
+        ],
+        how: "Create trip → assign vehicle & driver → generate LR → track delivery → compute trip profit.",
+      },
+      {
+        id: "real-estate",
+        icon: Home,
+        name: "Real Estate",
+        tagline: "Projects, units, bookings, payment schedule",
+        description:
+          "Manage residential and commercial projects end-to-end — unit inventory, bookings, payment schedules, construction procurement, and GST-compliant billing for under-construction properties.",
+        features: [
+          "Project and unit master with floor plans",
+          "Booking management and agreement tracking",
+          "Payment schedule with automated reminders",
+          "Construction procurement via purchase orders",
+          "GST-compliant invoice for under-construction units",
+        ],
+        how: "Create project → add units → book unit → set payment schedule → collect instalments → hand over.",
+      },
+      {
+        id: "retail",
+        icon: ShoppingBag,
+        name: "Retail / POS",
+        tagline: "Live billing terminal, sessions, sales history",
+        description:
+          "A point-of-sale terminal for walk-in retail. Scan barcodes, accept cash, card, or UPI, and close the day with a session reconciliation. Stock is deducted in real time; managers see outlet-wise sales instantly.",
+        features: [
+          "POS terminal with barcode/QR scanning",
+          "Cash, card, and UPI payment capture",
+          "Real-time stock deduction on each sale",
+          "Session open/close with cash reconciliation",
+          "Outlet-wise sales and returns dashboard",
+        ],
+        how: "Open session → scan items → collect payment → print receipt → close session → accounts auto-updated.",
+      },
+      {
+        id: "agriculture",
+        icon: Leaf,
+        name: "Agriculture",
+        tagline: "Farms, crop cycles, procurement, commodity prices",
+        description:
+          "Track the full crop lifecycle — from planting to harvest to sale. Manage procurement from farmers, monitor commodity prices, handle seasonal labour, and generate GST invoices for agri-produce.",
+        features: [
+          "Farm master and crop cycle tracking",
+          "Harvest recording and yield analysis",
+          "Farmer procurement with weighment records",
+          "Live commodity price monitoring",
+          "Seasonal labour payroll management",
+        ],
+        how: "Register farm → start crop cycle → record harvest → procure from farmers → sell → invoice raised.",
+      },
     ],
-    how: "Add line items → taxes auto-applied → PDF generated → WhatsApp or email to customer → payment recorded.",
   },
   {
-    id: "accounting",
-    icon: IndianRupee,
-    name: "Accounting & Ledger",
-    category: "Finance",
-    tagline: "Double-entry books that keep themselves.",
-    description:
-      "Every transaction — sale, purchase, payment, journal — posts to the correct ledger automatically. Get instant P&L, Balance Sheet, and Trial Balance without manual entries.",
-    features: [
-      "Double-entry bookkeeping with auto-posting",
-      "Full Chart of Accounts (CoA) management",
-      "Profit & Loss, Balance Sheet, Trial Balance",
-      "Bank reconciliation and cash-flow reports",
-      "TDS management and advance tax tracking",
+    id: "platform",
+    label: "Platform",
+    headline: "Enterprise-grade infrastructure under the hood",
+    sub: "Role-based access, full audit trails, open APIs, and configurable integrations — ready out of the box.",
+    modules: [
+      {
+        id: "api-hub",
+        icon: Key,
+        name: "API Hub",
+        tagline: "Scoped keys, live tester, call logs & analytics",
+        description:
+          "Issue scoped API keys with read/write permissions per module. Test your integration live in the API tester. Monitor every API call with a detailed log and analytics dashboard.",
+        features: [
+          "Scoped API key generation per module",
+          "Live API tester with request/response preview",
+          "Full API call logs with timestamp and payload",
+          "Rate limiting and key expiry management",
+          "Webhook support for event-driven integrations",
+        ],
+        how: "Generate key → integrate your app → test in live tester → monitor call logs → set rate limits.",
+      },
+      {
+        id: "approvals",
+        icon: GitBranch,
+        name: "Approval Workflows",
+        tagline: "Amount-based rules, multi-level approvals",
+        description:
+          "Configure multi-level approval rules for POs, expense claims, sales discounts, leave requests, and more. Set amount thresholds, assign approvers, and notify instantly via WhatsApp and email.",
+        features: [
+          "Rules configurable per document type and amount",
+          "Sequential or parallel multi-level approvers",
+          "Instant WhatsApp + email notifications",
+          "Unified approval inbox per approver",
+          "Full audit trail of every approve / reject",
+        ],
+        how: "Configure rule → document submitted → approver notified → approved → next level triggered → released.",
+      },
+      {
+        id: "audit-trail",
+        icon: ClipboardCheck,
+        name: "Audit Trail",
+        tagline: "Full change log across all entities",
+        description:
+          "Every create, edit, and delete across the entire system is logged with user, timestamp, and before/after values. Filter by entity type, date range, or user — essential for audits and compliance.",
+        features: [
+          "Change log for every entity in the system",
+          "Before and after values for every field change",
+          "Filter by entity type, date range, and user",
+          "Tamper-proof log — entries cannot be deleted",
+          "Export audit log to Excel or CSV",
+        ],
+        how: "Any change made → automatically logged → auditor searches by date/entity → exports for audit report.",
+      },
+      {
+        id: "integrations",
+        icon: Webhook,
+        name: "Custom Integrations",
+        tagline: "Register your own endpoints alongside built-ins",
+        description:
+          "Register external webhook endpoints to receive real-time events from SwachERP. Connect your e-commerce store, payment gateway, logistics partner, or any other system without writing custom connectors.",
+        features: [
+          "Register custom webhook endpoints per event",
+          "Choose from 30+ event types (invoice created, GRN received, etc.)",
+          "Secure HMAC signature verification",
+          "Delivery log with retry on failure",
+          "Test endpoint with sample payloads",
+        ],
+        how: "Register endpoint → choose events → SwachERP fires webhook on event → your system processes it.",
+      },
     ],
-    how: "Transact → journals auto-post → run P&L or Balance Sheet any time, no manual consolidation needed.",
-  },
-  {
-    id: "dispatch",
-    icon: Truck,
-    name: "Dispatch & Gatepasses",
-    category: "Operations",
-    tagline: "Controlled outward movement, every shipment tracked.",
-    description:
-      "Issue returnable and non-returnable gatepasses against invoices or delivery orders. Capture vehicle details, driver info, and e-way bill number. Automatically deduct stock on dispatch.",
-    features: [
-      "Returnable & non-returnable gatepass types",
-      "Invoice-first dispatch workflow",
-      "E-way bill number and vehicle details capture",
-      "Automatic stock deduction on gatepass issue",
-      "Pending return tracking and follow-up alerts",
-    ],
-    how: "Create invoice → issue gatepass linked to invoice → stock deducted → pending returns tracked automatically.",
-  },
-  {
-    id: "crm",
-    icon: Users,
-    name: "CRM & Sales",
-    category: "Sales",
-    tagline: "Track every lead from enquiry to closed deal.",
-    description:
-      "Manage leads, enquiries, quotations, and sales orders in a single pipeline. Set follow-up reminders, track conversion rates, and send quotes directly via WhatsApp.",
-    features: [
-      "Lead capture and pipeline management",
-      "Quotation builder linked to product catalogue",
-      "Follow-up reminders and activity log",
-      "Convert quotation to sales order in one click",
-      "Customer credit-limit warnings at order stage",
-    ],
-    how: "Log lead → create quotation → follow up → convert to sales order → invoice → payment.",
-  },
-  {
-    id: "hr",
-    icon: UserCheck,
-    name: "HR & Payroll",
-    category: "HR",
-    tagline: "From offer letter to full-and-final — fully automated.",
-    description:
-      "Manage employee master records, attendance (biometric / manual), leave applications, and monthly payroll with all statutory deductions — PF, ESI, PT — computed automatically.",
-    features: [
-      "Employee master with documents and org-chart",
-      "Attendance capture (manual, bulk import, biometric integration)",
-      "Leave management with approval workflow",
-      "Payroll with PF, ESI, PT, TDS auto-computation",
-      "Payslip generation and bank transfer export",
-    ],
-    how: "Onboard employee → mark attendance → approve leaves → run payroll at month-end → generate payslips.",
-  },
-  {
-    id: "expenses",
-    icon: Receipt,
-    name: "Expense Claims",
-    category: "HR",
-    tagline: "Employee expense reimbursements without the paper trail.",
-    description:
-      "Employees submit expense claims via the ESS portal with receipt uploads. Managers approve; finance reimburses. All mapped to cost centres and auto-posted to accounts.",
-    features: [
-      "Self-service expense claim submission with attachments",
-      "Configurable approval workflow (manager → finance)",
-      "Cost-centre mapping for department-wise reporting",
-      "Auto-journal posting on reimbursement",
-      "Expense analytics by category and employee",
-    ],
-    how: "Employee submits claim → manager approves → finance releases payment → journal auto-posts.",
-  },
-  {
-    id: "quality",
-    icon: ClipboardCheck,
-    name: "Quality Control",
-    category: "Operations",
-    tagline: "Catch defects before they reach your customer.",
-    description:
-      "Three-stage quality inspection (incoming, in-process, outgoing) with accept / reject / rework decisions. Track non-conformances and link corrective actions.",
-    features: [
-      "Incoming, in-process, and outgoing inspection stages",
-      "Accept, reject, or rework decisions per lot",
-      "Non-conformance reports (NCR) with root-cause capture",
-      "Corrective & Preventive Action (CAPA) tracking",
-      "Quality analytics and rejection trend reports",
-    ],
-    how: "Material received → QC inspection triggered → pass/fail recorded → rejected material quarantined → NCR raised.",
-  },
-  {
-    id: "maintenance",
-    icon: Wrench,
-    name: "Preventive Maintenance",
-    category: "Operations",
-    tagline: "Keep machines running; eliminate surprise breakdowns.",
-    description:
-      "Schedule preventive maintenance for every machine, track daily checklists, and record breakdown history. Spare-part consumption auto-deducted from inventory.",
-    features: [
-      "Machine master with maintenance schedule templates",
-      "Daily operator checklist and shift-end log",
-      "Breakdown report with downtime capture",
-      "Spare-part consumption linked to inventory",
-      "Maintenance cost tracking per machine",
-    ],
-    how: "Define schedule → checklist auto-generated daily → operator fills in → manager reviews → spare parts consumed from stock.",
-  },
-  {
-    id: "projects",
-    icon: FolderKanban,
-    name: "Project Management",
-    category: "Operations",
-    tagline: "Deliver projects on time and within budget.",
-    description:
-      "Manage projects with BOQ, milestones, timesheets, and real-time P&L. Ideal for construction, engineering, and service firms that bill by project deliverable.",
-    features: [
-      "Bill of Quantities (BOQ) and milestone definition",
-      "Timesheet capture linked to employees",
-      "Revenue recognition by milestone completion",
-      "Project P&L with planned vs actual cost",
-      "Multi-project dashboard with status overview",
-    ],
-    how: "Define project → set BOQ and milestones → team logs timesheets → milestone billed → P&L computed automatically.",
-  },
-  {
-    id: "warehouses",
-    icon: Warehouse,
-    name: "Multi-warehouse",
-    category: "Inventory",
-    tagline: "Manage stock across all your locations from one system.",
-    description:
-      "Create unlimited warehouse locations, transfer stock between them with approval workflows, and get location-wise stock reports at any time.",
-    features: [
-      "Unlimited warehouse and sub-location setup",
-      "Inter-warehouse stock transfer with approval",
-      "Location-wise stock valuation reports",
-      "UOM conversions (e.g. kg ↔ grams, box ↔ pieces)",
-      "Serial and lot traceability across locations",
-    ],
-    how: "Set up locations → create transfer order → approve → stock moves → reports reflect new position immediately.",
-  },
-  {
-    id: "assets",
-    icon: Building2,
-    name: "Fixed Assets",
-    category: "Finance",
-    tagline: "Track every asset from purchase to disposal.",
-    description:
-      "Maintain a fixed asset register with depreciation schedules (SLM / WDV), asset revaluation, and disposal entries — all auto-posted to the general ledger.",
-    features: [
-      "Fixed asset register with category-wise grouping",
-      "SLM and WDV depreciation computation",
-      "Asset addition, revaluation, and disposal entries",
-      "Depreciation schedule reports",
-      "Auto-journal posting to general ledger",
-    ],
-    how: "Add asset → assign depreciation method → run monthly depreciation → journals auto-post → asset net-book value updated.",
-  },
-  {
-    id: "approvals",
-    icon: GitBranch,
-    name: "Approval Workflows",
-    category: "Finance",
-    tagline: "Nothing moves without the right sign-off.",
-    description:
-      "Configure multi-level approval rules for purchase orders, expense claims, leave requests, sales discounts, and more. Approvers notified via WhatsApp and email instantly.",
-    features: [
-      "Configurable approval rules per document type",
-      "Multi-level (sequential or parallel) approver chains",
-      "Instant WhatsApp + email notifications",
-      "Unified approvals inbox for each approver",
-      "Audit trail of every approve / reject action",
-    ],
-    how: "Document submitted → first approver notified → approved → next level notified → final approval → document released.",
-  },
-  {
-    id: "whatsapp",
-    icon: MessageCircle,
-    name: "WhatsApp Integration",
-    category: "Sales",
-    tagline: "Your ERP in every employee's pocket.",
-    description:
-      "Send invoices, POs, payslips, and reminders directly via WhatsApp. Receive machine breakdown alerts, payment confirmations, and approval notifications — all without leaving WhatsApp.",
-    features: [
-      "Send invoices, quotations, and POs via WhatsApp",
-      "Payment reminder automation with configurable schedule",
-      "Machine breakdown and maintenance alerts",
-      "Approval notification and one-tap approve / reject",
-      "Inbound WhatsApp commands (e.g. stock query)",
-    ],
-    how: "Configure WhatsApp number → link to Meta Cloud API → all document actions trigger automatic messages.",
   },
 ];
 
-const CATEGORY_ORDER = ["Operations", "Finance", "Inventory", "HR", "Sales"];
+// ─── Category colour map ──────────────────────────────────────────────────────
+const CAT_COLOR: Record<string, { pill: string; icon: string }> = {
+  operations: { pill: "bg-blue-100 text-blue-700",    icon: "text-blue-600 bg-blue-50"    },
+  finance:    { pill: "bg-emerald-100 text-emerald-700", icon: "text-emerald-600 bg-emerald-50" },
+  people:     { pill: "bg-violet-100 text-violet-700", icon: "text-violet-600 bg-violet-50" },
+  verticals:  { pill: "bg-orange-100 text-orange-700", icon: "text-orange-600 bg-orange-50" },
+  platform:   { pill: "bg-rose-100 text-rose-700",    icon: "text-rose-600 bg-rose-50"    },
+};
 
-// ─── Component ────────────────────────────────────────────────────────────────
+// ─── Module card ──────────────────────────────────────────────────────────────
+function ModuleCard({ mod, catId }: { mod: (typeof GROUPS)[0]["modules"][0]; catId: string }) {
+  const Icon = mod.icon;
+  const c = CAT_COLOR[catId];
+  return (
+    <div id={mod.id} className="scroll-mt-28 rounded-xl border bg-card p-6 flex flex-col gap-4">
+      <div className="flex items-start gap-3">
+        <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${c.icon}`}>
+          <Icon className="w-5 h-5" />
+        </div>
+        <div>
+          <h3 className="text-base font-bold leading-tight">{mod.name}</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">{mod.tagline}</p>
+        </div>
+      </div>
 
+      <p className="text-sm text-muted-foreground leading-relaxed">{mod.description}</p>
+
+      <ul className="space-y-1.5">
+        {mod.features.map(f => (
+          <li key={f} className="flex items-start gap-2 text-sm">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0 mt-0.5" />
+            <span>{f}</span>
+          </li>
+        ))}
+      </ul>
+
+      <div className="mt-auto rounded-lg bg-muted/50 px-4 py-3 border">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">How it works</p>
+        <p className="text-xs text-foreground leading-relaxed">{mod.how}</p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 export default function FeaturesPage() {
   const [, setLocation] = useLocation();
 
@@ -301,166 +526,146 @@ export default function FeaturesPage() {
       setTimeout(() => {
         const el = document.getElementById(hash);
         if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 100);
+      }, 150);
     } else {
       window.scrollTo(0, 0);
     }
   }, []);
 
-  const grouped = CATEGORY_ORDER.reduce<Record<string, typeof MODULES>>((acc, cat) => {
-    acc[cat] = MODULES.filter(m => m.category === cat);
-    return acc;
-  }, {});
-
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {/* ── Nav ── */}
+      {/* ── Sticky header ── */}
       <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between gap-4">
-          <button onClick={() => setLocation("/")} className="flex items-center gap-2">
-            <img src="/swacherp-logo.png" alt="SwachERP" className="h-8 w-auto" />
-          </button>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between gap-4 flex-wrap">
+          {/* Left: back + logo */}
           <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setLocation("/")}
+              className="gap-1.5 text-muted-foreground"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              Back to Home
+            </Button>
+            <div className="h-5 w-px bg-border" />
+            <button onClick={() => setLocation("/")} className="flex items-center">
+              <img src="/swacherp-logo.png" alt="SwachERP" className="h-8 w-auto" />
+            </button>
+          </div>
+          {/* Right: nav + CTA */}
+          <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={() => setLocation("/solutions")}>Solutions</Button>
             <Button variant="ghost" size="sm" onClick={() => setLocation("/pricing")}>Pricing</Button>
-            <Button size="sm" onClick={() => setLocation("/register-company")}>Start Free Trial</Button>
+            <Button size="sm" onClick={() => setLocation("/register-company")} className="gap-1.5">
+              Start Free Trial <ArrowRight className="w-3.5 h-3.5" />
+            </Button>
           </div>
         </div>
       </header>
 
-      {/* ── Hero ── */}
-      <section className="py-16 text-center bg-muted/30 border-b">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6">
-          <div className="inline-flex items-center gap-1.5 bg-primary/10 text-primary text-xs font-semibold px-3 py-1.5 rounded-full mb-4">
-            <Zap className="w-3.5 h-3.5" /> 30+ integrated modules
-          </div>
-          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight mb-4">
-            Everything your business needs.<br />
-            <span className="text-primary">One unified platform.</span>
-          </h1>
-          <p className="text-lg text-muted-foreground mb-8">
-            SwachERP brings production, inventory, finance, HR, CRM, and industry-specific workflows into a single GST-compliant cloud ERP — no integrations, no sync issues, no data silos.
-          </p>
-          <div className="flex flex-wrap justify-center gap-3">
-            <Button size="lg" onClick={() => setLocation("/register-company")} className="gap-2">
-              Start Free Trial <ArrowRight className="w-4 h-4" />
-            </Button>
-            <Button size="lg" variant="outline" onClick={() => setLocation("/demo")}>
-              Book a Demo
-            </Button>
+      {/* ── Hero — full width strip ── */}
+      <section className="border-b bg-muted/30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            <div className="max-w-2xl">
+              <div className="inline-flex items-center gap-1.5 bg-primary/10 text-primary text-xs font-semibold px-3 py-1.5 rounded-full mb-4">
+                <Zap className="w-3.5 h-3.5" /> 30+ integrated modules
+              </div>
+              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-3">
+                Everything your business needs —<br />
+                <span className="text-primary">one unified platform.</span>
+              </h1>
+              <p className="text-muted-foreground text-base leading-relaxed">
+                SwachERP covers production, finance, HR, CRM, and industry-specific workflows in a single GST-compliant cloud ERP. No integrations, no sync issues, no data silos.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3 lg:flex-col lg:items-end">
+              <Button size="lg" onClick={() => setLocation("/register-company")} className="gap-2">
+                Start Free Trial <ArrowRight className="w-4 h-4" />
+              </Button>
+              <Button size="lg" variant="outline" onClick={() => setLocation("/demo")}>
+                Book a Demo
+              </Button>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ── Quick-jump nav ── */}
-      <div className="border-b bg-background sticky top-14 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 overflow-x-auto">
+      {/* ── Category quick-jump ── */}
+      <div className="sticky top-14 z-40 border-b bg-background">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 overflow-x-auto">
           <div className="flex gap-1 py-2 whitespace-nowrap">
-            {CATEGORY_ORDER.map(cat => (
-              <button
-                key={cat}
-                onClick={() => {
-                  const el = document.getElementById(`cat-${cat.toLowerCase()}`);
-                  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-                }}
-                className="text-xs font-medium text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-md hover:bg-muted transition-colors"
-              >
-                {cat}
-              </button>
-            ))}
+            {GROUPS.map(g => {
+              const c = CAT_COLOR[g.id];
+              return (
+                <button
+                  key={g.id}
+                  onClick={() => {
+                    const el = document.getElementById(`group-${g.id}`);
+                    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }}
+                  className={`text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${c.pill}`}
+                >
+                  {g.label}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
 
-      {/* ── Modules by category ── */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-20">
-        {CATEGORY_ORDER.map(cat => {
-          const mods = grouped[cat] ?? [];
-          if (!mods.length) return null;
-          return (
-            <section key={cat} id={`cat-${cat.toLowerCase()}`}>
-              <div className="mb-8">
-                <span className="text-xs font-bold uppercase tracking-widest text-primary">{cat}</span>
-                <h2 className="text-2xl sm:text-3xl font-bold mt-1">
-                  {cat === "Operations" && "Run your operations end-to-end"}
-                  {cat === "Finance" && "Keep your books audit-ready"}
-                  {cat === "Inventory" && "Know your stock — always"}
-                  {cat === "HR" && "Manage your people lifecycle"}
-                  {cat === "Sales" && "Grow revenue, delight customers"}
-                </h2>
+      {/* ── Module groups ── */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-16">
+        {GROUPS.map(group => (
+          <section key={group.id} id={`group-${group.id}`} className="scroll-mt-28">
+            {/* Group header */}
+            <div className="mb-8 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+              <div>
+                <span className={`inline-block text-xs font-bold uppercase tracking-widest px-2.5 py-1 rounded-full mb-2 ${CAT_COLOR[group.id].pill}`}>
+                  {group.label}
+                </span>
+                <h2 className="text-2xl sm:text-3xl font-bold">{group.headline}</h2>
+                <p className="text-muted-foreground mt-1 text-sm">{group.sub}</p>
               </div>
-              <div className="space-y-10">
-                {mods.map((mod, i) => {
-                  const Icon = mod.icon;
-                  const isEven = i % 2 === 0;
-                  return (
-                    <div
-                      key={mod.id}
-                      id={mod.id}
-                      className={`flex flex-col ${isEven ? "lg:flex-row" : "lg:flex-row-reverse"} gap-8 lg:gap-12 items-start`}
-                    >
-                      {/* Text */}
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-3">
-                          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                            <Icon className="w-5 h-5 text-primary" />
-                          </div>
-                          <div>
-                            <h3 className="text-xl font-bold">{mod.name}</h3>
-                            <p className="text-sm text-primary font-medium">{mod.tagline}</p>
-                          </div>
-                        </div>
-                        <p className="text-muted-foreground mb-5 leading-relaxed">{mod.description}</p>
-                        <ul className="space-y-2 mb-5">
-                          {mod.features.map(f => (
-                            <li key={f} className="flex items-start gap-2 text-sm">
-                              <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
-                              <span>{f}</span>
-                            </li>
-                          ))}
-                        </ul>
-                        <div className="bg-muted/40 border rounded-lg px-4 py-3">
-                          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-1">How it works</p>
-                          <p className="text-sm text-foreground leading-relaxed">{mod.how}</p>
-                        </div>
-                      </div>
-                      {/* Illustration placeholder */}
-                      <div className="flex-shrink-0 w-full lg:w-80 rounded-xl bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/10 p-8 flex flex-col items-center justify-center text-center gap-3">
-                        <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-                          <Icon className="w-8 h-8 text-primary" />
-                        </div>
-                        <p className="text-sm font-semibold text-foreground">{mod.name}</p>
-                        <p className="text-xs text-muted-foreground">{mod.features.length} built-in capabilities</p>
-                        <Button size="sm" variant="outline" onClick={() => setLocation("/register-company")} className="mt-2 gap-1">
-                          Try it free <ArrowRight className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          );
-        })}
+              <p className="text-xs text-muted-foreground flex-shrink-0">
+                {group.modules.length} module{group.modules.length > 1 ? "s" : ""}
+              </p>
+            </div>
+
+            {/* Module card grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+              {group.modules.map(mod => (
+                <ModuleCard key={mod.id} mod={mod} catId={group.id} />
+              ))}
+            </div>
+          </section>
+        ))}
       </div>
 
-      {/* ── CTA ── */}
-      <section className="border-t bg-primary py-16 text-center">
-        <div className="max-w-2xl mx-auto px-4">
-          <h2 className="text-3xl font-bold text-primary-foreground mb-3">Ready to get started?</h2>
-          <p className="text-primary-foreground/80 mb-8">14-day free trial. No credit card required. Full access to all modules from day one.</p>
-          <div className="flex flex-wrap justify-center gap-3">
+      {/* ── Bottom CTA ── */}
+      <section className="border-t bg-primary py-14">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-bold text-primary-foreground">Ready to try SwachERP?</h2>
+            <p className="text-primary-foreground/80 mt-2 text-sm">14-day free trial. No credit card. Full access from day one.</p>
+          </div>
+          <div className="flex flex-wrap gap-3">
             <Button size="lg" variant="secondary" onClick={() => setLocation("/register-company")} className="gap-2">
               Start Free Trial <ArrowRight className="w-4 h-4" />
             </Button>
-            <Button size="lg" variant="outline" onClick={() => setLocation("/demo")} className="border-primary-foreground/40 text-primary-foreground hover:bg-primary-foreground/10">
+            <Button
+              size="lg"
+              variant="outline"
+              onClick={() => setLocation("/demo")}
+              className="border-primary-foreground/40 text-primary-foreground hover:bg-primary-foreground/10"
+            >
               Book a Demo
             </Button>
           </div>
         </div>
       </section>
 
-      {/* ── Footer ── */}
       <footer className="border-t py-6 text-center text-xs text-muted-foreground">
         <p>© {new Date().getFullYear()} Inmousture Private Limited. All rights reserved.</p>
       </footer>

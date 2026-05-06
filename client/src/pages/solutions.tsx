@@ -4,7 +4,7 @@ import {
   Factory, HeartPulse, GraduationCap, Truck, Home, ShoppingBag,
   Leaf, Briefcase, ArrowRight, CheckCircle2, Zap, Users, FileText,
   Package, IndianRupee, MessageCircle, ClipboardCheck, Wrench,
-  FolderKanban, UserCheck, Settings, BarChart3, Shield,
+  FolderKanban, UserCheck, Settings, BarChart3, Shield, ChevronLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -170,38 +170,56 @@ export default function SolutionsPage() {
     <div className="min-h-screen bg-background text-foreground">
       {/* ── Nav ── */}
       <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between gap-4">
-          <button onClick={() => setLocation("/")} className="flex items-center gap-2">
-            <img src="/swacherp-logo.png" alt="SwachERP" className="h-8 w-auto" />
-          </button>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setLocation("/")}
+              className="gap-1.5 text-muted-foreground"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              Back to Home
+            </Button>
+            <div className="h-5 w-px bg-border" />
+            <button onClick={() => setLocation("/")} className="flex items-center">
+              <img src="/swacherp-logo.png" alt="SwachERP" className="h-8 w-auto" />
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={() => setLocation("/features")}>Products</Button>
             <Button variant="ghost" size="sm" onClick={() => setLocation("/pricing")}>Pricing</Button>
-            <Button size="sm" onClick={() => setLocation("/register-company")}>Start Free Trial</Button>
+            <Button size="sm" onClick={() => setLocation("/register-company")} className="gap-1.5">
+              Start Free Trial <ArrowRight className="w-3.5 h-3.5" />
+            </Button>
           </div>
         </div>
       </header>
 
       {/* ── Hero ── */}
-      <section className="py-16 text-center bg-muted/30 border-b">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6">
-          <div className="inline-flex items-center gap-1.5 bg-primary/10 text-primary text-xs font-semibold px-3 py-1.5 rounded-full mb-4">
-            <Zap className="w-3.5 h-3.5" /> Built for your industry
-          </div>
-          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight mb-4">
-            Every industry has unique needs.<br />
-            <span className="text-primary">SwachERP speaks your language.</span>
-          </h1>
-          <p className="text-lg text-muted-foreground mb-8">
-            Whether you manufacture auto parts, run a hospital, manage a school, or operate a logistics fleet — SwachERP has purpose-built modules for your workflows, with GST compliance built in.
-          </p>
-          <div className="flex flex-wrap justify-center gap-3">
-            <Button size="lg" onClick={() => setLocation("/register-company")} className="gap-2">
-              Start Free Trial <ArrowRight className="w-4 h-4" />
-            </Button>
-            <Button size="lg" variant="outline" onClick={() => setLocation("/demo")}>
-              Book a Demo
-            </Button>
+      <section className="border-b bg-muted/30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            <div className="max-w-2xl">
+              <div className="inline-flex items-center gap-1.5 bg-primary/10 text-primary text-xs font-semibold px-3 py-1.5 rounded-full mb-4">
+                <Zap className="w-3.5 h-3.5" /> Built for your industry
+              </div>
+              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-3">
+                Every industry has unique needs.<br />
+                <span className="text-primary">SwachERP speaks your language.</span>
+              </h1>
+              <p className="text-muted-foreground text-base leading-relaxed">
+                Whether you manufacture auto parts, run a hospital, manage a school, or operate a logistics fleet — SwachERP has purpose-built modules for your workflows, with GST compliance built in.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3 lg:flex-col lg:items-end">
+              <Button size="lg" onClick={() => setLocation("/register-company")} className="gap-2">
+                Start Free Trial <ArrowRight className="w-4 h-4" />
+              </Button>
+              <Button size="lg" variant="outline" onClick={() => setLocation("/demo")}>
+                Book a Demo
+              </Button>
+            </div>
           </div>
         </div>
       </section>
