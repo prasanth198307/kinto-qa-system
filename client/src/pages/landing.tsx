@@ -442,8 +442,8 @@ export default function LandingPage() {
           <nav className="hidden lg:flex items-center gap-1">
             <ProductsDropdown />
             <SolutionsDropdown />
-            <a href="#pricing"      className="text-sm text-muted-foreground hover:text-foreground transition-colors px-2 py-1">Pricing</a>
-            <a href="#testimonials" className="text-sm text-muted-foreground hover:text-foreground transition-colors px-2 py-1">Customers</a>
+            <a href="/pricing"      className="text-sm text-muted-foreground hover:text-foreground transition-colors px-2 py-1">Pricing</a>
+            <a href="/solutions"    className="text-sm text-muted-foreground hover:text-foreground transition-colors px-2 py-1">Customers</a>
           </nav>
 
           <div className="hidden lg:flex items-center gap-2 ml-auto">
