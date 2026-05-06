@@ -13,15 +13,20 @@ import { eq, sql } from "drizzle-orm";
  * Value = set of catalog slugs (or legacy names) that count as equivalent
  */
 const MODULE_ALIASES: Record<string, string[]> = {
-  sales_orders:    ["sales", "sales_orders"],
-  quality_returns: ["quality", "quality_returns"],
-  expenses:        ["expenses", "expense_claims"],
-  basic_inventory: ["inventory", "basic_inventory"],
-  mis:             ["mis", "dashboard"],
-  documents:       ["documents"],
-  whatsapp:        ["whatsapp"],
-  fixed_assets:    ["fixed_assets"],
-  multi_currency:  ["multi_currency"],
+  // Catalog slug → route-level module name mappings
+  sales_orders:       ["sales", "sales_orders"],
+  quality_returns:    ["quality", "quality_returns"],
+  expenses:           ["expenses", "expense_claims"],
+  basic_inventory:    ["inventory", "basic_inventory"],
+  mis:                ["mis", "dashboard"],
+  purchase_orders:    ["purchase", "purchase_orders"],
+  logistics_transport:["logistics", "logistics_transport"],
+  // These exist only as route-level names (not in catalog); no alias needed but listed for clarity
+  documents:          ["documents"],
+  whatsapp:           ["whatsapp"],
+  fixed_assets:       ["fixed_assets"],
+  multi_currency:     ["multi_currency"],
+  recurring_invoices: ["recurring_invoices"],
 };
 
 /** Returns true if the tenant's selected_modules list satisfies the given route module. */
