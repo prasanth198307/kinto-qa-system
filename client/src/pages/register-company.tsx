@@ -1,17 +1,90 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Building2, User, Mail, Phone, Lock, Globe, ArrowLeft, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+import {
+  Loader2, Building2, User, Mail, Phone, Lock, Globe, ArrowLeft,
+  CheckCircle2, XCircle, AlertCircle, Package, ChevronRight,
+} from "lucide-react";
 import { KintoLogo } from "@/components/branding/KintoLogo";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
-type Step = "company" | "admin" | "success";
+type Step = "company" | "admin" | "modules" | "success";
 type SlugStatus = "idle" | "checking" | "available" | "taken" | "invalid";
+
+// ─── Module picker data (lightweight, registration-time) ──────────────────────
+const FREE_SLUGS = new Set(["user_management", "roles", "company_settings", "dashboard"]);
+
+const PICKER_MODULES = [
+  { category: "Finance",    slug: "invoicing",    name: "GST Invoicing",       price: 699,  popular: true },
+  { category: "Finance",    slug: "accounting",   name: "Accounting & Ledger", price: 899,  popular: false },
+  { category: "Inventory",  slug: "inventory",    name: "Inventory",           price: 599,  popular: true },
+  { category: "Inventory",  slug: "purchase",     name: "Purchase & PO",       price: 499,  popular: false },
+  { category: "Production", slug: "production",   name: "Production / BOM",    price: 699,  popular: false },
+  { category: "Production", slug: "quality",      name: "Quality Assurance",   price: 399,  popular: false },
+  { category: "HR",         slug: "hr_payroll",   name: "HR & Payroll",        price: 799,  popular: true },
+  { category: "HR",         slug: "attendance",   name: "Attendance & Leave",  price: 349,  popular: false },
+  { category: "Sales",      slug: "crm",          name: "CRM & Leads",         price: 499,  popular: false },
+  { category: "Sales",      slug: "sales",        name: "Sales Orders",        price: 399,  popular: false },
+  { category: "Industry",   slug: "healthcare",   name: "Healthcare",          price: 999,  popular: false },
+  { category: "Industry",   slug: "education",    name: "Education ERP",       price: 999,  popular: false },
+  { category: "Industry",   slug: "logistics",    name: "Logistics & Fleet",   price: 799,  popular: false },
+  { category: "Industry",   slug: "pos",          name: "Retail / POS",        price: 699,  popular: false },
+];
+
+const CATEGORY_ORDER = ["Finance", "Inventory", "Production", "HR", "Sales", "Industry"];
+
+const CATEGORY_COLORS: Record<string, string> = {
+  Finance:    "bg-blue-50 text-blue-700 border-blue-200",
+  Inventory:  "bg-orange-50 text-orange-700 border-orange-200",
+  Production: "bg-purple-50 text-purple-700 border-purple-200",
+  HR:         "bg-rose-50 text-rose-700 border-rose-200",
+  Sales:      "bg-teal-50 text-teal-700 border-teal-200",
+  Industry:   "bg-indigo-50 text-indigo-700 border-indigo-200",
+};
+
+// ─── Right-panel content per step ─────────────────────────────────────────────
+const RIGHT_PANEL: Record<Step, { icon: React.FC<any>; heading: string; sub: string; bullets: string[] }> = {
+  company: {
+    icon: Building2,
+    heading: "14-Day Free Trial",
+    sub: "Full access to everything. No credit card required.",
+    bullets: ["Set up in minutes", "GST-ready from day one", "Invite your team instantly", "Cancel anytime — no lock-in"],
+  },
+  admin: {
+    icon: User,
+    heading: "You're almost there",
+    sub: "Create your admin account to complete setup.",
+    bullets: ["You'll be the account owner", "Add more users after sign-in", "Role-based access control built in"],
+  },
+  modules: {
+    icon: Package,
+    heading: "Build your ERP",
+    sub: "Pick only what your business needs.",
+    bullets: [
+      "Core modules are always free",
+      "Each paid module billed monthly",
+      "Add or remove any time",
+      "14-day trial — nothing charged yet",
+    ],
+  },
+  success: {
+    icon: CheckCircle2,
+    heading: "You're all set!",
+    sub: "Your company is ready. Sign in to get started.",
+    bullets: [],
+  },
+};
+
+const STEP_LABELS: { key: Step; label: string }[] = [
+  { key: "company", label: "Company" },
+  { key: "admin",   label: "Account" },
+  { key: "modules", label: "Modules" },
+];
 
 export default function RegisterCompanyPage() {
   const [, setLocation] = useLocation();
@@ -22,20 +95,19 @@ export default function RegisterCompanyPage() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [form, setForm] = useState({
-    companyName: "",
-    slug: "",
-    gstNumber: "",
-    address: "",
-    adminName: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-    phone: "",
+    companyName: "", slug: "", gstNumber: "", address: "",
+    adminName: "", email: "", password: "", confirmPassword: "", phone: "",
   });
 
-  const [registeredData, setRegisteredData] = useState<{ name: string; slug: string; username: string } | null>(null);
+  const [registeredData, setRegisteredData] = useState<{
+    name: string; slug: string; username: string; tenantId?: number;
+  } | null>(null);
 
-  // Debounced slug availability check
+  // Selected modules — free ones always included
+  const [selected, setSelected] = useState<Set<string>>(new Set(Array.from(FREE_SLUGS)));
+  const [savingModules, setSavingModules] = useState(false);
+
+  // ── Slug check ─────────────────────────────────────────────────────────────
   const checkSlug = (slug: string) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     const slugRegex = /^[a-z0-9-]{3,50}$/;
@@ -47,43 +119,36 @@ export default function RegisterCompanyPage() {
         const res = await fetch(`/api/tenants/check-slug/${encodeURIComponent(slug)}`);
         const data = await res.json();
         setSlugStatus(data.available ? "available" : "taken");
-      } catch {
-        setSlugStatus("idle");
-      }
+      } catch { setSlugStatus("idle"); }
     }, 500);
   };
 
-  const update = (field: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const update = (field: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    setForm((prev) => {
+    setForm(prev => {
       const next = { ...prev, [field]: value };
-      // Auto-generate slug from company name
       if (field === "companyName") {
         next.slug = value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 50);
         checkSlug(next.slug);
       }
-      if (field === "slug") {
-        checkSlug(value);
-      }
+      if (field === "slug") checkSlug(value);
       return next;
     });
   };
 
-  // Suggest an alternative slug when taken
   const suggestAlternative = () => {
     const base = form.slug.replace(/-\d+$/, "");
-    const suffix = Math.floor(100 + Math.random() * 900);
-    const suggestion = `${base}-${suffix}`.slice(0, 50);
+    const suggestion = `${base}-${Math.floor(100 + Math.random() * 900)}`.slice(0, 50);
     setForm(prev => ({ ...prev, slug: suggestion }));
     checkSlug(suggestion);
   };
 
+  // ── Step handlers ──────────────────────────────────────────────────────────
   const handleCompanyStep = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.companyName.trim() || !form.slug.trim()) return;
-    const slugRegex = /^[a-z0-9-]{3,50}$/;
-    if (!slugRegex.test(form.slug)) {
-      toast({ title: "Invalid company ID", description: "Use 3-50 characters: lowercase letters, numbers, hyphens only.", variant: "destructive" });
+    if (!/^[a-z0-9-]{3,50}$/.test(form.slug)) {
+      toast({ title: "Invalid company ID", description: "Use 3–50 chars: lowercase letters, numbers, hyphens only.", variant: "destructive" });
       return;
     }
     if (slugStatus === "taken") {
@@ -93,32 +158,27 @@ export default function RegisterCompanyPage() {
     setStep("admin");
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleAdminStep = async (e: React.FormEvent) => {
     e.preventDefault();
     if (form.password !== form.confirmPassword) {
-      toast({ title: "Passwords don't match", description: "Please check your password entries.", variant: "destructive" });
+      toast({ title: "Passwords don't match", variant: "destructive" });
       return;
     }
     if (form.password.length < 8) {
-      toast({ title: "Password too short", description: "Password must be at least 8 characters.", variant: "destructive" });
+      toast({ title: "Password too short", description: "At least 8 characters required.", variant: "destructive" });
       return;
     }
-
     setIsLoading(true);
     try {
       const result = await apiRequest("POST", "/api/tenants/register", {
-        companyName: form.companyName,
-        slug: form.slug,
-        adminName: form.adminName,
-        email: form.email,
-        password: form.password,
-        phone: form.phone || undefined,
-        gstNumber: form.gstNumber || undefined,
+        companyName: form.companyName, slug: form.slug,
+        adminName: form.adminName, email: form.email, password: form.password,
+        phone: form.phone || undefined, gstNumber: form.gstNumber || undefined,
         address: form.address || undefined,
       });
       const data = await result.json();
-      setRegisteredData({ name: data.tenant.name, slug: data.tenant.slug, username: data.username });
-      setStep("success");
+      setRegisteredData({ name: data.tenant.name, slug: data.tenant.slug, username: data.username, tenantId: data.tenant.id });
+      setStep("modules");
     } catch (err: any) {
       toast({ title: "Registration failed", description: err.message || "Please try again.", variant: "destructive" });
     } finally {
@@ -126,19 +186,53 @@ export default function RegisterCompanyPage() {
     }
   };
 
+  const toggleModule = (slug: string) => {
+    if (FREE_SLUGS.has(slug)) return;
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.has(slug) ? next.delete(slug) : next.add(slug);
+      return next;
+    });
+  };
+
+  const handleSaveModules = async (skip = false) => {
+    setSavingModules(true);
+    try {
+      const slugs = skip ? Array.from(FREE_SLUGS) : Array.from(selected);
+      // Log in first using the just-created credentials to get a session
+      await apiRequest("POST", "/api/login", {
+        tenantSlug: form.slug, username: registeredData?.username ?? form.email,
+        password: form.password,
+      });
+      await apiRequest("POST", "/api/billing/selected-modules", { selectedModules: slugs });
+    } catch {
+      // Non-fatal — modules can be set later from Company Settings
+    } finally {
+      setSavingModules(false);
+      setStep("success");
+    }
+  };
+
+  // ── Derived ────────────────────────────────────────────────────────────────
+  const paidSelected = PICKER_MODULES.filter(m => selected.has(m.slug));
+  const monthlyTotal = paidSelected.reduce((s, m) => s + m.price, 0);
+  const stepIdx = STEP_LABELS.findIndex(s => s.key === step);
+
+  const panel = RIGHT_PANEL[step];
+  const PanelIcon = panel.icon;
+
+  // ── Success screen ─────────────────────────────────────────────────────────
   if (step === "success" && registeredData) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 sm:p-8 bg-background">
         <div className="w-full max-w-md text-center space-y-6">
           <KintoLogo className="justify-center" variant="full" />
-          <div className="rounded-full bg-green-100 dark:bg-green-900/20 p-4 w-20 h-20 mx-auto flex items-center justify-center">
-            <CheckCircle2 className="h-10 w-10 text-green-600 dark:text-green-400" />
+          <div className="rounded-full bg-emerald-100 dark:bg-emerald-900/20 p-4 w-20 h-20 mx-auto flex items-center justify-center">
+            <CheckCircle2 className="h-10 w-10 text-emerald-600 dark:text-emerald-400" />
           </div>
           <div className="space-y-2">
-            <h2 className="text-2xl font-bold">Registration Successful!</h2>
-            <p className="text-muted-foreground">
-              Welcome to SwachERP. Your company account has been created.
-            </p>
+            <h2 className="text-2xl font-bold">You're all set!</h2>
+            <p className="text-muted-foreground text-sm">Your company account is ready. Sign in to start your 14-day free trial.</p>
           </div>
           <Card>
             <CardContent className="pt-6 space-y-3 text-left">
@@ -151,12 +245,21 @@ export default function RegisterCompanyPage() {
                 <code className="font-mono text-xs bg-muted px-2 py-0.5 rounded">{registeredData.slug}</code>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Your username</span>
+                <span className="text-muted-foreground">Username</span>
                 <code className="font-mono text-xs bg-muted px-2 py-0.5 rounded">{registeredData.username}</code>
               </div>
+              {paidSelected.length > 0 && (
+                <>
+                  <Separator />
+                  <div className="text-xs text-muted-foreground">
+                    <span className="font-medium text-foreground">{paidSelected.length} module{paidSelected.length > 1 ? "s" : ""} selected</span>
+                    {" — "}trial is free for 14 days, then ₹{monthlyTotal.toLocaleString("en-IN")}/mo
+                  </div>
+                </>
+              )}
               <Separator />
               <p className="text-xs text-muted-foreground">
-                Your 14-day free trial has started. You can sign in using your Company ID and the credentials above.
+                14-day free trial has started. No credit card needed.
               </p>
             </CardContent>
           </Card>
@@ -168,38 +271,43 @@ export default function RegisterCompanyPage() {
             }}
             data-testid="button-goto-login"
           >
-            Go to Sign In
+            Go to Sign In <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
         </div>
       </div>
     );
   }
 
+  // ── Main layout ────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen flex">
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-8 bg-background">
-        <div className="w-full max-w-md">
-          <div className="text-center mb-8">
+      {/* Left — form panel */}
+      <div className="w-full lg:w-3/5 flex items-start justify-center p-4 sm:p-8 bg-background overflow-y-auto">
+        <div className="w-full max-w-lg py-6">
+          <div className="text-center mb-6">
             <KintoLogo className="justify-center" variant="full" />
           </div>
 
-          {/* Progress indicator */}
-          <div className="flex items-center gap-2 mb-6">
-            <div className={`flex items-center gap-2 text-sm ${step === "company" ? "text-primary font-medium" : "text-muted-foreground"}`}>
-              <div className={`h-6 w-6 rounded-full flex items-center justify-center text-xs ${step === "company" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-                1
-              </div>
-              Company Details
-            </div>
-            <div className="flex-1 h-px bg-border" />
-            <div className={`flex items-center gap-2 text-sm ${step === "admin" ? "text-primary font-medium" : "text-muted-foreground"}`}>
-              <div className={`h-6 w-6 rounded-full flex items-center justify-center text-xs ${step === "admin" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-                2
-              </div>
-              Admin Account
-            </div>
+          {/* Progress bar */}
+          <div className="flex items-center gap-1 mb-6">
+            {STEP_LABELS.map((s, i) => {
+              const done   = i < stepIdx;
+              const active = i === stepIdx;
+              return (
+                <div key={s.key} className="flex items-center gap-1 flex-1 min-w-0">
+                  <div className={`flex items-center gap-1.5 text-xs whitespace-nowrap ${active ? "text-primary font-semibold" : done ? "text-emerald-600" : "text-muted-foreground"}`}>
+                    <div className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${active ? "bg-primary text-primary-foreground" : done ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground"}`}>
+                      {done ? <CheckCircle2 className="h-3.5 w-3.5" /> : i + 1}
+                    </div>
+                    {s.label}
+                  </div>
+                  {i < STEP_LABELS.length - 1 && <div className="flex-1 h-px bg-border mx-1" />}
+                </div>
+              );
+            })}
           </div>
 
+          {/* ── Step 1: Company ───────────────────────────────────────────── */}
           {step === "company" && (
             <Card>
               <CardHeader>
@@ -212,112 +320,72 @@ export default function RegisterCompanyPage() {
                     <Label htmlFor="company-name">Company Name</Label>
                     <div className="relative">
                       <Building2 className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="company-name"
-                        data-testid="input-company-name"
-                        placeholder="e.g. Acme Manufacturing Pvt Ltd"
-                        className="pl-10"
-                        value={form.companyName}
-                        onChange={update("companyName")}
-                        required
-                        autoFocus
-                      />
+                      <Input id="company-name" data-testid="input-company-name"
+                        placeholder="e.g. Acme Manufacturing Pvt Ltd" className="pl-10"
+                        value={form.companyName} onChange={update("companyName")} required autoFocus />
                     </div>
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="company-slug">
-                      Company ID
-                      <span className="ml-1 text-xs text-muted-foreground">(used in your login URL)</span>
+                      Company ID <span className="ml-1 text-xs text-muted-foreground">(used to sign in)</span>
                     </Label>
                     <div className="relative">
                       <Globe className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="company-slug"
-                        data-testid="input-company-id"
+                      <Input id="company-slug" data-testid="input-company-id"
                         placeholder="e.g. acme-manufacturing"
                         className={`pl-10 pr-10 font-mono text-sm ${
                           slugStatus === "available" ? "border-emerald-500 focus-visible:ring-emerald-500" :
                           slugStatus === "taken" || slugStatus === "invalid" ? "border-destructive focus-visible:ring-destructive" : ""
                         }`}
-                        value={form.slug}
-                        onChange={update("slug")}
-                        pattern="[a-z0-9-]{3,50}"
-                        required
-                      />
+                        value={form.slug} onChange={update("slug")} pattern="[a-z0-9-]{3,50}" required />
                       <div className="absolute right-3 top-3">
-                        {slugStatus === "checking" && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                        {slugStatus === "checking"  && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
                         {slugStatus === "available" && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
-                        {slugStatus === "taken" && <XCircle className="h-4 w-4 text-destructive" />}
-                        {slugStatus === "invalid" && <AlertCircle className="h-4 w-4 text-amber-500" />}
+                        {slugStatus === "taken"     && <XCircle className="h-4 w-4 text-destructive" />}
+                        {slugStatus === "invalid"   && <AlertCircle className="h-4 w-4 text-amber-500" />}
                       </div>
                     </div>
-
-                    {/* Status messages */}
-                    {slugStatus === "available" && (
-                      <p className="text-xs text-emerald-600 font-medium">Company ID is available</p>
-                    )}
+                    {slugStatus === "available" && <p className="text-xs text-emerald-600 font-medium">Company ID is available</p>}
                     {slugStatus === "taken" && (
                       <div className="flex items-center justify-between gap-2">
                         <p className="text-xs text-destructive">This Company ID is already taken.</p>
-                        <button
-                          type="button"
-                          onClick={suggestAlternative}
-                          className="text-xs text-primary underline underline-offset-2 shrink-0"
-                          data-testid="button-suggest-slug"
-                        >
+                        <button type="button" onClick={suggestAlternative} className="text-xs text-primary underline underline-offset-2 shrink-0" data-testid="button-suggest-slug">
                           Suggest another
                         </button>
                       </div>
                     )}
-                    {slugStatus === "invalid" && (
-                      <p className="text-xs text-amber-600">Use lowercase letters, numbers, and hyphens only (3-50 chars).</p>
-                    )}
-                    {(slugStatus === "idle" || slugStatus === "checking") && (
-                      <p className="text-xs text-muted-foreground">Lowercase letters, numbers, and hyphens only. 3-50 characters.</p>
-                    )}
+                    {slugStatus === "invalid" && <p className="text-xs text-amber-600">Lowercase letters, numbers, hyphens only (3–50 chars).</p>}
+                    {(slugStatus === "idle" || slugStatus === "checking") && <p className="text-xs text-muted-foreground">Lowercase letters, numbers, hyphens only. 3–50 characters.</p>}
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="gst-number">GST Number <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                    <Input
-                      id="gst-number"
-                      data-testid="input-gst-number"
-                      placeholder="22AAAAA0000A1Z5"
-                      value={form.gstNumber}
-                      onChange={update("gstNumber")}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="company-address">Address <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                    <Input
-                      id="company-address"
-                      data-testid="input-company-address"
-                      placeholder="Company address"
-                      value={form.address}
-                      onChange={update("address")}
-                    />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="gst-number">GST Number <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                      <Input id="gst-number" data-testid="input-gst-number" placeholder="22AAAAA0000A1Z5"
+                        value={form.gstNumber} onChange={update("gstNumber")} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="company-address">Address <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                      <Input id="company-address" data-testid="input-company-address" placeholder="City, State"
+                        value={form.address} onChange={update("address")} />
+                    </div>
                   </div>
 
                   <Button type="submit" className="w-full" data-testid="button-next-step">
-                    Continue to Admin Setup
+                    Continue <ChevronRight className="h-4 w-4 ml-1" />
                   </Button>
                 </form>
               </CardContent>
             </Card>
           )}
 
+          {/* ── Step 2: Admin account ─────────────────────────────────────── */}
           {step === "admin" && (
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setStep("company")}
-                    className="text-muted-foreground hover:text-foreground"
-                    data-testid="button-back-step"
-                  >
+                  <button type="button" onClick={() => setStep("company")} className="text-muted-foreground hover:text-foreground" data-testid="button-back-step">
                     <ArrowLeft className="h-4 w-4" />
                   </button>
                   <div>
@@ -327,116 +395,172 @@ export default function RegisterCompanyPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-4" data-testid="form-admin-details">
+                <form onSubmit={handleAdminStep} className="space-y-4" data-testid="form-admin-details">
                   <div className="space-y-2">
                     <Label htmlFor="admin-name">Full Name</Label>
                     <div className="relative">
                       <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="admin-name"
-                        data-testid="input-admin-name"
-                        placeholder="Your full name"
-                        className="pl-10"
-                        value={form.adminName}
-                        onChange={update("adminName")}
-                        required
-                        autoFocus
-                      />
+                      <Input id="admin-name" data-testid="input-admin-name" placeholder="Your full name"
+                        className="pl-10" value={form.adminName} onChange={update("adminName")} required autoFocus />
                     </div>
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="admin-email">Email</Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="admin-email"
-                        data-testid="input-admin-email"
-                        type="email"
-                        placeholder="admin@company.com"
-                        className="pl-10"
-                        value={form.email}
-                        onChange={update("email")}
-                        required
-                      />
+                      <Input id="admin-email" data-testid="input-admin-email" type="email" placeholder="admin@company.com"
+                        className="pl-10" value={form.email} onChange={update("email")} required />
                     </div>
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="admin-phone">Phone <span className="text-muted-foreground text-xs">(optional)</span></Label>
                     <div className="relative">
                       <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="admin-phone"
-                        data-testid="input-admin-phone"
-                        type="tel"
-                        placeholder="+91 98765 43210"
-                        className="pl-10"
-                        value={form.phone}
-                        onChange={update("phone")}
-                      />
+                      <Input id="admin-phone" data-testid="input-admin-phone" type="tel" placeholder="+91 98765 43210"
+                        className="pl-10" value={form.phone} onChange={update("phone")} />
                     </div>
                   </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="admin-password">Password</Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="admin-password"
-                        data-testid="input-admin-password"
-                        type="password"
-                        placeholder="Min. 8 characters"
-                        className="pl-10"
-                        value={form.password}
-                        onChange={update("password")}
-                        required
-                        minLength={8}
-                      />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="admin-password">Password</Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input id="admin-password" data-testid="input-admin-password" type="password"
+                          placeholder="Min. 8 chars" className="pl-10" value={form.password}
+                          onChange={update("password")} required minLength={8} />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="confirm-password">Confirm Password</Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input id="confirm-password" data-testid="input-confirm-password" type="password"
+                          placeholder="Repeat password" className="pl-10" value={form.confirmPassword}
+                          onChange={update("confirmPassword")} required />
+                      </div>
                     </div>
                   </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="confirm-password">Confirm Password</Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="confirm-password"
-                        data-testid="input-confirm-password"
-                        type="password"
-                        placeholder="Repeat your password"
-                        className="pl-10"
-                        value={form.confirmPassword}
-                        onChange={update("confirmPassword")}
-                        required
-                      />
-                    </div>
-                  </div>
-
                   <Button type="submit" className="w-full" disabled={isLoading} data-testid="button-register">
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Registering...
-                      </>
-                    ) : (
-                      "Create Account & Start Trial"
-                    )}
+                    {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating account…</> : <>Continue <ChevronRight className="h-4 w-4 ml-1" /></>}
                   </Button>
                 </form>
               </CardContent>
             </Card>
           )}
 
-          <div className="mt-6 text-center">
+          {/* ── Step 3: Module picker ─────────────────────────────────────── */}
+          {step === "modules" && (
+            <div className="space-y-4">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle>Pick your modules</CardTitle>
+                  <CardDescription>
+                    Select what your business needs. Everything is free for 14 days — you'll only be charged after your trial ends.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Always-free banner */}
+                  <div className="flex items-start gap-2.5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-xl px-3 py-2.5">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-300">Always free — no selection needed</p>
+                      <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-0.5">Dashboard, User Management, Roles & Permissions, Company Settings</p>
+                    </div>
+                  </div>
+
+                  {/* Module grid by category */}
+                  {CATEGORY_ORDER.map(cat => {
+                    const mods = PICKER_MODULES.filter(m => m.category === cat);
+                    const colors = CATEGORY_COLORS[cat] ?? "bg-muted text-muted-foreground border-border";
+                    return (
+                      <div key={cat}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${colors}`}>{cat}</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          {mods.map(mod => {
+                            const isOn = selected.has(mod.slug);
+                            return (
+                              <button
+                                key={mod.slug}
+                                type="button"
+                                onClick={() => toggleModule(mod.slug)}
+                                data-testid={`module-pick-${mod.slug}`}
+                                className={`relative text-left p-3 rounded-xl border-2 transition-all ${
+                                  isOn
+                                    ? "border-primary bg-primary/5 ring-1 ring-primary/10"
+                                    : "border-border bg-card hover:border-muted-foreground/30"
+                                }`}
+                              >
+                                {mod.popular && (
+                                  <span className="absolute -top-2 right-2 text-[9px] font-bold bg-amber-400 text-amber-900 px-1.5 py-0.5 rounded-full">Popular</span>
+                                )}
+                                <div className="flex items-start justify-between gap-1">
+                                  <span className="text-xs font-semibold text-foreground leading-tight pr-1">{mod.name}</span>
+                                  <div className={`h-4 w-4 rounded-full border-2 shrink-0 flex items-center justify-center mt-0.5 ${isOn ? "bg-primary border-primary" : "border-muted-foreground/30"}`}>
+                                    {isOn && <CheckCircle2 className="h-2.5 w-2.5 text-white" />}
+                                  </div>
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-0.5">₹{mod.price}<span className="text-[10px]">/mo</span></p>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+
+              {/* Sticky summary + actions */}
+              <Card>
+                <CardContent className="pt-4 space-y-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      {paidSelected.length} paid module{paidSelected.length !== 1 ? "s" : ""} selected
+                    </span>
+                    <div className="text-right">
+                      <span className="font-bold text-lg">
+                        {monthlyTotal > 0 ? `₹${monthlyTotal.toLocaleString("en-IN")}` : "₹0"}
+                      </span>
+                      <span className="text-xs text-muted-foreground">/mo after trial</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    14-day trial is completely free. You won't be charged until your trial ends.
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => handleSaveModules(true)}
+                      disabled={savingModules}
+                      data-testid="button-skip-modules"
+                    >
+                      Skip for now
+                    </Button>
+                    <Button
+                      className="flex-1"
+                      onClick={() => handleSaveModules(false)}
+                      disabled={savingModules}
+                      data-testid="button-confirm-modules"
+                    >
+                      {savingModules
+                        ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Saving…</>
+                        : <>Confirm &amp; Continue <ChevronRight className="h-4 w-4 ml-1" /></>
+                      }
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          <div className="mt-5 text-center">
             <p className="text-sm text-muted-foreground">
               Already have an account?{" "}
-              <button
-                type="button"
-                className="text-primary underline underline-offset-4 hover:no-underline"
-                onClick={() => setLocation("/company")}
-                data-testid="link-goto-login"
-              >
+              <button type="button" className="text-primary underline underline-offset-4 hover:no-underline"
+                onClick={() => setLocation("/company")} data-testid="link-goto-login">
                 Sign in
               </button>
             </p>
@@ -444,29 +568,42 @@ export default function RegisterCompanyPage() {
         </div>
       </div>
 
-      {/* Right side */}
-      <div className="hidden lg:flex lg:w-1/2 bg-primary flex-col items-center justify-center p-12 text-primary-foreground">
-        <div className="max-w-md text-center space-y-6">
-          <Building2 className="mx-auto h-16 w-16 opacity-80" />
-          <h2 className="text-3xl font-bold">14-Day Free Trial</h2>
-          <p className="text-lg opacity-80 leading-relaxed">
-            Get full access to all features. No credit card required. Set up your company in minutes and start managing operations right away.
-          </p>
-          <div className="space-y-3 text-left">
-            {[
-              "Up to 5 users during trial",
-              "Full GST-compliant invoicing",
-              "BOM-driven production tracking",
-              "Double-entry accounting",
-              "WhatsApp checklist integration",
-              "MIS analytics dashboards",
-            ].map((feature) => (
-              <div key={feature} className="flex items-center gap-2 text-sm opacity-80">
-                <CheckCircle2 className="h-4 w-4 shrink-0 opacity-70" />
-                {feature}
-              </div>
-            ))}
+      {/* Right — info panel */}
+      <div className="hidden lg:flex lg:w-2/5 bg-primary flex-col items-center justify-center p-12 text-primary-foreground sticky top-0 h-screen">
+        <div className="max-w-xs text-center space-y-6">
+          <div className="rounded-full bg-white/10 p-5 w-20 h-20 mx-auto flex items-center justify-center">
+            <PanelIcon className="h-10 w-10 opacity-90" />
           </div>
+          <div>
+            <h2 className="text-2xl font-bold mb-2">{panel.heading}</h2>
+            <p className="text-sm opacity-75 leading-relaxed">{panel.sub}</p>
+          </div>
+          {panel.bullets.length > 0 && (
+            <div className="space-y-2.5 text-left">
+              {panel.bullets.map(b => (
+                <div key={b} className="flex items-center gap-2 text-sm opacity-80">
+                  <CheckCircle2 className="h-4 w-4 shrink-0 opacity-70" />
+                  {b}
+                </div>
+              ))}
+            </div>
+          )}
+          {step === "modules" && monthlyTotal > 0 && (
+            <div className="bg-white/10 rounded-2xl p-4 text-left space-y-1.5 mt-4">
+              <p className="text-xs font-semibold opacity-60 uppercase tracking-wider mb-2">Your selection</p>
+              {paidSelected.map(m => (
+                <div key={m.slug} className="flex justify-between text-xs opacity-80">
+                  <span>{m.name}</span>
+                  <span>₹{m.price}/mo</span>
+                </div>
+              ))}
+              <Separator className="bg-white/20 my-2" />
+              <div className="flex justify-between text-sm font-bold">
+                <span>Total after trial</span>
+                <span>₹{monthlyTotal.toLocaleString("en-IN")}/mo</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
