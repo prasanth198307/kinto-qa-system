@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { usePermissions } from "@/hooks/use-permissions";
+import { usePlanFeatures } from "@/hooks/use-plan-features";
 import { GlobalHeader } from "@/components/GlobalHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -870,34 +871,39 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
   const { toast } = useToast();
   const { logoutMutation } = useAuth();
   const { canAccessScreen } = usePermissions();
+  const { hasModule } = usePlanFeatures();
   
-  // Check individual report tab permissions - 100% database driven
+  // Check individual report tab permissions - database driven
   // If user has "reports" permission, they can see all tabs
   // Otherwise check individual report_* permissions
   const canAccessReportTab = (tabKey: string): boolean => {
     if (canAccessScreen('reports')) return true;
     return canAccessScreen(tabKey);
   };
-  
+
+  // Helper: check if a module (or any of its aliases) is active for this tenant
+  // Handles both plan-level keys (basic_inventory) and catalog slugs (inventory)
+  const moduleActive = (...mods: string[]): boolean => mods.some(m => hasModule(m));
+
   const tabPermissions = {
-    gatepasses: canAccessReportTab('report_gatepasses'),
-    invoices: canAccessReportTab('report_invoices'),
-    issuances: canAccessReportTab('report_issuances'),
-    'purchase-orders': canAccessReportTab('report_purchase_orders'),
-    maintenance: canAccessReportTab('report_maintenance'),
-    machines: canAccessReportTab('report_machines'),
-    expenses: canAccessReportTab('report_expenses'),
-    'cash-register': canAccessReportTab('report_cash_register'),
-    'gst-reports': canAccessReportTab('report_gst'),
-    payments: canAccessReportTab('report_payments'),
-    'finished-goods': canAccessReportTab('report_finished_goods'),
-    'monthly-sales': canAccessReportTab('report_monthly_sales'),
-    'scrap': canAccessReportTab('report_scrap'),
-    'sales-returns': canAccessReportTab('report_sales_returns'),
-    'repacking': canAccessReportTab('report_repacking'),
-    'vendor-report': canAccessReportTab('report_vendor_report'),
-    'monthly-production': canAccessReportTab('report_monthly_production'),
-    'daily-production': canAccessReportTab('report_monthly_production'),
+    gatepasses:          canAccessReportTab('report_gatepasses')     && moduleActive('gatepasses'),
+    invoices:            canAccessReportTab('report_invoices')       && moduleActive('invoicing'),
+    issuances:           canAccessReportTab('report_issuances')      && moduleActive('production'),
+    'purchase-orders':   canAccessReportTab('report_purchase_orders')&& moduleActive('purchase_orders', 'purchase'),
+    maintenance:         canAccessReportTab('report_maintenance')    && moduleActive('maintenance'),
+    machines:            canAccessReportTab('report_machines')       && moduleActive('maintenance'),
+    expenses:            canAccessReportTab('report_expenses')       && moduleActive('expenses', 'expense_claims'),
+    'cash-register':     canAccessReportTab('report_cash_register')  && moduleActive('expenses', 'expense_claims'),
+    'gst-reports':       canAccessReportTab('report_gst')            && moduleActive('invoicing', 'accounting'),
+    payments:            canAccessReportTab('report_payments')       && moduleActive('invoicing'),
+    'finished-goods':    canAccessReportTab('report_finished_goods') && moduleActive('production'),
+    'monthly-sales':     canAccessReportTab('report_monthly_sales')  && moduleActive('invoicing'),
+    'scrap':             canAccessReportTab('report_scrap')          && moduleActive('production'),
+    'sales-returns':     canAccessReportTab('report_sales_returns')  && moduleActive('quality_returns', 'quality'),
+    'repacking':         canAccessReportTab('report_repacking')      && moduleActive('production'),
+    'vendor-report':     canAccessReportTab('report_vendor_report')  && moduleActive('purchase_orders', 'purchase'),
+    'monthly-production':canAccessReportTab('report_monthly_production') && moduleActive('production'),
+    'daily-production':  canAccessReportTab('report_monthly_production') && moduleActive('production'),
   };
   
   // Find first accessible tab for default

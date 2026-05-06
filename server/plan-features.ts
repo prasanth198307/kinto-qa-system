@@ -325,14 +325,45 @@ export function getPlanFeatures(plan: string) {
   return { plan, modules, allowedNavItems: [...navItems] };
 }
 
+// ── Catalog slug → plan-level module key aliases ─────────────────────────────
+// The Module Marketplace catalog uses short slugs (e.g. "inventory", "sales").
+// MODULE_NAV_ITEMS uses the full plan-level keys (e.g. "basic_inventory", "sales_orders").
+// This map expands catalog slugs so purchased modules correctly unlock nav items
+// and enable hasModule() checks on the frontend.
+const CATALOG_TO_PLAN_MODULE: Record<string, string> = {
+  inventory:       "basic_inventory",
+  purchase:        "purchase_orders",
+  quality:         "quality_returns",
+  sales:           "sales_orders",
+  logistics:       "logistics_transport",
+  expense_claims:  "expenses",
+  tds_management:  "accounting",
+  attendance:      "hr_payroll",
+  ess:             "hr_payroll",
+  appraisals:      "hr_payroll",
+  dashboard:       "mis",
+  user_management: "basic_inventory",
+  roles:           "basic_inventory",
+  company_settings:"basic_inventory",
+};
+
 // ── Feature summary using DB-sourced module list ──────────────────────────────
 // Use this when the plan record has been loaded from the DB (modules is a JSON array).
-export function getPlanFeaturesFromModules(plan: string, modules: string[]) {
+// Automatically expands catalog slugs to their plan-level equivalents so that:
+//   1. allowedNavItems includes the correct nav items for marketplace purchases
+//   2. The returned modules array includes both original + expanded slugs so
+//      hasModule('basic_inventory') returns true even when 'inventory' was purchased
+export function getPlanFeaturesFromModules(plan: string, rawModules: string[]) {
+  // Expand each catalog slug to its plan-level key (or keep as-is if already plan-level)
+  const expanded = rawModules.map(m => CATALOG_TO_PLAN_MODULE[m] ?? m);
+  // Deduplicate: union of original catalog slugs + expanded plan-level keys
+  const allModules = [...new Set([...rawModules, ...expanded])];
+
   const navItems = new Set<string>();
-  for (const mod of modules) {
+  for (const mod of allModules) {
     for (const item of MODULE_NAV_ITEMS[mod] ?? []) {
       navItems.add(item);
     }
   }
-  return { plan, modules, allowedNavItems: [...navItems] };
+  return { plan, modules: allModules, allowedNavItems: [...navItems] };
 }
