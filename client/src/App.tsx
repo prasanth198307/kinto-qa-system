@@ -4142,6 +4142,12 @@ function AgricultureWrapper() {
   );
 }
 
+function AuthenticatedChatAgent() {
+  const { user, isLoading } = useAuth();
+  if (isLoading || !user) return null;
+  return <ChatAgent />;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -4150,7 +4156,7 @@ function App() {
           <ScrollToTop />
           <Router />
           <Toaster />
-          <ChatAgent />
+          <AuthenticatedChatAgent />
         </TooltipProvider>
       </AuthProvider>
     </QueryClientProvider>
