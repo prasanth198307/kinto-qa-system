@@ -10,12 +10,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
   CheckCircle2, Zap, Loader2, ArrowRight, Star, CreditCard, AlertTriangle,
-  CalendarClock, XCircle, RefreshCw,
+  CalendarClock, XCircle, RefreshCw, ExternalLink,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { format, parseISO } from "date-fns";
+
+const RAZORPAY_PAYMENT_LINK = "https://razorpay.me/swacherp";
 
 interface Plan {
   id: number;
@@ -110,6 +112,7 @@ export default function PricingPage({ onUpgrade }: { onUpgrade?: (plan: string) 
   const [processingPlan, setProcessingPlan] = useState<string | null>(null);
   const [cancelDialog, setCancelDialog] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
+  const [payLinkDialog, setPayLinkDialog] = useState<{ plan: Plan; price: number } | null>(null);
 
   const { data: plans = [], isLoading: plansLoading } = useQuery<Plan[]>({
     queryKey: ["/api/subscription-plans"],
@@ -207,7 +210,9 @@ export default function PricingPage({ onUpgrade }: { onUpgrade?: (plan: string) 
     setProcessingPlan(plan.slug);
 
     if (!razorpayEnabled) {
-      requestMutation.mutate({ plan: plan.slug });
+      const priceInPaise = cycle === "yearly" ? plan.priceYearly : plan.priceMonthly;
+      setPayLinkDialog({ plan, price: priceInPaise });
+      setProcessingPlan(null);
       return;
     }
 
@@ -501,7 +506,13 @@ export default function PricingPage({ onUpgrade }: { onUpgrade?: (plan: string) 
         {razorpayEnabled ? (
           <p>Payments are processed securely via Razorpay. Plan activates instantly after payment.</p>
         ) : (
-          <p>Clicking "Request Upgrade" notifies our team — we'll confirm and activate within 24 hours.</p>
+          <p>
+            Pay securely via{" "}
+            <a href={RAZORPAY_PAYMENT_LINK} target="_blank" rel="noopener noreferrer" className="text-primary underline">
+              Razorpay
+            </a>
+            . Our team activates your plan within a few hours of payment confirmation.
+          </p>
         )}
         <p>
           When you cancel, your plan stays active until the end of your current billing period.
@@ -509,9 +520,84 @@ export default function PricingPage({ onUpgrade }: { onUpgrade?: (plan: string) 
         </p>
         <p>
           Need a custom plan or volume pricing?{" "}
-          <a href="mailto:sales@kinto.in" className="text-primary underline">Contact our sales team</a>.
+          <a href="mailto:sales@swacherp.com" className="text-primary underline">Contact our sales team</a>.
         </p>
       </div>
+
+      {/* ── Pay via Razorpay Link dialog ────────────────────────────────────── */}
+      <Dialog open={!!payLinkDialog} onOpenChange={(open) => !open && setPayLinkDialog(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5 text-primary" />
+              Pay & Upgrade to {payLinkDialog?.plan.name}
+            </DialogTitle>
+            <DialogDescription>
+              Complete your payment securely via Razorpay. Our team will activate your plan
+              within a few hours of confirming payment.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {/* Plan summary */}
+            <div className="rounded-md border bg-muted/40 p-4 space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-medium">{payLinkDialog?.plan.name}</span>
+                <span className="font-bold text-base">
+                  ₹{((payLinkDialog?.price ?? 0) / 100).toLocaleString("en-IN")}/{cycle === "yearly" ? "year" : "month"}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">{payLinkDialog?.plan.tagline}</p>
+              <Separator />
+              <p className="text-xs text-muted-foreground">+ GST (18%) as applicable</p>
+            </div>
+
+            {/* Steps */}
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">How it works</p>
+              <ol className="space-y-1.5 text-xs text-muted-foreground list-decimal list-inside">
+                <li>Click <strong>Pay Now</strong> — you'll be taken to our Razorpay payment page.</li>
+                <li>Complete the payment (UPI, card, netbanking, etc.).</li>
+                <li>Share your payment receipt or transaction ID with us.</li>
+                <li>We'll activate your <strong>{payLinkDialog?.plan.name}</strong> plan within a few hours.</li>
+              </ol>
+            </div>
+
+            <div className="rounded-md border border-blue-200 bg-blue-50 dark:bg-blue-950/20 p-3 text-xs text-blue-800 dark:text-blue-300">
+              After payment, contact us at{" "}
+              <a href="mailto:sales@swacherp.com" className="underline font-medium">sales@swacherp.com</a>
+              {" "}or WhatsApp with your payment confirmation to expedite activation.
+            </div>
+          </div>
+
+          <DialogFooter className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setPayLinkDialog(null);
+                requestMutation.mutate({ plan: payLinkDialog!.plan.slug });
+              }}
+              disabled={requestMutation.isPending}
+              data-testid="button-request-upgrade-link"
+            >
+              {requestMutation.isPending
+                ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Sending...</>
+                : "Notify Team Only"}
+            </Button>
+            <Button
+              onClick={() => {
+                window.open(RAZORPAY_PAYMENT_LINK, "_blank", "noopener,noreferrer");
+                requestMutation.mutate({ plan: payLinkDialog!.plan.slug });
+                setPayLinkDialog(null);
+              }}
+              data-testid="button-pay-razorpay-link"
+            >
+              <ExternalLink className="mr-2 h-4 w-4" />
+              Pay Now via Razorpay
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Cancel confirmation dialog ───────────────────────────────────────── */}
       <Dialog open={cancelDialog} onOpenChange={(open) => !open && setCancelDialog(false)}>
