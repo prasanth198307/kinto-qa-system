@@ -174,6 +174,73 @@ app.use((req, res, next) => {
     throw err;
   });
 
+  // ── Social-crawler OG tag injector ─────────────────────────────────────────
+  // When Facebook / Twitter / LinkedIn / WhatsApp crawlers hit a tenant URL
+  // like https://microgrid.swacherp.com, return a minimal HTML page with the
+  // tenant's name and logo so sharing previews show tenant branding.
+  const BOT_UA = /facebookexternalhit|Twitterbot|LinkedInBot|WhatsApp|Slackbot|TelegramBot|Discordbot|ia_archiver|Googlebot|bingbot|DuckDuckBot|Applebot/i;
+  const { pool: pgPool } = await import("./db");
+
+  app.use(async (req: Request, res: Response, next: NextFunction) => {
+    const ua = req.headers["user-agent"] || "";
+    if (!BOT_UA.test(ua)) return next();
+
+    // Extract subdomain from host header (e.g. microgrid.swacherp.com → microgrid)
+    const host = (req.headers["x-forwarded-host"] || req.headers.host || "").toString().split(":")[0];
+    const parts = host.split(".");
+    // Need at least subdomain.domain.tld (3 parts); skip www/app/plain domain
+    const subdomain = parts.length >= 3 && !["www", "app"].includes(parts[0]) ? parts[0] : null;
+    if (!subdomain) return next();
+
+    let tenantName = "SwachERP";
+    let tenantLogo = "";
+    let tenantDesc = "Cloud ERP for Indian businesses — GST-compliant, WhatsApp-connected, HR-ready.";
+
+    try {
+      const result = await pgPool.query(
+        `SELECT name, logo_url FROM tenants WHERE slug = $1 AND status <> 'deleted' LIMIT 1`,
+        [subdomain]
+      );
+      if (result.rows.length) {
+        tenantName = result.rows[0].name || tenantName;
+        tenantLogo = result.rows[0].logo_url || "";
+        tenantDesc = `${tenantName} — powered by SwachERP. GST-compliant cloud ERP for Indian businesses.`;
+      }
+    } catch (_) { /* fall through to defaults */ }
+
+    const pageUrl = `https://${host}${req.path}`;
+    const ogImage = tenantLogo
+      ? `<meta property="og:image" content="${tenantLogo}" />
+    <meta name="twitter:image" content="${tenantLogo}" />`
+      : `<meta property="og:image" content="https://app.swacherp.com/swacherp-og.png" />
+    <meta name="twitter:image" content="https://app.swacherp.com/swacherp-og.png" />`;
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>${tenantName} — SwachERP</title>
+  <meta name="description" content="${tenantDesc}" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="${pageUrl}" />
+  <meta property="og:title" content="${tenantName} — SwachERP" />
+  <meta property="og:description" content="${tenantDesc}" />
+  <meta property="og:site_name" content="${tenantName}" />
+  ${ogImage}
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="${tenantName} — SwachERP" />
+  <meta name="twitter:description" content="${tenantDesc}" />
+  <meta http-equiv="refresh" content="0;url=${pageUrl}" />
+</head>
+<body>
+  <p>Redirecting to <a href="${pageUrl}">${tenantName}</a>…</p>
+</body>
+</html>`;
+
+    res.status(200).set("Content-Type", "text/html").end(html);
+  });
+  // ───────────────────────────────────────────────────────────────────────────
+
   if (app.get("env") === "development") {
     await setupVite(app, server);
   } else {
