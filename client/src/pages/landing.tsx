@@ -84,18 +84,18 @@ const NAV_SOLUTIONS_BY_ROLE = [
 ];
 
 const NAV_SOLUTIONS_BY_INDUSTRY = [
-  { label: "Auto Components" },
-  { label: "Engineering Goods" },
-  { label: "Food & Beverages" },
-  { label: "Fabrication Shops" },
-  { label: "Pharmaceuticals" },
-  { label: "Healthcare & Clinics" },
-  { label: "Schools & Colleges" },
-  { label: "Logistics & Transport" },
-  { label: "Real Estate / Builders" },
-  { label: "Retail & Distribution" },
-  { label: "Agriculture & Agri-processing" },
-  { label: "Service Businesses" },
+  { label: "Auto Components",             desc: "BOM, production orders, quality" },
+  { label: "Engineering Goods",           desc: "Job work, dispatch, GST invoicing" },
+  { label: "Food & Beverages",            desc: "Batch tracking, expiry, FSSAI" },
+  { label: "Fabrication Shops",           desc: "Job cards, material issue, costing" },
+  { label: "Pharmaceuticals",             desc: "Lot tracking, QC, compliance" },
+  { label: "Healthcare & Clinics",        desc: "OPD/IPD, wards, patient billing" },
+  { label: "Schools & Colleges",          desc: "Fees, attendance, timetable" },
+  { label: "Logistics & Transport",       desc: "Fleet, trips, lorry receipts (LR)" },
+  { label: "Real Estate / Builders",      desc: "Units, bookings, payment schedules" },
+  { label: "Retail & Distribution",       desc: "POS terminal, stock, sales history" },
+  { label: "Agriculture & Agri-processing", desc: "Farms, crop cycles, procurement" },
+  { label: "Service Businesses",          desc: "Projects, timesheets, billing" },
 ];
 
 const MODULES = [
@@ -280,10 +280,16 @@ function SolutionsDropdown() {
             {/* By Industry */}
             <div className="p-4">
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3 px-1">By Industry</p>
-              <div className="grid grid-cols-2 gap-1">
+              <div className="grid grid-cols-2 gap-0.5">
                 {NAV_SOLUTIONS_BY_INDUSTRY.map(item => (
-                  <a key={item.label} href={`/solutions#${item.label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+$/, "")}`} onClick={() => setOpen(false)} className="px-2 py-1.5 rounded-lg hover-elevate no-underline">
-                    <p className="text-xs font-medium leading-tight">{item.label}</p>
+                  <a
+                    key={item.label}
+                    href={`/solutions#${item.label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+$/, "")}`}
+                    onClick={() => setOpen(false)}
+                    className="px-2 py-1.5 rounded-lg hover-elevate no-underline"
+                  >
+                    <p className="text-xs font-semibold leading-tight">{item.label}</p>
+                    <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">{item.desc}</p>
                   </a>
                 ))}
               </div>
