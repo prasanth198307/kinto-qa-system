@@ -25,8 +25,8 @@ export default function AuthPage() {
   const [sessionExpired, setSessionExpired] = useState(false);
   const [tenantLogoUrl, setTenantLogoUrl] = useState<string | null>(null);
   const [tenantDisplayName, setTenantDisplayName] = useState<string | null>(null);
-  // true when slug was auto-detected from the custom domain — hide Company ID field
-  const [slugAutoDetected, setSlugAutoDetected] = useState(false);
+  // true when slug was auto-detected from the custom domain OR passed via ?tenant= — hide Company ID field
+  const [slugAutoDetected, setSlugAutoDetected] = useState(!!prefilledSlug);
 
   useEffect(() => {
     if (sessionStorage.getItem("session_expired") === "1") {

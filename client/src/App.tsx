@@ -3462,38 +3462,36 @@ function ScrollToTop() {
 
 function SmartRoot() {
   const { user, isLoading } = useAuth();
-  const [, setLocation] = useLocation();
-  // domainChecked stays false until we know whether this origin is a tenant subdomain
-  const [domainChecked, setDomainChecked] = useState(false);
+  // null = still checking | '' = no tenant (show landing) | 'kinto' = redirect to /auth
+  const [tenantSlug, setTenantSlug] = useState<string | null>(null);
 
   useEffect(() => {
     // Wait for auth to finish first
     if (isLoading) return;
-    // User is logged in — no need to check domain
-    if (user) { setDomainChecked(true); return; }
+    // User is already logged in — no domain check needed
+    if (user) { setTenantSlug(''); return; }
     // Auth done, no user — check if this origin belongs to a tenant
     const origin = window.location.origin;
     fetch(`/api/public/tenant-branding?origin=${encodeURIComponent(origin)}&_=${Date.now()}`, { cache: 'no-store' })
       .then(r => r.json())
       .then(data => {
-        if (data?.slug) {
-          // Tenant subdomain → send directly to their login page
-          setLocation(`/auth?tenant=${encodeURIComponent(data.slug)}`);
-        } else {
-          // Not a tenant domain → show the public landing page
-          setDomainChecked(true);
-        }
+        // data.slug present → tenant custom domain → go to their login
+        setTenantSlug(data?.slug ?? '');
       })
-      .catch(() => setDomainChecked(true));
+      .catch(() => setTenantSlug(''));
   }, [user, isLoading]);
 
-  // Show spinner while auth is resolving OR while domain check is pending
-  if (isLoading || !domainChecked) {
+  // Still resolving auth or domain check
+  if (isLoading || tenantSlug === null) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-border" />
       </div>
     );
+  }
+  // Known tenant domain → hard redirect to their auth page
+  if (tenantSlug) {
+    return <Redirect to={`/auth?tenant=${encodeURIComponent(tenantSlug)}`} />;
   }
   if (!user) return <LandingPage />;
   return <AuthenticatedApp />;
