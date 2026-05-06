@@ -102,3 +102,9 @@ id = "3mUtJsfUy89dxuQtbF_0p"
 uri = "file://SwachERP_Generic_Roadmap.xlsx"
 type = "table"
 title = "SwachERP — Generic ERP Roadmap Timeline"
+
+[[outputs]]
+id = "XQFgKeb7IRHKrq4GZxCTb"
+uri = "file://screenshots/swacherp-module-pricing.pdf"
+type = "pdf"
+title = "SwachERP — Module Marketplace Design"
