@@ -1014,9 +1014,9 @@ export default function LandingPage() {
           <div className="border-t pt-6 flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
             <p>© {new Date().getFullYear()} Inmousture Private Limited. All rights reserved.</p>
             <div className="flex gap-4">
-              <a href="#" className="hover:text-foreground transition-colors">Privacy Policy</a>
-              <a href="#" className="hover:text-foreground transition-colors">Terms of Service</a>
-              <a href="mailto:hello@kintoops.in" className="hover:text-foreground transition-colors">hello@kintoops.in</a>
+              <a href="/privacy-policy" className="hover:text-foreground transition-colors">Privacy Policy</a>
+              <a href="/terms-of-service" className="hover:text-foreground transition-colors">Terms of Service</a>
+              <a href="mailto:info@inmoisture.com" className="hover:text-foreground transition-colors">info@inmoisture.com</a>
             </div>
           </div>
         </div>

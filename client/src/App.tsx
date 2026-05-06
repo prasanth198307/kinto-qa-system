@@ -15,6 +15,8 @@ import LandingPage from "@/pages/landing";
 import DemoPage from "@/pages/demo";
 import AuthPage from "@/pages/auth-page";
 import ResetPasswordPage from "@/pages/reset-password";
+import PrivacyPolicyPage from "@/pages/privacy-policy";
+import TermsOfServicePage from "@/pages/terms-of-service";
 import CompanySelectPage from "@/pages/company-select";
 import RegisterCompanyPage from "@/pages/register-company";
 import SuperAdminTenants from "@/pages/super-admin-tenants";
@@ -3684,6 +3686,8 @@ function Router() {
       <Route path="/demo" component={DemoPage} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/reset-password" component={ResetPasswordPage} />
+      <Route path="/privacy-policy" component={PrivacyPolicyPage} />
+      <Route path="/terms-of-service" component={TermsOfServicePage} />
       <ProtectedRoute path="/super-admin/overview" component={() => <SuperAdminOverview />} />
       <ProtectedRoute path="/super-admin/tenants" component={() => <SuperAdminTenants />} />
       <ProtectedRoute path="/super-admin/billing" component={() => <SuperAdminBilling />} />
