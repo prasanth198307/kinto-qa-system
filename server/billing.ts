@@ -410,24 +410,42 @@ export function registerBillingRoutes(app: Express): void {
     }
   });
 
-  // ── Helper: load catalog from DB (falls back to empty array gracefully) ───
+  // ── Helper: load catalog from DB, falls back to hardcoded list if table missing
   async function loadCatalogFromDB() {
-    const rows = await db.execute(sql`
-      SELECT slug, name, description, category, price_monthly, is_free, is_popular,
-             dependencies, sort_order, is_active
-      FROM public.module_catalog
-      WHERE is_active = true
-      ORDER BY sort_order, slug
-    `);
-    return (rows.rows as any[]).map(r => ({
-      slug:          r.slug,
-      name:          r.name,
-      description:   r.description,
-      category:      r.category,
-      priceMonthly:  Number(r.price_monthly),
-      free:          r.is_free,
-      popular:       r.is_popular,
-      dependencies:  r.dependencies ?? [],
+    try {
+      const rows = await db.execute(sql`
+        SELECT slug, name, description, category, price_monthly, is_free, is_popular,
+               dependencies, sort_order, is_active
+        FROM public.module_catalog
+        WHERE is_active = true
+        ORDER BY sort_order, slug
+      `);
+      if ((rows.rows as any[]).length > 0) {
+        return (rows.rows as any[]).map(r => ({
+          slug:         r.slug,
+          name:         r.name,
+          description:  r.description,
+          category:     r.category,
+          priceMonthly: Number(r.price_monthly),
+          free:         r.is_free,
+          popular:      r.is_popular,
+          dependencies: r.dependencies ?? [],
+        }));
+      }
+    } catch (_e) {
+      // Table doesn't exist yet — fall through to hardcoded fallback
+    }
+    // Fallback: hardcoded catalog (used before DB migration is run on production)
+    const { MODULE_CATALOG } = await import("./module-catalog");
+    return MODULE_CATALOG.map(m => ({
+      slug:         m.slug,
+      name:         m.name,
+      description:  m.description,
+      category:     m.category,
+      priceMonthly: m.priceMonthly,
+      free:         m.free,
+      popular:      m.popular ?? false,
+      dependencies: m.dependencies ?? [],
     }));
   }
 
@@ -441,6 +459,47 @@ export function registerBillingRoutes(app: Express): void {
     }
   });
 
+  // ── Mapping: old subscription_plans module slugs → new catalog slugs ────────
+  // Plans use legacy slugs; the marketplace catalog uses a newer naming scheme.
+  const PLAN_SLUG_TO_CATALOG: Record<string, string> = {
+    purchase_orders:     "purchase",
+    basic_inventory:     "inventory",
+    quality_returns:     "quality",
+    sales_orders:        "sales",
+    logistics_transport: "logistics",
+    mis:                 "dashboard",
+    expenses:            "expense_claims",
+    // identical slugs (pass-through)
+    invoicing:           "invoicing",
+    accounting:          "accounting",
+    gatepasses:          "gatepasses",
+    production:          "production",
+    crm:                 "crm",
+    maintenance:         "maintenance",
+    hr_payroll:          "hr_payroll",
+    warehouses:          "warehouses",
+    projects:            "projects",
+    healthcare:          "healthcare",
+    education:           "education",
+    real_estate:         "real_estate",
+    pos:                 "pos",
+    agriculture:         "agriculture",
+    attendance:          "attendance",
+    ess:                 "ess",
+    appraisals:          "appraisals",
+    tds_management:      "tds_management",
+  };
+
+  /** Translate plan module list (old slugs) → catalog slugs, keeping only those in the catalog */
+  function planModulesToCatalogSlugs(planModules: string[], catalogSlugs: Set<string>): string[] {
+    const result = new Set<string>();
+    for (const pm of planModules) {
+      const mapped = PLAN_SLUG_TO_CATALOG[pm] ?? pm;
+      if (catalogSlugs.has(mapped)) result.add(mapped);
+    }
+    return Array.from(result);
+  }
+
   // ── GET /api/billing/selected-modules — tenant's current module selection ─
   app.get("/api/billing/selected-modules", async (req: any, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
@@ -448,20 +507,39 @@ export function registerBillingRoutes(app: Express): void {
     try {
       const [subRows, catalog] = await Promise.all([
         db.execute(sql`
-          SELECT selected_modules, monthly_amount, plan_slug, status, current_period_end, cancelled_at
-          FROM subscriptions WHERE tenant_id = ${tenantId} LIMIT 1
+          SELECT s.selected_modules, s.monthly_amount, s.plan_slug, s.status,
+                 s.current_period_end, s.cancelled_at,
+                 sp.modules AS plan_modules
+          FROM subscriptions s
+          LEFT JOIN subscription_plans sp ON sp.slug = s.plan_slug
+          WHERE s.tenant_id = ${tenantId} LIMIT 1
         `),
         loadCatalogFromDB(),
       ]);
       const row = (subRows.rows as any[])[0];
       const freeModules = catalog.filter(m => m.free).map(m => m.slug);
+      const catalogSlugSet = new Set(catalog.map(m => m.slug));
+
+      // If the tenant has never explicitly picked modules, seed from their plan
+      let selectedModules: string[] = row?.selected_modules ?? [];
+      if (selectedModules.length === 0 && Array.isArray(row?.plan_modules) && row.plan_modules.length > 0) {
+        selectedModules = planModulesToCatalogSlugs(row.plan_modules, catalogSlugSet);
+        // Also include all free modules
+        for (const f of freeModules) selectedModules.push(f);
+        selectedModules = Array.from(new Set(selectedModules));
+      }
+
+      const monthlyAmount = catalog
+        .filter(m => selectedModules.includes(m.slug) && !m.free)
+        .reduce((s, m) => s + m.priceMonthly, 0);
+
       res.json({
-        selectedModules:  row?.selected_modules  ?? [],
-        monthlyAmount:    row?.monthly_amount    ?? 0,
-        planSlug:         row?.plan_slug         ?? null,
-        status:           row?.status            ?? null,
+        selectedModules,
+        monthlyAmount:    row?.monthly_amount ?? monthlyAmount,
+        planSlug:         row?.plan_slug      ?? null,
+        status:           row?.status         ?? null,
         currentPeriodEnd: row?.current_period_end ?? null,
-        cancelledAt:      row?.cancelled_at      ?? null,
+        cancelledAt:      row?.cancelled_at   ?? null,
         catalog,
         freeModules,
       });
