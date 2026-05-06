@@ -108,3 +108,21 @@ id = "XQFgKeb7IRHKrq4GZxCTb"
 uri = "file://screenshots/swacherp-module-pricing.pdf"
 type = "pdf"
 title = "SwachERP — Module Marketplace Design"
+
+[[outputs]]
+id = "ou98kylpVTA0e3ZpC_lwB"
+uri = "file://screenshots/01-module-marketplace.pdf"
+type = "pdf"
+title = "1. Module Marketplace — Pick Your Modules"
+
+[[outputs]]
+id = "YFGUgEyiroezu9xPlqi0m"
+uri = "file://screenshots/02-subscription-manager.pdf"
+type = "pdf"
+title = "2. Subscription Manager — Add / Remove Modules"
+
+[[outputs]]
+id = "xamHrFjSemREfliWbOx9M"
+uri = "file://screenshots/03-auto-deduct-billing.pdf"
+type = "pdf"
+title = "3. Auto-Deduct & Billing Flow"
