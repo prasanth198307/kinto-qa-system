@@ -120,8 +120,19 @@ function formatPriceTotal(paise: number, cycle: "monthly" | "yearly"): string {
   return `₹${rupees.toLocaleString("en-IN", { maximumFractionDigits: 0 })}/month`;
 }
 
+const FEATURES_PREVIEW = 5;
+
 export default function PricingPage() {
   const [cycle, setCycle] = useState<"monthly" | "yearly">("monthly");
+  const [expandedPlans, setExpandedPlans] = useState<Set<string>>(new Set());
+
+  function toggleExpand(slug: string) {
+    setExpandedPlans((prev) => {
+      const next = new Set(prev);
+      next.has(slug) ? next.delete(slug) : next.add(slug);
+      return next;
+    });
+  }
 
   const { data: plans = [], isLoading } = useQuery<Plan[]>({
     queryKey: ["/api/subscription-plans"],
@@ -194,10 +205,14 @@ export default function PricingPage() {
         </div>
 
         {/* ── Plan cards ───────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
           {plans.map((plan) => {
             const accentBorder = PLAN_COLORS[plan.slug] ?? "";
             const price = cycle === "yearly" ? plan.priceYearly : plan.priceMonthly;
+            const features = plan.features as string[];
+            const isExpanded = expandedPlans.has(plan.slug);
+            const visibleFeatures = isExpanded ? features : features.slice(0, FEATURES_PREVIEW);
+            const hiddenCount = features.length - FEATURES_PREVIEW;
 
             return (
               <Card
@@ -242,10 +257,12 @@ export default function PricingPage() {
                   </div>
                 </CardHeader>
 
-                <CardContent className="flex flex-col flex-1 gap-4">
+                <CardContent className="flex flex-col flex-1 gap-3">
                   <Separator />
-                  <ul className="space-y-2 flex-1">
-                    {(plan.features as string[]).map((f, i) => (
+
+                  {/* Feature list — clamped to FEATURES_PREVIEW rows */}
+                  <ul className="space-y-2">
+                    {visibleFeatures.map((f, i) => (
                       <li key={i} className="flex items-start gap-2 text-xs">
                         <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0 mt-0.5" />
                         <span>{f}</span>
@@ -253,19 +270,33 @@ export default function PricingPage() {
                     ))}
                   </ul>
 
-                  {plan.slug === "trial" ? (
-                    <Button className="w-full text-sm" asChild data-testid={`button-start-trial-${plan.slug}`}>
-                      <a href="/auth">
-                        Start Free Trial <ArrowRight className="h-3.5 w-3.5 ml-1" />
-                      </a>
-                    </Button>
-                  ) : (
-                    <Button variant="outline" className="w-full text-sm" asChild data-testid={`button-get-started-${plan.slug}`}>
-                      <a href="/auth">
-                        Get Started <ArrowRight className="h-3.5 w-3.5 ml-1" />
-                      </a>
-                    </Button>
+                  {/* Show more / Show less toggle */}
+                  {hiddenCount > 0 && (
+                    <button
+                      onClick={() => toggleExpand(plan.slug)}
+                      className="text-xs text-primary hover:underline text-left"
+                      data-testid={`button-expand-${plan.slug}`}
+                    >
+                      {isExpanded ? "Show less" : `+ ${hiddenCount} more included`}
+                    </button>
                   )}
+
+                  {/* CTA always pinned to the bottom */}
+                  <div className="mt-auto pt-2">
+                    {plan.slug === "trial" ? (
+                      <Button className="w-full text-sm" asChild data-testid={`button-start-trial-${plan.slug}`}>
+                        <a href="/auth">
+                          Start Free Trial <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                        </a>
+                      </Button>
+                    ) : (
+                      <Button variant="outline" className="w-full text-sm" asChild data-testid={`button-get-started-${plan.slug}`}>
+                        <a href="/auth">
+                          Get Started <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                        </a>
+                      </Button>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             );
