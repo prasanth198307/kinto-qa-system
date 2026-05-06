@@ -207,12 +207,16 @@ function ProductsDropdown() {
   const { open, setOpen, ref } = useDropdown();
   return (
     <div ref={ref} className="relative">
-      <button
-        className={`flex items-center gap-1 text-sm transition-colors py-1 px-1 ${open ? "text-primary font-medium" : "text-muted-foreground hover:text-foreground"}`}
-        onClick={() => setOpen(o => !o)}
-      >
-        Products <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-150 ${open ? "rotate-180 text-primary" : ""}`} />
-      </button>
+      <div className={`flex items-center gap-0.5 text-sm transition-colors ${open ? "text-primary font-medium" : "text-muted-foreground hover:text-foreground"}`}>
+        <a href="/features" className="py-1 px-1 no-underline hover:text-foreground transition-colors">Products</a>
+        <button
+          className="py-1 px-0.5 hover:text-foreground transition-colors"
+          onClick={() => setOpen(o => !o)}
+          aria-label="Open products menu"
+        >
+          <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-150 ${open ? "rotate-180 text-primary" : ""}`} />
+        </button>
+      </div>
       {open && (
         <div className="absolute top-full left-0 mt-2.5 z-50 w-[720px] bg-background border rounded-xl shadow-xl overflow-hidden">
           <div className="grid grid-cols-3 divide-x">
@@ -251,12 +255,16 @@ function SolutionsDropdown() {
   const { open, setOpen, ref } = useDropdown();
   return (
     <div ref={ref} className="relative">
-      <button
-        className={`flex items-center gap-1 text-sm transition-colors py-1 px-1 ${open ? "text-primary font-medium" : "text-muted-foreground hover:text-foreground"}`}
-        onClick={() => setOpen(o => !o)}
-      >
-        Solutions <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-150 ${open ? "rotate-180 text-primary" : ""}`} />
-      </button>
+      <div className={`flex items-center gap-0.5 text-sm transition-colors ${open ? "text-primary font-medium" : "text-muted-foreground hover:text-foreground"}`}>
+        <a href="/solutions" className="py-1 px-1 no-underline hover:text-foreground transition-colors">Solutions</a>
+        <button
+          className="py-1 px-0.5 hover:text-foreground transition-colors"
+          onClick={() => setOpen(o => !o)}
+          aria-label="Open solutions menu"
+        >
+          <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-150 ${open ? "rotate-180 text-primary" : ""}`} />
+        </button>
+      </div>
       {open && (
         <div className="absolute top-full left-0 mt-2.5 z-50 w-[560px] bg-background border rounded-xl shadow-xl overflow-hidden">
           <div className="grid grid-cols-2 divide-x">
@@ -456,7 +464,7 @@ export default function LandingPage() {
         {mobileOpen && (
           <div className="lg:hidden border-t px-4 py-4 space-y-3 bg-background">
             <div className="flex flex-col gap-1 text-sm">
-              {[["#modules","Features"],["#solutions","Solutions"],["#pricing","Pricing"],["#testimonials","Customers"]].map(([href, label]) => (
+              {[["/features","Products"],["/solutions","Solutions"],["/pricing","Pricing"]].map(([href, label]) => (
                 <a key={label} href={href} className="py-1.5 text-muted-foreground hover:text-foreground" onClick={() => setMobileOpen(false)}>{label}</a>
               ))}
             </div>
@@ -1021,8 +1029,8 @@ export default function LandingPage() {
               <p className="font-semibold text-xs uppercase tracking-wide mb-4">Company</p>
               <ul className="space-y-2 text-xs text-muted-foreground">
                 {[
-                  ["#pricing",                   "Pricing"],
-                  ["#testimonials",              "Customers"],
+                  ["/pricing",                   "Pricing"],
+                  ["/solutions",                 "Solutions"],
                   ["/demo",                      "Book a Demo"],
                   ["mailto:info@inmoisture.com", "Contact Us"],
                 ].map(([href, label]) => (

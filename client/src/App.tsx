@@ -3692,6 +3692,7 @@ function Router() {
       <Route path="/terms-of-service" component={TermsOfServicePage} />
       <Route path="/features" component={FeaturesPage} />
       <Route path="/solutions" component={SolutionsPage} />
+      <Route path="/pricing" component={PricingPage} />
       <ProtectedRoute path="/super-admin/overview" component={() => <SuperAdminOverview />} />
       <ProtectedRoute path="/super-admin/tenants" component={() => <SuperAdminTenants />} />
       <ProtectedRoute path="/super-admin/billing" component={() => <SuperAdminBilling />} />
@@ -3803,11 +3804,6 @@ function Router() {
       <ProtectedRoute path="/agriculture" component={AgricultureWrapper} />
       <Route path="/ess" component={EssLogin} />
       <Route path="/ess/portal" component={EssPortal} />
-      <ProtectedRoute path="/pricing" component={() => (
-        <div className="flex-1 overflow-auto">
-          <PricingPage />
-        </div>
-      )} />
       <ProtectedRoute path="/journal-entry/new" component={ManualJournalEntryPageWrapper} />
       <ProtectedRoute path="/journal-entry/:id" component={JournalEntryDetailPageWrapper} />
       <Route path="/" component={SmartRoot} />
