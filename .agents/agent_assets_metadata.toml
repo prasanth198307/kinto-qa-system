@@ -126,3 +126,9 @@ id = "xamHrFjSemREfliWbOx9M"
 uri = "file://screenshots/03-auto-deduct-billing.pdf"
 type = "pdf"
 title = "3. Auto-Deduct & Billing Flow"
+
+[[outputs]]
+id = "OL3PodS28kphhxP9Jy9vt"
+uri = "file://screenshots/SwachERP_Navigation_Test_Report.pdf"
+type = "pdf"
+title = "SwachERP — Navigation Test Report (All 6 Tests)"
