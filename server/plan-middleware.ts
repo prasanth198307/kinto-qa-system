@@ -4,6 +4,32 @@ import { db } from "./db";
 import { tenants, subscriptionPlans } from "@shared/schema";
 import { eq, sql } from "drizzle-orm";
 
+/**
+ * Catalog slugs (stored in subscriptions.selected_modules via the Module Marketplace)
+ * do not always match the route-level module names used in ROUTE_PLAN_REQUIREMENTS.
+ * This map lets the plan enforcement accept either form.
+ *
+ * Key   = ROUTE_PLAN_REQUIREMENTS module name
+ * Value = set of catalog slugs (or legacy names) that count as equivalent
+ */
+const MODULE_ALIASES: Record<string, string[]> = {
+  sales_orders:    ["sales", "sales_orders"],
+  quality_returns: ["quality", "quality_returns"],
+  expenses:        ["expenses", "expense_claims"],
+  basic_inventory: ["inventory", "basic_inventory"],
+  mis:             ["mis", "dashboard"],
+  documents:       ["documents"],
+  whatsapp:        ["whatsapp"],
+  fixed_assets:    ["fixed_assets"],
+  multi_currency:  ["multi_currency"],
+};
+
+/** Returns true if the tenant's selected_modules list satisfies the given route module. */
+function tenantHasModule(tenantModules: string[], routeModule: string): boolean {
+  const aliases = MODULE_ALIASES[routeModule] ?? [routeModule];
+  return aliases.some(a => tenantModules.includes(a));
+}
+
 // Simple in-process cache: plan slug → modules[]  (TTL 5 min)
 const planModuleCache = new Map<string, { modules: string[]; at: number }>();
 const CACHE_TTL_MS = 5 * 60 * 1000;
@@ -99,25 +125,23 @@ export async function planEnforcementMiddleware(req: Request, res: Response, nex
 
   for (const rule of ROUTE_PLAN_REQUIREMENTS) {
     if (req.path.startsWith(rule.prefix)) {
-      // 1. Check per-tenant selected_modules first (module-marketplace selections override plan)
-      const tenantModules = await getSelectedModulesForTenant(tenantId);
-      if (tenantModules !== null) {
-        if (!tenantModules.includes(rule.module)) {
-          return res.status(403).json({
-            message: `This module is not part of your current subscription. Add it in Company Settings → Subscription → Modules.`,
-            planRequired: rule.minPlan,
-            currentPlan: tenantPlan,
-            module: rule.module,
-          });
-        }
-        break; // module found in per-tenant selection — allow
-      }
-
-      // 2. Fall back to plan-level module list from DB
+      // Always resolve plan-level modules — needed for fallback in both paths below
       const dbModules = await getModulesForPlan(tenantPlan);
 
+      // 1. Check per-tenant selected_modules first (module-marketplace billing selections)
+      //    selected_modules controls what the tenant is BILLED for; the plan controls ACCESS.
+      //    If selected_modules is set but doesn't include the module, fall through to the
+      //    plan-level check — this handles modules that aren't in the marketplace catalog
+      //    (e.g. "mis", "documents", "whatsapp", "fixed_assets") and avoids locking out
+      //    tenants who set selected_modules for billing purposes.
+      const tenantModules = await getSelectedModulesForTenant(tenantId);
+      if (tenantModules !== null && tenantHasModule(tenantModules, rule.module)) {
+        break; // module found in per-tenant billing selection — allow
+      }
+
+      // 2. Check plan-level module list from DB
       if (dbModules !== null) {
-        if (!dbModules.includes(rule.module)) {
+        if (!tenantHasModule(dbModules, rule.module)) {
           return res.status(403).json({
             message: `Your current plan (${tenantPlan}) does not include access to this module. Please upgrade to access this feature.`,
             planRequired: rule.minPlan,
