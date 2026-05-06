@@ -14,7 +14,7 @@ import {
   Factory, FileText, Receipt, IndianRupee, UserCheck, Target, MessageCircle,
   HeartPulse, GraduationCap, Truck, Home, ShoppingBag, Leaf, Key, GitBranch,
   ClipboardCheck, Wrench, FolderKanban, BarChart3, PiggyBank, ShoppingCart,
-  ClipboardList, MonitorSmartphone,
+  ClipboardList, MonitorSmartphone, ChevronLeft,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -199,10 +199,13 @@ export default function PricingPage({ onUpgrade }: { onUpgrade?: (plan: string) 
     retry: false,
   });
 
-  const { data: subData, refetch: refetchSub } = useQuery<SubscriptionData>({
+  const { data: subData, refetch: refetchSub, isError: subError } = useQuery<SubscriptionData>({
     queryKey: ["/api/billing/subscription"],
     retry: false,
   });
+
+  // isError on the subscription query means 401 — user is a public visitor (not logged in)
+  const isPublicVisitor = subError;
 
   const razorpayEnabled = billingData?.razorpayKeyId != null;
   const razorpayKeyId   = billingData?.razorpayKeyId ?? "";
@@ -353,10 +356,39 @@ export default function PricingPage({ onUpgrade }: { onUpgrade?: (plan: string) 
   const discount = plans[1] ? yearlyDiscount(plans[1].priceMonthly, plans[1].priceYearly) : 20;
 
   return (
-    <div className="py-8 px-4 space-y-8 max-w-5xl mx-auto">
+    <div className="min-h-screen bg-background">
 
-      {/* ── Subscription status banner ──────────────────────────────────────── */}
-      {sub && (
+      {/* ── Top nav bar (home link) ─────────────────────────────────────────── */}
+      <header className="border-b bg-background/95 backdrop-blur sticky top-0 z-50">
+        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
+          <a href="/" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors" data-testid="link-pricing-home">
+            <ChevronLeft className="h-4 w-4" />
+            Back to home
+          </a>
+          <a href="/" className="font-bold text-lg tracking-tight">SwachERP</a>
+          <div className="flex items-center gap-2">
+            {isPublicVisitor ? (
+              <>
+                <Button variant="ghost" size="sm" asChild data-testid="nav-sign-in">
+                  <a href="/auth">Sign In</a>
+                </Button>
+                <Button size="sm" asChild data-testid="nav-start-trial">
+                  <a href="/auth">Start Free Trial</a>
+                </Button>
+              </>
+            ) : (
+              <Button variant="ghost" size="sm" asChild data-testid="nav-go-dashboard">
+                <a href="/dashboard">Go to Dashboard</a>
+              </Button>
+            )}
+          </div>
+        </div>
+      </header>
+
+      <div className="py-8 px-4 space-y-8 max-w-5xl mx-auto">
+
+      {/* ── Subscription status banner (logged-in users only) ──────────────── */}
+      {!isPublicVisitor && sub && (
         <div className={`rounded-md border p-4 flex flex-wrap items-start justify-between gap-4 ${
           isSubCancelled ? "border-amber-300 bg-amber-50 dark:bg-amber-950/20" :
           isSubExpired   ? "border-destructive/40 bg-destructive/5" :
@@ -486,13 +518,13 @@ export default function PricingPage({ onUpgrade }: { onUpgrade?: (plan: string) 
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <CardTitle className="text-base">{plan.name}</CardTitle>
-                  {isCurrent && !isSubCancelled && !isSubExpired && (
+                  {!isPublicVisitor && isCurrent && !isSubCancelled && !isSubExpired && (
                     <Badge variant="secondary" className="text-xs shrink-0">Current</Badge>
                   )}
-                  {isCurrent && isSubCancelled && (
+                  {!isPublicVisitor && isCurrent && isSubCancelled && (
                     <Badge variant="outline" className="text-xs shrink-0 border-amber-400 text-amber-700">Cancelling</Badge>
                   )}
-                  {isCurrent && isSubExpired && (
+                  {!isPublicVisitor && isCurrent && isSubExpired && (
                     <Badge variant="outline" className="text-xs shrink-0 border-destructive text-destructive">Expired</Badge>
                   )}
                 </div>
@@ -536,7 +568,22 @@ export default function PricingPage({ onUpgrade }: { onUpgrade?: (plan: string) 
                   ))}
                 </ul>
 
-                {showUpgrade ? (
+                {/* ── Public visitor: simple sign-up CTAs ── */}
+                {isPublicVisitor ? (
+                  plan.slug === "trial" ? (
+                    <Button className="w-full text-sm" asChild data-testid={`button-start-trial-${plan.slug}`}>
+                      <a href="/auth">
+                        Start Free Trial <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                      </a>
+                    </Button>
+                  ) : (
+                    <Button variant="outline" className="w-full text-sm" asChild data-testid={`button-get-started-${plan.slug}`}>
+                      <a href="/auth">
+                        Get Started <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                      </a>
+                    </Button>
+                  )
+                ) : showUpgrade ? (
                   <Button
                     className="w-full text-sm"
                     onClick={() => handleUpgrade(plan)}
@@ -835,6 +882,8 @@ export default function PricingPage({ onUpgrade }: { onUpgrade?: (plan: string) 
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      </div>{/* end inner py-8 container */}
     </div>
   );
 }
