@@ -304,9 +304,9 @@ function SolutionsDropdown() {
               <div className="mt-4 pt-3 border-t">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2 px-1">By Scale</p>
                 {[
-                  ["Growing SMEs",       "5–20 users, quick onboarding",    "/pricing"],
-                  ["Mid-size Mfg.",      "15–50 users, full modules",        "/pricing"],
-                  ["Enterprise & Groups","Custom plans, dedicated support",  "/pricing"],
+                  ["Growing SMEs",       "5–20 users, quick onboarding",    "/pricing#plan-basic"],
+                  ["Mid-size Mfg.",      "15–50 users, full modules",        "/pricing#plan-professional"],
+                  ["Enterprise & Groups","Custom plans, dedicated support",  "/pricing#plan-enterprise"],
                 ].map(([label, desc, href]) => (
                   <a key={label} href={href} onClick={() => setOpen(false)} className="block px-2 py-1.5 rounded-lg hover-elevate no-underline">
                     <p className="text-xs font-semibold">{label}</p>

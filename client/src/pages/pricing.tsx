@@ -217,6 +217,7 @@ export default function PricingPage() {
             return (
               <Card
                 key={plan.id}
+                id={`plan-${plan.slug}`}
                 className={`relative flex flex-col ${plan.isFeatured ? `border-2 ${accentBorder}` : ""}`}
                 data-testid={`card-plan-${plan.slug}`}
               >
