@@ -136,10 +136,6 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
       : (selectedStructure.components || []);
 
     const earnings = comps.filter((c: any) => c.type === 'earning');
-    const hasPercent = earnings.some((c: any) =>
-      c.formula_type === 'percentage' || c.formula_type === 'percent_of_basic' || c.formula_type === 'percent_of_ctc'
-    );
-    if (!hasPercent) { setCtcAutoCalc(false); setCalcBreakdown([]); return; }
 
     const monthlyCTC = ctcVal / 12;
 
@@ -227,7 +223,7 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
       specialAllowance: String(specialAllowance),
     }));
     setCtcAutoCalc(true);
-  }, [form.ctc, form.salaryStructureId, form.pfEnabled, form.esiEnabled, statutory]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [form.ctc, form.salaryStructureId, form.pfEnabled, form.esiEnabled, statutory, selectedStructure]);
 
   const handleSave = () => {
     const payload = {
@@ -368,7 +364,7 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
             </div>
             <Input
               className={inputCls} type="number" value={form.ctc}
-              onChange={e => { setCtcAutoCalc(false); f("ctc")(e); }}
+              onChange={e => f("ctc")(e)}
               placeholder="e.g. 600000 for ₹6 LPA"
               data-testid="input-ctc"
             />
