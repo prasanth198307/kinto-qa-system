@@ -82,42 +82,46 @@ export function VerticalNavSidebar({
     }
   }, [isMobileOpen]);
 
-  // Initialize collapsed state - default all collapsed
+  // Initialize collapsed state - default all collapsed, but always expand the active section
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>(() => {
     const STORAGE_VERSION = 'v2';
+    let state: Record<string, boolean> = {};
     try {
       const version = localStorage.getItem('sidebarVersion');
       const saved = localStorage.getItem('sidebarCollapsedSections');
       if (version === STORAGE_VERSION && saved) {
-        return JSON.parse(saved);
+        state = JSON.parse(saved);
+      } else {
+        localStorage.setItem('sidebarVersion', STORAGE_VERSION);
+        safeSections.forEach(section => {
+          if (section.label) state[section.id] = true;
+        });
       }
-      localStorage.setItem('sidebarVersion', STORAGE_VERSION);
     } catch (e) {
-      // ignore
+      safeSections.forEach(section => {
+        if (section.label) state[section.id] = true;
+      });
     }
-    const defaultCollapsed: Record<string, boolean> = {};
-    safeSections.forEach(section => {
-      if (section.label) {
-        defaultCollapsed[section.id] = true;
-      }
-    });
-    return defaultCollapsed;
+    // Always expand the section containing the current active item on mount
+    const activeSection = safeSections.find(s => s.items.some(i => i.id === activeItem));
+    if (activeSection) state[activeSection.id] = false;
+    return state;
   });
 
   useEffect(() => {
     localStorage.setItem('sidebarCollapsedSections', JSON.stringify(collapsedSections));
   }, [collapsedSections]);
 
-  // Auto-expand section containing active item
+  // Auto-expand section containing active item — uses functional updater to avoid stale closure
   useEffect(() => {
     const activeSection = safeSections.find(section =>
       section.items.some(item => item.id === activeItem)
     );
-    if (activeSection && collapsedSections[activeSection.id]) {
-      setCollapsedSections(prev => ({
-        ...prev,
-        [activeSection.id]: false
-      }));
+    if (activeSection) {
+      setCollapsedSections(prev => {
+        if (!prev[activeSection.id]) return prev; // already expanded, skip re-render
+        return { ...prev, [activeSection.id]: false };
+      });
     }
   }, [activeItem, safeSections]);
 
