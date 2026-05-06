@@ -158,10 +158,10 @@ function StockTransfersTab() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label>From Warehouse</Label>
-                <Select value={form.fromWarehouseId} onValueChange={v => setForm(p => ({ ...p, fromWarehouseId: v }))}>
+                <Select value={form.fromWarehouseId||"__none__"} onValueChange={v => setForm(p => ({ ...p, fromWarehouseId: v === "__none__" ? "" : v }))}>
                   <SelectTrigger><SelectValue placeholder="External / New Stock" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">External / New Stock</SelectItem>
+                    <SelectItem value="__none__">External / New Stock</SelectItem>
                     {(warehouses as any[]).map((w: any) => <SelectItem key={w.id} value={String(w.id)}>{w.name}</SelectItem>)}
                   </SelectContent>
                 </Select>

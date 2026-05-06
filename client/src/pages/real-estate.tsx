@@ -102,7 +102,7 @@ function UnitsTab() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <Select value={filterProject} onValueChange={setFilterProject}><SelectTrigger className="w-44"><SelectValue placeholder="All Projects"/></SelectTrigger><SelectContent><SelectItem value="">All Projects</SelectItem>{(projects as any[]).map((p:any)=><SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}</SelectContent></Select>
+        <Select value={filterProject||"__none__"} onValueChange={v=>setFilterProject(v==="__none__"?"":v)}><SelectTrigger className="w-44"><SelectValue placeholder="All Projects"/></SelectTrigger><SelectContent><SelectItem value="__none__">All Projects</SelectItem>{(projects as any[]).map((p:any)=><SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}</SelectContent></Select>
         <div className="relative flex-1 min-w-[200px]"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"/><Input placeholder="Search units..." className="pl-9" value={search} onChange={e=>setSearch(e.target.value)}/></div>
         <Button onClick={openNew}><Plus className="h-4 w-4 mr-1"/>Add Unit</Button>
       </div>
@@ -186,7 +186,7 @@ function BookingsTab() {
             <F label="Booking Amount (₹)"><Input type="number" value={form.booking_amount||""} onChange={e=>setForm({...form,booking_amount:e.target.value})}/></F>
             <F label="Loan Amount (₹)"><Input type="number" value={form.loan_amount||""} onChange={e=>setForm({...form,loan_amount:e.target.value})}/></F>
             <F label="Bank Name"><Input value={form.bank_name||""} onChange={e=>setForm({...form,bank_name:e.target.value})}/></F>
-            <F label="Broker"><Select value={String(form.broker_id||"")} onValueChange={v=>setForm({...form,broker_id:v})}><SelectTrigger><SelectValue placeholder="None"/></SelectTrigger><SelectContent><SelectItem value="">None</SelectItem>{(brokers as any[]).map((b:any)=><SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>)}</SelectContent></Select></F>
+            <F label="Broker"><Select value={form.broker_id?String(form.broker_id):"__none__"} onValueChange={v=>setForm({...form,broker_id:v==="__none__"?"":v})}><SelectTrigger><SelectValue placeholder="None"/></SelectTrigger><SelectContent><SelectItem value="__none__">None</SelectItem>{(brokers as any[]).map((b:any)=><SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>)}</SelectContent></Select></F>
             <F label="Broker Commission (₹)"><Input type="number" value={form.broker_commission||""} onChange={e=>setForm({...form,broker_commission:e.target.value})}/></F>
             <F label="Agreement Date"><Input type="date" value={form.agreement_date||""} onChange={e=>setForm({...form,agreement_date:e.target.value})}/></F>
             <F label="Possession Date"><Input type="date" value={form.possession_date||""} onChange={e=>setForm({...form,possession_date:e.target.value})}/></F>
@@ -287,7 +287,7 @@ function DemandLettersTab() {
   const markPaid = useMutation({ mutationFn: ({ id, ...d }: any) => apiRequest("PUT", `/api/real-estate/demand-letters/${id}`, d), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/real-estate/demand-letters"] }) });
   const openNew = () => { setEditing(null); setForm({ demand_date: new Date().toISOString().split("T")[0], status: "pending" }); setShowForm(true); };
   const openEdit = (l: any) => { setEditing(l); setForm({ ...l, demand_date: l.demand_date?.split("T")[0], due_date: l.due_date?.split("T")[0] }); setShowForm(true); };
-  const onBooking = (id: string) => { const b = (bookings as any[]).find(b => String(b.id) === id); setForm((f: any) => ({ ...f, booking_id: id, customer_name: b?.customer_name || f.customer_name, unit_number: b?.unit_no || f.unit_number })); };
+  const onBooking = (id: string) => { const realId = id === "__none__" ? "" : id; const b = (bookings as any[]).find(b => String(b.id) === realId); setForm((f: any) => ({ ...f, booking_id: realId, customer_name: b?.customer_name || f.customer_name, unit_number: b?.unit_no || f.unit_number })); };
   const STATUS_C: Record<string, string> = { pending: "bg-orange-100 text-orange-700", paid: "bg-green-100 text-green-700", overdue: "bg-red-100 text-red-700", partial: "bg-blue-100 text-blue-700" };
   return (
     <div className="space-y-4">
@@ -312,7 +312,7 @@ function DemandLettersTab() {
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="max-w-xl max-h-[90dvh] overflow-y-auto"><DialogHeader><DialogTitle>{editing?"Edit":"New"} Demand Letter</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2"><F label="Booking (optional)"><Select value={String(form.booking_id||"")} onValueChange={onBooking}><SelectTrigger><SelectValue placeholder="Select booking"/></SelectTrigger><SelectContent><SelectItem value="">None / Manual</SelectItem>{(bookings as any[]).map((b:any)=><SelectItem key={b.id} value={String(b.id)}>{b.booking_no} — {b.customer_name}</SelectItem>)}</SelectContent></Select></F></div>
+            <div className="col-span-2"><F label="Booking (optional)"><Select value={form.booking_id?String(form.booking_id):"__none__"} onValueChange={onBooking}><SelectTrigger><SelectValue placeholder="Select booking"/></SelectTrigger><SelectContent><SelectItem value="__none__">None / Manual</SelectItem>{(bookings as any[]).map((b:any)=><SelectItem key={b.id} value={String(b.id)}>{b.booking_no} — {b.customer_name}</SelectItem>)}</SelectContent></Select></F></div>
             <F label="Customer Name *"><Input value={form.customer_name||""} onChange={e=>setForm({...form,customer_name:e.target.value})}/></F>
             <F label="Unit Number"><Input value={form.unit_number||""} onChange={e=>setForm({...form,unit_number:e.target.value})}/></F>
             <F label="Milestone / Description"><Input value={form.milestone||""} onChange={e=>setForm({...form,milestone:e.target.value})}/></F>

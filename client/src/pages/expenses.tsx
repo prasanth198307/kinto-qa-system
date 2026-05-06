@@ -400,12 +400,12 @@ export default function ExpensesPage() {
               {/* Three-way matching: Link to GRN */}
               <div>
                 <Label htmlFor="grnLink">Link to GRN (Three-way Match)</Label>
-                <Select value={voucherData.grnId} onValueChange={(v) => setVoucherData(prev => ({ ...prev, grnId: v }))}>
+                <Select value={voucherData.grnId||"__none__"} onValueChange={(v) => setVoucherData(prev => ({ ...prev, grnId: v === "__none__" ? "" : v }))}>
                   <SelectTrigger id="grnLink" data-testid="select-grn-link">
                     <SelectValue placeholder="Select GRN (optional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="__none__">None</SelectItem>
                     {grns.map((grn: any) => (
                       <SelectItem key={grn.id} value={String(grn.id)}>
                         {grn.grn_number} — {grn.received_date ? format(new Date(grn.received_date), 'dd MMM yyyy') : ''}

@@ -47,10 +47,10 @@ function TimesheetForm({ entry, employees, projects, onSave, onCancel }: any) {
         </div>
         <div>
           <Label>Project (optional)</Label>
-          <Select value={form.projectId} onValueChange={v => setForm(p => ({ ...p, projectId: v }))}>
+          <Select value={form.projectId||"__none__"} onValueChange={v => setForm(p => ({ ...p, projectId: v === "__none__" ? "" : v }))}>
             <SelectTrigger><SelectValue placeholder="No project" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="">No project</SelectItem>
+              <SelectItem value="__none__">No project</SelectItem>
               {projects.map((p: any) => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}
             </SelectContent>
           </Select>
@@ -144,17 +144,17 @@ export default function TimesheetsPage() {
 
       {/* Filters */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <Select value={filters.employeeId} onValueChange={v => setFilters(p => ({ ...p, employeeId: v }))}>
+        <Select value={filters.employeeId||"__none__"} onValueChange={v => setFilters(p => ({ ...p, employeeId: v === "__none__" ? "" : v }))}>
           <SelectTrigger><SelectValue placeholder="All employees" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Employees</SelectItem>
+            <SelectItem value="__none__">All Employees</SelectItem>
             {(employees as any[]).map((e: any) => <SelectItem key={e.id} value={String(e.id)}>{e.first_name} {e.last_name}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Select value={filters.projectId} onValueChange={v => setFilters(p => ({ ...p, projectId: v }))}>
+        <Select value={filters.projectId||"__none__"} onValueChange={v => setFilters(p => ({ ...p, projectId: v === "__none__" ? "" : v }))}>
           <SelectTrigger><SelectValue placeholder="All projects" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Projects</SelectItem>
+            <SelectItem value="__none__">All Projects</SelectItem>
             {(projects as any[]).map((p: any) => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}
           </SelectContent>
         </Select>
