@@ -581,6 +581,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // This prevents users from being logged out during development or after deployments
   console.log('✅ Session persistence enabled - sessions expire after 7 days of inactivity');
 
+  // ─── Public: module catalog (no auth needed, for landing page pricing) ──────
+  app.get('/api/public/module-catalog', async (_req, res) => {
+    res.setHeader('Cache-Control', 'public, max-age=300'); // 5-min CDN cache
+    try {
+      const result = await pool.query(
+        `SELECT slug, name, category, price_monthly, is_free, is_popular
+         FROM module_catalog
+         WHERE is_active = true
+         ORDER BY sort_order, slug`
+      );
+      res.json(result.rows.map((r: any) => ({
+        slug:         r.slug,
+        name:         r.name,
+        category:     r.category,
+        priceMonthly: Number(r.price_monthly),
+        free:         r.is_free,
+        popular:      r.is_popular,
+      })));
+    } catch {
+      // Table may not exist on fresh installs — return hardcoded fallback
+      res.json([
+        { slug: "invoicing",   name: "GST Invoicing",    category: "Finance",    priceMonthly: 699, free: false, popular: true  },
+        { slug: "hr_payroll",  name: "HR & Payroll",     category: "HR",         priceMonthly: 799, free: false, popular: true  },
+        { slug: "inventory",   name: "Inventory",        category: "Inventory",  priceMonthly: 599, free: false, popular: true  },
+        { slug: "accounting",  name: "Accounting",       category: "Finance",    priceMonthly: 899, free: false, popular: false },
+        { slug: "purchase",    name: "Purchase & PO",    category: "Inventory",  priceMonthly: 499, free: false, popular: false },
+        { slug: "crm",         name: "CRM & Leads",      category: "Sales",      priceMonthly: 499, free: false, popular: false },
+        { slug: "production",  name: "Production / BOM", category: "Production", priceMonthly: 699, free: false, popular: false },
+        { slug: "projects",    name: "Project Management",category:"Production", priceMonthly: 599, free: false, popular: false },
+      ]);
+    }
+  });
+
   // ─── Public: tenant branding by origin (no auth needed) ─────────────────
   // Used by the sign-in page to show the tenant logo when accessed via a custom domain.
   app.get('/api/public/tenant-branding', async (req: any, res) => {

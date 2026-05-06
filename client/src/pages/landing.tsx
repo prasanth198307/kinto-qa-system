@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -175,15 +176,10 @@ const STRENGTHS = [
   },
 ];
 
-const POPULAR_MODULES = [
-  { name: "GST Invoicing",     price: 699,  category: "Finance",    popular: true  },
-  { name: "HR & Payroll",      price: 799,  category: "HR",         popular: true  },
-  { name: "Inventory",         price: 599,  category: "Inventory",  popular: true  },
-  { name: "Accounting",        price: 899,  category: "Finance",    popular: false },
-  { name: "Purchase & PO",     price: 499,  category: "Inventory",  popular: false },
-  { name: "CRM & Leads",       price: 499,  category: "Sales",      popular: false },
-  { name: "Production / BOM",  price: 699,  category: "Production", popular: false },
-  { name: "Project Management",price: 599,  category: "Production", popular: false },
+// Slugs of modules to highlight in the landing page pricing grid (in display order)
+const LANDING_MODULE_SLUGS = [
+  "invoicing", "hr_payroll", "inventory", "accounting",
+  "purchase",  "crm",        "production", "projects",
 ];
 
 const TESTIMONIALS = [
@@ -382,6 +378,25 @@ export default function LandingPage() {
   const { toast } = useToast();
   const [demoLoading, setDemoLoading] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Fetch live module prices from DB (public endpoint — no auth required)
+  const { data: catalogModules = [] } = useQuery<{ slug: string; name: string; category: string; priceMonthly: number; free: boolean; popular: boolean }[]>({
+    queryKey: ["/api/public/module-catalog"],
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+
+  // Build the 8-module grid in fixed order; fall back to zeros until loaded
+  const popularModules = LANDING_MODULE_SLUGS.map(slug => {
+    const m = catalogModules.find(c => c.slug === slug);
+    return {
+      slug,
+      name:     m?.name     ?? slug,
+      category: m?.category ?? "",
+      price:    m?.priceMonthly ?? 0,
+      popular:  m?.popular  ?? false,
+    };
+  }).filter(m => m.price > 0 || catalogModules.length === 0);
 
   async function handleDemoLogin() {
     setDemoLoading(true);
@@ -880,8 +895,8 @@ export default function LandingPage() {
           <div className="mb-8 max-w-3xl mx-auto">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 text-center">Popular paid modules — add what you need</p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {POPULAR_MODULES.map(mod => (
-                <div key={mod.name} className={`relative rounded-xl border bg-background p-3 flex flex-col gap-1 ${mod.popular ? "border-primary/40 ring-1 ring-primary/10" : ""}`}>
+              {popularModules.map(mod => (
+                <div key={mod.slug} className={`relative rounded-xl border bg-background p-3 flex flex-col gap-1 ${mod.popular ? "border-primary/40 ring-1 ring-primary/10" : ""}`}>
                   {mod.popular && (
                     <span className="absolute -top-2.5 left-3 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full">Popular</span>
                   )}
@@ -997,7 +1012,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="border-t pt-6 flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
-            <p>© {new Date().getFullYear()} SwachERP. Cleaner Business. Better Future.</p>
+            <p>© {new Date().getFullYear()} Inmousture Private Limited. All rights reserved.</p>
             <div className="flex gap-4">
               <a href="#" className="hover:text-foreground transition-colors">Privacy Policy</a>
               <a href="#" className="hover:text-foreground transition-colors">Terms of Service</a>
