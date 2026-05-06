@@ -410,11 +410,35 @@ export function registerBillingRoutes(app: Express): void {
     }
   });
 
+  // ── Helper: load catalog from DB (falls back to empty array gracefully) ───
+  async function loadCatalogFromDB() {
+    const rows = await db.execute(sql`
+      SELECT slug, name, description, category, price_monthly, is_free, is_popular,
+             dependencies, sort_order, is_active
+      FROM public.module_catalog
+      WHERE is_active = true
+      ORDER BY sort_order, slug
+    `);
+    return (rows.rows as any[]).map(r => ({
+      slug:          r.slug,
+      name:          r.name,
+      description:   r.description,
+      category:      r.category,
+      priceMonthly:  Number(r.price_monthly),
+      free:          r.is_free,
+      popular:       r.is_popular,
+      dependencies:  r.dependencies ?? [],
+    }));
+  }
+
   // ── GET /api/billing/module-catalog — full module list with prices ────────
   app.get("/api/billing/module-catalog", async (req: any, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const { MODULE_CATALOG } = await import("./module-catalog");
-    res.json(MODULE_CATALOG);
+    try {
+      res.json(await loadCatalogFromDB());
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
   });
 
   // ── GET /api/billing/selected-modules — tenant's current module selection ─
@@ -422,21 +446,24 @@ export function registerBillingRoutes(app: Express): void {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const tenantId: number = (req.session as any).tenantId;
     try {
-      const rows = await db.execute(sql`
-        SELECT selected_modules, monthly_amount, plan_slug, status, current_period_end, cancelled_at
-        FROM subscriptions WHERE tenant_id = ${tenantId} LIMIT 1
-      `);
-      const row = (rows.rows as any[])[0];
-      const { MODULE_CATALOG, FREE_MODULE_SLUGS } = await import("./module-catalog");
+      const [subRows, catalog] = await Promise.all([
+        db.execute(sql`
+          SELECT selected_modules, monthly_amount, plan_slug, status, current_period_end, cancelled_at
+          FROM subscriptions WHERE tenant_id = ${tenantId} LIMIT 1
+        `),
+        loadCatalogFromDB(),
+      ]);
+      const row = (subRows.rows as any[])[0];
+      const freeModules = catalog.filter(m => m.free).map(m => m.slug);
       res.json({
-        selectedModules: row?.selected_modules ?? [],
-        monthlyAmount:   row?.monthly_amount   ?? 0,
-        planSlug:        row?.plan_slug        ?? null,
-        status:          row?.status           ?? null,
+        selectedModules:  row?.selected_modules  ?? [],
+        monthlyAmount:    row?.monthly_amount    ?? 0,
+        planSlug:         row?.plan_slug         ?? null,
+        status:           row?.status            ?? null,
         currentPeriodEnd: row?.current_period_end ?? null,
-        cancelledAt:     row?.cancelled_at     ?? null,
-        catalog:         MODULE_CATALOG,
-        freeModules:     Array.from(FREE_MODULE_SLUGS),
+        cancelledAt:      row?.cancelled_at      ?? null,
+        catalog,
+        freeModules,
       });
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -452,11 +479,15 @@ export function registerBillingRoutes(app: Express): void {
       return res.status(400).json({ message: "selectedModules must be an array of slugs" });
     }
     try {
-      const { computeMonthlyAmount, FREE_MODULE_SLUGS } = await import("./module-catalog");
-      // Always include free modules
-      const allFree = Array.from(FREE_MODULE_SLUGS);
-      const merged = Array.from(new Set([...allFree, ...selectedModules]));
-      const monthly = computeMonthlyAmount(merged);
+      const catalog = await loadCatalogFromDB();
+      const freeSet = new Set(catalog.filter(m => m.free).map(m => m.slug));
+      const priceMap = new Map(catalog.map(m => [m.slug, m.priceMonthly]));
+
+      const allFree = Array.from(freeSet);
+      const merged  = Array.from(new Set([...allFree, ...selectedModules]));
+      const monthly = merged
+        .filter(s => !freeSet.has(s))
+        .reduce((sum, s) => sum + (priceMap.get(s) ?? 0), 0);
 
       await db.execute(sql`
         UPDATE subscriptions
@@ -466,12 +497,11 @@ export function registerBillingRoutes(app: Express): void {
         WHERE tenant_id = ${tenantId}
       `);
 
-      // Log the change
       await db.execute(sql`
         INSERT INTO billing_events (tenant_id, event_type, from_plan, to_plan, billing_cycle, amount, currency, notes, created_by)
         VALUES (
           ${tenantId}, 'modules_updated', NULL, NULL, 'monthly', ${monthly}, 'INR',
-          ${'Module selection updated — ' + merged.filter(s => !FREE_MODULE_SLUGS.has(s)).length + ' paid modules, ₹' + monthly + '/mo'},
+          ${'Module selection updated — ' + merged.filter(s => !freeSet.has(s)).length + ' paid modules, ₹' + monthly + '/mo'},
           ${(req.user as any)?.username ?? 'tenant-admin'}
         )
       `);
@@ -479,6 +509,49 @@ export function registerBillingRoutes(app: Express): void {
       res.json({ success: true, selectedModules: merged, monthlyAmount: monthly });
     } catch (err: any) {
       console.error("[BILLING] selected-modules update error:", err);
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ── GET /api/admin/module-catalog — super-admin: all modules (incl inactive)
+  app.get("/api/admin/module-catalog", async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!(req.user as any)?.isSuperAdmin) return res.sendStatus(403);
+    try {
+      const rows = await db.execute(sql`
+        SELECT slug, name, description, category, price_monthly, is_free, is_popular,
+               dependencies, sort_order, is_active, updated_at
+        FROM public.module_catalog
+        ORDER BY sort_order, slug
+      `);
+      res.json(rows.rows);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ── PUT /api/admin/module-catalog/:slug — super-admin: update a module ────
+  app.put("/api/admin/module-catalog/:slug", async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!(req.user as any)?.isSuperAdmin) return res.sendStatus(403);
+    const { slug } = req.params;
+    const { name, description, category, price_monthly, is_free, is_popular, is_active, sort_order } = req.body;
+    try {
+      await db.execute(sql`
+        UPDATE public.module_catalog SET
+          name          = ${name},
+          description   = ${description},
+          category      = ${category},
+          price_monthly = ${Number(price_monthly)},
+          is_free       = ${Boolean(is_free)},
+          is_popular    = ${Boolean(is_popular)},
+          is_active     = ${Boolean(is_active)},
+          sort_order    = ${Number(sort_order)},
+          updated_at    = NOW()
+        WHERE slug = ${slug}
+      `);
+      res.json({ success: true });
+    } catch (err: any) {
       res.status(500).json({ message: err.message });
     }
   });
