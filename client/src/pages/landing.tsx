@@ -981,8 +981,21 @@ export default function LandingPage() {
             <div>
               <p className="font-semibold text-xs uppercase tracking-wide mb-4">Products</p>
               <ul className="space-y-2 text-xs text-muted-foreground">
-                {["Production & BOM","Inventory Control","GST Invoicing","Accounting","HR & Payroll","CRM","Project Management","Fixed Assets","Multi-warehouse","Approval Workflows","Industry Verticals","WhatsApp Integration"].map(l => (
-                  <li key={l}><a href="#modules" className="hover:text-foreground transition-colors">{l}</a></li>
+                {[
+                  ["Production & BOM",      "#modules"],
+                  ["Inventory Control",     "#modules"],
+                  ["GST Invoicing",         "#modules"],
+                  ["Accounting",            "#modules"],
+                  ["HR & Payroll",          "#modules"],
+                  ["CRM",                   "#modules"],
+                  ["Project Management",    "#modules"],
+                  ["Fixed Assets",          "#modules"],
+                  ["Multi-warehouse",       "#modules"],
+                  ["Approval Workflows",    "#modules"],
+                  ["Industry Verticals",    "#solutions"],
+                  ["WhatsApp Integration",  "#modules"],
+                ].map(([l, href]) => (
+                  <li key={l}><a href={href} className="hover:text-foreground transition-colors">{l}</a></li>
                 ))}
               </ul>
             </div>
@@ -990,14 +1003,19 @@ export default function LandingPage() {
               <p className="font-semibold text-xs uppercase tracking-wide mb-4">Solutions</p>
               <ul className="space-y-2 text-xs text-muted-foreground">
                 {NAV_SOLUTIONS_BY_INDUSTRY.map(s => (
-                  <li key={s.label}><span className="hover:text-foreground transition-colors cursor-pointer">{s.label}</span></li>
+                  <li key={s.label}><a href="#solutions" className="hover:text-foreground transition-colors">{s.label}</a></li>
                 ))}
               </ul>
             </div>
             <div>
               <p className="font-semibold text-xs uppercase tracking-wide mb-4">Company</p>
               <ul className="space-y-2 text-xs text-muted-foreground">
-                {[["#pricing","Pricing"],["#testimonials","Customers"],["/demo","Book a Demo"],["mailto:hello@kintoops.in","Contact Us"]].map(([href, label]) => (
+                {[
+                  ["#pricing",                   "Pricing"],
+                  ["#testimonials",              "Customers"],
+                  ["/demo",                      "Book a Demo"],
+                  ["mailto:info@inmoisture.com", "Contact Us"],
+                ].map(([href, label]) => (
                   <li key={label}><a href={href} className="hover:text-foreground transition-colors">{label}</a></li>
                 ))}
               </ul>
