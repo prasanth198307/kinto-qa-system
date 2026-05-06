@@ -410,6 +410,79 @@ export function registerBillingRoutes(app: Express): void {
     }
   });
 
+  // ── GET /api/billing/module-catalog — full module list with prices ────────
+  app.get("/api/billing/module-catalog", async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const { MODULE_CATALOG } = await import("./module-catalog");
+    res.json(MODULE_CATALOG);
+  });
+
+  // ── GET /api/billing/selected-modules — tenant's current module selection ─
+  app.get("/api/billing/selected-modules", async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const tenantId: number = (req.session as any).tenantId;
+    try {
+      const rows = await db.execute(sql`
+        SELECT selected_modules, monthly_amount, plan_slug, status, current_period_end, cancelled_at
+        FROM subscriptions WHERE tenant_id = ${tenantId} LIMIT 1
+      `);
+      const row = (rows.rows as any[])[0];
+      const { MODULE_CATALOG, FREE_MODULE_SLUGS } = await import("./module-catalog");
+      res.json({
+        selectedModules: row?.selected_modules ?? [],
+        monthlyAmount:   row?.monthly_amount   ?? 0,
+        planSlug:        row?.plan_slug        ?? null,
+        status:          row?.status           ?? null,
+        currentPeriodEnd: row?.current_period_end ?? null,
+        cancelledAt:     row?.cancelled_at     ?? null,
+        catalog:         MODULE_CATALOG,
+        freeModules:     Array.from(FREE_MODULE_SLUGS),
+      });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ── POST /api/billing/selected-modules — save module selection ────────────
+  app.post("/api/billing/selected-modules", async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const tenantId: number = (req.session as any).tenantId;
+    const { selectedModules } = req.body;
+    if (!Array.isArray(selectedModules)) {
+      return res.status(400).json({ message: "selectedModules must be an array of slugs" });
+    }
+    try {
+      const { computeMonthlyAmount, FREE_MODULE_SLUGS } = await import("./module-catalog");
+      // Always include free modules
+      const allFree = Array.from(FREE_MODULE_SLUGS);
+      const merged = Array.from(new Set([...allFree, ...selectedModules]));
+      const monthly = computeMonthlyAmount(merged);
+
+      await db.execute(sql`
+        UPDATE subscriptions
+        SET selected_modules = ${JSON.stringify(merged)}::jsonb,
+            monthly_amount   = ${monthly},
+            updated_at       = NOW()
+        WHERE tenant_id = ${tenantId}
+      `);
+
+      // Log the change
+      await db.execute(sql`
+        INSERT INTO billing_events (tenant_id, event_type, from_plan, to_plan, billing_cycle, amount, currency, notes, created_by)
+        VALUES (
+          ${tenantId}, 'modules_updated', NULL, NULL, 'monthly', ${monthly}, 'INR',
+          ${'Module selection updated — ' + merged.filter(s => !FREE_MODULE_SLUGS.has(s)).length + ' paid modules, ₹' + monthly + '/mo'},
+          ${(req.user as any)?.username ?? 'tenant-admin'}
+        )
+      `);
+
+      res.json({ success: true, selectedModules: merged, monthlyAmount: monthly });
+    } catch (err: any) {
+      console.error("[BILLING] selected-modules update error:", err);
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   // ── POST /api/billing/request-upgrade — manual upgrade (no Razorpay) ─────
   app.post("/api/billing/request-upgrade", async (req: any, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);

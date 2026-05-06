@@ -75,6 +75,21 @@ Preferred communication style: Simple, everyday language.
 - **Role Permissions:** `can_view/can_create/can_edit/can_delete` are INTEGER (0/1), not boolean.
 - **CORS Whitelisting:** Per-tenant CORS origin whitelisting is stored in `tenants.cors_origins text[]`. The dynamic CORS middleware in `server/index.ts` caches all origins with a 60-second TTL. Super-admins manage origins via `GET/PUT /api/admin/tenants/:id/cors-origins` and the "CORS Origins" option in the super-admin tenant dropdown menu. Replit/localhost origins are always allowed without being stored.
 
+### Module Marketplace & Per-Tenant Billing (Phase 9)
+- **DB:** `subscriptions.selected_modules JSONB DEFAULT '[]'` + `monthly_amount INTEGER DEFAULT 0` columns added (script: `db_scripts/2026-05-06_add_selected_modules_to_subscriptions.sql`)
+- **Module Catalog:** `server/module-catalog.ts` — 27 paid + 4 free modules across 7 categories (Core, Finance, Inventory, Production, HR, Sales, Industry) with per-module monthly pricing (₹249–₹999)
+- **New API endpoints** (all in `server/billing.ts`):
+  - `GET /api/billing/module-catalog` — full catalog list
+  - `GET /api/billing/selected-modules` — tenant's current selection + catalog
+  - `POST /api/billing/selected-modules` — save selection, compute monthly total, log billing event
+- **Plan middleware** (`server/plan-middleware.ts`) now checks `subscriptions.selected_modules` first (per-tenant override), falls back to plan-level modules. Cache TTL: 2 min per tenant.
+- **Subscription Management UI** (`client/src/pages/subscription-management.tsx`) redesigned into 5 tabs:
+  1. **Overview** — stat cards: status, monthly cost, active modules, next billing
+  2. **Module Marketplace** — full module grid by category with sticky billing summary; toggle to add/remove; save with one click
+  3. **Manage Modules** — list of active modules with remove/undo/add-more; dependency warnings; before/after billing diff
+  4. **Auto-Deduct** — 5-step timeline showing billing cycle flow; payment method; notification toggles
+  5. **Billing History** — all billing_events with event-type icons and amounts
+
 ## External Dependencies
 - **Database:** Neon Serverless PostgreSQL
 - **UI Libraries:** Radix UI, Lucide React, shadcn/ui, date-fns, cmdk, vaul

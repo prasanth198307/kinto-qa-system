@@ -2,11 +2,39 @@ import { Request, Response, NextFunction } from "express";
 import { ROUTE_PLAN_REQUIREMENTS, planMeetsMinimum } from "./plan-features";
 import { db } from "./db";
 import { tenants, subscriptionPlans } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 // Simple in-process cache: plan slug → modules[]  (TTL 5 min)
 const planModuleCache = new Map<string, { modules: string[]; at: number }>();
 const CACHE_TTL_MS = 5 * 60 * 1000;
+
+// Cache for per-tenant selected modules (TTL 2 min)
+const tenantModuleCache = new Map<number, { modules: string[]; at: number }>();
+const TENANT_CACHE_TTL_MS = 2 * 60 * 1000;
+
+export function invalidateTenantModuleCache(tenantId: number) {
+  tenantModuleCache.delete(tenantId);
+}
+
+async function getSelectedModulesForTenant(tenantId: number): Promise<string[] | null> {
+  const cached = tenantModuleCache.get(tenantId);
+  if (cached && Date.now() - cached.at < TENANT_CACHE_TTL_MS) return cached.modules;
+
+  try {
+    const rows = await db.execute(sql`
+      SELECT selected_modules FROM subscriptions
+      WHERE tenant_id = ${tenantId} LIMIT 1
+    `);
+    const raw = (rows.rows as any[])[0]?.selected_modules;
+    if (Array.isArray(raw) && raw.length > 0) {
+      tenantModuleCache.set(tenantId, { modules: raw as string[], at: Date.now() });
+      return raw as string[];
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}
 
 /**
  * Immediately evict a plan's modules from the cache.
@@ -71,11 +99,24 @@ export async function planEnforcementMiddleware(req: Request, res: Response, nex
 
   for (const rule of ROUTE_PLAN_REQUIREMENTS) {
     if (req.path.startsWith(rule.prefix)) {
-      // Always try DB modules first — DB is the single source of truth
+      // 1. Check per-tenant selected_modules first (module-marketplace selections override plan)
+      const tenantModules = await getSelectedModulesForTenant(tenantId);
+      if (tenantModules !== null) {
+        if (!tenantModules.includes(rule.module)) {
+          return res.status(403).json({
+            message: `This module is not part of your current subscription. Add it in Company Settings → Subscription → Modules.`,
+            planRequired: rule.minPlan,
+            currentPlan: tenantPlan,
+            module: rule.module,
+          });
+        }
+        break; // module found in per-tenant selection — allow
+      }
+
+      // 2. Fall back to plan-level module list from DB
       const dbModules = await getModulesForPlan(tenantPlan);
 
       if (dbModules !== null) {
-        // DB record found — check if the required module is explicitly granted
         if (!dbModules.includes(rule.module)) {
           return res.status(403).json({
             message: `Your current plan (${tenantPlan}) does not include access to this module. Please upgrade to access this feature.`,
@@ -84,7 +125,6 @@ export async function planEnforcementMiddleware(req: Request, res: Response, nex
             module: rule.module,
           });
         }
-        // Module is in DB modules list — allow
       } else {
         // No DB record for this plan slug — use hardcoded hierarchy for known plan names,
         // fail open (allow) for completely unknown slugs to avoid locking out custom tenants.
@@ -97,7 +137,6 @@ export async function planEnforcementMiddleware(req: Request, res: Response, nex
             module: rule.module,
           });
         }
-        // Unknown plan slug with no DB record — fail open (don't block)
       }
       break;
     }
