@@ -528,12 +528,12 @@ export function registerBillingRoutes(app: Express): void {
       const catalogSlugSet = new Set(catalog.map(m => m.slug));
 
       // Seed from plan when tenant has never explicitly chosen modules
-      let selectedModules: string[] = row?.selected_modules ?? [];
+      let selectedModules: string[] = Array.isArray(row?.selected_modules) ? row.selected_modules : [];
       if (selectedModules.length === 0) {
         const planMods: string[] = Array.isArray(row?.plan_modules) ? row.plan_modules : [];
         selectedModules = planModulesToCatalogSlugs(planMods, catalogSlugSet);
         // Always include free modules
-        for (const f of freeModules) selectedModules.push(f);
+        for (const f of freeModules) if (!selectedModules.includes(f)) selectedModules.push(f);
         selectedModules = Array.from(new Set(selectedModules));
       }
 
