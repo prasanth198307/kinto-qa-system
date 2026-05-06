@@ -128,7 +128,7 @@ function TerminalTab() {
               <div className="flex justify-between"><span>Tax</span><span>₹{fmt(tax)}</span></div>
               <div className="flex justify-between font-bold text-base border-t pt-1"><span>Total</span><span>₹{fmt(total)}</span></div>
             </div>
-            <F label="Customer"><Select value={String(selectedCustomer?.id||"")} onValueChange={v=>{const c=(customers as any[]).find(c=>String(c.id)===v);setSelectedCustomer(c||null);}}><SelectTrigger><SelectValue placeholder="Walk-in customer"/></SelectTrigger><SelectContent><SelectItem value="">Walk-in</SelectItem>{filteredCustomers.map((c:any)=><SelectItem key={c.id} value={String(c.id)}>{c.name} — {c.phone}</SelectItem>)}</SelectContent></Select></F>
+            <F label="Customer"><Select value={selectedCustomer?.id?String(selectedCustomer.id):"__none__"} onValueChange={v=>{const c=(customers as any[]).find(c=>String(c.id)===v);setSelectedCustomer(c||null);}}><SelectTrigger><SelectValue placeholder="Walk-in customer"/></SelectTrigger><SelectContent><SelectItem value="__none__">Walk-in</SelectItem>{filteredCustomers.map((c:any)=><SelectItem key={c.id} value={String(c.id)}>{c.name} — {c.phone}</SelectItem>)}</SelectContent></Select></F>
             <F label="Payment Mode"><Select value={paymentMode} onValueChange={setPaymentMode}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{["cash","card","upi","wallet"].map(m=><SelectItem key={m} value={m}>{m.toUpperCase()}</SelectItem>)}</SelectContent></Select></F>
             <F label="Amount Tendered (₹)"><Input type="number" value={amountPaid} onChange={e=>setAmountPaid(e.target.value)} placeholder={fmt(total)}/></F>
             {amountPaid&&change>=0&&<p className="text-sm text-green-700 font-medium">Change: ₹{fmt(change)}</p>}
@@ -237,7 +237,7 @@ function ReturnsTab() {
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="max-w-md"><DialogHeader><DialogTitle>Process Return</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2"><F label="Customer"><Select value={String(form.customer_id||"")} onValueChange={v=>setForm({...form,customer_id:v})}><SelectTrigger><SelectValue placeholder="Walk-in"/></SelectTrigger><SelectContent><SelectItem value="">Walk-in</SelectItem>{(customers as any[]).map((c:any)=><SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}</SelectContent></Select></F></div>
+            <div className="col-span-2"><F label="Customer"><Select value={form.customer_id?String(form.customer_id):"__none__"} onValueChange={v=>setForm({...form,customer_id:v==="__none__"?"":v})}><SelectTrigger><SelectValue placeholder="Walk-in"/></SelectTrigger><SelectContent><SelectItem value="__none__">Walk-in</SelectItem>{(customers as any[]).map((c:any)=><SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}</SelectContent></Select></F></div>
             <F label="Original Txn No."><Input value={form.original_txn_no||""} onChange={e=>setForm({...form,original_txn_no:e.target.value})}/></F>
             <F label="Return Date"><Input type="date" value={form.return_date||""} onChange={e=>setForm({...form,return_date:e.target.value})}/></F>
             <F label="Return Amount (₹)"><Input type="number" value={form.return_amount||""} onChange={e=>setForm({...form,return_amount:e.target.value})}/></F>

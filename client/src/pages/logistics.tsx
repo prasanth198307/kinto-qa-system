@@ -218,7 +218,7 @@ function ConsignmentTab() {
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="max-w-xl max-h-[90dvh] overflow-y-auto"><DialogHeader><DialogTitle>{editing?"Edit LR":"New LR"}</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2"><F label="Trip (optional)"><Select value={String(form.trip_id||"")} onValueChange={v=>setForm({...form,trip_id:v})}><SelectTrigger><SelectValue placeholder="Select trip"/></SelectTrigger><SelectContent><SelectItem value="">None</SelectItem>{(trips as any[]).map((t:any)=><SelectItem key={t.id} value={String(t.id)}>{t.trip_no} — {t.from_location} to {t.to_location}</SelectItem>)}</SelectContent></Select></F></div>
+            <div className="col-span-2"><F label="Trip (optional)"><Select value={form.trip_id?String(form.trip_id):"__none__"} onValueChange={v=>setForm({...form,trip_id:v==="__none__"?"":v})}><SelectTrigger><SelectValue placeholder="Select trip"/></SelectTrigger><SelectContent><SelectItem value="__none__">None</SelectItem>{(trips as any[]).map((t:any)=><SelectItem key={t.id} value={String(t.id)}>{t.trip_no} — {t.from_location} to {t.to_location}</SelectItem>)}</SelectContent></Select></F></div>
             <F label="Consignor Name *"><Input value={form.consignor_name||""} onChange={e=>setForm({...form,consignor_name:e.target.value})}/></F>
             <F label="Consignor Phone"><Input value={form.consignor_phone||""} onChange={e=>setForm({...form,consignor_phone:e.target.value})}/></F>
             <F label="Consignee Name *"><Input value={form.consignee_name||""} onChange={e=>setForm({...form,consignee_name:e.target.value})}/></F>
@@ -265,7 +265,7 @@ function FreightBillsTab() {
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="max-w-xl max-h-[90dvh] overflow-y-auto"><DialogHeader><DialogTitle>{editing?"Edit":"Create"} Freight Bill</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2"><F label="Trip"><Select value={String(form.trip_id||"")} onValueChange={v=>setForm({...form,trip_id:v})}><SelectTrigger><SelectValue placeholder="Link to trip (optional)"/></SelectTrigger><SelectContent><SelectItem value="">None</SelectItem>{(trips as any[]).map((t:any)=><SelectItem key={t.id} value={String(t.id)}>{t.trip_no} — {t.from_location}→{t.to_location}</SelectItem>)}</SelectContent></Select></F></div>
+            <div className="col-span-2"><F label="Trip"><Select value={form.trip_id?String(form.trip_id):"__none__"} onValueChange={v=>setForm({...form,trip_id:v==="__none__"?"":v})}><SelectTrigger><SelectValue placeholder="Link to trip (optional)"/></SelectTrigger><SelectContent><SelectItem value="__none__">None</SelectItem>{(trips as any[]).map((t:any)=><SelectItem key={t.id} value={String(t.id)}>{t.trip_no} — {t.from_location}→{t.to_location}</SelectItem>)}</SelectContent></Select></F></div>
             <div className="col-span-2"><F label="Customer Name"><Input value={form.customer_name||""} onChange={e=>setForm({...form,customer_name:e.target.value})}/></F></div>
             <F label="From Location"><Input value={form.from_location||""} onChange={e=>setForm({...form,from_location:e.target.value})}/></F>
             <F label="To Location"><Input value={form.to_location||""} onChange={e=>setForm({...form,to_location:e.target.value})}/></F>
