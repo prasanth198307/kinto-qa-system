@@ -181,6 +181,21 @@ export function setupAuth(app: Express) {
     }
   });
 
+  // ─── Public: Check slug availability ────────────────────────────────────────
+  app.get("/api/tenants/check-slug/:slug", async (req, res) => {
+    try {
+      const { slug } = req.params;
+      const slugRegex = /^[a-z0-9-]{3,50}$/;
+      if (!slugRegex.test(slug)) {
+        return res.json({ available: false, reason: "invalid" });
+      }
+      const existing = await lookupTenantBySlug(slug);
+      return res.json({ available: !existing });
+    } catch (err) {
+      return res.status(500).json({ message: "Check failed" });
+    }
+  });
+
   // ─── Public: Register a new company (creates tenant + first admin) ────────────
   app.post("/api/tenants/register", async (req, res) => {
     try {

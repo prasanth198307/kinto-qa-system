@@ -1,22 +1,25 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Building2, User, Mail, Phone, Lock, Globe, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { Loader2, Building2, User, Mail, Phone, Lock, Globe, ArrowLeft, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 import { KintoLogo } from "@/components/branding/KintoLogo";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 type Step = "company" | "admin" | "success";
+type SlugStatus = "idle" | "checking" | "available" | "taken" | "invalid";
 
 export default function RegisterCompanyPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [step, setStep] = useState<Step>("company");
   const [isLoading, setIsLoading] = useState(false);
+  const [slugStatus, setSlugStatus] = useState<SlugStatus>("idle");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [form, setForm] = useState({
     companyName: "",
@@ -32,6 +35,24 @@ export default function RegisterCompanyPage() {
 
   const [registeredData, setRegisteredData] = useState<{ name: string; slug: string; username: string } | null>(null);
 
+  // Debounced slug availability check
+  const checkSlug = (slug: string) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    const slugRegex = /^[a-z0-9-]{3,50}$/;
+    if (!slug || slug.length < 3) { setSlugStatus("idle"); return; }
+    if (!slugRegex.test(slug)) { setSlugStatus("invalid"); return; }
+    setSlugStatus("checking");
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/tenants/check-slug/${encodeURIComponent(slug)}`);
+        const data = await res.json();
+        setSlugStatus(data.available ? "available" : "taken");
+      } catch {
+        setSlugStatus("idle");
+      }
+    }, 500);
+  };
+
   const update = (field: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const value = e.target.value;
     setForm((prev) => {
@@ -39,9 +60,22 @@ export default function RegisterCompanyPage() {
       // Auto-generate slug from company name
       if (field === "companyName") {
         next.slug = value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 50);
+        checkSlug(next.slug);
+      }
+      if (field === "slug") {
+        checkSlug(value);
       }
       return next;
     });
+  };
+
+  // Suggest an alternative slug when taken
+  const suggestAlternative = () => {
+    const base = form.slug.replace(/-\d+$/, "");
+    const suffix = Math.floor(100 + Math.random() * 900);
+    const suggestion = `${base}-${suffix}`.slice(0, 50);
+    setForm(prev => ({ ...prev, slug: suggestion }));
+    checkSlug(suggestion);
   };
 
   const handleCompanyStep = (e: React.FormEvent) => {
@@ -50,6 +84,10 @@ export default function RegisterCompanyPage() {
     const slugRegex = /^[a-z0-9-]{3,50}$/;
     if (!slugRegex.test(form.slug)) {
       toast({ title: "Invalid company ID", description: "Use 3-50 characters: lowercase letters, numbers, hyphens only.", variant: "destructive" });
+      return;
+    }
+    if (slugStatus === "taken") {
+      toast({ title: "Company ID already taken", description: "Please choose a different Company ID.", variant: "destructive" });
       return;
     }
     setStep("admin");
@@ -198,16 +236,46 @@ export default function RegisterCompanyPage() {
                         id="company-slug"
                         data-testid="input-company-id"
                         placeholder="e.g. acme-manufacturing"
-                        className="pl-10 font-mono text-sm"
+                        className={`pl-10 pr-10 font-mono text-sm ${
+                          slugStatus === "available" ? "border-emerald-500 focus-visible:ring-emerald-500" :
+                          slugStatus === "taken" || slugStatus === "invalid" ? "border-destructive focus-visible:ring-destructive" : ""
+                        }`}
                         value={form.slug}
                         onChange={update("slug")}
                         pattern="[a-z0-9-]{3,50}"
                         required
                       />
+                      <div className="absolute right-3 top-3">
+                        {slugStatus === "checking" && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                        {slugStatus === "available" && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
+                        {slugStatus === "taken" && <XCircle className="h-4 w-4 text-destructive" />}
+                        {slugStatus === "invalid" && <AlertCircle className="h-4 w-4 text-amber-500" />}
+                      </div>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      Lowercase letters, numbers, and hyphens only. 3-50 characters.
-                    </p>
+
+                    {/* Status messages */}
+                    {slugStatus === "available" && (
+                      <p className="text-xs text-emerald-600 font-medium">Company ID is available</p>
+                    )}
+                    {slugStatus === "taken" && (
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs text-destructive">This Company ID is already taken.</p>
+                        <button
+                          type="button"
+                          onClick={suggestAlternative}
+                          className="text-xs text-primary underline underline-offset-2 shrink-0"
+                          data-testid="button-suggest-slug"
+                        >
+                          Suggest another
+                        </button>
+                      </div>
+                    )}
+                    {slugStatus === "invalid" && (
+                      <p className="text-xs text-amber-600">Use lowercase letters, numbers, and hyphens only (3-50 chars).</p>
+                    )}
+                    {(slugStatus === "idle" || slugStatus === "checking") && (
+                      <p className="text-xs text-muted-foreground">Lowercase letters, numbers, and hyphens only. 3-50 characters.</p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
