@@ -92,12 +92,15 @@ app.use(cors({
   origin: async (incoming, callback) => {
     if (!incoming) return callback(null, true); // same-origin / server-to-server
     const normalized = incoming.toLowerCase();
-    // Always allow Replit preview, localhost, and the app's own domain
+    // Always allow Replit preview, localhost, the app's own domain, and all *.swacherp.com subdomains
     if (
       normalized.includes('.replit.dev') ||
       normalized.includes('.replit.app') ||
       normalized.includes('localhost') ||
-      normalized.includes('127.0.0.1')
+      normalized.includes('127.0.0.1') ||
+      normalized.endsWith('.swacherp.com') ||
+      normalized === 'https://swacherp.com' ||
+      normalized === 'http://swacherp.com'
     ) {
       return callback(null, true);
     }

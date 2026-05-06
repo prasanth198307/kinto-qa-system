@@ -623,10 +623,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const origin = (req.query.origin as string ?? '').trim().toLowerCase().replace(/\/$/, '');
     if (!origin) return res.json(null);
     try {
-      // Supports exact match and wildcard entries like *.swacherp.com
+      // Strategy 1: exact match / wildcard match against cors_origins
       const result = await pool.query(
         `SELECT name, slug, logo_url FROM tenants
          WHERE status <> 'deleted'
+           AND cors_origins IS NOT NULL
+           AND array_length(cors_origins, 1) > 0
            AND EXISTS (
              SELECT 1 FROM unnest(cors_origins) AS o
              WHERE o = $1
@@ -635,9 +637,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
          LIMIT 1`,
         [origin]
       );
-      if (!result.rows.length) return res.json(null);
-      const row = result.rows[0];
-      return res.json({ name: row.name, slug: row.slug, logoUrl: row.logo_url ?? null });
+      if (result.rows.length) {
+        const row = result.rows[0];
+        return res.json({ name: row.name, slug: row.slug, logoUrl: row.logo_url ?? null });
+      }
+
+      // Strategy 2: auto-detect from *.swacherp.com subdomain pattern
+      // e.g. https://kinto.swacherp.com → slug = "kinto"
+      const swacherpMatch = origin.match(/^https?:\/\/([^.]+)\.swacherp\.com$/);
+      if (swacherpMatch) {
+        const subdomainSlug = swacherpMatch[1];
+        const slugResult = await pool.query(
+          `SELECT name, slug, logo_url FROM tenants WHERE slug = $1 AND status <> 'deleted' LIMIT 1`,
+          [subdomainSlug]
+        );
+        if (slugResult.rows.length) {
+          const row = slugResult.rows[0];
+          return res.json({ name: row.name, slug: row.slug, logoUrl: row.logo_url ?? null });
+        }
+      }
+
+      return res.json(null);
     } catch (err: any) {
       return res.json(null);
     }
