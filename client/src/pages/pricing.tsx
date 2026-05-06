@@ -10,7 +10,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
   CheckCircle2, Zap, Loader2, ArrowRight, Star, CreditCard, AlertTriangle,
-  CalendarClock, XCircle, RefreshCw, ExternalLink,
+  CalendarClock, XCircle, RefreshCw, ExternalLink, Puzzle, Package2,
+  Factory, FileText, Receipt, IndianRupee, UserCheck, Target, MessageCircle,
+  HeartPulse, GraduationCap, Truck, Home, ShoppingBag, Leaf, Key, GitBranch,
+  ClipboardCheck, Wrench, FolderKanban, BarChart3, PiggyBank, ShoppingCart,
+  ClipboardList, MonitorSmartphone,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -18,6 +22,78 @@ import { useState } from "react";
 import { format, parseISO } from "date-fns";
 
 const RAZORPAY_PAYMENT_LINK = "https://razorpay.me/swacherp";
+
+// ─── Module catalogue (mirrors server/module-catalog.ts) ─────────────────────
+const MODULE_GROUPS = [
+  {
+    category: "Finance",
+    color: "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800",
+    badgeColor: "bg-emerald-100 text-emerald-700",
+    modules: [
+      { icon: FileText,      name: "GST Invoicing",         desc: "Tax invoices, credit/debit notes, proforma", price: 699, popular: true },
+      { icon: Receipt,       name: "Accounting & Ledger",   desc: "Double-entry, COA, journals, P&L, balance sheet", price: 899 },
+      { icon: IndianRupee,   name: "Expense Claims",        desc: "Employee expense submission & approvals",    price: 299 },
+      { icon: BarChart3,     name: "TDS Management",        desc: "TDS calculation, challans, Form 26Q",        price: 399 },
+      { icon: PiggyBank,     name: "Fixed Assets",          desc: "Asset register, depreciation schedules",     price: 499 },
+    ],
+  },
+  {
+    category: "Inventory & Supply Chain",
+    color: "bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800",
+    badgeColor: "bg-blue-100 text-blue-700",
+    modules: [
+      { icon: Package2,      name: "Inventory",             desc: "Stock, batches, FIFO, reorder alerts",      price: 599, popular: true },
+      { icon: ShoppingCart,  name: "Purchase & PO",         desc: "RFQ, PO, GRN, vendor invoices, three-way match", price: 499 },
+      { icon: Home,          name: "Multi-Warehouse",       desc: "Multiple locations, stock transfers, UOM",   price: 399 },
+      { icon: Truck,         name: "Gatepasses",            desc: "Outward gatepasses, dispatch, serial/lot",   price: 299 },
+    ],
+  },
+  {
+    category: "Production & Operations",
+    color: "bg-violet-50 dark:bg-violet-950/20 border-violet-200 dark:border-violet-800",
+    badgeColor: "bg-violet-100 text-violet-700",
+    modules: [
+      { icon: Factory,       name: "Production / BOM",      desc: "Work orders, BOM, FG tracking, routing",    price: 699 },
+      { icon: ClipboardList, name: "Quality Assurance",     desc: "QA checklists, inspection, rejection logs",  price: 399 },
+      { icon: Wrench,        name: "Preventive Maintenance",desc: "PM schedules, machine downtime tracking",    price: 349 },
+      { icon: FolderKanban,  name: "Project Management",    desc: "BOQ, milestones, timesheets, project P&L",  price: 599 },
+    ],
+  },
+  {
+    category: "HR & People",
+    color: "bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800",
+    badgeColor: "bg-orange-100 text-orange-700",
+    modules: [
+      { icon: UserCheck,     name: "HR & Payroll",          desc: "Employee master, payroll, payslips, CTC",   price: 799, popular: true },
+      { icon: ClipboardCheck,name: "Attendance & Leave",    desc: "Daily attendance, leave requests, holiday",  price: 349 },
+      { icon: MonitorSmartphone, name: "ESS Portal",        desc: "Employee self-service — claims, leaves, payslips", price: 249 },
+      { icon: Target,        name: "Performance Appraisals",desc: "Appraisal cycles, ratings, goals",           price: 299 },
+    ],
+  },
+  {
+    category: "Sales & CRM",
+    color: "bg-rose-50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800",
+    badgeColor: "bg-rose-100 text-rose-700",
+    modules: [
+      { icon: Target,        name: "CRM & Leads",           desc: "Lead pipeline, follow-ups, conversion",     price: 499 },
+      { icon: FileText,      name: "Sales Orders",          desc: "Quotations, sales orders, delivery challans",price: 399 },
+      { icon: MessageCircle, name: "WhatsApp Integration",  desc: "Automated alerts, approvals, notifications", price: 499 },
+    ],
+  },
+  {
+    category: "Industry Verticals",
+    color: "bg-teal-50 dark:bg-teal-950/20 border-teal-200 dark:border-teal-800",
+    badgeColor: "bg-teal-100 text-teal-700",
+    modules: [
+      { icon: HeartPulse,    name: "Healthcare",            desc: "Patients, OPD/IPD, wards, appointments",    price: 999 },
+      { icon: GraduationCap, name: "Education ERP",         desc: "Students, fees, timetable, assessments",    price: 999 },
+      { icon: Truck,         name: "Logistics & Fleet",     desc: "Vehicles, trips, LR / consignment notes",   price: 799 },
+      { icon: Home,          name: "Real Estate",           desc: "Projects, units, bookings, payment schedules",price: 799 },
+      { icon: ShoppingBag,   name: "Retail / POS",          desc: "POS terminal, sessions, sales history",     price: 699 },
+      { icon: Leaf,          name: "Agriculture",           desc: "Farms, crop cycles, procurement, prices",   price: 699 },
+    ],
+  },
+];
 
 interface Plan {
   id: number;
@@ -498,6 +574,110 @@ export default function PricingPage({ onUpgrade }: { onUpgrade?: (plan: string) 
             </Card>
           );
         })}
+      </div>
+
+      {/* ── Build Your Own section ──────────────────────────────────────────── */}
+      <div className="space-y-6" data-testid="section-build-your-own">
+        <div className="text-center space-y-2">
+          <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary">
+            <Puzzle className="h-4 w-4" />
+            Or build your own plan
+          </div>
+          <h2 className="text-2xl font-bold">Pay only for what you need</h2>
+          <p className="text-muted-foreground max-w-2xl mx-auto text-sm">
+            Already on a base plan? Add individual modules to your subscription at a fixed monthly price.
+            No long-term commitments — add or remove modules any time from your account.
+          </p>
+        </div>
+
+        {/* Free modules callout */}
+        <div className="rounded-md border bg-muted/40 p-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 rounded-md bg-background p-2 border">
+              <Key className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">4 modules always free — on every plan</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                User Management · Roles &amp; Permissions · Company Settings · Dashboard &amp; Reports
+              </p>
+            </div>
+          </div>
+          <Badge variant="secondary" className="shrink-0">Included at no cost</Badge>
+        </div>
+
+        {/* Module grid by category */}
+        <div className="space-y-4">
+          {MODULE_GROUPS.map((group) => (
+            <div key={group.category}>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                {group.category}
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+                {group.modules.map((mod) => {
+                  const Icon = mod.icon;
+                  return (
+                    <div
+                      key={mod.name}
+                      className={`relative rounded-md border p-3 flex items-start gap-3 ${group.color}`}
+                      data-testid={`module-card-${mod.name.toLowerCase().replace(/[^a-z0-9]/g, "-")}`}
+                    >
+                      {mod.popular && (
+                        <span className="absolute top-2 right-2 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                          Popular
+                        </span>
+                      )}
+                      <div className="mt-0.5 shrink-0 rounded-md bg-background/70 p-1.5 border border-white/50 dark:border-white/10">
+                        <Icon className="h-3.5 w-3.5 text-foreground/70" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium leading-tight">{mod.name}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{mod.desc}</p>
+                        <p className="text-sm font-bold mt-1.5">
+                          ₹{mod.price.toLocaleString("en-IN")}
+                          <span className="text-xs font-normal text-muted-foreground">/mo</span>
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* How module pricing works */}
+        <div className="rounded-md border bg-muted/30 p-5 space-y-4">
+          <div className="flex items-center gap-2">
+            <GitBranch className="h-4 w-4 text-muted-foreground" />
+            <p className="text-sm font-semibold">How per-module pricing works</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs text-muted-foreground">
+            <div className="space-y-1">
+              <p className="font-medium text-foreground text-sm">1. Start with a base plan</p>
+              <p>Pick Trial, Basic, Professional, or Enterprise — your platform foundation with user limits and core support.</p>
+            </div>
+            <div className="space-y-1">
+              <p className="font-medium text-foreground text-sm">2. Add only the modules you use</p>
+              <p>From the Module Marketplace inside your account, toggle on exactly the features your business needs today.</p>
+            </div>
+            <div className="space-y-1">
+              <p className="font-medium text-foreground text-sm">3. Your bill = base plan + modules</p>
+              <p>Monthly charges are calculated automatically. Add or remove modules anytime — billing adjusts at the next cycle.</p>
+            </div>
+          </div>
+          <div className="pt-2 flex flex-wrap gap-3 items-center justify-between">
+            <p className="text-xs text-muted-foreground">
+              Example: Basic (₹2,499) + GST Invoicing (₹699) + HR &amp; Payroll (₹799) = <strong className="text-foreground">₹3,997/mo</strong>
+            </p>
+            <Button asChild size="sm" data-testid="button-start-trial-modules">
+              <a href="/auth">
+                Start Free Trial — choose modules later
+                <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+              </a>
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* ── Bottom note ─────────────────────────────────────────────────────── */}
