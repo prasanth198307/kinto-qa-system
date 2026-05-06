@@ -174,12 +174,11 @@ export default function SolutionsPage() {
           <div className="flex items-center gap-3">
             <Button
               variant="ghost"
-              size="sm"
+              size="icon"
               onClick={() => setLocation("/")}
-              className="gap-1.5 text-muted-foreground"
+              title="Back to Home"
             >
-              <ChevronLeft className="w-4 h-4" />
-              Back to Home
+              <Home className="w-4 h-4" />
             </Button>
             <div className="h-5 w-px bg-border" />
             <button onClick={() => setLocation("/")} className="flex items-center">

@@ -5,9 +5,9 @@ import {
   MessageCircle, Users, ClipboardList, Truck, Receipt,
   IndianRupee, ArrowRight, CheckCircle2, Warehouse, FolderKanban,
   PiggyBank, GitBranch, ClipboardCheck, HeartPulse,
-  GraduationCap, Home, ShoppingBag, Leaf, Zap,
+  GraduationCap, ShoppingBag, Leaf, Zap,
   UserCheck, Building2, Settings, Key, Webhook, MonitorSmartphone,
-  Target, ChevronLeft, Globe, Layers, LayoutDashboard,
+  Target, Home, Globe, Layers, LayoutDashboard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -537,16 +537,15 @@ export default function FeaturesPage() {
       {/* ── Sticky header ── */}
       <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between gap-4 flex-wrap">
-          {/* Left: back + logo */}
+          {/* Left: home icon + logo */}
           <div className="flex items-center gap-3">
             <Button
               variant="ghost"
-              size="sm"
+              size="icon"
               onClick={() => setLocation("/")}
-              className="gap-1.5 text-muted-foreground"
+              title="Back to Home"
             >
-              <ChevronLeft className="w-4 h-4" />
-              Back to Home
+              <Home className="w-4 h-4" />
             </Button>
             <div className="h-5 w-px bg-border" />
             <button onClick={() => setLocation("/")} className="flex items-center">
