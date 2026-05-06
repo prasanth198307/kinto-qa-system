@@ -666,7 +666,7 @@ export default function FeaturesPage() {
       </section>
 
       <footer className="border-t py-6 text-center text-xs text-muted-foreground">
-        <p>© {new Date().getFullYear()} Inmousture Private Limited. All rights reserved.</p>
+        <p>© {new Date().getFullYear()} Inmoisture Private Limited. All rights reserved.</p>
       </footer>
     </div>
   );

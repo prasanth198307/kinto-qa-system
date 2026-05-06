@@ -25,7 +25,7 @@ export default function PrivacyPolicyPage() {
         </div>
 
         <p className="text-muted-foreground leading-relaxed">
-          Inmousture Private Limited ("<strong>Company</strong>", "we", "us", or "our") operates the SwachERP platform
+          Inmoisture Private Limited ("<strong>Company</strong>", "we", "us", or "our") operates the SwachERP platform
           (the "<strong>Service</strong>"). This Privacy Policy explains how we collect, use, disclose, and safeguard
           your information when you use our Service. Please read it carefully.
         </p>
@@ -73,7 +73,7 @@ export default function PrivacyPolicyPage() {
           },
           {
             title: "11. Contact Us",
-            body: `If you have questions or concerns about this Privacy Policy, please contact us at:\n\nInmousture Private Limited\nEmail: info@inmoisture.com`,
+            body: `If you have questions or concerns about this Privacy Policy, please contact us at:\n\nInmoisture Private Limited\nEmail: info@inmoisture.com`,
           },
         ].map(section => (
           <section key={section.title} className="space-y-2">
@@ -85,7 +85,7 @@ export default function PrivacyPolicyPage() {
         ))}
 
         <div className="border-t pt-6 text-xs text-muted-foreground">
-          <p>© {year} Inmousture Private Limited. All rights reserved.</p>
+          <p>© {year} Inmoisture Private Limited. All rights reserved.</p>
         </div>
       </main>
     </div>

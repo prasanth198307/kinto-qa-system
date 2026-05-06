@@ -26,7 +26,7 @@ export default function TermsOfServicePage() {
 
         <p className="text-muted-foreground leading-relaxed">
           These Terms of Service ("<strong>Terms</strong>") govern your access to and use of the SwachERP platform
-          provided by Inmousture Private Limited ("<strong>Company</strong>", "we", "us", or "our"). By accessing or
+          provided by Inmoisture Private Limited ("<strong>Company</strong>", "we", "us", or "our"). By accessing or
           using the Service, you agree to be bound by these Terms.
         </p>
 
@@ -57,7 +57,7 @@ export default function TermsOfServicePage() {
           },
           {
             title: "7. Intellectual Property",
-            body: `The Service, including its design, software, logos, and content, is owned by Inmousture Private Limited and is protected by copyright, trademark, and other intellectual property laws. Nothing in these Terms grants you any right to use our trademarks, logos, or other proprietary information without our prior written consent.`,
+            body: `The Service, including its design, software, logos, and content, is owned by Inmoisture Private Limited and is protected by copyright, trademark, and other intellectual property laws. Nothing in these Terms grants you any right to use our trademarks, logos, or other proprietary information without our prior written consent.`,
           },
           {
             title: "8. Confidentiality",
@@ -69,11 +69,11 @@ export default function TermsOfServicePage() {
           },
           {
             title: "10. Limitation of Liability",
-            body: `To the maximum extent permitted by law, Inmousture Private Limited shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including loss of profits, data, or goodwill, arising from your use of or inability to use the Service. Our total liability for any claim shall not exceed the amount you paid to us in the three months preceding the claim.`,
+            body: `To the maximum extent permitted by law, Inmoisture Private Limited shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including loss of profits, data, or goodwill, arising from your use of or inability to use the Service. Our total liability for any claim shall not exceed the amount you paid to us in the three months preceding the claim.`,
           },
           {
             title: "11. Indemnification",
-            body: `You agree to indemnify and hold harmless Inmousture Private Limited and its officers, directors, employees, and agents from any claims, liabilities, damages, and expenses (including reasonable legal fees) arising from your use of the Service or violation of these Terms.`,
+            body: `You agree to indemnify and hold harmless Inmoisture Private Limited and its officers, directors, employees, and agents from any claims, liabilities, damages, and expenses (including reasonable legal fees) arising from your use of the Service or violation of these Terms.`,
           },
           {
             title: "12. Governing Law and Dispute Resolution",
@@ -85,7 +85,7 @@ export default function TermsOfServicePage() {
           },
           {
             title: "14. Contact Us",
-            body: `For questions about these Terms, please contact:\n\nInmousture Private Limited\nEmail: info@inmoisture.com`,
+            body: `For questions about these Terms, please contact:\n\nInmoisture Private Limited\nEmail: info@inmoisture.com`,
           },
         ].map(section => (
           <section key={section.title} className="space-y-2">
@@ -97,7 +97,7 @@ export default function TermsOfServicePage() {
         ))}
 
         <div className="border-t pt-6 text-xs text-muted-foreground">
-          <p>© {year} Inmousture Private Limited. All rights reserved.</p>
+          <p>© {year} Inmoisture Private Limited. All rights reserved.</p>
         </div>
       </main>
     </div>
