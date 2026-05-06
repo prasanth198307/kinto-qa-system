@@ -75,12 +75,12 @@ const NAV_PRODUCTS = [
 ];
 
 const NAV_SOLUTIONS_BY_ROLE = [
-  { icon: Briefcase,    label: "Owner / MD",          desc: "P&L, MIS dashboards, full visibility" },
-  { icon: Receipt,      label: "Finance & Accounts",  desc: "GST, accounting, TDS, reports" },
-  { icon: UserCheck,    label: "HR Manager",          desc: "Payroll, leaves, compliance, ESS" },
-  { icon: Factory,      label: "Operations Head",     desc: "Production, inventory, dispatch, quality" },
-  { icon: Target,       label: "Sales Team",          desc: "CRM, invoicing, customer receipts" },
-  { icon: Settings,     label: "IT / Admin",          desc: "Users, roles, permissions" },
+  { icon: Briefcase,    label: "Owner / MD",          desc: "P&L, MIS dashboards, full visibility",        href: "/features#mis" },
+  { icon: Receipt,      label: "Finance & Accounts",  desc: "GST, accounting, TDS, reports",               href: "/features#accounting" },
+  { icon: UserCheck,    label: "HR Manager",          desc: "Payroll, leaves, compliance, ESS",            href: "/features#hr" },
+  { icon: Factory,      label: "Operations Head",     desc: "Production, inventory, dispatch, quality",    href: "/features#production" },
+  { icon: Target,       label: "Sales Team",          desc: "CRM, invoicing, customer receipts",           href: "/features#crm" },
+  { icon: Settings,     label: "IT / Admin",          desc: "Users, roles, permissions",                   href: "/features#api-hub" },
 ];
 
 const NAV_SOLUTIONS_BY_INDUSTRY = [
@@ -265,7 +265,7 @@ function SolutionsDropdown() {
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3 px-1">By Role</p>
               <div className="space-y-0.5">
                 {NAV_SOLUTIONS_BY_ROLE.map(item => (
-                  <a key={item.label} href="/solutions" onClick={() => setOpen(false)} className="flex items-start gap-2.5 px-2 py-1.5 rounded-lg hover-elevate no-underline">
+                  <a key={item.label} href={item.href} onClick={() => setOpen(false)} className="flex items-start gap-2.5 px-2 py-1.5 rounded-lg hover-elevate no-underline">
                     <div className="mt-0.5 w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
                       <item.icon className="w-3 h-3 text-primary" />
                     </div>
@@ -296,9 +296,9 @@ function SolutionsDropdown() {
               <div className="mt-4 pt-3 border-t">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2 px-1">By Scale</p>
                 {[
-                  ["Growing SMEs",      "5–20 users, quick onboarding",      "#pricing"],
-                  ["Mid-size Mfg.",     "15–50 users, full modules",          "#pricing"],
-                  ["Enterprise & Groups","Custom plans, dedicated support",   "#pricing"],
+                  ["Growing SMEs",       "5–20 users, quick onboarding",    "/pricing"],
+                  ["Mid-size Mfg.",      "15–50 users, full modules",        "/pricing"],
+                  ["Enterprise & Groups","Custom plans, dedicated support",  "/pricing"],
                 ].map(([label, desc, href]) => (
                   <a key={label} href={href} onClick={() => setOpen(false)} className="block px-2 py-1.5 rounded-lg hover-elevate no-underline">
                     <p className="text-xs font-semibold">{label}</p>
