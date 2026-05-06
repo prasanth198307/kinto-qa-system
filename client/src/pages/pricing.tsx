@@ -168,7 +168,7 @@ export default function PricingPage() {
               <a href="/auth">Sign In</a>
             </Button>
             <Button size="sm" asChild data-testid="nav-pricing-trial">
-              <a href="/auth">Start Free Trial</a>
+              <a href="/register-company">Start Free Trial</a>
             </Button>
           </div>
         </div>
@@ -286,13 +286,13 @@ export default function PricingPage() {
                   <div className="mt-auto pt-2">
                     {plan.slug === "trial" ? (
                       <Button className="w-full text-sm" asChild data-testid={`button-start-trial-${plan.slug}`}>
-                        <a href="/auth">
+                        <a href="/register-company">
                           Start Free Trial <ArrowRight className="h-3.5 w-3.5 ml-1" />
                         </a>
                       </Button>
                     ) : (
                       <Button variant="outline" className="w-full text-sm" asChild data-testid={`button-get-started-${plan.slug}`}>
-                        <a href="/auth">
+                        <a href="/register-company">
                           Get Started <ArrowRight className="h-3.5 w-3.5 ml-1" />
                         </a>
                       </Button>
@@ -399,7 +399,7 @@ export default function PricingPage() {
                 Example: Basic (₹999) + GST Invoicing (₹699) + HR &amp; Payroll (₹799) = <strong className="text-foreground">₹2,497/mo</strong>
               </p>
               <Button asChild size="sm" data-testid="button-start-trial-modules">
-                <a href="/auth">
+                <a href="/register-company">
                   Start Free Trial — choose modules later
                   <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
                 </a>
