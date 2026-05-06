@@ -527,22 +527,27 @@ export function registerBillingRoutes(app: Express): void {
       const freeModules   = catalog.filter(m => m.free).map(m => m.slug);
       const catalogSlugSet = new Set(catalog.map(m => m.slug));
 
+      // Resolve plan-included modules (mapped to catalog slugs)
+      const rawPlanMods: string[] = Array.isArray(row?.plan_modules) ? row.plan_modules : [];
+      const planModules: string[] = planModulesToCatalogSlugs(rawPlanMods, catalogSlugSet);
+
       // Seed from plan when tenant has never explicitly chosen modules
       let selectedModules: string[] = Array.isArray(row?.selected_modules) ? row.selected_modules : [];
       if (selectedModules.length === 0) {
-        const planMods: string[] = Array.isArray(row?.plan_modules) ? row.plan_modules : [];
-        selectedModules = planModulesToCatalogSlugs(planMods, catalogSlugSet);
+        selectedModules = [...planModules];
         // Always include free modules
         for (const f of freeModules) if (!selectedModules.includes(f)) selectedModules.push(f);
         selectedModules = Array.from(new Set(selectedModules));
       }
 
+      const planModuleSet = new Set(planModules);
       const computedMonthly = catalog
-        .filter(m => selectedModules.includes(m.slug) && !m.free)
+        .filter(m => selectedModules.includes(m.slug) && !m.free && !planModuleSet.has(m.slug))
         .reduce((s, m) => s + m.priceMonthly, 0);
 
       res.json({
         selectedModules,
+        planModules,
         monthlyAmount:    row?.monthly_amount ?? computedMonthly,
         planSlug:         row?.plan_slug      ?? null,
         status:           row?.status         ?? null,

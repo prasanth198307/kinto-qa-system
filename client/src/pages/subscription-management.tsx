@@ -30,6 +30,7 @@ interface ModuleDefinition {
 
 interface ModuleData {
   selectedModules: string[];
+  planModules: string[];
   monthlyAmount: number;
   planSlug: string | null;
   status: string | null;
@@ -108,6 +109,7 @@ function MarketplaceTab({
   onSave: (slugs: string[]) => void;
 }) {
   const freeSet = new Set(data.freeModules);
+  const planSet = new Set(data.planModules ?? []);
   const [draft, setDraft] = useState<Set<string>>(new Set(data.selectedModules));
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
@@ -115,7 +117,7 @@ function MarketplaceTab({
   const grouped = groupByCategory(data.catalog);
 
   const toggle = (slug: string) => {
-    if (freeSet.has(slug)) return;
+    if (freeSet.has(slug) || planSet.has(slug)) return;
     setDraft(prev => {
       const next = new Set(prev);
       next.has(slug) ? next.delete(slug) : next.add(slug);
@@ -124,7 +126,7 @@ function MarketplaceTab({
   };
 
   const draftTotal = data.catalog
-    .filter(m => draft.has(m.slug) && m.priceMonthly > 0)
+    .filter(m => draft.has(m.slug) && m.priceMonthly > 0 && !freeSet.has(m.slug) && !planSet.has(m.slug))
     .reduce((s, m) => s + m.priceMonthly, 0);
 
   const hasChanges = (() => {
@@ -157,8 +159,10 @@ function MarketplaceTab({
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {modules.map(mod => {
-                  const isFree = freeSet.has(mod.slug);
-                  const isOn = draft.has(mod.slug);
+                  const isFree    = freeSet.has(mod.slug);
+                  const isInPlan  = planSet.has(mod.slug);
+                  const isLocked  = isFree || isInPlan;
+                  const isOn      = draft.has(mod.slug);
                   return (
                     <button
                       key={mod.slug}
@@ -167,6 +171,8 @@ function MarketplaceTab({
                       className={`text-left p-3.5 rounded-xl border-2 transition-all ${
                         isFree
                           ? `bg-emerald-50 border-emerald-200 cursor-default`
+                          : isInPlan
+                          ? `bg-blue-50 border-blue-200 cursor-default`
                           : isOn
                           ? `bg-white border-primary ring-2 ring-primary/10 shadow-sm`
                           : `bg-card border-border hover:border-muted-foreground/30`
@@ -175,10 +181,10 @@ function MarketplaceTab({
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className={`text-sm font-semibold ${isFree ? "text-emerald-800" : isOn ? "text-foreground" : "text-foreground"}`}>
+                            <span className={`text-sm font-semibold ${isFree ? "text-emerald-800" : isInPlan ? "text-blue-800" : "text-foreground"}`}>
                               {mod.name}
                             </span>
-                            {mod.popular && !isFree && (
+                            {mod.popular && !isLocked && (
                               <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">Popular</span>
                             )}
                           </div>
@@ -187,13 +193,15 @@ function MarketplaceTab({
                         <div className="flex-shrink-0 flex flex-col items-end gap-1.5">
                           {isFree ? (
                             <span className="text-xs font-bold text-emerald-600">FREE</span>
+                          ) : isInPlan ? (
+                            <span className="text-xs font-bold text-blue-600">Plan</span>
                           ) : (
                             <span className="text-sm font-bold text-foreground">₹{mod.priceMonthly}<span className="text-xs font-normal text-muted-foreground">/mo</span></span>
                           )}
                           <div className={`h-5 w-5 rounded-full flex items-center justify-center flex-shrink-0 ${
-                            isFree ? "bg-emerald-500" : isOn ? "bg-primary" : "border-2 border-muted-foreground/30"
+                            isFree ? "bg-emerald-500" : isInPlan ? "bg-blue-500" : isOn ? "bg-primary" : "border-2 border-muted-foreground/30"
                           }`}>
-                            {(isFree || isOn) && <CheckCircle2 className="h-3 w-3 text-white" />}
+                            {(isLocked || isOn) && <CheckCircle2 className="h-3 w-3 text-white" />}
                           </div>
                         </div>
                       </div>
@@ -225,10 +233,16 @@ function MarketplaceTab({
                 <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
                 Users, Roles, Settings, Dashboard — always free
               </div>
+              {planSet.size > 0 && (
+                <div className="flex items-center gap-1.5 text-xs text-blue-600">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
+                  {planSet.size} module(s) included in your plan
+                </div>
+              )}
               <Separator />
               <div className="space-y-1.5 max-h-48 overflow-y-auto">
                 {data.catalog
-                  .filter(m => draft.has(m.slug) && m.priceMonthly > 0)
+                  .filter(m => draft.has(m.slug) && m.priceMonthly > 0 && !freeSet.has(m.slug) && !planSet.has(m.slug))
                   .map(m => (
                     <div key={m.slug} className="flex items-center justify-between text-xs">
                       <span className="text-foreground truncate pr-2">{m.name}</span>
@@ -244,8 +258,8 @@ function MarketplaceTab({
                       </div>
                     </div>
                   ))}
-                {Array.from(draft).filter(s => !freeSet.has(s)).length === 0 && (
-                  <p className="text-xs text-muted-foreground italic">No paid modules yet.</p>
+                {data.catalog.filter(m => draft.has(m.slug) && m.priceMonthly > 0 && !freeSet.has(m.slug) && !planSet.has(m.slug)).length === 0 && (
+                  <p className="text-xs text-muted-foreground italic">No extra paid modules added.</p>
                 )}
               </div>
               <Button
