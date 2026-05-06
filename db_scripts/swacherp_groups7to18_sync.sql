@@ -269,7 +269,8 @@ CREATE TABLE IF NOT EXISTS public.cost_centres (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS cost_centres_tenant_code_uidx ON public.cost_centres (tenant_id, code);
 
-ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS cost_centre_id integer;
+-- Note: table is "expense_vouchers" not "expenses"
+ALTER TABLE public.expense_vouchers ADD COLUMN IF NOT EXISTS cost_centre_id integer;
 ALTER TABLE public.journal_entries ADD COLUMN IF NOT EXISTS cost_centre_id integer;
 
 -- ─────────────────────────────────────────────────────────────
@@ -481,7 +482,69 @@ CREATE TABLE IF NOT EXISTS public.agri_procurement (
 
 -- ─────────────────────────────────────────────────────────────
 -- GROUP 14: May 1 Education (Full Expansion)
+-- Base tables first (created here if not already present from industry vertical script)
 -- ─────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS public.classes (
+    id            uuid NOT NULL DEFAULT gen_random_uuid(),
+    tenant_id     text NOT NULL,
+    name          text NOT NULL,
+    grade         text,
+    section       text,
+    academic_year text,
+    teacher_name  text,
+    capacity      integer DEFAULT 40,
+    is_active     integer DEFAULT 1,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS public.students (
+    id              uuid NOT NULL DEFAULT gen_random_uuid(),
+    tenant_id       text NOT NULL,
+    student_code    text NOT NULL,
+    name            text NOT NULL,
+    dob             date,
+    gender          text,
+    class_id        uuid,
+    parent_name     text,
+    parent_phone    text,
+    email           text,
+    address         text,
+    enrollment_date date,
+    status          text DEFAULT 'active',
+    created_at      timestamptz DEFAULT now(),
+    PRIMARY KEY (id)
+);
+CREATE INDEX IF NOT EXISTS students_tenant_idx ON public.students (tenant_id);
+
+CREATE TABLE IF NOT EXISTS public.teachers (
+    id              SERIAL PRIMARY KEY,
+    tenant_id       INTEGER NOT NULL,
+    teacher_code    VARCHAR(50),
+    name            VARCHAR(200) NOT NULL,
+    subject         VARCHAR(200),
+    qualification   VARCHAR(200),
+    phone           VARCHAR(20),
+    email           VARCHAR(150),
+    date_of_joining DATE,
+    salary          NUMERIC(12,2) DEFAULT 0,
+    status          VARCHAR(50) DEFAULT 'active',
+    record_status   INTEGER DEFAULT 1,
+    created_at      TIMESTAMP DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.student_attendance (
+    id              SERIAL PRIMARY KEY,
+    tenant_id       INTEGER NOT NULL,
+    student_id      TEXT,
+    class_id        TEXT,
+    attendance_date DATE NOT NULL,
+    status          VARCHAR(20) DEFAULT 'present',
+    remarks         TEXT,
+    created_at      TIMESTAMP DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS sa_tenant_student_date_uidx
+    ON public.student_attendance (tenant_id, student_id, attendance_date);
 
 ALTER TABLE public.students
   ADD COLUMN IF NOT EXISTS blood_group text,
@@ -627,7 +690,7 @@ END $$;
 
 CREATE UNIQUE INDEX IF NOT EXISTS student_attendance_unique_idx
   ON public.student_attendance (student_id, attendance_date)
-  WHERE record_status = 1;
+  WHERE record_status IS NOT DISTINCT FROM 1;
 
 -- ─────────────────────────────────────────────────────────────
 -- GROUP 15: May 1 — Plan modules sync + tenant industry
