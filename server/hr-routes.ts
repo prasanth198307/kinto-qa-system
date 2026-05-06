@@ -1209,9 +1209,13 @@ router.post("/payroll-runs/:id/process", requireHR, async (req: any, res) => {
       const onLeave = Number(a.on_leave || 0);
       const lop = Number(a.lop || 0);
       const otHours = Number(a.ot_hours || 0);
-      const daysWorked = present + (halfDay * 0.5) + onLeave;
+
+      // If no attendance records exist at all for this employee this month,
+      // assume full attendance so that salary is not zeroed out.
+      const hasAttendance = (present + halfDay + onLeave + lop) > 0;
+      const daysWorked = hasAttendance ? (present + (halfDay * 0.5) + onLeave) : workingDays;
       const lopDays = lop;
-      const attendancePct = workingDays > 0 ? Math.min(daysWorked, workingDays) / workingDays : 0;
+      const attendancePct = workingDays > 0 ? Math.min(daysWorked, workingDays) / workingDays : 1;
 
       const basicSalary = Number(emp.basic_salary || 0);
       const dailyRate = basicSalary / workingDays;
