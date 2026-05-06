@@ -332,7 +332,15 @@ export default function RegisterCompanyPage() {
       {/* Left — form panel */}
       <div className="w-full lg:w-3/5 flex items-start justify-center p-4 sm:p-8 bg-background overflow-y-auto">
         <div className="w-full max-w-lg py-6">
-          <div className="text-center mb-6">
+          <div className="text-center mb-6 relative">
+            <a
+              href="/"
+              className="absolute left-0 top-1/2 -translate-y-1/2 flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              data-testid="link-register-back-home"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to home
+            </a>
             <KintoLogo className="justify-center" variant="full" />
           </div>
 
