@@ -267,6 +267,12 @@ export function setupAuth(app: Express) {
         } as any)
         .returning();
 
+      // Auto-save CORS origin for the slug-based production URL
+      const defaultOrigin = `https://${newTenant.slug}.swacherp.com`;
+      await db.update(tenants)
+        .set({ corsOrigins: [defaultOrigin] })
+        .where(eq(tenants.id, newTenant.id));
+
       console.log(`✅ New tenant registered: ${newTenant.name} (${newTenant.slug}) with admin: ${adminUsername}`);
 
       return res.status(201).json({

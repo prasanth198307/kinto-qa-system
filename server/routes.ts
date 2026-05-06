@@ -814,6 +814,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ─── Tenant: CORS Origins (self-service for admin) ───────────────────────
+  app.get('/api/tenant/cors-origins', async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' });
+    if (req.user?.role !== 'admin' && !req.user?.isSuperAdmin) return res.status(403).json({ message: 'Admin only' });
+    const tenantId: number = (req.session as any).tenantId ?? req.user?.tenantId ?? 1;
+    const [row] = await db.select({ corsOrigins: tenants.corsOrigins }).from(tenants).where(eq(tenants.id, tenantId)).limit(1);
+    res.json({ corsOrigins: row?.corsOrigins ?? [] });
+  });
+
+  app.put('/api/tenant/cors-origins', async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' });
+    if (req.user?.role !== 'admin' && !req.user?.isSuperAdmin) return res.status(403).json({ message: 'Admin only' });
+    const tenantId: number = (req.session as any).tenantId ?? req.user?.tenantId ?? 1;
+    const { corsOrigins } = req.body;
+    if (!Array.isArray(corsOrigins)) return res.status(400).json({ message: 'corsOrigins must be an array' });
+    // Basic URL validation
+    const valid = corsOrigins.filter((o: string) => {
+      try { new URL(o); return true; } catch { return false; }
+    });
+    await db.update(tenants).set({ corsOrigins: valid, updatedAt: new Date().toISOString() }).where(eq(tenants.id, tenantId));
+    res.json({ corsOrigins: valid });
+  });
+
   // ─── Tenant: Export all company data as JSON ─────────────────────────────
   app.get('/api/tenant/export', async (req: any, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' });

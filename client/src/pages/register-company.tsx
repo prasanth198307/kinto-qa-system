@@ -5,18 +5,19 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Loader2, Building2, User, Mail, Phone, Lock, Globe, ArrowLeft,
-  CheckCircle2, XCircle, AlertCircle, Package, ChevronRight,
+  CheckCircle2, XCircle, AlertCircle, Package, Palette, Upload, ImageIcon, ChevronRight,
 } from "lucide-react";
 import { KintoLogo } from "@/components/branding/KintoLogo";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
-type Step = "company" | "admin" | "modules" | "success";
+type Step = "company" | "admin" | "modules" | "branding" | "success";
 type SlugStatus = "idle" | "checking" | "available" | "taken" | "invalid";
 
-// ─── Module picker data (lightweight, registration-time) ──────────────────────
+// ─── Module picker data ───────────────────────────────────────────────────────
 const FREE_SLUGS = new Set(["user_management", "roles", "company_settings", "dashboard"]);
 
 const PICKER_MODULES = [
@@ -47,43 +48,31 @@ const CATEGORY_COLORS: Record<string, string> = {
   Industry:   "bg-indigo-50 text-indigo-700 border-indigo-200",
 };
 
-// ─── Right-panel content per step ─────────────────────────────────────────────
-const RIGHT_PANEL: Record<Step, { icon: React.FC<any>; heading: string; sub: string; bullets: string[] }> = {
-  company: {
-    icon: Building2,
-    heading: "14-Day Free Trial",
-    sub: "Full access to everything. No credit card required.",
-    bullets: ["Set up in minutes", "GST-ready from day one", "Invite your team instantly", "Cancel anytime — no lock-in"],
-  },
-  admin: {
-    icon: User,
-    heading: "You're almost there",
-    sub: "Create your admin account to complete setup.",
-    bullets: ["You'll be the account owner", "Add more users after sign-in", "Role-based access control built in"],
-  },
-  modules: {
-    icon: Package,
-    heading: "Build your ERP",
-    sub: "Pick only what your business needs.",
-    bullets: [
-      "Core modules are always free",
-      "Each paid module billed monthly",
-      "Add or remove any time",
-      "14-day trial — nothing charged yet",
-    ],
-  },
-  success: {
-    icon: CheckCircle2,
-    heading: "You're all set!",
-    sub: "Your company is ready. Sign in to get started.",
-    bullets: [],
-  },
+const INDUSTRIES = [
+  "Manufacturing", "Services", "Trading / Distribution", "Healthcare",
+  "Education", "Logistics & Transport", "Real Estate", "Retail / POS",
+  "Agriculture / Agri-business", "Construction", "Technology / IT", "Other",
+];
+
+const PRESET_COLORS = [
+  "#1a56db", "#0e9f6e", "#e3a008", "#e02424", "#7e3af2", "#0694a2", "#1c64f2", "#9061f9",
+];
+
+// ─── Right-panel content per step ────────────────────────────────────────────
+type PanelConfig = { icon: React.FC<any>; heading: string; sub: string; bullets: string[] };
+const RIGHT_PANEL: Record<Step, PanelConfig> = {
+  company:  { icon: Building2,    heading: "14-Day Free Trial",   sub: "Full access to everything. No credit card required.", bullets: ["Set up in minutes", "GST-ready from day one", "Invite your team instantly", "Cancel anytime — no lock-in"] },
+  admin:    { icon: User,         heading: "You're almost there", sub: "Create your admin account to complete setup.",         bullets: ["You'll be the account owner", "Add more users after sign-in", "Role-based access control built in"] },
+  modules:  { icon: Package,      heading: "Build your ERP",      sub: "Pick only what your business needs.",                  bullets: ["Core modules always free", "Each paid module billed monthly", "Add or remove any time", "14-day trial — nothing charged yet"] },
+  branding: { icon: Palette,      heading: "Make it yours",       sub: "Add your logo and brand colours (optional).",          bullets: ["Logo appears on invoices & ESS portal", "Brand colour applied across the app", "Industry helps tailor your dashboard", "Custom domain CORS set automatically"] },
+  success:  { icon: CheckCircle2, heading: "You're all set!",     sub: "Your company is ready. Sign in to get started.",       bullets: [] },
 };
 
 const STEP_LABELS: { key: Step; label: string }[] = [
-  { key: "company", label: "Company" },
-  { key: "admin",   label: "Account" },
-  { key: "modules", label: "Modules" },
+  { key: "company",  label: "Company"  },
+  { key: "admin",    label: "Account"  },
+  { key: "modules",  label: "Modules"  },
+  { key: "branding", label: "Branding" },
 ];
 
 export default function RegisterCompanyPage() {
@@ -93,6 +82,7 @@ export default function RegisterCompanyPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [slugStatus, setSlugStatus] = useState<SlugStatus>("idle");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
     companyName: "", slug: "", gstNumber: "", address: "",
@@ -100,14 +90,22 @@ export default function RegisterCompanyPage() {
   });
 
   const [registeredData, setRegisteredData] = useState<{
-    name: string; slug: string; username: string; tenantId?: number;
+    name: string; slug: string; username: string;
   } | null>(null);
 
-  // Selected modules — free ones always included
+  // Module selection
   const [selected, setSelected] = useState<Set<string>>(new Set(Array.from(FREE_SLUGS)));
   const [savingModules, setSavingModules] = useState(false);
 
-  // ── Slug check ─────────────────────────────────────────────────────────────
+  // Branding
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [primaryColor, setPrimaryColor] = useState("#1a56db");
+  const [industry, setIndustry] = useState("");
+  const [customDomain, setCustomDomain] = useState("");
+  const [savingBranding, setSavingBranding] = useState(false);
+
+  // ── Slug check ──────────────────────────────────────────────────────────────
   const checkSlug = (slug: string) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     const slugRegex = /^[a-z0-9-]{3,50}$/;
@@ -143,7 +141,7 @@ export default function RegisterCompanyPage() {
     checkSlug(suggestion);
   };
 
-  // ── Step handlers ──────────────────────────────────────────────────────────
+  // ── Step handlers ───────────────────────────────────────────────────────────
   const handleCompanyStep = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.companyName.trim() || !form.slug.trim()) return;
@@ -177,7 +175,7 @@ export default function RegisterCompanyPage() {
         address: form.address || undefined,
       });
       const data = await result.json();
-      setRegisteredData({ name: data.tenant.name, slug: data.tenant.slug, username: data.username, tenantId: data.tenant.id });
+      setRegisteredData({ name: data.tenant.name, slug: data.tenant.slug, username: data.username });
       setStep("modules");
     } catch (err: any) {
       toast({ title: "Registration failed", description: err.message || "Please try again.", variant: "destructive" });
@@ -198,30 +196,86 @@ export default function RegisterCompanyPage() {
   const handleSaveModules = async (skip = false) => {
     setSavingModules(true);
     try {
-      const slugs = skip ? Array.from(FREE_SLUGS) : Array.from(selected);
-      // Log in first using the just-created credentials to get a session
+      // Log in with the newly created credentials to get a session
       await apiRequest("POST", "/api/login", {
-        tenantSlug: form.slug, username: registeredData?.username ?? form.email,
+        tenantSlug: form.slug,
+        username: registeredData?.username ?? form.email,
         password: form.password,
       });
+      const slugs = skip ? Array.from(FREE_SLUGS) : Array.from(selected);
       await apiRequest("POST", "/api/billing/selected-modules", { selectedModules: slugs });
     } catch {
-      // Non-fatal — modules can be set later from Company Settings
+      // Non-fatal — modules can be configured later
     } finally {
       setSavingModules(false);
+      setStep("branding");
+    }
+  };
+
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Invalid file type", description: "Please upload an image file.", variant: "destructive" });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Logo must be under 5 MB.", variant: "destructive" });
+      return;
+    }
+    setLogoFile(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => setLogoPreview(ev.target?.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveBranding = async (skip = false) => {
+    setSavingBranding(true);
+    try {
+      if (!skip) {
+        // Upload logo if provided
+        if (logoFile) {
+          const fd = new FormData();
+          fd.append("logo", logoFile);
+          await fetch("/api/tenant/upload-logo", { method: "POST", body: fd });
+        }
+        // Save settings (color, industry)
+        if (primaryColor !== "#1a56db" || industry || customDomain) {
+          await apiRequest("PATCH", "/api/tenant/settings", {
+            ...(primaryColor !== "#1a56db" ? { primaryColor } : {}),
+            ...(industry ? { industry } : {}),
+          });
+        }
+        // Save custom domain as additional CORS origin
+        if (customDomain.trim()) {
+          let origin = customDomain.trim();
+          if (!origin.startsWith("http")) origin = `https://${origin}`;
+          // Strip path, keep only origin
+          try {
+            origin = new URL(origin).origin;
+          } catch { /* leave as-is */ }
+          const defaultOrigin = `https://${form.slug}.swacherp.com`;
+          await apiRequest("PUT", "/api/tenant/cors-origins", {
+            corsOrigins: [defaultOrigin, origin],
+          });
+        }
+      }
+    } catch {
+      // Non-fatal — branding can be updated later from Company Settings
+    } finally {
+      setSavingBranding(false);
       setStep("success");
     }
   };
 
-  // ── Derived ────────────────────────────────────────────────────────────────
+  // ── Derived ─────────────────────────────────────────────────────────────────
   const paidSelected = PICKER_MODULES.filter(m => selected.has(m.slug));
   const monthlyTotal = paidSelected.reduce((s, m) => s + m.price, 0);
   const stepIdx = STEP_LABELS.findIndex(s => s.key === step);
-
   const panel = RIGHT_PANEL[step];
   const PanelIcon = panel.icon;
 
-  // ── Success screen ─────────────────────────────────────────────────────────
+  // ── Success screen ───────────────────────────────────────────────────────────
   if (step === "success" && registeredData) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 sm:p-8 bg-background">
@@ -252,25 +306,19 @@ export default function RegisterCompanyPage() {
                 <>
                   <Separator />
                   <div className="text-xs text-muted-foreground">
-                    <span className="font-medium text-foreground">{paidSelected.length} module{paidSelected.length > 1 ? "s" : ""} selected</span>
-                    {" — "}trial is free for 14 days, then ₹{monthlyTotal.toLocaleString("en-IN")}/mo
+                    <span className="font-medium text-foreground">{paidSelected.length} module{paidSelected.length !== 1 ? "s" : ""} selected</span>
+                    {" — "}trial free for 14 days, then ₹{monthlyTotal.toLocaleString("en-IN")}/mo
                   </div>
                 </>
               )}
               <Separator />
-              <p className="text-xs text-muted-foreground">
-                14-day free trial has started. No credit card needed.
-              </p>
+              <p className="text-xs text-muted-foreground">14-day free trial has started. No credit card needed.</p>
             </CardContent>
           </Card>
-          <Button
-            className="w-full"
-            onClick={() => {
-              sessionStorage.setItem("selectedTenant", JSON.stringify({ name: registeredData.name, slug: registeredData.slug }));
-              setLocation("/auth");
-            }}
-            data-testid="button-goto-login"
-          >
+          <Button className="w-full" onClick={() => {
+            sessionStorage.setItem("selectedTenant", JSON.stringify({ name: registeredData.name, slug: registeredData.slug }));
+            setLocation("/auth");
+          }} data-testid="button-goto-login">
             Go to Sign In <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
         </div>
@@ -278,7 +326,7 @@ export default function RegisterCompanyPage() {
     );
   }
 
-  // ── Main layout ────────────────────────────────────────────────────────────
+  // ── Main layout ──────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen flex">
       {/* Left — form panel */}
@@ -307,7 +355,7 @@ export default function RegisterCompanyPage() {
             })}
           </div>
 
-          {/* ── Step 1: Company ───────────────────────────────────────────── */}
+          {/* ── Step 1: Company ─────────────────────────────────────────────── */}
           {step === "company" && (
             <Card>
               <CardHeader>
@@ -350,9 +398,7 @@ export default function RegisterCompanyPage() {
                     {slugStatus === "taken" && (
                       <div className="flex items-center justify-between gap-2">
                         <p className="text-xs text-destructive">This Company ID is already taken.</p>
-                        <button type="button" onClick={suggestAlternative} className="text-xs text-primary underline underline-offset-2 shrink-0" data-testid="button-suggest-slug">
-                          Suggest another
-                        </button>
+                        <button type="button" onClick={suggestAlternative} className="text-xs text-primary underline underline-offset-2 shrink-0" data-testid="button-suggest-slug">Suggest another</button>
                       </div>
                     )}
                     {slugStatus === "invalid" && <p className="text-xs text-amber-600">Lowercase letters, numbers, hyphens only (3–50 chars).</p>}
@@ -380,7 +426,7 @@ export default function RegisterCompanyPage() {
             </Card>
           )}
 
-          {/* ── Step 2: Admin account ─────────────────────────────────────── */}
+          {/* ── Step 2: Admin account ──────────────────────────────────────── */}
           {step === "admin" && (
             <Card>
               <CardHeader>
@@ -448,18 +494,15 @@ export default function RegisterCompanyPage() {
             </Card>
           )}
 
-          {/* ── Step 3: Module picker ─────────────────────────────────────── */}
+          {/* ── Step 3: Module picker ──────────────────────────────────────── */}
           {step === "modules" && (
             <div className="space-y-4">
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle>Pick your modules</CardTitle>
-                  <CardDescription>
-                    Select what your business needs. Everything is free for 14 days — you'll only be charged after your trial ends.
-                  </CardDescription>
+                  <CardDescription>Select what your business needs. Everything is free for 14 days.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* Always-free banner */}
                   <div className="flex items-start gap-2.5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-xl px-3 py-2.5">
                     <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
                     <div>
@@ -468,7 +511,6 @@ export default function RegisterCompanyPage() {
                     </div>
                   </div>
 
-                  {/* Module grid by category */}
                   {CATEGORY_ORDER.map(cat => {
                     const mods = PICKER_MODULES.filter(m => m.category === cat);
                     const colors = CATEGORY_COLORS[cat] ?? "bg-muted text-muted-foreground border-border";
@@ -481,20 +523,10 @@ export default function RegisterCompanyPage() {
                           {mods.map(mod => {
                             const isOn = selected.has(mod.slug);
                             return (
-                              <button
-                                key={mod.slug}
-                                type="button"
-                                onClick={() => toggleModule(mod.slug)}
+                              <button key={mod.slug} type="button" onClick={() => toggleModule(mod.slug)}
                                 data-testid={`module-pick-${mod.slug}`}
-                                className={`relative text-left p-3 rounded-xl border-2 transition-all ${
-                                  isOn
-                                    ? "border-primary bg-primary/5 ring-1 ring-primary/10"
-                                    : "border-border bg-card hover:border-muted-foreground/30"
-                                }`}
-                              >
-                                {mod.popular && (
-                                  <span className="absolute -top-2 right-2 text-[9px] font-bold bg-amber-400 text-amber-900 px-1.5 py-0.5 rounded-full">Popular</span>
-                                )}
+                                className={`relative text-left p-3 rounded-xl border-2 transition-all ${isOn ? "border-primary bg-primary/5 ring-1 ring-primary/10" : "border-border bg-card hover:border-muted-foreground/30"}`}>
+                                {mod.popular && <span className="absolute -top-2 right-2 text-[9px] font-bold bg-amber-400 text-amber-900 px-1.5 py-0.5 rounded-full">Popular</span>}
                                 <div className="flex items-start justify-between gap-1">
                                   <span className="text-xs font-semibold text-foreground leading-tight pr-1">{mod.name}</span>
                                   <div className={`h-4 w-4 rounded-full border-2 shrink-0 flex items-center justify-center mt-0.5 ${isOn ? "bg-primary border-primary" : "border-muted-foreground/30"}`}>
@@ -512,47 +544,137 @@ export default function RegisterCompanyPage() {
                 </CardContent>
               </Card>
 
-              {/* Sticky summary + actions */}
               <Card>
                 <CardContent className="pt-4 space-y-3">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">
-                      {paidSelected.length} paid module{paidSelected.length !== 1 ? "s" : ""} selected
-                    </span>
+                    <span className="text-muted-foreground">{paidSelected.length} paid module{paidSelected.length !== 1 ? "s" : ""} selected</span>
                     <div className="text-right">
-                      <span className="font-bold text-lg">
-                        {monthlyTotal > 0 ? `₹${monthlyTotal.toLocaleString("en-IN")}` : "₹0"}
-                      </span>
+                      <span className="font-bold text-lg">{monthlyTotal > 0 ? `₹${monthlyTotal.toLocaleString("en-IN")}` : "₹0"}</span>
                       <span className="text-xs text-muted-foreground">/mo after trial</span>
                     </div>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    14-day trial is completely free. You won't be charged until your trial ends.
-                  </p>
+                  <p className="text-xs text-muted-foreground">14-day trial is completely free. You won't be charged until your trial ends.</p>
                   <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      className="flex-1"
-                      onClick={() => handleSaveModules(true)}
-                      disabled={savingModules}
-                      data-testid="button-skip-modules"
-                    >
-                      Skip for now
-                    </Button>
-                    <Button
-                      className="flex-1"
-                      onClick={() => handleSaveModules(false)}
-                      disabled={savingModules}
-                      data-testid="button-confirm-modules"
-                    >
-                      {savingModules
-                        ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Saving…</>
-                        : <>Confirm &amp; Continue <ChevronRight className="h-4 w-4 ml-1" /></>
-                      }
+                    <Button variant="outline" className="flex-1" onClick={() => handleSaveModules(true)} disabled={savingModules} data-testid="button-skip-modules">Skip for now</Button>
+                    <Button className="flex-1" onClick={() => handleSaveModules(false)} disabled={savingModules} data-testid="button-confirm-modules">
+                      {savingModules ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Saving…</> : <>Continue <ChevronRight className="h-4 w-4 ml-1" /></>}
                     </Button>
                   </div>
                 </CardContent>
               </Card>
+            </div>
+          )}
+
+          {/* ── Step 4: Branding ───────────────────────────────────────────── */}
+          {step === "branding" && (
+            <div className="space-y-4">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle>Brand your workspace</CardTitle>
+                  <CardDescription>All fields are optional — you can always update these later in Company Settings.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-5">
+
+                  {/* Logo upload */}
+                  <div className="space-y-2">
+                    <Label>Company Logo <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                    <div
+                      className="border-2 border-dashed rounded-xl p-5 flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-primary/50 transition-colors"
+                      onClick={() => logoInputRef.current?.click()}
+                      data-testid="logo-upload-zone"
+                    >
+                      {logoPreview ? (
+                        <img src={logoPreview} alt="Logo preview" className="max-h-20 max-w-full object-contain rounded" />
+                      ) : (
+                        <>
+                          <div className="rounded-full bg-muted p-3">
+                            <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                          </div>
+                          <div className="text-center">
+                            <p className="text-sm font-medium">Click to upload logo</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">PNG, JPG, SVG · Max 5 MB</p>
+                          </div>
+                        </>
+                      )}
+                      <input ref={logoInputRef} type="file" accept="image/*" className="hidden"
+                        onChange={handleLogoChange} data-testid="input-logo-file" />
+                    </div>
+                    {logoPreview && (
+                      <button type="button" onClick={() => { setLogoFile(null); setLogoPreview(null); }}
+                        className="text-xs text-destructive underline underline-offset-2">
+                        Remove logo
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Primary colour */}
+                  <div className="space-y-2">
+                    <Label>Brand Colour <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      {PRESET_COLORS.map(c => (
+                        <button key={c} type="button" onClick={() => setPrimaryColor(c)}
+                          data-testid={`color-preset-${c.replace("#", "")}`}
+                          className={`w-7 h-7 rounded-full border-2 transition-all ${primaryColor === c ? "border-foreground scale-110" : "border-transparent"}`}
+                          style={{ backgroundColor: c }} />
+                      ))}
+                      <div className="flex items-center gap-1.5 ml-auto">
+                        <span className="text-xs text-muted-foreground">Custom:</span>
+                        <input type="color" value={primaryColor} onChange={e => setPrimaryColor(e.target.value)}
+                          className="w-8 h-8 rounded cursor-pointer border border-border" data-testid="input-brand-color" />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="w-4 h-4 rounded-full" style={{ backgroundColor: primaryColor }} />
+                      <span className="text-xs font-mono text-muted-foreground">{primaryColor}</span>
+                    </div>
+                  </div>
+
+                  {/* Industry */}
+                  <div className="space-y-2">
+                    <Label>Industry <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                    <Select value={industry} onValueChange={setIndustry}>
+                      <SelectTrigger data-testid="select-industry">
+                        <SelectValue placeholder="Select your industry…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {INDUSTRIES.map(ind => (
+                          <SelectItem key={ind} value={ind}>{ind}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Custom domain */}
+                  <div className="space-y-2">
+                    <Label htmlFor="custom-domain">
+                      Custom Domain <span className="text-muted-foreground text-xs">(optional)</span>
+                    </Label>
+                    <div className="relative">
+                      <Globe className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input id="custom-domain" data-testid="input-custom-domain"
+                        placeholder="e.g. erp.yourcompany.com"
+                        className="pl-10"
+                        value={customDomain}
+                        onChange={e => setCustomDomain(e.target.value)} />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      If you'll access SwachERP from a custom domain, add it here — it will be whitelisted automatically. Your default URL <code className="font-mono bg-muted px-1 rounded text-[10px]">https://{form.slug}.swacherp.com</code> is already saved.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1" onClick={() => handleSaveBranding(true)} disabled={savingBranding} data-testid="button-skip-branding">
+                  Skip for now
+                </Button>
+                <Button className="flex-1" onClick={() => handleSaveBranding(false)} disabled={savingBranding} data-testid="button-save-branding">
+                  {savingBranding
+                    ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Saving…</>
+                    : <><Upload className="h-4 w-4 mr-1.5" />Save &amp; Finish</>
+                  }
+                </Button>
+              </div>
             </div>
           )}
 
@@ -582,8 +704,7 @@ export default function RegisterCompanyPage() {
             <div className="space-y-2.5 text-left">
               {panel.bullets.map(b => (
                 <div key={b} className="flex items-center gap-2 text-sm opacity-80">
-                  <CheckCircle2 className="h-4 w-4 shrink-0 opacity-70" />
-                  {b}
+                  <CheckCircle2 className="h-4 w-4 shrink-0 opacity-70" />{b}
                 </div>
               ))}
             </div>
@@ -593,14 +714,31 @@ export default function RegisterCompanyPage() {
               <p className="text-xs font-semibold opacity-60 uppercase tracking-wider mb-2">Your selection</p>
               {paidSelected.map(m => (
                 <div key={m.slug} className="flex justify-between text-xs opacity-80">
-                  <span>{m.name}</span>
-                  <span>₹{m.price}/mo</span>
+                  <span>{m.name}</span><span>₹{m.price}/mo</span>
                 </div>
               ))}
               <Separator className="bg-white/20 my-2" />
               <div className="flex justify-between text-sm font-bold">
-                <span>Total after trial</span>
-                <span>₹{monthlyTotal.toLocaleString("en-IN")}/mo</span>
+                <span>Total after trial</span><span>₹{monthlyTotal.toLocaleString("en-IN")}/mo</span>
+              </div>
+            </div>
+          )}
+          {step === "branding" && (
+            <div className="bg-white/10 rounded-2xl p-4 text-left mt-4 space-y-3">
+              <p className="text-xs font-semibold opacity-60 uppercase tracking-wider">Preview</p>
+              <div className="flex items-center gap-3">
+                {logoPreview
+                  ? <img src={logoPreview} alt="Logo" className="w-10 h-10 rounded-lg object-contain bg-white/20 p-1" />
+                  : <div className="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center text-sm font-bold">{form.companyName[0] ?? "?"}</div>
+                }
+                <div>
+                  <p className="text-sm font-semibold">{form.companyName || "Your Company"}</p>
+                  <p className="text-xs opacity-60">{industry || "Industry not set"}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-xs opacity-70">
+                <div className="w-4 h-4 rounded-full border-2 border-white/50" style={{ backgroundColor: primaryColor }} />
+                Brand colour: <span className="font-mono">{primaryColor}</span>
               </div>
             </div>
           )}
