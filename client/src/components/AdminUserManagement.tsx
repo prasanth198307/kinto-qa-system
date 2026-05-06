@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search, Plus, Trash2, Edit, LogOut } from "lucide-react";
+import { Search, Plus, Trash2, Edit, LogOut, CheckCircle2, XCircle, Loader2, AlertCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -106,6 +106,24 @@ export default function AdminUserManagement() {
   const [newUserFirstName, setNewUserFirstName] = useState('');
   const [newUserLastName, setNewUserLastName] = useState('');
   const [newUserRoleIds, setNewUserRoleIds] = useState<string[]>([]);
+
+  // Username availability check
+  type AvailStatus = 'idle' | 'checking' | 'available' | 'taken';
+  const [usernameStatus, setUsernameStatus] = useState<AvailStatus>('idle');
+  const usernameDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const checkUsername = (value: string) => {
+    if (usernameDebounce.current) clearTimeout(usernameDebounce.current);
+    if (!value.trim()) { setUsernameStatus('idle'); return; }
+    setUsernameStatus('checking');
+    usernameDebounce.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/users/check-username?username=${encodeURIComponent(value.trim())}`);
+        const data = await res.json();
+        setUsernameStatus(data.available ? 'available' : 'taken');
+      } catch { setUsernameStatus('idle'); }
+    }, 500);
+  };
 
   const { toast } = useToast();
   const { modules } = usePlanFeatures();
@@ -233,11 +251,16 @@ export default function AdminUserManagement() {
     setNewUserFirstName('');
     setNewUserLastName('');
     setNewUserRoleIds([]);
+    setUsernameStatus('idle');
   };
 
   const handleCreateUser = () => {
     if (!newUserEmail || !newUserPassword || !newUserMobileNumber) {
       toast({ title: "Validation Error", description: "Email, password, and mobile number are required.", variant: "destructive" });
+      return;
+    }
+    if (newUserUsername.trim() && usernameStatus === 'taken') {
+      toast({ title: "Username taken", description: "Please choose a different username.", variant: "destructive" });
       return;
     }
     if (!/^[0-9]{10}$/.test(newUserMobileNumber)) {
@@ -385,13 +408,23 @@ export default function AdminUserManagement() {
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label>Username</Label>
-                <Input
-                  placeholder="Enter username (optional)"
-                  value={newUserUsername}
-                  onChange={(e) => setNewUserUsername(e.target.value)}
-                  data-testid="input-username"
-                />
-                <p className="text-xs text-muted-foreground">Leave blank to auto-generate from email</p>
+                <div className="relative">
+                  <Input
+                    placeholder="Enter username (optional)"
+                    value={newUserUsername}
+                    onChange={(e) => { setNewUserUsername(e.target.value); checkUsername(e.target.value); }}
+                    className={`pr-9 ${usernameStatus === 'available' ? 'border-emerald-500 focus-visible:ring-emerald-500' : usernameStatus === 'taken' ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+                    data-testid="input-username"
+                  />
+                  <div className="absolute right-3 top-2.5">
+                    {usernameStatus === 'checking'  && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                    {usernameStatus === 'available' && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
+                    {usernameStatus === 'taken'     && <XCircle className="h-4 w-4 text-destructive" />}
+                  </div>
+                </div>
+                {usernameStatus === 'available' && <p className="text-xs text-emerald-600 font-medium">Username is available</p>}
+                {usernameStatus === 'taken'     && <p className="text-xs text-destructive">Username already taken — choose another</p>}
+                {(usernameStatus === 'idle' || usernameStatus === 'checking') && <p className="text-xs text-muted-foreground">Leave blank to auto-generate from email</p>}
               </div>
               <div className="space-y-2">
                 <Label>Email *</Label>

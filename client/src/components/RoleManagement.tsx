@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Plus, Edit, Trash2, Shield, Check, X, AlertTriangle, RefreshCw, Copy, Eye, EyeOff, Search } from "lucide-react";
+import { Plus, Edit, Trash2, Shield, Check, X, AlertTriangle, RefreshCw, Copy, Eye, EyeOff, Search, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
@@ -205,6 +205,24 @@ export default function RoleManagement() {
   // Create role form
   const [newRoleName, setNewRoleName] = useState('');
   const [newRoleDescription, setNewRoleDescription] = useState('');
+
+  // Role name availability check
+  type RoleAvailStatus = 'idle' | 'checking' | 'available' | 'taken';
+  const [roleNameStatus, setRoleNameStatus] = useState<RoleAvailStatus>('idle');
+  const roleDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const checkRoleName = (value: string) => {
+    if (roleDebounce.current) clearTimeout(roleDebounce.current);
+    if (!value.trim() || value.trim().length < 2) { setRoleNameStatus('idle'); return; }
+    setRoleNameStatus('checking');
+    roleDebounce.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/roles/check-name?name=${encodeURIComponent(value.trim())}`);
+        const data = await res.json();
+        setRoleNameStatus(data.available ? 'available' : 'taken');
+      } catch { setRoleNameStatus('idle'); }
+    }, 500);
+  };
   
   // Edit role form
   const [editRoleName, setEditRoleName] = useState('');
@@ -350,6 +368,7 @@ export default function RoleManagement() {
   const resetCreateForm = () => {
     setNewRoleName('');
     setNewRoleDescription('');
+    setRoleNameStatus('idle');
   };
 
   const handleCreateRole = () => {
@@ -359,6 +378,10 @@ export default function RoleManagement() {
         description: "Role name is required.",
         variant: "destructive",
       });
+      return;
+    }
+    if (roleNameStatus === 'taken') {
+      toast({ title: "Role name taken", description: "Please choose a different role name.", variant: "destructive" });
       return;
     }
 
@@ -664,13 +687,23 @@ export default function RoleManagement() {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="role-name">Role Name</Label>
-              <Input
-                id="role-name"
-                placeholder="e.g., supervisor, quality_inspector"
-                value={newRoleName}
-                onChange={(e) => setNewRoleName(e.target.value)}
-                data-testid="input-role-name"
-              />
+              <div className="relative">
+                <Input
+                  id="role-name"
+                  placeholder="e.g., supervisor, quality_inspector"
+                  value={newRoleName}
+                  onChange={(e) => { setNewRoleName(e.target.value); checkRoleName(e.target.value); }}
+                  className={`pr-9 ${roleNameStatus === 'available' ? 'border-emerald-500 focus-visible:ring-emerald-500' : roleNameStatus === 'taken' ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+                  data-testid="input-role-name"
+                />
+                <div className="absolute right-3 top-2.5">
+                  {roleNameStatus === 'checking'  && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                  {roleNameStatus === 'available' && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
+                  {roleNameStatus === 'taken'     && <XCircle className="h-4 w-4 text-destructive" />}
+                </div>
+              </div>
+              {roleNameStatus === 'available' && <p className="text-xs text-emerald-600 font-medium">Role name is available</p>}
+              {roleNameStatus === 'taken'     && <p className="text-xs text-destructive">Role name already exists — choose another</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="role-description">Description</Label>
