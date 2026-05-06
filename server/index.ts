@@ -131,6 +131,9 @@ app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 // Serve static files
 app.use(express.static("public"));
 app.use('/uploads', express.static('uploads'));
+// Logos are uploaded to client/public/logos/ at runtime (after build) so they
+// must be served from the source directory, not just the build output.
+app.use('/logos', express.static('client/public/logos'));
 
 // --- Logging middleware for API requests ---
 app.use((req, res, next) => {
