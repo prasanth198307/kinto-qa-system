@@ -902,9 +902,8 @@ function LibraryTab() {
 function FeesTab() {
   const { toast } = useToast();
   const [subTab, setSubTab] = useState<"payments"|"structures"|"components"|"scholarships"|"discounts"|"ledger">("payments");
-  const [showForm, setShowForm] = useState(false);
-  const [editing, setEditing] = useState<any>(null);
-  const [form, setForm] = useState<any>({});
+
+  // ── data ──
   const { data: structures = [] } = useQuery<any[]>({ queryKey: ["/api/education/fee-structures"] });
   const { data: payments = [] } = useQuery<any[]>({ queryKey: ["/api/education/fee-payments"] });
   const { data: students = [] } = useQuery<any[]>({ queryKey: ["/api/education/students"] });
@@ -913,71 +912,164 @@ function FeesTab() {
   const { data: scholarships = [] } = useQuery<any[]>({ queryKey: ["/api/education/scholarships"] });
   const { data: discounts = [] } = useQuery<any[]>({ queryKey: ["/api/education/discounts"] });
   const { data: ledger = [] } = useQuery<any[]>({ queryKey: ["/api/education/fee-ledger"] });
+  const { data: studentScholarships = [] } = useQuery<any[]>({ queryKey: ["/api/education/student-scholarships"] });
+  const { data: studentDiscounts = [] } = useQuery<any[]>({ queryKey: ["/api/education/student-discounts"] });
 
-  const pfSave = useMutation({ mutationFn: (d: any) => apiRequest("POST", "/api/education/fee-payments", d), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/education/fee-payments"] }); setShowForm(false); toast({ title: "Payment recorded" }); } });
-  const sfSave = useMutation({ mutationFn: (d: any) => editing ? apiRequest("PUT", `/api/education/fee-structures/${editing.id}`, d) : apiRequest("POST", "/api/education/fee-structures", d), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/education/fee-structures"] }); setShowForm(false); toast({ title: "Saved" }); } });
-  const sfDel = useMutation({ mutationFn: (id: any) => apiRequest("DELETE", `/api/education/fee-structures/${id}`), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/education/fee-structures"] }) });
-  const compSave = useMutation({ mutationFn: (d: any) => editing ? apiRequest("PUT", `/api/education/fee-components/${editing.id}`, d) : apiRequest("POST", "/api/education/fee-components", d), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/education/fee-components"] }); setShowForm(false); toast({ title: "Saved" }); } });
-  const compDel = useMutation({ mutationFn: (id: any) => apiRequest("DELETE", `/api/education/fee-components/${id}`), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/education/fee-components"] }) });
-  const schSave = useMutation({ mutationFn: (d: any) => editing ? apiRequest("PUT", `/api/education/scholarships/${editing.id}`, d) : apiRequest("POST", "/api/education/scholarships", d), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/education/scholarships"] }); setShowForm(false); toast({ title: "Saved" }); } });
-  const schDel = useMutation({ mutationFn: (id: any) => apiRequest("DELETE", `/api/education/scholarships/${id}`), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/education/scholarships"] }) });
-  const discSave = useMutation({ mutationFn: (d: any) => apiRequest("POST", "/api/education/discounts", d), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/education/discounts"] }); setShowForm(false); toast({ title: "Saved" }); } });
-  const discDel = useMutation({ mutationFn: (id: any) => apiRequest("DELETE", `/api/education/discounts/${id}`), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/education/discounts"] }) });
-  const ledgerSave = useMutation({ mutationFn: (d: any) => apiRequest("POST", "/api/education/fee-ledger", d), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/education/fee-ledger"] }); setShowForm(false); toast({ title: "Entry added" }); } });
+  // ── payment form state ──
+  const [showPayment, setShowPayment] = useState(false);
+  const [pf, setPf] = useState<any>({ payment_mode: "cash", paid_date: new Date().toISOString().split("T")[0] });
 
-  const openNew = () => { setEditing(null); setForm({}); setShowForm(true); };
-  const openEdit = (item: any) => { setEditing(item); setForm({ ...item }); setShowForm(true); };
+  // ── scholarship master form ──
+  const [showSchMaster, setShowSchMaster] = useState(false);
+  const [editingSch, setEditingSch] = useState<any>(null);
+  const [schForm, setSchForm] = useState<any>({ type: "percentage" });
+
+  // ── assign scholarship to student ──
+  const [showAssignSch, setShowAssignSch] = useState(false);
+  const [assignSchForm, setAssignSchForm] = useState<any>({});
+
+  // ── discount master form ──
+  const [showDiscMaster, setShowDiscMaster] = useState(false);
+  const [discForm, setDiscForm] = useState<any>({ type: "fixed" });
+
+  // ── assign discount to student ──
+  const [showAssignDisc, setShowAssignDisc] = useState(false);
+  const [assignDiscForm, setAssignDiscForm] = useState<any>({});
+
+  // ── structure / component / ledger forms ──
+  const [showSfForm, setShowSfForm] = useState(false);
+  const [editingSf, setEditingSf] = useState<any>(null);
+  const [sfForm, setSfForm] = useState<any>({ frequency: "monthly", due_day: 10 });
+
+  const [showCompForm, setShowCompForm] = useState(false);
+  const [editingComp, setEditingComp] = useState<any>(null);
+  const [compForm, setCompForm] = useState<any>({});
+
+  const [showLedger, setShowLedger] = useState(false);
+  const [ledgerForm, setLedgerForm] = useState<any>({});
+
+  // ── payment breakdown computation ──
+  const selStudentId = String(pf.student_id || "");
+  const grossAmt = Number(pf.gross_amount || 0);
+
+  const appliedSchols = (studentScholarships as any[]).filter(ss => String(ss.student_id) === selStudentId);
+  const appliedDiscs  = (studentDiscounts   as any[]).filter(sd => String(sd.student_id) === selStudentId);
+
+  const breakdown: { label: string; amount: number }[] = [];
+  appliedSchols.forEach(ss => {
+    const base = (scholarships as any[]).find(s => s.id === ss.scholarship_id);
+    const type  = base?.type || "percentage";
+    const value = Number(ss.value ?? base?.value ?? 0);
+    const amt   = type === "percentage" ? Math.round(grossAmt * value / 100) : value;
+    if (amt > 0) breakdown.push({ label: `${ss.scholarship_name} (${type === "percentage" ? value + "%" : "₹" + fmt(value)})`, amount: amt });
+  });
+  appliedDiscs.forEach(sd => {
+    const base  = (discounts as any[]).find(d => d.id === sd.discount_id);
+    const type  = base?.type || "fixed";
+    const value = Number(sd.value || 0);
+    const amt   = type === "percentage" ? Math.round(grossAmt * value / 100) : value;
+    if (amt > 0) breakdown.push({ label: `${sd.discount_name} Discount`, amount: amt });
+  });
+  const totalDeduction = breakdown.reduce((s, b) => s + b.amount, 0);
+  const netPayable = Math.max(0, grossAmt - totalDeduction);
+
+  // ── mutations ──
+  const pfSave = useMutation({
+    mutationFn: (d: any) => apiRequest("POST", "/api/education/fee-payments", d),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/education/fee-payments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/education/fee-ledger"] });
+      setShowPayment(false);
+      setPf({ payment_mode: "cash", paid_date: new Date().toISOString().split("T")[0] });
+      toast({ title: "Payment recorded", description: "Ledger entries posted automatically." });
+    }
+  });
+  const schMasterSave = useMutation({
+    mutationFn: (d: any) => editingSch ? apiRequest("PUT", `/api/education/scholarships/${editingSch.id}`, d) : apiRequest("POST", "/api/education/scholarships", d),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/education/scholarships"] }); setShowSchMaster(false); toast({ title: "Saved" }); }
+  });
+  const schMasterDel = useMutation({ mutationFn: (id: any) => apiRequest("DELETE", `/api/education/scholarships/${id}`), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/education/scholarships"] }) });
+  const assignSchSave = useMutation({
+    mutationFn: (d: any) => apiRequest("POST", "/api/education/student-scholarships", d),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/education/student-scholarships"] }); setShowAssignSch(false); toast({ title: "Scholarship assigned" }); }
+  });
+  const assignSchDel = useMutation({ mutationFn: (id: any) => apiRequest("DELETE", `/api/education/student-scholarships/${id}`), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/education/student-scholarships"] }) });
+
+  const discMasterSave = useMutation({
+    mutationFn: (d: any) => apiRequest("POST", "/api/education/discounts", d),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/education/discounts"] }); setShowDiscMaster(false); toast({ title: "Saved" }); }
+  });
+  const discMasterDel = useMutation({ mutationFn: (id: any) => apiRequest("DELETE", `/api/education/discounts/${id}`), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/education/discounts"] }) });
+  const assignDiscSave = useMutation({
+    mutationFn: (d: any) => apiRequest("POST", "/api/education/student-discounts", d),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/education/student-discounts"] }); setShowAssignDisc(false); toast({ title: "Discount assigned" }); }
+  });
+  const assignDiscDel = useMutation({ mutationFn: (id: any) => apiRequest("DELETE", `/api/education/student-discounts/${id}`), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/education/student-discounts"] }) });
+
+  const sfSave = useMutation({ mutationFn: (d: any) => editingSf ? apiRequest("PUT", `/api/education/fee-structures/${editingSf.id}`, d) : apiRequest("POST", "/api/education/fee-structures", d), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/education/fee-structures"] }); setShowSfForm(false); toast({ title: "Saved" }); } });
+  const sfDel  = useMutation({ mutationFn: (id: any) => apiRequest("DELETE", `/api/education/fee-structures/${id}`), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/education/fee-structures"] }) });
+  const compSave = useMutation({ mutationFn: (d: any) => editingComp ? apiRequest("PUT", `/api/education/fee-components/${editingComp.id}`, d) : apiRequest("POST", "/api/education/fee-components", d), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/education/fee-components"] }); setShowCompForm(false); toast({ title: "Saved" }); } });
+  const compDel  = useMutation({ mutationFn: (id: any) => apiRequest("DELETE", `/api/education/fee-components/${id}`), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/education/fee-components"] }) });
+  const ledgerSave = useMutation({ mutationFn: (d: any) => apiRequest("POST", "/api/education/fee-ledger", d), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/education/fee-ledger"] }); setShowLedger(false); toast({ title: "Entry added" }); } });
 
   const SUBTABS = [
-    { key: "payments", label: `Payments (${(payments as any[]).length})` },
-    { key: "structures", label: "Fee Structures" },
-    { key: "components", label: "Fee Components" },
-    { key: "scholarships", label: "Scholarships" },
-    { key: "discounts", label: "Discounts" },
-    { key: "ledger", label: "Fee Ledger" },
+    { key: "payments",    label: `Payments (${(payments as any[]).length})` },
+    { key: "structures",  label: "Fee Structures" },
+    { key: "components",  label: "Fee Components" },
+    { key: "scholarships",label: "Scholarships" },
+    { key: "discounts",   label: "Discounts" },
+    { key: "ledger",      label: "Fee Ledger" },
   ];
 
-  const isSaving = pfSave.isPending||sfSave.isPending||compSave.isPending||schSave.isPending||discSave.isPending||ledgerSave.isPending;
-  const doSave = () => {
-    if(subTab==="payments") pfSave.mutate(form);
-    else if(subTab==="structures") sfSave.mutate(form);
-    else if(subTab==="components") compSave.mutate(form);
-    else if(subTab==="scholarships") schSave.mutate(form);
-    else if(subTab==="discounts") discSave.mutate(form);
-    else ledgerSave.mutate(form);
+  const addBtn: Record<string, { label: string; action: () => void }> = {
+    payments:    { label: "Record Payment",  action: () => setShowPayment(true) },
+    structures:  { label: "Add Structure",   action: () => { setEditingSf(null); setSfForm({ frequency:"monthly", due_day:10 }); setShowSfForm(true); } },
+    components:  { label: "Add Component",   action: () => { setEditingComp(null); setCompForm({}); setShowCompForm(true); } },
+    scholarships:{ label: "Add Scholarship", action: () => { setEditingSch(null); setSchForm({ type:"percentage" }); setShowSchMaster(true); } },
+    discounts:   { label: "Add Discount",    action: () => { setDiscForm({ type:"fixed" }); setShowDiscMaster(true); } },
+    ledger:      { label: "Add Entry",       action: () => { setLedgerForm({}); setShowLedger(true); } },
   };
 
   return (
     <div className="space-y-4">
+      {/* Sub-tab bar */}
       <div className="flex flex-wrap items-center gap-2">
-        {SUBTABS.map(t=><Button key={t.key} variant={subTab===t.key?"default":"outline"} onClick={()=>setSubTab(t.key as any)} className="text-xs">{t.label}</Button>)}
+        {SUBTABS.map(t => <Button key={t.key} variant={subTab===t.key?"default":"outline"} onClick={()=>setSubTab(t.key as any)} className="text-xs">{t.label}</Button>)}
         <div className="flex-1"/>
-        <Button onClick={openNew}><Plus className="h-4 w-4 mr-1"/>
-          {subTab==="payments"?"Record Payment":subTab==="structures"?"Add Structure":subTab==="components"?"Add Component":subTab==="scholarships"?"Add Scholarship":subTab==="discounts"?"Add Discount":"Add Entry"}
-        </Button>
+        <Button onClick={addBtn[subTab].action}><Plus className="h-4 w-4 mr-1"/>{addBtn[subTab].label}</Button>
       </div>
 
+      {/* ── Payments ── */}
       {subTab==="payments"&&<div className="rounded-md border overflow-x-auto"><table className="w-full text-sm">
-        <thead className="bg-muted/50"><tr>{["Receipt","Student","Class","Month","Amount","Mode","Date"].map(h=><th key={h} className="px-3 py-2 text-left font-medium">{h}</th>)}</tr></thead>
+        <thead className="bg-muted/50"><tr>{["Receipt","Student","Class","Month","Gross","Discount","Net Paid","Mode","Date"].map(h=><th key={h} className="px-3 py-2 text-left font-medium">{h}</th>)}</tr></thead>
         <tbody>{(payments as any[]).map((p:any)=>(
           <tr key={p.id} className="border-t hover:bg-muted/30">
-            <td className="px-3 py-2 font-mono text-xs">{p.receipt_no}</td><td className="px-3 py-2 font-medium">{p.student_name}</td><td className="px-3 py-2">{p.class_name||"—"}</td>
-            <td className="px-3 py-2">{p.for_month||"—"}</td><td className="px-3 py-2 font-semibold">₹{fmt(p.amount)}</td><td className="px-3 py-2 uppercase">{p.payment_mode}</td><td className="px-3 py-2">{p.paid_date?.split("T")[0]}</td>
+            <td className="px-3 py-2 font-mono text-xs">{p.receipt_no}</td>
+            <td className="px-3 py-2 font-medium">{p.student_name}</td>
+            <td className="px-3 py-2">{p.class_name||"—"}</td>
+            <td className="px-3 py-2">{p.for_month||"—"}</td>
+            <td className="px-3 py-2">₹{fmt(p.gross_amount||p.amount)}</td>
+            <td className="px-3 py-2 text-green-600 dark:text-green-400">{Number(p.discount_amount)>0?`−₹${fmt(p.discount_amount)}`:"—"}</td>
+            <td className="px-3 py-2 font-semibold">₹{fmt(p.amount)}</td>
+            <td className="px-3 py-2 uppercase">{p.payment_mode}</td>
+            <td className="px-3 py-2">{p.paid_date?.split("T")[0]}</td>
           </tr>
-        ))}{!(payments as any[]).length&&<tr><td colSpan={7} className="px-3 py-6 text-center text-muted-foreground">No payments recorded</td></tr>}</tbody>
+        ))}{!(payments as any[]).length&&<tr><td colSpan={9} className="px-3 py-6 text-center text-muted-foreground">No payments recorded</td></tr>}</tbody>
       </table></div>}
 
+      {/* ── Fee Structures ── */}
       {subTab==="structures"&&<div className="rounded-md border overflow-x-auto"><table className="w-full text-sm">
         <thead className="bg-muted/50"><tr>{["Class","Fee Type","Amount","Frequency","Year","Due Day",""].map(h=><th key={h} className="px-3 py-2 text-left font-medium">{h}</th>)}</tr></thead>
         <tbody>{(structures as any[]).map((s:any)=>(
           <tr key={s.id} className="border-t hover:bg-muted/30">
             <td className="px-3 py-2">{s.class_name||"All"}</td><td className="px-3 py-2 font-medium">{s.fee_type}</td><td className="px-3 py-2">₹{fmt(s.amount)}</td>
             <td className="px-3 py-2 capitalize">{s.frequency}</td><td className="px-3 py-2">{s.academic_year||"—"}</td><td className="px-3 py-2">{s.due_day}</td>
-            <td className="px-3 py-2"><div className="flex gap-1"><Button size="icon" variant="ghost" onClick={()=>openEdit(s)}><Pencil className="h-3.5 w-3.5"/></Button><Button size="icon" variant="ghost" onClick={()=>sfDel.mutate(s.id)}><Trash2 className="h-3.5 w-3.5"/></Button></div></td>
+            <td className="px-3 py-2"><div className="flex gap-1"><Button size="icon" variant="ghost" onClick={()=>{setEditingSf(s);setSfForm({...s});setShowSfForm(true);}}><Pencil className="h-3.5 w-3.5"/></Button><Button size="icon" variant="ghost" onClick={()=>sfDel.mutate(s.id)}><Trash2 className="h-3.5 w-3.5"/></Button></div></td>
           </tr>
         ))}{!(structures as any[]).length&&<tr><td colSpan={7} className="px-3 py-6 text-center text-muted-foreground">No fee structures defined</td></tr>}</tbody>
       </table></div>}
 
+      {/* ── Fee Components ── */}
       {subTab==="components"&&<div className="rounded-md border overflow-x-auto"><table className="w-full text-sm">
         <thead className="bg-muted/50"><tr>{["Component Name","Mandatory","Recurring",""].map(h=><th key={h} className="px-3 py-2 text-left font-medium">{h}</th>)}</tr></thead>
         <tbody>{(components as any[]).map((c:any)=>(
@@ -985,106 +1077,328 @@ function FeesTab() {
             <td className="px-3 py-2 font-medium">{c.name}</td>
             <td className="px-3 py-2"><Badge variant={c.mandatory?"default":"secondary"}>{c.mandatory?"Yes":"No"}</Badge></td>
             <td className="px-3 py-2"><Badge variant={c.recurring?"default":"secondary"}>{c.recurring?"Yes":"No"}</Badge></td>
-            <td className="px-3 py-2"><div className="flex gap-1"><Button size="icon" variant="ghost" onClick={()=>openEdit(c)}><Pencil className="h-3.5 w-3.5"/></Button><Button size="icon" variant="ghost" onClick={()=>compDel.mutate(c.id)}><Trash2 className="h-3.5 w-3.5"/></Button></div></td>
+            <td className="px-3 py-2"><div className="flex gap-1"><Button size="icon" variant="ghost" onClick={()=>{setEditingComp(c);setCompForm({...c});setShowCompForm(true);}}><Pencil className="h-3.5 w-3.5"/></Button><Button size="icon" variant="ghost" onClick={()=>compDel.mutate(c.id)}><Trash2 className="h-3.5 w-3.5"/></Button></div></td>
           </tr>
         ))}{!(components as any[]).length&&<tr><td colSpan={4} className="px-3 py-6 text-center text-muted-foreground">No fee components defined</td></tr>}</tbody>
       </table></div>}
 
-      {subTab==="scholarships"&&<div className="rounded-md border overflow-x-auto"><table className="w-full text-sm">
-        <thead className="bg-muted/50"><tr>{["Scholarship Name","Type","Value",""].map(h=><th key={h} className="px-3 py-2 text-left font-medium">{h}</th>)}</tr></thead>
-        <tbody>{(scholarships as any[]).map((s:any)=>(
-          <tr key={s.id} className="border-t hover:bg-muted/30">
-            <td className="px-3 py-2 font-medium">{s.name}</td><td className="px-3 py-2 capitalize">{s.type}</td>
-            <td className="px-3 py-2">{s.type==="percentage"?`${s.value}%`:`₹${fmt(s.value)}`}</td>
-            <td className="px-3 py-2"><div className="flex gap-1"><Button size="icon" variant="ghost" onClick={()=>openEdit(s)}><Pencil className="h-3.5 w-3.5"/></Button><Button size="icon" variant="ghost" onClick={()=>schDel.mutate(s.id)}><Trash2 className="h-3.5 w-3.5"/></Button></div></td>
-          </tr>
-        ))}{!(scholarships as any[]).length&&<tr><td colSpan={4} className="px-3 py-6 text-center text-muted-foreground">No scholarships defined</td></tr>}</tbody>
-      </table></div>}
+      {/* ── Scholarships ── */}
+      {subTab==="scholarships"&&<div className="space-y-4">
+        {/* Master list */}
+        <div>
+          <p className="text-sm font-medium text-muted-foreground mb-2">Scholarship Definitions</p>
+          <div className="rounded-md border overflow-x-auto"><table className="w-full text-sm">
+            <thead className="bg-muted/50"><tr>{["Name","Type","Value",""].map(h=><th key={h} className="px-3 py-2 text-left font-medium">{h}</th>)}</tr></thead>
+            <tbody>{(scholarships as any[]).map((s:any)=>(
+              <tr key={s.id} className="border-t hover:bg-muted/30">
+                <td className="px-3 py-2 font-medium">{s.name}</td><td className="px-3 py-2 capitalize">{s.type}</td>
+                <td className="px-3 py-2">{s.type==="percentage"?`${s.value}%`:`₹${fmt(s.value)}`}</td>
+                <td className="px-3 py-2"><div className="flex gap-1">
+                  <Button size="icon" variant="ghost" onClick={()=>{setEditingSch(s);setSchForm({...s});setShowSchMaster(true);}}><Pencil className="h-3.5 w-3.5"/></Button>
+                  <Button size="icon" variant="ghost" onClick={()=>schMasterDel.mutate(s.id)}><Trash2 className="h-3.5 w-3.5"/></Button>
+                </div></td>
+              </tr>
+            ))}{!(scholarships as any[]).length&&<tr><td colSpan={4} className="px-3 py-6 text-center text-muted-foreground">No scholarships defined</td></tr>}</tbody>
+          </table></div>
+        </div>
+        {/* Student assignments */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-medium text-muted-foreground">Student Assignments</p>
+            <Button size="sm" variant="outline" onClick={()=>{setAssignSchForm({});setShowAssignSch(true);}}><Plus className="h-3.5 w-3.5 mr-1"/>Assign to Student</Button>
+          </div>
+          <div className="rounded-md border overflow-x-auto"><table className="w-full text-sm">
+            <thead className="bg-muted/50"><tr>{["Student","Scholarship","Override Value",""].map(h=><th key={h} className="px-3 py-2 text-left font-medium">{h}</th>)}</tr></thead>
+            <tbody>{(studentScholarships as any[]).map((ss:any)=>(
+              <tr key={ss.id} className="border-t hover:bg-muted/30">
+                <td className="px-3 py-2 font-medium">{ss.student_name}</td>
+                <td className="px-3 py-2">{ss.scholarship_name}</td>
+                <td className="px-3 py-2">{ss.value!=null?(ss.type==="percentage"?`${ss.value}%`:`₹${fmt(ss.value)}`):"Default"}</td>
+                <td className="px-3 py-2"><Button size="icon" variant="ghost" onClick={()=>assignSchDel.mutate(ss.id)}><Trash2 className="h-3.5 w-3.5"/></Button></td>
+              </tr>
+            ))}{!(studentScholarships as any[]).length&&<tr><td colSpan={4} className="px-3 py-6 text-center text-muted-foreground">No assignments yet</td></tr>}</tbody>
+          </table></div>
+        </div>
+      </div>}
 
-      {subTab==="discounts"&&<div className="rounded-md border overflow-x-auto"><table className="w-full text-sm">
-        <thead className="bg-muted/50"><tr>{["Discount Name","Type",""].map(h=><th key={h} className="px-3 py-2 text-left font-medium">{h}</th>)}</tr></thead>
-        <tbody>{(discounts as any[]).map((d:any)=>(
-          <tr key={d.id} className="border-t hover:bg-muted/30">
-            <td className="px-3 py-2 font-medium">{d.name}</td><td className="px-3 py-2 capitalize">{d.type}</td>
-            <td className="px-3 py-2"><Button size="icon" variant="ghost" onClick={()=>discDel.mutate(d.id)}><Trash2 className="h-3.5 w-3.5"/></Button></td>
-          </tr>
-        ))}{!(discounts as any[]).length&&<tr><td colSpan={3} className="px-3 py-6 text-center text-muted-foreground">No discounts defined</td></tr>}</tbody>
-      </table></div>}
+      {/* ── Discounts ── */}
+      {subTab==="discounts"&&<div className="space-y-4">
+        {/* Master list */}
+        <div>
+          <p className="text-sm font-medium text-muted-foreground mb-2">Discount Definitions</p>
+          <div className="rounded-md border overflow-x-auto"><table className="w-full text-sm">
+            <thead className="bg-muted/50"><tr>{["Name","Type",""].map(h=><th key={h} className="px-3 py-2 text-left font-medium">{h}</th>)}</tr></thead>
+            <tbody>{(discounts as any[]).map((d:any)=>(
+              <tr key={d.id} className="border-t hover:bg-muted/30">
+                <td className="px-3 py-2 font-medium">{d.name}</td><td className="px-3 py-2 capitalize">{d.type}</td>
+                <td className="px-3 py-2"><Button size="icon" variant="ghost" onClick={()=>discMasterDel.mutate(d.id)}><Trash2 className="h-3.5 w-3.5"/></Button></td>
+              </tr>
+            ))}{!(discounts as any[]).length&&<tr><td colSpan={3} className="px-3 py-6 text-center text-muted-foreground">No discounts defined</td></tr>}</tbody>
+          </table></div>
+        </div>
+        {/* Student assignments */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-medium text-muted-foreground">Student Assignments</p>
+            <Button size="sm" variant="outline" onClick={()=>{setAssignDiscForm({});setShowAssignDisc(true);}}><Plus className="h-3.5 w-3.5 mr-1"/>Assign to Student</Button>
+          </div>
+          <div className="rounded-md border overflow-x-auto"><table className="w-full text-sm">
+            <thead className="bg-muted/50"><tr>{["Student","Discount","Value","Applicable On",""].map(h=><th key={h} className="px-3 py-2 text-left font-medium">{h}</th>)}</tr></thead>
+            <tbody>{(studentDiscounts as any[]).map((sd:any)=>(
+              <tr key={sd.id} className="border-t hover:bg-muted/30">
+                <td className="px-3 py-2 font-medium">{sd.student_name}</td>
+                <td className="px-3 py-2">{sd.discount_name}</td>
+                <td className="px-3 py-2">₹{fmt(sd.value)}</td>
+                <td className="px-3 py-2">{sd.applicable_on||"All fees"}</td>
+                <td className="px-3 py-2"><Button size="icon" variant="ghost" onClick={()=>assignDiscDel.mutate(sd.id)}><Trash2 className="h-3.5 w-3.5"/></Button></td>
+              </tr>
+            ))}{!(studentDiscounts as any[]).length&&<tr><td colSpan={5} className="px-3 py-6 text-center text-muted-foreground">No assignments yet</td></tr>}</tbody>
+          </table></div>
+        </div>
+      </div>}
 
+      {/* ── Fee Ledger ── */}
       {subTab==="ledger"&&<div className="rounded-md border overflow-x-auto"><table className="w-full text-sm">
-        <thead className="bg-muted/50"><tr>{["Voucher","Date","Student","Component","Debit","Credit","Balance","Narration"].map(h=><th key={h} className="px-3 py-2 text-left font-medium">{h}</th>)}</tr></thead>
+        <thead className="bg-muted/50"><tr>{["Voucher","Date","Student","Description","Debit","Credit","Balance"].map(h=><th key={h} className="px-3 py-2 text-left font-medium">{h}</th>)}</tr></thead>
         <tbody>{(ledger as any[]).map((l:any)=>(
           <tr key={l.id} className="border-t hover:bg-muted/30">
-            <td className="px-3 py-2 font-mono text-xs">{l.voucher_no}</td><td className="px-3 py-2">{l.entry_date}</td><td className="px-3 py-2 font-medium">{l.student_name}</td>
-            <td className="px-3 py-2">{l.component_name||"—"}</td>
-            <td className="px-3 py-2 text-red-600 dark:text-red-400">₹{fmt(l.debit)}</td>
-            <td className="px-3 py-2 text-green-600 dark:text-green-400">₹{fmt(l.credit)}</td>
+            <td className="px-3 py-2 font-mono text-xs">{l.voucher_no}</td>
+            <td className="px-3 py-2">{l.entry_date?.split("T")[0]||l.entry_date}</td>
+            <td className="px-3 py-2 font-medium">{l.student_name}</td>
+            <td className="px-3 py-2">{l.component_name||l.narration||"—"}</td>
+            <td className="px-3 py-2 text-red-600 dark:text-red-400">{Number(l.debit)>0?`₹${fmt(l.debit)}`:"—"}</td>
+            <td className="px-3 py-2 text-green-600 dark:text-green-400">{Number(l.credit)>0?`₹${fmt(l.credit)}`:"—"}</td>
             <td className="px-3 py-2 font-semibold">₹{fmt(l.balance)}</td>
-            <td className="px-3 py-2 text-muted-foreground text-xs">{l.narration||"—"}</td>
           </tr>
-        ))}{!(ledger as any[]).length&&<tr><td colSpan={8} className="px-3 py-6 text-center text-muted-foreground">No ledger entries</td></tr>}</tbody>
+        ))}{!(ledger as any[]).length&&<tr><td colSpan={7} className="px-3 py-6 text-center text-muted-foreground">No ledger entries</td></tr>}</tbody>
       </table></div>}
 
-      <Dialog open={showForm} onOpenChange={setShowForm}>
+      {/* ══ PAYMENT DIALOG ══ */}
+      <Dialog open={showPayment} onOpenChange={setShowPayment}>
         <DialogContent className="max-w-md max-h-[90dvh] overflow-y-auto">
-          <DialogHeader><DialogTitle>
-            {subTab==="payments"?"Record Fee Payment":subTab==="structures"?(editing?"Edit":"Add")+" Fee Structure":subTab==="components"?(editing?"Edit":"Add")+" Fee Component":subTab==="scholarships"?(editing?"Edit":"Add")+" Scholarship":subTab==="discounts"?"Add Discount":"Add Ledger Entry"}
-          </DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Record Fee Payment</DialogTitle></DialogHeader>
+          <div className="grid gap-3">
+            <F label="Student *">
+              <Select value={String(pf.student_id||"")} onValueChange={v=>setPf({...pf,student_id:v,gross_amount:""})}>
+                <SelectTrigger><SelectValue placeholder="Select student"/></SelectTrigger>
+                <SelectContent>{(students as any[]).map((s:any)=><SelectItem key={s.id} value={String(s.id)}>{s.name}{s.class_name?` — ${s.class_name}`:""}</SelectItem>)}</SelectContent>
+              </Select>
+            </F>
+            <F label="Fee Structure">
+              <Select value={pf.fee_structure_id?String(pf.fee_structure_id):"__none__"} onValueChange={v=>{
+                const sf = (structures as any[]).find(s=>String(s.id)===v);
+                setPf({...pf, fee_structure_id: v==="__none__"?"":v, gross_amount: sf?.amount||pf.gross_amount });
+              }}>
+                <SelectTrigger><SelectValue placeholder="Select structure (optional)"/></SelectTrigger>
+                <SelectContent><SelectItem value="__none__">None</SelectItem>{(structures as any[]).map((s:any)=><SelectItem key={s.id} value={String(s.id)}>{s.fee_type} — ₹{fmt(s.amount)}</SelectItem>)}</SelectContent>
+              </Select>
+            </F>
+            <F label="Gross Amount (₹) *">
+              <Input type="number" placeholder="Total fee before deductions" value={pf.gross_amount||""} onChange={e=>setPf({...pf,gross_amount:e.target.value})}/>
+            </F>
 
-          {subTab==="payments"&&<div className="grid gap-3">
-            <F label="Student *"><Select value={String(form.student_id||"")} onValueChange={v=>setForm({...form,student_id:v})}><SelectTrigger><SelectValue placeholder="Select student"/></SelectTrigger><SelectContent>{(students as any[]).map((s:any)=><SelectItem key={s.id} value={String(s.id)}>{s.name} — {s.class_name||""}</SelectItem>)}</SelectContent></Select></F>
-            <F label="Fee Structure"><Select value={form.fee_structure_id?String(form.fee_structure_id):"__none__"} onValueChange={v=>setForm({...form,fee_structure_id:v==="__none__"?"":v})}><SelectTrigger><SelectValue placeholder="Select structure"/></SelectTrigger><SelectContent><SelectItem value="__none__">None</SelectItem>{(structures as any[]).map((s:any)=><SelectItem key={s.id} value={String(s.id)}>{s.fee_type}</SelectItem>)}</SelectContent></Select></F>
-            <F label="Amount (₹) *"><Input type="number" value={form.amount||""} onChange={e=>setForm({...form,amount:e.target.value})}/></F>
-            <F label="For Month"><Input placeholder="April 2025" value={form.for_month||""} onChange={e=>setForm({...form,for_month:e.target.value})}/></F>
-            <F label="Payment Mode"><Select value={form.payment_mode||"cash"} onValueChange={v=>setForm({...form,payment_mode:v})}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{["cash","cheque","upi","bank_transfer","dd"].map(m=><SelectItem key={m} value={m}>{m.toUpperCase()}</SelectItem>)}</SelectContent></Select></F>
-            <F label="Date"><Input type="date" value={form.paid_date||""} onChange={e=>setForm({...form,paid_date:e.target.value})}/></F>
-            <F label="Notes"><Input value={form.notes||""} onChange={e=>setForm({...form,notes:e.target.value})}/></F>
-          </div>}
+            {/* Deduction breakdown — shown when student selected & gross > 0 */}
+            {selStudentId && grossAmt > 0 && (
+              <div className="rounded-md bg-muted/40 border p-3 space-y-1.5 text-sm">
+                <div className="flex justify-between"><span className="text-muted-foreground">Gross Fee</span><span>₹{fmt(grossAmt)}</span></div>
+                {breakdown.length > 0
+                  ? breakdown.map((b,i)=>(
+                    <div key={i} className="flex justify-between text-green-600 dark:text-green-400">
+                      <span>{b.label}</span><span>−₹{fmt(b.amount)}</span>
+                    </div>
+                  ))
+                  : <div className="text-muted-foreground text-xs">No scholarships or discounts assigned to this student.</div>
+                }
+                <div className="border-t pt-1.5 flex justify-between font-semibold">
+                  <span>Net Payable</span><span>₹{fmt(netPayable)}</span>
+                </div>
+              </div>
+            )}
 
-          {subTab==="structures"&&<div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2"><F label="Class"><Select value={form.class_id?String(form.class_id):"__none__"} onValueChange={v=>setForm({...form,class_id:v==="__none__"?"":v})}><SelectTrigger><SelectValue placeholder="All classes"/></SelectTrigger><SelectContent><SelectItem value="__none__">All Classes</SelectItem>{(classes as any[]).map((c:any)=><SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}</SelectContent></Select></F></div>
-            <F label="Fee Type *"><Input placeholder="Tuition, Transport…" value={form.fee_type||""} onChange={e=>setForm({...form,fee_type:e.target.value})}/></F>
-            <F label="Amount (₹) *"><Input type="number" value={form.amount||""} onChange={e=>setForm({...form,amount:e.target.value})}/></F>
-            <F label="Frequency"><Select value={form.frequency||"monthly"} onValueChange={v=>setForm({...form,frequency:v})}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{["monthly","quarterly","annual","one-time"].map(f=><SelectItem key={f} value={f}>{f}</SelectItem>)}</SelectContent></Select></F>
-            <F label="Due Day"><Input type="number" min={1} max={31} value={form.due_day||10} onChange={e=>setForm({...form,due_day:e.target.value})}/></F>
-            <div className="col-span-2"><F label="Academic Year"><Input placeholder="2024-25" value={form.academic_year||""} onChange={e=>setForm({...form,academic_year:e.target.value})}/></F></div>
-          </div>}
-
-          {subTab==="components"&&<div className="grid gap-3">
-            <F label="Component Name *"><Input value={form.name||""} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Tuition Fee, Lab Fee, Transport Fee…"/></F>
-            <div className="flex gap-6">
-              <label className="flex items-center gap-2 cursor-pointer"><Checkbox checked={form.mandatory!==0&&form.mandatory!==false} onCheckedChange={v=>setForm({...form,mandatory:v?1:0})}/><span className="text-sm">Mandatory</span></label>
-              <label className="flex items-center gap-2 cursor-pointer"><Checkbox checked={form.recurring!==0&&form.recurring!==false} onCheckedChange={v=>setForm({...form,recurring:v?1:0})}/><span className="text-sm">Recurring</span></label>
-            </div>
-          </div>}
-
-          {subTab==="scholarships"&&<div className="grid gap-3">
-            <F label="Scholarship Name *"><Input value={form.name||""} onChange={e=>setForm({...form,name:e.target.value})}/></F>
-            <div className="grid grid-cols-2 gap-3">
-              <F label="Type"><Select value={form.type||"percentage"} onValueChange={v=>setForm({...form,type:v})}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{["percentage","fixed"].map(t=><SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent></Select></F>
-              <F label="Value"><Input type="number" value={form.value||""} onChange={e=>setForm({...form,value:e.target.value})} placeholder={form.type==="percentage"?"%":"₹"}/></F>
-            </div>
-          </div>}
-
-          {subTab==="discounts"&&<div className="grid gap-3">
-            <F label="Discount Name *"><Input value={form.name||""} onChange={e=>setForm({...form,name:e.target.value})}/></F>
-            <F label="Type"><Select value={form.type||"fixed"} onValueChange={v=>setForm({...form,type:v})}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{["fixed","percentage"].map(t=><SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent></Select></F>
-          </div>}
-
-          {subTab==="ledger"&&<div className="grid gap-3">
-            <F label="Student *"><Select value={String(form.student_id||"")} onValueChange={v=>setForm({...form,student_id:v})}><SelectTrigger><SelectValue placeholder="Select student"/></SelectTrigger><SelectContent>{(students as any[]).map((s:any)=><SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}</SelectContent></Select></F>
-            <F label="Component Name"><Input value={form.component_name||""} onChange={e=>setForm({...form,component_name:e.target.value})} placeholder="Tuition Fee, Transport…"/></F>
-            <div className="grid grid-cols-2 gap-3">
-              <F label="Debit (₹)"><Input type="number" value={form.debit||""} onChange={e=>setForm({...form,debit:e.target.value})}/></F>
-              <F label="Credit (₹)"><Input type="number" value={form.credit||""} onChange={e=>setForm({...form,credit:e.target.value})}/></F>
-            </div>
-            <F label="Date"><Input type="date" value={form.entry_date||""} onChange={e=>setForm({...form,entry_date:e.target.value})}/></F>
-            <F label="Narration"><Input value={form.narration||""} onChange={e=>setForm({...form,narration:e.target.value})}/></F>
-          </div>}
-
+            <F label="For Month"><Input placeholder="April 2025" value={pf.for_month||""} onChange={e=>setPf({...pf,for_month:e.target.value})}/></F>
+            <F label="Payment Mode">
+              <Select value={pf.payment_mode||"cash"} onValueChange={v=>setPf({...pf,payment_mode:v})}>
+                <SelectTrigger><SelectValue/></SelectTrigger>
+                <SelectContent>{["cash","cheque","upi","bank_transfer","dd"].map(m=><SelectItem key={m} value={m}>{m.replace("_"," ").toUpperCase()}</SelectItem>)}</SelectContent>
+              </Select>
+            </F>
+            <F label="Date *"><Input type="date" value={pf.paid_date||""} onChange={e=>setPf({...pf,paid_date:e.target.value})}/></F>
+            <F label="Notes"><Input value={pf.notes||""} onChange={e=>setPf({...pf,notes:e.target.value})}/></F>
+          </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={()=>setShowForm(false)}>Cancel</Button>
-            <Button onClick={doSave} disabled={isSaving}>Save</Button>
+            <Button variant="outline" onClick={()=>setShowPayment(false)}>Cancel</Button>
+            <Button onClick={()=>pfSave.mutate({ ...pf, gross_amount: grossAmt, discount_amount: totalDeduction, amount: netPayable })} disabled={pfSave.isPending||!pf.student_id||!grossAmt||!pf.paid_date}>
+              {pfSave.isPending?"Saving…":"Record Payment"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ══ SCHOLARSHIP MASTER DIALOG ══ */}
+      <Dialog open={showSchMaster} onOpenChange={setShowSchMaster}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>{editingSch?"Edit":"Add"} Scholarship</DialogTitle></DialogHeader>
+          <div className="grid gap-3">
+            <F label="Name *"><Input value={schForm.name||""} onChange={e=>setSchForm({...schForm,name:e.target.value})}/></F>
+            <div className="grid grid-cols-2 gap-3">
+              <F label="Type">
+                <Select value={schForm.type||"percentage"} onValueChange={v=>setSchForm({...schForm,type:v})}>
+                  <SelectTrigger><SelectValue/></SelectTrigger>
+                  <SelectContent><SelectItem value="percentage">Percentage (%)</SelectItem><SelectItem value="fixed">Fixed (₹)</SelectItem></SelectContent>
+                </Select>
+              </F>
+              <F label="Value *"><Input type="number" value={schForm.value||""} onChange={e=>setSchForm({...schForm,value:e.target.value})} placeholder={schForm.type==="percentage"?"%":"₹"}/></F>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={()=>setShowSchMaster(false)}>Cancel</Button>
+            <Button onClick={()=>schMasterSave.mutate(schForm)} disabled={schMasterSave.isPending}>Save</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ══ ASSIGN SCHOLARSHIP DIALOG ══ */}
+      <Dialog open={showAssignSch} onOpenChange={setShowAssignSch}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Assign Scholarship to Student</DialogTitle></DialogHeader>
+          <div className="grid gap-3">
+            <F label="Student *">
+              <Select value={String(assignSchForm.student_id||"")} onValueChange={v=>setAssignSchForm({...assignSchForm,student_id:v})}>
+                <SelectTrigger><SelectValue placeholder="Select student"/></SelectTrigger>
+                <SelectContent>{(students as any[]).map((s:any)=><SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}</SelectContent>
+              </Select>
+            </F>
+            <F label="Scholarship *">
+              <Select value={String(assignSchForm.scholarship_id||"")} onValueChange={v=>setAssignSchForm({...assignSchForm,scholarship_id:v})}>
+                <SelectTrigger><SelectValue placeholder="Select scholarship"/></SelectTrigger>
+                <SelectContent>{(scholarships as any[]).map((s:any)=><SelectItem key={s.id} value={String(s.id)}>{s.name} ({s.type==="percentage"?`${s.value}%`:`₹${fmt(s.value)}`})</SelectItem>)}</SelectContent>
+              </Select>
+            </F>
+            <F label="Override Value (optional)"><Input type="number" placeholder="Leave blank to use default" value={assignSchForm.value||""} onChange={e=>setAssignSchForm({...assignSchForm,value:e.target.value})}/></F>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={()=>setShowAssignSch(false)}>Cancel</Button>
+            <Button onClick={()=>assignSchSave.mutate(assignSchForm)} disabled={assignSchSave.isPending||!assignSchForm.student_id||!assignSchForm.scholarship_id}>Assign</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ══ DISCOUNT MASTER DIALOG ══ */}
+      <Dialog open={showDiscMaster} onOpenChange={setShowDiscMaster}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Add Discount Type</DialogTitle></DialogHeader>
+          <div className="grid gap-3">
+            <F label="Name *"><Input value={discForm.name||""} onChange={e=>setDiscForm({...discForm,name:e.target.value})}/></F>
+            <F label="Type">
+              <Select value={discForm.type||"fixed"} onValueChange={v=>setDiscForm({...discForm,type:v})}>
+                <SelectTrigger><SelectValue/></SelectTrigger>
+                <SelectContent><SelectItem value="fixed">Fixed (₹)</SelectItem><SelectItem value="percentage">Percentage (%)</SelectItem></SelectContent>
+              </Select>
+            </F>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={()=>setShowDiscMaster(false)}>Cancel</Button>
+            <Button onClick={()=>discMasterSave.mutate(discForm)} disabled={discMasterSave.isPending}>Save</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ══ ASSIGN DISCOUNT DIALOG ══ */}
+      <Dialog open={showAssignDisc} onOpenChange={setShowAssignDisc}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Assign Discount to Student</DialogTitle></DialogHeader>
+          <div className="grid gap-3">
+            <F label="Student *">
+              <Select value={String(assignDiscForm.student_id||"")} onValueChange={v=>setAssignDiscForm({...assignDiscForm,student_id:v})}>
+                <SelectTrigger><SelectValue placeholder="Select student"/></SelectTrigger>
+                <SelectContent>{(students as any[]).map((s:any)=><SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}</SelectContent>
+              </Select>
+            </F>
+            <F label="Discount *">
+              <Select value={String(assignDiscForm.discount_id||"")} onValueChange={v=>setAssignDiscForm({...assignDiscForm,discount_id:v})}>
+                <SelectTrigger><SelectValue placeholder="Select discount"/></SelectTrigger>
+                <SelectContent>{(discounts as any[]).map((d:any)=><SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>)}</SelectContent>
+              </Select>
+            </F>
+            <F label="Amount / Value (₹ or %)"><Input type="number" value={assignDiscForm.value||""} onChange={e=>setAssignDiscForm({...assignDiscForm,value:e.target.value})}/></F>
+            <F label="Applicable On"><Input placeholder="e.g. Tuition Fee (or leave blank for all)" value={assignDiscForm.applicable_on||""} onChange={e=>setAssignDiscForm({...assignDiscForm,applicable_on:e.target.value})}/></F>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={()=>setShowAssignDisc(false)}>Cancel</Button>
+            <Button onClick={()=>assignDiscSave.mutate(assignDiscForm)} disabled={assignDiscSave.isPending||!assignDiscForm.student_id||!assignDiscForm.discount_id}>Assign</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ══ FEE STRUCTURE DIALOG ══ */}
+      <Dialog open={showSfForm} onOpenChange={setShowSfForm}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>{editingSf?"Edit":"Add"} Fee Structure</DialogTitle></DialogHeader>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2"><F label="Class">
+              <Select value={sfForm.class_id?String(sfForm.class_id):"__none__"} onValueChange={v=>setSfForm({...sfForm,class_id:v==="__none__"?"":v})}>
+                <SelectTrigger><SelectValue placeholder="All classes"/></SelectTrigger>
+                <SelectContent><SelectItem value="__none__">All Classes</SelectItem>{(classes as any[]).map((c:any)=><SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}</SelectContent>
+              </Select>
+            </F></div>
+            <F label="Fee Type *"><Input placeholder="Tuition, Transport…" value={sfForm.fee_type||""} onChange={e=>setSfForm({...sfForm,fee_type:e.target.value})}/></F>
+            <F label="Amount (₹) *"><Input type="number" value={sfForm.amount||""} onChange={e=>setSfForm({...sfForm,amount:e.target.value})}/></F>
+            <F label="Frequency">
+              <Select value={sfForm.frequency||"monthly"} onValueChange={v=>setSfForm({...sfForm,frequency:v})}>
+                <SelectTrigger><SelectValue/></SelectTrigger>
+                <SelectContent>{["monthly","quarterly","annual","one-time"].map(f=><SelectItem key={f} value={f}>{f}</SelectItem>)}</SelectContent>
+              </Select>
+            </F>
+            <F label="Due Day"><Input type="number" min={1} max={31} value={sfForm.due_day||10} onChange={e=>setSfForm({...sfForm,due_day:e.target.value})}/></F>
+            <div className="col-span-2"><F label="Academic Year"><Input placeholder="2024-25" value={sfForm.academic_year||""} onChange={e=>setSfForm({...sfForm,academic_year:e.target.value})}/></F></div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={()=>setShowSfForm(false)}>Cancel</Button>
+            <Button onClick={()=>sfSave.mutate(sfForm)} disabled={sfSave.isPending}>Save</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ══ FEE COMPONENT DIALOG ══ */}
+      <Dialog open={showCompForm} onOpenChange={setShowCompForm}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>{editingComp?"Edit":"Add"} Fee Component</DialogTitle></DialogHeader>
+          <div className="grid gap-3">
+            <F label="Component Name *"><Input value={compForm.name||""} onChange={e=>setCompForm({...compForm,name:e.target.value})} placeholder="Tuition Fee, Lab Fee…"/></F>
+            <div className="flex gap-6">
+              <label className="flex items-center gap-2 cursor-pointer"><Checkbox checked={compForm.mandatory!==0&&compForm.mandatory!==false} onCheckedChange={v=>setCompForm({...compForm,mandatory:v?1:0})}/><span className="text-sm">Mandatory</span></label>
+              <label className="flex items-center gap-2 cursor-pointer"><Checkbox checked={compForm.recurring!==0&&compForm.recurring!==false} onCheckedChange={v=>setCompForm({...compForm,recurring:v?1:0})}/><span className="text-sm">Recurring</span></label>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={()=>setShowCompForm(false)}>Cancel</Button>
+            <Button onClick={()=>compSave.mutate(compForm)} disabled={compSave.isPending}>Save</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ══ MANUAL LEDGER ENTRY DIALOG ══ */}
+      <Dialog open={showLedger} onOpenChange={setShowLedger}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Add Ledger Entry</DialogTitle></DialogHeader>
+          <div className="grid gap-3">
+            <F label="Student *">
+              <Select value={String(ledgerForm.student_id||"")} onValueChange={v=>setLedgerForm({...ledgerForm,student_id:v})}>
+                <SelectTrigger><SelectValue placeholder="Select student"/></SelectTrigger>
+                <SelectContent>{(students as any[]).map((s:any)=><SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}</SelectContent>
+              </Select>
+            </F>
+            <F label="Description"><Input value={ledgerForm.component_name||""} onChange={e=>setLedgerForm({...ledgerForm,component_name:e.target.value})} placeholder="Tuition Fee, Transport…"/></F>
+            <div className="grid grid-cols-2 gap-3">
+              <F label="Debit (₹)"><Input type="number" value={ledgerForm.debit||""} onChange={e=>setLedgerForm({...ledgerForm,debit:e.target.value})}/></F>
+              <F label="Credit (₹)"><Input type="number" value={ledgerForm.credit||""} onChange={e=>setLedgerForm({...ledgerForm,credit:e.target.value})}/></F>
+            </div>
+            <F label="Date"><Input type="date" value={ledgerForm.entry_date||""} onChange={e=>setLedgerForm({...ledgerForm,entry_date:e.target.value})}/></F>
+            <F label="Narration"><Input value={ledgerForm.narration||""} onChange={e=>setLedgerForm({...ledgerForm,narration:e.target.value})}/></F>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={()=>setShowLedger(false)}>Cancel</Button>
+            <Button onClick={()=>ledgerSave.mutate(ledgerForm)} disabled={ledgerSave.isPending}>Save</Button>
           </div>
         </DialogContent>
       </Dialog>

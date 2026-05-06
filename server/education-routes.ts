@@ -981,14 +981,56 @@ router.get("/fee-payments", requireAuth, async (req: any, res) => {
 
 router.post("/fee-payments", requireAuth, async (req: any, res) => {
   try {
-    const { student_id, fee_structure_id, amount, paid_date, payment_mode, for_month, notes } = req.body;
+    const { student_id, fee_structure_id, amount, gross_amount, discount_amount, paid_date, payment_mode, for_month, notes } = req.body;
     const receipt = "RCP-" + Date.now();
+    const tenantId = tid(req);
+    const netAmount = Number(amount || 0);
+    const grossAmt = Number(gross_amount || netAmount);
+    const discountAmt = Number(discount_amount || 0);
+
     const rows = await db.execute(sql`
-      INSERT INTO fee_payments (tenant_id, student_id, fee_structure_id, receipt_no, amount, paid_date, payment_mode, for_month, notes)
-      VALUES (${tid(req)}, ${student_id}, ${fee_structure_id||null}, ${receipt},
-              ${amount}, ${paid_date}, ${payment_mode||'cash'}, ${for_month||null}, ${notes||null})
+      INSERT INTO fee_payments (tenant_id, student_id, fee_structure_id, receipt_no, amount, gross_amount, discount_amount, paid_date, payment_mode, for_month, notes)
+      VALUES (${tenantId}, ${student_id}, ${fee_structure_id||null}, ${receipt},
+              ${netAmount}, ${grossAmt}, ${discountAmt}, ${paid_date}, ${payment_mode||'cash'}, ${for_month||null}, ${notes||null})
       RETURNING *`);
-    res.json(rows.rows[0]);
+
+    const payment = rows.rows[0];
+
+    // Auto-post ledger entries
+    const prevBal = await db.execute(sql`
+      SELECT COALESCE(balance, 0) as balance FROM student_fee_ledger
+      WHERE tenant_id=${tenantId} AND student_id=${student_id}
+      ORDER BY created_at DESC LIMIT 1`);
+    let runningBalance = Number(prevBal.rows[0]?.balance || 0);
+
+    // Entry 1: debit for the gross charge
+    if (grossAmt > 0) {
+      runningBalance = runningBalance + grossAmt;
+      await db.execute(sql`
+        INSERT INTO student_fee_ledger (tenant_id, voucher_no, student_id, component_name, debit, credit, balance, narration, entry_date)
+        VALUES (${tenantId}, ${"CHG-" + Date.now()}, ${student_id}, ${for_month ? "Fee – " + for_month : "Fee Charge"},
+                ${grossAmt}, 0, ${runningBalance}, ${"Fee charged – " + receipt}, ${paid_date})`);
+    }
+
+    // Entry 2: credit for scholarship/discount (if any)
+    if (discountAmt > 0) {
+      runningBalance = runningBalance - discountAmt;
+      await db.execute(sql`
+        INSERT INTO student_fee_ledger (tenant_id, voucher_no, student_id, component_name, debit, credit, balance, narration, entry_date)
+        VALUES (${tenantId}, ${"DISC-" + Date.now()}, ${student_id}, ${"Scholarship / Discount"},
+                0, ${discountAmt}, ${runningBalance}, ${"Discount applied – " + receipt}, ${paid_date})`);
+    }
+
+    // Entry 3: credit for the net payment received
+    if (netAmount > 0) {
+      runningBalance = runningBalance - netAmount;
+      await db.execute(sql`
+        INSERT INTO student_fee_ledger (tenant_id, voucher_no, student_id, component_name, debit, credit, balance, narration, entry_date)
+        VALUES (${tenantId}, ${receipt}, ${student_id}, ${"Payment Received"},
+                0, ${netAmount}, ${runningBalance}, ${payment_mode?.toUpperCase() + " payment – " + receipt}, ${paid_date})`);
+    }
+
+    res.json(payment);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
