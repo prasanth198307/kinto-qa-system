@@ -175,19 +175,15 @@ const STRENGTHS = [
   },
 ];
 
-const PLANS = [
-  {
-    name: "Basic", price: "₹999", period: "/month", highlight: false, tag: "",
-    features: ["5 users included", "GST invoicing & receipts", "Inventory management", "Purchase & sales orders", "Gatepasses & dispatch", "Expenses & documents", "Email support"],
-  },
-  {
-    name: "Professional", price: "₹1,499", period: "/month", highlight: true, tag: "Most Popular",
-    features: ["15 users included", "All Basic features", "Production & BOM tracking", "Multi-warehouse & stock transfers", "Recurring invoices", "Double-entry accounting", "MIS analytics dashboards", "CRM lead management", "WhatsApp checklists", "Preventive maintenance", "API Hub — developer access", "Priority support"],
-  },
-  {
-    name: "Enterprise", price: "₹2,599", period: "/month", highlight: false, tag: "",
-    features: ["20 users included", "All Professional features", "HR & Payroll + ESS portal", "Project management (BOQ, milestones)", "Fixed assets & depreciation", "Approval workflows", "Multi-currency & exchange rates", "Performance appraisals", "Industry verticals (Healthcare, Education, Logistics, Real Estate, POS, Agriculture)", "Custom branding", "Dedicated support"],
-  },
+const POPULAR_MODULES = [
+  { name: "GST Invoicing",     price: 699,  category: "Finance",    popular: true  },
+  { name: "HR & Payroll",      price: 799,  category: "HR",         popular: true  },
+  { name: "Inventory",         price: 599,  category: "Inventory",  popular: true  },
+  { name: "Accounting",        price: 899,  category: "Finance",    popular: false },
+  { name: "Purchase & PO",     price: 499,  category: "Inventory",  popular: false },
+  { name: "CRM & Leads",       price: 499,  category: "Sales",      popular: false },
+  { name: "Production / BOM",  price: 699,  category: "Production", popular: false },
+  { name: "Project Management",price: 599,  category: "Production", popular: false },
 ];
 
 const TESTIMONIALS = [
@@ -844,44 +840,73 @@ export default function LandingPage() {
 
       {/* ── PRICING ─────────────────────────────────────────────────────── */}
       <section id="pricing" className="py-16 border-t bg-muted/20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-2xl md:text-3xl font-bold mb-3">Simple, transparent pricing</h2>
-            <p className="text-muted-foreground max-w-xl mx-auto text-sm">All plans include a 14-day free trial. No credit card needed. Scale users as your team grows.</p>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <h2 className="text-2xl md:text-3xl font-bold mb-3">Pay only for what you use</h2>
+            <p className="text-muted-foreground max-w-xl mx-auto text-sm">No fixed plans. Pick the modules your business actually needs — start free, add more as you grow.</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            {PLANS.map(plan => (
-              <div key={plan.name} className={`relative rounded-2xl border p-6 flex flex-col bg-background ${plan.highlight ? "border-primary ring-1 ring-primary/20 shadow-lg" : ""}`}>
-                {plan.tag && (
-                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-                    <span className="bg-primary text-white text-xs font-semibold px-3 py-1 rounded-full">{plan.tag}</span>
-                  </div>
-                )}
-                <div className="mb-6">
-                  <p className="font-bold text-base">{plan.name}</p>
-                  <div className="flex items-end gap-1 mt-2">
-                    <span className="text-3xl font-bold">{plan.price}</span>
-                    <span className="text-muted-foreground text-sm mb-1">{plan.period}</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">+ ₹100–₹150 per additional user/month</p>
+
+          {/* How it works */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10 max-w-3xl mx-auto">
+            {[
+              { step: "1", title: "Start free", desc: "Dashboard, Users, Roles & Company Settings are always included at no cost." },
+              { step: "2", title: "Pick your modules", desc: "Add only the modules your team needs. Each module is priced individually per month." },
+              { step: "3", title: "Scale anytime", desc: "Add or remove modules as your business grows. Changes apply from the next billing cycle." },
+            ].map(item => (
+              <div key={item.step} className="flex gap-3 bg-background rounded-2xl border p-4">
+                <div className="w-7 h-7 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{item.step}</div>
+                <div>
+                  <p className="font-semibold text-sm mb-0.5">{item.title}</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{item.desc}</p>
                 </div>
-                <ul className="space-y-2.5 mb-6 flex-1">
-                  {plan.features.map(f => (
-                    <li key={f} className="flex items-start gap-2 text-sm">
-                      <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />{f}
-                    </li>
-                  ))}
-                </ul>
-                <Button className="w-full" variant={plan.highlight ? "default" : "outline"} onClick={() => setLocation("/register-company")} data-testid={`pricing-cta-${plan.name.toLowerCase()}`}>
-                  Start Free Trial <ChevronRight className="w-4 h-4 ml-1" />
-                </Button>
               </div>
             ))}
           </div>
-          <p className="text-center text-xs text-muted-foreground mt-8">
-            Need a custom plan?{" "}
-            <a href="mailto:hello@kintoops.in" className="text-primary underline underline-offset-2">Contact us</a>
-          </p>
+
+          {/* Always-free core */}
+          <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-5 mb-8 max-w-3xl mx-auto">
+            <div className="flex items-center gap-2 mb-3">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <span className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">Always included — completely free</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {["Dashboard & Analytics", "User Management", "Roles & Permissions", "Company Settings & Branding"].map(m => (
+                <span key={m} className="text-xs bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 px-3 py-1 rounded-full font-medium">{m}</span>
+              ))}
+            </div>
+          </div>
+
+          {/* Popular paid modules */}
+          <div className="mb-8 max-w-3xl mx-auto">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 text-center">Popular paid modules — add what you need</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {POPULAR_MODULES.map(mod => (
+                <div key={mod.name} className={`relative rounded-xl border bg-background p-3 flex flex-col gap-1 ${mod.popular ? "border-primary/40 ring-1 ring-primary/10" : ""}`}>
+                  {mod.popular && (
+                    <span className="absolute -top-2.5 left-3 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full">Popular</span>
+                  )}
+                  <span className="text-xs text-muted-foreground font-medium">{mod.category}</span>
+                  <span className="text-sm font-semibold text-foreground leading-tight">{mod.name}</span>
+                  <span className="text-base font-bold text-foreground mt-auto">₹{mod.price}<span className="text-xs font-normal text-muted-foreground">/mo</span></span>
+                </div>
+              ))}
+            </div>
+            <p className="text-center text-xs text-muted-foreground mt-3">
+              + 20 more modules from ₹249/mo · Industry verticals from ₹699/mo · Additional users at ₹150/user/mo
+            </p>
+          </div>
+
+          {/* CTA */}
+          <div className="text-center">
+            <Button size="lg" onClick={() => setLocation("/register-company")} data-testid="pricing-cta-start-free">
+              Start your 14-day free trial <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+            <p className="text-xs text-muted-foreground mt-3">No credit card needed · No commitment · Cancel anytime</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Want a custom quote?{" "}
+              <a href="mailto:hello@kintoops.in" className="text-primary underline underline-offset-2">Contact us</a>
+            </p>
+          </div>
         </div>
       </section>
 
