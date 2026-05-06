@@ -507,35 +507,43 @@ export function registerBillingRoutes(app: Express): void {
     try {
       const [subRows, catalog] = await Promise.all([
         db.execute(sql`
-          SELECT s.selected_modules, s.monthly_amount, s.plan_slug, s.status,
-                 s.current_period_end, s.cancelled_at,
-                 sp.modules AS plan_modules
-          FROM subscriptions s
-          LEFT JOIN subscription_plans sp ON sp.slug = s.plan_slug
-          WHERE s.tenant_id = ${tenantId} LIMIT 1
+          SELECT
+            s.selected_modules,
+            s.monthly_amount,
+            COALESCE(s.plan_slug, t.plan)  AS plan_slug,
+            s.status,
+            s.current_period_end,
+            s.cancelled_at,
+            sp.modules                     AS plan_modules
+          FROM tenants t
+          LEFT JOIN subscriptions s        ON s.tenant_id = t.id
+          LEFT JOIN subscription_plans sp  ON sp.slug = COALESCE(s.plan_slug, t.plan)
+          WHERE t.id = ${tenantId}
+          LIMIT 1
         `),
         loadCatalogFromDB(),
       ]);
       const row = (subRows.rows as any[])[0];
-      const freeModules = catalog.filter(m => m.free).map(m => m.slug);
+      const freeModules   = catalog.filter(m => m.free).map(m => m.slug);
       const catalogSlugSet = new Set(catalog.map(m => m.slug));
 
-      // If the tenant has never explicitly picked modules, seed from their plan
+      // Seed from plan when tenant has never explicitly chosen modules
       let selectedModules: string[] = row?.selected_modules ?? [];
-      if (selectedModules.length === 0 && Array.isArray(row?.plan_modules) && row.plan_modules.length > 0) {
-        selectedModules = planModulesToCatalogSlugs(row.plan_modules, catalogSlugSet);
-        // Also include all free modules
+      if (selectedModules.length === 0) {
+        const planMods: string[] = Array.isArray(row?.plan_modules) ? row.plan_modules : [];
+        selectedModules = planModulesToCatalogSlugs(planMods, catalogSlugSet);
+        // Always include free modules
         for (const f of freeModules) selectedModules.push(f);
         selectedModules = Array.from(new Set(selectedModules));
       }
 
-      const monthlyAmount = catalog
+      const computedMonthly = catalog
         .filter(m => selectedModules.includes(m.slug) && !m.free)
         .reduce((s, m) => s + m.priceMonthly, 0);
 
       res.json({
         selectedModules,
-        monthlyAmount:    row?.monthly_amount ?? monthlyAmount,
+        monthlyAmount:    row?.monthly_amount ?? computedMonthly,
         planSlug:         row?.plan_slug      ?? null,
         status:           row?.status         ?? null,
         currentPeriodEnd: row?.current_period_end ?? null,
