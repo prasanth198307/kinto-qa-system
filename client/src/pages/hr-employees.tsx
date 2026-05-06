@@ -120,6 +120,7 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
 
   // Fetch statutory settings for PF/ESI/PT estimates in the preview
   const { data: statutory } = useQuery<any>({ queryKey: ['/api/hr/statutory-settings'] });
+  const { data: ptSlabs } = useQuery<any[]>({ queryKey: ['/api/hr/pt-slabs'] });
 
   // Find selected structure's component array
   const selectedStructure = useMemo(() =>
@@ -190,9 +191,10 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
     const esiEnabled = statutory?.esi_enabled !== false && form.esiEnabled !== false;
     const ptEnabled  = statutory?.pt_enabled  !== false;
 
-    const pfRate     = Number(statutory?.pf_employee_rate  ?? 12) / 100;
+    // API stores rates already as decimals (0.12 = 12%, 0.0075 = 0.75%) — do NOT divide by 100
+    const pfRate     = Number(statutory?.pf_employee_rate  ?? 0.12);
     const pfCeiling  = Number(statutory?.pf_ceiling_basic  ?? 15000);
-    const esiRate    = Number(statutory?.esi_employee_rate ?? 0.75) / 100;
+    const esiRate    = Number(statutory?.esi_employee_rate ?? 0.0075);
     const esiCeiling = Number(statutory?.esi_gross_ceiling ?? 21000);
 
     const grossEarnings = basic + otherTotal + specialAllowance;
@@ -209,11 +211,28 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
       breakdown.push({ name: 'ESI (Employee)', formula: `Not applicable — Gross > ₹${esiCeiling.toLocaleString('en-IN')}`, amount: 0, type: 'deduction' });
     }
     if (ptEnabled) {
-      let pt = 0;
-      if (grossEarnings > 15000) pt = 200;
-      else if (grossEarnings > 10000) pt = 150;
-      else if (grossEarnings > 7500) pt = 100;
-      if (pt > 0) breakdown.push({ name: 'Professional Tax (PT)', formula: 'From state slab / fallback estimate', amount: pt, type: 'deduction' });
+      // Use actual PT slabs from DB; match by employee state if available, else use first state found
+      const empState = (form.state || '').toLowerCase().trim();
+      const slabs: any[] = ptSlabs || [];
+      // Try to find slabs for the employee's state; fall back to first available state
+      let stateSlabs = empState ? slabs.filter(s => s.state?.toLowerCase().trim() === empState) : [];
+      if (stateSlabs.length === 0 && slabs.length > 0) {
+        const firstState = slabs[0].state;
+        stateSlabs = slabs.filter(s => s.state === firstState);
+      }
+      if (stateSlabs.length > 0) {
+        // Find the matching slab for this gross income
+        const matchSlab = stateSlabs.find(s => {
+          const from = Number(s.income_from);
+          const to = s.income_to ? Number(s.income_to) : Infinity;
+          return grossEarnings >= from && grossEarnings <= to;
+        });
+        const pt = matchSlab ? Number(matchSlab.pt_amount) : 0;
+        const stateLabel = stateSlabs[0].state;
+        if (pt > 0) {
+          breakdown.push({ name: 'Professional Tax (PT)', formula: `From ${stateLabel} PT slab`, amount: pt, type: 'deduction' });
+        }
+      }
     }
 
     setCalcBreakdown(breakdown);
@@ -223,7 +242,7 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
       specialAllowance: String(specialAllowance),
     }));
     setCtcAutoCalc(true);
-  }, [form.ctc, form.salaryStructureId, form.pfEnabled, form.esiEnabled, statutory, selectedStructure]);
+  }, [form.ctc, form.salaryStructureId, form.pfEnabled, form.esiEnabled, form.state, statutory, ptSlabs, selectedStructure]);
 
   const handleSave = () => {
     const payload = {
