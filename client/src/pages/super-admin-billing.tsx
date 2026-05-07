@@ -253,6 +253,28 @@ export default function SuperAdminBilling() {
   const selectedPlan = availablePlans.find(p => p.slug === newPlan);
   const isTrial = selectedPlan?.slug === "trial";
 
+  // ── Proration calculation for plan change dialog ──────────────────────────
+  const prorationInfo = (() => {
+    if (!changePlanFor || !newPlan || newPlan === changePlanFor.subscription.planSlug) return null;
+    const currentPlanPrice = changePlanFor.plan?.priceMonthly ?? 0; // paise
+    const newPlanPrice     = selectedPlan?.priceMonthly ?? 0;        // paise
+    const periodEnd        = changePlanFor.subscription.currentPeriodEnd
+      ? new Date(changePlanFor.subscription.currentPeriodEnd)
+      : null;
+    const today = new Date();
+    const daysRemaining = periodEnd
+      ? Math.max(0, Math.ceil((periodEnd.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)))
+      : 0;
+    const dailyCurrent = currentPlanPrice / 30;
+    const dailyNew     = newPlanPrice / 30;
+    const creditPaise  = Math.round(dailyCurrent * daysRemaining);
+    const chargePaise  = Math.round(dailyNew     * daysRemaining);
+    const netPaise     = chargePaise - creditPaise; // positive = charge, negative = credit
+    const isDowngrade  = newPlanPrice < currentPlanPrice;
+    const isUpgrade    = newPlanPrice > currentPlanPrice;
+    return { daysRemaining, creditPaise, chargePaise, netPaise, isDowngrade, isUpgrade, periodEnd };
+  })();
+
   return (
     <SuperAdminLayout
       title="Billing & Subscriptions"
@@ -470,7 +492,35 @@ export default function SuperAdminBilling() {
           <DialogHeader>
             <DialogTitle>Change Plan — {changePlanFor?.tenant?.name}</DialogTitle>
           </DialogHeader>
+
           <div className="space-y-4 py-2">
+
+            {/* ── Only need to change modules? ── */}
+            <div className="rounded-md border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 p-3">
+              <p className="text-xs font-semibold text-blue-700 dark:text-blue-300 mb-1.5">
+                Only need to add or remove modules?
+              </p>
+              <p className="text-xs text-muted-foreground mb-2.5">
+                You don't need to change the plan for that. Use Module Marketplace to enable/disable individual modules while keeping the current plan and pricing.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (!changePlanFor?.tenant) return;
+                  setChangePlanFor(null);
+                  setModulesTenant({ id: changePlanFor.tenant.id, name: changePlanFor.tenant.name });
+                }}
+                data-testid="button-open-marketplace-from-plan"
+              >
+                <Package className="h-3.5 w-3.5 mr-1.5" />
+                Open Module Marketplace (no plan change)
+              </Button>
+            </div>
+
+            <Separator />
+
             <div className="space-y-1.5">
               <Label>New Plan</Label>
               <Select value={newPlan} onValueChange={setNewPlan}>
@@ -493,6 +543,7 @@ export default function SuperAdminBilling() {
                 </SelectContent>
               </Select>
             </div>
+
             {!isTrial && newPlan && (
               <div className="space-y-1.5">
                 <Label>Billing Cycle</Label>
@@ -507,53 +558,91 @@ export default function SuperAdminBilling() {
                 </Select>
               </div>
             )}
+
+            {/* ── Billing Impact / Proration ── */}
+            {prorationInfo && (
+              <div className={`rounded-md border p-3 space-y-2 text-xs ${
+                prorationInfo.isDowngrade
+                  ? "border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-950/30"
+                  : "border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/30"
+              }`}>
+                <p className={`font-semibold ${prorationInfo.isDowngrade ? "text-orange-700 dark:text-orange-300" : "text-emerald-700 dark:text-emerald-300"}`}>
+                  {prorationInfo.isDowngrade ? "Downgrade — Billing Impact" : "Upgrade — Billing Impact"}
+                </p>
+
+                {prorationInfo.daysRemaining > 0 ? (
+                  <div className="space-y-1 text-muted-foreground">
+                    <div className="flex justify-between">
+                      <span>Days remaining in current period</span>
+                      <span className="font-medium text-foreground">{prorationInfo.daysRemaining} days</span>
+                    </div>
+                    {prorationInfo.creditPaise > 0 && (
+                      <div className="flex justify-between">
+                        <span>Credit for unused {changePlanFor?.plan?.name} days</span>
+                        <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                          + {paiseToRupees(prorationInfo.creditPaise)}
+                        </span>
+                      </div>
+                    )}
+                    {prorationInfo.chargePaise > 0 && (
+                      <div className="flex justify-between">
+                        <span>Charge for {prorationInfo.daysRemaining} days on {selectedPlan?.name}</span>
+                        <span className="font-medium text-red-600 dark:text-red-400">
+                          - {paiseToRupees(prorationInfo.chargePaise)}
+                        </span>
+                      </div>
+                    )}
+                    <Separator className="my-1" />
+                    <div className="flex justify-between font-semibold text-foreground">
+                      <span>Net adjustment</span>
+                      <span className={prorationInfo.netPaise <= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}>
+                        {prorationInfo.netPaise <= 0
+                          ? `Credit ${paiseToRupees(Math.abs(prorationInfo.netPaise))}`
+                          : `Charge ${paiseToRupees(prorationInfo.netPaise)}`}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">
+                    No active billing period found — plan will change immediately with no proration.
+                  </p>
+                )}
+
+                <p className="text-[11px] text-muted-foreground pt-1 border-t">
+                  This is an estimate. Adjust the actual payment manually or via Razorpay as needed.
+                </p>
+              </div>
+            )}
+
             <div className="space-y-1.5">
               <Label>Notes (optional)</Label>
               <Input
-                placeholder="e.g. Sales deal, manual upgrade, promo…"
+                placeholder="e.g. Sales deal, manual upgrade, promo, reason for downgrade…"
                 value={newNotes}
                 onChange={(e) => setNewNotes(e.target.value)}
                 data-testid="input-plan-notes"
               />
             </div>
 
-            {/* ── Module management option ── */}
-            <div className="rounded-md border bg-muted/30 p-3 space-y-2.5">
-              <div className="flex items-start gap-3">
-                <Checkbox
-                  id="also-manage-modules"
-                  checked={alsoManageModules}
-                  onCheckedChange={(v) => setAlsoManageModules(!!v)}
-                  data-testid="checkbox-also-manage-modules"
-                  className="mt-0.5"
-                />
-                <div className="min-w-0">
-                  <label htmlFor="also-manage-modules" className="text-sm font-medium cursor-pointer select-none">
-                    Also manage add-on modules
-                  </label>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    After saving the plan, the Module Marketplace will open so you can add or remove individual modules.
-                  </p>
-                </div>
-              </div>
-              <div className="pl-7">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    if (!changePlanFor?.tenant) return;
-                    setChangePlanFor(null);
-                    setModulesTenant({ id: changePlanFor.tenant.id, name: changePlanFor.tenant.name });
-                  }}
-                  data-testid="button-open-marketplace-from-plan"
-                >
-                  <Package className="h-3.5 w-3.5 mr-1.5" />
-                  Open Module Marketplace now
-                </Button>
+            <div className="flex items-start gap-3">
+              <Checkbox
+                id="also-manage-modules"
+                checked={alsoManageModules}
+                onCheckedChange={(v) => setAlsoManageModules(!!v)}
+                data-testid="checkbox-also-manage-modules"
+                className="mt-0.5"
+              />
+              <div>
+                <label htmlFor="also-manage-modules" className="text-sm font-medium cursor-pointer select-none">
+                  Open Module Marketplace after saving
+                </label>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Manage individual modules right after the plan changes.
+                </p>
               </div>
             </div>
           </div>
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setChangePlanFor(null)}>Cancel</Button>
             <Button
@@ -566,13 +655,13 @@ export default function SuperAdminBilling() {
                   notes: newNotes,
                 });
               }}
-              disabled={!newPlan || changePlanMutation.isPending}
+              disabled={!newPlan || newPlan === changePlanFor?.subscription.planSlug || changePlanMutation.isPending}
               data-testid="button-confirm-plan-change"
             >
               {changePlanMutation.isPending
                 ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 : <CreditCard className="h-4 w-4 mr-2" />}
-              Confirm Change
+              Confirm Plan Change
             </Button>
           </DialogFooter>
         </DialogContent>
