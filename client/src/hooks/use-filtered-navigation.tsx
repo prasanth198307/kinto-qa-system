@@ -145,6 +145,7 @@ const navItemToScreenKey: Record<string, string> = {
   'real-estate': 'real_estate',
   'pos': 'pos',
   'agriculture': 'agriculture',
+  'gold-erp': 'gold_erp',
 };
 
 const screenPermissions: Record<string, { admin: boolean; manager: boolean; operator: boolean; reviewer: boolean }> = {
@@ -276,6 +277,7 @@ const navItemToScreen: Record<string, string> = {
   'real-estate': 'Industry Verticals',
   'pos': 'Industry Verticals',
   'agriculture': 'Industry Verticals',
+  'gold-erp': 'Industry Verticals',
 };
 
 function canAccessNavItemForDefaultRole(itemId: string, role: string): boolean {

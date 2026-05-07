@@ -193,7 +193,7 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
 // DB subscription_plans.modules is the authoritative source — these code constants
 // serve as the fallback when a plan slug has no DB record.
 // Keep in sync with the subscription_plans table values.
-const INDUSTRY_MODULES     = ["healthcare", "education", "logistics_transport", "real_estate", "pos", "agriculture"];
+const INDUSTRY_MODULES     = ["healthcare", "education", "logistics_transport", "real_estate", "pos", "agriculture", "gold_erp"];
 const TRIAL_MODULES        = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "production", "quality_returns", "accounting", "mis", "expenses", "documents", "crm", "whatsapp", "maintenance", "hr_payroll", "recurring_invoices", "warehouses", "projects", "fixed_assets", "multi_currency", ...INDUSTRY_MODULES];
 const BASIC_MODULES        = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "expenses", "documents"];
 const PROFESSIONAL_MODULES = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "production", "quality_returns", "accounting", "mis", "expenses", "documents", "whatsapp", "maintenance", "crm", "api_hub", "recurring_invoices", "warehouses"];
@@ -294,6 +294,7 @@ export const ROUTE_PLAN_REQUIREMENTS: Array<{ prefix: string; module: string; mi
   { prefix: "/api/real-estate",              module: "real_estate",         minPlan: "enterprise" },
   { prefix: "/api/pos",                      module: "pos",                 minPlan: "enterprise" },
   { prefix: "/api/agriculture",              module: "agriculture",         minPlan: "enterprise" },
+  { prefix: "/api/gold-erp",                module: "gold_erp",            minPlan: "enterprise" },
 ];
 
 // ── Plan order for comparison ─────────────────────────────────────────────────

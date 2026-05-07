@@ -84,7 +84,7 @@ import { ManagerChecklistAssignment } from "@/components/ManagerChecklistAssignm
 import PendingPaymentsDashboard from "@/components/PendingPaymentsDashboard";
 import { OperatorAssignedChecklists } from "@/components/OperatorAssignedChecklists";
 import { VerticalNavSidebar, type NavSection } from "@/components/VerticalNavSidebar";
-import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, ClipboardList, Settings, Calendar, Users, FileText, FileX, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator, IndianRupee, CreditCard, Upload, FolderOpen, Wallet, Car, BookOpen, Scale, BarChart3, Landmark, Tag, Trash2, PackageX, Loader2, Play, UserX, Briefcase, Target, Lock, Key } from "lucide-react";
+import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, ClipboardList, Settings, Calendar, Users, FileText, FileX, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator, IndianRupee, CreditCard, Upload, FolderOpen, Wallet, Car, BookOpen, Scale, BarChart3, Landmark, Tag, Trash2, PackageX, Loader2, Play, UserX, Briefcase, Target, Lock, Key, Gem } from "lucide-react";
 import CRMLeadsPage from "@/pages/crm-leads";
 import SalesDashboard from "@/components/SalesDashboard";
 import SalesOrdersPage from "@/pages/sales-orders";
@@ -188,6 +188,7 @@ import LogisticsPage from "@/pages/logistics";
 import RealEstatePage from "@/pages/real-estate";
 import POSPage from "@/pages/pos";
 import AgriculturePage from "@/pages/agriculture";
+import GoldErpPage from "@/pages/gold-erp";
 import { parseISO } from "date-fns";
 
 type Role = 'admin' | 'operator' | 'reviewer' | 'manager';
@@ -335,7 +336,7 @@ const DASHBOARD_VALID_TABS = [
   'hr-departments', 'hr-settings', 'hr-recruitment', 'hr-exit', 'hr-tds',
   'crm-leads', 'accounting', 'chart-of-accounts', 'ledger-entries', 'expense-management',
   'cash-register', 'document-management',
-  'healthcare', 'education', 'logistics', 'real-estate', 'pos', 'agriculture',
+  'healthcare', 'education', 'logistics', 'real-estate', 'pos', 'agriculture', 'gold-erp',
 ];
 
 function ReviewerDashboard() {
@@ -1152,6 +1153,7 @@ function AdminDashboard() {
         { id: "real-estate", label: "Real Estate", icon: Building2, onClick: () => setLocation('/real-estate') },
         { id: "pos", label: "Point of Sale", icon: ShoppingCart, onClick: () => setLocation('/pos') },
         { id: "agriculture", label: "Agriculture", icon: Layers, onClick: () => setLocation('/agriculture') },
+        { id: "gold-erp", label: "Gold & Jewellery", icon: Gem, onClick: () => setLocation('/gold-erp') },
       ],
     },
     {
@@ -2229,6 +2231,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "real-estate", label: "Real Estate", icon: Building2, onClick: () => setLocation('/real-estate') },
         { id: "pos", label: "Point of Sale", icon: ShoppingCart, onClick: () => setLocation('/pos') },
         { id: "agriculture", label: "Agriculture", icon: Layers, onClick: () => setLocation('/agriculture') },
+        { id: "gold-erp", label: "Gold & Jewellery", icon: Gem, onClick: () => setLocation('/gold-erp') },
       ],
     },
     {
@@ -3809,6 +3812,7 @@ function Router() {
       <ProtectedRoute path="/real-estate" component={RealEstateWrapper} />
       <ProtectedRoute path="/pos" component={POSWrapper} />
       <ProtectedRoute path="/agriculture" component={AgricultureWrapper} />
+      <ProtectedRoute path="/gold-erp" component={GoldErpWrapper} />
       <Route path="/ess" component={EssLogin} />
       <Route path="/ess/portal" component={EssPortal} />
       <ProtectedRoute path="/journal-entry/new" component={ManualJournalEntryPageWrapper} />
@@ -4135,6 +4139,22 @@ function POSWrapper() {
       navSections={resolvedNav} activeView={activeView}
       onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
       <POSPage />
+    </DashboardShell>
+  );
+}
+
+function GoldErpWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('gold-erp');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Gold & Jewellery ERP" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
+      <GoldErpPage />
     </DashboardShell>
   );
 }

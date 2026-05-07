@@ -34,6 +34,7 @@ import logisticsRouter from "./logistics-routes";
 import realestateRouter from "./realestate-routes";
 import retailRouter from "./retail-routes";
 import agricultureRouter from "./agriculture-routes";
+import goldErpRouter from "./gold-erp-routes";
 import { seedTenantPermissions, syncAndUnlockByPlan } from "./seed-permissions";
 import { whatsappConversationService } from "./whatsappConversationService";
 import { calculateBOMSuggestions } from "@shared/calculations";
@@ -1695,6 +1696,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/real-estate', realestateRouter);
   app.use('/api/pos', retailRouter);
   app.use('/api/agriculture', agricultureRouter);
+  app.use('/api/gold-erp', goldErpRouter);
 
   // Auth routes are handled by setupAuth() in auth.ts
   // /api/register, /api/login, /api/logout, /api/user are automatically set up
