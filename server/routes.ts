@@ -1196,25 +1196,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const cycle = billingCycle ?? (toPlan === 'trial' ? 'trial' : 'monthly');
       const newStatus = status ?? (toPlan === 'trial' ? 'trial' : 'active');
 
-      // Deactivate old subscription
-      await db.update(subscriptions)
-        .set({ status: 'cancelled', cancelledAt: new Date().toISOString(), cancelReason: `Replaced by plan change to ${toPlan}`, updatedAt: new Date().toISOString() })
-        .where(and(eq(subscriptions.tenantId, targetTenantId), eq(subscriptions.status, 'active')));
-
-      // Create new subscription
+      // Update the existing subscription row in-place (unique constraint on tenant_id — one row per tenant)
       const now = new Date().toISOString();
       const periodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-      const [newSub] = await db.insert(subscriptions).values({
-        tenantId: targetTenantId,
-        planId: planRow.id,
-        planSlug: toPlan,
-        billingCycle: cycle,
-        status: newStatus,
-        startedAt: now,
-        currentPeriodStart: now,
-        currentPeriodEnd: toPlan === 'trial' ? null : periodEnd,
-        notes: notes ?? null,
-      }).returning();
+      const [newSub] = await db.update(subscriptions)
+        .set({
+          planId: planRow.id,
+          planSlug: toPlan,
+          billingCycle: cycle,
+          status: newStatus,
+          startedAt: now,
+          currentPeriodStart: now,
+          currentPeriodEnd: toPlan === 'trial' ? null : periodEnd,
+          cancelledAt: null,
+          cancelReason: null,
+          notes: notes ?? null,
+          updatedAt: now,
+        })
+        .where(eq(subscriptions.tenantId, targetTenantId))
+        .returning();
 
       // Log billing event
       const eventType = fromPlan === toPlan ? 'plan_reactivated' : (
