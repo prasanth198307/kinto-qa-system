@@ -75,8 +75,10 @@ export const apiRateLimiter = rateLimit({
   standardHeaders: "draft-7",
   legacyHeaders: false,
   skip: (req) => {
-    // Skip for whatsapp webhook and file uploads (legitimate high-frequency)
+    // Skip for logout (must never be blocked — security critical),
+    // whatsapp webhook, colloki callback, and file uploads (high-frequency legitimate traffic)
     return (
+      req.path === "/api/logout" ||
       req.path === "/api/whatsapp/webhook" ||
       req.path === "/api/colloki/callback" ||
       req.path.startsWith("/uploads/")
