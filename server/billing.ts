@@ -647,6 +647,88 @@ export function registerBillingRoutes(app: Express): void {
     }
   });
 
+  // ── GET /api/admin/tenants/:id/modules — super-admin: get tenant module selection ──
+  app.get("/api/admin/tenants/:id/modules", async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!(req.user as any)?.isSuperAdmin) return res.sendStatus(403);
+    const tenantId = parseInt(req.params.id);
+    if (isNaN(tenantId)) return res.status(400).json({ message: "Invalid tenant id" });
+    try {
+      const [subRows, catalog] = await Promise.all([
+        db.execute(sql`
+          SELECT s.selected_modules, s.monthly_amount,
+                 COALESCE(s.plan_slug, t.plan) AS plan_slug,
+                 s.status, sp.modules AS plan_modules
+          FROM tenants t
+          LEFT JOIN subscriptions s       ON s.tenant_id = t.id
+          LEFT JOIN subscription_plans sp ON sp.slug = COALESCE(s.plan_slug, t.plan)
+          WHERE t.id = ${tenantId}
+          LIMIT 1
+        `),
+        loadCatalogFromDB(),
+      ]);
+      const row = (subRows.rows as any[])[0];
+      const freeModules    = catalog.filter(m => m.free).map(m => m.slug);
+      const catalogSlugSet = new Set(catalog.map(m => m.slug));
+      const rawPlanMods: string[] = Array.isArray(row?.plan_modules) ? row.plan_modules : [];
+      const planModules: string[] = planModulesToCatalogSlugs(rawPlanMods, catalogSlugSet);
+      let selectedModules: string[] = Array.isArray(row?.selected_modules) ? row.selected_modules : [];
+      if (selectedModules.length === 0) {
+        selectedModules = [...planModules];
+        for (const f of freeModules) if (!selectedModules.includes(f)) selectedModules.push(f);
+        selectedModules = Array.from(new Set(selectedModules));
+      }
+      res.json({
+        selectedModules,
+        planModules,
+        monthlyAmount: row?.monthly_amount ?? 0,
+        planSlug:      row?.plan_slug ?? null,
+        catalog,
+        freeModules,
+      });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ── POST /api/admin/tenants/:id/modules — super-admin: update tenant module selection ──
+  app.post("/api/admin/tenants/:id/modules", async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!(req.user as any)?.isSuperAdmin) return res.sendStatus(403);
+    const tenantId = parseInt(req.params.id);
+    if (isNaN(tenantId)) return res.status(400).json({ message: "Invalid tenant id" });
+    const { selectedModules } = req.body;
+    if (!Array.isArray(selectedModules)) {
+      return res.status(400).json({ message: "selectedModules must be an array of slugs" });
+    }
+    try {
+      const catalog  = await loadCatalogFromDB();
+      const freeSet  = new Set(catalog.filter(m => m.free).map(m => m.slug));
+      const priceMap = new Map(catalog.map(m => [m.slug, m.priceMonthly]));
+      const allFree  = Array.from(freeSet);
+      const merged   = Array.from(new Set([...allFree, ...selectedModules]));
+      const monthly  = merged.filter(s => !freeSet.has(s)).reduce((sum, s) => sum + (priceMap.get(s) ?? 0), 0);
+      await db.execute(sql`
+        UPDATE subscriptions
+        SET selected_modules = ${JSON.stringify(merged)}::jsonb,
+            monthly_amount   = ${monthly},
+            updated_at       = NOW()
+        WHERE tenant_id = ${tenantId}
+      `);
+      await db.execute(sql`
+        INSERT INTO billing_events (tenant_id, event_type, from_plan, to_plan, billing_cycle, amount, currency, notes, created_by)
+        VALUES (
+          ${tenantId}, 'modules_updated', NULL, NULL, 'monthly', ${monthly}, 'INR',
+          ${'Super-admin updated modules — ' + merged.filter(s => !freeSet.has(s)).length + ' paid modules, ₹' + monthly + '/mo'},
+          ${(req.user as any)?.username ?? 'super-admin'}
+        )
+      `);
+      res.json({ success: true, selectedModules: merged, monthlyAmount: monthly });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   // ── POST /api/billing/request-upgrade — manual upgrade (no Razorpay) ─────
   app.post("/api/billing/request-upgrade", async (req: any, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);

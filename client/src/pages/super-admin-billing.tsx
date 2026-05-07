@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { ModuleMarketplaceDialog } from "@/components/module-marketplace-dialog";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -14,13 +15,15 @@ import {
 } from "@/components/ui/select";
 import {
   RefreshCw, Loader2, CreditCard, TrendingUp, TrendingDown,
-  ArrowLeftRight, Search, ChevronDown, ChevronUp, RotateCcw,
-  ArrowUpRight, CheckCircle2, Clock,
+  ArrowLeftRight, Search, ChevronDown, ChevronUp,
+  ArrowUpRight, CheckCircle2, Clock, Package,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import SuperAdminLayout from "./super-admin-layout";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface SubRow {
   subscription: {
@@ -63,8 +66,18 @@ interface BillingEvent {
   createdBy: string | null;
 }
 
+interface PlanRecord {
+  id: number;
+  name: string;
+  slug: string;
+  isActive: boolean;
+  displayOrder: number;
+  priceMonthly: number;
+  priceYearly: number;
+}
+
 interface PlansData {
-  plans: { id: number; name: string; slug: string }[];
+  plans: PlanRecord[];
 }
 
 interface UpgradeRequestRow {
@@ -80,34 +93,40 @@ interface UpgradeRequestRow {
   tenant: { id: number; name: string; slug: string; status: string; plan: string } | null;
 }
 
-const PLAN_ORDER = ["trial", "basic", "professional", "enterprise"];
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function paiseToRupees(paise: number) {
   return (paise / 100).toLocaleString("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
 }
 
-function planBadge(slug: string) {
+function planBadge(slug: string, planName?: string) {
   const colors: Record<string, string> = {
-    trial: "border-amber-400 text-amber-700 dark:text-amber-300",
-    basic: "border-blue-400 text-blue-700 dark:text-blue-300",
+    trial:        "border-amber-400 text-amber-700 dark:text-amber-300",
+    basic:        "border-blue-400 text-blue-700 dark:text-blue-300",
     professional: "border-violet-500 text-violet-700 dark:text-violet-300",
-    enterprise: "border-emerald-500 text-emerald-700 dark:text-emerald-300",
+    enterprise:   "border-emerald-500 text-emerald-700 dark:text-emerald-300",
   };
   return (
-    <Badge variant="outline" className={`capitalize text-xs ${colors[slug] ?? ""}`}>{slug}</Badge>
+    <Badge variant="outline" className={`capitalize text-xs ${colors[slug] ?? "border-muted-foreground text-muted-foreground"}`}>
+      {planName ?? slug}
+    </Badge>
   );
 }
 
-function eventIcon(type: string) {
-  if (type === "upgraded") return <TrendingUp className="h-3.5 w-3.5 text-green-600" />;
-  if (type === "downgraded") return <TrendingDown className="h-3.5 w-3.5 text-red-500" />;
+function eventIcon(type: string): ReactNode {
+  if (type === "upgraded")        return <TrendingUp className="h-3.5 w-3.5 text-green-600" />;
+  if (type === "downgraded")      return <TrendingDown className="h-3.5 w-3.5 text-red-500" />;
+  if (type === "modules_updated") return <Package className="h-3.5 w-3.5 text-blue-500" />;
   return <ArrowLeftRight className="h-3.5 w-3.5 text-muted-foreground" />;
 }
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function SuperAdminBilling() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [changePlanFor, setChangePlanFor] = useState<SubRow | null>(null);
+  const [modulesTenant, setModulesTenant] = useState<{ id: number; name: string } | null>(null);
   const [newPlan, setNewPlan] = useState("");
   const [newCycle, setNewCycle] = useState("monthly");
   const [newNotes, setNewNotes] = useState("");
@@ -132,7 +151,7 @@ export default function SuperAdminBilling() {
     enabled: expandedTenant !== null,
   });
 
-  const { data: upgradeRequests = [], refetch: refetchUpgradeRequests } = useQuery<UpgradeRequestRow[]>({
+  const { data: upgradeRequests = [] } = useQuery<UpgradeRequestRow[]>({
     queryKey: ["/api/admin/upgrade-requests"],
   });
 
@@ -153,7 +172,9 @@ export default function SuperAdminBilling() {
   });
 
   const changePlanMutation = useMutation({
-    mutationFn: async ({ tenantId, toPlan, billingCycle, notes }: { tenantId: number; toPlan: string; billingCycle: string; notes: string }) => {
+    mutationFn: async ({ tenantId, toPlan, billingCycle, notes }: {
+      tenantId: number; toPlan: string; billingCycle: string; notes: string;
+    }) => {
       const res = await apiRequest("PATCH", `/api/admin/subscriptions/${tenantId}/change-plan`, { toPlan, billingCycle, notes });
       return res.json();
     },
@@ -184,26 +205,31 @@ export default function SuperAdminBilling() {
     );
   });
 
-  const availablePlans = plansData?.plans ?? [];
+  // Plans fetched from DB sorted by displayOrder — fully dynamic, no hardcoded list
+  const availablePlans: PlanRecord[] = plansData?.plans ?? [];
+  const selectedPlan = availablePlans.find(p => p.slug === newPlan);
+  const isTrial = selectedPlan?.slug === "trial";
 
   return (
     <SuperAdminLayout
       title="Billing & Subscriptions"
-      subtitle="View and manage all tenant subscriptions and billing history"
+      subtitle="View and manage all tenant subscriptions, plans, and modules"
       actions={
         <Button variant="outline" size="default" onClick={() => refetch()} data-testid="button-refresh-billing">
           <RefreshCw className="h-4 w-4 mr-2" /> Refresh
         </Button>
       }
     >
-      {/* ── Upgrade Requests Section ── */}
+      {/* ── Upgrade Requests ── */}
       {upgradeRequests.length > 0 && (
         <Card className="mb-6 border-amber-300 dark:border-amber-700">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm flex items-center gap-2">
               <ArrowUpRight className="h-4 w-4 text-amber-600" />
               Pending Upgrade Requests
-              <Badge variant="outline" className="border-amber-400 text-amber-700 dark:text-amber-300 text-xs ml-1">{upgradeRequests.length}</Badge>
+              <Badge variant="outline" className="border-amber-400 text-amber-700 dark:text-amber-300 text-xs ml-1">
+                {upgradeRequests.length}
+              </Badge>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
@@ -242,7 +268,9 @@ export default function SuperAdminBilling() {
                   })}
                   data-testid={`button-approve-upgrade-${row.event.id}`}
                 >
-                  {approveUpgradeMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5 mr-1" />}
+                  {approveUpgradeMutation.isPending
+                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    : <CheckCircle2 className="h-3.5 w-3.5 mr-1" />}
                   Approve
                 </Button>
               </div>
@@ -263,6 +291,7 @@ export default function SuperAdminBilling() {
         />
       </div>
 
+      {/* ── Subscription Rows ── */}
       {isLoading ? (
         <div className="flex items-center justify-center py-24">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -272,9 +301,10 @@ export default function SuperAdminBilling() {
       ) : (
         <div className="space-y-3">
           {filtered.map((row) => {
-            const sub = row.subscription;
-            const tenant = row.tenant;
-            const plan = row.plan;
+            const sub      = row.subscription;
+            const tenant   = row.tenant;
+            const plan     = row.plan;
+            const planName = availablePlans.find(p => p.slug === sub.planSlug)?.name ?? sub.planSlug;
             const isExpanded = expandedTenant === tenant?.id;
 
             return (
@@ -286,7 +316,7 @@ export default function SuperAdminBilling() {
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-semibold text-sm">{tenant?.name ?? `Tenant #${sub.tenantId}`}</p>
                         <span className="text-muted-foreground text-xs">{tenant?.slug}</span>
-                        {planBadge(sub.planSlug)}
+                        {planBadge(sub.planSlug, planName)}
                         <Badge variant={sub.status === "active" ? "default" : "secondary"} className="text-xs capitalize">
                           {sub.status}
                         </Badge>
@@ -325,13 +355,21 @@ export default function SuperAdminBilling() {
                       </Button>
                       <Button
                         size="sm"
+                        variant="outline"
+                        onClick={() => tenant && setModulesTenant({ id: tenant.id, name: tenant.name })}
+                        data-testid={`button-manage-modules-${sub.id}`}
+                      >
+                        <Package className="h-3.5 w-3.5 mr-1.5" /> Modules
+                      </Button>
+                      <Button
+                        size="sm"
                         variant="ghost"
-                        onClick={() => {
-                          setExpandedTenant(isExpanded ? null : (tenant?.id ?? null));
-                        }}
+                        onClick={() => setExpandedTenant(isExpanded ? null : (tenant?.id ?? null))}
                         data-testid={`button-history-${sub.id}`}
                       >
-                        {isExpanded ? <ChevronUp className="h-3.5 w-3.5 mr-1.5" /> : <ChevronDown className="h-3.5 w-3.5 mr-1.5" />}
+                        {isExpanded
+                          ? <ChevronUp className="h-3.5 w-3.5 mr-1.5" />
+                          : <ChevronDown className="h-3.5 w-3.5 mr-1.5" />}
                         History
                       </Button>
                     </div>
@@ -359,7 +397,9 @@ export default function SuperAdminBilling() {
                               {ev.amount != null && ev.amount > 0 && (
                                 <span className="shrink-0 font-medium">{paiseToRupees(ev.amount)}</span>
                               )}
-                              <span className="shrink-0 text-muted-foreground">{format(new Date(ev.createdAt), "dd MMM yy")}</span>
+                              <span className="shrink-0 text-muted-foreground">
+                                {format(new Date(ev.createdAt), "dd MMM yy")}
+                              </span>
                             </div>
                           ))
                         )}
@@ -373,7 +413,7 @@ export default function SuperAdminBilling() {
         </div>
       )}
 
-      {/* ── Change Plan Dialog ── */}
+      {/* ── Change Plan Dialog — fully DB-driven, no hardcoded plan list ── */}
       <Dialog open={!!changePlanFor} onOpenChange={(open) => !open && setChangePlanFor(null)}>
         <DialogContent>
           <DialogHeader>
@@ -387,18 +427,22 @@ export default function SuperAdminBilling() {
                   <SelectValue placeholder="Select plan…" />
                 </SelectTrigger>
                 <SelectContent>
-                  {PLAN_ORDER.map((slug) => {
-                    const p = availablePlans.find((ap) => ap.slug === slug);
-                    return (
-                      <SelectItem key={slug} value={slug}>
-                        {p?.name ?? slug}
-                      </SelectItem>
-                    );
-                  })}
+                  {availablePlans.map((p) => (
+                    <SelectItem key={p.slug} value={p.slug} data-testid={`plan-option-${p.slug}`}>
+                      <div className="flex items-center gap-2">
+                        <span className="capitalize">{p.name}</span>
+                        {p.priceMonthly > 0 && (
+                          <span className="text-xs text-muted-foreground">
+                            {paiseToRupees(p.priceMonthly)}/mo
+                          </span>
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
-            {newPlan !== "trial" && (
+            {!isTrial && newPlan && (
               <div className="space-y-1.5">
                 <Label>Billing Cycle</Label>
                 <Select value={newCycle} onValueChange={setNewCycle}>
@@ -430,19 +474,31 @@ export default function SuperAdminBilling() {
                 changePlanMutation.mutate({
                   tenantId: changePlanFor.subscription.tenantId,
                   toPlan: newPlan,
-                  billingCycle: newPlan === "trial" ? "trial" : newCycle,
+                  billingCycle: isTrial ? "trial" : newCycle,
                   notes: newNotes,
                 });
               }}
               disabled={!newPlan || changePlanMutation.isPending}
               data-testid="button-confirm-plan-change"
             >
-              {changePlanMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CreditCard className="h-4 w-4 mr-2" />}
+              {changePlanMutation.isPending
+                ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                : <CreditCard className="h-4 w-4 mr-2" />}
               Confirm Change
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ── Module Marketplace Dialog ── */}
+      {modulesTenant && (
+        <ModuleMarketplaceDialog
+          tenantId={modulesTenant.id}
+          tenantName={modulesTenant.name}
+          open={!!modulesTenant}
+          onClose={() => setModulesTenant(null)}
+        />
+      )}
     </SuperAdminLayout>
   );
 }

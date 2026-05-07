@@ -26,12 +26,14 @@ import {
   CheckCircle2, Clock, XCircle, Loader2, FlaskConical, CreditCard,
   Eye, Trash2, AlertTriangle, Archive, Download, Database, CalendarClock,
   HardDrive, LogOut, Plus, ScrollText, AlertCircle, Shield, X, ImageIcon, Upload,
+  Package,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { format } from "date-fns";
 import SuperAdminLayout from "./super-admin-layout";
+import { ModuleMarketplaceDialog } from "@/components/module-marketplace-dialog";
 
 type Tenant = {
   id: number;
@@ -114,6 +116,7 @@ export default function SuperAdminTenants() {
   const [corsNewOrigin, setCorsNewOrigin] = useState("");
   const [logoTenant, setLogoTenant] = useState<Tenant | null>(null);
   const [logoUploading, setLogoUploading] = useState(false);
+  const [modulesTenant, setModulesTenant] = useState<{ id: number; name: string } | null>(null);
   const logoFileRef = useRef<HTMLInputElement>(null);
   const [showCreateTenant, setShowCreateTenant] = useState(false);
   const [showDeletionAudit, setShowDeletionAudit] = useState(false);
@@ -496,6 +499,12 @@ export default function SuperAdminTenants() {
                               <DropdownMenuItem onClick={() => setLogoTenant(tenant)}>
                                 <ImageIcon className="h-4 w-4 mr-2" /> Upload Logo
                               </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => setModulesTenant({ id: tenant.id, name: tenant.name })}
+                                data-testid={`button-manage-modules-${tenant.id}`}
+                              >
+                                <Package className="h-4 w-4 mr-2" /> Manage Modules
+                              </DropdownMenuItem>
                               {!tenant.isSuperAdmin && (
                                 <DropdownMenuItem
                                   onClick={() => impersonateMutation.mutate(tenant.id)}
@@ -831,6 +840,16 @@ export default function SuperAdminTenants() {
           onClose={() => setBackupTenant(null)}
           onBackupNow={() => manualBackupMutation.mutate(backupTenant.id)}
           backingUp={manualBackupMutation.isPending}
+        />
+      )}
+
+      {/* Module Marketplace Dialog */}
+      {modulesTenant && (
+        <ModuleMarketplaceDialog
+          tenantId={modulesTenant.id}
+          tenantName={modulesTenant.name}
+          open={!!modulesTenant}
+          onClose={() => setModulesTenant(null)}
         />
       )}
 
