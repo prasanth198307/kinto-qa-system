@@ -174,3 +174,9 @@ id = "5VNYFEUim2Yxo6B1cJ2VW"
 uri = "file://public/SwachERP_Pricing_Design.pdf"
 type = "pdf"
 title = "SwachERP — Pricing & Licensing Design v2.0 (Product-Based)"
+
+[[outputs]]
+id = "0Yz0sRH9Gr8Hm25624odz"
+uri = "file://public/SwachERP_Gold_ERP_Cost_Estimator.xlsx"
+type = "table"
+title = "Gold ERP — Cost Estimator Sheet (₹46,11,400 Total)"
