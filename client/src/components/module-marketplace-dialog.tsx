@@ -84,8 +84,11 @@ export function ModuleMarketplaceDialog({
 
   const freeSet  = new Set(data?.freeModules ?? []);
   const planSet  = new Set(data?.planModules ?? []);
-  // Full effective active set = plan defaults ∪ selected add-ons
-  const effectiveActive = new Set([...(data?.planModules ?? []), ...(data?.selectedModules ?? [])]);
+  // If the tenant has an explicit saved selection, use it directly.
+  // Otherwise (first time / empty DB), seed from plan defaults.
+  const effectiveActive: Set<string> = (data?.selectedModules?.length ?? 0) > 0
+    ? new Set(data!.selectedModules)
+    : new Set(data?.planModules ?? []);
   const activeDraft: Set<string> = draft ?? new Set(effectiveActive);
   const grouped  = groupByCategory(data?.catalog ?? []);
 
@@ -139,10 +142,10 @@ export function ModuleMarketplaceDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); }}>
-      {/* Force flex with inline style — shadcn DialogContent defaults to `display:grid` which breaks scroll */}
+      {/* overflow-hidden overrides the default overflow-y-auto on DialogContent so the inner div scrolls */}
       <DialogContent
-        className="max-w-3xl p-0"
-        style={{ display: "flex", flexDirection: "column", overflow: "hidden", height: "min(90dvh, 820px)" }}
+        className="max-w-3xl p-0 overflow-hidden"
+        style={{ display: "flex", flexDirection: "column", height: "min(90dvh, 820px)" }}
       >
         <DialogHeader className="px-6 pt-5 pb-3 border-b shrink-0">
           <DialogTitle className="flex items-center gap-2 text-base">
@@ -161,7 +164,10 @@ export function ModuleMarketplaceDialog({
         ) : (
           <div className="flex flex-1 min-h-0 overflow-hidden">
             {/* ── Module grid — scrollable ── */}
-            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5">
+            <div
+              className="flex-1 min-h-0 overflow-y-auto px-6 py-4 space-y-5 outline-none"
+              tabIndex={0}
+            >
               {Array.from(grouped.entries()).map(([cat, modules]) => {
                 const c = CATEGORY_COLORS[cat] ?? CATEGORY_COLORS.Core;
                 return (
