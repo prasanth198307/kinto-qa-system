@@ -228,3 +228,9 @@ id = "vpsUb4t4GYbWcaOZRumt1"
 uri = "file://client/public/downloads/SwachERP_Revised_Phase_Plan_v2.xlsx"
 type = "table"
 title = "SwachERP — Revised Plan v2 (Phase Status + Resource & Cost + Gantt + Quote Options)"
+
+[[outputs]]
+id = "zSxfGkYk_P2ZrhCfKEo5g"
+uri = "file://gold_erp_validation.xlsx"
+type = "table"
+title = "Gold ERP Validation Document"
