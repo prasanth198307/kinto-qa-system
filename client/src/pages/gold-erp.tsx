@@ -20,7 +20,8 @@ import {
 } from "lucide-react";
 
 // ── Sub-module imports ─────────────────────────────────────────────────────────
-import { SketchSection, CADSection, GhatSection, SettlementSection, JobFinalizeSection, KarigarLedgerSection } from "./gold-erp-production-ext";
+import { SketchSection, CADSection, CAMSection, GhatSection, SettlementSection, JobFinalizeSection, KarigarLedgerSection } from "./gold-erp-production-ext";
+import { KarigarAttendanceSection, BullionRateCutsSection, ChitCollectionRegisterSection, WholesaleB2BOrdersSection, JewelleryPOSSection, BullionVaultMovementSection } from "./gold-erp-gap-screens";
 import { WholesaleJobworkSection, HallmarkingBatchesSection } from "./gold-erp-wholesale";
 import { CounterBookingsSection, CustomerApprovalsSection, BuybackSection, PhysicalAuditSection, LoyaltySection, PromotionsSection, RefiningSection, PosOldGoldSection } from "./gold-erp-retail";
 import { BullionBookingsSection, VaultAuditSection } from "./gold-erp-bullion-trade";
@@ -1502,7 +1503,9 @@ const NAV_SECTIONS = [
       { key: "production",    label: "Production",       icon: Factory },
       { key: "jobwork",       label: "Jobwork",          icon: Layers },
       { key: "sketch",        label: "Sketch / Design",  icon: Camera },
-      { key: "cad",           label: "CAD / CAM",        icon: Crosshair },
+      { key: "cad",           label: "CAD Process",      icon: Crosshair },
+      { key: "cam",           label: "CAM / Milling",    icon: Layers },
+      { key: "karigar-attendance", label: "Attendance",  icon: Users },
       { key: "ghat",          label: "Ghat Settlement",  icon: Coins },
       { key: "settlement",    label: "Karigar Settlement", icon: IndianRupee },
       { key: "finalize",      label: "Job Finalize",     icon: CheckCircle },
@@ -1513,6 +1516,7 @@ const NAV_SECTIONS = [
   {
     group: "Wholesale & B2B",
     items: [
+      { key: "wholesale-b2b-orders", label: "B2B Order Booking", icon: ClipboardList },
       { key: "wholesale-jobwork",   label: "Wholesale Jobwork",  icon: Layers },
       { key: "hallmarking-batches", label: "Hallmarking Batches", icon: Award },
     ],
@@ -1520,6 +1524,7 @@ const NAV_SECTIONS = [
   {
     group: "Retail",
     items: [
+      { key: "jewellery-pos",     label: "Jewellery POS",     icon: ShoppingCart },
       { key: "counter-bookings",  label: "Counter Bookings",  icon: ClipboardList },
       { key: "customer-approvals", label: "Approvals",        icon: CheckCircle },
       { key: "buyback",           label: "Old Gold Buy-back", icon: RotateCcw },
@@ -1534,18 +1539,21 @@ const NAV_SECTIONS = [
   {
     group: "Bullion & Vault",
     items: [
-      { key: "bullion",           label: "Bullion Stock",     icon: BarChart3 },
-      { key: "bullion-bookings",  label: "Bullion Bookings",  icon: CreditCard },
-      { key: "vault-audit",       label: "Vault Audit",       icon: Shield },
+      { key: "bullion",              label: "Bullion Stock",        icon: BarChart3 },
+      { key: "bullion-rate-cuts",    label: "Rate Cut Invoices",    icon: TrendingUp },
+      { key: "vault-movement",       label: "Vault Movement",       icon: Truck },
+      { key: "bullion-bookings",     label: "Bullion Bookings",     icon: CreditCard },
+      { key: "vault-audit",          label: "Vault Audit",          icon: Shield },
     ],
   },
   {
     group: "Chit Schemes",
     items: [
-      { key: "chit",              label: "Chit Schemes",      icon: Shield },
-      { key: "chit-maturity",     label: "Maturity",          icon: CheckCircle },
-      { key: "chit-defaulters",   label: "Defaulters",        icon: AlertTriangle },
-      { key: "chit-redemptions",  label: "Redemptions",       icon: Gift },
+      { key: "chit",                      label: "Chit Schemes",         icon: Shield },
+      { key: "chit-collection-register",  label: "Collection Register",  icon: ClipboardList },
+      { key: "chit-maturity",             label: "Maturity",             icon: CheckCircle },
+      { key: "chit-defaulters",           label: "Defaulters",           icon: AlertTriangle },
+      { key: "chit-redemptions",          label: "Redemptions",          icon: Gift },
     ],
   },
   {
@@ -1594,14 +1602,18 @@ const SECTION_MAP: Record<string, React.ReactNode> = {
   // Production Extensions
   sketch:               <SketchSection />,
   cad:                  <CADSection />,
+  cam:                  <CAMSection />,
   ghat:                 <GhatSection />,
   settlement:           <SettlementSection />,
   finalize:             <JobFinalizeSection />,
   "karigar-ledger":     <KarigarLedgerSection />,
-  // Wholesale
+  "karigar-attendance": <KarigarAttendanceSection />,
+  // Wholesale & B2B
+  "wholesale-b2b-orders": <WholesaleB2BOrdersSection />,
   "wholesale-jobwork":  <WholesaleJobworkSection />,
   "hallmarking-batches": <HallmarkingBatchesSection />,
   // Retail
+  "jewellery-pos":      <JewelleryPOSSection />,
   "counter-bookings":   <CounterBookingsSection />,
   "customer-approvals": <CustomerApprovalsSection />,
   buyback:              <BuybackSection />,
@@ -1611,9 +1623,12 @@ const SECTION_MAP: Record<string, React.ReactNode> = {
   refining:             <RefiningSection />,
   "pos-old-gold":       <PosOldGoldSection />,
   // Bullion & Vault
+  "bullion-rate-cuts":  <BullionRateCutsSection />,
+  "vault-movement":     <BullionVaultMovementSection />,
   "bullion-bookings":   <BullionBookingsSection />,
   "vault-audit":        <VaultAuditSection />,
   // Chit Extensions
+  "chit-collection-register": <ChitCollectionRegisterSection />,
   "chit-maturity":      <ChitMaturitySection />,
   "chit-defaulters":    <ChitDefaultersSection />,
   "chit-redemptions":   <ChitRedemptionsSection />,

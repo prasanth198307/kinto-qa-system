@@ -1,0 +1,35 @@
+What's been built well
+The core foundation is strong. Metal rates, karigar master, ghat entries, settlement, chit schemes (setup + maturity + defaulters + redemption), metal ledger, bullion transactions, RFID tags, and metal finance/accounting are all present with proper DB schemas. The jw_ table prefix convention and tenant_id on every table for multi-tenancy isolation is correct. Double-entry metal journals with both debit_gm and debit_inr columns is exactly right for gold accounting.
+
+Issues I found
+1. The CAD bug is confirmed in the validation sheet itself
+Test case #17 says: "Create CAD process → CAD file URL stored". This confirms what I flagged from your screenshot — it's storing a URL field, not doing a file upload. The fix I built in the mockup earlier is the right direction.
+2. DB schema gaps
+TableMissing columnWhy it mattersjw_production_ordersdesign_id (FK to designs)No link from production order to design library — can't auto-fill Design Codejw_ghat_entriespurity_received_pctNeed to track purity of returned gold, not just weight — purity variance is moneyjw_settlementproduction_order_idSettlement has no direct link to the order it's closingjw_itemsMulti-image supportimage_url is a single text field — jewellery needs 4+ angle photos. Should be a jw_item_images tablejw_metal_ledgercustomer_id (FK)customer_name stored as free text — not normalised, can't do customer-level reporting reliablyjw_chit_membersaadhar_no, nominee_nameKYC fields missing — needed for regulatory compliance on chit funds
+3. Screens built as one that need splitting
+Built as 1 screenShould beReasongold-erp-cad — "CAD / CAM Process"CAD screen + CAM screen separateCAD operator ≠ CAM operator; different stages, different files, different approvalsgold-erp-rfid — "RFID Tags & Security"5 separate screensTag encoding, bulk scan session, dispatch validation, alert management, live dashboard are all distinct workflowsgold-erp-analytics — "JW Analytics Dashboard"At least 4 sub-sectionsWastage trends, karigar performance, making charge margins, and live stock value need separate views
+4. Screens missing entirely from the built list
+These are in the blueprint but have no screen in the validation doc:
+
+Bullion Invoice & Rate Cuts screen (rate cuts are the defining feature of bullion trade — a bullion_transactions entry alone isn't enough)
+Chit member monthly collection register (separate from chit setup — you need to see all members' monthly payment status in one grid)
+Wholesale B2B Order Booking (different from jobwork — this is for retailers ordering finished pieces)
+Jewellery POS (what's built is pos-old-gold for buyback only — full jewellery billing with gold rate + making charges + exchange is not there)
+Bullion movement tracking dashboard (live vault balance across locations)
+Karigar attendance (separate from karigar master — daily in/out and wages)
+
+5. Validation test gaps
+Test cases missing from Sheet 5:
+
+Gold rate changes → all live estimates/e-commerce prices recalculate automatically (critical)
+CAD file upload (not URL) stores correctly and is downloadable
+Ghat entry: wastage > allowed % triggers alert
+Chit installment in gold gm (not INR) — the schema supports both but no test for gm-based chit
+Plan gating: non-Gold ERP plan user → API returns 403 (test #70 exists for API but no UI test)
+Concurrent karigar settlements (two operators settling same karigar simultaneously — race condition risk)
+
+6. Minor naming inconsistency
+jw_traces_config has section_code set to 206C in the description — but TDS on cash purchases above ₹2 lakh by jewellers is actually under Section 194Q (buyer deducts) or 206C(1H) (seller collects). Worth verifying the correct section with a CA before coding the auto-deduction logic.
+
+Summary
+AreaStatusCore (rates, karigar, items, ledger)✅ SolidProduction (orders, ghat, settlement)✅ Good foundation, CAD needs fixChit schemes✅ Well designedBullion⚠️ Missing rate-cut invoice screen and movement dashboardRFID⚠️ One screen for 5 workflows — needs splittingRetail POS❌ Full jewellery POS not built yetDB schema⚠️ 6 specific columns/tables to addValidation tests⚠️ 6 critical test cases missing

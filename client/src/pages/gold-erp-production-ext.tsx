@@ -508,6 +508,153 @@ export function CADSection() {
   );
 }
 
+// ── CAM Process ───────────────────────────────────────────────────────────────
+export function CAMSection() {
+  const { toast } = useToast();
+  const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<any>(null);
+  const [form, setForm] = useState<any>({});
+  const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
+
+  const { data: camList = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/cam"] });
+  const { data: orders = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/production-orders"] });
+
+  const saveMut = useMutation({
+    mutationFn: (d: any) => editing
+      ? apiRequest("PUT", `/api/gold-erp/cam/${editing.id}`, d)
+      : apiRequest("POST", "/api/gold-erp/cam", d),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/gold-erp/cam"] });
+      setShowForm(false); setEditing(null); setForm({});
+      toast({ title: "CAM record saved" });
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  function openEdit(c: any) { setEditing(c); setForm({ ...c }); setShowForm(true); }
+  function openNew() { setEditing(null); setForm({}); setShowForm(true); }
+
+  const materialOpts = ["Wax", "Resin", "Metal", "Rubber"];
+  const softwareOpts = ["ArtCAM", "RhinoCAM", "Mastercam", "Fusion 360", "Other"];
+
+  return (
+    <>
+      <SH title="CAM / Milling Process" action={
+        <Button size="sm" onClick={openNew} data-testid="button-add-cam">
+          <Plus className="h-4 w-4 mr-1" />Add CAM
+        </Button>
+      } />
+      <div className="overflow-x-auto rounded-lg border">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/50">
+            <tr>{["Order", "Operator", "Software", "Machine", "Material", "Est Hrs", "Act Hrs", "Proto Wt (g)", "QC", ""].map(h => (
+              <th key={h} className="px-3 py-2 text-left text-xs font-medium">{h}</th>
+            ))}</tr>
+          </thead>
+          <tbody>
+            {(camList as any[]).map((c: any) => (
+              <tr key={c.id} className="border-t hover:bg-muted/30">
+                <td className="px-3 py-2 text-xs text-muted-foreground">{c.order_no || `#${c.production_order_id}`}</td>
+                <td className="px-3 py-2">{c.cam_operator || "—"}</td>
+                <td className="px-3 py-2">{c.cam_software || "—"}</td>
+                <td className="px-3 py-2">{c.machine_name || "—"}</td>
+                <td className="px-3 py-2">{c.material_type || "—"}</td>
+                <td className="px-3 py-2 text-center">{c.estimated_hrs || "—"}</td>
+                <td className="px-3 py-2 text-center">{c.actual_hrs || "—"}</td>
+                <td className="px-3 py-2 text-center">{c.prototype_weight_gm ? fmtWt(c.prototype_weight_gm) : "—"}</td>
+                <td className="px-3 py-2">
+                  {c.qc_pass
+                    ? <Badge className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">Pass</Badge>
+                    : <Badge className="text-xs bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300">Pending</Badge>}
+                </td>
+                <td className="px-3 py-2">
+                  <Button size="icon" variant="ghost" onClick={() => openEdit(c)} data-testid={`button-edit-cam-${c.id}`}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                </td>
+              </tr>
+            ))}
+            {camList.length === 0 && (
+              <tr><td colSpan={10} className="px-4 py-8 text-center text-muted-foreground">No CAM records yet</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <Dialog open={showForm} onOpenChange={v => { setShowForm(v); if (!v) { setEditing(null); setForm({}); } }}>
+        <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editing ? "Edit CAM Record" : "New CAM Process"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <FieldRow label="Production Order">
+              <Select value={form.production_order_id?.toString() || ""} onValueChange={v => set("production_order_id", parseInt(v))}>
+                <SelectTrigger data-testid="select-cam-order"><SelectValue placeholder="Select order" /></SelectTrigger>
+                <SelectContent>{(orders as any[]).map((o: any) => <SelectItem key={o.id} value={o.id.toString()}>{o.order_no} — {o.customer_name}</SelectItem>)}</SelectContent>
+              </Select>
+            </FieldRow>
+            <div className="grid grid-cols-2 gap-3">
+              <FieldRow label="CAM Operator">
+                <Input data-testid="input-cam-operator" value={form.cam_operator || ""} onChange={e => set("cam_operator", e.target.value)} placeholder="Operator name" />
+              </FieldRow>
+              <FieldRow label="CAM Software">
+                <Select value={form.cam_software || ""} onValueChange={v => set("cam_software", v)}>
+                  <SelectTrigger><SelectValue placeholder="Select software" /></SelectTrigger>
+                  <SelectContent>{softwareOpts.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                </Select>
+              </FieldRow>
+              <FieldRow label="Machine Name">
+                <Input data-testid="input-cam-machine" value={form.machine_name || ""} onChange={e => set("machine_name", e.target.value)} placeholder="e.g. Roland MDX-40" />
+              </FieldRow>
+              <FieldRow label="Material Type">
+                <Select value={form.material_type || "Wax"} onValueChange={v => set("material_type", v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{materialOpts.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+                </Select>
+              </FieldRow>
+              <FieldRow label="Estimated Hours">
+                <Input data-testid="input-cam-est-hrs" type="number" value={form.estimated_hrs || ""} onChange={e => set("estimated_hrs", e.target.value)} placeholder="0.00" />
+              </FieldRow>
+              <FieldRow label="Actual Hours">
+                <Input data-testid="input-cam-act-hrs" type="number" value={form.actual_hrs || ""} onChange={e => set("actual_hrs", e.target.value)} placeholder="0.00" />
+              </FieldRow>
+              <FieldRow label="Prototype Weight (g)">
+                <Input data-testid="input-cam-proto-wt" type="number" value={form.prototype_weight_gm || ""} onChange={e => set("prototype_weight_gm", e.target.value)} placeholder="0.000" />
+              </FieldRow>
+              <FieldRow label="CAM File URL">
+                <Input data-testid="input-cam-file-url" value={form.cam_file_url || ""} onChange={e => set("cam_file_url", e.target.value)} placeholder="https://…" />
+              </FieldRow>
+            </div>
+            <FieldRow label="QC Status">
+              <div className="flex items-center gap-3 pt-1">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    data-testid="checkbox-cam-qc"
+                    checked={!!form.qc_pass}
+                    onChange={e => set("qc_pass", e.target.checked ? 1 : 0)}
+                    className="h-4 w-4"
+                  />
+                  <span className="text-sm">QC Passed — prototype approved</span>
+                </label>
+              </div>
+            </FieldRow>
+            <FieldRow label="Issues Noted">
+              <Textarea data-testid="textarea-cam-issues" value={form.issues_noted || ""} onChange={e => set("issues_noted", e.target.value)} rows={2} placeholder="Any milling defects, re-work notes…" />
+            </FieldRow>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => { setShowForm(false); setEditing(null); }}>Cancel</Button>
+            <Button onClick={() => saveMut.mutate(form)} disabled={saveMut.isPending} data-testid="button-save-cam">
+              {saveMut.isPending ? "Saving…" : editing ? "Update" : "Save"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 // ── Ghat Entries ──────────────────────────────────────────────────────────────
 export function GhatSection() {
   const { toast } = useToast();

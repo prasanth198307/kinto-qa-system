@@ -164,22 +164,45 @@ router.get("/cam", requireAuth, async (req: any, res) => {
 
 router.post("/cam", requireAuth, async (req: any, res) => {
   try {
-    const { production_order_id, milling_machine, milling_hours_est, wax_model_image_url } = req.body;
+    const {
+      production_order_id, cam_operator, cam_software, machine_name,
+      material_type, cam_file_url, estimated_hrs, actual_hrs,
+      prototype_weight_gm, qc_pass, issues_noted,
+    } = req.body;
     const row = await db.execute(sql`
-      INSERT INTO jw_cam_process (production_order_id, milling_machine, milling_hours_est, wax_model_image_url, status)
-      VALUES (${production_order_id}, ${milling_machine||null}, ${milling_hours_est||null}, ${wax_model_image_url||null}, 'pending')
-      RETURNING *`);
+      INSERT INTO jw_cam_process (
+        production_order_id, cam_operator, cam_software, machine_name,
+        material_type, cam_file_url, estimated_hrs, actual_hrs,
+        prototype_weight_gm, qc_pass, issues_noted
+      ) VALUES (
+        ${production_order_id||null}, ${cam_operator||null}, ${cam_software||null}, ${machine_name||null},
+        ${material_type||'Wax'}, ${cam_file_url||null}, ${estimated_hrs||null}, ${actual_hrs||null},
+        ${prototype_weight_gm||null}, ${qc_pass||0}, ${issues_noted||null}
+      ) RETURNING *`);
     res.json(row.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
 router.put("/cam/:id", requireAuth, async (req: any, res) => {
   try {
-    const { status, milling_hours_actual, wax_weight_gm, prototype_approved, notes } = req.body;
+    const {
+      cam_operator, cam_software, machine_name, material_type,
+      cam_file_url, estimated_hrs, actual_hrs,
+      prototype_weight_gm, qc_pass, issues_noted,
+    } = req.body;
     const row = await db.execute(sql`
-      UPDATE jw_cam_process SET status=${status||'pending'}, milling_hours_actual=${milling_hours_actual||null},
-        wax_weight_gm=${wax_weight_gm||null}, prototype_approved=${prototype_approved||0}, notes=${notes||null}
-      WHERE id=${req.params.id} RETURNING *`);
+      UPDATE jw_cam_process SET
+        cam_operator         = ${cam_operator||null},
+        cam_software         = ${cam_software||null},
+        machine_name         = ${machine_name||null},
+        material_type        = ${material_type||'Wax'},
+        cam_file_url         = ${cam_file_url||null},
+        estimated_hrs        = ${estimated_hrs||null},
+        actual_hrs           = ${actual_hrs||null},
+        prototype_weight_gm  = ${prototype_weight_gm||null},
+        qc_pass              = ${qc_pass||0},
+        issues_noted         = ${issues_noted||null}
+      WHERE id = ${req.params.id} RETURNING *`);
     res.json(row.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
@@ -1585,6 +1608,272 @@ router.get("/dashboard-kpis", requireAuth, async (req: any, res) => {
       monthly_ecom: { count: Number((ecomRow.rows[0] as any)?.cnt||0), amount: Number((ecomRow.rows[0] as any)?.total||0) },
       active_chit_members: Number((chitRow.rows[0] as any)?.cnt||0),
     });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── KARIGAR ATTENDANCE ─────────────────────────────────────────────────────────
+router.get("/karigar-attendance", requireAuth, async (req: any, res) => {
+  try {
+    const t = tid(req);
+    const date = req.query.date as string || new Date().toISOString().slice(0, 10);
+    const rows = await db.execute(sql`
+      SELECT a.*, k.name AS karigar_name
+      FROM jw_karigar_attendance a
+      LEFT JOIN jw_karigars k ON k.id = a.karigar_id
+      WHERE a.tenant_id = ${t} AND a.attend_date = ${date}::date
+      ORDER BY k.name`);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.post("/karigar-attendance", requireAuth, async (req: any, res) => {
+  try {
+    const t = tid(req);
+    const { karigar_id, attend_date, check_in_time, check_out_time, work_hours, work_type, daily_wages, advance_given, present, notes } = req.body;
+    const row = await db.execute(sql`
+      INSERT INTO jw_karigar_attendance
+        (tenant_id, karigar_id, attend_date, check_in_time, check_out_time, work_hours, work_type, daily_wages, advance_given, present, notes)
+      VALUES
+        (${t}, ${karigar_id||null}, ${attend_date||null}::date, ${check_in_time||null}::time, ${check_out_time||null}::time,
+         ${work_hours||null}, ${work_type||'production'}, ${daily_wages||0}, ${advance_given||0}, ${present??1}, ${notes||null})
+      ON CONFLICT (tenant_id, karigar_id, attend_date) DO UPDATE SET
+        check_in_time=${check_in_time||null}::time, check_out_time=${check_out_time||null}::time,
+        work_hours=${work_hours||null}, work_type=${work_type||'production'},
+        daily_wages=${daily_wages||0}, advance_given=${advance_given||0},
+        present=${present??1}, notes=${notes||null}
+      RETURNING *`);
+    res.json(row.rows[0]);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.put("/karigar-attendance/:id", requireAuth, async (req: any, res) => {
+  try {
+    const { check_in_time, check_out_time, work_hours, work_type, daily_wages, advance_given, present, notes } = req.body;
+    const row = await db.execute(sql`
+      UPDATE jw_karigar_attendance SET
+        check_in_time=${check_in_time||null}::time, check_out_time=${check_out_time||null}::time,
+        work_hours=${work_hours||null}, work_type=${work_type||'production'},
+        daily_wages=${daily_wages||0}, advance_given=${advance_given||0},
+        present=${present??1}, notes=${notes||null}
+      WHERE id=${req.params.id} RETURNING *`);
+    res.json(row.rows[0]);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── BULLION RATE CUTS ──────────────────────────────────────────────────────────
+router.get("/bullion-rate-cuts", requireAuth, async (req: any, res) => {
+  try {
+    const rows = await db.execute(sql`
+      SELECT * FROM jw_bullion_rate_cuts WHERE tenant_id=${tid(req)}
+      ORDER BY cut_date DESC, id DESC`);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.post("/bullion-rate-cuts", requireAuth, async (req: any, res) => {
+  try {
+    const t = tid(req);
+    const { invoice_no, cut_date, party_name, party_type, metal_type, purity_name, weight_gm, spot_rate, rate_cut_pct, rate_cut_per_gm, net_rate, total_amount, gst_pct, gst_amount, grand_total, payment_mode, payment_ref, status, notes } = req.body;
+    const row = await db.execute(sql`
+      INSERT INTO jw_bullion_rate_cuts
+        (tenant_id, invoice_no, cut_date, party_name, party_type, metal_type, purity_name, weight_gm, spot_rate, rate_cut_pct, rate_cut_per_gm, net_rate, total_amount, gst_pct, gst_amount, grand_total, payment_mode, payment_ref, status, notes)
+      VALUES
+        (${t}, ${invoice_no||null}, ${cut_date}::date, ${party_name||null}, ${party_type||'dealer'}, ${metal_type||'gold'},
+         ${purity_name||null}, ${weight_gm||0}, ${spot_rate||null}, ${rate_cut_pct||0}, ${rate_cut_per_gm||0},
+         ${net_rate||null}, ${total_amount||0}, ${gst_pct||3}, ${gst_amount||0}, ${grand_total||0},
+         ${payment_mode||'bank'}, ${payment_ref||null}, ${status||'draft'}, ${notes||null})
+      RETURNING *`);
+    res.json(row.rows[0]);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.put("/bullion-rate-cuts/:id", requireAuth, async (req: any, res) => {
+  try {
+    const { invoice_no, cut_date, party_name, party_type, metal_type, purity_name, weight_gm, spot_rate, rate_cut_pct, rate_cut_per_gm, net_rate, total_amount, gst_pct, gst_amount, grand_total, payment_mode, payment_ref, status, notes } = req.body;
+    const row = await db.execute(sql`
+      UPDATE jw_bullion_rate_cuts SET
+        invoice_no=${invoice_no||null}, cut_date=${cut_date}::date, party_name=${party_name||null},
+        party_type=${party_type||'dealer'}, metal_type=${metal_type||'gold'}, purity_name=${purity_name||null},
+        weight_gm=${weight_gm||0}, spot_rate=${spot_rate||null}, rate_cut_pct=${rate_cut_pct||0},
+        rate_cut_per_gm=${rate_cut_per_gm||0}, net_rate=${net_rate||null}, total_amount=${total_amount||0},
+        gst_pct=${gst_pct||3}, gst_amount=${gst_amount||0}, grand_total=${grand_total||0},
+        payment_mode=${payment_mode||'bank'}, payment_ref=${payment_ref||null},
+        status=${status||'draft'}, notes=${notes||null}
+      WHERE id=${req.params.id} RETURNING *`);
+    res.json(row.rows[0]);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── CHIT INSTALLMENTS (COLLECTION REGISTER) ────────────────────────────────────
+router.get("/chit-installments", requireAuth, async (req: any, res) => {
+  try {
+    const t = tid(req);
+    const schemeId = req.query.scheme_id;
+    const rows = await db.execute(sql`
+      SELECT i.*, m.member_name, m.phone AS member_phone
+      FROM jw_chit_installments i
+      LEFT JOIN jw_chit_members m ON m.id = i.member_id
+      WHERE i.tenant_id = ${t}
+        AND (${schemeId ? schemeId : null}::integer IS NULL OR i.scheme_id = ${schemeId ? parseInt(schemeId as string) : 0})
+      ORDER BY m.member_name, i.installment_no`);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.post("/chit-installments", requireAuth, async (req: any, res) => {
+  try {
+    const t = tid(req);
+    const { scheme_id, member_id, installment_no, due_date, amount_inr, amount_gm, payment_mode, receipt_no, status, late_fee, notes } = req.body;
+    const row = await db.execute(sql`
+      INSERT INTO jw_chit_installments
+        (tenant_id, scheme_id, member_id, installment_no, due_date, amount_inr, amount_gm, payment_mode, receipt_no, status, late_fee, notes)
+      VALUES
+        (${t}, ${scheme_id||null}, ${member_id||null}, ${installment_no||1},
+         ${due_date||null}::date, ${amount_inr||0}, ${amount_gm||0},
+         ${payment_mode||'cash'}, ${receipt_no||null}, ${status||'pending'}, ${late_fee||0}, ${notes||null})
+      RETURNING *`);
+    res.json(row.rows[0]);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.put("/chit-installments/:id", requireAuth, async (req: any, res) => {
+  try {
+    const { paid_date, amount_inr, amount_gm, payment_mode, receipt_no, status, late_fee, notes } = req.body;
+    const row = await db.execute(sql`
+      UPDATE jw_chit_installments SET
+        paid_date=${paid_date||null}::date, amount_inr=${amount_inr||0},
+        amount_gm=${amount_gm||0}, payment_mode=${payment_mode||'cash'},
+        receipt_no=${receipt_no||null}, status=${status||'pending'},
+        late_fee=${late_fee||0}, notes=${notes||null}
+      WHERE id=${req.params.id} RETURNING *`);
+    res.json(row.rows[0]);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── WHOLESALE B2B ORDERS ───────────────────────────────────────────────────────
+router.get("/wholesale-b2b-orders", requireAuth, async (req: any, res) => {
+  try {
+    const rows = await db.execute(sql`
+      SELECT * FROM jw_wholesale_b2b_orders WHERE tenant_id=${tid(req)}
+      ORDER BY order_date DESC, id DESC`);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.post("/wholesale-b2b-orders", requireAuth, async (req: any, res) => {
+  try {
+    const t = tid(req);
+    const { order_no, order_date, customer_name, customer_phone, customer_gstin, delivery_date, metal_type, purity_name, total_pieces, total_weight_gm, gold_rate_used, making_total, stone_total, discount_amt, gst_pct, gst_amount, grand_total, advance_paid, balance_due, status, notes } = req.body;
+    const subtotal = (Number(total_weight_gm)||0) * (Number(gold_rate_used)||0) + (Number(making_total)||0) + (Number(stone_total)||0);
+    const taxable = subtotal - (Number(discount_amt)||0);
+    const gstAmt = taxable * ((Number(gst_pct)||3) / 100);
+    const grand = taxable + gstAmt;
+    const balance = grand - (Number(advance_paid)||0);
+    const row = await db.execute(sql`
+      INSERT INTO jw_wholesale_b2b_orders
+        (tenant_id, order_no, order_date, customer_name, customer_phone, customer_gstin, delivery_date, metal_type, purity_name, total_pieces, total_weight_gm, gold_rate_used, making_total, stone_total, subtotal, discount_amt, gst_pct, gst_amount, grand_total, advance_paid, balance_due, status, notes)
+      VALUES
+        (${t}, ${order_no||null}, ${order_date}::date, ${customer_name||null}, ${customer_phone||null}, ${customer_gstin||null},
+         ${delivery_date||null}::date, ${metal_type||'gold'}, ${purity_name||null},
+         ${total_pieces||0}, ${total_weight_gm||0}, ${gold_rate_used||null},
+         ${making_total||0}, ${stone_total||0}, ${subtotal}, ${discount_amt||0},
+         ${gst_pct||3}, ${gstAmt}, ${grand}, ${advance_paid||0}, ${balance}, ${status||'draft'}, ${notes||null})
+      RETURNING *`);
+    res.json(row.rows[0]);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.put("/wholesale-b2b-orders/:id", requireAuth, async (req: any, res) => {
+  try {
+    const { order_no, order_date, customer_name, customer_phone, customer_gstin, delivery_date, metal_type, purity_name, total_pieces, total_weight_gm, gold_rate_used, making_total, stone_total, discount_amt, gst_pct, advance_paid, status, notes } = req.body;
+    const subtotal = (Number(total_weight_gm)||0) * (Number(gold_rate_used)||0) + (Number(making_total)||0) + (Number(stone_total)||0);
+    const taxable = subtotal - (Number(discount_amt)||0);
+    const gstAmt = taxable * ((Number(gst_pct)||3) / 100);
+    const grand = taxable + gstAmt;
+    const balance = grand - (Number(advance_paid)||0);
+    const row = await db.execute(sql`
+      UPDATE jw_wholesale_b2b_orders SET
+        order_no=${order_no||null}, order_date=${order_date}::date, customer_name=${customer_name||null},
+        customer_phone=${customer_phone||null}, customer_gstin=${customer_gstin||null},
+        delivery_date=${delivery_date||null}::date, metal_type=${metal_type||'gold'}, purity_name=${purity_name||null},
+        total_pieces=${total_pieces||0}, total_weight_gm=${total_weight_gm||0}, gold_rate_used=${gold_rate_used||null},
+        making_total=${making_total||0}, stone_total=${stone_total||0}, subtotal=${subtotal},
+        discount_amt=${discount_amt||0}, gst_pct=${gst_pct||3}, gst_amount=${gstAmt},
+        grand_total=${grand}, advance_paid=${advance_paid||0}, balance_due=${balance},
+        status=${status||'draft'}, notes=${notes||null}
+      WHERE id=${req.params.id} RETURNING *`);
+    res.json(row.rows[0]);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── JEWELLERY POS BILLS ────────────────────────────────────────────────────────
+router.get("/jewellery-pos-bills", requireAuth, async (req: any, res) => {
+  try {
+    const rows = await db.execute(sql`
+      SELECT * FROM jw_jewellery_pos_bills WHERE tenant_id=${tid(req)}
+      ORDER BY bill_date DESC, id DESC`);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.post("/jewellery-pos-bills", requireAuth, async (req: any, res) => {
+  try {
+    const t = tid(req);
+    const { bill_no, bill_date, customer_name, customer_phone, customer_gstin, gold_rate, purity_name, items_json, gross_total, exchange_gold_wt, exchange_rate, exchange_value, discount_amt, taxable_value, cgst_pct, sgst_pct, gst_amount, grand_total, paid_cash, paid_card, paid_upi, advance_used, balance, booking_id, status, notes } = req.body;
+    const row = await db.execute(sql`
+      INSERT INTO jw_jewellery_pos_bills
+        (tenant_id, bill_no, bill_date, customer_name, customer_phone, customer_gstin, gold_rate, purity_name, items_json, gross_total, exchange_gold_wt, exchange_rate, exchange_value, discount_amt, taxable_value, cgst_pct, sgst_pct, gst_amount, grand_total, paid_cash, paid_card, paid_upi, advance_used, balance, booking_id, status, notes)
+      VALUES
+        (${t}, ${bill_no||null}, ${bill_date}::date, ${customer_name||null}, ${customer_phone||null}, ${customer_gstin||null},
+         ${gold_rate||null}, ${purity_name||null}, ${items_json||'[]'}::jsonb,
+         ${gross_total||0}, ${exchange_gold_wt||0}, ${exchange_rate||0}, ${exchange_value||0},
+         ${discount_amt||0}, ${taxable_value||0}, ${cgst_pct||1.5}, ${sgst_pct||1.5}, ${gst_amount||0},
+         ${grand_total||0}, ${paid_cash||0}, ${paid_card||0}, ${paid_upi||0}, ${advance_used||0},
+         ${balance||0}, ${booking_id||null}, ${status||'draft'}, ${notes||null})
+      RETURNING *`);
+    res.json(row.rows[0]);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── BULLION VAULT MOVEMENTS ────────────────────────────────────────────────────
+router.get("/vault-movements", requireAuth, async (req: any, res) => {
+  try {
+    const rows = await db.execute(sql`
+      SELECT * FROM jw_bullion_vault_movements WHERE tenant_id=${tid(req)}
+      ORDER BY movement_date DESC, id DESC`);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.post("/vault-movements", requireAuth, async (req: any, res) => {
+  try {
+    const t = tid(req);
+    const { movement_date, movement_type, metal_type, purity_name, weight_gm, from_location, to_location, vehicle_no, driver_name, security_seal, escorted_by, reason, reference_type, reference_id, verified_by, status, notes } = req.body;
+    const row = await db.execute(sql`
+      INSERT INTO jw_bullion_vault_movements
+        (tenant_id, movement_date, movement_type, metal_type, purity_name, weight_gm, from_location, to_location, vehicle_no, driver_name, security_seal, escorted_by, reason, reference_type, reference_id, verified_by, status, notes)
+      VALUES
+        (${t}, ${movement_date}::date, ${movement_type||'in'}, ${metal_type||'gold'}, ${purity_name||null},
+         ${weight_gm||0}, ${from_location||null}, ${to_location||null}, ${vehicle_no||null},
+         ${driver_name||null}, ${security_seal||null}, ${escorted_by||null}, ${reason||null},
+         ${reference_type||null}, ${reference_id||null}, ${verified_by||null}, ${status||'pending'}, ${notes||null})
+      RETURNING *`);
+    res.json(row.rows[0]);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.put("/vault-movements/:id", requireAuth, async (req: any, res) => {
+  try {
+    const { movement_type, weight_gm, from_location, to_location, vehicle_no, driver_name, security_seal, escorted_by, reason, verified_by, status, notes } = req.body;
+    const row = await db.execute(sql`
+      UPDATE jw_bullion_vault_movements SET
+        movement_type=${movement_type||'in'}, weight_gm=${weight_gm||0},
+        from_location=${from_location||null}, to_location=${to_location||null},
+        vehicle_no=${vehicle_no||null}, driver_name=${driver_name||null},
+        security_seal=${security_seal||null}, escorted_by=${escorted_by||null},
+        reason=${reason||null}, verified_by=${verified_by||null}, status=${status||'pending'}, notes=${notes||null}
+      WHERE id=${req.params.id} RETURNING *`);
+    res.json(row.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
