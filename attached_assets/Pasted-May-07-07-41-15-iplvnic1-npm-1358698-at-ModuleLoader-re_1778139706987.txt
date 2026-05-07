@@ -1,0 +1,30 @@
+May 07 07:41:15 iplvnic1 npm[1358698]:     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+May 07 07:41:15 iplvnic1 npm[1358698]:     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+May 07 07:41:15 iplvnic1 npm[1358698]:     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+May 07 07:41:15 iplvnic1 npm[1358698]:   code: 'ERR_MODULE_NOT_FOUND'
+May 07 07:41:15 iplvnic1 npm[1358698]: }
+May 07 07:41:15 iplvnic1 npm[1358698]: Node.js v20.19.5
+May 07 07:41:15 iplvnic1 systemd[1]: kinto.service: Main process exited, code=exited, status=1/FAILURE
+May 07 07:41:15 iplvnic1 systemd[1]: kinto.service: Failed with result 'exit-code'.
+May 07 07:41:25 iplvnic1 systemd[1]: kinto.service: Scheduled restart job, restart counter is at 9.
+May 07 07:41:25 iplvnic1 systemd[1]: Stopped KINTO Smart Ops Application.
+May 07 07:41:25 iplvnic1 systemd[1]: Started KINTO Smart Ops Application.
+May 07 07:41:26 iplvnic1 npm[1358710]: > rest-express@1.0.0 start
+May 07 07:41:26 iplvnic1 npm[1358710]: > NODE_ENV=production node dist/index.js
+May 07 07:41:26 iplvnic1 npm[1358721]: node:internal/modules/esm/resolve:873
+May 07 07:41:26 iplvnic1 npm[1358721]:   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+May 07 07:41:26 iplvnic1 npm[1358721]:         ^
+May 07 07:41:26 iplvnic1 npm[1358721]: Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'express-rate-limit' imported from /home/kinto/kinto-qa-system/dist/index.js
+May 07 07:41:26 iplvnic1 npm[1358721]:     at packageResolve (node:internal/modules/esm/resolve:873:9)
+May 07 07:41:26 iplvnic1 npm[1358721]:     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+May 07 07:41:26 iplvnic1 npm[1358721]:     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+May 07 07:41:26 iplvnic1 npm[1358721]:     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+May 07 07:41:26 iplvnic1 npm[1358721]:     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+May 07 07:41:26 iplvnic1 npm[1358721]:     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+May 07 07:41:26 iplvnic1 npm[1358721]:     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+May 07 07:41:26 iplvnic1 npm[1358721]:     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+May 07 07:41:26 iplvnic1 npm[1358721]:   code: 'ERR_MODULE_NOT_FOUND'
+May 07 07:41:26 iplvnic1 npm[1358721]: }
+May 07 07:41:26 iplvnic1 npm[1358721]: Node.js v20.19.5
+May 07 07:41:26 iplvnic1 systemd[1]: kinto.service: Main process exited, code=exited, status=1/FAILURE
+May 07 07:41:26 iplvnic1 systemd[1]: kinto.service: Failed with result 'exit-code'.
