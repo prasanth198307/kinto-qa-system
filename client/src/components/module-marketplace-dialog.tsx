@@ -8,7 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Loader2, Package, IndianRupee, CheckCircle2, X, Trash2, Lock } from "lucide-react";
+import { Loader2, Package, IndianRupee, CheckCircle2, X, Trash2, BadgeCheck } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -146,8 +146,7 @@ export function ModuleMarketplaceDialog({
             Module Marketplace — {tenantName}
           </DialogTitle>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Toggle modules on or off. Plan-included modules are locked.
-            Free modules are always enabled.
+            Toggle add-on modules on or off. Modules marked <span className="font-semibold text-blue-600 dark:text-blue-400">Included</span> are already active in your plan at no extra cost.
           </p>
         </DialogHeader>
 
@@ -178,7 +177,7 @@ export function ModuleMarketplaceDialog({
                         const lockReason = isFree
                           ? "Always enabled — free for all plans"
                           : isInPlan
-                          ? "Included in your current plan. Change plan to remove."
+                          ? "Already active — included in your current plan at no extra cost."
                           : null;
 
                         const card = (
@@ -218,8 +217,8 @@ export function ModuleMarketplaceDialog({
                                   <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">FREE</span>
                                 ) : isInPlan ? (
                                   <div className="flex items-center gap-0.5">
-                                    <Lock className="h-2.5 w-2.5 text-blue-500" />
-                                    <span className="text-xs font-bold text-blue-600 dark:text-blue-400">Plan</span>
+                                    <BadgeCheck className="h-3 w-3 text-blue-500" />
+                                    <span className="text-xs font-bold text-blue-600 dark:text-blue-400">Included</span>
                                   </div>
                                 ) : (
                                   <span className="text-sm font-bold text-foreground">
