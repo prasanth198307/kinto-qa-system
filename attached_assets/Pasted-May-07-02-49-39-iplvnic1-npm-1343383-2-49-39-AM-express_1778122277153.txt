@@ -1,0 +1,40 @@
+May 07 02:49:39 iplvnic1 npm[1343383]: 2:49:39 AM [express] GET /api/my-permissions 304 in 80ms :: {"role":"admin","roleId":"role-admin","r…
+May 07 02:49:39 iplvnic1 npm[1343383]: 2:49:39 AM [express] GET /api/expense-categories 304 in 82ms :: [{"id":"eaeb6b65-00ee-4dfb-b6d8-e4d8…
+May 07 02:49:39 iplvnic1 npm[1343383]: /home/kinto/kinto-qa-system/node_modules/pg-pool/index.js:45
+May 07 02:49:39 iplvnic1 npm[1343383]:     Error.captureStackTrace(err)
+May 07 02:49:39 iplvnic1 npm[1343383]:           ^
+May 07 02:49:39 iplvnic1 npm[1343383]: error: column v.name does not exist
+May 07 02:49:39 iplvnic1 npm[1343383]:     at /home/kinto/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+May 07 02:49:39 iplvnic1 npm[1343383]:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+May 07 02:49:39 iplvnic1 npm[1343383]:     at async handleGetGRNs (file:///home/kinto/kinto-qa-system/dist/index.js:13917:16) {
+May 07 02:49:39 iplvnic1 npm[1343383]:   length: 104,
+May 07 02:49:39 iplvnic1 npm[1343383]:   severity: 'ERROR',
+May 07 02:49:39 iplvnic1 npm[1343383]:   code: '42703',
+May 07 02:49:39 iplvnic1 npm[1343383]:   detail: undefined,
+May 07 02:49:39 iplvnic1 npm[1343383]:   hint: undefined,
+May 07 02:49:39 iplvnic1 npm[1343383]:   position: '18',
+May 07 02:49:39 iplvnic1 npm[1343383]:   internalPosition: undefined,
+May 07 02:49:39 iplvnic1 npm[1343383]:   internalQuery: undefined,
+May 07 02:49:39 iplvnic1 npm[1343383]:   where: undefined,
+May 07 02:49:39 iplvnic1 npm[1343383]:   schema: undefined,
+May 07 02:49:39 iplvnic1 npm[1343383]:   table: undefined,
+May 07 02:49:39 iplvnic1 npm[1343383]:   column: undefined,
+May 07 02:49:39 iplvnic1 npm[1343383]:   dataType: undefined,
+May 07 02:49:39 iplvnic1 npm[1343383]:   constraint: undefined,
+May 07 02:49:39 iplvnic1 npm[1343383]:   file: 'parse_relation.c',
+May 07 02:49:39 iplvnic1 npm[1343383]:   line: '3722',
+May 07 02:49:39 iplvnic1 npm[1343383]:   routine: 'errorMissingColumn'
+May 07 02:49:39 iplvnic1 npm[1343383]: }
+May 07 02:49:39 iplvnic1 npm[1343383]: Node.js v20.19.5
+May 07 02:49:39 iplvnic1 systemd[1]: kinto.service: Main process exited, code=exited, status=1/FAILURE
+May 07 02:49:39 iplvnic1 systemd[1]: kinto.service: Failed with result 'exit-code'.
+May 07 02:49:39 iplvnic1 systemd[1]: kinto.service: Consumed 5.027s CPU time.
+May 07 02:49:49 iplvnic1 systemd[1]: kinto.service: Scheduled restart job, restart counter is at 1.
+May 07 02:49:49 iplvnic1 systemd[1]: Stopped KINTO Smart Ops Application.
+May 07 02:49:49 iplvnic1 systemd[1]: kinto.service: Consumed 5.027s CPU time.
+May 07 02:49:49 iplvnic1 systemd[1]: Started KINTO Smart Ops Application.
+May 07 02:49:49 iplvnic1 npm[1343429]: > rest-express@1.0.0 start
+May 07 02:49:49 iplvnic1 npm[1343429]: > NODE_ENV=production node dist/index.js
+May 07 02:49:51 iplvnic1 npm[1343441]: [dotenv@17.2.3] injecting env (0) from .env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+May 07 02:49:51 iplvnic1 npm[1343441]: ✅ Environment loaded
+May 07 02:49:51 iplvnic1 npm[1343441]: ✅ DATABASE_URL: Set
