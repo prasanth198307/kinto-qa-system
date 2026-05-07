@@ -210,3 +210,9 @@ id = "0VrsBjq6JBxjg-PY_u2Gx"
 uri = "file://client/public/downloads/SwachERP_GoldJewellery_Mapping.pdf"
 type = "pdf"
 title = "SwachERP Gold & Jewellery Feature Mapping (137 Features)"
+
+[[outputs]]
+id = "ciPWXNGWLzQluyxTdhme9"
+uri = "file://client/public/downloads/SwachERP_30Day_19Phase_Plan.xlsx"
+type = "table"
+title = "SwachERP — 30-Day, 19-Phase Complete Build Plan (₹10 Lakhs)"
