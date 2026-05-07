@@ -201,10 +201,16 @@ export default function SuperAdminSecurity() {
                       <TableRow><TableCell colSpan={6} className="text-center py-10 text-muted-foreground">No active sessions found</TableCell></TableRow>
                     ) : filteredSessions.map(s => (
                       <TableRow key={s.sid} data-testid={`row-session-${s.sid}`}>
-                        <TableCell className="font-medium">{s.username || s.userId}</TableCell>
-                        <TableCell><TenantBadge name={s.tenantName || `Tenant ${s.tenantId}`} /></TableCell>
-                        <TableCell className="font-mono text-sm">{s.ip || "—"}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground max-w-[180px] truncate">{s.userAgent || "—"}</TableCell>
+                        <TableCell className="font-medium">
+                          {s.username && s.username !== '(unknown)' ? s.username : (
+                            <span className="text-muted-foreground text-xs font-mono">{s.userId?.slice(0, 8)}…</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <TenantBadge name={s.tenantName && s.tenantName !== 'Unknown Tenant' ? s.tenantName : (s.tenantId ? `Tenant ${s.tenantId}` : 'No Tenant')} />
+                        </TableCell>
+                        <TableCell className="font-mono text-sm">{s.ip && s.ip !== '—' ? s.ip : <span className="text-muted-foreground">—</span>}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground max-w-[180px] truncate">{s.userAgent && s.userAgent !== '—' ? s.userAgent : "—"}</TableCell>
                         <TableCell className="text-sm whitespace-nowrap">
                           {s.lastActivity ? formatDistanceToNow(new Date(s.lastActivity), { addSuffix: true }) : "—"}
                         </TableCell>

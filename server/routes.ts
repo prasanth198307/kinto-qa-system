@@ -28690,22 +28690,38 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       const result = await pool.query(`
         SELECT s.sid,
                s.sess->'passport'->>'user' AS user_id,
-               u.username,
+               COALESCE(u.username, '(unknown)')  AS username,
                u.tenant_id,
-               t.name AS tenant_name,
-               s.expire AS last_activity
+               COALESCE(t.name, 'Unknown Tenant') AS tenant_name,
+               (s.expire - INTERVAL '8 hours')    AS last_activity,
+               s.sess                              AS sess_raw
         FROM session s
         LEFT JOIN users u ON u.id::text = s.sess->'passport'->>'user'
         LEFT JOIN tenants t ON t.id = u.tenant_id
         WHERE s.expire > NOW()
+          AND s.sess->'passport'->>'user' IS NOT NULL
         ORDER BY s.expire DESC
         LIMIT 500
       `);
-      const rows = result.rows.map((r: any) => ({
-        sid: r.sid, userId: r.user_id, username: r.username,
-        tenantId: r.tenant_id, tenantName: r.tenant_name,
-        lastActivity: r.last_activity, ip: '—', userAgent: '—',
-      }));
+      const rows = result.rows.map((r: any) => {
+        let ip = '—';
+        let userAgent = '—';
+        try {
+          const raw = typeof r.sess_raw === 'string' ? JSON.parse(r.sess_raw) : r.sess_raw;
+          ip = raw?.ip ?? raw?.ipAddress ?? '—';
+          userAgent = raw?.userAgent ?? '—';
+        } catch { /* ignore */ }
+        return {
+          sid: r.sid,
+          userId: r.user_id,
+          username: r.username,
+          tenantId: r.tenant_id,
+          tenantName: r.tenant_name,
+          lastActivity: r.last_activity,
+          ip,
+          userAgent,
+        };
+      });
       res.json(rows);
     } catch { res.status(500).json({ message: 'Failed to fetch sessions' }); }
   });
