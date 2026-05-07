@@ -127,6 +127,50 @@ psql $DATABASE_URL -f db_scripts/2026-05-01_t001_extended_vertical_tables.sql
 -- Safe to re-run (uses IF NOT EXISTS / IF EXISTS)
 psql $DATABASE_URL -f db_scripts/2026-05-01_fix_education_healthcare_schema.sql
 
+----- GROUP 14: Gold ERP Gap Features (May 7) -----
+-- New HR, CRM and Gold ERP Metal Ledger tables
+-- jw_metal_ledger, hr_onboarding_checklists, hr_letters, hr_support_tickets
+-- crm_surveys, crm_survey_questions, crm_survey_responses
+psql $DATABASE_URL -f db_scripts/2026-05-07_gap_features.sql
+
+----- GROUP 15: Gold ERP Phase 1 — Production 14-Stage Flow (May 7) -----
+-- Extends: jw_design_library, jw_production_orders, jw_production_stages, jw_jobwork_orders
+-- New: jw_sketch_process, jw_cad_process, jw_cam_process, jw_casting_trees,
+--      jw_ghat_entries, jw_casting_process, jw_finishing_stages,
+--      jw_job_finalize, jw_settlement, jw_karigar_material_ledger
+-- PRIORITY: HIGHEST — entire 14-stage production flow
+psql $DATABASE_URL -f db_scripts/2026-05-07_gold_phase1_production.sql
+
+----- GROUP 16: Gold ERP Phase 2 — Gold Chit Completion (May 7) -----
+-- Extends: jw_chit_schemes, jw_chit_members, jw_chit_redemptions
+-- New: jw_chit_defaulter_actions, jw_chit_maturity_reminders
+-- PRIORITY: HIGH — maturity, redemption, defaulter management
+psql $DATABASE_URL -f db_scripts/2026-05-07_gold_phase2_chit_completion.sql
+
+----- GROUP 17: Gold ERP Phase 3 — Bullion Trade + Retail Ops (May 7) -----
+-- Extends: jw_bullion_transactions
+-- New: jw_bullion_bookings, jw_vault_audits, jw_vault_audit_items,
+--      jw_customer_approvals, jw_customer_approval_items,
+--      jw_buyback_transactions, jw_physical_audits, jw_physical_audit_items,
+--      jw_loyalty_programs, jw_loyalty_members, jw_loyalty_transactions, jw_promotions
+-- PRIORITY: HIGH
+psql $DATABASE_URL -f db_scripts/2026-05-07_gold_phase3_bullion_retail.sql
+
+----- GROUP 18: Gold ERP Phase 4 — E-Catalog + Finance + MCX Config (May 7) -----
+-- New: jw_mcx_rate_config, jw_catalogs, jw_catalog_shares, jw_catalog_enquiries,
+--      jw_catalog_analytics, jw_metal_accounts, jw_metal_journals,
+--      jw_metal_journal_lines, jw_stock_consolidation, jw_metal_loss_reports, jw_bis_config
+-- Extends: jw_metal_rates (MCX OHLC fields)
+-- PRIORITY: HIGH — MCX is dependency for all pricing
+psql $DATABASE_URL -f db_scripts/2026-05-07_gold_phase4_catalog_finance_mcx.sql
+
+----- GROUP 19: Gold ERP Phase 5 — OMS + E-Commerce + RFID shell (May 7) -----
+-- New: jw_oms_orders, jw_oms_status_log, jw_oms_notify_config,
+--      jw_ecom_config, jw_ecom_carts, jw_ecom_orders, jw_ecom_wishlists, jw_ecom_coupons,
+--      jw_rfid_tags, jw_rfid_scan_sessions, jw_rfid_alerts
+-- PRIORITY: MEDIUM — customer-facing, depends on Phase 1-4 data
+psql $DATABASE_URL -f db_scripts/2026-05-07_gold_phase5_oms_ecommerce.sql
+
 ============================================================
   END OF MIGRATION LIST
 ============================================================
