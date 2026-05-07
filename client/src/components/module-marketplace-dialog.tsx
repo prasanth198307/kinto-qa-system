@@ -82,28 +82,32 @@ export function ModuleMarketplaceDialog({
     enabled: open && tenantId > 0,
   });
 
-  const activeDraft: Set<string> = draft ?? new Set(data?.selectedModules ?? []);
   const freeSet  = new Set(data?.freeModules ?? []);
   const planSet  = new Set(data?.planModules ?? []);
+  // Full effective active set = plan defaults ∪ selected add-ons
+  const effectiveActive = new Set([...(data?.planModules ?? []), ...(data?.selectedModules ?? [])]);
+  const activeDraft: Set<string> = draft ?? new Set(effectiveActive);
   const grouped  = groupByCategory(data?.catalog ?? []);
 
   const toggle = (slug: string) => {
-    if (freeSet.has(slug) || planSet.has(slug)) return;
+    // Free modules are always on — can never be toggled
+    if (freeSet.has(slug)) return;
     setDraft(prev => {
-      const base = prev ?? new Set(data?.selectedModules ?? []);
+      const base = prev ?? new Set(effectiveActive);
       const next = new Set(base);
       next.has(slug) ? next.delete(slug) : next.add(slug);
       return next;
     });
   };
 
+  // Only add-on modules (not free, not plan-included) cost extra
   const draftTotal = (data?.catalog ?? [])
     .filter(m => activeDraft.has(m.slug) && m.priceMonthly > 0 && !freeSet.has(m.slug) && !planSet.has(m.slug))
     .reduce((s, m) => s + m.priceMonthly, 0);
 
   const hasChanges = (() => {
     if (!draft || !data) return false;
-    const orig = new Set(data.selectedModules);
+    const orig = new Set(effectiveActive);
     for (const s of draft) if (!orig.has(s)) return true;
     for (const s of orig) if (!draft.has(s)) return true;
     return false;
@@ -146,7 +150,7 @@ export function ModuleMarketplaceDialog({
             Module Marketplace — {tenantName}
           </DialogTitle>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Toggle add-on modules on or off. Modules marked <span className="font-semibold text-blue-600 dark:text-blue-400">Included</span> are already active in your plan at no extra cost.
+            Toggle any module on or off for this tenant. <span className="font-semibold text-blue-600 dark:text-blue-400">Plan default</span> modules are included in their plan — you can still disable them individually.
           </p>
         </DialogHeader>
 
@@ -169,16 +173,13 @@ export function ModuleMarketplaceDialog({
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {modules.map(mod => {
-                        const isFree   = freeSet.has(mod.slug);
-                        const isInPlan = planSet.has(mod.slug);
-                        const isLocked = isFree || isInPlan;
-                        const isOn     = activeDraft.has(mod.slug);
-
-                        const lockReason = isFree
-                          ? "Always enabled — free for all plans"
-                          : isInPlan
-                          ? "Already active — included in your current plan at no extra cost."
-                          : null;
+                        const isFree      = freeSet.has(mod.slug);
+                        const isInPlan    = planSet.has(mod.slug);
+                        const isOn        = activeDraft.has(mod.slug);
+                        // Only free modules are truly locked (always on, can't be removed)
+                        const isLocked    = isFree;
+                        // Plan modules that have been manually turned OFF by super-admin
+                        const isOverridden = isInPlan && !isOn;
 
                         const card = (
                           <button
@@ -186,23 +187,32 @@ export function ModuleMarketplaceDialog({
                             data-testid={`module-toggle-${mod.slug}`}
                             disabled={isLocked}
                             className={`w-full text-left p-3 rounded-xl border-2 transition-all ${
-                              isFree    ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 cursor-not-allowed opacity-80" :
-                              isInPlan  ? "bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800 cursor-not-allowed opacity-80" :
-                              isOn      ? "bg-white dark:bg-card border-primary ring-2 ring-primary/10 shadow-sm cursor-pointer" :
-                                          "bg-card border-border hover:border-primary/40 cursor-pointer"
+                              isFree
+                                ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 cursor-not-allowed opacity-80"
+                                : isOn
+                                  ? "bg-white dark:bg-card border-primary ring-2 ring-primary/10 shadow-sm cursor-pointer"
+                                  : "bg-card border-border hover:border-primary/40 cursor-pointer"
                             }`}
                           >
                             <div className="flex items-start justify-between gap-2">
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className={`text-sm font-semibold ${
-                                    isFree ? "text-emerald-800 dark:text-emerald-300" :
-                                    isInPlan ? "text-blue-800 dark:text-blue-300" :
-                                    "text-foreground"
-                                  }`}>
+                                  <span className="text-sm font-semibold text-foreground">
                                     {mod.name}
                                   </span>
-                                  {mod.popular && !isLocked && (
+                                  {isFree && (
+                                    <span className="text-[10px] font-bold bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded-full">FREE</span>
+                                  )}
+                                  {isInPlan && !isFree && (
+                                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                                      isOverridden
+                                        ? "bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300"
+                                        : "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300"
+                                    }`}>
+                                      {isOverridden ? "Plan (disabled)" : "Plan default"}
+                                    </span>
+                                  )}
+                                  {mod.popular && !isFree && !isInPlan && (
                                     <span className="text-[10px] font-bold bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded-full">
                                       Popular
                                     </span>
@@ -227,24 +237,23 @@ export function ModuleMarketplaceDialog({
                                   </span>
                                 )}
                                 <div className={`h-5 w-5 rounded-full flex items-center justify-center flex-shrink-0 ${
-                                  isFree    ? "bg-emerald-500" :
-                                  isInPlan  ? "bg-blue-500" :
-                                  isOn      ? "bg-primary" :
-                                              "border-2 border-muted-foreground/30"
+                                  isFree ? "bg-emerald-500" :
+                                  isOn   ? "bg-primary" :
+                                           "border-2 border-muted-foreground/30"
                                 }`}>
-                                  {(isLocked || isOn) && <CheckCircle2 className="h-3 w-3 text-white" />}
+                                  {(isFree || isOn) && <CheckCircle2 className="h-3 w-3 text-white" />}
                                 </div>
                               </div>
                             </div>
                           </button>
                         );
 
-                        return isLocked ? (
+                        return isFree ? (
                           <TooltipProvider key={mod.slug} delayDuration={200}>
                             <Tooltip>
                               <TooltipTrigger asChild>{card}</TooltipTrigger>
                               <TooltipContent side="top" className="max-w-xs text-xs">
-                                {lockReason}
+                                Always enabled — free for all plans
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>

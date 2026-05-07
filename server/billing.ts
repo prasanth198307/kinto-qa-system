@@ -719,12 +719,31 @@ export function registerBillingRoutes(app: Express): void {
       return res.status(400).json({ message: "selectedModules must be an array of slugs" });
     }
     try {
-      const catalog  = await loadCatalogFromDB();
+      const [catalog, planRows] = await Promise.all([
+        loadCatalogFromDB(),
+        db.execute(sql`
+          SELECT sp.modules AS plan_modules
+          FROM tenants t
+          LEFT JOIN subscriptions s       ON s.tenant_id = t.id
+          LEFT JOIN subscription_plans sp ON sp.slug = COALESCE(s.plan_slug, t.plan)
+          WHERE t.id = ${tenantId} LIMIT 1
+        `),
+      ]);
+      const catalogSlugSet = new Set(catalog.map(m => m.slug));
+      const rawPlanMods: string[] = Array.isArray((planRows.rows as any[])[0]?.plan_modules)
+        ? (planRows.rows as any[])[0].plan_modules : [];
+      const planSet  = new Set(planModulesToCatalogSlugs(rawPlanMods, catalogSlugSet));
       const freeSet  = new Set(catalog.filter(m => m.free).map(m => m.slug));
       const priceMap = new Map(catalog.map(m => [m.slug, m.priceMonthly]));
-      const allFree  = Array.from(freeSet);
-      const merged   = Array.from(new Set([...allFree, ...selectedModules]));
-      const monthly  = merged.filter(s => !freeSet.has(s)).reduce((sum, s) => sum + (priceMap.get(s) ?? 0), 0);
+
+      // Always keep free modules; save whatever super-admin chose (may exclude plan defaults)
+      const merged = Array.from(new Set([...Array.from(freeSet), ...selectedModules]));
+
+      // Only charge for modules that are NEITHER free NOR in the plan
+      const monthly = merged
+        .filter(s => !freeSet.has(s) && !planSet.has(s))
+        .reduce((sum, s) => sum + (priceMap.get(s) ?? 0), 0);
+
       await db.execute(sql`
         UPDATE subscriptions
         SET selected_modules = ${JSON.stringify(merged)}::jsonb,
@@ -736,7 +755,7 @@ export function registerBillingRoutes(app: Express): void {
         INSERT INTO billing_events (tenant_id, event_type, from_plan, to_plan, billing_cycle, amount, currency, notes, created_by)
         VALUES (
           ${tenantId}, 'modules_updated', NULL, NULL, 'monthly', ${monthly}, 'INR',
-          ${'Super-admin updated modules — ' + merged.filter(s => !freeSet.has(s)).length + ' paid modules, ₹' + monthly + '/mo'},
+          ${'Super-admin updated modules — ' + merged.filter(s => !freeSet.has(s) && !planSet.has(s)).length + ' add-on modules, ₹' + monthly + '/mo'},
           ${(req.user as any)?.username ?? 'super-admin'}
         )
       `);
