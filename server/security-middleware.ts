@@ -66,12 +66,13 @@ export const resetPasswordRateLimiter = rateLimit({
 });
 
 /**
- * API general limiter: 500 requests per 15 minutes per IP.
+ * API general limiter: 2000 requests per 15 minutes per IP.
+ * Higher limit to accommodate shared proxy IPs in self-hosted deployments.
  * Catches any abusive scraping / automated attacks on non-auth routes.
  */
 export const apiRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 500,
+  max: 2000,
   standardHeaders: "draft-7",
   legacyHeaders: false,
   skip: (req) => {
