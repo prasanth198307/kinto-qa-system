@@ -50,6 +50,17 @@ SwachERP is a comprehensive SaaS ERP platform for Indian businesses across all i
 - `server/hr-routes.ts` extended with expense-claims, timesheets, appraisal-cycles, appraisals, module-labels, custom-fields
 - `server/healthcare-routes.ts`, `server/education-routes.ts`, `server/logistics-routes.ts`, `server/realestate-routes.ts`, `server/retail-routes.ts`, `server/agriculture-routes.ts` — all industry vertical routes (requireAuth defined inline)
 
+### Gap Features (Phase 10 — Current Session)
+- **Gold ERP — Metal Ledger:** `jw_metal_ledger` table; Metal Ledger sidebar section in `/gold-erp`; tracks per-customer metal balances (gold/silver/platinum), running balance, receipt/issue/return transactions. Routes: `GET/POST /api/gold-erp/metal-ledger`, `GET /api/gold-erp/metal-ledger/balances`.
+- **Gold ERP — JW Analytics:** Analytics sidebar section in `/gold-erp`; 5 KPI cards (total production, wastage, karigar count, outstanding metal, making charges); daily production trend chart via `/api/gold-erp/analytics/production-trend`; wastage breakdown by stage via `/api/gold-erp/analytics/wastage`; karigar-wise output via `/api/gold-erp/analytics/karigar-output`; making charge trends via `/api/gold-erp/analytics/making-charges`; live stock value summary via `/api/gold-erp/analytics/stock-value`.
+- **HR — Onboarding & Induction** (`/hr/onboarding`): `hr_onboarding_checklists` table; checklist management with per-employee task tracking (pending/in-progress/completed); CRUD UI with status badges.
+- **HR — HR Letters Generator** (`/hr/letters`): `hr_letters` table; letter types (offer/appointment/confirmation/increment/warning/relieving/experience/NOC); template-based content editing; draft/issued/sent status; print support.
+- **HR — Support Desk** (`/hr/support-desk`): `hr_support_tickets` table; ticket categories (payroll/leave/attendance/IT/facility/general); priority levels (low/medium/high/urgent); open/in-progress/resolved/closed status; resolution tracking.
+- **CRM — Feedback & Survey Hub** (`/crm/surveys`): `crm_surveys`, `crm_survey_questions`, `crm_survey_responses` tables; create surveys with multiple question types (rating/text/multiple-choice); response collection with star-rating UI; response count tracking.
+- **DB Script:** `db_scripts/2026-05-07_gap_features.sql` — all 7 new tables.
+- **Backend:** `server/gold-erp-routes.ts` extended with metal-ledger + 5 analytics endpoints; `server/hr-extra-routes.ts` new file mounted at `/api/hr` (onboarding, letters, support-tickets); `server/crm-routes.ts` extended with surveys/questions/responses.
+- **Navigation:** Gold ERP NAV_ITEMS extended to 13 items (Metal Ledger + JW Analytics); SECTION_MAP updated. Both `getAdminNavSections` instances in App.tsx include new HR/CRM nav items. `use-filtered-navigation.tsx` module-key + section-group mappings added.
+
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 

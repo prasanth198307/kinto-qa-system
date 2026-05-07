@@ -1178,33 +1178,325 @@ function ChitSchemesSection() {
   );
 }
 
+// ── Analytics Section ─────────────────────────────────────────────────────────
+function AnalyticsSection() {
+  const { data: overview } = useQuery<any>({ queryKey: ["/api/gold-erp/analytics/overview"] });
+  const { data: wastage = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/analytics/wastage"] });
+  const { data: karigarOutput = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/analytics/karigar-output"] });
+  const { data: makingCharges = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/analytics/making-charges"] });
+  const { data: stockValue } = useQuery<any>({ queryKey: ["/api/gold-erp/analytics/stock-value"] });
+
+  const totalStockVal = (stockValue?.itemStock || []).reduce((s: number, i: any) => s + Number(i.total_value || 0), 0)
+    + (stockValue?.bullionStock || []).reduce((s: number, i: any) => s + Number(i.value || 0), 0);
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-lg font-bold">JW Analytics</h2>
+        <p className="text-sm text-muted-foreground">Business intelligence for your jewellery operations</p>
+      </div>
+
+      {/* Overview KPIs */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: "Active Items", val: overview?.items?.cnt || 0, sub: `${fmtWt(overview?.items?.total_stock)} total stock` },
+          { label: "Live Stock Value", val: fmtAmt(totalStockVal), sub: "Bullion + Finished goods" },
+          { label: "Active Karigars", val: overview?.karigars?.cnt || 0, sub: "Currently working" },
+          { label: "Open Repairs", val: overview?.repairs?.cnt || 0, sub: `Charges: ${fmtAmt(overview?.repairs?.total_charges)}` },
+        ].map(k => (
+          <Card key={k.label}>
+            <CardContent className="p-4">
+              <p className="text-xs text-muted-foreground">{k.label}</p>
+              <p className="text-2xl font-bold mt-1">{k.val}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{k.sub}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Wastage by Stage */}
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm">Wastage by Production Stage</CardTitle></CardHeader>
+          <CardContent>
+            {wastage.length === 0 && <p className="text-sm text-muted-foreground py-4 text-center">No wastage data yet</p>}
+            <div className="space-y-3">
+              {wastage.map((w: any) => (
+                <div key={w.stage_name} className="space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="font-medium">{w.stage_name}</span>
+                    <span className="text-muted-foreground">{fmtWt(w.total_wastage)} ({w.avg_wastage_pct}%)</span>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-1.5">
+                    <div className="bg-orange-500 h-1.5 rounded-full" style={{ width: `${Math.min(Number(w.avg_wastage_pct) * 10, 100)}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Karigar Output */}
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm">Karigar Output</CardTitle></CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead className="bg-muted/50"><tr>{["Karigar", "Orders", "JW Orders", "Issued (g)", "Received (g)"].map(h => <th key={h} className="px-3 py-2 text-left">{h}</th>)}</tr></thead>
+                <tbody>
+                  {karigarOutput.slice(0, 8).map((k: any) => (
+                    <tr key={k.karigar_name} className="border-t">
+                      <td className="px-3 py-1.5 font-medium">{k.karigar_name}</td>
+                      <td className="px-3 py-1.5">{k.total_orders}</td>
+                      <td className="px-3 py-1.5">{k.jobwork_count}</td>
+                      <td className="px-3 py-1.5">{fmtWt(k.jw_issued_gm)}</td>
+                      <td className="px-3 py-1.5">{fmtWt(k.jw_received_gm)}</td>
+                    </tr>
+                  ))}
+                  {karigarOutput.length === 0 && <tr><td colSpan={5} className="px-3 py-4 text-center text-muted-foreground">No karigar data</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Making Charge Trends */}
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm">Making Charge Trends (Monthly)</CardTitle></CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead className="bg-muted/50"><tr>{["Month", "Estimates", "Making Charges", "Revenue", "Wastage %"].map(h => <th key={h} className="px-3 py-2 text-left">{h}</th>)}</tr></thead>
+                <tbody>
+                  {makingCharges.slice(0, 6).map((m: any) => (
+                    <tr key={m.month} className="border-t">
+                      <td className="px-3 py-1.5">{new Date(m.month).toLocaleDateString("en-IN", { month: "short", year: "2-digit" })}</td>
+                      <td className="px-3 py-1.5">{m.estimate_count}</td>
+                      <td className="px-3 py-1.5">{fmtAmt(m.total_making)}</td>
+                      <td className="px-3 py-1.5">{fmtAmt(m.total_revenue)}</td>
+                      <td className="px-3 py-1.5">{m.avg_wastage_pct}%</td>
+                    </tr>
+                  ))}
+                  {makingCharges.length === 0 && <tr><td colSpan={5} className="px-3 py-4 text-center text-muted-foreground">No estimate data yet</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Live Stock Value */}
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm">Live Stock Value Breakdown</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-1">Bullion Stock</p>
+              {(stockValue?.bullionStock || []).map((b: any) => (
+                <div key={`${b.metal_type}-${b.purity_name}`} className="flex justify-between text-sm py-1 border-b last:border-0">
+                  <span>{b.metal_type} — {b.purity_name}</span>
+                  <span className="font-medium">{fmtWt(b.stock_grams)} · {fmtAmt(b.value)}</span>
+                </div>
+              ))}
+              {!(stockValue?.bullionStock?.length) && <p className="text-xs text-muted-foreground">No bullion stock</p>}
+            </div>
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-1">Item Stock</p>
+              {(stockValue?.itemStock || []).map((b: any) => (
+                <div key={`${b.metal_type}-${b.purity_name}`} className="flex justify-between text-sm py-1 border-b last:border-0">
+                  <span>{b.metal_type} — {b.purity_name}</span>
+                  <span className="font-medium">{fmtWt(b.total_gm)} · {fmtAmt(b.total_value)}</span>
+                </div>
+              ))}
+              {!(stockValue?.itemStock?.length) && <p className="text-xs text-muted-foreground">No item stock</p>}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// ── Metal Ledger Section ───────────────────────────────────────────────────────
+function MetalLedgerSection() {
+  const { toast } = useToast();
+  const [view, setView] = useState<"balances" | "transactions">("balances");
+  const [showForm, setShowForm] = useState(false);
+  const [searchCust, setSearchCust] = useState("");
+  const [form, setForm] = useState<any>({ metal_type: "gold", purity_name: "22K (916)", transaction_type: "inward", txn_date: today() });
+
+  const { data: txns = [], isLoading: txnLoading } = useQuery<any[]>({ queryKey: ["/api/gold-erp/metal-ledger"] });
+  const { data: balances = [], isLoading: balLoading } = useQuery<any[]>({ queryKey: ["/api/gold-erp/metal-ledger/balances"] });
+
+  const saveMutation = useMutation({
+    mutationFn: (data: any) => apiRequest("POST", "/api/gold-erp/metal-ledger", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/gold-erp/metal-ledger"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/gold-erp/metal-ledger/balances"] });
+      setShowForm(false); setForm({ metal_type: "gold", purity_name: "22K (916)", transaction_type: "inward", txn_date: today() });
+      toast({ title: "Transaction recorded" });
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
+  const filteredBalances = balances.filter((b: any) => b.customer_name?.toLowerCase().includes(searchCust.toLowerCase()));
+  const filteredTxns = txns.filter((t: any) => t.customer_name?.toLowerCase().includes(searchCust.toLowerCase()));
+  const PURITIES_FLAT = Object.values(PURITIES).flat().map(p => p.name);
+
+  const TXN_TYPES = [
+    { value: "inward", label: "Inward (Customer Deposits)" },
+    { value: "outward", label: "Outward (Metal Used)" },
+    { value: "purchase", label: "Purchase" },
+    { value: "sale", label: "Sale" },
+    { value: "repair_issue", label: "Repair Issue" },
+    { value: "repair_return", label: "Repair Return" },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div>
+          <h2 className="text-lg font-bold">Customer Metal Ledger</h2>
+          <p className="text-sm text-muted-foreground">Track gold/silver balances held for each customer</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="flex border rounded-lg overflow-hidden">
+            <button onClick={() => setView("balances")} className={`px-3 py-1.5 text-sm ${view === "balances" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>Balances</button>
+            <button onClick={() => setView("transactions")} className={`px-3 py-1.5 text-sm ${view === "transactions" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>Transactions</button>
+          </div>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input className="pl-9 w-44" placeholder="Search customer…" value={searchCust} onChange={e => setSearchCust(e.target.value)} />
+          </div>
+          <Button size="sm" onClick={() => setShowForm(true)} data-testid="button-add-metal-txn"><Plus className="h-4 w-4 mr-1" />Add Transaction</Button>
+        </div>
+      </div>
+
+      {view === "balances" ? (
+        <div className="overflow-x-auto rounded-lg border">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50"><tr>{["Customer", "Phone", "Metal", "Purity", "Balance (g)", "Last Transaction"].map(h => <th key={h} className="px-4 py-2 text-left">{h}</th>)}</tr></thead>
+            <tbody>
+              {filteredBalances.map((b: any, i: number) => (
+                <tr key={i} className="border-t hover:bg-muted/30">
+                  <td className="px-4 py-2 font-medium">{b.customer_name}</td>
+                  <td className="px-4 py-2 text-muted-foreground">{b.customer_phone || "—"}</td>
+                  <td className="px-4 py-2 capitalize">{b.metal_type}</td>
+                  <td className="px-4 py-2">{b.purity_name}</td>
+                  <td className="px-4 py-2 font-semibold text-yellow-700 dark:text-yellow-400">{fmtWt(b.balance_gm)}</td>
+                  <td className="px-4 py-2 text-muted-foreground">{b.last_txn_date}</td>
+                </tr>
+              ))}
+              {filteredBalances.length === 0 && !balLoading && <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">No customer balances</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-lg border">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50"><tr>{["Date", "Customer", "Type", "Metal", "Purity", "Weight (g)", "Rate/g", "Amount", "Ref"].map(h => <th key={h} className="px-3 py-2 text-left">{h}</th>)}</tr></thead>
+            <tbody>
+              {filteredTxns.map((t: any) => (
+                <tr key={t.id} className="border-t hover:bg-muted/30">
+                  <td className="px-3 py-1.5">{t.txn_date}</td>
+                  <td className="px-3 py-1.5 font-medium">{t.customer_name}</td>
+                  <td className="px-3 py-1.5"><Badge className="text-xs capitalize">{t.transaction_type?.replace("_", " ")}</Badge></td>
+                  <td className="px-3 py-1.5 capitalize">{t.metal_type}</td>
+                  <td className="px-3 py-1.5">{t.purity_name}</td>
+                  <td className="px-3 py-1.5 font-medium">{fmtWt(t.weight_gm)}</td>
+                  <td className="px-3 py-1.5">{t.rate_per_gram ? fmtAmt(t.rate_per_gram) : "—"}</td>
+                  <td className="px-3 py-1.5">{t.amount ? fmtAmt(t.amount) : "—"}</td>
+                  <td className="px-3 py-1.5 text-muted-foreground">{t.reference_no || "—"}</td>
+                </tr>
+              ))}
+              {filteredTxns.length === 0 && !txnLoading && <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">No transactions yet</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <Dialog open={showForm} onOpenChange={setShowForm}>
+        <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto">
+          <DialogHeader><DialogTitle>New Metal Ledger Entry</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1"><Label className="text-xs">Customer Name *</Label><Input value={form.customer_name || ""} onChange={e => set("customer_name", e.target.value)} data-testid="input-ledger-customer" /></div>
+              <div className="space-y-1"><Label className="text-xs">Phone</Label><Input value={form.customer_phone || ""} onChange={e => set("customer_phone", e.target.value)} /></div>
+              <div className="space-y-1">
+                <Label className="text-xs">Metal Type</Label>
+                <Select value={form.metal_type} onValueChange={v => set("metal_type", v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="gold">Gold</SelectItem><SelectItem value="silver">Silver</SelectItem><SelectItem value="platinum">Platinum</SelectItem></SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Purity</Label>
+                <Select value={form.purity_name} onValueChange={v => set("purity_name", v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{PURITIES_FLAT.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Transaction Type *</Label>
+                <Select value={form.transaction_type} onValueChange={v => set("transaction_type", v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{TXN_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1"><Label className="text-xs">Date</Label><Input type="date" value={form.txn_date} onChange={e => set("txn_date", e.target.value)} /></div>
+              <div className="space-y-1"><Label className="text-xs">Weight (grams) *</Label><Input type="number" step="0.001" value={form.weight_gm || ""} onChange={e => set("weight_gm", e.target.value)} data-testid="input-ledger-weight" /></div>
+              <div className="space-y-1"><Label className="text-xs">Rate per Gram (₹)</Label><Input type="number" value={form.rate_per_gram || ""} onChange={e => set("rate_per_gram", e.target.value)} /></div>
+              <div className="space-y-1"><Label className="text-xs">Reference No</Label><Input value={form.reference_no || ""} onChange={e => set("reference_no", e.target.value)} /></div>
+              <div className="space-y-1">
+                <Label className="text-xs">Reference Type</Label>
+                <Select value={form.reference_type || ""} onValueChange={v => set("reference_type", v)}>
+                  <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
+                  <SelectContent><SelectItem value="none">None</SelectItem><SelectItem value="estimate">Estimate</SelectItem><SelectItem value="repair">Repair</SelectItem><SelectItem value="jobwork">Jobwork</SelectItem><SelectItem value="bullion">Bullion</SelectItem></SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-1"><Label className="text-xs">Notes</Label><Textarea value={form.notes || ""} onChange={e => set("notes", e.target.value)} rows={2} /></div>
+            <div className="flex gap-2 justify-end pt-1">
+              <Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
+              <Button onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isPending} data-testid="button-save-metal-ledger">Save Entry</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
 // ── Nav config ────────────────────────────────────────────────────────────────
 const NAV_ITEMS = [
-  { key: "overview",    label: "Overview",       icon: LayoutDashboard },
-  { key: "rates",       label: "Metal Rates",    icon: TrendingUp },
-  { key: "karigar",     label: "Karigar",        icon: Users },
-  { key: "items",       label: "Item Master",    icon: Package },
-  { key: "estimates",   label: "Estimates",      icon: IndianRupee },
-  { key: "production",  label: "Production",     icon: Factory },
-  { key: "jobwork",     label: "Jobwork",        icon: Layers },
-  { key: "bullion",     label: "Bullion",        icon: BarChart3 },
-  { key: "repairs",     label: "Repairs",        icon: Wrench },
-  { key: "hallmarking", label: "Hallmarking",    icon: CheckCircle },
-  { key: "chit",        label: "Chit Schemes",   icon: Shield },
+  { key: "overview",      label: "Overview",         icon: LayoutDashboard },
+  { key: "rates",         label: "Metal Rates",      icon: TrendingUp },
+  { key: "karigar",       label: "Karigar",          icon: Users },
+  { key: "items",         label: "Item Master",      icon: Package },
+  { key: "estimates",     label: "Estimates",        icon: IndianRupee },
+  { key: "production",    label: "Production",       icon: Factory },
+  { key: "jobwork",       label: "Jobwork",          icon: Layers },
+  { key: "bullion",       label: "Bullion",          icon: BarChart3 },
+  { key: "repairs",       label: "Repairs",          icon: Wrench },
+  { key: "hallmarking",   label: "Hallmarking",      icon: CheckCircle },
+  { key: "chit",          label: "Chit Schemes",     icon: Shield },
+  { key: "metal-ledger",  label: "Metal Ledger",     icon: Truck },
+  { key: "analytics",     label: "JW Analytics",     icon: Star },
 ];
 
 const SECTION_MAP: Record<string, React.ReactNode> = {
-  overview:    <OverviewSection />,
-  rates:       <MetalRatesSection />,
-  karigar:     <KarigarSection />,
-  items:       <ItemMasterSection />,
-  estimates:   <EstimatesSection />,
-  production:  <ProductionSection />,
-  jobwork:     <JobworkSection />,
-  bullion:     <BullionSection />,
-  repairs:     <RepairsSection />,
-  hallmarking: <HallmarkingSection />,
-  chit:        <ChitSchemesSection />,
+  overview:      <OverviewSection />,
+  rates:         <MetalRatesSection />,
+  karigar:       <KarigarSection />,
+  items:         <ItemMasterSection />,
+  estimates:     <EstimatesSection />,
+  production:    <ProductionSection />,
+  jobwork:       <JobworkSection />,
+  bullion:       <BullionSection />,
+  repairs:       <RepairsSection />,
+  hallmarking:   <HallmarkingSection />,
+  chit:          <ChitSchemesSection />,
+  "metal-ledger": <MetalLedgerSection />,
+  analytics:     <AnalyticsSection />,
 };
 
 // ── Main Page ─────────────────────────────────────────────────────────────────

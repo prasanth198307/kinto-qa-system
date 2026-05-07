@@ -123,6 +123,10 @@ const navItemToScreenKey: Record<string, string> = {
   'hr-masters': 'hr_masters',
   // New Phase features
   'hr-expense-claims': 'hr_expense_claims',
+  'hr-onboarding': 'hr_masters',
+  'hr-letters': 'hr_masters',
+  'hr-support-desk': 'hr_masters',
+  'crm-surveys': 'crm_leads',
   'timesheets': 'timesheets',
   'hr-appraisals': 'hr_appraisals',
   'recurring-invoices': 'recurring_invoices',
@@ -255,6 +259,10 @@ const navItemToScreen: Record<string, string> = {
   'api-keys': 'API Hub',
   // New Phase features
   'hr-expense-claims': 'HR & Payroll',
+  'hr-onboarding': 'HR & Payroll',
+  'hr-letters': 'HR & Payroll',
+  'hr-support-desk': 'HR & Payroll',
+  'crm-surveys': 'CRM & Leads',
   'timesheets': 'HR & Payroll',
   'hr-appraisals': 'HR & Payroll',
   'recurring-invoices': 'Purchase Orders',

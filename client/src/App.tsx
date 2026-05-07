@@ -84,7 +84,7 @@ import { ManagerChecklistAssignment } from "@/components/ManagerChecklistAssignm
 import PendingPaymentsDashboard from "@/components/PendingPaymentsDashboard";
 import { OperatorAssignedChecklists } from "@/components/OperatorAssignedChecklists";
 import { VerticalNavSidebar, type NavSection } from "@/components/VerticalNavSidebar";
-import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, ClipboardList, Settings, Calendar, Users, FileText, FileX, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator, IndianRupee, CreditCard, Upload, FolderOpen, Wallet, Car, BookOpen, Scale, BarChart3, Landmark, Tag, Trash2, PackageX, Loader2, Play, UserX, Briefcase, Target, Lock, Key, Gem } from "lucide-react";
+import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, ClipboardList, Settings, Calendar, Users, FileText, FileX, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator, IndianRupee, CreditCard, Upload, FolderOpen, Wallet, Car, BookOpen, Scale, BarChart3, Landmark, Tag, Trash2, PackageX, Loader2, Play, UserX, Briefcase, Target, Lock, Key, Gem, Star, MessageSquare } from "lucide-react";
 import CRMLeadsPage from "@/pages/crm-leads";
 import SalesDashboard from "@/components/SalesDashboard";
 import SalesOrdersPage from "@/pages/sales-orders";
@@ -166,6 +166,10 @@ import PricingPage from "@/pages/pricing";
 import EssLogin from "@/pages/ess-login";
 import EssPortal from "@/pages/ess-portal";
 import HRExpenseClaimsPage from "@/pages/hr-expense-claims";
+import HROnboardingPage from "@/pages/hr-onboarding";
+import HRLettersPage from "@/pages/hr-letters";
+import HRSupportDeskPage from "@/pages/hr-support-desk";
+import CRMSurveysPage from "@/pages/crm-surveys";
 import RecurringInvoicesPage from "@/pages/recurring-invoices";
 import WarehousesPage from "@/pages/warehouses";
 import ProjectManagementPage from "@/pages/project-management";
@@ -1109,6 +1113,9 @@ function AdminDashboard() {
         { id: "hr-loans", label: "Loans & Advances", icon: CreditCard, onClick: () => setLocation('/hr/loans') },
         { id: "hr-tds", label: "TDS & Compliance", icon: Shield, onClick: () => setLocation('/hr/tds-declarations') },
         { id: "hr-recruitment", label: "Recruitment", icon: Briefcase, onClick: () => setLocation('/hr/recruitment') },
+        { id: "hr-onboarding", label: "Onboarding", icon: CheckCircle2, onClick: () => setLocation('/hr/onboarding') },
+        { id: "hr-letters", label: "HR Letters", icon: FileText, onClick: () => setLocation('/hr/letters') },
+        { id: "hr-support-desk", label: "Support Desk", icon: MessageSquare, onClick: () => setLocation('/hr/support-desk') },
         { id: "hr-reports", label: "HR Reports", icon: BarChart3, onClick: () => setLocation('/hr/reports') },
         { id: "hr-masters", label: "HR Masters", icon: Settings, onClick: () => setLocation('/hr/masters') },
       ],
@@ -1118,6 +1125,7 @@ function AdminDashboard() {
       label: "CRM & Leads",
       items: [
         { id: "crm-leads", label: "Lead Management", icon: Target, onClick: () => setLocation('/crm/leads') },
+        { id: "crm-surveys", label: "Feedback & Surveys", icon: Star, onClick: () => setLocation('/crm/surveys') },
       ],
     },
     {
@@ -2169,6 +2177,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       label: "CRM & Leads",
       items: [
         { id: "crm-leads", label: "Lead Management", icon: Target, onClick: () => setLocation('/crm/leads') },
+        { id: "crm-surveys", label: "Feedback & Surveys", icon: Star, onClick: () => setLocation('/crm/surveys') },
       ],
     },
     {
@@ -2183,6 +2192,9 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "hr-loans", label: "Loans & Advances", icon: CreditCard, onClick: () => setLocation('/hr/loans') },
         { id: "hr-tds", label: "TDS & Compliance", icon: Shield, onClick: () => setLocation('/hr/tds-declarations') },
         { id: "hr-recruitment", label: "Recruitment", icon: Briefcase, onClick: () => setLocation('/hr/recruitment') },
+        { id: "hr-onboarding", label: "Onboarding", icon: CheckCircle2, onClick: () => setLocation('/hr/onboarding') },
+        { id: "hr-letters", label: "HR Letters", icon: FileText, onClick: () => setLocation('/hr/letters') },
+        { id: "hr-support-desk", label: "Support Desk", icon: MessageSquare, onClick: () => setLocation('/hr/support-desk') },
         { id: "hr-reports", label: "HR Reports", icon: BarChart3, onClick: () => setLocation('/hr/reports') },
         { id: "hr-masters", label: "HR Masters", icon: Settings, onClick: () => setLocation('/hr/masters') },
         { id: "hr-expense-claims", label: "Expense Claims", icon: Wallet, onClick: () => setLocation('/hr/expense-claims') },
@@ -3791,6 +3803,10 @@ function Router() {
       <ProtectedRoute path="/hr/reports" component={HRReportsWrapper} />
       <Route path="/hr/payslip/:id" component={HRPayslipPage} />
       <ProtectedRoute path="/hr/expense-claims" component={HRExpenseClaimsWrapper} />
+      <ProtectedRoute path="/hr/onboarding" component={HROnboardingWrapper} />
+      <ProtectedRoute path="/hr/letters" component={HRLettersWrapper} />
+      <ProtectedRoute path="/hr/support-desk" component={HRSupportDeskWrapper} />
+      <ProtectedRoute path="/crm/surveys" component={CRMSurveysWrapper} />
       <ProtectedRoute path="/hr/timesheets" component={TimesheetsWrapper} />
       <ProtectedRoute path="/hr/appraisals" component={PerformanceAppraisalWrapper} />
       <ProtectedRoute path="/recurring-invoices" component={RecurringInvoicesWrapper} />
@@ -3835,6 +3851,70 @@ function HRExpenseClaimsWrapper() {
       navSections={resolvedNav} activeView={activeView}
       onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
       <HRExpenseClaimsPage />
+    </DashboardShell>
+  );
+}
+
+function HROnboardingWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('hr-onboarding');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Onboarding & Induction" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
+      <HROnboardingPage />
+    </DashboardShell>
+  );
+}
+
+function HRLettersWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('hr-letters');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="HR Letters & Documents" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
+      <HRLettersPage />
+    </DashboardShell>
+  );
+}
+
+function HRSupportDeskWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('hr-support-desk');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="HR Support Desk" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
+      <HRSupportDeskPage />
+    </DashboardShell>
+  );
+}
+
+function CRMSurveysWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('crm-surveys');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Feedback & Survey Hub" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
+      <CRMSurveysPage />
     </DashboardShell>
   );
 }

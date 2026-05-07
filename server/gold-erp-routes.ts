@@ -522,4 +522,132 @@ router.get("/chit-members/:id/installments", requireAuth, async (req: any, res) 
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
+// ── Metal Ledger ──────────────────────────────────────────────────────────────
+router.get("/metal-ledger", requireAuth, async (req: any, res) => {
+  try {
+    const t = tid(req);
+    const rows = await db.execute(sql`SELECT * FROM jw_metal_ledger WHERE tenant_id=${t} ORDER BY txn_date DESC, id DESC`);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.get("/metal-ledger/balances", requireAuth, async (req: any, res) => {
+  try {
+    const t = tid(req);
+    const rows = await db.execute(sql`
+      SELECT customer_name, customer_phone, metal_type, purity_name,
+        SUM(CASE WHEN transaction_type IN ('inward','purchase','repair_return') THEN weight_gm ELSE -weight_gm END) AS balance_gm,
+        MAX(txn_date) AS last_txn_date
+      FROM jw_metal_ledger WHERE tenant_id=${t}
+      GROUP BY customer_name, customer_phone, metal_type, purity_name
+      HAVING SUM(CASE WHEN transaction_type IN ('inward','purchase','repair_return') THEN weight_gm ELSE -weight_gm END) != 0
+      ORDER BY customer_name`);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.post("/metal-ledger", requireAuth, async (req: any, res) => {
+  try {
+    const t = tid(req);
+    const { customer_name, customer_phone, metal_type, purity_name, transaction_type, weight_gm, rate_per_gram, reference_no, reference_type, txn_date, notes } = req.body;
+    const amount = rate_per_gram ? Number(weight_gm) * Number(rate_per_gram) : null;
+    const row = await db.execute(sql`
+      INSERT INTO jw_metal_ledger (tenant_id, customer_name, customer_phone, metal_type, purity_name, transaction_type, weight_gm, rate_per_gram, amount, reference_no, reference_type, txn_date, notes)
+      VALUES (${t}, ${customer_name}, ${customer_phone||null}, ${metal_type}, ${purity_name}, ${transaction_type}, ${weight_gm}, ${rate_per_gram||null}, ${amount}, ${reference_no||null}, ${reference_type||null}, ${txn_date}, ${notes||null})
+      RETURNING *`);
+    res.json(row.rows[0]);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Analytics ─────────────────────────────────────────────────────────────────
+router.get("/analytics/overview", requireAuth, async (req: any, res) => {
+  try {
+    const t = tid(req);
+    const [items, karigar, repairs, bullion, estimates, production, schemes] = await Promise.all([
+      db.execute(sql`SELECT COUNT(*) AS cnt, SUM(stock_qty) AS total_stock, SUM(selling_price * stock_qty) AS total_value FROM jw_items WHERE tenant_id=${t}`),
+      db.execute(sql`SELECT COUNT(*) AS cnt FROM jw_karigars WHERE tenant_id=${t} AND status='active'`),
+      db.execute(sql`SELECT COUNT(*) AS cnt, SUM(repair_charges) AS total_charges FROM jw_repairs WHERE tenant_id=${t} AND status NOT IN ('delivered','cancelled')`),
+      db.execute(sql`SELECT metal_type, SUM(stock_grams) AS stock_grams, SUM(stock_grams * avg_rate) AS stock_value FROM jw_bullion_stock WHERE tenant_id=${t} GROUP BY metal_type`),
+      db.execute(sql`SELECT COUNT(*) AS cnt, SUM(total_amount) AS total_value FROM jw_estimates WHERE tenant_id=${t} AND created_at > NOW() - INTERVAL '30 days'`),
+      db.execute(sql`SELECT status, COUNT(*) AS cnt FROM jw_production_orders WHERE tenant_id=${t} GROUP BY status`),
+      db.execute(sql`SELECT COUNT(*) AS cnt FROM jw_chit_schemes WHERE tenant_id=${t} AND status='active'`),
+    ]);
+    res.json({
+      items: items.rows[0],
+      karigars: karigar.rows[0],
+      repairs: repairs.rows[0],
+      bullionStock: bullion.rows,
+      estimates30d: estimates.rows[0],
+      productionByStatus: production.rows,
+      activeSchemes: schemes.rows[0],
+    });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.get("/analytics/wastage", requireAuth, async (req: any, res) => {
+  try {
+    const t = tid(req);
+    const rows = await db.execute(sql`
+      SELECT ps.stage_name,
+        SUM(ps.weight_in_gm) AS total_in,
+        SUM(ps.weight_out_gm) AS total_out,
+        SUM(ps.wastage_gm) AS total_wastage,
+        ROUND(AVG(ps.wastage_pct),2) AS avg_wastage_pct,
+        COUNT(*) AS stage_count
+      FROM jw_production_stages ps
+      JOIN jw_production_orders po ON po.id = ps.production_order_id
+      WHERE po.tenant_id=${t} AND ps.status='completed' AND ps.wastage_gm IS NOT NULL
+      GROUP BY ps.stage_name ORDER BY total_wastage DESC`);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.get("/analytics/karigar-output", requireAuth, async (req: any, res) => {
+  try {
+    const t = tid(req);
+    const rows = await db.execute(sql`
+      SELECT k.name AS karigar_name, k.karigar_code,
+        COUNT(po.id) AS total_orders,
+        COUNT(CASE WHEN po.status='completed' THEN 1 END) AS completed_orders,
+        SUM(po.issued_weight_gm) AS total_issued_gm,
+        COUNT(jo.id) AS jobwork_count,
+        SUM(jo.issued_weight_gm) AS jw_issued_gm,
+        SUM(jo.received_weight_gm) AS jw_received_gm
+      FROM jw_karigars k
+      LEFT JOIN jw_production_orders po ON po.karigar_id=k.id
+      LEFT JOIN jw_jobwork_orders jo ON jo.karigar_id=k.id
+      WHERE k.tenant_id=${t}
+      GROUP BY k.id, k.name, k.karigar_code ORDER BY total_orders DESC`);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.get("/analytics/making-charges", requireAuth, async (req: any, res) => {
+  try {
+    const t = tid(req);
+    const rows = await db.execute(sql`
+      SELECT DATE_TRUNC('month', created_at) AS month,
+        COUNT(*) AS estimate_count,
+        SUM(making_charges) AS total_making,
+        SUM(total_metal_value) AS total_metal_value,
+        SUM(total_amount) AS total_revenue,
+        ROUND(AVG(wastage_pct),2) AS avg_wastage_pct
+      FROM jw_estimates WHERE tenant_id=${t}
+      GROUP BY 1 ORDER BY 1 DESC LIMIT 12`);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.get("/analytics/stock-value", requireAuth, async (req: any, res) => {
+  try {
+    const t = tid(req);
+    const [bullionStock, itemStock, todayRates] = await Promise.all([
+      db.execute(sql`SELECT metal_type, purity_name, stock_grams, avg_rate, stock_grams*avg_rate AS value FROM jw_bullion_stock WHERE tenant_id=${t}`),
+      db.execute(sql`SELECT metal_type, purity_name, SUM(gross_weight_gm*stock_qty) AS total_gm, SUM(selling_price*stock_qty) AS total_value FROM jw_items WHERE tenant_id=${t} GROUP BY metal_type, purity_name`),
+      db.execute(sql`SELECT metal, purity_name, rate_per_gram FROM jw_metal_rates WHERE tenant_id=${t} AND rate_date=CURRENT_DATE`),
+    ]);
+    res.json({ bullionStock: bullionStock.rows, itemStock: itemStock.rows, todayRates: todayRates.rows });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
 export default router;

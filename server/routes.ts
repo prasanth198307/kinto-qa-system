@@ -35,6 +35,7 @@ import realestateRouter from "./realestate-routes";
 import retailRouter from "./retail-routes";
 import agricultureRouter from "./agriculture-routes";
 import goldErpRouter from "./gold-erp-routes";
+import hrExtraRouter from "./hr-extra-routes";
 import { seedTenantPermissions, syncAndUnlockByPlan } from "./seed-permissions";
 import { whatsappConversationService } from "./whatsappConversationService";
 import { calculateBOMSuggestions } from "@shared/calculations";
@@ -262,6 +263,12 @@ const endpointToScreenKey: Record<string, string> = {
   '/api/hr/salary-structures': 'hr_masters',
   '/api/hr/pt-slabs': 'hr_masters',
   '/api/hr/statutory-settings': 'hr_masters',
+  '/api/hr/onboarding': 'hr_masters',
+  '/api/hr/letters': 'hr_masters',
+  '/api/hr/support-tickets': 'hr_masters',
+  '/api/crm/surveys': 'crm_leads',
+  '/api/crm/survey-questions': 'crm_leads',
+  '/api/crm/survey-responses': 'crm_leads',
 
   // Administration
   '/api/users': 'users',
@@ -1697,6 +1704,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/pos', retailRouter);
   app.use('/api/agriculture', agricultureRouter);
   app.use('/api/gold-erp', goldErpRouter);
+  app.use('/api/hr', hrExtraRouter);
 
   // Auth routes are handled by setupAuth() in auth.ts
   // /api/register, /api/login, /api/logout, /api/user are automatically set up

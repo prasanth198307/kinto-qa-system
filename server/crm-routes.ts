@@ -172,4 +172,82 @@ router.get("/leads/stats", requireCRM, async (req: any, res) => {
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 
+// ── Surveys ───────────────────────────────────────────────────────────────────
+router.get("/surveys", requireCRM, async (req: any, res) => {
+  try {
+    const t = getTenantId(req);
+    const rows = await db.execute(sql`SELECT * FROM crm_surveys WHERE tenant_id=${t} ORDER BY created_at DESC`);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/surveys", requireCRM, async (req: any, res) => {
+  try {
+    const t = getTenantId(req);
+    const { title, description, status, target_audience } = req.body;
+    const code = "SRV-" + Date.now().toString().slice(-6);
+    const row = await db.execute(sql`
+      INSERT INTO crm_surveys (tenant_id, survey_code, title, description, status, target_audience)
+      VALUES (${t}, ${code}, ${title}, ${description||null}, ${status||'active'}, ${target_audience||'all'})
+      RETURNING *`);
+    res.json(row.rows[0]);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.put("/surveys/:id", requireCRM, async (req: any, res) => {
+  try {
+    const { title, description, status, target_audience } = req.body;
+    const row = await db.execute(sql`
+      UPDATE crm_surveys SET title=${title}, description=${description||null}, status=${status}, target_audience=${target_audience}
+      WHERE id=${req.params.id} RETURNING *`);
+    res.json(row.rows[0]);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.delete("/surveys/:id", requireCRM, async (req: any, res) => {
+  try {
+    await db.execute(sql`DELETE FROM crm_surveys WHERE id=${req.params.id}`);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.get("/survey-questions", requireCRM, async (req: any, res) => {
+  try {
+    const sid = req.query.survey_id;
+    const rows = await db.execute(sql`SELECT * FROM crm_survey_questions WHERE survey_id=${sid} ORDER BY order_no`);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/survey-questions", requireCRM, async (req: any, res) => {
+  try {
+    const { survey_id, question, question_type, options, is_required, order_no } = req.body;
+    const row = await db.execute(sql`
+      INSERT INTO crm_survey_questions (survey_id, question, question_type, options, is_required, order_no)
+      VALUES (${survey_id}, ${question}, ${question_type||'rating'}, ${JSON.stringify(options||[])}::jsonb, ${is_required!==false}, ${order_no||1})
+      RETURNING *`);
+    res.json(row.rows[0]);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.get("/survey-responses", requireCRM, async (req: any, res) => {
+  try {
+    const sid = req.query.survey_id;
+    const rows = await db.execute(sql`SELECT * FROM crm_survey_responses WHERE survey_id=${sid} ORDER BY submitted_at DESC`);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/survey-responses", requireCRM, async (req: any, res) => {
+  try {
+    const { survey_id, respondent_name, respondent_phone, respondent_email, answers } = req.body;
+    const row = await db.execute(sql`
+      INSERT INTO crm_survey_responses (survey_id, respondent_name, respondent_phone, respondent_email, answers)
+      VALUES (${survey_id}, ${respondent_name||null}, ${respondent_phone||null}, ${respondent_email||null}, ${JSON.stringify(answers||{})}::jsonb)
+      RETURNING *`);
+    await db.execute(sql`UPDATE crm_surveys SET response_count = response_count + 1 WHERE id=${survey_id}`);
+    res.json(row.rows[0]);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
 export default router;
