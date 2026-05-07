@@ -156,3 +156,9 @@ id = "vuaW-Whhlh2VFTuPiXKrk"
 uri = "file://security-middleware.zip"
 type = "unspecified"
 title = "security-middleware.ts (download)"
+
+[[outputs]]
+id = "MKqE5cv4ldE1cr8pTHnTo"
+uri = "file://SwachERP_GoldJewellery_Mapping.pdf"
+type = "pdf"
+title = "SwachERP × Sioniq — Gold & Jewellery Mapping Report"
