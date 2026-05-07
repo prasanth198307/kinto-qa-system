@@ -2270,3 +2270,262 @@ export async function rectifyCreditorJournalLines(): Promise<{ updated: number; 
   console.log(`[RECTIFY CREDITORS] === COMPLETE === ${results.updated} updated, ${results.skipped} skipped, ${results.errors} errors`);
   return results;
 }
+
+// ============================================================
+// GOLD ERP — ACCOUNT CODES (6xxx series, jewellery-specific)
+// ============================================================
+export const GOLD_ACCOUNT_CODES = {
+  BULLION_STOCK:           '6001',  // Asset:     Bullion Stock (Gold/Silver in hand)
+  GOLD_WIP:                '6002',  // Asset:     Work-in-Progress (Gold issued to karigar)
+  GOLD_FINISHED_GOODS:     '6003',  // Asset:     Finished Jewellery Stock
+  OLD_GOLD_STOCK:          '6004',  // Asset:     Old Gold Received (Buy-back)
+
+  KARIGAR_WAGES_PAYABLE:   '6101',  // Liability: Karigar Making Charges Payable
+  CHIT_SCHEME_LIABILITY:   '6102',  // Liability: Chit Scheme Collections
+
+  GOLD_SALES_REVENUE:      '6201',  // Income:    Gold Jewellery Sales
+  REPAIR_INCOME:           '6202',  // Income:    Repair Charges Income
+  CHIT_MATURITY_INCOME:    '6203',  // Income:    Chit Scheme Maturity / Profit
+
+  BULLION_PURCHASE:        '6301',  // Expense:   Bullion Purchase Cost
+  MAKING_CHARGES_EXPENSE:  '6302',  // Expense:   Making Charges / Karigar Labour
+  GHAT_WASTAGE_LOSS:       '6303',  // Expense:   Ghat / Wastage Loss
+  OLD_GOLD_PURCHASE:       '6304',  // Expense:   Old Gold Buy-back Cost
+  HALLMARKING_CHARGES:     '6305',  // Expense:   Hallmarking / Certification
+};
+
+// Helper: get-or-create a gold-specific chart of account
+async function getOrCreateGoldAccount(
+  code: string,
+  name: string,
+  accountType: 'Assets' | 'Liabilities' | 'Income' | 'Expenses',
+  subType: string,
+  parentCode: string
+): Promise<string> {
+  // Check if it already exists (any tenant context via AsyncLocalStorage)
+  const existing = await db.execute(sql`
+    SELECT code FROM chart_of_accounts
+    WHERE code = ${code} AND record_status = 1
+    LIMIT 1
+  `);
+  if (existing.rows.length > 0) return code;
+
+  // Find parent
+  const parent = await db.execute(sql`
+    SELECT id FROM chart_of_accounts WHERE code = ${parentCode} AND record_status = 1 LIMIT 1
+  `);
+  const parentId = parent.rows[0]?.id || null;
+
+  try {
+    await db.execute(sql`
+      INSERT INTO chart_of_accounts
+        (code, name, account_type, sub_type, node_type, parent_id, is_system_account, is_active, record_status)
+      VALUES
+        (${code}, ${name}, ${accountType}, ${subType}, 'ledger', ${parentId}, 1, 1, 1)
+      ON CONFLICT (code) DO NOTHING
+    `);
+    console.log(`[GOLD COA] Ensured account: ${code} - ${name}`);
+  } catch (_) { /* ignore if exists */ }
+  return code;
+}
+
+// Ensure all gold accounts exist (called lazily per transaction)
+async function ensureGoldAccounts(): Promise<void> {
+  await Promise.all([
+    getOrCreateGoldAccount(GOLD_ACCOUNT_CODES.BULLION_STOCK,         'Bullion Stock (Gold/Silver)',           'Assets',     'inventory',         '1210'),
+    getOrCreateGoldAccount(GOLD_ACCOUNT_CODES.GOLD_WIP,              'Gold Work-in-Progress (Karigar)',       'Assets',     'inventory',         '1210'),
+    getOrCreateGoldAccount(GOLD_ACCOUNT_CODES.GOLD_FINISHED_GOODS,   'Finished Jewellery Stock',              'Assets',     'inventory',         '1210'),
+    getOrCreateGoldAccount(GOLD_ACCOUNT_CODES.OLD_GOLD_STOCK,        'Old Gold Received (Buy-back)',          'Assets',     'inventory',         '1210'),
+    getOrCreateGoldAccount(GOLD_ACCOUNT_CODES.KARIGAR_WAGES_PAYABLE, 'Karigar Wages Payable',                 'Liabilities','trade_payable',     'G2210'),
+    getOrCreateGoldAccount(GOLD_ACCOUNT_CODES.CHIT_SCHEME_LIABILITY, 'Chit Scheme Collections Payable',      'Liabilities','advance_liability', '2230'),
+    getOrCreateGoldAccount(GOLD_ACCOUNT_CODES.GOLD_SALES_REVENUE,    'Gold Jewellery Sales',                  'Income',     'operating',         '4100'),
+    getOrCreateGoldAccount(GOLD_ACCOUNT_CODES.REPAIR_INCOME,         'Repair Charges Income',                 'Income',     'other_income',      '4200'),
+    getOrCreateGoldAccount(GOLD_ACCOUNT_CODES.CHIT_MATURITY_INCOME,  'Chit Scheme Maturity Income',           'Income',     'other_income',      '4200'),
+    getOrCreateGoldAccount(GOLD_ACCOUNT_CODES.BULLION_PURCHASE,      'Bullion Purchase Cost',                 'Expenses',   'direct',            'G5100'),
+    getOrCreateGoldAccount(GOLD_ACCOUNT_CODES.MAKING_CHARGES_EXPENSE,'Making Charges / Karigar Labour',       'Expenses',   'direct',            'G5100'),
+    getOrCreateGoldAccount(GOLD_ACCOUNT_CODES.GHAT_WASTAGE_LOSS,     'Ghat / Wastage Loss',                   'Expenses',   'direct',            'G5100'),
+    getOrCreateGoldAccount(GOLD_ACCOUNT_CODES.OLD_GOLD_PURCHASE,     'Old Gold Buy-back Cost',                'Expenses',   'direct',            'G5100'),
+    getOrCreateGoldAccount(GOLD_ACCOUNT_CODES.HALLMARKING_CHARGES,   'Hallmarking / Certification Charges',   'Expenses',   'operating',         'G5200'),
+  ]);
+}
+
+// ============================================================
+// GAP 1 — BULLION PURCHASE journal
+// Dr. Bullion Stock + Dr. GST Input Credit, Cr. Supplier (Creditor) / Cash
+// ============================================================
+export async function journalForBullionPurchase(txn: any): Promise<void> {
+  const amount   = Math.round(Number(txn.amount       || 0) * 100);
+  const gstAmt   = Math.round(Number(txn.gst_amount   || 0) * 100);
+  const total    = Math.round(Number(txn.total_amount  || txn.amount || 0) * 100);
+  if (amount === 0) return;
+
+  await ensureGoldAccounts();
+  const partyName   = txn.party_name || 'Bullion Supplier';
+  const creditorCode = await getOrCreateCreditorAccount(partyName);
+  const cashCode     = ACCOUNT_CODES.CASH_IN_HAND;
+  const payCredit    = ['cash','cash_purchase'].includes((txn.payment_mode||'').toLowerCase())
+                       ? cashCode : creditorCode;
+
+  const lines: JournalLineInput[] = [
+    { accountCode: GOLD_ACCOUNT_CODES.BULLION_STOCK,     debit: amount,  credit: 0,      memo: `Bullion ${txn.txn_type} - ${txn.metal_type} ${txn.weight_gm}g @ ₹${txn.rate_per_gram}/g` },
+  ];
+  if (gstAmt > 0) {
+    lines.push({ accountCode: ACCOUNT_CODES.GST_CGST_INPUT, debit: Math.round(gstAmt/2), credit: 0, memo: 'CGST Input on Bullion' });
+    lines.push({ accountCode: ACCOUNT_CODES.GST_SGST_INPUT, debit: Math.round(gstAmt/2), credit: 0, memo: 'SGST Input on Bullion' });
+  }
+  lines.push({ accountCode: payCredit, debit: 0, credit: total || (amount + gstAmt), memo: `Bullion payment - ${partyName}`, partyName });
+
+  await createJournalWithLines(
+    txn.txn_date || new Date().toISOString().slice(0,10),
+    `Bullion ${txn.txn_type}: ${txn.txn_no || ''} — ${partyName} (${txn.weight_gm}g ${txn.metal_type})`,
+    lines,
+    { sourceType: 'bullion_purchase', sourceId: String(txn.id), isAutoGenerated: true }
+  );
+}
+
+// ============================================================
+// GAP 3 — KARIGAR SETTLEMENT journal
+// Dr. Making Charges Expense + Dr. Ghat Loss, Cr. Cash / Karigar Wages Payable
+// ============================================================
+export async function journalForKarigarSettlement(settlement: any, karigarName: string): Promise<void> {
+  const wage    = Math.round(Number(settlement.wage_amount || settlement.making_charges || 0) * 100);
+  const ghat    = Math.round(Number(settlement.excess_deduction || 0) * 100);
+  const net     = Math.round(Number(settlement.net_payable || 0) * 100);
+  if (wage === 0 && net === 0) return;
+
+  await ensureGoldAccounts();
+  const creditorCode = await getOrCreateCreditorAccount(karigarName || 'Unknown Karigar');
+  const lines: JournalLineInput[] = [];
+
+  if (wage > 0) {
+    lines.push({ accountCode: GOLD_ACCOUNT_CODES.MAKING_CHARGES_EXPENSE, debit: wage, credit: 0, memo: `Making charges — ${karigarName}` });
+  }
+  if (ghat > 0) {
+    lines.push({ accountCode: GOLD_ACCOUNT_CODES.GHAT_WASTAGE_LOSS, debit: ghat, credit: 0, memo: `Excess ghat deduction — ${karigarName}` });
+  }
+  if (net > 0) {
+    lines.push({ accountCode: creditorCode, debit: 0, credit: net, memo: `Net payable to karigar ${karigarName}`, partyName: karigarName });
+  }
+  // If wage > net (ghat deduction), balance goes to Ghat Loss account
+  const totalDebit  = wage + ghat;
+  const totalCredit = net;
+  if (totalDebit !== totalCredit && totalDebit > 0 && totalCredit >= 0) {
+    const diff = totalDebit - totalCredit;
+    if (diff > 0) {
+      // Move excess to Ghat Loss (already debited) — adjust creditor
+      lines.forEach(l => { if (l.accountCode === creditorCode && l.credit > 0) l.credit = totalDebit; });
+    }
+  }
+
+  await createJournalWithLines(
+    settlement.settlement_date || new Date().toISOString().slice(0,10),
+    `Karigar Settlement: ${settlement.settlement_no || settlement.id} — ${karigarName}`,
+    lines,
+    { sourceType: 'karigar_settlement', sourceId: String(settlement.id), isAutoGenerated: true }
+  );
+}
+
+// ============================================================
+// GAP 1 — GOLD SALE (from Estimate / Counter Booking) journal
+// Dr. Cash / Customer, Cr. Gold Sales Revenue + GST Payable
+// ============================================================
+export async function journalForGoldSale(entity: any, entityType: 'estimate' | 'counter_booking' = 'estimate'): Promise<void> {
+  const totalAmount  = Math.round(Number(entity.total_amount  || 0) * 100);
+  const gstAmount    = Math.round(Number(entity.gst_amount    || 0) * 100);
+  const metalValue   = Math.round(Number(entity.total_metal_value || entity.metal_value || 0) * 100);
+  const makingChg    = Math.round(Number(entity.making_charges || 0) * 100);
+  const stoneValue   = Math.round(Number(entity.stone_value   || 0) * 100);
+  if (totalAmount === 0) return;
+
+  await ensureGoldAccounts();
+  const customerName = entity.customer_name || 'Cash Customer';
+  const debtorCode   = entity.customer_name
+    ? await getOrCreateDebtorAccount(customerName)
+    : ACCOUNT_CODES.CASH_IN_HAND;
+
+  const cgst = Math.round(gstAmount / 2);
+  const sgst = gstAmount - cgst;
+  const revenue = totalAmount - gstAmount;
+
+  const lines: JournalLineInput[] = [
+    { accountCode: debtorCode, debit: totalAmount, credit: 0, memo: `Gold sale — ${customerName}`, partyName: customerName },
+    { accountCode: GOLD_ACCOUNT_CODES.GOLD_SALES_REVENUE, debit: 0, credit: revenue, memo: `Gold sales revenue` },
+  ];
+  if (cgst > 0) lines.push({ accountCode: ACCOUNT_CODES.GST_CGST_PAYABLE, debit: 0, credit: cgst, memo: 'CGST on Gold Sale' });
+  if (sgst > 0) lines.push({ accountCode: ACCOUNT_CODES.GST_SGST_PAYABLE, debit: 0, credit: sgst, memo: 'SGST on Gold Sale' });
+
+  await createJournalWithLines(
+    entity.created_at ? new Date(entity.created_at).toISOString().slice(0,10) : new Date().toISOString().slice(0,10),
+    `Gold Sale: ${entity.estimate_no || entity.booking_no || entity.id} — ${customerName}`,
+    lines,
+    { sourceType: entityType, sourceId: String(entity.id), isAutoGenerated: true }
+  );
+}
+
+// ============================================================
+// GAP 1 — OLD GOLD BUYBACK journal
+// Dr. Old Gold Stock + Dr. Old Gold Purchase, Cr. Cash
+// ============================================================
+export async function journalForOldGoldBuyback(buyback: any): Promise<void> {
+  const buybackValue = Math.round(Number(buyback.buyback_value || buyback.net_offered || 0) * 100);
+  if (buybackValue === 0) return;
+
+  await ensureGoldAccounts();
+  const lines: JournalLineInput[] = [
+    { accountCode: GOLD_ACCOUNT_CODES.OLD_GOLD_STOCK,    debit: buybackValue, credit: 0,           memo: `Old gold inward — ${buyback.customer_name} (${buyback.net_weight_gm}g)` },
+    { accountCode: ACCOUNT_CODES.CASH_IN_HAND,           debit: 0,            credit: buybackValue, memo: `Cash paid for old gold — ${buyback.customer_name}` },
+  ];
+
+  await createJournalWithLines(
+    buyback.created_at ? new Date(buyback.created_at).toISOString().slice(0,10) : new Date().toISOString().slice(0,10),
+    `Old Gold Buy-back: ${buyback.buyback_no || buyback.id} — ${buyback.customer_name}`,
+    lines,
+    { sourceType: 'old_gold_buyback', sourceId: String(buyback.id), isAutoGenerated: true }
+  );
+}
+
+// ============================================================
+// GAP 1 — REPAIR CHARGES journal (when repair is delivered)
+// Dr. Cash / Customer, Cr. Repair Income
+// ============================================================
+export async function journalForRepairDelivery(repair: any): Promise<void> {
+  const charges = Math.round(Number(repair.repair_charges || 0) * 100);
+  if (charges === 0) return;
+
+  await ensureGoldAccounts();
+  const lines: JournalLineInput[] = [
+    { accountCode: ACCOUNT_CODES.CASH_IN_HAND,      debit: charges, credit: 0,       memo: `Repair charges collected — ${repair.customer_name}` },
+    { accountCode: GOLD_ACCOUNT_CODES.REPAIR_INCOME, debit: 0,       credit: charges, memo: `Repair income — ${repair.repair_no || repair.id}` },
+  ];
+
+  await createJournalWithLines(
+    repair.delivered_date || new Date().toISOString().slice(0,10),
+    `Repair Delivery: ${repair.repair_no || repair.id} — ${repair.customer_name}`,
+    lines,
+    { sourceType: 'repair_delivery', sourceId: String(repair.id), isAutoGenerated: true }
+  );
+}
+
+// ============================================================
+// GAP 1 — GHAT / WASTAGE journal (when ghat entry is recorded)
+// Dr. Ghat Wastage Loss, Cr. Bullion Stock
+// ============================================================
+export async function journalForGhatEntry(ghat: any, goldRate: number): Promise<void> {
+  const wastageGm = Number(ghat.gross_weight_gm || 0) - Number(ghat.net_metal_weight_gm || ghat.gross_weight_gm || 0);
+  if (wastageGm <= 0 || goldRate <= 0) return;
+
+  const wastageValue = Math.round(wastageGm * goldRate * 100);
+  await ensureGoldAccounts();
+
+  const lines: JournalLineInput[] = [
+    { accountCode: GOLD_ACCOUNT_CODES.GHAT_WASTAGE_LOSS, debit: wastageValue, credit: 0,            memo: `Ghat loss at ${ghat.stage} — ${wastageGm.toFixed(3)}g` },
+    { accountCode: GOLD_ACCOUNT_CODES.BULLION_STOCK,     debit: 0,            credit: wastageValue, memo: `Bullion stock reduction — ghat loss` },
+  ];
+
+  await createJournalWithLines(
+    ghat.ghat_date || new Date().toISOString().slice(0,10),
+    `Ghat Entry: ${ghat.id} — Stage: ${ghat.stage} (${wastageGm.toFixed(3)}g lost)`,
+    lines,
+    { sourceType: 'ghat_entry', sourceId: String(ghat.id), isAutoGenerated: true }
+  );
+}

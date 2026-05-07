@@ -45,6 +45,7 @@ export default function GSTRReportsPage() {
 
   const b2b = gstr1Data?.b2b || [];
   const b2c = gstr1Data?.b2c || [];
+  const goldSales = gstr1Data?.goldSales || [];
   const sup_details = gstr3bData?.sup_details || {};
   const itc_elg = gstr3bData?.itc_elg || {};
 
@@ -175,6 +176,52 @@ export default function GSTRReportsPage() {
               )}
             </CardContent>
           </Card>
+          {goldSales.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex flex-wrap items-center gap-2">
+                  Gold ERP — Jewellery Sales (HSN 7113, GST @3%)
+                  <Badge variant="secondary">{goldSales.length} records</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Estimate No.</TableHead>
+                      <TableHead>Customer</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead className="text-right">Taxable Value</TableHead>
+                      <TableHead className="text-right">CGST (1.5%)</TableHead>
+                      <TableHead className="text-right">SGST (1.5%)</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {goldSales.map((s: any, i: number) => (
+                      <TableRow key={i} data-testid={`row-gold-sale-${i}`}>
+                        <TableCell className="font-mono text-sm">{s.estimate_no}</TableCell>
+                        <TableCell>{s.customer_name}</TableCell>
+                        <TableCell>{s.sale_date ? new Date(s.sale_date).toLocaleDateString("en-IN") : "—"}</TableCell>
+                        <TableCell className="text-right">₹{Number(s.taxable_value || 0).toLocaleString("en-IN")}</TableCell>
+                        <TableCell className="text-right">₹{Number(s.cgst_amount || 0).toLocaleString("en-IN")}</TableCell>
+                        <TableCell className="text-right">₹{Number(s.sgst_amount || 0).toLocaleString("en-IN")}</TableCell>
+                        <TableCell className="text-right font-medium">₹{Number(s.total_amount || 0).toLocaleString("en-IN")}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                <div className="border-t px-4 py-2 flex flex-wrap justify-end gap-6 text-sm bg-muted/30">
+                  <span className="text-muted-foreground">Total Taxable: <strong className="text-foreground">
+                    ₹{goldSales.reduce((s: number, r: any) => s + Number(r.taxable_value || 0), 0).toLocaleString("en-IN")}
+                  </strong></span>
+                  <span className="text-muted-foreground">Total GST: <strong className="text-foreground">
+                    ₹{goldSales.reduce((s: number, r: any) => s + Number(r.gst_amount || 0), 0).toLocaleString("en-IN")}
+                  </strong></span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="gstr3b" className="mt-4 space-y-4">

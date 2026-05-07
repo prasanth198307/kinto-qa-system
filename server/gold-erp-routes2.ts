@@ -1,6 +1,10 @@
 import { Router } from "express";
 import { sql } from "drizzle-orm";
 import { db } from "./db";
+import {
+  journalForKarigarSettlement,
+  journalForOldGoldBuyback,
+} from "./journal-service";
 
 const router = Router();
 const requireAuth = (req: any, res: any, next: any) => {
@@ -9,6 +13,8 @@ const requireAuth = (req: any, res: any, next: any) => {
 };
 const tid = (req: any) => String(req.tenantId || req.user?.tenantId || 1);
 const seq = () => Date.now();
+
+const SETTLEMENT_APPROVAL_THRESHOLD_INR = 50000; // ₹50k
 
 // ── DESIGN LIBRARY (enhanced) ─────────────────────────────────────────────────
 router.get("/designs/list", requireAuth, async (req: any, res) => {
@@ -281,7 +287,31 @@ router.post("/settlements", requireAuth, async (req: any, res) => {
         ${wage_amount||0}, ${excess_deduction||0}, ${net_payable||0},
         ${settlement_date||new Date().toISOString().slice(0,10)}, 'settled')
       RETURNING *`);
-    res.json(row.rows[0]);
+    const settlement = row.rows[0] as any;
+
+    // Gap 3: Auto-post making charges journal for karigar settlement
+    if (settlement) {
+      // Look up karigar name
+      db.execute(sql`SELECT name FROM jw_karigars WHERE id=${karigar_id}`).then(k => {
+        const karigarName = (k.rows[0] as any)?.name || 'Unknown Karigar';
+        journalForKarigarSettlement(settlement, karigarName)
+          .catch(e => console.error('[GOLD JOURNAL] Settlement:', e.message));
+      }).catch(() => {});
+
+      // Gap 8: Approval if net_payable > threshold
+      const netAmt = Number(net_payable || 0);
+      if (netAmt >= SETTLEMENT_APPROVAL_THRESHOLD_INR) {
+        db.execute(sql`
+          INSERT INTO approval_requests (tenant_id, entity_type, entity_id, status)
+          VALUES (${settlement.tenant_id || 1}, 'karigar_settlement', ${settlement.id}, 'pending')
+          RETURNING id
+        `).then(r => {
+          const aprId = (r.rows[0] as any)?.id;
+          if (aprId) db.execute(sql`UPDATE jw_settlement SET approval_request_id=${aprId} WHERE id=${settlement.id}`);
+        }).catch(() => {});
+      }
+    }
+    res.json(settlement);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
@@ -477,7 +507,12 @@ router.post("/buyback", requireAuth, async (req: any, res) => {
         ${metal_type||'gold'}, ${purity_tested_pct||null}, ${gross_weight_gm||0}, ${stone_weight_gm||0}, ${net_wt},
         ${gold_rate_today||0}, ${buyback_rate_pct||95}, ${buyback_val.toFixed(2)}, ${buyback_val.toFixed(2)}, ${payment_mode||null})
       RETURNING *`);
-    res.json(row.rows[0]);
+    const buyback = row.rows[0] as any;
+    // Gap 1: Auto-post journal for old gold buy-back
+    if (buyback) {
+      journalForOldGoldBuyback(buyback).catch(e => console.error('[GOLD JOURNAL] Buyback:', e.message));
+    }
+    res.json(buyback);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 

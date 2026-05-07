@@ -11088,9 +11088,36 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
         lossAmount: Number(data.lossAmount.toFixed(2)),
       }));
       
+      // Gap 7: Fetch gold ERP estimates (converted/approved) for the same period
+      let goldSales: any[] = [];
+      let goldTaxableValue = 0;
+      let goldTaxTotal = 0;
+      try {
+        const goldRows = await db.execute(sql`
+          SELECT estimate_no, customer_name, customer_phone,
+                 (total_metal_value + making_charges + stone_value + wastage_amount) AS taxable_value,
+                 gst_pct, gst_amount,
+                 ROUND(gst_amount/2,2) AS cgst_amount,
+                 ROUND(gst_amount/2,2) AS sgst_amount,
+                 total_amount, status,
+                 created_at::date AS sale_date,
+                 '7113' AS hsn_code
+          FROM jw_estimates
+          WHERE tenant_id = ${(req.session as any)?.tenantId ?? req.user?.tenantId ?? 1}
+            AND status IN ('approved','converted','invoiced')
+            AND created_at::date BETWEEN ${startDate.toISOString().split('T')[0]} AND ${endDate.toISOString().split('T')[0]}
+        `);
+        goldSales = goldRows.rows as any[];
+        goldSales.forEach(g => {
+          goldTaxableValue += Number(g.taxable_value || 0);
+          goldTaxTotal     += Number(g.gst_amount    || 0);
+        });
+      } catch (_) { /* gold erp may not exist for non-gold tenants */ }
+
       // Build response - vendor debit notes excluded as they are internal adjustments, not GST transactions
       const response = {
         invoices: invoicesWithItems,
+        goldSales,
         creditNotes: creditNotesWithInvoice,
         debitNotes: debitNotesWithInvoice,
         scrapLosses: scrapLosses.map(scrap => ({
@@ -11119,10 +11146,14 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
           totalCreditNotes: creditNotesWithInvoice.length,
           totalDebitNotes: debitNotesWithInvoice.length,
           totalScrapRecords: scrapLosses.length,
-          totalTaxableValue: Number(totalTaxableValue.toFixed(2)),
-          totalTax: Number(totalTax.toFixed(2)),
+          totalTaxableValue: Number((totalTaxableValue + goldTaxableValue).toFixed(2)),
+          totalTax: Number((totalTax + goldTaxTotal).toFixed(2)),
           scrapLossCostTotal: Number(scrapLossCostTotal.toFixed(2)),
           scrapLossSellingTotal: Number(scrapLossSellingTotal.toFixed(2)),
+          // Gold ERP additions
+          goldSalesCount: goldSales.length,
+          goldTaxableValue: Number(goldTaxableValue.toFixed(2)),
+          goldTaxTotal: Number(goldTaxTotal.toFixed(2)),
         },
       };
       

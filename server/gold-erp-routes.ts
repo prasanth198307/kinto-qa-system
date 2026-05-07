@@ -1,6 +1,12 @@
 import { Router } from "express";
 import { sql } from "drizzle-orm";
 import { db } from "./db";
+import {
+  journalForBullionPurchase,
+  journalForGoldSale,
+  journalForRepairDelivery,
+  journalForGhatEntry,
+} from "./journal-service";
 
 const router = Router();
 const requireAuth = (req: any, res: any, next: any) => {
@@ -9,6 +15,18 @@ const requireAuth = (req: any, res: any, next: any) => {
 };
 const tid = (req: any) => String(req.tenantId || req.user?.tenantId || 1);
 const seq = () => Date.now();
+
+// ── Approval threshold helper ─────────────────────────────────────────────────
+const BULLION_APPROVAL_THRESHOLD_INR = 100000; // ₹1 lakh
+async function createApprovalIfNeeded(tenantId: string, entityType: string, entityId: number, amount: number, requestedBy: number): Promise<number|null> {
+  if (amount < BULLION_APPROVAL_THRESHOLD_INR) return null;
+  const row = await db.execute(sql`
+    INSERT INTO approval_requests (tenant_id, entity_type, entity_id, requested_by, status)
+    VALUES (${tenantId}, ${entityType}, ${entityId}, ${requestedBy || 0}, 'pending')
+    RETURNING id
+  `);
+  return Number(row.rows[0]?.id) || null;
+};
 
 // ── Dashboard Stats ───────────────────────────────────────────────────────────
 router.get("/stats", requireAuth, async (req: any, res) => {
@@ -173,7 +191,22 @@ router.post("/estimates", requireAuth, async (req: any, res) => {
         ${rate_per_gram||0}, ${total_metal_value||0}, ${making_charges||0}, ${stone_value||0}, ${wastage_amount||0},
         ${gst_pct||3}, ${gst_amount||0}, ${total_amount||0}, ${valid_until||null}, ${notes||null})
       RETURNING *`);
-    res.json(row.rows[0]);
+    const est = row.rows[0] as any;
+
+    // Gap 5: Auto-create CRM lead from estimate
+    if (customer_name) {
+      db.execute(sql`
+        INSERT INTO crm_leads (tenant_id, lead_no, name, phone, source, product_interest, status, notes)
+        VALUES (${tid(req)}, ${'CRM-EST-'+seq()}, ${customer_name}, ${customer_phone||null},
+                'gold_estimate', ${metal_type||'gold'}, 'warm',
+                ${'Gold estimate ' + no + ' — ₹' + (total_amount||0)})
+        ON CONFLICT DO NOTHING
+      `).then(r => {
+        const leadId = (r.rows[0] as any)?.id;
+        if (leadId && est.id) db.execute(sql`UPDATE jw_estimates SET crm_lead_id=${leadId} WHERE id=${est.id}`);
+      }).catch(() => {});
+    }
+    res.json(est);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
@@ -343,13 +376,17 @@ router.get("/bullion-transactions", requireAuth, async (req: any, res) => {
 
 router.post("/bullion-transactions", requireAuth, async (req: any, res) => {
   try {
-    const { txn_type, metal_type, purity_name, weight_gm, rate_per_gram, party_name, txn_date, notes } = req.body;
+    const { txn_type, metal_type, purity_name, weight_gm, rate_per_gram, party_name, txn_date, notes,
+            gst_pct, gst_amount, total_amount, payment_mode } = req.body;
     const no = "BUL-" + seq();
     const amount = Number(weight_gm||0) * Number(rate_per_gram||0);
+    const gstAmt = Number(gst_amount||0);
+    const totalAmt = Number(total_amount||0) || (amount + gstAmt);
     const row = await db.execute(sql`
-      INSERT INTO jw_bullion_transactions (tenant_id, txn_no, txn_type, metal_type, purity_name, weight_gm, rate_per_gram, amount, party_name, txn_date, notes)
-      VALUES (${tid(req)}, ${no}, ${txn_type}, ${metal_type||'gold'}, ${purity_name||null}, ${weight_gm||0}, ${rate_per_gram||0}, ${amount}, ${party_name||null}, ${txn_date||new Date().toISOString().slice(0,10)}, ${notes||null})
+      INSERT INTO jw_bullion_transactions (tenant_id, txn_no, txn_type, metal_type, purity_name, weight_gm, rate_per_gram, amount, party_name, txn_date, notes, gst_pct, gst_amount, total_amount)
+      VALUES (${tid(req)}, ${no}, ${txn_type}, ${metal_type||'gold'}, ${purity_name||null}, ${weight_gm||0}, ${rate_per_gram||0}, ${amount}, ${party_name||null}, ${txn_date||new Date().toISOString().slice(0,10)}, ${notes||null}, ${gst_pct||3}, ${gstAmt}, ${totalAmt})
       RETURNING *`);
+    const txn = row.rows[0] as any;
     // Update bullion stock
     const sign = ['purchase','inward','buy'].includes(txn_type) ? 1 : -1;
     await db.execute(sql`
@@ -357,7 +394,18 @@ router.post("/bullion-transactions", requireAuth, async (req: any, res) => {
       VALUES (${tid(req)}, ${metal_type||'gold'}, ${purity_name||'N/A'}, ${Number(weight_gm||0)*sign}, ${rate_per_gram||0}, NOW())
       ON CONFLICT (tenant_id, metal_type, purity_name)
       DO UPDATE SET stock_grams = jw_bullion_stock.stock_grams + ${Number(weight_gm||0)*sign}, last_updated=NOW()`);
-    res.json(row.rows[0]);
+
+    // Gap 1 & 2: Auto-post journal entry for bullion purchase
+    if (['purchase','inward','buy'].includes(txn_type)) {
+      journalForBullionPurchase({ ...txn, payment_mode: payment_mode || 'credit' }).catch(e => console.error('[GOLD JOURNAL] Bullion:', e.message));
+    }
+    // Gap 8: Create approval request if amount exceeds threshold
+    if (totalAmt >= BULLION_APPROVAL_THRESHOLD_INR) {
+      createApprovalIfNeeded(tid(req), 'bullion_purchase', Number(txn.id), totalAmt, Number(req.user?.id)).then(aprId => {
+        if (aprId) db.execute(sql`UPDATE jw_bullion_transactions SET approval_request_id=${aprId} WHERE id=${txn.id}`);
+      }).catch(() => {});
+    }
+    res.json(txn);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
@@ -402,7 +450,12 @@ router.put("/repairs/:id", requireAuth, async (req: any, res) => {
       UPDATE jw_repairs SET status=${status||'received'}, delivered_date=${delivered_date||null},
         repair_charges=${repair_charges||0}, notes=${notes||null}, karigar_id=${karigar_id||null}
       WHERE id=${req.params.id} AND tenant_id=${tid(req)} RETURNING *`);
-    res.json(row.rows[0]);
+    const repair = row.rows[0] as any;
+    // Gap 1: Auto-post journal when repair is delivered
+    if (status === 'delivered' && repair) {
+      journalForRepairDelivery(repair).catch(e => console.error('[GOLD JOURNAL] Repair:', e.message));
+    }
+    res.json(repair);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
@@ -646,7 +699,17 @@ router.post("/ghat-entries", requireAuth, async (req: any, res) => {
         ${weigh_date || 'CURRENT_DATE'}, ${issued}, ${received},
         ${assay_purity_pct || null}, ${null}, ${alert_flag}, ${notes || null})
       RETURNING id`);
-    res.json(row.rows[0]);
+    const ghat = row.rows[0] as any;
+    // Gap 1: Auto-post ghat/wastage journal using current gold rate
+    if (ghat && issued > received) {
+      db.execute(sql`SELECT rate_per_gram FROM jw_metal_rates WHERE tenant_id=${t} AND metal='gold' ORDER BY rate_date DESC, id DESC LIMIT 1`)
+        .then(rateRow => {
+          const goldRate = Number((rateRow.rows[0] as any)?.rate_per_gram || 0);
+          journalForGhatEntry({ ...ghat, ghat_date: weigh_date, stage: stage_name }, goldRate)
+            .catch(e => console.error('[GOLD JOURNAL] Ghat:', e.message));
+        }).catch(() => {});
+    }
+    res.json(ghat);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
@@ -695,6 +758,137 @@ router.get("/analytics/stock-value", requireAuth, async (req: any, res) => {
       db.execute(sql`SELECT metal, purity_name, rate_per_gram FROM jw_metal_rates WHERE tenant_id=${t} AND rate_date=CURRENT_DATE`),
     ]);
     res.json({ bullionStock: bullionStock.rows, itemStock: itemStock.rows, todayRates: todayRates.rows });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ============================================================
+// GAP 4 — UNIFIED INVENTORY BRIDGE
+// Merges standard products inventory + gold bullion stock + gold jewellery items
+// GET /api/gold-erp/inventory-bridge
+// ============================================================
+router.get("/inventory-bridge", requireAuth, async (req: any, res) => {
+  try {
+    const t = tid(req);
+    const [bullion, jwItems, rates] = await Promise.all([
+      db.execute(sql`
+        SELECT 'bullion' AS category, metal_type AS name, purity_name, stock_grams AS qty_gm,
+               avg_rate AS rate_per_gm, ROUND(stock_grams * avg_rate, 2) AS value_inr,
+               'grams' AS unit, last_updated AS updated_at
+        FROM jw_bullion_stock WHERE tenant_id=${t} AND stock_grams > 0
+      `),
+      db.execute(sql`
+        SELECT 'jewellery' AS category, item_code AS code, name,
+               metal_type, purity_name, gross_weight_gm AS qty_gm,
+               selling_price AS rate_per_gm, ROUND(gross_weight_gm * stock_qty, 3) AS total_gm,
+               stock_qty, ROUND(selling_price * stock_qty, 2) AS value_inr, 'pieces' AS unit,
+               created_at AS updated_at
+        FROM jw_items WHERE tenant_id=${t} AND record_status=1 AND stock_qty > 0
+        ORDER BY metal_type, name LIMIT 500
+      `),
+      db.execute(sql`
+        SELECT metal, rate_per_gram FROM jw_metal_rates WHERE tenant_id=${t}
+        ORDER BY rate_date DESC, id DESC LIMIT 5
+      `),
+    ]);
+    const todayRates: Record<string, number> = {};
+    (rates.rows as any[]).forEach(r => { todayRates[r.metal] = Number(r.rate_per_gram); });
+
+    const bullionRows = (bullion.rows as any[]).map(r => ({
+      ...r,
+      value_inr_today: Number(r.qty_gm) * (todayRates[r.name] || Number(r.rate_per_gm)),
+    }));
+
+    const totalBullionValue = bullionRows.reduce((s, r) => s + (r.value_inr_today || 0), 0);
+    const totalJewelleryValue = (jwItems.rows as any[]).reduce((s, r) => s + Number(r.value_inr || 0), 0);
+
+    res.json({
+      bullionStock: bullionRows,
+      jewelleryItems: jwItems.rows,
+      todayRates,
+      summary: {
+        totalBullionGrams: bullionRows.reduce((s, r) => s + Number(r.qty_gm || 0), 0),
+        totalBullionValue: Math.round(totalBullionValue * 100) / 100,
+        totalJewelleryPieces: (jwItems.rows as any[]).reduce((s, r) => s + Number(r.stock_qty || 0), 0),
+        totalJewelleryValue: Math.round(totalJewelleryValue * 100) / 100,
+        grandTotal: Math.round((totalBullionValue + totalJewelleryValue) * 100) / 100,
+      },
+    });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ============================================================
+// GAP 6 — GOLD PRODUCTION BRIDGE
+// Returns gold production orders in a format compatible with standard production module
+// GET /api/gold-erp/production-bridge
+// ============================================================
+router.get("/production-bridge", requireAuth, async (req: any, res) => {
+  try {
+    const t = tid(req);
+    const rows = await db.execute(sql`
+      SELECT po.id, po.order_no AS batch_no,
+             COALESCE(po.item_type, 'Jewellery') AS product_name,
+             po.metal_type, po.purity_name,
+             po.issued_weight_gm AS raw_material_qty, 'grams' AS raw_material_unit,
+             po.total_gold_required_gm AS expected_output_qty,
+             COALESCE(po.received_weight_gm, 0) AS actual_output_qty,
+             po.wastage_gm, po.current_stage,
+             po.status, po.target_date AS expected_completion,
+             k.name AS karigar_name,
+             'gold_production' AS production_type,
+             po.customer_name, po.notes,
+             po.created_at
+      FROM jw_production_orders po
+      LEFT JOIN jw_karigars k ON k.id = po.karigar_id
+      WHERE po.tenant_id=${t} AND po.record_status=1
+      ORDER BY po.created_at DESC LIMIT 200
+    `);
+
+    const summary = {
+      total: rows.rows.length,
+      inProgress:   (rows.rows as any[]).filter(r => r.status === 'in_progress').length,
+      completed:    (rows.rows as any[]).filter(r => r.status === 'completed').length,
+      pending:      (rows.rows as any[]).filter(r => r.status === 'pending').length,
+      totalMetalIssued: (rows.rows as any[]).reduce((s, r) => s + Number(r.raw_material_qty || 0), 0),
+      totalOutput:      (rows.rows as any[]).reduce((s, r) => s + Number(r.actual_output_qty || 0), 0),
+    };
+
+    res.json({ orders: rows.rows, summary });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ============================================================
+// GAP 7 — GOLD SALES for GST / Tax reporting
+// GET /api/gold-erp/gst-summary?from=&to=
+// ============================================================
+router.get("/gst-summary", requireAuth, async (req: any, res) => {
+  try {
+    const t = tid(req);
+    const { from, to } = req.query as any;
+    const rows = await db.execute(sql`
+      SELECT e.estimate_no, e.customer_name, e.customer_phone,
+             e.total_metal_value + e.making_charges + e.stone_value + e.wastage_amount AS taxable_value,
+             e.gst_pct, e.gst_amount,
+             ROUND(e.gst_amount / 2, 2) AS cgst_amount,
+             ROUND(e.gst_amount / 2, 2) AS sgst_amount,
+             e.total_amount, e.status,
+             e.created_at::date AS sale_date,
+             '7113' AS hsn_code
+      FROM jw_estimates e
+      WHERE e.tenant_id=${t}
+        AND e.status IN ('approved','converted','invoiced')
+        ${from ? sql`AND e.created_at::date >= ${from}` : sql``}
+        ${to   ? sql`AND e.created_at::date <= ${to}`   : sql``}
+      ORDER BY e.created_at DESC
+    `);
+
+    const totals = (rows.rows as any[]).reduce((acc, r) => ({
+      taxable:  acc.taxable  + Number(r.taxable_value || 0),
+      cgst:     acc.cgst     + Number(r.cgst_amount   || 0),
+      sgst:     acc.sgst     + Number(r.sgst_amount   || 0),
+      total:    acc.total    + Number(r.total_amount   || 0),
+    }), { taxable: 0, cgst: 0, sgst: 0, total: 0 });
+
+    res.json({ sales: rows.rows, totals, hsnCode: '7113', gstRate: 3 });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
