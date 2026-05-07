@@ -4,6 +4,25 @@ import { tenants } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { runWithTenantId } from "./tenant-context";
 
+/**
+ * Check if a client IP is within an allowed range/CIDR or exact match.
+ * Supports IPv4 exact match and simple CIDR /8 /16 /24 /32 notation.
+ */
+function isIpAllowed(clientIp: string, range: string): boolean {
+  if (!range.includes("/")) return clientIp === range;
+  const [network, prefixStr] = range.split("/");
+  const prefix = parseInt(prefixStr, 10);
+  if (isNaN(prefix)) return clientIp === range;
+  try {
+    const ipToNum = (ip: string) =>
+      ip.split(".").reduce((acc, oct) => (acc << 8) + parseInt(oct, 10), 0) >>> 0;
+    const mask = prefix === 0 ? 0 : (0xffffffff << (32 - prefix)) >>> 0;
+    return (ipToNum(clientIp) & mask) === (ipToNum(network) & mask);
+  } catch {
+    return false;
+  }
+}
+
 declare global {
   namespace Express {
     interface Request {
@@ -52,6 +71,27 @@ export async function tenantMiddleware(req: Request, res: Response, next: NextFu
           code: 'TRIAL_EXPIRED',
         });
       }
+    }
+
+    // ── IP allowlisting (Phase B) ─────────────────────────────────────────
+    if (req.isAuthenticated() && req.path.startsWith('/api/') && !(user?.isSuperAdmin)) {
+      try {
+        const ipRow = await pool.query(
+          'SELECT allowed_ip_ranges FROM tenants WHERE id = $1', [tenantId]
+        );
+        const ranges: string[] = ipRow.rows[0]?.allowed_ip_ranges ?? [];
+        if (ranges.length > 0) {
+          const clientIp = (req.ip ?? req.socket?.remoteAddress ?? '').replace(/^::ffff:/, '');
+          const allowed = ranges.some(r => isIpAllowed(clientIp, r));
+          if (!allowed) {
+            console.warn(`[SECURITY] IP ${clientIp} blocked for tenant ${tenantId} — not in allowlist`);
+            return res.status(403).json({
+              message: 'Access denied: your IP address is not on the permitted list for this company.',
+              code: 'IP_NOT_ALLOWED',
+            });
+          }
+        }
+      } catch { /* Non-fatal */ }
     }
 
     // Set tenant_id in PostgreSQL session for RLS policies (Phase A security).

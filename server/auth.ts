@@ -19,6 +19,11 @@ import {
   enforceConcurrentSessionLimit,
   logSecurityEvent,
 } from "./security-middleware";
+import {
+  isAccountLocked,
+  getLockoutExpiry,
+  PASSWORD_POLICY,
+} from "./password-policy";
 
 declare global {
   namespace Express {
@@ -129,13 +134,46 @@ export function setupAuth(app: Express) {
         }
 
         if (!user || !user.password) return done(null, false);
+
+        // ── Account lockout check ──────────────────────────────────────────
+        if (isAccountLocked(user.lockedUntil ?? null)) {
+          const until = new Date(user.lockedUntil).toLocaleTimeString();
+          return done(null, false, { message: `Account locked due to too many failed attempts. Try again after ${until}.` });
+        }
+
         const valid = await comparePasswords(password, user.password);
         if (!valid) {
           console.warn(`🚫 Invalid password for user: ${username}`);
+          // Increment failure counter; lock if threshold hit
+          const newCount = (user.failedLoginAttempts ?? 0) + 1;
+          const shouldLock = newCount >= PASSWORD_POLICY.maxFailedAttempts;
+          await pool.query(
+            `UPDATE users SET failed_login_attempts = $1, locked_until = $2 WHERE id = $3`,
+            [newCount, shouldLock ? getLockoutExpiry() : null, user.id]
+          );
+          if (shouldLock) {
+            return done(null, false, { message: `Account locked after ${PASSWORD_POLICY.maxFailedAttempts} failed attempts. Try again in ${PASSWORD_POLICY.lockoutMinutes} minutes.` });
+          }
           return done(null, false);
         }
+
+        // ── Successful authentication — reset failure counter ──────────────
+        if ((user.failedLoginAttempts ?? 0) > 0) {
+          await pool.query(
+            `UPDATE users SET failed_login_attempts = 0, locked_until = NULL WHERE id = $1`,
+            [user.id]
+          );
+        }
+
+        // Re-fetch fresh user row so totp_enabled + other new columns are present
+        const freshRow = await pool.query(
+          `SELECT id, username, email, totp_enabled, totp_secret, mfa_enforced, must_change_password, password_changed_at FROM users WHERE id = $1`,
+          [user.id]
+        );
+        const freshUser = freshRow.rows[0];
+
         console.log(`✅ Login successful for ${username}`);
-        return done(null, user);
+        return done(null, { ...user, ...freshUser });
       } catch (err) {
         console.error("🔥 Login error:", err);
         return done(err);
@@ -709,6 +747,17 @@ export function setupAuth(app: Express) {
         tenantStatus = effectiveStatus;
       }
 
+      // ── MFA gate: if TOTP is enabled, pause login and require second factor ──
+      if ((user as any).totp_enabled) {
+        const session = req.session as any;
+        session.pendingMfaUserId = user.id;
+        session.pendingMfaExpiry = Date.now() + 5 * 60 * 1000; // 5-min window
+        session.pendingMfaTenantId = (user as any).tenantId ?? 1;
+        session.pendingMfaPlan = tenantPlan;
+        session.pendingMfaStatus = tenantStatus;
+        return req.session.save(() => res.json({ mfaRequired: true }));
+      }
+
       req.login(user, (err) => {
         if (err) return res.status(500).json({ message: "Login failed" });
 
@@ -819,4 +868,4 @@ export function setupAuth(app: Express) {
   });
 }
 
-export { hashPassword };
+export { hashPassword, comparePasswords };

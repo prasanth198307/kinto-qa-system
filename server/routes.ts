@@ -1,9 +1,11 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { forgotPasswordRateLimiter, resetPasswordRateLimiter } from "./security-middleware";
+import { registerMFARoutes } from "./mfa-routes";
+import { validatePasswordStrength, isPasswordInHistory } from "./password-policy";
 import { createServer, type Server } from "http";
 import crypto from "crypto";
 import { storage } from "./storage";
-import { setupAuth, hashPassword } from "./auth";
+import { setupAuth, hashPassword, comparePasswords } from "./auth";
 import { tenantMiddleware } from "./tenant-middleware";
 import { planEnforcementMiddleware, invalidatePlanCache } from "./plan-middleware";
 import { getPlanFeatures, getPlanFeaturesFromModules, ALL_MODULE_KEYS } from "./plan-features";
@@ -711,6 +713,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   setupAuth(app);
+
+  // ─── Phase B: MFA routes ──────────────────────────────────────────────────
+  registerMFARoutes(app);
 
   // Tenant isolation middleware — runs on every request after session is loaded
   // Sets tenantId in AsyncLocalStorage so all storage queries auto-scope by tenant
@@ -28645,6 +28650,181 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
     } catch (err) {
       console.error('[External API] allocate-cash-sales error:', err);
       res.status(500).json({ error: 'Internal Server Error', message: 'Failed to allocate cash sales' });
+    }
+  });
+
+  // ─── Phase B: Security API endpoints ─────────────────────────────────────────
+
+  // GET /api/security/sessions — list active sessions for this tenant
+  app.get('/api/security/sessions', async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' });
+    const user = req.user as any;
+    if (!user.isSuperAdmin && user.role?.toLowerCase() !== 'admin') {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+    try {
+      const tenantId = (req.session as any)?.tenantId ?? user.tenantId;
+      // Join session table with users to filter by tenant
+      const result = await pool.query<any>(`
+        SELECT s.sid,
+               s.sess->'passport'->>'user' AS user_id,
+               u.username,
+               s.expire AS last_activity,
+               s.sess->'cookie'->>'domain' AS domain
+        FROM session s
+        LEFT JOIN users u ON u.id::text = s.sess->'passport'->>'user'
+        WHERE s.expire > NOW()
+          AND (u.tenant_id = $1 OR $2::boolean)
+        ORDER BY s.expire DESC
+        LIMIT 200
+      `, [tenantId, !!user.isSuperAdmin]);
+
+      // Parse IP / UA from sess blob
+      const rows = result.rows.map((r: any) => {
+        let ip = '—';
+        let userAgent = '—';
+        try {
+          const raw = typeof r.sess === 'string' ? JSON.parse(r.sess) : r.sess;
+          ip = raw?.ip ?? '—';
+          userAgent = raw?.userAgent ?? '—';
+        } catch { /* ignore */ }
+        return { sid: r.sid, userId: r.user_id, username: r.username, lastActivity: r.last_activity, ip, userAgent };
+      });
+      res.json(rows);
+    } catch (err) {
+      res.status(500).json({ message: 'Failed to fetch sessions' });
+    }
+  });
+
+  // DELETE /api/security/sessions/:sid — revoke a session
+  app.delete('/api/security/sessions/:sid', async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' });
+    const user = req.user as any;
+    if (!user.isSuperAdmin && user.role?.toLowerCase() !== 'admin') {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+    try {
+      await pool.query('DELETE FROM session WHERE sid = $1', [req.params.sid]);
+      res.json({ message: 'Session revoked' });
+    } catch {
+      res.status(500).json({ message: 'Failed to revoke session' });
+    }
+  });
+
+  // GET /api/security/events — recent security events from audit_logs
+  app.get('/api/security/events', async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' });
+    const user = req.user as any;
+    if (!user.isSuperAdmin && user.role?.toLowerCase() !== 'admin') {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+    try {
+      const tenantId = (req.session as any)?.tenantId ?? user.tenantId;
+      const result = await pool.query(`
+        SELECT id, user_id, action, description, ip_address, severity, created_at
+        FROM audit_logs
+        WHERE table_name = 'security'
+          AND (tenant_id = $1 OR $2::boolean)
+        ORDER BY created_at DESC
+        LIMIT 500
+      `, [tenantId, user.isSuperAdmin]);
+      res.json(result.rows);
+    } catch {
+      res.status(500).json({ message: 'Failed to fetch security events' });
+    }
+  });
+
+  // GET /api/security/ip-allowlist — get IP allowlist for current tenant
+  app.get('/api/security/ip-allowlist', async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' });
+    const user = req.user as any;
+    if (!user.isSuperAdmin && user.role?.toLowerCase() !== 'admin') {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+    try {
+      const tenantId = (req.session as any)?.tenantId ?? user.tenantId;
+      const result = await pool.query('SELECT allowed_ip_ranges FROM tenants WHERE id = $1', [tenantId]);
+      res.json({ ranges: result.rows[0]?.allowed_ip_ranges ?? [] });
+    } catch {
+      res.status(500).json({ message: 'Failed to fetch IP allowlist' });
+    }
+  });
+
+  // POST /api/security/ip-allowlist — add an IP range
+  app.post('/api/security/ip-allowlist', async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' });
+    const user = req.user as any;
+    if (!user.isSuperAdmin && user.role?.toLowerCase() !== 'admin') {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+    const { range } = req.body;
+    if (!range) return res.status(400).json({ message: 'IP range is required' });
+    try {
+      const tenantId = (req.session as any)?.tenantId ?? user.tenantId;
+      await pool.query(
+        `UPDATE tenants SET allowed_ip_ranges = array_append(
+          COALESCE(allowed_ip_ranges, '{}'), $1
+         ) WHERE id = $2 AND NOT ($1 = ANY(COALESCE(allowed_ip_ranges, '{}')))`,
+        [range, tenantId]
+      );
+      res.json({ message: 'IP range added' });
+    } catch {
+      res.status(500).json({ message: 'Failed to add IP range' });
+    }
+  });
+
+  // DELETE /api/security/ip-allowlist — remove an IP range
+  app.delete('/api/security/ip-allowlist', async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' });
+    const user = req.user as any;
+    if (!user.isSuperAdmin && user.role?.toLowerCase() !== 'admin') {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+    const { range } = req.body;
+    if (!range) return res.status(400).json({ message: 'IP range is required' });
+    try {
+      const tenantId = (req.session as any)?.tenantId ?? user.tenantId;
+      await pool.query(
+        `UPDATE tenants SET allowed_ip_ranges = array_remove(allowed_ip_ranges, $1) WHERE id = $2`,
+        [range, tenantId]
+      );
+      res.json({ message: 'IP range removed' });
+    } catch {
+      res.status(500).json({ message: 'Failed to remove IP range' });
+    }
+  });
+
+  // PATCH /api/user/password — change own password with policy enforcement
+  app.patch('/api/user/password', async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' });
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) return res.status(400).json({ message: 'Current and new passwords are required' });
+
+    const validation = validatePasswordStrength(newPassword);
+    if (!validation.valid) return res.status(400).json({ message: validation.errors.join(' '), errors: validation.errors });
+
+    try {
+      const user = req.user as any;
+      const row = await pool.query('SELECT password, password_history FROM users WHERE id = $1', [user.id]);
+      const dbUser = row.rows[0];
+      if (!dbUser) return res.status(404).json({ message: 'User not found' });
+
+      const validCurrent = await comparePasswords(currentPassword, dbUser.password);
+      if (!validCurrent) return res.status(400).json({ message: 'Current password is incorrect' });
+
+      const inHistory = await isPasswordInHistory(newPassword, dbUser.password_history ?? []);
+      if (inHistory) return res.status(400).json({ message: 'You cannot reuse any of your last 5 passwords.' });
+
+      const hashed = await hashPassword(newPassword);
+      const newHistory = [...(dbUser.password_history ?? []).slice(-4), hashed];
+
+      await pool.query(
+        'UPDATE users SET password = $1, password_history = $2, password_changed_at = NOW(), must_change_password = false WHERE id = $3',
+        [hashed, newHistory, user.id]
+      );
+      res.json({ message: 'Password changed successfully' });
+    } catch (err) {
+      res.status(500).json({ message: 'Failed to change password' });
     }
   });
 

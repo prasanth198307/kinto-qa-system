@@ -180,6 +180,7 @@ import GoodsReceiptNotesPage from "@/pages/goods-receipt-notes";
 import PriceListsPage from "@/pages/price-lists";
 import GSTRReportsPage from "@/pages/gstr-reports";
 import AuditLogPage from "@/pages/audit-log";
+import SecurityDashboardPage from "@/pages/security-dashboard";
 import HealthcarePage from "@/pages/healthcare";
 import EducationPage from "@/pages/education";
 import LogisticsPage from "@/pages/logistics";
@@ -2247,6 +2248,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "price-lists", label: "Price Lists", icon: Tag, onClick: () => setLocation('/price-lists') },
         { id: "approval-workflows", label: "Approval Workflows", icon: CheckCircle, onClick: () => setLocation('/approval-workflows') },
         { id: "audit-log", label: "Audit Log", icon: Shield, onClick: () => setLocation('/audit-log') },
+        { id: "security-dashboard", label: "Security Dashboard", icon: Shield, onClick: () => setLocation('/security-dashboard') },
       ],
     },
   ];
@@ -3798,6 +3800,7 @@ function Router() {
       <ProtectedRoute path="/price-lists" component={PriceListsWrapper} />
       <ProtectedRoute path="/gstr-reports" component={GSTRReportsWrapper} />
       <ProtectedRoute path="/audit-log" component={AuditLogWrapper} />
+      <ProtectedRoute path="/security-dashboard" component={SecurityDashboardPage} />
       <ProtectedRoute path="/healthcare" component={HealthcareWrapper} />
       <ProtectedRoute path="/education" component={EducationWrapper} />
       <ProtectedRoute path="/logistics" component={LogisticsWrapper} />

@@ -92,6 +92,10 @@ export const apiRateLimiter = rateLimit({
  * Satisfies OWASP Top 10 A05 (Security Misconfiguration).
  */
 export function securityHeaders(req: Request, res: Response, next: NextFunction) {
+  // HTTP Strict Transport Security — 1 year, include subdomains
+  if (req.secure || req.headers["x-forwarded-proto"] === "https") {
+    res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
+  }
   // Prevent clickjacking
   res.setHeader("X-Frame-Options", "SAMEORIGIN");
   // Prevent MIME sniffing
@@ -112,9 +116,9 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
       [
         "default-src 'self'",
         "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com",
-        "style-src 'self' 'unsafe-inline'",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+        "font-src 'self' data: https://fonts.gstatic.com",
         "img-src 'self' data: blob: https:",
-        "font-src 'self' data:",
         "connect-src 'self' https://api.razorpay.com wss:",
         "frame-src https://api.razorpay.com",
       ].join("; ")
