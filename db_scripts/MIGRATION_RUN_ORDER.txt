@@ -171,6 +171,18 @@ psql $DATABASE_URL -f db_scripts/2026-05-07_gold_phase4_catalog_finance_mcx.sql
 -- PRIORITY: MEDIUM — customer-facing, depends on Phase 1-4 data
 psql $DATABASE_URL -f db_scripts/2026-05-07_gold_phase5_oms_ecommerce.sql
 
+----- GROUP 20: Gold ERP Phase 6 — Final Gaps (May 7) -----
+-- Covers 9 missing screen tables + 6 integration config tables
+-- New: jw_wholesale_jobwork, jw_hallmarking_batches, jw_refining_entries,
+--      jw_counter_bookings, jw_pos_old_gold, jw_ecom_rate_history,
+--      jw_ecom_customers, jw_rfid_gate_movements, jw_rfid_dispatch_validations,
+--      jw_xrf_readings, jw_shipping_config, jw_shipment_tracking,
+--      jw_insurance_config, jw_traces_config,
+--      jw_armoured_van_config, jw_armoured_movements
+-- Extends: jw_hallmarking, jw_ecom_orders, jw_ecom_carts, jw_bullion_bookings
+-- PRIORITY: MEDIUM — integration config + specialist retail screens
+psql $DATABASE_URL -f db_scripts/2026-05-07_gold_phase6_final_gaps.sql
+
 ============================================================
   END OF MIGRATION LIST
 ============================================================
