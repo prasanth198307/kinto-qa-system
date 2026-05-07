@@ -1,0 +1,391 @@
+[kinto@iplvnic1 db_scripts]$ cd ..
+[kinto@iplvnic1 kinto-qa-system]$ psql -h localhost -U kinto_user -d kinto_ops -f db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "advance_applications" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: advance_applications
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "api_call_logs" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: api_call_logs
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "appraisal_cycles" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: appraisal_cycles
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "appraisal_kras" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: appraisal_kras
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "appraisals" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: appraisals
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "approval_requests" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: approval_requests
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "approval_rules" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: approval_rules
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "asset_depreciation" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: asset_depreciation
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "asset_depreciation_schedule" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: asset_depreciation_schedule
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "audit_logs_v2" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: audit_logs_v2
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "bank_statement_imports" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: bank_statement_imports
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "bank_transactions" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: bank_transactions
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "banks" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: banks
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "billing_milestones" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: billing_milestones
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "boq_items" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: boq_items
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "budget_items" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: budget_items
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "budgets" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: budgets
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "cash_register_days" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: cash_register_days
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "cash_register_expense_items" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: cash_register_expense_items
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "cash_register_transactions" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: cash_register_transactions
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "chart_of_accounts" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: chart_of_accounts
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "checklist_assignments" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: checklist_assignments
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "checklist_submissions" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: checklist_submissions
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "checklist_templates" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: checklist_templates
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "cost_centres" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: cost_centres
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "credit_note_items" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: credit_note_items
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "credit_notes" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: credit_notes
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "crm_leads" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: crm_leads
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "currencies" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: currencies
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "custom_field_definitions" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: custom_field_definitions
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "custom_field_values" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: custom_field_values
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "customer_advances" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: customer_advances
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "debit_note_items" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: debit_note_items
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "debit_notes" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: debit_notes
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "document_categories" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: document_categories
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "documents" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: documents
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "drivers" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: drivers
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "entity_attachments" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: entity_attachments
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "exchange_rates" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: exchange_rates
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "expense_attachments" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: expense_attachments
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "expense_categories" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: expense_categories
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "expense_items" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: expense_items
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "expense_vouchers" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: expense_vouchers
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "external_api_definitions" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: external_api_definitions
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "external_api_keys" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: external_api_keys
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "finished_goods" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: finished_goods
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "finished_goods_return_log" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: finished_goods_return_log
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "fixed_assets" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: fixed_assets
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "gatepass_items" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: gatepass_items
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "gatepasses" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: gatepasses
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "goods_receipt_notes" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: goods_receipt_notes
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "grn_items" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: grn_items
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "hr_attendance" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: hr_attendance
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "hr_departments" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: hr_departments
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "hr_designations" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: hr_designations
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "hr_employee_documents" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: hr_employee_documents
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "hr_employees" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: hr_employees
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "hr_expense_claim_items" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: hr_expense_claim_items
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "hr_expense_claims" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: hr_expense_claims
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "hr_fnf_settlements" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: hr_fnf_settlements
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "hr_holidays" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: hr_holidays
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "hr_job_applications" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: hr_job_applications
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "hr_job_openings" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: hr_job_openings
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "hr_leave_applications" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: hr_leave_applications
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "hr_leave_balances" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: hr_leave_balances
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "hr_leave_types" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: hr_leave_types
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "hr_loan_ledger" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: hr_loan_ledger
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "hr_loans" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: hr_loans
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "hr_payroll_runs" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: hr_payroll_runs
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "hr_payslip_settings" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: hr_payslip_settings
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "hr_payslips" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: hr_payslips
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "hr_pt_slabs" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: hr_pt_slabs
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "hr_salary_components" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: hr_salary_components
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "hr_salary_revisions" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: hr_salary_revisions
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "hr_salary_structures" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: hr_salary_structures
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "hr_shifts" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: hr_shifts
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "hr_statutory_settings" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: hr_statutory_settings
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "hr_tds_declarations" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: hr_tds_declarations
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "hr_timesheets" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: hr_timesheets
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "invoice_items" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: invoice_items
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "invoice_payments" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: invoice_payments
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "invoice_templates" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: invoice_templates
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "invoices" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: invoices
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "item_variants" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: item_variants
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "journal_entries" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: journal_entries
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "journal_lines" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: journal_lines
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "machine_spares" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: machine_spares
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "machine_startup_tasks" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: machine_startup_tasks
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "machine_types" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: machine_types
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "machines" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: machines
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "maintenance_history" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: maintenance_history
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "maintenance_plans" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: maintenance_plans
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "manual_credit_note_requests" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: manual_credit_note_requests
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "monthly_expense_payments" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: monthly_expense_payments
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "monthly_expenses" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: monthly_expenses
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "notification_config" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: notification_config
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "partial_task_answers" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: partial_task_answers
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "payment_evidence" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: payment_evidence
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "pm_execution_tasks" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: pm_execution_tasks
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "pm_executions" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: pm_executions
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "pm_task_list_templates" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: pm_task_list_templates
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "pm_template_tasks" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: pm_template_tasks
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "price_list_items" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: price_list_items
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "price_lists" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: price_lists
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "product_bom" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: product_bom
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "product_bom_configurations" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: product_bom_configurations
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "product_categories" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: product_categories
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "product_types" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: product_types
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "production_entries" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: production_entries
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "production_reconciliation_items" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: production_reconciliation_items
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "production_reconciliations" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: production_reconciliations
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "products" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: products
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "project_boq" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: project_boq
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "project_milestones" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: project_milestones
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "projects" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: projects
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "purchase_order_items" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: purchase_order_items
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "purchase_orders" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: purchase_orders
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "purchase_requisition_items" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: purchase_requisition_items
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "purchase_requisitions" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: purchase_requisitions
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "purchase_return_items" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: purchase_return_items
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "purchase_returns" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: purchase_returns
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "raw_material_issuance" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: raw_material_issuance
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "raw_material_issuance_items" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: raw_material_issuance_items
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "raw_material_transactions" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: raw_material_transactions
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "raw_material_types" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: raw_material_types
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "raw_materials" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: raw_materials
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "recurring_invoice_schedules" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: recurring_invoice_schedules
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "required_spares" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: required_spares
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "role_permissions" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: role_permissions
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "roles" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: roles
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "sales_officers" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: sales_officers
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "sales_order_items" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: sales_order_items
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "sales_orders" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: sales_orders
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "sales_return_items" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: sales_return_items
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "sales_returns" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: sales_returns
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "salesperson_mappings" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: salesperson_mappings
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "scrap_inventory" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: scrap_inventory
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "serial_lot_register" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: serial_lot_register
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "spare_part_entries" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: spare_part_entries
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "spare_part_issuances" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: spare_part_issuances
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "spare_parts_catalog" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: spare_parts_catalog
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "stock_transfer_items" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: stock_transfer_items
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "stock_transfers" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: stock_transfers
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "student_attendance" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: student_attendance
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "submission_tasks" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: submission_tasks
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "subscriptions" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: subscriptions
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "system_alerts" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: system_alerts
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "tds_entries" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: tds_entries
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "tds_rates" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: tds_rates
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "teachers" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: teachers
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "template_tasks" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: template_tasks
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "tenant_module_labels" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: tenant_module_labels
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "terms_conditions" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: terms_conditions
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "timesheets" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: timesheets
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "transporters" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: transporters
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "uom" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: uom
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "uom_conversions" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: uom_conversions
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "user_assignments" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: user_assignments
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "user_roles" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: user_roles
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "users" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: users
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "vehicles" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: vehicles
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "vendor_debit_note_adjustments" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: vendor_debit_note_adjustments
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "vendor_debit_note_items" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: vendor_debit_note_items
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "vendor_debit_notes" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: vendor_debit_notes
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "vendor_types" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: vendor_types
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "vendor_vendor_types" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: vendor_vendor_types
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "vendors" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: vendors
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "warehouse_stock" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: warehouse_stock
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "warehouses" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: warehouses
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  policy "tenant_isolation" for relation "whatsapp_conversation_sessions" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:68: NOTICE:  RLS (int) enabled: whatsapp_conversation_sessions
+DO
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:109: NOTICE:  policy "tenant_isolation" for relation "agri_procurement" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:109: NOTICE:  RLS (text) enabled: agri_procurement
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:109: NOTICE:  policy "tenant_isolation" for relation "appointments" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:109: NOTICE:  RLS (text) enabled: appointments
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:109: NOTICE:  policy "tenant_isolation" for relation "classes" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:109: NOTICE:  RLS (text) enabled: classes
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:109: NOTICE:  policy "tenant_isolation" for relation "commodity_prices" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:109: NOTICE:  RLS (text) enabled: commodity_prices
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:109: NOTICE:  policy "tenant_isolation" for relation "consignment_notes" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:109: NOTICE:  RLS (text) enabled: consignment_notes
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:109: NOTICE:  policy "tenant_isolation" for relation "crop_cycles" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:109: NOTICE:  RLS (text) enabled: crop_cycles
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:109: NOTICE:  policy "tenant_isolation" for relation "farms" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:109: NOTICE:  RLS (text) enabled: farms
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:109: NOTICE:  policy "tenant_isolation" for relation "fee_components" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:109: NOTICE:  RLS (text) enabled: fee_components
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:109: NOTICE:  policy "tenant_isolation" for relation "fee_payments" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:109: NOTICE:  RLS (text) enabled: fee_payments
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:109: NOTICE:  policy "tenant_isolation" for relation "fee_structures" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:109: NOTICE:  RLS (text) enabled: fee_structures
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:109: NOTICE:  policy "tenant_isolation" for relation "ipd_admissions" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:109: NOTICE:  RLS (text) enabled: ipd_admissions
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:109: NOTICE:  policy "tenant_isolation" for relation "logistics_vehicles" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:109: NOTICE:  RLS (text) enabled: logistics_vehicles
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:109: NOTICE:  policy "tenant_isolation" for relation "patients" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:109: NOTICE:  RLS (text) enabled: patients
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:109: NOTICE:  policy "tenant_isolation" for relation "pos_sessions" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:109: NOTICE:  RLS (text) enabled: pos_sessions
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:109: NOTICE:  policy "tenant_isolation" for relation "pos_transactions" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:109: NOTICE:  RLS (text) enabled: pos_transactions
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:109: NOTICE:  policy "tenant_isolation" for relation "re_bookings" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:109: NOTICE:  RLS (text) enabled: re_bookings
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:109: NOTICE:  policy "tenant_isolation" for relation "re_payment_schedules" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:109: NOTICE:  RLS (text) enabled: re_payment_schedules
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:109: NOTICE:  policy "tenant_isolation" for relation "re_projects" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:109: NOTICE:  RLS (text) enabled: re_projects
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:109: NOTICE:  policy "tenant_isolation" for relation "re_units" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:109: NOTICE:  RLS (text) enabled: re_units
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:109: NOTICE:  policy "tenant_isolation" for relation "students" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:109: NOTICE:  RLS (text) enabled: students
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:109: NOTICE:  policy "tenant_isolation" for relation "trips" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:109: NOTICE:  RLS (text) enabled: trips
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:109: NOTICE:  policy "tenant_isolation" for relation "wards" does not exist, skipping
+psql:db_scripts/2026-05-07_phase_a_rls_and_immutable_audit.sql:109: NOTICE:  RLS (text) enabled: wards
+DO
