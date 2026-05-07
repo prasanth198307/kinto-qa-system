@@ -180,3 +180,9 @@ id = "0Yz0sRH9Gr8Hm25624odz"
 uri = "file://public/SwachERP_Gold_ERP_Cost_Estimator.xlsx"
 type = "table"
 title = "Gold ERP — Cost Estimator Sheet (₹46,11,400 Total)"
+
+[[outputs]]
+id = "nUsqWiDkFTr352H6IvIFm"
+uri = "file://public/SwachERP_Gold_ERP_15Day_Estimator.xlsx"
+type = "table"
+title = "Gold ERP — 15-Day Sprint Cost Estimator (₹8 Lakhs Quote)"
