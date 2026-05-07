@@ -748,7 +748,7 @@ export function registerBillingRoutes(app: Express): void {
 
   // ── GET /api/admin/platform-settings — super-admin: read platform config ──
   app.get("/api/admin/platform-settings", async (req: any, res) => {
-    if (!req.isAuthenticated() || (req.user as any)?.role?.toLowerCase() !== "superadmin") {
+    if (!req.isAuthenticated() || !(req.user as any)?.isSuperAdmin) {
       return res.sendStatus(403);
     }
     try {
@@ -781,7 +781,7 @@ export function registerBillingRoutes(app: Express): void {
 
   // ── PUT /api/admin/platform-settings — super-admin: save platform config ─
   app.put("/api/admin/platform-settings", async (req: any, res) => {
-    if (!req.isAuthenticated() || (req.user as any)?.role?.toLowerCase() !== "superadmin") {
+    if (!req.isAuthenticated() || !(req.user as any)?.isSuperAdmin) {
       return res.sendStatus(403);
     }
     try {
