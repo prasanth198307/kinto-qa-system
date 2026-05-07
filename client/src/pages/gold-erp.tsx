@@ -14,7 +14,23 @@ import {
   Plus, Search, Pencil, Trash2, TrendingUp, Users, IndianRupee,
   Gem, Wrench, Shield, RefreshCw, ChevronRight, LayoutDashboard,
   Star, Package, Factory, Truck, BarChart3, CheckCircle, Layers,
+  BookOpen, Camera, Zap, Crosshair, ClipboardList, Award,
+  RotateCcw, ShoppingBag, Tag, Gift, Repeat2, Wifi, ShoppingCart,
+  Globe, CreditCard, Settings2, Coins, AlertTriangle, BookMarked,
 } from "lucide-react";
+
+// ── Sub-module imports ─────────────────────────────────────────────────────────
+import { SketchSection, CADSection, GhatSection, SettlementSection, JobFinalizeSection, KarigarLedgerSection } from "./gold-erp-production-ext";
+import { WholesaleJobworkSection, HallmarkingBatchesSection } from "./gold-erp-wholesale";
+import { CounterBookingsSection, CustomerApprovalsSection, BuybackSection, PhysicalAuditSection, LoyaltySection, PromotionsSection, RefiningSection, PosOldGoldSection } from "./gold-erp-retail";
+import { BullionBookingsSection, VaultAuditSection } from "./gold-erp-bullion-trade";
+import { ChitMaturitySection, ChitDefaultersSection, ChitRedemptionsSection } from "./gold-erp-chit-ext";
+import { ECatalogSection } from "./gold-erp-catalog";
+import { OMSOrdersSection, OMSNotifyConfigSection } from "./gold-erp-oms";
+import { ECommerceSection } from "./gold-erp-ecommerce";
+import { RFIDSection } from "./gold-erp-rfid";
+import { MetalFinanceSection } from "./gold-erp-finance";
+import { IntegrationConfigsSection } from "./gold-erp-integrations";
 
 const fmt = (n: any, d = 2) => Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: d });
 const fmtWt = (n: any) => `${fmt(n, 3)} g`;
@@ -1467,36 +1483,153 @@ function MetalLedgerSection() {
 }
 
 // ── Nav config ────────────────────────────────────────────────────────────────
-const NAV_ITEMS = [
-  { key: "overview",      label: "Overview",         icon: LayoutDashboard },
-  { key: "rates",         label: "Metal Rates",      icon: TrendingUp },
-  { key: "karigar",       label: "Karigar",          icon: Users },
-  { key: "items",         label: "Item Master",      icon: Package },
-  { key: "estimates",     label: "Estimates",        icon: IndianRupee },
-  { key: "production",    label: "Production",       icon: Factory },
-  { key: "jobwork",       label: "Jobwork",          icon: Layers },
-  { key: "bullion",       label: "Bullion",          icon: BarChart3 },
-  { key: "repairs",       label: "Repairs",          icon: Wrench },
-  { key: "hallmarking",   label: "Hallmarking",      icon: CheckCircle },
-  { key: "chit",          label: "Chit Schemes",     icon: Shield },
-  { key: "metal-ledger",  label: "Metal Ledger",     icon: Truck },
-  { key: "analytics",     label: "JW Analytics",     icon: Star },
+const NAV_SECTIONS = [
+  {
+    group: "Core",
+    items: [
+      { key: "overview",      label: "Overview",         icon: LayoutDashboard },
+      { key: "rates",         label: "Metal Rates",      icon: TrendingUp },
+      { key: "karigar",       label: "Karigar",          icon: Users },
+      { key: "items",         label: "Item Master",      icon: Package },
+      { key: "estimates",     label: "Estimates",        icon: IndianRupee },
+      { key: "metal-ledger",  label: "Metal Ledger",     icon: BookOpen },
+      { key: "analytics",     label: "JW Analytics",     icon: Star },
+    ],
+  },
+  {
+    group: "Production",
+    items: [
+      { key: "production",    label: "Production",       icon: Factory },
+      { key: "jobwork",       label: "Jobwork",          icon: Layers },
+      { key: "sketch",        label: "Sketch / Design",  icon: Camera },
+      { key: "cad",           label: "CAD / CAM",        icon: Crosshair },
+      { key: "ghat",          label: "Ghat Settlement",  icon: Coins },
+      { key: "settlement",    label: "Karigar Settlement", icon: IndianRupee },
+      { key: "finalize",      label: "Job Finalize",     icon: CheckCircle },
+      { key: "karigar-ledger", label: "Karigar Ledger",  icon: BookMarked },
+      { key: "repairs",       label: "Repairs",          icon: Wrench },
+    ],
+  },
+  {
+    group: "Wholesale & B2B",
+    items: [
+      { key: "wholesale-jobwork",   label: "Wholesale Jobwork",  icon: Layers },
+      { key: "hallmarking-batches", label: "Hallmarking Batches", icon: Award },
+    ],
+  },
+  {
+    group: "Retail",
+    items: [
+      { key: "counter-bookings",  label: "Counter Bookings",  icon: ClipboardList },
+      { key: "customer-approvals", label: "Approvals",        icon: CheckCircle },
+      { key: "buyback",           label: "Old Gold Buy-back", icon: RotateCcw },
+      { key: "physical-audit",    label: "Physical Audit",    icon: ShoppingBag },
+      { key: "loyalty",           label: "Loyalty & Rewards", icon: Gift },
+      { key: "promotions",        label: "Promotions",        icon: Tag },
+      { key: "refining",          label: "Refining",          icon: Zap },
+      { key: "pos-old-gold",      label: "POS Old Gold",      icon: ShoppingCart },
+      { key: "hallmarking",       label: "Hallmarking Register", icon: CheckCircle },
+    ],
+  },
+  {
+    group: "Bullion & Vault",
+    items: [
+      { key: "bullion",           label: "Bullion Stock",     icon: BarChart3 },
+      { key: "bullion-bookings",  label: "Bullion Bookings",  icon: CreditCard },
+      { key: "vault-audit",       label: "Vault Audit",       icon: Shield },
+    ],
+  },
+  {
+    group: "Chit Schemes",
+    items: [
+      { key: "chit",              label: "Chit Schemes",      icon: Shield },
+      { key: "chit-maturity",     label: "Maturity",          icon: CheckCircle },
+      { key: "chit-defaulters",   label: "Defaulters",        icon: AlertTriangle },
+      { key: "chit-redemptions",  label: "Redemptions",       icon: Gift },
+    ],
+  },
+  {
+    group: "Digital & OMS",
+    items: [
+      { key: "ecatalog",          label: "E-Catalog",         icon: BookOpen },
+      { key: "oms-orders",        label: "OMS Orders",        icon: ClipboardList },
+      { key: "oms-notify",        label: "OMS Notifications", icon: Repeat2 },
+      { key: "ecommerce",         label: "E-Commerce Store",  icon: Globe },
+    ],
+  },
+  {
+    group: "RFID",
+    items: [
+      { key: "rfid",              label: "RFID Management",   icon: Wifi },
+    ],
+  },
+  {
+    group: "Finance",
+    items: [
+      { key: "metal-finance",     label: "Metal Finance",     icon: Coins },
+    ],
+  },
+  {
+    group: "Integrations",
+    items: [
+      { key: "integrations-config", label: "Integrations",   icon: Settings2 },
+    ],
+  },
 ];
 
+const NAV_ITEMS = NAV_SECTIONS.flatMap(s => s.items);
+
 const SECTION_MAP: Record<string, React.ReactNode> = {
-  overview:      <OverviewSection />,
-  rates:         <MetalRatesSection />,
-  karigar:       <KarigarSection />,
-  items:         <ItemMasterSection />,
-  estimates:     <EstimatesSection />,
-  production:    <ProductionSection />,
-  jobwork:       <JobworkSection />,
-  bullion:       <BullionSection />,
-  repairs:       <RepairsSection />,
-  hallmarking:   <HallmarkingSection />,
-  chit:          <ChitSchemesSection />,
-  "metal-ledger": <MetalLedgerSection />,
-  analytics:     <AnalyticsSection />,
+  overview:             <OverviewSection />,
+  rates:                <MetalRatesSection />,
+  karigar:              <KarigarSection />,
+  items:                <ItemMasterSection />,
+  estimates:            <EstimatesSection />,
+  production:           <ProductionSection />,
+  jobwork:              <JobworkSection />,
+  bullion:              <BullionSection />,
+  repairs:              <RepairsSection />,
+  hallmarking:          <HallmarkingSection />,
+  chit:                 <ChitSchemesSection />,
+  "metal-ledger":       <MetalLedgerSection />,
+  analytics:            <AnalyticsSection />,
+  // Production Extensions
+  sketch:               <SketchSection />,
+  cad:                  <CADSection />,
+  ghat:                 <GhatSection />,
+  settlement:           <SettlementSection />,
+  finalize:             <JobFinalizeSection />,
+  "karigar-ledger":     <KarigarLedgerSection />,
+  // Wholesale
+  "wholesale-jobwork":  <WholesaleJobworkSection />,
+  "hallmarking-batches": <HallmarkingBatchesSection />,
+  // Retail
+  "counter-bookings":   <CounterBookingsSection />,
+  "customer-approvals": <CustomerApprovalsSection />,
+  buyback:              <BuybackSection />,
+  "physical-audit":     <PhysicalAuditSection />,
+  loyalty:              <LoyaltySection />,
+  promotions:           <PromotionsSection />,
+  refining:             <RefiningSection />,
+  "pos-old-gold":       <PosOldGoldSection />,
+  // Bullion & Vault
+  "bullion-bookings":   <BullionBookingsSection />,
+  "vault-audit":        <VaultAuditSection />,
+  // Chit Extensions
+  "chit-maturity":      <ChitMaturitySection />,
+  "chit-defaulters":    <ChitDefaultersSection />,
+  "chit-redemptions":   <ChitRedemptionsSection />,
+  // Digital & OMS
+  ecatalog:             <ECatalogSection />,
+  "oms-orders":         <OMSOrdersSection />,
+  "oms-notify":         <OMSNotifyConfigSection />,
+  ecommerce:            <ECommerceSection />,
+  // RFID
+  rfid:                 <RFIDSection />,
+  // Finance
+  "metal-finance":      <MetalFinanceSection />,
+  // Integrations
+  "integrations-config": <IntegrationConfigsSection />,
 };
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
@@ -1518,26 +1651,31 @@ export default function GoldErpPage() {
           </div>
         </div>
         <nav className="flex-1 overflow-y-auto py-2">
-          {NAV_ITEMS.map(item => {
-            const Icon = item.icon;
-            const isActive = active === item.key;
-            return (
-              <button
-                key={item.key}
-                onClick={() => setActive(item.key)}
-                data-testid={`nav-${item.key}`}
-                className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-left transition-colors ${
-                  isActive
-                    ? "bg-background text-foreground font-medium border-r-2 border-primary"
-                    : "text-muted-foreground hover:bg-background/60 hover:text-foreground"
-                }`}
-              >
-                <Icon className="h-4 w-4 shrink-0" />
-                <span>{item.label}</span>
-                {isActive && <ChevronRight className="h-3 w-3 ml-auto" />}
-              </button>
-            );
-          })}
+          {NAV_SECTIONS.map(section => (
+            <div key={section.group}>
+              <p className="px-4 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">{section.group}</p>
+              {section.items.map(item => {
+                const Icon = item.icon;
+                const isActive = active === item.key;
+                return (
+                  <button
+                    key={item.key}
+                    onClick={() => setActive(item.key)}
+                    data-testid={`nav-${item.key}`}
+                    className={`w-full flex items-center gap-2.5 px-4 py-2 text-sm text-left transition-colors ${
+                      isActive
+                        ? "bg-background text-foreground font-medium border-r-2 border-primary"
+                        : "text-muted-foreground hover:bg-background/60 hover:text-foreground"
+                    }`}
+                  >
+                    <Icon className="h-3.5 w-3.5 shrink-0" />
+                    <span className="text-xs">{item.label}</span>
+                    {isActive && <ChevronRight className="h-3 w-3 ml-auto" />}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
         </nav>
       </aside>
 
