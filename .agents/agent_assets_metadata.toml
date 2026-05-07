@@ -150,3 +150,9 @@ id = "W2ARD_nbUh1Urcdqk3ew7"
 uri = "file://SwachERP_Screens_and_APIs.xls"
 type = "table"
 title = "SwachERP — All Screens & API Endpoints"
+
+[[outputs]]
+id = "vuaW-Whhlh2VFTuPiXKrk"
+uri = "file://security-middleware.zip"
+type = "unspecified"
+title = "security-middleware.ts (download)"
