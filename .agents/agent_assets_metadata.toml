@@ -168,3 +168,9 @@ id = "ipkTM8wC8DwW3Ul0Xi-Pk"
 uri = "file://public/SwachERP_GoldJewellery_Mapping.pdf"
 type = "pdf"
 title = "SwachERP × Sioniq — Gold & Jewellery Mapping Report"
+
+[[outputs]]
+id = "5VNYFEUim2Yxo6B1cJ2VW"
+uri = "file://public/SwachERP_Pricing_Design.pdf"
+type = "pdf"
+title = "SwachERP — Pricing & Licensing Design (SaaS + On-Premise)"
