@@ -1,0 +1,37 @@
+May 07 02:44:38 iplvnic1 npm[1343162]: 2:44:38 AM [express] GET /api/repacking-queue 200 in 43ms :: []
+May 07 02:44:38 iplvnic1 npm[1343162]: 2:44:38 AM [express] GET /api/scrap-inventory 200 in 37ms :: [{"id":"51b61951-e5c0-47c2-af2a-aad2d99…
+May 07 02:44:43 iplvnic1 npm[1343162]: /home/kinto/kinto-qa-system/node_modules/pg-pool/index.js:45
+May 07 02:44:43 iplvnic1 npm[1343162]:     Error.captureStackTrace(err)
+May 07 02:44:43 iplvnic1 npm[1343162]:           ^
+May 07 02:44:43 iplvnic1 npm[1343162]: error: relation "recurring_invoice_schedules" does not exist
+May 07 02:44:43 iplvnic1 npm[1343162]:     at /home/kinto/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+May 07 02:44:43 iplvnic1 npm[1343162]:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+May 07 02:44:43 iplvnic1 npm[1343162]:     at async file:///home/kinto/kinto-qa-system/dist/index.js:14627:20 {
+May 07 02:44:43 iplvnic1 npm[1343162]:   length: 126,
+May 07 02:44:43 iplvnic1 npm[1343162]:   severity: 'ERROR',
+May 07 02:44:43 iplvnic1 npm[1343162]:   code: '42P01',
+May 07 02:44:43 iplvnic1 npm[1343162]:   detail: undefined,
+May 07 02:44:43 iplvnic1 npm[1343162]:   hint: undefined,
+May 07 02:44:43 iplvnic1 npm[1343162]:   position: '15',
+May 07 02:44:43 iplvnic1 npm[1343162]:   internalPosition: undefined,
+May 07 02:44:43 iplvnic1 npm[1343162]:   internalQuery: undefined,
+May 07 02:44:43 iplvnic1 npm[1343162]:   where: undefined,
+May 07 02:44:43 iplvnic1 npm[1343162]:   schema: undefined,
+May 07 02:44:43 iplvnic1 npm[1343162]:   table: undefined,
+May 07 02:44:43 iplvnic1 npm[1343162]:   column: undefined,
+May 07 02:44:43 iplvnic1 npm[1343162]:   dataType: undefined,
+May 07 02:44:43 iplvnic1 npm[1343162]:   constraint: undefined,
+May 07 02:44:43 iplvnic1 npm[1343162]:   file: 'parse_relation.c',
+May 07 02:44:43 iplvnic1 npm[1343162]:   line: '1449',
+May 07 02:44:43 iplvnic1 npm[1343162]:   routine: 'parserOpenTable'
+May 07 02:44:43 iplvnic1 npm[1343162]: }
+May 07 02:44:43 iplvnic1 npm[1343162]: Node.js v20.19.5
+May 07 02:44:43 iplvnic1 systemd[1]: kinto.service: Main process exited, code=exited, status=1/FAILURE
+May 07 02:44:43 iplvnic1 systemd[1]: kinto.service: Failed with result 'exit-code'.
+May 07 02:44:43 iplvnic1 systemd[1]: kinto.service: Consumed 10.238s CPU time.
+May 07 02:44:53 iplvnic1 systemd[1]: kinto.service: Scheduled restart job, restart counter is at 1.
+May 07 02:44:53 iplvnic1 systemd[1]: Stopped KINTO Smart Ops Application.
+May 07 02:44:53 iplvnic1 systemd[1]: kinto.service: Consumed 10.238s CPU time.
+May 07 02:44:53 iplvnic1 systemd[1]: Started KINTO Smart Ops Application.
+May 07 02:44:53 iplvnic1 npm[1343338]: > rest-express@1.0.0 start
+May 07 02:44:53 iplvnic1 npm[1343338]: > NODE_ENV=production node dist/index.js

@@ -584,13 +584,13 @@ app.use((req, res, next) => {
   }
 
   // ─── Phase 1-5 tables (comprehensive auto-migration) ────────────────────
-  // All Phase 1-5 tables use IF NOT EXISTS / ADD COLUMN IF NOT EXISTS so
-  // they are 100% safe to run on every startup. This ensures any production
-  // DB that was deployed before these migrations are self-healing.
-  try {
+  // Each section has its OWN try/catch so one failure never blocks the rest.
+  // All DDL uses IF NOT EXISTS / ADD COLUMN IF NOT EXISTS — safe on every startup.
+  {
     const { pool: pgMig } = await import("./db");
 
     // ── Phase 1: Configurable Module Labels ────────────────────────────────
+    try {
     await pgMig.query(`
       CREATE SEQUENCE IF NOT EXISTS public.tenant_module_labels_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
       CREATE TABLE IF NOT EXISTS public.tenant_module_labels (
@@ -604,8 +604,11 @@ app.use((req, res, next) => {
       CREATE UNIQUE INDEX IF NOT EXISTS tenant_module_labels_tenant_module_uidx
         ON public.tenant_module_labels (tenant_id, module_key);
     `);
+    console.log('[MIGRATION] tenant_module_labels OK');
+    } catch (e: any) { console.error('[MIGRATION] tenant_module_labels SKIP:', e.message); }
 
     // ── Phase 1: Custom Field Definitions + Values ────────────────────────
+    try {
     await pgMig.query(`
       CREATE SEQUENCE IF NOT EXISTS public.custom_field_definitions_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
       CREATE TABLE IF NOT EXISTS public.custom_field_definitions (
@@ -638,8 +641,14 @@ app.use((req, res, next) => {
       CREATE INDEX IF NOT EXISTS custom_field_values_entity_idx
         ON public.custom_field_values (tenant_id, entity_type, entity_id);
     `);
+    console.log('[MIGRATION] custom_field_definitions + values OK');
+    } catch (e: any) { console.error('[MIGRATION] custom_field_definitions SKIP:', e.message); }
 
     // ── T003: Purchase Requisitions ───────────────────────────────────────
+    // NOTE: Index creation uses DO $$ guard because old prod DBs may have this
+    // table with different column names — CREATE TABLE IF NOT EXISTS skips it,
+    // then the index on pr_id would fail. The DO $$ checks column existence first.
+    try {
     await pgMig.query(`
       CREATE SEQUENCE IF NOT EXISTS public.purchase_requisitions_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
       CREATE TABLE IF NOT EXISTS public.purchase_requisitions (
@@ -657,7 +666,12 @@ app.use((req, res, next) => {
         PRIMARY KEY (id)
       );
       ALTER SEQUENCE public.purchase_requisitions_id_seq OWNED BY public.purchase_requisitions.id;
+    `);
+    console.log('[MIGRATION] purchase_requisitions OK');
+    } catch (e: any) { console.error('[MIGRATION] purchase_requisitions SKIP:', e.message); }
 
+    try {
+    await pgMig.query(`
       CREATE SEQUENCE IF NOT EXISTS public.purchase_requisition_items_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
       CREATE TABLE IF NOT EXISTS public.purchase_requisition_items (
         id              integer NOT NULL DEFAULT nextval('purchase_requisition_items_id_seq'),
@@ -673,10 +687,30 @@ app.use((req, res, next) => {
         PRIMARY KEY (id)
       );
       ALTER SEQUENCE public.purchase_requisition_items_id_seq OWNED BY public.purchase_requisition_items.id;
-      CREATE INDEX IF NOT EXISTS pr_items_pr_idx ON public.purchase_requisition_items (pr_id);
     `);
+    console.log('[MIGRATION] purchase_requisition_items OK');
+    } catch (e: any) { console.error('[MIGRATION] purchase_requisition_items SKIP:', e.message); }
+
+    // Create pr_items index only if the column exists (safe on mismatched prod schemas)
+    try {
+    await pgMig.query(`
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'purchase_requisition_items' AND column_name = 'pr_id'
+        ) AND NOT EXISTS (
+          SELECT 1 FROM pg_indexes
+          WHERE tablename = 'purchase_requisition_items' AND indexname = 'pr_items_pr_idx'
+        ) THEN
+          CREATE INDEX pr_items_pr_idx ON public.purchase_requisition_items (pr_id);
+        END IF;
+      END $$;
+    `);
+    } catch (e: any) { console.error('[MIGRATION] pr_items_pr_idx SKIP:', e.message); }
 
     // ── T004: Goods Receipt Notes ─────────────────────────────────────────
+    try {
     await pgMig.query(`
       CREATE SEQUENCE IF NOT EXISTS public.goods_receipt_notes_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
       CREATE TABLE IF NOT EXISTS public.goods_receipt_notes (
@@ -714,21 +748,35 @@ app.use((req, res, next) => {
       ALTER SEQUENCE public.grn_items_id_seq OWNED BY public.grn_items.id;
       CREATE INDEX IF NOT EXISTS grn_items_grn_idx ON public.grn_items (grn_id);
     `);
+    console.log('[MIGRATION] goods_receipt_notes + grn_items OK');
+    } catch (e: any) { console.error('[MIGRATION] goods_receipt_notes SKIP:', e.message); }
 
-    // ── T005-T008: Approvals, Cost Centres, Vendor columns ───────────────
+    // ── T005-T008: Vendor columns (CRITICAL — own isolated block) ─────────
+    try {
+    await pgMig.query(`
+      ALTER TABLE public.vendors
+        ADD COLUMN IF NOT EXISTS payment_terms_days integer DEFAULT 30,
+        ADD COLUMN IF NOT EXISTS credit_limit numeric(15,2) DEFAULT 0;
+    `);
+    console.log('[MIGRATION] vendors.credit_limit + payment_terms_days OK');
+    } catch (e: any) { console.error('[MIGRATION] vendors columns SKIP:', e.message); }
+
+    // ── T005-T008: Expense voucher + journal columns ──────────────────────
+    try {
     await pgMig.query(`
       ALTER TABLE public.expense_vouchers
         ADD COLUMN IF NOT EXISTS grn_id integer,
         ADD COLUMN IF NOT EXISTS matching_status text DEFAULT 'unmatched',
         ADD COLUMN IF NOT EXISTS cost_centre_id integer;
-
       ALTER TABLE public.journal_lines
         ADD COLUMN IF NOT EXISTS cost_centre_id integer;
+    `);
+    console.log('[MIGRATION] expense_vouchers + journal_lines columns OK');
+    } catch (e: any) { console.error('[MIGRATION] expense/journal columns SKIP:', e.message); }
 
-      ALTER TABLE public.vendors
-        ADD COLUMN IF NOT EXISTS payment_terms_days integer DEFAULT 30,
-        ADD COLUMN IF NOT EXISTS credit_limit numeric(15,2) DEFAULT 0;
-
+    // ── T005-T008: Approval tables + Cost Centres ─────────────────────────
+    try {
+    await pgMig.query(`
       CREATE SEQUENCE IF NOT EXISTS public.approval_rules_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
       CREATE TABLE IF NOT EXISTS public.approval_rules (
         id              integer NOT NULL DEFAULT nextval('approval_rules_id_seq'),
@@ -780,8 +828,11 @@ app.use((req, res, next) => {
       );
       ALTER SEQUENCE public.cost_centres_id_seq OWNED BY public.cost_centres.id;
     `);
+    console.log('[MIGRATION] approval_rules + approval_requests + cost_centres OK');
+    } catch (e: any) { console.error('[MIGRATION] approval/cost_centres SKIP:', e.message); }
 
     // ── Phase 2: Expense Claims + Recurring Invoices ──────────────────────
+    try {
     await pgMig.query(`
       CREATE SEQUENCE IF NOT EXISTS public.hr_expense_claims_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
       CREATE TABLE IF NOT EXISTS public.hr_expense_claims (
@@ -839,8 +890,11 @@ app.use((req, res, next) => {
       );
       ALTER SEQUENCE public.recurring_invoice_schedules_id_seq OWNED BY public.recurring_invoice_schedules.id;
     `);
+    console.log('[MIGRATION] hr_expense_claims + recurring_invoice_schedules OK');
+    } catch (e: any) { console.error('[MIGRATION] expense_claims/recurring SKIP:', e.message); }
 
     // ── Phase 3: Warehouses, UOM, Serial/Lot, Stock Transfers ────────────
+    try {
     await pgMig.query(`
       CREATE SEQUENCE IF NOT EXISTS public.warehouses_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
       CREATE TABLE IF NOT EXISTS public.warehouses (
@@ -934,8 +988,11 @@ app.use((req, res, next) => {
       );
       ALTER SEQUENCE public.stock_transfer_items_id_seq OWNED BY public.stock_transfer_items.id;
     `);
+    console.log('[MIGRATION] warehouses + uom + serial_lot + stock_transfers OK');
+    } catch (e: any) { console.error('[MIGRATION] warehouses/uom/stock SKIP:', e.message); }
 
     // ── Phase 4: Projects, BOQ, Milestones, Timesheets ───────────────────
+    try {
     await pgMig.query(`
       CREATE SEQUENCE IF NOT EXISTS public.projects_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
       CREATE TABLE IF NOT EXISTS public.projects (
@@ -1002,8 +1059,11 @@ app.use((req, res, next) => {
       );
       ALTER SEQUENCE public.timesheets_id_seq OWNED BY public.timesheets.id;
     `);
+    console.log('[MIGRATION] projects + boq + milestones + timesheets OK');
+    } catch (e: any) { console.error('[MIGRATION] projects/boq SKIP:', e.message); }
 
     // ── Phase 5: Fixed Assets, Appraisals, Multi-currency ────────────────
+    try {
     await pgMig.query(`
       CREATE SEQUENCE IF NOT EXISTS public.fixed_assets_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
       CREATE TABLE IF NOT EXISTS public.fixed_assets (
@@ -1110,10 +1170,10 @@ app.use((req, res, next) => {
       );
       ALTER SEQUENCE public.exchange_rates_id_seq OWNED BY public.exchange_rates.id;
     `);
+    console.log('[MIGRATION] fixed_assets + appraisals + currencies + exchange_rates OK');
+    } catch (e: any) { console.error('[MIGRATION] phase5 assets/appraisals/currencies SKIP:', e.message); }
 
-    console.log('[PHASE 1-5 MIGRATION] All Phase 1-5 tables ensured OK');
-  } catch (err) {
-    console.error('[PHASE 1-5 MIGRATION ERROR]', err);
+    console.log('[PHASE 1-5 MIGRATION] All sections attempted — check individual lines above for status');
   }
 
   // ─── Platform settings table (super-admin editable config) ───────────────

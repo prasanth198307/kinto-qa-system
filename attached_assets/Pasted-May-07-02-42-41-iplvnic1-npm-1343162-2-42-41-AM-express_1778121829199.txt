@@ -1,0 +1,56 @@
+May 07 02:42:41 iplvnic1 npm[1343162]: 2:42:41 AM [express] GET /api/tenant/features 200 in 23ms :: {"plan":"enterprise","modules":["invoic…
+May 07 02:42:46 iplvnic1 npm[1343162]: [External API] customer-outstanding error: error: column "credit_limit" does not exist
+May 07 02:42:46 iplvnic1 npm[1343162]:     at /home/kinto/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+May 07 02:42:46 iplvnic1 npm[1343162]:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+May 07 02:42:46 iplvnic1 npm[1343162]:     at async file:///home/kinto/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+May 07 02:42:46 iplvnic1 npm[1343162]:     at async file:///home/kinto/kinto-qa-system/dist/index.js:47637:26 {
+May 07 02:42:46 iplvnic1 npm[1343162]:   length: 113,
+May 07 02:42:46 iplvnic1 npm[1343162]:   severity: 'ERROR',
+May 07 02:42:46 iplvnic1 npm[1343162]:   code: '42703',
+May 07 02:42:46 iplvnic1 npm[1343162]:   detail: undefined,
+May 07 02:42:46 iplvnic1 npm[1343162]:   hint: undefined,
+May 07 02:42:46 iplvnic1 npm[1343162]:   position: '410',
+May 07 02:42:46 iplvnic1 npm[1343162]:   internalPosition: undefined,
+May 07 02:42:46 iplvnic1 npm[1343162]:   internalQuery: undefined,
+May 07 02:42:46 iplvnic1 npm[1343162]:   where: undefined,
+May 07 02:42:46 iplvnic1 npm[1343162]:   schema: undefined,
+May 07 02:42:46 iplvnic1 npm[1343162]:   table: undefined,
+May 07 02:42:46 iplvnic1 npm[1343162]:   column: undefined,
+May 07 02:42:46 iplvnic1 npm[1343162]:   dataType: undefined,
+May 07 02:42:46 iplvnic1 npm[1343162]:   constraint: undefined,
+May 07 02:42:46 iplvnic1 npm[1343162]:   file: 'parse_relation.c',
+May 07 02:42:46 iplvnic1 npm[1343162]:   line: '3722',
+May 07 02:42:46 iplvnic1 npm[1343162]:   routine: 'errorMissingColumn'
+May 07 02:42:46 iplvnic1 npm[1343162]: }
+May 07 02:42:46 iplvnic1 npm[1343162]: 2:42:46 AM [express] GET /api/external/customer-outstanding 500 in 8ms :: {"error":"Internal Server …
+May 07 02:42:49 iplvnic1 npm[1343162]: Error fetching vendors: error: column "credit_limit" does not exist
+May 07 02:42:49 iplvnic1 npm[1343162]:     at /home/kinto/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+May 07 02:42:49 iplvnic1 npm[1343162]:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+May 07 02:42:49 iplvnic1 npm[1343162]:     at async file:///home/kinto/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+May 07 02:42:49 iplvnic1 npm[1343162]:     at async DatabaseStorage.getAllVendors (file:///home/kinto/kinto-qa-system/dist/index.js:4996:16)
+May 07 02:42:49 iplvnic1 npm[1343162]:     at async file:///home/kinto/kinto-qa-system/dist/index.js:28796:36 {
+May 07 02:42:49 iplvnic1 npm[1343162]:   length: 113,
+May 07 02:42:49 iplvnic1 npm[1343162]:   severity: 'ERROR',
+May 07 02:42:49 iplvnic1 npm[1343162]:   code: '42703',
+May 07 02:42:49 iplvnic1 npm[1343162]:   detail: undefined,
+May 07 02:42:49 iplvnic1 npm[1343162]:   hint: undefined,
+May 07 02:42:49 iplvnic1 npm[1343162]:   position: '410',
+May 07 02:42:49 iplvnic1 npm[1343162]:   internalPosition: undefined,
+May 07 02:42:49 iplvnic1 npm[1343162]:   internalQuery: undefined,
+May 07 02:42:49 iplvnic1 npm[1343162]:   where: undefined,
+May 07 02:42:49 iplvnic1 npm[1343162]:   schema: undefined,
+May 07 02:42:49 iplvnic1 npm[1343162]:   table: undefined,
+May 07 02:42:49 iplvnic1 npm[1343162]:   column: undefined,
+May 07 02:42:49 iplvnic1 npm[1343162]:   dataType: undefined,
+May 07 02:42:49 iplvnic1 npm[1343162]:   constraint: undefined,
+May 07 02:42:49 iplvnic1 npm[1343162]:   file: 'parse_relation.c',
+May 07 02:42:49 iplvnic1 npm[1343162]:   line: '3722',
+May 07 02:42:49 iplvnic1 npm[1343162]:   routine: 'errorMissingColumn'
+May 07 02:42:49 iplvnic1 npm[1343162]: }
+May 07 02:42:49 iplvnic1 npm[1343162]: Error fetching payment history: column "credit_limit" does not exist
+May 07 02:42:49 iplvnic1 npm[1343162]: 2:42:49 AM [express] GET /api/tenant/features 200 in 34ms :: {"plan":"enterprise","modules":["invoic…
+May 07 02:42:49 iplvnic1 npm[1343162]: 2:42:49 AM [express] GET /api/my-permissions 304 in 41ms :: {"role":"admin","roleId":"role-admin","r…
+May 07 02:42:49 iplvnic1 npm[1343162]: 2:42:49 AM [express] GET /api/vendors 500 in 58ms :: {"message":"Failed to fetch vendors"}
+May 07 02:42:49 iplvnic1 npm[1343162]: 2:42:49 AM [express] GET /api/invoice-payments/history 500 in 61ms :: {"message":"Failed to fetch pa…
+May 07 02:42:49 iplvnic1 npm[1343162]: 2:42:49 AM [express] GET /api/customer-advances 304 in 57ms :: []
+May 07 02:42:49 iplvnic1 npm[1343162]: 2:42:49 AM [express] GET /api/invoice-payments/bulk-allocations 304 in 70ms :: {"data":[{"bulkAlloca…
