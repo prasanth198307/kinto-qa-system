@@ -186,6 +186,9 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
   agriculture: [
     "agriculture",
   ],
+  gold_erp: [
+    "gold-erp",
+  ],
 };
 
 // ── Plan → module list ────────────────────────────────────────────────────────
@@ -198,12 +201,14 @@ const TRIAL_MODULES        = ["invoicing", "purchase_orders", "basic_inventory",
 const BASIC_MODULES        = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "expenses", "documents"];
 const PROFESSIONAL_MODULES = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "production", "quality_returns", "accounting", "mis", "expenses", "documents", "whatsapp", "maintenance", "crm", "api_hub", "recurring_invoices", "warehouses"];
 const ENTERPRISE_MODULES   = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "production", "quality_returns", "accounting", "mis", "expenses", "documents", "whatsapp", "maintenance", "hr_payroll", "crm", "api_hub", "recurring_invoices", "warehouses", "projects", "fixed_assets", "multi_currency", ...INDUSTRY_MODULES];
+const GOLD_ERP_MODULES     = ["gold_erp", "invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "production", "quality_returns", "accounting", "mis", "expenses", "documents", "whatsapp", "maintenance", "hr_payroll", "crm", "api_hub", "recurring_invoices", "warehouses", "projects", "fixed_assets", "multi_currency", "pos"];
 
 export const PLAN_MODULES: Record<string, string[]> = {
-  trial:        TRIAL_MODULES,
-  basic:        BASIC_MODULES,
-  professional: PROFESSIONAL_MODULES,
-  enterprise:   ENTERPRISE_MODULES,
+  trial:         TRIAL_MODULES,
+  basic:         BASIC_MODULES,
+  professional:  PROFESSIONAL_MODULES,
+  enterprise:    ENTERPRISE_MODULES,
+  gold_erp_plan: GOLD_ERP_MODULES,
 };
 
 // ── Route prefix → minimum plan ───────────────────────────────────────────────

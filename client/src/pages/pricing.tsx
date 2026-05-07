@@ -79,10 +79,16 @@ const MODULE_GROUPS = [
 ];
 
 const PLAN_COLORS: Record<string, string> = {
-  trial:        "border-amber-300",
-  basic:        "border-blue-300",
-  professional: "border-violet-400",
-  enterprise:   "border-emerald-400",
+  trial:         "border-amber-300",
+  basic:         "border-blue-300",
+  professional:  "border-violet-400",
+  enterprise:    "border-emerald-400",
+  gold_erp_plan: "border-yellow-500",
+};
+
+const PLAN_BADGE: Record<string, { label: string; className: string }> = {
+  enterprise:    { label: "Most Popular",       className: "bg-violet-600 text-white hover:bg-violet-600" },
+  gold_erp_plan: { label: "Jewellery Vertical", className: "bg-yellow-500 text-black hover:bg-yellow-500" },
 };
 
 interface Plan {
@@ -205,26 +211,28 @@ export default function PricingPage() {
         </div>
 
         {/* ── Plan cards ───────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 items-stretch">
           {plans.map((plan) => {
             const accentBorder = PLAN_COLORS[plan.slug] ?? "";
+            const badge = PLAN_BADGE[plan.slug];
             const price = cycle === "yearly" ? plan.priceYearly : plan.priceMonthly;
             const features = plan.features as string[];
             const isExpanded = expandedPlans.has(plan.slug);
             const visibleFeatures = isExpanded ? features : features.slice(0, FEATURES_PREVIEW);
             const hiddenCount = features.length - FEATURES_PREVIEW;
+            const isGoldErp = plan.slug === "gold_erp_plan";
 
             return (
               <Card
                 key={plan.id}
                 id={`plan-${plan.slug}`}
-                className={`relative flex flex-col ${plan.isFeatured ? `border-2 ${accentBorder}` : ""}`}
+                className={`relative flex flex-col ${plan.isFeatured ? `border-2 ${accentBorder}` : ""} ${isGoldErp ? "bg-gradient-to-b from-yellow-50/60 to-background dark:from-yellow-950/20" : ""}`}
                 data-testid={`card-plan-${plan.slug}`}
               >
-                {plan.isFeatured && (
+                {plan.isFeatured && badge && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <Badge className="flex items-center gap-1 bg-violet-600 text-white hover:bg-violet-600">
-                      <Star className="h-3 w-3" /> Most Popular
+                    <Badge className={`flex items-center gap-1 ${badge.className}`}>
+                      <Star className="h-3 w-3" /> {badge.label}
                     </Badge>
                   </div>
                 )}
