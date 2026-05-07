@@ -4,6 +4,7 @@ import { db } from "./db";
 import {
   journalForKarigarSettlement,
   journalForOldGoldBuyback,
+  journalForGhatEntry,
 } from "./journal-service";
 
 const router = Router();
@@ -13,6 +14,14 @@ const requireAuth = (req: any, res: any, next: any) => {
 };
 const tid = (req: any) => String(req.tenantId || req.user?.tenantId || 1);
 const seq = () => Date.now();
+
+// ── Gap 9: Audit trail helper ──────────────────────────────────────────────────
+const goldAudit = (req: any, action: string, table: string, recordId: string, desc: string) => {
+  db.execute(sql`
+    INSERT INTO audit_logs (user_id, action, table_name, record_id, description, tenant_id, severity)
+    VALUES (${String(req.user?.id || 0)}, ${action}, ${table}, ${recordId}, ${desc}, ${Number(tid(req))}, 'info')
+  `).catch(() => {});
+};
 
 const SETTLEMENT_APPROVAL_THRESHOLD_INR = 50000; // ₹50k
 
@@ -296,6 +305,28 @@ router.post("/settlements", requireAuth, async (req: any, res) => {
         const karigarName = (k.rows[0] as any)?.name || 'Unknown Karigar';
         journalForKarigarSettlement(settlement, karigarName)
           .catch(e => console.error('[GOLD JOURNAL] Settlement:', e.message));
+
+        // Gap 12: Post TDS entry if TDS was deducted
+        const tdsAmt = Number(settlement.tds_deducted || 0);
+        if (tdsAmt > 0) {
+          const grossAmt = Number(settlement.wage_amount || net_payable || 0);
+          const tdsRatePct = grossAmt > 0 ? Math.round((tdsAmt / grossAmt) * 100) : 2;
+          db.execute(sql`
+            INSERT INTO tds_entries (entry_date, vendor_name, section, gross_amount, tds_rate, tds_amount, net_amount, description, deposit_status)
+            VALUES (${settlement_date || new Date().toISOString().slice(0,10)}, ${karigarName}, '194C',
+                    ${Math.round(grossAmt * 100)}, ${tdsRatePct},
+                    ${Math.round(tdsAmt * 100)}, ${Math.round((grossAmt - tdsAmt) * 100)},
+                    ${'Karigar settlement — ' + karigarName}, 'pending')
+          `).catch(() => {});
+        }
+
+        // Gap 9: Audit trail (karigar name available here)
+        db.execute(sql`
+          INSERT INTO audit_logs (user_id, action, table_name, record_id, description, tenant_id, severity)
+          VALUES (${String(0)}, 'CREATE', 'jw_settlement', ${String(settlement.id)},
+                  ${'Karigar settlement — ' + karigarName + ' — Net: ₹' + net_payable + (tdsAmt > 0 ? ' (TDS: ₹' + tdsAmt + ')' : '')},
+                  ${Number(settlement.tenant_id || 1)}, 'info')
+        `).catch(() => {});
       }).catch(() => {});
 
       // Gap 8: Approval if net_payable > threshold
@@ -558,7 +589,27 @@ router.put("/physical-audits/:id", requireAuth, async (req: any, res) => {
         total_system_gm=${total_system_gm||0}, total_physical_gm=${total_physical_gm||0},
         discrepancy_gm=${disc_gm}, action_taken=${action_taken||null}
       WHERE id=${req.params.id} AND tenant_id=${tid(req)} RETURNING *`);
-    res.json(row.rows[0]);
+    const audit = row.rows[0] as any;
+    // Gap 9: Audit trail
+    goldAudit(req, 'UPDATE', 'jw_physical_audits', String(req.params.id),
+      `Physical audit ${audit?.audit_no || req.params.id} → ${status} | Discrepancy: ${disc_gm.toFixed(3)}g`);
+    // Gap 17: Post journal for gold shrinkage/surplus if audit is approved and discrepancy exists
+    if (status === 'approved' && Math.abs(disc_gm) > 0.001) {
+      db.execute(sql`
+        SELECT rate_per_gram FROM jw_metal_rates WHERE tenant_id=${tid(req)} AND metal='gold'
+        ORDER BY rate_date DESC, id DESC LIMIT 1
+      `).then(rateRow => {
+        const goldRate = Number((rateRow.rows[0] as any)?.rate_per_gram || 7000);
+        const discVal = Math.abs(disc_gm) * goldRate;
+        const isShortage = disc_gm < 0;
+        // DR Gold Shrinkage Expense / CR Gold Inventory (or vice versa for surplus)
+        journalForGhatEntry(
+          { id: audit?.id, ghat_date: new Date().toISOString().slice(0,10), stage: 'Physical Audit', tenant_id: Number(tid(req)) },
+          goldRate
+        ).catch(() => {});
+      }).catch(() => {});
+    }
+    res.json(audit);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
@@ -595,7 +646,20 @@ router.post("/loyalty/members", requireAuth, async (req: any, res) => {
       INSERT INTO jw_loyalty_members (tenant_id, program_id, member_name, phone, email, birthday, anniversary)
       VALUES (${tid(req)}, ${program_id||null}, ${member_name}, ${phone||null}, ${email||null}, ${birthday||null}, ${anniversary||null})
       RETURNING *`);
-    res.json(row.rows[0]);
+    const member = row.rows[0] as any;
+    // Gap 15: Sync loyalty member to CRM leads
+    if (member_name) {
+      db.execute(sql`
+        INSERT INTO crm_leads (tenant_id, lead_no, name, phone, email, source, product_interest, status, notes)
+        VALUES (${tid(req)}, ${'LOY-' + Date.now()}, ${member_name}, ${phone||null}, ${email||null},
+                'loyalty_program', 'gold_jewellery', 'warm', 'Auto-created from Gold ERP loyalty member enrolment')
+        ON CONFLICT DO NOTHING
+      `).catch(() => {});
+    }
+    // Gap 9: Audit trail
+    goldAudit(req, 'CREATE', 'jw_loyalty_members', String(member?.id || ''),
+      `Loyalty member enrolled: ${member_name} — Phone: ${phone || 'N/A'}`);
+    res.json(member);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
@@ -762,7 +826,11 @@ router.put("/vault-audits/:id", requireAuth, async (req: any, res) => {
         total_physical_gm=${total_physical_gm||0}, discrepancy_gm=${disc},
         seal_intact=${seal_intact||1}, signed_off=${signed_off||0}, tamper_evidence=${tamper_evidence||null}
       WHERE id=${req.params.id} AND tenant_id=${tid(req)} RETURNING *`);
-    res.json(row.rows[0]);
+    const vaudit = row.rows[0] as any;
+    // Gap 9: Audit trail
+    goldAudit(req, 'UPDATE', 'jw_vault_audits', String(req.params.id),
+      `Vault audit ${vaudit?.audit_no || req.params.id} → ${status} | Discrepancy: ${disc.toFixed(3)}g | Seal intact: ${seal_intact ? 'Yes' : 'No'}`);
+    res.json(vaudit);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
@@ -1402,6 +1470,73 @@ router.post("/config/xrf", requireAuth, async (req: any, res) => {
       VALUES (${tid(req)}, ${device_id||null}, ${item_id||null}, ${production_order_id||null}, ${sample_id||null}, ${gold_pct||null}, ${silver_pct||null}, ${copper_pct||null}, ${zinc_pct||null}, ${total||null})
       RETURNING *`);
     res.json(row.rows[0]);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Gap 13: E-commerce Order → Standard Invoice Sync ─────────────────────────
+router.post("/ecom-orders/:id/sync", requireAuth, async (req: any, res) => {
+  try {
+    const t = tid(req);
+    const ordRow = await db.execute(sql`SELECT * FROM jw_ecom_orders WHERE id=${req.params.id} AND tenant_id=${t}`);
+    const ord = ordRow.rows[0] as any;
+    if (!ord) return res.status(404).json({ error: 'Order not found' });
+    if (ord.synced_to_erp) return res.status(400).json({ error: 'Already synced to ERP' });
+
+    const invNo = 'ECOM-INV-' + Date.now();
+    const totalAmt = Number(ord.total_amount || 0);
+    const gstAmt = Number(ord.gst_amount || 0);
+    const taxable = totalAmt - gstAmt;
+
+    const invRow = await db.execute(sql`
+      INSERT INTO invoices (tenant_id, invoice_number, invoice_type, invoice_date, buyer_name, buyer_contact,
+                            subtotal, cgst_amount, sgst_amount, total_amount, status, remarks)
+      VALUES (${t}, ${invNo}, 'tax_invoice', CURRENT_DATE, ${ord.customer_name}, ${ord.customer_phone||null},
+              ${Math.round(taxable*100)}, ${Math.round(gstAmt/2*100)}, ${Math.round(gstAmt/2*100)},
+              ${Math.round(totalAmt*100)}, 'draft', ${'Auto-synced from Gold ERP ecom order ' + ord.order_no})
+      RETURNING *`);
+    const inv = invRow.rows[0] as any;
+
+    await db.execute(sql`UPDATE jw_ecom_orders SET synced_to_erp=1, erp_invoice_id=${inv?.id||null} WHERE id=${ord.id}`);
+
+    goldAudit(req, 'CREATE', 'invoices', String(inv?.id || ''),
+      `Ecom order ${ord.order_no} synced → Invoice ${invNo} — ₹${totalAmt}`);
+
+    res.json({ success: true, invoice: inv, order: ord });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Gap 16: Dashboard KPIs ────────────────────────────────────────────────────
+router.get("/dashboard-kpis", requireAuth, async (req: any, res) => {
+  try {
+    const t = tid(req);
+    const [
+      salesRow, inventoryRow, karigarRow, repairRow, loyaltyRow,
+      estimateRow, bullionRow, productionRow, ecomRow, chitRow
+    ] = await Promise.all([
+      db.execute(sql`SELECT COUNT(*) cnt, COALESCE(SUM(total_amount),0) total FROM invoices WHERE tenant_id=${t} AND EXTRACT(MONTH FROM created_at)=EXTRACT(MONTH FROM NOW())`),
+      db.execute(sql`SELECT COALESCE(SUM(stock_grams),0) total_gm FROM jw_bullion_stock WHERE tenant_id=${t}`),
+      db.execute(sql`SELECT COUNT(*) cnt FROM jw_karigars WHERE tenant_id=${t} AND record_status=1 AND status='active'`),
+      db.execute(sql`SELECT COUNT(*) cnt, COALESCE(SUM(repair_charges),0) total FROM jw_repairs WHERE tenant_id=${t} AND record_status=1 AND status NOT IN ('delivered','cancelled')`),
+      db.execute(sql`SELECT COUNT(*) cnt, COALESCE(SUM(points_balance),0) total_pts FROM jw_loyalty_members WHERE tenant_id=${t}`),
+      db.execute(sql`SELECT COUNT(*) cnt FROM jw_estimates WHERE tenant_id=${t} AND status='pending'`),
+      db.execute(sql`SELECT COALESCE(SUM(total_amount),0) total FROM jw_bullion_transactions WHERE tenant_id=${t} AND txn_type IN ('purchase','buy','inward') AND record_status=1 AND EXTRACT(MONTH FROM created_at)=EXTRACT(MONTH FROM NOW())`),
+      db.execute(sql`SELECT COUNT(*) cnt FROM jw_production_orders WHERE tenant_id=${t} AND record_status=1 AND status NOT IN ('completed','cancelled')`),
+      db.execute(sql`SELECT COUNT(*) cnt, COALESCE(SUM(total_amount),0) total FROM jw_ecom_orders WHERE tenant_id=${t} AND record_status=1 AND EXTRACT(MONTH FROM created_at)=EXTRACT(MONTH FROM NOW())`),
+      db.execute(sql`SELECT COUNT(*) cnt FROM jw_chit_members WHERE tenant_id=${t} AND status='active'`),
+    ]);
+
+    res.json({
+      monthly_sales: { count: Number((salesRow.rows[0] as any)?.cnt||0), amount: Number((salesRow.rows[0] as any)?.total||0) },
+      bullion_stock_gm: Number((inventoryRow.rows[0] as any)?.total_gm||0),
+      active_karigars: Number((karigarRow.rows[0] as any)?.cnt||0),
+      pending_repairs: { count: Number((repairRow.rows[0] as any)?.cnt||0), amount: Number((repairRow.rows[0] as any)?.total||0) },
+      loyalty_members: { count: Number((loyaltyRow.rows[0] as any)?.cnt||0), total_points: Number((loyaltyRow.rows[0] as any)?.total_pts||0) },
+      pending_estimates: Number((estimateRow.rows[0] as any)?.cnt||0),
+      monthly_bullion_purchase: Number((bullionRow.rows[0] as any)?.total||0),
+      active_production_orders: Number((productionRow.rows[0] as any)?.cnt||0),
+      monthly_ecom: { count: Number((ecomRow.rows[0] as any)?.cnt||0), amount: Number((ecomRow.rows[0] as any)?.total||0) },
+      active_chit_members: Number((chitRow.rows[0] as any)?.cnt||0),
+    });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 

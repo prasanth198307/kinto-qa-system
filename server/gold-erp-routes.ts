@@ -7,6 +7,7 @@ import {
   journalForRepairDelivery,
   journalForGhatEntry,
 } from "./journal-service";
+import { whatsappService } from "./whatsappService";
 
 const router = Router();
 const requireAuth = (req: any, res: any, next: any) => {
@@ -15,6 +16,22 @@ const requireAuth = (req: any, res: any, next: any) => {
 };
 const tid = (req: any) => String(req.tenantId || req.user?.tenantId || 1);
 const seq = () => Date.now();
+
+// ── Gap 9: Audit trail helper ──────────────────────────────────────────────────
+const goldAudit = (req: any, action: string, table: string, recordId: string, desc: string) => {
+  db.execute(sql`
+    INSERT INTO audit_logs (user_id, action, table_name, record_id, description, tenant_id, severity)
+    VALUES (${String(req.user?.id || 0)}, ${action}, ${table}, ${recordId}, ${desc}, ${Number(tid(req))}, 'info')
+  `).catch(() => {});
+};
+
+// ── Gap 11: WhatsApp notification helper ───────────────────────────────────────
+const goldWhatsApp = (phone: string | null, message: string) => {
+  if (!phone) return;
+  const clean = phone.replace(/\D/g, '');
+  const to = clean.startsWith('91') ? clean : `91${clean}`;
+  whatsappService.sendTextMessage({ to, message }).catch(() => {});
+};
 
 // ── Approval threshold helper ─────────────────────────────────────────────────
 const BULLION_APPROVAL_THRESHOLD_INR = 100000; // ₹1 lakh
@@ -216,7 +233,16 @@ router.put("/estimates/:id", requireAuth, async (req: any, res) => {
     const row = await db.execute(sql`
       UPDATE jw_estimates SET status=${status}, notes=${notes||null}
       WHERE id=${req.params.id} AND tenant_id=${tid(req)} RETURNING *`);
-    res.json(row.rows[0]);
+    const est = row.rows[0] as any;
+    // Gap 9: Audit trail
+    goldAudit(req, 'UPDATE', 'jw_estimates', String(req.params.id),
+      `Estimate ${est?.estimate_no || req.params.id} status → ${status}`);
+    // Gap 11: WhatsApp notification on approval
+    if (status === 'approved' && est?.customer_phone) {
+      goldWhatsApp(est.customer_phone,
+        `Dear ${est.customer_name || 'Customer'}, your jewellery estimate *${est.estimate_no}* (₹${Number(est.total_amount||0).toLocaleString('en-IN')}) has been *approved*. We look forward to serving you. — SwachERP`);
+    }
+    res.json(est);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
@@ -405,6 +431,9 @@ router.post("/bullion-transactions", requireAuth, async (req: any, res) => {
         if (aprId) db.execute(sql`UPDATE jw_bullion_transactions SET approval_request_id=${aprId} WHERE id=${txn.id}`);
       }).catch(() => {});
     }
+    // Gap 9: Audit trail
+    goldAudit(req, 'CREATE', 'jw_bullion_transactions', String(txn.id),
+      `Bullion ${txn_type} — ${weight_gm}g ${metal_type} @ ₹${rate_per_gram}/g — Party: ${party_name || 'N/A'} — Total: ₹${totalAmt}`);
     res.json(txn);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
@@ -455,6 +484,16 @@ router.put("/repairs/:id", requireAuth, async (req: any, res) => {
     if (status === 'delivered' && repair) {
       journalForRepairDelivery(repair).catch(e => console.error('[GOLD JOURNAL] Repair:', e.message));
     }
+    // Gap 9: Audit trail
+    goldAudit(req, 'UPDATE', 'jw_repairs', String(req.params.id),
+      `Repair ${repair?.repair_no || req.params.id} status → ${status}`);
+    // Gap 11: WhatsApp on ready/delivered
+    if ((status === 'ready' || status === 'delivered') && repair?.customer_phone) {
+      const msg = status === 'ready'
+        ? `Dear ${repair.customer_name || 'Customer'}, your jewellery repair *${repair.repair_no}* is ready for pickup. Repair charges: ₹${Number(repair.repair_charges||0).toLocaleString('en-IN')}. — SwachERP`
+        : `Dear ${repair.customer_name || 'Customer'}, your jewellery repair *${repair.repair_no}* has been delivered. Thank you for choosing us! — SwachERP`;
+      goldWhatsApp(repair.customer_phone, msg);
+    }
     res.json(repair);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
@@ -483,7 +522,19 @@ router.post("/hallmarking", requireAuth, async (req: any, res) => {
       VALUES (${tid(req)}, ${huid}, ${item_description||null}, ${metal_type||'gold'}, ${purity_name||null},
         ${gross_weight_gm||0}, ${net_weight_gm||0}, ${assay_centre||null}, ${lot_no||null}, ${hallmark_date||new Date().toISOString().slice(0,10)})
       RETURNING *`);
-    res.json(row.rows[0]);
+    const hm = row.rows[0] as any;
+    // Gap 14: Link HUID to serial_lot_register
+    if (hm?.id) {
+      db.execute(sql`
+        INSERT INTO serial_lot_register (tenant_id, item_id, serial_number, lot_number, manufactured_date, quantity, status, source_type, source_id)
+        VALUES (${Number(tid(req))}, ${String(hm.id)}, ${huid}, ${lot_no||null}, ${hallmark_date||new Date().toISOString().slice(0,10)}, 1, 'in_stock', 'gold_hallmarking', ${hm.id})
+        ON CONFLICT DO NOTHING
+      `).catch(() => {});
+    }
+    // Gap 9: Audit trail
+    goldAudit(req, 'CREATE', 'jw_hallmarking', String(hm?.id || ''),
+      `HUID assigned: ${huid} — ${item_description || metal_type} — ${gross_weight_gm}g`);
+    res.json(hm);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
@@ -709,6 +760,9 @@ router.post("/ghat-entries", requireAuth, async (req: any, res) => {
             .catch(e => console.error('[GOLD JOURNAL] Ghat:', e.message));
         }).catch(() => {});
     }
+    // Gap 9: Audit trail
+    if (ghat) goldAudit({ user: req.user, tenantId: t } as any, 'CREATE', 'jw_ghat_entries', String(ghat.id),
+      `Ghat entry — Stage: ${stage_name || 'Casting'} — Issued: ${issued}g, Received: ${received}g, Loss: ${(issued-received).toFixed(3)}g`);
     res.json(ghat);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
@@ -889,6 +943,22 @@ router.get("/gst-summary", requireAuth, async (req: any, res) => {
     }), { taxable: 0, cgst: 0, sgst: 0, total: 0 });
 
     res.json({ sales: rows.rows, totals, hsnCode: '7113', gstRate: 3 });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Gap 16: Dashboard KPIs (served from routes file 1 for backward compat) ───
+router.get("/dashboard-kpis-summary", requireAuth, async (req: any, res) => {
+  try {
+    const t = tid(req);
+    const [salesRow, stockRow] = await Promise.all([
+      db.execute(sql`SELECT COUNT(*) cnt, COALESCE(SUM(e.total_amount),0) total FROM jw_estimates e WHERE e.tenant_id=${t} AND e.status='converted'`),
+      db.execute(sql`SELECT COALESCE(SUM(stock_grams),0) gm FROM jw_bullion_stock WHERE tenant_id=${t}`),
+    ]);
+    res.json({
+      converted_estimates: Number((salesRow.rows[0] as any)?.cnt||0),
+      converted_value: Number((salesRow.rows[0] as any)?.total||0),
+      bullion_stock_gm: Number((stockRow.rows[0] as any)?.gm||0),
+    });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 

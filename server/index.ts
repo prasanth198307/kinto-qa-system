@@ -1233,6 +1233,35 @@ app.use((req, res, next) => {
     console.error('[ROLE_PERMS MIGRATION ERROR]', err);
   }
 
+  // ─── Gap 10: Seed Gold ERP screen keys in role_permissions for gold_erp_plan tenants ───
+  try {
+    const { pool: goldPool } = await import('./db');
+    const goldScreenKeys = [
+      'gold_erp', 'gold_erp_items', 'gold_erp_karigars', 'gold_erp_production',
+      'gold_erp_estimates', 'gold_erp_repairs', 'gold_erp_bullion', 'gold_erp_hallmarking',
+      'gold_erp_analytics', 'gold_erp_metal_ledger',
+    ];
+    const goldRolesRes = await goldPool.query(`
+      SELECT r.id role_id, r.tenant_id
+      FROM roles r
+      JOIN subscriptions s ON s.tenant_id = r.tenant_id
+      JOIN subscription_plans sp ON sp.id = s.plan_id
+      WHERE sp.slug = 'gold_erp_plan' AND r.record_status = 1
+    `);
+    for (const role of goldRolesRes.rows) {
+      for (const sk of goldScreenKeys) {
+        await goldPool.query(`
+          INSERT INTO role_permissions (role_id, screen_key, can_view, can_create, can_edit, can_delete, tenant_id)
+          VALUES ($1, $2, 1, 1, 1, 1, $3)
+          ON CONFLICT (role_id, screen_key) DO NOTHING
+        `, [role.role_id, sk, role.tenant_id]);
+      }
+    }
+    console.log('[GOLD_ERP_ROLE_PERMS] Seeded Gold ERP screen keys for gold_erp_plan roles');
+  } catch (err) {
+    console.error('[GOLD_ERP_ROLE_PERMS ERROR]', err);
+  }
+
   // ─── Daily tenant backup cron (2:00 AM daily) ────────────────────────────
   try {
     const cron = (await import('node-cron')).default;
