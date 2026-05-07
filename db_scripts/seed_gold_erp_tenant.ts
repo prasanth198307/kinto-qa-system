@@ -10,7 +10,42 @@ async function hashPassword(password: string) {
   return `${salt}:${derivedKey.toString("hex")}`;
 }
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+// Accept connection string from CLI arg, DATABASE_URL env var,
+// or fall back to individual PG* env vars (common on OCI / bare Linux).
+const connArg = process.argv[2]; // optional: pass full URL as first argument
+
+function buildPoolConfig() {
+  if (connArg) {
+    console.log("🔗 Using connection string from CLI argument");
+    return { connectionString: connArg };
+  }
+  if (process.env.DATABASE_URL) {
+    console.log("🔗 Using DATABASE_URL environment variable");
+    return { connectionString: process.env.DATABASE_URL };
+  }
+  // Fall back to individual PG* variables
+  const { PGHOST, PGPORT, PGUSER, PGPASSWORD, PGDATABASE } = process.env;
+  if (PGHOST && PGUSER && PGPASSWORD && PGDATABASE) {
+    console.log(`🔗 Using PG* env vars (host=${PGHOST} db=${PGDATABASE} user=${PGUSER})`);
+    return {
+      host:     PGHOST,
+      port:     parseInt(PGPORT ?? "5432", 10),
+      user:     PGUSER,
+      password: PGPASSWORD,
+      database: PGDATABASE,
+      ssl:      process.env.PGSSLMODE === "disable" ? false : { rejectUnauthorized: false },
+    };
+  }
+  throw new Error(
+    "No database connection found.\n" +
+    "Provide one of:\n" +
+    "  1. npx tsx db_scripts/seed_gold_erp_tenant.ts 'postgresql://user:pass@host/db'\n" +
+    "  2. export DATABASE_URL='postgresql://user:pass@host/db'\n" +
+    "  3. export PGHOST=... PGUSER=... PGPASSWORD=... PGDATABASE=..."
+  );
+}
+
+const pool = new Pool(buildPoolConfig());
 
 async function main() {
   const client = await pool.connect();
