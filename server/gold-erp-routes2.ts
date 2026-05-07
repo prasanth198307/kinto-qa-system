@@ -82,23 +82,71 @@ router.get("/cad", requireAuth, async (req: any, res) => {
 
 router.post("/cad", requireAuth, async (req: any, res) => {
   try {
-    const { production_order_id, cad_software, cad_file_url, weight_estimate_gm, render_image_url, design_notes } = req.body;
+    const {
+      production_order_id, cad_operator, cad_software, cad_file_url,
+      weight_estimate_gm, metal_volume_cc, mcx_rate,
+      render_image_url, stone_placement_verified,
+      approval_status, revision_notes, approved_by, approved_on,
+      design_notes,
+    } = req.body;
+    const customerApproval = approval_status === "approved" ? 1 : 0;
+    const status = approval_status === "approved" ? "approved" : "in_progress";
     const row = await db.execute(sql`
-      INSERT INTO jw_cad_process (production_order_id, cad_software, cad_file_url, weight_estimate_gm, render_image_url, design_notes, status)
-      VALUES (${production_order_id}, ${cad_software||null}, ${cad_file_url||null}, ${weight_estimate_gm||null}, ${render_image_url||null}, ${design_notes||null}, 'in_progress')
-      RETURNING *`);
+      INSERT INTO jw_cad_process (
+        production_order_id, cad_operator, cad_software, software_used,
+        cad_file_url, weight_estimate_gm, metal_volume_cc, mcx_rate,
+        render_image_url, stone_placement_ok, stone_placement_verified,
+        approval_status, revision_notes, approved_by, approved_on,
+        customer_approval, revision_count, design_notes, status
+      ) VALUES (
+        ${production_order_id}, ${cad_operator||null}, ${cad_software||null}, ${cad_software||null},
+        ${cad_file_url||null}, ${weight_estimate_gm||null}, ${metal_volume_cc||null}, ${mcx_rate||null},
+        ${render_image_url||null}, ${stone_placement_verified||0}, ${stone_placement_verified||0},
+        ${approval_status||'pending'}, ${revision_notes||null}, ${approved_by||null}, ${approved_on||null},
+        ${customerApproval}, 0, ${design_notes||null}, ${status}
+      ) RETURNING *`);
     res.json(row.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
 router.put("/cad/:id", requireAuth, async (req: any, res) => {
   try {
-    const { status, approval_status, approval_date, customer_approval, render_image_url, revision_count } = req.body;
+    const {
+      cad_operator, cad_software, cad_file_url,
+      weight_estimate_gm, metal_volume_cc, mcx_rate,
+      render_image_url, stone_placement_verified,
+      approval_status, revision_notes, approved_by, approved_on,
+      design_notes, revision_count,
+    } = req.body;
+    const customerApproval = approval_status === "approved" ? 1 : 0;
+    const status = approval_status === "approved" ? "approved" : "in_progress";
+    // auto-increment revision_count when revision is requested
+    const newRevCount = approval_status === "revision"
+      ? sql`revision_count + 1`
+      : sql`${revision_count || 0}`;
     const row = await db.execute(sql`
-      UPDATE jw_cad_process SET status=${status||'in_progress'}, approval_status=${approval_status||null},
-        approval_date=${approval_date||null}, customer_approval=${customer_approval||0},
-        render_image_url=${render_image_url||null}, revision_count=${revision_count||0}
-      WHERE id=${req.params.id} RETURNING *`);
+      UPDATE jw_cad_process SET
+        cad_operator         = ${cad_operator||null},
+        cad_software         = ${cad_software||null},
+        software_used        = ${cad_software||null},
+        cad_file_url         = ${cad_file_url||null},
+        weight_estimate_gm   = ${weight_estimate_gm||null},
+        metal_volume_cc      = ${metal_volume_cc||null},
+        mcx_rate             = ${mcx_rate||null},
+        render_image_url     = ${render_image_url||null},
+        stone_placement_ok   = ${stone_placement_verified||0},
+        stone_placement_verified = ${stone_placement_verified||0},
+        approval_status      = ${approval_status||'pending'},
+        revision_notes       = ${revision_notes||null},
+        approved_by          = ${approved_by||null},
+        approved_on          = ${approved_on||null},
+        customer_approval    = ${customerApproval},
+        revision_count       = ${newRevCount},
+        cad_version          = ${newRevCount},
+        design_notes         = ${design_notes||null},
+        status               = ${status}
+      WHERE id = ${req.params.id}
+      RETURNING *`);
     res.json(row.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
