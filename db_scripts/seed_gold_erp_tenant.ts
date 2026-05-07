@@ -1,8 +1,13 @@
 import { scrypt, randomBytes } from "crypto";
 import { promisify } from "util";
+import { readFileSync, existsSync, statSync } from "fs";
+import { resolve, dirname } from "path";
+import { fileURLToPath } from "url";
 import { Pool } from "pg";
 
 const scryptAsync = promisify(scrypt);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname  = dirname(__filename);
 
 async function hashPassword(password: string) {
   const salt = randomBytes(16).toString("hex");
@@ -10,25 +15,27 @@ async function hashPassword(password: string) {
   return `${salt}:${derivedKey.toString("hex")}`;
 }
 
-// Accept connection string from CLI arg, DATABASE_URL env var,
-// or fall back to individual PG* env vars (common on OCI / bare Linux).
-const connArg = process.argv[2]; // optional: pass full URL as first argument
+// Optional: pass full connection URL as first CLI argument
+const connArg = process.argv[2];
 
 function readDotEnv(): string | undefined {
-  // Try to load DATABASE_URL from the project's .env file as a last resort
   try {
-    const fs = require("fs");
-    const path = require("path");
-    const envPath = path.resolve(__dirname, "../.env");
-    if (fs.existsSync(envPath)) {
-      const lines = fs.readFileSync(envPath, "utf8").split("\n");
-      for (const line of lines) {
+    const envPath = resolve(__dirname, "../.env");
+    if (existsSync(envPath)) {
+      for (const line of readFileSync(envPath, "utf8").split("\n")) {
         const m = line.match(/^DATABASE_URL\s*=\s*(.+)$/);
         if (m) return m[1].trim().replace(/^['"]|['"]$/g, "");
       }
     }
   } catch {}
   return undefined;
+}
+
+function findSocketDir(): string {
+  for (const dir of ["/var/run/postgresql", "/tmp", "/var/pgsql_socket"]) {
+    try { if (statSync(dir).isDirectory()) return dir; } catch {}
+  }
+  return "/var/run/postgresql";
 }
 
 function buildPoolConfig() {
@@ -40,28 +47,19 @@ function buildPoolConfig() {
     console.log("🔗 Using DATABASE_URL environment variable");
     return { connectionString: process.env.DATABASE_URL };
   }
-  // Try reading from .env file (works when app runs fine but env isn't exported)
   const dotEnvUrl = readDotEnv();
   if (dotEnvUrl) {
     console.log("🔗 Using DATABASE_URL from .env file");
     return { connectionString: dotEnvUrl };
   }
-  // Fall back to individual PG* variables — use Unix socket if no host given
-  // (matches how psql connects locally without needing a password)
+
+  // Fall back to PG* vars — prefer Unix socket over TCP so peer auth works
   const { PGHOST, PGPORT, PGUSER, PGPASSWORD, PGDATABASE } = process.env;
   const user     = PGUSER     ?? process.env.USER ?? "postgres";
   const database = PGDATABASE ?? "kinto_qa_db";
+
   if (!PGHOST || PGHOST === "localhost" || PGHOST === "127.0.0.1") {
-    // Use Unix domain socket — same path psql uses — avoids TCP password auth
-    const socketDirs = [
-      "/var/run/postgresql",
-      "/tmp",
-      "/var/pgsql_socket",
-    ];
-    const fs = require("fs");
-    const socketDir = socketDirs.find(d => {
-      try { return fs.statSync(d).isDirectory(); } catch { return false; }
-    }) ?? "/var/run/postgresql";
+    const socketDir = findSocketDir();
     console.log(`🔗 Using Unix socket (${socketDir}) — user=${user} db=${database}`);
     return {
       host:     socketDir,
@@ -70,6 +68,7 @@ function buildPoolConfig() {
       ...(PGPASSWORD ? { password: PGPASSWORD } : {}),
     };
   }
+
   if (PGHOST && PGUSER && PGPASSWORD && PGDATABASE) {
     console.log(`🔗 Using PG* env vars (host=${PGHOST} db=${PGDATABASE} user=${PGUSER})`);
     return {
@@ -81,15 +80,15 @@ function buildPoolConfig() {
       ssl:      process.env.PGSSLMODE === "disable" ? false : { rejectUnauthorized: false },
     };
   }
+
   throw new Error(
     "\nNo database connection found. Try one of:\n\n" +
-    "  # Simplest — socket (same as psql, no password needed if peer auth):\n" +
+    "  # Auto-detect from .env file (simplest):\n" +
     "  npx tsx db_scripts/seed_gold_erp_tenant.ts\n\n" +
-    "  # With explicit socket path:\n" +
-    "  PGUSER=kinto_admin PGDATABASE=kinto_qa_db \\\n" +
-    "    npx tsx db_scripts/seed_gold_erp_tenant.ts\n\n" +
-    "  # With full URL (TCP — needs correct password):\n" +
-    "  npx tsx db_scripts/seed_gold_erp_tenant.ts 'postgresql://user:pass@host/db'\n"
+    "  # Pass URL directly:\n" +
+    "  npx tsx db_scripts/seed_gold_erp_tenant.ts 'postgresql://user:pass@host/db'\n\n" +
+    "  # Via env vars (Unix socket, no password needed):\n" +
+    "  PGUSER=kinto_admin PGDATABASE=kinto_qa_db npx tsx db_scripts/seed_gold_erp_tenant.ts\n"
   );
 }
 
