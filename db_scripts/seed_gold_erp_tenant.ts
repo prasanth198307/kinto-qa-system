@@ -14,6 +14,23 @@ async function hashPassword(password: string) {
 // or fall back to individual PG* env vars (common on OCI / bare Linux).
 const connArg = process.argv[2]; // optional: pass full URL as first argument
 
+function readDotEnv(): string | undefined {
+  // Try to load DATABASE_URL from the project's .env file as a last resort
+  try {
+    const fs = require("fs");
+    const path = require("path");
+    const envPath = path.resolve(__dirname, "../.env");
+    if (fs.existsSync(envPath)) {
+      const lines = fs.readFileSync(envPath, "utf8").split("\n");
+      for (const line of lines) {
+        const m = line.match(/^DATABASE_URL\s*=\s*(.+)$/);
+        if (m) return m[1].trim().replace(/^['"]|['"]$/g, "");
+      }
+    }
+  } catch {}
+  return undefined;
+}
+
 function buildPoolConfig() {
   if (connArg) {
     console.log("🔗 Using connection string from CLI argument");
@@ -23,8 +40,36 @@ function buildPoolConfig() {
     console.log("🔗 Using DATABASE_URL environment variable");
     return { connectionString: process.env.DATABASE_URL };
   }
-  // Fall back to individual PG* variables
+  // Try reading from .env file (works when app runs fine but env isn't exported)
+  const dotEnvUrl = readDotEnv();
+  if (dotEnvUrl) {
+    console.log("🔗 Using DATABASE_URL from .env file");
+    return { connectionString: dotEnvUrl };
+  }
+  // Fall back to individual PG* variables — use Unix socket if no host given
+  // (matches how psql connects locally without needing a password)
   const { PGHOST, PGPORT, PGUSER, PGPASSWORD, PGDATABASE } = process.env;
+  const user     = PGUSER     ?? process.env.USER ?? "postgres";
+  const database = PGDATABASE ?? "kinto_qa_db";
+  if (!PGHOST || PGHOST === "localhost" || PGHOST === "127.0.0.1") {
+    // Use Unix domain socket — same path psql uses — avoids TCP password auth
+    const socketDirs = [
+      "/var/run/postgresql",
+      "/tmp",
+      "/var/pgsql_socket",
+    ];
+    const fs = require("fs");
+    const socketDir = socketDirs.find(d => {
+      try { return fs.statSync(d).isDirectory(); } catch { return false; }
+    }) ?? "/var/run/postgresql";
+    console.log(`🔗 Using Unix socket (${socketDir}) — user=${user} db=${database}`);
+    return {
+      host:     socketDir,
+      user,
+      database,
+      ...(PGPASSWORD ? { password: PGPASSWORD } : {}),
+    };
+  }
   if (PGHOST && PGUSER && PGPASSWORD && PGDATABASE) {
     console.log(`🔗 Using PG* env vars (host=${PGHOST} db=${PGDATABASE} user=${PGUSER})`);
     return {
@@ -37,11 +82,14 @@ function buildPoolConfig() {
     };
   }
   throw new Error(
-    "No database connection found.\n" +
-    "Provide one of:\n" +
-    "  1. npx tsx db_scripts/seed_gold_erp_tenant.ts 'postgresql://user:pass@host/db'\n" +
-    "  2. export DATABASE_URL='postgresql://user:pass@host/db'\n" +
-    "  3. export PGHOST=... PGUSER=... PGPASSWORD=... PGDATABASE=..."
+    "\nNo database connection found. Try one of:\n\n" +
+    "  # Simplest — socket (same as psql, no password needed if peer auth):\n" +
+    "  npx tsx db_scripts/seed_gold_erp_tenant.ts\n\n" +
+    "  # With explicit socket path:\n" +
+    "  PGUSER=kinto_admin PGDATABASE=kinto_qa_db \\\n" +
+    "    npx tsx db_scripts/seed_gold_erp_tenant.ts\n\n" +
+    "  # With full URL (TCP — needs correct password):\n" +
+    "  npx tsx db_scripts/seed_gold_erp_tenant.ts 'postgresql://user:pass@host/db'\n"
   );
 }
 
