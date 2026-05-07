@@ -162,3 +162,9 @@ id = "MKqE5cv4ldE1cr8pTHnTo"
 uri = "file://SwachERP_GoldJewellery_Mapping.pdf"
 type = "pdf"
 title = "SwachERP × Sioniq — Gold & Jewellery Mapping Report"
+
+[[outputs]]
+id = "ipkTM8wC8DwW3Ul0Xi-Pk"
+uri = "file://public/SwachERP_GoldJewellery_Mapping.pdf"
+type = "pdf"
+title = "SwachERP × Sioniq — Gold & Jewellery Mapping Report"
