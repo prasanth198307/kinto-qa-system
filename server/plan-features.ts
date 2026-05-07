@@ -305,7 +305,7 @@ export const ROUTE_PLAN_REQUIREMENTS: Array<{ prefix: string; module: string; mi
 // ── Plan order for comparison ─────────────────────────────────────────────────
 
 const PLAN_ORDER: Record<string, number> = {
-  trial: 0, basic: 1, professional: 2, enterprise: 3,
+  trial: 0, basic: 1, professional: 2, enterprise: 3, gold_erp_plan: 3,
 };
 
 export function planMeetsMinimum(tenantPlan: string, minPlan: string): boolean {
