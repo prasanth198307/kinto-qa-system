@@ -1,0 +1,27 @@
+May 07 02:39:57 iplvnic1 npm[1343162]: [SUBSCRIPTIONS MIGRATION] subscriptions(tenant_id) unique constraint OK
+May 07 02:39:57 iplvnic1 npm[1343162]: [SUBSCRIPTIONS MODULE MIGRATION] selected_modules + monthly_amount columns OK
+May 07 02:39:57 iplvnic1 npm[1343162]: [PHASE 1-5 MIGRATION ERROR] error: column "pr_id" does not exist
+May 07 02:39:57 iplvnic1 npm[1343162]:     at /home/kinto/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+May 07 02:39:57 iplvnic1 npm[1343162]:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+May 07 02:39:57 iplvnic1 npm[1343162]:     at async file:///home/kinto/kinto-qa-system/dist/index.js:48905:5 {
+May 07 02:39:57 iplvnic1 npm[1343162]:   length: 95,
+May 07 02:39:57 iplvnic1 npm[1343162]:   severity: 'ERROR',
+May 07 02:39:57 iplvnic1 npm[1343162]:   code: '42703',
+May 07 02:39:57 iplvnic1 npm[1343162]:   detail: undefined,
+May 07 02:39:57 iplvnic1 npm[1343162]:   hint: undefined,
+May 07 02:39:57 iplvnic1 npm[1343162]:   position: undefined,
+May 07 02:39:57 iplvnic1 npm[1343162]:   internalPosition: undefined,
+May 07 02:39:57 iplvnic1 npm[1343162]:   internalQuery: undefined,
+May 07 02:39:57 iplvnic1 npm[1343162]:   where: undefined,
+May 07 02:39:57 iplvnic1 npm[1343162]:   schema: undefined,
+May 07 02:39:57 iplvnic1 npm[1343162]:   table: undefined,
+May 07 02:39:57 iplvnic1 npm[1343162]:   column: undefined,
+May 07 02:39:57 iplvnic1 npm[1343162]:   dataType: undefined,
+May 07 02:39:57 iplvnic1 npm[1343162]:   constraint: undefined,
+May 07 02:39:57 iplvnic1 npm[1343162]:   file: 'indexcmds.c',
+May 07 02:39:57 iplvnic1 npm[1343162]:   line: '1891',
+May 07 02:39:57 iplvnic1 npm[1343162]:   routine: 'ComputeIndexAttrs'
+May 07 02:39:57 iplvnic1 npm[1343162]: }
+May 07 02:39:57 iplvnic1 npm[1343162]: [ROLE_PERMS MIGRATION] role_permissions(role_id, screen_key) unique constraint OK
+May 07 02:39:57 iplvnic1 npm[1343162]: 2:39:57 AM [express] ✅ Daily tenant backup cron initialized (runs at 2:00 AM)
+May 07 02:39:57 iplvnic1 npm[1343162]: 2:39:57 AM [e

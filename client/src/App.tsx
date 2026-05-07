@@ -28,6 +28,7 @@ import SuperAdminBilling from "@/pages/super-admin-billing";
 import SuperAdminDemoRequests from "@/pages/super-admin-demo-requests";
 import SuperAdminBackups from "@/pages/super-admin-backups";
 import SuperAdminModuleCatalog from "@/pages/super-admin-module-catalog";
+import SuperAdminSettings from "@/pages/super-admin-settings";
 import Landing from "@/components/Landing";
 import RoleSelector from "@/components/RoleSelector";
 import { TopRightHeader } from "@/components/TopRightHeader";
@@ -3700,6 +3701,7 @@ function Router() {
       <ProtectedRoute path="/super-admin/demo-requests" component={() => <SuperAdminDemoRequests />} />
       <ProtectedRoute path="/super-admin/backups" component={() => <SuperAdminBackups />} />
       <ProtectedRoute path="/super-admin/module-catalog" component={() => <SuperAdminModuleCatalog />} />
+      <ProtectedRoute path="/super-admin/settings" component={() => <SuperAdminSettings />} />
       <Route path="/print/invoice/:id" component={PrintInvoicePage} />
       <Route path="/print/gatepass/:id" component={PrintGatepassPage} />
       <Route path="/print/credit-note/:id" component={PrintCreditNotePage} />

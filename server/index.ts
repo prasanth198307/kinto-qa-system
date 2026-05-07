@@ -1116,6 +1116,21 @@ app.use((req, res, next) => {
     console.error('[PHASE 1-5 MIGRATION ERROR]', err);
   }
 
+  // ─── Platform settings table (super-admin editable config) ───────────────
+  try {
+    const { pool: pgPs } = await import("./db");
+    await pgPs.query(`
+      CREATE TABLE IF NOT EXISTS public.platform_settings (
+        key        text NOT NULL PRIMARY KEY,
+        value      text,
+        updated_at timestamptz DEFAULT now()
+      );
+    `);
+    console.log('[PLATFORM SETTINGS MIGRATION] platform_settings table OK');
+  } catch (err) {
+    console.error('[PLATFORM SETTINGS MIGRATION ERROR]', err);
+  }
+
   // ─── Ensure role_permissions(role_id, screen_key) unique constraint ───────
   // Required by seed-demo-tenant.ts and seed-tenant.ts ON CONFLICT (role_id, screen_key).
   // Missing on production DBs created before this constraint was added.

@@ -27,9 +27,26 @@ const PLAN_LABELS: Record<string, string> = {
   enterprise:   "Enterprise Plan",
 };
 
-function getRazorpayKeys(): { keyId: string; keySecret: string } | null {
-  const keyId     = process.env.RAZORPAY_KEY_ID;
-  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+// ─── Platform settings helpers ────────────────────────────────────────────────
+// Keys are stored in platform_settings table (super-admin editable).
+// Falls back to environment variables so existing .env configs still work.
+
+async function getPlatformSetting(key: string): Promise<string | null> {
+  try {
+    const rows = await db.execute(sql`SELECT value FROM platform_settings WHERE key = ${key} LIMIT 1`);
+    const row = (rows.rows as any[])[0];
+    return row?.value ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function getRazorpayKeys(): Promise<{ keyId: string; keySecret: string } | null> {
+  // DB-first, env-fallback
+  const dbKeyId     = await getPlatformSetting("razorpay_key_id");
+  const dbKeySecret = await getPlatformSetting("razorpay_key_secret");
+  const keyId       = dbKeyId     || process.env.RAZORPAY_KEY_ID;
+  const keySecret   = dbKeySecret || process.env.RAZORPAY_KEY_SECRET;
   if (!keyId || !keySecret) return null;
   return { keyId, keySecret };
 }
@@ -104,7 +121,7 @@ export function registerBillingRoutes(app: Express): void {
   // ── GET /api/billing/plans — list available plans with pricing ───────────
   app.get("/api/billing/plans", async (req: any, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const keys = getRazorpayKeys();
+    const keys = await getRazorpayKeys();
     const plans = [
       { plan: "basic",        label: "Basic",        priceMonthly: 29900,  currency: "INR", razorpayEnabled: !!keys },
       { plan: "professional", label: "Professional",  priceMonthly: 69900,  currency: "INR", razorpayEnabled: !!keys },
@@ -151,7 +168,7 @@ export function registerBillingRoutes(app: Express): void {
       return res.status(400).json({ message: "Invalid plan. Choose: basic, professional, enterprise" });
     }
 
-    const keys = getRazorpayKeys();
+    const keys = await getRazorpayKeys();
     if (!keys) {
       return res.status(503).json({
         message: "Online payments are not configured. Please contact support to upgrade your plan.",
@@ -205,7 +222,7 @@ export function registerBillingRoutes(app: Express): void {
       return res.status(400).json({ message: "Missing payment verification fields" });
     }
 
-    const keys = getRazorpayKeys();
+    const keys = await getRazorpayKeys();
     if (!keys) return res.status(503).json({ message: "Payments not configured" });
 
     const valid = verifySignature(razorpay_order_id, razorpay_payment_id, razorpay_signature, keys.keySecret);
@@ -345,7 +362,7 @@ export function registerBillingRoutes(app: Express): void {
 
   // ── POST /api/billing/webhook — Razorpay webhook handler ─────────────────
   app.post("/api/billing/webhook", async (req: any, res) => {
-    const keys = getRazorpayKeys();
+    const keys = await getRazorpayKeys();
     if (!keys) return res.sendStatus(200);
 
     const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET ?? keys.keySecret;
@@ -724,6 +741,67 @@ export function registerBillingRoutes(app: Express): void {
         )
       `);
       res.json({ success: true, selectedModules: merged, monthlyAmount: monthly });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ── GET /api/admin/platform-settings — super-admin: read platform config ──
+  app.get("/api/admin/platform-settings", async (req: any, res) => {
+    if (!req.isAuthenticated() || (req.user as any)?.role?.toLowerCase() !== "superadmin") {
+      return res.sendStatus(403);
+    }
+    try {
+      const rows = await db.execute(sql`SELECT key, value, updated_at FROM platform_settings ORDER BY key`);
+      // Mask secret values before returning
+      const settings: Record<string, any> = {};
+      for (const r of rows.rows as any[]) {
+        if (r.key === "razorpay_key_secret" && r.value) {
+          settings[r.key] = r.value.substring(0, 8) + "••••••••••••••••";
+        } else {
+          settings[r.key] = r.value;
+        }
+      }
+      // Also indicate if keys are from env (not DB)
+      const dbKeyId     = settings["razorpay_key_id"] ?? null;
+      const dbKeySecret = settings["razorpay_key_secret"] ?? null;
+      res.json({
+        settings,
+        source: {
+          razorpay_key_id:     dbKeyId     ? "db"  : (process.env.RAZORPAY_KEY_ID     ? "env" : "none"),
+          razorpay_key_secret: dbKeySecret ? "db"  : (process.env.RAZORPAY_KEY_SECRET ? "env" : "none"),
+        },
+        envKeyIdSet:     !!process.env.RAZORPAY_KEY_ID,
+        envKeySecretSet: !!process.env.RAZORPAY_KEY_SECRET,
+      });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ── PUT /api/admin/platform-settings — super-admin: save platform config ─
+  app.put("/api/admin/platform-settings", async (req: any, res) => {
+    if (!req.isAuthenticated() || (req.user as any)?.role?.toLowerCase() !== "superadmin") {
+      return res.sendStatus(403);
+    }
+    try {
+      const updates: Record<string, string> = req.body ?? {};
+      for (const [key, value] of Object.entries(updates)) {
+        if (typeof value !== "string") continue;
+        // If value is masked (contains ••••), skip — user didn't change the secret
+        if (value.includes("••••")) continue;
+        if (value.trim() === "") {
+          // Empty = delete from DB (fall back to env)
+          await db.execute(sql`DELETE FROM platform_settings WHERE key = ${key}`);
+        } else {
+          await db.execute(sql`
+            INSERT INTO platform_settings (key, value, updated_at)
+            VALUES (${key}, ${value.trim()}, NOW())
+            ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+          `);
+        }
+      }
+      res.json({ success: true });
     } catch (err: any) {
       res.status(500).json({ message: err.message });
     }

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   ShieldAlert, Building2, CreditCard, Package, HardDrive,
-  LayoutDashboard, LogOut, Loader2, ChevronRight, AlertTriangle, Video, Store,
+  LayoutDashboard, LogOut, Loader2, ChevronRight, AlertTriangle, Video, Store, Settings,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { path: "/super-admin/module-catalog",  label: "Module Catalog",  icon: Store },
   { path: "/super-admin/demo-requests",   label: "Demo Requests",   icon: Video },
   { path: "/super-admin/backups",         label: "Backups",         icon: HardDrive },
+  { path: "/super-admin/settings",        label: "Settings",        icon: Settings },
 ];
 
 interface SuperAdminLayoutProps {
