@@ -38,19 +38,38 @@ function findSocketDir(): string {
   return "/var/run/postgresql";
 }
 
+function localUrlToSocket(url: string): object | null {
+  // If the URL points to localhost / 127.0.0.1, switch to Unix socket so that
+  // peer auth is used (same as psql) — avoids TCP password auth failures.
+  try {
+    const u = new URL(url);
+    if (u.hostname === "localhost" || u.hostname === "127.0.0.1") {
+      const socketDir = findSocketDir();
+      const user     = decodeURIComponent(u.username) || process.env.USER || "postgres";
+      const database = (u.pathname ?? "/").replace(/^\//, "") || "postgres";
+      console.log(`🔗 localhost detected — switching to Unix socket (${socketDir}) user=${user} db=${database}`);
+      return { host: socketDir, user, database };
+    }
+  } catch {}
+  return null;
+}
+
 function buildPoolConfig() {
   if (connArg) {
     console.log("🔗 Using connection string from CLI argument");
-    return { connectionString: connArg };
+    const sock = localUrlToSocket(connArg);
+    return sock ?? { connectionString: connArg };
   }
   if (process.env.DATABASE_URL) {
     console.log("🔗 Using DATABASE_URL environment variable");
-    return { connectionString: process.env.DATABASE_URL };
+    const sock = localUrlToSocket(process.env.DATABASE_URL);
+    return sock ?? { connectionString: process.env.DATABASE_URL };
   }
   const dotEnvUrl = readDotEnv();
   if (dotEnvUrl) {
     console.log("🔗 Using DATABASE_URL from .env file");
-    return { connectionString: dotEnvUrl };
+    const sock = localUrlToSocket(dotEnvUrl);
+    return sock ?? { connectionString: dotEnvUrl };
   }
 
   // Fall back to PG* vars — prefer Unix socket over TCP so peer auth works
