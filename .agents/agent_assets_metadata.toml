@@ -132,3 +132,9 @@ id = "OL3PodS28kphhxP9Jy9vt"
 uri = "file://screenshots/SwachERP_Navigation_Test_Report.pdf"
 type = "pdf"
 title = "SwachERP — Navigation Test Report (All 6 Tests)"
+
+[[outputs]]
+id = "bWev1SmWGJPi3qcPM0lZA"
+uri = "file://SwachERP_Industry_Fit_Analysis.xlsx"
+type = "table"
+title = "SwachERP — Industry Fit Analysis"
