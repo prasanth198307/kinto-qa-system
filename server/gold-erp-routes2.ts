@@ -867,9 +867,9 @@ router.get("/catalog-enquiries", requireAuth, async (req: any, res) => {
 router.get("/catalog-analytics", requireAuth, async (req: any, res) => {
   try {
     const rows = await db.execute(sql`
-      SELECT catalog_id, event_type, COUNT(*) cnt, DATE_TRUNC('day', viewed_at) day
+      SELECT catalog_id, event_type, COUNT(*) AS cnt, DATE_TRUNC('day', viewed_at) AS event_day
       FROM jw_catalog_analytics WHERE tenant_id=${tid(req)}
-      GROUP BY catalog_id, event_type, day ORDER BY day DESC LIMIT 100`);
+      GROUP BY catalog_id, event_type, DATE_TRUNC('day', viewed_at) ORDER BY event_day DESC LIMIT 100`);
     res.json(rows.rows);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
@@ -966,7 +966,7 @@ router.put("/ecom-config", requireAuth, async (req: any, res) => {
 
 router.get("/ecom-customers", requireAuth, async (req: any, res) => {
   try {
-    const rows = await db.execute(sql`SELECT id, customer_name, phone, email, city, tier, total_orders, total_spent, is_active, created_at FROM jw_ecom_customers WHERE tenant_id=${tid(req)} ORDER BY created_at DESC`);
+    const rows = await db.execute(sql`SELECT id, customer_name, phone, email, city, preferred_metal, total_orders, total_spent, is_active, created_at FROM jw_ecom_customers WHERE tenant_id=${tid(req)} ORDER BY created_at DESC`);
     res.json(rows.rows);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });

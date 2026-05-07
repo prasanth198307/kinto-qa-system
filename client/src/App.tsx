@@ -1159,8 +1159,20 @@ function AdminDashboard() {
         { id: "education", label: "Education", icon: BookOpen, onClick: () => setLocation('/education') },
         { id: "logistics", label: "Logistics & Transport", icon: Truck, onClick: () => setLocation('/logistics') },
         { id: "real-estate", label: "Real Estate", icon: Building2, onClick: () => setLocation('/real-estate') },
-        { id: "pos", label: "Point of Sale", icon: ShoppingCart, onClick: () => setLocation('/pos') },
         { id: "agriculture", label: "Agriculture", icon: Layers, onClick: () => setLocation('/agriculture') },
+      ],
+    },
+    {
+      id: "pos-section",
+      label: "Point of Sale",
+      items: [
+        { id: "pos", label: "POS Terminal", icon: ShoppingCart, onClick: () => setLocation('/pos') },
+      ],
+    },
+    {
+      id: "gold-erp-section",
+      label: "Gold & Jewellery ERP",
+      items: [
         { id: "gold-erp", label: "Gold & Jewellery", icon: Gem, onClick: () => setLocation('/gold-erp') },
       ],
     },
@@ -2241,8 +2253,20 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "education", label: "Education", icon: BookOpen, onClick: () => setLocation('/education') },
         { id: "logistics", label: "Logistics & Transport", icon: Truck, onClick: () => setLocation('/logistics') },
         { id: "real-estate", label: "Real Estate", icon: Building2, onClick: () => setLocation('/real-estate') },
-        { id: "pos", label: "Point of Sale", icon: ShoppingCart, onClick: () => setLocation('/pos') },
         { id: "agriculture", label: "Agriculture", icon: Layers, onClick: () => setLocation('/agriculture') },
+      ],
+    },
+    {
+      id: "pos-section",
+      label: "Point of Sale",
+      items: [
+        { id: "pos", label: "POS Terminal", icon: ShoppingCart, onClick: () => setLocation('/pos') },
+      ],
+    },
+    {
+      id: "gold-erp-section",
+      label: "Gold & Jewellery ERP",
+      items: [
         { id: "gold-erp", label: "Gold & Jewellery", icon: Gem, onClick: () => setLocation('/gold-erp') },
       ],
     },

@@ -176,6 +176,8 @@ const screenPermissions: Record<string, { admin: boolean; manager: boolean; oper
   'HR & Payroll': { admin: true, manager: true, operator: false, reviewer: false },
   'Projects & Assets': { admin: true, manager: true, operator: false, reviewer: false },
   'Industry Verticals': { admin: true, manager: true, operator: false, reviewer: false },
+  'Point of Sale': { admin: true, manager: true, operator: true, reviewer: false },
+  'Gold & Jewellery ERP': { admin: true, manager: true, operator: true, reviewer: false },
 };
 
 const navItemToScreen: Record<string, string> = {
@@ -283,9 +285,10 @@ const navItemToScreen: Record<string, string> = {
   'education': 'Industry Verticals',
   'logistics': 'Industry Verticals',
   'real-estate': 'Industry Verticals',
-  'pos': 'Industry Verticals',
   'agriculture': 'Industry Verticals',
-  'gold-erp': 'Industry Verticals',
+  // Standalone modules (separate nav sections)
+  'pos': 'Point of Sale',
+  'gold-erp': 'Gold & Jewellery ERP',
 };
 
 function canAccessNavItemForDefaultRole(itemId: string, role: string): boolean {

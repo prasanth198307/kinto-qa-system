@@ -592,13 +592,61 @@ router.get("/analytics/wastage", requireAuth, async (req: any, res) => {
         SUM(ps.weight_in_gm) AS total_in,
         SUM(ps.weight_out_gm) AS total_out,
         SUM(ps.wastage_gm) AS total_wastage,
-        ROUND(AVG(ps.wastage_pct),2) AS avg_wastage_pct,
+        ROUND(
+          CASE WHEN SUM(ps.weight_in_gm) > 0
+            THEN SUM(ps.wastage_gm) * 100.0 / SUM(ps.weight_in_gm)
+            ELSE 0 END, 2
+        ) AS avg_wastage_pct,
         COUNT(*) AS stage_count
       FROM jw_production_stages ps
       JOIN jw_production_orders po ON po.id = ps.production_order_id
       WHERE po.tenant_id=${t} AND ps.status='completed' AND ps.wastage_gm IS NOT NULL
       GROUP BY ps.stage_name ORDER BY total_wastage DESC`);
     res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.get("/ghat-entries", requireAuth, async (req: any, res) => {
+  try {
+    const t = tid(req);
+    const rows = await db.execute(sql`
+      SELECT g.id, g.job_id, g.stage AS stage_name, g.ghat_date AS weigh_date,
+        g.gross_weight_gm AS issued_weight_gm,
+        g.net_metal_weight_gm AS received_weight_gm,
+        ROUND(g.gross_weight_gm - g.net_metal_weight_gm, 3) AS wastage_gm,
+        ROUND(
+          CASE WHEN g.gross_weight_gm > 0
+            THEN (g.gross_weight_gm - g.net_metal_weight_gm) * 100.0 / g.gross_weight_gm
+            ELSE 0 END, 2
+        ) AS wastage_pct,
+        g.purity_result_pct AS assay_purity_pct,
+        g.alert_flag, g.notes, g.operator_name,
+        po.order_no
+      FROM jw_ghat_entries g
+      LEFT JOIN jw_production_orders po ON po.id = g.production_order_id
+      WHERE g.tenant_id=${t}
+      ORDER BY g.ghat_date DESC, g.id DESC`);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.post("/ghat-entries", requireAuth, async (req: any, res) => {
+  try {
+    const t = tid(req);
+    const { production_order_id, stage_name, karigar_id, issued_weight_gm, received_weight_gm,
+      assay_purity_pct, weigh_date, notes } = req.body;
+    const issued = Number(issued_weight_gm || 0);
+    const received = Number(received_weight_gm || 0);
+    const alert_flag = issued > 0 && (issued - received) / issued * 100 > 5 ? 1 : 0;
+    const row = await db.execute(sql`
+      INSERT INTO jw_ghat_entries
+        (tenant_id, production_order_id, stage, ghat_date, gross_weight_gm, net_metal_weight_gm,
+         purity_result_pct, operator_name, alert_flag, notes)
+      VALUES (${t}, ${production_order_id || null}, ${stage_name || 'Casting'},
+        ${weigh_date || 'CURRENT_DATE'}, ${issued}, ${received},
+        ${assay_purity_pct || null}, ${null}, ${alert_flag}, ${notes || null})
+      RETURNING id`);
+    res.json(row.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
@@ -631,7 +679,7 @@ router.get("/analytics/making-charges", requireAuth, async (req: any, res) => {
         SUM(making_charges) AS total_making,
         SUM(total_metal_value) AS total_metal_value,
         SUM(total_amount) AS total_revenue,
-        ROUND(AVG(wastage_pct),2) AS avg_wastage_pct
+        ROUND(AVG(wastage_amount),2) AS avg_wastage_amt
       FROM jw_estimates WHERE tenant_id=${t}
       GROUP BY 1 ORDER BY 1 DESC LIMIT 12`);
     res.json(rows.rows);
