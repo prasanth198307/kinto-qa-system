@@ -136,6 +136,7 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
   ],
   crm: [
     "crm-leads",
+    "crm-surveys",
   ],
   hr_payroll: [
     "hr-employees",
@@ -152,6 +153,9 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
     "hr-expense-claims",
     "timesheets",
     "hr-appraisals",
+    "hr-onboarding",
+    "hr-letters",
+    "hr-support-desk",
   ],
   recurring_invoices: [
     "recurring-invoices",
