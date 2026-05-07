@@ -5,7 +5,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Package, IndianRupee, CheckCircle2, X } from "lucide-react";
+import { Loader2, Package, IndianRupee, CheckCircle2, X, Trash2 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -249,8 +249,29 @@ export function ModuleMarketplaceDialog({
                 </div>
               </div>
               <Separator />
-              <div className="space-y-1">
-                <p className="text-xs font-medium text-muted-foreground">Active add-ons</p>
+              <div className="space-y-1 flex-1">
+                <div className="flex items-center justify-between gap-1 mb-1">
+                  <p className="text-xs font-medium text-muted-foreground">Active add-ons</p>
+                  {(data?.catalog ?? []).filter(m => activeDraft.has(m.slug) && !freeSet.has(m.slug) && !planSet.has(m.slug)).length > 0 && (
+                    <button
+                      onClick={() => {
+                        setDraft(prev => {
+                          const base = prev ?? new Set(data?.selectedModules ?? []);
+                          const next = new Set<string>();
+                          for (const s of base) {
+                            if (freeSet.has(s) || planSet.has(s)) next.add(s);
+                          }
+                          return next;
+                        });
+                      }}
+                      className="text-[10px] text-destructive/70 hover:text-destructive flex items-center gap-0.5"
+                      data-testid="button-clear-all-addons"
+                      title="Remove all paid add-ons"
+                    >
+                      <Trash2 className="h-2.5 w-2.5" /> Clear all
+                    </button>
+                  )}
+                </div>
                 <div className="space-y-1">
                   {(data?.catalog ?? [])
                     .filter(m => activeDraft.has(m.slug) && !freeSet.has(m.slug) && !planSet.has(m.slug))

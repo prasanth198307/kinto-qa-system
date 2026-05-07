@@ -1241,6 +1241,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updatedAt: new Date().toISOString(),
       }).where(eq(tenants.id, targetTenantId));
 
+      // When downgrading to trial, clear all paid add-on modules so billing starts fresh.
+      // The tenant (or super-admin) can then pick exactly what they want from the marketplace.
+      if (toPlan === 'trial') {
+        await db.update(subscriptions)
+          .set({ selectedModules: JSON.stringify([]), monthlyAmount: 0, updatedAt: new Date().toISOString() } as any)
+          .where(and(eq(subscriptions.tenantId, targetTenantId), eq(subscriptions.status, 'trial')));
+      }
+
       // Auto-sync role permissions for the new plan
       // Adds missing rows + unlocks screens that are now enabled by the new plan
       try {
