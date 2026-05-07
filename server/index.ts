@@ -1,6 +1,7 @@
 // --- Environment variables are automatically loaded in Replit ---
 import * as url from "url";
 import * as path from "path";
+import * as fs from "fs";
 import dotenv from "dotenv";
 
 // Load environment variables manually (for local runs)
@@ -142,6 +143,18 @@ app.use('/uploads', express.static('uploads'));
 // Logos are uploaded to client/public/logos/ at runtime (after build) so they
 // must be served from the source directory, not just the build output.
 app.use('/logos', express.static('client/public/logos'));
+
+// Explicit download route for public files (Excel, PDF) — must be before Vite
+app.get('/api/download/:filename', (req, res) => {
+  const filename = req.params.filename;
+  const allowed = /^[\w\-. ]+\.(xlsx|pdf|csv|docx)$/i;
+  if (!allowed.test(filename)) return res.status(400).json({ error: 'Invalid file' });
+  const filepath = path.join(process.cwd(), 'public', filename);
+  if (!fs.existsSync(filepath)) return res.status(404).json({ error: 'File not found' });
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.setHeader('Cache-Control', 'no-cache');
+  res.sendFile(filepath);
+});
 
 // --- Logging middleware for API requests ---
 app.use((req, res, next) => {

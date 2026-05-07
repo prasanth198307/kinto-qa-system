@@ -186,3 +186,27 @@ id = "nUsqWiDkFTr352H6IvIFm"
 uri = "file://public/SwachERP_Gold_ERP_15Day_Estimator.xlsx"
 type = "table"
 title = "Gold ERP — 15-Day Sprint Cost Estimator (₹8 Lakhs Quote)"
+
+[[outputs]]
+id = "qioyZ0UwZxyMO9w6mn5zW"
+uri = "file://client/public/downloads/SwachERP_Gold_ERP_15Day_Estimator.xlsx"
+type = "table"
+title = "SwachERP Gold ERP — 15-Day Sprint Estimator (₹7L–₹9L)"
+
+[[outputs]]
+id = "unMAZz8d99T6NLSltVNWm"
+uri = "file://client/public/downloads/SwachERP_Gold_ERP_Cost_Estimator.xlsx"
+type = "table"
+title = "SwachERP Gold ERP — Full Scope Estimator (120 Days / ₹46L)"
+
+[[outputs]]
+id = "elfustbV2ctIr4pA_m5eu"
+uri = "file://client/public/downloads/SwachERP_Pricing_Design.pdf"
+type = "pdf"
+title = "SwachERP Pricing Design v2.0"
+
+[[outputs]]
+id = "0VrsBjq6JBxjg-PY_u2Gx"
+uri = "file://client/public/downloads/SwachERP_GoldJewellery_Mapping.pdf"
+type = "pdf"
+title = "SwachERP Gold & Jewellery Feature Mapping (137 Features)"
