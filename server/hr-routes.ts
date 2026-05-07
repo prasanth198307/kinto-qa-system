@@ -2933,60 +2933,83 @@ router.put("/appraisals/:id", requireHR, async (req: any, res) => {
 // PHASE 1 — Tenant Module Labels
 // ═══════════════════════════════════════════════════════════════════════════
 router.get("/module-labels", requireHR, async (req: any, res) => {
-  const tid = req.session?.tenantId;
-  const rows = await db.execute(sql`SELECT * FROM tenant_module_labels WHERE tenant_id=${tid}`);
-  res.json(rows.rows);
+  try {
+    const tid = req.session?.tenantId;
+    const rows = await db.execute(sql`SELECT * FROM tenant_module_labels WHERE tenant_id=${tid}`);
+    res.json(rows.rows);
+  } catch {
+    res.json([]);
+  }
 });
 
 router.put("/module-labels", requireHR, async (req: any, res) => {
-  const tid = req.session?.tenantId;
-  const { labels } = req.body; // [{moduleKey, customLabel}]
-  for (const { moduleKey, customLabel } of labels || []) {
-    await db.execute(sql`INSERT INTO tenant_module_labels (tenant_id, module_key, custom_label)
-      VALUES (${tid}, ${moduleKey}, ${customLabel})
-      ON CONFLICT (tenant_id, module_key) DO UPDATE SET custom_label=${customLabel}`);
+  try {
+    const tid = req.session?.tenantId;
+    const { labels } = req.body; // [{moduleKey, customLabel}]
+    for (const { moduleKey, customLabel } of labels || []) {
+      await db.execute(sql`INSERT INTO tenant_module_labels (tenant_id, module_key, custom_label)
+        VALUES (${tid}, ${moduleKey}, ${customLabel})
+        ON CONFLICT (tenant_id, module_key) DO UPDATE SET custom_label=${customLabel}`);
+    }
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ message: err?.message || "Failed to save module labels" });
   }
-  res.json({ success: true });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PHASE 1 — Custom Field Definitions
 // ═══════════════════════════════════════════════════════════════════════════
 router.get("/custom-fields", requireHR, async (req: any, res) => {
-  const tid = req.session?.tenantId;
-  const { entityType } = req.query;
-  let q = sql`SELECT * FROM custom_field_definitions WHERE tenant_id=${tid} AND record_status=1`;
-  const rows = await db.execute(q);
-  const filtered = entityType
-    ? (rows.rows as any[]).filter(r => r.entity_type === entityType)
-    : rows.rows;
-  res.json(filtered);
+  try {
+    const tid = req.session?.tenantId;
+    const { entityType } = req.query;
+    const rows = await db.execute(sql`SELECT * FROM custom_field_definitions WHERE tenant_id=${tid} AND record_status=1`);
+    const filtered = entityType
+      ? (rows.rows as any[]).filter(r => r.entity_type === entityType)
+      : rows.rows;
+    res.json(filtered);
+  } catch {
+    res.json([]);
+  }
 });
 
 router.post("/custom-fields", requireHR, async (req: any, res) => {
-  const tid = req.session?.tenantId;
-  const { entityType, fieldName, fieldLabel, fieldType, options, isRequired, sortOrder } = req.body;
-  const r = await db.execute(sql`INSERT INTO custom_field_definitions
-    (tenant_id, entity_type, field_name, field_label, field_type, options, is_required, sort_order)
-    VALUES (${tid}, ${entityType}, ${fieldName}, ${fieldLabel}, ${fieldType||'text'}, ${options ? JSON.stringify(options) : null}, ${isRequired||false}, ${sortOrder||0})
-    RETURNING *`);
-  res.json(r.rows[0]);
+  try {
+    const tid = req.session?.tenantId;
+    const { entityType, fieldName, fieldLabel, fieldType, options, isRequired, sortOrder } = req.body;
+    const r = await db.execute(sql`INSERT INTO custom_field_definitions
+      (tenant_id, entity_type, field_name, field_label, field_type, options, is_required, sort_order)
+      VALUES (${tid}, ${entityType}, ${fieldName}, ${fieldLabel}, ${fieldType||'text'}, ${options ? JSON.stringify(options) : null}, ${isRequired||false}, ${sortOrder||0})
+      RETURNING *`);
+    res.json(r.rows[0]);
+  } catch (err: any) {
+    res.status(500).json({ message: err?.message || "Failed to create custom field" });
+  }
 });
 
 router.put("/custom-fields/:id", requireHR, async (req: any, res) => {
-  const tid = req.session?.tenantId;
-  const { fieldLabel, fieldType, options, isRequired, sortOrder } = req.body;
-  const r = await db.execute(sql`UPDATE custom_field_definitions SET
-    field_label=${fieldLabel}, field_type=${fieldType||'text'}, options=${options ? JSON.stringify(options) : null},
-    is_required=${isRequired||false}, sort_order=${sortOrder||0}
-    WHERE id=${req.params.id} AND tenant_id=${tid} RETURNING *`);
-  res.json(r.rows[0]);
+  try {
+    const tid = req.session?.tenantId;
+    const { fieldLabel, fieldType, options, isRequired, sortOrder } = req.body;
+    const r = await db.execute(sql`UPDATE custom_field_definitions SET
+      field_label=${fieldLabel}, field_type=${fieldType||'text'}, options=${options ? JSON.stringify(options) : null},
+      is_required=${isRequired||false}, sort_order=${sortOrder||0}
+      WHERE id=${req.params.id} AND tenant_id=${tid} RETURNING *`);
+    res.json(r.rows[0]);
+  } catch (err: any) {
+    res.status(500).json({ message: err?.message || "Failed to update custom field" });
+  }
 });
 
 router.delete("/custom-fields/:id", requireHR, async (req: any, res) => {
-  const tid = req.session?.tenantId;
-  await db.execute(sql`UPDATE custom_field_definitions SET record_status=0 WHERE id=${req.params.id} AND tenant_id=${tid}`);
-  res.json({ success: true });
+  try {
+    const tid = req.session?.tenantId;
+    await db.execute(sql`UPDATE custom_field_definitions SET record_status=0 WHERE id=${req.params.id} AND tenant_id=${tid}`);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ message: err?.message || "Failed to delete custom field" });
+  }
 });
 
 export default router;

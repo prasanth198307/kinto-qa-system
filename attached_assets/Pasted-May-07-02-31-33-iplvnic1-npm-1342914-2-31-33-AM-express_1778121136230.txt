@@ -1,0 +1,37 @@
+May 07 02:31:33 iplvnic1 npm[1342914]: 2:31:33 AM [express] POST /api/login 200 in 77ms :: {"id":"5bb0a1ec-fc61-447d-8b36-b97519f19923","us…
+May 07 02:31:33 iplvnic1 npm[1342914]: 2:31:33 AM [express] GET /api/tenant/features 200 in 35ms :: {"plan":"humane","modules":["hr_payroll…
+May 07 02:31:33 iplvnic1 npm[1342914]: 2:31:33 AM [express] GET /api/machines 403 in 114ms :: {"message":"Your current plan (humane) does n…
+May 07 02:31:33 iplvnic1 npm[1342914]: 2:31:33 AM [express] GET /api/pm-task-list-templates 403 in 113ms :: {"message":"Your current plan (…
+May 07 02:31:33 iplvnic1 npm[1342914]: 2:31:33 AM [express] GET /api/maintenance-plans 403 in 111ms :: {"message":"Your current plan (human…
+May 07 02:31:33 iplvnic1 npm[1342914]: 2:31:33 AM [express] GET /api/users 304 in 117ms :: [{"id":"5bb0a1ec-fc61-447d-8b36-b97519f19923","u…
+May 07 02:31:33 iplvnic1 npm[1342914]: 2:31:33 AM [express] GET /api/hr/payroll/draft-count 200 in 82ms :: {"draftCount":1}
+May 07 02:31:33 iplvnic1 npm[1342914]: /home/kinto/kinto-qa-system/node_modules/pg-pool/index.js:45
+May 07 02:31:33 iplvnic1 npm[1342914]:     Error.captureStackTrace(err)
+May 07 02:31:33 iplvnic1 npm[1342914]:           ^
+May 07 02:31:33 iplvnic1 npm[1342914]: error: relation "tenant_module_labels" does not exist
+May 07 02:31:33 iplvnic1 npm[1342914]:     at /home/kinto/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+May 07 02:31:33 iplvnic1 npm[1342914]:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+May 07 02:31:33 iplvnic1 npm[1342914]:     at async file:///home/kinto/kinto-qa-system/dist/index.js:13143:20 {
+May 07 02:31:33 iplvnic1 npm[1342914]:   length: 119,
+May 07 02:31:33 iplvnic1 npm[1342914]:   severity: 'ERROR',
+May 07 02:31:33 iplvnic1 npm[1342914]:   code: '42P01',
+May 07 02:31:33 iplvnic1 npm[1342914]:   detail: undefined,
+May 07 02:31:33 iplvnic1 npm[1342914]:   hint: undefined,
+May 07 02:31:33 iplvnic1 npm[1342914]:   position: '15',
+May 07 02:31:33 iplvnic1 npm[1342914]:   internalPosition: undefined,
+May 07 02:31:33 iplvnic1 npm[1342914]:   internalQuery: undefined,
+May 07 02:31:33 iplvnic1 npm[1342914]:   where: undefined,
+May 07 02:31:33 iplvnic1 npm[1342914]:   schema: undefined,
+May 07 02:31:33 iplvnic1 npm[1342914]:   table: undefined,
+May 07 02:31:33 iplvnic1 npm[1342914]:   column: undefined,
+May 07 02:31:33 iplvnic1 npm[1342914]:   dataType: undefined,
+May 07 02:31:33 iplvnic1 npm[1342914]:   constraint: undefined,
+May 07 02:31:33 iplvnic1 npm[1342914]:   file: 'parse_relation.c',
+May 07 02:31:33 iplvnic1 npm[1342914]:   line: '1449',
+May 07 02:31:33 iplvnic1 npm[1342914]:   routine: 'parserOpenTable'
+May 07 02:31:33 iplvnic1 npm[1342914]: }
+May 07 02:31:33 iplvnic1 npm[1342914]: Node.js v20.19.5
+May 07 02:31:33 iplvnic1 systemd[1]: kinto.service: Main process exited, code=exited, status=1/FAILURE
+May 07 02:31:33 iplvnic1 systemd[1]: kinto.service: Failed with result 'exit-code'.
+May 07 02:31:33 iplvnic1 systemd[1]: kinto.service: Consumed 4.959s CPU time.
+[kinto@iplvnic1 ~]$ 

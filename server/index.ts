@@ -583,6 +583,539 @@ app.use((req, res, next) => {
     console.error('[SUBSCRIPTIONS MODULE MIGRATION ERROR]', err);
   }
 
+  // ─── Phase 1-5 tables (comprehensive auto-migration) ────────────────────
+  // All Phase 1-5 tables use IF NOT EXISTS / ADD COLUMN IF NOT EXISTS so
+  // they are 100% safe to run on every startup. This ensures any production
+  // DB that was deployed before these migrations are self-healing.
+  try {
+    const { pool: pgMig } = await import("./db");
+
+    // ── Phase 1: Configurable Module Labels ────────────────────────────────
+    await pgMig.query(`
+      CREATE SEQUENCE IF NOT EXISTS public.tenant_module_labels_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+      CREATE TABLE IF NOT EXISTS public.tenant_module_labels (
+        id           integer NOT NULL DEFAULT nextval('tenant_module_labels_id_seq'),
+        tenant_id    integer NOT NULL,
+        module_key   text NOT NULL,
+        custom_label text NOT NULL,
+        PRIMARY KEY (id)
+      );
+      ALTER SEQUENCE public.tenant_module_labels_id_seq OWNED BY public.tenant_module_labels.id;
+      CREATE UNIQUE INDEX IF NOT EXISTS tenant_module_labels_tenant_module_uidx
+        ON public.tenant_module_labels (tenant_id, module_key);
+    `);
+
+    // ── Phase 1: Custom Field Definitions + Values ────────────────────────
+    await pgMig.query(`
+      CREATE SEQUENCE IF NOT EXISTS public.custom_field_definitions_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+      CREATE TABLE IF NOT EXISTS public.custom_field_definitions (
+        id            integer NOT NULL DEFAULT nextval('custom_field_definitions_id_seq'),
+        tenant_id     integer NOT NULL,
+        entity_type   text NOT NULL,
+        field_name    text NOT NULL,
+        field_label   text NOT NULL,
+        field_type    text DEFAULT 'text',
+        options       jsonb,
+        is_required   boolean DEFAULT false,
+        sort_order    integer DEFAULT 0,
+        record_status integer DEFAULT 1,
+        PRIMARY KEY (id)
+      );
+      ALTER SEQUENCE public.custom_field_definitions_id_seq OWNED BY public.custom_field_definitions.id;
+
+      CREATE SEQUENCE IF NOT EXISTS public.custom_field_values_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+      CREATE TABLE IF NOT EXISTS public.custom_field_values (
+        id           integer NOT NULL DEFAULT nextval('custom_field_values_id_seq'),
+        tenant_id    integer NOT NULL,
+        field_def_id integer NOT NULL,
+        entity_type  text NOT NULL,
+        entity_id    integer NOT NULL,
+        field_value  text,
+        created_at   timestamptz DEFAULT now(),
+        PRIMARY KEY (id)
+      );
+      ALTER SEQUENCE public.custom_field_values_id_seq OWNED BY public.custom_field_values.id;
+      CREATE INDEX IF NOT EXISTS custom_field_values_entity_idx
+        ON public.custom_field_values (tenant_id, entity_type, entity_id);
+    `);
+
+    // ── T003: Purchase Requisitions ───────────────────────────────────────
+    await pgMig.query(`
+      CREATE SEQUENCE IF NOT EXISTS public.purchase_requisitions_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+      CREATE TABLE IF NOT EXISTS public.purchase_requisitions (
+        id            integer NOT NULL DEFAULT nextval('purchase_requisitions_id_seq'),
+        tenant_id     integer NOT NULL,
+        pr_number     text NOT NULL,
+        pr_date       date NOT NULL DEFAULT CURRENT_DATE,
+        requested_by  integer,
+        department    text,
+        status        text DEFAULT 'draft',
+        priority      text DEFAULT 'normal',
+        notes         text,
+        record_status integer DEFAULT 1,
+        created_at    timestamptz DEFAULT now(),
+        PRIMARY KEY (id)
+      );
+      ALTER SEQUENCE public.purchase_requisitions_id_seq OWNED BY public.purchase_requisitions.id;
+
+      CREATE SEQUENCE IF NOT EXISTS public.purchase_requisition_items_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+      CREATE TABLE IF NOT EXISTS public.purchase_requisition_items (
+        id              integer NOT NULL DEFAULT nextval('purchase_requisition_items_id_seq'),
+        tenant_id       integer NOT NULL,
+        pr_id           integer NOT NULL,
+        product_id      integer,
+        description     text,
+        quantity        numeric(15,3) NOT NULL,
+        uom             text,
+        estimated_price numeric(15,2),
+        required_date   date,
+        record_status   integer DEFAULT 1,
+        PRIMARY KEY (id)
+      );
+      ALTER SEQUENCE public.purchase_requisition_items_id_seq OWNED BY public.purchase_requisition_items.id;
+      CREATE INDEX IF NOT EXISTS pr_items_pr_idx ON public.purchase_requisition_items (pr_id);
+    `);
+
+    // ── T004: Goods Receipt Notes ─────────────────────────────────────────
+    await pgMig.query(`
+      CREATE SEQUENCE IF NOT EXISTS public.goods_receipt_notes_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+      CREATE TABLE IF NOT EXISTS public.goods_receipt_notes (
+        id            integer NOT NULL DEFAULT nextval('goods_receipt_notes_id_seq'),
+        tenant_id     integer NOT NULL,
+        grn_number    text NOT NULL,
+        received_date date NOT NULL DEFAULT CURRENT_DATE,
+        po_id         integer,
+        vendor_id     integer,
+        remarks       text,
+        received_by   integer,
+        status        text DEFAULT 'received',
+        record_status integer DEFAULT 1,
+        created_at    timestamptz DEFAULT now(),
+        PRIMARY KEY (id)
+      );
+      ALTER SEQUENCE public.goods_receipt_notes_id_seq OWNED BY public.goods_receipt_notes.id;
+
+      CREATE SEQUENCE IF NOT EXISTS public.grn_items_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+      CREATE TABLE IF NOT EXISTS public.grn_items (
+        id            integer NOT NULL DEFAULT nextval('grn_items_id_seq'),
+        tenant_id     integer NOT NULL,
+        grn_id        integer NOT NULL,
+        po_item_id    integer,
+        product_id    integer,
+        description   text,
+        ordered_qty   numeric(15,3) DEFAULT 0,
+        received_qty  numeric(15,3) NOT NULL,
+        rejected_qty  numeric(15,3) DEFAULT 0,
+        unit_price    numeric(15,2) DEFAULT 0,
+        uom           text,
+        record_status integer DEFAULT 1,
+        PRIMARY KEY (id)
+      );
+      ALTER SEQUENCE public.grn_items_id_seq OWNED BY public.grn_items.id;
+      CREATE INDEX IF NOT EXISTS grn_items_grn_idx ON public.grn_items (grn_id);
+    `);
+
+    // ── T005-T008: Approvals, Cost Centres, Vendor columns ───────────────
+    await pgMig.query(`
+      ALTER TABLE public.expense_vouchers
+        ADD COLUMN IF NOT EXISTS grn_id integer,
+        ADD COLUMN IF NOT EXISTS matching_status text DEFAULT 'unmatched',
+        ADD COLUMN IF NOT EXISTS cost_centre_id integer;
+
+      ALTER TABLE public.journal_lines
+        ADD COLUMN IF NOT EXISTS cost_centre_id integer;
+
+      ALTER TABLE public.vendors
+        ADD COLUMN IF NOT EXISTS payment_terms_days integer DEFAULT 30,
+        ADD COLUMN IF NOT EXISTS credit_limit numeric(15,2) DEFAULT 0;
+
+      CREATE SEQUENCE IF NOT EXISTS public.approval_rules_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+      CREATE TABLE IF NOT EXISTS public.approval_rules (
+        id              integer NOT NULL DEFAULT nextval('approval_rules_id_seq'),
+        tenant_id       integer NOT NULL,
+        entity_type     text NOT NULL,
+        min_amount      numeric(15,2) DEFAULT 0,
+        max_amount      numeric(15,2),
+        approver_role   text,
+        approver_user_id integer,
+        approval_level  integer DEFAULT 1,
+        record_status   integer DEFAULT 1,
+        created_at      timestamptz DEFAULT now(),
+        PRIMARY KEY (id)
+      );
+      ALTER SEQUENCE public.approval_rules_id_seq OWNED BY public.approval_rules.id;
+
+      CREATE SEQUENCE IF NOT EXISTS public.approval_requests_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+      CREATE TABLE IF NOT EXISTS public.approval_requests (
+        id            integer NOT NULL DEFAULT nextval('approval_requests_id_seq'),
+        tenant_id     integer NOT NULL,
+        entity_type   text NOT NULL,
+        entity_id     integer NOT NULL,
+        rule_id       integer,
+        requested_by  integer,
+        requested_at  timestamptz DEFAULT now(),
+        status        text DEFAULT 'pending',
+        actioned_by   integer,
+        actioned_at   timestamptz,
+        comments      text,
+        record_status integer DEFAULT 1,
+        PRIMARY KEY (id)
+      );
+      ALTER SEQUENCE public.approval_requests_id_seq OWNED BY public.approval_requests.id;
+      CREATE INDEX IF NOT EXISTS approval_requests_entity_idx
+        ON public.approval_requests (tenant_id, entity_type, entity_id);
+
+      CREATE SEQUENCE IF NOT EXISTS public.cost_centres_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+      CREATE TABLE IF NOT EXISTS public.cost_centres (
+        id            integer NOT NULL DEFAULT nextval('cost_centres_id_seq'),
+        tenant_id     integer NOT NULL,
+        name          text NOT NULL,
+        code          text,
+        parent_id     integer,
+        description   text,
+        is_active     boolean DEFAULT true,
+        record_status integer DEFAULT 1,
+        created_at    timestamptz DEFAULT now(),
+        PRIMARY KEY (id)
+      );
+      ALTER SEQUENCE public.cost_centres_id_seq OWNED BY public.cost_centres.id;
+    `);
+
+    // ── Phase 2: Expense Claims + Recurring Invoices ──────────────────────
+    await pgMig.query(`
+      CREATE SEQUENCE IF NOT EXISTS public.hr_expense_claims_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+      CREATE TABLE IF NOT EXISTS public.hr_expense_claims (
+        id               integer NOT NULL DEFAULT nextval('hr_expense_claims_id_seq'),
+        tenant_id        integer NOT NULL,
+        employee_id      integer NOT NULL,
+        title            text NOT NULL,
+        claim_date       date NOT NULL,
+        total_amount     numeric(12,2) DEFAULT 0,
+        status           text DEFAULT 'pending',
+        approved_by      integer,
+        approved_at      timestamptz,
+        paid_at          timestamptz,
+        notes            text,
+        rejection_reason text,
+        cost_centre_id   integer,
+        record_status    integer DEFAULT 1,
+        created_at       timestamptz DEFAULT now(),
+        PRIMARY KEY (id)
+      );
+      ALTER SEQUENCE public.hr_expense_claims_id_seq OWNED BY public.hr_expense_claims.id;
+
+      CREATE SEQUENCE IF NOT EXISTS public.hr_expense_claim_items_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+      CREATE TABLE IF NOT EXISTS public.hr_expense_claim_items (
+        id           integer NOT NULL DEFAULT nextval('hr_expense_claim_items_id_seq'),
+        tenant_id    integer NOT NULL,
+        claim_id     integer NOT NULL,
+        category     text NOT NULL,
+        description  text,
+        amount       numeric(12,2) NOT NULL,
+        receipt_url  text,
+        expense_date date,
+        PRIMARY KEY (id)
+      );
+      ALTER SEQUENCE public.hr_expense_claim_items_id_seq OWNED BY public.hr_expense_claim_items.id;
+      CREATE INDEX IF NOT EXISTS hr_expense_claim_items_claim_idx ON public.hr_expense_claim_items (claim_id);
+
+      CREATE SEQUENCE IF NOT EXISTS public.recurring_invoice_schedules_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+      CREATE TABLE IF NOT EXISTS public.recurring_invoice_schedules (
+        id              integer NOT NULL DEFAULT nextval('recurring_invoice_schedules_id_seq'),
+        tenant_id       integer NOT NULL,
+        customer_name   text NOT NULL,
+        customer_gstin  text,
+        billing_address text,
+        frequency       text DEFAULT 'monthly',
+        next_due        date NOT NULL,
+        end_date        date,
+        amount          numeric(15,2) DEFAULT 0,
+        gst_rate        numeric(5,2) DEFAULT 0,
+        notes           text,
+        is_active       boolean DEFAULT true,
+        record_status   integer DEFAULT 1,
+        created_at      timestamptz DEFAULT now(),
+        PRIMARY KEY (id)
+      );
+      ALTER SEQUENCE public.recurring_invoice_schedules_id_seq OWNED BY public.recurring_invoice_schedules.id;
+    `);
+
+    // ── Phase 3: Warehouses, UOM, Serial/Lot, Stock Transfers ────────────
+    await pgMig.query(`
+      CREATE SEQUENCE IF NOT EXISTS public.warehouses_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+      CREATE TABLE IF NOT EXISTS public.warehouses (
+        id            integer NOT NULL DEFAULT nextval('warehouses_id_seq'),
+        tenant_id     integer NOT NULL,
+        name          text NOT NULL,
+        code          text,
+        address       text,
+        city          text,
+        state         text,
+        is_default    boolean DEFAULT false,
+        record_status integer DEFAULT 1,
+        created_at    timestamptz DEFAULT now(),
+        PRIMARY KEY (id)
+      );
+      ALTER SEQUENCE public.warehouses_id_seq OWNED BY public.warehouses.id;
+
+      CREATE SEQUENCE IF NOT EXISTS public.warehouse_stock_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+      CREATE TABLE IF NOT EXISTS public.warehouse_stock (
+        id           integer NOT NULL DEFAULT nextval('warehouse_stock_id_seq'),
+        tenant_id    integer NOT NULL,
+        warehouse_id integer NOT NULL,
+        item_id      text NOT NULL,
+        quantity     numeric(15,3) DEFAULT 0,
+        reserved     numeric(15,3) DEFAULT 0,
+        PRIMARY KEY (id)
+      );
+      ALTER SEQUENCE public.warehouse_stock_id_seq OWNED BY public.warehouse_stock.id;
+      CREATE UNIQUE INDEX IF NOT EXISTS warehouse_stock_item_uidx ON public.warehouse_stock (tenant_id, warehouse_id, item_id);
+
+      CREATE SEQUENCE IF NOT EXISTS public.uom_conversions_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+      CREATE TABLE IF NOT EXISTS public.uom_conversions (
+        id            integer NOT NULL DEFAULT nextval('uom_conversions_id_seq'),
+        tenant_id     integer NOT NULL,
+        item_id       text,
+        from_uom      text NOT NULL,
+        to_uom        text NOT NULL,
+        factor        numeric(15,6) NOT NULL,
+        record_status integer DEFAULT 1,
+        PRIMARY KEY (id)
+      );
+      ALTER SEQUENCE public.uom_conversions_id_seq OWNED BY public.uom_conversions.id;
+
+      CREATE SEQUENCE IF NOT EXISTS public.serial_lot_register_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+      CREATE TABLE IF NOT EXISTS public.serial_lot_register (
+        id                integer NOT NULL DEFAULT nextval('serial_lot_register_id_seq'),
+        tenant_id         integer NOT NULL,
+        item_id           text NOT NULL,
+        serial_number     text,
+        lot_number        text,
+        batch_number      text,
+        manufactured_date date,
+        expiry_date       date,
+        quantity          numeric(15,3) DEFAULT 1,
+        status            text DEFAULT 'in_stock',
+        source_type       text,
+        source_id         integer,
+        warehouse_id      integer,
+        record_status     integer DEFAULT 1,
+        created_at        timestamptz DEFAULT now(),
+        PRIMARY KEY (id)
+      );
+      ALTER SEQUENCE public.serial_lot_register_id_seq OWNED BY public.serial_lot_register.id;
+
+      CREATE SEQUENCE IF NOT EXISTS public.stock_transfers_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+      CREATE TABLE IF NOT EXISTS public.stock_transfers (
+        id               integer NOT NULL DEFAULT nextval('stock_transfers_id_seq'),
+        tenant_id        integer NOT NULL,
+        transfer_number  text NOT NULL,
+        transfer_date    date NOT NULL DEFAULT CURRENT_DATE,
+        from_warehouse_id integer,
+        to_warehouse_id  integer,
+        status           text DEFAULT 'draft',
+        notes            text,
+        record_status    integer DEFAULT 1,
+        created_at       timestamptz DEFAULT now(),
+        PRIMARY KEY (id)
+      );
+      ALTER SEQUENCE public.stock_transfers_id_seq OWNED BY public.stock_transfers.id;
+
+      CREATE SEQUENCE IF NOT EXISTS public.stock_transfer_items_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+      CREATE TABLE IF NOT EXISTS public.stock_transfer_items (
+        id           integer NOT NULL DEFAULT nextval('stock_transfer_items_id_seq'),
+        tenant_id    integer NOT NULL,
+        transfer_id  integer NOT NULL,
+        item_id      text NOT NULL,
+        quantity     numeric(15,3) NOT NULL,
+        uom          text,
+        record_status integer DEFAULT 1,
+        PRIMARY KEY (id)
+      );
+      ALTER SEQUENCE public.stock_transfer_items_id_seq OWNED BY public.stock_transfer_items.id;
+    `);
+
+    // ── Phase 4: Projects, BOQ, Milestones, Timesheets ───────────────────
+    await pgMig.query(`
+      CREATE SEQUENCE IF NOT EXISTS public.projects_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+      CREATE TABLE IF NOT EXISTS public.projects (
+        id              integer NOT NULL DEFAULT nextval('projects_id_seq'),
+        tenant_id       integer NOT NULL,
+        name            text NOT NULL,
+        code            text,
+        customer_id     integer,
+        start_date      date,
+        end_date        date,
+        budget          numeric(15,2) DEFAULT 0,
+        status          text DEFAULT 'active',
+        description     text,
+        project_manager integer,
+        record_status   integer DEFAULT 1,
+        created_at      timestamptz DEFAULT now(),
+        PRIMARY KEY (id)
+      );
+      ALTER SEQUENCE public.projects_id_seq OWNED BY public.projects.id;
+
+      CREATE SEQUENCE IF NOT EXISTS public.boq_items_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+      CREATE TABLE IF NOT EXISTS public.boq_items (
+        id           integer NOT NULL DEFAULT nextval('boq_items_id_seq'),
+        tenant_id    integer NOT NULL,
+        project_id   integer NOT NULL,
+        description  text NOT NULL,
+        uom          text,
+        quantity     numeric(15,3) DEFAULT 0,
+        unit_rate    numeric(15,2) DEFAULT 0,
+        amount       numeric(15,2) DEFAULT 0,
+        record_status integer DEFAULT 1,
+        PRIMARY KEY (id)
+      );
+      ALTER SEQUENCE public.boq_items_id_seq OWNED BY public.boq_items.id;
+
+      CREATE SEQUENCE IF NOT EXISTS public.billing_milestones_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+      CREATE TABLE IF NOT EXISTS public.billing_milestones (
+        id           integer NOT NULL DEFAULT nextval('billing_milestones_id_seq'),
+        tenant_id    integer NOT NULL,
+        project_id   integer NOT NULL,
+        name         text NOT NULL,
+        due_date     date,
+        amount       numeric(15,2) DEFAULT 0,
+        status       text DEFAULT 'pending',
+        invoice_id   text,
+        record_status integer DEFAULT 1,
+        PRIMARY KEY (id)
+      );
+      ALTER SEQUENCE public.billing_milestones_id_seq OWNED BY public.billing_milestones.id;
+
+      CREATE SEQUENCE IF NOT EXISTS public.timesheets_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+      CREATE TABLE IF NOT EXISTS public.timesheets (
+        id           integer NOT NULL DEFAULT nextval('timesheets_id_seq'),
+        tenant_id    integer NOT NULL,
+        employee_id  integer NOT NULL,
+        project_id   integer,
+        date         date NOT NULL,
+        hours        numeric(5,2) NOT NULL,
+        description  text,
+        status       text DEFAULT 'draft',
+        record_status integer DEFAULT 1,
+        created_at   timestamptz DEFAULT now(),
+        PRIMARY KEY (id)
+      );
+      ALTER SEQUENCE public.timesheets_id_seq OWNED BY public.timesheets.id;
+    `);
+
+    // ── Phase 5: Fixed Assets, Appraisals, Multi-currency ────────────────
+    await pgMig.query(`
+      CREATE SEQUENCE IF NOT EXISTS public.fixed_assets_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+      CREATE TABLE IF NOT EXISTS public.fixed_assets (
+        id                  integer NOT NULL DEFAULT nextval('fixed_assets_id_seq'),
+        tenant_id           integer NOT NULL,
+        name                text NOT NULL,
+        code                text,
+        category            text,
+        purchase_date       date,
+        purchase_cost       numeric(15,2) DEFAULT 0,
+        useful_life_years   integer DEFAULT 5,
+        depreciation_method text DEFAULT 'slm',
+        salvage_value       numeric(15,2) DEFAULT 0,
+        location            text,
+        status              text DEFAULT 'active',
+        record_status       integer DEFAULT 1,
+        created_at          timestamptz DEFAULT now(),
+        PRIMARY KEY (id)
+      );
+      ALTER SEQUENCE public.fixed_assets_id_seq OWNED BY public.fixed_assets.id;
+
+      CREATE SEQUENCE IF NOT EXISTS public.asset_depreciation_schedule_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+      CREATE TABLE IF NOT EXISTS public.asset_depreciation_schedule (
+        id              integer NOT NULL DEFAULT nextval('asset_depreciation_schedule_id_seq'),
+        tenant_id       integer NOT NULL,
+        asset_id        integer NOT NULL,
+        year            integer NOT NULL,
+        depreciation    numeric(15,2) DEFAULT 0,
+        book_value      numeric(15,2) DEFAULT 0,
+        is_posted       boolean DEFAULT false,
+        record_status   integer DEFAULT 1,
+        PRIMARY KEY (id)
+      );
+      ALTER SEQUENCE public.asset_depreciation_schedule_id_seq OWNED BY public.asset_depreciation_schedule.id;
+
+      CREATE SEQUENCE IF NOT EXISTS public.appraisal_cycles_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+      CREATE TABLE IF NOT EXISTS public.appraisal_cycles (
+        id            integer NOT NULL DEFAULT nextval('appraisal_cycles_id_seq'),
+        tenant_id     integer NOT NULL,
+        name          text NOT NULL,
+        period_start  date NOT NULL,
+        period_end    date NOT NULL,
+        status        text DEFAULT 'draft',
+        record_status integer DEFAULT 1,
+        created_at    timestamptz DEFAULT now(),
+        PRIMARY KEY (id)
+      );
+      ALTER SEQUENCE public.appraisal_cycles_id_seq OWNED BY public.appraisal_cycles.id;
+
+      CREATE SEQUENCE IF NOT EXISTS public.appraisals_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+      CREATE TABLE IF NOT EXISTS public.appraisals (
+        id             integer NOT NULL DEFAULT nextval('appraisals_id_seq'),
+        tenant_id      integer NOT NULL,
+        cycle_id       integer NOT NULL,
+        employee_id    integer NOT NULL,
+        reviewer_id    integer,
+        self_score     numeric(3,1),
+        manager_score  numeric(3,1),
+        final_score    numeric(3,1),
+        rating         text,
+        comments       text,
+        status         text DEFAULT 'pending',
+        record_status  integer DEFAULT 1,
+        created_at     timestamptz DEFAULT now(),
+        PRIMARY KEY (id)
+      );
+      ALTER SEQUENCE public.appraisals_id_seq OWNED BY public.appraisals.id;
+
+      CREATE SEQUENCE IF NOT EXISTS public.appraisal_kras_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+      CREATE TABLE IF NOT EXISTS public.appraisal_kras (
+        id            integer NOT NULL DEFAULT nextval('appraisal_kras_id_seq'),
+        tenant_id     integer NOT NULL,
+        appraisal_id  integer NOT NULL,
+        kra           text NOT NULL,
+        weightage     numeric(5,2),
+        self_score    numeric(3,1),
+        manager_score numeric(3,1),
+        PRIMARY KEY (id)
+      );
+      ALTER SEQUENCE public.appraisal_kras_id_seq OWNED BY public.appraisal_kras.id;
+
+      CREATE SEQUENCE IF NOT EXISTS public.currencies_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+      CREATE TABLE IF NOT EXISTS public.currencies (
+        id            integer NOT NULL DEFAULT nextval('currencies_id_seq'),
+        tenant_id     integer NOT NULL,
+        code          text NOT NULL,
+        name          text NOT NULL,
+        symbol        text,
+        is_base       boolean DEFAULT false,
+        record_status integer DEFAULT 1,
+        PRIMARY KEY (id)
+      );
+      ALTER SEQUENCE public.currencies_id_seq OWNED BY public.currencies.id;
+      CREATE UNIQUE INDEX IF NOT EXISTS currencies_tenant_code_uidx ON public.currencies (tenant_id, code);
+
+      CREATE SEQUENCE IF NOT EXISTS public.exchange_rates_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+      CREATE TABLE IF NOT EXISTS public.exchange_rates (
+        id           integer NOT NULL DEFAULT nextval('exchange_rates_id_seq'),
+        tenant_id    integer NOT NULL,
+        currency_id  integer NOT NULL,
+        rate         date NOT NULL,
+        rate_value   numeric(15,6) NOT NULL,
+        PRIMARY KEY (id)
+      );
+      ALTER SEQUENCE public.exchange_rates_id_seq OWNED BY public.exchange_rates.id;
+    `);
+
+    console.log('[PHASE 1-5 MIGRATION] All Phase 1-5 tables ensured OK');
+  } catch (err) {
+    console.error('[PHASE 1-5 MIGRATION ERROR]', err);
+  }
+
   // ─── Ensure role_permissions(role_id, screen_key) unique constraint ───────
   // Required by seed-demo-tenant.ts and seed-tenant.ts ON CONFLICT (role_id, screen_key).
   // Missing on production DBs created before this constraint was added.
