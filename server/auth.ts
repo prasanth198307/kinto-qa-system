@@ -12,6 +12,13 @@ import { eq, desc, sql, or, and } from "drizzle-orm";
 import { lookupTenantBySlug } from "./tenant-middleware";
 import { seedNewTenant } from "./seed-tenant";
 import { backupTenant } from "./backup";
+import {
+  loginRateLimiter,
+  forgotPasswordRateLimiter,
+  resetPasswordRateLimiter,
+  enforceConcurrentSessionLimit,
+  logSecurityEvent,
+} from "./security-middleware";
 
 declare global {
   namespace Express {
@@ -74,13 +81,18 @@ export function setupAuth(app: Express) {
   const appDomain = process.env.APP_DOMAIN; // e.g. "swacherp.com" (no leading dot)
   const cookieDomain = appDomain ? `.${appDomain}` : undefined;
 
+  // Session timeout: 8 hours idle (rolling — resets on every request).
+  // Government / enterprise compliance requires sessions to expire on inactivity.
+  const SESSION_MAX_AGE = 8 * 60 * 60 * 1000; // 8 hours in ms
+
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || "insecure_dev_secret",
     resave: false,
     saveUninitialized: false,
+    rolling: true, // Reset expiry on every response (idle timeout behaviour)
     store: storage.sessionStore,
     cookie: {
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: SESSION_MAX_AGE,
       httpOnly: true,
       secure: cookieSecure,
       sameSite: cookieSameSite,
@@ -640,12 +652,16 @@ export function setupAuth(app: Express) {
   });
 
   // ─── Login ─────────────────────────────────────────────────────────────────
-  app.post("/api/login", (req, res, next) => {
+  app.post("/api/login", loginRateLimiter, (req, res, next) => {
     const { tenantSlug } = req.body;
 
     passport.authenticate("local", async (err: any, user: any) => {
       if (err) return next(err);
-      if (!user) return res.status(401).json({ message: "Invalid username or password" });
+      if (!user) {
+        // Log failed attempt
+        logSecurityEvent(req, "LOGIN_FAILED", `Failed login for username: ${req.body?.username ?? "unknown"}`, "warn");
+        return res.status(401).json({ message: "Invalid username or password" });
+      }
 
       let tenantPlan = "trial";
       let tenantStatus = "active";
@@ -701,8 +717,14 @@ export function setupAuth(app: Express) {
         (req.session as any).tenantPlan = tenantPlan;
         (req.session as any).tenantStatus = tenantStatus;
 
-        req.session.save((err) => {
+        req.session.save(async (err) => {
           if (err) return res.status(500).json({ message: "Session save failed" });
+
+          // Enforce concurrent session limit (max 3 per user)
+          await enforceConcurrentSessionLimit(user.id, (req.session as any).id ?? req.sessionID);
+
+          // Log successful login with IP
+          logSecurityEvent(req, "LOGIN_SUCCESS", `User ${user.username} logged in`, "info", String(user.id), (user as any).tenantId);
 
           console.log(`✅ Session saved — user: ${user.username}, tenant: ${(req.session as any).tenantId}, plan: ${tenantPlan}, status: ${tenantStatus}`);
           return res.json(req.user);

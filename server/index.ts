@@ -88,6 +88,11 @@ async function getAllowedOrigins(): Promise<Set<string>> {
   return _corsCache;
 }
 
+// ─── Security headers + rate limiting ────────────────────────────────────────
+const { securityHeaders, apiRateLimiter } = await import("./security-middleware");
+app.use(securityHeaders);
+app.use("/api/", apiRateLimiter);
+
 app.use(cors({
   origin: async (incoming, callback) => {
     if (!incoming) return callback(null, true); // same-origin / server-to-server

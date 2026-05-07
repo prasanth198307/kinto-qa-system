@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { db } from "./db";
+import { db, pool } from "./db";
 import { tenants } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { runWithTenantId } from "./tenant-context";
@@ -53,6 +53,12 @@ export async function tenantMiddleware(req: Request, res: Response, next: NextFu
         });
       }
     }
+
+    // Set tenant_id in PostgreSQL session for RLS policies (Phase A security).
+    // Best-effort — failure never blocks the request (app-level tc() is primary).
+    pool
+      .query("SELECT set_config('app.current_tenant_id', $1, false)", [String(tenantId)])
+      .catch((e) => console.debug("[SECURITY] pg set_config failed:", (e as Error).message));
 
     // Propagate tenantId through the entire async call chain
     runWithTenantId(tenantId, next);

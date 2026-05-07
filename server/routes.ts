@@ -1,4 +1,5 @@
 import type { Express, Request, Response, NextFunction } from "express";
+import { forgotPasswordRateLimiter, resetPasswordRateLimiter } from "./security-middleware";
 import { createServer, type Server } from "http";
 import crypto from "crypto";
 import { storage } from "./storage";
@@ -1694,7 +1695,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // /api/register, /api/login, /api/logout, /api/user are automatically set up
 
   // Forgot Password - sends reset link to email
-  app.post('/api/auth/forgot-password', async (req, res) => {
+  app.post('/api/auth/forgot-password', forgotPasswordRateLimiter, async (req, res) => {
     try {
       const { email } = req.body;
       
@@ -1862,7 +1863,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Reset Password - validates token and updates password
-  app.post('/api/auth/reset-password', async (req, res) => {
+  app.post('/api/auth/reset-password', resetPasswordRateLimiter, async (req, res) => {
     try {
       const { token, password } = req.body;
 
