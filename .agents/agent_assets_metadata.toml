@@ -222,3 +222,9 @@ id = "UDKB6MrgTUnpAPCXV6tFE"
 uri = "file://client/public/downloads/SwachERP_Revised_Phase_Plan.xlsx"
 type = "table"
 title = "SwachERP — Revised Plan (Built vs To Build + 3 Quote Options)"
+
+[[outputs]]
+id = "vpsUb4t4GYbWcaOZRumt1"
+uri = "file://client/public/downloads/SwachERP_Revised_Phase_Plan_v2.xlsx"
+type = "table"
+title = "SwachERP — Revised Plan v2 (Phase Status + Resource & Cost + Gantt + Quote Options)"
