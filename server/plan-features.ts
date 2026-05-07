@@ -192,17 +192,30 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
   ],
   gold_erp: [
     "gold-erp",
+    // Core
     "gold-erp-overview", "gold-erp-rates", "gold-erp-karigar", "gold-erp-items", "gold-erp-estimates",
     "gold-erp-metal-ledger", "gold-erp-analytics",
-    "gold-erp-production", "gold-erp-jobwork", "gold-erp-sketch", "gold-erp-cad", "gold-erp-ghat",
-    "gold-erp-settlement", "gold-erp-finalize", "gold-erp-karigar-ledger", "gold-erp-repairs",
-    "gold-erp-wholesale-jobwork", "gold-erp-hallmarking-batches",
+    // Production
+    "gold-erp-production", "gold-erp-jobwork", "gold-erp-sketch",
+    "gold-erp-cad", "gold-erp-cam",
+    "gold-erp-ghat", "gold-erp-settlement", "gold-erp-finalize", "gold-erp-karigar-ledger", "gold-erp-repairs",
+    "gold-erp-karigar-attendance",
+    // Wholesale & B2B
+    "gold-erp-wholesale-b2b-orders", "gold-erp-wholesale-jobwork", "gold-erp-hallmarking-batches",
+    // Retail
+    "gold-erp-jewellery-pos",
     "gold-erp-counter-bookings", "gold-erp-customer-approvals", "gold-erp-buyback",
     "gold-erp-physical-audit", "gold-erp-loyalty", "gold-erp-promotions", "gold-erp-refining",
     "gold-erp-pos-old-gold", "gold-erp-hallmarking",
-    "gold-erp-bullion", "gold-erp-bullion-bookings", "gold-erp-vault-audit",
-    "gold-erp-chit", "gold-erp-chit-maturity", "gold-erp-chit-defaulters", "gold-erp-chit-redemptions",
+    // Bullion & Vault
+    "gold-erp-bullion", "gold-erp-bullion-rate-cuts", "gold-erp-vault-movement",
+    "gold-erp-bullion-bookings", "gold-erp-vault-audit",
+    // Chit Schemes
+    "gold-erp-chit", "gold-erp-chit-collection-register",
+    "gold-erp-chit-maturity", "gold-erp-chit-defaulters", "gold-erp-chit-redemptions",
+    // Digital & OMS
     "gold-erp-ecatalog", "gold-erp-oms-orders", "gold-erp-oms-notify", "gold-erp-ecommerce",
+    // RFID, Finance, Integrations
     "gold-erp-rfid", "gold-erp-metal-finance", "gold-erp-integrations-config",
   ],
 };
