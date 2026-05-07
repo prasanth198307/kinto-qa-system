@@ -132,7 +132,11 @@ export function ModuleMarketplaceDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); }}>
-      <DialogContent className="max-w-3xl max-h-[90dvh] flex flex-col p-0">
+      {/* Force flex with inline style — shadcn DialogContent defaults to `display:grid` which breaks scroll */}
+      <DialogContent
+        className="max-w-3xl max-h-[90dvh] p-0"
+        style={{ display: "flex", flexDirection: "column", overflow: "hidden" }}
+      >
         <DialogHeader className="px-6 pt-5 pb-3 border-b shrink-0">
           <DialogTitle className="flex items-center gap-2 text-base">
             <Package className="h-4 w-4 text-primary" />
@@ -145,12 +149,12 @@ export function ModuleMarketplaceDialog({
         </DialogHeader>
 
         {isLoading ? (
-          <div className="flex items-center justify-center py-20">
+          <div className="flex items-center justify-center py-20 flex-1">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : (
           <div className="flex flex-1 min-h-0 overflow-hidden">
-            {/* ── Module grid ── */}
+            {/* ── Module grid — scrollable ── */}
             <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5">
               {Array.from(grouped.entries()).map(([cat, modules]) => {
                 const c = CATEGORY_COLORS[cat] ?? CATEGORY_COLORS.Core;
@@ -257,6 +261,7 @@ export function ModuleMarketplaceDialog({
                           onClick={() => toggle(m.slug)}
                           className="shrink-0 text-muted-foreground hover:text-destructive"
                           data-testid={`remove-module-${m.slug}`}
+                          title="Remove module"
                         >
                           <X className="h-3 w-3" />
                         </button>

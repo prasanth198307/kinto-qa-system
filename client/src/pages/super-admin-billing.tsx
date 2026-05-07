@@ -13,6 +13,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   RefreshCw, Loader2, CreditCard, TrendingUp, TrendingDown,
   ArrowLeftRight, Search, ChevronDown, ChevronUp,
@@ -130,6 +131,7 @@ export default function SuperAdminBilling() {
   const [newPlan, setNewPlan] = useState("");
   const [newCycle, setNewCycle] = useState("monthly");
   const [newNotes, setNewNotes] = useState("");
+  const [alsoManageModules, setAlsoManageModules] = useState(false);
   const [expandedTenant, setExpandedTenant] = useState<number | null>(null);
 
   const { data: rows = [], isLoading, refetch } = useQuery<SubRow[]>({
@@ -182,9 +184,16 @@ export default function SuperAdminBilling() {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/subscriptions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/tenants"] });
       toast({ title: "Plan changed successfully" });
+      const tenantForModules = changePlanFor?.tenant
+        ? { id: changePlanFor.tenant.id, name: changePlanFor.tenant.name }
+        : null;
       setChangePlanFor(null);
       setNewPlan("");
       setNewNotes("");
+      if (alsoManageModules && tenantForModules) {
+        setModulesTenant(tenantForModules);
+      }
+      setAlsoManageModules(false);
     },
     onError: (err: any) => toast({ title: "Failed", description: err.message, variant: "destructive" }),
   });
@@ -194,6 +203,7 @@ export default function SuperAdminBilling() {
     setNewPlan(row.subscription.planSlug);
     setNewCycle(row.subscription.billingCycle === "yearly" ? "yearly" : "monthly");
     setNewNotes("");
+    setAlsoManageModules(false);
   };
 
   const filtered = rows.filter((r) => {
@@ -415,7 +425,7 @@ export default function SuperAdminBilling() {
 
       {/* ── Change Plan Dialog — fully DB-driven, no hardcoded plan list ── */}
       <Dialog open={!!changePlanFor} onOpenChange={(open) => !open && setChangePlanFor(null)}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Change Plan — {changePlanFor?.tenant?.name}</DialogTitle>
           </DialogHeader>
@@ -464,6 +474,43 @@ export default function SuperAdminBilling() {
                 onChange={(e) => setNewNotes(e.target.value)}
                 data-testid="input-plan-notes"
               />
+            </div>
+
+            {/* ── Module management option ── */}
+            <div className="rounded-md border bg-muted/30 p-3 space-y-2.5">
+              <div className="flex items-start gap-3">
+                <Checkbox
+                  id="also-manage-modules"
+                  checked={alsoManageModules}
+                  onCheckedChange={(v) => setAlsoManageModules(!!v)}
+                  data-testid="checkbox-also-manage-modules"
+                  className="mt-0.5"
+                />
+                <div className="min-w-0">
+                  <label htmlFor="also-manage-modules" className="text-sm font-medium cursor-pointer select-none">
+                    Also manage add-on modules
+                  </label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    After saving the plan, the Module Marketplace will open so you can add or remove individual modules.
+                  </p>
+                </div>
+              </div>
+              <div className="pl-7">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (!changePlanFor?.tenant) return;
+                    setChangePlanFor(null);
+                    setModulesTenant({ id: changePlanFor.tenant.id, name: changePlanFor.tenant.name });
+                  }}
+                  data-testid="button-open-marketplace-from-plan"
+                >
+                  <Package className="h-3.5 w-3.5 mr-1.5" />
+                  Open Module Marketplace now
+                </Button>
+              </div>
             </div>
           </div>
           <DialogFooter>
