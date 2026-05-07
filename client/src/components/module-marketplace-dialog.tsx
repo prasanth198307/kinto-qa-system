@@ -5,7 +5,10 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Package, IndianRupee, CheckCircle2, X, Trash2 } from "lucide-react";
+import {
+  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Loader2, Package, IndianRupee, CheckCircle2, X, Trash2, Lock } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -134,8 +137,8 @@ export function ModuleMarketplaceDialog({
     <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); }}>
       {/* Force flex with inline style — shadcn DialogContent defaults to `display:grid` which breaks scroll */}
       <DialogContent
-        className="max-w-3xl max-h-[90dvh] p-0"
-        style={{ display: "flex", flexDirection: "column", overflow: "hidden" }}
+        className="max-w-3xl p-0"
+        style={{ display: "flex", flexDirection: "column", overflow: "hidden", height: "min(90dvh, 820px)" }}
       >
         <DialogHeader className="px-6 pt-5 pb-3 border-b shrink-0">
           <DialogTitle className="flex items-center gap-2 text-base">
@@ -171,20 +174,27 @@ export function ModuleMarketplaceDialog({
                         const isInPlan = planSet.has(mod.slug);
                         const isLocked = isFree || isInPlan;
                         const isOn     = activeDraft.has(mod.slug);
-                        return (
+
+                        const lockReason = isFree
+                          ? "Always enabled — free for all plans"
+                          : isInPlan
+                          ? "Included in your current plan. Change plan to remove."
+                          : null;
+
+                        const card = (
                           <button
-                            key={mod.slug}
                             onClick={() => toggle(mod.slug)}
                             data-testid={`module-toggle-${mod.slug}`}
-                            className={`text-left p-3 rounded-xl border-2 transition-all ${
-                              isFree    ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 cursor-default" :
-                              isInPlan  ? "bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800 cursor-default" :
-                              isOn      ? "bg-white dark:bg-card border-primary ring-2 ring-primary/10 shadow-sm" :
-                                          "bg-card border-border hover:border-muted-foreground/30"
+                            disabled={isLocked}
+                            className={`w-full text-left p-3 rounded-xl border-2 transition-all ${
+                              isFree    ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 cursor-not-allowed opacity-80" :
+                              isInPlan  ? "bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800 cursor-not-allowed opacity-80" :
+                              isOn      ? "bg-white dark:bg-card border-primary ring-2 ring-primary/10 shadow-sm cursor-pointer" :
+                                          "bg-card border-border hover:border-primary/40 cursor-pointer"
                             }`}
                           >
                             <div className="flex items-start justify-between gap-2">
-                              <div className="min-w-0">
+                              <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   <span className={`text-sm font-semibold ${
                                     isFree ? "text-emerald-800 dark:text-emerald-300" :
@@ -207,7 +217,10 @@ export function ModuleMarketplaceDialog({
                                 {isFree ? (
                                   <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">FREE</span>
                                 ) : isInPlan ? (
-                                  <span className="text-xs font-bold text-blue-600 dark:text-blue-400">Plan</span>
+                                  <div className="flex items-center gap-0.5">
+                                    <Lock className="h-2.5 w-2.5 text-blue-500" />
+                                    <span className="text-xs font-bold text-blue-600 dark:text-blue-400">Plan</span>
+                                  </div>
                                 ) : (
                                   <span className="text-sm font-bold text-foreground">
                                     ₹{mod.priceMonthly}
@@ -215,10 +228,10 @@ export function ModuleMarketplaceDialog({
                                   </span>
                                 )}
                                 <div className={`h-5 w-5 rounded-full flex items-center justify-center flex-shrink-0 ${
-                                  isFree ? "bg-emerald-500" :
-                                  isInPlan ? "bg-blue-500" :
-                                  isOn ? "bg-primary" :
-                                  "border-2 border-muted-foreground/30"
+                                  isFree    ? "bg-emerald-500" :
+                                  isInPlan  ? "bg-blue-500" :
+                                  isOn      ? "bg-primary" :
+                                              "border-2 border-muted-foreground/30"
                                 }`}>
                                   {(isLocked || isOn) && <CheckCircle2 className="h-3 w-3 text-white" />}
                                 </div>
@@ -226,6 +239,17 @@ export function ModuleMarketplaceDialog({
                             </div>
                           </button>
                         );
+
+                        return isLocked ? (
+                          <TooltipProvider key={mod.slug} delayDuration={200}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>{card}</TooltipTrigger>
+                              <TooltipContent side="top" className="max-w-xs text-xs">
+                                {lockReason}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ) : card;
                       })}
                     </div>
                   </div>
