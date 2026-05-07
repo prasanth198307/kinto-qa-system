@@ -28653,6 +28653,96 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
     }
   });
 
+  // ─── Super-admin: Cross-tenant security API ──────────────────────────────────
+
+  function requireSuperAdmin(req: any, res: any, next: any) {
+    if (!req.isAuthenticated() || !req.user?.isSuperAdmin) {
+      return res.status(403).json({ message: 'Super-admin access required' });
+    }
+    next();
+  }
+
+  // GET /api/superadmin/security/stats — platform-wide security summary
+  app.get('/api/superadmin/security/stats', requireSuperAdmin, async (req: any, res) => {
+    try {
+      const [sessRow, failRow, lockRow, mfaRow, usersRow, ipRow] = await Promise.all([
+        pool.query(`SELECT COUNT(*) FROM session WHERE expire > NOW()`),
+        pool.query(`SELECT COUNT(*) FROM audit_logs WHERE table_name='security' AND action='LOGIN_FAILED' AND created_at > NOW()-INTERVAL '24 hours'`),
+        pool.query(`SELECT COUNT(*) FROM users WHERE locked_until > NOW()`),
+        pool.query(`SELECT COUNT(*) FROM users WHERE totp_enabled = true`),
+        pool.query(`SELECT COUNT(*) FROM users WHERE tenant_id IS NOT NULL`),
+        pool.query(`SELECT COUNT(*) FROM tenants WHERE array_length(allowed_ip_ranges,1) > 0`),
+      ]);
+      res.json({
+        totalSessions:           parseInt(sessRow.rows[0].count),
+        failedLoginsToday:       parseInt(failRow.rows[0].count),
+        lockedAccounts:          parseInt(lockRow.rows[0].count),
+        mfaEnabled:              parseInt(mfaRow.rows[0].count),
+        totalUsers:              parseInt(usersRow.rows[0].count),
+        tenantsWithIpRestriction:parseInt(ipRow.rows[0].count),
+      });
+    } catch { res.status(500).json({ message: 'Failed to fetch stats' }); }
+  });
+
+  // GET /api/superadmin/security/sessions — all active sessions across all tenants
+  app.get('/api/superadmin/security/sessions', requireSuperAdmin, async (req: any, res) => {
+    try {
+      const result = await pool.query(`
+        SELECT s.sid,
+               s.sess->'passport'->>'user' AS user_id,
+               u.username,
+               u.tenant_id,
+               t.name AS tenant_name,
+               s.expire AS last_activity
+        FROM session s
+        LEFT JOIN users u ON u.id::text = s.sess->'passport'->>'user'
+        LEFT JOIN tenants t ON t.id = u.tenant_id
+        WHERE s.expire > NOW()
+        ORDER BY s.expire DESC
+        LIMIT 500
+      `);
+      const rows = result.rows.map((r: any) => ({
+        sid: r.sid, userId: r.user_id, username: r.username,
+        tenantId: r.tenant_id, tenantName: r.tenant_name,
+        lastActivity: r.last_activity, ip: '—', userAgent: '—',
+      }));
+      res.json(rows);
+    } catch { res.status(500).json({ message: 'Failed to fetch sessions' }); }
+  });
+
+  // GET /api/superadmin/security/events — all security events across tenants
+  app.get('/api/superadmin/security/events', requireSuperAdmin, async (req: any, res) => {
+    try {
+      const result = await pool.query(`
+        SELECT a.id, a.user_id, a.action, a.description, a.ip_address, a.severity, a.created_at,
+               a.tenant_id, t.name AS tenant_name
+        FROM audit_logs a
+        LEFT JOIN tenants t ON t.id = a.tenant_id
+        WHERE a.table_name = 'security'
+        ORDER BY a.created_at DESC
+        LIMIT 1000
+      `);
+      res.json(result.rows);
+    } catch { res.status(500).json({ message: 'Failed to fetch events' }); }
+  });
+
+  // GET /api/superadmin/security/users — all users across tenants with MFA/lockout info
+  app.get('/api/superadmin/security/users', requireSuperAdmin, async (req: any, res) => {
+    try {
+      const result = await pool.query(`
+        SELECT u.id, u.username, u.email, u.tenant_id, t.name AS tenant_name,
+               u.totp_enabled, u.mfa_enforced, u.failed_login_attempts,
+               u.locked_until, u.password_changed_at
+        FROM users u
+        LEFT JOIN tenants t ON t.id = u.tenant_id
+        WHERE u.tenant_id IS NOT NULL
+        ORDER BY t.name, u.username
+        LIMIT 2000
+      `);
+      res.json(result.rows);
+    } catch { res.status(500).json({ message: 'Failed to fetch users' }); }
+  });
+
   // ─── Phase B: Security API endpoints ─────────────────────────────────────────
 
   // GET /api/security/sessions — list active sessions for this tenant

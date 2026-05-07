@@ -181,6 +181,7 @@ import PriceListsPage from "@/pages/price-lists";
 import GSTRReportsPage from "@/pages/gstr-reports";
 import AuditLogPage from "@/pages/audit-log";
 import SecurityDashboardPage from "@/pages/security-dashboard";
+import SuperAdminSecurity from "@/pages/super-admin-security";
 import HealthcarePage from "@/pages/healthcare";
 import EducationPage from "@/pages/education";
 import LogisticsPage from "@/pages/logistics";
@@ -3704,6 +3705,7 @@ function Router() {
       <ProtectedRoute path="/super-admin/backups" component={() => <SuperAdminBackups />} />
       <ProtectedRoute path="/super-admin/module-catalog" component={() => <SuperAdminModuleCatalog />} />
       <ProtectedRoute path="/super-admin/settings" component={() => <SuperAdminSettings />} />
+      <ProtectedRoute path="/super-admin/security" component={() => <SuperAdminSecurity />} />
       <Route path="/print/invoice/:id" component={PrintInvoicePage} />
       <Route path="/print/gatepass/:id" component={PrintGatepassPage} />
       <Route path="/print/credit-note/:id" component={PrintCreditNotePage} />
