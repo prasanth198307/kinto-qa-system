@@ -17,7 +17,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   RefreshCw, Loader2, CreditCard, TrendingUp, TrendingDown,
   ArrowLeftRight, Search, ChevronDown, ChevronUp,
-  ArrowUpRight, CheckCircle2, Clock, Package,
+  ArrowUpRight, CheckCircle2, Clock, Package, FileText, Printer,
+  IndianRupee,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -81,6 +82,27 @@ interface PlansData {
   plans: PlanRecord[];
 }
 
+interface SubscriptionInvoice {
+  invoiceNo: string;
+  invoiceDate: string;
+  periodStart: string | null;
+  periodEnd: string | null;
+  tenant: {
+    id: number; name: string; slug: string;
+    gst: string | null; address: string | null;
+    email: string | null; contact: string | null; phone: string | null;
+  };
+  plan: {
+    name: string; slug: string; billingCycle: string; priceRupees: number;
+  };
+  addonModules: { slug: string; name: string; priceRupees: number }[];
+  subtotal: number;
+  gstRate: number;
+  gstAmount: number;
+  grandTotal: number;
+  currency: string;
+}
+
 interface UpgradeRequestRow {
   event: {
     id: number;
@@ -133,9 +155,20 @@ export default function SuperAdminBilling() {
   const [newNotes, setNewNotes] = useState("");
   const [alsoManageModules, setAlsoManageModules] = useState(false);
   const [expandedTenant, setExpandedTenant] = useState<number | null>(null);
+  const [invoiceTenantId, setInvoiceTenantId] = useState<number | null>(null);
 
   const { data: rows = [], isLoading, refetch } = useQuery<SubRow[]>({
     queryKey: ["/api/admin/subscriptions"],
+  });
+
+  const { data: invoiceData, isLoading: invoiceLoading } = useQuery<SubscriptionInvoice>({
+    queryKey: ["/api/admin/tenants", invoiceTenantId, "subscription-invoice"],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/tenants/${invoiceTenantId}/subscription-invoice`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load invoice");
+      return res.json();
+    },
+    enabled: invoiceTenantId !== null,
   });
 
   const { data: plansData } = useQuery<PlansData>({
@@ -373,6 +406,14 @@ export default function SuperAdminBilling() {
                       </Button>
                       <Button
                         size="sm"
+                        variant="outline"
+                        onClick={() => tenant && setInvoiceTenantId(tenant.id)}
+                        data-testid={`button-invoice-${sub.id}`}
+                      >
+                        <FileText className="h-3.5 w-3.5 mr-1.5" /> Invoice
+                      </Button>
+                      <Button
+                        size="sm"
                         variant="ghost"
                         onClick={() => setExpandedTenant(isExpanded ? null : (tenant?.id ?? null))}
                         data-testid={`button-history-${sub.id}`}
@@ -546,6 +587,196 @@ export default function SuperAdminBilling() {
           onClose={() => setModulesTenant(null)}
         />
       )}
+
+      {/* ── Subscription Invoice Dialog ── */}
+      <Dialog open={invoiceTenantId !== null} onOpenChange={(o) => { if (!o) setInvoiceTenantId(null); }}>
+        <DialogContent
+          className="max-w-2xl max-h-[90dvh] p-0"
+          style={{ display: "flex", flexDirection: "column", overflow: "hidden" }}
+        >
+          <DialogHeader className="px-6 pt-5 pb-3 border-b shrink-0">
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <FileText className="h-4 w-4 text-primary" />
+              Subscription Invoice
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto">
+            {invoiceLoading ? (
+              <div className="flex items-center justify-center py-24">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : invoiceData ? (
+              <div id="invoice-print-area" className="px-8 py-6 space-y-6 text-sm">
+
+                {/* ── Header ── */}
+                <div className="flex items-start justify-between gap-4 flex-wrap">
+                  <div>
+                    <p className="text-lg font-bold text-foreground">SwachERP</p>
+                    <p className="text-xs text-muted-foreground">Inmoisture Pvt Ltd</p>
+                    <p className="text-xs text-muted-foreground mt-1">GSTIN: 29AABCI1234F1ZX</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-base font-bold text-primary">{invoiceData.invoiceNo}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Date: {format(new Date(invoiceData.invoiceDate), "dd MMM yyyy")}
+                    </p>
+                    {invoiceData.periodStart && invoiceData.periodEnd && (
+                      <p className="text-xs text-muted-foreground">
+                        Period: {format(new Date(invoiceData.periodStart), "dd MMM yyyy")} –{" "}
+                        {format(new Date(invoiceData.periodEnd), "dd MMM yyyy")}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* ── Bill To ── */}
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Bill To</p>
+                  <p className="font-semibold">{invoiceData.tenant.name}</p>
+                  {invoiceData.tenant.contact && <p className="text-muted-foreground">{invoiceData.tenant.contact}</p>}
+                  {invoiceData.tenant.address  && <p className="text-muted-foreground">{invoiceData.tenant.address}</p>}
+                  {invoiceData.tenant.gst      && <p className="text-muted-foreground">GSTIN: {invoiceData.tenant.gst}</p>}
+                  {invoiceData.tenant.email    && <p className="text-muted-foreground">{invoiceData.tenant.email}</p>}
+                  {invoiceData.tenant.phone    && <p className="text-muted-foreground">{invoiceData.tenant.phone}</p>}
+                </div>
+
+                <Separator />
+
+                {/* ── Line Items ── */}
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Line Items</p>
+                  <table className="w-full text-sm border-collapse">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-1.5 text-muted-foreground font-medium">Description</th>
+                        <th className="text-right py-1.5 text-muted-foreground font-medium w-28">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {/* Plan base */}
+                      <tr className="border-b border-muted/40">
+                        <td className="py-2">
+                          <p className="font-medium">{invoiceData.plan.name} — Subscription</p>
+                          <p className="text-xs text-muted-foreground capitalize">{invoiceData.plan.billingCycle} billing</p>
+                        </td>
+                        <td className="py-2 text-right font-medium">
+                          ₹{invoiceData.plan.priceRupees.toLocaleString("en-IN")}
+                        </td>
+                      </tr>
+
+                      {/* Add-on modules */}
+                      {invoiceData.addonModules.map((m) => (
+                        <tr key={m.slug} className="border-b border-muted/40">
+                          <td className="py-2">
+                            <p className="font-medium">{m.name}</p>
+                            <p className="text-xs text-muted-foreground">Add-on module</p>
+                          </td>
+                          <td className="py-2 text-right font-medium">
+                            ₹{m.priceRupees.toLocaleString("en-IN")}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* ── Totals ── */}
+                <div className="ml-auto max-w-xs space-y-1.5">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span>₹{invoiceData.subtotal.toLocaleString("en-IN")}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">GST ({invoiceData.gstRate}%)</span>
+                    <span>₹{invoiceData.gstAmount.toLocaleString("en-IN")}</span>
+                  </div>
+                  <Separator />
+                  <div className="flex justify-between font-bold text-base">
+                    <span>Total Due</span>
+                    <span className="flex items-center gap-0.5 text-primary">
+                      <IndianRupee className="h-4 w-4" />
+                      {invoiceData.grandTotal.toLocaleString("en-IN")}
+                    </span>
+                  </div>
+                </div>
+
+                {/* ── Billing adjustment note ── */}
+                <div className="rounded-md bg-muted/40 p-3 text-xs text-muted-foreground space-y-1">
+                  <p className="font-medium text-foreground">Billing Breakdown</p>
+                  <p>
+                    Base plan ({invoiceData.plan.name}): ₹{invoiceData.plan.priceRupees.toLocaleString("en-IN")}/mo
+                  </p>
+                  {invoiceData.addonModules.length > 0 ? (
+                    <p>
+                      Add-on modules ({invoiceData.addonModules.length}):
+                      ₹{invoiceData.addonModules.reduce((s, m) => s + m.priceRupees, 0).toLocaleString("en-IN")}/mo
+                    </p>
+                  ) : (
+                    <p>No paid add-on modules selected</p>
+                  )}
+                  <p>
+                    GST @{invoiceData.gstRate}% on SaaS services: ₹{invoiceData.gstAmount.toLocaleString("en-IN")}
+                  </p>
+                  {invoiceData.addonModules.length === 0 && invoiceData.plan.priceRupees === 0 && (
+                    <p className="text-amber-600 dark:text-amber-400 font-medium mt-1">
+                      Trial plan — no charges applicable.
+                    </p>
+                  )}
+                </div>
+
+                <p className="text-xs text-muted-foreground text-center">
+                  Thank you for using SwachERP. For queries, contact billing@swacherp.com
+                </p>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center py-24 text-muted-foreground text-sm">
+                No invoice data available
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="px-6 py-3 border-t shrink-0 gap-2">
+            <Button variant="outline" onClick={() => setInvoiceTenantId(null)}>Close</Button>
+            {invoiceData && (
+              <Button
+                onClick={() => {
+                  const el = document.getElementById("invoice-print-area");
+                  if (!el) return;
+                  const w = window.open("", "_blank");
+                  if (!w) return;
+                  w.document.write(`
+                    <html><head><title>${invoiceData.invoiceNo}</title>
+                    <style>
+                      body { font-family: sans-serif; font-size: 13px; color: #111; margin: 0; padding: 32px; }
+                      table { width: 100%; border-collapse: collapse; }
+                      th, td { padding: 8px 4px; text-align: left; }
+                      th { color: #666; font-weight: 500; border-bottom: 1px solid #e5e7eb; }
+                      td { border-bottom: 1px solid #f3f4f6; }
+                      td:last-child, th:last-child { text-align: right; }
+                      .totals { max-width: 280px; margin-left: auto; }
+                      .totals div { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; }
+                      .totals .grand { font-weight: bold; font-size: 15px; border-top: 1px solid #e5e7eb; padding-top: 8px; margin-top: 4px; }
+                      hr { border: none; border-top: 1px solid #e5e7eb; margin: 16px 0; }
+                      .note { background: #f9fafb; border-radius: 6px; padding: 10px; font-size: 11px; color: #666; margin-top: 16px; }
+                      .footer { text-align: center; font-size: 11px; color: #9ca3af; margin-top: 24px; }
+                    </style></head><body>
+                    ${el.innerHTML}
+                    </body></html>
+                  `);
+                  w.document.close();
+                  w.print();
+                }}
+                data-testid="button-print-invoice"
+              >
+                <Printer className="h-4 w-4 mr-2" /> Print / Save PDF
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </SuperAdminLayout>
   );
 }

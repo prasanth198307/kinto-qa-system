@@ -746,6 +746,102 @@ export function registerBillingRoutes(app: Express): void {
     }
   });
 
+  // ── GET /api/admin/tenants/:id/subscription-invoice — generate invoice data ─
+  app.get("/api/admin/tenants/:id/subscription-invoice", async (req: any, res) => {
+    if (!req.isAuthenticated() || !(req.user as any)?.isSuperAdmin) return res.sendStatus(403);
+    const tenantId = parseInt(req.params.id);
+    if (isNaN(tenantId)) return res.status(400).json({ message: "Invalid tenant id" });
+    try {
+      const [tenantRows, subRows, catalog] = await Promise.all([
+        db.execute(sql`
+          SELECT t.id, t.name, t.slug, t.gst_number, t.address, t.billing_email,
+                 t.contact_name, t.contact_phone,
+                 sp.name AS plan_name, sp.slug AS plan_slug,
+                 sp.price_monthly AS plan_price_paise,
+                 s.billing_cycle, s.status,
+                 s.current_period_start, s.current_period_end,
+                 s.selected_modules, s.monthly_amount
+          FROM tenants t
+          LEFT JOIN subscriptions s       ON s.tenant_id = t.id
+          LEFT JOIN subscription_plans sp ON sp.slug = COALESCE(s.plan_slug, t.plan)
+          WHERE t.id = ${tenantId}
+          LIMIT 1
+        `),
+        db.execute(sql`
+          SELECT COUNT(*) AS invoice_seq FROM billing_events WHERE tenant_id = ${tenantId}
+        `),
+        loadCatalogFromDB(),
+      ]);
+
+      const t = (tenantRows.rows as any[])[0];
+      if (!t) return res.status(404).json({ message: "Tenant not found" });
+
+      const seq         = Number((subRows.rows as any[])[0]?.invoice_seq ?? 1);
+      const now         = new Date();
+      const yyyymm      = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}`;
+      const invoiceNo   = `INV-${yyyymm}-${String(tenantId).padStart(4, "0")}-${seq}`;
+
+      // Plan base price (paise → rupees)
+      const planPriceRupees = Math.round(Number(t.plan_price_paise ?? 0) / 100);
+
+      // Add-on modules: selected - free - plan-locked
+      const freeSet     = new Set(catalog.filter(m => m.free).map(m => m.slug));
+      const catalogSet  = new Set(catalog.map(m => m.slug));
+      const planRows2   = await db.execute(sql`
+        SELECT modules FROM subscription_plans WHERE slug = ${t.plan_slug} LIMIT 1
+      `);
+      const rawPlanMods: string[] = Array.isArray((planRows2.rows as any[])[0]?.modules)
+        ? (planRows2.rows as any[])[0].modules : [];
+      const planModSet = new Set(planModulesToCatalogSlugs(rawPlanMods, catalogSet));
+
+      const selectedMods: string[] = Array.isArray(t.selected_modules) ? t.selected_modules : [];
+      const addonItems = catalog.filter(m =>
+        selectedMods.includes(m.slug) && !freeSet.has(m.slug) && !planModSet.has(m.slug)
+      );
+
+      const addonTotal  = addonItems.reduce((s, m) => s + m.priceMonthly, 0);
+      const subtotal    = planPriceRupees + addonTotal;
+      const gstRate     = 18;
+      const gstAmount   = Math.round(subtotal * gstRate / 100);
+      const grandTotal  = subtotal + gstAmount;
+
+      res.json({
+        invoiceNo,
+        invoiceDate:  now.toISOString(),
+        periodStart:  t.current_period_start,
+        periodEnd:    t.current_period_end,
+        tenant: {
+          id:      t.id,
+          name:    t.name,
+          slug:    t.slug,
+          gst:     t.gst_number,
+          address: t.address,
+          email:   t.billing_email,
+          contact: t.contact_name,
+          phone:   t.contact_phone,
+        },
+        plan: {
+          name:         t.plan_name ?? t.plan_slug,
+          slug:         t.plan_slug,
+          billingCycle: t.billing_cycle,
+          priceRupees:  planPriceRupees,
+        },
+        addonModules: addonItems.map(m => ({
+          slug:        m.slug,
+          name:        m.name,
+          priceRupees: m.priceMonthly,
+        })),
+        subtotal,
+        gstRate,
+        gstAmount,
+        grandTotal,
+        currency: "INR",
+      });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   // ── GET /api/admin/platform-settings — super-admin: read platform config ──
   app.get("/api/admin/platform-settings", async (req: any, res) => {
     if (!req.isAuthenticated() || !(req.user as any)?.isSuperAdmin) {
