@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, CheckCircle, AlertTriangle, RefreshCw, Pencil } from "lucide-react";
+import { Plus, CheckCircle, AlertTriangle, RefreshCw, Pencil, Upload, Image, Clock, Check, RotateCcw, ArrowRight, X } from "lucide-react";
 
 const fmt = (n: any, d = 2) => Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: d });
 const fmtWt = (n: any) => `${fmt(n, 3)} g`;
@@ -116,77 +116,392 @@ export function SketchSection() {
 }
 
 // ── CAD Process ───────────────────────────────────────────────────────────────
+
+const CAD_SOFTWARE_OPTIONS = ["RhinoGold", "Matrix", "JewelCAD", "3Design", "Other"];
+
+// Purity factors for gold value calc
+const PURITY_FACTORS: Record<string, number> = {
+  "24K (999)": 0.999, "22K (916)": 0.916, "18K (750)": 0.750, "14K (585)": 0.585,
+};
+
+function CADForm({ editing, orders, onClose, onSave, isPending }: {
+  editing: any; orders: any[]; onClose: () => void; onSave: (data: any, sendToCam: boolean) => void; isPending: boolean;
+}) {
+  const [form, setForm] = useState<any>(editing ? { ...editing, approval_status: editing.customer_approval ? "approved" : "pending" } : { approval_status: "pending", mcx_rate: 6820, revision_count: 0 });
+  const [cadFileName, setCadFileName] = useState<string>(editing?.cad_file_url || "");
+  const [renderCount, setRenderCount] = useState(editing?.render_image_url ? 2 : 0);
+  const cadFileRef = useRef<HTMLInputElement>(null);
+  const renderFileRef = useRef<HTMLInputElement>(null);
+
+  const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
+
+  // Auto-fill from selected production order
+  const selectedOrder = orders.find((o: any) => o.id === form.production_order_id);
+  const autoFill = selectedOrder ? {
+    designCode: selectedOrder.design_code || selectedOrder.order_no,
+    metal: `${selectedOrder.metal_type || "Gold"} / ${selectedOrder.purity || "22K"}`,
+    customer: selectedOrder.customer_name || "—",
+    purity: selectedOrder.purity || "22K (916)",
+  } : null;
+
+  // Live gold value calculation
+  const wt = parseFloat(form.weight_estimate_gm) || 0;
+  const rate = parseFloat(form.mcx_rate) || 6820;
+  const purityKey = autoFill?.purity || "22K (916)";
+  const purityFactor = Object.entries(PURITY_FACTORS).find(([k]) => purityKey.includes(k.split(" ")[0]))?.[1] || 0.916;
+  const goldValue = wt > 0 ? Math.round(wt * rate * purityFactor) : 0;
+
+  const approvalStatus: string = form.approval_status || "pending";
+  const version = (form.revision_count || 0) + 1;
+  const isApproved = approvalStatus === "approved";
+
+  function handleOrderChange(val: string) {
+    set("production_order_id", parseInt(val));
+  }
+
+  function handleCadFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) { setCadFileName(file.name); set("cad_file_url", file.name); }
+  }
+
+  function handleRenderAdd(e: React.ChangeEvent<HTMLInputElement>) {
+    if (e.target.files?.length) setRenderCount(c => Math.min(c + e.target.files!.length, 6));
+  }
+
+  function handleSave(sendToCam = false) {
+    const data = { ...form };
+    if (approvalStatus === "approved") { data.customer_approval = 1; data.status = "approved"; }
+    else if (approvalStatus === "revision") { data.customer_approval = 0; data.status = "in_progress"; data.revision_count = (data.revision_count || 0) + 1; }
+    else { data.customer_approval = 0; data.status = "in_progress"; }
+    onSave(data, sendToCam);
+  }
+
+  return (
+    <div className="flex flex-col max-h-[90dvh]">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-2 px-5 py-4 border-b shrink-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-base font-medium">{editing ? "Edit CAD Process" : "CAD Process Entry"}</span>
+          <span className="text-xs px-2 py-0.5 rounded bg-[#EEEDFE] text-[#3C3489] border border-[#AFA9EC]">v{version}</span>
+          <span className="text-xs text-muted-foreground">auto-increments on revision</span>
+        </div>
+        <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
+      </div>
+
+      {/* Body */}
+      <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+
+        {/* Production Order */}
+        <div className="space-y-1">
+          <Label className="text-xs font-medium text-muted-foreground">Production order <span className="text-destructive">*</span></Label>
+          <Select value={form.production_order_id?.toString() || ""} onValueChange={handleOrderChange}>
+            <SelectTrigger data-testid="select-cad-order"><SelectValue placeholder="Select order…" /></SelectTrigger>
+            <SelectContent>
+              {(orders as any[]).map((o: any) => (
+                <SelectItem key={o.id} value={o.id.toString()}>
+                  {o.order_no}{o.customer_name ? ` — ${o.customer_name}` : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Auto-fill panel */}
+        {autoFill && (
+          <div className="grid grid-cols-3 gap-2 rounded-md bg-muted/50 border px-3 py-2">
+            {[["Design code", autoFill.designCode], ["Metal / purity", autoFill.metal], ["Customer", autoFill.customer]].map(([label, val]) => (
+              <div key={label}>
+                <div className="text-[10px] text-muted-foreground mb-0.5">{label}</div>
+                <div className="text-sm font-medium">{val}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* CAD Operator + Software */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label className="text-xs font-medium text-muted-foreground">CAD operator <span className="text-destructive">*</span></Label>
+            <Input data-testid="input-cad-operator" placeholder="Operator name" value={form.cad_operator || ""} onChange={e => set("cad_operator", e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs font-medium text-muted-foreground">CAD software <span className="text-destructive">*</span></Label>
+            <Select value={form.cad_software || ""} onValueChange={v => set("cad_software", v)}>
+              <SelectTrigger data-testid="select-cad-software"><SelectValue placeholder="Select…" /></SelectTrigger>
+              <SelectContent>{CAD_SOFTWARE_OPTIONS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Weight + Volume + MCX Rate */}
+        <div className="grid grid-cols-3 gap-2">
+          <div className="space-y-1">
+            <Label className="text-xs font-medium text-muted-foreground">Weight estimate (g) <span className="text-destructive">*</span></Label>
+            <Input data-testid="input-weight-estimate" type="number" step="0.01" placeholder="0.00" value={form.weight_estimate_gm || ""} onChange={e => set("weight_estimate_gm", e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs font-medium text-muted-foreground">Metal volume (cc)</Label>
+            <Input data-testid="input-metal-volume" type="number" step="0.001" placeholder="0.000" value={form.metal_volume_cc || ""} onChange={e => set("metal_volume_cc", e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs font-medium text-muted-foreground">
+              MCX rate (₹/g)
+              <span className="ml-1 text-[10px] bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 px-1.5 rounded">live</span>
+            </Label>
+            <Input data-testid="input-mcx-rate" type="number" value={form.mcx_rate || 6820} onChange={e => set("mcx_rate", e.target.value)} />
+          </div>
+        </div>
+
+        {/* Live gold value */}
+        {wt > 0 && (
+          <div className="flex items-center justify-between rounded-md px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700">
+            <div>
+              <div className="text-xs text-amber-800 dark:text-amber-300">Estimated gold value (read-only)</div>
+              <div className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5">
+                Based on MCX rate ₹{rate.toLocaleString("en-IN")}/g · {purityKey.split(" ")[0]} · today
+              </div>
+            </div>
+            <div className="text-base font-semibold text-amber-900 dark:text-amber-200" data-testid="text-gold-value">
+              ₹{goldValue.toLocaleString("en-IN")}
+            </div>
+          </div>
+        )}
+
+        {/* Divider */}
+        <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground border-b pb-1">CAD file &amp; renders</div>
+
+        {/* CAD File Upload */}
+        <div className="space-y-1">
+          <Label className="text-xs font-medium text-muted-foreground">CAD file upload <span className="text-destructive">*</span></Label>
+          <div
+            className="border border-dashed rounded-md p-3 text-center cursor-pointer hover:bg-muted/40 transition-colors"
+            onClick={() => cadFileRef.current?.click()}
+            data-testid="upload-cad-file"
+          >
+            <input ref={cadFileRef} type="file" accept=".3dm,.stl,.obj" className="hidden" onChange={handleCadFileChange} />
+            {cadFileName ? (
+              <div className="flex items-center justify-center gap-2 text-sm text-green-600 dark:text-green-400">
+                <Check className="h-4 w-4" />{cadFileName}
+              </div>
+            ) : (
+              <>
+                <Upload className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
+                <div className="text-xs text-muted-foreground">Click to upload CAD file</div>
+                <div className="text-[11px] text-muted-foreground/70 mt-0.5">.3dm · .stl · .obj · max 50 MB</div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Render Images */}
+        <div className="space-y-1">
+          <Label className="text-xs font-medium text-muted-foreground">
+            Render images <span className="text-destructive">*</span>
+            <span className="ml-1 text-muted-foreground/60">(min 4 angles)</span>
+          </Label>
+          <div className="flex gap-1.5 flex-wrap mt-1">
+            {Array.from({ length: renderCount }).map((_, i) => (
+              <div key={i} className="h-12 w-12 rounded-md bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 flex items-center justify-center">
+                <Image className="h-4 w-4 text-blue-500" />
+              </div>
+            ))}
+            {renderCount < 6 && (
+              <div
+                className="h-12 w-12 rounded-md bg-muted border border-dashed flex items-center justify-center cursor-pointer hover:bg-muted/80 transition-colors"
+                onClick={() => renderFileRef.current?.click()}
+                data-testid="upload-render-image"
+              >
+                <input ref={renderFileRef} type="file" accept="image/*" multiple className="hidden" onChange={handleRenderAdd} />
+                <Plus className="h-4 w-4 text-muted-foreground" />
+              </div>
+            )}
+          </div>
+          <div className="text-[11px] text-muted-foreground/70">Top · side · front · back angles required</div>
+          {renderCount < 4 && (
+            <div className="text-[11px] text-amber-600 dark:text-amber-400">{4 - renderCount} more angle{4 - renderCount !== 1 ? "s" : ""} needed</div>
+          )}
+        </div>
+
+        {/* Divider */}
+        <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground border-b pb-1">Quality &amp; approval</div>
+
+        {/* Stone Placement */}
+        <div className="space-y-1">
+          <Label className="text-xs font-medium text-muted-foreground">Stone placement verified</Label>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="stone-placement"
+              data-testid="check-stone-placement"
+              className="h-4 w-4 cursor-pointer"
+              checked={!!form.stone_placement_verified}
+              onChange={e => set("stone_placement_verified", e.target.checked ? 1 : 0)}
+            />
+            <label htmlFor="stone-placement" className="text-sm cursor-pointer">All stones positioned as per design spec</label>
+          </div>
+          {!!form.stone_placement_verified && (
+            <div className="mt-1">
+              <span className="inline-flex items-center gap-1 text-[11px] bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded">
+                <Check className="h-3 w-3" /> Stone placement verified
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Customer Approval Status */}
+        <div className="space-y-1">
+          <Label className="text-xs font-medium text-muted-foreground">Customer approval status <span className="text-destructive">*</span></Label>
+          <div className="grid grid-cols-3 gap-2 mt-1">
+            {[
+              { val: "pending", label: "Pending", icon: <Clock className="h-3.5 w-3.5 mx-auto mb-0.5" />, active: "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-400 dark:border-yellow-600 text-yellow-800 dark:text-yellow-300" },
+              { val: "approved", label: "Approved", icon: <Check className="h-3.5 w-3.5 mx-auto mb-0.5" />, active: "bg-green-50 dark:bg-green-900/20 border-green-500 dark:border-green-600 text-green-800 dark:text-green-300" },
+              { val: "revision", label: "Revision requested", icon: <RotateCcw className="h-3.5 w-3.5 mx-auto mb-0.5" />, active: "bg-red-50 dark:bg-red-900/20 border-red-400 dark:border-red-600 text-red-800 dark:text-red-300" },
+            ].map(opt => (
+              <button
+                key={opt.val}
+                type="button"
+                data-testid={`status-${opt.val}`}
+                onClick={() => set("approval_status", opt.val)}
+                className={`border rounded-md py-1.5 px-2 text-xs text-center transition-all ${approvalStatus === opt.val ? opt.active : "border-border text-muted-foreground hover:bg-muted/50"}`}
+              >
+                {opt.icon}{opt.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Revision notes (conditional) */}
+          {approvalStatus === "revision" && (
+            <div className="mt-2">
+              <Textarea
+                data-testid="textarea-revision-notes"
+                placeholder="Describe what the customer wants changed…"
+                value={form.revision_notes || ""}
+                onChange={e => set("revision_notes", e.target.value)}
+                rows={3}
+              />
+            </div>
+          )}
+
+          {/* Approved by / on (conditional) */}
+          {approvalStatus === "approved" && (
+            <div className="grid grid-cols-2 gap-3 mt-2">
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Approved by</Label>
+                <Input data-testid="input-approved-by" placeholder="Name" value={form.approved_by || ""} onChange={e => set("approved_by", e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Approved on</Label>
+                <Input data-testid="input-approved-on" type="date" value={form.approved_on || today()} onChange={e => set("approved_on", e.target.value)} />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Additional notes */}
+        <div className="space-y-1">
+          <Label className="text-xs font-medium text-muted-foreground">Additional notes</Label>
+          <Textarea data-testid="textarea-cad-notes" placeholder="Any other observations…" value={form.design_notes || ""} onChange={e => set("design_notes", e.target.value)} rows={2} />
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="flex items-center gap-2 px-5 py-3 border-t shrink-0 flex-wrap">
+        <span className="text-[11px] text-muted-foreground mr-auto">"Send to CAM" enabled only when status = Approved</span>
+        <Button variant="outline" size="sm" onClick={onClose} data-testid="button-cad-cancel">Cancel</Button>
+        <Button variant="outline" size="sm" onClick={() => handleSave(false)} disabled={isPending} data-testid="button-cad-draft">Save draft</Button>
+        <Button
+          size="sm"
+          disabled={!isApproved || isPending}
+          onClick={() => handleSave(true)}
+          data-testid="button-send-to-cam"
+          className={isApproved ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "opacity-40 cursor-not-allowed"}
+        >
+          <ArrowRight className="h-4 w-4 mr-1" />Send to CAM
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function CADSection() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
-  const [form, setForm] = useState<any>({});
   const { data: orders = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/production-orders"] });
   const { data: cadList = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/cad"] });
-  const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
 
   const saveMut = useMutation({
     mutationFn: (d: any) => editing ? apiRequest("PUT", `/api/gold-erp/cad/${editing.id}`, d) : apiRequest("POST", "/api/gold-erp/cad", d),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/gold-erp/cad"] }); setShowForm(false); setEditing(null); setForm({}); toast({ title: "CAD record saved" }); },
+    onSuccess: (_res: any, vars: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/gold-erp/cad"] });
+      setShowForm(false);
+      setEditing(null);
+      const sentToCam = vars.__sendToCam;
+      toast({ title: sentToCam ? "Sent to CAM" : "CAD record saved", description: sentToCam ? "CAD approved and forwarded to CAM stage." : undefined });
+    },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
+  function handleSave(data: any, sendToCam: boolean) {
+    saveMut.mutate({ ...data, __sendToCam: sendToCam });
+  }
+
+  const approvalStatusLabel: Record<string, { label: string; cls: string }> = {
+    approved: { label: "Approved", cls: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" },
+    revision: { label: "Revision", cls: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300" },
+    pending: { label: "Pending", cls: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300" },
+  };
+
   return (
     <>
-      <SH title="CAD / Design Process" action={<Button size="sm" onClick={() => { setEditing(null); setForm({}); setShowForm(true); }}><Plus className="h-4 w-4 mr-1" />Add CAD</Button>} />
+      <SH title="CAD / Design Process" action={
+        <Button size="sm" onClick={() => { setEditing(null); setShowForm(true); }} data-testid="button-add-cad">
+          <Plus className="h-4 w-4 mr-1" />Add CAD
+        </Button>
+      } />
       <div className="overflow-x-auto rounded-lg border">
         <table className="w-full text-sm">
-          <thead className="bg-muted/50"><tr>{["Order", "Software", "Wt Estimate", "Revisions", "Customer OK", "Status", ""].map(h => <th key={h} className="px-4 py-2 text-left">{h}</th>)}</tr></thead>
+          <thead className="bg-muted/50">
+            <tr>{["Order", "Operator", "Software", "Wt (g)", "Gold Value", "Rev.", "Approval", "Status", ""].map(h => <th key={h} className="px-3 py-2 text-left text-xs font-medium">{h}</th>)}</tr>
+          </thead>
           <tbody>
-            {(cadList as any[]).map((c: any) => (
-              <tr key={c.id} className="border-t hover:bg-muted/30">
-                <td className="px-4 py-2 text-xs">{c.order_no}</td>
-                <td className="px-4 py-2">{c.cad_software || "—"}</td>
-                <td className="px-4 py-2">{c.weight_estimate_gm ? fmtWt(c.weight_estimate_gm) : "—"}</td>
-                <td className="px-4 py-2 text-center">{c.revision_count || 0}</td>
-                <td className="px-4 py-2">{c.customer_approval ? <CheckCircle className="h-4 w-4 text-green-500" /> : "—"}</td>
-                <td className="px-4 py-2"><SBadge status={c.status} /></td>
-                <td className="px-4 py-2"><Button size="icon" variant="ghost" onClick={() => { setEditing(c); setForm(c); setShowForm(true); }}><Pencil className="h-4 w-4" /></Button></td>
-              </tr>
-            ))}
-            {cadList.length === 0 && <tr><td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">No CAD records</td></tr>}
+            {(cadList as any[]).map((c: any) => {
+              const st = c.customer_approval ? "approved" : (c.revision_notes ? "revision" : "pending");
+              const statusInfo = approvalStatusLabel[st];
+              return (
+                <tr key={c.id} className="border-t hover:bg-muted/30">
+                  <td className="px-3 py-2 text-xs text-muted-foreground">{c.order_no || `#${c.production_order_id}`}</td>
+                  <td className="px-3 py-2">{c.cad_operator || "—"}</td>
+                  <td className="px-3 py-2">{c.cad_software || "—"}</td>
+                  <td className="px-3 py-2">{c.weight_estimate_gm ? fmtWt(c.weight_estimate_gm) : "—"}</td>
+                  <td className="px-3 py-2">{c.weight_estimate_gm && c.mcx_rate ? fmtAmt(Math.round(c.weight_estimate_gm * c.mcx_rate * 0.916)) : "—"}</td>
+                  <td className="px-3 py-2 text-center">{c.revision_count || 0}</td>
+                  <td className="px-3 py-2">
+                    <Badge className={`text-xs ${statusInfo.cls}`}>{statusInfo.label}</Badge>
+                  </td>
+                  <td className="px-3 py-2"><SBadge status={c.status || "in_progress"} /></td>
+                  <td className="px-3 py-2">
+                    <Button size="icon" variant="ghost" onClick={() => { setEditing(c); setShowForm(true); }} data-testid={`button-edit-cad-${c.id}`}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </td>
+                </tr>
+              );
+            })}
+            {cadList.length === 0 && <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">No CAD records yet</td></tr>}
           </tbody>
         </table>
       </div>
+
       <Dialog open={showForm} onOpenChange={v => { setShowForm(v); if (!v) setEditing(null); }}>
-        <DialogContent className="max-w-md max-h-[90dvh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{editing ? "Update CAD" : "New CAD Record"}</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            {!editing && <FieldRow label="Production Order">
-              <Select value={form.production_order_id?.toString() || ""} onValueChange={v => set("production_order_id", parseInt(v))}>
-                <SelectTrigger><SelectValue placeholder="Select order" /></SelectTrigger>
-                <SelectContent>{(orders as any[]).map((o: any) => <SelectItem key={o.id} value={o.id.toString()}>{o.order_no}</SelectItem>)}</SelectContent>
-              </Select>
-            </FieldRow>}
-            <div className="grid grid-cols-2 gap-3">
-              <FieldRow label="CAD Software"><Input value={form.cad_software || ""} onChange={e => set("cad_software", e.target.value)} placeholder="RhinoGold, JewelCAD…" /></FieldRow>
-              <FieldRow label="Weight Estimate (g)"><Input type="number" value={form.weight_estimate_gm || ""} onChange={e => set("weight_estimate_gm", e.target.value)} /></FieldRow>
-            </div>
-            <FieldRow label="CAD File URL"><Input value={form.cad_file_url || ""} onChange={e => set("cad_file_url", e.target.value)} /></FieldRow>
-            <FieldRow label="Render Image URL"><Input value={form.render_image_url || ""} onChange={e => set("render_image_url", e.target.value)} /></FieldRow>
-            {editing && <>
-              <div className="grid grid-cols-2 gap-3">
-                <FieldRow label="Status">
-                  <Select value={form.status || "in_progress"} onValueChange={v => set("status", v)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent><SelectItem value="in_progress">In Progress</SelectItem><SelectItem value="completed">Completed</SelectItem><SelectItem value="approved">Approved</SelectItem></SelectContent>
-                  </Select>
-                </FieldRow>
-                <FieldRow label="Revisions"><Input type="number" value={form.revision_count || 0} onChange={e => set("revision_count", e.target.value)} /></FieldRow>
-              </div>
-              <div className="flex items-center gap-2">
-                <input type="checkbox" checked={!!form.customer_approval} onChange={e => set("customer_approval", e.target.checked ? 1 : 0)} id="cad-capp" />
-                <Label htmlFor="cad-capp" className="text-sm">Customer Approved</Label>
-              </div>
-            </>}
-            <FieldRow label="Notes"><Textarea value={form.design_notes || ""} onChange={e => set("design_notes", e.target.value)} rows={2} /></FieldRow>
-            <div className="flex gap-2 justify-end"><Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button><Button onClick={() => saveMut.mutate(form)} disabled={saveMut.isPending}>Save</Button></div>
-          </div>
+        <DialogContent className="max-w-lg p-0 max-h-[90dvh] overflow-hidden">
+          <CADForm
+            editing={editing}
+            orders={orders}
+            onClose={() => { setShowForm(false); setEditing(null); }}
+            onSave={handleSave}
+            isPending={saveMut.isPending}
+          />
         </DialogContent>
       </Dialog>
     </>

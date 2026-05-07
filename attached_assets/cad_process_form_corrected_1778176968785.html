@@ -1,0 +1,270 @@
+
+<h2 class="sr-only">Corrected CAD Process form for Gold ERP with all required fields, auto-fill, file upload, and approval workflow</h2>
+<style>
+*{box-sizing:border-box}
+.modal-bg{background:rgba(0,0,0,0.45);display:flex;align-items:flex-start;justify-content:center;padding:24px 16px;min-height:900px}
+.modal{background:var(--color-background-primary);border-radius:var(--border-radius-lg);border:0.5px solid var(--color-border-secondary);width:100%;max-width:540px;overflow:hidden}
+.modal-hdr{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 14px;border-bottom:0.5px solid var(--color-border-tertiary)}
+.modal-hdr h3{margin:0;font-size:16px;font-weight:500;color:var(--color-text-primary)}
+.modal-body{padding:20px}
+.modal-ftr{padding:14px 20px;border-top:0.5px solid var(--color-border-tertiary);display:flex;align-items:center;justify-content:flex-end;gap:10px}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:12px;font-weight:500;color:var(--color-text-secondary);margin-bottom:5px}
+.field input,.field select,.field textarea{width:100%;font-size:13px}
+.field textarea{resize:none;height:64px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.auto-fill{background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px 12px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px}
+.af-item .af-label{font-size:10px;color:var(--color-text-secondary);margin-bottom:2px}
+.af-item .af-val{font-size:13px;font-weight:500;color:var(--color-text-primary)}
+.divider{font-size:10px;font-weight:500;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:.05em;border-bottom:0.5px solid var(--color-border-tertiary);padding-bottom:5px;margin:16px 0 12px}
+.upload-box{border:0.5px dashed var(--color-border-secondary);border-radius:var(--border-radius-md);padding:14px;text-align:center;cursor:pointer;transition:background .15s}
+.upload-box:hover{background:var(--color-background-secondary)}
+.upload-box i{font-size:22px;color:var(--color-text-secondary);display:block;margin-bottom:4px}
+.upload-box .ub-label{font-size:12px;color:var(--color-text-secondary)}
+.upload-box .ub-hint{font-size:11px;color:var(--color-text-tertiary);margin-top:2px}
+.thumb-row{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.thumb{width:52px;height:52px;border-radius:6px;background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--color-text-tertiary);position:relative}
+.thumb.added{background:#E6F1FB;border-color:#85B7EB;color:#0C447C}
+.thumb-add{background:var(--color-background-secondary);border:0.5px dashed var(--color-border-secondary);cursor:pointer}
+.status-sel{display:flex;gap:8px;margin-top:4px}
+.status-opt{flex:1;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);padding:7px 6px;text-align:center;font-size:12px;cursor:pointer;color:var(--color-text-secondary);transition:all .15s}
+.status-opt.active-pending{background:#FFF9C4;border-color:#BA7517;color:#633806}
+.status-opt.active-approved{background:#EAF3DE;border-color:#639922;color:#27500A}
+.status-opt.active-revision{background:#FCEBEB;border-color:#E24B4A;color:#791F1F}
+.revision-note{display:none;margin-top:8px}
+.revision-note.show{display:block}
+.gold-val{background:#FAEEDA;border:0.5px solid #EF9F27;border-radius:var(--border-radius-md);padding:8px 12px;display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.gold-val .gv-label{font-size:11px;color:#633806}
+.gold-val .gv-amount{font-size:15px;font-weight:500;color:#412402}
+.gold-val .gv-rate{font-size:10px;color:#854F0B;margin-top:1px}
+.stone-row{display:flex;align-items:center;gap:8px}
+.stone-badge{background:#E6F1FB;border:0.5px solid #85B7EB;border-radius:4px;padding:2px 7px;font-size:11px;color:#0C447C;display:flex;align-items:center;gap:4px}
+.version-badge{background:#EEEDFE;border:0.5px solid #AFA9EC;border-radius:4px;padding:2px 8px;font-size:11px;color:#3C3489}
+.send-cam-btn{background:#1D9E75;border:none;border-radius:var(--border-radius-md);color:#fff;font-size:13px;font-weight:500;padding:9px 20px;cursor:pointer;display:flex;align-items:center;gap:6px;opacity:.4;transition:opacity .2s}
+.send-cam-btn.active{opacity:1}
+.close-btn{background:none;border:none;cursor:pointer;color:var(--color-text-secondary);font-size:18px;padding:0;line-height:1}
+.chk-row{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--color-text-primary);margin-top:4px}
+.chk-row input[type=checkbox]{width:15px;height:15px;cursor:pointer}
+.info-tag{font-size:10px;background:var(--color-background-info);color:var(--color-text-info);border-radius:4px;padding:1px 6px;margin-left:6px}
+</style>
+
+<div class="modal-bg">
+<div class="modal">
+
+  <div class="modal-hdr">
+    <div style="display:flex;align-items:center;gap:10px">
+      <h3>CAD process entry</h3>
+      <span class="version-badge">v1</span>
+      <span style="font-size:11px;color:var(--color-text-tertiary)">auto-increments on revision</span>
+    </div>
+    <button class="close-btn" aria-label="Close"><i class="ti ti-x" aria-hidden="true"></i></button>
+  </div>
+
+  <div class="modal-body">
+
+    <div class="field">
+      <label>Production order <span style="color:var(--color-text-danger)">*</span></label>
+      <select onchange="autoFill(this.value)">
+        <option value="">Select order…</option>
+        <option value="PO-2024-0041">PO-2024-0041 — 22K Necklace set, 3 pcs (Priya Jewellers)</option>
+        <option value="PO-2024-0038">PO-2024-0038 — 18K Diamond ring (Meena Reddy)</option>
+      </select>
+    </div>
+
+    <div id="af-panel" style="display:none">
+      <div class="auto-fill">
+        <div class="af-item"><div class="af-label">Design code</div><div class="af-val" id="af-code">—</div></div>
+        <div class="af-item"><div class="af-label">Metal / purity</div><div class="af-val" id="af-metal">—</div></div>
+        <div class="af-item"><div class="af-label">Customer</div><div class="af-val" id="af-cust">—</div></div>
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label>CAD operator <span style="color:var(--color-text-danger)">*</span></label>
+        <input type="text" placeholder="Operator name">
+      </div>
+      <div class="field">
+        <label>CAD software <span style="color:var(--color-text-danger)">*</span></label>
+        <select>
+          <option>RhinoGold</option>
+          <option>Matrix</option>
+          <option>JewelCAD</option>
+          <option>3Design</option>
+          <option>Other</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row3">
+      <div class="field">
+        <label>Weight estimate (g) <span style="color:var(--color-text-danger)">*</span></label>
+        <input type="number" step="0.01" placeholder="0.00" id="wt-input" oninput="calcGold()">
+      </div>
+      <div class="field">
+        <label>Metal volume (cc)</label>
+        <input type="number" step="0.001" placeholder="0.000">
+      </div>
+      <div class="field">
+        <label>MCX rate (₹/g) <span class="info-tag">live</span></label>
+        <input type="number" id="rate-input" value="6820" oninput="calcGold()">
+      </div>
+    </div>
+
+    <div class="gold-val" id="gold-val" style="display:none">
+      <div>
+        <div class="gv-label">Estimated gold value (read-only)</div>
+        <div class="gv-rate" id="gv-rate">Based on MCX rate ₹6,820/g · 22K · today</div>
+      </div>
+      <div class="gv-amount" id="gv-amount">₹0</div>
+    </div>
+
+    <div class="divider">CAD file & renders</div>
+
+    <div class="field">
+      <label>CAD file upload <span style="color:var(--color-text-danger)">*</span></label>
+      <div class="upload-box" onclick="markUploaded('cad')">
+        <i class="ti ti-upload" aria-hidden="true"></i>
+        <div class="ub-label" id="cad-lbl">Click to upload CAD file</div>
+        <div class="ub-hint">.3dm · .stl · .obj · max 50 MB</div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Render images <span style="color:var(--color-text-danger)">*</span> <span style="font-size:11px;color:var(--color-text-tertiary)">(min 4 angles)</span></label>
+      <div class="thumb-row" id="thumb-row">
+        <div class="thumb added"><i class="ti ti-photo" style="font-size:16px" aria-hidden="true"></i></div>
+        <div class="thumb added"><i class="ti ti-photo" style="font-size:16px" aria-hidden="true"></i></div>
+        <div class="thumb thumb-add" onclick="addThumb()">
+          <i class="ti ti-plus" style="font-size:16px" aria-hidden="true"></i>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--color-text-tertiary);margin-top:4px">Top · side · front · back angles required</div>
+    </div>
+
+    <div class="divider">quality & approval</div>
+
+    <div class="field">
+      <label>Stone placement verified</label>
+      <div class="chk-row">
+        <input type="checkbox" id="stone-chk" onchange="toggleStone()">
+        <label for="stone-chk" style="font-size:13px;cursor:pointer">All stones positioned as per design spec</label>
+      </div>
+      <div id="stone-ok" style="display:none;margin-top:6px">
+        <span class="stone-badge"><i class="ti ti-check" style="font-size:12px" aria-hidden="true"></i> Stone placement verified</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Customer approval status <span style="color:var(--color-text-danger)">*</span></label>
+      <div class="status-sel">
+        <div class="status-opt active-pending" id="s-pending" onclick="setStatus('pending')">
+          <i class="ti ti-clock" style="font-size:14px;display:block;margin:0 auto 2px" aria-hidden="true"></i>
+          Pending
+        </div>
+        <div class="status-opt" id="s-approved" onclick="setStatus('approved')">
+          <i class="ti ti-check" style="font-size:14px;display:block;margin:0 auto 2px" aria-hidden="true"></i>
+          Approved
+        </div>
+        <div class="status-opt" id="s-revision" onclick="setStatus('revision')">
+          <i class="ti ti-refresh" style="font-size:14px;display:block;margin:0 auto 2px" aria-hidden="true"></i>
+          Revision requested
+        </div>
+      </div>
+      <div class="revision-note" id="rev-note">
+        <textarea placeholder="Describe what the customer wants changed…" style="margin-top:6px"></textarea>
+      </div>
+    </div>
+
+    <div class="row2" id="approval-fields" style="display:none">
+      <div class="field">
+        <label>Approved by</label>
+        <input type="text" placeholder="Name">
+      </div>
+      <div class="field">
+        <label>Approved on</label>
+        <input type="date">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Additional notes</label>
+      <textarea placeholder="Any other observations…"></textarea>
+    </div>
+
+  </div>
+
+  <div class="modal-ftr">
+    <div style="font-size:11px;color:var(--color-text-tertiary);margin-right:auto">"Send to CAM" enabled only when status = Approved</div>
+    <button style="font-size:13px;padding:8px 16px">Cancel</button>
+    <button style="font-size:13px;padding:8px 16px">Save draft</button>
+    <button class="send-cam-btn" id="cam-btn" disabled>
+      <i class="ti ti-arrow-right" aria-hidden="true"></i>
+      Send to CAM
+    </button>
+  </div>
+
+</div>
+</div>
+
+<script>
+const orders = {
+  "PO-2024-0041": {code:"DS-NK-2281", metal:"22K Gold", cust:"Priya Jewellers"},
+  "PO-2024-0038": {code:"DS-RG-1140", metal:"18K Gold", cust:"Meena Reddy"},
+};
+function autoFill(v) {
+  const panel = document.getElementById('af-panel');
+  if (!v) { panel.style.display='none'; return; }
+  const d = orders[v];
+  document.getElementById('af-code').textContent = d.code;
+  document.getElementById('af-metal').textContent = d.metal;
+  document.getElementById('af-cust').textContent = d.cust;
+  panel.style.display = 'block';
+  calcGold();
+}
+function calcGold() {
+  const wt = parseFloat(document.getElementById('wt-input').value)||0;
+  const rate = parseFloat(document.getElementById('rate-input').value)||6820;
+  const panel = document.getElementById('gold-val');
+  if (wt > 0) {
+    panel.style.display = 'flex';
+    const val = (wt * rate * 0.916).toFixed(0);
+    document.getElementById('gv-amount').textContent = '₹' + Number(val).toLocaleString('en-IN');
+    document.getElementById('gv-rate').textContent = 'Based on MCX rate ₹' + rate.toLocaleString('en-IN') + '/g · 22K · today';
+  } else {
+    panel.style.display = 'none';
+  }
+}
+function markUploaded(type) {
+  document.getElementById('cad-lbl').innerHTML = '<span style="color:#1D9E75"><i class="ti ti-check"></i> design_necklace_v1.3dm uploaded</span>';
+}
+let thumbCount = 2;
+function addThumb() {
+  if (thumbCount >= 6) return;
+  thumbCount++;
+  const row = document.getElementById('thumb-row');
+  const addbtn = row.querySelector('.thumb-add');
+  const t = document.createElement('div');
+  t.className = 'thumb added';
+  t.innerHTML = '<i class="ti ti-photo" style="font-size:16px" aria-hidden="true"></i>';
+  row.insertBefore(t, addbtn);
+}
+let currentStatus = 'pending';
+function setStatus(s) {
+  currentStatus = s;
+  ['pending','approved','revision'].forEach(x => {
+    const el = document.getElementById('s-'+x);
+    el.className = 'status-opt' + (x===s ? ' active-'+x : '');
+  });
+  document.getElementById('rev-note').className = 'revision-note' + (s==='revision'?' show':'');
+  document.getElementById('approval-fields').style.display = s==='approved'?'grid':'none';
+  const btn = document.getElementById('cam-btn');
+  btn.classList.toggle('active', s==='approved');
+  btn.disabled = s !== 'approved';
+}
+function toggleStone() {
+  const chk = document.getElementById('stone-chk');
+  document.getElementById('stone-ok').style.display = chk.checked ? 'block' : 'none';
+}
+</script>
