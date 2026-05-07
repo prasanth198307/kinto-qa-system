@@ -9,7 +9,7 @@ import {
   CheckCircle2, Clock, XCircle, TrendingUp, TrendingDown, RefreshCw,
   CreditCard, Users, Loader2, History, Zap, ArrowRight, Plus, X,
   AlertTriangle, Package, Shield, Settings, BarChart3, Bell, Download,
-  Mail, MessageSquare, AlertCircle, Info,
+  Mail, MessageSquare, AlertCircle, Info, Star, ChevronRight, Layers,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -38,6 +38,22 @@ interface ModuleData {
   cancelledAt: string | null;
   catalog: ModuleDefinition[];
   freeModules: string[];
+}
+
+interface SubscriptionPlan {
+  id: number;
+  name: string;
+  slug: string;
+  tagline: string | null;
+  description: string | null;
+  priceMonthly: number;
+  maxUsers: number;
+  modules: string[] | null;
+  features: string[] | null;
+  isActive: boolean;
+  isFeatured: boolean;
+  displayOrder: number;
+  trialDays: number;
 }
 
 interface BillingEvent {
@@ -98,6 +114,248 @@ function groupByCategory(catalog: ModuleDefinition[]) {
     map.get(m.category)!.push(m);
   }
   return map;
+}
+
+// ─── Change Plan Tab ──────────────────────────────────────────────────────────
+
+const PLAN_ORDER: Record<string, number> = { trial: 0, basic: 1, professional: 2, enterprise: 3 };
+
+function getPlanOrder(slug: string): number {
+  return PLAN_ORDER[slug] ?? 99;
+}
+
+const PLAN_COLORS: Record<string, { gradient: string; badge: string; badgeText: string; ring: string }> = {
+  trial:        { gradient: "from-gray-50 to-gray-100",         badge: "bg-gray-100",    badgeText: "text-gray-600",    ring: "ring-gray-300" },
+  basic:        { gradient: "from-blue-50 to-blue-100",         badge: "bg-blue-100",    badgeText: "text-blue-700",    ring: "ring-blue-300" },
+  professional: { gradient: "from-violet-50 to-violet-100",     badge: "bg-violet-100",  badgeText: "text-violet-700",  ring: "ring-violet-400" },
+  enterprise:   { gradient: "from-amber-50 to-orange-100",      badge: "bg-amber-100",   badgeText: "text-amber-700",   ring: "ring-amber-400" },
+};
+
+function ChangePlanTab({ currentPlanSlug }: { currentPlanSlug: string | null }) {
+  const { toast } = useToast();
+  const [requestedPlan, setRequestedPlan] = useState<string | null>(null);
+  const [pendingSlug, setPendingSlug] = useState<string | null>(null);
+
+  const { data: plans = [], isLoading } = useQuery<SubscriptionPlan[]>({
+    queryKey: ["/api/subscription-plans"],
+  });
+
+  const requestMutation = useMutation({
+    mutationFn: (slug: string) =>
+      apiRequest("POST", "/api/billing/request-upgrade", { plan: slug }).then(r => r.json()),
+    onSuccess: (data: any, slug: string) => {
+      setRequestedPlan(slug);
+      setPendingSlug(null);
+      toast({ title: "Request submitted", description: data.message });
+      queryClient.invalidateQueries({ queryKey: ["/api/billing/history"] });
+    },
+    onError: (err: any) => {
+      setPendingSlug(null);
+      toast({ title: "Request failed", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const handleRequest = (slug: string) => {
+    setPendingSlug(slug);
+    requestMutation.mutate(slug);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-10">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  const currentOrder = getPlanOrder(currentPlanSlug ?? "trial");
+  const visiblePlans = plans.filter(p => p.slug !== "trial");
+
+  return (
+    <div className="space-y-5">
+      {/* Explanation banner */}
+      <div className="flex items-start gap-3 bg-muted/50 border border-border rounded-xl px-4 py-3">
+        <Info className="h-4 w-4 flex-shrink-0 mt-0.5 text-blue-500" />
+        <div className="text-sm text-muted-foreground leading-relaxed">
+          <strong className="text-foreground">Two ways to grow your subscription:</strong>{" "}
+          Upgrade your <strong>plan</strong> to unlock a larger bundle of modules at a fixed monthly price,
+          or use the <strong>Module Marketplace</strong> tab to add individual modules on top of your current plan.
+          Plan change requests are reviewed and applied by our team within 24 hours.
+        </div>
+      </div>
+
+      {/* Plan cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {visiblePlans.map(plan => {
+          const c = PLAN_COLORS[plan.slug] ?? PLAN_COLORS.basic;
+          const planOrder = getPlanOrder(plan.slug);
+          const isCurrent = plan.slug === currentPlanSlug;
+          const isUpgrade = planOrder > currentOrder;
+          const isDowngrade = planOrder < currentOrder;
+          const isRequested = requestedPlan === plan.slug;
+          const priceInRupees = Math.round(plan.priceMonthly / 100);
+          const includedModulesCount = Array.isArray(plan.modules) ? plan.modules.length : 0;
+          const featuresList = Array.isArray(plan.features) ? plan.features : [];
+
+          return (
+            <div
+              key={plan.slug}
+              data-testid={`plan-card-${plan.slug}`}
+              className={`relative rounded-xl border-2 p-5 flex flex-col gap-4 transition-all bg-gradient-to-b ${c.gradient} ${
+                isCurrent
+                  ? `border-primary ring-2 ring-primary/20`
+                  : `border-border hover:border-muted-foreground/40`
+              }`}
+            >
+              {/* Featured star */}
+              {plan.isFeatured && !isCurrent && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                  <span className="flex items-center gap-1 bg-primary text-primary-foreground text-xs font-bold px-3 py-1 rounded-full shadow">
+                    <Star className="h-3 w-3" /> Most Popular
+                  </span>
+                </div>
+              )}
+
+              {/* Header */}
+              <div className="flex items-start justify-between gap-2 flex-wrap">
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-base font-bold text-foreground">{plan.name}</h3>
+                    {isCurrent && (
+                      <Badge variant="default" className="text-xs" data-testid={`badge-current-${plan.slug}`}>
+                        Current Plan
+                      </Badge>
+                    )}
+                  </div>
+                  {plan.tagline && (
+                    <p className="text-xs text-muted-foreground mt-0.5">{plan.tagline}</p>
+                  )}
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <span className="text-2xl font-bold text-foreground">
+                    ₹{priceInRupees > 0 ? priceInRupees.toLocaleString("en-IN") : "0"}
+                  </span>
+                  <span className="text-xs text-muted-foreground">/mo</span>
+                </div>
+              </div>
+
+              {/* Module count */}
+              <div className="flex items-center gap-2 text-xs">
+                <span className={`inline-flex items-center gap-1 font-semibold px-2.5 py-1 rounded-full ${c.badge} ${c.badgeText}`}>
+                  <Layers className="h-3 w-3" />
+                  {includedModulesCount} modules included
+                </span>
+                <span className="text-muted-foreground">· up to {plan.maxUsers} users</span>
+              </div>
+
+              {/* Features */}
+              {featuresList.length > 0 && (
+                <ul className="space-y-1.5 flex-1">
+                  {featuresList.slice(0, 6).map((f, i) => (
+                    <li key={i} className="flex items-start gap-2 text-xs text-foreground">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0 mt-0.5" />
+                      <span>{f}</span>
+                    </li>
+                  ))}
+                  {featuresList.length > 6 && (
+                    <li className="text-xs text-muted-foreground pl-5">+{featuresList.length - 6} more features</li>
+                  )}
+                </ul>
+              )}
+
+              {/* Action */}
+              <div className="mt-auto pt-2">
+                {isCurrent ? (
+                  <div className="flex items-center gap-2 text-sm text-emerald-700 font-medium">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                    You are on this plan
+                  </div>
+                ) : isRequested ? (
+                  <div className="flex items-center gap-2 text-sm text-violet-700 font-medium">
+                    <Clock className="h-4 w-4 text-violet-500" />
+                    Request submitted — pending review
+                  </div>
+                ) : isUpgrade ? (
+                  <Button
+                    className="w-full"
+                    onClick={() => handleRequest(plan.slug)}
+                    disabled={pendingSlug === plan.slug}
+                    data-testid={`button-request-upgrade-${plan.slug}`}
+                  >
+                    {pendingSlug === plan.slug ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <TrendingUp className="h-4 w-4 mr-2" />
+                    )}
+                    Upgrade to {plan.name}
+                  </Button>
+                ) : (
+                  <div className="text-xs text-muted-foreground italic flex items-center gap-1.5">
+                    <AlertTriangle className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
+                    To downgrade, contact <strong className="text-foreground not-italic">support@swacherp.com</strong>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* How plan change works */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Info className="h-4 w-4 text-blue-500" />
+            How plan changes work
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {[
+              {
+                icon: ArrowRight,
+                color: "text-blue-500",
+                title: "1. Submit request",
+                desc: "Click \"Upgrade\" on any higher plan. Your request is logged and our team is notified immediately.",
+              },
+              {
+                icon: CheckCircle2,
+                color: "text-emerald-500",
+                title: "2. Admin approves",
+                desc: "Our team reviews and activates the new plan within 24 hours. You will be notified by email and WhatsApp.",
+              },
+              {
+                icon: Zap,
+                color: "text-violet-500",
+                title: "3. Instant access",
+                desc: "Once approved, all modules from your new plan are unlocked immediately. Billing adjusts from the next cycle.",
+              },
+            ].map((step, i) => {
+              const Icon = step.icon;
+              return (
+                <div key={i} className="flex items-start gap-3">
+                  <Icon className={`h-4 w-4 flex-shrink-0 mt-0.5 ${step.color}`} />
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">{step.title}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{step.desc}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Module marketplace callout */}
+      <div className="flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
+        <Package className="h-4 w-4 flex-shrink-0 mt-0.5 text-blue-600" />
+        <div className="text-sm text-blue-800 leading-relaxed">
+          <strong>Don&apos;t need a full plan upgrade?</strong>{" "}
+          You can also pick individual modules from the <strong>Module Marketplace</strong> tab and pay only for what you use — starting at ₹249/module/month.
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ─── Module Marketplace Tab ───────────────────────────────────────────────────
@@ -787,18 +1045,20 @@ export default function SubscriptionManagement() {
     <div className="space-y-4">
       <Tabs defaultValue="overview">
         <TabsList className="flex-wrap h-auto gap-1">
-          <TabsTrigger value="overview"  data-testid="tab-sub-overview">Overview</TabsTrigger>
+          <TabsTrigger value="overview"    data-testid="tab-sub-overview">Overview</TabsTrigger>
+          <TabsTrigger value="changeplan"  data-testid="tab-sub-changeplan">Change Plan</TabsTrigger>
           <TabsTrigger value="marketplace" data-testid="tab-sub-marketplace">Module Marketplace</TabsTrigger>
-          <TabsTrigger value="manage"    data-testid="tab-sub-manage">Manage Modules</TabsTrigger>
-          <TabsTrigger value="billing"   data-testid="tab-sub-billing">Auto-Deduct</TabsTrigger>
-          <TabsTrigger value="history"   data-testid="tab-sub-history">Billing History</TabsTrigger>
+          <TabsTrigger value="manage"      data-testid="tab-sub-manage">Manage Modules</TabsTrigger>
+          <TabsTrigger value="billing"     data-testid="tab-sub-billing">Auto-Deduct</TabsTrigger>
+          <TabsTrigger value="history"     data-testid="tab-sub-history">Billing History</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview"     className="mt-4"><OverviewTab data={data} /></TabsContent>
-        <TabsContent value="marketplace"  className="mt-4"><MarketplaceTab data={data} onSave={saveMutation.mutateAsync} /></TabsContent>
-        <TabsContent value="manage"       className="mt-4"><ManageModulesTab data={data} onSave={saveMutation.mutateAsync} /></TabsContent>
-        <TabsContent value="billing"      className="mt-4"><AutoDeductTab data={data} /></TabsContent>
-        <TabsContent value="history"      className="mt-4"><HistoryTab /></TabsContent>
+        <TabsContent value="overview"    className="mt-4"><OverviewTab data={data} /></TabsContent>
+        <TabsContent value="changeplan"  className="mt-4"><ChangePlanTab currentPlanSlug={data.planSlug} /></TabsContent>
+        <TabsContent value="marketplace" className="mt-4"><MarketplaceTab data={data} onSave={saveMutation.mutateAsync} /></TabsContent>
+        <TabsContent value="manage"      className="mt-4"><ManageModulesTab data={data} onSave={saveMutation.mutateAsync} /></TabsContent>
+        <TabsContent value="billing"     className="mt-4"><AutoDeductTab data={data} /></TabsContent>
+        <TabsContent value="history"     className="mt-4"><HistoryTab /></TabsContent>
       </Tabs>
     </div>
   );

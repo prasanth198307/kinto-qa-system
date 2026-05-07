@@ -729,29 +729,36 @@ export function registerBillingRoutes(app: Express): void {
     }
   });
 
-  // ── POST /api/billing/request-upgrade — manual upgrade (no Razorpay) ─────
+  // ── POST /api/billing/request-upgrade — DB-driven plan change request ────
   app.post("/api/billing/request-upgrade", async (req: any, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const tenantId: number = (req.session as any).tenantId;
     const { plan } = req.body;
 
-    if (!PLAN_PRICES[plan]) {
-      return res.status(400).json({ message: "Invalid plan" });
-    }
-
     try {
+      // Look up plan from DB (not hardcoded)
+      const planRows = await db.execute(sql`
+        SELECT id, name, slug, price_monthly FROM subscription_plans
+        WHERE slug = ${plan} AND is_active = true LIMIT 1
+      `);
+      const planRow = (planRows.rows as any[])[0];
+      if (!planRow) {
+        return res.status(400).json({ message: "Invalid or inactive plan" });
+      }
+
+      const currentPlan = (req.session as any).tenantPlan ?? 'trial';
       await db.execute(sql`
         INSERT INTO billing_events (tenant_id, event_type, from_plan, to_plan, billing_cycle, amount, currency, notes, created_by)
         VALUES (
           ${tenantId}, 'upgrade_requested',
-          ${(req.session as any).tenantPlan ?? 'trial'},
+          ${currentPlan},
           ${plan}, 'monthly',
-          ${PLAN_PRICES[plan]}, 'INR',
-          ${'Manual upgrade request — awaiting admin approval'},
+          ${planRow.price_monthly ?? 0}, 'INR',
+          ${'Plan change request — awaiting admin approval'},
           ${(req.user as any)?.username ?? 'tenant-admin'}
         )
       `);
-      res.json({ message: `Upgrade request to ${PLAN_LABELS[plan] ?? plan} submitted. Our team will contact you within 24 hours.` });
+      res.json({ message: `Plan change request to ${planRow.name} submitted. Our team will contact you within 24 hours.` });
     } catch (err: any) {
       res.status(500).json({ message: err.message });
     }
