@@ -216,3 +216,9 @@ id = "ciPWXNGWLzQluyxTdhme9"
 uri = "file://client/public/downloads/SwachERP_30Day_19Phase_Plan.xlsx"
 type = "table"
 title = "SwachERP — 30-Day, 19-Phase Complete Build Plan (₹10 Lakhs)"
+
+[[outputs]]
+id = "UDKB6MrgTUnpAPCXV6tFE"
+uri = "file://client/public/downloads/SwachERP_Revised_Phase_Plan.xlsx"
+type = "table"
+title = "SwachERP — Revised Plan (Built vs To Build + 3 Quote Options)"
