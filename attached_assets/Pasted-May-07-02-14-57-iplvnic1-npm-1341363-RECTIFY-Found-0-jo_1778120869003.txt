@@ -1,0 +1,400 @@
+May 07 02:14:57 iplvnic1 npm[1341363]: [RECTIFY] Found 0 journal line(s) pointing to generic Sundry Debtors (1100)
+May 07 02:14:57 iplvnic1 npm[1341363]: [RECTIFY] === COMPLETE === 0 updated, 0 skipped (no party name), 0 errors
+May 07 02:14:57 iplvnic1 npm[1341363]: [RECTIFY CREDITORS] Found 0 journal line(s) pointing to generic Sundry Creditors (2001)
+May 07 02:14:57 iplvnic1 npm[1341363]: [RECTIFY CREDITORS] === COMPLETE === 0 updated, 0 skipped, 0 errors
+May 07 02:14:57 iplvnic1 npm[1341363]: [USER_ROLES MIGRATION] Table OK — no backfill needed
+May 07 02:14:57 iplvnic1 npm[1341363]: [MCN_REQUESTS MIGRATION] Columns OK
+May 07 02:14:57 iplvnic1 npm[1341363]: [SALES_RETURN_ITEMS MIGRATION] Columns OK
+May 07 02:14:57 iplvnic1 npm[1341363]: [FG_RETURN_LOG MIGRATION] Table OK
+May 07 02:14:57 iplvnic1 npm[1341363]: [ROLE_PERMS TENANT FIX] All role_permissions rows OK
+May 07 02:14:57 iplvnic1 npm[1341363]: [NEW_SCREEN_KEYS MIGRATION] purchase_returns / tds_management rows ensured
+May 07 02:14:57 iplvnic1 npm[1341363]: [API_KEYS MIGRATION] api_keys rows ensured for all roles
+May 07 02:14:57 iplvnic1 npm[1341363]: [COA CONSTRAINT MIGRATION] chart_of_accounts constraint OK (code, tenant_id)
+May 07 02:14:57 iplvnic1 npm[1341363]: [SUBSCRIPTIONS MIGRATION] subscriptions(tenant_id) unique constraint OK
+May 07 02:14:57 iplvnic1 npm[1341363]: [ROLE_PERMS MIGRATION] role_permissions(role_id, screen_key) unique constraint OK
+May 07 02:14:57 iplvnic1 npm[1341363]: 2:14:57 AM [express] ✅ Daily tenant backup cron initialized (runs at 2:00 AM)
+May 07 02:14:57 iplvnic1 npm[1341363]: 2:14:57 AM [express] ✅ PostgreSQL dump cron initialized (runs at 1:00 AM)
+May 07 02:14:57 iplvnic1 npm[1341363]: 2:14:57 AM [express] ✅ Subscription expiry cron initialized (runs at 3:00 AM)
+May 07 02:14:57 iplvnic1 npm[1341363]: 2:14:57 AM [express] ✅ Recurring invoice cron initialized (runs at 6:00 AM)
+May 07 02:14:57 iplvnic1 npm[1341363]: 2:14:57 AM [express] 🚀 Server running on port 5050
+May 07 02:14:57 iplvnic1 npm[1341363]: 2:14:57 AM [express] ✅ Machine startup reminder system initialized
+May 07 02:14:57 iplvnic1 npm[1341363]: 2:14:57 AM [express] ✅ Missed checklist notification system initialized
+May 07 02:14:57 iplvnic1 npm[1341363]: 2:14:57 AM [express] ✅ Document expiry alert system initialized
+May 07 02:14:57 iplvnic1 npm[1341363]: 2:14:57 AM [express] ✅ WhatsApp secrets sync checked
+May 07 02:14:57 iplvnic1 npm[1341363]: [SYNC] WhatsApp secrets already in database or no env vars to sync
+May 07 02:15:01 iplvnic1 systemd[1]: Stopping KINTO Smart Ops Application...
+May 07 02:15:01 iplvnic1 systemd[1]: kinto.service: Deactivated successfully.
+May 07 02:15:01 iplvnic1 systemd[1]: Stopped KINTO Smart Ops Application.
+May 07 02:15:01 iplvnic1 systemd[1]: kinto.service: Consumed 4.130s CPU time.
+May 07 02:15:01 iplvnic1 systemd[1]: Started KINTO Smart Ops Application.
+May 07 02:15:01 iplvnic1 npm[1341402]: > rest-express@1.0.0 start
+May 07 02:15:01 iplvnic1 npm[1341402]: > NODE_ENV=production node dist/index.js
+May 07 02:15:03 iplvnic1 npm[1341413]: [dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+May 07 02:15:03 iplvnic1 npm[1341413]: ✅ Environment loaded
+May 07 02:15:03 iplvnic1 npm[1341413]: ✅ DATABASE_URL: Set
+May 07 02:15:03 iplvnic1 npm[1341413]: ✅ Colloki Flow AI service initialized
+May 07 02:15:03 iplvnic1 npm[1341413]: ✅ Session persistence enabled - sessions expire after 7 days of inactivity
+May 07 02:15:03 iplvnic1 npm[1341413]: 🔧 Session configured — Secure: false, SameSite: lax, Dev Mode: false
+May 07 02:15:03 iplvnic1 npm[1341413]: ✅ Connected to local PostgreSQL successfully
+May 07 02:15:03 iplvnic1 npm[1341413]: [TYPE SEED] Account types seeding complete
+May 07 02:15:03 iplvnic1 npm[1341413]: [COA SEED] Chart of Accounts seeding complete
+May 07 02:15:03 iplvnic1 npm[1341413]: [RECTIFY] Found 0 journal line(s) pointing to generic Sundry Debtors (1100)
+May 07 02:15:03 iplvnic1 npm[1341413]: [RECTIFY] === COMPLETE === 0 updated, 0 skipped (no party name), 0 errors
+May 07 02:15:03 iplvnic1 npm[1341413]: [RECTIFY CREDITORS] Found 0 journal line(s) pointing to generic Sundry Creditors (2001)
+May 07 02:15:03 iplvnic1 npm[1341413]: [RECTIFY CREDITORS] === COMPLETE === 0 updated, 0 skipped, 0 errors
+May 07 02:15:03 iplvnic1 npm[1341413]: [USER_ROLES MIGRATION] Table OK — no backfill needed
+May 07 02:15:03 iplvnic1 npm[1341413]: [MCN_REQUESTS MIGRATION] Columns OK
+May 07 02:15:03 iplvnic1 npm[1341413]: [SALES_RETURN_ITEMS MIGRATION] Columns OK
+May 07 02:15:03 iplvnic1 npm[1341413]: [FG_RETURN_LOG MIGRATION] Table OK
+May 07 02:15:03 iplvnic1 npm[1341413]: [ROLE_PERMS TENANT FIX] All role_permissions rows OK
+May 07 02:15:03 iplvnic1 npm[1341413]: [NEW_SCREEN_KEYS MIGRATION] purchase_returns / tds_management rows ensured
+May 07 02:15:03 iplvnic1 npm[1341413]: [API_KEYS MIGRATION] api_keys rows ensured for all roles
+May 07 02:15:03 iplvnic1 npm[1341413]: [COA CONSTRAINT MIGRATION] chart_of_accounts constraint OK (code, tenant_id)
+May 07 02:15:03 iplvnic1 npm[1341413]: [SUBSCRIPTIONS MIGRATION] subscriptions(tenant_id) unique constraint OK
+May 07 02:15:03 iplvnic1 npm[1341413]: [ROLE_PERMS MIGRATION] role_permissions(role_id, screen_key) unique constraint OK
+May 07 02:15:03 iplvnic1 npm[1341413]: 2:15:03 AM [express] ✅ Daily tenant backup cron initialized (runs at 2:00 AM)
+May 07 02:15:03 iplvnic1 npm[1341413]: 2:15:03 AM [express] ✅ PostgreSQL dump cron initialized (runs at 1:00 AM)
+May 07 02:15:03 iplvnic1 npm[1341413]: 2:15:03 AM [express] ✅ Subscription expiry cron initialized (runs at 3:00 AM)
+May 07 02:15:03 iplvnic1 npm[1341413]: 2:15:03 AM [express] ✅ Recurring invoice cron initialized (runs at 6:00 AM)
+May 07 02:15:03 iplvnic1 npm[1341413]: 2:15:03 AM [express] 🚀 Server running on port 5050
+May 07 02:15:03 iplvnic1 npm[1341413]: 2:15:03 AM [express] ✅ Machine startup reminder system initialized
+May 07 02:15:03 iplvnic1 npm[1341413]: 2:15:03 AM [express] ✅ Missed checklist notification system initialized
+May 07 02:15:03 iplvnic1 npm[1341413]: 2:15:03 AM [express] ✅ Document expiry alert system initialized
+May 07 02:15:03 iplvnic1 npm[1341413]: 2:15:03 AM [express] ✅ WhatsApp secrets sync checked
+May 07 02:15:03 iplvnic1 npm[1341413]: [SYNC] WhatsApp secrets already in database or no env vars to sync
+May 07 02:16:18 iplvnic1 npm[1341413]: 2:16:18 AM [express] GET /api/user 401 in 3ms
+May 07 02:16:18 iplvnic1 npm[1341413]: 2:16:18 AM [express] GET /api/public/tenant-branding 200 in 15ms :: {"name":"KINTO","slug":"kinto","…
+May 07 02:16:18 iplvnic1 npm[1341413]: 2:16:18 AM [express] GET /api/public/tenant-branding 200 in 2ms :: {"name":"KINTO","slug":"kinto","l…
+May 07 02:16:31 iplvnic1 npm[1341413]: 🔍 Login attempt for user: admin
+May 07 02:16:31 iplvnic1 npm[1341413]: ✅ Login successful for admin
+May 07 02:16:31 iplvnic1 npm[1341413]: ✅ Session saved — user: admin, tenant: 1, plan: enterprise, status: active
+May 07 02:16:31 iplvnic1 npm[1341413]: 2:16:31 AM [express] POST /api/login 200 in 174ms :: {"id":"user-admin","username":"admin","password…
+May 07 02:16:31 iplvnic1 npm[1341413]: 2:16:31 AM [express] GET /api/tenant/features 200 in 39ms :: {"plan":"enterprise","modules":["invoic…
+May 07 02:16:31 iplvnic1 npm[1341413]: 2:16:31 AM [express] GET /api/users 304 in 111ms :: [{"id":"user-admin","username":"admin","email":"…
+May 07 02:16:31 iplvnic1 npm[1341413]: 2:16:31 AM [express] GET /api/pm-task-list-templates 304 in 141ms :: []
+May 07 02:16:31 iplvnic1 npm[1341413]: 2:16:31 AM [express] GET /api/machines 304 in 151ms :: [{"id":"80649cc4-2677-493d-a712-63f0833ae39d"…
+May 07 02:16:31 iplvnic1 npm[1341413]: /home/kinto/kinto-qa-system/node_modules/pg-pool/index.js:45
+May 07 02:16:31 iplvnic1 npm[1341413]:     Error.captureStackTrace(err)
+May 07 02:16:31 iplvnic1 npm[1341413]:           ^
+May 07 02:16:31 iplvnic1 npm[1341413]: error: relation "tenant_module_labels" does not exist
+May 07 02:16:31 iplvnic1 npm[1341413]:     at /home/kinto/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+May 07 02:16:31 iplvnic1 npm[1341413]:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+May 07 02:16:31 iplvnic1 npm[1341413]:     at async file:///home/kinto/kinto-qa-system/dist/index.js:13143:20 {
+May 07 02:16:31 iplvnic1 npm[1341413]:   length: 119,
+May 07 02:16:31 iplvnic1 npm[1341413]:   severity: 'ERROR',
+May 07 02:16:31 iplvnic1 npm[1341413]:   code: '42P01',
+May 07 02:16:31 iplvnic1 npm[1341413]:   detail: undefined,
+May 07 02:16:31 iplvnic1 npm[1341413]:   hint: undefined,
+May 07 02:16:31 iplvnic1 npm[1341413]:   position: '15',
+May 07 02:16:31 iplvnic1 npm[1341413]:   internalPosition: undefined,
+May 07 02:16:31 iplvnic1 npm[1341413]:   internalQuery: undefined,
+May 07 02:16:31 iplvnic1 npm[1341413]:   where: undefined,
+May 07 02:16:31 iplvnic1 npm[1341413]:   schema: undefined,
+May 07 02:16:31 iplvnic1 npm[1341413]:   table: undefined,
+May 07 02:16:31 iplvnic1 npm[1341413]:   column: undefined,
+May 07 02:16:31 iplvnic1 npm[1341413]:   dataType: undefined,
+May 07 02:16:31 iplvnic1 npm[1341413]:   constraint: undefined,
+May 07 02:16:31 iplvnic1 npm[1341413]:   file: 'parse_relation.c',
+May 07 02:16:31 iplvnic1 npm[1341413]:   line: '1449',
+May 07 02:16:31 iplvnic1 npm[1341413]:   routine: 'parserOpenTable'
+May 07 02:16:31 iplvnic1 npm[1341413]: }
+May 07 02:16:31 iplvnic1 npm[1341413]: Node.js v20.19.5
+May 07 02:16:31 iplvnic1 systemd[1]: kinto.service: Main process exited, code=exited, status=1/FAILURE
+May 07 02:16:31 iplvnic1 systemd[1]: kinto.service: Failed with result 'exit-code'.
+May 07 02:16:31 iplvnic1 systemd[1]: kinto.service: Consumed 4.830s CPU time.
+May 07 02:16:41 iplvnic1 systemd[1]: kinto.service: Scheduled restart job, restart counter is at 1.
+May 07 02:16:41 iplvnic1 systemd[1]: Stopped KINTO Smart Ops Application.
+May 07 02:16:41 iplvnic1 systemd[1]: kinto.service: Consumed 4.830s CPU time.
+May 07 02:16:41 iplvnic1 systemd[1]: Started KINTO Smart Ops Application.
+May 07 02:16:41 iplvnic1 npm[1341453]: > rest-express@1.0.0 start
+May 07 02:16:41 iplvnic1 npm[1341453]: > NODE_ENV=production node dist/index.js
+May 07 02:16:43 iplvnic1 npm[1341464]: [dotenv@17.2.3] injecting env (0) from .env -- tip: 🗂️ backup and recover secrets: https://dotenvx.com/ops
+May 07 02:16:43 iplvnic1 npm[1341464]: ✅ Environment loaded
+May 07 02:16:43 iplvnic1 npm[1341464]: ✅ DATABASE_URL: Set
+May 07 02:16:43 iplvnic1 npm[1341464]: ✅ Colloki Flow AI service initialized
+May 07 02:16:43 iplvnic1 npm[1341464]: ✅ Session persistence enabled - sessions expire after 7 days of inactivity
+May 07 02:16:43 iplvnic1 npm[1341464]: 🔧 Session configured — Secure: false, SameSite: lax, Dev Mode: false
+May 07 02:16:44 iplvnic1 npm[1341464]: ✅ Connected to local PostgreSQL successfully
+May 07 02:16:44 iplvnic1 npm[1341464]: [TYPE SEED] Account types seeding complete
+May 07 02:16:44 iplvnic1 npm[1341464]: [COA SEED] Chart of Accounts seeding complete
+May 07 02:16:44 iplvnic1 npm[1341464]: [RECTIFY] Found 0 journal line(s) pointing to generic Sundry Debtors (1100)
+May 07 02:16:44 iplvnic1 npm[1341464]: [RECTIFY] === COMPLETE === 0 updated, 0 skipped (no party name), 0 errors
+May 07 02:16:44 iplvnic1 npm[1341464]: [RECTIFY CREDITORS] Found 0 journal line(s) pointing to generic Sundry Creditors (2001)
+May 07 02:16:44 iplvnic1 npm[1341464]: [RECTIFY CREDITORS] === COMPLETE === 0 updated, 0 skipped, 0 errors
+May 07 02:16:44 iplvnic1 npm[1341464]: [USER_ROLES MIGRATION] Table OK — no backfill needed
+May 07 02:16:44 iplvnic1 npm[1341464]: [MCN_REQUESTS MIGRATION] Columns OK
+May 07 02:16:44 iplvnic1 npm[1341464]: [SALES_RETURN_ITEMS MIGRATION] Columns OK
+May 07 02:16:44 iplvnic1 npm[1341464]: [FG_RETURN_LOG MIGRATION] Table OK
+May 07 02:16:44 iplvnic1 npm[1341464]: [ROLE_PERMS TENANT FIX] All role_permissions rows OK
+May 07 02:16:44 iplvnic1 npm[1341464]: [NEW_SCREEN_KEYS MIGRATION] purchase_returns / tds_management rows ensured
+May 07 02:16:44 iplvnic1 npm[1341464]: [API_KEYS MIGRATION] api_keys rows ensured for all roles
+May 07 02:16:44 iplvnic1 npm[1341464]: [COA CONSTRAINT MIGRATION] chart_of_accounts constraint OK (code, tenant_id)
+May 07 02:16:44 iplvnic1 npm[1341464]: [SUBSCRIPTIONS MIGRATION] subscriptions(tenant_id) unique constraint OK
+May 07 02:16:44 iplvnic1 npm[1341464]: [ROLE_PERMS MIGRATION] role_permissions(role_id, screen_key) unique constraint OK
+May 07 02:16:44 iplvnic1 npm[1341464]: 2:16:44 AM [express] ✅ Daily tenant backup cron initialized (runs at 2:00 AM)
+May 07 02:16:44 iplvnic1 npm[1341464]: 2:16:44 AM [express] ✅ PostgreSQL dump cron initialized (runs at 1:00 AM)
+May 07 02:16:44 iplvnic1 npm[1341464]: 2:16:44 AM [express] ✅ Subscription expiry cron initialized (runs at 3:00 AM)
+May 07 02:16:44 iplvnic1 npm[1341464]: 2:16:44 AM [express] ✅ Recurring invoice cron initialized (runs at 6:00 AM)
+May 07 02:16:44 iplvnic1 npm[1341464]: 2:16:44 AM [express] 🚀 Server running on port 5050
+May 07 02:16:44 iplvnic1 npm[1341464]: 2:16:44 AM [express] ✅ Machine startup reminder system initialized
+May 07 02:16:44 iplvnic1 npm[1341464]: 2:16:44 AM [express] ✅ Missed checklist notification system initialized
+May 07 02:16:44 iplvnic1 npm[1341464]: 2:16:44 AM [express] ✅ Document expiry alert system initialized
+May 07 02:16:44 iplvnic1 npm[1341464]: 2:16:44 AM [express] ✅ WhatsApp secrets sync checked
+May 07 02:16:44 iplvnic1 npm[1341464]: [SYNC] WhatsApp secrets already in database or no env vars to sync
+May 07 02:24:21 iplvnic1 npm[1341464]: 2:24:21 AM [express] GET /api/public/tenant-branding 200 in 60ms :: {"name":"KINTO","slug":"kinto","…
+May 07 02:24:21 iplvnic1 npm[1341464]: 2:24:21 AM [express] GET /api/finished-goods 200 in 270ms :: [{"id":"832bd731-55e7-41bf-b88d-9389bbe…
+May 07 02:24:21 iplvnic1 npm[1341464]: 2:24:21 AM [express] GET /api/raw-materials 200 in 272ms :: []
+May 07 02:24:21 iplvnic1 npm[1341464]: 2:24:21 AM [express] GET /api/generic/reorder-alerts 200 in 287ms :: []
+May 07 02:24:21 iplvnic1 npm[1341464]: 2:24:21 AM [express] GET /api/products 200 in 361ms :: [{"id":"b560f560-fc13-4905-83ac-63b69a96ebaf"…
+May 07 02:24:21 iplvnic1 npm[1341464]: 2:24:21 AM [express] GET /api/stats/today 200 in 396ms :: {"rawMaterialIssuancesCount":0,"gatepasses…
+May 07 02:24:21 iplvnic1 npm[1341464]: 2:24:21 AM [express] GET /api/tenant/features 200 in 421ms :: {"plan":"enterprise","modules":["invoi…
+May 07 02:24:21 iplvnic1 npm[1341464]: 2:24:21 AM [express] GET /api/machines 304 in 408ms :: [{"id":"80649cc4-2677-493d-a712-63f0833ae39d"…
+May 07 02:24:21 iplvnic1 npm[1341464]: 2:24:21 AM [express] GET /api/users 304 in 467ms :: [{"id":"user-admin","username":"admin","email":"…
+May 07 02:24:21 iplvnic1 npm[1341464]: 2:24:21 AM [express] GET /api/checklist-templates 200 in 474ms :: []
+May 07 02:24:21 iplvnic1 npm[1341464]: 2:24:21 AM [express] GET /api/spare-parts 200 in 473ms :: []
+May 07 02:24:21 iplvnic1 npm[1341464]: 2:24:21 AM [express] GET /api/pm-task-list-templates 304 in 456ms :: []
+May 07 02:24:21 iplvnic1 npm[1341464]: 2:24:21 AM [express] GET /api/maintenance-plans 200 in 483ms :: []
+May 07 02:24:21 iplvnic1 npm[1341464]: 2:24:21 AM [express] GET /api/invoices 200 in 475ms :: [{"id":"ba5d76e4-41a6-46cf-a854-cf479b310a18"…
+May 07 02:24:21 iplvnic1 npm[1341464]: /home/kinto/kinto-qa-system/node_modules/pg-pool/index.js:45
+May 07 02:24:21 iplvnic1 npm[1341464]:     Error.captureStackTrace(err)
+May 07 02:24:21 iplvnic1 npm[1341464]:           ^
+May 07 02:24:21 iplvnic1 npm[1341464]: error: relation "tenant_module_labels" does not exist
+May 07 02:24:21 iplvnic1 npm[1341464]:     at /home/kinto/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+May 07 02:24:21 iplvnic1 npm[1341464]:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+May 07 02:24:21 iplvnic1 npm[1341464]:     at async file:///home/kinto/kinto-qa-system/dist/index.js:13143:20 {
+May 07 02:24:21 iplvnic1 npm[1341464]:   length: 119,
+May 07 02:24:21 iplvnic1 npm[1341464]:   severity: 'ERROR',
+May 07 02:24:21 iplvnic1 npm[1341464]:   code: '42P01',
+May 07 02:24:21 iplvnic1 npm[1341464]:   detail: undefined,
+May 07 02:24:21 iplvnic1 npm[1341464]:   hint: undefined,
+May 07 02:24:21 iplvnic1 npm[1341464]:   position: '15',
+May 07 02:24:21 iplvnic1 npm[1341464]:   internalPosition: undefined,
+May 07 02:24:21 iplvnic1 npm[1341464]:   internalQuery: undefined,
+May 07 02:24:21 iplvnic1 npm[1341464]:   where: undefined,
+May 07 02:24:21 iplvnic1 npm[1341464]:   schema: undefined,
+May 07 02:24:21 iplvnic1 npm[1341464]:   table: undefined,
+May 07 02:24:21 iplvnic1 npm[1341464]:   column: undefined,
+May 07 02:24:21 iplvnic1 npm[1341464]:   dataType: undefined,
+May 07 02:24:21 iplvnic1 npm[1341464]:   constraint: undefined,
+May 07 02:24:21 iplvnic1 npm[1341464]:   file: 'parse_relation.c',
+May 07 02:24:21 iplvnic1 npm[1341464]:   line: '1449',
+May 07 02:24:21 iplvnic1 npm[1341464]:   routine: 'parserOpenTable'
+May 07 02:24:21 iplvnic1 npm[1341464]: }
+May 07 02:24:21 iplvnic1 npm[1341464]: Node.js v20.19.5
+May 07 02:24:21 iplvnic1 systemd[1]: kinto.service: Main process exited, code=exited, status=1/FAILURE
+May 07 02:24:21 iplvnic1 systemd[1]: kinto.service: Failed with result 'exit-code'.
+May 07 02:24:21 iplvnic1 systemd[1]: kinto.service: Consumed 5.397s CPU time.
+May 07 02:24:31 iplvnic1 systemd[1]: kinto.service: Scheduled restart job, restart counter is at 2.
+May 07 02:24:31 iplvnic1 systemd[1]: Stopped KINTO Smart Ops Application.
+May 07 02:24:31 iplvnic1 systemd[1]: kinto.service: Consumed 5.397s CPU time.
+May 07 02:24:31 iplvnic1 systemd[1]: Started KINTO Smart Ops Application.
+May 07 02:24:32 iplvnic1 npm[1341583]: > rest-express@1.0.0 start
+May 07 02:24:32 iplvnic1 npm[1341583]: > NODE_ENV=production node dist/index.js
+May 07 02:24:33 iplvnic1 npm[1341594]: [dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+May 07 02:24:33 iplvnic1 npm[1341594]: ✅ Environment loaded
+May 07 02:24:33 iplvnic1 npm[1341594]: ✅ DATABASE_URL: Set
+May 07 02:24:34 iplvnic1 npm[1341594]: ✅ Colloki Flow AI service initialized
+May 07 02:24:34 iplvnic1 npm[1341594]: ✅ Session persistence enabled - sessions expire after 7 days of inactivity
+May 07 02:24:34 iplvnic1 npm[1341594]: 🔧 Session configured — Secure: false, SameSite: lax, Dev Mode: false
+May 07 02:24:34 iplvnic1 npm[1341594]: ✅ Connected to local PostgreSQL successfully
+May 07 02:24:34 iplvnic1 npm[1341594]: [TYPE SEED] Account types seeding complete
+May 07 02:24:34 iplvnic1 npm[1341594]: [COA SEED] Chart of Accounts seeding complete
+May 07 02:24:34 iplvnic1 npm[1341594]: [RECTIFY] Found 0 journal line(s) pointing to generic Sundry Debtors (1100)
+May 07 02:24:34 iplvnic1 npm[1341594]: [RECTIFY] === COMPLETE === 0 updated, 0 skipped (no party name), 0 errors
+May 07 02:24:34 iplvnic1 npm[1341594]: [RECTIFY CREDITORS] Found 0 journal line(s) pointing to generic Sundry Creditors (2001)
+May 07 02:24:34 iplvnic1 npm[1341594]: [RECTIFY CREDITORS] === COMPLETE === 0 updated, 0 skipped, 0 errors
+May 07 02:24:34 iplvnic1 npm[1341594]: [USER_ROLES MIGRATION] Table OK — no backfill needed
+May 07 02:24:34 iplvnic1 npm[1341594]: [MCN_REQUESTS MIGRATION] Columns OK
+May 07 02:24:34 iplvnic1 npm[1341594]: [SALES_RETURN_ITEMS MIGRATION] Columns OK
+May 07 02:24:34 iplvnic1 npm[1341594]: [FG_RETURN_LOG MIGRATION] Table OK
+May 07 02:24:34 iplvnic1 npm[1341594]: [ROLE_PERMS TENANT FIX] All role_permissions rows OK
+May 07 02:24:34 iplvnic1 npm[1341594]: [NEW_SCREEN_KEYS MIGRATION] purchase_returns / tds_management rows ensured
+May 07 02:24:34 iplvnic1 npm[1341594]: [API_KEYS MIGRATION] api_keys rows ensured for all roles
+May 07 02:24:34 iplvnic1 npm[1341594]: [COA CONSTRAINT MIGRATION] chart_of_accounts constraint OK (code, tenant_id)
+May 07 02:24:34 iplvnic1 npm[1341594]: [SUBSCRIPTIONS MIGRATION] subscriptions(tenant_id) unique constraint OK
+May 07 02:24:34 iplvnic1 npm[1341594]: [ROLE_PERMS MIGRATION] role_permissions(role_id, screen_key) unique constraint OK
+May 07 02:24:34 iplvnic1 npm[1341594]: 2:24:34 AM [express] ✅ Daily tenant backup cron initialized (runs at 2:00 AM)
+May 07 02:24:34 iplvnic1 npm[1341594]: 2:24:34 AM [express] ✅ PostgreSQL dump cron initialized (runs at 1:00 AM)
+May 07 02:24:34 iplvnic1 npm[1341594]: 2:24:34 AM [express] ✅ Subscription expiry cron initialized (runs at 3:00 AM)
+May 07 02:24:34 iplvnic1 npm[1341594]: 2:24:34 AM [express] ✅ Recurring invoice cron initialized (runs at 6:00 AM)
+May 07 02:24:34 iplvnic1 npm[1341594]: 2:24:34 AM [express] 🚀 Server running on port 5050
+May 07 02:24:34 iplvnic1 npm[1341594]: 2:24:34 AM [express] ✅ Machine startup reminder system initialized
+May 07 02:24:34 iplvnic1 npm[1341594]: 2:24:34 AM [express] ✅ Missed checklist notification system initialized
+May 07 02:24:34 iplvnic1 npm[1341594]: 2:24:34 AM [express] ✅ Document expiry alert system initialized
+May 07 02:24:34 iplvnic1 npm[1341594]: 2:24:34 AM [express] ✅ WhatsApp secrets sync checked
+May 07 02:24:34 iplvnic1 npm[1341594]: [SYNC] WhatsApp secrets already in database or no env vars to sync
+May 07 02:24:42 iplvnic1 npm[1341594]: 2:24:42 AM [express] GET /api/public/tenant-branding 200 in 4ms :: {"name":"KINTO","slug":"kinto","l…
+May 07 02:24:42 iplvnic1 npm[1341594]: 2:24:42 AM [express] GET /api/user 200 in 8ms :: {"id":"user-admin","username":"admin","password":"$…
+May 07 02:24:42 iplvnic1 npm[1341594]: 2:24:42 AM [express] GET /api/tenant/info 200 in 32ms :: {"id":1,"name":"KINTO","slug":"kinto","plan…
+May 07 02:24:42 iplvnic1 npm[1341594]: 2:24:42 AM [express] GET /api/tenant/features 200 in 47ms :: {"plan":"enterprise","modules":["invoic…
+May 07 02:24:42 iplvnic1 npm[1341594]: 2:24:42 AM [express] GET /api/users 304 in 108ms :: [{"id":"user-admin","username":"admin","email":"…
+May 07 02:24:42 iplvnic1 npm[1341594]: 2:24:42 AM [express] GET /api/maintenance-plans 304 in 108ms :: []
+May 07 02:24:42 iplvnic1 npm[1341594]: 2:24:42 AM [express] GET /api/machines 304 in 120ms :: [{"id":"80649cc4-2677-493d-a712-63f0833ae39d"…
+May 07 02:24:42 iplvnic1 npm[1341594]: 2:24:42 AM [express] GET /api/my-permissions 200 in 132ms :: {"role":"admin","roleId":"role-admin","…
+May 07 02:24:42 iplvnic1 npm[1341594]: /home/kinto/kinto-qa-system/node_modules/pg-pool/index.js:45
+May 07 02:24:42 iplvnic1 npm[1341594]:     Error.captureStackTrace(err)
+May 07 02:24:42 iplvnic1 npm[1341594]:           ^
+May 07 02:24:42 iplvnic1 npm[1341594]: error: relation "tenant_module_labels" does not exist
+May 07 02:24:42 iplvnic1 npm[1341594]:     at /home/kinto/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+May 07 02:24:42 iplvnic1 npm[1341594]:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+May 07 02:24:42 iplvnic1 npm[1341594]:     at async file:///home/kinto/kinto-qa-system/dist/index.js:13143:20 {
+May 07 02:24:42 iplvnic1 npm[1341594]:   length: 119,
+May 07 02:24:42 iplvnic1 npm[1341594]:   severity: 'ERROR',
+May 07 02:24:42 iplvnic1 npm[1341594]:   code: '42P01',
+May 07 02:24:42 iplvnic1 npm[1341594]:   detail: undefined,
+May 07 02:24:42 iplvnic1 npm[1341594]:   hint: undefined,
+May 07 02:24:42 iplvnic1 npm[1341594]:   position: '15',
+May 07 02:24:42 iplvnic1 npm[1341594]:   internalPosition: undefined,
+May 07 02:24:42 iplvnic1 npm[1341594]:   internalQuery: undefined,
+May 07 02:24:42 iplvnic1 npm[1341594]:   where: undefined,
+May 07 02:24:42 iplvnic1 npm[1341594]:   schema: undefined,
+May 07 02:24:42 iplvnic1 npm[1341594]:   table: undefined,
+May 07 02:24:42 iplvnic1 npm[1341594]:   column: undefined,
+May 07 02:24:42 iplvnic1 npm[1341594]:   dataType: undefined,
+May 07 02:24:42 iplvnic1 npm[1341594]:   constraint: undefined,
+May 07 02:24:42 iplvnic1 npm[1341594]:   file: 'parse_relation.c',
+May 07 02:24:42 iplvnic1 npm[1341594]:   line: '1449',
+May 07 02:24:42 iplvnic1 npm[1341594]:   routine: 'parserOpenTable'
+May 07 02:24:42 iplvnic1 npm[1341594]: }
+May 07 02:24:42 iplvnic1 npm[1341594]: Node.js v20.19.5
+May 07 02:24:43 iplvnic1 systemd[1]: kinto.service: Main process exited, code=exited, status=1/FAILURE
+May 07 02:24:43 iplvnic1 systemd[1]: kinto.service: Failed with result 'exit-code'.
+May 07 02:24:43 iplvnic1 systemd[1]: kinto.service: Consumed 4.399s CPU time.
+May 07 02:24:53 iplvnic1 systemd[1]: kinto.service: Scheduled restart job, restart counter is at 3.
+May 07 02:24:53 iplvnic1 systemd[1]: Stopped KINTO Smart Ops Application.
+May 07 02:24:53 iplvnic1 systemd[1]: kinto.service: Consumed 4.399s CPU time.
+May 07 02:24:53 iplvnic1 systemd[1]: Started KINTO Smart Ops Application.
+May 07 02:24:53 iplvnic1 npm[1341617]: > rest-express@1.0.0 start
+May 07 02:24:53 iplvnic1 npm[1341617]: > NODE_ENV=production node dist/index.js
+May 07 02:24:55 iplvnic1 npm[1341628]: [dotenv@17.2.3] injecting env (0) from .env -- tip: 🔄 add secrets lifecycle management: https://dotenvx.com/ops
+May 07 02:24:55 iplvnic1 npm[1341628]: ✅ Environment loaded
+May 07 02:24:55 iplvnic1 npm[1341628]: ✅ DATABASE_URL: Set
+May 07 02:24:55 iplvnic1 npm[1341628]: ✅ Colloki Flow AI service initialized
+May 07 02:24:55 iplvnic1 npm[1341628]: ✅ Session persistence enabled - sessions expire after 7 days of inactivity
+May 07 02:24:55 iplvnic1 npm[1341628]: 🔧 Session configured — Secure: false, SameSite: lax, Dev Mode: false
+May 07 02:24:55 iplvnic1 npm[1341628]: ✅ Connected to local PostgreSQL successfully
+May 07 02:24:55 iplvnic1 npm[1341628]: [TYPE SEED] Account types seeding complete
+May 07 02:24:55 iplvnic1 npm[1341628]: [COA SEED] Chart of Accounts seeding complete
+May 07 02:24:55 iplvnic1 npm[1341628]: [RECTIFY] Found 0 journal line(s) pointing to generic Sundry Debtors (1100)
+May 07 02:24:55 iplvnic1 npm[1341628]: [RECTIFY] === COMPLETE === 0 updated, 0 skipped (no party name), 0 errors
+May 07 02:24:55 iplvnic1 npm[1341628]: [RECTIFY CREDITORS] Found 0 journal line(s) pointing to generic Sundry Creditors (2001)
+May 07 02:24:55 iplvnic1 npm[1341628]: [RECTIFY CREDITORS] === COMPLETE === 0 updated, 0 skipped, 0 errors
+May 07 02:24:55 iplvnic1 npm[1341628]: [USER_ROLES MIGRATION] Table OK — no backfill needed
+May 07 02:24:55 iplvnic1 npm[1341628]: [MCN_REQUESTS MIGRATION] Columns OK
+May 07 02:24:55 iplvnic1 npm[1341628]: [SALES_RETURN_ITEMS MIGRATION] Columns OK
+May 07 02:24:55 iplvnic1 npm[1341628]: [FG_RETURN_LOG MIGRATION] Table OK
+May 07 02:24:55 iplvnic1 npm[1341628]: [ROLE_PERMS TENANT FIX] All role_permissions rows OK
+May 07 02:24:55 iplvnic1 npm[1341628]: [NEW_SCREEN_KEYS MIGRATION] purchase_returns / tds_management rows ensured
+May 07 02:24:55 iplvnic1 npm[1341628]: [API_KEYS MIGRATION] api_keys rows ensured for all roles
+May 07 02:24:55 iplvnic1 npm[1341628]: [COA CONSTRAINT MIGRATION] chart_of_accounts constraint OK (code, tenant_id)
+May 07 02:24:55 iplvnic1 npm[1341628]: [SUBSCRIPTIONS MIGRATION] subscriptions(tenant_id) unique constraint OK
+May 07 02:24:55 iplvnic1 npm[1341628]: [ROLE_PERMS MIGRATION] role_permissions(role_id, screen_key) unique constraint OK
+May 07 02:24:56 iplvnic1 npm[1341628]: 2:24:56 AM [express] ✅ Daily tenant backup cron initialized (runs at 2:00 AM)
+May 07 02:24:56 iplvnic1 npm[1341628]: 2:24:56 AM [express] ✅ PostgreSQL dump cron initialized (runs at 1:00 AM)
+May 07 02:24:56 iplvnic1 npm[1341628]: 2:24:56 AM [express] ✅ Subscription expiry cron initialized (runs at 3:00 AM)
+May 07 02:24:56 iplvnic1 npm[1341628]: 2:24:56 AM [express] ✅ Recurring invoice cron initialized (runs at 6:00 AM)
+May 07 02:24:56 iplvnic1 npm[1341628]: 2:24:56 AM [express] 🚀 Server running on port 5050
+May 07 02:24:56 iplvnic1 npm[1341628]: 2:24:56 AM [express] ✅ Machine startup reminder system initialized
+May 07 02:24:56 iplvnic1 npm[1341628]: 2:24:56 AM [express] ✅ Missed checklist notification system initialized
+May 07 02:24:56 iplvnic1 npm[1341628]: 2:24:56 AM [express] ✅ Document expiry alert system initialized
+May 07 02:24:56 iplvnic1 npm[1341628]: 2:24:56 AM [express] ✅ WhatsApp secrets sync checked
+May 07 02:24:56 iplvnic1 npm[1341628]: [SYNC] WhatsApp secrets already in database or no env vars to sync
+May 07 02:24:56 iplvnic1 npm[1341628]: Error fetching vendor history: error: column "credit_limit" does not exist
+May 07 02:24:56 iplvnic1 npm[1341628]:     at /home/kinto/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+May 07 02:24:56 iplvnic1 npm[1341628]:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+May 07 02:24:56 iplvnic1 npm[1341628]:     at async file:///home/kinto/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+May 07 02:24:56 iplvnic1 npm[1341628]:     at async DatabaseStorage.getAllVendors (file:///home/kinto/kinto-qa-system/dist/index.js:4996:16)
+May 07 02:24:56 iplvnic1 npm[1341628]:     at async file:///home/kinto/kinto-qa-system/dist/index.js:37106:26 {
+May 07 02:24:56 iplvnic1 npm[1341628]:   length: 113,
+May 07 02:24:56 iplvnic1 npm[1341628]:   severity: 'ERROR',
+May 07 02:24:56 iplvnic1 npm[1341628]:   code: '42703',
+May 07 02:24:56 iplvnic1 npm[1341628]:   detail: undefined,
+May 07 02:24:56 iplvnic1 npm[1341628]:   hint: undefined,
+May 07 02:24:56 iplvnic1 npm[1341628]:   position: '410',
+May 07 02:24:56 iplvnic1 npm[1341628]:   internalPosition: undefined,
+May 07 02:24:56 iplvnic1 npm[1341628]:   internalQuery: undefined,
+May 07 02:24:56 iplvnic1 npm[1341628]:   where: undefined,
+May 07 02:24:56 iplvnic1 npm[1341628]:   schema: undefined,
+May 07 02:24:56 iplvnic1 npm[1341628]:   table: undefined,
+May 07 02:24:56 iplvnic1 npm[1341628]:   column: undefined,
+May 07 02:24:56 iplvnic1 npm[1341628]:   dataType: undefined,
+May 07 02:24:56 iplvnic1 npm[1341628]:   constraint: undefined,
+May 07 02:24:56 iplvnic1 npm[1341628]:   file: 'parse_relation.c',
+May 07 02:24:56 iplvnic1 npm[1341628]:   line: '3722',
+May 07 02:24:56 iplvnic1 npm[1341628]:   routine: 'errorMissingColumn'
+May 07 02:24:56 iplvnic1 npm[1341628]: }
+May 07 02:24:56 iplvnic1 npm[1341628]: 2:24:56 AM [express] GET /api/my-permissions 200 in 84ms :: {"role":"admin","roleId":"role-admin","r…
+May 07 02:24:56 iplvnic1 npm[1341628]: 2:24:56 AM [express] GET /api/vendor-history 500 in 97ms :: {"message":"Failed to fetch vendor histo…
+May 07 02:24:56 iplvnic1 npm[1341628]: 2:24:56 AM [express] GET /api/tenant/features 200 in 108ms :: {"plan":"enterprise","modules":["invoi…
+May 07 02:24:56 iplvnic1 npm[1341628]: /home/kinto/kinto-qa-system/node_modules/pg-pool/index.js:45
+May 07 02:24:56 iplvnic1 npm[1341628]:     Error.captureStackTrace(err)
+May 07 02:24:56 iplvnic1 npm[1341628]:           ^
+May 07 02:24:56 iplvnic1 npm[1341628]: error: relation "tenant_module_labels" does not exist
+May 07 02:24:56 iplvnic1 npm[1341628]:     at /home/kinto/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+May 07 02:24:56 iplvnic1 npm[1341628]:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+May 07 02:24:56 iplvnic1 npm[1341628]:     at async file:///home/kinto/kinto-qa-system/dist/index.js:13143:20 {
+May 07 02:24:56 iplvnic1 npm[1341628]:   length: 119,
+May 07 02:24:56 iplvnic1 npm[1341628]:   severity: 'ERROR',
+May 07 02:24:56 iplvnic1 npm[1341628]:   code: '42P01',
+May 07 02:24:56 iplvnic1 npm[1341628]:   detail: undefined,
+May 07 02:24:56 iplvnic1 npm[1341628]:   hint: undefined,
+May 07 02:24:56 iplvnic1 npm[1341628]:   position: '15',
+May 07 02:24:56 iplvnic1 npm[1341628]:   internalPosition: undefined,
+May 07 02:24:56 iplvnic1 npm[1341628]:   internalQuery: undefined,
+May 07 02:24:56 iplvnic1 npm[1341628]:   where: undefined,
+May 07 02:24:56 iplvnic1 npm[1341628]:   schema: undefined,
+May 07 02:24:56 iplvnic1 npm[1341628]:   table: undefined,
+May 07 02:24:56 iplvnic1 npm[1341628]:   column: undefined,
+May 07 02:24:56 iplvnic1 npm[1341628]:   dataType: undefined,
+May 07 02:24:56 iplvnic1 npm[1341628]:   constraint: undefined,
+May 07 02:24:56 iplvnic1 npm[1341628]:   file: 'parse_relation.c',
+May 07 02:24:56 iplvnic1 npm[1341628]:   line: '1449',
+May 07 02:24:56 iplvnic1 npm[1341628]:   routine: 'parserOpenTable'
+May 07 02:24:56 iplvnic1 npm[1341628]: }
+May 07 02:24:56 iplvnic1 npm[1341628]: Node.js v20.19.5
+May 07 02:24:56 iplvnic1 systemd[1]: kinto.service: Main process exited, code=exited, status=1/FAILURE
+May 07 02:24:56 iplvnic1 systemd[1]: kinto.service: Failed with result 'exit-code'.
+May 07 02:24:56 iplvnic1 systemd[1]: kinto.service: Consumed 4.292s CPU time.
+May 07 02:25:06 iplvnic1 systemd[1]: kinto.service: Scheduled restart job, restart counter is at 4.
+May 07 02:25:06 iplvnic1 systemd[1]: Stopped KINTO Smart Ops Application.
+May 07 02:25:06 iplvnic1 systemd[1]: kinto.service: Consumed 4.292s CPU time.
+May 07 02:25:06 iplvnic1 systemd[1]: Started KINTO Smart Ops Application.
+May 07 02:25:07 iplvnic1 npm[1342017]: > rest-express@1.0.0 start
+May 07 02:25:07 iplvnic1 npm[1342017]: > NODE_ENV=production node dist/index.js
+May 07 02:25:09 iplvnic1 npm[1342028]: [dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  suppress all logs with { quiet: true }
+May 07 02:25:09 iplvnic1 npm[1342028]: ✅ Environment loaded
+May 07 02:25:09 iplvnic1 npm[1342028]: ✅ DATABASE_URL: Set
+May 07 02:25:10 iplvnic1 npm[1342028]: ✅ Colloki Flow AI service initialized
+May 07 02:25:10 iplvnic1 npm[1342028]: ✅ Session persistence enabled - sessions expire after 7 days of inactivity
+May 07 02:25:10 iplvnic1 npm[1342028]: 🔧 Session configured — Secure: false, SameSite: lax, Dev Mode: false
+May 07 02:25:10 iplvnic1 npm[1342028]: ✅ Connected to local PostgreSQL successfully
+May 07 02:25:10 iplvnic1 npm[1342028]: [TYPE SEED] Account types seeding complete
+May 07 02:25:10 iplvnic1 npm[1342028]: [COA SEED] Chart of Accounts seeding complete
+May 07 02:25:10 iplvnic1 npm[1342028]: [RECTIFY] Found 0 journal line(s) pointing to generic Sundry Debtors (1100)
+May 07 02:25:10 iplvnic1 npm[1342028]: [RECTIFY] === COMPLETE === 0 updated, 0 skipped (no party name), 0 errors
+May 07 02:25:10 iplvnic1 npm[1342028]: [RECTIFY CREDITORS] Found 0 journal line(s) pointing to generic Sundry Creditors (2001)
+May 07 02:25:10 iplvnic1 npm[1342028]: [RECTIFY CREDITORS] === COMPLETE === 0 updated, 0 skipped, 0 errors
+May 07 02:25:10 iplvnic1 npm[1342028]: [USER_ROLES MIGRATION] Table OK — no backfill needed
+May 07 02:25:10 iplvnic1 npm[1342028]: [MCN_REQUESTS MIGRATION] Columns OK
+May 07 02:25:10 iplvnic1 npm[1342028]: [SALES_RETURN_ITEMS MIGRATION] Columns OK
+May 07 02:25:10 iplvnic1 npm[1342028]: [FG_RETURN_LOG MIGRATION] Table OK
+May 07 02:25:10 iplvnic1 npm[1342028]: [ROLE_PERMS TENANT FIX] All role_permissions rows OK
+May 07 02:25:10 iplvnic1 npm[1342028]: [NEW_SCREEN_KEYS MIGRATION] purchase_returns / tds_management rows ensured
+May 07 02:25:10 iplvnic1 npm[1342028]: [API_KEYS MIGRATION] api_keys rows ensured for all roles
+May 07 02:25:10 iplvnic1 npm[1342028]: [COA CONSTRAINT MIGRATION] chart_of_accounts constraint OK (code, tenant_id)
+May 07 02:25:10 iplvnic1 npm[1342028]: [SUBSCRIPTIONS MIGRATION] subscriptions(tenant_id) unique constraint OK
+May 07 02:25:10 iplvnic1 npm[1342028]: [ROLE_PERMS MIGRATION] role_permissions(role_id, screen_key) unique constraint OK
+May 07 02:25:10 iplvnic1 npm[1342028]: 2:25:10 AM [express] ✅ Daily tenant backup cron initialized (runs at 2:00 AM)
+May 07 02:25:10 iplvnic1 npm[1342028]: 2:25:10 AM [express] ✅ PostgreSQL dump cron initialized (runs at 1:00 AM)
+May 07 02:25:10 iplvnic1 npm[1342028]: 2:25:10 AM [express] ✅ Subscription expiry cron initialized (runs at 3:00 AM)
+May 07 02:25:10 iplvnic1 npm[1342028]: 2:25:10 AM [express] ✅ Recurring invoice cron initialized (runs at 6:00 AM)
+May 07 02:25:10 iplvnic1 npm[1342028]: 2:25:10 AM [express] 🚀 Server running on port 5050
+May 07 02:25:10 iplvnic1 npm[1342028]: 2:25:10 AM [express] ✅ Machine startup reminder system initialized
+May 07 02:25:10 iplvnic1 npm[1342028]: 2:25:10 AM [express] ✅ Missed checklist notification system initialized
+May 07 02:25:10 iplvnic1 npm[1342028]: 2:25:10 AM [express] ✅ Document expiry alert system initialized
+May 07 02:25:10 iplvnic1 npm[1342028]: 2:25:10 AM [express] ✅ WhatsApp secrets sync checked
+May 07 02:25:10 iplvnic1 npm[1342028]: [SYNC] WhatsApp secrets already in database or no env vars to sync
+May 07 02:25:13 iplvnic1 npm[1342028]: 2:25:13 AM [express] POST /api/logout 302 in 20ms
+May 07 02:25:14 iplvnic1 npm[1342028]: 2:25:14 AM [express] GET /api/public/tenant-branding 200 in 3ms :: {"name":"KINTO","slug":"kinto","l…
+May 07 02:25:14 iplvnic1 npm[1342028]: 2:25:14 AM [express] GET /api/public/tenant-branding 200 in 2ms :: {"name":"KINTO","slug":"kinto","l…
+May 07 02:25:14 iplvnic1 npm[1342028]: 2:25:14 AM [express] GET /api/user 401 in 1ms

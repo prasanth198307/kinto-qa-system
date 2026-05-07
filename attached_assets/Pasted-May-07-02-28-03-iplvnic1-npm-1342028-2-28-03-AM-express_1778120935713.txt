@@ -1,0 +1,30 @@
+May 07 02:28:03 iplvnic1 npm[1342028]: 2:28:03 AM [express] GET /api/maintenance-plans 200 in 167ms :: []
+May 07 02:28:03 iplvnic1 npm[1342028]: /home/kinto/kinto-qa-system/node_modules/pg-pool/index.js:45
+May 07 02:28:03 iplvnic1 npm[1342028]:     Error.captureStackTrace(err)
+May 07 02:28:03 iplvnic1 npm[1342028]:           ^
+May 07 02:28:03 iplvnic1 npm[1342028]: error: relation "tenant_module_labels" does not exist
+May 07 02:28:03 iplvnic1 npm[1342028]:     at /home/kinto/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+May 07 02:28:03 iplvnic1 npm[1342028]:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+May 07 02:28:03 iplvnic1 npm[1342028]:     at async file:///home/kinto/kinto-qa-system/dist/index.js:13143:20 {
+May 07 02:28:03 iplvnic1 npm[1342028]:   length: 119,
+May 07 02:28:03 iplvnic1 npm[1342028]:   severity: 'ERROR',
+May 07 02:28:03 iplvnic1 npm[1342028]:   code: '42P01',
+May 07 02:28:03 iplvnic1 npm[1342028]:   detail: undefined,
+May 07 02:28:03 iplvnic1 npm[1342028]:   hint: undefined,
+May 07 02:28:03 iplvnic1 npm[1342028]:   position: '15',
+May 07 02:28:03 iplvnic1 npm[1342028]:   internalPosition: undefined,
+May 07 02:28:03 iplvnic1 npm[1342028]:   internalQuery: undefined,
+May 07 02:28:03 iplvnic1 npm[1342028]:   where: undefined,
+May 07 02:28:03 iplvnic1 npm[1342028]:   schema: undefined,
+May 07 02:28:03 iplvnic1 npm[1342028]:   table: undefined,
+May 07 02:28:03 iplvnic1 npm[1342028]:   column: undefined,
+May 07 02:28:03 iplvnic1 npm[1342028]:   dataType: undefined,
+May 07 02:28:03 iplvnic1 npm[1342028]:   constraint: undefined,
+May 07 02:28:03 iplvnic1 npm[1342028]:   file: 'parse_relation.c',
+May 07 02:28:03 iplvnic1 npm[1342028]:   line: '1449',
+May 07 02:28:03 iplvnic1 npm[1342028]:   routine: 'parserOpenTable'
+May 07 02:28:03 iplvnic1 npm[1342028]: }
+May 07 02:28:03 iplvnic1 npm[1342028]: Node.js v20.19.5
+May 07 02:28:03 iplvnic1 systemd[1]: kinto.service: Main process exited, code=exited, status=1/FAILURE
+May 07 02:28:03 iplvnic1 systemd[1]: kinto.service: Failed with result 'exit-code'.
+May 07 02:28:03 iplvnic1 systemd[1]: kinto.service: Consumed 5.272s CPU time.

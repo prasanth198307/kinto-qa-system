@@ -566,6 +566,23 @@ app.use((req, res, next) => {
     console.error('[SUBSCRIPTIONS MIGRATION ERROR]', err);
   }
 
+  // ─── Ensure subscriptions.selected_modules + monthly_amount columns ───────
+  // Added for the Module Marketplace (Phase 9). Production DBs that were
+  // deployed before this migration will be missing these columns, which
+  // causes the billing routes and plan-middleware to crash or misbehave.
+  try {
+    const { db: dbModFix } = await import("./db");
+    const { sql: sqlModFix } = await import("drizzle-orm");
+    await dbModFix.execute(sqlModFix`
+      ALTER TABLE subscriptions
+        ADD COLUMN IF NOT EXISTS selected_modules JSONB DEFAULT '[]',
+        ADD COLUMN IF NOT EXISTS monthly_amount INTEGER DEFAULT 0;
+    `);
+    console.log('[SUBSCRIPTIONS MODULE MIGRATION] selected_modules + monthly_amount columns OK');
+  } catch (err) {
+    console.error('[SUBSCRIPTIONS MODULE MIGRATION ERROR]', err);
+  }
+
   // ─── Ensure role_permissions(role_id, screen_key) unique constraint ───────
   // Required by seed-demo-tenant.ts and seed-tenant.ts ON CONFLICT (role_id, screen_key).
   // Missing on production DBs created before this constraint was added.

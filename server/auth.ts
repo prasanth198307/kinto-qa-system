@@ -47,12 +47,32 @@ async function comparePasswords(supplied: string, stored: string) {
 export function setupAuth(app: Express) {
   const isReplit = !!(process.env.REPLIT_DOMAINS || process.env.REPLIT_DEV_DOMAIN);
   const isDevelopment = process.env.NODE_ENV === "development";
+  const isProduction = process.env.NODE_ENV === "production";
 
-  // Replit always serves over HTTPS (even in dev), so we can use Secure cookies.
-  // SameSite=none is required so the cookie is sent inside the Replit preview iframe
-  // (which is a cross-site context: replit.com embedding xxx.replit.dev).
-  const cookieSecure = isReplit;
-  const cookieSameSite: "none" | "lax" = isReplit ? "none" : "lax";
+  // Cookie rules:
+  // 1. Replit preview (dev or prod via Replit): Secure=true, SameSite=none
+  //    (cross-site context: replit.com embedding xxx.replit.dev)
+  // 2. Self-hosted production (e.g. kinto.swacherp.com behind nginx HTTPS):
+  //    Secure=true, SameSite=lax
+  // 3. Local development: Secure=false, SameSite=lax
+  let cookieSecure: boolean;
+  let cookieSameSite: "none" | "lax";
+  if (isReplit) {
+    cookieSecure = true;
+    cookieSameSite = "none";
+  } else if (isProduction) {
+    // Running behind nginx/HTTPS in production — cookies must be Secure
+    cookieSecure = true;
+    cookieSameSite = "lax";
+  } else {
+    cookieSecure = false;
+    cookieSameSite = "lax";
+  }
+
+  // Cookie domain: on custom domains like *.swacherp.com, set domain to
+  // .swacherp.com so the session cookie works across all tenant subdomains.
+  const appDomain = process.env.APP_DOMAIN; // e.g. "swacherp.com" (no leading dot)
+  const cookieDomain = appDomain ? `.${appDomain}` : undefined;
 
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || "insecure_dev_secret",
@@ -65,11 +85,12 @@ export function setupAuth(app: Express) {
       secure: cookieSecure,
       sameSite: cookieSameSite,
       path: "/",
+      ...(cookieDomain ? { domain: cookieDomain } : {}),
     },
   };
 
   console.log(
-    `🔧 Session configured — Secure: ${cookieSecure}, SameSite: ${cookieSameSite}, Dev Mode: ${isDevelopment}${isReplit ? " (Replit)" : ""}`
+    `🔧 Session configured — Secure: ${cookieSecure}, SameSite: ${cookieSameSite}, Domain: ${cookieDomain ?? "(default)"}, Dev Mode: ${isDevelopment}${isReplit ? " (Replit)" : ""}${isProduction ? " (Production)" : ""}`
   );
 
   app.set("trust proxy", 1);

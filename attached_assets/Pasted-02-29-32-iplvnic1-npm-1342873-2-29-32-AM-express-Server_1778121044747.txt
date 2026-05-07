@@ -1,0 +1,152 @@
+02:29:32 iplvnic1 npm[1342873]: 2:29:32 AM [express] 🚀 Server running on port 5050
+May 07 02:29:32 iplvnic1 npm[1342873]: 2:29:32 AM [express] ✅ Machine startup reminder system initialized
+May 07 02:29:32 iplvnic1 npm[1342873]: 2:29:32 AM [express] ✅ Missed checklist notification system initialized
+May 07 02:29:32 iplvnic1 npm[1342873]: 2:29:32 AM [express] ✅ Document expiry alert system initialized
+May 07 02:29:32 iplvnic1 npm[1342873]: 2:29:32 AM [express] ✅ WhatsApp secrets sync checked
+May 07 02:29:32 iplvnic1 npm[1342873]: [SYNC] WhatsApp secrets already in database or no env vars to sync
+May 07 02:29:45 iplvnic1 npm[1342873]: 2:29:45 AM [express] GET /api/raw-material-issuances 200 in 60ms :: []
+May 07 02:29:45 iplvnic1 npm[1342873]: Error fetching vendors: error: column "credit_limit" does not exist
+May 07 02:29:45 iplvnic1 npm[1342873]:     at /home/kinto/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+May 07 02:29:45 iplvnic1 npm[1342873]:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+May 07 02:29:45 iplvnic1 npm[1342873]:     at async file:///home/kinto/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+May 07 02:29:45 iplvnic1 npm[1342873]:     at async DatabaseStorage.getAllVendors (file:///home/kinto/kinto-qa-system/dist/index.js:4996:16)
+May 07 02:29:45 iplvnic1 npm[1342873]:     at async file:///home/kinto/kinto-qa-system/dist/index.js:28675:36 {
+May 07 02:29:45 iplvnic1 npm[1342873]:   length: 113,
+May 07 02:29:45 iplvnic1 npm[1342873]:   severity: 'ERROR',
+May 07 02:29:45 iplvnic1 npm[1342873]:   code: '42703',
+May 07 02:29:45 iplvnic1 npm[1342873]:   detail: undefined,
+May 07 02:29:45 iplvnic1 npm[1342873]:   hint: undefined,
+May 07 02:29:45 iplvnic1 npm[1342873]:   position: '410',
+May 07 02:29:45 iplvnic1 npm[1342873]:   internalPosition: undefined,
+May 07 02:29:45 iplvnic1 npm[1342873]:   internalQuery: undefined,
+May 07 02:29:45 iplvnic1 npm[1342873]:   where: undefined,
+May 07 02:29:45 iplvnic1 npm[1342873]:   schema: undefined,
+May 07 02:29:45 iplvnic1 npm[1342873]:   table: undefined,
+May 07 02:29:45 iplvnic1 npm[1342873]:   column: undefined,
+May 07 02:29:45 iplvnic1 npm[1342873]:   dataType: undefined,
+May 07 02:29:45 iplvnic1 npm[1342873]:   constraint: undefined,
+May 07 02:29:45 iplvnic1 npm[1342873]:   file: 'parse_relation.c',
+May 07 02:29:45 iplvnic1 npm[1342873]:   line: '3722',
+May 07 02:29:45 iplvnic1 npm[1342873]:   routine: 'errorMissingColumn'
+May 07 02:29:45 iplvnic1 npm[1342873]: }
+May 07 02:29:45 iplvnic1 npm[1342873]: 2:29:45 AM [express] GET /api/gatepasses 200 in 171ms :: {"data":[{"id":"67735c4a-21c7-4723-897e-a52…
+May 07 02:29:45 iplvnic1 npm[1342873]: 2:29:45 AM [express] GET /api/vendors 500 in 169ms :: {"message":"Failed to fetch vendors"}
+May 07 02:29:45 iplvnic1 npm[1342873]: 2:29:45 AM [express] GET /api/invoices 200 in 172ms :: [{"id":"ba5d76e4-41a6-46cf-a854-cf479b310a18"…
+May 07 02:29:45 iplvnic1 npm[1342873]: 2:29:45 AM [express] GET /api/my-permissions 304 in 185ms :: {"role":"admin","roleId":"role-admin","…
+May 07 02:29:45 iplvnic1 npm[1342873]: 2:29:45 AM [express] GET /api/invoice-items/1ae11fd0-0727-487b-b4e9-f87217d272f8 200 in 27ms :: [{"i…
+May 07 02:29:45 iplvnic1 npm[1342873]: 2:29:45 AM [express] GET /api/invoice-payments/1ae11fd0-0727-487b-b4e9-f87217d272f8 200 in 27ms :: []
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-items/98d4f5aa-4fc6-4186-b734-0dc7608ea5a0 200 in 40ms :: [{"i…
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/products 200 in 41ms :: [{"id":"b560f560-fc13-4905-83ac-63b69a96ebaf",…
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-templates/a4aa4cb6-1ab3-44fb-bb4a-464a5ead16a3 304 in 66ms :: …
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/terms-conditions/default 304 in 59ms :: {"id":"e618d50a-c45b-424c-9f80…
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-items/b13dc380-1c64-4f03-a63e-600b5bfbbbba 200 in 73ms :: [{"i…
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-templates/default 304 in 94ms :: {"id":"a4aa4cb6-1ab3-44fb-bb4…
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-items/86b0e119-aa83-40e4-bc43-6758d35aee45 200 in 80ms :: [{"i…
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-payments/524167bf-99b8-4510-aa51-3fb51b4d8ac2 200 in 90ms :: []
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-payments/86b0e119-aa83-40e4-bc43-6758d35aee45 200 in 108ms :: …
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-payments/98d4f5aa-4fc6-4186-b734-0dc7608ea5a0 200 in 233ms :: …
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-payments/25d579c8-f625-4404-a273-43242793742d 200 in 119ms :: …
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-items/48452fc5-acac-4e55-ae77-ad1833cdca1d 200 in 93ms :: [{"i…
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-payments/48452fc5-acac-4e55-ae77-ad1833cdca1d 200 in 82ms :: []
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-items/d55bf72e-9f6f-4471-8d60-222e387fa24d 200 in 85ms :: [{"i…
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/terms-conditions/e618d50a-c45b-424c-9f80-17ef03a0f421 304 in 244ms :: …
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/uom 304 in 266ms :: [{"id":"57cdd356-f009-435a-b3ff-8f25a5cda30f","cod…
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-payments/d55bf72e-9f6f-4471-8d60-222e387fa24d 200 in 90ms :: []
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-items/798aeb22-4e6b-4367-ba27-bea3a6cab5ec 200 in 83ms :: [{"i…
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-payments/798aeb22-4e6b-4367-ba27-bea3a6cab5ec 200 in 75ms :: []
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-payments/b13dc380-1c64-4f03-a63e-600b5bfbbbba 200 in 232ms :: …
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-items/a7f92dcb-8cdb-4d3a-a416-1b13ea7f8338 200 in 64ms :: [{"i…
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-items/1ca4f535-c60a-439e-a815-34768fb027e8 304 in 54ms :: [{"i…
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-items/524167bf-99b8-4510-aa51-3fb51b4d8ac2 200 in 254ms :: [{"…
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-payments/a7f92dcb-8cdb-4d3a-a416-1b13ea7f8338 200 in 76ms :: []
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-payments/ce378302-ed26-4461-b6e1-151c8a94a8c4 304 in 40ms :: []
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-payments/5652537a-747e-4132-8716-b6c70b393272 304 in 76ms :: []
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-items/ce378302-ed26-4461-b6e1-151c8a94a8c4 304 in 37ms :: [{"i…
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-items/25d579c8-f625-4404-a273-43242793742d 200 in 245ms :: [{"…
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-items/5652537a-747e-4132-8716-b6c70b393272 304 in 44ms :: [{"i…
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-items/d4f7ae92-45fa-48b6-8c05-a93eef719585 304 in 46ms :: [{"i…
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-payments/1ca4f535-c60a-439e-a815-34768fb027e8 200 in 34ms :: […
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-payments/d4f7ae92-45fa-48b6-8c05-a93eef719585 200 in 34ms :: […
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-payments/3e10911d-494a-434f-a005-d8afd9061361 304 in 41ms :: []
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-items/3e10911d-494a-434f-a005-d8afd9061361 304 in 37ms :: [{"i…
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-items/b5450439-a46a-4f91-b983-ef4749b37265 304 in 27ms :: [{"i…
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-payments/641f06e8-4d63-4cf0-997f-c1b6d6db7605 304 in 26ms :: []
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-items/641f06e8-4d63-4cf0-997f-c1b6d6db7605 304 in 46ms :: [{"i…
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-items/461f69af-d144-4f1b-95dc-be44d10f3591 304 in 36ms :: [{"i…
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-payments/b5450439-a46a-4f91-b983-ef4749b37265 304 in 43ms :: […
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-payments/461f69af-d144-4f1b-95dc-be44d10f3591 304 in 39ms :: […
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-items/c3e85a65-dddd-422e-ba0e-8ef659496288 304 in 40ms :: [{"i…
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-payments/c3e85a65-dddd-422e-ba0e-8ef659496288 304 in 38ms :: []
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-items/d226f9f6-f3b1-453a-82ff-bd76838fa59f 304 in 34ms :: [{"i…
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-payments/d226f9f6-f3b1-453a-82ff-bd76838fa59f 304 in 35ms :: []
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-items/485602a5-16bb-4358-8cd1-1fe74f72833b 304 in 39ms :: [{"i…
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-payments/485602a5-16bb-4358-8cd1-1fe74f72833b 304 in 46ms :: []
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-items/3c5f7174-ff88-40f0-bcf9-77ba8f80dacb 304 in 40ms :: [{"i…
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-items/11c1c1ea-0c2c-4aad-b7c6-1a5f26e32035 304 in 41ms :: [{"i…
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-payments/11c1c1ea-0c2c-4aad-b7c6-1a5f26e32035 304 in 42ms :: []
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-payments/3c5f7174-ff88-40f0-bcf9-77ba8f80dacb 304 in 42ms :: []
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-items/d42044b1-c5ed-4432-bbf6-4b7ea0d974c3 304 in 24ms :: [{"i…
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-payments/bb995a19-6e99-4856-be7a-718b9431bd83 304 in 19ms :: […
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-payments/d42044b1-c5ed-4432-bbf6-4b7ea0d974c3 304 in 31ms :: []
+May 07 02:29:46 iplvnic1 npm[1342873]: 2:29:46 AM [express] GET /api/invoice-items/bb995a19-6e99-4856-be7a-718b9431bd83 304 in 24ms :: [{"i…
+May 07 02:29:47 iplvnic1 npm[1342873]: Error fetching vendor history: error: column "credit_limit" does not exist
+May 07 02:29:47 iplvnic1 npm[1342873]:     at /home/kinto/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+May 07 02:29:47 iplvnic1 npm[1342873]:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+May 07 02:29:47 iplvnic1 npm[1342873]:     at async file:///home/kinto/kinto-qa-system/node_modules/drizzle-orm/node-postgres/session.js:83:22
+May 07 02:29:47 iplvnic1 npm[1342873]:     at async DatabaseStorage.getAllVendors (file:///home/kinto/kinto-qa-system/dist/index.js:4996:16)
+May 07 02:29:47 iplvnic1 npm[1342873]:     at async file:///home/kinto/kinto-qa-system/dist/index.js:37106:26 {
+May 07 02:29:47 iplvnic1 npm[1342873]:   length: 113,
+May 07 02:29:47 iplvnic1 npm[1342873]:   severity: 'ERROR',
+May 07 02:29:47 iplvnic1 npm[1342873]:   code: '42703',
+May 07 02:29:47 iplvnic1 npm[1342873]:   detail: undefined,
+May 07 02:29:47 iplvnic1 npm[1342873]:   hint: undefined,
+May 07 02:29:47 iplvnic1 npm[1342873]:   position: '410',
+May 07 02:29:47 iplvnic1 npm[1342873]:   internalPosition: undefined,
+May 07 02:29:47 iplvnic1 npm[1342873]:   internalQuery: undefined,
+May 07 02:29:47 iplvnic1 npm[1342873]:   where: undefined,
+May 07 02:29:47 iplvnic1 npm[1342873]:   schema: undefined,
+May 07 02:29:47 iplvnic1 npm[1342873]:   table: undefined,
+May 07 02:29:47 iplvnic1 npm[1342873]:   column: undefined,
+May 07 02:29:47 iplvnic1 npm[1342873]:   dataType: undefined,
+May 07 02:29:47 iplvnic1 npm[1342873]:   constraint: undefined,
+May 07 02:29:47 iplvnic1 npm[1342873]:   file: 'parse_relation.c',
+May 07 02:29:47 iplvnic1 npm[1342873]:   line: '3722',
+May 07 02:29:47 iplvnic1 npm[1342873]:   routine: 'errorMissingColumn'
+May 07 02:29:47 iplvnic1 npm[1342873]: }
+May 07 02:29:47 iplvnic1 npm[1342873]: 2:29:47 AM [express] GET /api/vendor-history 500 in 25ms :: {"message":"Failed to fetch vendor histo…
+May 07 02:29:47 iplvnic1 npm[1342873]: 2:29:47 AM [express] GET /api/tenant/features 200 in 26ms :: {"plan":"enterprise","modules":["invoic…
+May 07 02:29:47 iplvnic1 npm[1342873]: /home/kinto/kinto-qa-system/node_modules/pg-pool/index.js:45
+May 07 02:29:47 iplvnic1 npm[1342873]:     Error.captureStackTrace(err)
+May 07 02:29:47 iplvnic1 npm[1342873]:           ^
+May 07 02:29:47 iplvnic1 npm[1342873]: error: relation "tenant_module_labels" does not exist
+May 07 02:29:47 iplvnic1 npm[1342873]:     at /home/kinto/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+May 07 02:29:47 iplvnic1 npm[1342873]:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+May 07 02:29:47 iplvnic1 npm[1342873]:     at async file:///home/kinto/kinto-qa-system/dist/index.js:13143:20 {
+May 07 02:29:47 iplvnic1 npm[1342873]:   length: 119,
+May 07 02:29:47 iplvnic1 npm[1342873]:   severity: 'ERROR',
+May 07 02:29:47 iplvnic1 npm[1342873]:   code: '42P01',
+May 07 02:29:47 iplvnic1 npm[1342873]:   detail: undefined,
+May 07 02:29:47 iplvnic1 npm[1342873]:   hint: undefined,
+May 07 02:29:47 iplvnic1 npm[1342873]:   position: '15',
+May 07 02:29:47 iplvnic1 npm[1342873]:   internalPosition: undefined,
+May 07 02:29:47 iplvnic1 npm[1342873]:   internalQuery: undefined,
+May 07 02:29:47 iplvnic1 npm[1342873]:   where: undefined,
+May 07 02:29:47 iplvnic1 npm[1342873]:   schema: undefined,
+May 07 02:29:47 iplvnic1 npm[1342873]:   table: undefined,
+May 07 02:29:47 iplvnic1 npm[1342873]:   column: undefined,
+May 07 02:29:47 iplvnic1 npm[1342873]:   dataType: undefined,
+May 07 02:29:47 iplvnic1 npm[1342873]:   constraint: undefined,
+May 07 02:29:47 iplvnic1 npm[1342873]:   file: 'parse_relation.c',
+May 07 02:29:47 iplvnic1 npm[1342873]:   line: '1449',
+May 07 02:29:47 iplvnic1 npm[1342873]:   routine: 'parserOpenTable'
+May 07 02:29:47 iplvnic1 npm[1342873]: }
+May 07 02:29:47 iplvnic1 npm[1342873]: Node.js v20.19.5
+May 07 02:29:47 iplvnic1 systemd[1]: kinto.service: Main process exited, code=exited, status=1/FAILURE
+May 07 02:29:47 iplvnic1 systemd[1]: kinto.service: Failed with result 'exit-code'.
+May 07 02:29:47 iplvnic1 systemd[1]: kinto.service: Consumed 5.100s CPU time.
+May 07 02:29:57 iplvnic1 systemd[1]: kinto.service: Scheduled restart job, restart counter is at 7.
+May 07 02:29:57 iplvnic1 systemd[1]: Stopped KINTO Smart Ops Application.
+May 07 02:29:57 iplvnic1 systemd[1]: kinto.service: Consumed 5.100s CPU time.
+May 07 02:29:57 iplvnic1 systemd[1]: Started KINTO Smart Ops Application.
+May 07 02:29:57 iplvnic1 npm[1342903]: > rest-express@1.0.0 start
+May 07 02:29:57 iplvnic1 npm[1342903]: > NODE_ENV=production node dist/index.js
