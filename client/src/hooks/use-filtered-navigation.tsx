@@ -383,11 +383,14 @@ function filterNavSectionsForDefaultRole(sections: NavSection[], role: string): 
   if (!sections || !Array.isArray(sections)) return [];
   
   const filtered = sections
-    .map(section => ({
-      ...section,
-      items: section.items.filter(item => canAccessNavItemForDefaultRole(item.id, role))
-    }))
-    .filter(section => section.items.length > 0);
+    .map(section => {
+      const filteredItems = section.items.filter(item => canAccessNavItemForDefaultRole(item.id, role));
+      const filteredSubs = (section.subSections ?? [])
+        .map(sub => ({ ...sub, items: sub.items.filter(item => canAccessNavItemForDefaultRole(item.id, role)) }))
+        .filter(sub => sub.items.length > 0);
+      return { ...section, items: filteredItems, subSections: filteredSubs };
+    })
+    .filter(section => section.items.length > 0 || (section.subSections ?? []).length > 0);
     
   return filtered.length > 0 ? filtered : sections;
 }
@@ -397,11 +400,14 @@ function filterNavSectionsWithDbPermissions(sections: NavSection[], dbPermission
   if (!dbPermissions || dbPermissions.length === 0) return [];
   
   const filtered = sections
-    .map(section => ({
-      ...section,
-      items: section.items.filter(item => canAccessNavItemWithDbPermissions(item.id, dbPermissions))
-    }))
-    .filter(section => section.items.length > 0);
+    .map(section => {
+      const filteredItems = section.items.filter(item => canAccessNavItemWithDbPermissions(item.id, dbPermissions));
+      const filteredSubs = (section.subSections ?? [])
+        .map(sub => ({ ...sub, items: sub.items.filter(item => canAccessNavItemWithDbPermissions(item.id, dbPermissions)) }))
+        .filter(sub => sub.items.length > 0);
+      return { ...section, items: filteredItems, subSections: filteredSubs };
+    })
+    .filter(section => section.items.length > 0 || (section.subSections ?? []).length > 0);
     
   return filtered;
 }
@@ -425,11 +431,14 @@ function filterNavSectionsByPlan(sections: NavSection[], allowedNavItems: string
   if (!allowedNavItems || allowedNavItems.length === 0) return sections;
   const allowed = new Set(allowedNavItems);
   return sections
-    .map(section => ({
-      ...section,
-      items: section.items.filter(item => allowed.has(item.id) || CORE_ADMIN_NAV.has(item.id)),
-    }))
-    .filter(section => section.items.length > 0);
+    .map(section => {
+      const filteredItems = section.items.filter(item => allowed.has(item.id) || CORE_ADMIN_NAV.has(item.id));
+      const filteredSubs = (section.subSections ?? [])
+        .map(sub => ({ ...sub, items: sub.items.filter(item => allowed.has(item.id) || CORE_ADMIN_NAV.has(item.id)) }))
+        .filter(sub => sub.items.length > 0);
+      return { ...section, items: filteredItems, subSections: filteredSubs };
+    })
+    .filter(section => section.items.length > 0 || (section.subSections ?? []).length > 0);
 }
 
 export function useFilteredNavigation(allNavSections: NavSection[]) {

@@ -22,10 +22,17 @@ export interface QuickAction {
   onClick: () => void;
 }
 
+export interface NavSubSection {
+  id: string;
+  label: string;
+  items: NavItem[];
+}
+
 export interface NavSection {
   id: string;
   label?: string;
   items: NavItem[];
+  subSections?: NavSubSection[];
   quickActions?: QuickAction[];
   defaultOpen?: boolean;
 }
@@ -82,6 +89,11 @@ export function VerticalNavSidebar({
     }
   }, [isMobileOpen]);
 
+  // Helper: does a section (or any of its subSections) contain the active item?
+  const sectionHasActive = (section: NavSection) =>
+    section.items.some(i => i.id === activeItem) ||
+    (section.subSections ?? []).some(sub => sub.items.some(i => i.id === activeItem));
+
   // Initialize collapsed state - default all collapsed, but always expand the active section
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>(() => {
     const STORAGE_VERSION = 'v2';
@@ -95,16 +107,25 @@ export function VerticalNavSidebar({
         localStorage.setItem('sidebarVersion', STORAGE_VERSION);
         safeSections.forEach(section => {
           if (section.label) state[section.id] = true;
+          // Sub-sections start collapsed
+          (section.subSections ?? []).forEach(sub => { state[sub.id] = true; });
         });
       }
     } catch (e) {
       safeSections.forEach(section => {
         if (section.label) state[section.id] = true;
+        (section.subSections ?? []).forEach(sub => { state[sub.id] = true; });
       });
     }
-    // Always expand the section containing the current active item on mount
-    const activeSection = safeSections.find(s => s.items.some(i => i.id === activeItem));
-    if (activeSection) state[activeSection.id] = false;
+    // Always expand the section (and sub-section) containing the current active item on mount
+    safeSections.forEach(section => {
+      if (sectionHasActive(section)) {
+        state[section.id] = false;
+        (section.subSections ?? []).forEach(sub => {
+          if (sub.items.some(i => i.id === activeItem)) state[sub.id] = false;
+        });
+      }
+    });
     return state;
   });
 
@@ -112,17 +133,23 @@ export function VerticalNavSidebar({
     localStorage.setItem('sidebarCollapsedSections', JSON.stringify(collapsedSections));
   }, [collapsedSections]);
 
-  // Auto-expand section containing active item — uses functional updater to avoid stale closure
+  // Auto-expand section (and sub-section) containing active item
   useEffect(() => {
-    const activeSection = safeSections.find(section =>
-      section.items.some(item => item.id === activeItem)
-    );
-    if (activeSection) {
-      setCollapsedSections(prev => {
-        if (!prev[activeSection.id]) return prev; // already expanded, skip re-render
-        return { ...prev, [activeSection.id]: false };
-      });
-    }
+    safeSections.forEach(section => {
+      if (sectionHasActive(section)) {
+        setCollapsedSections(prev => {
+          const next = { ...prev };
+          let changed = false;
+          if (next[section.id]) { next[section.id] = false; changed = true; }
+          (section.subSections ?? []).forEach(sub => {
+            if (sub.items.some(i => i.id === activeItem) && next[sub.id]) {
+              next[sub.id] = false; changed = true;
+            }
+          });
+          return changed ? next : prev;
+        });
+      }
+    });
   }, [activeItem, safeSections]);
 
   // Scroll active item into view after section expansion animation completes
@@ -252,7 +279,7 @@ export function VerticalNavSidebar({
           <div className="space-y-1 pt-2">
             {safeSections.map((section, index) => {
               const isCollapsed = collapsedSections[section.id] ?? false;
-              const hasActiveItem = section.items.some(item => item.id === activeItem);
+              const hasActiveItem = sectionHasActive(section);
 
               return (
                 <div key={section.id}>
@@ -315,6 +342,44 @@ export function VerticalNavSidebar({
                       <CollapsibleContent>
                         <div className="space-y-0.5 pl-2">
                           {section.items.map((item) => renderNavItem(item))}
+                          {/* Nested sub-sections (e.g. Gold ERP groups) */}
+                          {(section.subSections ?? []).map((sub) => {
+                            const subCollapsed = collapsedSections[sub.id] ?? true;
+                            const subHasActive = sub.items.some(i => i.id === activeItem);
+                            return (
+                              <Collapsible
+                                key={sub.id}
+                                open={!subCollapsed}
+                                onOpenChange={() => toggleSection(sub.id)}
+                              >
+                                <CollapsibleTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className={`w-full justify-start h-7 px-2 touch-manipulation hover-elevate ${
+                                      subHasActive && subCollapsed ? 'bg-primary/10 text-primary' : 'text-muted-foreground'
+                                    }`}
+                                    data-testid={`toggle-subsection-${sub.id}`}
+                                  >
+                                    {subCollapsed ? (
+                                      <ChevronRight className="h-3 w-3 mr-1.5 flex-shrink-0" />
+                                    ) : (
+                                      <ChevronDown className="h-3 w-3 mr-1.5 flex-shrink-0" />
+                                    )}
+                                    <span className="text-xs font-medium">{sub.label}</span>
+                                    {subHasActive && subCollapsed && (
+                                      <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
+                                    )}
+                                  </Button>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent>
+                                  <div className="space-y-0.5 pl-3">
+                                    {sub.items.map((item) => renderNavItem(item))}
+                                  </div>
+                                </CollapsibleContent>
+                              </Collapsible>
+                            );
+                          })}
                         </div>
                       </CollapsibleContent>
                     </Collapsible>
