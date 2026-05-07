@@ -138,3 +138,9 @@ id = "bWev1SmWGJPi3qcPM0lZA"
 uri = "file://SwachERP_Industry_Fit_Analysis.xlsx"
 type = "table"
 title = "SwachERP — Industry Fit Analysis (Full)"
+
+[[outputs]]
+id = "RxV17XjHDh-E2GYy-m4jn"
+uri = "file://SwachERP_Industry_Fit_Analysis.xls"
+type = "table"
+title = "SwachERP — Industry Fit Analysis"
