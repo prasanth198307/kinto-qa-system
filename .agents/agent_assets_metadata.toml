@@ -240,3 +240,9 @@ id = "K5KmAgMYecK2GFlBSLqB-"
 uri = "file://attached_assets/gold_erp_validation-3_updated.xlsx"
 type = "table"
 title = "Gold ERP Validation Sheet v3 — Updated (48 Screens, 90 Test Cases)"
+
+[[outputs]]
+id = "JQ2urwPp4SgGej8av5NpZ"
+uri = "file://attached_assets/gold_erp_validation_complete_v4.xlsx"
+type = "table"
+title = "Gold ERP — Complete Validation Document v4"
