@@ -246,3 +246,9 @@ id = "JQ2urwPp4SgGej8av5NpZ"
 uri = "file://attached_assets/gold_erp_validation_complete_v4.xlsx"
 type = "table"
 title = "Gold ERP — Complete Validation Document v4"
+
+[[outputs]]
+id = "vKS5Ixao-cUPYSuOAkDxA"
+uri = "file://attached_assets/gold_erp_validation_v5_fixed.xlsx"
+type = "table"
+title = "Gold ERP Validation v5 — All 4 Issues Fixed"

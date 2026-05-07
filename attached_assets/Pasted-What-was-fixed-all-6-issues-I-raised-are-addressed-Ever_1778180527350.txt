@@ -1,0 +1,21 @@
+What was fixed — all 6 issues I raised are addressed ✅
+Every specific gap I flagged in v2 has been resolved in v4:
+CAD and CAM are now two separate screens (#11 and #12). jw_cad_process now has design_id FK. jw_ghat_entries now has purity_received_pct, purity_variance_pct, gold_issued_gm, and gold_returned_gm — all four columns added. jw_item_images is now a proper separate table with angle and sort_order columns replacing the single image_url. jw_chit_members has aadhaar_no, nominee_name, nominee_relation, bank_account, ifsc_code — all KYC fields in. Karigar Attendance screen added with full table.
+New additions are excellent:
+Jewellery POS (jw_jewellery_pos_bills) is well designed — exchange_gold_wt, exchange_value, cgst_pct, sgst_pct split correctly for Indian GST, split payment columns (cash + card + UPI). Bullion Rate Cut Invoices with rate_cut_1, rate_cut_2_pct, rate_cut_3, net_rate — correct for bullion trade. E-commerce gold rate locking (rate_locked_till, gold_rate_locked) — exactly right for live-rate pricing. Chit installments as a separate table with receipt_no. Validation tests expanded from 73 to 100 with all missing cases now covered including gm-based chit payment (test #54) and gold rate → price recalculation (test #64).
+
+4 issues still remaining
+Issue 1 — Duplicate columns in jw_cad_process
+The table has both software_used (row 182) and cad_software (row 195) — same field, two column names. One needs to be dropped before migration. Similarly approval_status (row 189) and customer_approval (row 197) serve overlapping purposes — clarify which one drives the workflow gate and remove the other.
+Issue 2 — jw_chit_installments missing amount_gm column
+Test case #54 says "Record month-1 payment in gold gm (gm-based chit)" but the jw_chit_installments table only has a single amount numeric column. For gold-weight-based chit schemes the installment needs both amount_inr and amount_gm. Without amount_gm the gm-based chit test will fail. Add:
+sqlALTER TABLE jw_chit_installments ADD COLUMN amount_gm numeric;
+ALTER TABLE jw_chit_installments RENAME COLUMN amount TO amount_inr;
+Issue 3 — jw_jewellery_pos_bills missing loyalty columns
+The POS table has no loyalty_points_earned or loyalty_points_redeemed columns. When a loyalty member buys at the jewellery POS, points should be earned and optionally redeemed on the same bill. The loyalty program and members tables exist — just the POS billing table doesn't link to them. Add:
+sqlALTER TABLE jw_jewellery_pos_bills ADD COLUMN loyalty_member_id integer;
+ALTER TABLE jw_jewellery_pos_bills ADD COLUMN loyalty_points_earned numeric;
+ALTER TABLE jw_jewellery_pos_bills ADD COLUMN loyalty_points_redeemed numeric;
+ALTER TABLE jw_jewellery_pos_bills ADD COLUMN loyalty_redemption_value numeric;
+Issue 4 — TRACES section code still needs CA verification
+jw_traces_config.section_code description says 206C — but TDS on gold purchases by a buyer above ₹50L is under Section 194Q, not 206C. Section 206C covers seller-side tax collection at source which is different. Before building the auto-deduction logic, confirm with your CA which section applies to your specific use case. This is a compliance risk if wrong.
