@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import {
   Plus, Search, Pencil, Trash2, TrendingUp, Users, IndianRupee,
-  Gem, Wrench, Shield, RefreshCw, ChevronRight, LayoutDashboard,
+  Gem, Wrench, Shield, RefreshCw, LayoutDashboard,
   Star, Package, Factory, Truck, BarChart3, CheckCircle, Layers,
   BookOpen, Camera, Zap, Crosshair, ClipboardList, Award,
   RotateCcw, ShoppingBag, Tag, Gift, Repeat2, Wifi, ShoppingCart,
@@ -1577,8 +1577,6 @@ const NAV_SECTIONS = [
   },
 ];
 
-const NAV_ITEMS = NAV_SECTIONS.flatMap(s => s.items);
-
 const SECTION_MAP: Record<string, React.ReactNode> = {
   overview:             <OverviewSection />,
   rates:                <MetalRatesSection />,
@@ -1633,56 +1631,11 @@ const SECTION_MAP: Record<string, React.ReactNode> = {
 };
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
-export default function GoldErpPage() {
-  const [active, setActive] = useState("overview");
-  const activeNav = NAV_ITEMS.find(n => n.key === active)!;
-
+export default function GoldErpPage({ activeSection }: { activeSection?: string }) {
+  const section = activeSection && SECTION_MAP[activeSection] ? activeSection : "overview";
   return (
-    <div className="flex h-full min-h-0">
-      {/* Left sidebar nav */}
-      <aside className="w-52 shrink-0 border-r bg-muted/20 flex flex-col">
-        <div className="p-4 border-b">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-yellow-100 text-yellow-600"><Gem className="h-4 w-4" /></div>
-            <div>
-              <p className="text-sm font-bold leading-tight">Gold & Jewellery</p>
-              <p className="text-xs text-muted-foreground">ERP Module</p>
-            </div>
-          </div>
-        </div>
-        <nav className="flex-1 overflow-y-auto py-2">
-          {NAV_SECTIONS.map(section => (
-            <div key={section.group}>
-              <p className="px-4 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">{section.group}</p>
-              {section.items.map(item => {
-                const Icon = item.icon;
-                const isActive = active === item.key;
-                return (
-                  <button
-                    key={item.key}
-                    onClick={() => setActive(item.key)}
-                    data-testid={`nav-${item.key}`}
-                    className={`w-full flex items-center gap-2.5 px-4 py-2 text-sm text-left transition-colors ${
-                      isActive
-                        ? "bg-background text-foreground font-medium border-r-2 border-primary"
-                        : "text-muted-foreground hover:bg-background/60 hover:text-foreground"
-                    }`}
-                  >
-                    <Icon className="h-3.5 w-3.5 shrink-0" />
-                    <span className="text-xs">{item.label}</span>
-                    {isActive && <ChevronRight className="h-3 w-3 ml-auto" />}
-                  </button>
-                );
-              })}
-            </div>
-          ))}
-        </nav>
-      </aside>
-
-      {/* Main content area */}
-      <main className="flex-1 min-w-0 overflow-y-auto p-4 sm:p-6">
-        {SECTION_MAP[active]}
-      </main>
+    <div className="flex-1 min-w-0 overflow-y-auto p-4 sm:p-6">
+      {SECTION_MAP[section]}
     </div>
   );
 }

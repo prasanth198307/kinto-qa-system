@@ -84,7 +84,7 @@ import { ManagerChecklistAssignment } from "@/components/ManagerChecklistAssignm
 import PendingPaymentsDashboard from "@/components/PendingPaymentsDashboard";
 import { OperatorAssignedChecklists } from "@/components/OperatorAssignedChecklists";
 import { VerticalNavSidebar, type NavSection } from "@/components/VerticalNavSidebar";
-import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, ClipboardList, Settings, Calendar, Users, FileText, FileX, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator, IndianRupee, CreditCard, Upload, FolderOpen, Wallet, Car, BookOpen, Scale, BarChart3, Landmark, Tag, Trash2, PackageX, Loader2, Play, UserX, Briefcase, Target, Lock, Key, Gem, Star, MessageSquare } from "lucide-react";
+import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, ClipboardList, Settings, Calendar, Users, FileText, FileX, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator, IndianRupee, CreditCard, Upload, FolderOpen, Wallet, Car, BookOpen, Scale, BarChart3, Landmark, Tag, Trash2, PackageX, Loader2, Play, UserX, Briefcase, Target, Lock, Key, Gem, Star, MessageSquare, Camera, Crosshair, Coins, Award, RotateCcw, ShoppingBag, Gift, Zap, Globe, Wifi, Settings2 } from "lucide-react";
 import CRMLeadsPage from "@/pages/crm-leads";
 import SalesDashboard from "@/components/SalesDashboard";
 import SalesOrdersPage from "@/pages/sales-orders";
@@ -1169,13 +1169,7 @@ function AdminDashboard() {
         { id: "pos", label: "POS Terminal", icon: ShoppingCart, onClick: () => setLocation('/pos') },
       ],
     },
-    {
-      id: "gold-erp-section",
-      label: "Gold & Jewellery ERP",
-      items: [
-        { id: "gold-erp", label: "Gold & Jewellery", icon: Gem, onClick: () => setLocation('/gold-erp') },
-      ],
-    },
+    ...buildGoldNavSections(setLocation),
     {
       id: "api-hub-section",
       label: "API Hub",
@@ -2043,6 +2037,114 @@ function filterNavSectionsWithDbPermissions(sections: NavSection[], dbPermission
   return filtered;
 }
 
+// ── Gold ERP nav sections ─────────────────────────────────────────────────────
+function buildGoldNavSections(setLocation: (path: string) => void): NavSection[] {
+  const go = (key: string) => setLocation(`/gold-erp?section=${key}`);
+  return [
+    {
+      id: "gold-erp-core",
+      label: "Gold & Jewellery ERP",
+      items: [
+        { id: "gold-erp-overview",      label: "Overview",            icon: LayoutDashboard, onClick: () => go("overview") },
+        { id: "gold-erp-rates",         label: "Metal Rates",         icon: TrendingUp,      onClick: () => go("rates") },
+        { id: "gold-erp-karigar",       label: "Karigar",             icon: Users,           onClick: () => go("karigar") },
+        { id: "gold-erp-items",         label: "Item Master",         icon: Package,         onClick: () => go("items") },
+        { id: "gold-erp-estimates",     label: "Estimates",           icon: IndianRupee,     onClick: () => go("estimates") },
+        { id: "gold-erp-metal-ledger",  label: "Metal Ledger",        icon: BookOpen,        onClick: () => go("metal-ledger") },
+        { id: "gold-erp-analytics",     label: "JW Analytics",        icon: Star,            onClick: () => go("analytics") },
+      ],
+    },
+    {
+      id: "gold-erp-production",
+      label: "Production",
+      items: [
+        { id: "gold-erp-production",     label: "Production",          icon: Factory,         onClick: () => go("production") },
+        { id: "gold-erp-jobwork",        label: "Jobwork",             icon: Layers,          onClick: () => go("jobwork") },
+        { id: "gold-erp-sketch",         label: "Sketch / Design",     icon: Camera,          onClick: () => go("sketch") },
+        { id: "gold-erp-cad",            label: "CAD / CAM",           icon: Crosshair,       onClick: () => go("cad") },
+        { id: "gold-erp-ghat",           label: "Ghat Settlement",     icon: Coins,           onClick: () => go("ghat") },
+        { id: "gold-erp-settlement",     label: "Karigar Settlement",  icon: IndianRupee,     onClick: () => go("settlement") },
+        { id: "gold-erp-finalize",       label: "Job Finalize",        icon: CheckCircle,     onClick: () => go("finalize") },
+        { id: "gold-erp-karigar-ledger", label: "Karigar Ledger",      icon: BookOpen,        onClick: () => go("karigar-ledger") },
+        { id: "gold-erp-repairs",        label: "Repairs",             icon: Wrench,          onClick: () => go("repairs") },
+      ],
+    },
+    {
+      id: "gold-erp-wholesale",
+      label: "Wholesale & B2B",
+      items: [
+        { id: "gold-erp-wholesale-jobwork",   label: "Wholesale Jobwork",   icon: Layers,    onClick: () => go("wholesale-jobwork") },
+        { id: "gold-erp-hallmarking-batches", label: "Hallmarking Batches", icon: Award,     onClick: () => go("hallmarking-batches") },
+      ],
+    },
+    {
+      id: "gold-erp-retail",
+      label: "Retail",
+      items: [
+        { id: "gold-erp-counter-bookings",   label: "Counter Bookings",     icon: ClipboardList, onClick: () => go("counter-bookings") },
+        { id: "gold-erp-customer-approvals", label: "Approvals",            icon: CheckCircle,   onClick: () => go("customer-approvals") },
+        { id: "gold-erp-buyback",            label: "Old Gold Buy-back",    icon: RotateCcw,     onClick: () => go("buyback") },
+        { id: "gold-erp-physical-audit",     label: "Physical Audit",       icon: ShoppingBag,   onClick: () => go("physical-audit") },
+        { id: "gold-erp-loyalty",            label: "Loyalty & Rewards",    icon: Gift,          onClick: () => go("loyalty") },
+        { id: "gold-erp-promotions",         label: "Promotions",           icon: Tag,           onClick: () => go("promotions") },
+        { id: "gold-erp-refining",           label: "Refining",             icon: Zap,           onClick: () => go("refining") },
+        { id: "gold-erp-pos-old-gold",       label: "POS Old Gold",         icon: ShoppingCart,  onClick: () => go("pos-old-gold") },
+        { id: "gold-erp-hallmarking",        label: "Hallmarking Register", icon: CheckCircle,   onClick: () => go("hallmarking") },
+      ],
+    },
+    {
+      id: "gold-erp-bullion",
+      label: "Bullion & Vault",
+      items: [
+        { id: "gold-erp-bullion",          label: "Bullion Stock",    icon: BarChart3,  onClick: () => go("bullion") },
+        { id: "gold-erp-bullion-bookings", label: "Bullion Bookings", icon: CreditCard, onClick: () => go("bullion-bookings") },
+        { id: "gold-erp-vault-audit",      label: "Vault Audit",      icon: Shield,     onClick: () => go("vault-audit") },
+      ],
+    },
+    {
+      id: "gold-erp-chit",
+      label: "Chit Schemes",
+      items: [
+        { id: "gold-erp-chit",             label: "Chit Schemes",  icon: Shield,        onClick: () => go("chit") },
+        { id: "gold-erp-chit-maturity",    label: "Maturity",      icon: CheckCircle,   onClick: () => go("chit-maturity") },
+        { id: "gold-erp-chit-defaulters",  label: "Defaulters",    icon: AlertTriangle, onClick: () => go("chit-defaulters") },
+        { id: "gold-erp-chit-redemptions", label: "Redemptions",   icon: Gift,          onClick: () => go("chit-redemptions") },
+      ],
+    },
+    {
+      id: "gold-erp-digital",
+      label: "Digital & OMS",
+      items: [
+        { id: "gold-erp-ecatalog",   label: "E-Catalog",         icon: BookOpen,     onClick: () => go("ecatalog") },
+        { id: "gold-erp-oms-orders", label: "OMS Orders",        icon: ClipboardList,onClick: () => go("oms-orders") },
+        { id: "gold-erp-oms-notify", label: "OMS Notifications", icon: Bell,         onClick: () => go("oms-notify") },
+        { id: "gold-erp-ecommerce",  label: "E-Commerce Store",  icon: Globe,        onClick: () => go("ecommerce") },
+      ],
+    },
+    {
+      id: "gold-erp-rfid",
+      label: "RFID",
+      items: [
+        { id: "gold-erp-rfid", label: "RFID Management", icon: Wifi, onClick: () => go("rfid") },
+      ],
+    },
+    {
+      id: "gold-erp-finance",
+      label: "Finance",
+      items: [
+        { id: "gold-erp-metal-finance", label: "Metal Finance", icon: Coins, onClick: () => go("metal-finance") },
+      ],
+    },
+    {
+      id: "gold-erp-integrations",
+      label: "Integrations",
+      items: [
+        { id: "gold-erp-integrations-config", label: "Integrations", icon: Settings2, onClick: () => go("integrations-config") },
+      ],
+    },
+  ];
+}
+
 // Shared admin navigation sections factory - matches main dashboard navigation
 function getAdminNavSections(setLocation: (path: string) => void, userRole?: string): NavSection[] {
   const allSections: NavSection[] = [
@@ -2263,13 +2365,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "pos", label: "POS Terminal", icon: ShoppingCart, onClick: () => setLocation('/pos') },
       ],
     },
-    {
-      id: "gold-erp-section",
-      label: "Gold & Jewellery ERP",
-      items: [
-        { id: "gold-erp", label: "Gold & Jewellery", icon: Gem, onClick: () => setLocation('/gold-erp') },
-      ],
-    },
+    ...buildGoldNavSections(setLocation),
     {
       id: "api-hub-section",
       label: "API Hub",
@@ -4250,15 +4346,23 @@ function POSWrapper() {
 function GoldErpWrapper() {
   const { logoutMutation } = useAuth();
   const [, setLocation] = useLocation();
-  const [activeView, setActiveView] = useState('gold-erp');
+  const search = useSearch();
+  const section = new URLSearchParams(search).get('section') || 'overview';
+  const activeView = `gold-erp-${section}`;
   const allNavSections = getAdminNavSections(setLocation);
   const { navSections, isLoading } = useFilteredNavigation(allNavSections);
   const resolvedNav = isLoading ? allNavSections : navSections;
   return (
     <DashboardShell title="Gold & Jewellery ERP" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
       navSections={resolvedNav} activeView={activeView}
-      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
-      <GoldErpPage />
+      onNavigate={(v) => {
+        if (v.startsWith('gold-erp-')) {
+          setLocation(`/gold-erp?section=${v.replace('gold-erp-', '')}`);
+        } else {
+          setLocation(v === 'overview' ? '/' : `/?tab=${v}`);
+        }
+      }}>
+      <GoldErpPage activeSection={section} />
     </DashboardShell>
   );
 }
