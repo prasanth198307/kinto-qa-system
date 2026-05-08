@@ -583,6 +583,16 @@ router.put("/chit-schemes/:id", requireAuth, async (req: any, res) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
+router.get("/chit-members", requireAuth, async (req: any, res) => {
+  try {
+    const rows = await db.execute(sql`
+      SELECT m.*, s.name scheme_name FROM jw_chit_members m
+      LEFT JOIN jw_chit_schemes s ON s.id=m.scheme_id
+      WHERE m.tenant_id=${tid(req)} ORDER BY m.enrollment_date DESC`);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
 router.get("/chit-schemes/:id/members", requireAuth, async (req: any, res) => {
   try {
     const rows = await db.execute(sql`SELECT * FROM jw_chit_members WHERE scheme_id=${req.params.id} ORDER BY enrollment_date DESC`);

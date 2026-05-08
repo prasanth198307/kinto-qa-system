@@ -673,7 +673,7 @@ export function GhatSection() {
 
   return (
     <>
-      <SH title="Ghat / Weight Verification" action={<Button size="sm" onClick={() => setShowForm(true)}><Plus className="h-4 w-4 mr-1" />Add Entry</Button>} />
+      <SH title="Ghat / Weight Verification" action={<Button size="sm" onClick={() => setShowForm(true)} data-testid="button-add-ghat"><Plus className="h-4 w-4 mr-1" />Add Entry</Button>} />
       <div className="overflow-x-auto rounded-lg border">
         <table className="w-full text-sm">
           <thead className="bg-muted/50"><tr>{["Order", "Stage", "Issued (g)", "Received (g)", "Wastage (g)", "Wastage %", "Alert", "Date"].map(h => <th key={h} className="px-4 py-2 text-left">{h}</th>)}</tr></thead>
@@ -700,30 +700,30 @@ export function GhatSection() {
           <div className="space-y-3">
             <FieldRow label="Production Order">
               <Select value={form.production_order_id?.toString() || ""} onValueChange={v => set("production_order_id", parseInt(v))}>
-                <SelectTrigger><SelectValue placeholder="Select order" /></SelectTrigger>
+                <SelectTrigger data-testid="select-ghat-order"><SelectValue placeholder="Select order" /></SelectTrigger>
                 <SelectContent>{(orders as any[]).map((o: any) => <SelectItem key={o.id} value={o.id.toString()}>{o.order_no}</SelectItem>)}</SelectContent>
               </Select>
             </FieldRow>
             <FieldRow label="Stage">
               <Select value={form.stage_name || "Casting"} onValueChange={v => set("stage_name", v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger data-testid="select-ghat-stage"><SelectValue /></SelectTrigger>
                 <SelectContent>{["Sketch","CAD","CAM","Casting","Filing","Polish","Finishing","QC","Settlement"].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
               </Select>
             </FieldRow>
             <FieldRow label="Karigar">
               <Select value={form.karigar_id?.toString() || ""} onValueChange={v => set("karigar_id", parseInt(v))}>
-                <SelectTrigger><SelectValue placeholder="Select karigar" /></SelectTrigger>
+                <SelectTrigger data-testid="select-ghat-karigar"><SelectValue placeholder="Select karigar" /></SelectTrigger>
                 <SelectContent>{(karigars as any[]).map((k: any) => <SelectItem key={k.id} value={k.id.toString()}>{k.name}</SelectItem>)}</SelectContent>
               </Select>
             </FieldRow>
             <div className="grid grid-cols-2 gap-3">
-              <FieldRow label="Issued (g)"><Input type="number" value={form.issued_weight_gm || ""} onChange={e => set("issued_weight_gm", e.target.value)} /></FieldRow>
-              <FieldRow label="Received (g)"><Input type="number" value={form.received_weight_gm || ""} onChange={e => set("received_weight_gm", e.target.value)} /></FieldRow>
-              <FieldRow label="Assay Purity %"><Input type="number" value={form.assay_purity_pct || ""} onChange={e => set("assay_purity_pct", e.target.value)} /></FieldRow>
-              <FieldRow label="Date"><Input type="date" value={form.weigh_date || today()} onChange={e => set("weigh_date", e.target.value)} /></FieldRow>
+              <FieldRow label="Issued (g)"><Input data-testid="input-ghat-issued" type="number" value={form.issued_weight_gm || ""} onChange={e => set("issued_weight_gm", e.target.value)} /></FieldRow>
+              <FieldRow label="Received (g)"><Input data-testid="input-ghat-received" type="number" value={form.received_weight_gm || ""} onChange={e => set("received_weight_gm", e.target.value)} /></FieldRow>
+              <FieldRow label="Assay Purity %"><Input data-testid="input-ghat-purity" type="number" value={form.assay_purity_pct || ""} onChange={e => set("assay_purity_pct", e.target.value)} /></FieldRow>
+              <FieldRow label="Date"><Input data-testid="input-ghat-date" type="date" value={form.weigh_date || today()} onChange={e => set("weigh_date", e.target.value)} /></FieldRow>
             </div>
-            <FieldRow label="Notes"><Textarea value={form.notes || ""} onChange={e => set("notes", e.target.value)} rows={2} /></FieldRow>
-            <div className="flex gap-2 justify-end"><Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button><Button onClick={() => saveMut.mutate(form)} disabled={saveMut.isPending}>Save Entry</Button></div>
+            <FieldRow label="Notes"><Textarea data-testid="textarea-ghat-notes" value={form.notes || ""} onChange={e => set("notes", e.target.value)} rows={2} /></FieldRow>
+            <div className="flex gap-2 justify-end"><Button variant="outline" onClick={() => setShowForm(false)} data-testid="button-ghat-cancel">Cancel</Button><Button onClick={() => saveMut.mutate(form)} disabled={saveMut.isPending} data-testid="button-save-ghat">Save Entry</Button></div>
           </div>
         </DialogContent>
       </Dialog>
@@ -762,7 +762,7 @@ export function SettlementSection() {
 
   return (
     <>
-      <SH title="Karigar Settlement" action={<Button size="sm" onClick={() => setShowForm(true)}><Plus className="h-4 w-4 mr-1" />New Settlement</Button>} />
+      <SH title="Karigar Settlement" action={<Button size="sm" onClick={() => setShowForm(true)} data-testid="button-add-settlement"><Plus className="h-4 w-4 mr-1" />New Settlement</Button>} />
       <div className="overflow-x-auto rounded-lg border">
         <table className="w-full text-sm">
           <thead className="bg-muted/50"><tr>{["Order", "Karigar", "Issued", "Received", "Excess Wastage", "Wage", "Deduction", "Net Payable", "Date"].map(h => <th key={h} className="px-4 py-2 text-left">{h}</th>)}</tr></thead>
@@ -791,24 +791,24 @@ export function SettlementSection() {
             <div className="grid grid-cols-2 gap-3">
               <FieldRow label="Production Order">
                 <Select value={form.production_order_id?.toString() || ""} onValueChange={v => set("production_order_id", parseInt(v))}>
-                  <SelectTrigger><SelectValue placeholder="Select order" /></SelectTrigger>
+                  <SelectTrigger data-testid="select-settlement-order"><SelectValue placeholder="Select order" /></SelectTrigger>
                   <SelectContent>{(orders as any[]).map((o: any) => <SelectItem key={o.id} value={o.id.toString()}>{o.order_no}</SelectItem>)}</SelectContent>
                 </Select>
               </FieldRow>
               <FieldRow label="Karigar">
                 <Select value={form.karigar_id?.toString() || ""} onValueChange={v => set("karigar_id", parseInt(v))}>
-                  <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                  <SelectTrigger data-testid="select-settlement-karigar"><SelectValue placeholder="Select" /></SelectTrigger>
                   <SelectContent>{(karigars as any[]).map((k: any) => <SelectItem key={k.id} value={k.id.toString()}>{k.name}</SelectItem>)}</SelectContent>
                 </Select>
               </FieldRow>
-              <FieldRow label="Gold Issued (g)"><Input type="number" value={form.gold_issued_gm || ""} onChange={e => set("gold_issued_gm", e.target.value)} /></FieldRow>
-              <FieldRow label="Gold Received (g)"><Input type="number" value={form.gold_received_gm || ""} onChange={e => set("gold_received_gm", e.target.value)} /></FieldRow>
-              <FieldRow label="Allowable Wastage %"><Input type="number" value={form.allowable_wastage_pct || 3} onChange={e => set("allowable_wastage_pct", e.target.value)} /></FieldRow>
-              <FieldRow label="Gold Rate (₹/g)"><Input type="number" value={form.gold_rate || ""} onChange={e => set("gold_rate", e.target.value)} /></FieldRow>
-              <FieldRow label="Wage Amount (₹)"><Input type="number" value={form.wage_amount || ""} onChange={e => set("wage_amount", e.target.value)} /></FieldRow>
-              <FieldRow label="Settlement Date"><Input type="date" value={form.settlement_date || today()} onChange={e => set("settlement_date", e.target.value)} /></FieldRow>
+              <FieldRow label="Gold Issued (g)"><Input data-testid="input-settlement-issued" type="number" value={form.gold_issued_gm || ""} onChange={e => set("gold_issued_gm", e.target.value)} /></FieldRow>
+              <FieldRow label="Gold Received (g)"><Input data-testid="input-settlement-received" type="number" value={form.gold_received_gm || ""} onChange={e => set("gold_received_gm", e.target.value)} /></FieldRow>
+              <FieldRow label="Allowable Wastage %"><Input data-testid="input-settlement-wastage-pct" type="number" value={form.allowable_wastage_pct || 3} onChange={e => set("allowable_wastage_pct", e.target.value)} /></FieldRow>
+              <FieldRow label="Gold Rate (₹/g)"><Input data-testid="input-settlement-rate" type="number" value={form.gold_rate || ""} onChange={e => set("gold_rate", e.target.value)} /></FieldRow>
+              <FieldRow label="Wage Amount (₹)"><Input data-testid="input-settlement-wage" type="number" value={form.wage_amount || ""} onChange={e => set("wage_amount", e.target.value)} /></FieldRow>
+              <FieldRow label="Settlement Date"><Input data-testid="input-settlement-date" type="date" value={form.settlement_date || today()} onChange={e => set("settlement_date", e.target.value)} /></FieldRow>
             </div>
-            <Button variant="outline" className="w-full" onClick={calcSettlement}><RefreshCw className="h-4 w-4 mr-2" />Calculate Settlement</Button>
+            <Button variant="outline" className="w-full" onClick={calcSettlement} data-testid="button-calc-settlement"><RefreshCw className="h-4 w-4 mr-2" />Calculate Settlement</Button>
             {form.net_payable && (
               <div className="bg-muted/50 rounded-lg p-3 text-sm space-y-1">
                 <div className="flex justify-between"><span>Actual Wastage</span><span className="text-red-600">{fmtWt(form.actual_wastage_gm)}</span></div>
@@ -818,7 +818,7 @@ export function SettlementSection() {
                 <div className="flex justify-between font-bold border-t pt-1"><span>Net Payable</span><span className="text-green-700">{fmtAmt(form.net_payable)}</span></div>
               </div>
             )}
-            <div className="flex gap-2 justify-end"><Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button><Button onClick={() => saveMut.mutate(form)} disabled={saveMut.isPending}>Record Settlement</Button></div>
+            <div className="flex gap-2 justify-end"><Button variant="outline" onClick={() => setShowForm(false)} data-testid="button-settlement-cancel">Cancel</Button><Button onClick={() => saveMut.mutate(form)} disabled={saveMut.isPending} data-testid="button-save-settlement">Record Settlement</Button></div>
           </div>
         </DialogContent>
       </Dialog>
@@ -843,7 +843,7 @@ export function JobFinalizeSection() {
 
   return (
     <>
-      <SH title="Job Finalize & Barcode / HUID" action={<Button size="sm" onClick={() => setShowForm(true)}><Plus className="h-4 w-4 mr-1" />Finalize Job</Button>} />
+      <SH title="Job Finalize & Barcode / HUID" action={<Button size="sm" onClick={() => setShowForm(true)} data-testid="button-add-finalize"><Plus className="h-4 w-4 mr-1" />Finalize Job</Button>} />
       <div className="overflow-x-auto rounded-lg border">
         <table className="w-full text-sm">
           <thead className="bg-muted/50"><tr>{["Order", "Final Wt", "HUID", "Barcode", "QC Passed", "Moved to Stock", "Date"].map(h => <th key={h} className="px-4 py-2 text-left">{h}</th>)}</tr></thead>
@@ -869,24 +869,24 @@ export function JobFinalizeSection() {
           <div className="space-y-3">
             <FieldRow label="Production Order">
               <Select value={form.production_order_id?.toString() || ""} onValueChange={v => set("production_order_id", parseInt(v))}>
-                <SelectTrigger><SelectValue placeholder="Select order" /></SelectTrigger>
+                <SelectTrigger data-testid="select-finalize-order"><SelectValue placeholder="Select order" /></SelectTrigger>
                 <SelectContent>{(orders as any[]).map((o: any) => <SelectItem key={o.id} value={o.id.toString()}>{o.order_no}</SelectItem>)}</SelectContent>
               </Select>
             </FieldRow>
             <div className="grid grid-cols-2 gap-3">
-              <FieldRow label="Final Weight (g)"><Input type="number" value={form.final_weight_gm || ""} onChange={e => set("final_weight_gm", e.target.value)} /></FieldRow>
-              <FieldRow label="HUID No."><Input value={form.huid_no || ""} onChange={e => set("huid_no", e.target.value)} placeholder="Auto or manual" /></FieldRow>
-              <FieldRow label="Barcode"><Input value={form.barcode || ""} onChange={e => set("barcode", e.target.value)} /></FieldRow>
-              <FieldRow label="RFID Tag"><Input value={form.rfid_tag || ""} onChange={e => set("rfid_tag", e.target.value)} /></FieldRow>
-              <FieldRow label="Finalize Date"><Input type="date" value={form.finalize_date || today()} onChange={e => set("finalize_date", e.target.value)} /></FieldRow>
+              <FieldRow label="Final Weight (g)"><Input data-testid="input-finalize-weight" type="number" value={form.final_weight_gm || ""} onChange={e => set("final_weight_gm", e.target.value)} /></FieldRow>
+              <FieldRow label="HUID No."><Input data-testid="input-finalize-huid" value={form.huid_no || ""} onChange={e => set("huid_no", e.target.value)} placeholder="Auto or manual" /></FieldRow>
+              <FieldRow label="Barcode"><Input data-testid="input-finalize-barcode" value={form.barcode || ""} onChange={e => set("barcode", e.target.value)} /></FieldRow>
+              <FieldRow label="RFID Tag"><Input data-testid="input-finalize-rfid" value={form.rfid_tag || ""} onChange={e => set("rfid_tag", e.target.value)} /></FieldRow>
+              <FieldRow label="Finalize Date"><Input data-testid="input-finalize-date" type="date" value={form.finalize_date || today()} onChange={e => set("finalize_date", e.target.value)} /></FieldRow>
             </div>
             <div className="flex gap-4">
-              <div className="flex items-center gap-2"><input type="checkbox" checked={!!form.stone_setting_done} onChange={e => set("stone_setting_done", e.target.checked ? 1 : 0)} id="sts" /><Label htmlFor="sts" className="text-sm">Stone Setting Done</Label></div>
-              <div className="flex items-center gap-2"><input type="checkbox" checked={!!form.qc_passed} onChange={e => set("qc_passed", e.target.checked ? 1 : 0)} id="qcp" /><Label htmlFor="qcp" className="text-sm">QC Passed</Label></div>
-              <div className="flex items-center gap-2"><input type="checkbox" checked={!!form.moved_to_stock} onChange={e => set("moved_to_stock", e.target.checked ? 1 : 0)} id="mts" /><Label htmlFor="mts" className="text-sm">Move to Stock</Label></div>
+              <div className="flex items-center gap-2"><input type="checkbox" checked={!!form.stone_setting_done} onChange={e => set("stone_setting_done", e.target.checked ? 1 : 0)} id="sts" data-testid="check-finalize-stone" /><Label htmlFor="sts" className="text-sm">Stone Setting Done</Label></div>
+              <div className="flex items-center gap-2"><input type="checkbox" checked={!!form.qc_passed} onChange={e => set("qc_passed", e.target.checked ? 1 : 0)} id="qcp" data-testid="check-finalize-qc" /><Label htmlFor="qcp" className="text-sm">QC Passed</Label></div>
+              <div className="flex items-center gap-2"><input type="checkbox" checked={!!form.moved_to_stock} onChange={e => set("moved_to_stock", e.target.checked ? 1 : 0)} id="mts" data-testid="check-finalize-stock" /><Label htmlFor="mts" className="text-sm">Move to Stock</Label></div>
             </div>
-            <FieldRow label="QC Notes"><Textarea value={form.qc_notes || ""} onChange={e => set("qc_notes", e.target.value)} rows={2} /></FieldRow>
-            <div className="flex gap-2 justify-end"><Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button><Button onClick={() => saveMut.mutate(form)} disabled={saveMut.isPending}>Finalize</Button></div>
+            <FieldRow label="QC Notes"><Textarea data-testid="textarea-finalize-notes" value={form.qc_notes || ""} onChange={e => set("qc_notes", e.target.value)} rows={2} /></FieldRow>
+            <div className="flex gap-2 justify-end"><Button variant="outline" onClick={() => setShowForm(false)} data-testid="button-finalize-cancel">Cancel</Button><Button onClick={() => saveMut.mutate(form)} disabled={saveMut.isPending} data-testid="button-save-finalize">Finalize</Button></div>
           </div>
         </DialogContent>
       </Dialog>

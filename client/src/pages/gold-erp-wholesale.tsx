@@ -69,7 +69,7 @@ export function WholesaleJobworkSection() {
   return (
     <>
       <SH title="Wholesale Jobwork (Customer Gold)" action={
-        <Button size="sm" onClick={() => { setEditing(null); setForm({ making_charges_type: "per_gram", customer_gold_purity: "22K" }); setShowForm(true); }}>
+        <Button size="sm" data-testid="button-new-jobwork" onClick={() => { setEditing(null); setForm({ making_charges_type: "per_gram", customer_gold_purity: "22K" }); setShowForm(true); }}>
           <Plus className="h-4 w-4 mr-1" />New Jobwork
         </Button>
       } />
@@ -95,7 +95,7 @@ export function WholesaleJobworkSection() {
                 <td className="px-4 py-2">{fmtAmt(j.making_charges)}<span className="text-xs text-muted-foreground ml-1">/{j.making_charges_type === "per_gram" ? "g" : "pc"}</span></td>
                 <td className="px-4 py-2"><SBadge status={j.status} /></td>
                 <td className="px-4 py-2">
-                  <Button size="icon" variant="ghost" onClick={() => { setEditing(j); setForm(j); setShowForm(true); }}>
+                  <Button size="icon" variant="ghost" data-testid={`button-edit-jobwork-${j.id}`} onClick={() => { setEditing(j); setForm(j); setShowForm(true); }}>
                     <Pencil className="h-4 w-4" />
                   </Button>
                 </td>
@@ -113,11 +113,11 @@ export function WholesaleJobworkSection() {
           <div className="space-y-3">
             {!editing && <>
               <div className="grid grid-cols-2 gap-3">
-                <FL label="Customer Name *"><Input value={form.customer_name || ""} onChange={e => set("customer_name", e.target.value)} /></FL>
+                <FL label="Customer Name *"><Input data-testid="input-jobwork-customer" value={form.customer_name || ""} onChange={e => set("customer_name", e.target.value)} /></FL>
                 <FL label="Phone"><Input value={form.customer_phone || ""} onChange={e => set("customer_phone", e.target.value)} /></FL>
                 <FL label="Design Reference"><Input value={form.design_ref || ""} onChange={e => set("design_ref", e.target.value)} placeholder="Code or description" /></FL>
                 <FL label="Qty Pieces"><Input type="number" value={form.qty_pieces || 1} onChange={e => set("qty_pieces", e.target.value)} /></FL>
-                <FL label="Customer Gold Received (g)"><Input type="number" value={form.customer_gold_recv_gm || ""} onChange={e => set("customer_gold_recv_gm", e.target.value)} /></FL>
+                <FL label="Customer Gold Received (g)"><Input data-testid="input-jobwork-gold-recv" type="number" value={form.customer_gold_recv_gm || ""} onChange={e => set("customer_gold_recv_gm", e.target.value)} /></FL>
                 <FL label="Customer Gold Purity">
                   <Select value={form.customer_gold_purity || "22K"} onValueChange={v => set("customer_gold_purity", v)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
@@ -130,17 +130,17 @@ export function WholesaleJobworkSection() {
                     <SelectContent><SelectItem value="per_gram">Per Gram</SelectItem><SelectItem value="per_piece">Per Piece</SelectItem><SelectItem value="flat">Flat Amount</SelectItem></SelectContent>
                   </Select>
                 </FL>
-                <FL label="Charges Amount (₹)"><Input type="number" value={form.making_charges || ""} onChange={e => set("making_charges", e.target.value)} /></FL>
+                <FL label="Charges Amount (₹)"><Input data-testid="input-jobwork-making-charges" type="number" value={form.making_charges || ""} onChange={e => set("making_charges", e.target.value)} /></FL>
                 <FL label="Stone Setting Charges (₹)"><Input type="number" value={form.stone_setting_charges || ""} onChange={e => set("stone_setting_charges", e.target.value)} /></FL>
                 <FL label="Timeline (Days)"><Input type="number" value={form.timeline_days || 10} onChange={e => set("timeline_days", e.target.value)} /></FL>
               </div>
               <FL label="Karigar">
                 <Select value={form.karigar_id?.toString() || ""} onValueChange={v => set("karigar_id", parseInt(v))}>
-                  <SelectTrigger><SelectValue placeholder="Assign karigar" /></SelectTrigger>
+                  <SelectTrigger data-testid="select-jobwork-karigar"><SelectValue placeholder="Assign karigar" /></SelectTrigger>
                   <SelectContent>{(karigars as any[]).map((k: any) => <SelectItem key={k.id} value={k.id.toString()}>{k.name}</SelectItem>)}</SelectContent>
                 </Select>
               </FL>
-              <FL label="Gold Issued to Karigar (g)"><Input type="number" value={form.gold_issued_to_karigar_gm || ""} onChange={e => set("gold_issued_to_karigar_gm", e.target.value)} /></FL>
+              <FL label="Gold Issued to Karigar (g)"><Input data-testid="input-jobwork-gold-issued" type="number" value={form.gold_issued_to_karigar_gm || ""} onChange={e => set("gold_issued_to_karigar_gm", e.target.value)} /></FL>
             </>}
             {editing && <>
               <FL label="Status">
@@ -158,7 +158,7 @@ export function WholesaleJobworkSection() {
             </>}
             <div className="flex gap-2 justify-end pt-1">
               <Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
-              <Button onClick={() => saveMut.mutate(form)} disabled={saveMut.isPending}>Save</Button>
+              <Button data-testid="button-save-jobwork" onClick={() => saveMut.mutate(form)} disabled={saveMut.isPending}>Save</Button>
             </div>
           </div>
         </DialogContent>
@@ -191,7 +191,7 @@ export function HallmarkingBatchesSection() {
   return (
     <>
       <SH title="Hallmarking Batches (BIS)" action={
-        <Button size="sm" onClick={() => { setEditing(null); setForm({ testing_method: "xrf", date_sent: today() }); setShowForm(true); }}>
+        <Button size="sm" data-testid="button-new-hallmark-batch" onClick={() => { setEditing(null); setForm({ testing_method: "xrf", date_sent: today() }); setShowForm(true); }}>
           <Plus className="h-4 w-4 mr-1" />New Batch
         </Button>
       } />
@@ -215,7 +215,7 @@ export function HallmarkingBatchesSection() {
                 {b.items_passed !== null && <div><span className="text-muted-foreground">Passed: </span><span className="text-green-700">{b.items_passed}</span></div>}
                 {b.items_rejected > 0 && <div><span className="text-muted-foreground">Rejected: </span><span className="text-red-600">{b.items_rejected}</span></div>}
               </div>
-              <Button size="sm" variant="outline" className="w-full" onClick={() => { setEditing(b); setForm(b); setShowForm(true); }}>
+              <Button size="sm" variant="outline" className="w-full" data-testid={`button-edit-batch-${b.id}`} onClick={() => { setEditing(b); setForm(b); setShowForm(true); }}>
                 <Pencil className="h-3 w-3 mr-1" />Update
               </Button>
             </CardContent>
@@ -229,7 +229,7 @@ export function HallmarkingBatchesSection() {
           <DialogHeader><DialogTitle>{editing ? "Update Batch" : "New Hallmarking Batch"}</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
-              <FL label="Centre Name"><Input value={form.centre_name || ""} onChange={e => set("centre_name", e.target.value)} placeholder="BIS Hallmarking Centre" /></FL>
+              <FL label="Centre Name"><Input data-testid="input-batch-centre" value={form.centre_name || ""} onChange={e => set("centre_name", e.target.value)} placeholder="BIS Hallmarking Centre" /></FL>
               <FL label="BIS Licence No."><Input value={form.bis_licence_no || ""} onChange={e => set("bis_licence_no", e.target.value)} /></FL>
               <FL label="Testing Method">
                 <Select value={form.testing_method || "xrf"} onValueChange={v => set("testing_method", v)}>
@@ -257,7 +257,7 @@ export function HallmarkingBatchesSection() {
             </>}
             <div className="flex gap-2 justify-end pt-1">
               <Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
-              <Button onClick={() => saveMut.mutate(form)} disabled={saveMut.isPending}>Save</Button>
+              <Button data-testid="button-save-hallmark-batch" onClick={() => saveMut.mutate(form)} disabled={saveMut.isPending}>Save</Button>
             </div>
           </div>
         </DialogContent>

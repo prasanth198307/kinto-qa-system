@@ -1,5 +1,5 @@
-# F6 — Physical Inventory Audit — Missing Item Detection
-# Barcode scan all showcase items → 1 missing item → discrepancy report → investigation action
+# F6 — Physical Inventory Audit: Start → Record → Update with Discrepancy
+# Start audit → record initial count → update with physical counts → check discrepancy
 # Login: gold-erp-demo / goldadmin / Gold@1234
 
 1. [New Context] Create a fresh browser context
@@ -7,37 +7,32 @@
 3. [Verify] Assert dashboard loads
 
 ## PHASE 1: Start Physical Audit
-4. [Browser] Navigate to Physical Audit (path: /gold-erp?section=physical-audit)
-5. [Verify] Assert Physical Audit screen is visible
-6. [Browser] Click "+ Start New Audit" or "New Physical Count" button
-7. [Browser] Fill "Showcase Audit — Main Counter" in Audit Name or Description
-8. [Browser] Set date to today
-9. [Browser] Click Start / Create
+4. [Browser] Navigate to /gold-erp?section=physical-audit
+5. [Verify] Assert "Physical Inventory Audit" heading is visible
+6. [Browser] Click button with data-testid="button-start-physical-audit"
+7. [Verify] Assert dialog "Start Physical Audit" opens
+8. [Browser] Verify audit date is pre-filled with today
+9. [Browser] Fill "Main Counter" in input with data-testid="input-audit-branch"
+10. [Browser] Fill "Raju Goldsmith" in input with data-testid="input-audit-auditor"
+11. [Browser] Click button with data-testid="button-save-physical-audit"
+12. [Verify]
+    - Assert toast "Audit saved" appears
+    - Assert audit card appears in the list with branch "Main Counter"
+    - Assert audit status badge shows "in progress"
 
-## PHASE 2: Scan / Enter Items
-10. [Browser] Look for a barcode input or item entry field
-11. [Browser] Enter item tag "DT-0042" in the scan/entry field and press Enter or click Add
-12. [Verify] Assert DT-0042 appears in the scanned items list (22K Necklace, 16.2gm)
-13. [Browser] Enter item tag "DT-0043" in the scan field
-14. [Verify] Assert DT-0043 appears in the list
-15. [Browser] Enter item tag "DT-0044" in the scan field
-16. [Verify] Assert DT-0044 appears in the list
-17. [Browser] Enter item tag "DT-0055" in the scan field
-18. [Verify] Assert DT-0055 appears in the list
-19. [Browser] Skip / do NOT enter "DT-0048" — this item will be the missing one
-
-## PHASE 3: Close Audit and Check Discrepancy
-20. [Browser] Click "Close Audit" or "Finalize Count" button
-21. [Verify]
-    - Assert audit summary shows total items scanned
-    - Assert a discrepancy or "missing items" section appears
-    - Assert DT-0048 (or any item in system not scanned) is flagged as Missing
-
-## PHASE 4: Investigation Action
-22. [Browser] Click on the discrepancy/missing item row
-23. [Browser] Fill "Under investigation — checking with counter staff" in Investigation Notes field if available
-24. [Browser] Click Save or Record Action
-25. [Verify]
-    - Assert discrepancy record is saved
-    - Assert audit report shows date, auditor, total items, missing count, and discrepancy value
-26. [Verify] Assert the audit is in "Closed" or "Completed" status with discrepancy noted
+## PHASE 2: Update Audit with Count Data
+13. [Browser] Click button with data-testid="button-edit-physical-audit-{id}" (found in the new audit card)
+14. [Verify] Assert dialog "Update Audit" opens
+15. [Browser] Select "completed" as Status
+16. [Browser] Fill "Approving Manager" in Approved By field
+17. [Browser] Fill "25" in System Pieces field
+18. [Browser] Fill "24" in Physical Pieces field (one missing — discrepancy)
+19. [Browser] Fill "480.5" in System Weight (g) field
+20. [Browser] Fill "461.3" in Physical Weight (g) field (discrepancy of 19.2g)
+21. [Browser] Click button with data-testid="button-save-physical-audit"
+22. [Verify]
+    - Assert toast "Audit saved" appears
+    - Assert audit card now shows status "completed"
+    - Assert card shows System Pieces: 25, Physical Pieces: 24
+    - Assert discrepancy value is shown (negative: -19.2g)
+    - Assert card has red border (due to discrepancy) or discrepancy text is highlighted

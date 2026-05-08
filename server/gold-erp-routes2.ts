@@ -93,13 +93,13 @@ router.post("/cad", requireAuth, async (req: any, res) => {
     const status = approval_status === "approved" ? "approved" : "in_progress";
     const row = await db.execute(sql`
       INSERT INTO jw_cad_process (
-        production_order_id, cad_operator, cad_software, software_used,
+        tenant_id, production_order_id, cad_operator, cad_software, software_used,
         cad_file_url, weight_estimate_gm, metal_volume_cc, mcx_rate,
         render_image_url, stone_placement_ok, stone_placement_verified,
         approval_status, revision_notes, approved_by, approved_on,
         customer_approval, revision_count, design_notes, status
       ) VALUES (
-        ${production_order_id}, ${cad_operator||null}, ${cad_software||null}, ${cad_software||null},
+        ${tid(req)}, ${production_order_id}, ${cad_operator||null}, ${cad_software||null}, ${cad_software||null},
         ${cad_file_url||null}, ${weight_estimate_gm||null}, ${metal_volume_cc||null}, ${mcx_rate||null},
         ${render_image_url||null}, ${stone_placement_verified||0}, ${stone_placement_verified||0},
         ${approval_status||'pending'}, ${revision_notes||null}, ${approved_by||null}, ${approved_on||null},
@@ -171,11 +171,11 @@ router.post("/cam", requireAuth, async (req: any, res) => {
     } = req.body;
     const row = await db.execute(sql`
       INSERT INTO jw_cam_process (
-        production_order_id, cam_operator, cam_software, machine_name,
+        tenant_id, production_order_id, cam_operator, cam_software, machine_name,
         material_type, cam_file_url, estimated_hrs, actual_hrs,
         prototype_weight_gm, qc_pass, issues_noted
       ) VALUES (
-        ${production_order_id||null}, ${cam_operator||null}, ${cam_software||null}, ${machine_name||null},
+        ${tid(req)}, ${production_order_id||null}, ${cam_operator||null}, ${cam_software||null}, ${machine_name||null},
         ${material_type||'Wax'}, ${cam_file_url||null}, ${estimated_hrs||null}, ${actual_hrs||null},
         ${prototype_weight_gm||null}, ${qc_pass||0}, ${issues_noted||null}
       ) RETURNING *`);
@@ -248,9 +248,9 @@ router.post("/ghat-entries", requireAuth, async (req: any, res) => {
     const wastage_pct = Number(issued_weight_gm||0) > 0 ? (wastage / Number(issued_weight_gm)) * 100 : 0;
     const alert = wastage_pct > 5;
     const row = await db.execute(sql`
-      INSERT INTO jw_ghat_entries (production_order_id, stage_name, karigar_id, issued_weight_gm, received_weight_gm,
+      INSERT INTO jw_ghat_entries (tenant_id, production_order_id, stage_name, karigar_id, issued_weight_gm, received_weight_gm,
         wastage_gm, wastage_pct, assay_purity_pct, weigh_date, alert_flag, notes)
-      VALUES (${production_order_id}, ${stage_name}, ${karigar_id||null}, ${issued_weight_gm||0}, ${received_weight_gm||0},
+      VALUES (${tid(req)}, ${production_order_id}, ${stage_name}, ${karigar_id||null}, ${issued_weight_gm||0}, ${received_weight_gm||0},
         ${wastage}, ${wastage_pct.toFixed(3)}, ${assay_purity_pct||null}, ${weigh_date||new Date().toISOString().slice(0,10)}, ${alert?1:0}, ${notes||null})
       RETURNING *`);
     res.json(row.rows[0]);
@@ -330,10 +330,10 @@ router.post("/finalize", requireAuth, async (req: any, res) => {
     const { production_order_id, final_weight_gm, huid_no, barcode, rfid_tag, stone_setting_done,
             qc_passed, qc_notes, moved_to_stock, item_id, finalize_date } = req.body;
     const row = await db.execute(sql`
-      INSERT INTO jw_job_finalize (production_order_id, final_weight_gm, huid_no, barcode, rfid_tag,
-        stone_setting_done, qc_passed, qc_notes, moved_to_stock, item_id, finalize_date)
-      VALUES (${production_order_id}, ${final_weight_gm||0}, ${huid_no||null}, ${barcode||null}, ${rfid_tag||null},
-        ${stone_setting_done||0}, ${qc_passed||0}, ${qc_notes||null}, ${moved_to_stock||0}, ${item_id||null},
+      INSERT INTO jw_job_finalize (tenant_id, production_order_id, final_weight_gm, huid_no, barcode_no, rfid_tag,
+        stone_setting_done, qc_passed, qc_notes, moved_to_stock, finalize_date)
+      VALUES (${tid(req)}, ${production_order_id}, ${final_weight_gm||0}, ${huid_no||null}, ${barcode||null}, ${rfid_tag||null},
+        ${stone_setting_done||0}, ${qc_passed||0}, ${qc_notes||null}, ${moved_to_stock||0},
         ${finalize_date||new Date().toISOString().slice(0,10)})
       RETURNING *`);
     if (qc_passed) {
@@ -350,7 +350,7 @@ router.get("/settlements", requireAuth, async (req: any, res) => {
       SELECT s.*, po.order_no, k.name karigar_name FROM jw_settlement s
       LEFT JOIN jw_production_orders po ON po.id=s.production_order_id
       LEFT JOIN jw_karigars k ON k.id=s.karigar_id
-      WHERE po.tenant_id=${tid(req)} ORDER BY s.settlement_date DESC`);
+      WHERE s.tenant_id=${tid(req)} ORDER BY s.settlement_date DESC`);
     res.json(rows.rows);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
@@ -360,9 +360,9 @@ router.post("/settlements", requireAuth, async (req: any, res) => {
     const { production_order_id, karigar_id, gold_issued_gm, gold_received_gm, allowable_wastage_pct,
             actual_wastage_gm, excess_wastage_gm, wage_amount, excess_deduction, net_payable, settlement_date } = req.body;
     const row = await db.execute(sql`
-      INSERT INTO jw_settlement (production_order_id, karigar_id, gold_issued_gm, gold_received_gm,
+      INSERT INTO jw_settlement (tenant_id, production_order_id, karigar_id, gold_issued_gm, gold_received_gm,
         allowable_wastage_pct, actual_wastage_gm, excess_wastage_gm, wage_amount, excess_deduction, net_payable, settlement_date, status)
-      VALUES (${production_order_id}, ${karigar_id}, ${gold_issued_gm||0}, ${gold_received_gm||0},
+      VALUES (${tid(req)}, ${production_order_id}, ${karigar_id}, ${gold_issued_gm||0}, ${gold_received_gm||0},
         ${allowable_wastage_pct||3}, ${actual_wastage_gm||0}, ${excess_wastage_gm||0},
         ${wage_amount||0}, ${excess_deduction||0}, ${net_payable||0},
         ${settlement_date||new Date().toISOString().slice(0,10)}, 'settled')

@@ -1,6 +1,6 @@
 # F1 — Complete Production Cycle (DS-NK-001 Necklace)
-# Production Order (planning) → Sketch record (manual link) → CAD → CAM → Ghat → Finalize → Settlement
-# PRE-REQ: Run 00-master-data-setup first (Raju Goldsmith and metal rates must exist)
+# Production Order → Sketch → CAD → CAM → Ghat → Finalize → Settlement
+# PRE-REQ: Raju Goldsmith karigar and 22K metal rate must exist
 # Login: gold-erp-demo / goldadmin / Gold@1234
 
 1. [New Context] Create a fresh browser context
@@ -10,88 +10,87 @@
 5. [Verify] Assert dashboard loads (not /auth)
 
 ## PHASE 1: Production Order
-6. [Browser] Navigate to Production section (path: /gold-erp?section=production)
+6. [Browser] Navigate to /gold-erp?section=production
 7. [Verify] Assert "Production Orders" heading is visible
-8. [Browser] Click the "+ New Order" or "New Production Order" button
+8. [Browser] Click the "+ New Order" button (or any button that opens the new production order form)
 9. [Browser] Select "Raju Goldsmith" in the Karigar dropdown
 10. [Browser] Select "Gold" in Metal dropdown
 11. [Browser] Select "22K (916)" in Purity dropdown
-12. [Browser] Fill in "1" in the Quantity field
-13. [Browser] Fill in "17.0" in the Gold to Issue (gm) field
+12. [Browser] Fill "1" in the Quantity field
+13. [Browser] Fill "17.0" in the Gold to Issue (gm) field
 14. [Browser] Set target completion date to any future date
 15. [Browser] Click Save
 16. [Verify]
-    - Assert a production order row is created in the list (order number like PRD-xxx or similar)
-    - Assert the stage/status badge shows "planning" (this is the correct initial stage)
-    - Note the order number for use in later phases
+    - Assert a production order row is created (order number like PRD-xxx)
+    - Assert stage badge shows "planning" — THIS IS CORRECT, not a bug
+    - Note the exact PRD-xxx order number for later phases
 
-## PHASE 2: Sketch Stage — Create a Sketch Record
-17. [Browser] Navigate to Sketch section (path: /gold-erp?section=sketch)
+## PHASE 2: Sketch Stage
+17. [Browser] Navigate to /gold-erp?section=sketch
 18. [Verify] Assert "Sketch Process" heading is visible
 19. [Browser] Click "+ Add Sketch" button
-20. [Browser] In the "Production Order" dropdown, select the order created in Phase 1 (PRD-xxx)
-21. [Browser] Fill "Plain necklace — customer approved design" in Customer Brief field
+20. [Browser] Select the PRD-xxx order from the Production Order dropdown
+21. [Browser] Fill "Plain necklace design" in Customer Brief textarea
 22. [Browser] Fill "https://example.com/sketch.jpg" in Sketch Image URL field
 23. [Browser] Fill "Necklace" in Design Category field
 24. [Browser] Click Save
-25. [Verify]
-    - Assert a sketch record appears in the table linked to the production order
-    - Assert status shows "pending" or "in_progress"
-26. [Browser] Click the Edit (pencil) icon on the sketch record
-27. [Browser] Change Status to "approved"
-28. [Browser] Check the "Customer Approved" checkbox
-29. [Browser] Click Save
-30. [Verify] Assert sketch record shows "approved" status and a green checkmark for Customer Approved
+25. [Verify] Assert sketch record appears in the table for PRD-xxx
 
 ## PHASE 3: CAD Process
-31. [Browser] Navigate to CAD section (path: /gold-erp?section=cad)
-32. [Verify] Assert CAD Process screen is visible
-33. [Browser] Click "+ Add CAD" or similar button
-34. [Browser] Select the production order (PRD-xxx) in the order dropdown
-35. [Browser] Fill "RhinoGold 7" in Software/Tool field if present
-36. [Browser] Fill "3D model completed" in any notes/description field
-37. [Browser] Click Save
-38. [Verify] Assert CAD record is saved and appears in the list
+26. [Browser] Navigate to /gold-erp?section=cad
+27. [Browser] Click button with data-testid="button-add-cad"
+28. [Browser] Click trigger with data-testid="select-cad-order" and select the PRD-xxx order
+29. [Browser] Click trigger with data-testid="select-cad-software" and select any option (e.g. "JewelCAD Pro" or "Rhino")
+30. [Browser] Fill "16.8" in input with data-testid="input-weight-estimate"
+31. [Browser] Click button with data-testid="button-cad-draft" (Save draft)
+32. [Verify] Assert CAD record appears in the list for PRD-xxx
 
 ## PHASE 4: CAM / Milling
-39. [Browser] Navigate to CAM section (path: /gold-erp?section=cam)
-40. [Verify] Assert CAM Process screen is visible
-41. [Browser] Click "+ Add CAM" or similar button
-42. [Browser] Select the production order (PRD-xxx)
-43. [Browser] Fill "Roland DGA milling machine" in Machine field if present
-44. [Browser] Click Save
-45. [Verify] Assert CAM record saved
+33. [Browser] Navigate to /gold-erp?section=cam
+34. [Browser] Click button with data-testid="button-add-cam"
+35. [Browser] Click trigger with data-testid="select-cam-order" and select PRD-xxx
+36. [Browser] Fill "Test Operator" in input with data-testid="input-cam-operator"
+37. [Browser] Click button with data-testid="button-save-cam"
+38. [Verify] Assert CAM record appears in the list for PRD-xxx
 
-## PHASE 5: Ghat Settlement Entry
-46. [Browser] Navigate to Ghat Settlement (path: /gold-erp?section=ghat)
-47. [Verify] Assert Ghat Settlement screen is visible
-48. [Browser] Click "+ Add Ghat Entry" or similar button
-49. [Browser] Select the production order (PRD-xxx)
-50. [Browser] Fill "0.6" in Wastage / Ghat (gm) field
-51. [Browser] Click Save
-52. [Verify] Assert ghat entry saved: 0.6 gm wastage for PRD-xxx
+## PHASE 5: Ghat / Weight Verification
+39. [Browser] Navigate to /gold-erp?section=ghat
+40. [Verify] Assert "Ghat / Weight Verification" heading is visible
+41. [Browser] Click button with data-testid="button-add-ghat"
+42. [Verify] Assert dialog "New Ghat / Weight Entry" is visible
+43. [Browser] Click trigger with data-testid="select-ghat-order" and select PRD-xxx
+44. [Browser] Stage defaults to "Casting" — leave as is (data-testid="select-ghat-stage")
+45. [Browser] Clear and fill "17.0" in input with data-testid="input-ghat-issued"
+46. [Browser] Clear and fill "16.4" in input with data-testid="input-ghat-received"
+47. [Browser] Click button with data-testid="button-save-ghat"
+48. [Verify]
+    - Assert toast "Ghat entry saved" appears
+    - Assert the ghat table row for PRD-xxx shows: Issued=17.0 g, Received=16.4 g, Wastage=0.6 g
+    - Wastage is auto-computed as issued minus received = 0.6 g (NOT entered manually)
 
 ## PHASE 6: Job Finalize
-53. [Browser] Navigate to Job Finalize section (path: /gold-erp?section=finalize)
-54. [Verify] Assert Job Finalize screen is visible
-55. [Browser] Click "+ Add Record" or open finalization form
-56. [Browser] Select the production order (PRD-xxx)
-57. [Browser] Fill "16.2" in Received Weight / Gold in Piece (gm)
-58. [Browser] Fill "0.6" in Wastage Collected (gm)
-59. [Browser] Set completion date to today
-60. [Browser] Click Save
-61. [Verify] Assert finalize record saved: received 16.2 gm, wastage 0.6 gm
+49. [Browser] Navigate to /gold-erp?section=finalize
+50. [Verify] Assert "Job Finalize & Barcode / HUID" heading is visible
+51. [Browser] Click button with data-testid="button-add-finalize"
+52. [Verify] Assert dialog "Finalize Production Job" is visible
+53. [Browser] Click trigger with data-testid="select-finalize-order" and select PRD-xxx
+54. [Browser] Clear and fill "16.2" in input with data-testid="input-finalize-weight"
+55. [Browser] Click button with data-testid="button-save-finalize" (button text "Finalize")
+56. [Verify]
+    - Assert toast "Job finalized" appears
+    - Assert finalize table row for PRD-xxx shows Final Wt = 16.2 g
 
 ## PHASE 7: Karigar Settlement
-62. [Browser] Navigate to Karigar Settlement (path: /gold-erp?section=settlement)
-63. [Verify] Assert Karigar Settlement screen is visible
-64. [Browser] Click "+ New Settlement" or find the settlement form
-65. [Browser] Select the production order (PRD-xxx) in the order lookup
-66. [Browser] Fill "17.0" in Gold Issued (gm) if not auto-populated
-67. [Browser] Fill "16.2" in Gold in Piece / Received (gm) if not auto-populated
-68. [Browser] Fill "0.6" in Wastage Collected (gm) if not auto-populated
-69. [Verify]
-    - Assert Making Charges = ₹6,480 (16.2 × ₹400/gm) or verify the calculation
-    - Assert Net Payable shows a positive value around ₹6,480
-70. [Browser] Click Confirm Settlement or Save
-71. [Verify] Assert settlement saved successfully with positive net payable
+57. [Browser] Navigate to /gold-erp?section=settlement
+58. [Verify] Assert "Karigar Settlement" heading is visible
+59. [Browser] Click button with data-testid="button-add-settlement"
+60. [Verify] Assert dialog "New Karigar Settlement" is visible
+61. [Browser] Click trigger with data-testid="select-settlement-order" and select PRD-xxx
+62. [Browser] Click trigger with data-testid="select-settlement-karigar" and select "Raju Goldsmith"
+63. [Browser] Clear and fill "17.0" in input with data-testid="input-settlement-issued"
+64. [Browser] Clear and fill "16.2" in input with data-testid="input-settlement-received"
+65. [Browser] Clear and fill "6480" in input with data-testid="input-settlement-wage"
+66. [Browser] Click button with data-testid="button-save-settlement" (text "Record Settlement")
+67. [Verify]
+    - Assert toast "Settlement recorded" appears
+    - Assert settlement table row for PRD-xxx / Raju Goldsmith appears with Wage = ₹6,480

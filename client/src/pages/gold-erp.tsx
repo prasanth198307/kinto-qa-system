@@ -1031,7 +1031,7 @@ function HallmarkingSection() {
   return (
     <>
       <SectionHeader title="Hallmarking Register (BIS / HUID)"
-        action={<Button onClick={() => setShowForm(true)} size="sm"><Plus className="h-4 w-4 mr-1" />Add Record</Button>} />
+        action={<Button onClick={() => setShowForm(true)} size="sm" data-testid="button-add-hallmark-record"><Plus className="h-4 w-4 mr-1" />Add Record</Button>} />
       <div className="overflow-x-auto rounded-lg border">
         <table className="w-full text-sm">
           <thead className="bg-muted/50">
@@ -1078,15 +1078,15 @@ function HallmarkingSection() {
                   <SelectContent>{(PURITIES[form.metal_type] || []).map(p => <SelectItem key={p.name} value={p.name}>{p.name}</SelectItem>)}</SelectContent>
                 </Select>
               </FieldRow>
-              <FieldRow label="Gross Weight (g)"><Input type="number" value={form.gross_weight_gm || ""} onChange={e => set("gross_weight_gm", e.target.value)} /></FieldRow>
-              <FieldRow label="Net Weight (g)"><Input type="number" value={form.net_weight_gm || ""} onChange={e => set("net_weight_gm", e.target.value)} /></FieldRow>
-              <FieldRow label="Assay Centre"><Input value={form.assay_centre || ""} onChange={e => set("assay_centre", e.target.value)} /></FieldRow>
+              <FieldRow label="Gross Weight (g)"><Input data-testid="input-hallmark-gross-weight" type="number" value={form.gross_weight_gm || ""} onChange={e => set("gross_weight_gm", e.target.value)} /></FieldRow>
+              <FieldRow label="Net Weight (g)"><Input data-testid="input-hallmark-net-weight" type="number" value={form.net_weight_gm || ""} onChange={e => set("net_weight_gm", e.target.value)} /></FieldRow>
+              <FieldRow label="Assay Centre"><Input data-testid="input-hallmark-assay-centre" value={form.assay_centre || ""} onChange={e => set("assay_centre", e.target.value)} /></FieldRow>
               <FieldRow label="Lot Number"><Input value={form.lot_no || ""} onChange={e => set("lot_no", e.target.value)} /></FieldRow>
               <FieldRow label="Date" className="col-span-2"><Input type="date" value={form.hallmark_date} onChange={e => set("hallmark_date", e.target.value)} /></FieldRow>
             </div>
             <div className="flex gap-2 justify-end pt-1">
               <Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
-              <Button onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isPending}>Save & Generate HUID</Button>
+              <Button data-testid="button-save-hallmark-record" onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isPending}>Save & Generate HUID</Button>
             </div>
           </div>
         </DialogContent>
@@ -1135,10 +1135,10 @@ function ChitSchemesSection() {
   return (
     <>
       <SectionHeader title="Gold Chit Schemes"
-        action={<Button onClick={() => setShowSchemeForm(true)} size="sm"><Plus className="h-4 w-4 mr-1" />New Scheme</Button>} />
+        action={<Button onClick={() => setShowSchemeForm(true)} size="sm" data-testid="button-add-scheme"><Plus className="h-4 w-4 mr-1" />New Scheme</Button>} />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {(schemes as any[]).map((s: any) => (
-          <Card key={s.id} className="cursor-pointer hover-elevate" onClick={() => setSelectedScheme(s)}>
+          <Card key={s.id} className="cursor-pointer hover-elevate" onClick={() => setSelectedScheme(s)} data-testid={`card-scheme-${s.id}`}>
             <CardContent className="p-4 space-y-2">
               <div className="flex items-start justify-between gap-2">
                 <div><p className="font-semibold">{s.name}</p><p className="text-xs text-muted-foreground">{s.scheme_code}</p></div>
@@ -1161,7 +1161,7 @@ function ChitSchemesSection() {
         <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto">
           <DialogHeader><DialogTitle>{selectedScheme?.name} — Members</DialogTitle></DialogHeader>
           <div className="flex justify-end mb-2">
-            <Button size="sm" onClick={() => setShowMemberForm(true)}><Plus className="h-4 w-4 mr-1" />Enroll Member</Button>
+            <Button size="sm" onClick={() => setShowMemberForm(true)} data-testid="button-enroll-member"><Plus className="h-4 w-4 mr-1" />Enroll Member</Button>
           </div>
           {(members as any[]).map((m: any) => (
             <div key={m.id} className="border rounded-lg p-3 flex items-center justify-between gap-2 mb-2">
@@ -1187,24 +1187,24 @@ function ChitSchemesSection() {
         <DialogContent className="max-w-md max-h-[90dvh] overflow-y-auto">
           <DialogHeader><DialogTitle>New Chit Scheme</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <FieldRow label="Scheme Name *"><Input value={sf.name || ""} onChange={e => setSf((p: any) => ({ ...p, name: e.target.value }))} placeholder="e.g. Diwali Gold Scheme 2026" /></FieldRow>
+            <FieldRow label="Scheme Name *"><Input data-testid="input-scheme-name" value={sf.name || ""} onChange={e => setSf((p: any) => ({ ...p, name: e.target.value }))} placeholder="e.g. Diwali Gold Scheme 2026" /></FieldRow>
             <div className="grid grid-cols-2 gap-3">
-              <FieldRow label="Monthly Amount (₹)"><Input type="number" value={sf.monthly_amount || ""} onChange={e => setSf((p: any) => ({ ...p, monthly_amount: e.target.value }))} /></FieldRow>
+              <FieldRow label="Monthly Amount (₹)"><Input data-testid="input-scheme-amount" type="number" value={sf.monthly_amount || ""} onChange={e => setSf((p: any) => ({ ...p, monthly_amount: e.target.value }))} /></FieldRow>
               <FieldRow label="Metal">
                 <Select value={sf.metal_type || "gold"} onValueChange={v => setSf((p: any) => ({ ...p, metal_type: v }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent><SelectItem value="gold">Gold</SelectItem><SelectItem value="silver">Silver</SelectItem></SelectContent>
                 </Select>
               </FieldRow>
-              <FieldRow label="Paid Months"><Input type="number" value={sf.duration_months || 11} onChange={e => setSf((p: any) => ({ ...p, duration_months: e.target.value }))} /></FieldRow>
-              <FieldRow label="Bonus Months"><Input type="number" value={sf.bonus_month_free || 1} onChange={e => setSf((p: any) => ({ ...p, bonus_month_free: e.target.value }))} /></FieldRow>
-              <FieldRow label="Max Members"><Input type="number" value={sf.max_members || 20} onChange={e => setSf((p: any) => ({ ...p, max_members: e.target.value }))} /></FieldRow>
-              <FieldRow label="Start Date"><Input type="date" value={sf.start_date || ""} onChange={e => setSf((p: any) => ({ ...p, start_date: e.target.value }))} /></FieldRow>
+              <FieldRow label="Paid Months"><Input data-testid="input-scheme-duration" type="number" value={sf.duration_months || 11} onChange={e => setSf((p: any) => ({ ...p, duration_months: e.target.value }))} /></FieldRow>
+              <FieldRow label="Bonus Months"><Input data-testid="input-scheme-bonus" type="number" value={sf.bonus_month_free || 1} onChange={e => setSf((p: any) => ({ ...p, bonus_month_free: e.target.value }))} /></FieldRow>
+              <FieldRow label="Max Members"><Input data-testid="input-scheme-max" type="number" value={sf.max_members || 20} onChange={e => setSf((p: any) => ({ ...p, max_members: e.target.value }))} /></FieldRow>
+              <FieldRow label="Start Date"><Input data-testid="input-scheme-start-date" type="date" value={sf.start_date || ""} onChange={e => setSf((p: any) => ({ ...p, start_date: e.target.value }))} /></FieldRow>
             </div>
             <FieldRow label="Notes"><Textarea value={sf.notes || ""} onChange={e => setSf((p: any) => ({ ...p, notes: e.target.value }))} rows={2} /></FieldRow>
             <div className="flex gap-2 justify-end pt-1">
-              <Button variant="outline" onClick={() => setShowSchemeForm(false)}>Cancel</Button>
-              <Button onClick={() => schemeMut.mutate(sf)} disabled={schemeMut.isPending}>Create Scheme</Button>
+              <Button variant="outline" onClick={() => setShowSchemeForm(false)} data-testid="button-scheme-cancel">Cancel</Button>
+              <Button onClick={() => schemeMut.mutate(sf)} disabled={schemeMut.isPending} data-testid="button-save-scheme">Create Scheme</Button>
             </div>
           </div>
         </DialogContent>
@@ -1215,12 +1215,12 @@ function ChitSchemesSection() {
         <DialogContent className="max-w-sm">
           <DialogHeader><DialogTitle>Enroll Member</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <FieldRow label="Name *"><Input value={mf.member_name || ""} onChange={e => setMf((p: any) => ({ ...p, member_name: e.target.value }))} /></FieldRow>
-            <FieldRow label="Phone"><Input value={mf.phone || ""} onChange={e => setMf((p: any) => ({ ...p, phone: e.target.value }))} /></FieldRow>
+            <FieldRow label="Name *"><Input data-testid="input-member-name" value={mf.member_name || ""} onChange={e => setMf((p: any) => ({ ...p, member_name: e.target.value }))} /></FieldRow>
+            <FieldRow label="Phone"><Input data-testid="input-member-phone" value={mf.phone || ""} onChange={e => setMf((p: any) => ({ ...p, phone: e.target.value }))} /></FieldRow>
             <FieldRow label="Address"><Textarea value={mf.address || ""} onChange={e => setMf((p: any) => ({ ...p, address: e.target.value }))} rows={2} /></FieldRow>
             <div className="flex gap-2 justify-end pt-1">
-              <Button variant="outline" onClick={() => setShowMemberForm(false)}>Cancel</Button>
-              <Button onClick={() => memberMut.mutate(mf)} disabled={memberMut.isPending}>Enroll</Button>
+              <Button variant="outline" onClick={() => setShowMemberForm(false)} data-testid="button-member-cancel">Cancel</Button>
+              <Button onClick={() => memberMut.mutate(mf)} disabled={memberMut.isPending} data-testid="button-save-member">Enroll</Button>
             </div>
           </div>
         </DialogContent>

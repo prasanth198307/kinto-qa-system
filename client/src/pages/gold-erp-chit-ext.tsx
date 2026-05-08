@@ -178,6 +178,7 @@ export function ChitRedemptionsSection() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<any>({ redemption_type: "gold", redemption_date: today() });
   const { data: redemptions = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/chit-redemptions"] });
+  const { data: allMembers = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/chit-members"] });
   const { data: maturedMembers = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/chit-maturity"] });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
 
@@ -193,11 +194,12 @@ export function ChitRedemptionsSection() {
   });
 
   const eligible = (maturedMembers as any[]).filter(m => m.status !== "matured");
+  const selectableMembers = eligible.length > 0 ? eligible : (allMembers as any[]);
 
   return (
     <>
       <SH title="Chit Redemptions" action={
-        <Button size="sm" onClick={() => setShowForm(true)} disabled={eligible.length === 0}>
+        <Button size="sm" onClick={() => setShowForm(true)} data-testid="button-add-redemption">
           <Gift className="h-4 w-4 mr-1" />Process Redemption
         </Button>
       } />
@@ -228,12 +230,12 @@ export function ChitRedemptionsSection() {
           <div className="space-y-3">
             <FL label="Member *">
               <Select value={form.member_id?.toString() || ""} onValueChange={v => {
-                const m = eligible.find((e: any) => e.id.toString() === v);
+                const m = selectableMembers.find((e: any) => e.id.toString() === v);
                 set("member_id", parseInt(v));
                 if (m) set("scheme_id", m.scheme_id);
               }}>
-                <SelectTrigger><SelectValue placeholder="Select matured member" /></SelectTrigger>
-                <SelectContent>{eligible.map((m: any) => <SelectItem key={m.id} value={m.id.toString()}>{m.member_name} — {m.scheme_name}</SelectItem>)}</SelectContent>
+                <SelectTrigger data-testid="select-redemption-member"><SelectValue placeholder="Select member" /></SelectTrigger>
+                <SelectContent>{selectableMembers.map((m: any) => <SelectItem key={m.id} value={m.id.toString()}>{m.member_name} — {m.scheme_name || m.name || `Scheme #${m.scheme_id}`}</SelectItem>)}</SelectContent>
               </Select>
             </FL>
             <FL label="Redemption Type">
@@ -243,12 +245,12 @@ export function ChitRedemptionsSection() {
               </Select>
             </FL>
             <div className="grid grid-cols-2 gap-3">
-              <FL label="Gold Weight (g) if applicable"><Input type="number" value={form.gold_weight_gm || ""} onChange={e => set("gold_weight_gm", e.target.value)} /></FL>
-              <FL label="Item Tag (if jewellery)"><Input value={form.item_tag || ""} onChange={e => set("item_tag", e.target.value)} /></FL>
-              <FL label="TDS Deducted (₹)"><Input type="number" value={form.tds_deducted || 0} onChange={e => set("tds_deducted", e.target.value)} /></FL>
-              <FL label="Redemption Date"><Input type="date" value={form.redemption_date || today()} onChange={e => set("redemption_date", e.target.value)} /></FL>
+              <FL label="Gold Weight (g) if applicable"><Input data-testid="input-redemption-gold-wt" type="number" value={form.gold_weight_gm || ""} onChange={e => set("gold_weight_gm", e.target.value)} /></FL>
+              <FL label="Item Tag (if jewellery)"><Input data-testid="input-redemption-item-tag" value={form.item_tag || ""} onChange={e => set("item_tag", e.target.value)} /></FL>
+              <FL label="TDS Deducted (₹)"><Input data-testid="input-redemption-tds" type="number" value={form.tds_deducted || 0} onChange={e => set("tds_deducted", e.target.value)} /></FL>
+              <FL label="Redemption Date"><Input data-testid="input-redemption-date" type="date" value={form.redemption_date || today()} onChange={e => set("redemption_date", e.target.value)} /></FL>
             </div>
-            <div className="flex gap-2 justify-end"><Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button><Button onClick={() => saveMut.mutate(form)} disabled={saveMut.isPending || eligible.length === 0}>Process</Button></div>
+            <div className="flex gap-2 justify-end"><Button variant="outline" onClick={() => setShowForm(false)} data-testid="button-redemption-cancel">Cancel</Button><Button onClick={() => saveMut.mutate(form)} disabled={saveMut.isPending} data-testid="button-save-redemption">Process</Button></div>
           </div>
         </DialogContent>
       </Dialog>

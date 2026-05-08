@@ -60,7 +60,7 @@ export function BullionBookingsSection() {
   return (
     <>
       <SH title="Bullion Bookings" action={
-        <Button size="sm" onClick={() => { setEditing(null); setForm({ party_type: "supplier", metal_type: "gold", form_type: "bar", payment_terms: "advance", delivery_type: "physical" }); setShowForm(true); }}>
+        <Button size="sm" data-testid="button-new-bullion-booking" onClick={() => { setEditing(null); setForm({ party_type: "supplier", metal_type: "gold", form_type: "bar", payment_terms: "advance", delivery_type: "physical" }); setShowForm(true); }}>
           <Plus className="h-4 w-4 mr-1" />New Booking
         </Button>
       } />
@@ -98,7 +98,7 @@ export function BullionBookingsSection() {
                     <SelectContent><SelectItem value="supplier">Supplier</SelectItem><SelectItem value="customer">Customer</SelectItem><SelectItem value="refinery">Refinery</SelectItem></SelectContent>
                   </Select>
                 </FL>
-                <FL label="Party Name *"><Input value={form.party_name || ""} onChange={e => set("party_name", e.target.value)} /></FL>
+                <FL label="Party Name *"><Input data-testid="input-booking-party" value={form.party_name || ""} onChange={e => set("party_name", e.target.value)} /></FL>
                 <FL label="Metal">
                   <Select value={form.metal_type || "gold"} onValueChange={v => set("metal_type", v)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
@@ -112,8 +112,8 @@ export function BullionBookingsSection() {
                   </Select>
                 </FL>
                 <FL label="Fineness"><Input value={form.fineness || ""} onChange={e => set("fineness", e.target.value)} placeholder="999.9 / 995" /></FL>
-                <FL label="Weight (g)"><Input type="number" value={form.weight_gm || ""} onChange={e => set("weight_gm", e.target.value)} /></FL>
-                <FL label="Rate/g (₹)"><Input type="number" value={form.rate_per_gram || ""} onChange={e => set("rate_per_gram", e.target.value)} /></FL>
+                <FL label="Weight (g)"><Input data-testid="input-booking-weight" type="number" value={form.weight_gm || ""} onChange={e => set("weight_gm", e.target.value)} /></FL>
+                <FL label="Rate/g (₹)"><Input data-testid="input-booking-rate" type="number" value={form.rate_per_gram || ""} onChange={e => set("rate_per_gram", e.target.value)} /></FL>
                 <FL label="Payment Terms">
                   <Select value={form.payment_terms || "advance"} onValueChange={v => set("payment_terms", v)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
@@ -149,7 +149,7 @@ export function BullionBookingsSection() {
                 <FL label="Assay Cert No."><Input value={form.assay_cert_no || ""} onChange={e => set("assay_cert_no", e.target.value)} /></FL>
               </div>
             </>}
-            <div className="flex gap-2 justify-end"><Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button><Button onClick={() => saveMut.mutate(form)} disabled={saveMut.isPending}>Save</Button></div>
+            <div className="flex gap-2 justify-end"><Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button><Button data-testid="button-save-bullion-booking" onClick={() => saveMut.mutate(form)} disabled={saveMut.isPending}>Save</Button></div>
           </div>
         </DialogContent>
       </Dialog>
@@ -181,7 +181,7 @@ export function VaultAuditSection() {
   return (
     <>
       <SH title="Vault Audit" action={
-        <Button size="sm" onClick={() => { setEditing(null); setForm({ audit_date: today(), location: "main_vault" }); setShowForm(true); }}>
+        <Button size="sm" data-testid="button-start-vault-audit" onClick={() => { setEditing(null); setForm({ audit_date: today(), location: "main_vault" }); setShowForm(true); }}>
           <Plus className="h-4 w-4 mr-1" />Start Vault Audit
         </Button>
       } />
@@ -223,8 +223,8 @@ export function VaultAuditSection() {
           <div className="space-y-3">
             {!editing && <div className="grid grid-cols-2 gap-3">
               <FL label="Audit Date"><Input type="date" value={form.audit_date || today()} onChange={e => set("audit_date", e.target.value)} /></FL>
-              <FL label="Location"><Input value={form.location || "main_vault"} onChange={e => set("location", e.target.value)} /></FL>
-              <FL label="Auditor 1"><Input value={form.auditor_1 || ""} onChange={e => set("auditor_1", e.target.value)} /></FL>
+              <FL label="Location"><Input data-testid="input-vault-audit-location" value={form.location || "main_vault"} onChange={e => set("location", e.target.value)} /></FL>
+              <FL label="Auditor 1"><Input data-testid="input-vault-audit-auditor1" value={form.auditor_1 || ""} onChange={e => set("auditor_1", e.target.value)} /></FL>
               <FL label="Auditor 2"><Input value={form.auditor_2 || ""} onChange={e => set("auditor_2", e.target.value)} /></FL>
               <FL label="Manager"><Input value={form.manager_name || ""} onChange={e => set("manager_name", e.target.value)} /></FL>
               <FL label="Next Audit Date"><Input type="date" value={form.next_audit_date || ""} onChange={e => set("next_audit_date", e.target.value)} /></FL>
@@ -246,7 +246,7 @@ export function VaultAuditSection() {
               </div>
               <FL label="Tamper Evidence"><Textarea value={form.tamper_evidence || ""} onChange={e => set("tamper_evidence", e.target.value)} rows={2} /></FL>
             </>}
-            <div className="flex gap-2 justify-end"><Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button><Button onClick={() => saveMut.mutate(form)} disabled={saveMut.isPending}>Save</Button></div>
+            <div className="flex gap-2 justify-end"><Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button><Button data-testid="button-save-vault-audit" onClick={() => saveMut.mutate(form)} disabled={saveMut.isPending}>Save</Button></div>
           </div>
         </DialogContent>
       </Dialog>

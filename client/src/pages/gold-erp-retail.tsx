@@ -343,7 +343,7 @@ export function PhysicalAuditSection() {
   return (
     <>
       <SH title="Physical Inventory Audit" action={
-        <Button size="sm" onClick={() => { setEditing(null); setForm({ audit_type: "full", audit_date: today() }); setShowForm(true); }}>
+        <Button size="sm" data-testid="button-start-physical-audit" onClick={() => { setEditing(null); setForm({ audit_type: "full", audit_date: today() }); setShowForm(true); }}>
           <Plus className="h-4 w-4 mr-1" />Start Audit
         </Button>
       } />
@@ -369,7 +369,7 @@ export function PhysicalAuditSection() {
                   </div>}
                 </div>
               )}
-              <Button size="sm" variant="outline" className="mt-3" onClick={() => { setEditing(a); setForm(a); setShowForm(true); }}>
+              <Button size="sm" variant="outline" className="mt-3" data-testid={`button-edit-physical-audit-${a.id}`} onClick={() => { setEditing(a); setForm(a); setShowForm(true); }}>
                 <Pencil className="h-3 w-3 mr-1" />Update Audit
               </Button>
             </CardContent>
@@ -384,14 +384,14 @@ export function PhysicalAuditSection() {
             <div className="grid grid-cols-2 gap-3">
               {!editing && <>
                 <FL label="Audit Date"><Input type="date" value={form.audit_date || today()} onChange={e => set("audit_date", e.target.value)} /></FL>
-                <FL label="Branch"><Input value={form.branch || "main"} onChange={e => set("branch", e.target.value)} /></FL>
+                <FL label="Branch"><Input data-testid="input-audit-branch" value={form.branch || "main"} onChange={e => set("branch", e.target.value)} /></FL>
                 <FL label="Audit Type">
                   <Select value={form.audit_type || "full"} onValueChange={v => set("audit_type", v)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent><SelectItem value="full">Full Audit</SelectItem><SelectItem value="spot_check">Spot Check</SelectItem><SelectItem value="gold_only">Gold Only</SelectItem></SelectContent>
                   </Select>
                 </FL>
-                <FL label="Auditor Name"><Input value={form.auditor_name || ""} onChange={e => set("auditor_name", e.target.value)} /></FL>
+                <FL label="Auditor Name"><Input data-testid="input-audit-auditor" value={form.auditor_name || ""} onChange={e => set("auditor_name", e.target.value)} /></FL>
               </>}
               {editing && <>
                 <FL label="Status">
@@ -408,7 +408,7 @@ export function PhysicalAuditSection() {
                 <FL label="Action Taken" className="col-span-2"><Textarea value={form.action_taken || ""} onChange={e => set("action_taken", e.target.value)} rows={2} /></FL>
               </>}
             </div>
-            <div className="flex gap-2 justify-end"><Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button><Button onClick={() => saveMut.mutate(form)} disabled={saveMut.isPending}>Save</Button></div>
+            <div className="flex gap-2 justify-end"><Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button><Button data-testid="button-save-physical-audit" onClick={() => saveMut.mutate(form)} disabled={saveMut.isPending}>Save</Button></div>
           </div>
         </DialogContent>
       </Dialog>

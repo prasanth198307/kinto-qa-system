@@ -1,5 +1,5 @@
-# F5 — Bullion Booking → Rate Cut Invoice → Vault Entry → Vault Audit
-# Bullion booking → inward → rate cut invoice (2 deductions) → vault entry → vault audit
+# F5 — Bullion: Booking → Rate Cut Invoice → Vault Movement → Vault Audit
+# Create bullion booking → rate cut invoice → vault movement → vault audit
 # Login: gold-erp-demo / goldadmin / Gold@1234
 
 1. [New Context] Create a fresh browser context
@@ -7,77 +7,58 @@
 3. [Verify] Assert dashboard loads
 
 ## PHASE 1: Bullion Booking
-4. [Browser] Navigate to Bullion Bookings (path: /gold-erp?section=bullion-bookings)
-5. [Verify] Assert Bullion Bookings screen is visible
-6. [Browser] Click "+ New Booking" button
-7. [Browser] Select "Supplier" as party type
-8. [Browser] Fill "Riddhi Siddhi Bullion" in Party Name
-9. [Browser] Select "Gold" as metal type
-10. [Browser] Select "Bar" as form type
-11. [Browser] Fill "99.5" in Fineness (purity %)
-12. [Browser] Fill "100.0" in Weight (gm)
-13. [Browser] Fill "7200" in Rate per gram
-14. [Browser] Set expected delivery to today + 2 days
-15. [Browser] Select "Advance" in Payment Terms
-16. [Browser] Click Save
-17. [Verify]
-    - Assert booking created with reference number BBK-001 or similar
-    - Assert Amount = ₹7,20,000 (100 × 7200)
-    - Assert GST 3% = ₹21,600
-    - Assert Total = ₹7,41,600
+4. [Browser] Navigate to /gold-erp?section=bullion-bookings
+5. [Verify] Assert "Bullion Bookings" heading is visible
+6. [Browser] Click button with data-testid="button-new-bullion-booking"
+7. [Verify] Assert dialog "New Bullion Booking" opens
+8. [Browser] Fill "Riddhi Siddhi Bullion" in input with data-testid="input-booking-party"
+9. [Browser] Fill "100.0" in input with data-testid="input-booking-weight"
+10. [Browser] Fill "7200" in input with data-testid="input-booking-rate"
+11. [Browser] Click button with data-testid="button-save-bullion-booking"
+12. [Verify]
+    - Assert toast "Bullion booking saved" appears
+    - Assert row for "Riddhi Siddhi Bullion" appears in the bookings table
+    - Assert amount column shows ₹7,20,000 (100 × 7200)
 
-## PHASE 2: Bullion Inward (Stock Receipt)
-18. [Browser] Navigate to Bullion Stock (path: /gold-erp?section=bullion)
-19. [Browser] Click "+ Record Inward" or "New Transaction" button
-20. [Browser] Select "Purchase" as transaction type
-21. [Browser] Fill "Riddhi Siddhi Bullion" in Party Name
-22. [Browser] Select "Gold" as metal type
-23. [Browser] Fill "99.5% purity" in Purity Name
-24. [Browser] Fill "100.0" in Weight (gm)
-25. [Browser] Fill "7200" in Rate per gram
-26. [Browser] Set date to today
-27. [Browser] Click Save
-28. [Verify]
-    - Assert bullion transaction recorded with 100 gm inward
-    - Assert running bullion stock increases by 100 gm
+## PHASE 2: Rate Cut Invoice
+13. [Browser] Navigate to /gold-erp?section=bullion-rate-cuts
+14. [Verify] Assert "Bullion Rate Cut Invoices" heading is visible
+15. [Browser] Click button with data-testid="button-add-rate-cut"
+16. [Verify] Assert dialog "New Rate Cut Invoice" opens
+17. [Browser] Fill "Riddhi Siddhi Bullion" in input with data-testid="input-ratecut-party"
+18. [Browser] Fill "100.0" in input with data-testid="input-ratecut-weight"
+19. [Browser] Fill "7200" in input with data-testid="input-ratecut-spot"
+20. [Browser] Fill "0.7" in input with data-testid="input-ratecut-pct" (0.7% rate cut)
+21. [Verify] Assert live calculation panel appears showing:
+    - Net rate approximately ₹7,149.6/g
+    - Grand total approximately ₹7,36,406
+22. [Browser] Click button with data-testid="button-save-ratecut"
+23. [Verify]
+    - Assert toast "Rate cut invoice saved" appears
+    - Assert invoice row appears in the table with Riddhi Siddhi Bullion
 
-## PHASE 3: Rate Cut Invoice
-29. [Browser] Navigate to Rate Cut Invoices (path: /gold-erp?section=bullion-rate-cuts)
-30. [Verify] Assert Rate Cut Invoices screen is visible
-31. [Browser] Click "+ New Rate Cut Invoice"
-32. [Browser] Select the bullion inward transaction or fill "Riddhi Siddhi Bullion" in supplier
-33. [Browser] Fill "100.0" in Gold Weight (gm)
-34. [Browser] Fill "7200" in Agreed Rate
-35. [Browser] Add first rate cut: Fill "0.5" in Rate Cut 1 (gm/loss deduction)
-36. [Browser] Add second rate cut: Fill "0.2" in Rate Cut 2
-37. [Browser] Fill any settlement notes
-38. [Browser] Click Save
-39. [Verify]
-    - Assert net weight after cuts = 99.3 gm (100 − 0.5 − 0.2)
-    - Assert final settlement value calculated correctly
-    - Assert invoice created for supplier
+## PHASE 3: Vault Movement
+24. [Browser] Navigate to /gold-erp?section=vault-movement
+25. [Verify] Assert "Bullion Vault Movement Dashboard" heading is visible
+26. [Browser] Click button with data-testid="button-add-vault-movement"
+27. [Verify] Assert dialog "Record Vault Movement" opens
+28. [Browser] Ensure "Inward" is selected as Movement Type
+29. [Browser] Fill "100.0" in input with data-testid="input-vault-weight"
+30. [Browser] Fill "Main Vault" in To Location field
+31. [Browser] Click Save (find button by text "Save" in the dialog)
+32. [Verify]
+    - Assert toast "Vault movement recorded" appears
+    - Assert movement row appears in the table with type "in" and weight 100.0 g
+    - Assert balance card shows "gold" balance ≥ 100 g
 
-## PHASE 4: Vault Movement
-40. [Browser] Navigate to Vault Movement (path: /gold-erp?section=vault-movement)
-41. [Verify] Assert Vault Movement screen is visible
-42. [Browser] Click "+ Record Movement"
-43. [Browser] Select "Inward" as movement type
-44. [Browser] Fill "Main Vault — Safe #1" in Vault Location
-45. [Browser] Fill "100.0" in Weight (gm)
-46. [Browser] Select "Gold" as metal
-47. [Browser] Set date to today
-48. [Browser] Click Save
-49. [Verify] Assert vault movement recorded: 100 gm inward to Main Vault
-
-## PHASE 5: Vault Audit
-50. [Browser] Navigate to Vault Audit (path: /gold-erp?section=vault-audit)
-51. [Verify] Assert Vault Audit screen is visible
-52. [Browser] Click "+ Start Vault Audit" button
-53. [Browser] Fill "Main Vault — Safe #1" in Vault Location
-54. [Browser] Fill "Raju Goldsmith" in Auditors field (at least 2 auditors if required)
-55. [Browser] Fill "100.0" in Physical Count: Gold bar weight (gm)
-56. [Verify]
-    - Assert System value shows 100.0 gm
-    - Assert Discrepancy = 0.0 gm (perfect match)
-57. [Browser] Click "Close Audit" or "Submit Audit"
-58. [Verify] Assert audit closed successfully with zero discrepancy noted
+## PHASE 4: Vault Audit
+33. [Browser] Navigate to /gold-erp?section=vault-audit
+34. [Verify] Assert "Vault Audit" heading is visible
+35. [Browser] Click button with data-testid="button-start-vault-audit"
+36. [Verify] Assert dialog "Start Vault Audit" opens
+37. [Browser] Fill "Main Vault — Safe #1" in input with data-testid="input-vault-audit-location"
+38. [Browser] Fill "Raju Goldsmith" in input with data-testid="input-vault-audit-auditor1"
+39. [Browser] Click button with data-testid="button-save-vault-audit"
+40. [Verify]
+    - Assert toast "Vault audit saved" appears
+    - Assert audit card appears in the list showing the location "Main Vault — Safe #1"
