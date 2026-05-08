@@ -1132,7 +1132,7 @@ export default function CashRegisterReport() {
               <li>• Two vouchers print per A4 page for easy cutting</li>
               <li>• Each voucher includes: Voucher number, date, payee, items, amounts, and signature boxes</li>
               <li>• Signature boxes: Receiver's Signature, Cashier's Signature, Approved By</li>
-              <li>• Company name "Inmoisture Private Limited" appears on each voucher</li>
+              <li>• Company name "MicroGrid" appears on each voucher</li>
             </ul>
           </CardContent>
         </Card>

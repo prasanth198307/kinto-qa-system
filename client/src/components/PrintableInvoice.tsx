@@ -215,7 +215,7 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
     let upiQRCodeDataUrl = '';
     try {
       let upiString = '';
-      const payeeName = encodeURIComponent(accountHolderName || invoice.sellerName || 'Inmoisture Private Limited');
+      const payeeName = encodeURIComponent(accountHolderName || invoice.sellerName || 'MicroGrid');
       
       if (upiId) {
         // Use UPI ID if available
@@ -538,7 +538,7 @@ ${invoice.shipToName || invoice.shipToAddress ? `
           
           <!-- Signature Section (Right) -->
           <div class="signature-section">
-            <div class="company-for-line">For <strong>${invoice.sellerName || 'Inmoisture Private Limited'}:</strong></div>
+            <div class="company-for-line">For <strong>${invoice.sellerName || 'MicroGrid'}:</strong></div>
             ${(() => {
               const signatureType = (invoice as any).signatureType || 'default';
               const showSignature = invoice.includeSignature === 1 || invoice.includeSignature === undefined;

@@ -109,7 +109,7 @@ export default function PrintableDebitNote({ debitNote }: PrintableDebitNoteProp
     }
 
     // Get company details from template or use defaults
-    const companyName = template?.defaultSellerName || 'Inmoisture Private Limited';
+    const companyName = template?.defaultSellerName || 'MicroGrid';
     const companyAddress = template?.defaultSellerAddress || 'Guntur, Andhra Pradesh';
     const companyGstin = template?.defaultSellerGstin || '37AAHCI5047B1ZR';
     const companyState = template?.defaultSellerState || 'Andhra Pradesh';

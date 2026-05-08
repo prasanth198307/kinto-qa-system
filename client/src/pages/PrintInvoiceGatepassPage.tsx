@@ -110,7 +110,7 @@ export default function PrintInvoiceGatepassPage() {
       
       try {
         let upiString = '';
-        const payeeName = encodeURIComponent(accountHolderForQR || invoice.sellerName || 'Inmoisture Private Limited');
+        const payeeName = encodeURIComponent(accountHolderForQR || invoice.sellerName || 'MicroGrid');
         
         if (upiId) {
           upiString = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${payeeName}&cu=INR`;
@@ -258,7 +258,7 @@ export default function PrintInvoiceGatepassPage() {
           </div>
         )}
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '14px', fontWeight: 'bold' }}>{invoice.sellerName || 'Inmoisture Private Limited'}</div>
+          <div style={{ fontSize: '14px', fontWeight: 'bold' }}>{invoice.sellerName || 'MicroGrid'}</div>
           <div style={{ fontSize: '9px' }}>{invoice.sellerAddress}</div>
           <div style={{ fontSize: '9px' }}>
             {invoice.sellerPhone && `Phone: ${invoice.sellerPhone}`}
@@ -485,7 +485,7 @@ export default function PrintInvoiceGatepassPage() {
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '9px', marginBottom: '5px' }}>For {invoice.sellerName || 'Inmoisture Private Limited'}:</div>
+          <div style={{ fontSize: '9px', marginBottom: '5px' }}>For {invoice.sellerName || 'MicroGrid'}:</div>
           {(() => {
             const signatureType = (invoice as any).signatureType || 'default';
             const showSignature = (invoice as any).includeSignature === 1 || (invoice as any).includeSignature === undefined;

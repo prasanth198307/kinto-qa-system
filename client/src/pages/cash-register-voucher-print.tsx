@@ -111,7 +111,7 @@ export default function CashRegisterVoucherPrint() {
         <div class="voucher-container">
           <div class="voucher">
             <div class="header">
-              <div class="company-name">Inmoisture Private Limited</div>
+              <div class="company-name">MicroGrid</div>
               <div class="company-details">
                 Plot No. 123, Industrial Area, Hyderabad, Telangana - 500032
               </div>

@@ -199,7 +199,7 @@ export default function PrintableInvoiceGatepass({ invoice, gatepass }: Printabl
     let upiQRCodeDataUrl = '';
     try {
       let upiString = '';
-      const payeeName = encodeURIComponent(accountHolderName || invoice.sellerName || 'Inmoisture Private Limited');
+      const payeeName = encodeURIComponent(accountHolderName || invoice.sellerName || 'MicroGrid');
       
       if (upiId) {
         upiString = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${payeeName}&cu=INR`;
@@ -238,7 +238,7 @@ export default function PrintableInvoiceGatepass({ invoice, gatepass }: Printabl
             </div>
           ` : ''}
           <div class="company-info">
-            <div class="company-name">${invoice.sellerName || 'Inmoisture Private Limited'}</div>
+            <div class="company-name">${invoice.sellerName || 'MicroGrid'}</div>
             <div>${invoice.sellerAddress || ''}</div>
             <div class="company-contact">
               ${invoice.sellerPhone ? `Phone: ${invoice.sellerPhone}` : ''}
@@ -496,7 +496,7 @@ ${invoice.shipToName || invoice.shipToAddress ? `
           ` : '<div></div>'}
           
           <div class="signature-section">
-            <div class="company-for-line">For <strong>${invoice.sellerName || 'Inmoisture Private Limited'}:</strong></div>
+            <div class="company-for-line">For <strong>${invoice.sellerName || 'MicroGrid'}:</strong></div>
             ${(() => {
               const signatureType = (invoice as any).signatureType || 'default';
               const showSignature = invoice.includeSignature === 1 || invoice.includeSignature === undefined;

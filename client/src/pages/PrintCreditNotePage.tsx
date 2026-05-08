@@ -151,7 +151,7 @@ export default function PrintCreditNotePage() {
       <div style={{ display: 'flex', gap: '20px', marginBottom: '15px' }}>
         <div style={{ flex: 1, border: '1px solid #ddd', padding: '10px', borderRadius: '4px' }}>
           <div style={{ fontWeight: 'bold', fontSize: '11px', color: '#666', marginBottom: '5px' }}>FROM</div>
-          <div style={{ fontSize: '13px', fontWeight: 'bold' }}>{creditNote.sellerName || 'Inmoisture Private Limited'}</div>
+          <div style={{ fontSize: '13px', fontWeight: 'bold' }}>{creditNote.sellerName || 'MicroGrid'}</div>
           <div style={{ fontSize: '11px' }}>{creditNote.sellerAddress}</div>
           {creditNote.sellerGstin && <div style={{ fontSize: '11px' }}>GSTIN: {creditNote.sellerGstin}</div>}
         </div>

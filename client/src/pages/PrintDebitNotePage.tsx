@@ -116,7 +116,7 @@ export default function PrintDebitNotePage() {
   const isIntrastate = !fullNote.igstAmount || fullNote.igstAmount === 0;
   const formattedDate = format(new Date(fullNote.debitDate), 'dd/MM/yyyy');
 
-  const companyName = template?.defaultSellerName || 'Inmoisture Private Limited';
+  const companyName = template?.defaultSellerName || 'MicroGrid';
   const companyAddress = template?.defaultSellerAddress || 'Guntur, Andhra Pradesh';
   const companyGstin = template?.defaultSellerGstin || '37AAHCI5047B1ZR';
   const companyPhone = template?.defaultSellerPhone || '';

@@ -264,7 +264,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
       invoiceDate: new Date(invoice.invoiceDate).toISOString().split('T')[0],
       invoiceTemplateId: invoice.templateId || "",
       termsConditionsId: invoice.termsConditionsId || "",
-      sellerName: invoice.sellerName || "Inmoisture Private Limited",
+      sellerName: invoice.sellerName || "MicroGrid",
       sellerAddress: invoice.sellerAddress || "356-2, Chintalapalem, Kothavalasa",
       sellerState: invoice.sellerState || "Andhra Pradesh",
       sellerStateCode: invoice.sellerStateCode || "37",
@@ -309,7 +309,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
       invoiceDate: new Date().toISOString().split('T')[0],
       invoiceTemplateId: "",
       termsConditionsId: "",
-      sellerName: "Inmoisture Private Limited",
+      sellerName: "MicroGrid",
       sellerAddress: "356-2, Chintalapalem, Kothavalasa",
       sellerState: "Andhra Pradesh",
       sellerStateCode: "37",
@@ -436,7 +436,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
         invoiceDate: new Date(invoice.invoiceDate).toISOString().split('T')[0],
         invoiceTemplateId: invoice.templateId || "",
         termsConditionsId: invoice.termsConditionsId || "",
-        sellerName: invoice.sellerName || "Inmoisture Private Limited",
+        sellerName: invoice.sellerName || "MicroGrid",
         sellerAddress: invoice.sellerAddress || "356-2, Chintalapalem, Kothavalasa",
         sellerState: invoice.sellerState || "Andhra Pradesh",
         sellerStateCode: invoice.sellerStateCode || "37",
@@ -1334,7 +1334,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
         ` : ''}
 
         <div style="margin-top: 60px; text-align: right;">
-          <p>For ${data.sellerName || 'Inmoisture Private Limited'}</p>
+          <p>For ${data.sellerName || 'MicroGrid'}</p>
           <br><br>
           <p>_______________________</p>
           <p>Authorized Signatory</p>
