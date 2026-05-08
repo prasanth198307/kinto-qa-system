@@ -419,6 +419,17 @@ export function ChitCollectionRegisterSection() {
   const [payForm, setPayForm] = useState<any>({ payment_mode: "cash", paid_date: today() });
 
   const { data: schemes = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/chit-schemes"] });
+
+  // Fetch members for the selected scheme (exist from enrollment)
+  const { data: members = [] } = useQuery<any[]>({
+    queryKey: ["/api/gold-erp/chit-schemes", selectedScheme, "members"],
+    queryFn: () => selectedScheme
+      ? fetch(`/api/gold-erp/chit-schemes/${selectedScheme}/members`, { credentials: "include" }).then(r => r.json())
+      : Promise.resolve([]),
+    enabled: !!selectedScheme,
+  });
+
+  // Fetch paid installments for display history
   const { data: installments = [] } = useQuery<any[]>({
     queryKey: ["/api/gold-erp/chit-installments", selectedScheme],
     queryFn: () => selectedScheme
@@ -427,21 +438,33 @@ export function ChitCollectionRegisterSection() {
     enabled: !!selectedScheme,
   });
 
+  // POST a new installment payment via the pay endpoint
   const payMut = useMutation({
-    mutationFn: (d: any) => apiRequest("PUT", `/api/gold-erp/chit-installments/${d.id}`, { ...d, status: "paid" }),
+    mutationFn: (d: any) => apiRequest("POST", `/api/gold-erp/chit-members/${d.member_id}/pay`, {
+      amount: d.amount_inr,
+      amount_gm: d.amount_gm,
+      payment_mode: d.payment_mode,
+      paid_date: d.paid_date,
+      receipt_no: d.receipt_no,
+    }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/gold-erp/chit-installments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/gold-erp/chit-schemes", selectedScheme, "members"] });
       setShowPayDialog(false); toast({ title: "Payment recorded" });
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
-  const grouped: Record<string, any[]> = {};
+  // Group installments by member_id for history display
+  const instByMember: Record<string, any[]> = {};
   (installments as any[]).forEach((inst: any) => {
-    const key = inst.member_name || `Member ${inst.member_id}`;
-    if (!grouped[key]) grouped[key] = [];
-    grouped[key].push(inst);
+    const key = inst.member_id?.toString() || "";
+    if (!instByMember[key]) instByMember[key] = [];
+    instByMember[key].push(inst);
   });
+
+  // Find the scheme's monthly_amount for pre-filling
+  const selectedSchemeData = (schemes as any[]).find(s => s.id.toString() === selectedScheme);
 
   return (
     <>
@@ -458,60 +481,62 @@ export function ChitCollectionRegisterSection() {
         <div className="py-12 text-center text-muted-foreground">Select a chit scheme to view the collection register</div>
       )}
 
-      {selectedScheme && installments.length === 0 && (
-        <div className="py-12 text-center text-muted-foreground">No installments found for this scheme</div>
+      {selectedScheme && (members as any[]).length === 0 && (
+        <div className="py-12 text-center text-muted-foreground">No members enrolled in this scheme yet</div>
       )}
 
-      {Object.entries(grouped).map(([memberName, insts]) => {
-        const paidCount = insts.filter((i: any) => i.status === "paid").length;
-        const totalPaid = insts.reduce((s: number, i: any) => s + (i.status === "paid" ? Number(i.amount_inr || 0) : 0), 0);
+      {(members as any[]).map((member: any) => {
+        const memberInsts = instByMember[member.id?.toString()] || [];
+        const paidCount = member.installments_paid || memberInsts.filter((i: any) => i.status === "paid").length;
+        const totalPaid = Number(member.total_paid || 0);
         return (
-          <div key={memberName} className="mb-4 rounded-lg border">
+          <div key={member.id} className="mb-4 rounded-lg border">
             <div className="flex items-center justify-between px-4 py-2 bg-muted/30 border-b">
               <div>
-                <span className="font-medium text-sm">{memberName}</span>
-                <span className="ml-2 text-xs text-muted-foreground">{paidCount}/{insts.length} paid · {fmtAmt(totalPaid)}</span>
+                <span className="font-medium text-sm">{member.member_name}</span>
+                <span className="ml-2 text-xs text-muted-foreground">{member.phone}</span>
+                <span className="ml-2 text-xs text-muted-foreground">{paidCount} installments paid · {fmtAmt(totalPaid)}</span>
               </div>
-              <div className="flex gap-1">
-                {insts.filter((i: any) => i.status === "pending").length > 0 && (
-                  <Badge className="text-xs bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300">
-                    {insts.filter((i: any) => i.status === "pending").length} pending
-                  </Badge>
-                )}
+              <Button size="sm" variant="outline" className="h-7 text-xs"
+                onClick={() => {
+                  setPayTarget(member);
+                  setPayForm({
+                    member_id: member.id,
+                    payment_mode: "cash",
+                    paid_date: today(),
+                    amount_inr: selectedSchemeData?.monthly_amount || "",
+                    amount_gm: "",
+                  });
+                  setShowPayDialog(true);
+                }}
+                data-testid={`button-collect-${member.id}`}>
+                Record Payment
+              </Button>
+            </div>
+            {memberInsts.length > 0 && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead className="bg-muted/20">
+                    <tr>{["Inst #", "Amount (₹)", "Amount (g)", "Paid Date", "Mode", "Receipt", "Status"].map(h => (
+                      <th key={h} className="px-3 py-1.5 text-left font-medium">{h}</th>
+                    ))}</tr>
+                  </thead>
+                  <tbody>
+                    {memberInsts.map((inst: any) => (
+                      <tr key={inst.id} className="border-t hover:bg-muted/20">
+                        <td className="px-3 py-1.5">#{inst.installment_no}</td>
+                        <td className="px-3 py-1.5">{inst.amount_inr ? fmtAmt(inst.amount_inr) : inst.amount ? fmtAmt(inst.amount) : "—"}</td>
+                        <td className="px-3 py-1.5">{inst.amount_gm ? fmtWt(inst.amount_gm) : "—"}</td>
+                        <td className="px-3 py-1.5">{inst.paid_date || "—"}</td>
+                        <td className="px-3 py-1.5 capitalize">{inst.payment_mode || "—"}</td>
+                        <td className="px-3 py-1.5">{inst.receipt_no || "—"}</td>
+                        <td className="px-3 py-1.5"><SBadge status={inst.status || "paid"} /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead className="bg-muted/20">
-                  <tr>{["Inst #", "Due Date", "Amount (₹)", "Amount (g)", "Paid Date", "Mode", "Receipt", "Status", ""].map(h => (
-                    <th key={h} className="px-3 py-1.5 text-left font-medium">{h}</th>
-                  ))}</tr>
-                </thead>
-                <tbody>
-                  {insts.map((inst: any) => (
-                    <tr key={inst.id} className="border-t hover:bg-muted/20">
-                      <td className="px-3 py-1.5">#{inst.installment_no}</td>
-                      <td className="px-3 py-1.5">{inst.due_date || "—"}</td>
-                      <td className="px-3 py-1.5">{inst.amount_inr ? fmtAmt(inst.amount_inr) : "—"}</td>
-                      <td className="px-3 py-1.5">{inst.amount_gm ? fmtWt(inst.amount_gm) : "—"}</td>
-                      <td className="px-3 py-1.5">{inst.paid_date || "—"}</td>
-                      <td className="px-3 py-1.5 capitalize">{inst.payment_mode || "—"}</td>
-                      <td className="px-3 py-1.5">{inst.receipt_no || "—"}</td>
-                      <td className="px-3 py-1.5"><SBadge status={inst.status || "pending"} /></td>
-                      <td className="px-3 py-1.5">
-                        {inst.status === "pending" && (
-                          <Button size="sm" variant="outline" className="h-6 text-xs px-2"
-                            onClick={() => { setPayTarget(inst); setPayForm({ id: inst.id, payment_mode: "cash", paid_date: today(), amount_inr: inst.amount_inr, amount_gm: inst.amount_gm }); setShowPayDialog(true); }}
-                            data-testid={`button-collect-${inst.id}`}>
-                            Collect
-                          </Button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            )}
           </div>
         );
       })}
@@ -521,7 +546,7 @@ export function ChitCollectionRegisterSection() {
           <DialogHeader><DialogTitle>Record Installment Payment</DialogTitle></DialogHeader>
           {payTarget && (
             <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">Installment #{payTarget.installment_no} · {payTarget.member_name}</p>
+              <p className="text-sm text-muted-foreground">Member: {payTarget.member_name} · Instalment #{(payTarget.installments_paid || 0) + 1}</p>
               <FieldRow label="Amount (₹)">
                 <Input type="number" value={payForm.amount_inr || ""} onChange={e => setPayForm((p: any) => ({ ...p, amount_inr: e.target.value }))} />
               </FieldRow>

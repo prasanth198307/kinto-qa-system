@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -500,6 +500,13 @@ function EstimatesSection() {
     if (r) set("rate_per_gram", r.rate_per_gram);
     else toast({ title: "No rate found for selected metal/purity", variant: "destructive" });
   };
+
+  useEffect(() => {
+    if ((ratesData as any[]).length > 0 && form.metal_type && form.purity_name) {
+      const r = (ratesData as any[]).find((r: any) => r.metal === form.metal_type && r.purity_name === form.purity_name);
+      if (r) setForm((p: any) => ({ ...p, rate_per_gram: r.rate_per_gram }));
+    }
+  }, [form.metal_type, form.purity_name, (ratesData as any[]).length]);
 
   const calcTotal = () => {
     const wt = Number(form.weight_gm || 0);

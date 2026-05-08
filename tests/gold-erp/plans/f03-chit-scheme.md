@@ -1,5 +1,5 @@
 # F3 — Gold Chit Scheme: Setup → Enroll → Collect → Default → Redeem
-# Create scheme → enroll Lakshmi Devi → 2 on-time + 1 late payment → defaulter flag → maturity → redemption
+# Create scheme → enroll Lakshmi Devi → Collection Register: 2 on-time + 1 late payment → defaulter flag → maturity → redemption
 # Login: gold-erp-demo / goldadmin / Gold@1234
 
 1. [New Context] Create a fresh browser context
@@ -14,60 +14,59 @@
 8. [Browser] Fill "12" in Duration (months)
 9. [Browser] Fill "5000" in Monthly Instalment (₹)
 10. [Browser] Set start date to today
-11. [Browser] Fill "60000" in Total Scheme Value if required (12 × 5000)
-12. [Browser] Click Save
-13. [Verify] Assert scheme "Gold Savings 11+1" appears in list with status Active
+11. [Browser] Click Save
+12. [Verify] Assert scheme "Gold Savings 11+1" appears in list with status Active
 
 ## PHASE 2: Enroll Member
-14. [Browser] Open the scheme or navigate to Collection Register (path: /gold-erp?section=chit-collection-register)
-15. [Browser] Click "+ Enroll Member" or Add Member button
+13. [Browser] Open the scheme "Gold Savings 11+1" by clicking on it
+14. [Verify] Assert the Members dialog or section is visible
+15. [Browser] Click "+ Enroll Member" or "Add Member" button
 16. [Browser] Fill "Lakshmi Devi" in Member Name
-17. [Browser] Fill "9900112233" in Mobile
-18. [Browser] Select "Gold Savings 11+1" scheme
-19. [Browser] Set enrollment date to today
-20. [Browser] Click Save
-21. [Verify] Assert Lakshmi Devi appears as an enrolled member
+17. [Browser] Fill "9900112233" in Mobile/Phone
+18. [Browser] Fill "Kondapur, Hyderabad" in Address if present
+19. [Browser] Click Save / Enroll
+20. [Verify] Assert Lakshmi Devi appears as an enrolled member with 0 installments paid
 
-## PHASE 3: Record Month-1 Payment (On Time)
-22. [Browser] Navigate to Collection Register (path: /gold-erp?section=chit-collection-register)
-23. [Browser] Find Lakshmi Devi's record and click "Record Payment" or similar
-24. [Browser] Fill "1" in Instalment Number
-25. [Browser] Fill "5000" in Amount (INR) / amount_inr field
-26. [Browser] Set payment date to today
-27. [Browser] Select "Cash" as payment mode
-28. [Browser] Click Save
-29. [Verify] Assert payment recorded, balance shows ₹5,000 collected (1 of 12)
+## PHASE 3: Collection Register — Month 1 Payment
+21. [Browser] Navigate to Collection Register (path: /gold-erp?section=chit-collection-register)
+22. [Browser] Select "Gold Savings 11+1" in the scheme dropdown
+23. [Verify]
+    - Assert Lakshmi Devi appears as a member row in the collection register
+    - Assert a "Record Payment" button is visible next to her name
+24. [Browser] Click "Record Payment" button next to Lakshmi Devi
+25. [Verify] Assert the payment dialog opens showing her name and instalment number
+26. [Browser] Fill "5000" in the Amount (₹) field
+27. [Browser] Select "Cash" as Payment Mode
+28. [Browser] Ensure Paid Date is today
+29. [Browser] Click "Record Payment" to save
+30. [Verify] Assert payment recorded — success toast "Payment recorded" appears
+31. [Browser] Navigate away and back to collection register, reselect "Gold Savings 11+1"
+32. [Verify] Assert Lakshmi Devi now shows "1 installments paid · ₹5,000"
 
-## PHASE 4: Record Month-2 Payment (On Time)
-30. [Browser] Record another payment for Lakshmi Devi
-31. [Browser] Fill instalment "2", amount "5000", date today (simulating month 2)
-32. [Browser] Click Save
-33. [Verify] Assert cumulative collected shows ₹10,000 (2 of 12)
+## PHASE 4: Month 2 Payment
+33. [Browser] Click "Record Payment" again for Lakshmi Devi
+34. [Browser] Fill "5000" in Amount, select "UPI" as mode
+35. [Browser] Click Record Payment
+36. [Verify] Assert Lakshmi Devi shows "2 installments paid · ₹10,000"
 
-## PHASE 5: Month-3 — Late Payment (Defaulter Test)
-34. [Browser] Navigate to Defaulters (path: /gold-erp?section=chit-defaulters)
-35. [Verify] Assert Defaulters screen is visible (may show Lakshmi Devi if month-3 is overdue)
-36. [Browser] Go back to Collection Register and record month-3 payment with a late date
-37. [Browser] Fill instalment "3", amount "5000", mark as "Late" if that field exists
-38. [Browser] Click Save
-39. [Verify] Assert late payment is recorded and possibly flagged in defaulters list
+## PHASE 5: Month 3 — Late (via Defaulters page)
+37. [Browser] Navigate to Defaulters (path: /gold-erp?section=chit-defaulters)
+38. [Verify] Assert Chit Defaulters screen is visible (may be empty or show overdue members)
+39. [Browser] Navigate back to Collection Register and record Month 3 payment for Lakshmi Devi
+40. [Browser] Fill "5000" in Amount, "Cash" as mode, click Record Payment
+41. [Verify] Assert 3 installments paid · ₹15,000 shown for Lakshmi Devi
 
-## PHASE 6: View Defaulter Report
-40. [Browser] Navigate to Defaulters (path: /gold-erp?section=chit-defaulters)
-41. [Verify] Assert defaulters screen shows and any overdue members are listed
-
-## PHASE 7: Maturity
+## PHASE 6: Maturity
 42. [Browser] Navigate to Maturity (path: /gold-erp?section=chit-maturity)
 43. [Verify] Assert Maturity screen is visible
-44. [Browser] Look for Lakshmi Devi's scheme entry (may show as future maturity)
-45. [Verify] Assert maturity record shows total collected amount and maturity date
+44. [Verify] Assert it shows the Gold Savings 11+1 scheme with maturity date and total amount
 
-## PHASE 8: Redemption
-46. [Browser] Navigate to Redemptions (path: /gold-erp?section=chit-redemptions)
-47. [Verify] Assert Redemptions screen is visible
-48. [Browser] Click "+ New Redemption" or similar
-49. [Browser] Select "Lakshmi Devi" as the member
-50. [Browser] Select redemption type "Gold Purchase" or "Cash Payout"
-51. [Browser] Fill redemption amount "15000" (simulating partial redemption)
-52. [Browser] Click Save
-53. [Verify] Assert redemption record created for Lakshmi Devi
+## PHASE 7: Redemption
+45. [Browser] Navigate to Redemptions (path: /gold-erp?section=chit-redemptions)
+46. [Verify] Assert Redemptions screen is visible
+47. [Browser] Click "+ New Redemption" or Add Redemption button
+48. [Browser] Select "Lakshmi Devi" or search for her member record
+49. [Browser] Fill "15000" as redemption amount
+50. [Browser] Select redemption type (Gold Purchase / Cash Payout if available)
+51. [Browser] Click Save
+52. [Verify] Assert redemption record created for Lakshmi Devi — ₹15,000
