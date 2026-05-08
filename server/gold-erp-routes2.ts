@@ -802,7 +802,22 @@ router.put("/refining/:id", requireAuth, async (req: any, res) => {
       UPDATE jw_refining_entries SET status=${status||'sent'}, date_received=${date_received||null},
         refined_gold_recv_gm=${refined_gold_recv_gm||null}, payment_to_customer=${payment_to_customer||0}
       WHERE id=${req.params.id} AND tenant_id=${tid(req)} RETURNING *`);
-    res.json(row.rows[0]);
+    const entry = row.rows[0] as any;
+    // Auto-post inward entry to metal ledger when refined gold is received
+    if (status === 'received' && Number(refined_gold_recv_gm) > 0 && entry) {
+      try {
+        const today = new Date().toISOString().slice(0, 10);
+        const value = Number(refined_gold_recv_gm) * 4750;
+        await db.execute(sql`
+          INSERT INTO jw_metal_ledger (tenant_id, txn_date, metal_type, purity_name, transaction_type,
+            weight_gm, rate_per_gm, value, reference_no, notes, party_name)
+          VALUES (${tid(req)}, ${date_received||today}::date, 'gold', '99.5%', 'receipt',
+            ${refined_gold_recv_gm}, 4750, ${value.toFixed(2)},
+            ${entry.refinery_no||null}, 'Refining Receipt — auto-posted', ${entry.refinery_name||null})
+          ON CONFLICT DO NOTHING`);
+      } catch (_) { /* non-fatal — metal ledger auto-post failure should not block response */ }
+    }
+    res.json(entry);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
@@ -1783,6 +1798,22 @@ router.post("/wholesale-b2b-orders", requireAuth, async (req: any, res) => {
     const gstAmt = taxable * ((Number(gst_pct)||3) / 100);
     const grand = taxable + gstAmt;
     const balance = grand - (Number(advance_paid)||0);
+
+    // Credit limit check — look up customer credit limit and outstanding balance
+    if (customer_name) {
+      const custRow = await db.execute(sql`SELECT credit_limit FROM customers WHERE tenant_id=${t} AND name ILIKE ${customer_name} LIMIT 1`);
+      const creditLimit = Number((custRow.rows[0] as any)?.credit_limit || 0);
+      if (creditLimit > 0) {
+        const outRow = await db.execute(sql`SELECT COALESCE(SUM(balance_due),0) AS outstanding FROM jw_wholesale_b2b_orders WHERE tenant_id=${t} AND customer_name ILIKE ${customer_name} AND status NOT IN ('delivered','cancelled')`);
+        const outstanding = Number((outRow.rows[0] as any)?.outstanding || 0);
+        if (outstanding + grand > creditLimit) {
+          return res.status(400).json({
+            error: `Credit limit exceeded. Customer credit limit: ₹${creditLimit.toLocaleString('en-IN')}. Outstanding: ₹${outstanding.toLocaleString('en-IN')}. Available: ₹${(creditLimit - outstanding).toLocaleString('en-IN')}.`
+          });
+        }
+      }
+    }
+
     const row = await db.execute(sql`
       INSERT INTO jw_wholesale_b2b_orders
         (tenant_id, order_no, order_date, customer_name, customer_phone, customer_gstin, delivery_date, metal_type, purity_name, total_pieces, total_weight_gm, gold_rate_used, making_total, stone_total, subtotal, discount_amt, gst_pct, gst_amount, grand_total, advance_paid, balance_due, status, notes)

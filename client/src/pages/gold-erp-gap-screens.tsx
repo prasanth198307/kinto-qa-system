@@ -83,6 +83,15 @@ export function KarigarAttendanceSection() {
   });
   const { data: karigars = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/karigars"] });
 
+  // Auto-calculate daily wages from karigar's daily_rate and present type
+  const autoCalcWages = (karigarId: number | string, presentVal: number) => {
+    const k = (karigars as any[]).find((x: any) => x.id === Number(karigarId));
+    const rate = Number(k?.daily_rate || 0);
+    if (rate <= 0) return;
+    const wages = presentVal === 1 ? rate : presentVal === 2 ? rate / 2 : 0;
+    setForm((p: any) => ({ ...p, daily_wages: wages }));
+  };
+
   const saveMut = useMutation({
     mutationFn: (d: any) => editing
       ? apiRequest("PUT", `/api/gold-erp/karigar-attendance/${editing.id}`, d)
@@ -174,7 +183,10 @@ export function KarigarAttendanceSection() {
           <DialogHeader><DialogTitle>{editing ? "Edit Attendance" : "Mark Attendance"}</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <FieldRow label="Karigar">
-              <Select value={form.karigar_id?.toString() || ""} onValueChange={v => set("karigar_id", parseInt(v))}>
+              <Select value={form.karigar_id?.toString() || ""} onValueChange={v => {
+                set("karigar_id", parseInt(v));
+                autoCalcWages(v, form.present ?? 1);
+              }}>
                 <SelectTrigger data-testid="select-attend-karigar"><SelectValue placeholder="Select karigar" /></SelectTrigger>
                 <SelectContent>{(karigars as any[]).map((k: any) => <SelectItem key={k.id} value={k.id.toString()}>{k.name}</SelectItem>)}</SelectContent>
               </Select>
@@ -184,7 +196,11 @@ export function KarigarAttendanceSection() {
                 <Input data-testid="input-attend-date" type="date" value={form.attend_date || today()} onChange={e => set("attend_date", e.target.value)} />
               </FieldRow>
               <FieldRow label="Status">
-                <Select value={form.present?.toString() || "1"} onValueChange={v => set("present", parseInt(v))}>
+                <Select value={form.present?.toString() || "1"} onValueChange={v => {
+                  const presentVal = parseInt(v);
+                  set("present", presentVal);
+                  autoCalcWages(form.karigar_id, presentVal);
+                }}>
                   <SelectTrigger data-testid="select-attend-status"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="1">Present</SelectItem>

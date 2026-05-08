@@ -344,6 +344,7 @@ function KarigarSection() {
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div className="bg-muted/50 rounded p-2"><p className="text-muted-foreground">Balance</p><p className="font-semibold">{fmtWt(k.balance_grams)}</p></div>
                 <div className="bg-muted/50 rounded p-2"><p className="text-muted-foreground">Wage/g</p><p className="font-semibold">{fmtAmt(k.wage_per_gram)}</p></div>
+                <div className="bg-muted/50 rounded p-2"><p className="text-muted-foreground">Daily Rate</p><p className="font-semibold">{fmtAmt(k.daily_rate)}</p></div>
               </div>
               <div className="flex gap-2 pt-1">
                 <Button size="sm" variant="outline" className="flex-1" onClick={() => { setEditing(k); setForm(k); setShowForm(true); }}><Pencil className="h-3 w-3 mr-1" />Edit</Button>
@@ -362,6 +363,7 @@ function KarigarSection() {
             <FieldRow label="Phone"><Input value={form.phone || ""} onChange={e => set("phone", e.target.value)} /></FieldRow>
             <FieldRow label="Specialization"><Input value={form.specialization || ""} onChange={e => set("specialization", e.target.value)} placeholder="Bangles, Rings, Chains…" /></FieldRow>
             <FieldRow label="Wage per gram (₹)"><Input type="number" value={form.wage_per_gram || ""} onChange={e => set("wage_per_gram", e.target.value)} /></FieldRow>
+            <FieldRow label="Daily Rate (₹)"><Input type="number" value={form.daily_rate || ""} onChange={e => set("daily_rate", e.target.value)} placeholder="e.g. 800" /></FieldRow>
             <FieldRow label="Aadhaar No"><Input value={form.aadhar_no || ""} onChange={e => set("aadhar_no", e.target.value)} /></FieldRow>
             <FieldRow label="Address"><Textarea value={form.address || ""} onChange={e => set("address", e.target.value)} rows={2} /></FieldRow>
             {editing && <FieldRow label="Status"><Select value={form.status || "active"} onValueChange={v => set("status", v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="active">Active</SelectItem><SelectItem value="inactive">Inactive</SelectItem></SelectContent></Select></FieldRow>}

@@ -109,11 +109,11 @@ router.get("/karigars", requireAuth, async (req: any, res) => {
 
 router.post("/karigars", requireAuth, async (req: any, res) => {
   try {
-    const { name, phone, address, aadhar_no, specialization, metal_type, wage_per_gram } = req.body;
+    const { name, phone, address, aadhar_no, specialization, metal_type, wage_per_gram, daily_rate } = req.body;
     const code = "KAR-" + seq();
     const row = await db.execute(sql`
-      INSERT INTO jw_karigars (tenant_id, karigar_code, name, phone, address, aadhar_no, specialization, metal_type, wage_per_gram)
-      VALUES (${tid(req)}, ${code}, ${name}, ${phone||null}, ${address||null}, ${aadhar_no||null}, ${specialization||null}, ${metal_type||'gold'}, ${wage_per_gram||0})
+      INSERT INTO jw_karigars (tenant_id, karigar_code, name, phone, address, aadhar_no, specialization, metal_type, wage_per_gram, daily_rate)
+      VALUES (${tid(req)}, ${code}, ${name}, ${phone||null}, ${address||null}, ${aadhar_no||null}, ${specialization||null}, ${metal_type||'gold'}, ${wage_per_gram||0}, ${daily_rate||0})
       RETURNING *`);
     res.json(row.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -121,11 +121,11 @@ router.post("/karigars", requireAuth, async (req: any, res) => {
 
 router.put("/karigars/:id", requireAuth, async (req: any, res) => {
   try {
-    const { name, phone, address, aadhar_no, specialization, metal_type, wage_per_gram, status } = req.body;
+    const { name, phone, address, aadhar_no, specialization, metal_type, wage_per_gram, daily_rate, status } = req.body;
     const row = await db.execute(sql`
       UPDATE jw_karigars SET name=${name}, phone=${phone||null}, address=${address||null},
         aadhar_no=${aadhar_no||null}, specialization=${specialization||null},
-        metal_type=${metal_type||'gold'}, wage_per_gram=${wage_per_gram||0}, status=${status||'active'}
+        metal_type=${metal_type||'gold'}, wage_per_gram=${wage_per_gram||0}, daily_rate=${daily_rate||0}, status=${status||'active'}
       WHERE id=${req.params.id} AND tenant_id=${tid(req)} RETURNING *`);
     res.json(row.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
