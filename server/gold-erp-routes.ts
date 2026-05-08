@@ -594,9 +594,18 @@ router.post("/chit-schemes/:id/members", requireAuth, async (req: any, res) => {
   try {
     const { member_name, phone, address } = req.body;
     const code = "MEM-" + seq();
+    // compute maturity_date from scheme start_date + duration_months
+    const scheme = await db.execute(sql`SELECT start_date, duration_months FROM jw_chit_schemes WHERE id=${req.params.id}`);
+    const s = scheme.rows[0] as any;
+    let maturity_date: string | null = null;
+    if (s?.start_date && s?.duration_months) {
+      const d = new Date(s.start_date);
+      d.setMonth(d.getMonth() + Number(s.duration_months));
+      maturity_date = d.toISOString().slice(0, 10);
+    }
     const row = await db.execute(sql`
-      INSERT INTO jw_chit_members (scheme_id, tenant_id, member_code, member_name, phone, address)
-      VALUES (${req.params.id}, ${tid(req)}, ${code}, ${member_name}, ${phone||null}, ${address||null})
+      INSERT INTO jw_chit_members (scheme_id, tenant_id, member_code, member_name, phone, address, maturity_date)
+      VALUES (${req.params.id}, ${tid(req)}, ${code}, ${member_name}, ${phone||null}, ${address||null}, ${maturity_date})
       RETURNING *`);
     res.json(row.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -604,16 +613,16 @@ router.post("/chit-schemes/:id/members", requireAuth, async (req: any, res) => {
 
 router.post("/chit-members/:id/pay", requireAuth, async (req: any, res) => {
   try {
-    const { amount, payment_mode, paid_date } = req.body;
+    const { amount, payment_mode, paid_date, amount_gm, receipt_no } = req.body;
     const mem = await db.execute(sql`SELECT * FROM jw_chit_members WHERE id=${req.params.id}`);
     const m = mem.rows[0] as any;
     if (!m) return res.status(404).json({ error: "Member not found" });
     const inst_no = Number(m.installments_paid || 0) + 1;
     await db.execute(sql`
-      INSERT INTO jw_chit_installments (member_id, scheme_id, tenant_id, installment_no, paid_date, amount, payment_mode, status)
-      VALUES (${req.params.id}, ${m.scheme_id}, ${tid(req)}, ${inst_no}, ${paid_date||new Date().toISOString().slice(0,10)}, ${amount}, ${payment_mode||'cash'}, 'paid')`);
+      INSERT INTO jw_chit_installments (member_id, scheme_id, tenant_id, installment_no, paid_date, amount_inr, amount_gm, payment_mode, receipt_no, status)
+      VALUES (${req.params.id}, ${m.scheme_id}, ${tid(req)}, ${inst_no}, ${paid_date||new Date().toISOString().slice(0,10)}, ${Number(amount)||0}, ${amount_gm||null}, ${payment_mode||'cash'}, ${receipt_no||null}, 'paid')`);
     await db.execute(sql`
-      UPDATE jw_chit_members SET installments_paid=${inst_no}, total_paid=total_paid+${Number(amount)}
+      UPDATE jw_chit_members SET installments_paid=${inst_no}, total_paid=total_paid+${Number(amount)||0}
       WHERE id=${req.params.id}`);
     res.json({ success: true, installment_no: inst_no });
   } catch (e: any) { res.status(500).json({ error: e.message }); }

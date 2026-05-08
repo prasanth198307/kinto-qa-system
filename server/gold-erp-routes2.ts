@@ -50,8 +50,8 @@ router.post("/sketch", requireAuth, async (req: any, res) => {
   try {
     const { production_order_id, design_id, customer_brief, sketch_image_url, design_category, stone_details } = req.body;
     const row = await db.execute(sql`
-      INSERT INTO jw_sketch_process (production_order_id, design_id, customer_brief, sketch_image_url, design_category, stone_details, status)
-      VALUES (${production_order_id}, ${design_id||null}, ${customer_brief||null}, ${sketch_image_url||null}, ${design_category||null}, ${stone_details||null}, 'pending')
+      INSERT INTO jw_sketch_process (tenant_id, production_order_id, design_id, customer_brief, sketch_image_url, design_category, stone_details, status)
+      VALUES (${tid(req)}, ${production_order_id}, ${design_id||null}, ${customer_brief||null}, ${sketch_image_url||null}, ${design_category||null}, ${stone_details||null}, 'pending')
       RETURNING *`);
     res.json(row.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -979,7 +979,7 @@ router.post("/chit-redemptions", requireAuth, async (req: any, res) => {
     const net = total_paid + bonus - tds;
     const row = await db.execute(sql`
       INSERT INTO jw_chit_redemptions (member_id, scheme_id, tenant_id, redemption_type, redemption_date,
-        total_paid, bonus_amount, tds_deducted, total_redeemable, gold_weight_gm, item_tag, balance_payable, status)
+        total_paid, bonus_amount, tds_deducted, total_redeemable, gold_weight_gm, item_tag_no, balance_payable, status)
       VALUES (${member_id}, ${scheme_id}, ${tid(req)}, ${redemption_type||'gold'}, ${redemption_date||new Date().toISOString().slice(0,10)},
         ${total_paid}, ${bonus_amount||bonus}, ${tds}, ${net}, ${gold_weight_gm||null}, ${item_tag||null}, ${net}, 'processed')
       RETURNING *`);

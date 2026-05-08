@@ -472,7 +472,7 @@ export function ChitCollectionRegisterSection() {
         <Select value={selectedScheme} onValueChange={setSelectedScheme}>
           <SelectTrigger className="w-56" data-testid="select-chit-scheme"><SelectValue placeholder="Select scheme" /></SelectTrigger>
           <SelectContent>
-            {(schemes as any[]).map((s: any) => <SelectItem key={s.id} value={s.id.toString()}>{s.scheme_name}</SelectItem>)}
+            {(schemes as any[]).map((s: any) => <SelectItem key={s.id} value={s.id.toString()}>{s.name || s.scheme_name}</SelectItem>)}
           </SelectContent>
         </Select>
       } />

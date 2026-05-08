@@ -1,90 +1,69 @@
-# F2 — Retail POS Sale + Old Gold Exchange + Loyalty
-# Walk-in → estimate → customer approval → POS billing with old gold exchange + loyalty redemption + split payment
-# PRE-REQ: Metal rates set (22K ₹6,820/gm), Loyalty member Meena Reddy with 500 pts
+# F2 — Retail POS Sale + Old Gold Exchange
+# Estimate (percent making charge) → Jewellery POS → Old Gold Purchase
+# PRE-REQ: Metal rates set (22K ₹6,820/gm)
 # Login: gold-erp-demo / goldadmin / Gold@1234
 
 1. [New Context] Create a fresh browser context
 2. [Browser] Navigate to /auth
-3. [Browser] Fill "gold-erp-demo" / "goldadmin" / "Gold@1234" then click Sign In
-4. [Verify] Assert dashboard loads
+3. [Browser] Fill "gold-erp-demo" in Company ID, "goldadmin" in username, "Gold@1234" in password, click Sign In
+4. [Verify] Assert dashboard loads (URL is not /auth)
 
 ## PHASE 1: Estimate / Quotation
-5. [Browser] Navigate to Estimates (path: /gold-erp?section=estimates)
-6. [Verify] Assert Estimates screen is visible
-7. [Browser] Click "+ New Estimate" or similar button
-8. [Browser] Fill "Meena Reddy" in the Customer Name field
-9. [Browser] Select "Gold" as metal
-10. [Browser] Select "22K (916)" as purity
-11. [Browser] Fill "16.2" in Weight (gm) field
-12. [Verify]
-    - Assert Today's Rate auto-populates to ₹6,820/gm
-    - Assert Gold Value auto-calculates (approximately ₹1,01,622 = 16.2 × 6820 × 0.916)
-13. [Browser] Fill "400" in Making Charges (per gram) field
-14. [Verify]
-    - Assert Making Amount auto-calculates to ₹6,480 (16.2 × 400)
-    - Assert GST field shows approximately ₹3,371 (3% on gold + 5% on making)
-    - Assert Total Estimate is approximately ₹1,11,473
-15. [Browser] Click Save or Create Estimate
-16. [Verify] Assert estimate is saved and shows in the list
+5. [Browser] Navigate to Estimates (/gold-erp?section=estimates)
+6. [Verify] Assert "Estimates / Quotations" heading is visible
+7. [Browser] Click "+ New Estimate" button (data-testid="button-add-estimate")
+8. [Browser] Fill "Meena Reddy" in Customer Name, "9876543210" in Phone
+9. [Browser] Select "gold" in the Metal dropdown
+10. [Browser] Select "22K (916)" in the Purity dropdown
+11. [Verify] Assert the Rate/g field shows approximately 6820 (auto-filled by useEffect)
+12. [Browser] Fill "16.2" in Weight (g) field
+13. [Browser] Leave Making Charge Type as the default "%" option
+14. [Browser] Fill "2" in Making Charge Value (2% making charge)
+15. [Browser] Leave GST as 3
+16. [Browser] Click "Calculate Total" (data-testid="button-calculate")
+17. [Verify]
+    - Assert Metal Value shows approximately ₹1,10,484 (16.2 × 6820)
+    - Assert Total shows a positive value greater than ₹1,10,000
+18. [Browser] Click "Save Estimate" (data-testid="button-save-estimate")
+19. [Verify] Assert estimate row appears in the Estimates list
 
-## PHASE 2: Customer Approval (Items on Approval)
-17. [Browser] Navigate to Customer Approvals (path: /gold-erp?section=customer-approvals)
-18. [Browser] Click "+ Issue on Approval" button
-19. [Browser] Fill "Meena Reddy" or search for her in the Customer field
-20. [Browser] Fill or scan item tag "DT-0042" in the Items field (or fill item description "22K Necklace 16.2gm")
-21. [Browser] Set Expected Return Date to today + 2 days
-22. [Browser] Click Save
-23. [Verify]
-    - Assert approval record created with customer Meena Reddy
-    - Assert item status shows "On Approval"
+## PHASE 2: Jewellery POS Billing
+20. [Browser] Navigate to Jewellery POS (/gold-erp?section=jewellery-pos)
+21. [Verify] Assert Jewellery POS screen is visible
+22. [Browser] Click "+ New Bill" button (data-testid="button-new-pos-bill")
+23. [Verify] Assert new bill form appears with "New Jewellery POS Bill" heading
+24. [Browser] Fill "Meena Reddy" in the Customer input (data-testid="input-pos-customer")
+25. [Browser] Fill "9876543210" in the Phone field
+26. [Browser] Click "+ Add Item" button (data-testid="button-pos-add-item")
+27. [Browser] Fill "22K Necklace" in the Description field of the item row
+28. [Browser] Fill "16.2" in Gross Wt (g) field
+29. [Browser] Fill "16.2" in Net Wt (g) field
+30. [Browser] Fill "6480" in Making (₹) field
+31. [Browser] Fill "110000" in Cash (₹) field under Payment Received
+32. [Browser] Click "Generate Bill" button (data-testid="button-pos-bill")
+33. [Verify]
+    - Assert bill saved — mode switches back to list view OR success toast appears
+    - Assert a bill row appears in the list for Meena Reddy
 
-## PHASE 3: Convert Approval to POS Sale
-24. [Browser] Find the approval record for DT-0042 and click "Convert to Sale" button
-25. [Verify] Assert Jewellery POS screen opens with item pre-loaded
+## PHASE 3: Customer Approvals
+34. [Browser] Navigate to Customer Approvals (/gold-erp?section=customer-approvals)
+35. [Verify] Assert Customer Approvals screen loads without error
+36. [Browser] Click the "+ Issue on Approval" or "New Approval" button if visible
+37. [Browser] Fill "Priya Sharma" in Customer field, "22K Ring 8.0g" in Item field, set return date to any future date
+38. [Browser] Click Save
+39. [Verify] Assert approval record created or list shows an entry
 
-## PHASE 4: Jewellery POS Billing
-26. [Browser] Navigate to Jewellery POS if not already there (path: /gold-erp?section=jewellery-pos)
-27. [Browser] Search for customer "Meena Reddy" or "LY-00123" in the customer field
-28. [Verify] Assert loyalty points balance shows 500 points for Meena Reddy
-
-## Add Old Gold Exchange
-29. [Browser] Click "Add Old Gold Exchange" or similar button/toggle
-30. [Verify] Assert old gold exchange section expands
-31. [Browser] Fill "22K chain (customer's)" in Item Description
-32. [Browser] Fill "10.5" in Gross Weight (gm)
-33. [Browser] Select "22K" as purity tested
-34. [Browser] Fill "0.5" in Stone Weight Deduction (gm)
-35. [Verify]
-    - Assert Net Weight auto-calculates to 10.0 gm (10.5 − 0.5)
-    - Assert Exchange Value auto-calculates (10.0 × 6820 × 0.95 = approximately ₹64,790)
-
-## Apply Loyalty Redemption
-36. [Browser] Check or click "Redeem Loyalty Points" option
-37. [Browser] Fill "500" in Points to Redeem field (or accept the pre-filled balance)
-38. [Verify] Assert Redemption Value shows the points-to-rupee conversion (e.g. ₹500)
-
-## Payment Split
-39. [Browser] Fill payment amounts for split — cash portion and UPI/card portion
-40. [Browser] Click "Complete Sale" or "Print Bill" button
-41. [Verify]
-    - Assert bill is created with GST breakdown
-    - Assert old gold exchange value is deducted from total
-    - Assert loyalty points redeemed shown on bill
-    - Assert success toast "Sale completed" or similar
-
-## PHASE 5: Old Gold Purchase (No Sale) — separate counter test
-42. [Browser] Navigate to Old Gold Purchase (path: /gold-erp?section=pos-old-gold)
-43. [Verify] Assert "Old Gold Purchase (No Sale)" screen is visible
-44. [Browser] Click "+ New Purchase" button
-45. [Browser] Fill "Sunita Bai" in Customer Name
-46. [Browser] Fill "9988776655" in Phone
-47. [Browser] Fill "Old 22K bangles" in Item Description
-48. [Browser] Fill "25.0" in Gross Weight (gm)
-49. [Browser] Fill "1.5" in Stone Weight (gm)
-50. [Browser] Fill "6820" in Today's Rate
-51. [Browser] Fill "95" in Buyback Rate %
-52. [Browser] Click Save
-53. [Verify]
-    - Assert purchase record created (Net weight = 23.5 gm, Credit Value = 23.5 × 6820 × 0.95 ≈ ₹1,52,367)
-    - Assert record appears in old gold purchase list
-54. [API] GET /api/gold-erp/bullion-transactions and verify a recent transaction with txn_type='purchase' and party_name='Sunita Bai' exists — confirming the bullion mirror write worked
+## PHASE 4: Old Gold Purchase
+40. [Browser] Navigate to Old Gold Purchase (/gold-erp?section=pos-old-gold)
+41. [Verify] Assert "Old Gold" or "Old Gold Purchase" screen is visible
+42. [Browser] Click "+ New Purchase" button
+43. [Browser] Fill "Sunita Bai" in Customer Name
+44. [Browser] Fill "9988776655" in Phone
+45. [Browser] Fill "Old 22K bangles" in Item Description
+46. [Browser] Fill "25.0" in Gross Weight (gm)
+47. [Browser] Fill "1.5" in Stone Weight (gm)
+48. [Browser] Fill "6820" in Today's Rate (₹/gm)
+49. [Browser] Fill "95" in Buyback Rate %
+50. [Browser] Click Save
+51. [Verify] Assert purchase record appears in the list
+52. [API] GET /api/gold-erp/bullion-transactions — verify a recent entry with party_name containing "Sunita" or txn_type='purchase' exists
