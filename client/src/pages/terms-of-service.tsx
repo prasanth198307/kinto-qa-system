@@ -41,7 +41,7 @@ export default function TermsOfServicePage() {
           },
           {
             title: "3. Accounts and Registration",
-            body: `You must provide accurate and complete information when registering. You are responsible for maintaining the confidentiality of your login credentials and for all activity that occurs under your account. You must notify us immediately at info@inmoisture.com of any unauthorised use of your account. We reserve the right to suspend or terminate accounts that violate these Terms.`,
+            body: `You must provide accurate and complete information when registering. You are responsible for maintaining the confidentiality of your login credentials and for all activity that occurs under your account. You must notify us immediately at info@microgridtechsol.com of any unauthorised use of your account. We reserve the right to suspend or terminate accounts that violate these Terms.`,
           },
           {
             title: "4. Subscription and Billing",
@@ -77,7 +77,7 @@ export default function TermsOfServicePage() {
           },
           {
             title: "12. Governing Law and Dispute Resolution",
-            body: `These Terms are governed by the laws of India. Any disputes arising from these Terms or your use of the Service shall be subject to the exclusive jurisdiction of the courts located in India. We encourage you to contact us first at info@inmoisture.com to resolve disputes amicably.`,
+            body: `These Terms are governed by the laws of India. Any disputes arising from these Terms or your use of the Service shall be subject to the exclusive jurisdiction of the courts located in India. We encourage you to contact us first at info@microgridtechsol.com to resolve disputes amicably.`,
           },
           {
             title: "13. Changes to These Terms",
@@ -85,7 +85,7 @@ export default function TermsOfServicePage() {
           },
           {
             title: "14. Contact Us",
-            body: `For questions about these Terms, please contact:\n\nMicroGrid\nEmail: info@inmoisture.com`,
+            body: `For questions about these Terms, please contact:\n\nMicroGrid\nEmail: info@microgridtechsol.com`,
           },
         ].map(section => (
           <section key={section.title} className="space-y-2">

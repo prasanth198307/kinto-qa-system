@@ -61,7 +61,7 @@ export default function PrivacyPolicyPage() {
           },
           {
             title: "8. Your Rights",
-            body: `Subject to applicable law, you have the right to access, correct, or delete your personal information. You may also object to or restrict certain processing. To exercise these rights, contact us at info@inmoisture.com. We will respond within 30 days.`,
+            body: `Subject to applicable law, you have the right to access, correct, or delete your personal information. You may also object to or restrict certain processing. To exercise these rights, contact us at info@microgridtechsol.com. We will respond within 30 days.`,
           },
           {
             title: "9. Children's Privacy",
@@ -73,7 +73,7 @@ export default function PrivacyPolicyPage() {
           },
           {
             title: "11. Contact Us",
-            body: `If you have questions or concerns about this Privacy Policy, please contact us at:\n\nMicroGrid\nEmail: info@inmoisture.com`,
+            body: `If you have questions or concerns about this Privacy Policy, please contact us at:\n\nMicroGrid\nEmail: info@microgridtechsol.com`,
           },
         ].map(section => (
           <section key={section.title} className="space-y-2">

@@ -1032,7 +1032,7 @@ export default function LandingPage() {
                   ["/pricing",                   "Pricing"],
                   ["/solutions",                 "Solutions"],
                   ["/demo",                      "Book a Demo"],
-                  ["mailto:info@inmoisture.com", "Contact Us"],
+                  ["mailto:info@microgridtechsol.com", "Contact Us"],
                 ].map(([href, label]) => (
                   <li key={label}><a href={href} className="hover:text-foreground transition-colors">{label}</a></li>
                 ))}
@@ -1052,7 +1052,7 @@ export default function LandingPage() {
             <div className="flex gap-4">
               <a href="/privacy-policy" className="hover:text-foreground transition-colors">Privacy Policy</a>
               <a href="/terms-of-service" className="hover:text-foreground transition-colors">Terms of Service</a>
-              <a href="mailto:info@inmoisture.com" className="hover:text-foreground transition-colors">info@inmoisture.com</a>
+              <a href="mailto:info@microgridtechsol.com" className="hover:text-foreground transition-colors">info@microgridtechsol.com</a>
             </div>
           </div>
         </div>
