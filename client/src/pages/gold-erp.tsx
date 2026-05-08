@@ -148,16 +148,64 @@ function OverviewSection() {
             <ul className="text-sm space-y-1 text-muted-foreground">
               <li><span className="font-medium text-foreground">Metal Rates</span> — Update daily IBJA/MCX prices</li>
               <li><span className="font-medium text-foreground">Karigar</span> — Artisan workforce & advances</li>
-              <li><span className="font-medium text-foreground">Item Master</span> — Inventory with barcode/purity</li>
-              <li><span className="font-medium text-foreground">Estimates</span> — Customer quotations with GST</li>
-              <li><span className="font-medium text-foreground">Production</span> — 12-stage order tracker</li>
-              <li><span className="font-medium text-foreground">Bullion</span> — Stock inward & outward</li>
-              <li><span className="font-medium text-foreground">Repairs</span> — Customer repair tracking</li>
-              <li><span className="font-medium text-foreground">Hallmarking</span> — BIS HUID register</li>
-              <li><span className="font-medium text-foreground">Chit Schemes</span> — Gold savings plans</li>
+              <li><span className="font-medium text-foreground">Jewellery Items</span> — Gold/silver pieces with weight, purity & HUID</li>
+              <li><span className="font-medium text-foreground">Karigar Job Orders</span> — Internal: issue your gold to karigar</li>
+              <li><span className="font-medium text-foreground">Customer Jobwork</span> — External: manufacture on customer's gold</li>
+              <li><span className="font-medium text-foreground">Hallmarking — Batch Submission</span> — Send batches to BIS centre</li>
+              <li><span className="font-medium text-foreground">Hallmarking — HUID Records</span> — Record HUID per item on return</li>
+              <li><span className="font-medium text-foreground">Jewellery POS</span> — Full billing with GST, exchange gold & loyalty</li>
+              <li><span className="font-medium text-foreground">Old Gold Purchase (No Sale)</span> — Buy-only counter; posts to bullion stock</li>
+              <li><span className="font-medium text-foreground">Chit Schemes</span> — INR & gold-weight savings plans</li>
             </ul>
           </CardContent>
         </Card>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <a href="?section=analytics" className="block">
+          <Card className="hover-elevate cursor-pointer h-full">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-yellow-100 text-yellow-600"><Star className="h-4 w-4" /></div>
+              <div>
+                <p className="text-xs font-medium">JW Analytics</p>
+                <p className="text-xs text-muted-foreground">Production & wastage deep-dive</p>
+              </div>
+            </CardContent>
+          </Card>
+        </a>
+        <a href="/" className="block">
+          <Card className="hover-elevate cursor-pointer h-full">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-blue-100 text-blue-600"><LayoutDashboard className="h-4 w-4" /></div>
+              <div>
+                <p className="text-xs font-medium">Sales Dashboard</p>
+                <p className="text-xs text-muted-foreground">Invoicing & payment KPIs</p>
+              </div>
+            </CardContent>
+          </Card>
+        </a>
+        <a href="/mis" className="block">
+          <Card className="hover-elevate cursor-pointer h-full">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-green-100 text-green-600"><BarChart3 className="h-4 w-4" /></div>
+              <div>
+                <p className="text-xs font-medium">MIS Dashboard</p>
+                <p className="text-xs text-muted-foreground">Business intelligence reports</p>
+              </div>
+            </CardContent>
+          </Card>
+        </a>
+        <a href="/hr/payroll" className="block">
+          <Card className="hover-elevate cursor-pointer h-full">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-purple-100 text-purple-600"><Users className="h-4 w-4" /></div>
+              <div>
+                <p className="text-xs font-medium">HR & Payroll</p>
+                <p className="text-xs text-muted-foreground">Employees, attendance & payslips</p>
+              </div>
+            </CardContent>
+          </Card>
+        </a>
       </div>
     </div>
   );
@@ -1488,52 +1536,53 @@ const NAV_SECTIONS = [
   {
     group: "Core",
     items: [
-      { key: "overview",      label: "Overview",         icon: LayoutDashboard },
-      { key: "rates",         label: "Metal Rates",      icon: TrendingUp },
-      { key: "karigar",       label: "Karigar",          icon: Users },
-      { key: "items",         label: "Item Master",      icon: Package },
-      { key: "estimates",     label: "Estimates",        icon: IndianRupee },
-      { key: "metal-ledger",  label: "Metal Ledger",     icon: BookOpen },
-      { key: "analytics",     label: "JW Analytics",     icon: Star },
+      { key: "overview",      label: "Overview",              icon: LayoutDashboard },
+      { key: "rates",         label: "Metal Rates",           icon: TrendingUp },
+      { key: "karigar",       label: "Karigar",               icon: Users },
+      { key: "items",         label: "Jewellery Items",       icon: Package },
+      { key: "estimates",     label: "Estimates",             icon: IndianRupee },
+      { key: "metal-ledger",  label: "Metal Ledger",          icon: BookOpen },
+      // JW Analytics is accessible from Overview quick links & directly via ?section=analytics
+      // Kept in SECTION_MAP but removed from top-level nav to reduce dashboard clutter
     ],
   },
   {
     group: "Production",
     items: [
-      { key: "production",    label: "Production",       icon: Factory },
-      { key: "jobwork",       label: "Jobwork",          icon: Layers },
-      { key: "sketch",        label: "Sketch / Design",  icon: Camera },
-      { key: "cad",           label: "CAD Process",      icon: Crosshair },
-      { key: "cam",           label: "CAM / Milling",    icon: Layers },
-      { key: "karigar-attendance", label: "Attendance",  icon: Users },
-      { key: "ghat",          label: "Ghat Settlement",  icon: Coins },
-      { key: "settlement",    label: "Karigar Settlement", icon: IndianRupee },
-      { key: "finalize",      label: "Job Finalize",     icon: CheckCircle },
-      { key: "karigar-ledger", label: "Karigar Ledger",  icon: BookMarked },
-      { key: "repairs",       label: "Repairs",          icon: Wrench },
+      { key: "production",         label: "Production",                     icon: Factory },
+      { key: "jobwork",            label: "Karigar Job Orders (Internal)",  icon: Layers },
+      { key: "sketch",             label: "Sketch / Design",                icon: Camera },
+      { key: "cad",                label: "CAD Process",                    icon: Crosshair },
+      { key: "cam",                label: "CAM / Milling",                  icon: Layers },
+      { key: "karigar-attendance", label: "Karigar Attendance",             icon: Users },
+      { key: "ghat",               label: "Ghat Settlement",                icon: Coins },
+      { key: "settlement",         label: "Karigar Settlement",             icon: IndianRupee },
+      { key: "finalize",           label: "Job Finalize",                   icon: CheckCircle },
+      { key: "karigar-ledger",     label: "Karigar Ledger",                 icon: BookMarked },
+      { key: "repairs",            label: "Repairs",                        icon: Wrench },
     ],
   },
   {
     group: "Wholesale & B2B",
     items: [
-      { key: "wholesale-b2b-orders", label: "B2B Order Booking", icon: ClipboardList },
-      { key: "wholesale-jobwork",   label: "Wholesale Jobwork",  icon: Layers },
-      { key: "hallmarking-batches", label: "Hallmarking Batches", icon: Award },
+      { key: "wholesale-b2b-orders", label: "B2B Order Booking",               icon: ClipboardList },
+      { key: "wholesale-jobwork",    label: "Customer Jobwork (Customer's Gold)", icon: Layers },
+      { key: "hallmarking-batches",  label: "Hallmarking — Batch Submission",   icon: Award },
     ],
   },
   {
     group: "Retail",
     items: [
-      { key: "jewellery-pos",     label: "Jewellery POS",     icon: ShoppingCart },
-      { key: "counter-bookings",  label: "Counter Bookings",  icon: ClipboardList },
-      { key: "customer-approvals", label: "Approvals",        icon: CheckCircle },
-      { key: "buyback",           label: "Old Gold Buy-back", icon: RotateCcw },
-      { key: "physical-audit",    label: "Physical Audit",    icon: ShoppingBag },
-      { key: "loyalty",           label: "Loyalty & Rewards", icon: Gift },
-      { key: "promotions",        label: "Promotions",        icon: Tag },
-      { key: "refining",          label: "Refining",          icon: Zap },
-      { key: "pos-old-gold",      label: "POS Old Gold",      icon: ShoppingCart },
-      { key: "hallmarking",       label: "Hallmarking Register", icon: CheckCircle },
+      { key: "jewellery-pos",      label: "Jewellery POS",               icon: ShoppingCart },
+      { key: "counter-bookings",   label: "Counter Bookings",            icon: ClipboardList },
+      { key: "customer-approvals", label: "Approvals",                   icon: CheckCircle },
+      { key: "buyback",            label: "Old Gold Buy-back",           icon: RotateCcw },
+      { key: "physical-audit",     label: "Physical Audit",              icon: ShoppingBag },
+      { key: "loyalty",            label: "Loyalty & Rewards",           icon: Gift },
+      { key: "promotions",         label: "Promotions",                  icon: Tag },
+      { key: "refining",           label: "Refining",                    icon: Zap },
+      { key: "pos-old-gold",       label: "Old Gold Purchase (No Sale)", icon: ShoppingCart },
+      { key: "hallmarking",        label: "Hallmarking — HUID Records",  icon: CheckCircle },
     ],
   },
   {

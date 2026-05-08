@@ -820,6 +820,8 @@ router.post("/pos-old-gold", requireAuth, async (req: any, res) => {
             gross_weight_gm, stone_weight_gm, today_rate, buyback_rate_pct } = req.body;
     const net_wt = Number(gross_weight_gm||0) - Number(stone_weight_gm||0);
     const credit = net_wt * Number(today_rate||0) * Number(buyback_rate_pct||95) / 100;
+
+    // Insert into jw_pos_old_gold (detailed record with purity testing fields)
     const row = await db.execute(sql`
       INSERT INTO jw_pos_old_gold (tenant_id, customer_name, customer_phone, item_description, metal_type, purity_tested_pct,
         gross_weight_gm, stone_weight_gm, net_weight_gm, today_rate, buyback_rate_pct, credit_value)
@@ -827,6 +829,18 @@ router.post("/pos-old-gold", requireAuth, async (req: any, res) => {
         ${metal_type||'gold'}, ${purity_tested_pct||null}, ${gross_weight_gm||0}, ${stone_weight_gm||0}, ${net_wt},
         ${today_rate||0}, ${buyback_rate_pct||95}, ${credit.toFixed(2)})
       RETURNING *`);
+
+    // Also post to jw_bullion_transactions as source of truth for stock
+    // This keeps bullion stock consistent — old gold bought at counter = inward bullion
+    const txnNo = "OG-" + Date.now().toString().slice(-6);
+    await db.execute(sql`
+      INSERT INTO jw_bullion_transactions (tenant_id, txn_no, txn_type, metal_type, purity_name, weight_gm,
+        rate_per_gram, amount, party_name, txn_date, notes, record_status)
+      VALUES (${tid(req)}, ${txnNo}, 'purchase', ${metal_type||'gold'},
+        ${purity_tested_pct ? purity_tested_pct + '% purity' : 'old gold'}, ${net_wt},
+        ${today_rate||0}, ${credit.toFixed(2)}, ${customer_name||'Walk-in'},
+        CURRENT_DATE, ${'Old gold purchase — counter. Ref: ' + (item_description||'')}, 1)`);
+
     res.json(row.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
