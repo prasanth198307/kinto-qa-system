@@ -617,7 +617,7 @@ function ProductionSection() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
-  const [form, setForm] = useState<any>({ metal_type: "gold", qty: 1 });
+  const [form, setForm] = useState<any>({ metal_type: "gold", purity_name: "22K (916)", qty: 1 });
   const { data: orders = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/production-orders"] });
   const { data: karigars = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/karigars"] });
   const { data: designs = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/designs"] });
@@ -629,7 +629,7 @@ function ProductionSection() {
 
   const saveMutation = useMutation({
     mutationFn: (data: any) => apiRequest("POST", "/api/gold-erp/production-orders", data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/gold-erp/production-orders"] }); setShowForm(false); setForm({ metal_type: "gold", qty: 1 }); toast({ title: "Production order created" }); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/gold-erp/production-orders"] }); setShowForm(false); setForm({ metal_type: "gold", purity_name: "22K (916)", qty: 1 }); toast({ title: "Production order created" }); },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
@@ -645,7 +645,7 @@ function ProductionSection() {
   return (
     <>
       <SectionHeader title="Production Orders"
-        action={<Button onClick={() => setShowForm(true)} size="sm"><Plus className="h-4 w-4 mr-1" />New Order</Button>} />
+        action={<Button data-testid="button-new-production-order" onClick={() => setShowForm(true)} size="sm"><Plus className="h-4 w-4 mr-1" />New Order</Button>} />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {orders.map((o: any) => (
           <Card key={o.id} className="cursor-pointer hover-elevate" onClick={() => setSelectedOrder(o)}>
@@ -698,31 +698,31 @@ function ProductionSection() {
             </FieldRow>
             <FieldRow label="Karigar">
               <Select value={form.karigar_id?.toString() || ""} onValueChange={v => set("karigar_id", parseInt(v))}>
-                <SelectTrigger><SelectValue placeholder="Select karigar" /></SelectTrigger>
+                <SelectTrigger data-testid="select-prod-karigar"><SelectValue placeholder="Select karigar" /></SelectTrigger>
                 <SelectContent>{karigars.map((k: any) => <SelectItem key={k.id} value={k.id.toString()}>{k.name}</SelectItem>)}</SelectContent>
               </Select>
             </FieldRow>
             <div className="grid grid-cols-2 gap-3">
               <FieldRow label="Metal">
-                <Select value={form.metal_type || "gold"} onValueChange={v => set("metal_type", v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select value={form.metal_type || "gold"} onValueChange={v => { const def = PURITIES[v]?.[0]; setForm((p: any) => ({ ...p, metal_type: v, purity_name: def?.name || "" })); }}>
+                  <SelectTrigger data-testid="select-prod-metal"><SelectValue /></SelectTrigger>
                   <SelectContent><SelectItem value="gold">Gold</SelectItem><SelectItem value="silver">Silver</SelectItem><SelectItem value="platinum">Platinum</SelectItem></SelectContent>
                 </Select>
               </FieldRow>
               <FieldRow label="Purity">
-                <Select value={form.purity_name || ""} onValueChange={v => set("purity_name", v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{(PURITIES[form.metal_type] || []).map(p => <SelectItem key={p.name} value={p.name}>{p.name}</SelectItem>)}</SelectContent>
+                <Select value={form.purity_name || "22K (916)"} onValueChange={v => set("purity_name", v)}>
+                  <SelectTrigger data-testid="select-prod-purity"><SelectValue /></SelectTrigger>
+                  <SelectContent>{(PURITIES[form.metal_type || "gold"] || []).map(p => <SelectItem key={p.name} value={p.name}>{p.name}</SelectItem>)}</SelectContent>
                 </Select>
               </FieldRow>
-              <FieldRow label="Qty"><Input type="number" value={form.qty || 1} onChange={e => set("qty", e.target.value)} /></FieldRow>
-              <FieldRow label="Issued Weight (g)"><Input type="number" value={form.issued_weight_gm || ""} onChange={e => set("issued_weight_gm", e.target.value)} /></FieldRow>
+              <FieldRow label="Qty"><Input data-testid="input-prod-qty" type="number" value={form.qty || 1} onChange={e => set("qty", e.target.value)} /></FieldRow>
+              <FieldRow label="Issued Weight (g)"><Input data-testid="input-prod-issued-weight" type="number" value={form.issued_weight_gm || ""} onChange={e => set("issued_weight_gm", e.target.value)} /></FieldRow>
             </div>
-            <FieldRow label="Target Date"><Input type="date" value={form.target_date || ""} onChange={e => set("target_date", e.target.value)} /></FieldRow>
+            <FieldRow label="Target Date"><Input data-testid="input-prod-target-date" type="date" value={form.target_date || ""} onChange={e => set("target_date", e.target.value)} /></FieldRow>
             <FieldRow label="Notes"><Textarea value={form.notes || ""} onChange={e => set("notes", e.target.value)} rows={2} /></FieldRow>
             <div className="flex gap-2 justify-end pt-1">
               <Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
-              <Button onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isPending}>Create Order</Button>
+              <Button data-testid="button-create-production-order" onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isPending}>Create Order</Button>
             </div>
           </div>
         </DialogContent>

@@ -164,7 +164,7 @@ export function CustomerApprovalsSection() {
   return (
     <>
       <SH title="Customer Approvals (On-Approval Sales)" action={
-        <Button size="sm" onClick={() => { setEditing(null); setForm({ issue_date: today() }); setShowForm(true); }}>
+        <Button size="sm" data-testid="button-new-approval" onClick={() => { setEditing(null); setForm({ issue_date: today() }); setShowForm(true); }}>
           <Plus className="h-4 w-4 mr-1" />New Approval
         </Button>
       } />
@@ -197,12 +197,12 @@ export function CustomerApprovalsSection() {
           <DialogHeader><DialogTitle>{editing ? "Update Approval" : "New Customer Approval"}</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
-              <FL label="Customer Name *"><Input value={form.customer_name || ""} onChange={e => set("customer_name", e.target.value)} /></FL>
-              <FL label="Phone"><Input value={form.customer_phone || ""} onChange={e => set("customer_phone", e.target.value)} /></FL>
+              <FL label="Customer Name *"><Input data-testid="input-approval-customer" value={form.customer_name || ""} onChange={e => set("customer_name", e.target.value)} /></FL>
+              <FL label="Phone"><Input data-testid="input-approval-phone" value={form.customer_phone || ""} onChange={e => set("customer_phone", e.target.value)} /></FL>
               <FL label="Issue Date"><Input type="date" value={form.issue_date || today()} onChange={e => set("issue_date", e.target.value)} /></FL>
               <FL label="Expected Return"><Input type="date" value={form.expected_return || ""} onChange={e => set("expected_return", e.target.value)} /></FL>
-              <FL label="Total Value (₹)"><Input type="number" value={form.total_value || ""} onChange={e => set("total_value", e.target.value)} /></FL>
-              <FL label="Deposit Amount (₹)"><Input type="number" value={form.deposit_amount || ""} onChange={e => set("deposit_amount", e.target.value)} /></FL>
+              <FL label="Total Value (₹)"><Input data-testid="input-approval-value" type="number" value={form.total_value || ""} onChange={e => set("total_value", e.target.value)} /></FL>
+              <FL label="Deposit Amount (₹)"><Input data-testid="input-approval-deposit" type="number" value={form.deposit_amount || ""} onChange={e => set("deposit_amount", e.target.value)} /></FL>
               <FL label="Counter Staff"><Input value={form.counter_staff || ""} onChange={e => set("counter_staff", e.target.value)} /></FL>
             </div>
             <div className="flex items-center gap-2">
@@ -219,7 +219,7 @@ export function CustomerApprovalsSection() {
               <FL label="Return Date"><Input type="date" value={form.return_date || ""} onChange={e => set("return_date", e.target.value)} /></FL>
             </>}
             <FL label="Notes"><Textarea value={form.notes || ""} onChange={e => set("notes", e.target.value)} rows={2} /></FL>
-            <div className="flex gap-2 justify-end"><Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button><Button onClick={() => saveMut.mutate(form)} disabled={saveMut.isPending}>Save</Button></div>
+            <div className="flex gap-2 justify-end"><Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button><Button data-testid="button-save-approval" onClick={() => saveMut.mutate(form)} disabled={saveMut.isPending}>Save</Button></div>
           </div>
         </DialogContent>
       </Dialog>
