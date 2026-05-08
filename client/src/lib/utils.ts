@@ -11,7 +11,7 @@ export function getCashSourceLabel(key: string): string {
     case 'secondary_sale': return 'Secondary Sale';
     case 'upi': return 'UPI';
     case 'bank_transfer': return 'Bank Transfer';
-    case 'from_inmoisture': return 'From Inmoisture';
+    case 'from_microgrid': return 'From MicroGrid';
     case 'from_scrap': return 'From Scrap';
     case 'other': return 'Other';
     default: return key;

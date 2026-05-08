@@ -83,7 +83,7 @@ export default function MISInventory() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold" data-testid="text-page-title">Inventory Intelligence</h1>
-          <p className="text-muted-foreground text-sm">Stock aging, slow movers, and value analysis — Inmoisture Pvt. Ltd.</p>
+          <p className="text-muted-foreground text-sm">Stock aging, slow movers, and value analysis — MicroGrid.</p>
         </div>
         <Button variant="outline" size="sm" onClick={handleExportExcel} disabled={isExporting || isLoading} data-testid="button-export-excel">
           <Download className="w-4 h-4 mr-2" />{isExporting ? 'Exporting...' : 'Export Excel'}

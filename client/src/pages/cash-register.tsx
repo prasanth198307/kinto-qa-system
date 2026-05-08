@@ -814,8 +814,8 @@ export default function CashRegisterPage() {
                         <SelectItem value="bank_transfer">
                           <span className="flex items-center gap-2"><ArrowDownRight className="w-3 h-3" /> Bank Transfer</span>
                         </SelectItem>
-                        <SelectItem value="from_inmoisture">
-                          <span className="flex items-center gap-2"><ArrowDownRight className="w-3 h-3" /> From Inmoisture</span>
+                        <SelectItem value="from_microgrid">
+                          <span className="flex items-center gap-2"><ArrowDownRight className="w-3 h-3" /> From MicroGrid</span>
                         </SelectItem>
                         <SelectItem value="from_scrap">
                           <span className="flex items-center gap-2"><ArrowDownRight className="w-3 h-3" /> From Scrap</span>
@@ -1462,7 +1462,7 @@ export default function CashRegisterPage() {
                         <SelectItem value="secondary_sale">Secondary Sale</SelectItem>
                         <SelectItem value="upi">UPI</SelectItem>
                         <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-                        <SelectItem value="from_inmoisture">From Inmoisture</SelectItem>
+                        <SelectItem value="from_microgrid">From MicroGrid</SelectItem>
                         <SelectItem value="from_scrap">From Scrap</SelectItem>
                         <SelectItem value="other">Other</SelectItem>
                       </SelectContent>

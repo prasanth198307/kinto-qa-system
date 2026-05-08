@@ -57,7 +57,7 @@ export function DashboardShell({
 
           {/* Footer */}
           <footer className="border-t border-border px-6 py-3 flex flex-wrap items-center justify-center gap-x-2 text-xs text-muted-foreground">
-            <span>© 2026 Inmoisture Pvt Ltd. All rights reserved.</span>
+            <span>© 2026 MicroGrid. All rights reserved.</span>
             <span className="hidden sm:inline text-border">|</span>
             <span className="hidden sm:inline">Powered by <strong className="text-foreground/70">SwachERP</strong></span>
           </footer>

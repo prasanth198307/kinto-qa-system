@@ -702,7 +702,7 @@ export default function SuperAdminBilling() {
                 <div className="flex items-start justify-between gap-4 flex-wrap">
                   <div>
                     <p className="text-lg font-bold text-foreground">SwachERP</p>
-                    <p className="text-xs text-muted-foreground">Inmoisture Pvt Ltd</p>
+                    <p className="text-xs text-muted-foreground">MicroGrid</p>
                     <p className="text-xs text-muted-foreground mt-1">GSTIN: 29AABCI1234F1ZX</p>
                   </div>
                   <div className="text-right">

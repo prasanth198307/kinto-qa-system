@@ -217,7 +217,7 @@ export default function EssLogin() {
       {/* Footer — copyright + powered by (matches main auth page) */}
       <div className="px-4 py-4 text-center border-t border-border">
         <p className="text-xs text-muted-foreground">
-          &copy; {new Date().getFullYear()} Inmoisture Pvt Ltd. All rights reserved.
+          &copy; {new Date().getFullYear()} MicroGrid. All rights reserved.
         </p>
         <p className="text-xs text-muted-foreground mt-0.5">
           Powered by{" "}
