@@ -109,6 +109,11 @@ function EditSalesOrderDialog({ salesOrder, open, onClose }: EditDialogProps) {
 
   const items = salesOrder.items || [];
 
+  // Detect supply type from existing items (inter-state if any item has igstRate > 0)
+  const [isInterstate, setIsInterstate] = useState(() =>
+    (items as any[]).some((it: any) => Number(it.igstRate) > 0)
+  );
+
   const form = useForm<SOFormValues>({
     resolver: zodResolver(salesOrderSchema),
     defaultValues: {
@@ -151,6 +156,24 @@ function EditSalesOrderDialog({ salesOrder, open, onClose }: EditDialogProps) {
   });
 
   const { fields, append, remove } = useFieldArray({ control: form.control, name: "items" });
+
+  const handleSupplyTypeChange = (interstate: boolean) => {
+    const currentItems = form.getValues("items");
+    currentItems.forEach((item, idx) => {
+      const totalGst = (Number(item.cgstRate) || 0) + (Number(item.sgstRate) || 0) + (Number(item.igstRate) || 0);
+      if (interstate) {
+        form.setValue(`items.${idx}.cgstRate`, 0);
+        form.setValue(`items.${idx}.sgstRate`, 0);
+        form.setValue(`items.${idx}.igstRate`, totalGst);
+      } else {
+        const half = totalGst / 2;
+        form.setValue(`items.${idx}.cgstRate`, half);
+        form.setValue(`items.${idx}.sgstRate`, half);
+        form.setValue(`items.${idx}.igstRate`, 0);
+      }
+    });
+    setIsInterstate(interstate);
+  };
 
   const watchedItems = form.watch("items");
   // casePrice is already inclusive of GST — liveTotal = sum(casePrice × qty)
@@ -390,8 +413,32 @@ function EditSalesOrderDialog({ salesOrder, open, onClose }: EditDialogProps) {
             {/* Line Items */}
             <div className="space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <h3 className="font-medium">Line Items</h3>
-                <Button type="button" variant="outline" size="sm" onClick={() => append({ productId: "", description: "", hsnCode: "22011010", quantity: 1, unitPrice: 0, cgstRate: 9, sgstRate: 9, igstRate: 0, discount: 0, discountMode: '%' as '%' | '₹' })} data-testid="button-edit-add-item">
+                <div className="flex items-center gap-3">
+                  <h3 className="font-medium">Line Items</h3>
+                  <div className="flex rounded-md border overflow-hidden h-8">
+                    <button
+                      type="button"
+                      onClick={() => handleSupplyTypeChange(false)}
+                      className={`px-3 text-xs font-medium transition-colors ${!isInterstate ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}
+                      data-testid="button-so-supply-intrastate"
+                    >
+                      Intra-state
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSupplyTypeChange(true)}
+                      className={`px-3 text-xs font-medium transition-colors ${isInterstate ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}
+                      data-testid="button-so-supply-interstate"
+                    >
+                      Inter-state
+                    </button>
+                  </div>
+                  <span className="text-xs text-muted-foreground">{isInterstate ? 'IGST only' : 'CGST + SGST'}</span>
+                </div>
+                <Button type="button" variant="outline" size="sm" onClick={() => append(isInterstate
+                  ? { productId: "", description: "", hsnCode: "22011010", quantity: 1, unitPrice: 0, cgstRate: 0, sgstRate: 0, igstRate: 18, discount: 0, discountMode: '%' as '%' | '₹' }
+                  : { productId: "", description: "", hsnCode: "22011010", quantity: 1, unitPrice: 0, cgstRate: 9, sgstRate: 9, igstRate: 0, discount: 0, discountMode: '%' as '%' | '₹' }
+                )} data-testid="button-edit-add-item">
                   <Plus className="w-4 h-4 mr-1" />Add Item
                 </Button>
               </div>
@@ -403,7 +450,7 @@ function EditSalesOrderDialog({ salesOrder, open, onClose }: EditDialogProps) {
                       <TableHead className="w-24">HSN Code</TableHead>
                       <TableHead className="w-20">Qty</TableHead>
                       <TableHead className="w-32">Case Price ₹ (incl. GST)</TableHead>
-                      <TableHead className="w-40">CGST% / SGST%</TableHead>
+                      <TableHead className="w-40">{isInterstate ? 'IGST %' : 'CGST% / SGST%'}</TableHead>
                       <TableHead className="w-36">Discount</TableHead>
                       <TableHead className="w-28 text-right">Line Total</TableHead>
                       <TableHead className="w-10"></TableHead>
@@ -462,19 +509,35 @@ function EditSalesOrderDialog({ salesOrder, open, onClose }: EditDialogProps) {
                             )} />
                           </TableCell>
                           <TableCell>
-                            <div className="flex gap-1 items-center">
-                              <FormField control={form.control} name={`items.${index}.cgstRate`} render={({ field: f }) => (
-                                <FormControl>
-                                  <Input type="number" step="0.01" min={0} max={100} {...f} onChange={e => f.onChange(Number(e.target.value))} className="w-16 text-xs" title="CGST %" placeholder="CGST" />
-                                </FormControl>
-                              )} />
-                              <span className="text-xs text-muted-foreground">/</span>
-                              <FormField control={form.control} name={`items.${index}.sgstRate`} render={({ field: f }) => (
-                                <FormControl>
-                                  <Input type="number" step="0.01" min={0} max={100} {...f} onChange={e => f.onChange(Number(e.target.value))} className="w-16 text-xs" title="SGST %" placeholder="SGST" />
-                                </FormControl>
-                              )} />
-                            </div>
+                            {isInterstate ? (
+                              <div className="flex items-center gap-1">
+                                <FormField control={form.control} name={`items.${index}.igstRate`} render={({ field: f }) => (
+                                  <FormControl>
+                                    <Input type="number" step="0.01" min={0} max={100} {...f} onChange={e => {
+                                      const v = Number(e.target.value);
+                                      f.onChange(v);
+                                      form.setValue(`items.${index}.cgstRate`, 0);
+                                      form.setValue(`items.${index}.sgstRate`, 0);
+                                    }} className="w-20 text-xs" title="IGST %" placeholder="IGST %" data-testid={`input-edit-igst-${index}`} />
+                                  </FormControl>
+                                )} />
+                                <span className="text-xs text-muted-foreground">%</span>
+                              </div>
+                            ) : (
+                              <div className="flex gap-1 items-center">
+                                <FormField control={form.control} name={`items.${index}.cgstRate`} render={({ field: f }) => (
+                                  <FormControl>
+                                    <Input type="number" step="0.01" min={0} max={100} {...f} onChange={e => f.onChange(Number(e.target.value))} className="w-16 text-xs" title="CGST %" placeholder="CGST" data-testid={`input-edit-cgst-${index}`} />
+                                  </FormControl>
+                                )} />
+                                <span className="text-xs text-muted-foreground">/</span>
+                                <FormField control={form.control} name={`items.${index}.sgstRate`} render={({ field: f }) => (
+                                  <FormControl>
+                                    <Input type="number" step="0.01" min={0} max={100} {...f} onChange={e => f.onChange(Number(e.target.value))} className="w-16 text-xs" title="SGST %" placeholder="SGST" data-testid={`input-edit-sgst-${index}`} />
+                                  </FormControl>
+                                )} />
+                              </div>
+                            )}
                           </TableCell>
                           <TableCell>
                             <div className="flex gap-1 items-center">

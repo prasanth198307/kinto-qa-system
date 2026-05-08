@@ -179,7 +179,10 @@ export default function PrintInvoiceGatepassPage() {
     return fg?.batchNumber || '-';
   };
 
-  const isIntrastate = invoice.sellerStateCode === invoice.buyerStateCode;
+  // Inter-state if igstAmount > 0 (authoritative), else fall back to state code comparison
+  const isIntrastate = (invoice.igstAmount || 0) > 0
+    ? false
+    : (invoice.sellerStateCode === invoice.buyerStateCode);
   const isCancelled = invoice.recordStatus === 0;
   const formattedInvoiceDate = format(new Date(invoice.invoiceDate), 'dd/MM/yyyy');
   const formattedGatepassDate = format(new Date(gatepass.gatepassDate), 'dd/MM/yyyy');

@@ -106,7 +106,10 @@ export default function PrintCreditNotePage() {
     return Number(qty).toLocaleString('en-IN', { maximumFractionDigits: 0 });
   };
 
-  const isIntrastate = creditNote.sellerStateCode === creditNote.buyerStateCode;
+  // Inter-state if igstAmount > 0 (authoritative), else fall back to state code comparison
+  const isIntrastate = (creditNote.igstAmount || 0) > 0
+    ? false
+    : (creditNote.sellerStateCode === creditNote.buyerStateCode);
   const formattedDate = format(new Date(creditNote.creditDate), 'dd/MM/yyyy');
 
   const handleBack = () => {

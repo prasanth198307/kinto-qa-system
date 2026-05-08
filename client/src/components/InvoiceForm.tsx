@@ -120,7 +120,11 @@ interface InvoiceFormProps {
 export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, onClose }: InvoiceFormProps) {
   const { toast } = useToast();
   const [, navigate] = useLocation();
-  const [isIntrastateSupply, setIsIntrastateSupply] = useState(true);
+  const [isIntrastateSupply, setIsIntrastateSupply] = useState(() => {
+    // For existing invoices, derive from stored igstAmount
+    if (invoice && (invoice.igstAmount || 0) > 0) return false;
+    return true;
+  });
   const [selectedBankId, setSelectedBankId] = useState<string>("");
   const [showPrintPreview, setShowPrintPreview] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(invoice?.templateId || "");
@@ -820,7 +824,10 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
   const watchItems = form.watch("items");
 
   useEffect(() => {
-    setIsIntrastateSupply(watchBuyerState === watchSellerState);
+    // Only auto-detect when both state codes are actually filled in
+    if (watchBuyerState && watchSellerState) {
+      setIsIntrastateSupply(watchBuyerState === watchSellerState);
+    }
   }, [watchBuyerState, watchSellerState]);
 
   // Reverse GST calculation: Calculate base price from total (inclusive) amount
@@ -1457,8 +1464,8 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
           </div>
         )}
 
-        {/* Invoice Date + Type + Currency row */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {/* Invoice Date + Type + Currency + Supply Type row */}
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
           <div>
             <Label htmlFor="invoiceDate">Invoice Date *</Label>
             <Input
@@ -1513,6 +1520,30 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                 />
               </div>
             )}
+          </div>
+          <div>
+            <Label>Supply Type</Label>
+            <div className="flex rounded-md border overflow-hidden h-9 mt-1">
+              <button
+                type="button"
+                onClick={() => setIsIntrastateSupply(true)}
+                className={`flex-1 text-xs font-medium transition-colors ${isIntrastateSupply ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}
+                data-testid="button-supply-intrastate"
+              >
+                Intra-state
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsIntrastateSupply(false)}
+                className={`flex-1 text-xs font-medium transition-colors ${!isIntrastateSupply ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}
+                data-testid="button-supply-interstate"
+              >
+                Inter-state
+              </button>
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              {isIntrastateSupply ? 'CGST + SGST applied' : 'IGST applied'}
+            </p>
           </div>
         </div>
 

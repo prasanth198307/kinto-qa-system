@@ -220,7 +220,10 @@ export default function PrintInvoicePage() {
     );
   }
 
-  const isIntrastate = invoice.sellerStateCode === invoice.buyerStateCode;
+  // Inter-state if igstAmount > 0 (authoritative), else fall back to state code comparison
+  const isIntrastate = (invoice.igstAmount || 0) > 0
+    ? false
+    : (invoice.sellerStateCode === invoice.buyerStateCode);
   const amountReceived = invoice.amountReceived || 0;
   const balanceDue = invoice.totalAmount - amountReceived;
 
