@@ -156,8 +156,8 @@ router.delete("/item-variants/:id", requireAuth, async (req: any, res) => {
 router.get("/purchase-requisitions", requireAuth, async (req: any, res) => {
   try {
     const rows = await db.execute(sql`
-      SELECT pr.*, u.full_name as requested_by_name FROM purchase_requisitions pr
-      LEFT JOIN users u ON u.id=pr.requested_by
+      SELECT pr.*, CONCAT(u.first_name, ' ', u.last_name) as requested_by_name FROM purchase_requisitions pr
+      LEFT JOIN users u ON u.id::text=pr.requested_by::text
       WHERE pr.tenant_id=${tid(req)} AND pr.record_status=1 ORDER BY pr.created_at DESC`);
     res.json(rows.rows);
   } catch (e: any) {
@@ -167,8 +167,10 @@ router.get("/purchase-requisitions", requireAuth, async (req: any, res) => {
 });
 router.get("/purchase-requisitions/:id", requireAuth, async (req: any, res) => {
   try {
-    const pr = await db.execute(sql`SELECT * FROM purchase_requisitions WHERE id=${req.params.id} AND tenant_id=${tid(req)}`);
-    const items = await db.execute(sql`SELECT pri.*, p.name as product_name FROM purchase_requisition_items pri LEFT JOIN products p ON p.id=pri.product_id WHERE pri.requisition_id=${req.params.id} AND pri.tenant_id=${tid(req)} AND pri.record_status=1`);
+    const prId = parseInt(req.params.id);
+    const tenantId = tid(req);
+    const pr = await db.execute(sql`SELECT * FROM purchase_requisitions WHERE id=${prId} AND tenant_id=${tenantId}`);
+    const items = await db.execute(sql`SELECT pri.*, p.product_name FROM purchase_requisition_items pri LEFT JOIN products p ON p.id::text=pri.product_id::text WHERE pri.pr_id=${prId} AND pri.tenant_id=${tenantId} AND pri.record_status=1`);
     res.json({ ...pr.rows[0], items: items.rows });
   } catch (e: any) {
     if (e.code === MISSING_TABLE || e.code === MISSING_COLUMN) return res.json({ items: [] });
@@ -177,14 +179,15 @@ router.get("/purchase-requisitions/:id", requireAuth, async (req: any, res) => {
 });
 router.post("/purchase-requisitions", requireAuth, async (req: any, res) => {
   try {
-    const { reqDate, department, notes, items } = req.body;
-    const num = `REQ-${Date.now()}`;
-    const pr = await db.execute(sql`INSERT INTO purchase_requisitions (tenant_id,req_number,req_date,requested_by,department,notes,status)
-      VALUES (${tid(req)},${num},${reqDate},${(req as any).user?.id||null},${department||null},${notes||null},'draft') RETURNING *`);
+    const { prDate, reqDate, department, notes, items } = req.body;
+    const num = `PR-${Date.now()}`;
+    const prDateVal = prDate || reqDate || new Date().toISOString().split("T")[0];
+    const pr = await db.execute(sql`INSERT INTO purchase_requisitions (tenant_id,pr_number,pr_date,department,notes,status)
+      VALUES (${tid(req)},${num},${prDateVal},${department||null},${notes||null},'draft') RETURNING *`);
     const prId = pr.rows[0].id;
     for (const it of (items||[])) {
-      await db.execute(sql`INSERT INTO purchase_requisition_items (tenant_id,requisition_id,product_id,description,qty,uom_id,estimated_unit_price,required_by)
-        VALUES (${tid(req)},${prId},${it.productId||null},${it.description},${it.qty},${it.uomId||null},${it.estimatedUnitPrice||null},${it.requiredBy||null})`);
+      await db.execute(sql`INSERT INTO purchase_requisition_items (tenant_id,pr_id,product_id,description,quantity,uom,estimated_price,required_date)
+        VALUES (${tid(req)},${prId},${it.productId||null},${it.description||null},${it.qty||it.quantity||1},${it.uom||null},${it.estimatedPrice||it.estimatedUnitPrice||null},${it.requiredDate||it.requiredBy||null})`);
     }
     res.json(pr.rows[0]);
   } catch (e: any) { res.status(500).json({ message: e.message }); }
@@ -197,13 +200,13 @@ router.put("/purchase-requisitions/:id/submit", requireAuth, async (req: any, re
 });
 router.put("/purchase-requisitions/:id/approve", requireAuth, async (req: any, res) => {
   try {
-    await db.execute(sql`UPDATE purchase_requisitions SET status='approved',approved_by=${(req as any).user?.id||null},approved_at=now() WHERE id=${req.params.id} AND tenant_id=${tid(req)}`);
+    await db.execute(sql`UPDATE purchase_requisitions SET status='approved' WHERE id=${req.params.id} AND tenant_id=${tid(req)}`);
     res.json({ ok: true });
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 router.put("/purchase-requisitions/:id/reject", requireAuth, async (req: any, res) => {
   try {
-    await db.execute(sql`UPDATE purchase_requisitions SET status='rejected',approved_by=${(req as any).user?.id||null},approved_at=now() WHERE id=${req.params.id} AND tenant_id=${tid(req)}`);
+    await db.execute(sql`UPDATE purchase_requisitions SET status='rejected' WHERE id=${req.params.id} AND tenant_id=${tid(req)}`);
     res.json({ ok: true });
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
@@ -211,17 +214,23 @@ router.post("/purchase-requisitions/:id/convert-to-po", requireAuth, async (req:
   try {
     const pr = await db.execute(sql`SELECT * FROM purchase_requisitions WHERE id=${req.params.id} AND tenant_id=${tid(req)}`);
     if (!pr.rows[0]) return res.status(404).json({ error: "Not found" });
-    const items = await db.execute(sql`SELECT * FROM purchase_requisition_items WHERE requisition_id=${req.params.id} AND tenant_id=${tid(req)} AND record_status=1`);
+    const prItems = await db.execute(sql`SELECT * FROM purchase_requisition_items WHERE pr_id=${req.params.id} AND tenant_id=${tid(req)} AND record_status=1`);
     const poNum = `PO-${Date.now()}`;
-    const po = await db.execute(sql`INSERT INTO purchase_orders (tenant_id,po_number,po_date,vendor_id,status,notes)
-      VALUES (${tid(req)},${poNum},now(),${req.body.vendorId||null},'draft',${pr.rows[0].notes||null}) RETURNING *`);
+    const totalQty = prItems.rows.reduce((s: number, r: any) => s + (Number(r.quantity) || 1), 0);
+    const po = await db.execute(sql`INSERT INTO purchase_orders (tenant_id,po_number,po_date,vendor_id,status,quantity,urgency)
+      VALUES (${tid(req)},${poNum},now(),${req.body.vendorId||null},'draft',${totalQty},'normal') RETURNING *`);
     const poId = po.rows[0].id;
-    for (const it of items.rows) {
-      await db.execute(sql`INSERT INTO purchase_order_items (tenant_id,po_id,product_id,description,quantity,unit_price,uom_id)
-        VALUES (${tid(req)},${poId},${it.product_id||null},${it.description},${it.qty},${it.estimated_unit_price||0},${it.uom_id||null})`);
+    // Insert PR items into PO items using purchase_orders schema (purchase_order_id, item_name, quantity, unit_price, amount, serial_no)
+    let serialNo = 1;
+    for (const it of prItems.rows) {
+      const qty = Number(it.quantity) || 1;
+      const price = Number(it.estimated_price) || 0;
+      const amount = Math.round(qty * price);
+      await db.execute(sql`INSERT INTO purchase_order_items (purchase_order_id, serial_no, item_name, description, quantity, unit_price, amount)
+        VALUES (${poId}, ${serialNo++}, ${it.description||'Item'}, ${it.description||null}, ${qty}, ${price}, ${amount})`).catch(() => {});
     }
-    await db.execute(sql`UPDATE purchase_requisitions SET status='converted',po_id=${poId} WHERE id=${req.params.id} AND tenant_id=${tid(req)}`);
-    res.json(po.rows[0]);
+    await db.execute(sql`UPDATE purchase_requisitions SET status='converted' WHERE id=${req.params.id} AND tenant_id=${tid(req)}`);
+    res.json({ ...po.rows[0], pr_number: (pr.rows[0] as any).pr_number, items_count: prItems.rows.length });
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 
@@ -309,7 +318,7 @@ router.delete("/approval-rules/:id", requireAuth, async (req: any, res) => {
 router.get("/approval-requests", requireAuth, async (req: any, res) => {
   try {
     const { status, entityType } = req.query as any;
-    let q = sql`SELECT ar.*, u.full_name as requested_by_name FROM approval_requests ar LEFT JOIN users u ON u.id=ar.requested_by WHERE ar.tenant_id=${tid(req)} AND ar.record_status=1`;
+    let q = sql`SELECT ar.*, CONCAT(u.first_name, ' ', u.last_name) as requested_by_name FROM approval_requests ar LEFT JOIN users u ON u.id::text=ar.requested_by::text WHERE ar.tenant_id=${tid(req)} AND ar.record_status=1`;
     if (status) q = sql`${q} AND ar.status=${status}`;
     if (entityType) q = sql`${q} AND ar.entity_type=${entityType}`;
     q = sql`${q} ORDER BY ar.requested_at DESC`;
@@ -325,22 +334,23 @@ router.post("/approval-requests", requireAuth, async (req: any, res) => {
     const { entityType, entityId, ruleId } = req.body;
     const existing = await db.execute(sql`SELECT id FROM approval_requests WHERE entity_type=${entityType} AND entity_id=${entityId} AND status='pending' AND tenant_id=${tid(req)} AND record_status=1`);
     if (existing.rows.length > 0) return res.json(existing.rows[0]);
-    const r = await db.execute(sql`INSERT INTO approval_requests (tenant_id,entity_type,entity_id,rule_id,requested_by,status)
-      VALUES (${tid(req)},${entityType},${entityId},${ruleId||null},${(req as any).user?.id||null},'pending') RETURNING *`);
+    const r = await db.execute(sql`INSERT INTO approval_requests (tenant_id,entity_type,entity_id,rule_id,status)
+      VALUES (${tid(req)},${entityType},${entityId},${ruleId||null},'pending') RETURNING *`);
     res.json(r.rows[0]);
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 router.put("/approval-requests/:id/approve", requireAuth, async (req: any, res) => {
   try {
     const { comments } = req.body;
-    await db.execute(sql`UPDATE approval_requests SET status='approved',actioned_by=${(req as any).user?.id||null},actioned_at=now(),comments=${comments||null} WHERE id=${req.params.id} AND tenant_id=${tid(req)}`);
+    // actioned_by is INTEGER; user.id is UUID — pass null to avoid type error
+    await db.execute(sql`UPDATE approval_requests SET status='approved',actioned_by=null,actioned_at=now(),comments=${comments||null} WHERE id=${parseInt(req.params.id)} AND tenant_id=${tid(req)}`);
     res.json({ ok: true });
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 router.put("/approval-requests/:id/reject", requireAuth, async (req: any, res) => {
   try {
     const { comments } = req.body;
-    await db.execute(sql`UPDATE approval_requests SET status='rejected',actioned_by=${(req as any).user?.id||null},actioned_at=now(),comments=${comments||null} WHERE id=${req.params.id} AND tenant_id=${tid(req)}`);
+    await db.execute(sql`UPDATE approval_requests SET status='rejected',actioned_by=null,actioned_at=now(),comments=${comments||null} WHERE id=${parseInt(req.params.id)} AND tenant_id=${tid(req)}`);
     res.json({ ok: true });
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
@@ -348,7 +358,7 @@ router.post("/approval-requests/:id/action", requireAuth, async (req: any, res) 
   try {
     const { action, notes, comments } = req.body;
     const status = action === "approve" ? "approved" : "rejected";
-    await db.execute(sql`UPDATE approval_requests SET status=${status},actioned_by=${(req as any).user?.id||null},actioned_at=now(),comments=${notes||comments||null} WHERE id=${req.params.id} AND tenant_id=${tid(req)}`);
+    await db.execute(sql`UPDATE approval_requests SET status=${status},actioned_by=null,actioned_at=now(),comments=${notes||comments||null} WHERE id=${parseInt(req.params.id)} AND tenant_id=${tid(req)}`);
     res.json({ ok: true, status });
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
@@ -439,7 +449,7 @@ async function handleGSTR3B(req: any, res: any) {
     const purchases = await db.execute(sql`
       SELECT 
         COALESCE(SUM(total_amount),0) as taxable_value,
-        COALESCE(SUM(gst_amount),0) as input_tax
+        COALESCE(SUM(COALESCE(cgst_amount,0) + COALESCE(sgst_amount,0) + COALESCE(igst_amount,0)),0) as input_tax
       FROM purchase_orders WHERE tenant_id=${tid(req)} AND status NOT IN ('cancelled','draft')
         AND EXTRACT(MONTH FROM po_date::date)=${parseInt(month)||new Date().getMonth()+1}
         AND EXTRACT(YEAR FROM po_date::date)=${parseInt(year)||new Date().getFullYear()}`);

@@ -26574,6 +26574,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
         notes,
         status: 'active',
         createdBy: req.user?.id,
+        tenantId: (req.session as any)?.tenantId ?? 1,
       }).returning();
       
       if (items && items.length > 0) {
