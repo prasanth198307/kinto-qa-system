@@ -95,6 +95,7 @@ export function setupAuth(app: Express) {
   // behaviour for a multi-tenant SaaS where each subdomain is a separate portal.
 
   const sessionSettings: session.SessionOptions = {
+    name: "swach.sid", // Renamed from connect.sid to avoid collision with old domain-scoped cookies
     secret: process.env.SESSION_SECRET || "insecure_dev_secret",
     resave: false,
     saveUninitialized: false,
@@ -780,6 +781,11 @@ export function setupAuth(app: Express) {
           // Enforce concurrent session limit (max 3 per user)
           await enforceConcurrentSessionLimit(user.id, (req.session as any).id ?? req.sessionID);
 
+          // Purge legacy connect.sid cookies (old domain-scoped and hostname-scoped)
+          // so stale browser cookies can't shadow the new swach.sid session.
+          res.clearCookie("connect.sid", { path: "/" });
+          res.clearCookie("connect.sid", { domain: ".swacherp.com", path: "/" });
+
           // Log successful login with IP
           logSecurityEvent(req, "LOGIN_SUCCESS", `User ${user.username} logged in`, "info", String(user.id), (user as any).tenantId);
 
@@ -796,7 +802,11 @@ export function setupAuth(app: Express) {
       if (err) return next(err);
       req.session.destroy((err) => {
         if (err) return next(err);
+        res.clearCookie("swach.sid");
+        // Also clear the old connect.sid cookie (all domain variants) so stale
+        // browser cookies can't cause phantom 401s after deployment.
         res.clearCookie("connect.sid");
+        res.clearCookie("connect.sid", { domain: ".swacherp.com", path: "/" });
         res.json({ message: "Logged out" });
       });
     });
