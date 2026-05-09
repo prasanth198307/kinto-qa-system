@@ -29039,7 +29039,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
     if (isNaN(tenantId)) return res.status(400).json({ message: 'Invalid tenant ID' });
     try {
       const { rows } = await pool.query(
-        `SELECT id, username, email, role, "isActive" FROM users WHERE "tenantId" = $1 AND "recordStatus" = 1 ORDER BY role, username`,
+        `SELECT id, username, email, role, is_active AS "isActive" FROM users WHERE tenant_id = $1 AND record_status = 1 ORDER BY role, username`,
         [tenantId]
       );
       res.json(rows);
@@ -29058,7 +29058,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
     if (!newPassword || newPassword.length < 6) return res.status(400).json({ message: 'Password must be at least 6 characters' });
     try {
       const { rows } = await pool.query(
-        `SELECT id FROM users WHERE id = $1 AND "tenantId" = $2 AND "recordStatus" = 1`,
+        `SELECT id FROM users WHERE id = $1 AND tenant_id = $2 AND record_status = 1`,
         [userId, tenantId]
       );
       if (rows.length === 0) return res.status(404).json({ message: 'User not found in this tenant' });

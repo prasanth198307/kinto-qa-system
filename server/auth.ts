@@ -769,7 +769,11 @@ export function setupAuth(app: Express) {
           logSecurityEvent(req, "LOGIN_SUCCESS", `User ${user.username} logged in`, "info", String(user.id), (user as any).tenantId ?? (user as any).tenant_id);
 
           console.log(`✅ Session saved — user: ${user.username}, tenant: ${(req.session as any).tenantId}, plan: ${tenantPlan}, status: ${tenantStatus}`);
-          return res.json(req.user);
+          // Re-fetch via storage so the response always uses camelCase Drizzle ORM
+          // fields (isSuperAdmin, tenantId, isActive) — the raw SQL user object is
+          // snake_case and causes the frontend to mis-route (e.g. isSuperAdmin undefined).
+          const normalizedUser = await storage.getUser(String(user.id));
+          return res.json(normalizedUser ?? req.user);
         });
       });
     })(req, res, next);
