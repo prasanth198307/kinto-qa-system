@@ -991,7 +991,9 @@ router.put("/leave-applications/:id/action", requireHR, async (req: any, res) =>
     `);
     if (!app.rows.length) return res.status(404).json({ message: "Not found" });
     const a = app.rows[0] as any;
-    await db.execute(sql`UPDATE hr_leave_applications SET status=${status}, approved_by=${userId ?? null}, approver_comment=${approverComment ?? null}, action_at=NOW() WHERE id=${req.params.id}`);
+    // approved_by is integer; req.user.id is UUID — pass null to avoid type error
+    const approverIntId = Number.isInteger(Number(userId)) && !isNaN(Number(userId)) ? Number(userId) : null;
+    await db.execute(sql`UPDATE hr_leave_applications SET status=${status}, approved_by=${approverIntId}, approver_comment=${approverComment ?? null}, action_at=NOW() WHERE id=${req.params.id}`);
     if (status === 'approved') {
       const year = new Date(a.from_date).getFullYear();
       await db.execute(sql`
@@ -2509,7 +2511,7 @@ router.put("/tds-declarations/:id/action", requireHR, async (req: any, res) => {
   try {
     const r = await db.execute(sql`
       UPDATE hr_tds_declarations
-      SET status=${status}, approved_by=${userId}, approver_comment=${approverComment ?? null}, approved_at=NOW()
+      SET status=${status}, approved_by=${Number.isInteger(Number(userId)) && !isNaN(Number(userId)) ? Number(userId) : null}, approver_comment=${approverComment ?? null}, approved_at=NOW()
       WHERE id=${req.params.id} AND tenant_id=${tid}
       RETURNING *
     `);
@@ -2755,21 +2757,25 @@ router.delete("/job-applications/:id", requireHR, async (req: any, res) => {
 // PHASE 2 — Expense Claims
 // ═══════════════════════════════════════════════════════════════════════════
 router.get("/expense-claims", requireHR, async (req: any, res) => {
-  const tid = req.session?.tenantId;
-  const { employeeId, status } = req.query;
-  let q = `SELECT ec.*, e.first_name||' '||e.last_name AS employee_name
-           FROM hr_expense_claims ec
-           JOIN hr_employees e ON e.id = ec.employee_id
-           WHERE ec.tenant_id=${tid} AND ec.record_status=1`;
-  if (employeeId) q += ` AND ec.employee_id=${Number(employeeId)}`;
-  if (status)     q += ` AND ec.status='${status}'`;
-  q += ` ORDER BY ec.created_at DESC`;
-  const claims = await db.execute(sql.raw(q));
-  const ids = (claims.rows as any[]).map(c => c.id);
-  const items = ids.length > 0
-    ? await db.execute(sql`SELECT * FROM hr_expense_claim_items WHERE claim_id = ANY(${ids}::int[]) AND tenant_id=${tid}`)
-    : { rows: [] };
-  res.json({ claims: claims.rows, items: items.rows });
+  try {
+    const tid = req.session?.tenantId;
+    const { employeeId, status } = req.query;
+    let q = `SELECT ec.*, e.first_name||' '||e.last_name AS employee_name
+             FROM hr_expense_claims ec
+             JOIN hr_employees e ON e.id = ec.employee_id
+             WHERE ec.tenant_id=${tid} AND ec.record_status=1`;
+    if (employeeId) q += ` AND ec.employee_id=${Number(employeeId)}`;
+    if (status)     q += ` AND ec.status='${status}'`;
+    q += ` ORDER BY ec.created_at DESC`;
+    const claims = await db.execute(sql.raw(q));
+    const ids = (claims.rows as any[]).map((c: any) => Number(c.id)).filter(Boolean);
+    const items = ids.length > 0
+      ? await db.execute(sql.raw(`SELECT * FROM hr_expense_claim_items WHERE claim_id IN (${ids.join(",")}) AND tenant_id=${tid}`))
+      : { rows: [] };
+    res.json({ claims: claims.rows, items: items.rows });
+  } catch (e: any) {
+    res.status(500).json({ message: e.message });
+  }
 });
 
 router.post("/expense-claims", requireHR, async (req: any, res) => {
@@ -2795,7 +2801,7 @@ router.put("/expense-claims/:id/action", requireHR, async (req: any, res) => {
   const userId = req.user?.id;
   if (!['approved','rejected','paid'].includes(action)) return res.status(400).json({ message: 'Invalid action' });
   await db.execute(sql`UPDATE hr_expense_claims SET
-    status=${action}, approved_by=${userId},
+    status=${action}, approved_by=${Number.isInteger(Number(userId)) && !isNaN(Number(userId)) ? Number(userId) : null},
     approved_at=${action !== 'paid' ? sql`NOW()` : sql`approved_at`},
     paid_at=${action === 'paid' ? sql`NOW()` : sql`paid_at`},
     rejection_reason=${rejectionReason||null}
@@ -2845,7 +2851,7 @@ router.put("/timesheets/:id", requireHR, async (req: any, res) => {
   const r = await db.execute(sql`UPDATE timesheets SET
     project_id=${projectId||null}, client_name=${clientName||null}, work_date=${workDate},
     hours=${hours}, description=${description||null}, is_billable=${isBillable !== false},
-    approved=${approved||false}, approved_by=${approved ? req.user?.id : null}
+    approved=${approved||false}, approved_by=${approved ? (Number.isInteger(Number(req.user?.id)) && !isNaN(Number(req.user?.id)) ? Number(req.user?.id) : null) : null}
     WHERE id=${req.params.id} AND tenant_id=${tid} RETURNING *`);
   res.json(r.rows[0]);
 });
@@ -2860,73 +2866,85 @@ router.delete("/timesheets/:id", requireHR, async (req: any, res) => {
 // PHASE 5 — Performance Appraisal
 // ═══════════════════════════════════════════════════════════════════════════
 router.get("/appraisal-cycles", requireHR, async (req: any, res) => {
-  const tid = req.session?.tenantId;
-  const rows = await db.execute(sql`SELECT * FROM appraisal_cycles WHERE tenant_id=${tid} AND record_status=1 ORDER BY created_at DESC`);
-  res.json(rows.rows);
+  try {
+    const tid = req.session?.tenantId;
+    const rows = await db.execute(sql`SELECT * FROM appraisal_cycles WHERE tenant_id=${tid} AND record_status=1 ORDER BY created_at DESC`);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 
 router.post("/appraisal-cycles", requireHR, async (req: any, res) => {
-  const tid = req.session?.tenantId;
-  const { name, periodFrom, periodTo } = req.body;
-  const r = await db.execute(sql`INSERT INTO appraisal_cycles (tenant_id, name, period_from, period_to) VALUES (${tid}, ${name}, ${periodFrom||null}, ${periodTo||null}) RETURNING *`);
-  res.json(r.rows[0]);
+  try {
+    const tid = req.session?.tenantId;
+    const { name, periodFrom, periodTo } = req.body;
+    const r = await db.execute(sql`INSERT INTO appraisal_cycles (tenant_id, name, period_from, period_to) VALUES (${tid}, ${name}, ${periodFrom||null}, ${periodTo||null}) RETURNING *`);
+    res.json(r.rows[0]);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 
 router.put("/appraisal-cycles/:id", requireHR, async (req: any, res) => {
-  const tid = req.session?.tenantId;
-  const { name, periodFrom, periodTo, status } = req.body;
-  const r = await db.execute(sql`UPDATE appraisal_cycles SET name=${name}, period_from=${periodFrom||null}, period_to=${periodTo||null}, status=${status||'draft'} WHERE id=${req.params.id} AND tenant_id=${tid} RETURNING *`);
-  res.json(r.rows[0]);
+  try {
+    const tid = req.session?.tenantId;
+    const { name, periodFrom, periodTo, status } = req.body;
+    const r = await db.execute(sql`UPDATE appraisal_cycles SET name=${name}, period_from=${periodFrom||null}, period_to=${periodTo||null}, status=${status||'draft'} WHERE id=${req.params.id} AND tenant_id=${tid} RETURNING *`);
+    res.json(r.rows[0]);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 
 router.get("/appraisals", requireHR, async (req: any, res) => {
-  const tid = req.session?.tenantId;
-  const { cycleId } = req.query;
-  let q = `SELECT a.*, e.first_name||' '||e.last_name AS employee_name,
-           mgr.first_name||' '||mgr.last_name AS appraiser_name
-           FROM appraisals a
-           JOIN hr_employees e ON e.id = a.employee_id
-           LEFT JOIN hr_employees mgr ON mgr.id = a.appraiser_id
-           WHERE a.tenant_id=${tid} AND a.record_status=1`;
-  if (cycleId) q += ` AND a.cycle_id=${Number(cycleId)}`;
-  q += ` ORDER BY e.first_name`;
-  const rows = await db.execute(sql.raw(q));
-  const ids = (rows.rows as any[]).map((r: any) => r.id);
-  const kras = ids.length > 0
-    ? await db.execute(sql`SELECT * FROM appraisal_kras WHERE appraisal_id = ANY(${ids}::int[]) AND tenant_id=${tid}`)
-    : { rows: [] };
-  res.json({ appraisals: rows.rows, kras: kras.rows });
+  try {
+    const tid = req.session?.tenantId;
+    const { cycleId } = req.query;
+    let q = `SELECT a.*, e.first_name||' '||e.last_name AS employee_name,
+             mgr.first_name||' '||mgr.last_name AS appraiser_name
+             FROM appraisals a
+             JOIN hr_employees e ON e.id = a.employee_id
+             LEFT JOIN hr_employees mgr ON mgr.id = a.appraiser_id
+             WHERE a.tenant_id=${tid} AND a.record_status=1`;
+    if (cycleId) q += ` AND a.cycle_id=${Number(cycleId)}`;
+    q += ` ORDER BY e.first_name`;
+    const rows = await db.execute(sql.raw(q));
+    const ids = (rows.rows as any[]).map((r: any) => Number(r.id)).filter(Boolean);
+    const kras = ids.length > 0
+      ? await db.execute(sql.raw(`SELECT * FROM appraisal_kras WHERE appraisal_id IN (${ids.join(",")}) AND tenant_id=${tid}`))
+      : { rows: [] };
+    res.json({ appraisals: rows.rows, kras: kras.rows });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 
 router.post("/appraisals", requireHR, async (req: any, res) => {
-  const tid = req.session?.tenantId;
-  const { cycleId, employeeId, appraiserId, kras } = req.body;
-  const r = await db.execute(sql`INSERT INTO appraisals (tenant_id, cycle_id, employee_id, appraiser_id, status)
-    VALUES (${tid}, ${cycleId}, ${employeeId}, ${appraiserId||null}, 'pending') RETURNING *`);
-  const appraisalId = (r.rows[0] as any).id;
-  for (const kra of kras || []) {
-    await db.execute(sql`INSERT INTO appraisal_kras (tenant_id, appraisal_id, kra, weightage)
-      VALUES (${tid}, ${appraisalId}, ${kra.kra}, ${kra.weightage||null})`);
-  }
-  res.json(r.rows[0]);
+  try {
+    const tid = req.session?.tenantId;
+    const { cycleId, employeeId, appraiserId, kras } = req.body;
+    const r = await db.execute(sql`INSERT INTO appraisals (tenant_id, cycle_id, employee_id, appraiser_id, status)
+      VALUES (${tid}, ${cycleId}, ${employeeId}, ${appraiserId||null}, 'pending') RETURNING *`);
+    const appraisalId = (r.rows[0] as any).id;
+    for (const kra of kras || []) {
+      await db.execute(sql`INSERT INTO appraisal_kras (tenant_id, appraisal_id, kra, weightage)
+        VALUES (${tid}, ${appraisalId}, ${kra.kra}, ${kra.weightage||null})`);
+    }
+    res.json(r.rows[0]);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 
 router.put("/appraisals/:id", requireHR, async (req: any, res) => {
-  const tid = req.session?.tenantId;
-  const { selfRating, managerRating, finalRating, strengths, improvements, goals, status, kras } = req.body;
-  const r = await db.execute(sql`UPDATE appraisals SET
-    self_rating=${selfRating||null}, manager_rating=${managerRating||null},
-    final_rating=${finalRating||null}, strengths=${strengths||null},
-    improvements=${improvements||null}, goals=${goals||null}, status=${status||'pending'}
-    WHERE id=${req.params.id} AND tenant_id=${tid} RETURNING *`);
-  if (kras) {
-    for (const k of kras) {
-      if (k.id) {
-        await db.execute(sql`UPDATE appraisal_kras SET self_score=${k.selfScore||null}, manager_score=${k.managerScore||null} WHERE id=${k.id}`);
+  try {
+    const tid = req.session?.tenantId;
+    const { selfRating, managerRating, finalRating, strengths, improvements, goals, status, kras } = req.body;
+    const r = await db.execute(sql`UPDATE appraisals SET
+      self_rating=${selfRating||null}, manager_rating=${managerRating||null},
+      final_rating=${finalRating||null}, strengths=${strengths||null},
+      improvements=${improvements||null}, goals=${goals||null}, status=${status||'pending'}
+      WHERE id=${req.params.id} AND tenant_id=${tid} RETURNING *`);
+    if (kras) {
+      for (const k of kras) {
+        if (k.id) {
+          await db.execute(sql`UPDATE appraisal_kras SET self_score=${k.selfScore||null}, manager_score=${k.managerScore||null} WHERE id=${k.id}`);
+        }
       }
     }
-  }
-  res.json(r.rows[0]);
+    res.json(r.rows[0]);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
