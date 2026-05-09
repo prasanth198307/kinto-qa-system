@@ -818,7 +818,18 @@ export function SettlementSection() {
                 <div className="flex justify-between font-bold border-t pt-1"><span>Net Payable</span><span className="text-green-700">{fmtAmt(form.net_payable)}</span></div>
               </div>
             )}
-            <div className="flex gap-2 justify-end"><Button variant="outline" onClick={() => setShowForm(false)} data-testid="button-settlement-cancel">Cancel</Button><Button onClick={() => saveMut.mutate(form)} disabled={saveMut.isPending} data-testid="button-save-settlement">Record Settlement</Button></div>
+            <div className="flex gap-2 justify-end"><Button variant="outline" onClick={() => setShowForm(false)} data-testid="button-settlement-cancel">Cancel</Button><Button onClick={() => {
+              const issued = Number(form.gold_issued_gm || 0);
+              const received = Number(form.gold_received_gm || 0);
+              const actual_wastage = issued - received;
+              const allowable = issued * Number(form.allowable_wastage_pct || 3) / 100;
+              const excess = Math.max(0, actual_wastage - allowable);
+              const rate = Number(form.gold_rate || 0);
+              const excess_deduction = excess * rate;
+              const wage = Number(form.wage_amount || 0);
+              const net = wage - excess_deduction;
+              saveMut.mutate({ ...form, actual_wastage_gm: actual_wastage.toFixed(3), excess_wastage_gm: excess.toFixed(3), excess_deduction: excess_deduction.toFixed(2), net_payable: net.toFixed(2) });
+            }} disabled={saveMut.isPending} data-testid="button-save-settlement">Record Settlement</Button></div>
           </div>
         </DialogContent>
       </Dialog>
