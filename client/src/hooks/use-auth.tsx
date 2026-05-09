@@ -18,7 +18,7 @@ type AuthContextType = {
 
 type LoginData = { username: string; password: string; tenantSlug?: string };
 
-export const AuthContext = createContext<AuthContextType | null>(null);
+const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();

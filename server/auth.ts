@@ -103,6 +103,22 @@ export function setupAuth(app: Express) {
             [username, tenant.id]
           );
           user = r.rows[0] ?? null;
+
+          // Super-admin fallback: if not found in this tenant, check for a global super-admin.
+          // Super-admins reside in the root tenant (id=1) and can log in at any subdomain.
+          if (!user) {
+            const sr = await pool.query(
+              `SELECT u.*, COALESCE(r.name, u.role) AS role
+               FROM users u
+               LEFT JOIN roles r ON r.id = u.role_id
+               WHERE (LOWER(u.username) = LOWER($1) OR LOWER(u.email) = LOWER($1))
+                 AND u.is_super_admin = true
+               LIMIT 1`,
+              [username]
+            );
+            user = sr.rows[0] ?? null;
+            if (user) console.log(`🔑 Super-admin fallback matched for "${username}" at slug "${tenantSlug}"`);
+          }
         } else {
           // Fallback: global lookup (super-admin or no slug provided)
           const r = await pool.query(
@@ -712,7 +728,9 @@ export function setupAuth(app: Express) {
         if (effectiveStatus === "expired") return res.status(403).json({ message: "Your trial has expired. Please upgrade to continue.", code: "TRIAL_EXPIRED" });
 
         const userTenantId = (user as any).tenantId ?? (user as any).tenant_id ?? 1;
-        if (userTenantId !== tenant.id) {
+        const userIsSuperAdmin = !!(user as any).is_super_admin || !!(user as any).isSuperAdmin;
+        // Super-admins may log in from any tenant subdomain — skip the tenant-mismatch guard
+        if (!userIsSuperAdmin && userTenantId !== tenant.id) {
           console.warn(`⚠️ User ${user.username} (tenant ${userTenantId}) attempted login to tenant ${tenant.id}`);
           return res.status(401).json({ message: "Invalid username or password" });
         }
