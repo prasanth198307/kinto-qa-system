@@ -157,9 +157,10 @@ export default function SuperAdminBilling() {
   const [expandedTenant, setExpandedTenant] = useState<number | null>(null);
   const [invoiceTenantId, setInvoiceTenantId] = useState<number | null>(null);
 
-  const { data: rows = [], isLoading, refetch } = useQuery<SubRow[]>({
+  const { data: rawRows, isLoading, refetch } = useQuery<SubRow[]>({
     queryKey: ["/api/admin/subscriptions"],
   });
+  const rows: SubRow[] = rawRows ?? [];
 
   const { data: invoiceData, isLoading: invoiceLoading } = useQuery<SubscriptionInvoice>({
     queryKey: ["/api/admin/tenants", invoiceTenantId, "subscription-invoice"],
@@ -175,7 +176,7 @@ export default function SuperAdminBilling() {
     queryKey: ["/api/admin/subscription-plans"],
   });
 
-  const { data: billingEvents = [] } = useQuery<BillingEvent[]>({
+  const { data: rawBillingEvents } = useQuery<BillingEvent[]>({
     queryKey: ["/api/admin/billing-events", expandedTenant],
     queryFn: async () => {
       if (expandedTenant === null) return [];
@@ -185,10 +186,12 @@ export default function SuperAdminBilling() {
     },
     enabled: expandedTenant !== null,
   });
+  const billingEvents: BillingEvent[] = rawBillingEvents ?? [];
 
-  const { data: upgradeRequests = [] } = useQuery<UpgradeRequestRow[]>({
+  const { data: rawUpgradeRequests } = useQuery<UpgradeRequestRow[]>({
     queryKey: ["/api/admin/upgrade-requests"],
   });
+  const upgradeRequests: UpgradeRequestRow[] = rawUpgradeRequests ?? [];
 
   const approveUpgradeMutation = useMutation({
     mutationFn: async ({ tenantId, toPlan, billingCycle }: { tenantId: number; toPlan: string; billingCycle: string }) => {

@@ -69,7 +69,10 @@ export const getQueryFn: <T>(options: {
       }
       // Any unexpected 401 = stale/expired session — redirect to login automatically
       handleUnexpected401();
-      return null;
+      // Throw (not return null) so React Query keeps data as undefined,
+      // which lets `data: foo = []` destructuring defaults work correctly.
+      // Returning null would set data=null and break `= []` defaults.
+      throw new Error("Session expired. Please log in again.");
     }
 
     await throwIfResNotOk(res);
