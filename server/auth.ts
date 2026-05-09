@@ -728,7 +728,7 @@ export function setupAuth(app: Express) {
         if (effectiveStatus === "suspended") return res.status(403).json({ message: "Your company account has been suspended. Please contact support.", code: "TENANT_SUSPENDED" });
         if (effectiveStatus === "expired") return res.status(403).json({ message: "Your trial has expired. Please upgrade to continue.", code: "TRIAL_EXPIRED" });
 
-        const userTenantId = (user as any).tenantId ?? 1;
+        const userTenantId = (user as any).tenantId ?? (user as any).tenant_id ?? 1;
         if (userTenantId !== tenant.id) {
           console.warn(`⚠️ User ${user.username} (tenant ${userTenantId}) attempted login to tenant ${tenant.id}`);
           return res.status(401).json({ message: "Invalid username or password" });
@@ -737,7 +737,7 @@ export function setupAuth(app: Express) {
         tenantStatus = effectiveStatus;
       } else {
         // No slug provided — look up tenant plan/status by user's tenantId
-        const userTenantId = (user as any).tenantId ?? 1;
+        const userTenantId = (user as any).tenantId ?? (user as any).tenant_id ?? 1;
         const tenantRow = await db.select({ plan: tenants.plan, status: tenants.status, trialEndsAt: tenants.trialEndsAt }).from(tenants).where(eq(tenants.id, userTenantId)).limit(1);
         tenantPlan = tenantRow[0]?.plan ?? "trial";
         let effectiveStatus = tenantRow[0]?.status ?? "active";
@@ -757,7 +757,7 @@ export function setupAuth(app: Express) {
         const session = req.session as any;
         session.pendingMfaUserId = user.id;
         session.pendingMfaExpiry = Date.now() + 5 * 60 * 1000; // 5-min window
-        session.pendingMfaTenantId = (user as any).tenantId ?? 1;
+        session.pendingMfaTenantId = (user as any).tenantId ?? (user as any).tenant_id ?? 1;
         session.pendingMfaPlan = tenantPlan;
         session.pendingMfaStatus = tenantStatus;
         return req.session.save(() => res.json({ mfaRequired: true }));
@@ -767,7 +767,7 @@ export function setupAuth(app: Express) {
         if (err) return res.status(500).json({ message: "Login failed" });
 
         // Store tenantId, tenantPlan, and tenantStatus in session
-        (req.session as any).tenantId = (user as any).tenantId ?? 1;
+        (req.session as any).tenantId = (user as any).tenantId ?? (user as any).tenant_id ?? 1;
         (req.session as any).tenantPlan = tenantPlan;
         (req.session as any).tenantStatus = tenantStatus;
 
@@ -783,7 +783,7 @@ export function setupAuth(app: Express) {
           res.clearCookie("connect.sid", { domain: ".swacherp.com", path: "/" });
 
           // Log successful login with IP
-          logSecurityEvent(req, "LOGIN_SUCCESS", `User ${user.username} logged in`, "info", String(user.id), (user as any).tenantId);
+          logSecurityEvent(req, "LOGIN_SUCCESS", `User ${user.username} logged in`, "info", String(user.id), (user as any).tenantId ?? (user as any).tenant_id);
 
           console.log(`✅ Session saved — user: ${user.username}, tenant: ${(req.session as any).tenantId}, plan: ${tenantPlan}, status: ${tenantStatus}`);
           return res.json(req.user);
