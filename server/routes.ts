@@ -1177,17 +1177,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const currentUser = req.user as any;
     if (!currentUser?.isSuperAdmin && currentUser?.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    // Use a dedicated client + SET LOCAL to bypass the tenant-isolation RLS policy
+    // (pool connections may carry a leftover app.current_tenant_id from the tenant middleware
+    //  which makes RLS filter to a single tenant and the IS NOT TRUE filter then drops it)
+    const client = await pool.connect();
     try {
-      const rows = await db
-        .select({ subscription: subscriptions, tenant: { id: tenants.id, name: tenants.name, slug: tenants.slug, status: tenants.status }, plan: subscriptionPlans })
-        .from(subscriptions)
-        .leftJoin(tenants, eq(subscriptions.tenantId, tenants.id))
-        .leftJoin(subscriptionPlans, eq(subscriptions.planId, subscriptionPlans.id))
-        .where(sql`${tenants.isInternal} IS NOT TRUE`)
-        .orderBy(desc(subscriptions.id));
+      await client.query('BEGIN');
+      // Clear tenant GUC for this transaction only — RLS passes all rows when NULL
+      await client.query("SELECT set_config('app.current_tenant_id', '', true)");
+      const result = await client.query(`
+        SELECT
+          s.id                    AS sub_id,
+          s.tenant_id,
+          s.plan_id,
+          s.plan_slug,
+          s.billing_cycle,
+          s.status,
+          s.started_at,
+          s.current_period_start,
+          s.current_period_end,
+          s.cancelled_at,
+          s.cancel_reason,
+          s.notes,
+          s.selected_modules,
+          s.monthly_amount,
+          s.updated_at,
+          t.id                    AS t_id,
+          t.name                  AS t_name,
+          t.slug                  AS t_slug,
+          t.status                AS t_status,
+          sp.id                   AS sp_id,
+          sp.name                 AS sp_name,
+          sp.slug                 AS sp_slug,
+          sp.price_monthly        AS sp_price_monthly,
+          sp.price_yearly         AS sp_price_yearly
+        FROM subscriptions s
+        LEFT JOIN tenants            t  ON t.id  = s.tenant_id
+        LEFT JOIN subscription_plans sp ON sp.id = s.plan_id
+        WHERE t.is_internal IS NOT TRUE
+        ORDER BY s.id DESC
+      `);
+      await client.query('COMMIT');
+      console.log(`[ADMIN] GET /api/admin/subscriptions → ${result.rows.length} rows`);
+      const rows = result.rows.map((r: any) => ({
+        subscription: {
+          id:                 r.sub_id,
+          tenantId:           r.tenant_id,
+          planId:             r.plan_id,
+          planSlug:           r.plan_slug,
+          billingCycle:       r.billing_cycle,
+          status:             r.status,
+          startedAt:          r.started_at,
+          currentPeriodStart: r.current_period_start,
+          currentPeriodEnd:   r.current_period_end,
+          cancelledAt:        r.cancelled_at,
+          cancelReason:       r.cancel_reason,
+          notes:              r.notes,
+          selectedModules:    r.selected_modules,
+          monthlyAmount:      r.monthly_amount,
+          updatedAt:          r.updated_at,
+        },
+        tenant: r.t_id ? { id: r.t_id, name: r.t_name, slug: r.t_slug, status: r.t_status } : null,
+        plan:   r.sp_id ? { id: r.sp_id, name: r.sp_name, slug: r.sp_slug, priceMonthly: r.sp_price_monthly, priceYearly: r.sp_price_yearly } : null,
+      }));
       res.json(rows);
     } catch (err) {
+      await client.query('ROLLBACK').catch(() => {});
+      console.error('[ADMIN] GET /api/admin/subscriptions error:', err);
       res.status(500).json({ message: 'Failed to fetch subscriptions' });
+    } finally {
+      client.release();
     }
   });
 
@@ -1374,37 +1433,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const currentUser = req.user as any;
     if (!currentUser?.isSuperAdmin) return res.status(403).json({ message: 'Super-admin only' });
+    const client = await pool.connect();
     try {
-      // Get all active subscriptions with their plan prices — exclude the super-admin (Kinto) tenant
-      const activeSubs = await db
-        .select({
-          billingCycle: subscriptions.billingCycle,
-          priceMonthly: subscriptionPlans.priceMonthly,
-          priceYearly: subscriptionPlans.priceYearly,
-          planSlug: subscriptions.planSlug,
-        })
-        .from(subscriptions)
-        .leftJoin(subscriptionPlans, eq(subscriptions.planId, subscriptionPlans.id))
-        .leftJoin(tenants, eq(subscriptions.tenantId, tenants.id))
-        .where(and(
-          eq(subscriptions.status, 'active'),
-          ne(subscriptions.planSlug, 'trial'),
-          sql`${tenants.isInternal} IS NOT TRUE`,
-        ));
+      await client.query('BEGIN');
+      await client.query("SELECT set_config('app.current_tenant_id', '', true)");
+      const { rows: activeSubs } = await client.query(`
+        SELECT s.billing_cycle, s.plan_slug, sp.price_monthly, sp.price_yearly
+        FROM subscriptions s
+        LEFT JOIN subscription_plans sp ON sp.id = s.plan_id
+        LEFT JOIN tenants t ON t.id = s.tenant_id
+        WHERE s.status = 'active'
+          AND s.plan_slug <> 'trial'
+          AND t.is_internal IS NOT TRUE
+      `);
+      await client.query('COMMIT');
 
       let mrr = 0;
       for (const sub of activeSubs) {
-        if (sub.billingCycle === 'yearly' && sub.priceYearly) {
-          mrr += sub.priceYearly / 12;
-        } else if (sub.priceMonthly) {
-          mrr += sub.priceMonthly;
+        if (sub.billing_cycle === 'yearly' && sub.price_yearly) {
+          mrr += Number(sub.price_yearly) / 12;
+        } else if (sub.price_monthly) {
+          mrr += Number(sub.price_monthly);
         }
       }
 
       // Plan breakdown
       const planCounts: Record<string, number> = {};
       for (const sub of activeSubs) {
-        planCounts[sub.planSlug ?? 'unknown'] = (planCounts[sub.planSlug ?? 'unknown'] || 0) + 1;
+        const slug = sub.plan_slug ?? 'unknown';
+        planCounts[slug] = (planCounts[slug] || 0) + 1;
       }
 
       res.json({
@@ -1414,7 +1471,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         planCounts,
       });
     } catch (err) {
+      await client.query('ROLLBACK').catch(() => {});
+      console.error('[ADMIN] GET /api/admin/revenue-summary error:', err);
       res.status(500).json({ message: 'Failed to fetch revenue summary' });
+    } finally {
+      client.release();
     }
   });
 

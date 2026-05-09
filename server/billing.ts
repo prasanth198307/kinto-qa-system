@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import crypto from "crypto";
-import { db } from "./db";
+import { db, pool } from "./db";
 import { tenants, subscriptions, subscriptionPlans, billingEvents } from "@shared/schema";
 import { eq, sql } from "drizzle-orm";
 import { invalidateTenantModuleCache } from "./plan-middleware";
@@ -671,21 +671,25 @@ export function registerBillingRoutes(app: Express): void {
     if (!(req.user as any)?.isSuperAdmin) return res.sendStatus(403);
     const tenantId = parseInt(req.params.id);
     if (isNaN(tenantId)) return res.status(400).json({ message: "Invalid tenant id" });
+    const client = await pool.connect();
     try {
+      await client.query('BEGIN');
+      await client.query("SELECT set_config('app.current_tenant_id', '', true)");
       const [subRows, catalog] = await Promise.all([
-        db.execute(sql`
+        client.query(`
           SELECT s.selected_modules, s.monthly_amount,
                  COALESCE(s.plan_slug, t.plan) AS plan_slug,
                  s.status, sp.modules AS plan_modules
           FROM tenants t
           LEFT JOIN subscriptions s       ON s.tenant_id = t.id
           LEFT JOIN subscription_plans sp ON sp.slug = COALESCE(s.plan_slug, t.plan)
-          WHERE t.id = ${tenantId}
+          WHERE t.id = $1
           LIMIT 1
-        `),
+        `, [tenantId]),
         loadCatalogFromDB(),
       ]);
-      const row = (subRows.rows as any[])[0];
+      await client.query('COMMIT');
+      const row = subRows.rows[0];
       const freeModules    = catalog.filter(m => m.free).map(m => m.slug);
       const catalogSlugSet = new Set(catalog.map(m => m.slug));
       const rawPlanMods: string[] = Array.isArray(row?.plan_modules) ? row.plan_modules : [];
@@ -705,7 +709,10 @@ export function registerBillingRoutes(app: Express): void {
         freeModules,
       });
     } catch (err: any) {
+      await client.query('ROLLBACK').catch(() => {});
       res.status(500).json({ message: err.message });
+    } finally {
+      client.release();
     }
   });
 
@@ -719,20 +726,23 @@ export function registerBillingRoutes(app: Express): void {
     if (!Array.isArray(selectedModules)) {
       return res.status(400).json({ message: "selectedModules must be an array of slugs" });
     }
+    const client = await pool.connect();
     try {
+      await client.query('BEGIN');
+      await client.query("SELECT set_config('app.current_tenant_id', '', true)");
       const [catalog, planRows] = await Promise.all([
         loadCatalogFromDB(),
-        db.execute(sql`
+        client.query(`
           SELECT sp.modules AS plan_modules
           FROM tenants t
           LEFT JOIN subscriptions s       ON s.tenant_id = t.id
           LEFT JOIN subscription_plans sp ON sp.slug = COALESCE(s.plan_slug, t.plan)
-          WHERE t.id = ${tenantId} LIMIT 1
-        `),
+          WHERE t.id = $1 LIMIT 1
+        `, [tenantId]),
       ]);
       const catalogSlugSet = new Set(catalog.map(m => m.slug));
-      const rawPlanMods: string[] = Array.isArray((planRows.rows as any[])[0]?.plan_modules)
-        ? (planRows.rows as any[])[0].plan_modules : [];
+      const rawPlanMods: string[] = Array.isArray(planRows.rows[0]?.plan_modules)
+        ? planRows.rows[0].plan_modules : [];
       const planSet  = new Set(planModulesToCatalogSlugs(rawPlanMods, catalogSlugSet));
       const freeSet  = new Set(catalog.filter(m => m.free).map(m => m.slug));
       const priceMap = new Map(catalog.map(m => [m.slug, m.priceMonthly]));
@@ -745,26 +755,27 @@ export function registerBillingRoutes(app: Express): void {
         .filter(s => !freeSet.has(s) && !planSet.has(s))
         .reduce((sum, s) => sum + (priceMap.get(s) ?? 0), 0);
 
-      await db.execute(sql`
-        UPDATE subscriptions
-        SET selected_modules = ${JSON.stringify(merged)}::jsonb,
-            monthly_amount   = ${monthly},
-            updated_at       = NOW()
-        WHERE tenant_id = ${tenantId}
-      `);
-      await db.execute(sql`
-        INSERT INTO billing_events (tenant_id, event_type, from_plan, to_plan, billing_cycle, amount, currency, notes, created_by)
-        VALUES (
-          ${tenantId}, 'modules_updated', NULL, NULL, 'monthly', ${monthly}, 'INR',
-          ${'Super-admin updated modules — ' + merged.filter(s => !freeSet.has(s) && !planSet.has(s)).length + ' add-on modules, ₹' + monthly + '/mo'},
-          ${(req.user as any)?.username ?? 'super-admin'}
-        )
-      `);
+      await client.query(
+        `UPDATE subscriptions
+         SET selected_modules = $1::jsonb, monthly_amount = $2, updated_at = NOW()
+         WHERE tenant_id = $3`,
+        [JSON.stringify(merged), monthly, tenantId]
+      );
+      const notesMsg = `Super-admin updated modules — ${merged.filter(s => !freeSet.has(s) && !planSet.has(s)).length} add-on modules, ₹${monthly}/mo`;
+      await client.query(
+        `INSERT INTO billing_events (tenant_id, event_type, from_plan, to_plan, billing_cycle, amount, currency, notes, created_by)
+         VALUES ($1, 'modules_updated', NULL, NULL, 'monthly', $2, 'INR', $3, $4)`,
+        [tenantId, monthly, notesMsg, (req.user as any)?.username ?? 'super-admin']
+      );
+      await client.query('COMMIT');
       // Immediately evict the plan-middleware cache so the change takes effect on the next request
       invalidateTenantModuleCache(tenantId);
       res.json({ success: true, selectedModules: merged, monthlyAmount: monthly });
     } catch (err: any) {
+      await client.query('ROLLBACK').catch(() => {});
       res.status(500).json({ message: err.message });
+    } finally {
+      client.release();
     }
   });
 

@@ -1,0 +1,94 @@
+index-CcO8ovK5.js:8  GET https://kinto-admin.swacherp.com/api/user 401 (Unauthorized)
+(anonymous) @ index-CcO8ovK5.js:8
+r @ index-CcO8ovK5.js:8
+v @ index-CcO8ovK5.js:8
+start @ index-CcO8ovK5.js:8
+fetch @ index-CcO8ovK5.js:8
+#u @ index-CcO8ovK5.js:8
+onSubscribe @ index-CcO8ovK5.js:8
+subscribe @ index-CcO8ovK5.js:8
+(anonymous) @ index-CcO8ovK5.js:8
+a5 @ index-CcO8ovK5.js:6
+ab @ index-CcO8ovK5.js:8
+Wx @ index-CcO8ovK5.js:8
+eO @ index-CcO8ovK5.js:8
+Qu @ index-CcO8ovK5.js:6
+Ise @ index-CcO8ovK5.js:8
+hh @ index-CcO8ovK5.js:8
+Z5 @ index-CcO8ovK5.js:8
+S @ index-CcO8ovK5.js:1
+I @ index-CcO8ovK5.js:1
+postMessage
+q @ index-CcO8ovK5.js:1
+W @ index-CcO8ovK5.js:1
+Hse.t.unstable_scheduleCallback @ index-CcO8ovK5.js:1
+oO @ index-CcO8ovK5.js:8
+Bl @ index-CcO8ovK5.js:8
+bc @ index-CcO8ovK5.js:8
+xb @ index-CcO8ovK5.js:8
+Xse.gb.render.GC.render @ index-CcO8ovK5.js:8
+(anonymous) @ index-CcO8ovK5.js:5946Understand this error
+5index-CcO8ovK5.js:52 Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ index-CcO8ovK5.js:52
+ab @ index-CcO8ovK5.js:8
+Wx @ index-CcO8ovK5.js:8
+Ise @ index-CcO8ovK5.js:8
+hh @ index-CcO8ovK5.js:8
+eO @ index-CcO8ovK5.js:8
+Qu @ index-CcO8ovK5.js:6
+(anonymous) @ index-CcO8ovK5.js:8Understand this warning
+index-CcO8ovK5.js:8  GET https://kinto-admin.swacherp.com/api/admin/subscription-plans 403 (Forbidden)
+(anonymous) @ index-CcO8ovK5.js:8
+r @ index-CcO8ovK5.js:8
+v @ index-CcO8ovK5.js:8
+start @ index-CcO8ovK5.js:8
+fetch @ index-CcO8ovK5.js:8
+#u @ index-CcO8ovK5.js:8
+onSubscribe @ index-CcO8ovK5.js:8
+subscribe @ index-CcO8ovK5.js:8
+(anonymous) @ index-CcO8ovK5.js:8
+a5 @ index-CcO8ovK5.js:6
+ab @ index-CcO8ovK5.js:8
+Wx @ index-CcO8ovK5.js:8
+Ise @ index-CcO8ovK5.js:8
+hh @ index-CcO8ovK5.js:8
+eO @ index-CcO8ovK5.js:8
+Qu @ index-CcO8ovK5.js:6
+(anonymous) @ index-CcO8ovK5.js:8Understand this error
+index-CcO8ovK5.js:8  GET https://kinto-admin.swacherp.com/api/admin/subscription-plans 403 (Forbidden)
+(anonymous) @ index-CcO8ovK5.js:8
+r @ index-CcO8ovK5.js:8
+v @ index-CcO8ovK5.js:8
+start @ index-CcO8ovK5.js:8
+fetch @ index-CcO8ovK5.js:8
+#u @ index-CcO8ovK5.js:8
+onSubscribe @ index-CcO8ovK5.js:8
+subscribe @ index-CcO8ovK5.js:8
+(anonymous) @ index-CcO8ovK5.js:8
+a5 @ index-CcO8ovK5.js:6
+ab @ index-CcO8ovK5.js:8
+Wx @ index-CcO8ovK5.js:8
+Ise @ index-CcO8ovK5.js:8
+hh @ index-CcO8ovK5.js:8
+eO @ index-CcO8ovK5.js:8
+Qu @ index-CcO8ovK5.js:6
+(anonymous) @ index-CcO8ovK5.js:8Understand this error
+index-CcO8ovK5.js:8  GET https://kinto-admin.swacherp.com/api/admin/subscriptions 401 (Unauthorized)
+(anonymous) @ index-CcO8ovK5.js:8
+r @ index-CcO8ovK5.js:8
+v @ index-CcO8ovK5.js:8
+start @ index-CcO8ovK5.js:8
+fetch @ index-CcO8ovK5.js:8
+#u @ index-CcO8ovK5.js:8
+onSubscribe @ index-CcO8ovK5.js:8
+subscribe @ index-CcO8ovK5.js:8
+(anonymous) @ index-CcO8ovK5.js:8
+a5 @ index-CcO8ovK5.js:6
+ab @ index-CcO8ovK5.js:8
+Wx @ index-CcO8ovK5.js:8
+Ise @ index-CcO8ovK5.js:8
+hh @ index-CcO8ovK5.js:8
+eO @ index-CcO8ovK5.js:8
+Qu @ index-CcO8ovK5.js:6
+(anonymous) @ index-CcO8ovK5.js:8Understand this error
+index-CcO8ovK5.js:8  GET https://kinto-admin.swacherp.com/api/admin/upgrade-requests 401 (Unauthorized)
