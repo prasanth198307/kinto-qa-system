@@ -359,7 +359,7 @@ router.get("/audit-log", requireAuth, async (req: any, res) => {
     const { entityType, entity_type, entityId, entity_id, action, limit } = req.query as any;
     const et = entityType || entity_type;
     const eid = entityId || entity_id;
-    let q = sql`SELECT al.*, u.full_name as performed_by_name FROM audit_logs al LEFT JOIN users u ON u.id::text=al.user_id WHERE (al.tenant_id=${tid(req)} OR al.tenant_id IS NULL)`;
+    let q = sql`SELECT al.*, CONCAT(u.first_name, ' ', u.last_name) as performed_by_name FROM audit_logs al LEFT JOIN users u ON u.id::text=al.user_id WHERE (al.tenant_id=${tid(req)} OR al.tenant_id IS NULL)`;
     if (et) q = sql`${q} AND al.table_name=${et}`;
     if (eid) q = sql`${q} AND al.record_id=${eid}`;
     if (action) q = sql`${q} AND al.action=${action}`;
