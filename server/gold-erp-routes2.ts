@@ -529,13 +529,16 @@ router.get("/counter-bookings", requireAuth, async (req: any, res) => {
 router.post("/counter-bookings", requireAuth, async (req: any, res) => {
   try {
     const { customer_name, customer_phone, booking_type, urgency, description, design_ref,
-            advance_collected, expected_ready, counter_staff } = req.body;
+            advance_collected, expected_ready, counter_staff,
+            item_weight, gold_rate_today, item_description } = req.body;
     const no = "CB-" + seq();
     const row = await db.execute(sql`
       INSERT INTO jw_counter_bookings (tenant_id, booking_no, customer_name, customer_phone, booking_type, urgency,
-        description, design_ref, advance_collected, expected_ready, counter_staff)
+        description, design_ref, advance_collected, expected_ready, counter_staff,
+        item_weight, gold_rate_today, item_description)
       VALUES (${tid(req)}, ${no}, ${customer_name}, ${customer_phone}, ${booking_type}, ${urgency||'normal'},
-        ${description||null}, ${design_ref||null}, ${advance_collected||0}, ${expected_ready||null}, ${counter_staff||null})
+        ${description||null}, ${design_ref||null}, ${advance_collected||0}, ${expected_ready||null}, ${counter_staff||null},
+        ${item_weight||null}, ${gold_rate_today||null}, ${item_description||null})
       RETURNING *`);
     res.json(row.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -543,10 +546,21 @@ router.post("/counter-bookings", requireAuth, async (req: any, res) => {
 
 router.put("/counter-bookings/:id", requireAuth, async (req: any, res) => {
   try {
-    const { status, assigned_to, reminder_sent, notes } = req.body;
+    const { status, assigned_to, reminder_sent, notes, customer_name, customer_phone,
+            booking_type, urgency, description, design_ref, advance_collected,
+            expected_ready, counter_staff, item_weight, gold_rate_today, item_description } = req.body;
     const row = await db.execute(sql`
       UPDATE jw_counter_bookings SET status=${status||'booked'}, assigned_to=${assigned_to||null},
-        reminder_sent=${reminder_sent||0}, notes=${notes||null}
+        reminder_sent=${reminder_sent||0}, notes=${notes||null},
+        customer_name=COALESCE(${customer_name||null}, customer_name),
+        customer_phone=COALESCE(${customer_phone||null}, customer_phone),
+        booking_type=COALESCE(${booking_type||null}, booking_type),
+        urgency=COALESCE(${urgency||null}, urgency),
+        description=${description||null}, design_ref=${design_ref||null},
+        advance_collected=COALESCE(${advance_collected||null}, advance_collected),
+        expected_ready=${expected_ready||null}, counter_staff=${counter_staff||null},
+        item_weight=${item_weight||null}, gold_rate_today=${gold_rate_today||null},
+        item_description=${item_description||null}
       WHERE id=${req.params.id} AND tenant_id=${tid(req)} RETURNING *`);
     res.json(row.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }

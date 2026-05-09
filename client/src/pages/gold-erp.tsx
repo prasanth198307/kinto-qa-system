@@ -926,6 +926,10 @@ function RepairsSection() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({ metal_type: "gold", issue_date: today() });
+  const [showInvoice, setShowInvoice] = useState(false);
+  const [invoiceRepair, setInvoiceRepair] = useState<any>(null);
+  const [goldRate, setGoldRate] = useState<number>(6820);
+  const [goldAdded, setGoldAdded] = useState<number>(0);
   const { data: repairs = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/repairs"] });
   const { data: karigars = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/karigars"] });
 
@@ -961,7 +965,14 @@ function RepairsSection() {
                 <td className="px-4 py-2 font-semibold">{fmtAmt(r.repair_charges)}</td>
                 <td className="px-4 py-2"><StatusBadge status={r.status} /></td>
                 <td className="px-4 py-2 text-xs text-muted-foreground">{r.expected_delivery?.slice(0, 10) || "—"}</td>
-                <td className="px-4 py-2"><Button size="icon" variant="ghost" onClick={() => { setEditing(r); setForm(r); setShowForm(true); }}><Pencil className="h-4 w-4" /></Button></td>
+                <td className="px-4 py-2">
+                  <div className="flex items-center gap-1">
+                    <Button size="icon" variant="ghost" onClick={() => { setEditing(r); setForm(r); setShowForm(true); }}><Pencil className="h-4 w-4" /></Button>
+                    {r.status === "completed" && (
+                      <Button size="sm" variant="outline" className="text-xs h-7 px-2" onClick={() => { setInvoiceRepair(r); setShowInvoice(true); }}>Generate Invoice</Button>
+                    )}
+                  </div>
+                </td>
               </tr>
             ))}
             {filtered.length === 0 && <tr><td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">No repairs found</td></tr>}
@@ -1004,6 +1015,58 @@ function RepairsSection() {
               <Button onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isPending}>Save</Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Generate Invoice Dialog for completed repairs */}
+      <Dialog open={showInvoice} onOpenChange={v => { setShowInvoice(v); if (!v) { setInvoiceRepair(null); setGoldAdded(0); } }}>
+        <DialogContent className="max-w-md max-h-[90dvh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Generate Repair Invoice</DialogTitle></DialogHeader>
+          {invoiceRepair && (() => {
+            const repairCharges = parseFloat(invoiceRepair.repair_charges || 0);
+            const goldValue = goldAdded * goldRate;
+            const gstOnMaking = repairCharges * 0.05;
+            const total = repairCharges + goldValue + gstOnMaking;
+            return (
+              <div className="space-y-4">
+                <div className="rounded-md bg-muted/50 p-3 text-sm space-y-1">
+                  <p><span className="text-muted-foreground">Repair No:</span> <strong>{invoiceRepair.repair_no}</strong></p>
+                  <p><span className="text-muted-foreground">Customer:</span> {invoiceRepair.customer_name}</p>
+                  <p><span className="text-muted-foreground">Item:</span> {invoiceRepair.item_description?.slice(0, 60)}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <FieldRow label="Gold Added (gm)">
+                    <input type="number" step="0.001" className="w-full rounded-md border px-3 py-1.5 text-sm" value={goldAdded} onChange={e => setGoldAdded(parseFloat(e.target.value) || 0)} />
+                  </FieldRow>
+                  <FieldRow label="Gold Rate (₹/gm)">
+                    <input type="number" className="w-full rounded-md border px-3 py-1.5 text-sm" value={goldRate} onChange={e => setGoldRate(parseFloat(e.target.value) || 0)} />
+                  </FieldRow>
+                </div>
+                <div className="rounded-md border p-3 space-y-2 text-sm">
+                  <div className="flex justify-between"><span>Repair Charges</span><span>{fmtAmt(repairCharges)}</span></div>
+                  <div className="flex justify-between"><span>Gold Addition ({goldAdded} gm × ₹{goldRate})</span><span>{fmtAmt(goldValue)}</span></div>
+                  <div className="flex justify-between"><span>GST on Making (5%)</span><span>{fmtAmt(gstOnMaking)}</span></div>
+                  <div className="flex justify-between font-semibold border-t pt-2"><span>Total</span><span>{fmtAmt(total)}</span></div>
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <Button variant="outline" onClick={() => setShowInvoice(false)}>Cancel</Button>
+                  <Button onClick={() => {
+                    apiRequest("POST", `/api/gold-erp/repairs/${invoiceRepair.id}/invoice`, {
+                      gold_added_gm: goldAdded,
+                      gold_rate: goldRate,
+                      repair_charges: repairCharges,
+                      gold_value: goldValue,
+                      gst_amount: gstOnMaking,
+                      total_amount: total,
+                    }).then(() => {
+                      toast({ title: "Invoice created", description: `₹${total.toFixed(2)} for ${invoiceRepair.customer_name}` });
+                      setShowInvoice(false); setInvoiceRepair(null); setGoldAdded(0);
+                    }).catch((e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }));
+                  }}>Save Invoice</Button>
+                </div>
+              </div>
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </>

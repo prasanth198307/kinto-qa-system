@@ -115,12 +115,15 @@ export function CounterBookingsSection() {
                   <SelectContent><SelectItem value="normal">Normal</SelectItem><SelectItem value="priority">Priority</SelectItem><SelectItem value="urgent">Urgent</SelectItem></SelectContent>
                 </Select>
               </FL>
+              <FL label="Item Weight (gm)"><Input type="number" step="0.001" placeholder="0.000" value={form.item_weight || ""} onChange={e => set("item_weight", e.target.value)} /></FL>
+              <FL label="Today's Rate (₹/gm)"><Input type="number" step="0.01" placeholder="0.00" value={form.gold_rate_today || ""} onChange={e => set("gold_rate_today", e.target.value)} /></FL>
               <FL label="Advance Collected (₹)"><Input type="number" value={form.advance_collected || ""} onChange={e => set("advance_collected", e.target.value)} /></FL>
               <FL label="Expected Ready"><Input type="date" value={form.expected_ready || ""} onChange={e => set("expected_ready", e.target.value)} /></FL>
               <FL label="Counter Staff"><Input value={form.counter_staff || ""} onChange={e => set("counter_staff", e.target.value)} /></FL>
               <FL label="Design Ref"><Input value={form.design_ref || ""} onChange={e => set("design_ref", e.target.value)} /></FL>
             </div>
-            <FL label="Description"><Textarea value={form.description || ""} onChange={e => set("description", e.target.value)} rows={2} /></FL>
+            <FL label="Item Description"><Textarea value={form.item_description || ""} onChange={e => set("item_description", e.target.value)} rows={2} /></FL>
+            <FL label="Description / Notes"><Textarea value={form.description || ""} onChange={e => set("description", e.target.value)} rows={2} /></FL>
             {editing && <FL label="Status">
               <Select value={form.status || "booked"} onValueChange={v => set("status", v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>

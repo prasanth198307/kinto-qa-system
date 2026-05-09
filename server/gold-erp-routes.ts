@@ -505,6 +505,27 @@ router.delete("/repairs/:id", requireAuth, async (req: any, res) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
+// Generate a repair invoice (stores in jw_repair_invoices)
+router.post("/repairs/:id/invoice", requireAuth, async (req: any, res) => {
+  try {
+    const { gold_added_gm, gold_rate, repair_charges, gold_value, gst_amount, total_amount } = req.body;
+    const repair = await db.execute(sql`SELECT * FROM jw_repairs WHERE id=${req.params.id} AND tenant_id=${tid(req)}`);
+    const r = repair.rows[0] as any;
+    if (!r) return res.status(404).json({ error: "Repair not found" });
+    const inv_no = "RINV-" + seq();
+    const row = await db.execute(sql`
+      INSERT INTO jw_repair_invoices (tenant_id, invoice_no, repair_id, repair_no, customer_name, customer_phone,
+        item_description, repair_charges, gold_added_gm, gold_rate, gold_value, gst_amount, total_amount, status)
+      VALUES (${tid(req)}, ${inv_no}, ${r.id}, ${r.repair_no}, ${r.customer_name}, ${r.customer_phone||null},
+        ${r.item_description||null}, ${repair_charges||0}, ${gold_added_gm||0}, ${gold_rate||0},
+        ${gold_value||0}, ${gst_amount||0}, ${total_amount||0}, 'unpaid')
+      RETURNING *`);
+    goldAudit(req, 'CREATE', 'jw_repair_invoices', String(row.rows[0] && (row.rows[0] as any).id),
+      `Repair invoice ${inv_no} for ${r.repair_no}`);
+    res.json(row.rows[0]);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
 // ── Hallmarking ───────────────────────────────────────────────────────────────
 router.get("/hallmarking", requireAuth, async (req: any, res) => {
   try {
