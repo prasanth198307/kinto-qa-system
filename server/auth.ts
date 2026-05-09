@@ -93,7 +93,10 @@ export function setupAuth(app: Express) {
         if (tenantSlug) {
           // Preferred path: scope lookup to the specific tenant
           const tenant = await lookupTenantBySlug(tenantSlug);
-          if (!tenant) return done(null, false);
+          if (!tenant) {
+            console.warn(`❌ LOGIN FAIL — tenant slug not found: "${tenantSlug}"`);
+            return done(null, false);
+          }
           const r = await pool.query(
             `SELECT u.*, COALESCE(r.name, u.role) AS role
              FROM users u
@@ -103,6 +106,7 @@ export function setupAuth(app: Express) {
             [username, tenant.id]
           );
           user = r.rows[0] ?? null;
+          if (!user) console.warn(`❌ LOGIN FAIL — user "${username}" not found in tenant ${tenant.id} (${tenantSlug})`);
 
           // Super-admin fallback: if not found in this tenant, check for a global super-admin.
           // Super-admins reside in the root tenant (id=1) and can log in at any subdomain.
@@ -118,6 +122,7 @@ export function setupAuth(app: Express) {
             );
             user = sr.rows[0] ?? null;
             if (user) console.log(`🔑 Super-admin fallback matched for "${username}" at slug "${tenantSlug}"`);
+            else console.warn(`❌ LOGIN FAIL — no super-admin found globally for "${username}"`);
           }
         } else {
           // Fallback: global lookup (super-admin or no slug provided)
@@ -131,9 +136,13 @@ export function setupAuth(app: Express) {
             [username]
           );
           user = r.rows[0] ?? null;
+          if (!user) console.warn(`❌ LOGIN FAIL — user "${username}" not found globally (no tenantSlug)`);
         }
 
-        if (!user || !user.password) return done(null, false);
+        if (!user || !user.password) {
+          if (user && !user.password) console.warn(`❌ LOGIN FAIL — user "${username}" has no password set`);
+          return done(null, false);
+        }
 
         // ── Account lockout check ──────────────────────────────────────────
         if (isAccountLocked(user.lockedUntil ?? null)) {

@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Redirect, useLocation } from "wouter";
-import { Loader2, Lock, Mail, Building2, ArrowLeft, AlertCircle } from "lucide-react";
+import { Loader2, Lock, Mail, Building2, ArrowLeft, AlertCircle, Pencil } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -25,8 +25,11 @@ export default function AuthPage() {
   const [sessionExpired, setSessionExpired] = useState(false);
   const [tenantLogoUrl, setTenantLogoUrl] = useState<string | null>(null);
   const [tenantDisplayName, setTenantDisplayName] = useState<string | null>(null);
-  // true when slug was auto-detected from the custom domain OR passed via ?tenant= — hide Company ID field
+  // true when slug was auto-detected from a custom domain OR passed via ?tenant=
+  // When true we hide the Company ID field — but the user can click "Change" to override
   const [slugAutoDetected, setSlugAutoDetected] = useState(!!prefilledSlug);
+  // tracks whether the user has manually edited the slug field
+  const hasUserTypedSlugRef = useRef(false);
 
   useEffect(() => {
     if (sessionStorage.getItem("session_expired") === "1") {
@@ -41,8 +44,10 @@ export default function AuthPage() {
         if (!data) return;
         if (data.logoUrl) setTenantLogoUrl(data.logoUrl);
         if (data.name) setTenantDisplayName(data.name);
-        // Auto-fill slug from the detected tenant — user doesn't need to type it
-        if (data.slug) {
+        // Only auto-fill slug if the user hasn't already typed one themselves.
+        // This prevents the branding detection from silently overriding a slug
+        // that the user typed (or that came from a ?tenant= URL param).
+        if (data.slug && !hasUserTypedSlugRef.current && !prefilledSlug) {
           setCompanySlug(data.slug);
           setSlugAutoDetected(true);
         }
@@ -133,8 +138,33 @@ export default function AuthPage() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4" data-testid="form-login">
-                {/* Company ID — hidden when slug is auto-detected from the custom domain */}
-                {!slugAutoDetected && (
+                {/* Company ID — visible unless slug was locked in via custom domain / URL param */}
+                {slugAutoDetected ? (
+                  /* Auto-detected: show the company name with a "Change" escape hatch */
+                  <div className="flex items-center justify-between rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
+                    <span className="flex items-center gap-2 text-muted-foreground">
+                      <Building2 className="h-4 w-4 shrink-0" />
+                      <span>
+                        Company: <span className="font-medium text-foreground">{tenantDisplayName || companySlug}</span>
+                        {tenantDisplayName && companySlug && (
+                          <span className="ml-1 text-muted-foreground">({companySlug})</span>
+                        )}
+                      </span>
+                    </span>
+                    {/* Allow switching to manual entry — critical for admins logging into a different tenant */}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto p-0 text-xs text-muted-foreground hover:text-foreground"
+                      data-testid="button-change-company"
+                      onClick={() => { setSlugAutoDetected(false); hasUserTypedSlugRef.current = true; }}
+                    >
+                      <Pencil className="mr-1 h-3 w-3" />
+                      Change
+                    </Button>
+                  </div>
+                ) : (
                   <div className="space-y-2">
                     <Label htmlFor="company-slug">Company ID</Label>
                     <div className="relative">
@@ -146,7 +176,10 @@ export default function AuthPage() {
                         placeholder="e.g. acme-manufacturing"
                         className="pl-10"
                         value={companySlug}
-                        onChange={(e) => setCompanySlug(e.target.value)}
+                        onChange={(e) => {
+                          hasUserTypedSlugRef.current = true;
+                          setCompanySlug(e.target.value);
+                        }}
                         autoComplete="organization"
                         autoFocus
                         required
