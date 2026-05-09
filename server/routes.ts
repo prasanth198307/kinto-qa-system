@@ -29079,7 +29079,12 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
 
   // ─── Admin: Get module marketplace data for a specific tenant ────────────
   app.get('/api/admin/tenants/:tenantId/modules', async (req: any, res) => {
-    if (!req.isAuthenticated() || !req.user?.isSuperAdmin) return res.status(403).json({ message: 'Super-admin only' });
+    const authUser = req.user as any;
+    console.log(`[ADMIN-MODULES] hit — authenticated=${req.isAuthenticated()}, userId=${authUser?.id}, isSuperAdmin=${authUser?.isSuperAdmin}, tenantParam=${req.params.tenantId}`);
+    if (!req.isAuthenticated() || !authUser?.isSuperAdmin) {
+      console.log(`[ADMIN-MODULES] BLOCKED — returning 403`);
+      return res.status(403).json({ message: 'Super-admin only' });
+    }
     const tenantId = parseInt(req.params.tenantId);
     if (isNaN(tenantId)) return res.status(400).json({ message: 'Invalid tenant ID' });
     try {

@@ -1,0 +1,21 @@
+May 09 16:02:54 iplvnic1 npm[1533589]: [NEW_SCREEN_KEYS MIGRATION] purchase_returns / tds_management rows ensured
+May 09 16:02:54 iplvnic1 npm[1533589]: [API_KEYS MIGRATION] api_keys rows ensured for all roles
+May 09 16:02:54 iplvnic1 npm[1533589]: [COA CONSTRAINT MIGRATION] chart_of_accounts constraint OK (code, tenant_id)
+May 09 16:02:54 iplvnic1 npm[1533589]: [SUBSCRIPTIONS MIGRATION] subscriptions(tenant_id) unique constraint OK
+May 09 16:02:54 iplvnic1 npm[1533589]: [SUBSCRIPTIONS MODULE MIGRATION] selected_modules + monthly_amount columns OK
+May 09 16:02:54 iplvnic1 npm[1533589]: [MIGRATION] tenant_module_labels OK
+May 09 16:02:54 iplvnic1 npm[1533589]: [MIGRATION] custom_field_definitions + values OK
+May 09 16:02:54 iplvnic1 npm[1533589]: [MIGRATION] purchase_requisitions OK
+May 09 16:02:54 iplvnic1 npm[1533589]: [MIGRATION] purchase_requisition_items OK
+May 09 16:02:54 iplvnic1 npm[1533589]: [MIGRATION] goods_receipt_notes + grn_items OK
+May 09 16:02:54 iplvnic1 npm[1533589]: [MIGRATION] vendors.credit_limit + payment_terms_days OK
+May 09 16:02:54 iplvnic1 npm[1533589]: [MIGRATION] expense_vouchers + journal_lines columns OK
+May 09 16:02:54 iplvnic1 npm[1533589]: [MIGRATION] approval_rules + approval_requests + cost_centres OK
+May 09 16:02:54 iplvnic1 npm[1533589]: [MIGRATION] hr_expense_claims + recurring_invoice_schedules OK
+May 09 16:02:54 iplvnic1 npm[1533589]: [MIGRATION] warehouses + uom + serial_lot + stock_transfers OK
+May 09 16:02:54 iplvnic1 npm[1533589]: [MIGRATION] projects + boq + milestones + timesheets OK
+May 09 16:02:54 iplvnic1 npm[1533589]: [MIGRATION] fixed_assets + appraisals + currencies + exchange_rates OK
+May 09 16:02:54 iplvnic1 npm[1533589]: [PHASE 1-5 MIGRATION] All sections attempted — check individual lines above for status
+May 09 16:02:54 iplvnic1 npm[1533589]: [PLATFORM SETTINGS MIGRATION] platform_settings table OK
+May 09 16:02:54 iplvnic1 npm[1533589]: [ROLE_PERMS MIGRATION] role_permissions(role_id, screen_key) unique constraint OK
+May 09 16:02:54 iplvnic1 npm[1533589]: [GOLD_ERP_ROLE_PERMS] tenant 17: inserted=0 unlocked=0 skipped=137
