@@ -259,6 +259,23 @@ export const ALL_ADMIN_SCREEN_KEYS = [
   'chart_of_accounts','account_subtypes','journal_entries','manual_journal_entry',
   'trial_balance','profit_loss','balance_sheet','ledger_view','day_book',
   'aging_report','cash_flow_statement','group_summary','budget_variance','bank_transactions',
+  'banks','cost_centres','debit_notes','gst_reports','tds_management',
+  // HR extras
+  'hr_appraisals','hr_expense_claims',
+  // Purchase extras
+  'purchase_requisitions','goods_receipt_notes','approval_workflows',
+  // Inventory / Warehouse extras
+  'price_lists','warehouses','stock_transfers','serial_lot_register',
+  // Production extras
+  'production_reconciliation',
+  // Maintenance extras
+  'maintenance','machine_startup','schedule_maintenance',
+  // Extended modules
+  'recurring_invoices','projects','timesheets','fixed_assets','currency_management',
+  // Industry Verticals
+  'healthcare','education','logistics_transport','real_estate','pos','agriculture',
+  // Core admin extras
+  'overview','audit_trail','hpcl_migration',
 ];
 
 export async function seedTenantPermissions(tenantId: number, adminRoleId: string): Promise<void> {

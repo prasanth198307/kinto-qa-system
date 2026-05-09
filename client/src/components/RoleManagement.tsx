@@ -189,6 +189,55 @@ const AVAILABLE_SCREENS: ScreenDefinition[] = [
   { key: 'hr_reports',        label: 'HR: Reports',                                      allowedActions: ['view'],                             module: 'hr_payroll' },
   { key: 'hr_ess_admin',      label: 'HR: ESS Portal Management (Set Passwords / Enable Access)', allowedActions: ['view', 'create', 'edit'], module: 'hr_payroll' },
   { key: 'hr_masters',        label: 'HR: Masters (Dept/Designation/Shift/Leave Types)', allowedActions: ['view', 'create', 'edit', 'delete'], module: 'hr_payroll' },
+  { key: 'hr_appraisals',     label: 'HR: Performance Appraisals',                       allowedActions: ['view', 'create', 'edit', 'delete'], module: 'hr_payroll' },
+  { key: 'hr_expense_claims', label: 'HR: Expense Claims',                               allowedActions: ['view', 'create', 'edit', 'delete'], module: 'hr_payroll' },
+
+  // Accounting extras
+  { key: 'account_subtypes',  label: 'Account Sub-Types',          allowedActions: ['view', 'create', 'edit', 'delete'], module: 'accounting' },
+  { key: 'banks',             label: 'Bank Accounts',              allowedActions: ['view', 'create', 'edit', 'delete'], module: 'accounting' },
+  { key: 'cost_centres',      label: 'Cost Centres',               allowedActions: ['view', 'create', 'edit', 'delete'], module: 'accounting' },
+  { key: 'debit_notes',       label: 'Debit Notes (Customer)',     allowedActions: ['view', 'create', 'edit', 'delete'], module: 'accounting' },
+  { key: 'gst_reports',       label: 'GST Reports (GSTR-1/3B)',    allowedActions: ['view'],                            module: 'invoicing' },
+
+  // Purchase extras
+  { key: 'purchase_requisitions', label: 'Purchase Requisitions',  allowedActions: ['view', 'create', 'edit', 'delete'], module: 'purchase_orders' },
+  { key: 'goods_receipt_notes',   label: 'Goods Receipt Notes (GRN)', allowedActions: ['view', 'create', 'edit', 'delete'], module: 'purchase_orders' },
+  { key: 'approval_workflows',    label: 'Approval Workflows',     allowedActions: ['view', 'create', 'edit', 'delete'], module: 'purchase_orders' },
+
+  // Inventory / Warehouse extras
+  { key: 'price_lists',        label: 'Price Lists',               allowedActions: ['view', 'create', 'edit', 'delete'], module: 'basic_inventory' },
+  { key: 'warehouses',         label: 'Warehouses',                allowedActions: ['view', 'create', 'edit', 'delete'], module: 'warehouses' },
+  { key: 'stock_transfers',    label: 'Stock Transfers',           allowedActions: ['view', 'create', 'edit', 'delete'], module: 'warehouses' },
+  { key: 'serial_lot_register',label: 'Serial / Lot Register',     allowedActions: ['view', 'create', 'edit', 'delete'], module: 'warehouses' },
+
+  // Production extras
+  { key: 'production_reconciliation', label: 'Production Reconciliation (Detail)', allowedActions: ['view', 'create', 'edit', 'delete'], module: 'production' },
+
+  // Maintenance extras
+  { key: 'maintenance',         label: 'Maintenance (Overview)',   allowedActions: ['view'],                            module: 'maintenance' },
+  { key: 'machine_startup',     label: 'Machine Startup Log',      allowedActions: ['view', 'create', 'edit', 'delete'], module: 'maintenance' },
+  { key: 'schedule_maintenance',label: 'Schedule Maintenance',     allowedActions: ['view', 'create', 'edit', 'delete'], module: 'maintenance' },
+
+  // Extended modules (Phase 4–5)
+  { key: 'recurring_invoices',  label: 'Recurring Invoice Schedules', allowedActions: ['view', 'create', 'edit', 'delete'], module: 'recurring_invoices' },
+  { key: 'projects',            label: 'Project Management',          allowedActions: ['view', 'create', 'edit', 'delete'], module: 'projects' },
+  { key: 'timesheets',          label: 'Timesheets',                  allowedActions: ['view', 'create', 'edit', 'delete'], module: 'projects' },
+  { key: 'fixed_assets',        label: 'Fixed Assets & Depreciation', allowedActions: ['view', 'create', 'edit', 'delete'], module: 'fixed_assets' },
+  { key: 'currency_management', label: 'Multi-Currency Management',   allowedActions: ['view', 'create', 'edit', 'delete'], module: 'multi_currency' },
+
+  // Industry Verticals
+  { key: 'healthcare',          label: 'Healthcare Module',           allowedActions: ['view', 'create', 'edit', 'delete'], module: 'healthcare' },
+  { key: 'education',           label: 'Education Module',            allowedActions: ['view', 'create', 'edit', 'delete'], module: 'education' },
+  { key: 'logistics_transport', label: 'Logistics & Transport',       allowedActions: ['view', 'create', 'edit', 'delete'], module: 'logistics_transport' },
+  { key: 'real_estate',         label: 'Real Estate Module',          allowedActions: ['view', 'create', 'edit', 'delete'], module: 'real_estate' },
+  { key: 'pos',                 label: 'Retail / POS Module',         allowedActions: ['view', 'create', 'edit', 'delete'], module: 'pos' },
+  { key: 'agriculture',         label: 'Agriculture Module',          allowedActions: ['view', 'create', 'edit', 'delete'], module: 'agriculture' },
+
+  // Core / Admin (always visible)
+  { key: 'overview',            label: 'Overview / Home',             allowedActions: ['view'] },
+  { key: 'admin_tools',         label: 'Admin Tools',                 allowedActions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'audit_trail',         label: 'Audit Trail',                 allowedActions: ['view'] },
+  { key: 'hpcl_migration',      label: 'HPCL Data Migration',         allowedActions: ['view', 'create'] },
 ];
 
 export default function RoleManagement() {
