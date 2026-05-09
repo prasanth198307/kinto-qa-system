@@ -81,14 +81,18 @@ export function setupAuth(app: Express) {
     cookieSameSite = "lax";
   }
 
-  // Cookie domain: on custom domains like *.swacherp.com, set domain to
-  // .swacherp.com so the session cookie works across all tenant subdomains.
-  const appDomain = process.env.APP_DOMAIN; // e.g. "swacherp.com" (no leading dot)
-  const cookieDomain = appDomain ? `.${appDomain}` : undefined;
-
   // Session timeout: 7 days idle (rolling — resets on every request).
   // Customers stay logged in as long as they use the app within 7 days.
   const SESSION_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // 7 days in ms
+
+  // NOTE: We intentionally do NOT set a shared cookie domain (e.g. .swacherp.com).
+  // Setting domain=.swacherp.com would make all subdomains share the same
+  // connect.sid cookie, causing sessions to overwrite each other: a tenant login
+  // at companyname.swacherp.com would silently replace the super-admin's session
+  // at kinto-admin.swacherp.com, appearing as a random session expiry.
+  // Without a domain attribute, browsers scope cookies to the exact hostname,
+  // so each subdomain maintains its own isolated session. This is correct
+  // behaviour for a multi-tenant SaaS where each subdomain is a separate portal.
 
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || "insecure_dev_secret",
@@ -102,12 +106,12 @@ export function setupAuth(app: Express) {
       secure: cookieSecure,
       sameSite: cookieSameSite,
       path: "/",
-      ...(cookieDomain ? { domain: cookieDomain } : {}),
+      // domain intentionally omitted — each subdomain gets its own isolated cookie
     },
   };
 
   console.log(
-    `🔧 Session configured — Secure: ${cookieSecure}, SameSite: ${cookieSameSite}, Domain: ${cookieDomain ?? "(default)"}, Dev Mode: ${isDevelopment}${isReplit ? " (Replit)" : ""}${isProduction ? " (Production)" : ""}`
+    `🔧 Session configured — Secure: ${cookieSecure}, SameSite: ${cookieSameSite}, Domain: (per-hostname, isolated), Dev Mode: ${isDevelopment}${isReplit ? " (Replit)" : ""}${isProduction ? " (Production)" : ""}`
   );
 
   app.set("trust proxy", 1);

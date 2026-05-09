@@ -236,7 +236,7 @@ import {
   type MonthlyExpensePayment,
   type InsertMonthlyExpensePayment,
 } from "@shared/schema";
-import { db } from "./db";
+import { db, pool } from "./db";
 import { eq, and, or, isNotNull, notInArray, inArray, gte, lte, sql, desc, ilike, SQL } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
@@ -803,7 +803,7 @@ export class DatabaseStorage implements IStorage {
 
   constructor() {
     this.sessionStore = new PostgresSessionStore({
-      pool: (db as any)._.session.client,
+      pool,
       createTableIfMissing: true,
       errorLog: (error) => {
         if (error.message?.includes('already exists')) {
@@ -816,7 +816,6 @@ export class DatabaseStorage implements IStorage {
 
   async clearAllSessions(): Promise<void> {
     try {
-      const pool = (db as any)._.session.client;
       await pool.query('DELETE FROM session');
       console.log('✅ All sessions cleared on server startup');
     } catch (error) {
