@@ -207,8 +207,14 @@ export const ALL_ADMIN_SCREEN_KEYS = [
   // Dashboard & Analytics
   'dashboard','sales_dashboard','vendor_analytics','reports',
   'report_finished_goods','report_monthly_production','report_vendor_report','report_gst',
+  'report_gatepasses','report_invoices','report_issuances','report_purchase_orders',
+  'report_maintenance','report_expenses','report_cash_register','report_payments',
+  'report_monthly_sales','report_machines','report_scrap','report_sales_returns',
+  'report_repacking','production_reconciliation_report',
+  'pm_history','vendor_history','write_off_report','reviewer_dashboard','bulk_payment_report',
   // MIS
   'mis_dashboard','mis_production','mis_inventory','mis_sales','mis_delivery',
+  'mis_cash','mis_financial',
   // Quality & Checklists
   'checklist_templates','checklist_assignments','checklists',
   'machine_startup_reminders','whatsapp_analytics',
@@ -217,31 +223,38 @@ export const ALL_ADMIN_SCREEN_KEYS = [
   'raw_materials','raw_material_types',
   'finished_goods','inventory','uom',
   'sales_orders','sales_officers',
+  'spare_parts_stock',
   // Production
   'raw_material_issuance','production_entries','production_reconciliations',
   'production_reconciliation','variance_analytics',
+  'purchase_returns','production_management',
   // Sales & Invoicing
   'invoices','payments','pending_payments','credit_notes',
   'cancelled_invoices_report','sales_returns','payment_writeoff',
   'customer_advances','payment_management',
+  'invoice_templates','tds_management',
   // Dispatch
   'gatepasses','dispatch_tracking','dispatch_masters',
   // Finance
   'cash_register','cash_register_report','expenses','monthly_expenses',
+  'expense_categories',
   // Documents
-  'documents',
+  'documents','document_categories',
   // Maintenance
   'maintenance_plans','pm_execution','pm_templates',
   // HR & Payroll
   'hr_employees','hr_attendance','hr_leaves','hr_payroll','hr_masters',
+  'hr_exit_management','hr_loans','hr_tds','hr_recruitment','hr_reports','hr_ess_admin',
   // Purchasing
   'purchase_orders','vendor_debit_notes',
   // Master Data
   'vendors','vendor_types','machines','machine_types',
   'spare_parts','banks','scrap_inventory',
+  // CRM
+  'crm_leads',
   // Admin & Settings
   'users','roles','admin_tools','template_management',
-  'notification_settings','data_import','api_keys',
+  'notification_settings','data_import','api_keys','vyapaar_import',
   // Accounting
   'chart_of_accounts','account_subtypes','journal_entries','manual_journal_entry',
   'trial_balance','profit_loss','balance_sheet','ledger_view','day_book',
