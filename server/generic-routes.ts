@@ -247,8 +247,9 @@ async function handleCreateGRN(req: any, res: any) {
     const actualVendorId = vendorId || vendor_id || null;
     const actualNotes = notes || remarks || null;
     const num = `GRN-${Date.now()}`;
-    const grn = await db.execute(sql`INSERT INTO goods_receipt_notes (tenant_id,grn_number,received_date,po_id,vendor_id,remarks,received_by,status)
-      VALUES (${tid(req)},${num},${actualDate},${actualPoId},${actualVendorId},${actualNotes},${(req as any).user?.id||null},'received') RETURNING *`);
+    // received_by is an integer column (legacy); user.id is now UUID — pass null to avoid type error
+    const grn = await db.execute(sql`INSERT INTO goods_receipt_notes (tenant_id,grn_number,received_date,po_id,vendor_id,remarks,status)
+      VALUES (${tid(req)},${num},${actualDate},${actualPoId},${actualVendorId},${actualNotes},'received') RETURNING *`);
     const grnId = (grn.rows[0] as any).id;
     for (const it of (items||[])) {
       await db.execute(sql`INSERT INTO grn_items (tenant_id,grn_id,po_item_id,product_id,description,ordered_qty,received_qty,rejected_qty,unit_price)

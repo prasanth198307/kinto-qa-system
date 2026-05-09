@@ -1266,10 +1266,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createPurchaseOrder(purchaseOrder: InsertPurchaseOrder): Promise<PurchaseOrder> {
+    const tenantId = getCurrentTenantId() ?? 1;
     // Generate unique PO number based on timestamp
     const poNumber = `PO-${Date.now()}`;
     const [created] = await db.insert(purchaseOrders).values({
       ...purchaseOrder,
+      tenantId,
       poNumber
     }).returning();
     return created;
@@ -1613,8 +1615,10 @@ export class DatabaseStorage implements IStorage {
 
   // Product Master
   async createProduct(product: InsertProduct): Promise<Product> {
+    const tenantId = getCurrentTenantId() ?? 1;
     const productData = {
       ...product,
+      tenantId,
       defaultLossPercent: product.defaultLossPercent !== undefined ? product.defaultLossPercent?.toString() : undefined,
       usableDerivedUnits: product.usableDerivedUnits !== undefined ? product.usableDerivedUnits?.toString() : undefined,
     };
@@ -2192,7 +2196,8 @@ export class DatabaseStorage implements IStorage {
 
   // Vendor Master
   async createVendor(vendor: InsertVendor): Promise<Vendor> {
-    const [created] = await db.insert(vendors).values(vendor).returning();
+    const tenantId = getCurrentTenantId() ?? 1;
+    const [created] = await db.insert(vendors).values({ ...vendor, tenantId }).returning();
     return created;
   }
 
@@ -2469,7 +2474,8 @@ export class DatabaseStorage implements IStorage {
 
   // Gatepasses
   async createGatepass(gatepass: InsertGatepass): Promise<Gatepass> {
-    const [created] = await db.insert(gatepasses).values([gatepass]).returning();
+    const tenantId = getCurrentTenantId() ?? 1;
+    const [created] = await db.insert(gatepasses).values([{ ...gatepass, tenantId }]).returning();
     return created;
   }
 
@@ -2845,7 +2851,8 @@ export class DatabaseStorage implements IStorage {
 
   // Invoices
   async createInvoice(invoice: InsertInvoice): Promise<Invoice> {
-    const [newInvoice] = await db.insert(invoices).values(invoice).returning();
+    const tenantId = getCurrentTenantId() ?? 1;
+    const [newInvoice] = await db.insert(invoices).values({ ...invoice, tenantId }).returning();
     return newInvoice;
   }
 

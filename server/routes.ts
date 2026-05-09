@@ -9,7 +9,7 @@ import { setupAuth, hashPassword, comparePasswords } from "./auth";
 import { tenantMiddleware } from "./tenant-middleware";
 import { planEnforcementMiddleware, invalidatePlanCache } from "./plan-middleware";
 import { getPlanFeatures, getPlanFeaturesFromModules, ALL_MODULE_KEYS } from "./plan-features";
-import { tc } from "./tenant-context";
+import { tc, getCurrentTenantId } from "./tenant-context";
 import { insertMachineSchema, insertSparePartSchema, insertChecklistTemplateSchema, insertTemplateTaskSchema, insertMachineTypeSchema, insertMachineSpareSchema, insertPurchaseOrderSchema, insertPurchaseOrderItemSchema, purchaseOrders, purchaseOrderItems, insertMaintenancePlanSchema, insertPMTaskListTemplateSchema, insertPMTemplateTaskSchema, insertPMExecutionSchema, insertPMExecutionTaskSchema, insertUomSchema, insertProductCategorySchema, insertProductTypeSchema, insertProductSchema, insertProductBomSchema, insertRawMaterialTypeSchema, insertRawMaterialSchema, insertRawMaterialTransactionSchema, insertFinishedGoodSchema, insertRawMaterialIssuanceSchema, insertRawMaterialIssuanceItemSchema, insertProductionEntrySchema, insertProductionReconciliationSchema, insertProductionReconciliationItemSchema, insertGatepassSchema, insertGatepassItemSchema, insertInvoiceSchema, insertInvoiceItemSchema, insertInvoicePaymentSchema, insertBankSchema, insertUserSchema, insertChecklistAssignmentSchema, insertNotificationConfigSchema, insertSalesOrderSchema, insertSalesOrderItemSchema, insertSalesReturnSchema, insertSalesReturnItemSchema, insertVendorTypeSchema, rawMaterialTypes, rawMaterials, rawMaterialIssuance, rawMaterialIssuanceItems, productionEntries, productionReconciliations, productionReconciliationItems, rawMaterialTransactions, finishedGoods, gatepasses, gatepassItems, invoices, invoiceItems, invoicePayments, paymentEvidence, salesOrders, salesOrderItems, salesReturns, salesReturnItems, creditNotes, creditNoteItems, debitNotes, debitNoteItems, manualCreditNoteRequests, products, productBom, whatsappConversationSessions, vendorTypes, vendorVendorTypes, vendors, users, uom, insertDocumentCategorySchema, insertDocumentSchema, insertExpenseCategorySchema, insertExpenseVoucherSchema, insertExpenseItemSchema, insertExpenseAttachmentSchema, rolePermissions, vendorDebitNotes, vendorDebitNoteItems, vendorDebitNoteAdjustments, transporters, vehicles, drivers, insertTransporterSchema, insertVehicleSchema, insertDriverSchema, scrapInventory, insertSparePartEntrySchema, insertSparePartIssuanceSchema, insertScrapInventorySchema, sparePartEntries, sparePartsCatalog, accountSubtypes, insertSalesOfficerSchema, purchaseReturns, purchaseReturnItems, tdsRates, tdsEntries, finishedGoodsReturnLog, externalApiKeys } from "@shared/schema";
 import { format } from "date-fns";
 import { z } from "zod";
@@ -9429,6 +9429,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         generatedBy: req.user?.id,
         originalInvoiceId, // Link to cancelled invoice if this is a reissue
         recordStatus: 1, // Explicitly set to active (important for reissued invoices)
+        tenantId: getCurrentTenantId() ?? 1, // Always inject tenant from session context
       };
       
       console.log(`[CREATE_INVOICE] Creating invoice for ${validatedHeader.buyerName}, originalInvoiceId=${originalInvoiceId}, recordStatus=1`);
@@ -9450,10 +9451,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }));
         
         // Create invoice items
+        const invoiceTenantId = getCurrentTenantId() ?? 1;
         for (const item of items) {
           const validatedItem = insertInvoiceItemSchema.parse({
             ...item,
-            invoiceId: invoice.id
+            invoiceId: invoice.id,
+            tenantId: invoiceTenantId,
           });
           
           await tx.insert(invoiceItems).values(validatedItem);
