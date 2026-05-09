@@ -2583,7 +2583,7 @@ router.post("/fnf/calculate", requireHR, async (req: any, res) => {
       yearsServed = ms / (365.25 * 24 * 3600 * 1000);
     }
     const gratuity = yearsServed >= 5 ? Math.round((Number(e.basic_salary || 0) * 15 * Math.floor(yearsServed)) / 26) : 0;
-    const leaveBal = await db.execute(sql`SELECT * FROM hr_leave_balances WHERE employee_id=${Number(employeeId)} AND tenant_id=${tid} AND leave_type_id IN (SELECT id FROM hr_leave_types WHERE type_code='EL' AND tenant_id=${tid})`);
+    const leaveBal = await db.execute(sql`SELECT * FROM hr_leave_balances WHERE employee_id=${Number(employeeId)} AND tenant_id=${tid} AND leave_type_id IN (SELECT id FROM hr_leave_types WHERE code='EL' AND tenant_id=${tid})`);
     const elDays = leaveBal.rows[0] ? Number((leaveBal.rows[0] as any).balance || 0) : 0;
     const elEncashment = Math.round(dailyBasic * elDays);
     const noticeRequired = e.notice_period_days || 30;
