@@ -1207,6 +1207,26 @@ router.get("/ecom-orders", requireAuth, async (req: any, res) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
+router.post("/ecom-orders", requireAuth, async (req: any, res) => {
+  try {
+    const t = tid(req);
+    const { customer_name, customer_phone, customer_email, items, subtotal, making_charges,
+            gst_amount, shipping_charges, discount_amount, total_amount, payment_mode,
+            gold_rate_locked, customer_id } = req.body;
+    const no = "ECOM-" + seq();
+    const row = await db.execute(sql`
+      INSERT INTO jw_ecom_orders (tenant_id, order_no, customer_name, customer_phone, customer_email,
+        items, subtotal, making_charges, gst_amount, shipping_charges, discount_amount, total_amount,
+        payment_mode, gold_rate_locked, customer_id)
+      VALUES (${t}, ${no}, ${customer_name}, ${customer_phone}, ${customer_email||null},
+        ${JSON.stringify(items||[])}::jsonb, ${subtotal||0}, ${making_charges||0},
+        ${gst_amount||0}, ${shipping_charges||0}, ${discount_amount||0}, ${total_amount||0},
+        ${payment_mode||'online'}, ${gold_rate_locked||null}, ${customer_id||null})
+      RETURNING *`);
+    res.json(row.rows[0]);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
 router.put("/ecom-orders/:id", requireAuth, async (req: any, res) => {
   try {
     const { status, courier_name, tracking_no, synced_to_erp } = req.body;

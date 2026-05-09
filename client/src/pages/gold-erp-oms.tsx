@@ -85,12 +85,12 @@ export function OMSOrdersSection() {
         <div className="flex items-center gap-2">
           <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input className="pl-9 w-44" placeholder="Search…" value={search} onChange={e => setSearch(e.target.value)} /></div>
-          <Button size="sm" onClick={() => setShowForm(true)}><Plus className="h-4 w-4 mr-1" />New Order</Button>
+          <Button size="sm" data-testid="button-new-oms-order" onClick={() => setShowForm(true)}><Plus className="h-4 w-4 mr-1" />New Order</Button>
         </div>
       } />
       <div className="space-y-3">
         {filtered.map((o: any) => (
-          <Card key={o.id}>
+          <Card key={o.id} data-testid={`card-oms-order-${o.id}`}>
             <CardContent className="p-4">
               <div className="flex items-start justify-between gap-4 flex-wrap">
                 <div>
@@ -105,11 +105,11 @@ export function OMSOrdersSection() {
                   {o.expected_delivery && <p className="text-xs text-muted-foreground">By {o.expected_delivery}</p>}
                   <div className="flex gap-1 justify-end">
                     {NEXT_STATUS[o.status] && (
-                      <Button size="sm" onClick={() => updateMut.mutate({ id: o.id, status: NEXT_STATUS[o.status] })}>
+                      <Button size="sm" data-testid={`button-advance-${o.id}`} onClick={() => updateMut.mutate({ id: o.id, status: NEXT_STATUS[o.status] })}>
                         → {NEXT_STATUS[o.status]?.replace(/_/g, " ")}
                       </Button>
                     )}
-                    <Button size="sm" variant="outline" onClick={() => { setSelectedOrder(o); setShowTimeline(true); }}>Timeline</Button>
+                    <Button size="sm" variant="outline" data-testid={`button-timeline-${o.id}`} onClick={() => { setSelectedOrder(o); setShowTimeline(true); }}>Timeline</Button>
                   </div>
                 </div>
               </div>

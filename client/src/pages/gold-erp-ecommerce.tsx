@@ -82,15 +82,15 @@ export function ECommerceSection() {
   return (
     <>
       <SH title="E-Commerce Store" action={
-        tab === "coupons" ? <Button size="sm" onClick={() => setShowCouponForm(true)}><Plus className="h-4 w-4 mr-1" />New Coupon</Button>
-          : tab === "customers" ? <Button size="sm" onClick={() => setShowCustomerForm(true)}><Plus className="h-4 w-4 mr-1" />Add Customer</Button>
-          : tab === "rates" ? <Button size="sm" onClick={() => setShowRateForm(true)}><Plus className="h-4 w-4 mr-1" />Record Rate</Button>
+        tab === "coupons" ? <Button size="sm" data-testid="button-new-coupon" onClick={() => setShowCouponForm(true)}><Plus className="h-4 w-4 mr-1" />New Coupon</Button>
+          : tab === "customers" ? <Button size="sm" data-testid="button-add-customer" onClick={() => setShowCustomerForm(true)}><Plus className="h-4 w-4 mr-1" />Add Customer</Button>
+          : tab === "rates" ? <Button size="sm" data-testid="button-record-rate" onClick={() => setShowRateForm(true)}><Plus className="h-4 w-4 mr-1" />Record Rate</Button>
           : null
       } />
 
       <div className="flex border-b mb-4 gap-0 overflow-x-auto">
         {tabs.map(([k, l]) => (
-          <button key={k} onClick={() => setTab(k)} className={`px-4 py-2 text-sm whitespace-nowrap ${tab === k ? "border-b-2 border-primary font-medium" : "text-muted-foreground"}`}>{l}</button>
+          <button key={k} data-testid={`tab-ecom-${k}`} onClick={() => setTab(k)} className={`px-4 py-2 text-sm whitespace-nowrap ${tab === k ? "border-b-2 border-primary font-medium" : "text-muted-foreground"}`}>{l}</button>
         ))}
       </div>
 
@@ -125,7 +125,7 @@ export function ECommerceSection() {
             <thead className="bg-muted/50"><tr>{["Name", "Phone", "City", "Tier", "Orders", "Total Spent", "Joined"].map(h => <th key={h} className="px-4 py-2 text-left">{h}</th>)}</tr></thead>
             <tbody>
               {(customers as any[]).map((c: any) => (
-                <tr key={c.id} className="border-t hover:bg-muted/30">
+                <tr key={c.id} data-testid={`row-ecom-customer-${c.id}`} className="border-t hover:bg-muted/30">
                   <td className="px-4 py-2 font-medium">{c.customer_name}</td>
                   <td className="px-4 py-2 text-muted-foreground">{c.phone}</td>
                   <td className="px-4 py-2 text-xs">{c.city || "—"}</td>
@@ -147,7 +147,7 @@ export function ECommerceSection() {
             <thead className="bg-muted/50"><tr>{["Order No.", "Customer", "Amount", "Payment", "Status", "Courier", "Tracking", "Date", ""].map(h => <th key={h} className="px-4 py-2 text-left">{h}</th>)}</tr></thead>
             <tbody>
               {(orders as any[]).map((o: any) => (
-                <tr key={o.id} className="border-t hover:bg-muted/30">
+                <tr key={o.id} data-testid={`row-ecom-order-${o.id}`} className="border-t hover:bg-muted/30">
                   <td className="px-4 py-2 text-xs font-mono">{o.order_no}</td>
                   <td className="px-4 py-2">{o.customer_name}</td>
                   <td className="px-4 py-2 font-semibold">{fmtAmt(o.grand_total)}</td>
@@ -173,7 +173,7 @@ export function ECommerceSection() {
       {tab === "coupons" && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {(coupons as any[]).map((c: any) => (
-            <Card key={c.id} className={!c.is_active ? "opacity-60" : ""}>
+            <Card key={c.id} data-testid={`card-coupon-${c.id}`} className={!c.is_active ? "opacity-60" : ""}>
               <CardContent className="p-4 space-y-2">
                 <div className="flex items-start justify-between gap-2">
                   <p className="font-mono font-bold text-primary">{c.coupon_code}</p>
@@ -200,7 +200,7 @@ export function ECommerceSection() {
             <thead className="bg-muted/50"><tr>{["Metal", "Purity", "Rate/g", "Source", "Recorded At"].map(h => <th key={h} className="px-4 py-2 text-left">{h}</th>)}</tr></thead>
             <tbody>
               {(rateHistory as any[]).map((r: any) => (
-                <tr key={r.id} className="border-t hover:bg-muted/30">
+                <tr key={r.id} data-testid={`row-rate-${r.id}`} className="border-t hover:bg-muted/30">
                   <td className="px-4 py-2 capitalize">{r.metal_type}</td>
                   <td className="px-4 py-2">{r.purity_name || "—"}</td>
                   <td className="px-4 py-2 font-semibold">{fmtAmt(r.rate_per_gram)}</td>
