@@ -127,10 +127,15 @@ export function ModuleMarketplaceDialog({
         credentials: "include",
         body: JSON.stringify({ selectedModules: Array.from(activeDraft) }),
       });
-      const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.message ?? `Save failed (${res.status})`);
+        if (res.status === 401) {
+          throw new Error("Session expired — please refresh the page and try again.");
+        }
+        let message = `Save failed (${res.status})`;
+        try { const d = await res.json(); message = d.message ?? message; } catch {}
+        throw new Error(message);
       }
+      const data = await res.json();
       queryClient.invalidateQueries({ queryKey: ["/api/admin/tenants", tenantId, "modules"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/tenants"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/subscriptions"] });
