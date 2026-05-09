@@ -127,6 +127,17 @@ declare module "http" {
 // ✅ Allow Express to trust proxy headers (needed for session cookies)
 app.set("trust proxy", 1);
 
+// ✅ Treat direct localhost connections as HTTPS so express-session sends
+//    Secure cookies even over plain HTTP (needed for Playwright e2e tests).
+app.use((req: any, res, next) => {
+  const ip = req.socket?.remoteAddress ?? "";
+  const isLocalhost = ip === "127.0.0.1" || ip === "::1" || ip === "::ffff:127.0.0.1";
+  if (isLocalhost && !req.headers["x-forwarded-proto"]) {
+    req.headers["x-forwarded-proto"] = "https";
+  }
+  next();
+});
+
 app.use(
   express.json({
     limit: '10mb', // Increase limit for large import payloads

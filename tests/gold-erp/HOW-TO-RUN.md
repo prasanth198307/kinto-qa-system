@@ -22,7 +22,7 @@
 | F11 | f11-ecatalog-oms.md | PASSED |
 | F12 | f12-repairs.md | PASSED (fixed 2026-05-09) |
 | F13 | f13-refining.md | PASSED |
-| F14 | f14-multi-stage-production.md | NOT YET RUN |
+| F14 | f14-multi-stage-production.md | PASSED (fixed 2026-05-09) |
 | F15 | f15-crm-full-flow.md | NOT YET RUN |
 | F16 | f16-multi-branch.md | NOT YET RUN |
 | F17 | f17-vendor-purchase.md | NOT YET RUN |
@@ -88,6 +88,22 @@ console.log(r.testOutput);
 - role_permissions columns are INTEGER (0/1), not boolean
 - Parallel test execution causes "Execution interrupted" — always run one at a time
 - Test runner may time out on very large plans (60+ steps) — provide detailed TECH docs to help it navigate faster
+
+## Playwright Session Fix (2026-05-09)
+Replit sets session cookies as `SameSite=None; Secure`, which Chromium rejects over plain `http://localhost`.
+Two changes were made to fix this permanently:
+
+1. **`server/index.ts`** — middleware that marks direct localhost connections as HTTPS (sets
+   `X-Forwarded-Proto: https`) so express-session actually sends the `Set-Cookie` header.
+2. **`tests/gold-erp/login-helper.ts`** — reusable login helper that:
+   - POSTs to `/api/login` via Playwright's `page.request` (bypasses browser cookie enforcement)
+   - Manually injects the `connect.sid` cookie into the browser context via `addCookies()`
+   - All future Playwright tests must import and use this helper instead of UI-based login
+
+Every Playwright test in this suite should import from `./login-helper`:
+```typescript
+import { login, goToSection, selectFirst, fillInput } from "./login-helper";
+```
 
 ## DB Scripts Added for F12 Fix
 - `db_scripts/2026-05-09_f12_counter_bookings_columns.sql` — adds item_weight, gold_rate_today, item_description to jw_counter_bookings
