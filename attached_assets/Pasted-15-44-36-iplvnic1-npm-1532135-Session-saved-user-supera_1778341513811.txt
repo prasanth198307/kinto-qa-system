@@ -1,0 +1,17 @@
+15:44:36 iplvnic1 npm[1532135]: ✅ Session saved — user: superadmin, tenant: 2, plan: enterprise, status: active
+May 09 15:44:36 iplvnic1 npm[1532135]: 🔥 Post-login error: TypeError: Cannot convert undefined or null to object
+May 09 15:44:36 iplvnic1 npm[1532135]:     at Function.entries (<anonymous>)
+May 09 15:44:36 iplvnic1 npm[1532135]:     at orderSelectedFields (file:///home/kinto/kinto-qa-system/node_modules/drizzle-orm/utils.js:53:17)
+May 09 15:44:36 iplvnic1 npm[1532135]:     at file:///home/kinto/kinto-qa-system/node_modules/drizzle-orm/utils.js:63:22
+May 09 15:44:36 iplvnic1 npm[1532135]:     at Array.reduce (<anonymous>)
+May 09 15:44:36 iplvnic1 npm[1532135]:     at orderSelectedFields (file:///home/kinto/kinto-qa-system/node_modules/drizzle-orm/utils.js:53:33)
+May 09 15:44:36 iplvnic1 npm[1532135]:     at file:///home/kinto/kinto-qa-system/node_modules/drizzle-orm/pg-core/query-builders/select.js:684:26
+May 09 15:44:36 iplvnic1 npm[1532135]:     at Object.startActiveSpan (file:///home/kinto/kinto-qa-system/node_modules/drizzle-orm/tracing.js:8:14)
+May 09 15:44:36 iplvnic1 npm[1532135]:     at PgSelectBase._prepare (file:///home/kinto/kinto-qa-system/node_modules/drizzle-orm/pg-core/query-builders/select.js:683:19)
+May 09 15:44:36 iplvnic1 npm[1532135]:     at file:///home/kinto/kinto-qa-system/node_modules/drizzle-orm/pg-core/query-builders/select.js:708:19
+May 09 15:44:36 iplvnic1 npm[1532135]:     at Object.startActiveSpan (file:///home/kinto/kinto-qa-system/node_modules/drizzle-orm/tracing.js:8:14)
+May 09 15:44:36 iplvnic1 npm[1532135]:     at PgSelectBase.execute (file:///home/kinto/kinto-qa-system/node_modules/drizzle-orm/pg-core/query-builders/select.js:707:19)
+May 09 15:44:36 iplvnic1 npm[1532135]:     at PgSelectBase.then (file:///home/kinto/kinto-qa-system/node_modules/drizzle-orm/query-promise.js:21:17)
+May 09 15:44:36 iplvnic1 npm[1532135]:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+May 09 15:44:36 iplvnic1 npm[1532135]: 3:44:36 PM [express] POST /api/login 500 in 107ms :: {"message":"Login succeeded but session setup f…
+[kinto@iplvnic1 kinto-qa-system]$ 

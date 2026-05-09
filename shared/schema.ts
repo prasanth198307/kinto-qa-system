@@ -209,6 +209,7 @@ export const users = pgTable("users", {
   resetToken: varchar("reset_token", { length: 255 }),
   resetTokenExpiry: timestamp("reset_token_expiry", { mode: 'string' }),
   recordStatus: integer("record_status").default(1).notNull(),
+  isSuperAdmin: boolean("is_super_admin").default(false),
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
   tenantId: integer("tenant_id").default(1),
