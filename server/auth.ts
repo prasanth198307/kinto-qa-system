@@ -57,63 +57,25 @@ async function comparePasswords(supplied: string, stored: string) {
 }
 
 export function setupAuth(app: Express) {
-  const isReplit = !!(process.env.REPLIT_DOMAINS || process.env.REPLIT_DEV_DOMAIN);
-  const isDevelopment = process.env.NODE_ENV === "development";
-  const isProduction = process.env.NODE_ENV === "production";
-
-  // Cookie rules:
-  // 1. Replit preview (dev or prod via Replit): Secure=true, SameSite=none
-  //    (cross-site context: replit.com embedding xxx.replit.dev)
-  // 2. Self-hosted production (e.g. kinto.swacherp.com behind nginx HTTPS):
-  //    Secure=true, SameSite=lax
-  // 3. Local development: Secure=false, SameSite=lax
-  let cookieSecure: boolean;
-  let cookieSameSite: "none" | "lax";
-  if (isReplit) {
-    cookieSecure = true;
-    cookieSameSite = "none";
-  } else if (isProduction) {
-    // Running behind nginx/HTTPS in production — cookies must be Secure
-    cookieSecure = true;
-    cookieSameSite = "lax";
-  } else {
-    cookieSecure = false;
-    cookieSameSite = "lax";
-  }
-
-  // Session timeout: 7 days idle (rolling — resets on every request).
-  // Customers stay logged in as long as they use the app within 7 days.
   const SESSION_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // 7 days in ms
 
-  // NOTE: We intentionally do NOT set a shared cookie domain (e.g. .swacherp.com).
-  // Setting domain=.swacherp.com would make all subdomains share the same
-  // connect.sid cookie, causing sessions to overwrite each other: a tenant login
-  // at companyname.swacherp.com would silently replace the super-admin's session
-  // at kinto-admin.swacherp.com, appearing as a random session expiry.
-  // Without a domain attribute, browsers scope cookies to the exact hostname,
-  // so each subdomain maintains its own isolated session. This is correct
-  // behaviour for a multi-tenant SaaS where each subdomain is a separate portal.
-
   const sessionSettings: session.SessionOptions = {
-    name: "swach.sid", // Renamed from connect.sid to avoid collision with old domain-scoped cookies
+    name: "swach.sid",
     secret: process.env.SESSION_SECRET || "insecure_dev_secret",
     resave: false,
     saveUninitialized: false,
-    rolling: true, // Reset expiry on every response (idle timeout behaviour)
+    rolling: true,
     store: storage.sessionStore,
     cookie: {
       maxAge: SESSION_MAX_AGE,
       httpOnly: true,
-      secure: cookieSecure,
-      sameSite: cookieSameSite,
+      secure: false,
+      sameSite: "lax",
       path: "/",
-      // domain intentionally omitted — each subdomain gets its own isolated cookie
     },
   };
 
-  console.log(
-    `🔧 Session configured — Secure: ${cookieSecure}, SameSite: ${cookieSameSite}, Domain: (per-hostname, isolated), Dev Mode: ${isDevelopment}${isReplit ? " (Replit)" : ""}${isProduction ? " (Production)" : ""}`
-  );
+  console.log(`🔧 Session configured — Secure: false, SameSite: lax, MaxAge: 7 days`);
 
   app.set("trust proxy", 1);
   app.use(session(sessionSettings));
