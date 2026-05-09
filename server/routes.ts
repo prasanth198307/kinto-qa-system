@@ -1177,15 +1177,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const currentUser = req.user as any;
     if (!currentUser?.isSuperAdmin && currentUser?.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
-    // Use a dedicated client + SET LOCAL to bypass the tenant-isolation RLS policy
-    // (pool connections may carry a leftover app.current_tenant_id from the tenant middleware
-    //  which makes RLS filter to a single tenant and the IS NOT TRUE filter then drops it)
-    const client = await pool.connect();
     try {
-      await client.query('BEGIN');
-      // Clear tenant GUC for this transaction only — RLS passes all rows when NULL
-      await client.query("SELECT set_config('app.current_tenant_id', '', true)");
-      const result = await client.query(`
+      const result = await pool.query(`
         SELECT
           s.id                    AS sub_id,
           s.tenant_id,
@@ -1217,7 +1210,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         WHERE t.is_internal IS NOT TRUE
         ORDER BY s.id DESC
       `);
-      await client.query('COMMIT');
       console.log(`[ADMIN] GET /api/admin/subscriptions → ${result.rows.length} rows`);
       const rows = result.rows.map((r: any) => ({
         subscription: {
@@ -1242,11 +1234,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }));
       res.json(rows);
     } catch (err) {
-      await client.query('ROLLBACK').catch(() => {});
       console.error('[ADMIN] GET /api/admin/subscriptions error:', err);
       res.status(500).json({ message: 'Failed to fetch subscriptions' });
-    } finally {
-      client.release();
     }
   });
 
@@ -1433,11 +1422,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const currentUser = req.user as any;
     if (!currentUser?.isSuperAdmin) return res.status(403).json({ message: 'Super-admin only' });
-    const client = await pool.connect();
     try {
-      await client.query('BEGIN');
-      await client.query("SELECT set_config('app.current_tenant_id', '', true)");
-      const { rows: activeSubs } = await client.query(`
+      const { rows: activeSubs } = await pool.query(`
         SELECT s.billing_cycle, s.plan_slug, sp.price_monthly, sp.price_yearly
         FROM subscriptions s
         LEFT JOIN subscription_plans sp ON sp.id = s.plan_id
@@ -1446,7 +1432,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           AND s.plan_slug <> 'trial'
           AND t.is_internal IS NOT TRUE
       `);
-      await client.query('COMMIT');
 
       let mrr = 0;
       for (const sub of activeSubs) {
@@ -1471,11 +1456,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         planCounts,
       });
     } catch (err) {
-      await client.query('ROLLBACK').catch(() => {});
       console.error('[ADMIN] GET /api/admin/revenue-summary error:', err);
       res.status(500).json({ message: 'Failed to fetch revenue summary' });
-    } finally {
-      client.release();
     }
   });
 
@@ -29050,26 +29032,19 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
     }
   });
 
-  // ─── Admin: List users for a tenant (super-admin only, RLS bypass) ───────
+  // ─── Admin: List users for a tenant (super-admin only) ───────
   app.get('/api/admin/tenants/:tenantId/users', async (req: any, res) => {
     if (!req.isAuthenticated() || !req.user?.isSuperAdmin) return res.status(403).json({ message: 'Super-admin only' });
     const tenantId = parseInt(req.params.tenantId);
     if (isNaN(tenantId)) return res.status(400).json({ message: 'Invalid tenant ID' });
-    const client = await pool.connect();
     try {
-      await client.query('BEGIN');
-      await client.query("SET LOCAL app.current_tenant_id = ''");
-      const { rows } = await client.query(
+      const { rows } = await pool.query(
         `SELECT id, username, email, role, "isActive" FROM users WHERE "tenantId" = $1 AND "recordStatus" = 1 ORDER BY role, username`,
         [tenantId]
       );
-      await client.query('COMMIT');
       res.json(rows);
     } catch (err: any) {
-      await client.query('ROLLBACK').catch(() => {});
       res.status(500).json({ message: err.message });
-    } finally {
-      client.release();
     }
   });
 
@@ -29081,30 +29056,20 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
     const { newPassword } = req.body as { newPassword: string };
     if (isNaN(tenantId) || isNaN(userId)) return res.status(400).json({ message: 'Invalid ID' });
     if (!newPassword || newPassword.length < 6) return res.status(400).json({ message: 'Password must be at least 6 characters' });
-    const client = await pool.connect();
     try {
-      await client.query('BEGIN');
-      await client.query("SET LOCAL app.current_tenant_id = ''");
-      const { rows } = await client.query(
+      const { rows } = await pool.query(
         `SELECT id FROM users WHERE id = $1 AND "tenantId" = $2 AND "recordStatus" = 1`,
         [userId, tenantId]
       );
-      if (rows.length === 0) {
-        await client.query('ROLLBACK');
-        return res.status(404).json({ message: 'User not found in this tenant' });
-      }
+      if (rows.length === 0) return res.status(404).json({ message: 'User not found in this tenant' });
       const hashed = await hashPassword(newPassword);
-      await client.query(
+      await pool.query(
         `UPDATE users SET password = $1, password_changed_at = NOW(), must_change_password = true WHERE id = $2`,
         [hashed, userId]
       );
-      await client.query('COMMIT');
       res.json({ message: 'Password reset successfully. User will be prompted to change it on next login.' });
     } catch (err: any) {
-      await client.query('ROLLBACK').catch(() => {});
       res.status(500).json({ message: err.message });
-    } finally {
-      client.release();
     }
   });
 

@@ -90,48 +90,31 @@ export function setupAuth(app: Express) {
 
         let user: any;
 
-        // User lookups during login MUST bypass RLS — the tenantMiddleware may have
-        // already set app.current_tenant_id on a pool connection (to tenant 1 by default
-        // when there is no session), which causes RLS to hide users in other tenants
-        // (e.g. the super-admin in tenant 2).  We use a dedicated pool client with a
-        // transaction-scoped GUC reset so no cross-connection contamination occurs.
-        const loginClient = await pool.connect();
-        try {
-          await loginClient.query('BEGIN');
-          await loginClient.query("SELECT set_config('app.current_tenant_id', '', true)");
-
-          if (tenantSlug) {
-            // Preferred path: scope lookup to the specific tenant
-            const tenant = await lookupTenantBySlug(tenantSlug);
-            if (!tenant) {
-              await loginClient.query('ROLLBACK');
-              return done(null, false);
-            }
-            const r = await loginClient.query(
-              `SELECT u.*, COALESCE(r.name, u.role) AS role
-               FROM users u
-               LEFT JOIN roles r ON r.id = u.role_id
-               WHERE LOWER(u.username) = LOWER($1) AND u.tenant_id = $2
-               LIMIT 1`,
-              [username, tenant.id]
-            );
-            user = r.rows[0] ?? null;
-          } else {
-            // Fallback: global lookup (super-admin or no slug provided)
-            const r = await loginClient.query(
-              `SELECT u.*, COALESCE(r.name, u.role) AS role
-               FROM users u
-               LEFT JOIN roles r ON r.id = u.role_id
-               WHERE LOWER(u.username) = LOWER($1) OR LOWER(u.email) = LOWER($1)
-               ORDER BY u.is_super_admin DESC NULLS LAST
-               LIMIT 1`,
-              [username]
-            );
-            user = r.rows[0] ?? null;
-          }
-          await loginClient.query('COMMIT');
-        } finally {
-          loginClient.release();
+        if (tenantSlug) {
+          // Preferred path: scope lookup to the specific tenant
+          const tenant = await lookupTenantBySlug(tenantSlug);
+          if (!tenant) return done(null, false);
+          const r = await pool.query(
+            `SELECT u.*, COALESCE(r.name, u.role) AS role
+             FROM users u
+             LEFT JOIN roles r ON r.id = u.role_id
+             WHERE LOWER(u.username) = LOWER($1) AND u.tenant_id = $2
+             LIMIT 1`,
+            [username, tenant.id]
+          );
+          user = r.rows[0] ?? null;
+        } else {
+          // Fallback: global lookup (super-admin or no slug provided)
+          const r = await pool.query(
+            `SELECT u.*, COALESCE(r.name, u.role) AS role
+             FROM users u
+             LEFT JOIN roles r ON r.id = u.role_id
+             WHERE LOWER(u.username) = LOWER($1) OR LOWER(u.email) = LOWER($1)
+             ORDER BY u.is_super_admin DESC NULLS LAST
+             LIMIT 1`,
+            [username]
+          );
+          user = r.rows[0] ?? null;
         }
 
         if (!user || !user.password) return done(null, false);
