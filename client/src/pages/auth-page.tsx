@@ -58,11 +58,12 @@ export default function AuthPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!companySlug.trim() || !username.trim() || !password) return;
+    if (!username.trim() || !password) return;
     loginMutation.mutate({
       username: username.trim(),
       password,
-      tenantSlug: companySlug.trim().toLowerCase(),
+      // If company slug is empty (e.g. super-admin portal), omit it — backend does global lookup
+      ...(companySlug.trim() ? { tenantSlug: companySlug.trim().toLowerCase() } : {}),
     });
   };
 
@@ -192,13 +193,17 @@ export default function AuthPage() {
                 </div>
 
                 {loginMutation.isError && (
-                  <p className="text-sm text-destructive">Invalid company ID, username, or password. Please try again.</p>
+                  <p className="text-sm text-destructive">
+                    {companySlug.trim()
+                      ? "Invalid company ID, username, or password. Please try again."
+                      : "Invalid username or password. Please try again."}
+                  </p>
                 )}
 
                 <Button
                   type="submit"
                   className="w-full"
-                  disabled={loginMutation.isPending || !companySlug.trim() || !username.trim() || !password}
+                  disabled={loginMutation.isPending || !username.trim() || !password}
                   data-testid="button-sign-in"
                 >
                   {loginMutation.isPending
