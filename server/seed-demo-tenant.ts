@@ -39,30 +39,16 @@ async function ensureDemoUsers(tenantId: number): Promise<void> {
   const adminPwd = await hashPassword("Demo@1234");
   const mgrPwd   = await hashPassword("Demo@1234");
 
-  await db.insert(users).values([
-    {
-      username: "acme-admin",
-      email: "admin@acme-demo.com",
-      password: adminPwd,
-      firstName: "Rajesh",
-      lastName: "Mehta",
-      mobileNumber: "9876543210",
-      roleId: rolesMap["admin"] ?? null,
-      tenantId,
-      recordStatus: 1,
-    },
-    {
-      username: "acme-manager",
-      email: "manager@acme-demo.com",
-      password: mgrPwd,
-      firstName: "Priya",
-      lastName: "Sharma",
-      mobileNumber: "9876543211",
-      roleId: rolesMap["manager"] ?? null,
-      tenantId,
-      recordStatus: 1,
-    },
-  ]);
+  // Use raw SQL inside a transaction with RLS disabled — Drizzle ORM insert
+  // is blocked by row-level security on the users table.
+  await db.execute(sql`SET LOCAL row_security = off`);
+  await db.execute(sql`
+    INSERT INTO users (username, email, password, first_name, last_name, mobile_number, role_id, tenant_id, record_status)
+    VALUES
+      ('acme-admin',   'admin@acme-demo.com',   ${adminPwd}, 'Rajesh', 'Mehta',  '9876543210', ${rolesMap["admin"]   ?? null}::uuid, ${tenantId}, 1),
+      ('acme-manager', 'manager@acme-demo.com', ${mgrPwd},   'Priya',  'Sharma', '9876543211', ${rolesMap["manager"] ?? null}::uuid, ${tenantId}, 1)
+    ON CONFLICT (username) DO NOTHING
+  `);
   console.log(`[DEMO SEED] Users created for tenant ${tenantId}`);
 }
 

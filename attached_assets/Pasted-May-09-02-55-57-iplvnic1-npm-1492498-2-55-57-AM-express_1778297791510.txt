@@ -1,0 +1,33 @@
+May 09 02:55:57 iplvnic1 npm[1492498]: 2:55:57 AM [express] GET /api/public/module-catalog 304 in 3ms :: [{"slug":"user_management","name":…
+May 09 02:56:00 iplvnic1 npm[1492498]: [DEMO SEED] Tenant 12 found. User count: 0
+May 09 02:56:00 iplvnic1 npm[1492498]: [DEMO SEED] No users found — running ensureDemoUsers
+May 09 02:56:00 iplvnic1 npm[1492498]: Demo login error: error: new row violates row-level security policy for table "users"
+May 09 02:56:00 iplvnic1 npm[1492498]:     at /home/kinto/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+May 09 02:56:00 iplvnic1 npm[1492498]:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+May 09 02:56:00 iplvnic1 npm[1492498]:     at async ensureDemoUsers (file:///home/kinto/kinto-qa-system/dist/index.js:8497:3)
+May 09 02:56:00 iplvnic1 npm[1492498]:     at async seedDemoTenant (file:///home/kinto/kinto-qa-system/dist/index.js:8531:7)
+May 09 02:56:00 iplvnic1 npm[1492498]:     at async file:///home/kinto/kinto-qa-system/dist/index.js:8999:26 {
+May 09 02:56:00 iplvnic1 npm[1492498]:   length: 128,
+May 09 02:56:00 iplvnic1 npm[1492498]:   severity: 'ERROR',
+May 09 02:56:00 iplvnic1 npm[1492498]:   code: '42501',
+May 09 02:56:00 iplvnic1 npm[1492498]:   detail: undefined,
+May 09 02:56:00 iplvnic1 npm[1492498]:   hint: undefined,
+May 09 02:56:00 iplvnic1 npm[1492498]:   position: undefined,
+May 09 02:56:00 iplvnic1 npm[1492498]:   internalPosition: undefined,
+May 09 02:56:00 iplvnic1 npm[1492498]:   internalQuery: undefined,
+May 09 02:56:00 iplvnic1 npm[1492498]:   where: undefined,
+May 09 02:56:00 iplvnic1 npm[1492498]:   schema: undefined,
+May 09 02:56:00 iplvnic1 npm[1492498]:   table: undefined,
+May 09 02:56:00 iplvnic1 npm[1492498]:   column: undefined,
+May 09 02:56:00 iplvnic1 npm[1492498]:   dataType: undefined,
+May 09 02:56:00 iplvnic1 npm[1492498]:   constraint: undefined,
+May 09 02:56:00 iplvnic1 npm[1492498]:   file: 'execMain.c',
+May 09 02:56:00 iplvnic1 npm[1492498]:   line: '2182',
+May 09 02:56:00 iplvnic1 npm[1492498]:   routine: 'ExecWithCheckOptions'
+May 09 02:56:00 iplvnic1 npm[1492498]: }
+May 09 02:56:00 iplvnic1 npm[1492498]: 2:56:00 AM [express] POST /api/demo-login 500 in 135ms :: {"message":"new row violates row-level sec…
+May 09 02:56:07 iplvnic1 npm[1492498]: [DEMO SEED] Tenant 12 found. User count: 2
+May 09 02:56:07 iplvnic1 npm[1492498]: [DEMO SEED] 182 permissions set for demo admin role
+May 09 02:56:07 iplvnic1 npm[1492498]: ✅ Demo login — user: acme-admin, tenant: 12
+May 09 02:56:07 iplvnic1 npm[1492498]: 2:56:07 AM [express] POST /api/demo-login 200 in 269ms :: {"id":"ccc9c77c-9b2a-444b-aef0-ec23b189936…
+May 09 02:56:08 iplvnic1 npm[1492498]: 2:56:08 A
