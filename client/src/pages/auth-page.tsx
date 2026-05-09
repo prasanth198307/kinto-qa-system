@@ -138,33 +138,8 @@ export default function AuthPage() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4" data-testid="form-login">
-                {/* Company ID — visible unless slug was locked in via custom domain / URL param */}
-                {slugAutoDetected ? (
-                  /* Auto-detected: show the company name with a "Change" escape hatch */
-                  <div className="flex items-center justify-between rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
-                    <span className="flex items-center gap-2 text-muted-foreground">
-                      <Building2 className="h-4 w-4 shrink-0" />
-                      <span>
-                        Company: <span className="font-medium text-foreground">{tenantDisplayName || companySlug}</span>
-                        {tenantDisplayName && companySlug && (
-                          <span className="ml-1 text-muted-foreground">({companySlug})</span>
-                        )}
-                      </span>
-                    </span>
-                    {/* Allow switching to manual entry — critical for admins logging into a different tenant */}
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-auto p-0 text-xs text-muted-foreground hover:text-foreground"
-                      data-testid="button-change-company"
-                      onClick={() => { setSlugAutoDetected(false); hasUserTypedSlugRef.current = true; }}
-                    >
-                      <Pencil className="mr-1 h-3 w-3" />
-                      Change
-                    </Button>
-                  </div>
-                ) : (
+                {/* Company ID — hidden when slug is auto-detected from subdomain */}
+                {!slugAutoDetected && (
                   <div className="space-y-2">
                     <Label htmlFor="company-slug">Company ID</Label>
                     <div className="relative">
