@@ -21,6 +21,16 @@ const NON_CATALOG_MODULES = new Set([
 ]);
 
 /**
+ * System configuration endpoints that are always accessible regardless of plan.
+ * These are tenant-level settings, not business feature modules.
+ */
+const ALWAYS_ALLOWED_PATHS = new Set([
+  '/api/hr/module-labels',
+  '/api/hr/custom-fields',
+  '/api/hr/custom-field-definitions',
+]);
+
+/**
  * Catalog slugs (stored in subscriptions.selected_modules via the Module Marketplace)
  * do not always match the route-level module names used in ROUTE_PLAN_REQUIREMENTS.
  * This map lets the plan enforcement accept either form.
@@ -133,6 +143,9 @@ export async function planEnforcementMiddleware(req: Request, res: Response, nex
 
   // Super-admins bypass plan gating entirely
   if (user?.isSuperAdmin) return next();
+
+  // System config endpoints are always accessible regardless of plan
+  if (ALWAYS_ALLOWED_PATHS.has(req.path)) return next();
 
   // Always fetch plan fresh from DB — never use session cache which can be stale
   const tenantId: number = (req.session as any).tenantId ?? user?.tenantId ?? 1;

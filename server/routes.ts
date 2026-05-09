@@ -20791,6 +20791,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       const parsed = insertCashRegisterDaySchema.parse({
         ...req.body,
         createdBy: req.user?.id,
+        tenantId: getCurrentTenantId() ?? req.session?.tenantId ?? 1,
       });
       
       const allDays = await storage.getCashRegisterDays();
