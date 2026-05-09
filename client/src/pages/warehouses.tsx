@@ -133,7 +133,7 @@ function StockTransfersTab() {
           {transfers.map((t: any) => {
             const items = tItems.filter((i: any) => i.transfer_id === t.id);
             return (
-              <Card key={t.id}>
+              <Card key={t.id} data-testid={`card-transfer-${t.id}`}>
                 <CardContent className="p-4">
                   <div className="flex flex-wrap justify-between gap-2">
                     <div>
@@ -159,7 +159,7 @@ function StockTransfersTab() {
               <div>
                 <Label>From Warehouse</Label>
                 <Select value={form.fromWarehouseId||"__none__"} onValueChange={v => setForm(p => ({ ...p, fromWarehouseId: v === "__none__" ? "" : v }))}>
-                  <SelectTrigger><SelectValue placeholder="External / New Stock" /></SelectTrigger>
+                  <SelectTrigger data-testid="select-transfer-from"><SelectValue placeholder="External / New Stock" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">External / New Stock</SelectItem>
                     {(warehouses as any[]).map((w: any) => <SelectItem key={w.id} value={String(w.id)}>{w.name}</SelectItem>)}
@@ -169,12 +169,12 @@ function StockTransfersTab() {
               <div>
                 <Label>To Warehouse <span className="text-destructive">*</span></Label>
                 <Select value={form.toWarehouseId} onValueChange={v => setForm(p => ({ ...p, toWarehouseId: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Select warehouse" /></SelectTrigger>
+                  <SelectTrigger data-testid="select-transfer-to"><SelectValue placeholder="Select warehouse" /></SelectTrigger>
                   <SelectContent>{(warehouses as any[]).map((w: any) => <SelectItem key={w.id} value={String(w.id)}>{w.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div><Label>Transfer Date</Label><Input type="date" value={form.transferDate} onChange={e => setForm(p => ({ ...p, transferDate: e.target.value }))} /></div>
-              <div><Label>Reference No</Label><Input value={form.referenceNo} onChange={e => setForm(p => ({ ...p, referenceNo: e.target.value }))} /></div>
+              <div><Label>Transfer Date</Label><Input type="date" value={form.transferDate} onChange={e => setForm(p => ({ ...p, transferDate: e.target.value }))} data-testid="input-transfer-date" /></div>
+              <div><Label>Reference No</Label><Input value={form.referenceNo} onChange={e => setForm(p => ({ ...p, referenceNo: e.target.value }))} data-testid="input-transfer-ref" /></div>
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-2">
@@ -259,9 +259,9 @@ function UOMConversionsTab() {
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">Define: 1 [From UOM] = [Factor] [To UOM]</p>
             <div className="grid grid-cols-3 gap-2">
-              <div><Label>From UOM</Label><Input value={form.fromUom} onChange={e => setForm(p => ({ ...p, fromUom: e.target.value }))} placeholder="kg" /></div>
-              <div><Label>Factor</Label><Input type="number" value={form.factor} onChange={e => setForm(p => ({ ...p, factor: e.target.value }))} placeholder="1000" /></div>
-              <div><Label>To UOM</Label><Input value={form.toUom} onChange={e => setForm(p => ({ ...p, toUom: e.target.value }))} placeholder="g" /></div>
+              <div><Label>From UOM</Label><Input value={form.fromUom} onChange={e => setForm(p => ({ ...p, fromUom: e.target.value }))} placeholder="kg" data-testid="input-uom-from" /></div>
+              <div><Label>Factor</Label><Input type="number" value={form.factor} onChange={e => setForm(p => ({ ...p, factor: e.target.value }))} placeholder="1000" data-testid="input-uom-factor" /></div>
+              <div><Label>To UOM</Label><Input value={form.toUom} onChange={e => setForm(p => ({ ...p, toUom: e.target.value }))} placeholder="g" data-testid="input-uom-to" /></div>
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>

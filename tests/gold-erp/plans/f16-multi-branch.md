@@ -1,57 +1,57 @@
-# F16 — Multi-Branch Operations: Stock Transfer HO→Branch → In-Transit Lock → Receive → Branch POS Sale
-# NOTE: Requires warehouse/multi-location setup. Uses the Warehouses module.
+# F16 — Multi-Branch Operations: Warehouses → Stock Transfer → UOM Conversion
+# NOTE: The original F16 plan referenced "In Transit → Receive" two-step transfer flow,
+# Branch POS sale with branch selection, and consolidated branch analytics — none of which
+# are implemented in the current Warehouses module.
+# The actual module has a single-step "Complete Transfer" flow (status=completed immediately).
+# This revised plan covers what is actually built.
 # Login: gold-erp-demo / goldadmin / Gold@1234
 
-1. [New Context] Create a fresh browser context
+1. [New Context] Create fresh browser context
 2. [Browser] Navigate to /auth and sign in as gold-erp-demo / goldadmin / Gold@1234
 3. [Verify] Assert dashboard loads
 
-## PHASE 1: Setup Warehouses (if not already existing)
-4. [Browser] Navigate to Warehouses (path: /warehouses)
-5. [Verify] Assert Warehouses screen is visible
-6. [Browser] Ensure at least 2 warehouses exist — "Head Office" and "Banjara Hills Branch"
-7. [Browser] If missing, click "+ Add Warehouse"
-8. [Browser] Fill "Banjara Hills Branch" in Name, "Hyderabad — Banjara Hills showroom" in address
+## PHASE 1: Create Head Office Warehouse
+4. [Browser] Navigate to /warehouses
+5. [Verify] Assert "Warehouses & Stock" page heading visible
+6. [Browser] Click "Add Warehouse"
+7. [Browser] Fill Name: "Head Office", Code: "HO", City: "Hyderabad", State: "Telangana"
+8. [Browser] Check "Set as default warehouse"
 9. [Browser] Click Save
-10. [Verify] Assert both Head Office and Banjara Hills Branch warehouses exist
+10. [Verify] Assert warehouse card for "Head Office" appears
 
-## PHASE 2: Initiate Stock Transfer HO → Branch
-11. [Browser] Navigate to Stock Transfers within Warehouses or Inventory
-12. [Browser] Click "+ New Transfer"
-13. [Browser] Select "Head Office" as Source Warehouse
-14. [Browser] Select "Banjara Hills Branch" as Destination Warehouse
-15. [Browser] Add transfer items:
-    - Item "DT-0042" (22K Necklace, 16.2gm) — quantity 1
-    - Item "DT-0044" (if exists) — quantity 1
-16. [Browser] Fill transfer notes "Diwali stock replenishment — Banjara Hills"
-17. [Browser] Click Save / Initiate Transfer
-18. [Verify]
-    - Assert stock transfer created with status "In Transit"
-    - Assert items are locked / reserved in HO stock (not available for sale from HO)
+## PHASE 2: Create Branch Warehouse
+11. [Browser] Click "Add Warehouse"
+12. [Browser] Fill Name: "Banjara Hills Branch", Code: "BH", City: "Hyderabad", State: "Telangana"
+13. [Browser] Click Save
+14. [Verify] Assert warehouse card for "Banjara Hills Branch" appears
+15. [Verify] Assert total warehouse cards >= 2
 
-## PHASE 3: Receive at Branch
-19. [Browser] Update transfer status to "Received" or click "Confirm Receipt"
-20. [Browser] Fill "Branch received in good condition" in receipt notes
-21. [Browser] Set received date to today
-22. [Browser] Click Save
-23. [Verify]
-    - Assert transfer status = Received
-    - Assert items now appear in Banjara Hills Branch inventory
-    - Assert items removed from Head Office stock
+## PHASE 3: Create Stock Transfer HO → Branch
+16. [Browser] Click "Stock Transfers" tab
+17. [Browser] Click "New Transfer"
+18. [Browser] Select "Head Office" as From Warehouse
+19. [Browser] Select "Banjara Hills Branch" as To Warehouse
+20. [Browser] Fill Reference No: "DW-2026-001"
+21. [Browser] Click "Complete Transfer"
+22. [Verify] Assert transfer card shows "Head Office → Banjara Hills Branch"
+23. [Verify] Assert transfer card shows status "completed"
+24. [Verify] Assert reference "DW-2026-001" visible
 
-## PHASE 4: Branch POS Sale
-24. [Browser] Navigate to Jewellery POS (path: /gold-erp?section=jewellery-pos)
-25. [Browser] Create a new sale
-26. [Browser] Select "Banjara Hills Branch" as the billing location/branch if that option exists
-27. [Browser] Add item "DT-0042" to the bill
-28. [Browser] Add customer "Walk-in Customer"
-29. [Browser] Complete the sale
-30. [Verify]
-    - Assert sale created for ₹1,11,473 approximately
-    - Assert DT-0042 stock deducted from Banjara Hills Branch (not HO)
+## PHASE 4: UOM Conversions
+25. [Browser] Click "UOM Conversions" tab
+26. [Browser] Click "Add Conversion"
+27. [Browser] Fill From=kg, Factor=1000, To=g
+28. [Browser] Click Save
+29. [Verify] Assert UOM row "1 kg = 1000 g" visible
+30. [Browser] Click "Add Conversion" again
+31. [Browser] Fill From=tola, Factor=11.664, To=g
+32. [Browser] Click Save
+33. [Verify] Assert "tola" and "11.664" visible in conversions table
 
-## PHASE 5: Consolidated Analytics Check
-31. [Browser] Navigate to MIS or Analytics (path: /mis)
-32. [Verify]
-    - Assert analytics shows sales data consolidating across both HO and Branch
-    - Assert Banjara Hills Branch sales visible in the report
+## PHASE 5: Edit Warehouse
+34. [Browser] Click "Warehouses" tab
+35. [Browser] Click Edit on Head Office card
+36. [Browser] Fill Address: "Road No 12, Banjara Hills"
+37. [Browser] Click Save
+38. [Verify] Assert dialog closes (address saved)
+39. [Verify] Assert 2 warehouse cards still exist (HO + Branch)

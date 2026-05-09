@@ -87,9 +87,10 @@ router.get("/stock-transfers", requireAuth, async (req: any, res) => {
       LEFT JOIN warehouses tw ON tw.id = st.to_warehouse_id
       WHERE st.tenant_id=${tid} AND st.record_status=1
       ORDER BY st.transfer_date DESC`);
-    const ids = (rows.rows as any[]).map((r: any) => r.id);
-    const items = ids.length > 0
-      ? await db.execute(sql`SELECT * FROM stock_transfer_items WHERE transfer_id = ANY(${ids}::int[]) AND tenant_id=${tid}`)
+    const items = rows.rows.length > 0
+      ? await db.execute(sql`SELECT * FROM stock_transfer_items WHERE transfer_id IN (
+          SELECT id FROM stock_transfers WHERE tenant_id=${tid} AND record_status=1
+        ) AND tenant_id=${tid}`)
       : { rows: [] };
     res.json({ transfers: rows.rows, items: items.rows });
   } catch (e: any) {
