@@ -29130,7 +29130,11 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
 
       const freeModules = catalog.filter((m: any) => m.free).map((m: any) => m.slug);
 
-      res.json({ selectedModules, planModules, monthlyAmount, planSlug, catalog, freeModules });
+      // Use explicit Content-Length to avoid nginx HTTP/2 chunked encoding errors
+      const body = JSON.stringify({ selectedModules, planModules, monthlyAmount, planSlug, catalog, freeModules });
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.setHeader('Content-Length', Buffer.byteLength(body, 'utf8'));
+      res.status(200).end(body);
     } catch (err: any) {
       console.error('[ADMIN] GET /api/admin/tenants/:tenantId/modules error:', err);
       res.status(500).json({ message: err.message });
