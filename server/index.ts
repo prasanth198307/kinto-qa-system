@@ -1259,7 +1259,7 @@ app.use((req, res, next) => {
   // shared/screen-registry.ts, ALL existing admin roles across ALL tenants
   // get that screen automatically — no manual SQL needed.
   try {
-    const { ALL_SCREEN_KEYS } = await import('../shared/screen-registry');
+    const { ALL_NAV_SCREEN_KEYS: ALL_SCREEN_KEYS } = await import('../shared/nav-screen-map');
     const { pool: patchPool } = await import('./db');
 
     // Find every admin role across all tenants
