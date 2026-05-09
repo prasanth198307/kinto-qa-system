@@ -2044,6 +2044,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         firstName: firstName || null,
         lastName: lastName || null,
         roleId: validRole.id,
+        tenantId,
       };
 
       const user = await storage.createUser(userData);
