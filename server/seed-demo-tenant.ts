@@ -8,7 +8,7 @@ import { db } from "./db";
 import { tenants, users, vendors, rawMaterials, products } from "@shared/schema";
 import { eq, sql } from "drizzle-orm";
 import { seedNewTenant } from "./seed-tenant";
-import { ALL_SCREEN_KEYS as REGISTRY_SCREEN_KEYS } from "@shared/screen-registry";
+import { ALL_NAV_SCREEN_KEYS as REGISTRY_SCREEN_KEYS } from "../shared/nav-screen-map";
 import { hashPassword } from "./auth";
 
 /** Grants full admin permissions for every ERP screen to the demo admin role. Idempotent. */
@@ -22,7 +22,7 @@ async function ensureDemoPermissions(tenantId: number, adminRoleId: string): Pro
         SET can_view=1, can_create=1, can_edit=1, can_delete=1
     `);
   }
-  console.log(`[DEMO SEED] ${ALL_SCREEN_KEYS.length} permissions set for demo admin role`);
+  console.log(`[DEMO SEED] ${REGISTRY_SCREEN_KEYS.length} permissions set for demo admin role`);
 }
 
 /** Creates acme-admin and acme-manager for an already-existing demo tenant. */
