@@ -252,3 +252,9 @@ id = "vKS5Ixao-cUPYSuOAkDxA"
 uri = "file://attached_assets/gold_erp_validation_v5_fixed.xlsx"
 type = "table"
 title = "Gold ERP Validation v5 — All 4 Issues Fixed"
+
+[[outputs]]
+id = "XhUZIFLLFVXNkcrKKXvoB"
+uri = "file://SwachERP_Gold_ERP_Test_Report.pdf"
+type = "pdf"
+title = "SwachERP Gold ERP — Automated Test Report"
