@@ -435,7 +435,7 @@ router.post("/karigar-ledger", requireAuth, async (req: any, res) => {
   try {
     const { karigar_id, production_order_id, txn_type, metal_type, purity_name, weight_gm, txn_date, notes } = req.body;
     const row = await db.execute(sql`
-      INSERT INTO jw_karigar_material_ledger (karigar_id, production_order_id, txn_type, metal_type, purity_name, weight_gm, txn_date, notes)
+      INSERT INTO jw_karigar_material_ledger (karigar_id, production_order_id, txn_type, material_type, purity_name, weight_gm, txn_date, notes)
       VALUES (${karigar_id}, ${production_order_id||null}, ${txn_type}, ${metal_type||'gold'}, ${purity_name||null}, ${weight_gm||0}, ${txn_date||new Date().toISOString().slice(0,10)}, ${notes||null})
       RETURNING *`);
     res.json(row.rows[0]);
