@@ -39,13 +39,17 @@ export default function CRMSurveysPage() {
 
   const saveSurveyMutation = useMutation({
     mutationFn: async (data: any) => {
-      const survey = editingSurvey
+      const resp = editingSurvey
         ? await apiRequest("PUT", `/api/crm/surveys/${editingSurvey.id}`, data.survey)
         : await apiRequest("POST", "/api/crm/surveys", data.survey);
+      const survey = await resp.json();
       if (!editingSurvey && data.questions?.length) {
         const sid = survey.id;
         for (const q of data.questions) {
-          if (q.question) await apiRequest("POST", "/api/crm/survey-questions", { ...q, survey_id: sid });
+          if (q.question?.trim()) {
+            await apiRequest("POST", "/api/crm/survey-questions", { ...q, survey_id: sid })
+              .catch(() => {});
+          }
         }
       }
       return survey;
@@ -175,8 +179,8 @@ export default function CRMSurveysPage() {
           <DialogHeader><DialogTitle>Record Response — {showDetails?.title}</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1"><Label className="text-xs">Customer Name</Label><Input value={responseForm.respondent_name || ""} onChange={e => setResponseForm((p: any) => ({ ...p, respondent_name: e.target.value }))} /></div>
-              <div className="space-y-1"><Label className="text-xs">Phone</Label><Input value={responseForm.respondent_phone || ""} onChange={e => setResponseForm((p: any) => ({ ...p, respondent_phone: e.target.value }))} /></div>
+              <div className="space-y-1"><Label className="text-xs">Customer Name</Label><Input value={responseForm.respondent_name || ""} onChange={e => setResponseForm((p: any) => ({ ...p, respondent_name: e.target.value }))} data-testid="input-response-name" /></div>
+              <div className="space-y-1"><Label className="text-xs">Phone</Label><Input value={responseForm.respondent_phone || ""} onChange={e => setResponseForm((p: any) => ({ ...p, respondent_phone: e.target.value }))} data-testid="input-response-phone" /></div>
             </div>
             {(detailQuestions as any[]).map((q: any, i: number) => (
               <div key={q.id} className="space-y-2">
@@ -202,7 +206,7 @@ export default function CRMSurveysPage() {
             )}
             <div className="flex gap-2 justify-end pt-1">
               <Button variant="outline" onClick={() => setShowResponseForm(false)}>Cancel</Button>
-              <Button onClick={() => saveResponseMutation.mutate(responseForm)} disabled={saveResponseMutation.isPending}>Submit Response</Button>
+              <Button onClick={() => saveResponseMutation.mutate(responseForm)} disabled={saveResponseMutation.isPending} data-testid="button-submit-response">Submit Response</Button>
             </div>
           </div>
         </DialogContent>
@@ -214,7 +218,7 @@ export default function CRMSurveysPage() {
           <DialogHeader><DialogTitle>{editingSurvey ? "Edit Survey" : "New Survey"}</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1"><Label className="text-xs">Survey Title *</Label><Input value={surveyForm.title || ""} onChange={e => setSurveyForm((p: any) => ({ ...p, title: e.target.value }))} data-testid="input-survey-title" /></div>
-            <div className="space-y-1"><Label className="text-xs">Description</Label><Textarea value={surveyForm.description || ""} onChange={e => setSurveyForm((p: any) => ({ ...p, description: e.target.value }))} rows={2} /></div>
+            <div className="space-y-1"><Label className="text-xs">Description</Label><Textarea value={surveyForm.description || ""} onChange={e => setSurveyForm((p: any) => ({ ...p, description: e.target.value }))} rows={2} data-testid="textarea-survey-desc" /></div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs">Target Audience</Label>
@@ -237,7 +241,7 @@ export default function CRMSurveysPage() {
                 {questions.map((q, i) => (
                   <div key={i} className="border rounded-lg p-3 space-y-2">
                     <div className="flex items-center gap-2">
-                      <Input className="flex-1" placeholder="Question text" value={q.question} onChange={e => updateQ(i, "question", e.target.value)} />
+                      <Input className="flex-1" placeholder="Question text" value={q.question} onChange={e => updateQ(i, "question", e.target.value)} data-testid={`input-question-${i}`} />
                       <Button size="icon" variant="ghost" onClick={() => removeQ(i)}><Trash2 className="h-4 w-4" /></Button>
                     </div>
                     <Select value={q.question_type} onValueChange={v => updateQ(i, "question_type", v)}>

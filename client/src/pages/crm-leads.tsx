@@ -44,23 +44,23 @@ function LeadForm({ form, setForm, onSave, onCancel, isSaving, users }: any) {
         </div>
         <div className="space-y-1.5">
           <Label>Phone</Label>
-          <Input className={cls} value={form.phone} onChange={f("phone")} placeholder="Phone number" />
+          <Input className={cls} value={form.phone} onChange={f("phone")} placeholder="Phone number" data-testid="input-lead-phone" />
         </div>
         <div className="space-y-1.5">
           <Label>Email</Label>
-          <Input className={cls} value={form.email} onChange={f("email")} placeholder="Email address" type="email" />
+          <Input className={cls} value={form.email} onChange={f("email")} placeholder="Email address" type="email" data-testid="input-lead-email" />
         </div>
         <div className="space-y-1.5">
           <Label>Source</Label>
           <Select value={form.source} onValueChange={s("source")}>
-            <SelectTrigger className={cls}><SelectValue placeholder="Select source" /></SelectTrigger>
+            <SelectTrigger className={cls} data-testid="select-lead-source"><SelectValue placeholder="Select source" /></SelectTrigger>
             <SelectContent>{SOURCES.map(src => <SelectItem key={src} value={src}>{src}</SelectItem>)}</SelectContent>
           </Select>
         </div>
         <div className="space-y-1.5">
           <Label>Status</Label>
           <Select value={form.status} onValueChange={s("status")}>
-            <SelectTrigger className={cls}><SelectValue /></SelectTrigger>
+            <SelectTrigger className={cls} data-testid="select-lead-status"><SelectValue /></SelectTrigger>
             <SelectContent>{STATUSES.map(st => <SelectItem key={st.value} value={st.value}>{st.label}</SelectItem>)}</SelectContent>
           </Select>
         </div>
@@ -81,11 +81,11 @@ function LeadForm({ form, setForm, onSave, onCancel, isSaving, users }: any) {
       </div>
       <div className="space-y-1.5">
         <Label>Product / Service Interest</Label>
-        <Input className={cls} value={form.productInterest} onChange={f("productInterest")} placeholder="What are they interested in?" />
+        <Input className={cls} value={form.productInterest} onChange={f("productInterest")} placeholder="What are they interested in?" data-testid="input-lead-product" />
       </div>
       <div className="space-y-1.5">
         <Label>Notes</Label>
-        <Textarea value={form.notes} onChange={f("notes")} placeholder="Any additional notes..." rows={3} />
+        <Textarea value={form.notes} onChange={f("notes")} placeholder="Any additional notes..." rows={3} data-testid="textarea-lead-notes" />
       </div>
       <div className="flex justify-end gap-2 pt-2">
         <Button variant="ghost" onClick={onCancel}>Cancel</Button>
