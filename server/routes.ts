@@ -854,7 +854,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ─── Tenant settings update (admin only, company info only — not plan) ──────
   app.patch('/api/tenant/settings', async (req: any, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' });
-    if (req.user?.role !== 'admin' && !req.user?.isSuperAdmin) return res.status(403).json({ message: 'Admin only' });
+    if (req.user?.role?.toLowerCase() !== 'admin' && !req.user?.isSuperAdmin) return res.status(403).json({ message: 'Admin only' });
 
     const tenantId: number = (req.session as any).tenantId ?? req.user?.tenantId ?? 1;
     const { billingEmail, contactName, contactPhone, gstNumber, address, logoUrl, primaryColor, industry } = req.body;
@@ -890,7 +890,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/tenant/upload-logo', logoUpload.single('logo'), async (req: any, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' });
-    if (req.user?.role !== 'admin' && !req.user?.isSuperAdmin) return res.status(403).json({ message: 'Admin only' });
+    if (req.user?.role?.toLowerCase() !== 'admin' && !req.user?.isSuperAdmin) return res.status(403).json({ message: 'Admin only' });
     if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
 
     const tenantId: number = (req.session as any).tenantId ?? req.user?.tenantId ?? 1;
@@ -913,7 +913,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ─── Tenant: CORS Origins (self-service for admin) ───────────────────────
   app.get('/api/tenant/cors-origins', async (req: any, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' });
-    if (req.user?.role !== 'admin' && !req.user?.isSuperAdmin) return res.status(403).json({ message: 'Admin only' });
+    if (req.user?.role?.toLowerCase() !== 'admin' && !req.user?.isSuperAdmin) return res.status(403).json({ message: 'Admin only' });
     const tenantId: number = (req.session as any).tenantId ?? req.user?.tenantId ?? 1;
     const [row] = await db.select({ corsOrigins: tenants.corsOrigins }).from(tenants).where(eq(tenants.id, tenantId)).limit(1);
     res.json({ corsOrigins: row?.corsOrigins ?? [] });
@@ -921,7 +921,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/tenant/cors-origins', async (req: any, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' });
-    if (req.user?.role !== 'admin' && !req.user?.isSuperAdmin) return res.status(403).json({ message: 'Admin only' });
+    if (req.user?.role?.toLowerCase() !== 'admin' && !req.user?.isSuperAdmin) return res.status(403).json({ message: 'Admin only' });
     const tenantId: number = (req.session as any).tenantId ?? req.user?.tenantId ?? 1;
     const { corsOrigins } = req.body;
     if (!Array.isArray(corsOrigins)) return res.status(400).json({ message: 'corsOrigins must be an array' });
@@ -936,7 +936,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ─── Tenant: Export all company data as JSON ─────────────────────────────
   app.get('/api/tenant/export', async (req: any, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' });
-    if (req.user?.role !== 'admin' && !req.user?.isSuperAdmin) return res.status(403).json({ message: 'Admin only' });
+    if (req.user?.role?.toLowerCase() !== 'admin' && !req.user?.isSuperAdmin) return res.status(403).json({ message: 'Admin only' });
 
     const tenantId: number = (req.session as any).tenantId ?? req.user?.tenantId ?? 1;
 
@@ -1144,7 +1144,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ─── Tenant: Request plan upgrade ────────────────────────────────────────────
   app.post('/api/tenant/upgrade-request', async (req: any, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' });
-    if (req.user?.role !== 'admin' && !req.user?.isSuperAdmin) return res.status(403).json({ message: 'Admin only' });
+    if (req.user?.role?.toLowerCase() !== 'admin' && !req.user?.isSuperAdmin) return res.status(403).json({ message: 'Admin only' });
     const tenantId: number = (req.session as any).tenantId ?? req.user?.tenantId ?? 1;
     const { toPlan, billingCycle, notes } = req.body;
     if (!toPlan) return res.status(400).json({ message: 'toPlan is required' });
@@ -18126,9 +18126,11 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
 
       console.log(`[AUDIT] Admin ${req.user.id} creating new role: ${name}`);
       
+      const tenantId: number = (req.session as any)?.tenantId ?? req.user?.tenantId ?? 1;
       const roleData = {
         name,
         description,
+        tenantId,
         permissions: permissions || [],
       };
       

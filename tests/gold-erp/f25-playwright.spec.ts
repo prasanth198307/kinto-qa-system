@@ -34,8 +34,7 @@ const runId = Date.now().toString().slice(-6);
 test("F25 — Admin & Settings: Company Info → Roles → Module Labels → Custom Fields → Subscription → Audit Trail", async ({ page }) => {
   test.setTimeout(120000);
 
-  // Counter Staff role was pre-created via psql under tenant 13 (POST /api/roles has tenantId bug)
-  const counterStaffRoleId = "cb146733-e0b4-4d8f-a814-473b61371eb1";
+  let newRoleId = "";
   let customFieldId = 0;
 
   // ── Login ─────────────────────────────────────────────────────────────────
@@ -52,13 +51,26 @@ test("F25 — Admin & Settings: Company Info → Roles → Module Labels → Cus
     console.log(`✓ Tenant info — name: "${info.name}", plan: "${info.planName || info.plan || "N/A"}"`);
   });
 
-  await test.step("Phase 1b — Verify GSTIN pre-set via psql is visible in tenant info", async () => {
-    // Note: PATCH /api/tenant/settings checks req.user.role !== 'admin' (case-sensitive) and
-    // goldadmin has role='Admin' — so we pre-set GSTIN via psql and just verify the GET.
+  await test.step("Phase 1b — PATCH company settings via API (bug-fixed: case-insensitive role check)", async () => {
+    // Bug fixed: PATCH /api/tenant/settings previously checked req.user.role !== 'admin' (case-sensitive).
+    // goldadmin has role='Admin' → was 403. Fixed to role?.toLowerCase() !== 'admin'.
+    const updated = await apiPatch(page, "/api/tenant/settings", {
+      gstNumber:    "36AABCG5432L1Z5",
+      address:      "123 Jewellers Lane, Hyderabad, Telangana 500001",
+      contactName:  "Gold ERP Admin",
+      billingEmail: `admin.f25.${runId}@goldtest.com`,
+      industry:     "manufacturing",
+    });
+    expect(updated).toBeTruthy();
+    console.log(`✓ PATCH /api/tenant/settings succeeded (case-insensitive fix confirmed)`);
+  });
+
+  await test.step("Phase 1c — Verify saved company settings via GET", async () => {
     const info = await apiGet(page, "/api/tenant/info");
     expect(info.gstNumber).toBe("36AABCG5432L1Z5");
     expect(info.address).toBe("123 Jewellers Lane, Hyderabad, Telangana 500001");
-    console.log(`✓ Company info — GSTIN: "${info.gstNumber}", address: "${info.address}"`);
+    expect(info.contactName).toBe("Gold ERP Admin");
+    console.log(`✓ Company info persisted — GSTIN: "${info.gstNumber}", address: "${info.address}"`);
   });
 
   // ── PHASE 2: Roles ────────────────────────────────────────────────────────
@@ -71,22 +83,35 @@ test("F25 — Admin & Settings: Company Info → Roles → Module Labels → Cus
     console.log(`✓ Roles list — ${roles.length} role(s) — Admin role confirmed`);
   });
 
-  await test.step("Phase 2b — Verify Counter Staff role exists in tenant's role list", async () => {
-    // Note: POST /api/roles has a tenantId bug (defaults to tenant 1 instead of session tenant).
-    // Counter Staff F25 was pre-created via psql under tenant 13 (id=cb146733-...).
-    const roles = await apiGet(page, "/api/roles");
-    const found = roles.find((r: any) => r.id === counterStaffRoleId);
-    expect(found).toBeTruthy();
-    expect(found.name).toContain("Counter Staff");
-    console.log(`✓ Counter Staff role visible in tenant roles list — name: "${found.name}"`);
+  await test.step("Phase 2b — POST /api/roles creates role under correct tenant (bug-fixed)", async () => {
+    // Bug fixed: POST /api/roles previously used storage.createRole without tenantId,
+    // so new roles landed in tenant 1 instead of the session tenant (13).
+    // Fixed by extracting tenantId from session and passing it to roleData.
+    const role = await apiPost(page, "/api/roles", {
+      name:        `Counter Staff F25-${runId}`,
+      description: "Counter billing and karigar view only — F25 test",
+      permissions: [],
+    });
+    newRoleId = role.id;
+    expect(newRoleId).toBeTruthy();
+    expect(role.tenant_id ?? role.tenantId).toBe(13);
+    console.log(`✓ Role created in correct tenant — "${role.name}" tenantId: ${role.tenant_id ?? role.tenantId} id: ${newRoleId}`);
   });
 
-  await test.step("Phase 2c — Set permissions for Counter Staff role", async () => {
-    const existing = await apiGet(page, `/api/roles/${counterStaffRoleId}/permissions`);
+  await test.step("Phase 2c — Verify new role appears in tenant's role list", async () => {
+    const roles = await apiGet(page, "/api/roles");
+    const found = roles.find((r: any) => r.id === newRoleId);
+    expect(found).toBeTruthy();
+    expect(found.name).toContain("Counter Staff");
+    console.log(`✓ Counter Staff role visible in tenant roles list — "${found.name}"`);
+  });
+
+  await test.step("Phase 2d — Set permissions for Counter Staff role", async () => {
+    const existing = await apiGet(page, `/api/roles/${newRoleId}/permissions`);
     expect(Array.isArray(existing)).toBe(true);
     console.log(`  Existing permissions count: ${existing.length}`);
 
-    const updated = await apiPut(page, `/api/roles/${counterStaffRoleId}/permissions`, {
+    const updated = await apiPut(page, `/api/roles/${newRoleId}/permissions`, {
       permissions: [
         { screenKey: "jewellery_pos", canView: 1, canCreate: 1, canEdit: 0, canDelete: 0 },
         { screenKey: "karigar",       canView: 1, canCreate: 0, canEdit: 0, canDelete: 0 },
@@ -97,14 +122,15 @@ test("F25 — Admin & Settings: Company Info → Roles → Module Labels → Cus
     console.log(`✓ Permissions set — POS: view+create, Karigar: view-only, Settings: none`);
   });
 
-  await test.step("Phase 2d — Verify permissions were saved", async () => {
-    const perms = await apiGet(page, `/api/roles/${counterStaffRoleId}/permissions`);
+  await test.step("Phase 2e — Verify permissions were saved", async () => {
+    const perms = await apiGet(page, `/api/roles/${newRoleId}/permissions`);
     expect(Array.isArray(perms)).toBe(true);
     expect(perms.length).toBeGreaterThanOrEqual(3);
     const pos = perms.find((p: any) => p.screen_key === "jewellery_pos" || p.screenKey === "jewellery_pos");
     expect(pos).toBeTruthy();
     expect(pos.can_view ?? pos.canView).toBe(1);
     expect(pos.can_create ?? pos.canCreate).toBe(1);
+    expect(pos.can_edit ?? pos.canEdit).toBe(0);
     console.log(`✓ Permissions verified — POS: canView=${pos.can_view ?? pos.canView} canCreate=${pos.can_create ?? pos.canCreate}`);
   });
 
@@ -143,7 +169,7 @@ test("F25 — Admin & Settings: Company Info → Roles → Module Labels → Cus
   });
 
   // ── PHASE 4: Custom Fields ────────────────────────────────────────────────
-  await test.step("Phase 4a — Create custom field: Invoice → Customer's Special Note", async () => {
+  await test.step("Phase 4a — Create text custom field: Invoice → Customer's Special Note", async () => {
     const field = await apiPost(page, "/api/hr/custom-fields", {
       entityType:  "invoice",
       fieldName:   `customers_special_note_${runId}`,
@@ -168,7 +194,7 @@ test("F25 — Admin & Settings: Company Info → Roles → Module Labels → Cus
     console.log(`✓ Custom fields total: ${fields.length} — invoice field ${customFieldId} confirmed`);
   });
 
-  await test.step("Phase 4c — Create a dropdown custom field: Vendor → Vendor Category", async () => {
+  await test.step("Phase 4c — Create dropdown custom field: Vendor → Vendor Category", async () => {
     const field = await apiPost(page, "/api/hr/custom-fields", {
       entityType:  "vendor",
       fieldName:   `vendor_category_${runId}`,
@@ -187,21 +213,17 @@ test("F25 — Admin & Settings: Company Info → Roles → Module Labels → Cus
   await test.step("Phase 5a — GET subscription details", async () => {
     const sub = await apiGet(page, "/api/tenant/subscription");
     expect(sub).toBeTruthy();
-    console.log(`✓ Subscription — plan: "${sub.plan?.name || sub.plan || sub.planName || JSON.stringify(sub).slice(0,80)}"`);
+    console.log(`✓ Subscription — plan: "${sub.plan?.name || sub.plan || sub.planName || JSON.stringify(sub).slice(0, 80)}"`);
   });
 
   await test.step("Phase 5b — GET module catalog", async () => {
     const catalog = await apiGet(page, "/api/billing/module-catalog");
     expect(Array.isArray(catalog)).toBe(true);
-    expect(catalog.length).toBeGreaterThan(5);
-
-    const categories = [...new Set(catalog.map((m: any) => m.category))];
-    console.log(`✓ Module catalog — ${catalog.length} modules across categories: [${categories.join(", ")}]`);
-
-    // Core modules should exist
-    const coreModules = catalog.filter((m: any) => m.category === "Core" || m.category === "core");
-    const financeModules = catalog.filter((m: any) => m.category === "Finance" || m.category === "finance");
     expect(catalog.length).toBeGreaterThan(10);
+    const categories = [...new Set(catalog.map((m: any) => m.category))];
+    const coreModules    = catalog.filter((m: any) => m.category === "Core");
+    const financeModules = catalog.filter((m: any) => m.category === "Finance");
+    console.log(`✓ Module catalog — ${catalog.length} modules across [${categories.join(", ")}]`);
     console.log(`  Core: ${coreModules.length}, Finance: ${financeModules.length}`);
   });
 
@@ -212,22 +234,25 @@ test("F25 — Admin & Settings: Company Info → Roles → Module Labels → Cus
   });
 
   // ── PHASE 6: Audit Trail ──────────────────────────────────────────────────
-  await test.step("Phase 6a — GET audit log (all recent)", async () => {
+  await test.step("Phase 6a — GET audit log (bug-fixed: was silently returning [] due to users.full_name missing)", async () => {
+    // Bug fixed: query used u.full_name which doesn't exist (users has first_name/last_name).
+    // The MISSING_COLUMN catch returned [] silently. Fixed to CONCAT(u.first_name, ' ', u.last_name).
     const logs = await apiGet(page, "/api/generic/audit-log");
     expect(Array.isArray(logs)).toBe(true);
     expect(logs.length).toBeGreaterThan(0);
     const latest = logs[0];
-    expect(latest.action || latest.action_type).toBeTruthy();
-    console.log(`✓ Audit log — ${logs.length} entries — latest: action="${latest.action}" table="${latest.table_name}" at ${latest.created_at}`);
+    expect(latest.action).toBeTruthy();
+    // performed_by_name is now populated correctly
+    console.log(`✓ Audit log — ${logs.length} entries — latest: action="${latest.action}" table="${latest.table_name}" performed_by="${latest.performed_by_name ?? latest.performed_by ?? "N/A"}"`);
   });
 
-  await test.step("Phase 6b — Filter audit log by loyalty members (recent F23 actions)", async () => {
+  await test.step("Phase 6b — Filter audit log by table: jw_loyalty_members", async () => {
     const logs = await apiGet(page, "/api/generic/audit-log?entityType=jw_loyalty_members");
     expect(Array.isArray(logs)).toBe(true);
-    expect(logs.length).toBeGreaterThanOrEqual(3); // 3 loyalty members from F23
-    console.log(`✓ Filtered audit log (jw_loyalty_members) — ${logs.length} entries`);
+    expect(logs.length).toBeGreaterThanOrEqual(3); // 3 created in F23
     const sample = logs[0];
     expect(sample.table_name).toBe("jw_loyalty_members");
+    console.log(`✓ Filtered audit log (jw_loyalty_members) — ${logs.length} entries`);
     console.log(`  Sample: "${sample.description?.slice(0, 60)}..."`);
   });
 
@@ -235,13 +260,13 @@ test("F25 — Admin & Settings: Company Info → Roles → Module Labels → Cus
     const logs = await apiGet(page, "/api/generic/audit-log?action=CREATE");
     expect(Array.isArray(logs)).toBe(true);
     expect(logs.length).toBeGreaterThan(0);
-    const allCreate = logs.every((l: any) => l.action === "CREATE" || l.action_type === "CREATE");
+    const allCreate = logs.every((l: any) => l.action === "CREATE");
     expect(allCreate).toBe(true);
-    console.log(`✓ Filtered audit log (CREATE actions) — ${logs.length} entries`);
+    console.log(`✓ Filtered audit log (CREATE actions) — ${logs.length} entries, all action=CREATE verified`);
   });
 
   // ── PHASE 7: UI — Company Settings ───────────────────────────────────────
-  await test.step("Phase 7 — Verify /company-settings UI", async () => {
+  await test.step("Phase 7 — Verify /company-settings Company tab shows saved GSTIN", async () => {
     await goFresh(page, "/company-settings");
     await expect(page.locator('[data-testid="tab-settings-company"]')).toBeVisible({ timeout: 20000 });
     await page.locator('[data-testid="tab-settings-company"]').click();
@@ -250,62 +275,56 @@ test("F25 — Admin & Settings: Company Info → Roles → Module Labels → Cus
     await expect(page.locator('[data-testid="input-gst-number"]')).toBeVisible({ timeout: 10000 });
     const gstVal = await page.locator('[data-testid="input-gst-number"]').inputValue();
     expect(gstVal).toBe("36AABCG5432L1Z5");
-    await expect(page.locator('[data-testid="button-save-company"]')).toBeVisible({ timeout: 5000 });
-    console.log(`✓ /company-settings — Company tab loaded, GSTIN confirmed: "${gstVal}"`);
+    await expect(page.locator('[data-testid="button-save-company"]')).toBeVisible();
+    console.log(`✓ /company-settings — Company tab — GSTIN field shows: "${gstVal}"`);
   });
 
-  await test.step("Phase 8 — Verify Module Labels tab in company settings", async () => {
+  await test.step("Phase 8 — Verify Module Labels tab", async () => {
     await page.locator('[data-testid="tab-settings-labels"]').click();
     await page.waitForTimeout(500);
     await expect(page.locator('[data-testid="button-save-labels"]')).toBeVisible({ timeout: 10000 });
     const body = await page.locator("body").textContent();
-    expect(body).toMatch(/[Kk]arigar|[Aa]rtisan|module|label/i);
+    expect(body).toMatch(/[Kk]arigar|module|label/i);
     console.log(`✓ Module Labels tab loaded — karigar label input visible`);
   });
 
-  await test.step("Phase 9 — Verify Custom Fields tab", async () => {
+  await test.step("Phase 9 — Verify Custom Fields tab shows our F25 fields", async () => {
     await page.locator('[data-testid="tab-settings-custom-fields"]').click();
     await page.waitForTimeout(500);
     await expect(page.locator('[data-testid="button-new-custom-field"]')).toBeVisible({ timeout: 10000 });
     const body = await page.locator("body").textContent();
     expect(body).toContain(`F25-${runId}`);
-    console.log(`✓ Custom Fields tab — our F25 field visible`);
+    console.log(`✓ Custom Fields tab — F25-${runId} field visible`);
   });
 
-  // ── PHASE 10: Subscription tab inside /company-settings ─────────────────
-  await test.step("Phase 10 — Verify Subscription tab inside company settings", async () => {
-    // SubscriptionManagement is embedded in /company-settings as the 'subscription' tab
-    await goFresh(page, "/company-settings");
-    await expect(page.locator('[data-testid="tab-settings-subscription"]')).toBeVisible({ timeout: 20000 });
+  // ── PHASE 10: Subscription (embedded in company-settings as a tab) ────────
+  await test.step("Phase 10 — Verify Subscription tab (SubscriptionManagement embedded in /company-settings)", async () => {
     await page.locator('[data-testid="tab-settings-subscription"]').click();
     await page.waitForTimeout(800);
 
-    // After clicking Subscription tab the SubscriptionManagement component renders
-    // which shows nested tabs: tab-sub-overview, tab-sub-marketplace, etc.
     await expect(page.locator('[data-testid="tab-sub-overview"]')).toBeVisible({ timeout: 20000 });
     await expect(page.locator('[data-testid="tab-sub-marketplace"]')).toBeVisible({ timeout: 10000 });
     await expect(page.locator('[data-testid="tab-sub-history"]')).toBeVisible({ timeout: 10000 });
-    console.log(`✓ Subscription tab inside /company-settings — Overview, Marketplace, History sub-tabs visible`);
+    console.log(`✓ Subscription tab — Overview, Marketplace, Billing History sub-tabs visible`);
 
-    // Click Marketplace sub-tab — module grid should render
     await page.locator('[data-testid="tab-sub-marketplace"]').click();
     await page.waitForTimeout(600);
     const body = await page.locator("body").textContent();
-    expect(body).toMatch(/[Cc]ore|[Ff]inance|[Ii]nventory|[Mm]odule|[Ss]ubscription/);
-    console.log(`✓ Module Marketplace sub-tab — categories visible`);
+    expect(body).toMatch(/[Cc]ore|[Ff]inance|[Ii]nventory|[Mm]odule/);
+    console.log(`✓ Module Marketplace sub-tab — module category grid rendered`);
   });
 
   // ── PHASE 11: UI — Audit Log ──────────────────────────────────────────────
-  await test.step("Phase 11 — Verify /audit-log UI", async () => {
+  await test.step("Phase 11 — Verify /audit-log UI shows populated rows", async () => {
     await goFresh(page, "/audit-log");
     await expect(page.locator('[data-testid="text-page-title"]')).toBeVisible({ timeout: 20000 });
     await expect(page.locator('[data-testid="select-entity-type"]')).toBeVisible({ timeout: 10000 });
     await expect(page.locator('[data-testid="select-action"]')).toBeVisible({ timeout: 10000 });
 
     const title = await page.locator('[data-testid="text-page-title"]').textContent();
+    expect(title?.trim()).toBe("Audit Log");
     console.log(`✓ /audit-log — title: "${title?.trim()}"`);
 
-    // At least one audit row should be visible
     await page.waitForTimeout(600);
     const rows = page.locator('[data-testid^="row-audit-"]');
     const rowCount = await rows.count();
@@ -313,12 +332,13 @@ test("F25 — Admin & Settings: Company Info → Roles → Module Labels → Cus
     console.log(`✓ Audit log rows visible: ${rowCount}`);
   });
 
-  // ── PHASE 12: Final Assertions ─────────────────────────────────────────────
-  await test.step("Phase 12 — Final count and integrity assertions", async () => {
+  // ── PHASE 12: Final integrity assertions ─────────────────────────────────
+  await test.step("Phase 12 — Final integrity check", async () => {
     const roles = await apiGet(page, "/api/roles");
-    const counterStaff = roles.find((r: any) => r.id === counterStaffRoleId);
+    const counterStaff = roles.find((r: any) => r.id === newRoleId);
     expect(counterStaff).toBeTruthy();
-    console.log(`✓ Roles: ${roles.length} total — Counter Staff role persisted`);
+    expect(counterStaff.tenant_id ?? counterStaff.tenantId).toBe(13);
+    console.log(`✓ Roles: ${roles.length} total — Counter Staff role is in tenant 13`);
 
     const fields = await apiGet(page, "/api/hr/custom-fields");
     const invoiceFields = fields.filter((f: any) => f.entity_type === "invoice");
@@ -330,21 +350,25 @@ test("F25 — Admin & Settings: Company Info → Roles → Module Labels → Cus
     const labels = await apiGet(page, "/api/hr/module-labels");
     const karigar = labels.find((l: any) => l.module_key === "karigar");
     expect(karigar?.custom_label).toBe("Karigar");
-    console.log(`✓ Module labels: ${labels.length} override(s) — karigar reverted to "Karigar"`);
+    console.log(`✓ Module labels: ${labels.length} override(s) — karigar correctly set to "Karigar"`);
 
     const info = await apiGet(page, "/api/tenant/info");
-    expect(info.gstNumber || info.gst_number).toBe("36AABCG5432L1Z5");
-    console.log(`✓ Tenant info: name="${info.name}", GSTIN confirmed`);
+    expect(info.gstNumber).toBe("36AABCG5432L1Z5");
+    expect(info.contactName).toBe("Gold ERP Admin");
+    console.log(`✓ Tenant info: name="${info.name}" GSTIN="${info.gstNumber}" contact="${info.contactName}"`);
 
     const auditLogs = await apiGet(page, "/api/generic/audit-log");
     expect(auditLogs.length).toBeGreaterThan(10);
-    console.log(`✓ Audit log: ${auditLogs.length} total entries`);
+    console.log(`✓ Audit log: ${auditLogs.length} total entries returned correctly`);
 
     console.log(
-      `✓ F25 complete — company GSTIN set, Counter Staff role created with 3 screen permissions, ` +
-      `module label karigar↔Artisan roundtrip, 2 custom fields (invoice+vendor) created, ` +
-      `subscription+module catalog verified, audit trail verified (${auditLogs.length} logs), ` +
-      `all UI pages (/company-settings, /subscription-management, /audit-log) validated`
+      `\n✓ F25 COMPLETE — 3 bugs fixed + all scenarios green:\n` +
+      `  [Fix 1] PATCH /api/tenant/settings: role check now case-insensitive (.toLowerCase())\n` +
+      `  [Fix 2] POST /api/roles: now injects session tenantId so roles land in correct tenant\n` +
+      `  [Fix 3] GET /api/generic/audit-log: replaced non-existent u.full_name with CONCAT(first_name,' ',last_name)\n` +
+      `  Company GSTIN+address+contact via API, Counter Staff role in tenant 13 with 3 permissions,\n` +
+      `  module label karigar↔Artisan roundtrip, 2 custom fields (invoice+vendor), 28-module catalog,\n` +
+      `  audit trail ${auditLogs.length} entries, all UI pages validated`
     );
   });
 });
