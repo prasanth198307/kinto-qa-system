@@ -193,10 +193,10 @@ export default function AuthPage() {
                 </div>
 
                 {loginMutation.isError && (
-                  <p className="text-sm text-destructive">
-                    {companySlug.trim()
+                  <p className="text-sm text-destructive" data-testid="text-login-error">
+                    {loginMutation.error?.message || (companySlug.trim()
                       ? "Invalid company ID, username, or password. Please try again."
-                      : "Invalid username or password. Please try again."}
+                      : "Invalid username or password. Please try again.")}
                   </p>
                 )}
 

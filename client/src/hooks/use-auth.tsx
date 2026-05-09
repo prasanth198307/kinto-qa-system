@@ -33,7 +33,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
-      const res = await apiRequest("POST", "/api/login", credentials);
+      // Use fetch directly — apiRequest converts ALL 401s to "Session expired"
+      // which swallows the real error message (wrong password, locked account, etc.)
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(credentials),
+        credentials: "include",
+      });
+      if (!res.ok) {
+        let message = "Invalid username or password";
+        try {
+          const body = await res.json();
+          if (body?.message) message = body.message;
+        } catch {}
+        throw new Error(message);
+      }
       return await res.json();
     },
     onSuccess: (user: SelectUser) => {

@@ -757,23 +757,28 @@ export function setupAuth(app: Express) {
         req.session.save(async (err) => {
           if (err) return res.status(500).json({ message: "Session save failed" });
 
-          // Enforce concurrent session limit (max 3 per user)
-          await enforceConcurrentSessionLimit(user.id, (req.session as any).id ?? req.sessionID);
+          try {
+            // Enforce concurrent session limit (max 3 per user)
+            await enforceConcurrentSessionLimit(user.id, (req.session as any).id ?? req.sessionID);
 
-          // Purge legacy connect.sid cookies (old domain-scoped and hostname-scoped)
-          // so stale browser cookies can't shadow the new swach.sid session.
-          res.clearCookie("connect.sid", { path: "/" });
-          res.clearCookie("connect.sid", { domain: ".swacherp.com", path: "/" });
+            // Purge legacy connect.sid cookies (old domain-scoped and hostname-scoped)
+            // so stale browser cookies can't shadow the new swach.sid session.
+            res.clearCookie("connect.sid", { path: "/" });
+            res.clearCookie("connect.sid", { domain: ".swacherp.com", path: "/" });
 
-          // Log successful login with IP
-          logSecurityEvent(req, "LOGIN_SUCCESS", `User ${user.username} logged in`, "info", String(user.id), (user as any).tenantId ?? (user as any).tenant_id);
+            // Log successful login with IP
+            logSecurityEvent(req, "LOGIN_SUCCESS", `User ${user.username} logged in`, "info", String(user.id), (user as any).tenantId ?? (user as any).tenant_id);
 
-          console.log(`✅ Session saved — user: ${user.username}, tenant: ${(req.session as any).tenantId}, plan: ${tenantPlan}, status: ${tenantStatus}`);
-          // Re-fetch via storage so the response always uses camelCase Drizzle ORM
-          // fields (isSuperAdmin, tenantId, isActive) — the raw SQL user object is
-          // snake_case and causes the frontend to mis-route (e.g. isSuperAdmin undefined).
-          const normalizedUser = await storage.getUser(String(user.id));
-          return res.json(normalizedUser ?? req.user);
+            console.log(`✅ Session saved — user: ${user.username}, tenant: ${(req.session as any).tenantId}, plan: ${tenantPlan}, status: ${tenantStatus}`);
+            // Re-fetch via storage so the response always uses camelCase Drizzle ORM
+            // fields (isSuperAdmin, tenantId, isActive) — the raw SQL user object is
+            // snake_case and causes the frontend to mis-route (e.g. isSuperAdmin undefined).
+            const normalizedUser = await storage.getUser(String(user.id));
+            return res.json(normalizedUser ?? req.user);
+          } catch (innerErr) {
+            console.error("🔥 Post-login error:", innerErr);
+            return res.status(500).json({ message: "Login succeeded but session setup failed" });
+          }
         });
       });
     })(req, res, next);
