@@ -86,9 +86,9 @@ export function setupAuth(app: Express) {
   const appDomain = process.env.APP_DOMAIN; // e.g. "swacherp.com" (no leading dot)
   const cookieDomain = appDomain ? `.${appDomain}` : undefined;
 
-  // Session timeout: 8 hours idle (rolling — resets on every request).
-  // Government / enterprise compliance requires sessions to expire on inactivity.
-  const SESSION_MAX_AGE = 8 * 60 * 60 * 1000; // 8 hours in ms
+  // Session timeout: 7 days idle (rolling — resets on every request).
+  // Customers stay logged in as long as they use the app within 7 days.
+  const SESSION_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // 7 days in ms
 
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || "insecure_dev_secret",
