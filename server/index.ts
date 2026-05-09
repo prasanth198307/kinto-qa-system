@@ -1254,6 +1254,37 @@ app.use((req, res, next) => {
     console.error('[GOLD_ERP_ROLE_PERMS ERROR]', err);
   }
 
+  // ─── Auto-patch all admin roles with any new screens from the registry ────
+  // This runs on every startup. When a developer adds a new screen to
+  // shared/screen-registry.ts, ALL existing admin roles across ALL tenants
+  // get that screen automatically — no manual SQL needed.
+  try {
+    const { ALL_SCREEN_KEYS } = await import('../shared/screen-registry');
+    const { pool: patchPool } = await import('./db');
+
+    // Find every admin role across all tenants
+    const adminRoles = await patchPool.query(`
+      SELECT r.id AS role_id, r.tenant_id
+      FROM roles r
+      WHERE lower(r.name) = 'admin'
+    `);
+
+    let totalInserted = 0;
+    for (const row of adminRoles.rows) {
+      for (const key of ALL_SCREEN_KEYS) {
+        const res = await patchPool.query(`
+          INSERT INTO role_permissions (role_id, screen_key, can_view, can_create, can_edit, can_delete, tenant_id)
+          VALUES ($1, $2, 1, 1, 1, 1, $3)
+          ON CONFLICT (role_id, screen_key) DO NOTHING
+        `, [row.role_id, key, row.tenant_id]);
+        totalInserted += res.rowCount ?? 0;
+      }
+    }
+    console.log(`[REGISTRY AUTO-PATCH] ${adminRoles.rows.length} admin role(s) synced — ${totalInserted} new permission row(s) inserted`);
+  } catch (err) {
+    console.error('[REGISTRY AUTO-PATCH ERROR]', err);
+  }
+
   // ─── Daily tenant backup cron (2:00 AM daily) ────────────────────────────
   try {
     const cron = (await import('node-cron')).default;
