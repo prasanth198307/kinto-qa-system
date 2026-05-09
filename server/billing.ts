@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { db } from "./db";
 import { tenants, subscriptions, subscriptionPlans, billingEvents } from "@shared/schema";
 import { eq, sql } from "drizzle-orm";
+import { invalidateTenantModuleCache } from "./plan-middleware";
 
 // ─── Plan configuration ───────────────────────────────────────────────────────
 const PLAN_PRICES: Record<string, number> = {
@@ -759,6 +760,8 @@ export function registerBillingRoutes(app: Express): void {
           ${(req.user as any)?.username ?? 'super-admin'}
         )
       `);
+      // Immediately evict the plan-middleware cache so the change takes effect on the next request
+      invalidateTenantModuleCache(tenantId);
       res.json({ success: true, selectedModules: merged, monthlyAmount: monthly });
     } catch (err: any) {
       res.status(500).json({ message: err.message });

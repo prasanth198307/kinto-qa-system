@@ -9,7 +9,7 @@ import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Loader2, Package, IndianRupee, CheckCircle2, X, Trash2, BadgeCheck } from "lucide-react";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -121,14 +121,18 @@ export function ModuleMarketplaceDialog({
   const handleSave = async () => {
     setSaving(true);
     try {
-      const res = await apiRequest("POST", `/api/admin/tenants/${tenantId}/modules`, {
-        selectedModules: Array.from(activeDraft),
+      const res = await fetch(`/api/admin/tenants/${tenantId}/modules`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ selectedModules: Array.from(activeDraft) }),
       });
+      const data = await res.json();
       if (!res.ok) {
-        const d = await res.json();
-        throw new Error(d.message ?? "Save failed");
+        throw new Error(data.message ?? `Save failed (${res.status})`);
       }
       queryClient.invalidateQueries({ queryKey: ["/api/admin/tenants", tenantId, "modules"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/tenants"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/subscriptions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/billing-events"] });
       toast({ title: "Modules updated", description: `Saved module selection for ${tenantName}` });
