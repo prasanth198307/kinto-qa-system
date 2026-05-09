@@ -9,11 +9,29 @@ async function throwIfResNotOk(res: Response) {
 
 type UnauthorizedBehavior = "returnNull" | "throw";
 
+// Timestamp of the most recent successful login.
+// Used to suppress false-positive "session expired" events in the grace period
+// immediately after login (race condition: queries may fire before the session
+// cookie is fully propagated by the browser on some production environments).
+let _recentLoginAt: number | null = null;
+const LOGIN_GRACE_MS = 8_000; // 8 seconds after login, don't treat 401 as session expiry
+
+export function markRecentLogin() {
+  _recentLoginAt = Date.now();
+}
+
 // Helper called whenever any API response is 401.
 // Only marks the session as expired when the user was previously authenticated
 // (i.e. there is cached user data). A plain unauthenticated visitor hitting a
 // protected endpoint should NOT see the "session expired" banner on /auth.
 function handleUnexpected401() {
+  // Suppress the cascade if we JUST logged in — could be a race condition where
+  // the browser hasn't yet attached the fresh session cookie to the first few
+  // parallel requests fired right after login.
+  if (_recentLoginAt !== null && Date.now() - _recentLoginAt < LOGIN_GRACE_MS) {
+    return;
+  }
+
   const wasAuthenticated = !!queryClient.getQueryData(["/api/user"]);
   queryClient.setQueryData(["/api/user"], null);
   if (wasAuthenticated) {

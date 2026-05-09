@@ -5,7 +5,7 @@ import {
   UseMutationResult,
 } from "@tanstack/react-query";
 import { insertUserSchema, User as SelectUser, InsertUser } from "@shared/schema";
-import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
+import { getQueryFn, apiRequest, queryClient, markRecentLogin } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 type AuthContextType = {
@@ -37,6 +37,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return await res.json();
     },
     onSuccess: (user: SelectUser) => {
+      // Mark "just logged in" so parallel queries that fire immediately after
+      // login don't mistakenly trigger the session-expired cascade if they
+      // temporarily get a 401 before the browser attaches the new cookie.
+      markRecentLogin();
       queryClient.setQueryData(["/api/user"], user);
       // Invalidate plan features and permissions so they refetch with the new session
       queryClient.invalidateQueries({ queryKey: ["/api/tenant/features"] });

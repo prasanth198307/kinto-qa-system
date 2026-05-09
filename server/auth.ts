@@ -429,9 +429,13 @@ export function setupAuth(app: Express) {
 
   // ─── Super-admin: List all tenants ─────────────────────────────────────────
   app.get("/api/admin/tenants", async (req: any, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.isAuthenticated()) {
+      console.warn(`[ADMIN] GET /api/admin/tenants → 401 | sessionID=${req.sessionID} | passportUser=${JSON.stringify((req.session as any)?.passport)}`);
+      return res.sendStatus(401);
+    }
     const currentUser = req.user as any;
     if (!currentUser?.isSuperAdmin && currentUser?.role !== "admin") {
+      console.warn(`[ADMIN] GET /api/admin/tenants → 403 | user=${currentUser?.username} isSuperAdmin=${currentUser?.isSuperAdmin} role=${currentUser?.role}`);
       return res.status(403).json({ message: "Forbidden" });
     }
 
@@ -789,7 +793,7 @@ export function setupAuth(app: Express) {
       req.session.destroy((err) => {
         if (err) return next(err);
         res.clearCookie("connect.sid");
-        res.redirect("/login");
+        res.json({ message: "Logged out" });
       });
     });
   });

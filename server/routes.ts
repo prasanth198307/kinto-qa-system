@@ -18300,6 +18300,11 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
         return res.status(401).json({ message: "Unauthorized" });
       }
 
+      // Super-admins have all permissions — return a sentinel response instead of 404
+      if ((req.user as any)?.isSuperAdmin) {
+        return res.json({ role: 'super_admin', roleId: null, roles: ['super_admin'], permissions: [] });
+      }
+
       const user = await storage.getUser(req.user.id);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -18312,7 +18317,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
         if (lr) userRoles.push(lr);
       }
       if (userRoles.length === 0) {
-        return res.status(404).json({ message: "No roles assigned" });
+        return res.json({ role: null, roleId: null, roles: [], permissions: [] });
       }
 
       // Determine the primary role name for display.
