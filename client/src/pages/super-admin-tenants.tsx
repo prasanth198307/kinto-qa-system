@@ -26,7 +26,7 @@ import {
   CheckCircle2, Clock, XCircle, Loader2, FlaskConical, CreditCard,
   Eye, Trash2, AlertTriangle, Archive, Download, Database, CalendarClock,
   HardDrive, LogOut, Plus, ScrollText, AlertCircle, Shield, X, ImageIcon, Upload,
-  Package,
+  Package, KeyRound, EyeOff,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -117,6 +117,7 @@ export default function SuperAdminTenants() {
   const [logoTenant, setLogoTenant] = useState<Tenant | null>(null);
   const [logoUploading, setLogoUploading] = useState(false);
   const [modulesTenant, setModulesTenant] = useState<{ id: number; name: string } | null>(null);
+  const [resetPwTenant, setResetPwTenant] = useState<Tenant | null>(null);
   const logoFileRef = useRef<HTMLInputElement>(null);
   const [showCreateTenant, setShowCreateTenant] = useState(false);
   const [showDeletionAudit, setShowDeletionAudit] = useState(false);
@@ -505,6 +506,12 @@ export default function SuperAdminTenants() {
                               >
                                 <Package className="h-4 w-4 mr-2" /> Manage Modules
                               </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => setResetPwTenant(tenant)}
+                                data-testid={`button-reset-password-${tenant.id}`}
+                              >
+                                <KeyRound className="h-4 w-4 mr-2" /> Reset User Password
+                              </DropdownMenuItem>
                               {!tenant.isSuperAdmin && (
                                 <DropdownMenuItem
                                   onClick={() => impersonateMutation.mutate(tenant.id)}
@@ -853,6 +860,13 @@ export default function SuperAdminTenants() {
         />
       )}
 
+      {resetPwTenant && (
+        <ResetPasswordDialog
+          tenant={resetPwTenant}
+          onClose={() => setResetPwTenant(null)}
+        />
+      )}
+
       {/* ── Create Tenant Dialog ── */}
       <Dialog open={showCreateTenant} onOpenChange={setShowCreateTenant}>
         <DialogContent className="max-w-md">
@@ -1131,6 +1145,146 @@ function BackupsDialog({
           >
             {backingUp ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Archive className="h-4 w-4 mr-2" />}
             Backup Now
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Reset Password Dialog ────────────────────────────────────────────────────
+
+type TenantUser = { id: number; username: string; email: string | null; role: string; isActive: number };
+
+function ResetPasswordDialog({ tenant, onClose }: { tenant: Tenant; onClose: () => void }) {
+  const { toast } = useToast();
+  const [selectedUserId, setSelectedUserId] = useState<string>("");
+  const [newPassword, setNewPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);
+
+  const { data: users = [], isLoading: usersLoading } = useQuery<TenantUser[]>({
+    queryKey: ["/api/admin/tenants", tenant.id, "users"],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/tenants/${tenant.id}/users`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load users");
+      return res.json();
+    },
+  });
+
+  const resetMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedUserId) throw new Error("Select a user first");
+      const res = await apiRequest(
+        "POST",
+        `/api/admin/tenants/${tenant.id}/users/${selectedUserId}/reset-password`,
+        { newPassword }
+      );
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message ?? "Failed to reset password");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({ title: "Password reset", description: data.message });
+      onClose();
+    },
+    onError: (err: any) => {
+      toast({ title: "Reset failed", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const selectedUser = users.find((u) => String(u.id) === selectedUserId);
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <KeyRound className="h-5 w-5" />
+            Reset User Password — {tenant.name}
+          </DialogTitle>
+          <DialogDescription>
+            Select a user from this tenant and set a new password. The user will be required to change it on next login.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2">
+          <div className="space-y-1.5">
+            <Label>User</Label>
+            {usersLoading ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                <Loader2 className="h-4 w-4 animate-spin" /> Loading users…
+              </div>
+            ) : users.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No active users found for this tenant.</p>
+            ) : (
+              <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+                <SelectTrigger data-testid="select-reset-pw-user">
+                  <SelectValue placeholder="Select a user…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {users.map((u) => (
+                    <SelectItem key={u.id} value={String(u.id)}>
+                      <span className="font-medium">{u.username}</span>
+                      {u.email && <span className="text-muted-foreground ml-2 text-xs">{u.email}</span>}
+                      <span className="text-muted-foreground ml-2 text-xs capitalize">· {u.role}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="new-password">New Password</Label>
+            <div className="relative">
+              <Input
+                id="new-password"
+                type={showPw ? "text" : "password"}
+                placeholder="Minimum 6 characters"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                data-testid="input-new-password"
+                className="pr-10"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-1 top-1/2 -translate-y-1/2"
+                onClick={() => setShowPw((v) => !v)}
+                tabIndex={-1}
+              >
+                {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </Button>
+            </div>
+            {newPassword.length > 0 && newPassword.length < 6 && (
+              <p className="text-xs text-destructive">Password must be at least 6 characters.</p>
+            )}
+          </div>
+
+          {selectedUser && (
+            <div className="rounded-md bg-muted p-3 text-sm space-y-0.5">
+              <p className="font-medium">{selectedUser.username}</p>
+              {selectedUser.email && <p className="text-muted-foreground text-xs">{selectedUser.email}</p>}
+              <p className="text-muted-foreground text-xs capitalize">Role: {selectedUser.role}</p>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button
+            onClick={() => resetMutation.mutate()}
+            disabled={resetMutation.isPending || !selectedUserId || newPassword.length < 6}
+            data-testid="button-confirm-reset-password"
+          >
+            {resetMutation.isPending ? (
+              <><Loader2 className="h-4 w-4 animate-spin mr-2" />Resetting…</>
+            ) : (
+              <><KeyRound className="h-4 w-4 mr-2" />Reset Password</>
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -29050,6 +29050,64 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
     }
   });
 
+  // ─── Admin: List users for a tenant (super-admin only, RLS bypass) ───────
+  app.get('/api/admin/tenants/:tenantId/users', async (req: any, res) => {
+    if (!req.isAuthenticated() || !req.user?.isSuperAdmin) return res.status(403).json({ message: 'Super-admin only' });
+    const tenantId = parseInt(req.params.tenantId);
+    if (isNaN(tenantId)) return res.status(400).json({ message: 'Invalid tenant ID' });
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query("SET LOCAL app.current_tenant_id = ''");
+      const { rows } = await client.query(
+        `SELECT id, username, email, role, "isActive" FROM users WHERE "tenantId" = $1 AND "recordStatus" = 1 ORDER BY role, username`,
+        [tenantId]
+      );
+      await client.query('COMMIT');
+      res.json(rows);
+    } catch (err: any) {
+      await client.query('ROLLBACK').catch(() => {});
+      res.status(500).json({ message: err.message });
+    } finally {
+      client.release();
+    }
+  });
+
+  // ─── Admin: Reset any tenant user's password (super-admin only) ───────────
+  app.post('/api/admin/tenants/:tenantId/users/:userId/reset-password', async (req: any, res) => {
+    if (!req.isAuthenticated() || !req.user?.isSuperAdmin) return res.status(403).json({ message: 'Super-admin only' });
+    const tenantId = parseInt(req.params.tenantId);
+    const userId   = parseInt(req.params.userId);
+    const { newPassword } = req.body as { newPassword: string };
+    if (isNaN(tenantId) || isNaN(userId)) return res.status(400).json({ message: 'Invalid ID' });
+    if (!newPassword || newPassword.length < 6) return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query("SET LOCAL app.current_tenant_id = ''");
+      const { rows } = await client.query(
+        `SELECT id FROM users WHERE id = $1 AND "tenantId" = $2 AND "recordStatus" = 1`,
+        [userId, tenantId]
+      );
+      if (rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ message: 'User not found in this tenant' });
+      }
+      const hashed = await hashPassword(newPassword);
+      await client.query(
+        `UPDATE users SET password = $1, password_changed_at = NOW(), must_change_password = true WHERE id = $2`,
+        [hashed, userId]
+      );
+      await client.query('COMMIT');
+      res.json({ message: 'Password reset successfully. User will be prompted to change it on next login.' });
+    } catch (err: any) {
+      await client.query('ROLLBACK').catch(() => {});
+      res.status(500).json({ message: err.message });
+    } finally {
+      client.release();
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
