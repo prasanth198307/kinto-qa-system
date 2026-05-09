@@ -229,8 +229,8 @@ test("F16 — Multi-Branch Operations: Warehouses → Stock Transfer → UOM Con
     await clickTab(page, "tab-warehouses");
     await page.waitForTimeout(400);
 
-    // Find the HO card and click its edit button
-    const hoCard = page.locator('[data-testid^="card-warehouse-"]').filter({ hasText: "Head Office" });
+    // Find the HO card and click its edit button (use first() in case of leftover data from prior runs)
+    const hoCard = page.locator('[data-testid^="card-warehouse-"]').filter({ hasText: "Head Office" }).first();
     await hoCard.waitFor({ timeout: 5000 });
     const editBtn = hoCard.locator("button").filter({ has: page.locator('svg') }).first();
     await editBtn.click();

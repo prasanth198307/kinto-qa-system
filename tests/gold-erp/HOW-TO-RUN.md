@@ -24,7 +24,7 @@
 | F13 | f13-refining.md | PASSED |
 | F14 | f14-multi-stage-production.md | PASSED (fixed 2026-05-09) |
 | F15 | f15-crm-full-flow.md | PASSED (fixed 2026-05-09) |
-| F16 | f16-multi-branch.md | NOT YET RUN |
+| F16 | f16-multi-branch.md | PASSED (fixed 2026-05-09) |
 | F17 | f17-vendor-purchase.md | NOT YET RUN |
 | F18 | f18-hrms-payroll.md | NOT YET RUN |
 | F19 | f19-ecommerce.md | NOT YET RUN |
