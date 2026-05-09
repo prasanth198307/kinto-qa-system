@@ -8,101 +8,13 @@ import { db } from "./db";
 import { tenants, users, vendors, rawMaterials, products } from "@shared/schema";
 import { eq, sql } from "drizzle-orm";
 import { seedNewTenant } from "./seed-tenant";
+import { ALL_SCREEN_KEYS as REGISTRY_SCREEN_KEYS } from "@shared/screen-registry";
 import { hashPassword } from "./auth";
 
 /** Grants full admin permissions for every ERP screen to the demo admin role. Idempotent. */
 async function ensureDemoPermissions(tenantId: number, adminRoleId: string): Promise<void> {
-  const ALL_SCREEN_KEYS = [
-    // Dashboard & Analytics
-    'dashboard','sales_dashboard','vendor_analytics','reports',
-    'report_finished_goods','report_monthly_production','report_vendor_report','report_gst',
-    'report_gatepasses','report_invoices','report_issuances','report_purchase_orders',
-    'report_maintenance','report_expenses','report_cash_register','report_payments',
-    'report_monthly_sales','report_machines','report_scrap','report_sales_returns',
-    'report_repacking','production_reconciliation_report',
-    'pm_history','vendor_history','write_off_report','reviewer_dashboard','bulk_payment_report',
-    // MIS
-    'mis_dashboard','mis_production','mis_inventory','mis_sales','mis_delivery',
-    'mis_cash','mis_financial',
-    // Quality & Checklists
-    'checklist_templates','checklist_assignments','checklists',
-    'machine_startup_reminders','whatsapp_analytics',
-    // Inventory
-    'products','product_categories','product_types',
-    'raw_materials','raw_material_types',
-    'finished_goods','inventory','uom',
-    'sales_orders','sales_officers',
-    'spare_parts_stock',
-    // Production
-    'raw_material_issuance','production_entries','production_reconciliations',
-    'variance_analytics','production_reconciliation',
-    'purchase_returns','production_management',
-    // Sales & Invoicing
-    'invoices','payments','pending_payments','credit_notes',
-    'cancelled_invoices_report','sales_returns','payment_writeoff',
-    'customer_advances','payment_management',
-    'invoice_templates','tds_management',
-    // Dispatch
-    'gatepasses','dispatch_tracking','dispatch_masters',
-    // Finance
-    'cash_register','cash_register_report','expenses','monthly_expenses',
-    'expense_categories',
-    // Documents
-    'documents','document_categories',
-    // Maintenance
-    'maintenance_plans','pm_execution','pm_templates',
-    // HR & Payroll
-    'hr_employees','hr_attendance','hr_leaves','hr_payroll','hr_masters',
-    'hr_exit_management','hr_loans','hr_tds','hr_recruitment','hr_reports','hr_ess_admin',
-    // Purchasing
-    'purchase_orders','vendor_debit_notes',
-    // Master Data
-    'vendors','vendor_types','machines','machine_types',
-    'spare_parts','banks','scrap_inventory',
-    // CRM
-    'crm_leads',
-    // Admin
-    'users','roles','admin_tools','template_management',
-    'notification_settings','data_import','api_keys','vyapaar_import',
-    // Accounting
-    'chart_of_accounts','account_subtypes','journal_entries','manual_journal_entry',
-    'trial_balance','profit_loss','balance_sheet','ledger_view','day_book',
-    'aging_report','cash_flow_statement','group_summary','budget_variance','bank_transactions',
-    'cost_centres','debit_notes','gst_reports',
-    // HR extras
-    'hr_appraisals','hr_expense_claims',
-    // Purchase extras
-    'purchase_requisitions','goods_receipt_notes','approval_workflows',
-    // Inventory / Warehouse extras
-    'price_lists','warehouses','stock_transfers','serial_lot_register',
-    // Maintenance extras
-    'maintenance','machine_startup','schedule_maintenance',
-    // Extended modules
-    'recurring_invoices','projects','timesheets','fixed_assets','currency_management',
-    // Industry Verticals
-    'healthcare','education','logistics_transport','real_estate','pos','agriculture',
-    // Core admin extras
-    'overview','audit_trail','hpcl_migration',
-    // Gold ERP screens
-    'gold_erp',
-    'gold_erp_overview','gold_erp_rates','gold_erp_karigar','gold_erp_karigars','gold_erp_items',
-    'gold_erp_estimates','gold_erp_metal_ledger','gold_erp_analytics',
-    'gold_erp_production','gold_erp_jobwork','gold_erp_sketch','gold_erp_cad','gold_erp_cam',
-    'gold_erp_karigar_attendance','gold_erp_ghat','gold_erp_settlement','gold_erp_finalize',
-    'gold_erp_karigar_ledger','gold_erp_repairs',
-    'gold_erp_wholesale_b2b_orders','gold_erp_wholesale_jobwork','gold_erp_hallmarking_batches',
-    'gold_erp_jewellery_pos','gold_erp_counter_bookings','gold_erp_customer_approvals',
-    'gold_erp_buyback','gold_erp_physical_audit','gold_erp_loyalty','gold_erp_promotions',
-    'gold_erp_refining','gold_erp_pos_old_gold','gold_erp_hallmarking',
-    'gold_erp_bullion','gold_erp_bullion_rate_cuts','gold_erp_vault_movement',
-    'gold_erp_bullion_bookings','gold_erp_vault_audit',
-    'gold_erp_chit','gold_erp_chit_collection_register','gold_erp_chit_maturity',
-    'gold_erp_chit_defaulters','gold_erp_chit_redemptions',
-    'gold_erp_ecatalog','gold_erp_oms_orders','gold_erp_oms_notify','gold_erp_ecommerce',
-    'gold_erp_rfid','gold_erp_metal_finance','gold_erp_integrations_config',
-  ];
-
-  for (const key of ALL_SCREEN_KEYS) {
+  // Sourced from shared/screen-registry.ts — the single source of truth.
+  for (const key of REGISTRY_SCREEN_KEYS) {
     await db.execute(sql`
       INSERT INTO role_permissions (role_id, screen_key, can_view, can_create, can_edit, can_delete, tenant_id)
       VALUES (${adminRoleId}, ${key}, 1, 1, 1, 1, ${tenantId})
