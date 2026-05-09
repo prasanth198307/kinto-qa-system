@@ -1,0 +1,31 @@
+May 09 15:04:05 iplvnic1 npm[1529836]: 3:04:05 PM [express] GET /api/public/tenant-branding 200 in 3ms :: {"name":"Kinto Admin","slug":"kin…
+May 09 15:04:05 iplvnic1 npm[1529836]: 3:04:05 PM [express] GET /api/public/tenant-branding 200 in 2ms :: {"name":"Kinto Admin","slug":"kin…
+May 09 15:04:18 iplvnic1 npm[1529836]: 🔍 Login attempt for user: superadmin
+May 09 15:04:18 iplvnic1 npm[1529836]: 🔥 Login error: error: column u.is_super_admin does not exist
+May 09 15:04:18 iplvnic1 npm[1529836]:     at /home/kinto/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+May 09 15:04:18 iplvnic1 npm[1529836]:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+May 09 15:04:18 iplvnic1 npm[1529836]:     at async Strategy._verify (file:///home/kinto/kinto-qa-system/dist/index.js:8799:24) {
+May 09 15:04:18 iplvnic1 npm[1529836]:   length: 115,
+May 09 15:04:18 iplvnic1 npm[1529836]:   severity: 'ERROR',
+May 09 15:04:18 iplvnic1 npm[1529836]:   code: '42703',
+May 09 15:04:18 iplvnic1 npm[1529836]:   detail: undefined,
+May 09 15:04:18 iplvnic1 npm[1529836]:   hint: undefined,
+May 09 15:04:18 iplvnic1 npm[1529836]:   position: '231',
+May 09 15:04:18 iplvnic1 npm[1529836]:   internalPosition: undefined,
+May 09 15:04:18 iplvnic1 npm[1529836]:   internalQuery: undefined,
+May 09 15:04:18 iplvnic1 npm[1529836]:   where: undefined,
+May 09 15:04:18 iplvnic1 npm[1529836]:   schema: undefined,
+May 09 15:04:18 iplvnic1 npm[1529836]:   table: undefined,
+May 09 15:04:18 iplvnic1 npm[1529836]:   column: undefined,
+May 09 15:04:18 iplvnic1 npm[1529836]:   dataType: undefined,
+May 09 15:04:18 iplvnic1 npm[1529836]:   constraint: undefined,
+May 09 15:04:18 iplvnic1 npm[1529836]:   file: 'parse_relation.c',
+May 09 15:04:18 iplvnic1 npm[1529836]:   line: '3722',
+May 09 15:04:18 iplvnic1 npm[1529836]:   routine: 'errorMissingColumn'
+May 09 15:04:18 iplvnic1 npm[1529836]: }
+May 09 15:04:18 iplvnic1 npm[1529836]: 3:04:18 PM [express] POST /api/login 500 in 25ms :: {"message":"column u.is_super_admin does not exi…
+May 09 15:04:18 iplvnic1 npm[1529836]: error: column u.is_super_admin does not exist
+May 09 15:04:18 iplvnic1 npm[1529836]:     at /home/kinto/kinto-qa-system/node_modules/pg-pool/index.js:45:11
+May 09 15:04:18 iplvnic1 npm[1529836]:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+May 09 15:04:18 iplvnic1 npm[1529836]:     at async Strategy._verify (file:///home/kinto/kinto-qa-system/dist/index.js:8799:24)
+[kinto@iplvnic1 kinto-qa-system]$ 
