@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, Fragment } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -898,57 +898,122 @@ export default function RoleManagement() {
                   </tr>
                 </thead>
                 <tbody>
-                  {activeScreens
-                    .filter(s => !permSearch.trim() || s.label.toLowerCase().includes(permSearch.trim().toLowerCase()))
-                    .map((screen, index) => (
-                    <tr key={screen.key} className="border-b hover-elevate" data-testid={`row-permission-${index}`}>
-                      <td className="py-3 px-2 font-medium">{screen.label}</td>
-                      <td className="text-center py-3 px-2">
-                        {screen.allowedActions.includes('view') ? (
-                          <Checkbox
-                            checked={getPermission(screen.key, 'canView')}
-                            onCheckedChange={() => handleTogglePermission(screen.key, 'canView')}
-                            data-testid={`checkbox-view-${index}`}
-                          />
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </td>
-                      <td className="text-center py-3 px-2">
-                        {screen.allowedActions.includes('create') ? (
-                          <Checkbox
-                            checked={getPermission(screen.key, 'canCreate')}
-                            onCheckedChange={() => handleTogglePermission(screen.key, 'canCreate')}
-                            data-testid={`checkbox-create-${index}`}
-                          />
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </td>
-                      <td className="text-center py-3 px-2">
-                        {screen.allowedActions.includes('edit') ? (
-                          <Checkbox
-                            checked={getPermission(screen.key, 'canEdit')}
-                            onCheckedChange={() => handleTogglePermission(screen.key, 'canEdit')}
-                            data-testid={`checkbox-edit-${index}`}
-                          />
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </td>
-                      <td className="text-center py-3 px-2">
-                        {screen.allowedActions.includes('delete') ? (
-                          <Checkbox
-                            checked={getPermission(screen.key, 'canDelete')}
-                            onCheckedChange={() => handleTogglePermission(screen.key, 'canDelete')}
-                            data-testid={`checkbox-delete-${index}`}
-                          />
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                  {(() => {
+                    const MODULE_LABELS: Record<string, string> = {
+                      invoicing:        'Sales & Invoicing',
+                      purchase_orders:  'Purchase & Vendors',
+                      basic_inventory:  'Inventory & Products',
+                      gatepasses:       'Dispatch & Gatepasses',
+                      sales_orders:     'Sales Orders',
+                      production:       'Production',
+                      quality_returns:  'Quality & Returns',
+                      accounting:       'Accounting & Finance',
+                      mis:              'MIS & Analytics',
+                      expenses:         'Expenses & Cash Register',
+                      documents:        'Documents',
+                      maintenance:      'Maintenance',
+                      whatsapp:         'WhatsApp & Checklists',
+                      hr_payroll:       'HR & Payroll',
+                      crm:              'CRM',
+                      api_hub:          'API Hub',
+                      recurring_invoices:'Recurring Invoices',
+                      warehouses:       'Warehouses & Stock Transfers',
+                      projects:         'Project Management',
+                      fixed_assets:     'Fixed Assets',
+                      multi_currency:   'Multi-Currency',
+                      gold_erp:         'Gold ERP',
+                      healthcare:       'Healthcare',
+                      education:        'Education',
+                      logistics_transport: 'Logistics & Transport',
+                      real_estate:      'Real Estate',
+                      pos:              'Retail / POS',
+                      agriculture:      'Agriculture',
+                    };
+
+                    const filtered = activeScreens.filter(
+                      s => !permSearch.trim() || s.label.toLowerCase().includes(permSearch.trim().toLowerCase())
+                    );
+
+                    // Group by module; null key = core (no module)
+                    const groups: { moduleKey: string | null; screens: typeof filtered }[] = [];
+                    const seen = new Set<string | null>();
+                    for (const s of filtered) {
+                      const mk = s.module ?? null;
+                      if (!seen.has(mk)) { seen.add(mk); groups.push({ moduleKey: mk, screens: [] }); }
+                      groups.find(g => g.moduleKey === mk)!.screens.push(s);
+                    }
+                    // Core screens first
+                    groups.sort((a, b) => {
+                      if (a.moduleKey === null) return -1;
+                      if (b.moduleKey === null) return 1;
+                      return (MODULE_LABELS[a.moduleKey] ?? a.moduleKey).localeCompare(MODULE_LABELS[b.moduleKey] ?? b.moduleKey);
+                    });
+
+                    let globalIdx = 0;
+                    return groups.map(({ moduleKey, screens }) => (
+                      <Fragment key={moduleKey ?? '__core__'}>
+                        <tr className="bg-muted/40">
+                          <td colSpan={5} className="py-1.5 px-2">
+                            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                              {moduleKey ? (MODULE_LABELS[moduleKey] ?? moduleKey) : 'Core (Always Available)'}
+                            </span>
+                          </td>
+                        </tr>
+                        {screens.map(screen => {
+                          const index = globalIdx++;
+                          return (
+                            <tr key={screen.key} className="border-b hover-elevate" data-testid={`row-permission-${index}`}>
+                              <td className="py-3 px-2 font-medium pl-4">{screen.label}</td>
+                              <td className="text-center py-3 px-2">
+                                {screen.allowedActions.includes('view') ? (
+                                  <Checkbox
+                                    checked={getPermission(screen.key, 'canView')}
+                                    onCheckedChange={() => handleTogglePermission(screen.key, 'canView')}
+                                    data-testid={`checkbox-view-${index}`}
+                                  />
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
+                              </td>
+                              <td className="text-center py-3 px-2">
+                                {screen.allowedActions.includes('create') ? (
+                                  <Checkbox
+                                    checked={getPermission(screen.key, 'canCreate')}
+                                    onCheckedChange={() => handleTogglePermission(screen.key, 'canCreate')}
+                                    data-testid={`checkbox-create-${index}`}
+                                  />
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
+                              </td>
+                              <td className="text-center py-3 px-2">
+                                {screen.allowedActions.includes('edit') ? (
+                                  <Checkbox
+                                    checked={getPermission(screen.key, 'canEdit')}
+                                    onCheckedChange={() => handleTogglePermission(screen.key, 'canEdit')}
+                                    data-testid={`checkbox-edit-${index}`}
+                                  />
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
+                              </td>
+                              <td className="text-center py-3 px-2">
+                                {screen.allowedActions.includes('delete') ? (
+                                  <Checkbox
+                                    checked={getPermission(screen.key, 'canDelete')}
+                                    onCheckedChange={() => handleTogglePermission(screen.key, 'canDelete')}
+                                    data-testid={`checkbox-delete-${index}`}
+                                  />
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </Fragment>
+                    ));
+                  })()}
                 </tbody>
               </table>
             </div>
