@@ -29038,8 +29038,10 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
     const tenantId = parseInt(req.params.tenantId);
     if (isNaN(tenantId)) return res.status(400).json({ message: 'Invalid tenant ID' });
     try {
+      // users table has no is_active column — active users are identified by record_status = 1
+      // user IDs are UUIDs (text), not integers
       const { rows } = await pool.query(
-        `SELECT id, username, email, role, is_active AS "isActive" FROM users WHERE tenant_id = $1 AND record_status = 1 ORDER BY role, username`,
+        `SELECT id, username, email, role, record_status AS "isActive" FROM users WHERE tenant_id = $1 AND record_status = 1 ORDER BY role, username`,
         [tenantId]
       );
       res.json(rows);
@@ -29052,9 +29054,10 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
   app.post('/api/admin/tenants/:tenantId/users/:userId/reset-password', async (req: any, res) => {
     if (!req.isAuthenticated() || !req.user?.isSuperAdmin) return res.status(403).json({ message: 'Super-admin only' });
     const tenantId = parseInt(req.params.tenantId);
-    const userId   = parseInt(req.params.userId);
+    const userId   = req.params.userId; // UUID string — do NOT parseInt
     const { newPassword } = req.body as { newPassword: string };
-    if (isNaN(tenantId) || isNaN(userId)) return res.status(400).json({ message: 'Invalid ID' });
+    if (isNaN(tenantId)) return res.status(400).json({ message: 'Invalid tenant ID' });
+    if (!userId) return res.status(400).json({ message: 'Invalid user ID' });
     if (!newPassword || newPassword.length < 6) return res.status(400).json({ message: 'Password must be at least 6 characters' });
     try {
       const { rows } = await pool.query(
