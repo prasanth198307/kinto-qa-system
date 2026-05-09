@@ -1835,7 +1835,7 @@ router.post("/wholesale-b2b-orders", requireAuth, async (req: any, res) => {
 
     // Credit limit check — look up customer credit limit and outstanding balance
     if (customer_name) {
-      const custRow = await db.execute(sql`SELECT credit_limit FROM customers WHERE tenant_id=${t} AND name ILIKE ${customer_name} LIMIT 1`);
+      const custRow = await db.execute(sql`SELECT credit_limit FROM jw_ecom_customers WHERE tenant_id=${t} AND customer_name ILIKE ${customer_name} LIMIT 1`);
       const creditLimit = Number((custRow.rows[0] as any)?.credit_limit || 0);
       if (creditLimit > 0) {
         const outRow = await db.execute(sql`SELECT COALESCE(SUM(balance_due),0) AS outstanding FROM jw_wholesale_b2b_orders WHERE tenant_id=${t} AND customer_name ILIKE ${customer_name} AND status NOT IN ('delivered','cancelled')`);

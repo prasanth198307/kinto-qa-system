@@ -2053,10 +2053,9 @@ function buildGoldNavSections(setLocation: (path: string) => void): NavSection[]
             { id: "gold-erp-overview",      label: "Overview",            icon: LayoutDashboard, onClick: () => go("overview") },
             { id: "gold-erp-rates",         label: "Metal Rates",         icon: TrendingUp,      onClick: () => go("rates") },
             { id: "gold-erp-karigar",       label: "Karigar",             icon: Users,           onClick: () => go("karigar") },
-            { id: "gold-erp-items",         label: "Item Master",         icon: Package,         onClick: () => go("items") },
+            { id: "gold-erp-items",         label: "Jewellery Items",     icon: Package,         onClick: () => go("items") },
             { id: "gold-erp-estimates",     label: "Estimates",           icon: IndianRupee,     onClick: () => go("estimates") },
             { id: "gold-erp-metal-ledger",  label: "Metal Ledger",        icon: BookOpen,        onClick: () => go("metal-ledger") },
-            { id: "gold-erp-analytics",     label: "JW Analytics",        icon: Star,            onClick: () => go("analytics") },
           ],
         },
         {
@@ -2064,7 +2063,7 @@ function buildGoldNavSections(setLocation: (path: string) => void): NavSection[]
           label: "Production",
           items: [
             { id: "gold-erp-production",     label: "Production",          icon: Factory,         onClick: () => go("production") },
-            { id: "gold-erp-jobwork",        label: "Jobwork",             icon: Layers,          onClick: () => go("jobwork") },
+            { id: "gold-erp-jobwork",        label: "Karigar Job Orders (Internal)", icon: Layers, onClick: () => go("jobwork") },
             { id: "gold-erp-sketch",         label: "Sketch / Design",     icon: Camera,          onClick: () => go("sketch") },
             { id: "gold-erp-cad",            label: "CAD / CAM",           icon: Crosshair,       onClick: () => go("cad") },
             { id: "gold-erp-ghat",           label: "Ghat Settlement",     icon: Coins,           onClick: () => go("ghat") },
@@ -2078,8 +2077,8 @@ function buildGoldNavSections(setLocation: (path: string) => void): NavSection[]
           id: "gold-erp-wholesale",
           label: "Wholesale & B2B",
           items: [
-            { id: "gold-erp-wholesale-jobwork",   label: "Wholesale Jobwork",   icon: Layers, onClick: () => go("wholesale-jobwork") },
-            { id: "gold-erp-hallmarking-batches", label: "Hallmarking Batches", icon: Award,  onClick: () => go("hallmarking-batches") },
+            { id: "gold-erp-wholesale-jobwork",   label: "Customer Jobwork (Customer's Gold)", icon: Layers, onClick: () => go("wholesale-jobwork") },
+            { id: "gold-erp-hallmarking-batches", label: "Hallmarking — Batch Submission",     icon: Award,  onClick: () => go("hallmarking-batches") },
           ],
         },
         {
@@ -2093,8 +2092,8 @@ function buildGoldNavSections(setLocation: (path: string) => void): NavSection[]
             { id: "gold-erp-loyalty",            label: "Loyalty & Rewards",    icon: Gift,          onClick: () => go("loyalty") },
             { id: "gold-erp-promotions",         label: "Promotions",           icon: Tag,           onClick: () => go("promotions") },
             { id: "gold-erp-refining",           label: "Refining",             icon: Zap,           onClick: () => go("refining") },
-            { id: "gold-erp-pos-old-gold",       label: "POS Old Gold",         icon: ShoppingCart,  onClick: () => go("pos-old-gold") },
-            { id: "gold-erp-hallmarking",        label: "Hallmarking Register", icon: CheckCircle,   onClick: () => go("hallmarking") },
+            { id: "gold-erp-pos-old-gold",       label: "Old Gold Purchase (No Sale)", icon: ShoppingCart,  onClick: () => go("pos-old-gold") },
+            { id: "gold-erp-hallmarking",        label: "Hallmarking — HUID Records",  icon: CheckCircle,   onClick: () => go("hallmarking") },
           ],
         },
         {
