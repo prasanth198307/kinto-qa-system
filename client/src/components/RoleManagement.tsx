@@ -238,6 +238,72 @@ const AVAILABLE_SCREENS: ScreenDefinition[] = [
   { key: 'admin_tools',         label: 'Admin Tools',                 allowedActions: ['view', 'create', 'edit', 'delete'] },
   { key: 'audit_trail',         label: 'Audit Trail',                 allowedActions: ['view'] },
   { key: 'hpcl_migration',      label: 'HPCL Data Migration',         allowedActions: ['view', 'create'] },
+
+  // Gold ERP — Core
+  { key: 'gold_erp',                    label: 'Gold ERP (Module Access)',      allowedActions: ['view'],                            module: 'gold_erp' },
+  { key: 'gold_erp_overview',           label: 'Gold ERP: Overview',            allowedActions: ['view'],                            module: 'gold_erp' },
+  { key: 'gold_erp_rates',              label: 'Gold ERP: Metal Rates',         allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+  { key: 'gold_erp_karigar',            label: 'Gold ERP: Karigar Master',      allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+  { key: 'gold_erp_karigars',           label: 'Gold ERP: Karigars (List)',     allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+  { key: 'gold_erp_items',              label: 'Gold ERP: Jewellery Items',     allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+  { key: 'gold_erp_estimates',          label: 'Gold ERP: Estimates',           allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+  { key: 'gold_erp_metal_ledger',       label: 'Gold ERP: Metal Ledger',        allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+  { key: 'gold_erp_analytics',          label: 'Gold ERP: JW Analytics',        allowedActions: ['view'],                            module: 'gold_erp' },
+
+  // Gold ERP — Production
+  { key: 'gold_erp_production',         label: 'Gold ERP: Production',          allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+  { key: 'gold_erp_jobwork',            label: 'Gold ERP: Karigar Job Orders',  allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+  { key: 'gold_erp_sketch',             label: 'Gold ERP: Sketch / Design',     allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+  { key: 'gold_erp_cad',               label: 'Gold ERP: CAD Process',         allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+  { key: 'gold_erp_cam',               label: 'Gold ERP: CAM / Milling',       allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+  { key: 'gold_erp_karigar_attendance', label: 'Gold ERP: Karigar Attendance',  allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+  { key: 'gold_erp_ghat',              label: 'Gold ERP: Ghat Settlement',     allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+  { key: 'gold_erp_settlement',         label: 'Gold ERP: Karigar Settlement',  allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+  { key: 'gold_erp_finalize',           label: 'Gold ERP: Job Finalize',        allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+  { key: 'gold_erp_karigar_ledger',     label: 'Gold ERP: Karigar Ledger',      allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+  { key: 'gold_erp_repairs',            label: 'Gold ERP: Repairs',             allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+
+  // Gold ERP — Wholesale & B2B
+  { key: 'gold_erp_wholesale_b2b_orders',  label: 'Gold ERP: B2B Order Booking',           allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+  { key: 'gold_erp_wholesale_jobwork',     label: 'Gold ERP: Customer Jobwork',             allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+  { key: 'gold_erp_hallmarking_batches',   label: 'Gold ERP: Hallmarking — Batch Submission', allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+
+  // Gold ERP — Retail & Counter
+  { key: 'gold_erp_jewellery_pos',      label: 'Gold ERP: Jewellery POS',       allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+  { key: 'gold_erp_counter_bookings',   label: 'Gold ERP: Counter Bookings',    allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+  { key: 'gold_erp_customer_approvals', label: 'Gold ERP: Customer Approvals',  allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+  { key: 'gold_erp_buyback',            label: 'Gold ERP: Old Gold Buy-Back',   allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+  { key: 'gold_erp_physical_audit',     label: 'Gold ERP: Physical Audit',      allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+  { key: 'gold_erp_loyalty',            label: 'Gold ERP: Loyalty & Rewards',   allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+  { key: 'gold_erp_promotions',         label: 'Gold ERP: Promotions',          allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+  { key: 'gold_erp_refining',           label: 'Gold ERP: Refining',            allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+  { key: 'gold_erp_pos_old_gold',       label: 'Gold ERP: Old Gold Purchase',   allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+  { key: 'gold_erp_hallmarking',        label: 'Gold ERP: Hallmarking — HUID',  allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+
+  // Gold ERP — Bullion & Vault
+  { key: 'gold_erp_bullion',            label: 'Gold ERP: Bullion Stock',       allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+  { key: 'gold_erp_bullion_rate_cuts',  label: 'Gold ERP: Rate Cut Invoices',   allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+  { key: 'gold_erp_vault_movement',     label: 'Gold ERP: Vault Movement',      allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+  { key: 'gold_erp_bullion_bookings',   label: 'Gold ERP: Bullion Bookings',    allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+  { key: 'gold_erp_vault_audit',        label: 'Gold ERP: Vault Audit',         allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+
+  // Gold ERP — Chit Schemes
+  { key: 'gold_erp_chit',                      label: 'Gold ERP: Chit Schemes',        allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+  { key: 'gold_erp_chit_collection_register',  label: 'Gold ERP: Chit Collection Register', allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+  { key: 'gold_erp_chit_maturity',             label: 'Gold ERP: Chit Maturity',       allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+  { key: 'gold_erp_chit_defaulters',           label: 'Gold ERP: Chit Defaulters',     allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+  { key: 'gold_erp_chit_redemptions',          label: 'Gold ERP: Chit Redemptions',    allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+
+  // Gold ERP — Digital, OMS & E-Commerce
+  { key: 'gold_erp_ecatalog',           label: 'Gold ERP: E-Catalog',           allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+  { key: 'gold_erp_oms_orders',         label: 'Gold ERP: OMS Orders',          allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+  { key: 'gold_erp_oms_notify',         label: 'Gold ERP: OMS Notifications',   allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+  { key: 'gold_erp_ecommerce',          label: 'Gold ERP: E-Commerce Store',    allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+
+  // Gold ERP — RFID, Finance & Integrations
+  { key: 'gold_erp_rfid',               label: 'Gold ERP: RFID Management',     allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+  { key: 'gold_erp_metal_finance',      label: 'Gold ERP: Metal Finance',       allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
+  { key: 'gold_erp_integrations_config',label: 'Gold ERP: Integrations Config', allowedActions: ['view', 'create', 'edit', 'delete'], module: 'gold_erp' },
 ];
 
 export default function RoleManagement() {

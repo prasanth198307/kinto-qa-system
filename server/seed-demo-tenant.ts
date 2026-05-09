@@ -83,6 +83,23 @@ async function ensureDemoPermissions(tenantId: number, adminRoleId: string): Pro
     'healthcare','education','logistics_transport','real_estate','pos','agriculture',
     // Core admin extras
     'overview','audit_trail','hpcl_migration',
+    // Gold ERP screens
+    'gold_erp',
+    'gold_erp_overview','gold_erp_rates','gold_erp_karigar','gold_erp_karigars','gold_erp_items',
+    'gold_erp_estimates','gold_erp_metal_ledger','gold_erp_analytics',
+    'gold_erp_production','gold_erp_jobwork','gold_erp_sketch','gold_erp_cad','gold_erp_cam',
+    'gold_erp_karigar_attendance','gold_erp_ghat','gold_erp_settlement','gold_erp_finalize',
+    'gold_erp_karigar_ledger','gold_erp_repairs',
+    'gold_erp_wholesale_b2b_orders','gold_erp_wholesale_jobwork','gold_erp_hallmarking_batches',
+    'gold_erp_jewellery_pos','gold_erp_counter_bookings','gold_erp_customer_approvals',
+    'gold_erp_buyback','gold_erp_physical_audit','gold_erp_loyalty','gold_erp_promotions',
+    'gold_erp_refining','gold_erp_pos_old_gold','gold_erp_hallmarking',
+    'gold_erp_bullion','gold_erp_bullion_rate_cuts','gold_erp_vault_movement',
+    'gold_erp_bullion_bookings','gold_erp_vault_audit',
+    'gold_erp_chit','gold_erp_chit_collection_register','gold_erp_chit_maturity',
+    'gold_erp_chit_defaulters','gold_erp_chit_redemptions',
+    'gold_erp_ecatalog','gold_erp_oms_orders','gold_erp_oms_notify','gold_erp_ecommerce',
+    'gold_erp_rfid','gold_erp_metal_finance','gold_erp_integrations_config',
   ];
 
   for (const key of ALL_SCREEN_KEYS) {
