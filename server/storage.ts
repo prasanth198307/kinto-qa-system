@@ -4207,7 +4207,8 @@ export class DatabaseStorage implements IStorage {
 
   // Cash Register Days
   async createCashRegisterDay(day: InsertCashRegisterDay): Promise<CashRegisterDay> {
-    const [created] = await db.insert(cashRegisterDays).values(day).returning();
+    const tenantId = getCurrentTenantId() ?? day.tenantId ?? 1;
+    const [created] = await db.insert(cashRegisterDays).values({ ...day, tenantId }).returning();
     return created;
   }
 
@@ -4268,12 +4269,13 @@ export class DatabaseStorage implements IStorage {
   async deleteCashRegisterDay(id: string): Promise<void> {
     await db.update(cashRegisterDays)
       .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
-      .where(eq(cashRegisterDays.id, id));
+      .where(and(eq(cashRegisterDays.id, id), tc(cashRegisterDays)));
   }
 
   // Cash Register Transactions
   async createCashRegisterTransaction(transaction: InsertCashRegisterTransaction): Promise<CashRegisterTransaction> {
-    const [created] = await db.insert(cashRegisterTransactions).values(transaction).returning();
+    const tenantId = getCurrentTenantId() ?? transaction.tenantId ?? 1;
+    const [created] = await db.insert(cashRegisterTransactions).values({ ...transaction, tenantId }).returning();
     return created;
   }
 
@@ -4299,12 +4301,13 @@ export class DatabaseStorage implements IStorage {
   async deleteCashRegisterTransaction(id: string): Promise<void> {
     await db.update(cashRegisterTransactions)
       .set({ recordStatus: 0 })
-      .where(eq(cashRegisterTransactions.id, id));
+      .where(and(eq(cashRegisterTransactions.id, id), tc(cashRegisterTransactions)));
   }
 
   // Cash Register Expense Items
   async createCashRegisterExpenseItem(item: InsertCashRegisterExpenseItem): Promise<CashRegisterExpenseItem> {
-    const [created] = await db.insert(cashRegisterExpenseItems).values(item).returning();
+    const tenantId = getCurrentTenantId() ?? item.tenantId ?? 1;
+    const [created] = await db.insert(cashRegisterExpenseItems).values({ ...item, tenantId }).returning();
     return created;
   }
 
@@ -4330,7 +4333,7 @@ export class DatabaseStorage implements IStorage {
   async deleteCashRegisterExpenseItem(id: string): Promise<void> {
     await db.update(cashRegisterExpenseItems)
       .set({ recordStatus: 0 })
-      .where(eq(cashRegisterExpenseItems.id, id));
+      .where(and(eq(cashRegisterExpenseItems.id, id), tc(cashRegisterExpenseItems)));
   }
 
   // Salesperson Mappings
@@ -4341,12 +4344,12 @@ export class DatabaseStorage implements IStorage {
 
   async getAllSalespersonMappings(): Promise<SalespersonMapping[]> {
     return await db.select().from(salespersonMappings)
-      .where(eq(salespersonMappings.isActive, 1));
+      .where(and(eq(salespersonMappings.isActive, 1), tc(salespersonMappings)));
   }
 
   async getSalespersonMappingByName(excelName: string): Promise<SalespersonMapping | undefined> {
     const [mapping] = await db.select().from(salespersonMappings)
-      .where(and(eq(salespersonMappings.excelName, excelName), eq(salespersonMappings.isActive, 1)));
+      .where(and(eq(salespersonMappings.excelName, excelName), eq(salespersonMappings.isActive, 1), tc(salespersonMappings)));
     return mapping;
   }
 
