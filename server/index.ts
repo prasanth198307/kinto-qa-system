@@ -495,9 +495,11 @@ app.use((req, res, next) => {
 
   // ─── sales_orders screen key: seed for ALL roles that are missing it ──────
   // admin/manager/accountsmanager → full CRUD; everyone else → view+create
-  // ON CONFLICT DO NOTHING preserves any explicit admin configuration.
+  // Also repairs existing all-zero rows that were incorrectly seeded by syncAndUnlockByPlan.
   try {
     const { pool: poolSO } = await import('./db');
+
+    // 1. INSERT for roles that have no sales_orders row yet
     await poolSO.query(`
       INSERT INTO role_permissions (role_id, tenant_id, screen_key, can_view, can_create, can_edit, can_delete, record_status)
       SELECT
@@ -513,7 +515,44 @@ app.use((req, res, next) => {
         WHERE rp2.role_id = r.id AND rp2.screen_key = 'sales_orders'
       )
     `);
-    console.log('[MIGRATION] sales_orders screen key seeded for all roles');
+
+    // 2. FIX system roles that were incorrectly seeded with all-zero permissions.
+    //    admin/manager/accountsmanager always get full CRUD on sales_orders regardless.
+    await poolSO.query(`
+      UPDATE role_permissions rp
+      SET can_view=1, can_create=1, can_edit=1, can_delete=1, record_status=1
+      FROM roles r
+      WHERE rp.role_id = r.id
+        AND rp.screen_key = 'sales_orders'
+        AND lower(r.name) IN ('admin','manager','accountsmanager')
+        AND (rp.can_view = 0 OR rp.can_create = 0 OR rp.can_edit = 0 OR rp.can_delete = 0)
+    `);
+
+    // 3. FIX operator/reviewer — always get view-only on sales_orders.
+    await poolSO.query(`
+      UPDATE role_permissions rp
+      SET can_view=1, can_create=0, can_edit=0, can_delete=0, record_status=1
+      FROM roles r
+      WHERE rp.role_id = r.id
+        AND rp.screen_key = 'sales_orders'
+        AND lower(r.name) IN ('operator','reviewer')
+        AND rp.can_view = 0
+    `);
+
+    // 4. FIX custom roles whose sales_orders row is still all-zero (never configured by admin).
+    //    Give them view+create so they can at least see and raise sales orders.
+    //    Rows that were explicitly set to non-zero by an admin are NOT touched.
+    await poolSO.query(`
+      UPDATE role_permissions rp
+      SET can_view=1, can_create=1, record_status=1
+      FROM roles r
+      WHERE rp.role_id = r.id
+        AND rp.screen_key = 'sales_orders'
+        AND lower(r.name) NOT IN ('admin','manager','accountsmanager','operator','reviewer')
+        AND rp.can_view = 0 AND rp.can_create = 0 AND rp.can_edit = 0 AND rp.can_delete = 0
+    `);
+
+    console.log('[MIGRATION] sales_orders screen key seeded and repaired for all roles');
   } catch (err) {
     console.error('[MIGRATION] sales_orders seed ERROR:', err);
   }
