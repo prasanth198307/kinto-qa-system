@@ -163,25 +163,36 @@ export async function planEnforcementMiddleware(req: Request, res: Response, nex
       const dbModules = await getModulesForPlan(tenantPlan);
 
       // 1. Check per-tenant selected_modules (set by super-admin via Module Marketplace).
-      //    When set, selected_modules is the authoritative list for catalog-managed modules.
+      //    selected_modules EXTENDS access beyond what the plan provides — it must NEVER revoke
+      //    modules that the tenant's subscription plan already includes (e.g. Enterprise covers
+      //    sales_orders by plan, so it stays accessible even if not explicitly in selected_modules).
       //    — If module IS in selected_modules → ALLOW immediately.
-      //    — If module is NOT in selected_modules AND it's catalog-managed → DENY immediately.
+      //    — If module is NOT in selected_modules AND plan also doesn't cover it → DENY.
+      //    — If module is NOT in selected_modules BUT plan covers it → fall through to plan check (allow).
       //    — Non-catalog modules (mis, documents, whatsapp, etc.) always fall through to plan check.
       const tenantModules = await getSelectedModulesForTenant(tenantId);
       if (tenantModules !== null) {
         if (tenantHasModule(tenantModules, rule.module)) {
           break; // explicitly enabled in per-tenant selection → allow
         }
-        // Module not in selected_modules. Block catalog-managed modules immediately.
+        // Module not in selected_modules. For catalog-managed modules, only block if the
+        // tenant's subscription plan also does NOT cover it. This ensures selected_modules
+        // acts as an extension, not a restriction on top of existing plan entitlements.
         if (!NON_CATALOG_MODULES.has(rule.module)) {
-          return res.status(403).json({
-            message: `This module has been disabled for your account. Please contact your administrator to enable it.`,
-            planRequired: rule.minPlan,
-            currentPlan: tenantPlan,
-            module: rule.module,
-          });
+          const planCoversIt = dbModules !== null
+            ? tenantHasModule(dbModules, rule.module)
+            : planMeetsMinimum(tenantPlan, rule.minPlan);
+          if (!planCoversIt) {
+            return res.status(403).json({
+              message: `This module has been disabled for your account. Please contact your administrator to enable it.`,
+              planRequired: rule.minPlan,
+              currentPlan: tenantPlan,
+              module: rule.module,
+            });
+          }
+          // Plan covers it — fall through to plan-level check below which will allow it
         }
-        // Non-catalog module — fall through to plan-level check below
+        // Non-catalog module or plan covers it — fall through to plan-level check below
       }
 
       // 2. Check plan-level module list from DB
