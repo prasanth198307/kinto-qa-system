@@ -472,10 +472,11 @@ app.use((req, res, next) => {
     console.error('[ROLE_PERMS TENANT FIX ERROR]', err);
   }
 
-  // ─── New screen keys migration: insert missing purchase_returns / tds_management rows ──
+  // ─── New screen keys migration: insert missing rows for all roles ────────
   try {
     const { db: dbNewScreens } = await import("./db");
     const { sql: sqlNewScreens } = await import("drizzle-orm");
+    // These keys are seeded with can_view=0 for all roles (admin-only enables)
     for (const screenKey of ['purchase_returns', 'tds_management']) {
       await dbNewScreens.execute(sqlNewScreens`
         INSERT INTO role_permissions (role_id, tenant_id, screen_key, can_view, can_create, can_edit, can_delete, record_status)
@@ -490,6 +491,31 @@ app.use((req, res, next) => {
     console.log('[NEW_SCREEN_KEYS MIGRATION] purchase_returns / tds_management rows ensured');
   } catch (err) {
     console.error('[NEW_SCREEN_KEYS MIGRATION ERROR]', err);
+  }
+
+  // ─── sales_orders screen key: seed for ALL roles that are missing it ──────
+  // admin/manager/accountsmanager → full CRUD; everyone else → view+create
+  // ON CONFLICT DO NOTHING preserves any explicit admin configuration.
+  try {
+    const { pool: poolSO } = await import('./db');
+    await poolSO.query(`
+      INSERT INTO role_permissions (role_id, tenant_id, screen_key, can_view, can_create, can_edit, can_delete, record_status)
+      SELECT
+        r.id, r.tenant_id, 'sales_orders',
+        1,
+        CASE WHEN lower(r.name) IN ('admin','manager','accountsmanager') THEN 1 ELSE 1 END,
+        CASE WHEN lower(r.name) IN ('admin','manager','accountsmanager') THEN 1 ELSE 0 END,
+        CASE WHEN lower(r.name) IN ('admin','manager','accountsmanager') THEN 1 ELSE 0 END,
+        1
+      FROM roles r
+      WHERE NOT EXISTS (
+        SELECT 1 FROM role_permissions rp2
+        WHERE rp2.role_id = r.id AND rp2.screen_key = 'sales_orders'
+      )
+    `);
+    console.log('[MIGRATION] sales_orders screen key seeded for all roles');
+  } catch (err) {
+    console.error('[MIGRATION] sales_orders seed ERROR:', err);
   }
 
   // ─── api_keys screen key migration ───────────────────────────────────────────
