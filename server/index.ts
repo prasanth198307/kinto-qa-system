@@ -1298,9 +1298,9 @@ app.use((req, res, next) => {
 
   // ─── is_super_admin column on users (required by Drizzle schema) ─────────
   try {
-    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_super_admin boolean DEFAULT false`);
-    // Mark all users in the kinto-admin tenant (id=6) as super-admins
-    await pool.query(`UPDATE users SET is_super_admin = true WHERE tenant_id = 6 AND (is_super_admin IS NULL OR is_super_admin = false)`);
+    const { pool: poolSA } = await import('./db');
+    await poolSA.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_super_admin boolean DEFAULT false`);
+    await poolSA.query(`UPDATE users SET is_super_admin = true WHERE tenant_id = 6 AND (is_super_admin IS NULL OR is_super_admin = false)`);
     console.log('[MIGRATION] users.is_super_admin column OK');
   } catch (err) {
     console.error('[MIGRATION] users.is_super_admin ERROR:', err);
