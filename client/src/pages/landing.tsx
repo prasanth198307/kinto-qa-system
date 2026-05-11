@@ -1,4 +1,23 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useLayoutEffect } from "react";
+
+// Allow TypeScript to accept the <colloki-chat> custom element in JSX
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      "colloki-chat": React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & {
+        window_title?: string;
+        welcome_message?: string;
+        window_logo?: string;
+        header_color?: string;
+        primary_color?: string;
+        window_icon?: string;
+        flow_id?: string;
+        host_url?: string;
+        api_key?: string;
+      };
+    }
+  }
+}
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -396,6 +415,21 @@ export default function LandingPage() {
   const { toast } = useToast();
   const [demoLoading, setDemoLoading] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Load Colloki chat widget script once on mount
+  useEffect(() => {
+    const id = "colloki-bundle";
+    if (document.getElementById(id)) return;
+    const script = document.createElement("script");
+    script.id = id;
+    script.src = "https://micassets.micnxt.com/agentflow/collokiflow_bundle_site.js";
+    script.async = true;
+    document.body.appendChild(script);
+    return () => {
+      const s = document.getElementById(id);
+      if (s) s.remove();
+    };
+  }, []);
 
   // Fetch live module prices from DB (public endpoint — no auth required)
   const { data: catalogModules = [] } = useQuery<{ slug: string; name: string; category: string; priceMonthly: number; free: boolean; popular: boolean }[]>({
@@ -1057,6 +1091,19 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+
+      {/* Colloki AI chat widget — fixed bottom-right */}
+      <colloki-chat
+        window_title="SwachERP"
+        welcome_message="Cleaner Business. Better Future. 🌿 I'm the SwachERP virtual assistant. Ask me about our cloud ERP for manufacturers — GST, WhatsApp integration, HR, and more."
+        window_logo="https://storage.googleapis.com/apps-micnxt/agent-logos/swacherp-logo-30x30.png"
+        header_color="#ffffff"
+        primary_color="#ffffff"
+        window_icon="https://storage.googleapis.com/apps-micnxt/agent-icons/swacherp-logo-30x30.png"
+        flow_id="13d965da-eaa7-46a4-b57e-85edc0ef3166"
+        host_url="https://collokiflow.micapps.com"
+        api_key="sk-H-zKQhIfuJZoiPbXy3RFGjn1lFbVWilJfH9kXYVO6RI"
+      />
 
     </div>
   );

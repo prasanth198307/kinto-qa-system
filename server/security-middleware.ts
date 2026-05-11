@@ -112,18 +112,18 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
   );
   // XSS protection (legacy browsers)
   res.setHeader("X-XSS-Protection", "1; mode=block");
-  // Content Security Policy — allow same-origin + Razorpay + WhatsApp
+  // Content Security Policy — allow same-origin + Razorpay + Colloki chat widget
   if (!req.path.startsWith("/api/")) {
     res.setHeader(
       "Content-Security-Policy",
       [
         "default-src 'self'",
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com",
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com https://micassets.micnxt.com",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://micassets.micnxt.com",
         "font-src 'self' data: https://fonts.gstatic.com",
         "img-src 'self' data: blob: https:",
-        "connect-src 'self' https://api.razorpay.com wss:",
-        "frame-src https://api.razorpay.com",
+        "connect-src 'self' https://api.razorpay.com https://collokiflow.micapps.com wss:",
+        "frame-src https://api.razorpay.com https://collokiflow.micapps.com",
       ].join("; ")
     );
   }
