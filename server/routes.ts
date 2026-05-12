@@ -142,7 +142,7 @@ const endpointToScreenKey: Record<string, string> = {
   '/api/reports/repacking': 'reports',
   '/api/reports/write-offs': 'payment_writeoff',
   '/api/scrap-inventory/report': 'reports',
-  '/api/gst-reports': 'report_gst',
+  '/api/gst-reports': 'gst_reports',
   
   // Quality & Checklists
   '/api/checklist-templates': 'checklist_templates',
