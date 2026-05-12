@@ -930,7 +930,7 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
   const [periodType, setPeriodType] = useState<PeriodType>("monthly");
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const { data: tenantSettings } = useQuery<any>({ queryKey: ["/api/tenant/settings"] });
+  const { data: tenantSettings } = useQuery<any>({ queryKey: ["/api/tenant/info"] });
   const companyGSTIN: string = (tenantSettings?.gstNumber ?? "").toUpperCase();
   
   // Expense Report States

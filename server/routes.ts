@@ -851,6 +851,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ─── Tenant settings GET alias (same data as /api/tenant/info) ──────────────
+  app.get('/api/tenant/settings', async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' });
+    const tenantId: number = (req.session as any).tenantId ?? req.user?.tenantId ?? 1;
+    try {
+      const [tenant] = await db.select({
+        id: tenants.id,
+        name: tenants.name,
+        slug: tenants.slug,
+        plan: tenants.plan,
+        status: tenants.status,
+        trialEndsAt: tenants.trialEndsAt,
+        maxUsers: tenants.maxUsers,
+        logoUrl: tenants.logoUrl,
+        primaryColor: tenants.primaryColor,
+        billingEmail: tenants.billingEmail,
+        contactName: tenants.contactName,
+        contactPhone: tenants.contactPhone,
+        gstNumber: tenants.gstNumber,
+        address: tenants.address,
+        createdAt: tenants.createdAt,
+      }).from(tenants).where(eq(tenants.id, tenantId));
+      if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
+      res.json(tenant);
+    } catch (err) {
+      console.error('GET /api/tenant/settings error:', err);
+      res.status(500).json({ message: 'Failed to fetch tenant settings' });
+    }
+  });
+
   // ─── Tenant settings update (admin only, company info only — not plan) ──────
   app.patch('/api/tenant/settings', async (req: any, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' });
