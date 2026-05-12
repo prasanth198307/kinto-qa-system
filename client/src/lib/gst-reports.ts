@@ -299,8 +299,8 @@ export function generateGSTR1(
 ): GSTR1Report {
   const b2bInvoices: B2BInvoice[] = [];
   const b2clInvoices: B2CLInvoice[] = [];
-  // B2CS is aggregated by (splyTy + pos + rate) — not one row per invoice
-  const b2csMap = new Map<string, B2CSInvoice>();
+  // One row per invoice (or one row per rate-group within a mixed-rate invoice)
+  const b2csInvoices: B2CSInvoice[] = [];
   const expInvoices: ExportInvoice[] = [];
   const cdnrNotes: CDNRNote[] = [];
   const cdnurNotes: CDNURNote[] = [];
@@ -403,28 +403,27 @@ export function generateGSTR1(
         }],
       });
     } else {
-      // B2CS — split by rate and aggregate into the map so each (state+rate) is one row
+      // B2CS — one row per invoice per rate group (preserves per-invoice detail)
+      // Mixed-rate invoices (e.g. 5% + 0%) produce two rows with correct rates
       const splyTy = isSameState ? 'INTRA' : 'INTER';
       const pos    = invoice.buyerStateCode || '00';
       const typ    = isSameState ? 'OE' : 'E';
 
       rateGroups.forEach((g, rate) => {
-        const key = `${splyTy}-${pos}-${rate}`;
-        const existing = b2csMap.get(key) ?? {
-          sply_ty: splyTy, pos, typ,
-          txval: 0, rt: rate, csamt: 0, camt: 0, samt: 0, iamt: 0,
-        };
-        existing.txval = Number((existing.txval + g.taxable).toFixed(2));
-        existing.camt  = Number((existing.camt  + g.cgst).toFixed(2));
-        existing.samt  = Number((existing.samt  + g.sgst).toFixed(2));
-        existing.iamt  = Number((existing.iamt  + g.igst).toFixed(2));
-        existing.csamt = Number((existing.csamt + g.cess).toFixed(2));
-        b2csMap.set(key, existing);
+        b2csInvoices.push({
+          sply_ty: splyTy,
+          pos,
+          typ,
+          txval:  Number(g.taxable.toFixed(2)),
+          rt:     rate,
+          csamt:  Number(g.cess.toFixed(2)),
+          camt:   Number(g.cgst.toFixed(2)),
+          samt:   Number(g.sgst.toFixed(2)),
+          iamt:   Number(g.igst.toFixed(2)),
+        });
       });
     }
   });
-
-  const b2csInvoices = Array.from(b2csMap.values());
 
   // Transform HSN summary from API response to report format
   const hsnData: HSNSummary[] = (hsnSummary || []).map(hsn => ({
