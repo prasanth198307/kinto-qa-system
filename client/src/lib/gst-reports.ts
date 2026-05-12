@@ -322,9 +322,10 @@ export function generateGSTR1(
 
     if (items && items.length > 0) {
       items.forEach((item: any) => {
-        const rate = snapToStandardGSTRate(
-          typeof item.gstRate === 'string' ? parseFloat(item.gstRate) : (item.gstRate || 0)
-        );
+        // cgstRate + sgstRate + igstRate are stored in BASIS POINTS (e.g. 250 = 2.5%)
+        // Combined GST % = (cgstRate + sgstRate + igstRate) / 100
+        const rateRaw = ((item.cgstRate || 0) + (item.sgstRate || 0) + (item.igstRate || 0)) / 100;
+        const rate = snapToStandardGSTRate(rateRaw);
         const g: RateGroup = rateGroups.get(rate) ?? { taxable: 0, cgst: 0, sgst: 0, igst: 0, cess: 0 };
         g.taxable += (item.taxableAmount || 0) / 100;
         g.cgst    += (item.cgstAmount    || 0) / 100;
@@ -421,10 +422,10 @@ export function generateGSTR1(
       if (headerTax === 0) return;
 
       // Taxable = sum of only the GST-positive items (excludes transport/exempt at 0%)
+      // cgstRate/sgstRate/igstRate are in BASIS POINTS — item has GST if any > 0
       let b2csTaxable = 0;
       const gstPositiveItems = items.filter((item: any) => {
-        const r = typeof item.gstRate === 'string' ? parseFloat(item.gstRate) : (item.gstRate || 0);
-        return r > 0;
+        return ((item.cgstRate || 0) + (item.sgstRate || 0) + (item.igstRate || 0)) > 0;
       });
       if (gstPositiveItems.length > 0) {
         b2csTaxable = gstPositiveItems.reduce(

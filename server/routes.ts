@@ -11129,12 +11129,24 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
         }
       }
       
-      // Calculate average tax rate for each HSN
+      // Standard GST slabs — snap blended rates to the nearest real slab
+      const STANDARD_GST_RATES_SVR = [0, 0.1, 0.25, 1, 1.5, 3, 5, 12, 18, 28];
+      const snapGSTRate = (rate: number) => {
+        let closest = rate, minDiff = Infinity;
+        for (const s of STANDARD_GST_RATES_SVR) {
+          const d = Math.abs(rate - s);
+          if (d < minDiff) { minDiff = d; closest = s; }
+        }
+        return minDiff <= 0.5 ? closest : rate;
+      };
+
+      // Calculate average tax rate for each HSN and snap to standard slab
       const hsnSummary = Array.from(hsnMap.values()).map(hsn => {
         const totalHsnTax = hsn.cgstAmount + hsn.sgstAmount + hsn.igstAmount;
-        hsn.taxRate = hsn.taxableValue > 0 
+        const rawRate = hsn.taxableValue > 0
           ? Number(((totalHsnTax / hsn.taxableValue) * 100).toFixed(2))
           : 0;
+        hsn.taxRate = snapGSTRate(rawRate);
         return hsn;
       });
       
