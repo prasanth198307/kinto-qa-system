@@ -410,6 +410,8 @@ export function generateGSTR1(
       const typ    = isSameState ? 'OE' : 'E';
 
       rateGroups.forEach((g, rate) => {
+        // Skip 0% rate groups — nil-rated/exempt items are not reported in B2CS
+        if (rate === 0) return;
         b2csInvoices.push({
           sply_ty: splyTy,
           pos,
