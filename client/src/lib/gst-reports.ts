@@ -800,6 +800,21 @@ export async function exportGSTR1AsExcel(report: GSTR1Report, period: string): P
     XLSX.utils.book_append_sheet(workbook, hsnSheet, 'HSN');
   }
 
+  // Always add a Summary sheet so the workbook is never empty (SheetJS throws on empty workbooks)
+  const summaryRows = [
+    { 'Field': 'GSTIN',             'Value': report.gstin },
+    { 'Field': 'Filing Period',     'Value': report.fp },
+    { 'Field': 'B2B Invoices',      'Value': report.b2b.reduce((s, b) => s + b.inv.length, 0) },
+    { 'Field': 'B2CL Invoices',     'Value': report.b2cl.reduce((s, b) => s + b.inv.length, 0) },
+    { 'Field': 'B2CS Entries',      'Value': report.b2cs.length },
+    { 'Field': 'Export Invoices',   'Value': report.exp.reduce((s, e) => s + e.inv.length, 0) },
+    { 'Field': 'Credit/Debit Notes','Value': report.cdnr.reduce((s, c) => s + c.nt.length, 0) + report.cdnur.length },
+    { 'Field': 'HSN Entries',        'Value': report.hsn.length },
+  ];
+  const XLSX2 = await import('xlsx');
+  const summarySheet = XLSX2.utils.json_to_sheet(summaryRows);
+  XLSX2.utils.book_append_sheet(workbook, summarySheet, 'Summary');
+
   // Write file
   await downloadXLSX(workbook, `GSTR1_${period}.xlsx`);
 }
@@ -855,6 +870,19 @@ export async function exportGSTR3BAsExcel(report: GSTR3BReport, period: string):
     const itcSheet = XLSX.utils.json_to_sheet(itcData);
     XLSX.utils.book_append_sheet(workbook, itcSheet, 'Table 4 - ITC');
   }
+
+  // Guarantee at least a Summary sheet so the workbook is never empty
+  const XLSX2 = await import('xlsx');
+  const gstr3bSummaryRows = [
+    { 'Field': 'GSTIN',                    'Value': report.gstin },
+    { 'Field': 'Filing Period',            'Value': report.ret_period },
+    { 'Field': 'Taxable Outward Supplies', 'Value': report.sup_details.osup_det.txval },
+    { 'Field': 'Total IGST',               'Value': report.sup_details.osup_det.iamt },
+    { 'Field': 'Total CGST',               'Value': report.sup_details.osup_det.camt },
+    { 'Field': 'Total SGST',               'Value': report.sup_details.osup_det.samt },
+  ];
+  const gstr3bSummarySheet = XLSX2.utils.json_to_sheet(gstr3bSummaryRows);
+  XLSX2.utils.book_append_sheet(workbook, gstr3bSummarySheet, 'GSTR3B Summary');
 
   await downloadXLSX(workbook, `GSTR3B_${period}.xlsx`);
 }

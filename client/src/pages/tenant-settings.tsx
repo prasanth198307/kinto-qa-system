@@ -116,8 +116,8 @@ const settingsSchema = z.object({
   gstNumber:    z.string().max(20).optional(),
   address:      z.string().optional(),
   industry:     z.string().optional(),
-  logoUrl:      z.string().url("Must be a valid URL").or(z.literal("")).optional(),
-  primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a hex color e.g. #2563eb").optional(),
+  logoUrl:      z.string().optional(),
+  primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a hex color e.g. #2563eb").or(z.literal("")).optional(),
 });
 
 const notifSchema = z.object({
