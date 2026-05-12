@@ -403,26 +403,53 @@ export function generateGSTR1(
         }],
       });
     } else {
-      // B2CS — one row per invoice per rate group (preserves per-invoice detail)
-      // Mixed-rate invoices (e.g. 5% + 0%) produce two rows with correct rates
+      // B2CS — ONE row per invoice
+      // Only include items that have GST > 0 in the taxable value.
+      // 0%-rate items (transport, exempt goods) are excluded from B2CS entirely.
       const splyTy = isSameState ? 'INTRA' : 'INTER';
       const pos    = invoice.buyerStateCode || '00';
       const typ    = isSameState ? 'OE' : 'E';
 
-      rateGroups.forEach((g, rate) => {
-        // Skip 0% rate groups — nil-rated/exempt items are not reported in B2CS
-        if (rate === 0) return;
-        b2csInvoices.push({
-          sply_ty: splyTy,
-          pos,
-          typ,
-          txval:  Number(g.taxable.toFixed(2)),
-          rt:     rate,
-          csamt:  Number(g.cess.toFixed(2)),
-          camt:   Number(g.cgst.toFixed(2)),
-          samt:   Number(g.sgst.toFixed(2)),
-          iamt:   Number(g.igst.toFixed(2)),
-        });
+      // Use actual invoice header GST amounts (what was really charged)
+      const headerCgst = paiseToRupees(invoice.cgstAmount);
+      const headerSgst = paiseToRupees(invoice.sgstAmount);
+      const headerIgst = paiseToRupees(invoice.igstAmount);
+      const headerCess = paiseToRupees(invoice.cessAmount);
+      const headerTax  = headerCgst + headerSgst + headerIgst;
+
+      // Skip invoices with zero GST — nothing to report in B2CS
+      if (headerTax === 0) return;
+
+      // Taxable = sum of only the GST-positive items (excludes transport/exempt at 0%)
+      let b2csTaxable = 0;
+      const gstPositiveItems = items.filter((item: any) => {
+        const r = typeof item.gstRate === 'string' ? parseFloat(item.gstRate) : (item.gstRate || 0);
+        return r > 0;
+      });
+      if (gstPositiveItems.length > 0) {
+        b2csTaxable = gstPositiveItems.reduce(
+          (sum: number, item: any) => sum + (item.taxableAmount || 0) / 100, 0
+        );
+      } else {
+        // Fallback: no item-level GST rate data — use invoice subtotal
+        b2csTaxable = paiseToRupees(invoice.subtotal);
+      }
+
+      // Derive the rate from actual GST charged ÷ GST-positive taxable value
+      const b2csRate = b2csTaxable > 0
+        ? snapToStandardGSTRate(Number(((headerTax / b2csTaxable) * 100).toFixed(2)))
+        : 0;
+
+      b2csInvoices.push({
+        sply_ty: splyTy,
+        pos,
+        typ,
+        txval:  Number(b2csTaxable.toFixed(2)),
+        rt:     b2csRate,
+        csamt:  Number(headerCess.toFixed(2)),
+        camt:   Number(headerCgst.toFixed(2)),
+        samt:   Number(headerSgst.toFixed(2)),
+        iamt:   Number(headerIgst.toFixed(2)),
       });
     }
   });
