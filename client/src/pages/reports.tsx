@@ -2967,7 +2967,7 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
                       
                       if (gstReportType === 'GSTR1') {
                         const report = generateGSTR1(
-                          invoicesFromReport, 
+                          reportData.invoices,
                           period, 
                           companyGSTIN, 
                           reportData.hsnSummary,
@@ -3004,7 +3004,7 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
                       
                       if (gstReportType === 'GSTR1') {
                         const report = generateGSTR1(
-                          invoicesFromReport, 
+                          reportData.invoices,
                           period, 
                           companyGSTIN, 
                           reportData.hsnSummary,

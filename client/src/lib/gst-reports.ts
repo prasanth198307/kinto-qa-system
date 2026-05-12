@@ -290,7 +290,7 @@ function formatDateForGST(dateStr: string): string {
  * Generate GSTR-1 Report from invoices with real HSN data from API
  */
 export function generateGSTR1(
-  invoices: Invoice[],
+  invoicesWithItems: Array<{ invoice: Invoice; items: any[] }>,
   period: string,
   companyGSTIN: string,
   hsnSummary?: GSTReportAPIResponse['hsnSummary'],
@@ -299,101 +299,132 @@ export function generateGSTR1(
 ): GSTR1Report {
   const b2bInvoices: B2BInvoice[] = [];
   const b2clInvoices: B2CLInvoice[] = [];
-  const b2csInvoices: B2CSInvoice[] = [];
+  // B2CS is aggregated by (splyTy + pos + rate) — not one row per invoice
+  const b2csMap = new Map<string, B2CSInvoice>();
   const expInvoices: ExportInvoice[] = [];
   const cdnrNotes: CDNRNote[] = [];
   const cdnurNotes: CDNURNote[] = [];
   const hsnMap = new Map<string, HSNSummary>();
 
-  invoices.forEach((invoice) => {
-    // Convert from paise to rupees
+  invoicesWithItems.forEach(({ invoice, items }) => {
     const totalAmount = paiseToRupees(invoice.totalAmount);
-    // Taxable value = goods value before GST (subtotal). Transport charges are excluded
-    // from txval because GST was not charged on them; they appear in val (totalAmount).
-    const taxableValue = paiseToRupees(invoice.subtotal);
-    const cgstAmount = paiseToRupees(invoice.cgstAmount);
-    const sgstAmount = paiseToRupees(invoice.sgstAmount);
-    const igstAmount = paiseToRupees(invoice.igstAmount);
-    const cessAmount = paiseToRupees(invoice.cessAmount);
-    
-    const totalTax = cgstAmount + sgstAmount + igstAmount;
-    const taxRate = calculateTaxRate(taxableValue, totalTax);
-    
-    // Determine if this is intra-state or inter-state
+
+    // Classify invoice
     const isSameState = invoice.sellerState === invoice.buyerState;
-    
-    // Classify invoice based on buyer GSTIN and export indicators
     const hasBuyerGSTIN = invoice.buyerGstin && invoice.buyerGstin.length === 15;
-    const isExport = !hasBuyerGSTIN && invoice.placeOfSupply && 
-                     (invoice.placeOfSupply.toLowerCase().includes('export') || 
-                      invoice.buyerState === 'EXPORT');
-    
+    const isExport = !hasBuyerGSTIN && invoice.placeOfSupply &&
+      (invoice.placeOfSupply.toLowerCase().includes('export') ||
+        invoice.buyerState === 'EXPORT');
+
+    // --- Build per-rate groups from items (correct split for mixed-rate invoices) ---
+    type RateGroup = { taxable: number; cgst: number; sgst: number; igst: number; cess: number };
+    const rateGroups = new Map<number, RateGroup>();
+
+    if (items && items.length > 0) {
+      items.forEach((item: any) => {
+        const rate = snapToStandardGSTRate(
+          typeof item.gstRate === 'string' ? parseFloat(item.gstRate) : (item.gstRate || 0)
+        );
+        const g: RateGroup = rateGroups.get(rate) ?? { taxable: 0, cgst: 0, sgst: 0, igst: 0, cess: 0 };
+        g.taxable += (item.taxableAmount || 0) / 100;
+        g.cgst    += (item.cgstAmount    || 0) / 100;
+        g.sgst    += (item.sgstAmount    || 0) / 100;
+        g.igst    += (item.igstAmount    || 0) / 100;
+        g.cess    += (item.cessAmount    || 0) / 100;
+        rateGroups.set(rate, g);
+      });
+    } else {
+      // Fallback: no items — use invoice header totals with blended rate
+      const taxable = paiseToRupees(invoice.subtotal);
+      const cgst    = paiseToRupees(invoice.cgstAmount);
+      const sgst    = paiseToRupees(invoice.sgstAmount);
+      const igst    = paiseToRupees(invoice.igstAmount);
+      const cess    = paiseToRupees(invoice.cessAmount);
+      const rate    = calculateTaxRate(taxable, cgst + sgst + igst);
+      rateGroups.set(rate, { taxable, cgst, sgst, igst, cess });
+    }
+
+    // Aggregate totals across all rate groups (used for B2B/B2CL/Export)
+    const totals = Array.from(rateGroups.values()).reduce(
+      (acc, g) => ({
+        taxable: acc.taxable + g.taxable,
+        cgst:    acc.cgst    + g.cgst,
+        sgst:    acc.sgst    + g.sgst,
+        igst:    acc.igst    + g.igst,
+        cess:    acc.cess    + g.cess,
+      }),
+      { taxable: 0, cgst: 0, sgst: 0, igst: 0, cess: 0 }
+    );
+    const blendedRate = calculateTaxRate(totals.taxable, totals.cgst + totals.sgst + totals.igst);
+
     if (isExport) {
-      // Export Invoice
-      const expInv: ExportInvoice = {
-        exp_typ: 'WPAY', // With Payment of Tax (default)
+      expInvoices.push({
+        exp_typ: 'WPAY',
         inv: [{
           inum: invoice.invoiceNumber,
-          idt: new Date(invoice.invoiceDate).toISOString().split('T')[0],
-          val: totalAmount,
-          txval: taxableValue,
-          rt: taxRate,
-          iamt: 0, // Exports are zero-rated or exempted
-        }]
-      };
-      expInvoices.push(expInv);
+          idt:  new Date(invoice.invoiceDate).toISOString().split('T')[0],
+          val:  totalAmount,
+          txval: Number(totals.taxable.toFixed(2)),
+          rt:   blendedRate,
+          iamt: 0,
+        }],
+      });
     } else if (hasBuyerGSTIN) {
-      // B2B Invoice
-      const b2bInv: B2BInvoice = {
+      // B2B — one inv entry per invoice with aggregated amounts
+      b2bInvoices.push({
         ctin: invoice.buyerGstin || '',
         inv: [{
-          inum: invoice.invoiceNumber,
-          idt: new Date(invoice.invoiceDate).toISOString().split('T')[0],
-          val: totalAmount,
-          pos: invoice.buyerStateCode || '00',
-          rchrg: invoice.reverseCharge === 1 ? 'Y' : 'N',
-          inv_typ: 'R',
-          txval: taxableValue,
-          rt: taxRate,
-          csamt: cessAmount,
-          camt: cgstAmount,
-          samt: sgstAmount,
-          iamt: igstAmount,
-        }]
-      };
-      b2bInvoices.push(b2bInv);
+          inum:     invoice.invoiceNumber,
+          idt:      new Date(invoice.invoiceDate).toISOString().split('T')[0],
+          val:      totalAmount,
+          pos:      invoice.buyerStateCode || '00',
+          rchrg:    invoice.reverseCharge === 1 ? 'Y' : 'N',
+          inv_typ:  'R',
+          txval:    Number(totals.taxable.toFixed(2)),
+          rt:       blendedRate,
+          csamt:    Number(totals.cess.toFixed(2)),
+          camt:     Number(totals.cgst.toFixed(2)),
+          samt:     Number(totals.sgst.toFixed(2)),
+          iamt:     Number(totals.igst.toFixed(2)),
+        }],
+      });
     } else if (totalAmount > 250000) {
-      // B2CL Invoice (B2C Large - above 2.5 lakhs)
-      const b2clInv: B2CLInvoice = {
+      // B2CL — one inv entry per invoice with aggregated amounts
+      b2clInvoices.push({
         pos: invoice.buyerStateCode || '00',
         inv: [{
-          inum: invoice.invoiceNumber,
-          idt: new Date(invoice.invoiceDate).toISOString().split('T')[0],
-          val: totalAmount,
-          txval: taxableValue,
-          rt: taxRate,
-          csamt: cessAmount,
-          iamt: igstAmount || totalTax, // Use IGST or total tax for inter-state
-        }]
-      };
-      b2clInvoices.push(b2clInv);
+          inum:  invoice.invoiceNumber,
+          idt:   new Date(invoice.invoiceDate).toISOString().split('T')[0],
+          val:   totalAmount,
+          txval: Number(totals.taxable.toFixed(2)),
+          rt:    blendedRate,
+          csamt: Number(totals.cess.toFixed(2)),
+          iamt:  Number((totals.igst || totals.cgst + totals.sgst).toFixed(2)),
+        }],
+      });
     } else {
-      // B2CS Invoice (B2C Small - below 2.5 lakhs)
-      const b2csInv: B2CSInvoice = {
-        sply_ty: 'INTRA',
-        pos: invoice.buyerStateCode || '00',
-        typ: isSameState ? 'OE' : 'E',
-        txval: taxableValue,
-        rt: taxRate,
-        csamt: cessAmount,
-        camt: cgstAmount,
-        samt: sgstAmount,
-        iamt: igstAmount,
-      };
-      b2csInvoices.push(b2csInv);
+      // B2CS — split by rate and aggregate into the map so each (state+rate) is one row
+      const splyTy = isSameState ? 'INTRA' : 'INTER';
+      const pos    = invoice.buyerStateCode || '00';
+      const typ    = isSameState ? 'OE' : 'E';
+
+      rateGroups.forEach((g, rate) => {
+        const key = `${splyTy}-${pos}-${rate}`;
+        const existing = b2csMap.get(key) ?? {
+          sply_ty: splyTy, pos, typ,
+          txval: 0, rt: rate, csamt: 0, camt: 0, samt: 0, iamt: 0,
+        };
+        existing.txval = Number((existing.txval + g.taxable).toFixed(2));
+        existing.camt  = Number((existing.camt  + g.cgst).toFixed(2));
+        existing.samt  = Number((existing.samt  + g.sgst).toFixed(2));
+        existing.iamt  = Number((existing.iamt  + g.igst).toFixed(2));
+        existing.csamt = Number((existing.csamt + g.cess).toFixed(2));
+        b2csMap.set(key, existing);
+      });
     }
-    
   });
+
+  const b2csInvoices = Array.from(b2csMap.values());
 
   // Transform HSN summary from API response to report format
   const hsnData: HSNSummary[] = (hsnSummary || []).map(hsn => ({
