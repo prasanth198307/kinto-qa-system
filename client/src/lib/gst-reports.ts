@@ -251,9 +251,28 @@ function paiseToRupees(paise: number): number {
 /**
  * Calculate tax rate from amounts
  */
+// Standard Indian GST slab rates (combined CGST+SGST or IGST)
+const STANDARD_GST_RATES = [0, 0.1, 0.25, 1, 1.5, 3, 5, 12, 18, 28];
+
+function snapToStandardGSTRate(rate: number): number {
+  let closest = rate;
+  let minDiff = Infinity;
+  for (const std of STANDARD_GST_RATES) {
+    const diff = Math.abs(rate - std);
+    if (diff < minDiff) {
+      minDiff = diff;
+      closest = std;
+    }
+  }
+  // Only snap if the raw rate is within 0.5% of a standard slab.
+  // Beyond that, return the raw value (non-standard rate on the invoice).
+  return minDiff <= 0.5 ? closest : rate;
+}
+
 function calculateTaxRate(taxableValue: number, taxAmount: number): number {
   if (taxableValue === 0) return 0;
-  return Number(((taxAmount / taxableValue) * 100).toFixed(2));
+  const raw = (taxAmount / taxableValue) * 100;
+  return snapToStandardGSTRate(Number(raw.toFixed(2)));
 }
 
 /**
