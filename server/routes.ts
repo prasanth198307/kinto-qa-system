@@ -11089,6 +11089,11 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       let totalTax = 0;
       
       for (const { invoice, items } of invoicesWithItems) {
+        // Include transport charges in total taxable value (Section 15 CGST Act —
+        // transport billed on the same invoice is part of the transaction value)
+        const invoiceTransport = (invoice.transportCharges || 0) / 100;
+        totalTaxableValue += invoiceTransport;
+
         for (const item of items) {
           const hsnCode = item.hsnCode || 'UNCLASSIFIED';
           const qty = item.quantity || 0;

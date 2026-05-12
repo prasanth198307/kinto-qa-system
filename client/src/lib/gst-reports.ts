@@ -308,7 +308,9 @@ export function generateGSTR1(
   invoices.forEach((invoice) => {
     // Convert from paise to rupees
     const totalAmount = paiseToRupees(invoice.totalAmount);
-    const taxableValue = paiseToRupees(invoice.subtotal);
+    // Under Indian GST law (Section 15 CGST Act), transport charges billed on the same
+    // invoice are part of the "transaction value" (taxable supply). Include them here.
+    const taxableValue = paiseToRupees(invoice.subtotal + (invoice.transportCharges || 0));
     const cgstAmount = paiseToRupees(invoice.cgstAmount);
     const sgstAmount = paiseToRupees(invoice.sgstAmount);
     const igstAmount = paiseToRupees(invoice.igstAmount);
@@ -581,7 +583,8 @@ export function generateGSTR3B(
   let totalCess = 0;
 
   outwardInvoices.forEach((invoice) => {
-    totalTaxableValue += paiseToRupees(invoice.subtotal);
+    // Include transport charges in taxable value (same rule as GSTR-1 — Section 15 CGST Act)
+    totalTaxableValue += paiseToRupees(invoice.subtotal + (invoice.transportCharges || 0));
     totalIGST += paiseToRupees(invoice.igstAmount);
     totalCGST += paiseToRupees(invoice.cgstAmount);
     totalSGST += paiseToRupees(invoice.sgstAmount);
