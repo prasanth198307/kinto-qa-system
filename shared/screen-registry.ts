@@ -185,6 +185,7 @@ export const SCREEN_REGISTRY: ScreenDefinition[] = [
   { key: 'mis_delivery',   label: 'MIS Delivery Performance',   allowedActions: ['view'], module: 'mis' },
   { key: 'mis_cash',       label: 'MIS Cash Analytics',         allowedActions: ['view'], module: 'mis' },
   { key: 'mis_financial',  label: 'MIS Financial Analytics',    allowedActions: ['view'], module: 'mis' },
+  { key: 'mis_manufacturing', label: 'MIS Mfg Sales Analysis',   allowedActions: ['view'], module: 'mis' },
 
   // ── HR & Payroll ───────────────────────────────────────────────────────────
   { key: 'hr_employees',      label: 'HR: Employee Master',                              allowedActions: ['view', 'create', 'edit', 'delete'], module: 'hr_payroll' },
