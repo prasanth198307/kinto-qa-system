@@ -54,6 +54,7 @@ const navItemToScreen: Record<string, string> = {
   'mis-delivery': 'MIS Reports',
   'mis-cash': 'MIS Reports',
   'mis-financial': 'MIS Reports',
+  'mis-manufacturing': 'MIS Reports',
   'checklists': 'Checklist Templates',
   'checklist-assignments': 'Checklist Templates',
   'machine-startup-reminders': 'Checklist Templates',

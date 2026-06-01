@@ -43,6 +43,7 @@ export const navItemToScreenKey: Record<string, string> = {
   'mis-delivery':                       'mis_delivery',
   'mis-cash':                           'mis_cash',
   'mis-financial':                      'mis_financial',
+  'mis-manufacturing':                  'mis_manufacturing',
 
   // ── WhatsApp & Checklists ─────────────────────────────────────────────────
   'checklists':                         'checklist_templates',

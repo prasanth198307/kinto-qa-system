@@ -124,6 +124,7 @@ import MISSales from "@/pages/mis-sales";
 import MISDelivery from "@/pages/mis-delivery";
 import MISCash from "@/pages/mis-cash";
 import MISFinancial from "@/pages/mis-financial";
+import MISManufacturing from "@/pages/mis-manufacturing";
 import DispatchMasters from "@/pages/dispatch-masters";
 import PrintInvoicePage from "@/pages/PrintInvoicePage";
 import PrintGatepassPage from "@/pages/PrintGatepassPage";
@@ -973,6 +974,7 @@ function AdminDashboard() {
         { id: "mis-delivery", label: "Delivery Performance", icon: Truck, onClick: () => setLocation('/mis/delivery') },
         { id: "mis-cash", label: "Cash Analytics", icon: Wallet, onClick: () => setLocation('/mis/cash') },
         { id: "mis-financial", label: "Financial Analytics", icon: BookOpen, onClick: () => setLocation('/mis/financial') },
+        { id: "mis-manufacturing", label: "Mfg Sales Analysis", icon: Factory, onClick: () => setLocation('/mis/manufacturing') },
       ],
     },
     {
@@ -1726,6 +1728,7 @@ const navItemToScreenKey: Record<string, string> = {
   'mis-delivery': 'mis_delivery',
   'mis-cash': 'mis_cash',
   'mis-financial': 'mis_financial',
+  'mis-manufacturing': 'mis_manufacturing',
   // Quality & Checklists
   'checklists': 'checklist_templates',
   'checklist-assignments': 'checklist_assignments',
@@ -1835,6 +1838,7 @@ const navItemToScreen: Record<string, string> = {
   'mis-delivery': 'MIS Reports',
   'mis-cash': 'MIS Reports',
   'mis-financial': 'MIS Reports',
+  'mis-manufacturing': 'MIS Reports',
   // Quality & Checklists
   'checklists': 'Checklist Templates',
   'checklist-assignments': 'Checklist Templates',
@@ -2175,6 +2179,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "mis-delivery", label: "Delivery Performance", icon: Truck, onClick: () => setLocation('/mis/delivery') },
         { id: "mis-cash", label: "Cash Analytics", icon: Wallet, onClick: () => setLocation('/mis/cash') },
         { id: "mis-financial", label: "Financial Analytics", icon: BookOpen, onClick: () => setLocation('/mis/financial') },
+        { id: "mis-manufacturing", label: "Mfg Sales Analysis", icon: Factory, onClick: () => setLocation('/mis/manufacturing') },
       ],
     },
     {
@@ -3542,6 +3547,27 @@ function MISDeliveryPageWrapper() {
   );
 }
 
+function MISManufacturingPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('mis-manufacturing');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell
+      title="Manufacturing Sales Analysis"
+      onLogoutClick={() => logoutMutation.mutate()}
+      notificationCount={0}
+      navSections={resolvedNav}
+      activeView={activeView}
+      onNavigate={(viewId) => setActiveView(viewId)}
+    >
+      <MISManufacturing />
+    </DashboardShell>
+  );
+}
+
 function SparePartsPageWrapper() {
   const { logoutMutation } = useAuth();
   const [, setLocation] = useLocation();
@@ -3890,6 +3916,7 @@ function Router() {
       <ProtectedRoute path="/mis/delivery" component={MISDeliveryPageWrapper} />
       <ProtectedRoute path="/mis/cash" component={MISCashPageWrapper} />
       <ProtectedRoute path="/mis/financial" component={MISFinancialPageWrapper} />
+      <ProtectedRoute path="/mis/manufacturing" component={MISManufacturingPageWrapper} />
       <ProtectedRoute path="/reports" component={ReportsPage} />
       <ProtectedRoute path="/production-management" component={ProductionManagementPageWrapper} />
       <ProtectedRoute path="/reports/production-reconciliation" component={ProductionReconciliationReportWrapper} />

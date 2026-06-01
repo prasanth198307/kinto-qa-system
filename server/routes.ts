@@ -308,6 +308,7 @@ const endpointToScreenKey: Record<string, string> = {
   '/api/mis/delivery-performance': 'mis_delivery',
   '/api/mis/cash-analytics': 'mis_cash',
   '/api/mis/financial-analytics': 'mis_financial',
+  '/api/mis/manufacturing-sales-analysis': 'mis_manufacturing',
 };
 
 // Standard roles that are handled by name matching (case-insensitive)
@@ -23900,6 +23901,211 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
     } catch (error: any) {
       console.error('[MIS] Error fetching delivery performance:', error);
       res.status(500).json({ message: error.message || 'Failed to fetch delivery performance' });
+    }
+  });
+
+  // ============================================================
+  // MIS — Manufacturing Sales Analysis
+  // ============================================================
+
+  app.get('/api/mis/manufacturing-sales-analysis', requireRole('admin', 'manager', 'accountsmanager'), async (req: any, res: Response) => {
+    try {
+      const { month } = req.query;
+      // Default to current month (YYYY-MM)
+      const monthStr = (typeof month === 'string' && /^\d{4}-\d{2}$/.test(month))
+        ? month
+        : format(new Date(), 'yyyy-MM');
+      const monthStart = `${monthStr}-01`;
+
+      // Helper: format YYYY-MM for a date N months before monthStr
+      const [yr, mo] = monthStr.split('-').map(Number);
+      const prevDate = new Date(yr, mo - 2, 1); // mo is 1-based, -2 gives prev month
+      const prevMonthStr = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
+      const prevMonthStart = `${prevMonthStr}-01`;
+
+      let salesSummaryRow: any = {};
+      let prevSummaryRow: any = {};
+      let stockOriginRows: any[] = [];
+      let pricingRows: any[] = [];
+      let dailyCollectionRows: any[] = [];
+      let collectionByMethodRows: any[] = [];
+
+      // 1. Current month sales summary
+      try {
+        const r = await db.execute(sql`
+          SELECT
+            COUNT(*)                                     AS invoice_count,
+            COALESCE(SUM(subtotal), 0)                   AS total_sales,
+            COALESCE(SUM(total_amount), 0)               AS total_with_gst,
+            COALESCE(SUM(amount_received), 0)            AS total_collected,
+            COALESCE(SUM(total_amount - amount_received), 0) AS total_pending
+          FROM invoices
+          WHERE record_status = 1
+            AND status != 'cancelled'
+            AND DATE_TRUNC('month', invoice_date::date) = DATE_TRUNC('month', ${monthStart}::date)
+        `);
+        salesSummaryRow = (r.rows[0] as any) || {};
+      } catch (e) { console.log('[MIS-MFG] sales summary query skipped:', (e as Error).message); }
+
+      // 2. Previous month sales summary (for comparison)
+      try {
+        const r = await db.execute(sql`
+          SELECT
+            COUNT(*)                          AS invoice_count,
+            COALESCE(SUM(subtotal), 0)        AS total_sales,
+            COALESCE(SUM(total_amount), 0)    AS total_with_gst,
+            COALESCE(SUM(amount_received), 0) AS total_collected
+          FROM invoices
+          WHERE record_status = 1
+            AND status != 'cancelled'
+            AND DATE_TRUNC('month', invoice_date::date) = DATE_TRUNC('month', ${prevMonthStart}::date)
+        `);
+        prevSummaryRow = (r.rows[0] as any) || {};
+      } catch (e) { console.log('[MIS-MFG] prev month summary skipped:', (e as Error).message); }
+
+      // 3. Stock origin — gatepass_items → finished_goods.production_date
+      try {
+        const r = await db.execute(sql`
+          SELECT
+            COALESCE(p.product_name, gi.product_id::text) AS product_name,
+            CASE
+              WHEN DATE_TRUNC('month', fg.production_date::date) = DATE_TRUNC('month', ${monthStart}::date)
+                THEN 'current_month'
+              WHEN DATE_TRUNC('month', fg.production_date::date) = DATE_TRUNC('month', ${prevMonthStart}::date)
+                THEN 'prev_month'
+              ELSE 'older'
+            END AS stock_origin,
+            SUM(gi.quantity_dispatched) AS qty
+          FROM invoices i
+          JOIN gatepasses gp ON gp.invoice_id = i.id AND gp.record_status = 1
+          JOIN gatepass_items gi ON gi.gatepass_id = gp.id AND gi.record_status = 1
+          JOIN finished_goods fg ON fg.id = gi.finished_good_id AND fg.record_status = 1
+          LEFT JOIN products p ON p.id = gi.product_id
+          WHERE i.record_status = 1
+            AND i.status != 'cancelled'
+            AND DATE_TRUNC('month', i.invoice_date::date) = DATE_TRUNC('month', ${monthStart}::date)
+          GROUP BY COALESCE(p.product_name, gi.product_id::text), stock_origin
+          ORDER BY qty DESC
+        `);
+        stockOriginRows = r.rows as any[];
+      } catch (e) { console.log('[MIS-MFG] stock origin query skipped:', (e as Error).message); }
+
+      // 4. Pricing strategy — per product from invoice_items
+      try {
+        const r = await db.execute(sql`
+          SELECT
+            COALESCE(p.product_name, ii.description) AS product_name,
+            SUM(ii.quantity)                          AS qty_sold,
+            AVG(ii.unit_price)                        AS avg_unit_price,
+            MIN(ii.unit_price)                        AS min_unit_price,
+            MAX(ii.unit_price)                        AS max_unit_price,
+            SUM(ii.taxable_amount)                    AS total_revenue,
+            COUNT(DISTINCT i.id)                      AS invoice_count
+          FROM invoice_items ii
+          JOIN invoices i ON ii.invoice_id = i.id
+          LEFT JOIN products p ON ii.product_id = p.id
+          WHERE i.record_status = 1
+            AND i.status != 'cancelled'
+            AND ii.record_status = 1
+            AND DATE_TRUNC('month', i.invoice_date::date) = DATE_TRUNC('month', ${monthStart}::date)
+          GROUP BY COALESCE(p.product_name, ii.description)
+          ORDER BY total_revenue DESC
+        `);
+        pricingRows = r.rows as any[];
+      } catch (e) { console.log('[MIS-MFG] pricing query skipped:', (e as Error).message); }
+
+      // 5. Daily collection (payments received this month)
+      try {
+        const r = await db.execute(sql`
+          SELECT
+            DATE(ip.payment_date)       AS date,
+            SUM(ip.amount)              AS collected
+          FROM invoice_payments ip
+          WHERE ip.record_status = 1
+            AND DATE_TRUNC('month', ip.payment_date::date) = DATE_TRUNC('month', ${monthStart}::date)
+          GROUP BY DATE(ip.payment_date)
+          ORDER BY date
+        `);
+        dailyCollectionRows = r.rows as any[];
+      } catch (e) { console.log('[MIS-MFG] daily collection query skipped:', (e as Error).message); }
+
+      // 6. Collection by payment method
+      try {
+        const r = await db.execute(sql`
+          SELECT
+            payment_method,
+            COUNT(*)       AS payment_count,
+            SUM(amount)    AS total_amount
+          FROM invoice_payments
+          WHERE record_status = 1
+            AND DATE_TRUNC('month', payment_date::date) = DATE_TRUNC('month', ${monthStart}::date)
+          GROUP BY payment_method
+          ORDER BY total_amount DESC
+        `);
+        collectionByMethodRows = r.rows as any[];
+      } catch (e) { console.log('[MIS-MFG] collection method query skipped:', (e as Error).message); }
+
+      // ── Build stock origin structure ──
+      const buildOrigin = (tag: string) => {
+        const rows = stockOriginRows.filter(r => r.stock_origin === tag);
+        const byProduct = rows.map(r => ({ productName: r.product_name, qty: parseInt(r.qty) || 0 }));
+        return { qty: byProduct.reduce((s, b) => s + b.qty, 0), byProduct };
+      };
+      const stockOrigin = {
+        currentMonth: buildOrigin('current_month'),
+        prevMonth:    buildOrigin('prev_month'),
+        older:        buildOrigin('older'),
+        totalQty: 0,
+      };
+      stockOrigin.totalQty = stockOrigin.currentMonth.qty + stockOrigin.prevMonth.qty + stockOrigin.older.qty;
+
+      // ── Sales summary ──
+      const totalSales     = parseInt(salesSummaryRow.total_sales) || 0;
+      const totalWithGst   = parseInt(salesSummaryRow.total_with_gst) || 0;
+      const totalCollected = parseInt(salesSummaryRow.total_collected) || 0;
+      const totalPending   = parseInt(salesSummaryRow.total_pending) || 0;
+      const collectionPct  = totalWithGst > 0 ? Math.round((totalCollected / totalWithGst) * 100) : 0;
+
+      res.json({
+        month: monthStr,
+        prevMonth: prevMonthStr,
+        salesSummary: {
+          invoiceCount: parseInt(salesSummaryRow.invoice_count) || 0,
+          totalSales,
+          totalWithGst,
+          totalCollected,
+          totalPending,
+          collectionPct,
+        },
+        prevMonthSummary: {
+          invoiceCount: parseInt(prevSummaryRow.invoice_count) || 0,
+          totalSales: parseInt(prevSummaryRow.total_sales) || 0,
+          totalWithGst: parseInt(prevSummaryRow.total_with_gst) || 0,
+          totalCollected: parseInt(prevSummaryRow.total_collected) || 0,
+        },
+        stockOrigin,
+        pricingStrategy: pricingRows.map(p => ({
+          productName:  p.product_name,
+          qtySold:      parseInt(p.qty_sold) || 0,
+          avgUnitPrice: Math.round(parseFloat(p.avg_unit_price) || 0),
+          minUnitPrice: parseInt(p.min_unit_price) || 0,
+          maxUnitPrice: parseInt(p.max_unit_price) || 0,
+          totalRevenue: parseInt(p.total_revenue) || 0,
+          invoiceCount: parseInt(p.invoice_count) || 0,
+        })),
+        dailyCollection: dailyCollectionRows.map(d => ({
+          date:      d.date,
+          collected: parseInt(d.collected) || 0,
+        })),
+        collectionByMethod: collectionByMethodRows.map(m => ({
+          method: m.payment_method,
+          count:  parseInt(m.payment_count) || 0,
+          amount: parseInt(m.total_amount) || 0,
+        })),
+      });
+    } catch (error: any) {
+      console.error('[MIS-MFG] Error:', error);
+      res.status(500).json({ message: error.message || 'Failed to fetch manufacturing sales analysis' });
     }
   });
 
