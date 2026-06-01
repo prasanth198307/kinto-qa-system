@@ -109,6 +109,7 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
     "mis-delivery",
     "mis-cash",
     "mis-financial",
+    "mis-manufacturing",
   ],
   expenses: [
     "expenses",
