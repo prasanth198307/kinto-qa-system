@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   ArrowLeft, Download, Factory, IndianRupee, TrendingUp, TrendingDown,
-  Package, Wallet, BarChart3, Tag, CheckCircle, AlertCircle, Boxes, CreditCard
+  Package, Wallet, BarChart3, Tag, CheckCircle, AlertCircle, Boxes
 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
@@ -48,11 +48,6 @@ interface ManufacturingSalesData {
   }>;
   dailyCollection: Array<{ date: string; collected: number }>;
   collectionByMethod: Array<{ method: string; count: number; amount: number }>;
-  cashRegister: {
-    totalCollected: number;
-    daily: Array<{ date: string; collected: number }>;
-    bySource: Array<{ sourceType: string; count: number; amount: number }>;
-  };
 }
 
 function formatCurrency(paise: number): string {
@@ -150,20 +145,6 @@ export default function MISManufacturing() {
         ...data.collectionByMethod.map(m => [m.method || 'Unknown', m.count, formatCurrencyForExcel(m.amount)]),
       ];
 
-      const crSheet = [
-        ['Cash Register Collections'],
-        [],
-        ['Total Cash Register Collected', formatCurrencyForExcel(data.cashRegister.totalCollected)],
-        [],
-        ['Daily Cash Register'],
-        ['Date', 'Amount'],
-        ...data.cashRegister.daily.map(d => [d.date, formatCurrencyForExcel(d.collected)]),
-        [],
-        ['By Source Type'],
-        ['Source', 'Transactions', 'Amount'],
-        ...data.cashRegister.bySource.map(s => [s.sourceType, s.count, formatCurrencyForExcel(s.amount)]),
-      ];
-
       await exportToExcel({
         filename: `mfg-sales-analysis-${data.month}.xlsx`,
         sheets: [
@@ -172,7 +153,6 @@ export default function MISManufacturing() {
           { name: 'Pricing Strategy', data: pricingSheet },
           { name: 'Daily Collection', data: collectionSheet },
           { name: 'Payment Methods', data: methodSheet },
-          { name: 'Cash Register', data: crSheet },
         ],
       });
     } finally {
@@ -227,7 +207,7 @@ export default function MISManufacturing() {
       ) : data ? (
         <>
           {/* ── KPI Cards ── */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <Card>
               <CardContent className="p-4">
                 <div className="flex flex-col gap-1">
@@ -312,18 +292,6 @@ export default function MISManufacturing() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex flex-col gap-1">
-                  <div className="flex items-center gap-2">
-                    <CreditCard className="w-4 h-4 text-orange-500 shrink-0" />
-                    <p className="text-xs text-muted-foreground">Cash Register</p>
-                  </div>
-                  <p className="text-xl font-bold text-orange-600" data-testid="kpi-cash-register">{formatCurrency(data.cashRegister?.totalCollected ?? 0)}</p>
-                  <p className="text-xs text-muted-foreground">collected this month</p>
-                </div>
-              </CardContent>
-            </Card>
           </div>
 
           {/* ── Stock Origin + Sale vs Collection ── */}
@@ -607,87 +575,6 @@ export default function MISManufacturing() {
               </>
             );
           })()}
-
-          {/* ── Cash Register Collections ── */}
-          {(data.cashRegister?.totalCollected ?? 0) > 0 && (
-            <div className="grid md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <CreditCard className="w-4 h-4 text-orange-500" />
-                    Cash Register — Daily Collections
-                  </CardTitle>
-                  <CardDescription>Cash received in the cash register each day (not via invoice payment)</CardDescription>
-                </CardHeader>
-                <CardContent className="p-0">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead className="text-right">Cash Received</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {data.cashRegister.daily.map((d, idx) => (
-                        <TableRow key={idx} data-testid={`row-cr-daily-${idx}`}>
-                          <TableCell>{d.date}</TableCell>
-                          <TableCell className="text-right font-semibold text-orange-600">{formatCurrency(d.collected)}</TableCell>
-                        </TableRow>
-                      ))}
-                      <TableRow className="font-semibold bg-muted/30">
-                        <TableCell>Total</TableCell>
-                        <TableCell className="text-right text-orange-700">
-                          {formatCurrency(data.cashRegister.totalCollected)}
-                        </TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Package className="w-4 h-4 text-orange-400" />
-                    Cash Register — By Source Type
-                  </CardTitle>
-                  <CardDescription>Breakdown by how cash was received in the register</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {data.cashRegister.bySource.length === 0 ? (
-                    <p className="text-muted-foreground text-sm text-center py-8">No source breakdown available</p>
-                  ) : (
-                    <div className="space-y-3">
-                      {(() => {
-                        const total = data.cashRegister.bySource.reduce((s, m) => s + m.amount, 0);
-                        return data.cashRegister.bySource.map((m, idx) => {
-                          const percentage = pct(m.amount, total);
-                          const label = m.sourceType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-                          return (
-                            <div key={idx} className="space-y-1" data-testid={`row-cr-source-${idx}`}>
-                              <div className="flex justify-between items-center">
-                                <div className="flex items-center gap-2">
-                                  <Badge variant="outline">{label}</Badge>
-                                  <span className="text-xs text-muted-foreground">{m.count} txns</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <span className="font-semibold text-sm">{formatCurrency(m.amount)}</span>
-                                  <Badge variant="secondary" className="text-xs">{percentage}%</Badge>
-                                </div>
-                              </div>
-                              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                                <div className="h-full bg-orange-400 rounded-full transition-all" style={{ width: `${percentage}%` }} />
-                              </div>
-                            </div>
-                          );
-                        });
-                      })()}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          )}
 
           {/* ── Daily Collection + Payment Methods ── */}
           <div className="grid md:grid-cols-2 gap-6">
