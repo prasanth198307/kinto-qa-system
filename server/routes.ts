@@ -23931,18 +23931,32 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       let collectionByMethodRows: any[] = [];
 
       // 1. Current month sales summary
+      // NOTE: total_collected comes from invoice_payments filtered by payment_date
+      // so it matches the daily collection table (cash received in the month).
       try {
         const r = await db.execute(sql`
           SELECT
-            COUNT(*)                                     AS invoice_count,
-            COALESCE(SUM(subtotal), 0)                   AS total_sales,
-            COALESCE(SUM(total_amount), 0)               AS total_with_gst,
-            COALESCE(SUM(amount_received), 0)            AS total_collected,
-            COALESCE(SUM(total_amount - amount_received), 0) AS total_pending
-          FROM invoices
-          WHERE record_status = 1
-            AND status != 'cancelled'
-            AND DATE_TRUNC('month', invoice_date::date) = DATE_TRUNC('month', ${monthStart}::date)
+            inv.invoice_count,
+            inv.total_sales,
+            inv.total_with_gst,
+            COALESCE(ip.total_collected, 0)                          AS total_collected,
+            GREATEST(inv.total_with_gst - COALESCE(ip.total_collected, 0), 0) AS total_pending
+          FROM (
+            SELECT
+              COUNT(*)                   AS invoice_count,
+              COALESCE(SUM(subtotal), 0) AS total_sales,
+              COALESCE(SUM(total_amount), 0) AS total_with_gst
+            FROM invoices
+            WHERE record_status = 1
+              AND status != 'cancelled'
+              AND DATE_TRUNC('month', invoice_date::date) = DATE_TRUNC('month', ${monthStart}::date)
+          ) inv,
+          (
+            SELECT COALESCE(SUM(amount), 0) AS total_collected
+            FROM invoice_payments
+            WHERE record_status = 1
+              AND DATE_TRUNC('month', payment_date::date) = DATE_TRUNC('month', ${monthStart}::date)
+          ) ip
         `);
         salesSummaryRow = (r.rows[0] as any) || {};
       } catch (e) { console.log('[MIS-MFG] sales summary query skipped:', (e as Error).message); }
@@ -23951,14 +23965,26 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       try {
         const r = await db.execute(sql`
           SELECT
-            COUNT(*)                          AS invoice_count,
-            COALESCE(SUM(subtotal), 0)        AS total_sales,
-            COALESCE(SUM(total_amount), 0)    AS total_with_gst,
-            COALESCE(SUM(amount_received), 0) AS total_collected
-          FROM invoices
-          WHERE record_status = 1
-            AND status != 'cancelled'
-            AND DATE_TRUNC('month', invoice_date::date) = DATE_TRUNC('month', ${prevMonthStart}::date)
+            inv.invoice_count,
+            inv.total_sales,
+            inv.total_with_gst,
+            COALESCE(ip.total_collected, 0) AS total_collected
+          FROM (
+            SELECT
+              COUNT(*)                       AS invoice_count,
+              COALESCE(SUM(subtotal), 0)     AS total_sales,
+              COALESCE(SUM(total_amount), 0) AS total_with_gst
+            FROM invoices
+            WHERE record_status = 1
+              AND status != 'cancelled'
+              AND DATE_TRUNC('month', invoice_date::date) = DATE_TRUNC('month', ${prevMonthStart}::date)
+          ) inv,
+          (
+            SELECT COALESCE(SUM(amount), 0) AS total_collected
+            FROM invoice_payments
+            WHERE record_status = 1
+              AND DATE_TRUNC('month', payment_date::date) = DATE_TRUNC('month', ${prevMonthStart}::date)
+          ) ip
         `);
         prevSummaryRow = (r.rows[0] as any) || {};
       } catch (e) { console.log('[MIS-MFG] prev month summary skipped:', (e as Error).message); }
