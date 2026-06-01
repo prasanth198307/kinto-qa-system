@@ -469,63 +469,144 @@ export default function MISManufacturing() {
           </div>
 
           {/* ── Pricing Strategy ── */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Tag className="w-4 h-4 text-purple-500" />
-                Pricing Strategy — Product-wise
-              </CardTitle>
-              <CardDescription>Unit price range, average selling price, and revenue contribution per product</CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Product</TableHead>
-                    <TableHead className="text-right">Qty Sold</TableHead>
-                    <TableHead className="text-right">Avg Unit Price</TableHead>
-                    <TableHead className="text-right">Min Price</TableHead>
-                    <TableHead className="text-right">Max Price</TableHead>
-                    <TableHead className="text-right">Price Spread</TableHead>
-                    <TableHead className="text-right">Revenue</TableHead>
-                    <TableHead className="text-right">Invoices</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {data.pricingStrategy.map((p, idx) => {
-                    const spread = p.maxUnitPrice - p.minUnitPrice;
-                    const spreadPct = p.avgUnitPrice > 0 ? (spread / p.avgUnitPrice * 100) : 0;
-                    return (
-                      <TableRow key={idx} data-testid={`row-pricing-${idx}`}>
-                        <TableCell className="font-medium max-w-[200px] truncate">{p.productName}</TableCell>
-                        <TableCell className="text-right">{p.qtySold.toLocaleString()}</TableCell>
-                        <TableCell className="text-right font-semibold">{formatUnit(p.avgUnitPrice)}</TableCell>
-                        <TableCell className="text-right text-muted-foreground">{formatUnit(p.minUnitPrice)}</TableCell>
-                        <TableCell className="text-right text-muted-foreground">{formatUnit(p.maxUnitPrice)}</TableCell>
-                        <TableCell className="text-right">
-                          {spread > 0 ? (
-                            <span className="text-amber-600 flex items-center justify-end gap-1">
-                              {formatUnit(spread)}
-                              <Badge variant="outline" className="text-xs">{spreadPct.toFixed(0)}%</Badge>
-                            </span>
-                          ) : (
-                            <Badge variant="outline" className="text-green-600 text-xs">Fixed</Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right font-semibold">{formatCurrency(p.totalRevenue)}</TableCell>
-                        <TableCell className="text-right">{p.invoiceCount}</TableCell>
-                      </TableRow>
-                    );
-                  })}
-                  {data.pricingStrategy.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={8} className="text-center text-muted-foreground py-6">No invoice data for this month</TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+          {(() => {
+            const products = data.pricingStrategy.map(p => {
+              const spread = p.maxUnitPrice - p.minUnitPrice;
+              const spreadPct = p.avgUnitPrice > 0 ? (spread / p.avgUnitPrice * 100) : 0;
+              let verdict: 'fixed' | 'good' | 'moderate' | 'high' | 'critical';
+              if (spreadPct === 0)       verdict = 'fixed';
+              else if (spreadPct <= 10)  verdict = 'good';
+              else if (spreadPct <= 20)  verdict = 'moderate';
+              else if (spreadPct <= 30)  verdict = 'high';
+              else                       verdict = 'critical';
+              return { ...p, spread, spreadPct, verdict };
+            });
+
+            const totalRev = products.reduce((s, p) => s + p.totalRevenue, 0);
+            const weightedSpread = totalRev > 0
+              ? products.reduce((s, p) => s + p.spreadPct * (p.totalRevenue / totalRev), 0)
+              : 0;
+            const criticalCount  = products.filter(p => p.verdict === 'critical').length;
+            const highCount      = products.filter(p => p.verdict === 'high').length;
+            const consistentCount = products.filter(p => p.verdict === 'fixed' || p.verdict === 'good').length;
+
+            const overallVerdict = weightedSpread === 0 ? 'Fixed'
+              : weightedSpread <= 10 ? 'Consistent'
+              : weightedSpread <= 20 ? 'Moderate'
+              : weightedSpread <= 30 ? 'High Variance'
+              : 'Critical';
+            const overallColor = weightedSpread === 0 ? 'text-emerald-600'
+              : weightedSpread <= 10 ? 'text-emerald-600'
+              : weightedSpread <= 20 ? 'text-amber-600'
+              : weightedSpread <= 30 ? 'text-orange-600'
+              : 'text-red-600';
+
+            const verdictConfig = {
+              fixed:    { label: 'Fixed Price',    className: 'text-emerald-700 bg-emerald-50 border-emerald-200', tip: 'Same price across all invoices — excellent discipline.' },
+              good:     { label: 'Consistent',     className: 'text-emerald-700 bg-emerald-50 border-emerald-200', tip: 'Spread under 10% — pricing is well-controlled.' },
+              moderate: { label: 'Moderate',       className: 'text-amber-700 bg-amber-50 border-amber-200',     tip: 'Spread 10–20% — minor variation, acceptable with volume discounts.' },
+              high:     { label: 'High Variance',  className: 'text-orange-700 bg-orange-50 border-orange-200',  tip: 'Spread 20–30% — significant variation, review discount policy.' },
+              critical: { label: 'Critical',       className: 'text-red-700 bg-red-50 border-red-200',           tip: 'Spread >30% — pricing is inconsistent, needs immediate review.' },
+            };
+
+            return (
+              <>
+                {/* Summary insight bar */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <Card>
+                    <CardContent className="p-4">
+                      <p className="text-xs text-muted-foreground mb-1">Overall Pricing Health</p>
+                      <p className={`text-xl font-bold ${overallColor}`}>{overallVerdict}</p>
+                      <p className="text-xs text-muted-foreground mt-1">Weighted avg spread {weightedSpread.toFixed(1)}%</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-4">
+                      <p className="text-xs text-muted-foreground mb-1">Consistent Products</p>
+                      <p className="text-xl font-bold text-emerald-600">{consistentCount}</p>
+                      <p className="text-xs text-muted-foreground mt-1">Fixed price or &lt;10% spread</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-4">
+                      <p className="text-xs text-muted-foreground mb-1">High Variance</p>
+                      <p className={`text-xl font-bold ${highCount > 0 ? 'text-orange-600' : 'text-muted-foreground'}`}>{highCount}</p>
+                      <p className="text-xs text-muted-foreground mt-1">Products with 20–30% spread</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-4">
+                      <p className="text-xs text-muted-foreground mb-1">Critical</p>
+                      <p className={`text-xl font-bold ${criticalCount > 0 ? 'text-red-600' : 'text-muted-foreground'}`}>{criticalCount}</p>
+                      <p className="text-xs text-muted-foreground mt-1">Products with &gt;30% spread</p>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Tag className="w-4 h-4 text-purple-500" />
+                      Pricing Strategy — Product-wise
+                    </CardTitle>
+                    <CardDescription>Unit price range, spread analysis, and revenue contribution per product</CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Product</TableHead>
+                          <TableHead className="text-right">Qty Sold</TableHead>
+                          <TableHead className="text-right">Avg Price</TableHead>
+                          <TableHead className="text-right">Min</TableHead>
+                          <TableHead className="text-right">Max</TableHead>
+                          <TableHead className="text-right">Spread</TableHead>
+                          <TableHead className="text-right">Revenue</TableHead>
+                          <TableHead>Analysis</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {products.map((p, idx) => {
+                          const vc = verdictConfig[p.verdict];
+                          return (
+                            <TableRow key={idx} data-testid={`row-pricing-${idx}`}>
+                              <TableCell className="font-medium max-w-[180px] truncate">{p.productName}</TableCell>
+                              <TableCell className="text-right">{p.qtySold.toLocaleString()}</TableCell>
+                              <TableCell className="text-right font-semibold">{formatUnit(p.avgUnitPrice)}</TableCell>
+                              <TableCell className="text-right text-muted-foreground">{formatUnit(p.minUnitPrice)}</TableCell>
+                              <TableCell className="text-right text-muted-foreground">{formatUnit(p.maxUnitPrice)}</TableCell>
+                              <TableCell className="text-right">
+                                {p.spread > 0 ? (
+                                  <span className="flex items-center justify-end gap-1">
+                                    <span className="text-sm">{formatUnit(p.spread)}</span>
+                                    <Badge variant="outline" className="text-xs">{p.spreadPct.toFixed(0)}%</Badge>
+                                  </span>
+                                ) : (
+                                  <Badge variant="outline" className="text-green-600 text-xs">Fixed</Badge>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right font-semibold">{formatCurrency(p.totalRevenue)}</TableCell>
+                              <TableCell>
+                                <div className="flex flex-col gap-0.5">
+                                  <Badge variant="outline" className={`text-xs w-fit ${vc.className}`}>{vc.label}</Badge>
+                                  <span className="text-xs text-muted-foreground leading-tight">{vc.tip}</span>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                        {products.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={8} className="text-center text-muted-foreground py-6">No invoice data for this month</TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              </>
+            );
+          })()}
 
           {/* ── Cash Register Collections ── */}
           {(data.cashRegister?.totalCollected ?? 0) > 0 && (
