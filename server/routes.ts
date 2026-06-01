@@ -23929,6 +23929,8 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       let pricingRows: any[] = [];
       let dailyCollectionRows: any[] = [];
       let collectionByMethodRows: any[] = [];
+      let cashRegisterDailyRows: any[] = [];
+      let cashRegisterBySourceRows: any[] = [];
 
       // 1. Current month sales summary
       // NOTE: total_collected comes from invoice_payments filtered by payment_date
@@ -24071,6 +24073,44 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
         collectionByMethodRows = r.rows as any[];
       } catch (e) { console.log('[MIS-MFG] collection method query skipped:', (e as Error).message); }
 
+      // 7. Cash register daily collections
+      try {
+        const r = await db.execute(sql`
+          SELECT
+            register_date            AS date,
+            total_cash_received      AS collected
+          FROM cash_register_days
+          WHERE record_status = 1
+            AND is_holiday = 0
+            AND total_cash_received > 0
+            AND DATE_TRUNC('month', register_date::date) = DATE_TRUNC('month', ${monthStart}::date)
+            AND tenant_id = ${(req.session as any).tenantId ?? 1}
+          ORDER BY register_date
+        `);
+        cashRegisterDailyRows = r.rows as any[];
+      } catch (e) { console.log('[MIS-MFG] cash register daily query skipped:', (e as Error).message); }
+
+      // 8. Cash register by source type
+      try {
+        const r = await db.execute(sql`
+          SELECT
+            COALESCE(crt.source_type, 'other') AS source_type,
+            COUNT(*)                            AS txn_count,
+            SUM(crt.amount)                     AS total_amount
+          FROM cash_register_transactions crt
+          JOIN cash_register_days crd ON crd.id = crt.day_id
+          WHERE crt.record_status = 1
+            AND crd.record_status = 1
+            AND crd.is_holiday = 0
+            AND crt.transaction_type = 'cash_received'
+            AND DATE_TRUNC('month', crd.register_date::date) = DATE_TRUNC('month', ${monthStart}::date)
+            AND crd.tenant_id = ${(req.session as any).tenantId ?? 1}
+          GROUP BY COALESCE(crt.source_type, 'other')
+          ORDER BY total_amount DESC
+        `);
+        cashRegisterBySourceRows = r.rows as any[];
+      } catch (e) { console.log('[MIS-MFG] cash register source query skipped:', (e as Error).message); }
+
       // ── Build stock origin structure ──
       const buildOrigin = (tag: string) => {
         const rows = stockOriginRows.filter(r => r.stock_origin === tag);
@@ -24128,6 +24168,18 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
           count:  parseInt(m.payment_count) || 0,
           amount: parseInt(m.total_amount) || 0,
         })),
+        cashRegister: {
+          totalCollected: cashRegisterDailyRows.reduce((s, r) => s + (parseInt(r.collected) || 0), 0),
+          daily: cashRegisterDailyRows.map(d => ({
+            date:      d.date,
+            collected: parseInt(d.collected) || 0,
+          })),
+          bySource: cashRegisterBySourceRows.map(s => ({
+            sourceType: s.source_type,
+            count:      parseInt(s.txn_count) || 0,
+            amount:     parseInt(s.total_amount) || 0,
+          })),
+        },
       });
     } catch (error: any) {
       console.error('[MIS-MFG] Error:', error);
