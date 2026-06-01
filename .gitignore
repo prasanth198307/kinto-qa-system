@@ -4,3 +4,7 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz.env
+
+# Backup files
+uploads/admin/postgres-backups/
+uploads/tenants/*/backups/
