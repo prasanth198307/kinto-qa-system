@@ -190,6 +190,7 @@ export default function CustomerAdvancesPage() {
     onSuccess: () => {
       toast({ title: "Success", description: "Advance cancelled successfully" });
       queryClient.invalidateQueries({ queryKey: ['/api/customer-advances'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/external/customer-outstanding'] });
       setShowDetailDialog(false);
     },
     onError: (error: Error) => {

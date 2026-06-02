@@ -356,6 +356,7 @@ export default function PaymentManagement() {
       toast({ title: 'Advance Cancelled', description: 'Advance payment has been cancelled.' });
       queryClient.invalidateQueries({ queryKey: ['/api/customer-advances', 'prepayment'] });
       queryClient.invalidateQueries({ queryKey: ['/api/pending-payments'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/external/customer-outstanding'] });
     },
     onError: (err: Error) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
   });
