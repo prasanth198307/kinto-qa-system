@@ -763,7 +763,7 @@ export default function CustomerAdvancesPage() {
               )}
 
               <DialogFooter>
-                {selectedAdvance.status === 'active' && selectedAdvance.usedAmount === 0 && (
+                {selectedAdvance.status === 'active' && (
                   <Button
                     variant="destructive"
                     onClick={() => {
