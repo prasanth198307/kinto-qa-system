@@ -15884,12 +15884,14 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       }
 
       // Get customer advances for this vendor family (parent + children)
+      // Fetch ALL (including cancelled) for ledger history; separate active for summary cards
       const vendorAdvances = await db.select()
         .from(customerAdvances)
         .where(and(
           eq(customerAdvances.recordStatus, 1), tc(customerAdvances),
           inArray(customerAdvances.vendorId, vendorIdsToInclude)
         ));
+      const activeAdvances = vendorAdvances.filter(a => a.status !== 'cancelled');
 
       // Group payments by invoice
       const paymentsByInvoice = allInvoicePayments.reduce((acc, pmt) => {
@@ -15982,10 +15984,10 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       });
       
       // Add customer advances to ledger (reduce what customer owes - prepayment)
+      // Cancelled advances appear in ledger for audit trail but do NOT affect the running balance
       vendorAdvances.forEach(adv => {
-        // Add the advance receipt entry
-        const availableBalance = (adv.amount || 0) - (adv.usedAmount || 0);
-        // Find vendor name for this advance (could be parent or child)
+        const isCancelled = adv.status === 'cancelled';
+        const availableBalance = isCancelled ? 0 : (adv.amount || 0) - (adv.usedAmount || 0);
         const advanceVendor = allVendors.find(v => v.id === adv.vendorId);
         const vendorLabel = advanceVendor && advanceVendor.id !== vendorId 
           ? ` [${advanceVendor.vendorName}]` 
@@ -15993,13 +15995,16 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
         ledgerEntries.push({
           type: 'advance',
           id: adv.id,
-          date: safeIsoDate(adv.receiptDate), // Use receiptDate, not advanceDate
+          date: safeIsoDate(adv.receiptDate),
           reference: adv.advanceNumber,
           description: `Customer Advance ${adv.advanceNumber} received (${adv.paymentMethod || 'Cash'})${vendorLabel}`,
           debit: 0,
-          credit: adv.amount, // Full amount as credit (reduces what customer owes)
+          credit: isCancelled ? 0 : adv.amount, // Cancelled advances do not credit the balance
           status: adv.status,
-          availableBalance: availableBalance,
+          cancelled: isCancelled,
+          cancelledAt: adv.cancelledAt || null,
+          cancellationRemarks: adv.cancellationRemarks || null,
+          availableBalance,
           usedAmount: adv.usedAmount,
         });
       });
@@ -16028,7 +16033,8 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       const totalInvoiced = vendorInvoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
       const totalCredits = vendorCreditNotes.reduce((sum, cn) => sum + (cn.grandTotal || 0), 0);
       const totalDebits = customerDebitNotes.reduce((sum, dn) => sum + (dn.grandTotal || 0), 0);
-      const totalAdvances = vendorAdvances.reduce((sum, adv) => sum + ((adv.amount || 0) - (adv.usedAmount || 0)), 0);
+      // Only active (non-cancelled) advances count toward the summary card and balance
+      const totalAdvances = activeAdvances.reduce((sum, adv) => sum + ((adv.amount || 0) - (adv.usedAmount || 0)), 0);
       
       // Calculate vendor debit note adjustments total (these are invoice payments with method "Debit Note Adjustment")
       const vendorDebitNoteAdjustmentsTotal = allInvoicePayments
@@ -16069,7 +16075,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
           invoiceCount: vendorInvoices.length,
           creditNoteCount: vendorCreditNotes.length,
           debitNoteCount: customerDebitNotes.length,
-          advanceCount: vendorAdvances.length,
+          advanceCount: activeAdvances.length,
           paymentCount: vendorInvoices.filter(inv => inv.amountReceived && inv.amountReceived > 0).length,
         },
         ledger: filteredEntries.reverse(), // Most recent first for display

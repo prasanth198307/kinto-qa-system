@@ -1477,26 +1477,38 @@ export default function VendorHistoryDetailPage() {
                       </TableRow>
                     ) : (
                       filteredLedger.map((entry, index) => (
-                        <TableRow key={`${entry.type}-${entry.id}`} data-testid={`row-ledger-${index}`}>
+                        <TableRow
+                          key={`${entry.type}-${entry.id}`}
+                          data-testid={`row-ledger-${index}`}
+                          className={entry.cancelled ? 'opacity-60 bg-muted/20' : ''}
+                        >
                           <TableCell className="text-sm">
                             {formatDate(entry.date)}
                           </TableCell>
                           <TableCell>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               {getTypeIcon(entry.type)}
                               {getTypeBadge(entry.type)}
+                              {entry.cancelled && (
+                                <Badge variant="outline" className="text-xs text-red-600 border-red-200 bg-red-50">Cancelled</Badge>
+                              )}
                             </div>
                           </TableCell>
                           <TableCell className="font-mono text-sm">
-                            {entry.reference}
+                            <span className={entry.cancelled ? 'line-through text-muted-foreground' : ''}>
+                              {entry.reference}
+                            </span>
                           </TableCell>
-                          <TableCell className="max-w-[250px] truncate text-sm text-muted-foreground">
-                            {entry.description}
+                          <TableCell className="max-w-[250px] text-sm text-muted-foreground">
+                            <span className={entry.cancelled ? 'line-through' : ''}>{entry.description}</span>
                             {entry.reason && (
                               <span className="block text-xs">Reason: {entry.reason}</span>
                             )}
                             {entry.paymentMode && (
                               <span className="block text-xs">Mode: {entry.paymentMode}</span>
+                            )}
+                            {entry.cancelled && entry.cancellationRemarks && (
+                              <span className="block text-xs text-red-600">Cancelled: {entry.cancellationRemarks}</span>
                             )}
                           </TableCell>
                           <TableCell className="text-right font-medium">
@@ -1507,7 +1519,9 @@ export default function VendorHistoryDetailPage() {
                           <TableCell className="text-right font-medium">
                             {entry.credit > 0 ? (
                               <span className="text-green-600">{formatCurrency(entry.credit)}</span>
-                            ) : '-'}
+                            ) : (
+                              <span className="text-muted-foreground">-</span>
+                            )}
                           </TableCell>
                           <TableCell className="text-right font-semibold">
                             <span className={entry.balance > 0 ? 'text-orange-600' : entry.balance < 0 ? 'text-green-600' : ''}>
