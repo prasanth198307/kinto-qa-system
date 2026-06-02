@@ -14285,16 +14285,31 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       if (!advance) {
         return res.status(404).json({ message: "Advance not found" });
       }
-      
+
+      // Check for active (non-cancelled) invoice applications
+      // If usedAmount > 0 but all applications are on cancelled invoices, we can still cancel
       if (advance.usedAmount > 0) {
-        return res.status(400).json({ 
-          message: "Cannot cancel advance that has been partially or fully used" 
-        });
+        const activeApplications = await db
+          .select({ id: advanceApplications.id })
+          .from(advanceApplications)
+          .innerJoin(invoices, eq(advanceApplications.invoiceId, invoices.id))
+          .where(and(
+            eq(advanceApplications.advanceId, id),
+            eq(advanceApplications.recordStatus, 1),
+            ne(invoices.status, 'cancelled')
+          ));
+        if (activeApplications.length > 0) {
+          return res.status(400).json({
+            message: "Cannot cancel advance that has been applied to active invoices. Remove advance applications first."
+          });
+        }
+        // All applications are on cancelled invoices — safe to cancel; reset usedAmount
       }
-      
+
       const [updated] = await db.update(customerAdvances)
         .set({
           status: 'cancelled',
+          usedAmount: 0,
           cancelledAt: new Date().toISOString(),
           cancellationRemarks: remarks,
           cancelledBy: req.user?.id,
@@ -28643,7 +28658,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       const advRows = await db.execute(sql`
         SELECT vendor_id, SUM(amount - COALESCE(used_amount, 0)) AS available
         FROM customer_advances
-        WHERE tenant_id = ${tenantId} AND record_status = 1 AND status = 'active'
+        WHERE tenant_id = ${tenantId} AND record_status = 1 AND status = 'active' AND cancelled_at IS NULL
         GROUP BY vendor_id
       `);
       const advancesByVendor = new Map<string, number>();
