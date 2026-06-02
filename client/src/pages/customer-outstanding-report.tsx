@@ -332,6 +332,11 @@ export default function CustomerOutstandingReport() {
                                 1 held
                               </Badge>
                             )}
+                            {customer.advancesAppliedRupees > 0 && (
+                              <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 text-xs no-default-active-elevate">
+                                Adv ₹{fmt(customer.advancesAppliedRupees)}
+                              </Badge>
+                            )}
                           </div>
                         </TableCell>
 
