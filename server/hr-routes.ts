@@ -1094,7 +1094,7 @@ router.get("/leave-balances/export-excel", requireHR, async (req: any, res) => {
       FROM hr_employees e
       LEFT JOIN hr_departments d ON d.id = e.department_id AND d.tenant_id=${tid}
       LEFT JOIN hr_leave_balances lb ON lb.employee_id = e.id AND lb.tenant_id=${tid} AND lb.year=${year}
-      WHERE e.tenant_id=${tid} AND e.status='active'
+      WHERE e.tenant_id=${tid} AND e.status='active' AND e.record_status=1
       ORDER BY e.emp_code
     `);
 
@@ -1203,7 +1203,7 @@ router.post("/leave-balances/initialize-all", requireHR, async (req: any, res) =
   const { year } = req.body;
   try {
     const leaveTypes = await db.execute(sql`SELECT * FROM hr_leave_types WHERE tenant_id=${tid} AND record_status=1`);
-    const employees = await db.execute(sql`SELECT id FROM hr_employees WHERE tenant_id=${tid} AND status='active'`);
+    const employees = await db.execute(sql`SELECT id FROM hr_employees WHERE tenant_id=${tid} AND status='active' AND record_status=1`);
     let created = 0;
     for (const emp of employees.rows as any[]) {
       for (const lt of leaveTypes.rows as any[]) {
@@ -1245,7 +1245,7 @@ router.post("/leave-balances/recalculate-all", requireHR, async (req: any, res) 
   const { year } = req.body;
   try {
     const leaveTypes = await db.execute(sql`SELECT * FROM hr_leave_types WHERE tenant_id=${tid} AND record_status=1`);
-    const employees = await db.execute(sql`SELECT id FROM hr_employees WHERE tenant_id=${tid} AND status='active'`);
+    const employees = await db.execute(sql`SELECT id FROM hr_employees WHERE tenant_id=${tid} AND status='active' AND record_status=1`);
     let updated = 0, inserted = 0;
     for (const emp of employees.rows as any[]) {
       for (const lt of leaveTypes.rows as any[]) {
