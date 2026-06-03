@@ -734,8 +734,7 @@ router.get("/attendance", requireHR, async (req: any, res) => {
 
 router.post("/attendance", requireHR, async (req: any, res) => {
   const tid = getTenantId(req);
-  const { employeeId, date, status, otHours, shiftId, remarks, checkInTime, checkOutTime, markedBy } = req.body;
-  // Auto-calculate working hours from in/out times if provided
+  const { employeeId, date, status, otHours, shiftId, remarks, checkInTime, checkOutTime, markedBy, leaveTypeId } = req.body;
   let workingHours: number | null = null;
   if (checkInTime && checkOutTime) {
     const [inH, inM] = checkInTime.split(':').map(Number);
@@ -743,7 +742,6 @@ router.post("/attendance", requireHR, async (req: any, res) => {
     const diff = (outH * 60 + outM) - (inH * 60 + inM);
     if (diff > 0) workingHours = Math.round((diff / 60) * 100) / 100;
   }
-  // Auto-derive status from working hours if not provided
   let finalStatus = status ?? 'present';
   if (!status && workingHours !== null) {
     if (workingHours === 0) finalStatus = 'absent';
@@ -751,25 +749,82 @@ router.post("/attendance", requireHR, async (req: any, res) => {
     else finalStatus = 'present';
   }
   try {
-    const existing = await db.execute(sql`SELECT id FROM hr_attendance WHERE employee_id=${employeeId} AND date=${date} AND tenant_id=${tid}`);
-    if (existing.rows.length) {
+    const existing = await db.execute(sql`SELECT id, status, leave_type_id FROM hr_attendance WHERE employee_id=${employeeId} AND date=${date} AND tenant_id=${tid}`);
+    const existingRec = existing.rows[0] as any;
+    const appYear = new Date(date).getFullYear();
+    const appMonth = new Date(date).getMonth() + 1;
+
+    // Credit back leave balance if changing away from on_leave
+    if (existingRec && existingRec.status === 'on_leave' && finalStatus !== 'on_leave' && existingRec.leave_type_id) {
+      await db.execute(sql`
+        UPDATE hr_leave_balances SET used=GREATEST(0,used-1), balance=balance+1
+        WHERE tenant_id=${tid} AND employee_id=${employeeId} AND leave_type_id=${existingRec.leave_type_id} AND year=${appYear}
+      `);
+    }
+
+    // When marking on_leave, check monthly limit and deduct balance
+    if (finalStatus === 'on_leave' && leaveTypeId) {
+      const ltRow = await db.execute(sql`SELECT max_per_month, name FROM hr_leave_types WHERE id=${leaveTypeId} AND tenant_id=${tid}`);
+      const lt = ltRow.rows[0] as any;
+      if (lt && Number(lt.max_per_month) > 0) {
+        // Count direct OL marks for this month (excluding this date if updating)
+        const attUsed = await db.execute(sql`
+          SELECT COUNT(*) as cnt FROM hr_attendance
+          WHERE tenant_id=${tid} AND employee_id=${employeeId} AND leave_type_id=${leaveTypeId}
+            AND status='on_leave' AND date != ${date}
+            AND EXTRACT(MONTH FROM date)=${appMonth} AND EXTRACT(YEAR FROM date)=${appYear}
+        `);
+        // Count approved leave applications for this month
+        const appUsed = await db.execute(sql`
+          SELECT COALESCE(SUM(days),0) AS used FROM hr_leave_applications
+          WHERE tenant_id=${tid} AND employee_id=${employeeId} AND leave_type_id=${leaveTypeId}
+            AND status != 'rejected'
+            AND EXTRACT(MONTH FROM from_date)=${appMonth} AND EXTRACT(YEAR FROM from_date)=${appYear}
+        `);
+        const totalUsed = Number((attUsed.rows[0] as any)?.cnt || 0) + Number((appUsed.rows[0] as any)?.used || 0);
+        if (totalUsed + 1 > Number(lt.max_per_month)) {
+          return res.status(400).json({
+            message: `Monthly limit exceeded for ${lt.name}. Max allowed: ${lt.max_per_month} day(s)/month. Already used: ${totalUsed} day(s) this month.`
+          });
+        }
+      }
+      // Credit back old leave type if switching leave types on same date
+      if (existingRec && existingRec.status === 'on_leave' && existingRec.leave_type_id && existingRec.leave_type_id !== leaveTypeId) {
+        await db.execute(sql`
+          UPDATE hr_leave_balances SET used=GREATEST(0,used-1), balance=balance+1
+          WHERE tenant_id=${tid} AND employee_id=${employeeId} AND leave_type_id=${existingRec.leave_type_id} AND year=${appYear}
+        `);
+      }
+      // Deduct 1 day from balance (only if new entry OR changing leave type OR was not on_leave before)
+      const wasAlreadySameLT = existingRec && existingRec.status === 'on_leave' && existingRec.leave_type_id === leaveTypeId;
+      if (!wasAlreadySameLT) {
+        await db.execute(sql`
+          UPDATE hr_leave_balances SET used=used+1, balance=GREATEST(0,balance-1)
+          WHERE tenant_id=${tid} AND employee_id=${employeeId} AND leave_type_id=${leaveTypeId} AND year=${appYear}
+        `);
+      }
+    }
+
+    const finalLeaveTypeId = finalStatus === 'on_leave' ? (leaveTypeId ?? null) : null;
+
+    if (existingRec) {
       const r = await db.execute(sql`
         UPDATE hr_attendance SET
           status=${finalStatus}, ot_hours=${otHours ?? 0}, shift_id=${shiftId ?? null},
           remarks=${remarks ?? null}, check_in_time=${checkInTime ?? null},
           check_out_time=${checkOutTime ?? null}, working_hours=${workingHours},
-          marked_by=${markedBy ?? 'admin'}
-        WHERE id=${(existing.rows[0] as any).id} RETURNING *`);
+          leave_type_id=${finalLeaveTypeId}, marked_by=${markedBy ?? 'admin'}
+        WHERE id=${existingRec.id} RETURNING *`);
       return res.json(r.rows[0]);
     }
     const r = await db.execute(sql`
       INSERT INTO hr_attendance
         (tenant_id, employee_id, date, status, ot_hours, shift_id, remarks,
-         check_in_time, check_out_time, working_hours, marked_by)
+         check_in_time, check_out_time, working_hours, leave_type_id, marked_by)
       VALUES
         (${tid}, ${employeeId}, ${date}, ${finalStatus}, ${otHours ?? 0}, ${shiftId ?? null},
          ${remarks ?? null}, ${checkInTime ?? null}, ${checkOutTime ?? null},
-         ${workingHours}, ${markedBy ?? 'admin'})
+         ${workingHours}, ${finalLeaveTypeId}, ${markedBy ?? 'admin'})
       RETURNING *`);
     res.json(r.rows[0]);
   } catch (e: any) { res.status(500).json({ message: e.message }); }
@@ -796,22 +851,54 @@ router.post("/attendance/bulk", requireHR, async (req: any, res) => {
         else if (wh < 4) finalStatus = 'half_day';
         else finalStatus = 'present';
       }
-      const existing = await db.execute(sql`SELECT id FROM hr_attendance WHERE employee_id=${rec.employeeId} AND date=${rec.date} AND tenant_id=${tid}`);
-      if (existing.rows.length) {
+      const existing = await db.execute(sql`SELECT id, status, leave_type_id FROM hr_attendance WHERE employee_id=${rec.employeeId} AND date=${rec.date} AND tenant_id=${tid}`);
+      const existingRec = existing.rows[0] as any;
+      const recYear = new Date(rec.date).getFullYear();
+      const recMonth = new Date(rec.date).getMonth() + 1;
+      const leaveTypeId = rec.leaveTypeId ?? null;
+
+      // Credit back if changing away from on_leave
+      if (existingRec && existingRec.status === 'on_leave' && finalStatus !== 'on_leave' && existingRec.leave_type_id) {
+        await db.execute(sql`UPDATE hr_leave_balances SET used=GREATEST(0,used-1), balance=balance+1 WHERE tenant_id=${tid} AND employee_id=${rec.employeeId} AND leave_type_id=${existingRec.leave_type_id} AND year=${recYear}`);
+      }
+      // Handle on_leave: check limit + deduct
+      if (finalStatus === 'on_leave' && leaveTypeId) {
+        const ltRow = await db.execute(sql`SELECT max_per_month, name FROM hr_leave_types WHERE id=${leaveTypeId} AND tenant_id=${tid}`);
+        const lt = ltRow.rows[0] as any;
+        if (lt && Number(lt.max_per_month) > 0) {
+          const attUsed = await db.execute(sql`SELECT COUNT(*) as cnt FROM hr_attendance WHERE tenant_id=${tid} AND employee_id=${rec.employeeId} AND leave_type_id=${leaveTypeId} AND status='on_leave' AND date != ${rec.date} AND EXTRACT(MONTH FROM date)=${recMonth} AND EXTRACT(YEAR FROM date)=${recYear}`);
+          const appUsed = await db.execute(sql`SELECT COALESCE(SUM(days),0) AS used FROM hr_leave_applications WHERE tenant_id=${tid} AND employee_id=${rec.employeeId} AND leave_type_id=${leaveTypeId} AND status != 'rejected' AND EXTRACT(MONTH FROM from_date)=${recMonth} AND EXTRACT(YEAR FROM from_date)=${recYear}`);
+          const totalUsed = Number((attUsed.rows[0] as any)?.cnt || 0) + Number((appUsed.rows[0] as any)?.used || 0);
+          if (totalUsed + 1 > Number(lt.max_per_month)) {
+            results.push({ error: `Monthly limit exceeded for ${lt.name} on ${rec.date}`, employeeId: rec.employeeId });
+            continue;
+          }
+        }
+        if (existingRec && existingRec.status === 'on_leave' && existingRec.leave_type_id && existingRec.leave_type_id !== leaveTypeId) {
+          await db.execute(sql`UPDATE hr_leave_balances SET used=GREATEST(0,used-1), balance=balance+1 WHERE tenant_id=${tid} AND employee_id=${rec.employeeId} AND leave_type_id=${existingRec.leave_type_id} AND year=${recYear}`);
+        }
+        const wasAlreadySameLT = existingRec && existingRec.status === 'on_leave' && existingRec.leave_type_id === leaveTypeId;
+        if (!wasAlreadySameLT) {
+          await db.execute(sql`UPDATE hr_leave_balances SET used=used+1, balance=GREATEST(0,balance-1) WHERE tenant_id=${tid} AND employee_id=${rec.employeeId} AND leave_type_id=${leaveTypeId} AND year=${recYear}`);
+        }
+      }
+
+      const finalLTId = finalStatus === 'on_leave' ? leaveTypeId : null;
+      if (existingRec) {
         const r = await db.execute(sql`
           UPDATE hr_attendance SET
             status=${finalStatus}, ot_hours=${rec.otHours ?? 0},
             check_in_time=${rec.checkInTime ?? null}, check_out_time=${rec.checkOutTime ?? null},
-            working_hours=${wh}, marked_by=${rec.markedBy ?? 'biometric'}
-          WHERE id=${(existing.rows[0] as any).id} RETURNING *`);
+            working_hours=${wh}, leave_type_id=${finalLTId}, marked_by=${rec.markedBy ?? 'biometric'}
+          WHERE id=${existingRec.id} RETURNING *`);
         results.push(r.rows[0]);
       } else {
         const r = await db.execute(sql`
           INSERT INTO hr_attendance
-            (tenant_id, employee_id, date, status, ot_hours, check_in_time, check_out_time, working_hours, marked_by)
+            (tenant_id, employee_id, date, status, ot_hours, check_in_time, check_out_time, working_hours, leave_type_id, marked_by)
           VALUES
             (${tid}, ${rec.employeeId}, ${rec.date}, ${finalStatus}, ${rec.otHours ?? 0},
-             ${rec.checkInTime ?? null}, ${rec.checkOutTime ?? null}, ${wh}, ${rec.markedBy ?? 'biometric'})
+             ${rec.checkInTime ?? null}, ${rec.checkOutTime ?? null}, ${wh}, ${finalLTId}, ${rec.markedBy ?? 'biometric'})
           RETURNING *`);
         results.push(r.rows[0]);
       }

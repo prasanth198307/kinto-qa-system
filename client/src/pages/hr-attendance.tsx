@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Save, ChevronLeft, ChevronRight, Plus, Trash2, Clock, AlertCircle } from "lucide-react";
 
@@ -396,19 +397,47 @@ export default function HRAttendancePage() {
   const daysInMonth = new Date(year, month, 0).getDate();
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
+  const { data: leaveTypes = [] } = useQuery<any[]>({
+    queryKey: ["/api/hr/leave-types"],
+    queryFn: () => fetch("/api/hr/leave-types", { credentials: "include" }).then(r => r.json()),
+  });
+
+  // attMap: empId -> day -> status
   const attMap: Record<string, Record<string, string>> = {};
+  // attLTMap: empId -> day -> leave_type_id (for existing OL entries)
+  const attLTMap: Record<string, Record<string, number>> = {};
   (attendance as any[]).forEach((a: any) => {
     if (!attMap[a.employee_id]) attMap[a.employee_id] = {};
-    // a.date may be a JS Date object or an ISO string — use toISOString() to get UTC date safely
+    if (!attLTMap[a.employee_id]) attLTMap[a.employee_id] = {};
     const iso: string = a.date instanceof Date ? a.date.toISOString() : String(a.date);
     const day = parseInt(iso.split("T")[0].split("-")[2], 10);
     attMap[a.employee_id][day] = a.status;
+    if (a.leave_type_id) attLTMap[a.employee_id][day] = a.leave_type_id;
   });
 
   const [changes, setChanges] = useState<Record<string, string>>({});
+  // leaveTypeChanges: key -> leaveTypeId (only for on_leave changes)
+  const [leaveTypeChanges, setLeaveTypeChanges] = useState<Record<string, number>>({});
+  // pendingOL: when HR selects OL, we wait for leave type selection
+  const [pendingOL, setPendingOL] = useState<{ empId: number; day: number } | null>(null);
 
   const markChange = (empId: number, day: number, status: string) => {
+    if (status === "on_leave") {
+      // Show leave type picker first
+      setPendingOL({ empId, day });
+      return;
+    }
     setChanges(c => ({ ...c, [`${empId}_${day}`]: status }));
+    // Clear any leave type for this cell if switching away from OL
+    setLeaveTypeChanges(c => { const n = { ...c }; delete n[`${empId}_${day}`]; return n; });
+  };
+
+  const confirmLeaveType = (leaveTypeId: number) => {
+    if (!pendingOL) return;
+    const key = `${pendingOL.empId}_${pendingOL.day}`;
+    setChanges(c => ({ ...c, [key]: "on_leave" }));
+    setLeaveTypeChanges(c => ({ ...c, [key]: leaveTypeId }));
+    setPendingOL(null);
   };
 
   const getStatus = (empId: number, day: number): string => {
@@ -417,13 +446,18 @@ export default function HRAttendancePage() {
     return attMap[empId]?.[day] || "";
   };
 
+  const getLeaveTypeId = (empId: number, day: number): number | undefined => {
+    const key = `${empId}_${day}`;
+    return leaveTypeChanges[key] ?? attLTMap[empId]?.[day];
+  };
+
   const bulkSave = useMutation({
     mutationFn: async () => {
       const records = Object.entries(changes).map(([key, status]) => {
         const [empId, day] = key.split("_");
-        // Build date string directly to avoid UTC timezone shift (e.g. IST midnight → previous UTC day)
         const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-        return { employeeId: Number(empId), date: dateStr, status };
+        const leaveTypeId = leaveTypeChanges[key];
+        return { employeeId: Number(empId), date: dateStr, status, ...(leaveTypeId ? { leaveTypeId } : {}) };
       });
       return apiRequest("POST", "/api/hr/attendance/bulk", { records });
     },
@@ -431,6 +465,7 @@ export default function HRAttendancePage() {
       queryClient.invalidateQueries({ queryKey: ["/api/hr/attendance", month, year] });
       queryClient.invalidateQueries({ queryKey: ["/api/hr/attendance/summary", month, year] });
       setChanges({});
+      setLeaveTypeChanges({});
       toast({ title: `Attendance saved for ${MONTHS[month - 1]} ${year}` });
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
@@ -526,11 +561,17 @@ export default function HRAttendancePage() {
                           const status = getStatus(emp.id, day);
                           const st = STATUS_MAP[status];
                           const isChanged = changes[`${emp.id}_${day}`];
+                          const ltId = getLeaveTypeId(emp.id, day);
+                          const ltCode = status === "on_leave" && ltId
+                            ? (leaveTypes as any[]).find((l: any) => l.id === ltId)?.code
+                            : undefined;
                           return (
                             <td key={day} className="px-0.5 py-0.5 text-center">
                               <Select value={status || ""} onValueChange={v => markChange(emp.id, day, v)}>
                                 <SelectTrigger className={`h-7 w-9 px-0 border-0 text-xs font-medium justify-center ${st ? st.color : "text-muted-foreground"} ${isChanged ? "ring-1 ring-primary" : ""}`}>
-                                  <SelectValue>{st ? st.label : "—"}</SelectValue>
+                                  <SelectValue>
+                                    {status === "on_leave" && ltCode ? ltCode : st ? st.label : "—"}
+                                  </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
                                   {STATUSES.map(s => (
@@ -611,6 +652,43 @@ export default function HRAttendancePage() {
           </CardContent>
         </Card>
       )}
+
+      {/* ── Leave Type Picker Dialog (shown when HR selects OL) ───────── */}
+      <Dialog open={!!pendingOL} onOpenChange={open => { if (!open) setPendingOL(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Select Leave Type</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Which leave type should be marked for{" "}
+            {pendingOL && (() => {
+              const emp = (employees as any[]).find((e: any) => e.id === pendingOL.empId);
+              return emp ? `${emp.first_name} ${emp.last_name}` : "this employee";
+            })()}
+            {pendingOL && ` on ${String(pendingOL.day).padStart(2,"0")}/${String(month).padStart(2,"0")}/${year}`}?
+          </p>
+          <div className="flex flex-col gap-2 mt-1">
+            {(leaveTypes as any[]).filter((l: any) => l.record_status !== 0).map((lt: any) => (
+              <Button
+                key={lt.id}
+                variant="outline"
+                className="justify-start gap-3"
+                onClick={() => confirmLeaveType(lt.id)}
+                data-testid={`btn-pick-lt-${lt.id}`}
+              >
+                <Badge variant="secondary" className="text-xs min-w-10 justify-center">{lt.code}</Badge>
+                <span>{lt.name}</span>
+                {lt.max_per_month > 0 && (
+                  <span className="ml-auto text-xs text-muted-foreground">Max {lt.max_per_month}/mo</span>
+                )}
+              </Button>
+            ))}
+          </div>
+          <Button variant="ghost" size="sm" onClick={() => setPendingOL(null)} className="mt-1">
+            Cancel
+          </Button>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
