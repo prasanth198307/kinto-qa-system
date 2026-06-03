@@ -1599,7 +1599,30 @@ router.post("/payroll-runs/:id/process", requireHR, async (req: any, res) => {
       const lopDays = lop + absent;  // absent = LOP
       const attendancePct = workingDays > 0 ? Math.min(daysWorked, workingDays) / workingDays : 1;
 
-      const basicSalary = Number(emp.basic_salary || 0);
+      // Check for mid-month salary revision — pro-rate if effective_date falls in this payroll month
+      let basicSalary = Number(emp.basic_salary || 0);
+      let salaryRevisionNote = '';
+      const revInMonth = await db.execute(sql`
+        SELECT old_basic, new_basic, effective_date
+        FROM hr_salary_revisions
+        WHERE tenant_id=${tid} AND employee_id=${emp.id} AND record_status=1
+          AND EXTRACT(MONTH FROM effective_date::date)=${month}
+          AND EXTRACT(YEAR FROM effective_date::date)=${year}
+        ORDER BY effective_date DESC
+        LIMIT 1
+      `);
+      if (revInMonth.rows.length > 0) {
+        const rev = revInMonth.rows[0] as any;
+        const effDay = new Date(rev.effective_date).getDate();
+        const calDays = new Date(Number(year), Number(month), 0).getDate();
+        const oldB = Number(rev.old_basic || 0);
+        const newB = Number(rev.new_basic || 0);
+        const daysOld = effDay - 1;  // days 1..(effDay-1) at old salary
+        const daysNew = calDays - daysOld; // days effDay..end at new salary
+        basicSalary = Math.round((oldB * daysOld + newB * daysNew) / calDays);
+        salaryRevisionNote = `Revised on ${rev.effective_date}: ₹${oldB}→₹${newB} (${daysOld}+${daysNew} days)`;
+      }
+
       const dailyRate = basicSalary / workingDays;
       const proRataBasic = Math.round(basicSalary * attendancePct);
       const otPay = Math.round((dailyRate / 8) * 1.5 * otHours);
@@ -2506,6 +2529,43 @@ router.get("/employees/:id/payslips", requireHR, async (req: any, res) => {
       ORDER BY p.year DESC, p.month DESC
     `);
     res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// ── SALARY STRUCTURE: COMPUTE BASIC FROM CTC ─────────────────────────────────
+router.get("/salary-structures/:id/compute-basic", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  const structureId = Number(req.params.id);
+  const ctc = Number(req.query.ctc || 0);
+  if (!ctc || ctc <= 0) return res.json({ basic: 0 });
+  try {
+    const r = await db.execute(sql`
+      SELECT components FROM hr_salary_structures WHERE id=${structureId} AND tenant_id=${tid} AND record_status=1
+    `);
+    if (!r.rows.length) return res.json({ basic: Math.round(ctc * 0.4) }); // fallback 40%
+    const row = r.rows[0] as any;
+    const components: any[] = typeof row.components === 'string'
+      ? JSON.parse(row.components) : (row.components || []);
+
+    // Sum up percentage-of-basic earnings (non-BASIC components)
+    // Formula: CTC = basic + basic*pct_sum/100 + fixed_sum
+    //          basic = (CTC - fixed_sum) / (1 + pct_sum/100)
+    let pctSum = 0;
+    let fixedSum = 0;
+    for (const comp of components) {
+      if (comp.type !== 'earning') continue;
+      const code = (comp.code || '').toUpperCase();
+      const name = (comp.name || '').toLowerCase();
+      if (code === 'BASIC' || name === 'basic' || name === 'basic salary') continue;
+      const ft = comp.formula_type || 'fixed';
+      if (ft === 'percent_of_basic' || ft === 'percentage') {
+        pctSum += Number(comp.formula_value || 0);
+      } else {
+        fixedSum += Number(comp.formula_value || 0);
+      }
+    }
+    const basic = Math.round((ctc - fixedSum) / (1 + pctSum / 100));
+    res.json({ basic: Math.max(0, basic), pctSum, fixedSum });
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 

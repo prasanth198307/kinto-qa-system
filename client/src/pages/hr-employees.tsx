@@ -861,6 +861,7 @@ function SalaryRevisionPanel({ emp }: { emp: any }) {
   const [form, setForm] = useState({
     effectiveDate: "", newBasic: "", newCtc: "", revisionType: "increment", reason: "", approvedBy: ""
   });
+  const [basicAutoCalc, setBasicAutoCalc] = useState(false);
 
   const { data: revisions = [] } = useQuery<any[]>({
     queryKey: ["/api/hr/salary-revisions", emp.id],
@@ -870,6 +871,27 @@ function SalaryRevisionPanel({ emp }: { emp: any }) {
     }
   });
 
+  // Auto-compute Basic from CTC using employee's salary structure
+  const structureId = emp.salary_structure_id;
+  const ctcVal = Number(form.newCtc);
+  const { data: computedBasic } = useQuery<{ basic: number; pctSum: number; fixedSum: number }>({
+    queryKey: ["/api/hr/salary-structures/compute-basic", structureId, ctcVal],
+    queryFn: async () => {
+      if (!structureId || !ctcVal) return { basic: 0, pctSum: 0, fixedSum: 0 };
+      const r = await fetch(`/api/hr/salary-structures/${structureId}/compute-basic?ctc=${ctcVal}`, { credentials: "include" });
+      return r.json();
+    },
+    enabled: !!structureId && ctcVal > 0,
+  });
+
+  // When CTC changes and we have a salary structure, auto-fill basic
+  useEffect(() => {
+    if (computedBasic && computedBasic.basic > 0 && ctcVal > 0) {
+      setForm(p => ({ ...p, newBasic: String(computedBasic.basic) }));
+      setBasicAutoCalc(true);
+    }
+  }, [computedBasic?.basic, ctcVal]);
+
   const addRevision = useMutation({
     mutationFn: (payload: any) => apiRequest("POST", "/api/hr/salary-revisions", payload),
     onSuccess: () => {
@@ -878,6 +900,7 @@ function SalaryRevisionPanel({ emp }: { emp: any }) {
       toast({ title: "Salary revision recorded" });
       setShowAdd(false);
       setForm({ effectiveDate: "", newBasic: "", newCtc: "", revisionType: "increment", reason: "", approvedBy: "" });
+      setBasicAutoCalc(false);
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" })
   });
@@ -939,12 +962,42 @@ function SalaryRevisionPanel({ emp }: { emp: any }) {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>New Basic Salary (₹) <span className="text-destructive">*</span></Label>
-                <Input className="h-9" type="number" value={form.newBasic} onChange={e => setForm(p => ({ ...p, newBasic: e.target.value }))} placeholder="0" />
+                <Label>New CTC (₹) <span className="text-destructive">*</span></Label>
+                <Input
+                  className="h-9"
+                  type="number"
+                  value={form.newCtc}
+                  onChange={e => {
+                    setForm(p => ({ ...p, newCtc: e.target.value, newBasic: structureId ? p.newBasic : p.newBasic }));
+                    setBasicAutoCalc(false);
+                  }}
+                  placeholder="0"
+                  data-testid="input-new-ctc"
+                />
+                {structureId && ctcVal > 0 && (
+                  <p className="text-xs text-muted-foreground">Basic will be computed from salary structure</p>
+                )}
               </div>
               <div className="space-y-1.5">
-                <Label>New CTC (₹) <span className="text-destructive">*</span></Label>
-                <Input className="h-9" type="number" value={form.newCtc} onChange={e => setForm(p => ({ ...p, newCtc: e.target.value }))} placeholder="0" />
+                <div className="flex items-center justify-between">
+                  <Label>New Basic Salary (₹) <span className="text-destructive">*</span></Label>
+                  {basicAutoCalc && (
+                    <Badge variant="secondary" className="text-xs">Auto-calculated</Badge>
+                  )}
+                </div>
+                <Input
+                  className="h-9"
+                  type="number"
+                  value={form.newBasic}
+                  onChange={e => { setForm(p => ({ ...p, newBasic: e.target.value })); setBasicAutoCalc(false); }}
+                  placeholder="0"
+                  data-testid="input-new-basic"
+                />
+                {basicAutoCalc && computedBasic && (
+                  <p className="text-xs text-muted-foreground">
+                    Computed: {computedBasic.pctSum > 0 ? `${computedBasic.pctSum}% other allowances` : 'Fixed components'} applied to CTC
+                  </p>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label>Approved By</Label>
@@ -956,7 +1009,7 @@ function SalaryRevisionPanel({ emp }: { emp: any }) {
               </div>
             </div>
             <div className="flex gap-2 justify-end">
-              <Button variant="outline" size="sm" onClick={() => setShowAdd(false)}>Cancel</Button>
+              <Button variant="outline" size="sm" onClick={() => { setShowAdd(false); setBasicAutoCalc(false); }}>Cancel</Button>
               <Button size="sm" onClick={handleAdd} disabled={addRevision.isPending}>Save Revision</Button>
             </div>
           </CardContent>
