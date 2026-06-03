@@ -1088,7 +1088,7 @@ router.get("/leave-balances/export-excel", requireHR, async (req: any, res) => {
 
     // Fetch all active employees with their balances
     const rows = await db.execute(sql`
-      SELECT e.emp_code, e.first_name, e.last_name,
+      SELECT e.id as emp_id, e.emp_code, e.first_name, e.last_name,
              COALESCE(d.name, '') as department,
              lb.leave_type_id, lb.entitled, lb.used, lb.balance
       FROM hr_employees e
@@ -1098,11 +1098,25 @@ router.get("/leave-balances/export-excel", requireHR, async (req: any, res) => {
       ORDER BY e.emp_code
     `);
 
+    // Fetch absent day counts for the year per employee
+    const absentRows = await db.execute(sql`
+      SELECT employee_id, COUNT(*) as absent_days
+      FROM hr_attendance
+      WHERE tenant_id=${tid} AND status='absent' AND record_status=1
+        AND EXTRACT(YEAR FROM date)=${year}
+      GROUP BY employee_id
+    `);
+    const absentMap: Record<number, number> = {};
+    for (const r of absentRows.rows as any[]) {
+      absentMap[Number(r.employee_id)] = Number(r.absent_days || 0);
+    }
+
     // Build pivot: empCode -> { empInfo, leaveTypeId -> {entitled,used,balance} }
     const empMap: Record<string, any> = {};
     for (const r of rows.rows as any[]) {
       if (!empMap[r.emp_code]) {
         empMap[r.emp_code] = {
+          emp_id: r.emp_id,
           emp_code: r.emp_code,
           name: `${r.first_name} ${r.last_name}`,
           department: r.department || "",
@@ -1119,7 +1133,7 @@ router.get("/leave-balances/export-excel", requireHR, async (req: any, res) => {
     }
 
     // Build header row
-    const headers = ["Emp Code", "Employee Name", "Department"];
+    const headers = ["Emp Code", "Employee Name", "Department", "Absent Days (LOP)"];
     for (const lt of leaveTypes) {
       headers.push(`${lt.name} (${lt.code}) - Entitled`);
       headers.push(`${lt.name} (${lt.code}) - Used`);
@@ -1128,7 +1142,8 @@ router.get("/leave-balances/export-excel", requireHR, async (req: any, res) => {
 
     // Build data rows
     const dataRows = Object.values(empMap).map((emp: any) => {
-      const row: (string | number)[] = [emp.emp_code, emp.name, emp.department];
+      const absentDays = absentMap[emp.emp_id] || 0;
+      const row: (string | number)[] = [emp.emp_code, emp.name, emp.department, absentDays];
       for (const lt of leaveTypes) {
         const b = emp.balances[lt.id] || { entitled: 0, used: 0, balance: 0 };
         row.push(b.entitled, b.used, b.balance);
@@ -1141,7 +1156,7 @@ router.get("/leave-balances/export-excel", requireHR, async (req: any, res) => {
 
     // Column widths
     ws["!cols"] = [
-      { wch: 12 }, { wch: 25 }, { wch: 18 },
+      { wch: 12 }, { wch: 25 }, { wch: 18 }, { wch: 16 },
       ...leaveTypes.flatMap(() => [{ wch: 14 }, { wch: 10 }, { wch: 12 }]),
     ];
 
