@@ -416,10 +416,14 @@ export default function HRAttendancePage() {
   });
 
   const [changes, setChanges] = useState<Record<string, string>>({});
-  // leaveTypeChanges: key -> leaveTypeId (only for on_leave changes)
   const [leaveTypeChanges, setLeaveTypeChanges] = useState<Record<string, number>>({});
-  // pendingOL: when HR selects OL, we wait for leave type selection
   const [pendingOL, setPendingOL] = useState<{ empId: number; day: number } | null>(null);
+  // Fix OL dialog state
+  const [fixOLOpen, setFixOLOpen] = useState(false);
+  const [fixMonth, setFixMonth] = useState(month);
+  const [fixYear, setFixYear] = useState(year);
+  const [fixLeaveTypeId, setFixLeaveTypeId] = useState<string>("");
+  const [fixResult, setFixResult] = useState<{ fixed: number; employeesAffected: number; message: string } | null>(null);
 
   const markChange = (empId: number, day: number, status: string) => {
     if (status === "on_leave") {
@@ -467,6 +471,18 @@ export default function HRAttendancePage() {
       setChanges({});
       setLeaveTypeChanges({});
       toast({ title: `Attendance saved for ${MONTHS[month - 1]} ${year}` });
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const fixOLMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/hr/attendance/fix-ol-leave-types", {
+      month: fixMonth, year: fixYear, leaveTypeId: Number(fixLeaveTypeId),
+    }),
+    onSuccess: (data: any) => {
+      setFixResult(data);
+      queryClient.invalidateQueries({ queryKey: ["/api/hr/attendance", month, year] });
+      queryClient.invalidateQueries({ queryKey: ["/api/hr/attendance/summary", month, year] });
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
@@ -519,6 +535,15 @@ export default function HRAttendancePage() {
                     </span>
                   ))}
                 </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => { setFixMonth(month); setFixYear(year); setFixLeaveTypeId(""); setFixResult(null); setFixOLOpen(true); }}
+                  data-testid="btn-fix-ol"
+                >
+                  <AlertCircle className="h-3.5 w-3.5 mr-1" />
+                  Fix OL Records
+                </Button>
                 {Object.keys(changes).length > 0 && (
                   <Button size="sm" onClick={() => bulkSave.mutate()} disabled={bulkSave.isPending} data-testid="btn-save-attendance">
                     <Save className="h-3.5 w-3.5 mr-1" />
@@ -652,6 +677,80 @@ export default function HRAttendancePage() {
           </CardContent>
         </Card>
       )}
+
+      {/* ── Fix OL Records Dialog ─────────────────────────────────────── */}
+      <Dialog open={fixOLOpen} onOpenChange={open => { setFixOLOpen(open); if (!open) setFixResult(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Fix Unlinked OL Records</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            This will find all On Leave entries in the selected month that have no leave type linked,
+            assign the chosen leave type to them, and deduct the days from each employee's leave balance.
+          </p>
+
+          {!fixResult ? (
+            <div className="space-y-4 mt-1">
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <Label className="text-xs mb-1 block">Month</Label>
+                  <Select value={String(fixMonth)} onValueChange={v => setFixMonth(Number(v))}>
+                    <SelectTrigger data-testid="select-fix-month"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {MONTHS.map((m, i) => <SelectItem key={i+1} value={String(i+1)}>{m}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="w-28">
+                  <Label className="text-xs mb-1 block">Year</Label>
+                  <Select value={String(fixYear)} onValueChange={v => setFixYear(Number(v))}>
+                    <SelectTrigger data-testid="select-fix-year"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {[year - 1, year, year + 1].map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-xs mb-1 block">Apply Leave Type to all unlinked OL entries</Label>
+                <Select value={fixLeaveTypeId} onValueChange={setFixLeaveTypeId}>
+                  <SelectTrigger data-testid="select-fix-leave-type"><SelectValue placeholder="Select leave type…" /></SelectTrigger>
+                  <SelectContent>
+                    {(leaveTypes as any[]).filter((l: any) => l.record_status !== 0).map((lt: any) => (
+                      <SelectItem key={lt.id} value={String(lt.id)}>
+                        [{lt.code}] {lt.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex gap-2 justify-end">
+                <Button variant="ghost" onClick={() => setFixOLOpen(false)}>Cancel</Button>
+                <Button
+                  onClick={() => fixOLMutation.mutate()}
+                  disabled={!fixLeaveTypeId || fixOLMutation.isPending}
+                  data-testid="btn-fix-ol-confirm"
+                >
+                  {fixOLMutation.isPending ? "Processing…" : `Fix ${MONTHS[fixMonth - 1]} ${fixYear}`}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4 mt-1">
+              <div className={`p-4 rounded-md border ${fixResult.fixed > 0 ? "bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800" : "bg-muted border-border"}`}>
+                <p className="font-medium text-sm">{fixResult.fixed > 0 ? "Done!" : "Nothing to fix"}</p>
+                <p className="text-sm text-muted-foreground mt-1">{fixResult.message}</p>
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => { setFixResult(null); }}>Fix Another Month</Button>
+                <Button onClick={() => setFixOLOpen(false)}>Close</Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* ── Leave Type Picker Dialog (shown when HR selects OL) ───────── */}
       <Dialog open={!!pendingOL} onOpenChange={open => { if (!open) setPendingOL(null); }}>

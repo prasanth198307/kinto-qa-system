@@ -999,6 +999,57 @@ router.delete("/attendance/ot/:id", requireHR, async (req: any, res) => {
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 
+// Fix unlinked OL records — assign leave type + deduct balances for a given month/year
+router.post("/attendance/fix-ol-leave-types", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  const { month, year, leaveTypeId } = req.body;
+  if (!month || !year || !leaveTypeId) return res.status(400).json({ message: "month, year, leaveTypeId required" });
+  try {
+    // Get all unlinked OL records for this month/year
+    const rows = await db.execute(sql`
+      SELECT a.id, a.employee_id, a.date
+      FROM hr_attendance a
+      WHERE a.tenant_id=${tid} AND a.status='on_leave' AND a.leave_type_id IS NULL
+        AND EXTRACT(MONTH FROM a.date)=${month} AND EXTRACT(YEAR FROM a.date)=${year}
+    `);
+    if (!rows.rows.length) return res.json({ fixed: 0, message: "No unlinked OL records found for this period." });
+
+    const ltRow = await db.execute(sql`SELECT name FROM hr_leave_types WHERE id=${leaveTypeId} AND tenant_id=${tid}`);
+    if (!ltRow.rows.length) return res.status(404).json({ message: "Leave type not found" });
+
+    // Group by employee to count days
+    const empDays: Record<number, number> = {};
+    for (const r of rows.rows as any[]) {
+      empDays[r.employee_id] = (empDays[r.employee_id] || 0) + 1;
+    }
+
+    // Update attendance records with leave_type_id
+    await db.execute(sql`
+      UPDATE hr_attendance SET leave_type_id=${leaveTypeId}
+      WHERE tenant_id=${tid} AND status='on_leave' AND leave_type_id IS NULL
+        AND EXTRACT(MONTH FROM date)=${month} AND EXTRACT(YEAR FROM date)=${year}
+    `);
+
+    // Deduct from each employee's leave balance
+    let balanceUpdated = 0;
+    for (const [empId, days] of Object.entries(empDays)) {
+      const updated = await db.execute(sql`
+        UPDATE hr_leave_balances
+        SET used = used + ${days}, balance = GREATEST(0, balance - ${days})
+        WHERE tenant_id=${tid} AND employee_id=${Number(empId)} AND leave_type_id=${leaveTypeId} AND year=${year}
+      `);
+      if ((updated as any).rowCount > 0) balanceUpdated++;
+    }
+
+    res.json({
+      fixed: rows.rows.length,
+      employeesAffected: Object.keys(empDays).length,
+      balancesUpdated: balanceUpdated,
+      message: `${rows.rows.length} OL record(s) linked to ${(ltRow.rows[0] as any).name}. Balances deducted for ${balanceUpdated} employee(s).`
+    });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
 // Monthly attendance summary per employee
 router.get("/attendance/summary", requireHR, async (req: any, res) => {
   const tid = getTenantId(req);
