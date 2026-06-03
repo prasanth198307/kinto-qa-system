@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, CheckCircle, XCircle, Clock, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
+import { Plus, CheckCircle, XCircle, Clock, ChevronLeft, ChevronRight, RefreshCw, FileDown } from "lucide-react";
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "secondary",
@@ -377,11 +377,19 @@ function LeaveBalancesTab({ employees, leaveTypes, currentYear, onCarryForward }
       <CardHeader>
         <div className="flex items-center justify-between flex-wrap gap-3">
           <CardTitle className="text-sm">Leave Balances — {currentYear}</CardTitle>
-          <div className="flex gap-2 items-center">
+          <div className="flex gap-2 items-center flex-wrap">
             <Select value={selectedEmp} onValueChange={v => { setSelectedEmp(v); initBalance.mutate(Number(v)); }}>
               <SelectTrigger className="w-52"><SelectValue placeholder="Select employee" /></SelectTrigger>
               <SelectContent>{employees.map((e: any) => <SelectItem key={e.id} value={String(e.id)}>{e.first_name} {e.last_name} ({e.emp_code})</SelectItem>)}</SelectContent>
             </Select>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => window.open(`/api/hr/leave-balances/export-excel?year=${currentYear}`, "_blank")}
+              data-testid="btn-download-leave-balances"
+            >
+              <FileDown className="h-3.5 w-3.5 mr-1" />Download Excel
+            </Button>
             <Button size="sm" variant="outline" onClick={onCarryForward} data-testid="btn-carry-forward">
               <RefreshCw className="h-3.5 w-3.5 mr-1" />Year-End Carry Forward
             </Button>

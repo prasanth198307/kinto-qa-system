@@ -1074,6 +1074,83 @@ router.get("/attendance/summary", requireHR, async (req: any, res) => {
 });
 
 // ── LEAVE MANAGEMENT ─────────────────────────────────────────────────────────
+// Export all employees' leave balances as Excel
+router.get("/leave-balances/export-excel", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  const year = Number(req.query.year) || new Date().getFullYear();
+  try {
+    // Fetch all active leave types
+    const ltRows = await db.execute(sql`
+      SELECT id, name, code FROM hr_leave_types
+      WHERE tenant_id=${tid} AND record_status=1 ORDER BY name
+    `);
+    const leaveTypes = ltRows.rows as any[];
+
+    // Fetch all active employees with their balances
+    const rows = await db.execute(sql`
+      SELECT e.emp_code, e.first_name, e.last_name, e.department,
+             lb.leave_type_id, lb.entitled, lb.used, lb.balance
+      FROM hr_employees e
+      LEFT JOIN hr_leave_balances lb ON lb.employee_id = e.id AND lb.tenant_id=${tid} AND lb.year=${year}
+      WHERE e.tenant_id=${tid} AND e.status='active'
+      ORDER BY e.emp_code
+    `);
+
+    // Build pivot: empCode -> { empInfo, leaveTypeId -> {entitled,used,balance} }
+    const empMap: Record<string, any> = {};
+    for (const r of rows.rows as any[]) {
+      if (!empMap[r.emp_code]) {
+        empMap[r.emp_code] = {
+          emp_code: r.emp_code,
+          name: `${r.first_name} ${r.last_name}`,
+          department: r.department || "",
+          balances: {},
+        };
+      }
+      if (r.leave_type_id) {
+        empMap[r.emp_code].balances[r.leave_type_id] = {
+          entitled: Number(r.entitled) || 0,
+          used: Number(r.used) || 0,
+          balance: Number(r.balance) || 0,
+        };
+      }
+    }
+
+    // Build header row
+    const headers = ["Emp Code", "Employee Name", "Department"];
+    for (const lt of leaveTypes) {
+      headers.push(`${lt.name} (${lt.code}) - Entitled`);
+      headers.push(`${lt.name} (${lt.code}) - Used`);
+      headers.push(`${lt.name} (${lt.code}) - Balance`);
+    }
+
+    // Build data rows
+    const dataRows = Object.values(empMap).map((emp: any) => {
+      const row: (string | number)[] = [emp.emp_code, emp.name, emp.department];
+      for (const lt of leaveTypes) {
+        const b = emp.balances[lt.id] || { entitled: 0, used: 0, balance: 0 };
+        row.push(b.entitled, b.used, b.balance);
+      }
+      return row;
+    });
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
+
+    // Column widths
+    ws["!cols"] = [
+      { wch: 12 }, { wch: 25 }, { wch: 18 },
+      ...leaveTypes.flatMap(() => [{ wch: 14 }, { wch: 10 }, { wch: 12 }]),
+    ];
+
+    XLSX.utils.book_append_sheet(wb, ws, `Leave Balances ${year}`);
+    const buf: Buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+    res.setHeader("Content-Disposition", `attachment; filename=leave_balances_${year}.xlsx`);
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.send(buf);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
 router.get("/leave-balances", requireHR, async (req: any, res) => {
   const tid = getTenantId(req);
   const { employeeId, year } = req.query;
