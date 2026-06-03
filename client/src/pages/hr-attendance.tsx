@@ -32,6 +32,7 @@ function OTRegisterTab({ month, year, employees }: { month: number; year: number
   const [empId, setEmpId] = useState("");
   const [date, setDate] = useState("");
   const [otHours, setOtHours] = useState("");
+  const [otType, setOtType] = useState<"paid" | "comp">("paid");
   const [isArrear, setIsArrear] = useState(false);
   const [arrearMonth, setArrearMonth] = useState(month === 1 ? 12 : month - 1);
   const [arrearYear, setArrearYear] = useState(month === 1 ? year - 1 : year);
@@ -61,6 +62,7 @@ function OTRegisterTab({ month, year, employees }: { month: number; year: number
       employeeId: Number(empId),
       date,
       otHours: Number(otHours),
+      otType,
       remarks: arrearRemarks ?? null,
     }),
     onSuccess: () => {
@@ -227,6 +229,32 @@ function OTRegisterTab({ month, year, employees }: { month: number; year: number
             </div>
           </div>
 
+          {/* OT Settlement Type */}
+          <div className="flex items-center gap-4 p-3 rounded-md border">
+            <p className="text-sm font-medium shrink-0">OT Settlement:</p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setOtType("paid")}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium border transition-colors ${otType === "paid" ? "bg-primary text-primary-foreground border-primary" : "bg-background text-muted-foreground border-border"}`}
+                data-testid="btn-ot-type-paid"
+              >
+                Paid (Cash)
+              </button>
+              <button
+                type="button"
+                onClick={() => setOtType("comp")}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium border transition-colors ${otType === "comp" ? "bg-primary text-primary-foreground border-primary" : "bg-background text-muted-foreground border-border"}`}
+                data-testid="btn-ot-type-comp"
+              >
+                Compensatory Off
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {otType === "paid" ? "OT pay added to payroll at 1.5× rate" : "COMP off leave credited to employee balance (8 hrs = 1 day)"}
+            </p>
+          </div>
+
           <div>
             <Button
               onClick={() => addMutation.mutate()}
@@ -278,6 +306,7 @@ function OTRegisterTab({ month, year, employees }: { month: number; year: number
                     <th className="px-3 py-2 text-left font-medium text-muted-foreground">Date</th>
                     <th className="px-3 py-2 text-left font-medium text-muted-foreground">Type / Remarks</th>
                     <th className="px-3 py-2 text-center font-medium text-muted-foreground">Attendance</th>
+                    <th className="px-3 py-2 text-center font-medium text-muted-foreground">Settlement</th>
                     <th className="px-3 py-2 text-center font-medium text-muted-foreground">OT Hours</th>
                     <th className="px-3 py-2 text-right font-medium text-muted-foreground"></th>
                   </tr>
@@ -311,6 +340,11 @@ function OTRegisterTab({ month, year, employees }: { month: number; year: number
                           {st ? (
                             <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${st.color}`}>{st.label}</span>
                           ) : "—"}
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          <Badge variant={entry.ot_type === "comp" ? "secondary" : "default"} className="text-xs">
+                            {entry.ot_type === "comp" ? "Comp Off" : "Paid"}
+                          </Badge>
                         </td>
                         <td className="px-3 py-2 text-center font-semibold">
                           {Number(entry.ot_hours).toFixed(1)} hrs

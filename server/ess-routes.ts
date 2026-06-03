@@ -261,6 +261,28 @@ router.post("/leaves", requireESS, async (req: any, res) => {
   if (!leaveTypeId || !fromDate || !toDate) return res.status(400).json({ message: "Leave type, from date, and to date are required" });
   try {
     const days = Math.ceil((new Date(toDate).getTime() - new Date(fromDate).getTime()) / 86400000) + 1;
+
+    // ── Monthly limit check ───────────────────────────────────────────────
+    const ltRow = await db.execute(sql`SELECT max_per_month, name FROM hr_leave_types WHERE id=${Number(leaveTypeId)} AND tenant_id=${tid}`);
+    const lt = ltRow.rows[0] as any;
+    if (lt && Number(lt.max_per_month) > 0) {
+      const appMonth = new Date(fromDate).getMonth() + 1;
+      const appYear  = new Date(fromDate).getFullYear();
+      const usedRow = await db.execute(sql`
+        SELECT COALESCE(SUM(days),0) AS used FROM hr_leave_applications
+        WHERE tenant_id=${tid} AND employee_id=${eid} AND leave_type_id=${Number(leaveTypeId)}
+          AND status != 'rejected'
+          AND EXTRACT(MONTH FROM from_date)=${appMonth} AND EXTRACT(YEAR FROM from_date)=${appYear}
+      `);
+      const alreadyUsed = Number((usedRow.rows[0] as any)?.used || 0);
+      if (alreadyUsed + days > Number(lt.max_per_month)) {
+        return res.status(400).json({
+          message: `Monthly limit exceeded for ${lt.name}. Max: ${lt.max_per_month} day(s)/month. Already applied: ${alreadyUsed} day(s) this month.`
+        });
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────
+
     const r = await db.execute(sql`
       INSERT INTO hr_leave_applications (tenant_id, employee_id, leave_type_id, from_date, to_date, days, reason, status)
       VALUES (${tid}, ${eid}, ${Number(leaveTypeId)}, ${fromDate}, ${toDate}, ${days}, ${reason || null}, 'pending')

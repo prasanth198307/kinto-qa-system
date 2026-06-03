@@ -157,20 +157,20 @@ router.get("/leave-types", requireHR, async (req: any, res) => {
 
 router.post("/leave-types", requireHR, async (req: any, res) => {
   const tid = getTenantId(req);
-  const { name, code, annualDays, isCarryForward, maxCarryForward, isEncashable, isPaidLeave, applicableEmpTypes } = req.body;
+  const { name, code, annualDays, isCarryForward, maxCarryForward, isEncashable, isPaidLeave, applicableEmpTypes, maxPerMonth } = req.body;
   const empTypes = applicableEmpTypes || 'permanent,consultant,contract,intern';
   try {
-    const r = await db.execute(sql`INSERT INTO hr_leave_types (tenant_id, name, code, annual_days, is_carry_forward, max_carry_forward, is_encashable, is_paid_leave, applicable_emp_types) VALUES (${tid}, ${name}, ${code}, ${annualDays ?? 0}, ${isCarryForward ?? false}, ${maxCarryForward ?? 0}, ${isEncashable ?? false}, ${isPaidLeave ?? true}, ${empTypes}) RETURNING *`);
+    const r = await db.execute(sql`INSERT INTO hr_leave_types (tenant_id, name, code, annual_days, is_carry_forward, max_carry_forward, is_encashable, is_paid_leave, applicable_emp_types, max_per_month) VALUES (${tid}, ${name}, ${code}, ${annualDays ?? 0}, ${isCarryForward ?? false}, ${maxCarryForward ?? 0}, ${isEncashable ?? false}, ${isPaidLeave ?? true}, ${empTypes}, ${maxPerMonth ?? 0}) RETURNING *`);
     res.json(r.rows[0]);
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 
 router.put("/leave-types/:id", requireHR, async (req: any, res) => {
   const tid = getTenantId(req);
-  const { name, code, annualDays, isCarryForward, maxCarryForward, isEncashable, isPaidLeave, applicableEmpTypes } = req.body;
+  const { name, code, annualDays, isCarryForward, maxCarryForward, isEncashable, isPaidLeave, applicableEmpTypes, maxPerMonth } = req.body;
   const empTypes = applicableEmpTypes || 'permanent,consultant,contract,intern';
   try {
-    const r = await db.execute(sql`UPDATE hr_leave_types SET name=${name}, code=${code}, annual_days=${annualDays ?? 0}, is_carry_forward=${isCarryForward ?? false}, max_carry_forward=${maxCarryForward ?? 0}, is_encashable=${isEncashable ?? false}, is_paid_leave=${isPaidLeave ?? true}, applicable_emp_types=${empTypes} WHERE id=${req.params.id} AND tenant_id=${tid} RETURNING *`);
+    const r = await db.execute(sql`UPDATE hr_leave_types SET name=${name}, code=${code}, annual_days=${annualDays ?? 0}, is_carry_forward=${isCarryForward ?? false}, max_carry_forward=${maxCarryForward ?? 0}, is_encashable=${isEncashable ?? false}, is_paid_leave=${isPaidLeave ?? true}, applicable_emp_types=${empTypes}, max_per_month=${maxPerMonth ?? 0} WHERE id=${req.params.id} AND tenant_id=${tid} RETURNING *`);
     res.json(r.rows[0]);
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
@@ -820,13 +820,47 @@ router.post("/attendance/bulk", requireHR, async (req: any, res) => {
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 
+// Helper: grant Compensatory Off leave balance when OT is registered as comp
+async function grantCompOff(tenantId: number, employeeId: number, otHours: number) {
+  try {
+    const compDays = Math.round((otHours / 8) * 2) / 2; // round to nearest 0.5
+    if (compDays <= 0) return;
+    const year = new Date().getFullYear();
+    // Find COMP leave type for this tenant
+    const ltRow = await db.execute(sql`
+      SELECT id FROM hr_leave_types WHERE tenant_id=${tenantId} AND code='COMP' AND record_status=1 LIMIT 1
+    `);
+    const lt = ltRow.rows[0] as any;
+    if (!lt) return;
+    // Upsert leave balance
+    const existing = await db.execute(sql`
+      SELECT id FROM hr_leave_balances
+      WHERE tenant_id=${tenantId} AND employee_id=${employeeId} AND leave_type_id=${lt.id} AND year=${year}
+    `);
+    if (existing.rows.length) {
+      await db.execute(sql`
+        UPDATE hr_leave_balances
+        SET entitled=entitled+${compDays}, balance=balance+${compDays}
+        WHERE tenant_id=${tenantId} AND employee_id=${employeeId} AND leave_type_id=${lt.id} AND year=${year}
+      `);
+    } else {
+      await db.execute(sql`
+        INSERT INTO hr_leave_balances (tenant_id, employee_id, leave_type_id, year, entitled, used, balance)
+        VALUES (${tenantId}, ${employeeId}, ${lt.id}, ${year}, ${compDays}, 0, ${compDays})
+      `);
+    }
+  } catch (err) {
+    console.error('[COMP-OFF] Failed to grant compensatory off:', err);
+  }
+}
+
 // OT register — GET all OT entries for a month (ot_hours > 0)
 router.get("/attendance/ot", requireHR, async (req: any, res) => {
   const tid = getTenantId(req);
   const { month, year } = req.query;
   try {
     const rows = await db.execute(sql`
-      SELECT a.id, a.employee_id, a.date, a.ot_hours, a.status, a.remarks,
+      SELECT a.id, a.employee_id, a.date, a.ot_hours, a.ot_type, a.status, a.remarks,
              e.first_name, e.last_name, e.emp_code
       FROM hr_attendance a
       JOIN hr_employees e ON e.id = a.employee_id
@@ -843,8 +877,9 @@ router.get("/attendance/ot", requireHR, async (req: any, res) => {
 // OT register — POST upsert OT hours for an employee on a date (preserves attendance status)
 router.post("/attendance/ot", requireHR, async (req: any, res) => {
   const tid = getTenantId(req);
-  const { employeeId, date, otHours, remarks } = req.body;
+  const { employeeId, date, otHours, remarks, otType } = req.body;
   if (!employeeId || !date) return res.status(400).json({ message: "employeeId and date required" });
+  const resolvedOtType = otType === 'comp' ? 'comp' : 'paid';
   try {
     const existing = await db.execute(sql`
       SELECT id, status FROM hr_attendance
@@ -852,16 +887,18 @@ router.post("/attendance/ot", requireHR, async (req: any, res) => {
     `);
     if (existing.rows.length) {
       const r = await db.execute(sql`
-        UPDATE hr_attendance SET ot_hours=${Number(otHours) || 0}, remarks=${remarks ?? null}
+        UPDATE hr_attendance SET ot_hours=${Number(otHours) || 0}, ot_type=${resolvedOtType}, remarks=${remarks ?? null}
         WHERE id=${(existing.rows[0] as any).id} RETURNING *
       `);
+      if (resolvedOtType === 'comp') await grantCompOff(tid, employeeId, Number(otHours) || 0);
       return res.json(r.rows[0]);
     }
     // No attendance record yet — create with present + OT hours
     const r = await db.execute(sql`
-      INSERT INTO hr_attendance (tenant_id, employee_id, date, status, ot_hours, remarks)
-      VALUES (${tid}, ${employeeId}, ${date}, 'present', ${Number(otHours) || 0}, ${remarks ?? null}) RETURNING *
+      INSERT INTO hr_attendance (tenant_id, employee_id, date, status, ot_hours, ot_type, remarks)
+      VALUES (${tid}, ${employeeId}, ${date}, 'present', ${Number(otHours) || 0}, ${resolvedOtType}, ${remarks ?? null}) RETURNING *
     `);
+    if (resolvedOtType === 'comp') await grantCompOff(tid, employeeId, Number(otHours) || 0);
     res.json(r.rows[0]);
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
@@ -967,6 +1004,29 @@ router.post("/leave-applications", requireHR, async (req: any, res) => {
       if (!holidayDates.has(ds)) calcDays++;
     }
     const actualDays = Math.max(1, calcDays);
+
+    // ── Monthly limit check ────────────────────────────────────────────────
+    const ltRow = await db.execute(sql`SELECT max_per_month, name FROM hr_leave_types WHERE id=${leaveTypeId} AND tenant_id=${tid}`);
+    const lt = ltRow.rows[0] as any;
+    if (lt && Number(lt.max_per_month) > 0) {
+      const appMonth = new Date(fromDate).getMonth() + 1;
+      const appYear  = new Date(fromDate).getFullYear();
+      const usedRow = await db.execute(sql`
+        SELECT COALESCE(SUM(days),0) AS used
+        FROM hr_leave_applications
+        WHERE tenant_id=${tid} AND employee_id=${employeeId}
+          AND leave_type_id=${leaveTypeId} AND status != 'rejected'
+          AND EXTRACT(MONTH FROM from_date)=${appMonth} AND EXTRACT(YEAR FROM from_date)=${appYear}
+      `);
+      const alreadyUsed = Number((usedRow.rows[0] as any)?.used || 0);
+      if (alreadyUsed + actualDays > Number(lt.max_per_month)) {
+        return res.status(400).json({
+          message: `Monthly limit exceeded for ${lt.name}. Max allowed: ${lt.max_per_month} day(s)/month. Already applied: ${alreadyUsed} day(s) this month.`
+        });
+      }
+    }
+    // ──────────────────────────────────────────────────────────────────────
+
     const r = await db.execute(sql`
       INSERT INTO hr_leave_applications (tenant_id, employee_id, leave_type_id, from_date, to_date, days, reason)
       VALUES (${tid}, ${employeeId}, ${leaveTypeId}, ${fromDate}, ${toDate}, ${actualDays}, ${reason ?? null})
@@ -1200,7 +1260,7 @@ router.post("/payroll-runs/:id/process", requireHR, async (req: any, res) => {
           COUNT(CASE WHEN status='half_day' THEN 1 END) as half_day,
           COUNT(CASE WHEN status='on_leave' THEN 1 END) as on_leave,
           COUNT(CASE WHEN status='lop' THEN 1 END) as lop,
-          COALESCE(SUM(ot_hours),0) as ot_hours
+          COALESCE(SUM(CASE WHEN ot_type IS NULL OR ot_type='paid' THEN ot_hours ELSE 0 END),0) as ot_hours
         FROM hr_attendance
         WHERE employee_id=${emp.id} AND tenant_id=${tid}
         AND EXTRACT(MONTH FROM date)=${month} AND EXTRACT(YEAR FROM date)=${year} AND record_status=1

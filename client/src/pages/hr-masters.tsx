@@ -193,7 +193,7 @@ function LeaveTypesTab() {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
-  const defaultForm = { name: "", code: "", annualDays: "0", isCarryForward: false, maxCarryForward: "0", isEncashable: false, isPaidLeave: true, applicableEmpTypes: ["permanent", "consultant", "contract", "intern"] as string[] };
+  const defaultForm = { name: "", code: "", annualDays: "0", isCarryForward: false, maxCarryForward: "0", isEncashable: false, isPaidLeave: true, applicableEmpTypes: ["permanent", "consultant", "contract", "intern"] as string[], maxPerMonth: "0" };
   const [form, setForm] = useState(defaultForm);
 
   const { data = [] } = useQuery({ queryKey: ["/api/hr/leave-types"] });
@@ -213,7 +213,7 @@ function LeaveTypesTab() {
   const openAdd = () => { setEditing(null); setForm(defaultForm); setOpen(true); };
   const openEdit = (r: any) => {
     setEditing(r);
-    setForm({ name: r.name, code: r.code, annualDays: String(r.annual_days), isCarryForward: r.is_carry_forward, maxCarryForward: String(r.max_carry_forward), isEncashable: r.is_encashable, isPaidLeave: r.is_paid_leave, applicableEmpTypes: parseTypes(r.applicable_emp_types) });
+    setForm({ name: r.name, code: r.code, annualDays: String(r.annual_days), isCarryForward: r.is_carry_forward, maxCarryForward: String(r.max_carry_forward), isEncashable: r.is_encashable, isPaidLeave: r.is_paid_leave, applicableEmpTypes: parseTypes(r.applicable_emp_types), maxPerMonth: String(r.max_per_month ?? 0) });
     setOpen(true);
   };
 
@@ -226,7 +226,7 @@ function LeaveTypesTab() {
 
   const handleSave = () => {
     if (!form.applicableEmpTypes.length) return toast({ title: "Select at least one employee type", variant: "destructive" });
-    save.mutate({ ...form, annualDays: Number(form.annualDays), maxCarryForward: Number(form.maxCarryForward), applicableEmpTypes: form.applicableEmpTypes.join(",") });
+    save.mutate({ ...form, annualDays: Number(form.annualDays), maxCarryForward: Number(form.maxCarryForward), maxPerMonth: Number(form.maxPerMonth), applicableEmpTypes: form.applicableEmpTypes.join(",") });
   };
 
   return (
@@ -249,7 +249,13 @@ function LeaveTypesTab() {
               <div><Label>Name *</Label><Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Casual Leave" /></div>
               <div><Label>Code *</Label><Input value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value.toUpperCase() }))} placeholder="CL, SL, EL" maxLength={10} /></div>
             </div>
-            <div><Label>Annual Days</Label><Input type="number" value={form.annualDays} onChange={e => setForm(f => ({ ...f, annualDays: e.target.value }))} /></div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div><Label>Annual Days</Label><Input type="number" value={form.annualDays} onChange={e => setForm(f => ({ ...f, annualDays: e.target.value }))} /></div>
+              <div>
+                <Label>Max Per Month <span className="text-xs text-muted-foreground">(0 = no limit)</span></Label>
+                <Input type="number" min="0" value={form.maxPerMonth} onChange={e => setForm(f => ({ ...f, maxPerMonth: e.target.value }))} placeholder="e.g. 1 for SL/CL" />
+              </div>
+            </div>
             <div className="flex items-center gap-2"><Switch checked={form.isPaidLeave} onCheckedChange={v => setForm(f => ({ ...f, isPaidLeave: v }))} /><Label>Paid Leave</Label></div>
             <div className="flex items-center gap-2"><Switch checked={form.isCarryForward} onCheckedChange={v => setForm(f => ({ ...f, isCarryForward: v }))} /><Label>Allow Carry Forward</Label></div>
             {form.isCarryForward && <div><Label>Max Carry Forward Days</Label><Input type="number" value={form.maxCarryForward} onChange={e => setForm(f => ({ ...f, maxCarryForward: e.target.value }))} /></div>}
