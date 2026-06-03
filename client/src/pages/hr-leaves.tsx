@@ -372,6 +372,15 @@ function LeaveBalancesTab({ employees, leaveTypes, currentYear, onCarryForward }
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/hr/leave-balances", selectedEmp, currentYear] }),
   });
 
+  const initAllBalances = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/hr/leave-balances/initialize-all", { year: currentYear }),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/hr/leave-balances"] });
+      toast({ title: "Balances Initialized", description: `${data.created} new balance record(s) created for ${data.employees} employees.` });
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
   return (
     <Card>
       <CardHeader>
@@ -382,6 +391,15 @@ function LeaveBalancesTab({ employees, leaveTypes, currentYear, onCarryForward }
               <SelectTrigger className="w-52"><SelectValue placeholder="Select employee" /></SelectTrigger>
               <SelectContent>{employees.map((e: any) => <SelectItem key={e.id} value={String(e.id)}>{e.first_name} {e.last_name} ({e.emp_code})</SelectItem>)}</SelectContent>
             </Select>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => initAllBalances.mutate()}
+              disabled={initAllBalances.isPending}
+              data-testid="btn-init-all-balances"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 mr-1 ${initAllBalances.isPending ? "animate-spin" : ""}`} />Initialize All
+            </Button>
             <Button
               size="sm"
               variant="outline"

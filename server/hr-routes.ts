@@ -1182,6 +1182,27 @@ router.post("/leave-balances/initialize", requireHR, async (req: any, res) => {
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 
+// Bulk initialize balances for ALL active employees
+router.post("/leave-balances/initialize-all", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  const { year } = req.body;
+  try {
+    const leaveTypes = await db.execute(sql`SELECT * FROM hr_leave_types WHERE tenant_id=${tid} AND record_status=1`);
+    const employees = await db.execute(sql`SELECT id FROM hr_employees WHERE tenant_id=${tid} AND status='active'`);
+    let created = 0;
+    for (const emp of employees.rows as any[]) {
+      for (const lt of leaveTypes.rows as any[]) {
+        const existing = await db.execute(sql`SELECT id FROM hr_leave_balances WHERE tenant_id=${tid} AND employee_id=${emp.id} AND leave_type_id=${lt.id} AND year=${year}`);
+        if (!existing.rows.length) {
+          await db.execute(sql`INSERT INTO hr_leave_balances (tenant_id, employee_id, leave_type_id, year, entitled, used, balance) VALUES (${tid}, ${emp.id}, ${lt.id}, ${year}, ${lt.annual_days}, 0, ${lt.annual_days})`);
+          created++;
+        }
+      }
+    }
+    res.json({ success: true, created, employees: employees.rows.length, leaveTypes: leaveTypes.rows.length });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
 router.get("/leave-applications", requireHR, async (req: any, res) => {
   const tid = getTenantId(req);
   const { employeeId, status } = req.query;
