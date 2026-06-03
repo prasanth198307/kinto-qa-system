@@ -381,6 +381,15 @@ function LeaveBalancesTab({ employees, leaveTypes, currentYear, onCarryForward }
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
+  const recalcAllBalances = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/hr/leave-balances/recalculate-all", { year: currentYear }),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/hr/leave-balances"] });
+      toast({ title: "Balances Recalculated", description: `${data.updated} updated, ${data.inserted} new — synced from actual attendance & leave data.` });
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
   return (
     <Card>
       <CardHeader>
@@ -399,6 +408,15 @@ function LeaveBalancesTab({ employees, leaveTypes, currentYear, onCarryForward }
               data-testid="btn-init-all-balances"
             >
               <RefreshCw className={`h-3.5 w-3.5 mr-1 ${initAllBalances.isPending ? "animate-spin" : ""}`} />Initialize All
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => recalcAllBalances.mutate()}
+              disabled={recalcAllBalances.isPending}
+              data-testid="btn-recalc-all-balances"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 mr-1 ${recalcAllBalances.isPending ? "animate-spin" : ""}`} />Recalculate Balances
             </Button>
             <Button
               size="sm"

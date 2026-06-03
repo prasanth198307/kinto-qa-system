@@ -1194,12 +1194,76 @@ router.post("/leave-balances/initialize-all", requireHR, async (req: any, res) =
       for (const lt of leaveTypes.rows as any[]) {
         const existing = await db.execute(sql`SELECT id FROM hr_leave_balances WHERE tenant_id=${tid} AND employee_id=${emp.id} AND leave_type_id=${lt.id} AND year=${year}`);
         if (!existing.rows.length) {
-          await db.execute(sql`INSERT INTO hr_leave_balances (tenant_id, employee_id, leave_type_id, year, entitled, used, balance) VALUES (${tid}, ${emp.id}, ${lt.id}, ${year}, ${lt.annual_days}, 0, ${lt.annual_days})`);
+          // Compute actual used from: approved leave applications + direct OL attendance marks
+          const appUsed = await db.execute(sql`
+            SELECT COALESCE(SUM(days), 0) as used
+            FROM hr_leave_applications
+            WHERE tenant_id=${tid} AND employee_id=${emp.id} AND leave_type_id=${lt.id}
+              AND status='approved' AND record_status=1
+              AND EXTRACT(YEAR FROM from_date)=${year}
+          `);
+          const attUsed = await db.execute(sql`
+            SELECT COUNT(*) as used
+            FROM hr_attendance
+            WHERE tenant_id=${tid} AND employee_id=${emp.id} AND leave_type_id=${lt.id}
+              AND status='on_leave' AND record_status=1
+              AND EXTRACT(YEAR FROM date)=${year}
+          `);
+          const usedFromApps = Number((appUsed.rows[0] as any).used || 0);
+          const usedFromAtt = Number((attUsed.rows[0] as any).used || 0);
+          // Use whichever is greater (avoid double-counting: apps may or may not have attendance marks)
+          const actualUsed = Math.max(usedFromApps, usedFromAtt);
+          const entitled = Number(lt.annual_days || 0);
+          const balance = Math.max(0, entitled - actualUsed);
+          await db.execute(sql`INSERT INTO hr_leave_balances (tenant_id, employee_id, leave_type_id, year, entitled, used, balance) VALUES (${tid}, ${emp.id}, ${lt.id}, ${year}, ${entitled}, ${actualUsed}, ${balance})`);
           created++;
         }
       }
     }
     res.json({ success: true, created, employees: employees.rows.length, leaveTypes: leaveTypes.rows.length });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// Recalculate (sync) balances for ALL employees from actual data — updates existing records too
+router.post("/leave-balances/recalculate-all", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  const { year } = req.body;
+  try {
+    const leaveTypes = await db.execute(sql`SELECT * FROM hr_leave_types WHERE tenant_id=${tid} AND record_status=1`);
+    const employees = await db.execute(sql`SELECT id FROM hr_employees WHERE tenant_id=${tid} AND status='active'`);
+    let updated = 0, inserted = 0;
+    for (const emp of employees.rows as any[]) {
+      for (const lt of leaveTypes.rows as any[]) {
+        const appUsed = await db.execute(sql`
+          SELECT COALESCE(SUM(days), 0) as used
+          FROM hr_leave_applications
+          WHERE tenant_id=${tid} AND employee_id=${emp.id} AND leave_type_id=${lt.id}
+            AND status='approved' AND record_status=1
+            AND EXTRACT(YEAR FROM from_date)=${year}
+        `);
+        const attUsed = await db.execute(sql`
+          SELECT COUNT(*) as used
+          FROM hr_attendance
+          WHERE tenant_id=${tid} AND employee_id=${emp.id} AND leave_type_id=${lt.id}
+            AND status='on_leave' AND record_status=1
+            AND EXTRACT(YEAR FROM date)=${year}
+        `);
+        const usedFromApps = Number((appUsed.rows[0] as any).used || 0);
+        const usedFromAtt = Number((attUsed.rows[0] as any).used || 0);
+        const actualUsed = Math.max(usedFromApps, usedFromAtt);
+        const entitled = Number(lt.annual_days || 0);
+        const balance = Math.max(0, entitled - actualUsed);
+        const existing = await db.execute(sql`SELECT id FROM hr_leave_balances WHERE tenant_id=${tid} AND employee_id=${emp.id} AND leave_type_id=${lt.id} AND year=${year}`);
+        if (existing.rows.length) {
+          await db.execute(sql`UPDATE hr_leave_balances SET entitled=${entitled}, used=${actualUsed}, balance=${balance} WHERE tenant_id=${tid} AND employee_id=${emp.id} AND leave_type_id=${lt.id} AND year=${year}`);
+          updated++;
+        } else {
+          await db.execute(sql`INSERT INTO hr_leave_balances (tenant_id, employee_id, leave_type_id, year, entitled, used, balance) VALUES (${tid}, ${emp.id}, ${lt.id}, ${year}, ${entitled}, ${actualUsed}, ${balance})`);
+          inserted++;
+        }
+      }
+    }
+    res.json({ success: true, updated, inserted, employees: employees.rows.length });
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 
