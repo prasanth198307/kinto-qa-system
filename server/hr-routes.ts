@@ -1088,9 +1088,11 @@ router.get("/leave-balances/export-excel", requireHR, async (req: any, res) => {
 
     // Fetch all active employees with their balances
     const rows = await db.execute(sql`
-      SELECT e.emp_code, e.first_name, e.last_name, e.department,
+      SELECT e.emp_code, e.first_name, e.last_name,
+             COALESCE(d.name, '') as department,
              lb.leave_type_id, lb.entitled, lb.used, lb.balance
       FROM hr_employees e
+      LEFT JOIN hr_departments d ON d.id = e.department_id AND d.tenant_id=${tid}
       LEFT JOIN hr_leave_balances lb ON lb.employee_id = e.id AND lb.tenant_id=${tid} AND lb.year=${year}
       WHERE e.tenant_id=${tid} AND e.status='active'
       ORDER BY e.emp_code
