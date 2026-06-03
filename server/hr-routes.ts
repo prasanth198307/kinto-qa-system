@@ -1498,6 +1498,7 @@ router.post("/payroll-runs/:id/process", requireHR, async (req: any, res) => {
           COUNT(CASE WHEN status='half_day' THEN 1 END) as half_day,
           COUNT(CASE WHEN status='on_leave' THEN 1 END) as on_leave,
           COUNT(CASE WHEN status='lop' THEN 1 END) as lop,
+          COUNT(CASE WHEN status='absent' THEN 1 END) as absent,
           COALESCE(SUM(CASE WHEN ot_type IS NULL OR ot_type='paid' THEN ot_hours ELSE 0 END),0) as ot_hours
         FROM hr_attendance
         WHERE employee_id=${emp.id} AND tenant_id=${tid}
@@ -1508,13 +1509,15 @@ router.post("/payroll-runs/:id/process", requireHR, async (req: any, res) => {
       const halfDay = Number(a.half_day || 0);
       const onLeave = Number(a.on_leave || 0);
       const lop = Number(a.lop || 0);
+      const absent = Number(a.absent || 0);
       const otHours = Number(a.ot_hours || 0);
 
       // If no attendance records exist at all for this employee this month,
       // assume full attendance so that salary is not zeroed out.
-      const hasAttendance = (present + halfDay + onLeave + lop) > 0;
+      // Absent days are treated as LOP (Loss of Pay) — standard Indian payroll practice.
+      const hasAttendance = (present + halfDay + onLeave + lop + absent) > 0;
       const daysWorked = hasAttendance ? (present + (halfDay * 0.5) + onLeave) : workingDays;
-      const lopDays = lop;
+      const lopDays = lop + absent;  // absent = LOP
       const attendancePct = workingDays > 0 ? Math.min(daysWorked, workingDays) / workingDays : 1;
 
       const basicSalary = Number(emp.basic_salary || 0);
