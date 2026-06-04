@@ -625,4 +625,82 @@ router.post("/bulk-import/confirm", requireAuth, async (req: any, res) => {
   }
 });
 
+// ─── Stock Adjustments (shrinkage / write-off / surplus) ─────────────────────
+router.get("/stock-adjustments", requireAuth, async (req: any, res) => {
+  try {
+    const tid = req.session?.tenantId;
+    const rows = await db.execute(sql`
+      SELECT * FROM stock_adjustments
+      WHERE tenant_id=${tid}
+      ORDER BY created_at DESC
+      LIMIT 500`);
+    res.json(rows.rows);
+  } catch (e: any) {
+    if (e.code === '42P01') return res.json([]);
+    res.status(500).json({ message: e.message });
+  }
+});
+
+router.post("/stock-adjustments", requireAuth, async (req: any, res) => {
+  try {
+    const tid = req.session?.tenantId;
+    const user = req.user;
+    const { product_id, adjustment_type, qty_change, unit_label, reason_notes, reference_no } = req.body;
+
+    if (!product_id) return res.status(400).json({ message: "product_id required" });
+    if (!adjustment_type) return res.status(400).json({ message: "adjustment_type required" });
+    if (!qty_change || Number(qty_change) <= 0) return res.status(400).json({ message: "qty_change must be > 0" });
+
+    // Resolve product details
+    const prodRows = await db.execute(sql`
+      SELECT id, product_name, sku_code, barcode FROM products
+      WHERE id=${product_id} AND tenant_id=${tid} LIMIT 1`);
+    const prod: any = prodRows.rows[0];
+    if (!prod) return res.status(404).json({ message: "Product not found" });
+
+    // Determine sign: damaged/expired/theft/wastage = negative; found = positive; correction = positive (caller decides meaning)
+    const NEGATIVE_TYPES = ['damaged', 'expired', 'theft', 'wastage'];
+    const isNegative = NEGATIVE_TYPES.includes(adjustment_type);
+    const signedQty = isNegative ? -Number(qty_change) : Number(qty_change);
+
+    // Insert adjustment record
+    const inserted = await db.execute(sql`
+      INSERT INTO stock_adjustments
+        (tenant_id, product_id, product_name, sku_code, barcode, adjustment_type,
+         qty_change, unit_label, reason_notes, adjusted_by, reference_no)
+      VALUES
+        (${tid}, ${product_id}, ${prod.product_name}, ${prod.sku_code ?? null},
+         ${prod.barcode ?? null}, ${adjustment_type}, ${signedQty},
+         ${unit_label ?? null}, ${reason_notes ?? null},
+         ${user?.username ?? user?.email ?? 'system'}, ${reference_no ?? null})
+      RETURNING *`);
+
+    // Update warehouse_stock — find default warehouse and adjust
+    try {
+      const whRows = await db.execute(sql`
+        SELECT id FROM warehouses WHERE tenant_id=${tid} AND is_default=true LIMIT 1`);
+      const warehouseId = (whRows.rows[0] as any)?.id ?? null;
+      if (warehouseId) {
+        const itemIdStr = String(product_id);
+        const existing = await db.execute(sql`
+          SELECT id FROM warehouse_stock
+          WHERE tenant_id=${tid} AND warehouse_id=${warehouseId} AND item_id=${itemIdStr} LIMIT 1`);
+        if ((existing.rows[0] as any)?.id) {
+          await db.execute(sql`
+            UPDATE warehouse_stock SET quantity = GREATEST(0, quantity + ${signedQty})
+            WHERE tenant_id=${tid} AND warehouse_id=${warehouseId} AND item_id=${itemIdStr}`);
+        } else if (signedQty > 0) {
+          await db.execute(sql`
+            INSERT INTO warehouse_stock (tenant_id, warehouse_id, item_id, quantity, reserved)
+            VALUES (${tid}, ${warehouseId}, ${itemIdStr}, ${signedQty}, 0)`);
+        }
+      }
+    } catch (_) { /* stock update is best-effort */ }
+
+    res.json(inserted.rows[0]);
+  } catch (e: any) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
 export default router;

@@ -44,6 +44,7 @@ export const tenants = pgTable("tenants", {
   contactName: varchar("contact_name", { length: 255 }),
   contactPhone: varchar("contact_phone", { length: 20 }),
   gstNumber: varchar("gst_number", { length: 20 }),
+  fssaiNumber: varchar("fssai_number", { length: 20 }),
   address: text("address"),
   isSuperAdmin: boolean("is_super_admin").default(false),
   isInternal: boolean("is_internal").notNull().default(false),

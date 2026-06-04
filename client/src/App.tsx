@@ -175,6 +175,7 @@ import RecurringInvoicesPage from "@/pages/recurring-invoices";
 import WarehousesPage from "@/pages/warehouses";
 import InventoryBulkImportPage from "@/pages/inventory-bulk-import";
 import InventoryGrnScanPage from "@/pages/inventory-grn-scan";
+import InventoryStockAdjustmentsPage from "@/pages/inventory-stock-adjustments";
 import ProjectManagementPage from "@/pages/project-management";
 import TimesheetsPage from "@/pages/timesheets";
 import FixedAssetsPage from "@/pages/fixed-assets";
@@ -2214,6 +2215,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "warehouses", label: "Warehouses & Stock", icon: Archive, onClick: () => setLocation('/warehouses') },
         { id: "inventory-bulk-import", label: "Bulk Import Products", icon: Upload, onClick: () => setLocation('/inventory/bulk-import') },
         { id: "inventory-grn-scan", label: "GRN Scan (Barcode)", icon: Scan, onClick: () => setLocation('/inventory/grn-scan') },
+        { id: "inventory-stock-adjustments", label: "Stock Adjustments", icon: AlertTriangle, onClick: () => setLocation('/inventory/stock-adjustments') },
       ],
     },
     {
@@ -3972,6 +3974,7 @@ function Router() {
       <ProtectedRoute path="/warehouses" component={WarehousesWrapper} />
       <ProtectedRoute path="/inventory/bulk-import" component={InventoryBulkImportWrapper} />
       <ProtectedRoute path="/inventory/grn-scan" component={InventoryGrnScanWrapper} />
+      <ProtectedRoute path="/inventory/stock-adjustments" component={InventoryStockAdjustmentsWrapper} />
       <ProtectedRoute path="/projects" component={ProjectManagementWrapper} />
       <ProtectedRoute path="/fixed-assets" component={FixedAssetsWrapper} />
       <ProtectedRoute path="/currency-management" component={CurrencyManagementWrapper} />
@@ -4140,6 +4143,22 @@ function InventoryGrnScanWrapper() {
       navSections={resolvedNav} activeView={activeView}
       onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
       <InventoryGrnScanPage />
+    </DashboardShell>
+  );
+}
+
+function InventoryStockAdjustmentsWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('inventory-stock-adjustments');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Stock Adjustments" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
+      <InventoryStockAdjustmentsPage />
     </DashboardShell>
   );
 }

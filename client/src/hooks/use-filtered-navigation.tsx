@@ -134,6 +134,7 @@ const navItemToScreen: Record<string, string> = {
   'warehouses': 'Inventory Management',
   'inventory-bulk-import': 'Inventory Management',
   'inventory-grn-scan': 'Inventory Management',
+  'inventory-stock-adjustments': 'Inventory Management',
   'projects': 'Projects & Assets',
   'fixed-assets': 'Projects & Assets',
   'currency-management': 'Accounting & Ledger',

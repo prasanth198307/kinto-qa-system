@@ -825,6 +825,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         contactName: tenants.contactName,
         contactPhone: tenants.contactPhone,
         gstNumber: tenants.gstNumber,
+        fssaiNumber: tenants.fssaiNumber,
         address: tenants.address,
         createdAt: tenants.createdAt,
       }).from(tenants).where(eq(tenants.id, tenantId));
@@ -871,6 +872,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         contactName: tenants.contactName,
         contactPhone: tenants.contactPhone,
         gstNumber: tenants.gstNumber,
+        fssaiNumber: tenants.fssaiNumber,
         address: tenants.address,
         createdAt: tenants.createdAt,
       }).from(tenants).where(eq(tenants.id, tenantId));
@@ -888,7 +890,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (req.user?.role?.toLowerCase() !== 'admin' && !req.user?.isSuperAdmin) return res.status(403).json({ message: 'Admin only' });
 
     const tenantId: number = (req.session as any).tenantId ?? req.user?.tenantId ?? 1;
-    const { billingEmail, contactName, contactPhone, gstNumber, address, logoUrl, primaryColor, industry } = req.body;
+    const { billingEmail, contactName, contactPhone, gstNumber, fssaiNumber, address, logoUrl, primaryColor, industry } = req.body;
 
     try {
       const updates: Record<string, any> = { updatedAt: new Date().toISOString() };
@@ -896,6 +898,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (contactName !== undefined) updates.contactName = contactName;
       if (contactPhone !== undefined) updates.contactPhone = contactPhone;
       if (gstNumber !== undefined) updates.gstNumber = gstNumber;
+      if (fssaiNumber !== undefined) updates.fssaiNumber = fssaiNumber;
       if (address !== undefined) updates.address = address;
       if (logoUrl !== undefined) updates.logoUrl = logoUrl;
       if (primaryColor !== undefined) updates.primaryColor = primaryColor;

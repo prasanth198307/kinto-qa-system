@@ -114,6 +114,7 @@ const settingsSchema = z.object({
   contactName:  z.string().max(255).optional(),
   contactPhone: z.string().max(20).optional(),
   gstNumber:    z.string().max(20).optional(),
+  fssaiNumber:  z.string().max(20).optional(),
   address:      z.string().optional(),
   industry:     z.string().optional(),
   logoUrl:      z.string().optional(),
@@ -161,6 +162,7 @@ export default function TenantSettings() {
       contactName:  tenantInfo?.contactName ?? "",
       contactPhone: tenantInfo?.contactPhone ?? "",
       gstNumber:    tenantInfo?.gstNumber ?? "",
+      fssaiNumber:  (tenantInfo as any)?.fssaiNumber ?? "",
       address:      tenantInfo?.address ?? "",
       industry:     tenantInfo?.industry ?? "",
       logoUrl:      tenantInfo?.logoUrl ?? "",
@@ -420,6 +422,13 @@ export default function TenantSettings() {
                       <FormItem>
                         <FormLabel>GST Number</FormLabel>
                         <FormControl><Input placeholder="27AABCA1234B1Z5" {...field} data-testid="input-gst-number" /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="fssaiNumber" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>FSSAI License No. <span className="text-muted-foreground text-xs">(food businesses)</span></FormLabel>
+                        <FormControl><Input placeholder="10012345000123" {...field} data-testid="input-fssai-number" /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />

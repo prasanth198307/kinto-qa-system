@@ -1210,7 +1210,8 @@ function PrintReceiptDialog({ open, txn, saleItems, session, onClose }: {
   const now = new Date();
   const storeName = company?.name || "SwachERP Store";
   const storeAddress = company?.address || "";
-  const gstin = company?.gstin || "";
+  const gstin = company?.gstNumber || company?.gstin || "";
+  const fssai = company?.fssaiNumber || "";
   const payMode = (txn.payment_mode || "cash").toUpperCase();
 
   return (
@@ -1225,6 +1226,7 @@ function PrintReceiptDialog({ open, txn, saleItems, session, onClose }: {
           <div className="text-center font-bold text-sm">{storeName}</div>
           {storeAddress && <div className="text-center text-[10px]">{storeAddress}</div>}
           {gstin && <div className="text-center text-[10px]">GSTIN: {gstin}</div>}
+          {fssai && <div className="text-center text-[10px]">FSSAI Lic: {fssai}</div>}
           <div className="border-t border-dashed border-gray-400 my-1" />
           <div className="flex justify-between text-[10px]">
             <span>Bill: {txn.transaction_no}</span>
