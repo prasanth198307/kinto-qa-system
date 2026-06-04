@@ -21,13 +21,55 @@ router.get("/sessions/active", requireAuth, async (req: any, res) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
+// List distinct counter names from past sessions (for dropdown)
+router.get("/sessions/counters", requireAuth, async (req: any, res) => {
+  try {
+    const rows = await db.execute(sql`
+      SELECT DISTINCT counter_name FROM pos_sessions
+      WHERE tenant_id=${tid(req)} AND counter_name IS NOT NULL
+      ORDER BY counter_name`);
+    res.json(rows.rows.map((r: any) => r.counter_name));
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// Last closed session (optionally filtered by counter_name)
+router.get("/sessions/last", requireAuth, async (req: any, res) => {
+  try {
+    const { counter_name } = req.query as any;
+    const rows = counter_name
+      ? await db.execute(sql`SELECT * FROM pos_sessions WHERE tenant_id=${tid(req)} AND status='closed' AND counter_name=${counter_name} ORDER BY closed_at DESC LIMIT 1`)
+      : await db.execute(sql`SELECT * FROM pos_sessions WHERE tenant_id=${tid(req)} AND status='closed' ORDER BY closed_at DESC LIMIT 1`);
+    res.json(rows.rows[0] || null);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// Manager credential verification for approval gate
+router.post("/sessions/verify-manager", requireAuth, async (req: any, res) => {
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) return res.status(400).json({ ok: false, message: "Username and password required" });
+    const userRows = await db.execute(sql`
+      SELECT u.id, u.password, r.name as role_name
+      FROM users u LEFT JOIN roles r ON r.id = u.role_id
+      WHERE u.username = ${username} AND u.tenant_id = ${Number(tid(req))} AND u.record_status = 1
+      LIMIT 1`);
+    const user = userRows.rows[0] as any;
+    if (!user) return res.status(401).json({ ok: false, message: "User not found" });
+    const { comparePasswords } = await import('./auth');
+    const ok = await comparePasswords(password, user.password as string);
+    if (!ok) return res.status(401).json({ ok: false, message: "Incorrect password" });
+    res.json({ ok: true, approvedBy: username, role: user.role_name });
+  } catch (e: any) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 router.post("/sessions/open", requireAuth, async (req: any, res) => {
   try {
-    const { counter_name, opening_balance } = req.body;
+    const { counter_name, opening_balance, opening_upi_float, approved_by, shift_type } = req.body;
     const userId = String(req.user?.id || "");
     const rows = await db.execute(sql`
-      INSERT INTO pos_sessions (tenant_id, user_id, counter_name, opening_balance)
-      VALUES (${tid(req)}, ${userId}, ${counter_name||'Counter 1'}, ${opening_balance||0})
+      INSERT INTO pos_sessions (tenant_id, user_id, counter_name, opening_balance, opening_upi_float, approved_by, shift_type)
+      VALUES (${tid(req)}, ${userId}, ${counter_name||'Counter 1'}, ${opening_balance||0},
+              ${opening_upi_float||0}, ${approved_by||null}, ${shift_type||'new'})
       RETURNING *`);
     res.json(rows.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
