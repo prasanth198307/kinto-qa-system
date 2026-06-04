@@ -1,0 +1,103 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.wrap{padding:1rem 0;font-size:13px}
+.section{margin-bottom:1.5rem}
+.sec-label{font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-secondary);margin-bottom:8px}
+.row{display:grid;grid-template-columns:200px 1fr 90px;gap:0;border-bottom:.5px solid var(--color-border-tertiary)}
+.row:first-child{border-top:.5px solid var(--color-border-tertiary)}
+.cell{padding:9px 10px;font-size:12px;color:var(--color-text-primary);line-height:1.5;border-right:.5px solid var(--color-border-tertiary)}
+.cell:last-child{border-right:none}
+.hdr{background:var(--color-background-secondary);font-weight:500;font-size:11px;color:var(--color-text-secondary);padding:7px 10px;border-bottom:.5px solid var(--color-border-secondary);border-right:.5px solid var(--color-border-tertiary)}
+.hdr:last-child{border-right:none}
+.hdr-row{display:grid;grid-template-columns:200px 1fr 90px;border:.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md) var(--border-radius-md) 0 0;overflow:hidden}
+.badge{display:inline-block;font-size:11px;font-weight:500;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.ok{background:var(--color-background-success);color:var(--color-text-success)}
+.gap{background:var(--color-background-danger);color:var(--color-text-danger)}
+.partial{background:var(--color-background-warning);color:var(--color-text-warning)}
+.info{background:var(--color-background-info);color:var(--color-text-info)}
+.feature{font-weight:500;color:var(--color-text-primary);display:block;margin-bottom:2px}
+.note{color:var(--color-text-secondary);font-size:11px;line-height:1.4}
+.summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:1.5rem}
+.scard{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:12px 14px}
+.scard-num{font-size:22px;font-weight:500;margin-bottom:2px}
+.scard-lbl{font-size:11px;color:var(--color-text-secondary)}
+.action-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:1rem}
+button{cursor:pointer;font-size:12px}
+</style>
+<div class="wrap">
+
+<div class="summary-grid">
+  <div class="scard"><div class="scard-num" style="color:var(--color-text-success)">14</div><div class="scard-lbl">Covered well</div></div>
+  <div class="scard"><div class="scard-num" style="color:var(--color-text-warning)">9</div><div class="scard-lbl">Partial / needs work</div></div>
+  <div class="scard"><div class="scard-num" style="color:var(--color-text-danger)">11</div><div class="scard-lbl">Missing entirely</div></div>
+  <div class="scard"><div class="scard-num" style="color:var(--color-text-info)">3</div><div class="scard-lbl">Role conflicts found</div></div>
+</div>
+
+<div class="section">
+  <div class="sec-label">POS Terminal — billing & payments</div>
+  <div class="hdr-row"><div class="hdr">Feature</div><div class="hdr">Gap / finding</div><div class="hdr">Status</div></div>
+  <div class="row"><div class="cell"><span class="feature">Barcode / SKU scan</span><span class="note">USB scanner, manual fallback</span></div><div class="cell">Not mentioned in any screen. Assumed but not specified. Need to define scanner protocol (HID keyboard emulation vs serial).</div><div class="cell"><span class="badge partial">Partial</span></div></div>
+  <div class="row"><div class="cell"><span class="feature">Weighing scale integration</span><span class="note">Serial/USB, weight × rate/kg</span></div><div class="cell">Completely absent. Critical for loose items — vegetables, pulses, dry fruits. Must add to POS Terminal + Terminal Settings.</div><div class="cell"><span class="badge gap">Missing</span></div></div>
+  <div class="row"><div class="cell"><span class="feature">UPI QR payment</span><span class="note">Razorpay / PhonePe</span></div><div class="cell">Listed in access matrix (Store Mgr + Cashier). Good. But no screen spec for QR display, payment confirmation polling, or timeout handling.</div><div class="cell"><span class="badge partial">Partial</span></div></div>
+  <div class="row"><div class="cell"><span class="feature">Split payment</span><span class="note">Cash + UPI + Card in one bill</span></div><div class="cell">Not specified. A customer paying ₹850 with ₹500 cash + ₹350 UPI is common in grocery. Must be designed explicitly.</div><div class="cell"><span class="badge gap">Missing</span></div></div>
+  <div class="row"><div class="cell"><span class="feature">Cash tender + change</span><span class="note">Auto change calculation</span></div><div class="cell">Not mentioned. Cashier enters ₹1000, system shows change ₹263. Basic but must be explicit.</div><div class="cell"><span class="badge gap">Missing</span></div></div>
+  <div class="row"><div class="cell"><span class="feature">Park bill / hold cart</span><span class="note">Pause, serve next customer</span></div><div class="cell">Absent entirely. Very common in grocery — customer forgets an item, next in queue gets billed. Critical for counter flow.</div><div class="cell"><span class="badge gap">Missing</span></div></div>
+  <div class="row"><div class="cell"><span class="feature">Price override with PIN</span><span class="note">Supervisor approval</span></div><div class="cell">Not in spec. Discounts and returns exist but ad-hoc price override for damaged/near-expiry items needs explicit supervisor PIN gate.</div><div class="cell"><span class="badge gap">Missing</span></div></div>
+  <div class="row"><div class="cell"><span class="feature">Card terminal (Pine Labs)</span><span class="note">EDC swipe integration</span></div><div class="cell">Listed in matrix — good. But EDC integration needs physical terminal pairing, transaction ID mapping, and failure/retry handling spec.</div><div class="cell"><span class="badge partial">Partial</span></div></div>
+  <div class="row"><div class="cell"><span class="feature">Returns</span><span class="note">Against bill, stock reversal</span></div><div class="cell">Returns screen exists (Store Mgr only — good). But no spec for: refund to original mode, partial item return, stock auto-reversal on return.</div><div class="cell"><span class="badge partial">Partial</span></div></div>
+</div>
+
+<div class="section">
+  <div class="sec-label">Inventory & product master</div>
+  <div class="hdr-row"><div class="hdr">Feature</div><div class="hdr">Gap / finding</div><div class="hdr">Status</div></div>
+  <div class="row"><div class="cell"><span class="feature">MRP lock</span><span class="note">Cannot bill above MRP</span></div><div class="cell">Not specified anywhere. Legally required in India for packaged goods. Price Lists exist but MRP ceiling enforcement must be explicit.</div><div class="cell"><span class="badge gap">Missing</span></div></div>
+  <div class="row"><div class="cell"><span class="feature">Expiry / batch tracking</span><span class="note">FEFO, near-expiry alerts</span></div><div class="cell">Serial/Lot Tracking exists (Godown Incharge). But no expiry alert, no near-expiry discount trigger, no FEFO (First Expiry First Out) rule at billing.</div><div class="cell"><span class="badge partial">Partial</span></div></div>
+  <div class="row"><div class="cell"><span class="feature">UOM conversions</span><span class="note">kg ↔ packet ↔ loose</span></div><div class="cell">UOM Conversions listed — good. But grocery needs: 1 bag = 25 kg, 1 packet = 500g, billing in grams via scale. Conversion chain must be validated.</div><div class="cell"><span class="badge partial">Partial</span></div></div>
+  <div class="row"><div class="cell"><span class="feature">GST slab per item</span><span class="note">0% / 5% / 12% / 18%</span></div><div class="cell">GST exists in accounting. But item-level HSN + GST slab assignment in the Product/Item Master is not mentioned. Critical — rice is 0%, biscuits are 18%.</div><div class="cell"><span class="badge gap">Missing</span></div></div>
+  <div class="row"><div class="cell"><span class="feature">Low stock alerts</span><span class="note">Threshold-based warning</span></div><div class="cell">Stock Levels screen exists (Godown). But no mention of reorder point, low-stock threshold, or alert mechanism to Store Manager / Purchase Manager.</div><div class="cell"><span class="badge gap">Missing</span></div></div>
+  <div class="row"><div class="cell"><span class="feature">Shrinkage / write-off</span><span class="note">Damaged / expired stock</span></div><div class="cell">Not in spec. Grocery stores write off spoiled, damaged, or expired goods regularly. Needs a stock adjustment screen with reason codes.</div><div class="cell"><span class="badge gap">Missing</span></div></div>
+</div>
+
+<div class="section">
+  <div class="sec-label">GST & compliance</div>
+  <div class="hdr-row"><div class="hdr">Feature</div><div class="hdr">Gap / finding</div><div class="hdr">Status</div></div>
+  <div class="row"><div class="cell"><span class="feature">GSTR-1 / GSTR-3B</span><span class="note">JSON export for filing</span></div><div class="cell">Listed under Accountant — good. But B2C vs B2B split, HSN summary, and inter-state vs intra-state separation must be verified in the GST module.</div><div class="cell"><span class="badge ok">Covered</span></div></div>
+  <div class="row"><div class="cell"><span class="feature">Thermal receipt with GST</span><span class="note">CGST + SGST per line</span></div><div class="cell">Print Receipt in POS matrix — good. But receipt format must show: GSTIN, HSN, CGST/SGST breakup per item, total tax. Not currently specified.</div><div class="cell"><span class="badge partial">Partial</span></div></div>
+  <div class="row"><div class="cell"><span class="feature">FSSAI license on receipt</span><span class="note">Regulatory requirement</span></div><div class="cell">Not mentioned anywhere. Grocery stores must display FSSAI license number on receipts and invoices. Add to receipt template config.</div><div class="cell"><span class="badge gap">Missing</span></div></div>
+</div>
+
+<div class="section">
+  <div class="sec-label">Session management — opening balance issue</div>
+  <div class="hdr-row"><div class="hdr">Feature</div><div class="hdr">Gap / finding</div><div class="hdr">Status</div></div>
+  <div class="row"><div class="cell"><span class="feature">Denomination breakup</span><span class="note">₹500 × n, ₹200 × n…</span></div><div class="cell">Current screen: single Opening Balance field. Needs denomination-wise entry to enable accurate EOD cash reconciliation.</div><div class="cell"><span class="badge gap">Missing</span></div></div>
+  <div class="row"><div class="cell"><span class="feature">Shift selector</span><span class="note">Morning / evening / night</span></div><div class="cell">No shift concept in current spec. Multi-shift grocery stores need shift-wise sales and cash reports per counter per shift.</div><div class="cell"><span class="badge gap">Missing</span></div></div>
+  <div class="row"><div class="cell"><span class="feature">EOD Z-report</span><span class="note">Cash vs expected, sign-off</span></div><div class="cell">Sessions tab exists — good. But no Z-report specification: expected cash vs physical count, denomination-wise closing, supervisor sign-off.</div><div class="cell"><span class="badge partial">Partial</span></div></div>
+</div>
+
+<div class="section">
+  <div class="sec-label">Role conflicts &amp; access issues</div>
+  <div class="hdr-row"><div class="hdr">Issue</div><div class="hdr">Detail</div><div class="hdr">Severity</div></div>
+  <div class="row"><div class="cell"><span class="feature">Cashier opens sessions</span><span class="note">Sessions screen: Cashier ✓</span></div><div class="cell">Cashier can open/close their own counter — correct. But who validates the opening balance? Store Manager should approve, not just observe.</div><div class="cell"><span class="badge partial">Review</span></div></div>
+  <div class="row"><div class="cell"><span class="feature">Promotions: Store Mgr only</span><span class="note">Cashier has no access</span></div><div class="cell">Good restriction. But if a promotion expires mid-session, cashier has no way to see why the discount isn't applying. Need read-only view for cashier.</div><div class="cell"><span class="badge partial">Review</span></div></div>
+  <div class="row"><div class="cell"><span class="feature">GRN: Godown + Purchase Mgr</span><span class="note">Both have Full access</span></div><div class="cell">Approval workflow conflict — if both can create and approve GRNs, the 4-eye principle breaks. Godown creates, Purchase Mgr approves — enforce this split.</div><div class="cell"><span class="badge gap">Fix needed</span></div></div>
+</div>
+
+<div class="section">
+  <div class="sec-label">Covered well — no major changes needed</div>
+  <div class="hdr-row"><div class="hdr">Feature</div><div class="hdr">Note</div><div class="hdr">Status</div></div>
+  <div class="row"><div class="cell"><span class="feature">Warehouse: Main Store + Godown</span></div><div class="cell">Two default warehouses defined correctly. Stock transfer flow (Godown → Store) is well-mapped to Godown Incharge role.</div><div class="cell"><span class="badge ok">Covered</span></div></div>
+  <div class="row"><div class="cell"><span class="feature">Purchase order flow</span></div><div class="cell">PO → GRN → stock receipt chain is complete. Purchase Mgr + Godown roles are correctly separated.</div><div class="cell"><span class="badge ok">Covered</span></div></div>
+  <div class="row"><div class="cell"><span class="feature">Loyalty / customers in POS</span></div><div class="cell">Customers screen in POS matrix for Store Mgr and Cashier — correct placement.</div><div class="cell"><span class="badge ok">Covered</span></div></div>
+  <div class="row"><div class="cell"><span class="feature">Credit notes</span></div><div class="cell">Credit Notes in Sales with appropriate role split (Store Mgr create, Accountant full) — good.</div><div class="cell"><span class="badge ok">Covered</span></div></div>
+  <div class="row"><div class="cell"><span class="feature">HR + Payroll module</span></div><div class="cell">Comprehensive — all 14 HR screens under HR Manager. ESS portal included. Solid for a grocery store team.</div><div class="cell"><span class="badge ok">Covered</span></div></div>
+</div>
+
+<div class="action-row">
+  <button onclick="sendPrompt('Build the denomination-wise Open POS Session screen spec for SwachERP grocery store')">Open session screen spec ↗</button>
+  <button onclick="sendPrompt('Design the weighing scale integration screen for POS billing in SwachERP')">Scale integration spec ↗</button>
+  <button onclick="sendPrompt('Write the split payment checkout flow for grocery POS — cash + UPI + card in one bill')">Split payment flow ↗</button>
+  <button onclick="sendPrompt('Fix the GRN approval role conflict — Godown creates, Purchase Manager approves, 4-eye enforcement')">Fix GRN role conflict ↗</button>
+  <button onclick="sendPrompt('Design EOD Z-report and cash reconciliation screen for grocery POS counter close')">EOD Z-report spec ↗</button>
+</div>
+</div>
