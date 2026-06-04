@@ -326,7 +326,16 @@ function SerialLotTab() {
                     <td className="p-3 font-mono text-xs">{r.serial_number || "—"}</td>
                     <td className="p-3 text-xs">{[r.lot_number, r.batch_number].filter(Boolean).join(" / ") || "—"}</td>
                     <td className="p-3 text-xs">{r.manufactured_date ? new Date(r.manufactured_date).toLocaleDateString("en-IN") : "—"}</td>
-                    <td className="p-3 text-xs">{r.expiry_date ? new Date(r.expiry_date).toLocaleDateString("en-IN") : "—"}</td>
+                    <td className="p-3 text-xs">
+                      {r.expiry_date ? (() => {
+                        const days = Math.ceil((new Date(r.expiry_date).getTime() - Date.now()) / 86400000);
+                        const label = new Date(r.expiry_date).toLocaleDateString("en-IN");
+                        if (days < 0) return <span className="font-semibold text-destructive">{label} (Expired)</span>;
+                        if (days <= 7) return <span className="font-semibold text-destructive">{label} ({days}d left)</span>;
+                        if (days <= 30) return <span className="font-medium text-amber-600 dark:text-amber-400">{label} ({days}d left)</span>;
+                        return <span>{label}</span>;
+                      })() : "—"}
+                    </td>
                     <td className="p-3 text-xs">{r.warehouse_name || "—"}</td>
                     <td className="p-3">
                       <Select value={r.status} onValueChange={v => statusMutation.mutate({ id: r.id, status: v })}>

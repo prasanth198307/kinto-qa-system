@@ -38,7 +38,7 @@ export default function GoodsReceiptNotesPage() {
   const [open, setOpen] = useState(false);
   const [viewing, setViewing] = useState<GRN | null>(null);
   const [form, setForm] = useState({ po_id: "", vendor_id: "", received_date: new Date().toISOString().split("T")[0], remarks: "" });
-  const [items, setItems] = useState([{ item_name: "", ordered_qty: 0, received_qty: 0, unit: "Nos", unit_price: 0 }]);
+  const [items, setItems] = useState([{ item_name: "", ordered_qty: 0, received_qty: 0, unit: "Nos", unit_price: 0, batch_number: "", lot_number: "", manufactured_date: "", expiry_date: "" }]);
 
   const { data: grns = [], isLoading } = useQuery<GRN[]>({
     queryKey: ["/api/generic/grns"],
@@ -57,7 +57,7 @@ export default function GoodsReceiptNotesPage() {
   });
 
   function addItem() {
-    setItems(prev => [...prev, { item_name: "", ordered_qty: 0, received_qty: 0, unit: "Nos", unit_price: 0 }]);
+    setItems(prev => [...prev, { item_name: "", ordered_qty: 0, received_qty: 0, unit: "Nos", unit_price: 0, batch_number: "", lot_number: "", manufactured_date: "", expiry_date: "" }]);
   }
 
   function removeItem(idx: number) {
@@ -186,23 +186,36 @@ export default function GoodsReceiptNotesPage() {
                   <Plus className="h-3 w-3 mr-1" /> Add Item
                 </Button>
               </div>
-              <div className="text-xs text-muted-foreground grid grid-cols-12 gap-2 px-1">
-                <span className="col-span-3">Item Name</span>
-                <span className="col-span-2">Ordered Qty</span>
-                <span className="col-span-2">Received Qty</span>
-                <span className="col-span-2">Unit</span>
-                <span className="col-span-2">Unit Price</span>
-              </div>
               {items.map((item, idx) => (
-                <div key={idx} className="grid grid-cols-12 gap-2 items-center" data-testid={`item-row-${idx}`}>
-                  <Input className="col-span-3" placeholder="Item name" value={item.item_name} onChange={e => updateItem(idx, "item_name", e.target.value)} />
-                  <Input className="col-span-2" type="number" min={0} placeholder="0" value={item.ordered_qty} onChange={e => updateItem(idx, "ordered_qty", Number(e.target.value))} />
-                  <Input className="col-span-2" type="number" min={0} placeholder="0" value={item.received_qty} onChange={e => updateItem(idx, "received_qty", Number(e.target.value))} />
-                  <Input className="col-span-2" placeholder="Nos" value={item.unit} onChange={e => updateItem(idx, "unit", e.target.value)} />
-                  <Input className="col-span-2" type="number" min={0} placeholder="0" value={item.unit_price} onChange={e => updateItem(idx, "unit_price", Number(e.target.value))} />
-                  <Button size="icon" variant="ghost" onClick={() => removeItem(idx)} disabled={items.length === 1} data-testid={`button-remove-item-${idx}`}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                <div key={idx} className="rounded-md border p-3 space-y-2" data-testid={`item-row-${idx}`}>
+                  <div className="grid grid-cols-12 gap-2 items-center">
+                    <Input className="col-span-4" placeholder="Item name" value={item.item_name} onChange={e => updateItem(idx, "item_name", e.target.value)} data-testid={`input-item-name-${idx}`} />
+                    <Input className="col-span-2" type="number" min={0} placeholder="Ord. Qty" value={item.ordered_qty} onChange={e => updateItem(idx, "ordered_qty", Number(e.target.value))} />
+                    <Input className="col-span-2" type="number" min={0} placeholder="Rcv. Qty" value={item.received_qty} onChange={e => updateItem(idx, "received_qty", Number(e.target.value))} />
+                    <Input className="col-span-1" placeholder="Unit" value={item.unit} onChange={e => updateItem(idx, "unit", e.target.value)} />
+                    <Input className="col-span-2" type="number" min={0} placeholder="Price" value={item.unit_price} onChange={e => updateItem(idx, "unit_price", Number(e.target.value))} />
+                    <Button size="icon" variant="ghost" onClick={() => removeItem(idx)} disabled={items.length === 1} data-testid={`button-remove-item-${idx}`}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Batch No.</Label>
+                      <Input className="h-8 text-xs" placeholder="e.g. B2406" value={item.batch_number} onChange={e => updateItem(idx, "batch_number", e.target.value)} data-testid={`input-batch-${idx}`} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Lot No.</Label>
+                      <Input className="h-8 text-xs" placeholder="e.g. L001" value={item.lot_number} onChange={e => updateItem(idx, "lot_number", e.target.value)} data-testid={`input-lot-${idx}`} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Mfg. Date</Label>
+                      <Input className="h-8 text-xs" type="date" value={item.manufactured_date} onChange={e => updateItem(idx, "manufactured_date", e.target.value)} data-testid={`input-mfg-date-${idx}`} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Expiry Date</Label>
+                      <Input className="h-8 text-xs" type="date" value={item.expiry_date} onChange={e => updateItem(idx, "expiry_date", e.target.value)} data-testid={`input-expiry-${idx}`} />
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>

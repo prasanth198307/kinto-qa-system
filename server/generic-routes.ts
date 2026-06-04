@@ -261,8 +261,8 @@ async function handleCreateGRN(req: any, res: any) {
       VALUES (${tid(req)},${num},${actualDate},${actualPoId},${actualVendorId},${actualNotes},'received') RETURNING *`);
     const grnId = (grn.rows[0] as any).id;
     for (const it of (items||[])) {
-      await db.execute(sql`INSERT INTO grn_items (tenant_id,grn_id,po_item_id,product_id,description,ordered_qty,received_qty,rejected_qty,unit_price)
-        VALUES (${tid(req)},${grnId},${it.poItemId||null},${it.productId||null},${it.item_name||it.description||null},${it.orderedQty||it.ordered_qty||0},${it.receivedQty||it.received_qty||0},${it.rejectedQty||0},${it.unitPrice||it.unit_price||0})`);
+      await db.execute(sql`INSERT INTO grn_items (tenant_id,grn_id,po_item_id,product_id,description,ordered_qty,received_qty,rejected_qty,unit_price,batch_number,lot_number,manufactured_date,expiry_date)
+        VALUES (${tid(req)},${grnId},${it.poItemId||null},${it.productId||null},${it.item_name||it.description||null},${it.orderedQty||it.ordered_qty||0},${it.receivedQty||it.received_qty||0},${it.rejectedQty||0},${it.unitPrice||it.unit_price||0},${it.batchNumber||it.batch_number||null},${it.lotNumber||it.lot_number||null},${it.manufacturedDate||it.manufactured_date||null},${it.expiryDate||it.expiry_date||null})`);
     }
     if (actualPoId) await db.execute(sql`UPDATE purchase_orders SET grn_status='partial' WHERE id=${actualPoId} AND tenant_id=${tid(req)}`).catch(() => {});
     res.json(grn.rows[0]);
