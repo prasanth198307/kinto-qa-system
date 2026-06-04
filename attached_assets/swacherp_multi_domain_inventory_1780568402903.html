@@ -1,0 +1,196 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.wrap{padding:1rem 0;font-size:13px;color:var(--color-text-primary)}
+.sec{margin-bottom:1.8rem}
+.sec-title{font-size:15px;font-weight:500;margin-bottom:12px;padding-bottom:8px;border-bottom:.5px solid var(--color-border-tertiary)}
+.domain-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:14px}
+.domain-card{border:.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:12px 14px;background:var(--color-background-primary)}
+.domain-icon{font-size:20px;margin-bottom:6px;color:var(--color-text-tertiary)}
+.domain-name{font-size:12px;font-weight:500;margin-bottom:4px}
+.domain-inv{font-size:11px;color:var(--color-text-secondary);line-height:1.5}
+.b{display:inline-block;font-size:11px;font-weight:500;padding:2px 8px;border-radius:99px;margin-top:5px}
+.b-yes{background:var(--color-background-success);color:var(--color-text-success)}
+.b-no{background:var(--color-background-danger);color:var(--color-text-danger)}
+.b-partial{background:var(--color-background-warning);color:var(--color-text-warning)}
+.b-blue{background:var(--color-background-info);color:var(--color-text-info)}
+.arch-box{border:.5px solid var(--color-border-secondary);border-radius:var(--border-radius-lg);overflow:hidden;margin-bottom:12px}
+.arch-header{background:var(--color-background-secondary);padding:8px 14px;font-size:12px;font-weight:500;border-bottom:.5px solid var(--color-border-tertiary);display:flex;align-items:center;gap:8px}
+.arch-body{padding:12px 14px}
+.layer-row{display:flex;align-items:stretch;gap:0;margin-bottom:8px;border:.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);overflow:hidden}
+.layer-label{background:var(--color-background-secondary);padding:10px 12px;font-size:11px;font-weight:500;min-width:130px;display:flex;align-items:center;border-right:.5px solid var(--color-border-tertiary)}
+.layer-content{padding:10px 12px;font-size:11px;color:var(--color-text-secondary);line-height:1.6;flex:1}
+.layer-shared{background:var(--color-background-success);opacity:.08;position:absolute;inset:0;pointer-events:none}
+.matrix-wrap{overflow-x:auto}
+.matrix{width:100%;border-collapse:collapse;font-size:11px}
+.matrix th{background:var(--color-background-secondary);padding:7px 10px;text-align:left;font-weight:500;color:var(--color-text-secondary);border:.5px solid var(--color-border-tertiary);white-space:nowrap}
+.matrix td{padding:7px 10px;border:.5px solid var(--color-border-tertiary);color:var(--color-text-primary);vertical-align:top}
+.matrix tr:nth-child(even) td{background:var(--color-background-secondary)}
+.tick{color:var(--color-text-success);font-weight:500}
+.cross{color:var(--color-text-danger)}
+.dash{color:var(--color-text-tertiary)}
+.note{font-size:11px;color:var(--color-text-secondary);line-height:1.6;padding:10px 12px;background:var(--color-background-secondary);border-radius:var(--border-radius-md);margin-top:8px}
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.decision-card{border:.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:14px}
+.decision-title{font-size:12px;font-weight:500;margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.decision-body{font-size:11px;color:var(--color-text-secondary);line-height:1.6}
+.action-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+button{cursor:pointer;font-size:12px}
+.btn-sm{font-size:11px;padding:4px 12px;border:.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);color:var(--color-text-primary)}
+</style>
+<div class="wrap">
+
+<div class="sec">
+  <div class="sec-title">SwachERP domains that need inventory</div>
+  <div class="domain-grid">
+    <div class="domain-card">
+      <div class="domain-icon"><i class="ti ti-building-store" aria-hidden="true"></i></div>
+      <div class="domain-name">Grocery / Retail</div>
+      <div class="domain-inv">Products, MRP, barcodes, batch/expiry, weighing scale, POS deduction</div>
+      <span class="b b-yes">Core use case</span>
+    </div>
+    <div class="domain-card">
+      <div class="domain-icon"><i class="ti ti-tools-kitchen-2" aria-hidden="true"></i></div>
+      <div class="domain-name">Restaurant / F&amp;B</div>
+      <div class="domain-inv">Raw ingredients, recipes, BOM, kitchen consumption, waste tracking</div>
+      <span class="b b-yes">Needs inventory</span>
+    </div>
+    <div class="domain-card">
+      <div class="domain-icon"><i class="ti ti-pill" aria-hidden="true"></i></div>
+      <div class="domain-name">Pharmacy</div>
+      <div class="domain-inv">Drug schedule, batch, expiry mandatory, Schedule H/H1 controls, CDSCO</div>
+      <span class="b b-yes">Needs inventory</span>
+    </div>
+    <div class="domain-card">
+      <div class="domain-icon"><i class="ti ti-building-factory-2" aria-hidden="true"></i></div>
+      <div class="domain-name">Manufacturing</div>
+      <div class="domain-inv">Raw material, WIP, finished goods, BOM explosion, work orders</div>
+      <span class="b b-yes">Needs inventory</span>
+    </div>
+    <div class="domain-card">
+      <div class="domain-icon"><i class="ti ti-shirt" aria-hidden="true"></i></div>
+      <div class="domain-name">Apparel / Fashion</div>
+      <div class="domain-inv">Size-colour matrix (S/M/L × Red/Blue), style codes, variant tracking</div>
+      <span class="b b-partial">Variant-heavy</span>
+    </div>
+    <div class="domain-card">
+      <div class="domain-icon"><i class="ti ti-stethoscope" aria-hidden="true"></i></div>
+      <div class="domain-name">Clinic / Hospital</div>
+      <div class="domain-inv">Consumables, medicines, equipment. Primarily purchase + expense, not POS.</div>
+      <span class="b b-partial">Limited billing</span>
+    </div>
+    <div class="domain-card">
+      <div class="domain-icon"><i class="ti ti-school" aria-hidden="true"></i></div>
+      <div class="domain-name">Education / Services</div>
+      <div class="domain-inv">No physical goods. Stationery stock maybe. No core inventory need.</div>
+      <span class="b b-no">Not needed</span>
+    </div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="sec-title">Architecture answer — one engine, domain profiles</div>
+  <div class="arch-box">
+    <div class="arch-header"><i class="ti ti-layers-intersect" aria-hidden="true" style="font-size:16px"></i> Single inventory engine with domain-specific field profiles</div>
+    <div class="arch-body">
+      <div class="layer-row">
+        <div class="layer-label" style="background:var(--color-background-success);color:var(--color-text-success)">Shared core</div>
+        <div class="layer-content">Item master (name, barcode/SKU, category, UOM, HSN, GST%), stock levels per warehouse, GRN, stock transfers, bulk upload, barcode scan — identical across all domains. Built once.</div>
+      </div>
+      <div class="layer-row">
+        <div class="layer-label" style="background:var(--color-background-info);color:var(--color-text-info)">Domain profile</div>
+        <div class="layer-content">Extra fields and rules activated per tenant's domain setting. Grocery activates MRP lock + expiry + weighing scale. Pharmacy activates Schedule H + batch mandatory. Restaurant activates recipe/BOM. Apparel activates size-colour matrix.</div>
+      </div>
+      <div class="layer-row">
+        <div class="layer-label" style="background:var(--color-background-warning);color:var(--color-text-warning)">POS linkage</div>
+        <div class="layer-content">Only domains with a retail counter (Grocery, Pharmacy, Apparel) connect inventory to POS terminal. Restaurant connects to Kitchen Display System (KDS) + recipe consumption instead. Services skip POS entirely.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="sec-title">Domain vs feature matrix — what changes per domain</div>
+  <div class="matrix-wrap">
+    <table class="matrix">
+      <thead>
+        <tr>
+          <th>Inventory feature</th>
+          <th>Grocery</th>
+          <th>Restaurant</th>
+          <th>Pharmacy</th>
+          <th>Apparel</th>
+          <th>Manufacturing</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Barcode / EAN scan</td><td class="tick">✓</td><td class="dash">—</td><td class="tick">✓</td><td class="tick">✓</td><td class="dash">—</td></tr>
+        <tr><td>MRP lock (billing ceiling)</td><td class="tick">✓ mandatory</td><td class="cross">✗</td><td class="tick">✓ mandatory</td><td class="tick">✓ optional</td><td class="cross">✗</td></tr>
+        <tr><td>Batch / lot tracking</td><td class="tick">✓ optional</td><td class="tick">✓ ingredient</td><td class="tick">✓ mandatory</td><td class="dash">—</td><td class="tick">✓ mandatory</td></tr>
+        <tr><td>Expiry date tracking</td><td class="tick">✓</td><td class="tick">✓</td><td class="tick">✓ mandatory</td><td class="cross">✗</td><td class="tick">✓</td></tr>
+        <tr><td>Weighing scale input</td><td class="tick">✓</td><td class="tick">✓ kitchen</td><td class="cross">✗</td><td class="cross">✗</td><td class="tick">✓ raw mat.</td></tr>
+        <tr><td>Recipe / BOM</td><td class="cross">✗</td><td class="tick">✓ core</td><td class="cross">✗</td><td class="cross">✗</td><td class="tick">✓ core</td></tr>
+        <tr><td>Size-colour matrix</td><td class="cross">✗</td><td class="cross">✗</td><td class="cross">✗</td><td class="tick">✓ core</td><td class="cross">✗</td></tr>
+        <tr><td>Schedule H drug control</td><td class="cross">✗</td><td class="cross">✗</td><td class="tick">✓ mandatory</td><td class="cross">✗</td><td class="cross">✗</td></tr>
+        <tr><td>Kitchen consumption deduct</td><td class="cross">✗</td><td class="tick">✓</td><td class="cross">✗</td><td class="cross">✗</td><td class="cross">✗</td></tr>
+        <tr><td>POS terminal deduction</td><td class="tick">✓</td><td class="dash">via KDS</td><td class="tick">✓</td><td class="tick">✓</td><td class="cross">✗</td></tr>
+        <tr><td>Bulk upload (Excel/CSV)</td><td class="tick">✓</td><td class="tick">✓</td><td class="tick">✓</td><td class="tick">✓</td><td class="tick">✓</td></tr>
+        <tr><td>Reorder / low-stock alert</td><td class="tick">✓</td><td class="tick">✓</td><td class="tick">✓</td><td class="tick">✓</td><td class="tick">✓</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note">Shared features (bottom 2 rows) are built once. Domain-specific rows are toggled by the tenant's domain profile set at onboarding. A single SwachERP codebase serves all — no separate inventory module per domain.</div>
+</div>
+
+<div class="sec">
+  <div class="sec-title">Bulk upload — what changes per domain</div>
+  <div class="decision-grid">
+    <div class="decision-card">
+      <div class="decision-title"><span class="b b-yes">Grocery</span> template columns</div>
+      <div class="decision-body">Barcode, name, category, HSN, GST%, MRP, purchase rate, selling price, UOM, expiry tracking Y/N, reorder level, warehouse</div>
+    </div>
+    <div class="decision-card">
+      <div class="decision-title"><span class="b b-blue">Pharmacy</span> template columns</div>
+      <div class="decision-body">Same as grocery + Drug schedule (H/H1/OTC), composition, manufacturer, pack size, mandatory batch required Y/N, controlled substance Y/N</div>
+    </div>
+    <div class="decision-card">
+      <div class="decision-title"><span class="b b-partial">Restaurant</span> template columns</div>
+      <div class="decision-body">Ingredient name, category, UOM (kg/ltr/pcs), purchase rate, par level, supplier code — NO barcode/MRP/GST (ingredients aren't sold directly)</div>
+    </div>
+    <div class="decision-card">
+      <div class="decision-title"><span class="b b-partial">Apparel</span> template columns</div>
+      <div class="decision-body">Style code, product name, category, colour, size, MRP, selling price, HSN, GST% — one row per size-colour combination, not per product</div>
+    </div>
+  </div>
+  <div class="note" style="margin-top:10px">Implementation: one base template with domain-specific extra columns appended. The upload engine reads the domain profile and validates accordingly. A grocery upload with "Drug schedule" column is ignored. A pharmacy upload missing "Pack size" throws a validation error.</div>
+</div>
+
+<div class="sec">
+  <div class="sec-title">Recommended decision for SwachERP</div>
+  <div class="arch-box">
+    <div class="arch-header"><i class="ti ti-check" aria-hidden="true" style="font-size:16px;color:var(--color-text-success)"></i> Build one inventory module — activate features by domain profile</div>
+    <div class="arch-body">
+      <div class="layer-row">
+        <div class="layer-label">Phase 1 now</div>
+        <div class="layer-content">Build shared core — item master, GRN, stock levels, bulk upload, barcode scan, low-stock alerts. Works for all domains immediately.</div>
+      </div>
+      <div class="layer-row">
+        <div class="layer-label">Grocery profile</div>
+        <div class="layer-content">Activate: MRP lock, expiry tracking, weighing scale input, POS deduction, FSSAI fields. This is your current focus — build this first on top of the core.</div>
+      </div>
+      <div class="layer-row">
+        <div class="layer-label">Other profiles</div>
+        <div class="layer-content">Pharmacy (batch mandatory, Schedule H), Restaurant (recipe/BOM, kitchen deduction), Apparel (size-colour matrix) — add as SwachERP expands to those verticals.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="action-row">
+  <button class="btn-sm" onclick="sendPrompt('Design the domain profile settings screen in SwachERP — where admin selects which inventory features to activate')">Domain profile settings screen ↗</button>
+  <button class="btn-sm" onclick="sendPrompt('Design the pharmacy inventory module differences from grocery in SwachERP — batch mandatory, Schedule H, expiry')">Pharmacy inventory spec ↗</button>
+  <button class="btn-sm" onclick="sendPrompt('Design the restaurant ingredient inventory and recipe BOM module for SwachERP')">Restaurant BOM spec ↗</button>
+  <button class="btn-sm" onclick="sendPrompt('How should the SwachERP item master database schema handle multi-domain inventory fields?')">DB schema approach ↗</button>
+</div>
+
+</div>

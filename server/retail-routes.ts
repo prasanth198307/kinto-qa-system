@@ -65,12 +65,12 @@ router.post("/sessions/verify-manager", requireAuth, async (req: any, res) => {
 
 router.post("/sessions/open", requireAuth, async (req: any, res) => {
   try {
-    const { counter_name, opening_balance, opening_upi_float, approved_by, shift_type, opening_denomination } = req.body;
+    const { counter_name, opening_balance, opening_upi_float, approved_by, shift_type, shift_name, opening_denomination } = req.body;
     const userId = String(req.user?.id || "");
     const rows = await db.execute(sql`
-      INSERT INTO pos_sessions (tenant_id, user_id, counter_name, opening_balance, opening_upi_float, approved_by, shift_type, opening_denomination)
+      INSERT INTO pos_sessions (tenant_id, user_id, counter_name, opening_balance, opening_upi_float, approved_by, shift_type, shift_name, opening_denomination)
       VALUES (${tid(req)}, ${userId}, ${counter_name||'Counter 1'}, ${opening_balance||0},
-              ${opening_upi_float||0}, ${approved_by||null}, ${shift_type||'new'},
+              ${opening_upi_float||0}, ${approved_by||null}, ${shift_type||'new'}, ${shift_name||'Morning'},
               ${JSON.stringify(opening_denomination||{})})
       RETURNING *`);
     res.json(rows.rows[0]);
@@ -628,6 +628,39 @@ router.get("/transactions/:txnNo", requireAuth, async (req: any, res) => {
     const txn = rows.rows[0] as any;
     const items = await db.execute(sql`SELECT * FROM pos_transaction_items WHERE transaction_id=${txn.id}`);
     res.json({ ...txn, items: items.rows });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Cashier / Per-Session Report ──────────────────────────────────────────────
+router.get("/reports/cashier", requireAuth, async (req: any, res) => {
+  try {
+    const date = (req.query.date as string) || new Date().toISOString().split("T")[0];
+    const [byCashier, hourly] = await Promise.all([
+      db.execute(sql`
+        SELECT s.counter_name, s.shift_name, s.shift_type, u.username as cashier,
+               COUNT(t.id) as txn_count,
+               COALESCE(SUM(t.total_amount),0) as total_sales,
+               COALESCE(SUM(t.discount_amount),0) as total_discounts,
+               COALESCE(SUM(t.tax_amount),0) as total_tax,
+               s.opening_balance, s.id as session_id,
+               s.opened_at
+        FROM pos_sessions s
+        LEFT JOIN pos_transactions t ON t.session_id = s.id
+        LEFT JOIN users u ON u.id::text = s.user_id
+        WHERE s.tenant_id=${tid(req)}
+          AND DATE(s.opened_at AT TIME ZONE 'Asia/Kolkata')=${date}
+        GROUP BY s.id, s.counter_name, s.shift_name, s.shift_type, u.username, s.opening_balance, s.opened_at
+        ORDER BY s.opened_at`),
+      db.execute(sql`
+        SELECT EXTRACT(HOUR FROM t.created_at AT TIME ZONE 'Asia/Kolkata')::int as hour,
+               COUNT(*) as txn_count, COALESCE(SUM(t.total_amount),0) as amount,
+               COALESCE(AVG(t.total_amount),0) as avg_ticket
+        FROM pos_transactions t
+        WHERE t.tenant_id=${tid(req)}
+          AND DATE(t.created_at AT TIME ZONE 'Asia/Kolkata')=${date}
+        GROUP BY hour ORDER BY hour`),
+    ]);
+    res.json({ date, byCashier: byCashier.rows, hourly: hourly.rows });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 

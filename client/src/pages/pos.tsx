@@ -319,6 +319,7 @@ function OpenSessionDialog({
   const [cashDenom, setCashDenom] = useState<DenomMap>({});
   const [upiFloat, setUpiFloat] = useState("");
   const [shiftType, setShiftType] = useState<"new" | "continue">("new");
+  const [shiftName, setShiftName] = useState<"Morning" | "Evening" | "Night">("Morning");
   const [mgr, setMgr] = useState({ username: "", password: "" });
   const [showMgrPass, setShowMgrPass] = useState(false);
   const [approvedBy, setApprovedBy] = useState("");
@@ -385,6 +386,7 @@ function OpenSessionDialog({
       opening_upi_float: Number(upiFloat || 0),
       approved_by: managerUser || approvedBy || null,
       shift_type: shiftType,
+      shift_name: shiftName,
     });
   }
 
@@ -460,6 +462,21 @@ function OpenSessionDialog({
                   autoFocus
                 />
               )}
+            </F>
+
+            <F label="Shift">
+              <div className="flex gap-2">
+                {(["Morning", "Evening", "Night"] as const).map(s => (
+                  <button
+                    key={s}
+                    onClick={() => setShiftName(s)}
+                    className={`flex-1 py-2 rounded-md border text-sm font-medium transition-colors ${shiftName === s ? "border-primary bg-primary/10 text-primary" : "border-muted hover-elevate"}`}
+                    data-testid={`btn-shift-name-${s.toLowerCase()}`}
+                  >
+                    {s === "Morning" ? "🌅" : s === "Evening" ? "🌆" : "🌙"} {s}
+                  </button>
+                ))}
+              </div>
             </F>
 
             <F label="Cash Opening (count denomination-wise)">
@@ -1234,7 +1251,11 @@ function PrintReceiptDialog({ open, txn, saleItems, session, onClose }: {
           </table>
           <div className="border-t border-dashed border-gray-400 my-1" />
           <div className="flex justify-between text-[10px]"><span>Subtotal</span><span>₹{fmt(txn.subtotal)}</span></div>
-          {Number(txn.tax_amount) > 0 && <div className="flex justify-between text-[10px]"><span>Tax</span><span>₹{fmt(txn.tax_amount)}</span></div>}
+          {Number(txn.tax_amount) > 0 && <>
+            <div className="flex justify-between text-[10px]"><span>CGST</span><span>₹{fmt(Number(txn.tax_amount) / 2)}</span></div>
+            <div className="flex justify-between text-[10px]"><span>SGST</span><span>₹{fmt(Number(txn.tax_amount) / 2)}</span></div>
+            <div className="flex justify-between text-[10px]"><span>Total Tax</span><span>₹{fmt(txn.tax_amount)}</span></div>
+          </>}
           {Number(txn.discount_amount) > 0 && <div className="flex justify-between text-[10px]"><span>Discount</span><span>-₹{fmt(txn.discount_amount)}</span></div>}
           {Number(txn.loyalty_discount) > 0 && <div className="flex justify-between text-[10px]"><span>Loyalty Redemption</span><span>-₹{fmt(txn.loyalty_discount)}</span></div>}
           <div className="flex justify-between font-bold text-[12px] border-t border-gray-400 pt-0.5">
@@ -1431,6 +1452,34 @@ function TerminalSettingsTab() {
   );
 }
 
+// ── Credit Limit Warning ───────────────────────────────────────────────────────
+function CreditLimitWarning({ customer, billTotal }: { customer: any; billTotal: number }) {
+  if (!customer) return null;
+  const cl = Number(customer.credit_limit || 0);
+  const outstanding = Number(customer.outstanding_balance || 0);
+  if (cl <= 0) return null;
+  if (outstanding + billTotal > cl) {
+    return (
+      <div className="flex items-center gap-2 p-2 rounded-md bg-red-50 dark:bg-red-950/30 border border-red-300 dark:border-red-700 text-red-800 dark:text-red-200 text-xs">
+        <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+        <div>
+          <p className="font-semibold">Credit limit exceeded</p>
+          <p>Outstanding: ₹{Number(outstanding).toLocaleString("en-IN", { maximumFractionDigits: 2 })} + Bill: ₹{Number(billTotal).toLocaleString("en-IN", { maximumFractionDigits: 2 })} / Limit ₹{Number(cl).toLocaleString("en-IN", { maximumFractionDigits: 2 })}</p>
+        </div>
+      </div>
+    );
+  }
+  if (outstanding > 0) {
+    return (
+      <div className="flex items-center gap-2 p-2 rounded-md bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-700 text-orange-800 dark:text-orange-200 text-xs">
+        <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+        <span>Outstanding: ₹{Number(outstanding).toLocaleString("en-IN", { maximumFractionDigits: 2 })} of ₹{Number(cl).toLocaleString("en-IN", { maximumFractionDigits: 2 })} credit limit</span>
+      </div>
+    );
+  }
+  return null;
+}
+
 // ── POS Terminal ──────────────────────────────────────────────────────────────
 function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
   const { toast } = useToast();
@@ -1453,9 +1502,17 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
   const [loyaltyRedeem, setLoyaltyRedeem] = useState(0);
   const [showEodReport, setShowEodReport] = useState(false);
   const [barcodeInput, setBarcodeInput] = useState("");
+  const barcodeRef = useRef<HTMLInputElement>(null);
   const closingBalance = DENOMINATIONS.reduce((s, d) => s + d * (closingDenom[d] || 0), 0);
 
   const { data: activeSession } = useQuery<any>({ queryKey: ["/api/pos/sessions/active"], refetchInterval: 30000 });
+
+  // Auto-focus barcode input whenever a session is active
+  useEffect(() => {
+    if (activeSession) {
+      setTimeout(() => barcodeRef.current?.focus(), 100);
+    }
+  }, [activeSession?.id]);
   const { data: products = [] } = useQuery<any[]>({ queryKey: ["/api/inventory/products"] });
   const { data: customers = [] } = useQuery<any[]>({ queryKey: ["/api/pos/customers"] });
   const { data: lastSession } = useQuery<any>({
@@ -1582,6 +1639,19 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
 
   const completeSale = () => {
     if (!cartItems.length) { toast({ title: "Cart is empty", variant: "destructive" }); return; }
+    // Credit limit check
+    if (selectedCustomer) {
+      const cl = Number(selectedCustomer.credit_limit || 0);
+      const outstanding = Number(selectedCustomer.outstanding_balance || 0);
+      if (cl > 0 && outstanding + total > cl) {
+        toast({
+          title: "Credit limit exceeded",
+          description: `${selectedCustomer.name} has ₹${fmt(outstanding)} outstanding + ₹${fmt(total)} bill = ₹${fmt(outstanding + total)} against ₹${fmt(cl)} limit.`,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
     if (splitTotal < total - 0.01) {
       toast({ title: "Amount short", description: `₹${fmt(total - splitTotal)} still due`, variant: "destructive" });
       return;
@@ -1654,7 +1724,7 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
         <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-200 dark:border-green-800">
           <div>
             <p className="font-semibold text-sm text-green-800 dark:text-green-200">
-              {activeSession.counter_name} — Session Active
+              {activeSession.counter_name} — {(activeSession as any).shift_name || "Morning"} Shift
               {activeSession.shift_type === "continue" && <Badge variant="secondary" className="ml-2 text-xs">Continued</Badge>}
               {activeSession.approved_by && <Badge className="ml-2 text-xs bg-amber-100 text-amber-700">Mgr Approved</Badge>}
             </p>
@@ -1745,6 +1815,7 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
         <div className="relative">
           <Scan className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
+            ref={barcodeRef}
             placeholder="Scan barcode or type SKU + Enter…"
             className="pl-9 font-mono"
             value={barcodeInput}
@@ -1798,7 +1869,11 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
 
             <div className="border-t pt-2 space-y-1 text-sm">
               <div className="flex justify-between"><span>Subtotal</span><span>₹{fmt(subtotal)}</span></div>
-              <div className="flex justify-between"><span>Tax</span><span>₹{fmt(tax)}</span></div>
+              {tax > 0 && <>
+                <div className="flex justify-between text-xs text-muted-foreground"><span>CGST</span><span>₹{fmt(tax / 2)}</span></div>
+                <div className="flex justify-between text-xs text-muted-foreground"><span>SGST</span><span>₹{fmt(tax / 2)}</span></div>
+                <div className="flex justify-between"><span>Total Tax</span><span>₹{fmt(tax)}</span></div>
+              </>}
               {loyaltyDiscount > 0 && (
                 <div className="flex justify-between text-amber-700 dark:text-amber-400">
                   <span className="flex items-center gap-1"><Gift className="h-3 w-3" />Loyalty Discount</span>
@@ -1818,6 +1893,7 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
               </Select>
             </F>
 
+            <CreditLimitWarning customer={selectedCustomer} billTotal={total} />
             {selectedCustomer && Number(selectedCustomer.loyalty_points) > 0 && (
               <div className="flex items-center justify-between gap-2 p-2 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-700">
                 <div className="text-xs">
@@ -1989,34 +2065,162 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
 
 // ── Sales History ─────────────────────────────────────────────────────────────
 function SalesHistoryTab() {
+  const [activeTab, setActiveTab] = useState<"txns" | "cashier" | "hourly">("txns");
   const [search, setSearch] = useState("");
+  const [reportDate, setReportDate] = useState(new Date().toISOString().split("T")[0]);
   const { data: txns = [] } = useQuery<any[]>({ queryKey: ["/api/pos/transactions"] });
-  const filtered = (txns as any[]).filter(t => t.transaction_no?.includes(search) || t.customer_name?.toLowerCase().includes(search.toLowerCase()));
+  const { data: cashierReport } = useQuery<any>({
+    queryKey: ["/api/pos/reports/cashier", reportDate],
+    queryFn: async () => {
+      const r = await fetch(`/api/pos/reports/cashier?date=${reportDate}`, { credentials: "include" });
+      if (!r.ok) throw new Error("Failed");
+      return r.json();
+    },
+    enabled: activeTab !== "txns",
+  });
+  const filtered = (txns as any[]).filter(t =>
+    t.transaction_no?.includes(search) || t.customer_name?.toLowerCase().includes(search.toLowerCase())
+  );
+
   return (
     <div className="space-y-4">
-      <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search transactions…" className="pl-9" value={search} onChange={e => setSearch(e.target.value)} /></div>
-      <div className="rounded-md border overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50"><tr>{["Txn No.", "Customer", "Subtotal", "Tax", "Discount", "Total", "Mode", "Paid", "Change", "Date"].map(h => <th key={h} className="px-3 py-2 text-left font-medium whitespace-nowrap">{h}</th>)}</tr></thead>
-          <tbody>
-            {filtered.map(t => (
-              <tr key={t.id} className="border-t hover:bg-muted/30">
-                <td className="px-3 py-2 font-mono text-xs">{t.transaction_no}</td>
-                <td className="px-3 py-2">{t.customer_name || "Walk-in"}</td>
-                <td className="px-3 py-2">₹{fmt(t.subtotal)}</td>
-                <td className="px-3 py-2">₹{fmt(t.tax_amount)}</td>
-                <td className="px-3 py-2">₹{fmt(t.discount_amount)}</td>
-                <td className="px-3 py-2 font-bold">₹{fmt(t.total_amount)}</td>
-                <td className="px-3 py-2 uppercase">{t.payment_mode}</td>
-                <td className="px-3 py-2">₹{fmt(t.amount_paid)}</td>
-                <td className="px-3 py-2">₹{fmt(t.change_given)}</td>
-                <td className="px-3 py-2 whitespace-nowrap">{new Date(t.created_at).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })}</td>
-              </tr>
-            ))}
-            {!filtered.length && <tr><td colSpan={10} className="px-3 py-6 text-center text-muted-foreground">No transactions</td></tr>}
-          </tbody>
-        </table>
+      {/* Tab switcher */}
+      <div className="flex flex-wrap items-center gap-2 justify-between">
+        <div className="flex gap-1 rounded-md border p-1 bg-muted/30">
+          {([["txns", "Transactions"], ["cashier", "By Cashier"], ["hourly", "Hourly"]] as const).map(([val, label]) => (
+            <button
+              key={val}
+              onClick={() => setActiveTab(val)}
+              className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${activeTab === val ? "bg-background shadow text-foreground" : "text-muted-foreground hover-elevate"}`}
+              data-testid={`btn-history-tab-${val}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {activeTab !== "txns" && (
+          <Input type="date" value={reportDate} onChange={e => setReportDate(e.target.value)} className="w-auto" />
+        )}
       </div>
+
+      {/* ── Transactions ── */}
+      {activeTab === "txns" && (
+        <>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input placeholder="Search transactions…" className="pl-9" value={search} onChange={e => setSearch(e.target.value)} />
+          </div>
+          <div className="rounded-md border overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50">
+                <tr>{["Txn No.", "Customer", "Subtotal", "Tax", "Discount", "Total", "Mode", "Paid", "Change", "Date"].map(h =>
+                  <th key={h} className="px-3 py-2 text-left font-medium whitespace-nowrap">{h}</th>
+                )}</tr>
+              </thead>
+              <tbody>
+                {filtered.map(t => (
+                  <tr key={t.id} className="border-t hover:bg-muted/30">
+                    <td className="px-3 py-2 font-mono text-xs">{t.transaction_no}</td>
+                    <td className="px-3 py-2">{t.customer_name || "Walk-in"}</td>
+                    <td className="px-3 py-2">₹{fmt(t.subtotal)}</td>
+                    <td className="px-3 py-2">₹{fmt(t.tax_amount)}</td>
+                    <td className="px-3 py-2">₹{fmt(t.discount_amount)}</td>
+                    <td className="px-3 py-2 font-bold">₹{fmt(t.total_amount)}</td>
+                    <td className="px-3 py-2 uppercase">{t.payment_mode}</td>
+                    <td className="px-3 py-2">₹{fmt(t.amount_paid)}</td>
+                    <td className="px-3 py-2">₹{fmt(t.change_given)}</td>
+                    <td className="px-3 py-2 whitespace-nowrap">{new Date(t.created_at).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })}</td>
+                  </tr>
+                ))}
+                {!filtered.length && <tr><td colSpan={10} className="px-3 py-6 text-center text-muted-foreground">No transactions</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {/* ── By Cashier ── */}
+      {activeTab === "cashier" && (
+        <div className="space-y-3">
+          {!cashierReport && <p className="text-center text-muted-foreground py-8 text-sm">Loading…</p>}
+          {cashierReport && (cashierReport.byCashier || []).length === 0 && (
+            <p className="text-center text-muted-foreground py-8 text-sm">No sessions for {reportDate}</p>
+          )}
+          {(cashierReport?.byCashier || []).map((row: any, i: number) => (
+            <Card key={i}>
+              <CardContent className="p-4">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <p className="font-semibold">{row.counter_name} — {row.shift_name || "Morning"} Shift</p>
+                    <p className="text-xs text-muted-foreground">Cashier: {row.cashier || "—"} · Opened: {row.opened_at ? new Date(row.opened_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : "—"}</p>
+                  </div>
+                  <Badge className={row.shift_type === "continue" ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"}>
+                    {row.shift_type === "continue" ? "Continued" : "New Shift"}
+                  </Badge>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
+                  {[
+                    { label: "Transactions", val: row.txn_count },
+                    { label: "Total Sales", val: `₹${fmt(row.total_sales)}` },
+                    { label: "Tax", val: `₹${fmt(row.total_tax)}` },
+                    { label: "Discounts", val: `₹${fmt(row.total_discounts)}` },
+                  ].map(({ label, val }) => (
+                    <div key={label} className="text-center p-2 rounded-md bg-muted/40">
+                      <p className="text-xs text-muted-foreground">{label}</p>
+                      <p className="font-semibold text-sm">{val}</p>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* ── Hourly ── */}
+      {activeTab === "hourly" && (
+        <div className="space-y-3">
+          {!cashierReport && <p className="text-center text-muted-foreground py-8 text-sm">Loading…</p>}
+          {cashierReport && (cashierReport.hourly || []).length === 0 && (
+            <p className="text-center text-muted-foreground py-8 text-sm">No sales data for {reportDate}</p>
+          )}
+          <div className="rounded-md border overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50">
+                <tr>
+                  {["Hour", "Transactions", "Sales", "Avg Ticket", "Bar"].map(h =>
+                    <th key={h} className="px-3 py-2 text-left font-medium whitespace-nowrap">{h}</th>
+                  )}
+                </tr>
+              </thead>
+              <tbody>
+                {(cashierReport?.hourly || []).map((row: any) => {
+                  const maxAmt = Math.max(...(cashierReport?.hourly || []).map((r: any) => Number(r.amount)), 1);
+                  const pct = Math.round(Number(row.amount) / maxAmt * 100);
+                  const h = Number(row.hour);
+                  const label = h === 0 ? "12 AM" : h < 12 ? `${h} AM` : h === 12 ? "12 PM" : `${h - 12} PM`;
+                  return (
+                    <tr key={row.hour} className="border-t hover:bg-muted/30">
+                      <td className="px-3 py-2 font-medium">{label}</td>
+                      <td className="px-3 py-2">{row.txn_count}</td>
+                      <td className="px-3 py-2 font-semibold">₹{fmt(row.amount)}</td>
+                      <td className="px-3 py-2 text-muted-foreground">₹{fmt(row.avg_ticket)}</td>
+                      <td className="px-3 py-2 w-32">
+                        <div className="h-3 rounded-full bg-muted overflow-hidden">
+                          <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {!(cashierReport?.hourly || []).length && (
+                  <tr><td colSpan={5} className="px-3 py-6 text-center text-muted-foreground">No data</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
