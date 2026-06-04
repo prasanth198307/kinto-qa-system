@@ -28068,6 +28068,22 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
     }
   });
 
+  // ─── Admin: Seed Grocery Starter Master Data ─────────────────────────────
+  app.post('/api/admin/tenants/:id/seed-grocery', async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.user?.isSuperAdmin) return res.status(403).json({ message: 'Super-admin only' });
+    const tenantId = parseInt(req.params.id);
+    if (isNaN(tenantId)) return res.status(400).json({ message: 'Invalid tenant ID' });
+    try {
+      const { seedGroceryStarterData } = await import('./grocery-starter-seed');
+      const result = await seedGroceryStarterData(tenantId);
+      res.json({ message: 'Grocery master data seeded successfully', ...result });
+    } catch (err: any) {
+      console.error('[GROCERY SEED] Error:', err);
+      res.status(500).json({ message: 'Seeding failed: ' + err.message });
+    }
+  });
+
   // ─── Admin: list PostgreSQL dump backups ─────────────────────────────────
   app.get('/api/admin/postgres-backups', async (req: any, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);

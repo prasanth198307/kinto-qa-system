@@ -13,59 +13,115 @@ import { Separator } from "@/components/ui/separator";
 import SuperAdminLayout from "./super-admin-layout";
 import {
   CheckCircle2, ChevronRight, Store, Building2, Users, Package,
-  ArrowLeft, Loader2, Eye, EyeOff, AlertCircle, Sparkles,
+  ArrowLeft, Loader2, Eye, EyeOff, AlertCircle, Sparkles, ShieldCheck,
 } from "lucide-react";
 
 // ── Grocery module presets ─────────────────────────────────────────────────────
 const ALL_MODULES: { key: string; label: string; desc: string; preset: boolean }[] = [
-  { key: "invoicing",      label: "Invoicing & GST",          desc: "GST bills, payments, credit notes",            preset: true  },
-  { key: "purchase_orders",label: "Purchase Orders",           desc: "POs, vendor management, GRNs",                preset: true  },
-  { key: "basic_inventory",label: "Inventory Management",      desc: "Products, stock, UOM, serial/lot, expiry",    preset: true  },
-  { key: "sales_orders",   label: "Sales Orders",              desc: "Pre-invoice sales order management",          preset: true  },
-  { key: "gatepasses",     label: "Gatepasses & Dispatch",     desc: "Delivery challans, dispatch tracking",        preset: true  },
-  { key: "accounting",     label: "Accounting & Ledger",       desc: "Double-entry, COA, P&L, balance sheet",       preset: true  },
-  { key: "expenses",       label: "Expenses & Cash Register",  desc: "Expense vouchers, daily cash register",       preset: true  },
-  { key: "mis",            label: "MIS Analytics",             desc: "Executive dashboards and KPI analytics",      preset: true  },
-  { key: "crm",            label: "CRM",                       desc: "Customer management, pipeline tracking",      preset: true  },
-  { key: "hr_payroll",     label: "HR & Payroll",              desc: "Employees, attendance, salary, ESS portal",   preset: true  },
-  { key: "quality_returns",label: "Quality & Returns",         desc: "Sales returns, quality inspection",           preset: false },
-  { key: "documents",      label: "Document Management",       desc: "Contracts, certificates, expiry alerts",      preset: false },
-  { key: "whatsapp",       label: "WhatsApp Integration",      desc: "Automated messages, billing notifications",   preset: false },
-  { key: "maintenance",    label: "Preventive Maintenance",    desc: "PM schedules, equipment maintenance",         preset: false },
-  { key: "production",     label: "Production & BOM",          desc: "BOM-driven production (not for groceries)",   preset: false },
+  { key: "invoicing",       label: "Invoicing & GST",          desc: "GST bills, payments, credit notes",           preset: true  },
+  { key: "purchase_orders", label: "Purchase Orders",           desc: "POs, vendor management, GRNs",                preset: true  },
+  { key: "basic_inventory", label: "Inventory Management",      desc: "Products, stock, UOM, serial/lot, expiry",    preset: true  },
+  { key: "sales_orders",    label: "Sales Orders",              desc: "Pre-invoice sales order management",          preset: true  },
+  { key: "gatepasses",      label: "Gatepasses & Dispatch",     desc: "Delivery challans, dispatch tracking",        preset: true  },
+  { key: "accounting",      label: "Accounting & Ledger",       desc: "Double-entry, COA, P&L, balance sheet",       preset: true  },
+  { key: "expenses",        label: "Expenses & Cash Register",  desc: "Expense vouchers, daily cash register",       preset: true  },
+  { key: "mis",             label: "MIS Analytics",             desc: "Executive dashboards and KPI analytics",      preset: true  },
+  { key: "crm",             label: "CRM",                       desc: "Customer management, pipeline tracking",      preset: true  },
+  { key: "hr_payroll",      label: "HR & Payroll",              desc: "Employees, attendance, salary, ESS portal",   preset: true  },
+  { key: "quality_returns", label: "Quality & Returns",         desc: "Sales returns, quality inspection",           preset: false },
+  { key: "documents",       label: "Document Management",       desc: "Contracts, certificates, expiry alerts",      preset: false },
+  { key: "whatsapp",        label: "WhatsApp Integration",      desc: "Automated messages, billing notifications",   preset: false },
+  { key: "maintenance",     label: "Preventive Maintenance",    desc: "PM schedules, equipment maintenance",         preset: false },
+  { key: "production",      label: "Production & BOM",          desc: "BOM-driven production (not for groceries)",   preset: false },
 ];
 
+// ── Predefined grocery roles (shown in Step 2) ────────────────────────────────
 const GROCERY_ROLES = [
-  { name: "Store Manager",     perms: "Sales, Inventory, Reports — no Accounts or HR" },
-  { name: "Cashier",           perms: "POS/Billing only" },
-  { name: "Godown Incharge",   perms: "Inventory, GRN, Stock Transfers" },
-  { name: "Purchase Manager",  perms: "Purchase Orders, GRN, Vendors" },
-  { name: "Accountant",        perms: "Invoices, Payments, GST Reports" },
+  {
+    name: "Admin / Owner",
+    who: "Store owner",
+    perms: "Full access — all modules, settings, reports",
+    badge: "full",
+    screens: ["POS", "Inventory", "Accounts", "HR", "Reports", "Settings"],
+  },
+  {
+    name: "Store Manager",
+    who: "Manager",
+    perms: "Sales, POS, inventory view, reports — no payroll or accounts",
+    badge: "high",
+    screens: ["POS ✅", "Inventory (view)", "Purchase (view)", "Reports ✅"],
+  },
+  {
+    name: "Cashier",
+    who: "Billing counter staff",
+    perms: "POS Terminal only — create bills, view sales history",
+    badge: "limited",
+    screens: ["POS ✅"],
+  },
+  {
+    name: "Godown Incharge",
+    who: "Warehouse person",
+    perms: "Receive goods (GRN), stock transfers, serial/lot — no billing or accounts",
+    badge: "medium",
+    screens: ["Inventory ✅", "GRN ✅", "Stock Transfers ✅"],
+  },
+  {
+    name: "Purchase Manager",
+    who: "Buying person",
+    perms: "Create purchase orders, approve GRNs, manage vendors",
+    badge: "medium",
+    screens: ["Purchase Orders ✅", "GRN ✅", "Vendors ✅"],
+  },
+  {
+    name: "Accountant",
+    who: "Accounts person",
+    perms: "Invoices, payments, GST reports, journal entries — no HR/payroll",
+    badge: "medium",
+    screens: ["Invoicing ✅", "GST Reports ✅", "Accounting ✅"],
+  },
+  {
+    name: "HR Manager",
+    who: "If you have staff",
+    perms: "HR & Payroll only — employee records, salary, leave",
+    badge: "limited",
+    screens: ["HR & Payroll ✅"],
+  },
+];
+
+const BADGE_STYLE: Record<string, string> = {
+  full:    "bg-primary/10 text-primary border-primary/20",
+  high:    "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300",
+  medium:  "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-300",
+  limited: "bg-muted text-muted-foreground border-border",
+};
+
+const BADGE_LABEL: Record<string, string> = {
+  full: "Full Access", high: "High Access", medium: "Partial", limited: "Limited",
+};
+
+// ── Permission matrix preview ─────────────────────────────────────────────────
+const PERM_MATRIX = [
+  { module: "POS / Billing",    admin: "✅", mgr: "✅", cashier: "✅", godown: "—",  purchase: "—",    acct: "—"  },
+  { module: "Inventory",        admin: "✅", mgr: "View", cashier: "—", godown: "✅", purchase: "View", acct: "—"  },
+  { module: "Purchase Orders",  admin: "✅", mgr: "View", cashier: "—", godown: "View", purchase: "✅", acct: "View" },
+  { module: "GRN",              admin: "✅", mgr: "View", cashier: "—", godown: "✅", purchase: "✅",   acct: "—"  },
+  { module: "GST / Accounts",   admin: "✅", mgr: "—",  cashier: "—", godown: "—",  purchase: "—",    acct: "✅" },
+  { module: "HR & Payroll",     admin: "✅", mgr: "—",  cashier: "—", godown: "—",  purchase: "—",    acct: "—"  },
+  { module: "Reports",          admin: "✅", mgr: "✅", cashier: "—", godown: "—",  purchase: "View", acct: "✅" },
 ];
 
 type Step = 1 | 2 | 3 | 4;
 
 interface PlanForm {
-  name: string;
-  slug: string;
-  tagline: string;
-  priceMonthly: string;
-  maxUsers: string;
-  modules: string[];
+  name: string; slug: string; tagline: string;
+  priceMonthly: string; maxUsers: string; modules: string[];
 }
-
 interface TenantForm {
-  companyName: string;
-  slug: string;
-  industry: string;
-  maxUsers: string;
-  trialDays: string;
+  companyName: string; slug: string; industry: string;
+  maxUsers: string; trialDays: string;
 }
-
 interface UserForm {
-  adminUsername: string;
-  adminEmail: string;
-  adminPassword: string;
+  adminUsername: string; adminEmail: string; adminPassword: string;
 }
 
 function slugify(str: string) {
@@ -113,8 +169,8 @@ export default function SuperAdminSetupWizard() {
   const [, setLocation] = useLocation();
   const [step, setStep] = useState<Step>(1);
   const [showPass, setShowPass] = useState(false);
-  const [createdPlanSlug, setCreatedPlanSlug] = useState("");
-  const [createdTenantName, setCreatedTenantName] = useState("");
+  const [seedResult, setSeedResult] = useState<any>(null);
+  const [createdTenantId, setCreatedTenantId] = useState<number | null>(null);
 
   const [planForm, setPlanForm] = useState<PlanForm>({
     name: "Grocery Professional",
@@ -126,17 +182,11 @@ export default function SuperAdminSetupWizard() {
   });
 
   const [tenantForm, setTenantForm] = useState<TenantForm>({
-    companyName: "",
-    slug: "",
-    industry: "Retail",
-    maxUsers: "10",
-    trialDays: "30",
+    companyName: "", slug: "", industry: "Retail", maxUsers: "10", trialDays: "30",
   });
 
   const [userForm, setUserForm] = useState<UserForm>({
-    adminUsername: "",
-    adminEmail: "",
-    adminPassword: "",
+    adminUsername: "", adminEmail: "", adminPassword: "",
   });
 
   const { data: existingPlans = [] } = useQuery<any[]>({
@@ -152,38 +202,25 @@ export default function SuperAdminSetupWizard() {
 
   const createPlanMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/admin/subscription-plans", {
-      name: planForm.name,
-      slug: planForm.slug,
-      tagline: planForm.tagline,
+      name: planForm.name, slug: planForm.slug, tagline: planForm.tagline,
       description: "Pre-configured plan for grocery stores with godown management.",
       priceMonthly: Number(planForm.priceMonthly) * 100,
       priceYearly: Math.round(Number(planForm.priceMonthly) * 100 * 10),
-      maxUsers: Number(planForm.maxUsers),
-      modules: planForm.modules,
+      maxUsers: Number(planForm.maxUsers), modules: planForm.modules,
       features: [
-        "GST-compliant billing & invoicing",
-        "Multi-location inventory (store + godown)",
-        "Batch/lot & expiry date tracking",
-        "Purchase orders & GRN",
-        "GSTR-1 / GSTR-3B reports",
-        "HR & payroll for store staff",
-        "POS terminal",
+        "GST-compliant billing & invoicing", "Multi-location inventory (store + godown)",
+        "Batch/lot & expiry date tracking", "Purchase orders & GRN",
+        "GSTR-1 / GSTR-3B reports", "HR & payroll for store staff",
         "Double-entry accounting",
       ],
-      isActive: true,
-      isFeatured: false,
-      displayOrder: 10,
-      trialDays: 30,
+      isActive: true, isFeatured: false, displayOrder: 10, trialDays: 30,
     }),
   });
 
   const createTenantMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/admin/tenants", {
-      name: tenantForm.companyName,
-      slug: tenantForm.slug,
-      plan: planForm.slug,
-      adminUsername: userForm.adminUsername,
-      adminPassword: userForm.adminPassword,
+      name: tenantForm.companyName, slug: tenantForm.slug, plan: planForm.slug,
+      adminUsername: userForm.adminUsername, adminPassword: userForm.adminPassword,
       adminEmail: userForm.adminEmail || undefined,
       maxUsers: Number(tenantForm.maxUsers),
       trialDays: tenantForm.trialDays ? Number(tenantForm.trialDays) : undefined,
@@ -191,23 +228,40 @@ export default function SuperAdminSetupWizard() {
     }),
   });
 
+  const seedGroceryMutation = useMutation({
+    mutationFn: (tenantId: number) =>
+      apiRequest("POST", `/api/admin/tenants/${tenantId}/seed-grocery`, {}),
+  });
+
   async function handleFinish() {
     try {
       if (!planExists) {
         await createPlanMutation.mutateAsync();
-        toast({ title: "Plan created", description: planForm.name });
       }
-      await createTenantMutation.mutateAsync();
-      setCreatedPlanSlug(planForm.slug);
-      setCreatedTenantName(tenantForm.companyName);
+      const tenantResult: any = await createTenantMutation.mutateAsync();
+      const newTenantId = tenantResult?.tenant?.id;
+      if (newTenantId) {
+        setCreatedTenantId(newTenantId);
+        const seedData = await seedGroceryMutation.mutateAsync(newTenantId);
+        setSeedResult(seedData);
+      }
       setStep(4);
       toast({ title: "Grocery store set up successfully!" });
     } catch (e: any) {
-      toast({ title: "Setup failed", description: e?.message ?? "Please check the details and try again.", variant: "destructive" });
+      toast({
+        title: "Setup failed",
+        description: e?.message ?? "Please check the details and try again.",
+        variant: "destructive",
+      });
     }
   }
 
-  const isLoading = createPlanMutation.isPending || createTenantMutation.isPending;
+  const isLoading = createPlanMutation.isPending || createTenantMutation.isPending || seedGroceryMutation.isPending;
+
+  const loadingLabel = createPlanMutation.isPending ? "Creating plan…"
+    : createTenantMutation.isPending ? "Creating tenant…"
+    : seedGroceryMutation.isPending ? "Seeding roles & warehouses…"
+    : "Setting up…";
 
   return (
     <SuperAdminLayout
@@ -238,7 +292,7 @@ export default function SuperAdminSetupWizard() {
                 {planExists && (
                   <div className="flex items-center gap-2 p-3 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-700 text-sm text-amber-800 dark:text-amber-200">
                     <AlertCircle className="h-4 w-4 shrink-0" />
-                    A plan with slug <strong className="font-mono mx-1">{planForm.slug}</strong> already exists — it will be reused.
+                    Plan slug <strong className="font-mono mx-1">{planForm.slug}</strong> already exists — it will be reused as-is.
                   </div>
                 )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -269,7 +323,7 @@ export default function SuperAdminSetupWizard() {
                     <Sparkles className="h-4 w-4 text-primary" />
                     Modules Included
                   </span>
-                  <Badge variant="secondary">{planForm.modules.length} selected</Badge>
+                  <Badge variant="secondary">{planForm.modules.length} of {ALL_MODULES.length} selected</Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -355,23 +409,76 @@ export default function SuperAdminSetupWizard() {
               </CardContent>
             </Card>
 
+            {/* Roles preview */}
             <Card>
               <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2">
-                  <Users className="h-4 w-4 text-primary" />
-                  Roles Created Automatically
+                  <ShieldCheck className="h-4 w-4 text-primary" />
+                  7 Predefined Roles — Created Automatically
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground mb-3">These 5 default roles will be created when the tenant is set up. You can customise permissions after login.</p>
-                <div className="space-y-2">
-                  {GROCERY_ROLES.map(r => (
-                    <div key={r.name} className="flex items-center gap-3 py-1.5">
-                      <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
-                      <div>
-                        <span className="text-sm font-medium">{r.name}</span>
-                        <span className="text-xs text-muted-foreground ml-2">— {r.perms}</span>
+              <CardContent className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  These roles are pre-configured with exact screen permissions for a grocery store. You can fine-tune them from Role Management after login.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {GROCERY_ROLES.map(role => (
+                    <div key={role.name} className="flex items-start gap-3 p-3 rounded-md border">
+                      <ShieldCheck className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-semibold">{role.name}</span>
+                          <span className={`text-xs px-1.5 py-0.5 rounded border font-medium ${BADGE_STYLE[role.badge]}`}>
+                            {BADGE_LABEL[role.badge]}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">{role.who} — {role.perms}</p>
                       </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Permission matrix */}
+                <Separator />
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Permission Matrix</p>
+                <div className="overflow-x-auto -mx-1">
+                  <table className="w-full text-xs min-w-[540px]">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-1.5 px-2 font-medium text-muted-foreground">Module</th>
+                        {["Admin", "Store Mgr", "Cashier", "Godown", "Purchase", "Accountant"].map(h => (
+                          <th key={h} className="text-center py-1.5 px-1 font-medium text-muted-foreground whitespace-nowrap">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {PERM_MATRIX.map((row, i) => (
+                        <tr key={i} className="border-b last:border-0">
+                          <td className="py-1.5 px-2 font-medium">{row.module}</td>
+                          {[row.admin, row.mgr, row.cashier, row.godown, row.purchase, row.acct].map((v, j) => (
+                            <td key={j} className={`py-1.5 px-1 text-center ${v === "✅" ? "text-emerald-600 dark:text-emerald-400" : v === "—" ? "text-muted-foreground/40" : "text-blue-600 dark:text-blue-400 text-xs"}`}>
+                              {v}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Warehouses */}
+                <Separator />
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Warehouses Created</p>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { name: "Main Store — Shelf Stock", code: "MAIN-STORE", primary: true },
+                    { name: "Godown — Bulk Storage",    code: "GODOWN",     primary: false },
+                  ].map(wh => (
+                    <div key={wh.code} className="flex items-center gap-2 px-3 py-1.5 rounded-md border text-sm">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
+                      <span className="font-medium">{wh.name}</span>
+                      <span className="font-mono text-xs text-muted-foreground">{wh.code}</span>
+                      {wh.primary && <Badge variant="secondary" className="text-xs">Default</Badge>}
                     </div>
                   ))}
                 </div>
@@ -451,12 +558,12 @@ export default function SuperAdminSetupWizard() {
             {/* Review summary */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Review Summary</CardTitle>
+                <CardTitle className="text-base">Review — Everything That Will Be Created</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
                 <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                   <span className="text-muted-foreground">Plan</span>
-                  <span className="font-medium">{planForm.name} {planExists && <Badge variant="secondary" className="ml-1 text-xs">existing</Badge>}</span>
+                  <span className="font-medium">{planForm.name} {planExists && <Badge variant="secondary" className="ml-1 text-xs">reusing existing</Badge>}</span>
                   <span className="text-muted-foreground">Modules</span>
                   <span className="font-medium">{planForm.modules.length} modules enabled</span>
                   <span className="text-muted-foreground">Company</span>
@@ -469,6 +576,10 @@ export default function SuperAdminSetupWizard() {
                   <span className="font-medium">{tenantForm.trialDays ? `${tenantForm.trialDays} days` : "No trial"}</span>
                   <span className="text-muted-foreground">Admin Login</span>
                   <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">{userForm.adminUsername || "—"}</span>
+                  <span className="text-muted-foreground">Roles Seeded</span>
+                  <span className="font-medium">7 grocery roles with permissions</span>
+                  <span className="text-muted-foreground">Warehouses</span>
+                  <span className="font-medium">Main Store + Godown</span>
                 </div>
               </CardContent>
             </Card>
@@ -482,7 +593,10 @@ export default function SuperAdminSetupWizard() {
                 disabled={isLoading || !userForm.adminUsername || !userForm.adminPassword || !tenantForm.companyName || !tenantForm.slug}
                 data-testid="button-create-all"
               >
-                {isLoading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Setting up...</> : <><Sparkles className="h-4 w-4 mr-2" />Create Everything</>}
+                {isLoading
+                  ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{loadingLabel}</>
+                  : <><Sparkles className="h-4 w-4 mr-2" />Create Everything</>
+                }
               </Button>
             </div>
           </div>
@@ -498,7 +612,7 @@ export default function SuperAdminSetupWizard() {
                 </div>
                 <h2 className="text-xl font-bold">Grocery Store Ready!</h2>
                 <p className="text-muted-foreground text-sm max-w-sm mx-auto">
-                  <strong>{createdTenantName}</strong> has been set up with the <strong>{planForm.name}</strong> plan and all modules activated.
+                  <strong>{tenantForm.companyName}</strong> has been set up with the <strong>{planForm.name}</strong> plan, all roles, and warehouses.
                 </p>
               </CardContent>
             </Card>
@@ -509,10 +623,14 @@ export default function SuperAdminSetupWizard() {
                 <CardContent className="space-y-2 text-sm">
                   {[
                     planExists ? `Plan reused: ${planForm.name}` : `Plan created: ${planForm.name}`,
-                    `Tenant: ${createdTenantName}`,
+                    `Tenant: ${tenantForm.companyName}`,
                     `Admin user: ${userForm.adminUsername}`,
-                    `5 default roles seeded`,
+                    `7 grocery roles seeded${seedResult?.rolesCreated?.length ? ` (${seedResult.rolesCreated.length} new)` : ""}`,
                     `${planForm.modules.length} modules enabled`,
+                    ...(seedResult?.warehousesCreated?.length
+                      ? seedResult.warehousesCreated.map((w: string) => `Warehouse: ${w}`)
+                      : ["Main Store — Shelf Stock", "Godown — Bulk Storage"].map(w => `Warehouse: ${w}`)
+                    ),
                   ].map(item => (
                     <div key={item} className="flex items-center gap-2">
                       <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" />
@@ -523,19 +641,20 @@ export default function SuperAdminSetupWizard() {
               </Card>
 
               <Card>
-                <CardHeader><CardTitle className="text-sm">Next steps</CardTitle></CardHeader>
+                <CardHeader><CardTitle className="text-sm">Next steps for the store owner</CardTitle></CardHeader>
                 <CardContent className="space-y-2 text-sm text-muted-foreground">
                   {[
-                    "Log in with the admin credentials",
-                    "Create Warehouses: Main Store + Godown",
-                    "Add staff users with Cashier / Godown roles",
-                    "Set up products and opening stock",
-                    "Configure GST settings (GSTIN, HSN codes)",
+                    "Log in with admin credentials",
+                    "Add staff users & assign roles (Cashier, Godown, etc.)",
+                    "Set up products with HSN codes & GST rates",
+                    "Add opening stock in both warehouses",
+                    "Configure GSTIN in Company Settings",
                     "Add suppliers / vendors",
-                  ].map((step, i) => (
+                    "Run first POS billing transaction",
+                  ].map((s, i) => (
                     <div key={i} className="flex items-start gap-2">
                       <span className="flex items-center justify-center w-4 h-4 rounded-full bg-muted text-xs font-bold shrink-0 mt-0.5">{i + 1}</span>
-                      <span>{step}</span>
+                      <span>{s}</span>
                     </div>
                   ))}
                 </CardContent>
@@ -545,13 +664,15 @@ export default function SuperAdminSetupWizard() {
             <Separator />
 
             <div className="flex flex-wrap gap-3 justify-center">
-              <Button onClick={() => setLocation(`/super-admin/tenants`)} data-testid="button-go-tenants">
+              <Button onClick={() => setLocation("/super-admin/tenants")} data-testid="button-go-tenants">
                 <Building2 className="h-4 w-4 mr-2" /> View All Tenants
               </Button>
               <Button variant="outline" onClick={() => {
                 setStep(1);
                 setTenantForm({ companyName: "", slug: "", industry: "Retail", maxUsers: "10", trialDays: "30" });
                 setUserForm({ adminUsername: "", adminEmail: "", adminPassword: "" });
+                setSeedResult(null);
+                setCreatedTenantId(null);
               }} data-testid="button-setup-another">
                 <Store className="h-4 w-4 mr-2" /> Set Up Another Store
               </Button>
