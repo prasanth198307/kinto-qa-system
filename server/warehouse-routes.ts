@@ -228,27 +228,60 @@ router.get("/products", requireAuth, async (req: any, res) => {
   }
 });
 
-// ─── Bulk Import — template download ─────────────────────────────────────────
-router.get("/bulk-import/template", requireAuth, (_req, res) => {
-  const headers = [
-    "Barcode/EAN", "Product Name*", "SKU Code", "Category", "HSN Code*",
-    "GST %*", "MRP (₹)*", "Purchase Rate (₹)", "Selling Price (₹)*",
-    "UOM*", "Sold By (unit/weight)", "Reorder Level", "Item Type (goods/service)",
-  ];
-  const sample = [
-    "8901030984817", "Aashirvaad Atta 5kg", "ATT-5K", "Staples", "19021090",
-    "5", "280", "195", "265", "pcs", "unit", "5", "goods",
-  ];
+// ─── Bulk Import — template download (mode-aware) ────────────────────────────
+router.get("/bulk-import/template", requireAuth, (req: any, res) => {
+  const mode = String(req.query.mode || "retail");
+
+  let headers: string[], sample: string[], filename: string;
+
+  if (mode === "raw-materials") {
+    headers = [
+      "Material Code", "Material Name*", "Description", "Category",
+      "UOM*", "Unit Cost (₹)", "Reorder Level (qty)", "Max Stock Level (qty)",
+      "Opening Stock (qty)", "Opening Date (YYYY-MM-DD)", "Supplier", "Storage Location",
+    ];
+    sample = [
+      "RM-STEEL-001", "HR Steel Sheet 2mm", "Hot-rolled steel 2mm thickness",
+      "Steel", "KG", "85", "500", "5000", "1200", "2026-04-01", "Tata Steel Ltd", "Rack-A3",
+    ];
+    filename = "raw_materials_import_template.csv";
+  } else if (mode === "finished-goods") {
+    headers = [
+      "Product Code", "Product Name*", "Category", "HSN Code*",
+      "GST %*", "Standard Cost (₹)", "Selling Price (₹)*",
+      "UOM*", "Item Type (goods/service)", "Reorder Level",
+    ];
+    sample = [
+      "FG-CHAIR-001", "Ergonomic Office Chair", "Furniture", "94013000",
+      "18", "3500", "5200", "pcs", "goods", "10",
+    ];
+    filename = "finished_goods_import_template.csv";
+  } else {
+    // retail (default)
+    headers = [
+      "Barcode/EAN", "Product Name*", "SKU Code", "Category", "HSN Code*",
+      "GST %*", "MRP (₹)*", "Purchase Rate (₹)", "Selling Price (₹)*",
+      "UOM*", "Sold By (unit/weight)", "Reorder Level", "Item Type (goods/service)",
+    ];
+    sample = [
+      "8901030984817", "Aashirvaad Atta 5kg", "ATT-5K", "Staples", "19021090",
+      "5", "280", "195", "265", "pcs", "unit", "5", "goods",
+    ];
+    filename = "retail_products_import_template.csv";
+  }
+
   const csv = [headers.join(","), sample.join(",")].join("\n");
   res.setHeader("Content-Type", "text/csv");
-  res.setHeader("Content-Disposition", 'attachment; filename="product_import_template.csv"');
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
   res.send(csv);
 });
 
-// ─── Bulk Import — preview / validate ────────────────────────────────────────
+// ─── Bulk Import — preview / validate (mode-aware) ───────────────────────────
 router.post("/bulk-import/preview", requireAuth, xlsxUpload.single("file"), async (req: any, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+    const mode = String(req.body.mode || req.query.mode || "retail");
+
     const XLSX = await import("xlsx");
     const wb = XLSX.read(req.file.buffer, { type: "buffer" });
     const ws = wb.Sheets[wb.SheetNames[0]];
@@ -260,97 +293,197 @@ router.post("/bulk-import/preview", requireAuth, xlsxUpload.single("file"), asyn
     for (let i = 0; i < rawRows.length; i++) {
       const r = rawRows[i];
       const rowNum = i + 2;
-      const name  = String(r["Product Name*"] || r["Product Name"] || "").trim();
-      const hsn   = String(r["HSN Code*"]     || r["HSN Code"]     || "").trim();
-      const gst   = parseFloat(String(r["GST %*"] || r["GST %"] || "0"));
-      const mrpRaw = parseFloat(String(r["MRP (₹)*"] || r["MRP (₹)"] || ""));
-      const price  = parseFloat(String(r["Selling Price (₹)*"] || r["Selling Price (₹)"] || ""));
-      const uom    = String(r["UOM*"] || r["UOM"] || "pcs").trim() || "pcs";
-
       const rowErrors: string[] = [];
-      if (!name)                          rowErrors.push("Product Name is required");
-      if (!hsn)                           rowErrors.push("HSN Code is required for GST billing");
-      if (isNaN(gst))                     rowErrors.push("GST % must be a number (0/5/12/18)");
-      if (isNaN(mrpRaw) || mrpRaw <= 0)  rowErrors.push("MRP must be a positive number");
-      if (isNaN(price) || price <= 0)    rowErrors.push("Selling Price must be a positive number");
-      if (!isNaN(mrpRaw) && !isNaN(price) && price > mrpRaw)
-                                          rowErrors.push("Selling Price cannot exceed MRP");
 
-      if (rowErrors.length) {
-        rowErrors.forEach(msg =>
-          errors.push({ row: rowNum, field: msg.split(" ")[0], message: msg, item: name || `Row ${rowNum}` })
-        );
+      if (mode === "raw-materials") {
+        const name = String(r["Material Name*"] || r["Material Name"] || "").trim();
+        const uom  = String(r["UOM*"] || r["UOM"] || "").trim();
+        const cost = parseFloat(String(r["Unit Cost (₹)"] || "0")) || 0;
+        if (!name) rowErrors.push("Material Name is required");
+        if (!uom)  rowErrors.push("UOM is required");
+        if (rowErrors.length) {
+          rowErrors.forEach(msg => errors.push({ row: rowNum, field: msg.split(" ")[0], message: msg, item: name || `Row ${rowNum}` }));
+        } else {
+          valid.push({
+            material_code:   String(r["Material Code"] || "").trim() || null,
+            material_name:   name,
+            description:     String(r["Description"] || "").trim() || null,
+            category:        String(r["Category"] || "").trim() || null,
+            base_unit:       uom,
+            unit_cost:       cost,
+            reorder_level:   parseInt(String(r["Reorder Level (qty)"] || "0")) || 0,
+            max_stock_level: parseInt(String(r["Max Stock Level (qty)"] || "0")) || 0,
+            opening_stock:   parseInt(String(r["Opening Stock (qty)"] || "0")) || 0,
+            opening_date:    String(r["Opening Date (YYYY-MM-DD)"] || "").trim() || null,
+            supplier:        String(r["Supplier"] || "").trim() || null,
+            location:        String(r["Storage Location"] || "").trim() || null,
+          });
+        }
+
+      } else if (mode === "finished-goods") {
+        const name  = String(r["Product Name*"] || r["Product Name"] || "").trim();
+        const hsn   = String(r["HSN Code*"]     || r["HSN Code"]     || "").trim();
+        const gst   = parseFloat(String(r["GST %*"] || r["GST %"] || "0"));
+        const price = parseFloat(String(r["Selling Price (₹)*"] || r["Selling Price (₹)"] || ""));
+        const uom   = String(r["UOM*"] || r["UOM"] || "pcs").trim() || "pcs";
+        if (!name)                       rowErrors.push("Product Name is required");
+        if (!hsn)                        rowErrors.push("HSN Code is required for GST invoicing");
+        if (isNaN(gst))                  rowErrors.push("GST % must be a number (0/5/12/18/28)");
+        if (isNaN(price) || price <= 0) rowErrors.push("Selling Price must be a positive number");
+        if (rowErrors.length) {
+          rowErrors.forEach(msg => errors.push({ row: rowNum, field: msg.split(" ")[0], message: msg, item: name || `Row ${rowNum}` }));
+        } else {
+          valid.push({
+            product_code:  String(r["Product Code"] || "").trim() || null,
+            product_name:  name,
+            category:      String(r["Category"] || "").trim() || null,
+            hsn_code:      hsn,
+            gst_percent:   gst,
+            standard_cost: parseFloat(String(r["Standard Cost (₹)"] || "0")) || 0,
+            base_price:    price,
+            unit_label:    uom,
+            item_type:     String(r["Item Type (goods/service)"] || "goods").toLowerCase() === "service" ? "service" : "goods",
+            reorder_point: parseFloat(String(r["Reorder Level"] || "0")) || 0,
+          });
+        }
+
       } else {
-        valid.push({
-          barcode:       String(r["Barcode/EAN"] || "").trim() || null,
-          product_name:  name,
-          sku_code:      String(r["SKU Code"] || "").trim() || null,
-          category:      String(r["Category"] || "").trim() || null,
-          hsn_code:      hsn,
-          gst_percent:   gst,
-          mrp:           Math.round(mrpRaw * 100),   // stored as paise
-          standard_cost: parseFloat(String(r["Purchase Rate (₹)"] || "0")) || 0,
-          base_price:    price,
-          unit_label:    uom,
-          sold_by:       String(r["Sold By (unit/weight)"] || "unit").toLowerCase() === "weight" ? "weight" : "unit",
-          reorder_point: parseFloat(String(r["Reorder Level"] || "0")) || 0,
-          item_type:     String(r["Item Type (goods/service)"] || "goods").toLowerCase() === "service" ? "service" : "goods",
-        });
+        // retail
+        const name   = String(r["Product Name*"] || r["Product Name"] || "").trim();
+        const hsn    = String(r["HSN Code*"]     || r["HSN Code"]     || "").trim();
+        const gst    = parseFloat(String(r["GST %*"] || r["GST %"] || "0"));
+        const mrpRaw = parseFloat(String(r["MRP (₹)*"] || r["MRP (₹)"] || ""));
+        const price  = parseFloat(String(r["Selling Price (₹)*"] || r["Selling Price (₹)"] || ""));
+        const uom    = String(r["UOM*"] || r["UOM"] || "pcs").trim() || "pcs";
+        if (!name)                                                        rowErrors.push("Product Name is required");
+        if (!hsn)                                                         rowErrors.push("HSN Code is required for GST billing");
+        if (isNaN(gst))                                                   rowErrors.push("GST % must be a number (0/5/12/18)");
+        if (isNaN(mrpRaw) || mrpRaw <= 0)                                rowErrors.push("MRP must be a positive number");
+        if (isNaN(price) || price <= 0)                                  rowErrors.push("Selling Price must be a positive number");
+        if (!isNaN(mrpRaw) && !isNaN(price) && price > mrpRaw)          rowErrors.push("Selling Price cannot exceed MRP");
+        if (rowErrors.length) {
+          rowErrors.forEach(msg => errors.push({ row: rowNum, field: msg.split(" ")[0], message: msg, item: name || `Row ${rowNum}` }));
+        } else {
+          valid.push({
+            barcode:       String(r["Barcode/EAN"] || "").trim() || null,
+            product_name:  name,
+            sku_code:      String(r["SKU Code"] || "").trim() || null,
+            category:      String(r["Category"] || "").trim() || null,
+            hsn_code:      hsn,
+            gst_percent:   gst,
+            mrp:           Math.round(mrpRaw * 100),
+            standard_cost: parseFloat(String(r["Purchase Rate (₹)"] || "0")) || 0,
+            base_price:    price,
+            unit_label:    uom,
+            sold_by:       String(r["Sold By (unit/weight)"] || "unit").toLowerCase() === "weight" ? "weight" : "unit",
+            reorder_point: parseFloat(String(r["Reorder Level"] || "0")) || 0,
+            item_type:     String(r["Item Type (goods/service)"] || "goods").toLowerCase() === "service" ? "service" : "goods",
+          });
+        }
       }
     }
 
-    res.json({ total: rawRows.length, validCount: valid.length, errorCount: errors.length, valid, errors });
+    res.json({ total: rawRows.length, validCount: valid.length, errorCount: errors.length, valid, errors, mode });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
 });
 
-// ─── Bulk Import — confirm insert ─────────────────────────────────────────────
+// ─── Bulk Import — confirm insert (mode-aware) ────────────────────────────────
 router.post("/bulk-import/confirm", requireAuth, async (req: any, res) => {
   try {
     const tid = req.session?.tenantId;
-    const { rows } = req.body as { rows: any[] };
+    const { rows, mode = "retail" } = req.body as { rows: any[]; mode?: string };
     if (!Array.isArray(rows) || !rows.length) return res.status(400).json({ error: "No rows to import" });
 
     let inserted = 0, updated = 0;
-    for (const r of rows) {
-      if (r.barcode) {
-        const existing = await db.execute(sql`
-          SELECT id FROM products WHERE tenant_id=${tid} AND barcode=${r.barcode} AND record_status=1 LIMIT 1`);
+
+    if (mode === "raw-materials") {
+      for (const r of rows) {
+        const mCode = r.material_code || `RM-${tid}-${Date.now()}-${Math.random().toString(36).substr(2,5).toUpperCase()}`;
+        const existing = r.material_code
+          ? await db.execute(sql`SELECT id FROM raw_materials WHERE tenant_id=${tid} AND material_code=${r.material_code} AND record_status=1 LIMIT 1`)
+          : { rows: [] };
         if (existing.rows.length) {
           await db.execute(sql`
-            UPDATE products SET
-              product_name=${r.product_name}, sku_code=${r.sku_code||null},
-              category=${r.category||null}, hsn_code=${r.hsn_code||null},
-              gst_percent=${r.gst_percent||0}, mrp=${r.mrp||null},
-              standard_cost=${r.standard_cost||0}, base_price=${r.base_price||0},
-              unit_label=${r.unit_label||'pcs'}, sold_by=${r.sold_by||'unit'},
-              reorder_point=${r.reorder_point||0}, item_type=${r.item_type||'goods'},
-              updated_at=NOW()
-            WHERE tenant_id=${tid} AND barcode=${r.barcode} AND record_status=1`);
+            UPDATE raw_materials SET
+              material_name=${r.material_name}, description=${r.description||null},
+              category=${r.category||null}, base_unit=${r.base_unit||null},
+              unit_cost=${r.unit_cost||0}, reorder_level=${r.reorder_level||0},
+              max_stock_level=${r.max_stock_level||0}, opening_stock=${r.opening_stock||0},
+              supplier=${r.supplier||null}, location=${r.location||null}, updated_at=NOW()
+            WHERE tenant_id=${tid} AND material_code=${r.material_code} AND record_status=1`);
           updated++;
-          continue;
+        } else {
+          await db.execute(sql`
+            INSERT INTO raw_materials
+              (tenant_id, material_code, material_name, description, category, base_unit,
+               unit_cost, reorder_level, max_stock_level, opening_stock, opening_date,
+               supplier, location, record_status, is_active)
+            VALUES
+              (${tid}, ${mCode}, ${r.material_name}, ${r.description||null}, ${r.category||null},
+               ${r.base_unit||'pcs'}, ${r.unit_cost||0}, ${r.reorder_level||0},
+               ${r.max_stock_level||0}, ${r.opening_stock||0}, ${r.opening_date||null},
+               ${r.supplier||null}, ${r.location||null}, 1, 'true')
+            ON CONFLICT (material_code) DO UPDATE SET
+              material_name=EXCLUDED.material_name, updated_at=NOW()`);
+          inserted++;
         }
       }
-      // Generate a unique product_code
-      const code = r.sku_code
-        ? `${r.sku_code}-${tid}`
-        : `PRD-${tid}-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
-      await db.execute(sql`
-        INSERT INTO products
-          (tenant_id, product_code, product_name, sku_code, barcode, category,
-           hsn_code, gst_percent, mrp, standard_cost, base_price,
-           unit_label, sold_by, reorder_point, item_type, record_status, is_active)
-        VALUES
-          (${tid}, ${code}, ${r.product_name}, ${r.sku_code||null}, ${r.barcode||null},
-           ${r.category||null}, ${r.hsn_code||null}, ${r.gst_percent||0},
-           ${r.mrp||null}, ${r.standard_cost||0}, ${r.base_price||0},
-           ${r.unit_label||'pcs'}, ${r.sold_by||'unit'}, ${r.reorder_point||0},
-           ${r.item_type||'goods'}, 1, 'true')
-        ON CONFLICT (product_code) DO UPDATE SET
-          product_name=EXCLUDED.product_name, updated_at=NOW()`);
-      inserted++;
+
+    } else {
+      // finished-goods or retail → products table
+      for (const r of rows) {
+        // Deduplicate: barcode check for retail, product_code for finished-goods
+        if (r.barcode) {
+          const ex = await db.execute(sql`SELECT id FROM products WHERE tenant_id=${tid} AND barcode=${r.barcode} AND record_status=1 LIMIT 1`);
+          if (ex.rows.length) {
+            await db.execute(sql`
+              UPDATE products SET
+                product_name=${r.product_name}, sku_code=${r.sku_code||null},
+                category=${r.category||null}, hsn_code=${r.hsn_code||null},
+                gst_percent=${r.gst_percent||0}, mrp=${r.mrp||null},
+                standard_cost=${r.standard_cost||0}, base_price=${r.base_price||0},
+                unit_label=${r.unit_label||'pcs'}, sold_by=${r.sold_by||'unit'},
+                reorder_point=${r.reorder_point||0}, item_type=${r.item_type||'goods'}, updated_at=NOW()
+              WHERE tenant_id=${tid} AND barcode=${r.barcode} AND record_status=1`);
+            updated++; continue;
+          }
+        }
+        if (r.product_code) {
+          const ex = await db.execute(sql`SELECT id FROM products WHERE tenant_id=${tid} AND product_code=${r.product_code} AND record_status=1 LIMIT 1`);
+          if (ex.rows.length) {
+            await db.execute(sql`
+              UPDATE products SET
+                product_name=${r.product_name}, category=${r.category||null},
+                hsn_code=${r.hsn_code||null}, gst_percent=${r.gst_percent||0},
+                standard_cost=${r.standard_cost||0}, base_price=${r.base_price||0},
+                unit_label=${r.unit_label||'pcs'}, item_type=${r.item_type||'goods'},
+                reorder_point=${r.reorder_point||0}, updated_at=NOW()
+              WHERE tenant_id=${tid} AND product_code=${r.product_code} AND record_status=1`);
+            updated++; continue;
+          }
+        }
+        const code = r.product_code || r.sku_code
+          ? `${(r.product_code || r.sku_code)}-${tid}`
+          : `PRD-${tid}-${Date.now()}-${Math.random().toString(36).substr(2,5).toUpperCase()}`;
+        await db.execute(sql`
+          INSERT INTO products
+            (tenant_id, product_code, product_name, sku_code, barcode, category,
+             hsn_code, gst_percent, mrp, standard_cost, base_price,
+             unit_label, sold_by, reorder_point, item_type, record_status, is_active)
+          VALUES
+            (${tid}, ${code}, ${r.product_name}, ${r.sku_code||null}, ${r.barcode||null},
+             ${r.category||null}, ${r.hsn_code||null}, ${r.gst_percent||0},
+             ${r.mrp||null}, ${r.standard_cost||0}, ${r.base_price||0},
+             ${r.unit_label||'pcs'}, ${r.sold_by||'unit'}, ${r.reorder_point||0},
+             ${r.item_type||'goods'}, 1, 'true')
+          ON CONFLICT (product_code) DO UPDATE SET
+            product_name=EXCLUDED.product_name, updated_at=NOW()`);
+        inserted++;
+      }
     }
+
     res.json({ success: true, inserted, updated, total: inserted + updated });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
