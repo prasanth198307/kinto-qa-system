@@ -1,0 +1,564 @@
+import { useState } from "react";
+import { useLocation } from "wouter";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Separator } from "@/components/ui/separator";
+import SuperAdminLayout from "./super-admin-layout";
+import {
+  CheckCircle2, ChevronRight, Store, Building2, Users, Package,
+  ArrowLeft, Loader2, Eye, EyeOff, AlertCircle, Sparkles,
+} from "lucide-react";
+
+// ── Grocery module presets ─────────────────────────────────────────────────────
+const ALL_MODULES: { key: string; label: string; desc: string; preset: boolean }[] = [
+  { key: "invoicing",      label: "Invoicing & GST",          desc: "GST bills, payments, credit notes",            preset: true  },
+  { key: "purchase_orders",label: "Purchase Orders",           desc: "POs, vendor management, GRNs",                preset: true  },
+  { key: "basic_inventory",label: "Inventory Management",      desc: "Products, stock, UOM, serial/lot, expiry",    preset: true  },
+  { key: "sales_orders",   label: "Sales Orders",              desc: "Pre-invoice sales order management",          preset: true  },
+  { key: "gatepasses",     label: "Gatepasses & Dispatch",     desc: "Delivery challans, dispatch tracking",        preset: true  },
+  { key: "accounting",     label: "Accounting & Ledger",       desc: "Double-entry, COA, P&L, balance sheet",       preset: true  },
+  { key: "expenses",       label: "Expenses & Cash Register",  desc: "Expense vouchers, daily cash register",       preset: true  },
+  { key: "mis",            label: "MIS Analytics",             desc: "Executive dashboards and KPI analytics",      preset: true  },
+  { key: "crm",            label: "CRM",                       desc: "Customer management, pipeline tracking",      preset: true  },
+  { key: "hr_payroll",     label: "HR & Payroll",              desc: "Employees, attendance, salary, ESS portal",   preset: true  },
+  { key: "quality_returns",label: "Quality & Returns",         desc: "Sales returns, quality inspection",           preset: false },
+  { key: "documents",      label: "Document Management",       desc: "Contracts, certificates, expiry alerts",      preset: false },
+  { key: "whatsapp",       label: "WhatsApp Integration",      desc: "Automated messages, billing notifications",   preset: false },
+  { key: "maintenance",    label: "Preventive Maintenance",    desc: "PM schedules, equipment maintenance",         preset: false },
+  { key: "production",     label: "Production & BOM",          desc: "BOM-driven production (not for groceries)",   preset: false },
+];
+
+const GROCERY_ROLES = [
+  { name: "Store Manager",     perms: "Sales, Inventory, Reports — no Accounts or HR" },
+  { name: "Cashier",           perms: "POS/Billing only" },
+  { name: "Godown Incharge",   perms: "Inventory, GRN, Stock Transfers" },
+  { name: "Purchase Manager",  perms: "Purchase Orders, GRN, Vendors" },
+  { name: "Accountant",        perms: "Invoices, Payments, GST Reports" },
+];
+
+type Step = 1 | 2 | 3 | 4;
+
+interface PlanForm {
+  name: string;
+  slug: string;
+  tagline: string;
+  priceMonthly: string;
+  maxUsers: string;
+  modules: string[];
+}
+
+interface TenantForm {
+  companyName: string;
+  slug: string;
+  industry: string;
+  maxUsers: string;
+  trialDays: string;
+}
+
+interface UserForm {
+  adminUsername: string;
+  adminEmail: string;
+  adminPassword: string;
+}
+
+function slugify(str: string) {
+  return str.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+function StepIndicator({ current }: { current: Step }) {
+  const steps = [
+    { n: 1 as Step, label: "Plan",     icon: Package },
+    { n: 2 as Step, label: "Business", icon: Building2 },
+    { n: 3 as Step, label: "Users",    icon: Users },
+    { n: 4 as Step, label: "Done",     icon: CheckCircle2 },
+  ];
+  return (
+    <div className="flex items-center gap-0 mb-8">
+      {steps.map(({ n, label, icon: Icon }, i) => {
+        const done = current > n;
+        const active = current === n;
+        return (
+          <div key={n} className="flex items-center flex-1">
+            <div className="flex flex-col items-center gap-1 flex-shrink-0">
+              <div className={`flex items-center justify-center w-9 h-9 rounded-full border-2 transition-colors ${
+                done  ? "bg-primary border-primary text-primary-foreground" :
+                active ? "border-primary text-primary bg-primary/10" :
+                         "border-muted text-muted-foreground bg-muted/30"
+              }`}>
+                {done ? <CheckCircle2 className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
+              </div>
+              <span className={`text-xs font-medium ${active ? "text-primary" : done ? "text-foreground" : "text-muted-foreground"}`}>
+                {label}
+              </span>
+            </div>
+            {i < steps.length - 1 && (
+              <div className={`flex-1 h-0.5 mx-2 mb-4 ${done ? "bg-primary" : "bg-muted"}`} />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+export default function SuperAdminSetupWizard() {
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
+  const [step, setStep] = useState<Step>(1);
+  const [showPass, setShowPass] = useState(false);
+  const [createdPlanSlug, setCreatedPlanSlug] = useState("");
+  const [createdTenantName, setCreatedTenantName] = useState("");
+
+  const [planForm, setPlanForm] = useState<PlanForm>({
+    name: "Grocery Professional",
+    slug: "grocery-professional",
+    tagline: "Complete ERP for Grocery Stores & Godowns",
+    priceMonthly: "2999",
+    maxUsers: "20",
+    modules: ALL_MODULES.filter(m => m.preset).map(m => m.key),
+  });
+
+  const [tenantForm, setTenantForm] = useState<TenantForm>({
+    companyName: "",
+    slug: "",
+    industry: "Retail",
+    maxUsers: "10",
+    trialDays: "30",
+  });
+
+  const [userForm, setUserForm] = useState<UserForm>({
+    adminUsername: "",
+    adminEmail: "",
+    adminPassword: "",
+  });
+
+  const { data: existingPlans = [] } = useQuery<any[]>({
+    queryKey: ["/api/admin/subscription-plans"],
+    queryFn: async () => {
+      const r = await fetch("/api/admin/subscription-plans", { credentials: "include" });
+      const d = await r.json();
+      return d.plans ?? d ?? [];
+    },
+  });
+
+  const planExists = existingPlans.some((p: any) => p.slug === planForm.slug);
+
+  const createPlanMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/admin/subscription-plans", {
+      name: planForm.name,
+      slug: planForm.slug,
+      tagline: planForm.tagline,
+      description: "Pre-configured plan for grocery stores with godown management.",
+      priceMonthly: Number(planForm.priceMonthly) * 100,
+      priceYearly: Math.round(Number(planForm.priceMonthly) * 100 * 10),
+      maxUsers: Number(planForm.maxUsers),
+      modules: planForm.modules,
+      features: [
+        "GST-compliant billing & invoicing",
+        "Multi-location inventory (store + godown)",
+        "Batch/lot & expiry date tracking",
+        "Purchase orders & GRN",
+        "GSTR-1 / GSTR-3B reports",
+        "HR & payroll for store staff",
+        "POS terminal",
+        "Double-entry accounting",
+      ],
+      isActive: true,
+      isFeatured: false,
+      displayOrder: 10,
+      trialDays: 30,
+    }),
+  });
+
+  const createTenantMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/admin/tenants", {
+      name: tenantForm.companyName,
+      slug: tenantForm.slug,
+      plan: planForm.slug,
+      adminUsername: userForm.adminUsername,
+      adminPassword: userForm.adminPassword,
+      adminEmail: userForm.adminEmail || undefined,
+      maxUsers: Number(tenantForm.maxUsers),
+      trialDays: tenantForm.trialDays ? Number(tenantForm.trialDays) : undefined,
+      industry: tenantForm.industry,
+    }),
+  });
+
+  async function handleFinish() {
+    try {
+      if (!planExists) {
+        await createPlanMutation.mutateAsync();
+        toast({ title: "Plan created", description: planForm.name });
+      }
+      await createTenantMutation.mutateAsync();
+      setCreatedPlanSlug(planForm.slug);
+      setCreatedTenantName(tenantForm.companyName);
+      setStep(4);
+      toast({ title: "Grocery store set up successfully!" });
+    } catch (e: any) {
+      toast({ title: "Setup failed", description: e?.message ?? "Please check the details and try again.", variant: "destructive" });
+    }
+  }
+
+  const isLoading = createPlanMutation.isPending || createTenantMutation.isPending;
+
+  return (
+    <SuperAdminLayout
+      title="Grocery Store Starter Pack"
+      subtitle="Set up a complete grocery store & godown in 3 steps"
+      actions={
+        step < 4 && (
+          <Button variant="outline" size="sm" onClick={() => setLocation("/super-admin/tenants")}>
+            <ArrowLeft className="h-4 w-4 mr-1.5" /> Back to Tenants
+          </Button>
+        )
+      }
+    >
+      <div className="max-w-3xl mx-auto">
+        <StepIndicator current={step} />
+
+        {/* ── Step 1: Plan ──────────────────────────────────────────────── */}
+        {step === 1 && (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Package className="h-4 w-4 text-primary" />
+                  Plan Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {planExists && (
+                  <div className="flex items-center gap-2 p-3 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-700 text-sm text-amber-800 dark:text-amber-200">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    A plan with slug <strong className="font-mono mx-1">{planForm.slug}</strong> already exists — it will be reused.
+                  </div>
+                )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label>Plan Name</Label>
+                    <Input value={planForm.name} onChange={e => setPlanForm(p => ({ ...p, name: e.target.value, slug: slugify(e.target.value) }))} data-testid="input-plan-name" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Plan Slug</Label>
+                    <Input className="font-mono text-sm" value={planForm.slug} onChange={e => setPlanForm(p => ({ ...p, slug: e.target.value }))} data-testid="input-plan-slug" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Monthly Price (₹)</Label>
+                    <Input type="number" value={planForm.priceMonthly} onChange={e => setPlanForm(p => ({ ...p, priceMonthly: e.target.value }))} data-testid="input-plan-price" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Max Users</Label>
+                    <Input type="number" value={planForm.maxUsers} onChange={e => setPlanForm(p => ({ ...p, maxUsers: e.target.value }))} data-testid="input-plan-max-users" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-primary" />
+                    Modules Included
+                  </span>
+                  <Badge variant="secondary">{planForm.modules.length} selected</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {ALL_MODULES.map(mod => {
+                    const checked = planForm.modules.includes(mod.key);
+                    return (
+                      <div
+                        key={mod.key}
+                        className={`flex items-start gap-3 p-3 rounded-md border cursor-pointer transition-colors ${checked ? "border-primary/40 bg-primary/5" : "border-muted"}`}
+                        onClick={() => setPlanForm(p => ({
+                          ...p,
+                          modules: checked ? p.modules.filter(m => m !== mod.key) : [...p.modules, mod.key],
+                        }))}
+                        data-testid={`checkbox-module-${mod.key}`}
+                      >
+                        <Checkbox checked={checked} onCheckedChange={() => {}} className="mt-0.5 pointer-events-none" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium leading-tight">{mod.label}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{mod.desc}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="flex justify-end">
+              <Button onClick={() => setStep(2)} data-testid="button-next-step-1">
+                Next: Business Details <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Step 2: Tenant / Business ─────────────────────────────────── */}
+        {step === 2 && (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Building2 className="h-4 w-4 text-primary" />
+                  Business Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label>Company / Store Name <span className="text-destructive">*</span></Label>
+                    <Input
+                      value={tenantForm.companyName}
+                      onChange={e => setTenantForm(p => ({ ...p, companyName: e.target.value, slug: slugify(e.target.value) }))}
+                      placeholder="e.g. Fresh Mart Grocery"
+                      data-testid="input-company-name"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Company ID (slug) <span className="text-destructive">*</span></Label>
+                    <Input
+                      className="font-mono text-sm"
+                      value={tenantForm.slug}
+                      onChange={e => setTenantForm(p => ({ ...p, slug: e.target.value }))}
+                      placeholder="e.g. fresh-mart"
+                      data-testid="input-tenant-slug"
+                    />
+                    <p className="text-xs text-muted-foreground">Used for login URL. Lowercase, hyphens only.</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Industry</Label>
+                    <Input value={tenantForm.industry} onChange={e => setTenantForm(p => ({ ...p, industry: e.target.value }))} placeholder="Retail" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Max Users</Label>
+                    <Input type="number" value={tenantForm.maxUsers} onChange={e => setTenantForm(p => ({ ...p, maxUsers: e.target.value }))} data-testid="input-tenant-max-users" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Trial Days</Label>
+                    <Input type="number" value={tenantForm.trialDays} onChange={e => setTenantForm(p => ({ ...p, trialDays: e.target.value }))} placeholder="30" />
+                    <p className="text-xs text-muted-foreground">0 = no trial, activate immediately</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Users className="h-4 w-4 text-primary" />
+                  Roles Created Automatically
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-3">These 5 default roles will be created when the tenant is set up. You can customise permissions after login.</p>
+                <div className="space-y-2">
+                  {GROCERY_ROLES.map(r => (
+                    <div key={r.name} className="flex items-center gap-3 py-1.5">
+                      <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
+                      <div>
+                        <span className="text-sm font-medium">{r.name}</span>
+                        <span className="text-xs text-muted-foreground ml-2">— {r.perms}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="flex justify-between">
+              <Button variant="outline" onClick={() => setStep(1)} data-testid="button-back-step-2">
+                <ArrowLeft className="h-4 w-4 mr-1" /> Back
+              </Button>
+              <Button
+                onClick={() => setStep(3)}
+                disabled={!tenantForm.companyName || !tenantForm.slug}
+                data-testid="button-next-step-2"
+              >
+                Next: Admin User <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Step 3: Admin User ────────────────────────────────────────── */}
+        {step === 3 && (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Users className="h-4 w-4 text-primary" />
+                  Admin User Credentials
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label>Admin Username <span className="text-destructive">*</span></Label>
+                    <Input
+                      value={userForm.adminUsername}
+                      onChange={e => setUserForm(p => ({ ...p, adminUsername: e.target.value }))}
+                      placeholder="e.g. admin"
+                      data-testid="input-admin-username"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Admin Email</Label>
+                    <Input
+                      type="email"
+                      value={userForm.adminEmail}
+                      onChange={e => setUserForm(p => ({ ...p, adminEmail: e.target.value }))}
+                      placeholder="owner@freshmart.com"
+                      data-testid="input-admin-email"
+                    />
+                  </div>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label>Admin Password <span className="text-destructive">*</span></Label>
+                    <div className="relative">
+                      <Input
+                        type={showPass ? "text" : "password"}
+                        value={userForm.adminPassword}
+                        onChange={e => setUserForm(p => ({ ...p, adminPassword: e.target.value }))}
+                        placeholder="Strong password"
+                        className="pr-10"
+                        data-testid="input-admin-password"
+                      />
+                      <button
+                        type="button"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                        onClick={() => setShowPass(v => !v)}
+                      >
+                        {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Review summary */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Review Summary</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                  <span className="text-muted-foreground">Plan</span>
+                  <span className="font-medium">{planForm.name} {planExists && <Badge variant="secondary" className="ml-1 text-xs">existing</Badge>}</span>
+                  <span className="text-muted-foreground">Modules</span>
+                  <span className="font-medium">{planForm.modules.length} modules enabled</span>
+                  <span className="text-muted-foreground">Company</span>
+                  <span className="font-medium">{tenantForm.companyName || "—"}</span>
+                  <span className="text-muted-foreground">Company ID</span>
+                  <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">{tenantForm.slug || "—"}</span>
+                  <span className="text-muted-foreground">Max Users</span>
+                  <span className="font-medium">{tenantForm.maxUsers}</span>
+                  <span className="text-muted-foreground">Trial</span>
+                  <span className="font-medium">{tenantForm.trialDays ? `${tenantForm.trialDays} days` : "No trial"}</span>
+                  <span className="text-muted-foreground">Admin Login</span>
+                  <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">{userForm.adminUsername || "—"}</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="flex justify-between">
+              <Button variant="outline" onClick={() => setStep(2)} disabled={isLoading} data-testid="button-back-step-3">
+                <ArrowLeft className="h-4 w-4 mr-1" /> Back
+              </Button>
+              <Button
+                onClick={handleFinish}
+                disabled={isLoading || !userForm.adminUsername || !userForm.adminPassword || !tenantForm.companyName || !tenantForm.slug}
+                data-testid="button-create-all"
+              >
+                {isLoading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Setting up...</> : <><Sparkles className="h-4 w-4 mr-2" />Create Everything</>}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Step 4: Done ─────────────────────────────────────────────── */}
+        {step === 4 && (
+          <div className="space-y-6">
+            <Card className="border-primary/30 bg-primary/5">
+              <CardContent className="pt-6 pb-6 text-center space-y-3">
+                <div className="flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mx-auto">
+                  <CheckCircle2 className="h-8 w-8 text-primary" />
+                </div>
+                <h2 className="text-xl font-bold">Grocery Store Ready!</h2>
+                <p className="text-muted-foreground text-sm max-w-sm mx-auto">
+                  <strong>{createdTenantName}</strong> has been set up with the <strong>{planForm.name}</strong> plan and all modules activated.
+                </p>
+              </CardContent>
+            </Card>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Card>
+                <CardHeader><CardTitle className="text-sm">What was created</CardTitle></CardHeader>
+                <CardContent className="space-y-2 text-sm">
+                  {[
+                    planExists ? `Plan reused: ${planForm.name}` : `Plan created: ${planForm.name}`,
+                    `Tenant: ${createdTenantName}`,
+                    `Admin user: ${userForm.adminUsername}`,
+                    `5 default roles seeded`,
+                    `${planForm.modules.length} modules enabled`,
+                  ].map(item => (
+                    <div key={item} className="flex items-center gap-2">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" />
+                      <span>{item}</span>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader><CardTitle className="text-sm">Next steps</CardTitle></CardHeader>
+                <CardContent className="space-y-2 text-sm text-muted-foreground">
+                  {[
+                    "Log in with the admin credentials",
+                    "Create Warehouses: Main Store + Godown",
+                    "Add staff users with Cashier / Godown roles",
+                    "Set up products and opening stock",
+                    "Configure GST settings (GSTIN, HSN codes)",
+                    "Add suppliers / vendors",
+                  ].map((step, i) => (
+                    <div key={i} className="flex items-start gap-2">
+                      <span className="flex items-center justify-center w-4 h-4 rounded-full bg-muted text-xs font-bold shrink-0 mt-0.5">{i + 1}</span>
+                      <span>{step}</span>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
+
+            <Separator />
+
+            <div className="flex flex-wrap gap-3 justify-center">
+              <Button onClick={() => setLocation(`/super-admin/tenants`)} data-testid="button-go-tenants">
+                <Building2 className="h-4 w-4 mr-2" /> View All Tenants
+              </Button>
+              <Button variant="outline" onClick={() => {
+                setStep(1);
+                setTenantForm({ companyName: "", slug: "", industry: "Retail", maxUsers: "10", trialDays: "30" });
+                setUserForm({ adminUsername: "", adminEmail: "", adminPassword: "" });
+              }} data-testid="button-setup-another">
+                <Store className="h-4 w-4 mr-2" /> Set Up Another Store
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </SuperAdminLayout>
+  );
+}

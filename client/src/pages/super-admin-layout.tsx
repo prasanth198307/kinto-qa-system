@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   ShieldAlert, Building2, CreditCard, Package, HardDrive,
-  LayoutDashboard, LogOut, Loader2, ChevronRight, AlertTriangle, Video, Store, Settings, Shield,
+  LayoutDashboard, LogOut, Loader2, ChevronRight, AlertTriangle, Video, Store, Settings, Shield, Sparkles,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { path: "/super-admin/billing",         label: "Billing",         icon: CreditCard },
   { path: "/super-admin/plans",           label: "Plans",           icon: Package },
   { path: "/super-admin/module-catalog",  label: "Module Catalog",  icon: Store },
+  { path: "/super-admin/setup-wizard",    label: "Setup Wizard",    icon: Sparkles },
   { path: "/super-admin/demo-requests",   label: "Demo Requests",   icon: Video },
   { path: "/super-admin/backups",         label: "Backups",         icon: HardDrive },
   { path: "/super-admin/security",        label: "Security",        icon: Shield },
