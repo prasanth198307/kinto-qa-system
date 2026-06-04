@@ -248,12 +248,14 @@ router.get("/bulk-import/template", requireAuth, (req: any, res) => {
   } else if (mode === "finished-goods") {
     headers = [
       "Product Code", "Product Name*", "Category", "HSN Code*",
-      "GST %*", "Standard Cost (₹)", "Selling Price (₹)*",
-      "UOM*", "Item Type (goods/service)", "Reorder Level",
+      "GST %*", "Standard Cost (₹)", "Selling Price (₹)*", "UOM*",
+      "Item Type (goods/service)", "Reorder Level",
+      "Sell at Retail Counter (Y/N)", "Barcode/EAN", "MRP (₹)",
     ];
     sample = [
-      "FG-CHAIR-001", "Ergonomic Office Chair", "Furniture", "94013000",
-      "18", "3500", "5200", "pcs", "goods", "10",
+      "FG-BOTTLE-001", "Kinto 500ml Water Bottle", "Beverages", "22029990",
+      "12", "28", "45", "pcs", "goods", "100",
+      "Y", "8906072100012", "55",
     ];
     filename = "finished_goods_import_template.csv";
   } else {
@@ -321,15 +323,24 @@ router.post("/bulk-import/preview", requireAuth, xlsxUpload.single("file"), asyn
         }
 
       } else if (mode === "finished-goods") {
-        const name  = String(r["Product Name*"] || r["Product Name"] || "").trim();
-        const hsn   = String(r["HSN Code*"]     || r["HSN Code"]     || "").trim();
-        const gst   = parseFloat(String(r["GST %*"] || r["GST %"] || "0"));
-        const price = parseFloat(String(r["Selling Price (₹)*"] || r["Selling Price (₹)"] || ""));
-        const uom   = String(r["UOM*"] || r["UOM"] || "pcs").trim() || "pcs";
+        const name        = String(r["Product Name*"] || r["Product Name"] || "").trim();
+        const hsn         = String(r["HSN Code*"]     || r["HSN Code"]     || "").trim();
+        const gst         = parseFloat(String(r["GST %*"] || r["GST %"] || "0"));
+        const price       = parseFloat(String(r["Selling Price (₹)*"] || r["Selling Price (₹)"] || ""));
+        const uom         = String(r["UOM*"] || r["UOM"] || "pcs").trim() || "pcs";
+        const sellRetail  = String(r["Sell at Retail Counter (Y/N)"] || "N").trim().toUpperCase() === "Y";
+        const mrpRaw      = parseFloat(String(r["MRP (₹)"] || ""));
+        const barcode     = String(r["Barcode/EAN"] || "").trim() || null;
+
         if (!name)                       rowErrors.push("Product Name is required");
         if (!hsn)                        rowErrors.push("HSN Code is required for GST invoicing");
         if (isNaN(gst))                  rowErrors.push("GST % must be a number (0/5/12/18/28)");
         if (isNaN(price) || price <= 0) rowErrors.push("Selling Price must be a positive number");
+        // POS-specific validations only when sellRetail = Y
+        if (sellRetail) {
+          if (isNaN(mrpRaw) || mrpRaw <= 0) rowErrors.push("MRP is required when Sell at Retail Counter = Y");
+          if (!isNaN(mrpRaw) && !isNaN(price) && price > mrpRaw) rowErrors.push("Selling Price cannot exceed MRP");
+        }
         if (rowErrors.length) {
           rowErrors.forEach(msg => errors.push({ row: rowNum, field: msg.split(" ")[0], message: msg, item: name || `Row ${rowNum}` }));
         } else {
@@ -344,6 +355,11 @@ router.post("/bulk-import/preview", requireAuth, xlsxUpload.single("file"), asyn
             unit_label:    uom,
             item_type:     String(r["Item Type (goods/service)"] || "goods").toLowerCase() === "service" ? "service" : "goods",
             reorder_point: parseFloat(String(r["Reorder Level"] || "0")) || 0,
+            product_type:  "finished_good",
+            pos_enabled:   sellRetail,
+            barcode:       sellRetail ? barcode : null,
+            mrp:           sellRetail && !isNaN(mrpRaw) ? Math.round(mrpRaw * 100) : null,
+            sold_by:       "unit",
           });
         }
 
@@ -433,8 +449,12 @@ router.post("/bulk-import/confirm", requireAuth, async (req: any, res) => {
 
     } else {
       // finished-goods or retail → products table
+      const isRetailMode = mode === "retail";
       for (const r of rows) {
-        // Deduplicate: barcode check for retail, product_code for finished-goods
+        const pType     = r.product_type || (isRetailMode ? "retail" : "finished_good");
+        const posEnable = r.pos_enabled !== undefined ? r.pos_enabled : true;
+
+        // Deduplicate priority: barcode first (catches POS-enabled FG overlap), then product_code
         if (r.barcode) {
           const ex = await db.execute(sql`SELECT id FROM products WHERE tenant_id=${tid} AND barcode=${r.barcode} AND record_status=1 LIMIT 1`);
           if (ex.rows.length) {
@@ -445,7 +465,8 @@ router.post("/bulk-import/confirm", requireAuth, async (req: any, res) => {
                 gst_percent=${r.gst_percent||0}, mrp=${r.mrp||null},
                 standard_cost=${r.standard_cost||0}, base_price=${r.base_price||0},
                 unit_label=${r.unit_label||'pcs'}, sold_by=${r.sold_by||'unit'},
-                reorder_point=${r.reorder_point||0}, item_type=${r.item_type||'goods'}, updated_at=NOW()
+                reorder_point=${r.reorder_point||0}, item_type=${r.item_type||'goods'},
+                product_type=${pType}, pos_enabled=${posEnable}, updated_at=NOW()
               WHERE tenant_id=${tid} AND barcode=${r.barcode} AND record_status=1`);
             updated++; continue;
           }
@@ -459,27 +480,33 @@ router.post("/bulk-import/confirm", requireAuth, async (req: any, res) => {
                 hsn_code=${r.hsn_code||null}, gst_percent=${r.gst_percent||0},
                 standard_cost=${r.standard_cost||0}, base_price=${r.base_price||0},
                 unit_label=${r.unit_label||'pcs'}, item_type=${r.item_type||'goods'},
-                reorder_point=${r.reorder_point||0}, updated_at=NOW()
+                reorder_point=${r.reorder_point||0}, barcode=${r.barcode||null},
+                mrp=${r.mrp||null}, pos_enabled=${posEnable}, product_type=${pType},
+                updated_at=NOW()
               WHERE tenant_id=${tid} AND product_code=${r.product_code} AND record_status=1`);
             updated++; continue;
           }
         }
-        const code = r.product_code || r.sku_code
+        const code = (r.product_code || r.sku_code)
           ? `${(r.product_code || r.sku_code)}-${tid}`
           : `PRD-${tid}-${Date.now()}-${Math.random().toString(36).substr(2,5).toUpperCase()}`;
         await db.execute(sql`
           INSERT INTO products
             (tenant_id, product_code, product_name, sku_code, barcode, category,
              hsn_code, gst_percent, mrp, standard_cost, base_price,
-             unit_label, sold_by, reorder_point, item_type, record_status, is_active)
+             unit_label, sold_by, reorder_point, item_type,
+             product_type, pos_enabled, record_status, is_active)
           VALUES
             (${tid}, ${code}, ${r.product_name}, ${r.sku_code||null}, ${r.barcode||null},
              ${r.category||null}, ${r.hsn_code||null}, ${r.gst_percent||0},
              ${r.mrp||null}, ${r.standard_cost||0}, ${r.base_price||0},
              ${r.unit_label||'pcs'}, ${r.sold_by||'unit'}, ${r.reorder_point||0},
-             ${r.item_type||'goods'}, 1, 'true')
+             ${r.item_type||'goods'}, ${pType}, ${posEnable}, 1, 'true')
           ON CONFLICT (product_code) DO UPDATE SET
-            product_name=EXCLUDED.product_name, updated_at=NOW()`);
+            product_name=EXCLUDED.product_name,
+            pos_enabled=EXCLUDED.pos_enabled,
+            product_type=EXCLUDED.product_type,
+            updated_at=NOW()`);
         inserted++;
       }
     }

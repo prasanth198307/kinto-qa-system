@@ -1,0 +1,168 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.wrap{padding:1rem 0;font-size:13px}
+.sec{margin-bottom:1.6rem}
+.sec-title{font-size:14px;font-weight:500;margin-bottom:10px;padding-bottom:7px;border-bottom:.5px solid var(--color-border-tertiary);color:var(--color-text-primary)}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.card{background:var(--color-background-primary);border:.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:14px 16px}
+.card.warn{border-color:var(--color-border-warning);background:var(--color-background-warning)}
+.card.ok{border-color:var(--color-border-success);background:var(--color-background-success)}
+.card.issue{border-color:var(--color-border-danger);background:var(--color-background-danger)}
+.card-title{font-size:12px;font-weight:500;margin-bottom:6px;color:var(--color-text-primary)}
+.card-body{font-size:11px;color:var(--color-text-secondary);line-height:1.6}
+.b{display:inline-block;font-size:11px;font-weight:500;padding:2px 8px;border-radius:99px;margin-bottom:6px}
+.b-ok{background:var(--color-background-success);color:var(--color-text-success)}
+.b-warn{background:var(--color-background-warning);color:var(--color-text-warning)}
+.b-err{background:var(--color-background-danger);color:var(--color-text-danger)}
+.b-blue{background:var(--color-background-info);color:var(--color-text-info)}
+.field-block{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:8px 10px;margin-top:8px;font-size:11px;line-height:1.7;color:var(--color-text-secondary)}
+.field-block code{font-family:var(--font-mono);font-size:10px;background:var(--color-background-primary);padding:1px 4px;border-radius:3px;color:var(--color-text-primary)}
+.problem-box{border:.5px solid var(--color-border-danger);border-radius:var(--border-radius-lg);padding:14px 16px;margin-bottom:10px}
+.problem-title{font-size:12px;font-weight:500;color:var(--color-text-danger);margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.problem-body{font-size:11px;color:var(--color-text-secondary);line-height:1.6}
+.fix-box{border:.5px solid var(--color-border-success);border-radius:var(--border-radius-lg);padding:14px 16px;margin-bottom:10px}
+.fix-title{font-size:12px;font-weight:500;color:var(--color-text-success);margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.fix-body{font-size:11px;color:var(--color-text-secondary);line-height:1.6}
+.matrix{width:100%;border-collapse:collapse;font-size:11px}
+.matrix th{background:var(--color-background-secondary);padding:7px 10px;text-align:left;font-weight:500;color:var(--color-text-secondary);border:.5px solid var(--color-border-tertiary)}
+.matrix td{padding:7px 10px;border:.5px solid var(--color-border-tertiary);color:var(--color-text-primary);vertical-align:top}
+.matrix tr:nth-child(even) td{background:var(--color-background-secondary)}
+.tick{color:var(--color-text-success);font-weight:500}
+.cross{color:var(--color-text-danger)}
+.note{font-size:11px;color:var(--color-text-secondary);line-height:1.6;padding:10px 12px;background:var(--color-background-secondary);border-radius:var(--border-radius-md);margin-top:8px}
+.action-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:1rem}
+button{cursor:pointer}
+.btn-sm{font-size:11px;padding:4px 12px;border:.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);color:var(--color-text-primary)}
+</style>
+<div class="wrap">
+
+<div class="sec">
+  <div class="sec-title">Your current proposal — verdict per mode</div>
+  <div class="row3">
+    <div class="card ok">
+      <span class="b b-ok">Correct</span>
+      <div class="card-title">Mode 1 — Raw materials</div>
+      <div class="card-body">Table: <code>raw_materials</code><br>User: KINTO manufacturing<br><br>Fully correct. Raw materials are inputs to production — flour, sugar, PET preforms, labels, caps. They never appear on POS. Separate table is right.</div>
+      <div class="field-block">Key fields: <code>item_code</code> <code>name</code> <code>uom</code> <code>purchase_rate</code> <code>reorder_qty</code> <code>supplier_id</code> <code>stock_qty</code></div>
+    </div>
+    <div class="card warn">
+      <span class="b b-warn">Partially correct</span>
+      <div class="card-title">Mode 2 — Finished goods</div>
+      <div class="card-body">Table: <code>products</code><br>User: KINTO manufactured output<br><br>Correct table — but finished goods and retail products sharing one table needs a <code>type</code> discriminator column. Otherwise KINTO's 500ml bottle and a grocery store's biscuit packet are indistinguishable rows.</div>
+      <div class="field-block">Extra fields needed: <code>product_type = 'finished_good'</code> <code>bom_id</code> (links to bill of materials) <code>production_uom</code> <code>selling_uom</code></div>
+    </div>
+    <div class="card warn">
+      <span class="b b-warn">Needs clarification</span>
+      <div class="card-title">Mode 3 — Retail products (POS)</div>
+      <div class="card-body">Table: <code>products</code><br>User: Grocery store<br><br>Correct table — but if KINTO's finished goods also go to POS (Kinto Water bottles sold at their own outlet), then Mode 2 and Mode 3 may be the <em>same product</em> with different field profiles, not two separate imports.</div>
+      <div class="field-block">Extra fields needed: <code>product_type = 'retail'</code> <code>barcode_ean</code> <code>mrp</code> <code>selling_price</code> <code>hsn_code</code> <code>gst_pct</code> <code>pos_enabled = true</code></div>
+    </div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="sec-title">The real problem — KINTO overlap scenario</div>
+  <div class="problem-box">
+    <div class="problem-title"><i class="ti ti-alert-triangle" aria-hidden="true" style="font-size:15px"></i> Mode 2 and Mode 3 collide for KINTO</div>
+    <div class="problem-body">
+      KINTO manufactures 500ml Kinto Water bottles (Mode 2 — Finished Good). If KINTO also sells those bottles at a retail counter or through distributors, the same item needs POS fields (barcode, MRP, GST%) — making it Mode 3 as well.<br><br>
+      If Mode 2 import creates a <code>products</code> row <em>without</em> barcode/MRP, and then Mode 3 import tries to create the same item <em>with</em> barcode/MRP — you get a duplicate row or a silent overwrite. Neither is acceptable.
+    </div>
+  </div>
+  <div class="fix-box">
+    <div class="fix-title"><i class="ti ti-check" aria-hidden="true" style="font-size:15px"></i> Fix — merge Mode 2 + Mode 3 with a flag, not two separate modes</div>
+    <div class="fix-body">
+      A finished good can <em>optionally</em> be POS-enabled. The import wizard asks: "Is this product also sold at a retail counter?" If yes → show barcode/MRP/GST fields in the same upload. One row, one import, one product record.<br><br>
+      Mode 3 (Retail Products) then becomes purely the <strong>grocery-only path</strong> — for items that are <em>only</em> retail products, never manufactured in-house. This is the clean separation.
+    </div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="sec-title">Corrected mode selector — 3 modes, clean separation</div>
+  <table class="matrix">
+    <thead>
+      <tr>
+        <th>Mode</th>
+        <th>Table</th>
+        <th>Who uses it</th>
+        <th>POS-linked?</th>
+        <th>BOM-linked?</th>
+        <th>Key extra fields</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Raw materials</strong></td>
+        <td><code>raw_materials</code></td>
+        <td>KINTO manufacturing</td>
+        <td class="cross">Never</td>
+        <td class="tick">As input</td>
+        <td>supplier, reorder qty, storage UOM</td>
+      </tr>
+      <tr>
+        <td><strong>Finished goods</strong></td>
+        <td><code>products</code> type=FG</td>
+        <td>KINTO output items</td>
+        <td>Optional flag</td>
+        <td class="tick">As output</td>
+        <td>bom_id, production_uom, <em>optionally</em> barcode + MRP if sold retail</td>
+      </tr>
+      <tr>
+        <td><strong>Retail / POS products</strong></td>
+        <td><code>products</code> type=Retail</td>
+        <td>Grocery store only</td>
+        <td class="tick">Always</td>
+        <td class="cross">Never</td>
+        <td>barcode EAN, MRP, selling price, HSN, GST%, pos_enabled=true</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="note">The <code>products</code> table unifies Finished Goods and Retail Products via a <code>product_type</code> column + <code>pos_enabled</code> boolean. The <code>raw_materials</code> table stays separate — raw materials never appear on invoices or POS, so mixing them into <code>products</code> creates unnecessary noise.</div>
+</div>
+
+<div class="sec">
+  <div class="sec-title">Wizard UI logic — what fields appear per mode</div>
+  <div class="row3">
+    <div class="card">
+      <span class="b b-blue">Mode 1</span>
+      <div class="card-title">Raw materials upload</div>
+      <div class="field-block">
+        Item code · Name · Category · UOM · Purchase rate · Reorder level · Supplier · Opening stock · Storage location
+        <br><br>
+        <span style="color:var(--color-text-danger)">Hidden: MRP, barcode, GST, BOM, selling price</span>
+      </div>
+    </div>
+    <div class="card">
+      <span class="b b-blue">Mode 2</span>
+      <div class="card-title">Finished goods upload</div>
+      <div class="field-block">
+        Item code · Name · Category · Production UOM · Selling UOM · Standard cost · BOM reference · Opening stock
+        <br><br>
+        <strong>+ If "Sell at retail counter = YES":</strong><br>
+        Barcode EAN · MRP · Selling price · HSN · GST%
+        <br><br>
+        <span style="color:var(--color-text-danger)">Hidden: Supplier, reorder level</span>
+      </div>
+    </div>
+    <div class="card">
+      <span class="b b-blue">Mode 3</span>
+      <div class="card-title">Retail / POS upload</div>
+      <div class="field-block">
+        Barcode EAN · Name · Category · HSN · GST% · MRP · Purchase rate · Selling price · UOM · Reorder level · Expiry tracking · Warehouse
+        <br><br>
+        <span style="color:var(--color-text-danger)">Hidden: BOM, production UOM, supplier code</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="action-row">
+  <button class="btn-sm" onclick="sendPrompt('Design the database schema for products table with product_type discriminator and pos_enabled flag for SwachERP multi-domain inventory')">DB schema for products table ↗</button>
+  <button class="btn-sm" onclick="sendPrompt('Design the import wizard UI screen with the 3-mode selector for SwachERP inventory bulk upload')">Wizard UI screen spec ↗</button>
+  <button class="btn-sm" onclick="sendPrompt('How should KINTO finished goods that are also retail products be handled in one import row in SwachERP?')">KINTO dual-role item flow ↗</button>
+</div>
+
+</div>

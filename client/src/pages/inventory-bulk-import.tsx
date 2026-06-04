@@ -45,21 +45,25 @@ const MODE_CONFIG: Record<Mode, {
   },
   "finished-goods": {
     label: "Finished Goods",
-    subtitle: "Products manufactured and ready to sell or dispatch",
+    subtitle: "Manufactured products — optionally POS-enabled per row",
     icon: Package,
     who: "Manufacturing tenants — items that come OUT of production",
-    previewCols: ["Product Code", "Product Name", "Category", "HSN", "GST%", "Std Cost", "Selling ₹", "UOM"],
+    previewCols: ["Product Code", "Product Name", "HSN", "GST%", "Selling ₹", "Sell@POS", "Barcode", "MRP"],
     fields: [
-      { col: "Product Code",            req: false, note: "Unique item code. Auto-generated if blank. Duplicate = update." },
-      { col: "Product Name",            req: true,  note: "Full finished-goods name." },
-      { col: "Category",                req: false, note: "Product family or category." },
-      { col: "HSN Code",                req: true,  note: "6-digit HSN for GST invoicing." },
-      { col: "GST %",                   req: true,  note: "0 / 5 / 12 / 18 / 28." },
-      { col: "Standard Cost (₹)",       req: false, note: "Cost of production per unit." },
-      { col: "Selling Price (₹)",       req: true,  note: "Default selling / dispatch price." },
-      { col: "UOM",                     req: true,  note: "PCS / KG / BOX / SET." },
-      { col: "Item Type (goods/service)", req: false, note: "Usually goods. Use service for job-work." },
-      { col: "Reorder Level",           req: false, note: "Minimum FG stock before re-trigger production." },
+      { col: "Product Code",                req: false, note: "Unique code (e.g. FG-BOTTLE-001). Auto-generated if blank. Duplicate code = update existing." },
+      { col: "Product Name",                req: true,  note: "Full product name as manufactured." },
+      { col: "Category",                    req: false, note: "Product family or category." },
+      { col: "HSN Code",                    req: true,  note: "6-digit HSN for GST invoicing / dispatch." },
+      { col: "GST %",                       req: true,  note: "0 / 5 / 12 / 18 / 28." },
+      { col: "Standard Cost (₹)",           req: false, note: "Cost of production per unit." },
+      { col: "Selling Price (₹)",           req: true,  note: "Default dispatch / selling price." },
+      { col: "UOM",                         req: true,  note: "PCS / KG / BOX / SET." },
+      { col: "Item Type (goods/service)",   req: false, note: "Usually goods. Use service for job-work." },
+      { col: "Reorder Level",               req: false, note: "Min FG stock before re-triggering production." },
+      { col: "— POS section (if sold at retail counter) —", req: false, note: "Leave the next 3 columns blank if this product is never sold at a counter." },
+      { col: "Sell at Retail Counter (Y/N)", req: false, note: "Y = this finished good is also scanned at POS. Activates barcode + MRP fields for this row only." },
+      { col: "Barcode/EAN",                 req: false, note: "13-digit EAN or internal barcode. Required if Sell at Retail Counter = Y." },
+      { col: "MRP (₹)",                     req: false, note: "Max retail price. Required if Sell at Retail Counter = Y. Selling Price must be ≤ MRP." },
     ],
   },
   "retail": {
@@ -206,10 +210,16 @@ export default function InventoryBulkImportPage() {
     }
     if (mode === "finished-goods") {
       const vals: Record<string, any> = {
-        "Product Code": r.product_code || "—", "Product Name": r.product_name,
-        "Category": r.category || "—", "HSN": r.hsn_code,
-        "GST%": `${r.gst_percent}%`, "Std Cost": r.standard_cost ? `₹${r.standard_cost}` : "—",
-        "Selling ₹": `₹${r.base_price}`, "UOM": r.unit_label,
+        "Product Code": r.product_code || "—",
+        "Product Name": r.product_name,
+        "HSN": r.hsn_code,
+        "GST%": `${r.gst_percent}%`,
+        "Selling ₹": `₹${r.base_price}`,
+        "Sell@POS": r.pos_enabled
+          ? <span className="text-green-600 font-medium">Yes</span>
+          : <span className="text-muted-foreground">No</span>,
+        "Barcode": r.barcode || "—",
+        "MRP": r.mrp ? `₹${(r.mrp / 100).toFixed(2)}` : "—",
       };
       return <td key={i} className="px-3 py-2">{vals[col] ?? "—"}</td>;
     }
