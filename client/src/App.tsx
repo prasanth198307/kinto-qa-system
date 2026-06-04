@@ -173,6 +173,7 @@ import HRSupportDeskPage from "@/pages/hr-support-desk";
 import CRMSurveysPage from "@/pages/crm-surveys";
 import RecurringInvoicesPage from "@/pages/recurring-invoices";
 import WarehousesPage from "@/pages/warehouses";
+import InventoryBulkImportPage from "@/pages/inventory-bulk-import";
 import ProjectManagementPage from "@/pages/project-management";
 import TimesheetsPage from "@/pages/timesheets";
 import FixedAssetsPage from "@/pages/fixed-assets";
@@ -2210,6 +2211,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "spare-parts", label: "Spare Parts", icon: Wrench, onClick: () => setLocation('/spare-parts') },
         { id: "scrap-management", label: "Scrap Management", icon: Trash2, onClick: () => setLocation('/scrap-management') },
         { id: "warehouses", label: "Warehouses & Stock", icon: Archive, onClick: () => setLocation('/warehouses') },
+        { id: "inventory-bulk-import", label: "Bulk Import Products", icon: Upload, onClick: () => setLocation('/inventory/bulk-import') },
       ],
     },
     {
@@ -3966,6 +3968,7 @@ function Router() {
       <ProtectedRoute path="/hr/appraisals" component={PerformanceAppraisalWrapper} />
       <ProtectedRoute path="/recurring-invoices" component={RecurringInvoicesWrapper} />
       <ProtectedRoute path="/warehouses" component={WarehousesWrapper} />
+      <ProtectedRoute path="/inventory/bulk-import" component={InventoryBulkImportWrapper} />
       <ProtectedRoute path="/projects" component={ProjectManagementWrapper} />
       <ProtectedRoute path="/fixed-assets" component={FixedAssetsWrapper} />
       <ProtectedRoute path="/currency-management" component={CurrencyManagementWrapper} />
@@ -4102,6 +4105,22 @@ function WarehousesWrapper() {
       navSections={resolvedNav} activeView={activeView}
       onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
       <WarehousesPage />
+    </DashboardShell>
+  );
+}
+
+function InventoryBulkImportWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('inventory-bulk-import');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Inventory Bulk Import" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
+      <InventoryBulkImportPage />
     </DashboardShell>
   );
 }

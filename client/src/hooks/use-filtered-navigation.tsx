@@ -132,6 +132,7 @@ const navItemToScreen: Record<string, string> = {
   'hr-appraisals': 'HR & Payroll',
   'recurring-invoices': 'Purchase Orders',
   'warehouses': 'Inventory Management',
+  'inventory-bulk-import': 'Inventory Management',
   'projects': 'Projects & Assets',
   'fixed-assets': 'Projects & Assets',
   'currency-management': 'Accounting & Ledger',
