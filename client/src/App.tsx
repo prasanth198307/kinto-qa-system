@@ -84,7 +84,7 @@ import { ManagerChecklistAssignment } from "@/components/ManagerChecklistAssignm
 import PendingPaymentsDashboard from "@/components/PendingPaymentsDashboard";
 import { OperatorAssignedChecklists } from "@/components/OperatorAssignedChecklists";
 import { VerticalNavSidebar, type NavSection } from "@/components/VerticalNavSidebar";
-import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, ClipboardList, Settings, Calendar, Users, FileText, FileX, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator, IndianRupee, CreditCard, Upload, FolderOpen, Wallet, Car, BookOpen, Scale, BarChart3, Landmark, Tag, Trash2, PackageX, Loader2, Play, UserX, Briefcase, Target, Lock, Key, Gem, Star, MessageSquare, Camera, Crosshair, Coins, Award, RotateCcw, ShoppingBag, Gift, Zap, Globe, Wifi, Settings2 } from "lucide-react";
+import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, ClipboardList, Settings, Calendar, Users, FileText, FileX, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator, IndianRupee, CreditCard, Upload, FolderOpen, Wallet, Car, BookOpen, Scale, BarChart3, Landmark, Tag, Trash2, PackageX, Loader2, Play, UserX, Briefcase, Target, Lock, Key, Gem, Star, MessageSquare, Camera, Crosshair, Coins, Award, RotateCcw, ShoppingBag, Gift, Zap, Globe, Wifi, Settings2, Scan } from "lucide-react";
 import CRMLeadsPage from "@/pages/crm-leads";
 import SalesDashboard from "@/components/SalesDashboard";
 import SalesOrdersPage from "@/pages/sales-orders";
@@ -174,6 +174,7 @@ import CRMSurveysPage from "@/pages/crm-surveys";
 import RecurringInvoicesPage from "@/pages/recurring-invoices";
 import WarehousesPage from "@/pages/warehouses";
 import InventoryBulkImportPage from "@/pages/inventory-bulk-import";
+import InventoryGrnScanPage from "@/pages/inventory-grn-scan";
 import ProjectManagementPage from "@/pages/project-management";
 import TimesheetsPage from "@/pages/timesheets";
 import FixedAssetsPage from "@/pages/fixed-assets";
@@ -2212,6 +2213,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "scrap-management", label: "Scrap Management", icon: Trash2, onClick: () => setLocation('/scrap-management') },
         { id: "warehouses", label: "Warehouses & Stock", icon: Archive, onClick: () => setLocation('/warehouses') },
         { id: "inventory-bulk-import", label: "Bulk Import Products", icon: Upload, onClick: () => setLocation('/inventory/bulk-import') },
+        { id: "inventory-grn-scan", label: "GRN Scan (Barcode)", icon: Scan, onClick: () => setLocation('/inventory/grn-scan') },
       ],
     },
     {
@@ -3969,6 +3971,7 @@ function Router() {
       <ProtectedRoute path="/recurring-invoices" component={RecurringInvoicesWrapper} />
       <ProtectedRoute path="/warehouses" component={WarehousesWrapper} />
       <ProtectedRoute path="/inventory/bulk-import" component={InventoryBulkImportWrapper} />
+      <ProtectedRoute path="/inventory/grn-scan" component={InventoryGrnScanWrapper} />
       <ProtectedRoute path="/projects" component={ProjectManagementWrapper} />
       <ProtectedRoute path="/fixed-assets" component={FixedAssetsWrapper} />
       <ProtectedRoute path="/currency-management" component={CurrencyManagementWrapper} />
@@ -4121,6 +4124,22 @@ function InventoryBulkImportWrapper() {
       navSections={resolvedNav} activeView={activeView}
       onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
       <InventoryBulkImportPage />
+    </DashboardShell>
+  );
+}
+
+function InventoryGrnScanWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('inventory-grn-scan');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="GRN — Scan Mode" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
+      <InventoryGrnScanPage />
     </DashboardShell>
   );
 }

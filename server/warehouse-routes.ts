@@ -228,6 +228,70 @@ router.get("/products", requireAuth, async (req: any, res) => {
   }
 });
 
+// ─── Barcode / SKU lookup (used by GRN scan screen) ──────────────────────────
+router.get("/products/lookup", requireAuth, async (req: any, res) => {
+  try {
+    const tid = req.session?.tenantId;
+    const barcode = String(req.query.barcode || "").trim();
+    const sku     = String(req.query.sku     || "").trim();
+    if (!barcode && !sku) return res.status(400).json({ error: "barcode or sku required" });
+    const rows = await db.execute(sql`
+      SELECT id, product_name AS name, sku_code AS sku, barcode, category,
+             hsn_code, gst_percent AS tax_rate, base_price AS selling_price,
+             mrp, unit_label, sold_by, item_type, product_type, pos_enabled,
+             brand, expiry_tracking
+      FROM products
+      WHERE tenant_id=${tid} AND record_status=1 AND is_active='true'
+        AND (
+          (${barcode} <> '' AND barcode = ${barcode})
+          OR (${sku} <> '' AND (sku_code = ${sku} OR product_code = ${sku}))
+        )
+      LIMIT 1`);
+    if (!rows.rows.length) return res.status(404).json({ error: "Product not found in item master" });
+    res.json(rows.rows[0]);
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ─── GRN Scan — confirm receipt (adds stock to warehouse_stock) ───────────────
+router.post("/grn-scan/confirm", requireAuth, async (req: any, res) => {
+  try {
+    const tid = req.session?.tenantId;
+    const { items, supplier } = req.body as { items: Array<{ product_id: number; qty: number; unit_label: string }>; supplier?: string };
+    if (!Array.isArray(items) || !items.length) return res.status(400).json({ error: "No items provided" });
+
+    // Resolve default warehouse for this tenant
+    const whRows = await db.execute(sql`
+      SELECT id FROM warehouses WHERE tenant_id=${tid} AND is_default=true AND record_status=1 LIMIT 1`);
+    const warehouseId: number | null = whRows.rows.length ? (whRows.rows[0] as any).id : null;
+
+    let received = 0;
+    for (const item of items) {
+      if (!item.product_id || !item.qty || item.qty <= 0) continue;
+      const itemIdStr = String(item.product_id);
+      if (warehouseId) {
+        const existing = await db.execute(sql`
+          SELECT id FROM warehouse_stock WHERE tenant_id=${tid} AND warehouse_id=${warehouseId} AND item_id=${itemIdStr} LIMIT 1`);
+        if (existing.rows.length) {
+          await db.execute(sql`
+            UPDATE warehouse_stock SET quantity = quantity + ${item.qty}
+            WHERE tenant_id=${tid} AND warehouse_id=${warehouseId} AND item_id=${itemIdStr}`);
+        } else {
+          await db.execute(sql`
+            INSERT INTO warehouse_stock (tenant_id, warehouse_id, item_id, quantity, reserved)
+            VALUES (${tid}, ${warehouseId}, ${itemIdStr}, ${item.qty}, 0)`);
+        }
+      }
+      received++;
+    }
+
+    res.json({ success: true, received, supplier: supplier || null, warehouse_id: warehouseId });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ─── Bulk Import — template download (mode-aware) ────────────────────────────
 router.get("/bulk-import/template", requireAuth, (req: any, res) => {
   const mode = String(req.query.mode || "retail");
@@ -264,10 +328,12 @@ router.get("/bulk-import/template", requireAuth, (req: any, res) => {
       "Barcode/EAN", "Product Name*", "SKU Code", "Category", "HSN Code*",
       "GST %*", "MRP (₹)*", "Purchase Rate (₹)", "Selling Price (₹)*",
       "UOM*", "Sold By (unit/weight)", "Reorder Level", "Item Type (goods/service)",
+      "Opening Stock (qty)", "Brand", "Expiry Tracking (YES/NO)", "Warehouse",
     ];
     sample = [
       "8901030984817", "Aashirvaad Atta 5kg", "ATT-5K", "Staples", "19021090",
       "5", "280", "195", "265", "pcs", "unit", "5", "goods",
+      "120", "ITC", "NO", "Main Godown",
     ];
     filename = "retail_products_import_template.csv";
   }
@@ -365,12 +431,17 @@ router.post("/bulk-import/preview", requireAuth, xlsxUpload.single("file"), asyn
 
       } else {
         // retail
-        const name   = String(r["Product Name*"] || r["Product Name"] || "").trim();
-        const hsn    = String(r["HSN Code*"]     || r["HSN Code"]     || "").trim();
-        const gst    = parseFloat(String(r["GST %*"] || r["GST %"] || "0"));
-        const mrpRaw = parseFloat(String(r["MRP (₹)*"] || r["MRP (₹)"] || ""));
-        const price  = parseFloat(String(r["Selling Price (₹)*"] || r["Selling Price (₹)"] || ""));
-        const uom    = String(r["UOM*"] || r["UOM"] || "pcs").trim() || "pcs";
+        const name    = String(r["Product Name*"] || r["Product Name"] || "").trim();
+        const hsn     = String(r["HSN Code*"]     || r["HSN Code"]     || "").trim();
+        const gst     = parseFloat(String(r["GST %*"] || r["GST %"] || "0"));
+        const mrpRaw  = parseFloat(String(r["MRP (₹)*"] || r["MRP (₹)"] || ""));
+        const price   = parseFloat(String(r["Selling Price (₹)*"] || r["Selling Price (₹)"] || ""));
+        const uom     = String(r["UOM*"] || r["UOM"] || "pcs").trim() || "pcs";
+        const openQty = parseFloat(String(r["Opening Stock (qty)"] || "0")) || 0;
+        const brand   = String(r["Brand"] || "").trim() || null;
+        const expiryRaw = String(r["Expiry Tracking (YES/NO)"] || "NO").trim().toUpperCase();
+        const expiryTracking = expiryRaw === "YES" || expiryRaw === "Y";
+        const warehouseName  = String(r["Warehouse"] || "").trim() || null;
         if (!name)                                                        rowErrors.push("Product Name is required");
         if (!hsn)                                                         rowErrors.push("HSN Code is required for GST billing");
         if (isNaN(gst))                                                   rowErrors.push("GST % must be a number (0/5/12/18)");
@@ -381,19 +452,23 @@ router.post("/bulk-import/preview", requireAuth, xlsxUpload.single("file"), asyn
           rowErrors.forEach(msg => errors.push({ row: rowNum, field: msg.split(" ")[0], message: msg, item: name || `Row ${rowNum}` }));
         } else {
           valid.push({
-            barcode:       String(r["Barcode/EAN"] || "").trim() || null,
-            product_name:  name,
-            sku_code:      String(r["SKU Code"] || "").trim() || null,
-            category:      String(r["Category"] || "").trim() || null,
-            hsn_code:      hsn,
-            gst_percent:   gst,
-            mrp:           Math.round(mrpRaw * 100),
-            standard_cost: parseFloat(String(r["Purchase Rate (₹)"] || "0")) || 0,
-            base_price:    price,
-            unit_label:    uom,
-            sold_by:       String(r["Sold By (unit/weight)"] || "unit").toLowerCase() === "weight" ? "weight" : "unit",
-            reorder_point: parseFloat(String(r["Reorder Level"] || "0")) || 0,
-            item_type:     String(r["Item Type (goods/service)"] || "goods").toLowerCase() === "service" ? "service" : "goods",
+            barcode:          String(r["Barcode/EAN"] || "").trim() || null,
+            product_name:     name,
+            sku_code:         String(r["SKU Code"] || "").trim() || null,
+            category:         String(r["Category"] || "").trim() || null,
+            hsn_code:         hsn,
+            gst_percent:      gst,
+            mrp:              Math.round(mrpRaw * 100),
+            standard_cost:    parseFloat(String(r["Purchase Rate (₹)"] || "0")) || 0,
+            base_price:       price,
+            unit_label:       uom,
+            sold_by:          String(r["Sold By (unit/weight)"] || "unit").toLowerCase() === "weight" ? "weight" : "unit",
+            reorder_point:    parseFloat(String(r["Reorder Level"] || "0")) || 0,
+            item_type:        String(r["Item Type (goods/service)"] || "goods").toLowerCase() === "service" ? "service" : "goods",
+            opening_stock:    openQty,
+            brand,
+            expiry_tracking:  expiryTracking,
+            warehouse_name:   warehouseName,
           });
         }
       }
@@ -490,23 +565,56 @@ router.post("/bulk-import/confirm", requireAuth, async (req: any, res) => {
         const code = (r.product_code || r.sku_code)
           ? `${(r.product_code || r.sku_code)}-${tid}`
           : `PRD-${tid}-${Date.now()}-${Math.random().toString(36).substr(2,5).toUpperCase()}`;
-        await db.execute(sql`
+        const newRows = await db.execute(sql`
           INSERT INTO products
             (tenant_id, product_code, product_name, sku_code, barcode, category,
              hsn_code, gst_percent, mrp, standard_cost, base_price,
              unit_label, sold_by, reorder_point, item_type,
-             product_type, pos_enabled, record_status, is_active)
+             product_type, pos_enabled, brand, expiry_tracking, record_status, is_active)
           VALUES
             (${tid}, ${code}, ${r.product_name}, ${r.sku_code||null}, ${r.barcode||null},
              ${r.category||null}, ${r.hsn_code||null}, ${r.gst_percent||0},
              ${r.mrp||null}, ${r.standard_cost||0}, ${r.base_price||0},
              ${r.unit_label||'pcs'}, ${r.sold_by||'unit'}, ${r.reorder_point||0},
-             ${r.item_type||'goods'}, ${pType}, ${posEnable}, 1, 'true')
+             ${r.item_type||'goods'}, ${pType}, ${posEnable},
+             ${r.brand||null}, ${r.expiry_tracking||false}, 1, 'true')
           ON CONFLICT (product_code) DO UPDATE SET
             product_name=EXCLUDED.product_name,
             pos_enabled=EXCLUDED.pos_enabled,
             product_type=EXCLUDED.product_type,
-            updated_at=NOW()`);
+            brand=EXCLUDED.brand,
+            expiry_tracking=EXCLUDED.expiry_tracking,
+            updated_at=NOW()
+          RETURNING id`);
+        const newId = (newRows.rows[0] as any)?.id;
+        // Write opening stock if provided (retail mode only)
+        if (isRetailMode && newId && r.opening_stock && r.opening_stock > 0) {
+          let whId: number | null = null;
+          if (r.warehouse_name) {
+            const wh = await db.execute(sql`
+              SELECT id FROM warehouses WHERE tenant_id=${tid} AND LOWER(name)=LOWER(${r.warehouse_name}) AND record_status=1 LIMIT 1`);
+            if (wh.rows.length) whId = (wh.rows[0] as any).id;
+          }
+          if (!whId) {
+            const wh = await db.execute(sql`
+              SELECT id FROM warehouses WHERE tenant_id=${tid} AND is_default=true AND record_status=1 LIMIT 1`);
+            if (wh.rows.length) whId = (wh.rows[0] as any).id;
+          }
+          if (whId) {
+            const itemIdStr = String(newId);
+            const ex = await db.execute(sql`
+              SELECT id FROM warehouse_stock WHERE tenant_id=${tid} AND warehouse_id=${whId} AND item_id=${itemIdStr} LIMIT 1`);
+            if (ex.rows.length) {
+              await db.execute(sql`
+                UPDATE warehouse_stock SET quantity = quantity + ${r.opening_stock}
+                WHERE tenant_id=${tid} AND warehouse_id=${whId} AND item_id=${itemIdStr}`);
+            } else {
+              await db.execute(sql`
+                INSERT INTO warehouse_stock (tenant_id, warehouse_id, item_id, quantity, reserved)
+                VALUES (${tid}, ${whId}, ${itemIdStr}, ${r.opening_stock}, 0)`);
+            }
+          }
+        }
         inserted++;
       }
     }

@@ -133,6 +133,7 @@ const navItemToScreen: Record<string, string> = {
   'recurring-invoices': 'Purchase Orders',
   'warehouses': 'Inventory Management',
   'inventory-bulk-import': 'Inventory Management',
+  'inventory-grn-scan': 'Inventory Management',
   'projects': 'Projects & Assets',
   'fixed-assets': 'Projects & Assets',
   'currency-management': 'Accounting & Ledger',
