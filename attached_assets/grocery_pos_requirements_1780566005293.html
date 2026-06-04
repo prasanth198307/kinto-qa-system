@@ -1,0 +1,177 @@
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font-sans); }
+  .wrap { padding: 1rem 0; }
+  .section-title { font-size: 13px; font-weight: 500; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.06em; margin: 1.5rem 0 0.6rem; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
+  .card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 14px 16px; cursor: pointer; transition: border-color 0.15s; }
+  .card:hover { border-color: var(--color-border-primary); }
+  .card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .icon { font-size: 18px; }
+  .card-title { font-size: 14px; font-weight: 500; color: var(--color-text-primary); }
+  .card-body { font-size: 12px; color: var(--color-text-secondary); line-height: 1.6; }
+  .tag { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 99px; margin-top: 6px; font-weight: 500; }
+  .tag-must { background: var(--color-background-danger); color: var(--color-text-danger); }
+  .tag-imp { background: var(--color-background-warning); color: var(--color-text-warning); }
+  .tag-nice { background: var(--color-background-success); color: var(--color-text-success); }
+  .priority-legend { display: flex; gap: 12px; margin: 0.5rem 0 1rem; font-size: 12px; align-items: center; }
+  .gap-note { font-size: 12px; color: var(--color-text-danger); background: var(--color-background-danger); border-radius: var(--border-radius-md); padding: 10px 14px; margin-top: 1rem; line-height: 1.7; }
+  .gap-note strong { font-weight: 500; }
+</style>
+<div class="wrap">
+  <div class="priority-legend">
+    <span><span class="tag tag-must">Must have</span></span>
+    <span><span class="tag tag-imp">Important</span></span>
+    <span><span class="tag tag-nice">Nice to have</span></span>
+  </div>
+
+  <div class="section-title">1 — Session & Counter</div>
+  <div class="grid">
+    <div class="card" onclick="sendPrompt('Detail the POS session open/close flow for grocery store')">
+      <div class="card-head"><span class="icon">🏪</span><span class="card-title">Open/close session</span></div>
+      <div class="card-body">Counter name, opening cash float with denomination breakup (₹500/200/100…), shift selection (morning/evening/night), manager PIN approval above threshold.</div>
+      <span class="tag tag-must">Must have</span>
+    </div>
+    <div class="card" onclick="sendPrompt('How to handle multiple simultaneous POS counters in grocery?')">
+      <div class="card-head"><span class="icon">🖥️</span><span class="card-title">Multi-counter support</span></div>
+      <div class="card-body">Prevent duplicate counter names. Show which counters are live. Allow supervisor to view all open counters and their cash balance.</div>
+      <span class="tag tag-must">Must have</span>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="icon">🔄</span><span class="card-title">Shift handover</span></div>
+      <div class="card-body">When re-opening same counter: show last session balance, prompt "New session" vs "Continue". Cashier-to-cashier handover with intermediate count.</div>
+      <span class="tag tag-imp">Important</span>
+    </div>
+  </div>
+
+  <div class="section-title">2 — Billing & Cart</div>
+  <div class="grid">
+    <div class="card" onclick="sendPrompt('What barcode scanning options are needed for grocery POS?')">
+      <div class="card-head"><span class="icon">📦</span><span class="card-title">Barcode / SKU scan</span></div>
+      <div class="card-body">USB/Bluetooth scanner support. Manual SKU entry fallback. Loose item lookup by name. Multi-scan same item increments qty. Weight-based items (vegetables, fruits) via scale input.</div>
+      <span class="tag tag-must">Must have</span>
+    </div>
+    <div class="card" onclick="sendPrompt('Explain grocery POS cart management requirements')">
+      <div class="card-head"><span class="icon">🛒</span><span class="card-title">Cart management</span></div>
+      <div class="card-body">Add / remove / edit qty. Price override with supervisor PIN. Item void. Hold cart (park bill) and retrieve. Multiple carts per counter (billing queue). Notes per line item.</div>
+      <span class="tag tag-must">Must have</span>
+    </div>
+    <div class="card" onclick="sendPrompt('Pricing rules for grocery store POS')">
+      <div class="card-head"><span class="icon">🏷️</span><span class="card-title">Pricing & MRP control</span></div>
+      <div class="card-body">MRP lock — cannot bill above MRP. Unit price, pack price, bulk price tiers. Auto-pick correct price by qty. Expiry-date-based price override for near-expiry items.</div>
+      <span class="tag tag-must">Must have</span>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="icon">⚖️</span><span class="card-title">Weighing scale integration</span></div>
+      <div class="card-body">Serial/USB scale auto-reads weight for loose items. Price = weight × rate/kg. Label print with weight + price. Tare/zero button.</div>
+      <span class="tag tag-must">Must have</span>
+    </div>
+  </div>
+
+  <div class="section-title">3 — Payments</div>
+  <div class="grid">
+    <div class="card" onclick="sendPrompt('Payment modes required for grocery store India POS')">
+      <div class="card-head"><span class="icon">💳</span><span class="card-title">Split payment modes</span></div>
+      <div class="card-body">Cash + UPI + Card in one bill. Cash tender with auto change calculation. UPI QR display (Razorpay / PhonePe). EDC card swipe integration. Wallet / store credit.</div>
+      <span class="tag tag-must">Must have</span>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="icon">🎟️</span><span class="card-title">Loyalty & coupons</span></div>
+      <div class="card-body">Scan/enter loyalty card. Points earn on bill. Redeem points as discount. Coupon code validation. Combo offers (buy 2 get 1). Member price vs regular price.</div>
+      <span class="tag tag-imp">Important</span>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="icon">💰</span><span class="card-title">Credit sales</span></div>
+      <div class="card-body">Bill on credit to linked customer. Set credit limit per customer. Outstanding balance alert at billing. Credit settlement screen.</div>
+      <span class="tag tag-imp">Important</span>
+    </div>
+  </div>
+
+  <div class="section-title">4 — Tax & Compliance (India)</div>
+  <div class="grid">
+    <div class="card" onclick="sendPrompt('GST handling in grocery POS India')">
+      <div class="card-head"><span class="icon">🧾</span><span class="card-title">GST on bill</span></div>
+      <div class="card-body">Item-level GST slab (0%, 5%, 12%, 18%). Separate CGST + SGST columns. GST-inclusive vs exclusive pricing toggle. HSN code on receipt. GST summary at bill bottom.</div>
+      <span class="tag tag-must">Must have</span>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="icon">🖨️</span><span class="card-title">Receipt printing</span></div>
+      <div class="card-body">Thermal 80mm / 58mm printer. Store logo, GSTIN, address. Item name, qty, rate, amount. Tax breakup. Payment mode. Duplicate copy option. WhatsApp/email digital receipt.</div>
+      <span class="tag tag-must">Must have</span>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="icon">📋</span><span class="card-title">FSSAI label compliance</span></div>
+      <div class="card-body">Packaged goods must show MRP, mfg date, expiry, batch. Loose food items need weight-printed label. FSSAI license number on receipts.</div>
+      <span class="tag tag-imp">Important</span>
+    </div>
+  </div>
+
+  <div class="section-title">5 — Inventory & Stock</div>
+  <div class="grid">
+    <div class="card" onclick="sendPrompt('Real-time stock deduction flow in grocery POS')">
+      <div class="card-head"><span class="icon">📊</span><span class="card-title">Real-time stock deduction</span></div>
+      <div class="card-body">Every bill deducts stock instantly. Out-of-stock alert at scan. Low-stock threshold alert. Negative stock prevention with supervisor override option.</div>
+      <span class="tag tag-must">Must have</span>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="icon">🔁</span><span class="card-title">Returns & refunds</span></div>
+      <div class="card-body">Return against bill number. Item-level partial return. Refund to original payment mode. Stock reversal on return. Supervisor approval for cash refunds above ₹X.</div>
+      <span class="tag tag-must">Must have</span>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="icon">🗓️</span><span class="card-title">Expiry tracking</span></div>
+      <div class="card-body">Batch-wise expiry at item level. Alert for items expiring within 7/15/30 days. Expiry-nearing items auto-flagged for discount or removal.</div>
+      <span class="tag tag-imp">Important</span>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="icon">🛍️</span><span class="card-title">Fast-moving item dashboard</span></div>
+      <div class="card-body">Top 20 items by daily sales. Velocity-based auto-reorder suggestion. Dead stock report. Shrinkage tracking (damaged / expired write-offs).</div>
+      <span class="tag tag-nice">Nice to have</span>
+    </div>
+  </div>
+
+  <div class="section-title">6 — Customer Management</div>
+  <div class="grid">
+    <div class="card">
+      <div class="card-head"><span class="icon">👤</span><span class="card-title">Customer profile</span></div>
+      <div class="card-body">Mobile number as primary key. Auto-fetch name + address at billing. Purchase history. GST number for B2B billing. Preferred store location.</div>
+      <span class="tag tag-imp">Important</span>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="icon">📱</span><span class="card-title">WhatsApp receipt & offers</span></div>
+      <div class="card-body">Send bill PDF to customer's WhatsApp. Push weekly offers to opted-in customers. Birthday / anniversary discount trigger.</div>
+      <span class="tag tag-nice">Nice to have</span>
+    </div>
+  </div>
+
+  <div class="section-title">7 — End-of-Day & Reporting</div>
+  <div class="grid">
+    <div class="card" onclick="sendPrompt('What should EOD report contain for grocery store POS?')">
+      <div class="card-head"><span class="icon">📅</span><span class="card-title">EOD cash reconciliation</span></div>
+      <div class="card-body">Expected cash vs physical count. Denomination-wise closing count. Overage / shortage flagged. Z-report print. Cash handover to supervisor with signature.</div>
+      <span class="tag tag-must">Must have</span>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="icon">📈</span><span class="card-title">Sales reports</span></div>
+      <div class="card-body">Hourly / daily / weekly / monthly. Per counter, per cashier. Category-wise sales. Top items. Payment mode split. GST summary for filing.</div>
+      <span class="tag tag-must">Must have</span>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="icon">🔐</span><span class="card-title">Cashier accountability</span></div>
+      <div class="card-body">All voids, discounts, overrides logged with user + timestamp. Price change audit trail. Suspicious pattern alerts (excessive voids by same cashier).</div>
+      <span class="tag tag-imp">Important</span>
+    </div>
+  </div>
+
+  <div class="gap-note">
+    <strong>Critical gaps in current screen vs grocery needs:</strong><br>
+    1. No denomination breakup in Opening Balance — just a single number field<br>
+    2. No shift selector — mandatory for multi-shift grocery stores<br>
+    3. No weighing scale integration visible anywhere<br>
+    4. No expiry / batch tracking in cart flow<br>
+    5. No UPI QR / split payment mode in checkout<br>
+    6. No GST slab assignment per item visible in POS flow<br>
+    7. No "park bill" / hold cart feature shown
+  </div>
+</div>
