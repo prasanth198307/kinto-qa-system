@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { sql } from "drizzle-orm";
 import { db } from "./db";
+import crypto from "crypto";
 
 const router = Router();
 const requireAuth = (req: any, res: any, next: any) => { if (!req.isAuthenticated?.() && !req.user) return res.status(401).json({ error: "Unauthorized" }); next(); };
@@ -276,6 +277,157 @@ router.delete("/promotions/:id", requireAuth, async (req: any, res) => {
   try {
     await db.execute(sql`UPDATE pos_promotions SET record_status=0 WHERE id=${req.params.id} AND tenant_id=${tid(req)}`);
     res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── UPI QR Payments ───────────────────────────────────────────────────────────
+async function getRazorpayAuth(): Promise<string | null> {
+  // Try DB platform settings first, fall back to env vars
+  try {
+    const rows = await db.execute(sql`SELECT key, value FROM platform_settings WHERE key IN ('razorpay_key_id','razorpay_key_secret')`);
+    const map: Record<string, string> = {};
+    for (const r of rows.rows as any[]) map[r.key] = r.value;
+    const keyId = map['razorpay_key_id'] || process.env.RAZORPAY_KEY_ID;
+    const keySecret = map['razorpay_key_secret'] || process.env.RAZORPAY_KEY_SECRET;
+    if (!keyId || !keySecret) return null;
+    return Buffer.from(`${keyId}:${keySecret}`).toString('base64');
+  } catch {
+    const keyId = process.env.RAZORPAY_KEY_ID;
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    if (!keyId || !keySecret) return null;
+    return Buffer.from(`${keyId}:${keySecret}`).toString('base64');
+  }
+}
+
+// POST /api/pos/payments/create-qr — Create Razorpay QR for the bill amount
+router.post("/payments/create-qr", requireAuth, async (req: any, res) => {
+  try {
+    const { amount, session_id, description } = req.body;
+    if (!amount || Number(amount) <= 0) return res.status(400).json({ error: "Invalid amount" });
+
+    const auth = await getRazorpayAuth();
+    if (!auth) return res.status(503).json({ error: "Razorpay not configured. Add RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET." });
+
+    const amountPaise = Math.round(Number(amount) * 100);
+    const expiresAt = Math.floor(Date.now() / 1000) + 300; // 5 min
+
+    const rzpRes = await fetch("https://api.razorpay.com/v1/payments/qr_codes", {
+      method: "POST",
+      headers: { "Authorization": `Basic ${auth}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "upi_qr",
+        name: "SwachERP POS",
+        description: description || "Bill Payment",
+        usage: "single_use",
+        fixed_amount: true,
+        payment_amount: amountPaise,
+        close_by: expiresAt,
+      }),
+    });
+
+    if (!rzpRes.ok) {
+      const err = await rzpRes.json() as any;
+      return res.status(502).json({ error: err?.error?.description || "Razorpay QR creation failed" });
+    }
+
+    const qrData = await rzpRes.json() as any;
+
+    // Store pending payment record
+    await db.execute(sql`
+      INSERT INTO pos_upi_payments (tenant_id, session_id, qr_id, amount, amount_paise, status, expires_at)
+      VALUES (${tid(req)}, ${session_id || null}, ${qrData.id}, ${amount}, ${amountPaise}, 'pending',
+              TO_TIMESTAMP(${expiresAt}))`);
+
+    res.json({
+      qr_id: qrData.id,
+      image_url: qrData.image_url,
+      amount,
+      amount_paise: amountPaise,
+      expires_at: expiresAt,
+    });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/pos/payments/:qrId/status — Poll QR payment status
+router.get("/payments/:qrId/status", requireAuth, async (req: any, res) => {
+  try {
+    // Check our DB record first
+    const local = await db.execute(sql`
+      SELECT * FROM pos_upi_payments WHERE qr_id=${req.params.qrId} AND tenant_id=${tid(req)} LIMIT 1`);
+    const record = local.rows[0] as any;
+    if (!record) return res.status(404).json({ error: "QR not found" });
+
+    if (record.status === 'paid') {
+      return res.json({ status: 'paid', razorpay_payment_id: record.razorpay_payment_id, customer_vpa: record.customer_vpa });
+    }
+
+    // Check expiry
+    if (record.expires_at && new Date(record.expires_at) < new Date()) {
+      await db.execute(sql`UPDATE pos_upi_payments SET status='expired' WHERE qr_id=${req.params.qrId}`);
+      return res.json({ status: 'expired' });
+    }
+
+    // Poll Razorpay for payment status
+    const auth = await getRazorpayAuth();
+    if (!auth) return res.json({ status: record.status });
+
+    const rzpRes = await fetch(`https://api.razorpay.com/v1/payments/qr_codes/${req.params.qrId}`, {
+      headers: { "Authorization": `Basic ${auth}` },
+    });
+    if (!rzpRes.ok) return res.json({ status: record.status });
+
+    const qrData = await rzpRes.json() as any;
+
+    if (qrData.payments_count_received > 0 && qrData.status === 'paid') {
+      // Fetch latest payment for this QR
+      const paymentsRes = await fetch(`https://api.razorpay.com/v1/payments/qr_codes/${req.params.qrId}/payments`, {
+        headers: { "Authorization": `Basic ${auth}` },
+      });
+      let paymentId = null, customerVpa = null;
+      if (paymentsRes.ok) {
+        const pd = await paymentsRes.json() as any;
+        const p = pd?.items?.[0];
+        paymentId = p?.id || null;
+        customerVpa = p?.vpa || null;
+      }
+
+      await db.execute(sql`
+        UPDATE pos_upi_payments
+        SET status='paid', razorpay_payment_id=${paymentId}, customer_vpa=${customerVpa}, paid_at=NOW()
+        WHERE qr_id=${req.params.qrId}`);
+
+      return res.json({ status: 'paid', razorpay_payment_id: paymentId, customer_vpa: customerVpa });
+    }
+
+    res.json({ status: 'pending' });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/pos/payments/webhook — Razorpay fires this on qr_code.credited
+router.post("/payments/webhook", async (req: any, res) => {
+  try {
+    // Verify Razorpay webhook signature
+    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+    if (webhookSecret) {
+      const signature = req.headers['x-razorpay-signature'];
+      const body = JSON.stringify(req.body);
+      const expected = crypto.createHmac('sha256', webhookSecret).update(body).digest('hex');
+      if (signature !== expected) return res.status(400).json({ error: "Invalid signature" });
+    }
+
+    const event = req.body?.event;
+    if (event === 'qr_code.credited') {
+      const payment = req.body?.payload?.payment?.entity;
+      const qrId = payment?.qr_code?.id || req.body?.payload?.qr_code?.entity?.id;
+      if (qrId) {
+        await db.execute(sql`
+          UPDATE pos_upi_payments
+          SET status='paid', razorpay_payment_id=${payment?.id || null},
+              customer_vpa=${payment?.vpa || null}, paid_at=NOW()
+          WHERE qr_id=${qrId} AND status='pending'`);
+      }
+    }
+    res.json({ ok: true });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 

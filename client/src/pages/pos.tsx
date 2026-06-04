@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import {
   Plus, Search, ShoppingCart, Users, Tag, RotateCcw, TrendingUp, X,
   Pencil, Trash2, AlertTriangle, ShieldCheck, ArrowRight, CheckCircle2,
   Wallet, Smartphone, Clock, CreditCard, ChevronLeft, Eye, EyeOff,
+  QrCode, RefreshCw, Timer, BadgeCheck,
 } from "lucide-react";
 
 const fmt = (n: any) => Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
@@ -411,6 +412,203 @@ function OpenSessionDialog({
   );
 }
 
+// ── UPI QR Payment Dialog ────────────────────────────────────────────────────
+type QrState = "generating" | "waiting" | "paid" | "expired" | "failed";
+
+function UpiQrDialog({
+  open, amount, sessionId, onClose, onPaid,
+}: {
+  open: boolean;
+  amount: number;
+  sessionId: string | null;
+  onClose: () => void;
+  onPaid: (razorpayPaymentId: string | null) => void;
+}) {
+  const { toast } = useToast();
+  const [qrState, setQrState] = useState<QrState>("generating");
+  const [qrId, setQrId] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [secondsLeft, setSecondsLeft] = useState(300);
+  const [errorMsg, setErrorMsg] = useState("");
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Generate QR when dialog opens
+  useEffect(() => {
+    if (!open || amount <= 0) return;
+    setQrState("generating");
+    setQrId(null);
+    setImageUrl(null);
+    setSecondsLeft(300);
+    setErrorMsg("");
+
+    fetch("/api/pos/payments/create-qr", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ amount, session_id: sessionId, description: `Bill ₹${amount}` }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) { setQrState("failed"); setErrorMsg(data.error); return; }
+        setQrId(data.qr_id);
+        setImageUrl(data.image_url);
+        setQrState("waiting");
+      })
+      .catch(() => { setQrState("failed"); setErrorMsg("Network error — could not create QR"); });
+  }, [open, amount]);
+
+  // Start polling + countdown when waiting
+  useEffect(() => {
+    if (qrState !== "waiting" || !qrId) return;
+
+    // Countdown
+    timerRef.current = setInterval(() => {
+      setSecondsLeft(s => {
+        if (s <= 1) {
+          clearInterval(timerRef.current!);
+          setQrState("expired");
+          return 0;
+        }
+        return s - 1;
+      });
+    }, 1000);
+
+    // Poll payment status
+    pollRef.current = setInterval(async () => {
+      try {
+        const r = await fetch(`/api/pos/payments/${qrId}/status`, { credentials: "include" });
+        const data = await r.json();
+        if (data.status === "paid") {
+          clearInterval(pollRef.current!);
+          clearInterval(timerRef.current!);
+          setQrState("paid");
+          setTimeout(() => onPaid(data.razorpay_payment_id), 1500);
+        } else if (data.status === "expired") {
+          clearInterval(pollRef.current!);
+          clearInterval(timerRef.current!);
+          setQrState("expired");
+        }
+      } catch { /* silent */ }
+    }, 3000);
+
+    return () => {
+      clearInterval(pollRef.current!);
+      clearInterval(timerRef.current!);
+    };
+  }, [qrState, qrId]);
+
+  // Cleanup on close
+  const handleClose = () => {
+    clearInterval(pollRef.current!);
+    clearInterval(timerRef.current!);
+    setQrState("generating");
+    onClose();
+  };
+
+  const mm = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
+  const ss = String(secondsLeft % 60).padStart(2, "0");
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Smartphone className="h-4 w-4 text-primary" /> UPI Payment — ₹{fmt(amount)}
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="flex flex-col items-center gap-4 py-2">
+          {/* Generating */}
+          {qrState === "generating" && (
+            <div className="flex flex-col items-center gap-3 py-8">
+              <RefreshCw className="h-8 w-8 text-muted-foreground animate-spin" />
+              <p className="text-sm text-muted-foreground">Generating QR code…</p>
+            </div>
+          )}
+
+          {/* Waiting for payment */}
+          {qrState === "waiting" && imageUrl && (
+            <>
+              <div className="p-3 border rounded-lg bg-white">
+                <img src={imageUrl} alt="UPI QR Code" className="w-52 h-52 object-contain" />
+              </div>
+              <div className="text-center space-y-1">
+                <p className="text-sm font-medium">Scan with any UPI app</p>
+                <p className="text-xs text-muted-foreground">GPay · PhonePe · Paytm · BHIM · Any UPI</p>
+              </div>
+              <div className="flex items-center gap-2 text-sm font-mono">
+                <Timer className="h-4 w-4 text-amber-500" />
+                <span className={secondsLeft < 60 ? "text-red-600 font-bold" : "text-muted-foreground"}>
+                  Expires in {mm}:{ss}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground animate-pulse">
+                <RefreshCw className="h-3 w-3" /> Waiting for payment…
+              </div>
+            </>
+          )}
+
+          {/* Paid */}
+          {qrState === "paid" && (
+            <div className="flex flex-col items-center gap-3 py-8">
+              <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                <BadgeCheck className="h-8 w-8 text-green-600 dark:text-green-400" />
+              </div>
+              <div className="text-center">
+                <p className="font-bold text-green-700 dark:text-green-400">Payment Received!</p>
+                <p className="text-sm text-muted-foreground mt-1">₹{fmt(amount)} via UPI</p>
+              </div>
+            </div>
+          )}
+
+          {/* Expired */}
+          {qrState === "expired" && (
+            <div className="flex flex-col items-center gap-3 py-6">
+              <div className="w-14 h-14 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                <Timer className="h-7 w-7 text-amber-600" />
+              </div>
+              <div className="text-center">
+                <p className="font-semibold">QR Code Expired</p>
+                <p className="text-xs text-muted-foreground mt-1">The 5-minute window has passed</p>
+              </div>
+              <Button size="sm" onClick={() => { setQrState("generating"); setSecondsLeft(300); open && (open = true); }}>
+                <RefreshCw className="h-3.5 w-3.5 mr-1" /> Generate New QR
+              </Button>
+            </div>
+          )}
+
+          {/* Failed */}
+          {qrState === "failed" && (
+            <div className="flex flex-col items-center gap-3 py-6">
+              <div className="w-14 h-14 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                <AlertTriangle className="h-7 w-7 text-red-600" />
+              </div>
+              <div className="text-center">
+                <p className="font-semibold">Could not generate QR</p>
+                <p className="text-xs text-muted-foreground mt-1 max-w-[240px] leading-relaxed">{errorMsg}</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter className="flex-col gap-2 sm:flex-col">
+          {qrState === "waiting" && (
+            <Button variant="outline" size="sm" className="w-full" onClick={() => onPaid(null)}>
+              Mark as Paid Manually
+            </Button>
+          )}
+          {qrState !== "paid" && (
+            <Button variant="ghost" size="sm" className="w-full" onClick={handleClose}>
+              Cancel — Use Different Payment
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ── Overview Tab ──────────────────────────────────────────────────────────────
 function OverviewTab() {
   const { data: stats } = useQuery<any>({ queryKey: ["/api/pos/stats"] });
@@ -437,6 +635,7 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
   const [showLastSession, setShowLastSession] = useState(false);
   const [showCloseDialog, setShowCloseDialog] = useState(false);
   const [closingBalance, setClosingBalance] = useState("");
+  const [showUpiQr, setShowUpiQr] = useState(false);
 
   const { data: activeSession } = useQuery<any>({ queryKey: ["/api/pos/sessions/active"], refetchInterval: 30000 });
   const { data: products = [] } = useQuery<any[]>({ queryKey: ["/api/inventory/products"] });
@@ -468,6 +667,7 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
       queryClient.invalidateQueries({ queryKey: ["/api/pos/stats"] });
       queryClient.invalidateQueries({ queryKey: ["/api/pos/sessions/active"] });
       setCartItems([]); setSelectedCustomer(null); setAmountPaid("");
+      setShowUpiQr(false);
       toast({ title: "Sale recorded!" });
     },
   });
@@ -488,9 +688,26 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
   const total = subtotal + tax;
   const change = Number(amountPaid || 0) - total;
 
+  const doRecordSale = (razorpayPaymentId?: string | null) => {
+    saleMut.mutate({
+      session_id: activeSession?.id || null,
+      customer_id: selectedCustomer?.id || null,
+      customer_name: selectedCustomer?.name || null,
+      items: cartItems,
+      payment_mode: paymentMode,
+      amount_paid: Number(amountPaid) || total,
+      razorpay_payment_id: razorpayPaymentId || undefined,
+    });
+  };
+
   const completeSale = () => {
     if (!cartItems.length) { toast({ title: "Cart is empty", variant: "destructive" }); return; }
-    saleMut.mutate({ session_id: activeSession?.id || null, customer_id: selectedCustomer?.id || null, customer_name: selectedCustomer?.name || null, items: cartItems, payment_mode: paymentMode, amount_paid: Number(amountPaid) || total });
+    // UPI → show QR dialog; other modes → record immediately
+    if (paymentMode === "upi") {
+      setShowUpiQr(true);
+    } else {
+      doRecordSale();
+    }
   };
 
   const filteredProducts = (products as any[]).filter(p =>
@@ -724,6 +941,18 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
           <LastSessionCard session={lastSession} />
         </DialogContent>
       </Dialog>
+
+      {/* UPI QR Payment Dialog */}
+      <UpiQrDialog
+        open={showUpiQr}
+        amount={total}
+        sessionId={activeSession?.id || null}
+        onClose={() => setShowUpiQr(false)}
+        onPaid={(razorpayPaymentId) => {
+          setShowUpiQr(false);
+          doRecordSale(razorpayPaymentId);
+        }}
+      />
     </div>
   );
 }
