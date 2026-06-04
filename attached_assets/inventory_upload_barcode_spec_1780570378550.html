@@ -1,0 +1,205 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.page{padding:1rem 0;font-size:13px;color:var(--color-text-primary)}
+.sec{margin-bottom:2rem}
+.sec-title{font-size:15px;font-weight:500;margin-bottom:12px;padding-bottom:8px;border-bottom:.5px solid var(--color-border-tertiary)}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.card{background:var(--color-background-primary);border:.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:14px 16px}
+.card-title{font-size:13px;font-weight:500;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.badge{display:inline-block;font-size:11px;font-weight:500;padding:2px 8px;border-radius:99px}
+.b-blue{background:var(--color-background-info);color:var(--color-text-info)}
+.b-green{background:var(--color-background-success);color:var(--color-text-success)}
+.b-warn{background:var(--color-background-warning);color:var(--color-text-warning)}
+.b-red{background:var(--color-background-danger);color:var(--color-text-danger)}
+.field-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:.5px solid var(--color-border-tertiary);font-size:12px}
+.field-row:last-child{border-bottom:none}
+.field-name{color:var(--color-text-primary);font-weight:500}
+.field-detail{color:var(--color-text-secondary);font-size:11px}
+.required{color:var(--color-text-danger);font-size:11px}
+.optional{color:var(--color-text-tertiary);font-size:11px}
+.mockup-box{background:var(--color-background-secondary);border-radius:var(--border-radius-lg);padding:16px;margin-bottom:12px}
+.screen-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.screen-title{font-size:13px;font-weight:500}
+.drop-zone{border:1.5px dashed var(--color-border-secondary);border-radius:var(--border-radius-md);padding:24px;text-align:center;margin-bottom:10px}
+.drop-icon{font-size:28px;color:var(--color-text-tertiary);margin-bottom:6px}
+.drop-text{font-size:12px;color:var(--color-text-secondary);margin-bottom:8px}
+.btn-sm{font-size:11px;padding:4px 12px;border:.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);color:var(--color-text-primary);cursor:pointer}
+.btn-primary{background:var(--color-background-info);color:var(--color-text-info);border-color:var(--color-border-info)}
+.table-mock{width:100%;border-collapse:collapse;font-size:11px}
+.table-mock th{background:var(--color-background-secondary);padding:5px 8px;text-align:left;font-weight:500;color:var(--color-text-secondary);border-bottom:.5px solid var(--color-border-tertiary)}
+.table-mock td{padding:5px 8px;border-bottom:.5px solid var(--color-border-tertiary);color:var(--color-text-primary)}
+.table-mock tr:last-child td{border-bottom:none}
+.scan-box{border:.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);padding:10px 12px;display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.scan-input{flex:1;background:transparent;border:none;font-size:13px;color:var(--color-text-primary);outline:none}
+.status-row{display:flex;gap:8px;margin-bottom:10px}
+.stat-pill{font-size:11px;padding:3px 10px;border-radius:99px;font-weight:500}
+.item-card{border:.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:8px 10px;margin-bottom:6px;display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center}
+.item-name{font-size:12px;font-weight:500}
+.item-meta{font-size:11px;color:var(--color-text-secondary)}
+.qty-row{display:flex;align-items:center;gap:6px;font-size:12px}
+.err-row{background:var(--color-background-danger);border:.5px solid var(--color-border-danger);border-radius:var(--border-radius-md);padding:8px 10px;font-size:11px;color:var(--color-text-danger);margin-bottom:6px}
+.step-row{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.step{font-size:11px;padding:4px 10px;border-radius:99px;border:.5px solid var(--color-border-tertiary);background:var(--color-background-secondary);color:var(--color-text-secondary)}
+.step.active{background:var(--color-background-info);color:var(--color-text-info);border-color:var(--color-border-info)}
+.step.done{background:var(--color-background-success);color:var(--color-text-success);border-color:var(--color-border-success)}
+.note{font-size:11px;color:var(--color-text-secondary);line-height:1.6;padding:8px 10px;background:var(--color-background-secondary);border-radius:var(--border-radius-md);margin-top:8px}
+.role-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.role-tag{font-size:11px;padding:2px 8px;border:.5px solid var(--color-border-tertiary);border-radius:99px;color:var(--color-text-secondary)}
+button{cursor:pointer}
+</style>
+
+<div class="page">
+
+<div class="sec">
+  <div class="sec-title">Two inventory entry methods</div>
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title"><i class="ti ti-file-spreadsheet" aria-hidden="true" style="font-size:16px"></i> Bulk upload via Excel/CSV <span class="badge b-blue">Method 1</span></div>
+      <div style="font-size:11px;color:var(--color-text-secondary);line-height:1.6">Upload hundreds of products at once. Best for initial setup, seasonal restocking, or new supplier catalogue import. Godown Incharge / Purchase Manager role.</div>
+      <div class="role-row"><span class="role-tag">Godown Incharge</span><span class="role-tag">Purchase Manager</span><span class="role-tag">Admin</span></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><i class="ti ti-barcode" aria-hidden="true" style="font-size:16px"></i> Barcode scan — GRN entry <span class="badge b-green">Method 2</span></div>
+      <div style="font-size:11px;color:var(--color-text-secondary);line-height:1.6">Scan supplier invoice items one by one at the godown gate. Best for daily goods receipt. Validates against existing item master instantly.</div>
+      <div class="role-row"><span class="role-tag">Godown Incharge</span><span class="role-tag">Admin</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="sec-title">Method 1 — Bulk upload screen</div>
+  <div class="mockup-box">
+    <div class="screen-bar">
+      <span class="screen-title">Inventory &gt; Products &gt; Bulk import</span>
+      <div style="display:flex;gap:6px">
+        <button class="btn-sm" onclick="sendPrompt('Generate the Excel template columns for grocery inventory bulk upload')">Download template</button>
+        <button class="btn-sm btn-primary">Upload file</button>
+      </div>
+    </div>
+    <div class="step-row">
+      <span class="step done">1 Download template</span>
+      <span class="step active">2 Upload file</span>
+      <span class="step">3 Review errors</span>
+      <span class="step">4 Confirm import</span>
+    </div>
+    <div class="drop-zone">
+      <div class="drop-icon"><i class="ti ti-cloud-upload" aria-hidden="true"></i></div>
+      <div class="drop-text">Drag and drop your .xlsx or .csv file here</div>
+      <button class="btn-sm">Browse file</button>
+    </div>
+    <div class="status-row">
+      <span class="stat-pill" style="background:var(--color-background-success);color:var(--color-text-success)">247 ready</span>
+      <span class="stat-pill" style="background:var(--color-background-warning);color:var(--color-text-warning)">12 warnings</span>
+      <span class="stat-pill" style="background:var(--color-background-danger);color:var(--color-text-danger)">3 errors</span>
+    </div>
+    <div class="err-row"><i class="ti ti-alert-triangle" aria-hidden="true"></i> Row 14: HSN code missing — required for GST billing. Item: "Aashirvaad Atta 5kg"</div>
+    <div class="err-row"><i class="ti ti-alert-triangle" aria-hidden="true"></i> Row 28: MRP not set — item cannot be added to POS without MRP. Item: "Kissan Jam 500g"</div>
+    <div style="display:flex;gap:6px;justify-content:flex-end;margin-top:10px">
+      <button class="btn-sm">Download error report</button>
+      <button class="btn-sm btn-primary" onclick="sendPrompt('What happens after confirming the bulk inventory import in SwachERP?')">Import 247 valid rows ↗</button>
+    </div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="sec-title">Excel template columns — required vs optional</div>
+  <div class="card">
+    <div class="field-row"><div><span class="field-name">Barcode / EAN</span><div class="field-detail">13-digit EAN or internal SKU code</div></div><span class="required">Required</span></div>
+    <div class="field-row"><div><span class="field-name">Product name</span><div class="field-detail">Full name as printed on packaging</div></div><span class="required">Required</span></div>
+    <div class="field-row"><div><span class="field-name">Category</span><div class="field-detail">Must match existing category master</div></div><span class="required">Required</span></div>
+    <div class="field-row"><div><span class="field-name">HSN code</span><div class="field-detail">6-digit HSN for GST classification</div></div><span class="required">Required</span></div>
+    <div class="field-row"><div><span class="field-name">GST %</span><div class="field-detail">0 / 5 / 12 / 18 — must match HSN</div></div><span class="required">Required</span></div>
+    <div class="field-row"><div><span class="field-name">MRP (₹)</span><div class="field-detail">Maximum retail price — billing ceiling</div></div><span class="required">Required</span></div>
+    <div class="field-row"><div><span class="field-name">Purchase rate (₹)</span><div class="field-detail">Cost price from supplier</div></div><span class="required">Required</span></div>
+    <div class="field-row"><div><span class="field-name">Selling price (₹)</span><div class="field-detail">Default POS billing price ≤ MRP</div></div><span class="required">Required</span></div>
+    <div class="field-row"><div><span class="field-name">UOM</span><div class="field-detail">PCS / KG / LTR / PKT / BOX</div></div><span class="required">Required</span></div>
+    <div class="field-row"><div><span class="field-name">Opening stock qty</span><div class="field-detail">Current stock at time of import</div></div><span class="optional">Optional</span></div>
+    <div class="field-row"><div><span class="field-name">Reorder level</span><div class="field-detail">Triggers low-stock alert</div></div><span class="optional">Optional</span></div>
+    <div class="field-row"><div><span class="field-name">Brand</span><div class="field-detail">Supplier brand name</div></div><span class="optional">Optional</span></div>
+    <div class="field-row"><div><span class="field-name">Expiry tracking</span><div class="field-detail">YES / NO — enables batch tracking</div></div><span class="optional">Optional</span></div>
+    <div class="field-row"><div><span class="field-name">Warehouse</span><div class="field-detail">Main Store or Godown (default: Godown)</div></div><span class="optional">Optional</span></div>
+  </div>
+  <div class="note">Duplicate barcode check: if EAN already exists in item master, the row updates the existing item — it does not create a duplicate. New barcodes create new items. Import is transactional — partial failures do not affect already-valid rows.</div>
+</div>
+
+<div class="sec">
+  <div class="sec-title">Method 2 — Barcode scan GRN entry screen</div>
+  <div class="mockup-box">
+    <div class="screen-bar">
+      <span class="screen-title">Godown &gt; GRN &gt; New receipt — Scan mode</span>
+      <div style="display:flex;gap:6px">
+        <span class="badge b-warn">GRN-2026-0041</span>
+        <span class="badge b-blue">Supplier: Hindustan Unilever</span>
+      </div>
+    </div>
+    <div class="scan-box">
+      <i class="ti ti-scan" aria-hidden="true" style="font-size:20px;color:var(--color-text-tertiary)"></i>
+      <input class="scan-input" placeholder="Scan barcode or type SKU and press Enter…" readonly/>
+      <button class="btn-sm">Manual entry</button>
+    </div>
+    <div class="item-card">
+      <div>
+        <div class="item-name">Surf Excel Matic 1kg</div>
+        <div class="item-meta">EAN: 8901030984817 · HSN: 34022090 · GST: 18% · MRP: ₹265</div>
+      </div>
+      <div class="qty-row">
+        <button class="btn-sm" style="padding:2px 8px">−</button>
+        <span style="font-weight:500;min-width:28px;text-align:center">24</span>
+        <button class="btn-sm" style="padding:2px 8px">+</button>
+        <span style="font-size:11px;color:var(--color-text-secondary)">PCS</span>
+      </div>
+    </div>
+    <div class="item-card">
+      <div>
+        <div class="item-name">Dove Soap 100g</div>
+        <div class="item-meta">EAN: 8901030785467 · HSN: 34011150 · GST: 18% · MRP: ₹45</div>
+      </div>
+      <div class="qty-row">
+        <button class="btn-sm" style="padding:2px 8px">−</button>
+        <span style="font-weight:500;min-width:28px;text-align:center">48</span>
+        <button class="btn-sm" style="padding:2px 8px">+</button>
+        <span style="font-size:11px;color:var(--color-text-secondary)">PCS</span>
+      </div>
+    </div>
+    <div class="err-row"><i class="ti ti-alert-circle" aria-hidden="true"></i> Barcode 8902519012345 not found in item master. <button class="btn-sm" style="margin-left:8px" onclick="sendPrompt('Design the quick add new item form when unknown barcode is scanned during GRN in SwachERP')">Add new item ↗</button></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:.5px solid var(--color-border-tertiary)">
+      <span style="font-size:12px;color:var(--color-text-secondary)">3 items · 84 units scanned · Supplier invoice: INV-HUL-2026-2841</span>
+      <div style="display:flex;gap:6px">
+        <button class="btn-sm">Save draft</button>
+        <button class="btn-sm btn-primary" onclick="sendPrompt('What is the GRN approval flow after scanning is complete in SwachERP?')">Submit for approval ↗</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="sec-title">Unknown barcode — 3 handling options</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+    <div class="card">
+      <div class="card-title"><span class="badge b-green">Option A</span></div>
+      <div style="font-weight:500;font-size:12px;margin-bottom:4px">Quick-add inline</div>
+      <div style="font-size:11px;color:var(--color-text-secondary);line-height:1.5">Mini form slides in — name, category, MRP, GST%. Item created in draft, GRN continues. Godown Incharge completes full details later.</div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="badge b-warn">Option B</span></div>
+      <div style="font-weight:500;font-size:12px;margin-bottom:4px">Skip and flag</div>
+      <div style="font-size:11px;color:var(--color-text-secondary);line-height:1.5">Item skipped, added to "unresolved barcodes" list. GRN submitted without it. Purchase Manager resolves later and raises amendment.</div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="badge b-red">Option C</span></div>
+      <div style="font-weight:500;font-size:12px;margin-bottom:4px">Block and notify</div>
+      <div style="font-size:11px;color:var(--color-text-secondary);line-height:1.5">GRN cannot be submitted with unresolved items. Sends notification to Purchase Manager to add item master first. Strictest audit control.</div>
+    </div>
+  </div>
+  <div class="note" style="margin-top:10px">Recommendation for SwachERP grocery: Use Option A for Godown Incharge (speed at gate), Option C for high-value items above ₹500 MRP (control). Configurable per item category in Terminal Settings.</div>
+</div>
+
+<div style="display:flex;flex-wrap:wrap;gap:8px;padding-top:4px">
+  <button class="btn-sm" onclick="sendPrompt('Generate the Excel bulk upload template with sample data for a grocery store in SwachERP')">Generate Excel template ↗</button>
+  <button class="btn-sm" onclick="sendPrompt('Design the quick-add new item form when unknown barcode is scanned during GRN')">Quick-add item form ↗</button>
+  <button class="btn-sm" onclick="sendPrompt('Design the GRN approval flow — Godown creates, Purchase Manager approves in SwachERP')">GRN approval flow ↗</button>
+  <button class="btn-sm" onclick="sendPrompt('What validations should run during inventory bulk import in SwachERP?')">Validation rules ↗</button>
+</div>
+
+</div>
