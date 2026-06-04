@@ -17,6 +17,7 @@ import {
   Wallet, Smartphone, Clock, CreditCard, ChevronLeft, Eye, EyeOff,
   QrCode, RefreshCw, Timer, BadgeCheck, Printer, Monitor, Wifi, Settings2,
   Check, Cpu, Receipt, WifiOff, PauseCircle, PlayCircle, Layers,
+  Scan, BarChart2, Scale, Gift,
 } from "lucide-react";
 
 const fmt = (n: any) => Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
@@ -1011,6 +1012,158 @@ function CardTerminalDialog({ open, amount, sessionId, counterName, onClose, onP
 }
 
 // ── Print Receipt Dialog ───────────────────────────────────────────────────────
+// ── Weight Entry Dialog ────────────────────────────────────────────────────────
+function WeightEntryDialog({ open, product, onConfirm, onClose }: {
+  open: boolean; product: any | null; onConfirm: (weight: number) => void; onClose: () => void;
+}) {
+  const [weight, setWeight] = useState("");
+  const unitPrice = Number(product?.selling_price || product?.price || 0);
+  const amount = (Number(weight) || 0) * unitPrice;
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-xs">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Scale className="h-4 w-4" />Enter Weight — {product?.name}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <F label={`Weight (${product?.unit_label || "kg"})`}>
+            <Input
+              type="number" min="0" step="0.001" placeholder="0.000"
+              value={weight} onChange={e => setWeight(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter" && Number(weight) > 0) { onConfirm(Number(weight)); onClose(); } }}
+              autoFocus
+            />
+          </F>
+          {Number(weight) > 0 && (
+            <p className="text-sm font-medium">Amount: ₹{fmt(amount)} ({weight} {product?.unit_label || "kg"} × ₹{fmt(unitPrice)})</p>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => { if (Number(weight) > 0) { onConfirm(Number(weight)); onClose(); } }} disabled={!weight || Number(weight) <= 0}>
+            Add to Cart
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── EOD Z-Report Dialog ───────────────────────────────────────────────────────
+function EodReportDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { data: company } = useQuery<any>({ queryKey: ["/api/settings/company"] });
+  const [reportDate, setReportDate] = useState(new Date().toISOString().split("T")[0]);
+  const { data: report, isLoading, refetch } = useQuery<any>({
+    queryKey: ["/api/pos/reports/eod", reportDate],
+    queryFn: async () => {
+      const r = await fetch(`/api/pos/reports/eod?date=${reportDate}`, { credentials: "include" });
+      if (!r.ok) throw new Error("Failed to load report");
+      return r.json();
+    },
+    enabled: open,
+  });
+
+  const handlePrint = () => {
+    const el = document.getElementById("eod-report-content");
+    if (!el) return;
+    const w = window.open("", "_blank", "width=420,height=700");
+    if (!w) return;
+    w.document.write(`<!DOCTYPE html><html><head><title>Z-Report ${reportDate}</title><style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body { font-family: 'Courier New', Courier, monospace; font-size: 11px; width: 80mm; margin: 0 auto; padding: 4mm; }
+      .flex-row { display: flex; justify-content: space-between; }
+      .bold { font-weight: bold; } .center { text-align: center; }
+      .divider { border-top: 1px dashed #000; margin: 3px 0; }
+      @media print { body { width: 80mm; } }
+    </style></head><body>${el.innerHTML}</body></html>`);
+    w.document.close();
+    setTimeout(() => { w.focus(); w.print(); }, 300);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-md max-h-[90dvh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2"><BarChart2 className="h-4 w-4" />EOD Z-Report</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium shrink-0">Date</label>
+            <Input type="date" value={reportDate} onChange={e => setReportDate(e.target.value)} className="flex-1" />
+            <Button size="icon" variant="outline" onClick={() => refetch()}><RefreshCw className="h-4 w-4" /></Button>
+          </div>
+          {isLoading && <p className="text-center text-muted-foreground py-6 text-sm">Loading report…</p>}
+          {report && !isLoading && (
+            <div id="eod-report-content" className="font-mono text-xs bg-white text-black p-3 rounded-md border space-y-0.5">
+              <div className="flex-row"><span></span></div>
+              <div className="text-center font-bold text-sm">{company?.name || "SwachERP Store"}</div>
+              <div className="text-center text-[10px]">*** Z-REPORT / END OF DAY ***</div>
+              <div className="text-center text-[10px]">Date: {reportDate}</div>
+              <div className="divider" />
+              <div className="flex justify-between font-bold"><span>Total Sales</span><span>₹{fmt(report.summary?.total_sales)}</span></div>
+              <div className="flex justify-between text-[10px]"><span>Transactions</span><span>{report.summary?.total_txns}</span></div>
+              <div className="flex justify-between text-[10px]"><span>Tax Collected</span><span>₹{fmt(report.summary?.total_tax)}</span></div>
+              <div className="flex justify-between text-[10px]"><span>Discounts Given</span><span>₹{fmt(report.summary?.total_discounts)}</span></div>
+              {Number(report.summary?.total_loyalty_discount) > 0 && (
+                <div className="flex justify-between text-[10px]"><span>Loyalty Discounts</span><span>₹{fmt(report.summary?.total_loyalty_discount)}</span></div>
+              )}
+              <div className="divider" />
+              <div className="text-[10px] font-bold">PAYMENT MODE BREAKDOWN</div>
+              {(report.byMode || []).map((m: any, i: number) => (
+                <div key={i} className="flex justify-between text-[10px]">
+                  <span>{String(m.payment_mode || "").toUpperCase()}</span>
+                  <span>{m.txn_count} txns · ₹{fmt(m.amount)}</span>
+                </div>
+              ))}
+              {!report.byMode?.length && <div className="text-[10px] text-center text-gray-400">No transactions</div>}
+              <div className="divider" />
+              <div className="text-[10px] font-bold">TOP SELLING ITEMS</div>
+              {(report.topItems || []).map((it: any, i: number) => (
+                <div key={i} className="flex justify-between text-[10px]">
+                  <span className="truncate flex-1 mr-2">{it.product_name}</span>
+                  <span className="shrink-0">×{Number(it.qty).toFixed(2)} ₹{fmt(it.amount)}</span>
+                </div>
+              ))}
+              {!report.topItems?.length && <div className="text-[10px] text-center text-gray-400">No items sold</div>}
+              {report.sessions?.length > 0 && (
+                <>
+                  <div className="divider" />
+                  <div className="text-[10px] font-bold">SESSIONS</div>
+                  {report.sessions.map((s: any, i: number) => (
+                    <div key={i} className="text-[10px]">{s.counter_name}: Open ₹{fmt(s.opening_balance)} Close ₹{fmt(s.closing_balance || 0)} Sales ₹{fmt(s.total_sales)}</div>
+                  ))}
+                </>
+              )}
+              {report.hourly?.length > 0 && (
+                <>
+                  <div className="divider" />
+                  <div className="text-[10px] font-bold">HOURLY BREAKDOWN</div>
+                  {report.hourly.map((h: any, i: number) => (
+                    <div key={i} className="flex justify-between text-[10px]">
+                      <span>{String(h.hour).padStart(2, "0")}:00–{String(h.hour + 1).padStart(2, "0")}:00</span>
+                      <span>{h.txn_count} txns · ₹{fmt(h.amount)}</span>
+                    </div>
+                  ))}
+                </>
+              )}
+              <div className="divider" />
+              <div className="text-center text-[10px]">*** END OF Z-REPORT ***</div>
+            </div>
+          )}
+        </div>
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={onClose}>Close</Button>
+          <Button onClick={handlePrint} disabled={!report || isLoading}>
+            <Printer className="h-4 w-4 mr-2" />Print Z-Report
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function PrintReceiptDialog({ open, txn, saleItems, session, onClose }: {
   open: boolean; txn: any; saleItems: any[]; session: any; onClose: () => void;
 }) {
@@ -1083,6 +1236,7 @@ function PrintReceiptDialog({ open, txn, saleItems, session, onClose }: {
           <div className="flex justify-between text-[10px]"><span>Subtotal</span><span>₹{fmt(txn.subtotal)}</span></div>
           {Number(txn.tax_amount) > 0 && <div className="flex justify-between text-[10px]"><span>Tax</span><span>₹{fmt(txn.tax_amount)}</span></div>}
           {Number(txn.discount_amount) > 0 && <div className="flex justify-between text-[10px]"><span>Discount</span><span>-₹{fmt(txn.discount_amount)}</span></div>}
+          {Number(txn.loyalty_discount) > 0 && <div className="flex justify-between text-[10px]"><span>Loyalty Redemption</span><span>-₹{fmt(txn.loyalty_discount)}</span></div>}
           <div className="flex justify-between font-bold text-[12px] border-t border-gray-400 pt-0.5">
             <span>TOTAL</span><span>₹{fmt(txn.total_amount)}</span>
           </div>
@@ -1295,6 +1449,10 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
   const [lastSaleItems, setLastSaleItems] = useState<any[]>([]);
   const [showParkedBills, setShowParkedBills] = useState(false);
   const [mrpOverride, setMrpOverride] = useState<{ product: any; cartIdx?: number } | null>(null);
+  const [weightItem, setWeightItem] = useState<any>(null);
+  const [loyaltyRedeem, setLoyaltyRedeem] = useState(0);
+  const [showEodReport, setShowEodReport] = useState(false);
+  const [barcodeInput, setBarcodeInput] = useState("");
   const closingBalance = DENOMINATIONS.reduce((s, d) => s + d * (closingDenom[d] || 0), 0);
 
   const { data: activeSession } = useQuery<any>({ queryKey: ["/api/pos/sessions/active"], refetchInterval: 30000 });
@@ -1344,33 +1502,64 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
       queryClient.invalidateQueries({ queryKey: ["/api/pos/sessions/active"] });
       setLastSaleTxn(data);
       setLastSaleItems([...cartItems]);
-      setCartItems([]); setSelectedCustomer(null); setSplits([{ mode: "cash", amount: "" }]);
+      setCartItems([]); setSelectedCustomer(null); setSplits([{ mode: "cash", amount: "" }]); setLoyaltyRedeem(0);
       setShowUpiQr(false); setShowCardDialog(false);
       setShowPrintDialog(true);
       toast({ title: "Sale recorded!" });
     },
   });
 
-  const addToCart = (product: any, forcePrice?: number) => {
+  const addToCart = (product: any, forcePrice?: number, forceWeight?: number) => {
+    // Weight-based items open weight dialog first
+    if (product.sold_by === "weight" && forceWeight === undefined) {
+      setWeightItem(product);
+      return;
+    }
     const unitPrice = forcePrice !== undefined ? forcePrice : Number(product.selling_price || product.price || 0);
     const mrpRupees = Number(product.mrp || 0) / 100;
     if (forcePrice === undefined && mrpRupees > 0 && unitPrice > mrpRupees) {
       setMrpOverride({ product });
       return;
     }
+    const qty = forceWeight !== undefined ? forceWeight : 1;
+    const unitLabel = product.unit_label || "pcs";
     setCartItems(prev => {
+      // Weight-based: always add as new line (each weighing is a separate entry)
+      if (product.sold_by === "weight") {
+        return [...prev, { product_id: product.id, product_name: product.name, sku: product.sku || null, quantity: qty, unit_price: unitPrice, discount_pct: 0, tax_rate: Number(product.tax_rate || 0), amount: qty * unitPrice, unit_label: unitLabel, hsn_code: product.hsn_code || null }];
+      }
       const ex = prev.find(i => i.product_id === product.id);
-      if (ex) return prev.map(i => i.product_id === product.id ? { ...i, quantity: i.quantity + 1, amount: (i.quantity + 1) * i.unit_price } : i);
-      return [...prev, { product_id: product.id, product_name: product.name, sku: product.sku || null, quantity: 1, unit_price: unitPrice, discount_pct: 0, tax_rate: Number(product.tax_rate || 0), amount: unitPrice }];
+      if (ex) return prev.map(i => i.product_id === product.id ? { ...i, quantity: i.quantity + qty, amount: (i.quantity + qty) * i.unit_price } : i);
+      return [...prev, { product_id: product.id, product_name: product.name, sku: product.sku || null, quantity: qty, unit_price: unitPrice, discount_pct: 0, tax_rate: Number(product.tax_rate || 0), amount: unitPrice * qty, unit_label: unitLabel, hsn_code: product.hsn_code || null }];
     });
   };
+
+  const handleBarcodeScan = async (code: string) => {
+    const trimmed = code.trim();
+    if (!trimmed) return;
+    try {
+      const r = await fetch(`/api/pos/products/barcode/${encodeURIComponent(trimmed)}`, { credentials: "include" });
+      if (r.ok) {
+        const product = await r.json();
+        addToCart(product);
+        toast({ title: `Added: ${product.name}` });
+      } else {
+        toast({ title: "Product not found", description: `No product for barcode "${trimmed}"`, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Scan error", variant: "destructive" });
+    }
+    setBarcodeInput("");
+  };
+
   const updateQty = (idx: number, qty: number) => {
     if (qty <= 0) { setCartItems(p => p.filter((_, i) => i !== idx)); return; }
     setCartItems(p => p.map((it, i) => i !== idx ? it : { ...it, quantity: qty, amount: qty * it.unit_price * (1 - it.discount_pct / 100) }));
   };
   const subtotal = cartItems.reduce((s, i) => s + i.amount, 0);
   const tax = cartItems.reduce((s, i) => s + i.amount * i.tax_rate / 100, 0);
-  const total = subtotal + tax;
+  const loyaltyDiscount = loyaltyRedeem / 100;
+  const total = Math.max(0, subtotal + tax - loyaltyDiscount);
   const splitTotal = splits.reduce((s, r) => s + (Number(r.amount) || 0), 0);
 
   const doRecordSale = (opts?: { razorpayPaymentId?: string | null; terminalId?: string | null; cardRef?: string | null }) => {
@@ -1383,6 +1572,8 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
       payment_mode: primaryMode,
       payment_splits: splits.filter(r => Number(r.amount) > 0),
       amount_paid: splitTotal || total,
+      loyalty_points_redeemed: loyaltyRedeem || 0,
+      loyalty_discount: loyaltyDiscount || 0,
       razorpay_payment_id: opts?.razorpayPaymentId || undefined,
       terminal_id: opts?.terminalId || undefined,
       card_ref: opts?.cardRef || undefined,
@@ -1484,6 +1675,9 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
                 View Last Session
               </Button>
             )}
+            <Button size="sm" variant="outline" onClick={() => setShowEodReport(true)} data-testid="button-eod-report">
+              <BarChart2 className="h-4 w-4 mr-1" />Z-Report
+            </Button>
             <Button size="sm" variant="outline" onClick={() => setShowCloseDialog(true)} data-testid="button-close-session">
               Close Session
             </Button>
@@ -1547,13 +1741,29 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
           <Input placeholder="Search products by name or SKU…" className="pl-9" value={productSearch} onChange={e => setProductSearch(e.target.value)} data-testid="input-product-search" />
         </div>
 
+        {/* Barcode / SKU scan input */}
+        <div className="relative">
+          <Scan className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Scan barcode or type SKU + Enter…"
+            className="pl-9 font-mono"
+            value={barcodeInput}
+            onChange={e => setBarcodeInput(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") handleBarcodeScan(barcodeInput); }}
+            data-testid="input-barcode-scan"
+          />
+        </div>
+
         {/* Product grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-96 overflow-y-auto">
           {filteredProducts.slice(0, 30).map((p: any) => (
             <button key={p.id} onClick={() => addToCart(p)} className="text-left p-3 rounded-md border hover-elevate active-elevate-2" data-testid={`btn-product-${p.id}`}>
-              <p className="font-medium text-sm truncate">{p.name}</p>
-              <p className="text-xs text-muted-foreground">{p.sku || "—"}</p>
-              <p className="text-sm font-semibold mt-1">₹{fmt(p.selling_price || p.price || 0)}</p>
+              <div className="flex items-start justify-between gap-1 mb-0.5">
+                <p className="font-medium text-sm truncate flex-1">{p.name}</p>
+                {p.sold_by === "weight" && <Scale className="h-3 w-3 text-muted-foreground shrink-0 mt-0.5" />}
+              </div>
+              <p className="text-xs text-muted-foreground">{p.sku || "—"}{p.unit_label ? ` · ${p.unit_label}` : ""}</p>
+              <p className="text-sm font-semibold mt-1">₹{fmt(p.selling_price || p.price || 0)}{p.sold_by === "weight" ? `/${p.unit_label || "kg"}` : ""}</p>
             </button>
           ))}
           {!filteredProducts.length && <p className="col-span-3 text-center py-4 text-muted-foreground text-sm">No products found</p>}
@@ -1569,7 +1779,7 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
               <div key={i} className="flex items-center gap-2 text-sm">
                 <div className="flex-1 min-w-0">
                   <p className="truncate font-medium">{it.product_name}</p>
-                  <p className="text-xs text-muted-foreground">₹{fmt(it.unit_price)} × {it.quantity}</p>
+                  <p className="text-xs text-muted-foreground">₹{fmt(it.unit_price)} × {it.quantity}{(it as any).unit_label ? ` ${(it as any).unit_label}` : ""}</p>
                 </div>
                 <div className="flex items-center gap-1">
                   <Button size="icon" variant="ghost" onClick={() => updateQty(i, it.quantity - 1)}><span className="text-base leading-none">−</span></Button>
@@ -1589,11 +1799,17 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
             <div className="border-t pt-2 space-y-1 text-sm">
               <div className="flex justify-between"><span>Subtotal</span><span>₹{fmt(subtotal)}</span></div>
               <div className="flex justify-between"><span>Tax</span><span>₹{fmt(tax)}</span></div>
+              {loyaltyDiscount > 0 && (
+                <div className="flex justify-between text-amber-700 dark:text-amber-400">
+                  <span className="flex items-center gap-1"><Gift className="h-3 w-3" />Loyalty Discount</span>
+                  <span>-₹{fmt(loyaltyDiscount)}</span>
+                </div>
+              )}
               <div className="flex justify-between font-bold text-base border-t pt-1"><span>Total</span><span>₹{fmt(total)}</span></div>
             </div>
 
             <F label="Customer">
-              <Select value={selectedCustomer?.id ? String(selectedCustomer.id) : "__none__"} onValueChange={v => { const c = (customers as any[]).find(c => String(c.id) === v); setSelectedCustomer(c || null); }}>
+              <Select value={selectedCustomer?.id ? String(selectedCustomer.id) : "__none__"} onValueChange={v => { const c = (customers as any[]).find(c => String(c.id) === v); setSelectedCustomer(c || null); setLoyaltyRedeem(0); }}>
                 <SelectTrigger data-testid="select-customer"><SelectValue placeholder="Walk-in customer" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">Walk-in</SelectItem>
@@ -1601,6 +1817,22 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
                 </SelectContent>
               </Select>
             </F>
+
+            {selectedCustomer && Number(selectedCustomer.loyalty_points) > 0 && (
+              <div className="flex items-center justify-between gap-2 p-2 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-700">
+                <div className="text-xs">
+                  <p className="font-medium text-amber-800 dark:text-amber-200 flex items-center gap-1">
+                    <Gift className="h-3 w-3" />{selectedCustomer.loyalty_points} pts available
+                  </p>
+                  <p className="text-amber-600 dark:text-amber-400">= ₹{fmt(selectedCustomer.loyalty_points / 100)} discount</p>
+                </div>
+                <Button size="sm" variant={loyaltyRedeem > 0 ? "default" : "outline"}
+                  onClick={() => setLoyaltyRedeem(loyaltyRedeem > 0 ? 0 : selectedCustomer.loyalty_points)}
+                  data-testid="button-redeem-loyalty">
+                  {loyaltyRedeem > 0 ? "Applied" : "Redeem"}
+                </Button>
+              </div>
+            )}
 
             <F label="Payment">
               <SplitPaymentPanel total={total} splits={splits} onSplitsChange={setSplits} />
@@ -1692,6 +1924,25 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
           onClose={() => setMrpOverride(null)}
         />
       )}
+
+      {/* Weight Entry Dialog */}
+      {weightItem && (
+        <WeightEntryDialog
+          open={!!weightItem}
+          product={weightItem}
+          onConfirm={(weight) => {
+            addToCart(weightItem, undefined, weight);
+            setWeightItem(null);
+          }}
+          onClose={() => setWeightItem(null)}
+        />
+      )}
+
+      {/* EOD Z-Report Dialog */}
+      <EodReportDialog
+        open={showEodReport}
+        onClose={() => setShowEodReport(false)}
+      />
 
       {/* Parked Bills Dialog */}
       <Dialog open={showParkedBills} onOpenChange={setShowParkedBills}>
@@ -1821,42 +2072,201 @@ function CustomersTab() {
 // ── Returns Tab ───────────────────────────────────────────────────────────────
 function ReturnsTab() {
   const { toast } = useToast();
-  const [showForm, setShowForm] = useState(false); const [form, setForm] = useState<any>({});
+  const [showForm, setShowForm] = useState(false);
+  const [txnNoInput, setTxnNoInput] = useState("");
+  const [lookupTxn, setLookupTxn] = useState<any>(null);
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [selectedItems, setSelectedItems] = useState<Record<number, { selected: boolean; qty: number }>>({});
+  const [refundMode, setRefundMode] = useState("cash");
+  const [reason, setReason] = useState("");
   const { data: returns_ = [] } = useQuery<any[]>({ queryKey: ["/api/pos/returns"] });
-  const { data: customers = [] } = useQuery<any[]>({ queryKey: ["/api/pos/customers"] });
-  const saveMut = useMutation({ mutationFn: (d: any) => apiRequest("POST", "/api/pos/returns", d), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/pos/returns"] }); setShowForm(false); toast({ title: "Return processed" }); } });
   const delMut = useMutation({ mutationFn: (id: any) => apiRequest("DELETE", `/api/pos/returns/${id}`), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/pos/returns"] }) });
+  const saveMut = useMutation({
+    mutationFn: (d: any) => apiRequest("POST", "/api/pos/returns", d),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/pos/returns"] });
+      setShowForm(false); setLookupTxn(null); setTxnNoInput(""); setSelectedItems({}); setReason("");
+      toast({ title: "Return processed successfully" });
+    }
+  });
+
+  const lookupTransaction = async () => {
+    const code = txnNoInput.trim();
+    if (!code) return;
+    setLookupLoading(true);
+    try {
+      const r = await fetch(`/api/pos/transactions/${encodeURIComponent(code)}`, { credentials: "include" });
+      if (r.ok) {
+        const txn = await r.json();
+        setLookupTxn(txn);
+        const init: Record<number, { selected: boolean; qty: number }> = {};
+        (txn.items || []).forEach((it: any, i: number) => { init[i] = { selected: false, qty: it.quantity }; });
+        setSelectedItems(init);
+      } else {
+        toast({ title: "Transaction not found", variant: "destructive" });
+        setLookupTxn(null);
+      }
+    } catch { toast({ title: "Lookup error", variant: "destructive" }); }
+    setLookupLoading(false);
+  };
+
+  const returnItems = lookupTxn
+    ? (lookupTxn.items || []).filter((_: any, i: number) => selectedItems[i]?.selected)
+        .map((it: any, _i: number, arr: any[]) => {
+          const origIdx = (lookupTxn.items || []).indexOf(it);
+          return { ...it, quantity: selectedItems[origIdx]?.qty || 1 };
+        })
+    : [];
+  const returnTotal = returnItems.reduce((s: number, it: any) => s + it.unit_price * it.quantity, 0);
+
+  const submitReturn = () => {
+    if (!lookupTxn) return;
+    if (!returnItems.length) { toast({ title: "Select at least one item", variant: "destructive" }); return; }
+    saveMut.mutate({
+      original_transaction_id: lookupTxn.id,
+      customer_id: lookupTxn.customer_id || null,
+      return_date: new Date().toISOString().split("T")[0],
+      return_amount: returnTotal,
+      reason,
+      refund_mode: refundMode,
+      items: returnItems.map((it: any) => ({ product_id: it.product_id, product_name: it.product_name, quantity: it.quantity, unit_price: it.unit_price, amount: it.unit_price * it.quantity })),
+    });
+  };
+
   return (
     <div className="space-y-4">
-      <div className="flex justify-end"><Button onClick={() => { setForm({ return_date: new Date().toISOString().split("T")[0], refund_mode: "cash" }); setShowForm(true); }}><Plus className="h-4 w-4 mr-1" />Process Return</Button></div>
+      <div className="flex justify-end">
+        <Button onClick={() => { setShowForm(true); setLookupTxn(null); setTxnNoInput(""); setSelectedItems({}); setReason(""); }} data-testid="button-process-return">
+          <Plus className="h-4 w-4 mr-1" />Process Return
+        </Button>
+      </div>
+
+      {/* Returns list */}
       <div className="rounded-md border overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-muted/50"><tr>{["Return No.", "Customer", "Date", "Amount", "Reason", "Refund Mode", "Status", ""].map(h => <th key={h} className="px-3 py-2 text-left font-medium">{h}</th>)}</tr></thead>
+          <thead className="bg-muted/50">
+            <tr>{["Return No.", "Customer", "Date", "Amount", "Reason", "Refund Mode", "Status", ""].map(h => <th key={h} className="px-3 py-2 text-left font-medium whitespace-nowrap">{h}</th>)}</tr>
+          </thead>
           <tbody>
             {(returns_ as any[]).map(r => (
               <tr key={r.id} className="border-t hover:bg-muted/30">
-                <td className="px-3 py-2 font-mono text-xs">{r.return_number}</td><td className="px-3 py-2">{r.customer_name_ref || "Walk-in"}</td>
-                <td className="px-3 py-2">{r.return_date?.split("T")[0]}</td><td className="px-3 py-2 font-medium">₹{fmt(r.return_amount)}</td>
-                <td className="px-3 py-2 max-w-[150px] truncate">{r.reason || "—"}</td><td className="px-3 py-2 uppercase">{r.refund_mode}</td>
-                <td className="px-3 py-2"><Badge className={r.status === "approved" ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"}>{r.status || "pending"}</Badge></td>
-                <td className="px-3 py-2"><Button size="icon" variant="ghost" onClick={() => delMut.mutate(r.id)}><Trash2 className="h-3.5 w-3.5" /></Button></td>
+                <td className="px-3 py-2 font-mono text-xs">{r.return_number}</td>
+                <td className="px-3 py-2">{r.customer_name_ref || "Walk-in"}</td>
+                <td className="px-3 py-2 whitespace-nowrap">{r.return_date?.split("T")[0]}</td>
+                <td className="px-3 py-2 font-medium">₹{fmt(r.return_amount)}</td>
+                <td className="px-3 py-2 max-w-[150px] truncate">{r.reason || "—"}</td>
+                <td className="px-3 py-2 uppercase">{r.refund_mode}</td>
+                <td className="px-3 py-2">
+                  <Badge className={r.status === "approved" ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300"}>
+                    {r.status || "pending"}
+                  </Badge>
+                </td>
+                <td className="px-3 py-2">
+                  <Button size="icon" variant="ghost" onClick={() => delMut.mutate(r.id)} data-testid={`button-delete-return-${r.id}`}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </td>
               </tr>
             ))}
-            {!(returns_ as any[]).length && <tr><td colSpan={8} className="px-3 py-6 text-center text-muted-foreground">No returns</td></tr>}
+            {!(returns_ as any[]).length && <tr><td colSpan={8} className="px-3 py-6 text-center text-muted-foreground">No returns recorded</td></tr>}
           </tbody>
         </table>
       </div>
-      <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="max-w-md"><DialogHeader><DialogTitle>Process Return</DialogTitle></DialogHeader>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2"><F label="Customer"><Select value={form.customer_id ? String(form.customer_id) : "__none__"} onValueChange={v => setForm({ ...form, customer_id: v === "__none__" ? "" : v })}><SelectTrigger><SelectValue placeholder="Walk-in" /></SelectTrigger><SelectContent><SelectItem value="__none__">Walk-in</SelectItem>{(customers as any[]).map((c: any) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}</SelectContent></Select></F></div>
-            <F label="Original Txn No."><Input value={form.original_txn_no || ""} onChange={e => setForm({ ...form, original_txn_no: e.target.value })} /></F>
-            <F label="Return Date"><Input type="date" value={form.return_date || ""} onChange={e => setForm({ ...form, return_date: e.target.value })} /></F>
-            <F label="Return Amount (₹)"><Input type="number" value={form.return_amount || ""} onChange={e => setForm({ ...form, return_amount: e.target.value })} /></F>
-            <F label="Refund Mode"><Select value={form.refund_mode || "cash"} onValueChange={v => setForm({ ...form, refund_mode: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{["cash", "card", "upi", "store_credit"].map(m => <SelectItem key={m} value={m}>{m.toUpperCase()}</SelectItem>)}</SelectContent></Select></F>
-            <div className="col-span-2"><F label="Reason"><Input value={form.reason || ""} onChange={e => setForm({ ...form, reason: e.target.value })} /></F></div>
+
+      {/* Enhanced Return Dialog */}
+      <Dialog open={showForm} onOpenChange={v => { if (!v) { setShowForm(false); setLookupTxn(null); } }}>
+        <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Process Return</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            {/* Step 1 — Lookup transaction */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Step 1 — Find Original Transaction</label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Transaction No. (e.g. TXN-000123)"
+                  value={txnNoInput}
+                  onChange={e => setTxnNoInput(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && lookupTransaction()}
+                  className="font-mono"
+                  data-testid="input-return-txn-no"
+                />
+                <Button onClick={lookupTransaction} disabled={lookupLoading || !txnNoInput.trim()} data-testid="button-lookup-txn">
+                  {lookupLoading ? "Looking…" : "Find"}
+                </Button>
+              </div>
+            </div>
+
+            {/* Step 2 — Select items */}
+            {lookupTxn && (
+              <div className="space-y-3">
+                <div className="p-3 rounded-md bg-muted/40 text-xs space-y-1">
+                  <p className="font-medium">{lookupTxn.transaction_no}</p>
+                  <p className="text-muted-foreground">Customer: {lookupTxn.customer_name || "Walk-in"} · Total: ₹{fmt(lookupTxn.total_amount)}</p>
+                </div>
+                <label className="text-sm font-medium">Step 2 — Select Items to Return</label>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {(lookupTxn.items || []).map((it: any, i: number) => (
+                    <div key={i} className="flex items-center gap-3 p-2 rounded-md border">
+                      <input
+                        type="checkbox"
+                        checked={selectedItems[i]?.selected || false}
+                        onChange={e => setSelectedItems(prev => ({ ...prev, [i]: { ...prev[i], selected: e.target.checked } }))}
+                        className="h-4 w-4"
+                        data-testid={`checkbox-return-item-${i}`}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{it.product_name}</p>
+                        <p className="text-xs text-muted-foreground">₹{fmt(it.unit_price)} × {it.quantity}</p>
+                      </div>
+                      {selectedItems[i]?.selected && (
+                        <div className="flex items-center gap-1">
+                          <label className="text-xs text-muted-foreground">Qty:</label>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={it.quantity}
+                            value={selectedItems[i]?.qty || it.quantity}
+                            onChange={e => setSelectedItems(prev => ({ ...prev, [i]: { ...prev[i], qty: Math.min(Number(e.target.value), it.quantity) } }))}
+                            className="w-16 h-8 text-xs"
+                            data-testid={`input-return-qty-${i}`}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {returnTotal > 0 && (
+                  <div className="flex justify-between font-semibold text-sm p-2 rounded-md bg-muted/40">
+                    <span>Return Amount</span><span>₹{fmt(returnTotal)}</span>
+                  </div>
+                )}
+
+                {/* Step 3 — Refund mode + reason */}
+                <div className="grid grid-cols-2 gap-3">
+                  <F label="Refund Mode">
+                    <Select value={refundMode} onValueChange={setRefundMode}>
+                      <SelectTrigger data-testid="select-refund-mode"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {["cash", "card", "upi", "store_credit"].map(m => <SelectItem key={m} value={m}>{m.replace("_", " ").toUpperCase()}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </F>
+                  <F label="Reason">
+                    <Input placeholder="e.g. Damaged product" value={reason} onChange={e => setReason(e.target.value)} data-testid="input-return-reason" />
+                  </F>
+                </div>
+              </div>
+            )}
           </div>
-          <DialogFooter className="pt-2"><Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button><Button onClick={() => saveMut.mutate(form)} disabled={saveMut.isPending}>Process</Button></DialogFooter>
+          <DialogFooter className="gap-2 pt-2">
+            <Button variant="outline" onClick={() => { setShowForm(false); setLookupTxn(null); }}>Cancel</Button>
+            {lookupTxn && (
+              <Button onClick={submitReturn} disabled={saveMut.isPending || !returnItems.length} data-testid="button-submit-return">
+                {saveMut.isPending ? "Processing…" : `Process Return — ₹${fmt(returnTotal)}`}
+              </Button>
+            )}
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

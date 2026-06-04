@@ -114,7 +114,7 @@ router.get("/transactions/:id/items", requireAuth, async (req: any, res) => {
 
 router.post("/transactions", requireAuth, async (req: any, res) => {
   try {
-    const { session_id, customer_id, customer_name, customer_phone, items, payment_mode, payment_splits, amount_paid, promotion_id, discount_amount: manualDiscount, razorpay_payment_id, terminal_id: txnTerminalId, card_ref } = req.body;
+    const { session_id, customer_id, customer_name, customer_phone, items, payment_mode, payment_splits, amount_paid, promotion_id, discount_amount: manualDiscount, loyalty_points_redeemed: loyaltyPtsRedeemed, loyalty_discount: loyaltyDisc, razorpay_payment_id, terminal_id: txnTerminalId, card_ref } = req.body;
     const no = "POS-" + Date.now();
     let subtotal = 0, tax_amount = 0, discount_amount = 0;
     for (const item of items) {
@@ -124,16 +124,17 @@ router.post("/transactions", requireAuth, async (req: any, res) => {
       discount_amount += item.quantity * item.unit_price * (item.discount_pct||0)/100;
     }
     discount_amount += (manualDiscount||0);
-    const total = subtotal + tax_amount - (manualDiscount||0);
+    const total = Math.max(0, subtotal + tax_amount - (manualDiscount||0) - (loyaltyDisc||0));
     const change = (amount_paid||total) - total;
     const pts = Math.floor(total / 100);
 
     const txn = await db.execute(sql`
-      INSERT INTO pos_transactions (tenant_id, session_id, transaction_no, customer_id, customer_name, customer_phone, subtotal, tax_amount, discount_amount, total_amount, payment_mode, payment_splits, amount_paid, change_given, promotion_id, loyalty_points_earned, razorpay_payment_id, terminal_id, card_ref)
+      INSERT INTO pos_transactions (tenant_id, session_id, transaction_no, customer_id, customer_name, customer_phone, subtotal, tax_amount, discount_amount, total_amount, payment_mode, payment_splits, amount_paid, change_given, promotion_id, loyalty_points_earned, loyalty_points_redeemed, loyalty_discount, razorpay_payment_id, terminal_id, card_ref)
       VALUES (${tid(req)}, ${session_id||null}, ${no}, ${customer_id||null},
               ${customer_name||null}, ${customer_phone||null}, ${subtotal}, ${tax_amount},
               ${discount_amount}, ${total}, ${payment_mode||'cash'}, ${JSON.stringify(payment_splits||[])}, ${amount_paid||total},
               ${Math.max(0, change)}, ${promotion_id||null}, ${pts},
+              ${loyaltyPtsRedeemed||0}, ${loyaltyDisc||0},
               ${razorpay_payment_id||null}, ${txnTerminalId||null}, ${card_ref||null})
       RETURNING *`);
 
@@ -150,7 +151,8 @@ router.post("/transactions", requireAuth, async (req: any, res) => {
       await db.execute(sql`UPDATE pos_sessions SET total_sales=total_sales+${total}, total_transactions=total_transactions+1 WHERE id=${session_id}`);
     }
     if (customer_id) {
-      await db.execute(sql`UPDATE pos_customers SET loyalty_points=loyalty_points+${pts}, outstanding_balance=outstanding_balance-${total} WHERE id=${customer_id}`);
+      const netPts = pts - (loyaltyPtsRedeemed || 0);
+      await db.execute(sql`UPDATE pos_customers SET loyalty_points=GREATEST(0, loyalty_points+${netPts}), outstanding_balance=outstanding_balance-${total} WHERE id=${customer_id}`);
     }
     res.json(txn.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -600,6 +602,65 @@ router.get("/payments/card-status/:chargeId", requireAuth, async (req: any, res)
       WHERE qr_id=${req.params.chargeId} AND tenant_id=${tid(req)} LIMIT 1`);
     const rec = rows.rows[0] as any;
     res.json(rec ? { status: rec.status, card_ref: rec.card_ref } : { status: "pending" });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Barcode / SKU lookup ──────────────────────────────────────────────────────
+router.get("/products/barcode/:code", requireAuth, async (req: any, res) => {
+  try {
+    const rows = await db.execute(sql`
+      SELECT * FROM products
+      WHERE tenant_id=${tid(req)} AND (barcode=${req.params.code} OR sku=${req.params.code}) AND record_status=1
+      LIMIT 1`);
+    if (!rows.rows.length) return res.status(404).json({ error: "Product not found" });
+    res.json(rows.rows[0]);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Transaction lookup by txn-no (for returns) ────────────────────────────────
+router.get("/transactions/:txnNo", requireAuth, async (req: any, res) => {
+  try {
+    const rows = await db.execute(sql`
+      SELECT * FROM pos_transactions
+      WHERE tenant_id=${tid(req)} AND (transaction_no=${req.params.txnNo} OR id::text=${req.params.txnNo})
+      LIMIT 1`);
+    if (!rows.rows.length) return res.status(404).json({ error: "Transaction not found" });
+    const txn = rows.rows[0] as any;
+    const items = await db.execute(sql`SELECT * FROM pos_transaction_items WHERE transaction_id=${txn.id}`);
+    res.json({ ...txn, items: items.rows });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── EOD Z-Report ──────────────────────────────────────────────────────────────
+router.get("/reports/eod", requireAuth, async (req: any, res) => {
+  try {
+    const date = (req.query.date as string) || new Date().toISOString().split("T")[0];
+    const [summary, byMode, topItems, hourly, sessions] = await Promise.all([
+      db.execute(sql`
+        SELECT COALESCE(SUM(total_amount),0) as total_sales, COUNT(*) as total_txns,
+               COALESCE(SUM(discount_amount),0) as total_discounts,
+               COALESCE(SUM(tax_amount),0) as total_tax,
+               COALESCE(SUM(loyalty_discount),0) as total_loyalty_discount
+        FROM pos_transactions WHERE tenant_id=${tid(req)} AND DATE(created_at AT TIME ZONE 'Asia/Kolkata')=${date}`),
+      db.execute(sql`
+        SELECT payment_mode, COUNT(*) as txn_count, COALESCE(SUM(total_amount),0) as amount
+        FROM pos_transactions WHERE tenant_id=${tid(req)} AND DATE(created_at AT TIME ZONE 'Asia/Kolkata')=${date}
+        GROUP BY payment_mode ORDER BY amount DESC`),
+      db.execute(sql`
+        SELECT pti.product_name, COALESCE(SUM(pti.quantity),0) as qty, COALESCE(SUM(pti.total),0) as amount
+        FROM pos_transaction_items pti JOIN pos_transactions pt ON pt.id=pti.transaction_id
+        WHERE pt.tenant_id=${tid(req)} AND DATE(pt.created_at AT TIME ZONE 'Asia/Kolkata')=${date}
+        GROUP BY pti.product_name ORDER BY amount DESC LIMIT 10`),
+      db.execute(sql`
+        SELECT EXTRACT(HOUR FROM created_at AT TIME ZONE 'Asia/Kolkata')::int as hour,
+               COUNT(*) as txn_count, COALESCE(SUM(total_amount),0) as amount
+        FROM pos_transactions WHERE tenant_id=${tid(req)} AND DATE(created_at AT TIME ZONE 'Asia/Kolkata')=${date}
+        GROUP BY hour ORDER BY hour`),
+      db.execute(sql`
+        SELECT counter_name, opening_balance, closing_balance, total_sales, total_transactions, status
+        FROM pos_sessions WHERE tenant_id=${tid(req)} AND DATE(opened_at AT TIME ZONE 'Asia/Kolkata')=${date}`),
+    ]);
+    res.json({ date, summary: summary.rows[0], byMode: byMode.rows, topItems: topItems.rows, hourly: hourly.rows, sessions: sessions.rows });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
