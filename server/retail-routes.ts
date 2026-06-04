@@ -65,12 +65,13 @@ router.post("/sessions/verify-manager", requireAuth, async (req: any, res) => {
 
 router.post("/sessions/open", requireAuth, async (req: any, res) => {
   try {
-    const { counter_name, opening_balance, opening_upi_float, approved_by, shift_type } = req.body;
+    const { counter_name, opening_balance, opening_upi_float, approved_by, shift_type, opening_denomination } = req.body;
     const userId = String(req.user?.id || "");
     const rows = await db.execute(sql`
-      INSERT INTO pos_sessions (tenant_id, user_id, counter_name, opening_balance, opening_upi_float, approved_by, shift_type)
+      INSERT INTO pos_sessions (tenant_id, user_id, counter_name, opening_balance, opening_upi_float, approved_by, shift_type, opening_denomination)
       VALUES (${tid(req)}, ${userId}, ${counter_name||'Counter 1'}, ${opening_balance||0},
-              ${opening_upi_float||0}, ${approved_by||null}, ${shift_type||'new'})
+              ${opening_upi_float||0}, ${approved_by||null}, ${shift_type||'new'},
+              ${JSON.stringify(opening_denomination||{})})
       RETURNING *`);
     res.json(rows.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -78,11 +79,12 @@ router.post("/sessions/open", requireAuth, async (req: any, res) => {
 
 router.post("/sessions/:id/close", requireAuth, async (req: any, res) => {
   try {
-    const { closing_balance } = req.body;
+    const { closing_balance, closing_denomination } = req.body;
     const stats = await db.execute(sql`SELECT COALESCE(SUM(total_amount),0) as total, COUNT(*) as cnt FROM pos_transactions WHERE session_id=${req.params.id}`);
     const rows = await db.execute(sql`
       UPDATE pos_sessions SET status='closed', closed_at=NOW(),
         closing_balance=${closing_balance||0},
+        closing_denomination=${JSON.stringify(closing_denomination||{})},
         total_sales=${stats.rows[0]?.total||0},
         total_transactions=${stats.rows[0]?.cnt||0}
       WHERE id=${req.params.id} AND tenant_id=${tid(req)} RETURNING *`);
@@ -112,7 +114,7 @@ router.get("/transactions/:id/items", requireAuth, async (req: any, res) => {
 
 router.post("/transactions", requireAuth, async (req: any, res) => {
   try {
-    const { session_id, customer_id, customer_name, customer_phone, items, payment_mode, amount_paid, promotion_id, discount_amount: manualDiscount, razorpay_payment_id, terminal_id: txnTerminalId, card_ref } = req.body;
+    const { session_id, customer_id, customer_name, customer_phone, items, payment_mode, payment_splits, amount_paid, promotion_id, discount_amount: manualDiscount, razorpay_payment_id, terminal_id: txnTerminalId, card_ref } = req.body;
     const no = "POS-" + Date.now();
     let subtotal = 0, tax_amount = 0, discount_amount = 0;
     for (const item of items) {
@@ -127,10 +129,10 @@ router.post("/transactions", requireAuth, async (req: any, res) => {
     const pts = Math.floor(total / 100);
 
     const txn = await db.execute(sql`
-      INSERT INTO pos_transactions (tenant_id, session_id, transaction_no, customer_id, customer_name, customer_phone, subtotal, tax_amount, discount_amount, total_amount, payment_mode, amount_paid, change_given, promotion_id, loyalty_points_earned, razorpay_payment_id, terminal_id, card_ref)
+      INSERT INTO pos_transactions (tenant_id, session_id, transaction_no, customer_id, customer_name, customer_phone, subtotal, tax_amount, discount_amount, total_amount, payment_mode, payment_splits, amount_paid, change_given, promotion_id, loyalty_points_earned, razorpay_payment_id, terminal_id, card_ref)
       VALUES (${tid(req)}, ${session_id||null}, ${no}, ${customer_id||null},
               ${customer_name||null}, ${customer_phone||null}, ${subtotal}, ${tax_amount},
-              ${discount_amount}, ${total}, ${payment_mode||'cash'}, ${amount_paid||total},
+              ${discount_amount}, ${total}, ${payment_mode||'cash'}, ${JSON.stringify(payment_splits||[])}, ${amount_paid||total},
               ${Math.max(0, change)}, ${promotion_id||null}, ${pts},
               ${razorpay_payment_id||null}, ${txnTerminalId||null}, ${card_ref||null})
       RETURNING *`);
@@ -151,6 +153,32 @@ router.post("/transactions", requireAuth, async (req: any, res) => {
       await db.execute(sql`UPDATE pos_customers SET loyalty_points=loyalty_points+${pts}, outstanding_balance=outstanding_balance-${total} WHERE id=${customer_id}`);
     }
     res.json(txn.rows[0]);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Parked Bills (Hold Cart) ────────────────────────────────────────────────────
+router.get("/parked-bills", requireAuth, async (req: any, res) => {
+  try {
+    const rows = await db.execute(sql`SELECT * FROM pos_parked_bills WHERE tenant_id=${tid(req)} ORDER BY parked_at DESC`);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.post("/parked-bills", requireAuth, async (req: any, res) => {
+  try {
+    const { session_id, counter_name, cart_items, customer_id, customer_name, notes } = req.body;
+    const rows = await db.execute(sql`
+      INSERT INTO pos_parked_bills (tenant_id, session_id, counter_name, cart_items, customer_id, customer_name, notes)
+      VALUES (${tid(req)}, ${session_id||null}, ${counter_name||''}, ${JSON.stringify(cart_items||[])}, ${customer_id||null}, ${customer_name||null}, ${notes||null})
+      RETURNING *`);
+    res.json(rows.rows[0]);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.delete("/parked-bills/:id", requireAuth, async (req: any, res) => {
+  try {
+    await db.execute(sql`DELETE FROM pos_parked_bills WHERE id=${req.params.id} AND tenant_id=${tid(req)}`);
+    res.json({ ok: true });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 

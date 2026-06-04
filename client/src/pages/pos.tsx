@@ -16,7 +16,7 @@ import {
   Pencil, Trash2, AlertTriangle, ShieldCheck, ArrowRight, CheckCircle2,
   Wallet, Smartphone, Clock, CreditCard, ChevronLeft, Eye, EyeOff,
   QrCode, RefreshCw, Timer, BadgeCheck, Printer, Monitor, Wifi, Settings2,
-  Check, Cpu, Receipt, WifiOff,
+  Check, Cpu, Receipt, WifiOff, PauseCircle, PlayCircle, Layers,
 } from "lucide-react";
 
 const fmt = (n: any) => Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
@@ -52,6 +52,211 @@ function CurrencyInput({ value, onChange, placeholder = "0.00", ...props }: any)
         {...props}
       />
     </div>
+  );
+}
+
+// ── Denomination constants & grid ─────────────────────────────────────────────
+const DENOMINATIONS = [500, 200, 100, 50, 20, 10, 5, 2, 1];
+type DenomMap = Record<number, number>;
+
+function DenominationInput({ value, onChange }: { value: DenomMap; onChange: (v: DenomMap) => void }) {
+  const total = DENOMINATIONS.reduce((s, d) => s + d * (value[d] || 0), 0);
+  return (
+    <div className="space-y-1.5">
+      <div className="grid gap-1">
+        {DENOMINATIONS.map(d => (
+          <div key={d} className="grid grid-cols-[52px_1fr_72px] items-center gap-2">
+            <span className="text-xs font-medium text-right text-muted-foreground">₹{d}</span>
+            <Input
+              type="number" min="0" placeholder="0"
+              value={value[d] || ""}
+              onChange={e => onChange({ ...value, [d]: Number(e.target.value) || 0 })}
+              className="h-7 text-center text-sm"
+            />
+            <span className="text-xs text-muted-foreground text-right">
+              = ₹{((value[d] || 0) * d).toLocaleString("en-IN")}
+            </span>
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center justify-between pt-1 border-t font-semibold text-sm">
+        <span>Total Cash</span>
+        <span className="text-primary">₹{total.toLocaleString("en-IN")}</span>
+      </div>
+    </div>
+  );
+}
+
+// ── Split payment panel ────────────────────────────────────────────────────────
+const PAY_MODES = [
+  { value: "cash",   label: "Cash",   icon: Wallet },
+  { value: "upi",    label: "UPI",    icon: Smartphone },
+  { value: "card",   label: "Card",   icon: CreditCard },
+  { value: "wallet", label: "Wallet", icon: Tag },
+];
+type SplitRow = { mode: string; amount: string };
+
+function SplitPaymentPanel({ total, splits, onSplitsChange }: {
+  total: number; splits: SplitRow[]; onSplitsChange: (s: SplitRow[]) => void;
+}) {
+  const splitTotal = splits.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+  const remaining = +(total - splitTotal).toFixed(2);
+  const changeGiven = splitTotal > total + 0.01 ? +(splitTotal - total).toFixed(2) : 0;
+
+  const addMode = () => {
+    const used = splits.map(s => s.mode);
+    const avail = PAY_MODES.find(m => !used.includes(m.value));
+    if (avail) onSplitsChange([...splits, { mode: avail.value, amount: "" }]);
+  };
+  const update = (i: number, field: keyof SplitRow, v: string) =>
+    onSplitsChange(splits.map((r, idx) => idx === i ? { ...r, [field]: v } : r));
+  const autoFill = (i: number) => {
+    const others = splits.reduce((s, r, idx) => idx !== i ? s + (Number(r.amount) || 0) : s, 0);
+    update(i, "amount", Math.max(0, +(total - others).toFixed(2)).toString());
+  };
+
+  return (
+    <div className="space-y-2">
+      {splits.map((row, i) => (
+        <div key={i} className="flex items-center gap-1.5">
+          <Select value={row.mode} onValueChange={v => update(i, "mode", v)}>
+            <SelectTrigger className="w-24 shrink-0 text-xs h-8"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {PAY_MODES.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <div className="relative flex-1">
+            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₹</span>
+            <Input type="number" min="0" step="0.01" placeholder="0.00"
+              value={row.amount} onChange={e => update(i, "amount", e.target.value)}
+              className="pl-5 h-8 text-sm" />
+          </div>
+          <Button size="icon" variant="ghost" onClick={() => autoFill(i)} title="Fill remaining" className="h-8 w-8 shrink-0">
+            <ArrowRight className="h-3 w-3" />
+          </Button>
+          {splits.length > 1 && (
+            <Button size="icon" variant="ghost" onClick={() => onSplitsChange(splits.filter((_, idx) => idx !== i))} className="h-8 w-8 shrink-0">
+              <X className="h-3 w-3" />
+            </Button>
+          )}
+        </div>
+      ))}
+      {splits.length < PAY_MODES.length && (
+        <Button variant="outline" size="sm" className="w-full h-7 text-xs" onClick={addMode}>
+          <Plus className="h-3 w-3 mr-1" />Split with another mode
+        </Button>
+      )}
+      <div className="text-xs space-y-0.5 pt-1.5 border-t">
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Bill Total</span>
+          <span className="font-semibold">₹{fmt(total)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Tendered</span>
+          <span>₹{fmt(splitTotal)}</span>
+        </div>
+        {remaining > 0.01 && (
+          <div className="flex justify-between text-amber-600 dark:text-amber-400 font-medium">
+            <span>Balance Due</span><span>₹{fmt(remaining)}</span>
+          </div>
+        )}
+        {changeGiven > 0.01 && (
+          <div className="flex justify-between text-green-700 dark:text-green-400 font-semibold">
+            <span>Change to Return</span><span>₹{fmt(changeGiven)}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── MRP Override Dialog ────────────────────────────────────────────────────────
+function MrpOverrideDialog({ open, itemName, mrpRupees, currentPrice, onConfirm, onClose }: {
+  open: boolean; itemName: string; mrpRupees: number; currentPrice: number;
+  onConfirm: (price: number) => void; onClose: () => void;
+}) {
+  const { toast } = useToast();
+  const [newPrice, setNewPrice] = useState(String(currentPrice || ""));
+  const [step, setStep] = useState<"price" | "approval">("price");
+  const [mgr, setMgr] = useState({ username: "", password: "" });
+  const [showPass, setShowPass] = useState(false);
+  const [mgrError, setMgrError] = useState("");
+
+  const verifyMut = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/pos/sessions/verify-manager", mgr),
+    onSuccess: async (res: any) => {
+      const data = await res.json();
+      if (data.ok) { onConfirm(Number(newPrice)); onClose(); }
+      else setMgrError(data.message || "Verification failed");
+    },
+    onError: () => setMgrError("Verification failed"),
+  });
+
+  const handleClose = () => {
+    setStep("price"); setNewPrice(String(currentPrice || "")); setMgr({ username: "", password: "" }); setMgrError("");
+    onClose();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-amber-500" />Price Override
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="p-3 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-700 text-sm text-amber-800 dark:text-amber-200">
+            <p className="font-medium truncate">{itemName}</p>
+            <p className="text-xs mt-0.5">MRP is <strong>₹{fmt(mrpRupees)}</strong>. Selling above MRP requires supervisor approval.</p>
+          </div>
+          {step === "price" && (
+            <F label="Override Price (₹)">
+              <CurrencyInput value={newPrice} onChange={(e: any) => setNewPrice(e.target.value)} placeholder={fmt(mrpRupees)} />
+            </F>
+          )}
+          {step === "approval" && (
+            <>
+              <p className="text-sm text-muted-foreground">Override to <strong>₹{fmt(Number(newPrice))}</strong> — above MRP ₹{fmt(mrpRupees)}. Supervisor must approve.</p>
+              <F label="Supervisor Username">
+                <Input value={mgr.username} onChange={e => { setMgr(m => ({ ...m, username: e.target.value })); setMgrError(""); }} placeholder="Login username" />
+              </F>
+              <F label="Supervisor Password">
+                <div className="relative">
+                  <Input type={showPass ? "text" : "password"} value={mgr.password} onChange={e => { setMgr(m => ({ ...m, password: e.target.value })); setMgrError(""); }} placeholder="••••••••" className="pr-10" />
+                  <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" onClick={() => setShowPass(v => !v)}>
+                    {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </F>
+              {mgrError && <p className="text-sm text-destructive flex items-center gap-1.5"><AlertTriangle className="h-3.5 w-3.5" />{mgrError}</p>}
+            </>
+          )}
+        </div>
+        <DialogFooter className="gap-2">
+          {step === "approval" && (
+            <Button variant="ghost" size="sm" onClick={() => setStep("price")}><ChevronLeft className="h-4 w-4 mr-1" />Back</Button>
+          )}
+          <Button variant="outline" onClick={handleClose}>Cancel</Button>
+          <Button
+            onClick={() => {
+              const p = Number(newPrice);
+              if (!p || p <= 0) { toast({ title: "Enter a valid price", variant: "destructive" }); return; }
+              if (step === "price") {
+                if (p > mrpRupees) setStep("approval");
+                else { onConfirm(p); onClose(); }
+              } else {
+                if (!mgr.username || !mgr.password) { setMgrError("Enter supervisor credentials"); return; }
+                verifyMut.mutate();
+              }
+            }}
+            disabled={verifyMut.isPending}
+          >
+            {step === "price" ? "Apply Price" : verifyMut.isPending ? "Verifying…" : "Approve & Apply"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -110,13 +315,14 @@ function OpenSessionDialog({
   const { toast } = useToast();
   const [step, setStep] = useState<OpenStep>("balance");
   const [counterName, setCounterName] = useState("Counter 1");
-  const [cashFloat, setCashFloat] = useState("");
+  const [cashDenom, setCashDenom] = useState<DenomMap>({});
   const [upiFloat, setUpiFloat] = useState("");
   const [shiftType, setShiftType] = useState<"new" | "continue">("new");
   const [mgr, setMgr] = useState({ username: "", password: "" });
   const [showMgrPass, setShowMgrPass] = useState(false);
   const [approvedBy, setApprovedBy] = useState("");
   const [mgrError, setMgrError] = useState("");
+  const cashFloat = DENOMINATIONS.reduce((s, d) => s + d * (cashDenom[d] || 0), 0);
 
   const { data: counters = [] } = useQuery<string[]>({
     queryKey: ["/api/pos/sessions/counters"],
@@ -173,7 +379,8 @@ function OpenSessionDialog({
   function doOpen(managerUser?: string) {
     openSessionMut.mutate({
       counter_name: counterName,
-      opening_balance: Number(cashFloat || 0),
+      opening_balance: cashFloat,
+      opening_denomination: cashDenom,
       opening_upi_float: Number(upiFloat || 0),
       approved_by: managerUser || approvedBy || null,
       shift_type: shiftType,
@@ -182,6 +389,7 @@ function OpenSessionDialog({
 
   function handleClose() {
     setStep("balance");
+    setCashDenom({});
     setMgr({ username: "", password: "" });
     setMgrError("");
     setApprovedBy("");
@@ -253,24 +461,17 @@ function OpenSessionDialog({
               )}
             </F>
 
-            <div className="grid grid-cols-2 gap-3">
-              <F label="Cash Opening Float">
-                <CurrencyInput
-                  value={cashFloat}
-                  onChange={(e: any) => setCashFloat(e.target.value)}
-                  placeholder="0.00"
-                  data-testid="input-cash-float"
-                />
-              </F>
-              <F label="UPI Opening Float">
-                <CurrencyInput
-                  value={upiFloat}
-                  onChange={(e: any) => setUpiFloat(e.target.value)}
-                  placeholder="0.00"
-                  data-testid="input-upi-float"
-                />
-              </F>
-            </div>
+            <F label="Cash Opening (count denomination-wise)">
+              <DenominationInput value={cashDenom} onChange={setCashDenom} />
+            </F>
+            <F label="UPI Opening Float">
+              <CurrencyInput
+                value={upiFloat}
+                onChange={(e: any) => setUpiFloat(e.target.value)}
+                placeholder="0.00"
+                data-testid="input-upi-float"
+              />
+            </F>
 
             {totalFloat > 0 && (
               <div className={`flex items-start gap-2 p-3 rounded-md text-sm border ${needsApproval ? "bg-amber-50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200" : "bg-muted/40 border-muted"}`}>
@@ -886,11 +1087,19 @@ function PrintReceiptDialog({ open, txn, saleItems, session, onClose }: {
             <span>TOTAL</span><span>₹{fmt(txn.total_amount)}</span>
           </div>
           <div className="border-t border-dashed border-gray-400 my-1" />
-          <div className="flex justify-between text-[10px]">
-            <span>Payment: {payMode}</span>
-            {txn.card_ref && <span>Ref: {txn.card_ref}</span>}
-            {txn.razorpay_payment_id && !txn.card_ref && <span>Ref: {txn.razorpay_payment_id.slice(-8)}</span>}
-          </div>
+          {Array.isArray(txn.payment_splits) && txn.payment_splits.length > 1 ? (
+            txn.payment_splits.map((sp: any, i: number) => (
+              <div key={i} className="flex justify-between text-[10px]">
+                <span>{String(sp.mode || "").toUpperCase()}</span><span>₹{fmt(sp.amount)}</span>
+              </div>
+            ))
+          ) : (
+            <div className="flex justify-between text-[10px]">
+              <span>Payment: {payMode}</span>
+              {txn.card_ref && <span>Ref: {txn.card_ref}</span>}
+              {txn.razorpay_payment_id && !txn.card_ref && <span>Ref: {txn.razorpay_payment_id.slice(-8)}</span>}
+            </div>
+          )}
           <div className="flex justify-between text-[10px]">
             <span>Paid: ₹{fmt(txn.amount_paid)}</span>
             {Number(txn.change_given) > 0 && <span>Change: ₹{fmt(txn.change_given)}</span>}
@@ -1074,17 +1283,19 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
   const [cartItems, setCartItems] = useState<any[]>([]);
   const [productSearch, setProductSearch] = useState("");
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
-  const [paymentMode, setPaymentMode] = useState("cash");
-  const [amountPaid, setAmountPaid] = useState("");
+  const [splits, setSplits] = useState<SplitRow[]>([{ mode: "cash", amount: "" }]);
   const [showOpenDialog, setShowOpenDialog] = useState(false);
   const [showLastSession, setShowLastSession] = useState(false);
   const [showCloseDialog, setShowCloseDialog] = useState(false);
-  const [closingBalance, setClosingBalance] = useState("");
+  const [closingDenom, setClosingDenom] = useState<DenomMap>({});
   const [showUpiQr, setShowUpiQr] = useState(false);
   const [showCardDialog, setShowCardDialog] = useState(false);
   const [showPrintDialog, setShowPrintDialog] = useState(false);
   const [lastSaleTxn, setLastSaleTxn] = useState<any>(null);
   const [lastSaleItems, setLastSaleItems] = useState<any[]>([]);
+  const [showParkedBills, setShowParkedBills] = useState(false);
+  const [mrpOverride, setMrpOverride] = useState<{ product: any; cartIdx?: number } | null>(null);
+  const closingBalance = DENOMINATIONS.reduce((s, d) => s + d * (closingDenom[d] || 0), 0);
 
   const { data: activeSession } = useQuery<any>({ queryKey: ["/api/pos/sessions/active"], refetchInterval: 30000 });
   const { data: products = [] } = useQuery<any[]>({ queryKey: ["/api/inventory/products"] });
@@ -1097,6 +1308,8 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
     },
   });
 
+  const { data: parkedBills = [] } = useQuery<any[]>({ queryKey: ["/api/pos/parked-bills"] });
+
   const closeSessionMut = useMutation({
     mutationFn: (d: any) => apiRequest("POST", `/api/pos/sessions/${activeSession?.id}/close`, d),
     onSuccess: () => {
@@ -1104,9 +1317,23 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
       queryClient.invalidateQueries({ queryKey: ["/api/pos/sessions/last"] });
       queryClient.invalidateQueries({ queryKey: ["/api/pos/sessions"] });
       setShowCloseDialog(false);
-      setClosingBalance("");
+      setClosingDenom({});
       toast({ title: "Session closed", description: `${activeSession?.counter_name} session ended` });
     },
+  });
+
+  const parkBillMut = useMutation({
+    mutationFn: (d: any) => apiRequest("POST", "/api/pos/parked-bills", d),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/pos/parked-bills"] });
+      setCartItems([]); setSelectedCustomer(null); setSplits([{ mode: "cash", amount: "" }]);
+      toast({ title: "Bill parked", description: "Resume it from Parked Bills" });
+    },
+  });
+
+  const resumeBillMut = useMutation({
+    mutationFn: (id: string) => apiRequest("DELETE", `/api/pos/parked-bills/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/pos/parked-bills"] }),
   });
 
   const saleMut = useMutation({
@@ -1117,18 +1344,24 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
       queryClient.invalidateQueries({ queryKey: ["/api/pos/sessions/active"] });
       setLastSaleTxn(data);
       setLastSaleItems([...cartItems]);
-      setCartItems([]); setSelectedCustomer(null); setAmountPaid("");
+      setCartItems([]); setSelectedCustomer(null); setSplits([{ mode: "cash", amount: "" }]);
       setShowUpiQr(false); setShowCardDialog(false);
       setShowPrintDialog(true);
       toast({ title: "Sale recorded!" });
     },
   });
 
-  const addToCart = (product: any) => {
+  const addToCart = (product: any, forcePrice?: number) => {
+    const unitPrice = forcePrice !== undefined ? forcePrice : Number(product.selling_price || product.price || 0);
+    const mrpRupees = Number(product.mrp || 0) / 100;
+    if (forcePrice === undefined && mrpRupees > 0 && unitPrice > mrpRupees) {
+      setMrpOverride({ product });
+      return;
+    }
     setCartItems(prev => {
       const ex = prev.find(i => i.product_id === product.id);
       if (ex) return prev.map(i => i.product_id === product.id ? { ...i, quantity: i.quantity + 1, amount: (i.quantity + 1) * i.unit_price } : i);
-      return [...prev, { product_id: product.id, product_name: product.name, sku: product.sku || null, quantity: 1, unit_price: Number(product.selling_price || product.price || 0), discount_pct: 0, tax_rate: Number(product.tax_rate || 0), amount: Number(product.selling_price || product.price || 0) }];
+      return [...prev, { product_id: product.id, product_name: product.name, sku: product.sku || null, quantity: 1, unit_price: unitPrice, discount_pct: 0, tax_rate: Number(product.tax_rate || 0), amount: unitPrice }];
     });
   };
   const updateQty = (idx: number, qty: number) => {
@@ -1138,16 +1371,18 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
   const subtotal = cartItems.reduce((s, i) => s + i.amount, 0);
   const tax = cartItems.reduce((s, i) => s + i.amount * i.tax_rate / 100, 0);
   const total = subtotal + tax;
-  const change = Number(amountPaid || 0) - total;
+  const splitTotal = splits.reduce((s, r) => s + (Number(r.amount) || 0), 0);
 
   const doRecordSale = (opts?: { razorpayPaymentId?: string | null; terminalId?: string | null; cardRef?: string | null }) => {
+    const primaryMode = splits.length === 1 ? splits[0].mode : "split";
     saleMut.mutate({
       session_id: activeSession?.id || null,
       customer_id: selectedCustomer?.id || null,
       customer_name: selectedCustomer?.name || null,
       items: cartItems,
-      payment_mode: paymentMode,
-      amount_paid: Number(amountPaid) || total,
+      payment_mode: primaryMode,
+      payment_splits: splits.filter(r => Number(r.amount) > 0),
+      amount_paid: splitTotal || total,
       razorpay_payment_id: opts?.razorpayPaymentId || undefined,
       terminal_id: opts?.terminalId || undefined,
       card_ref: opts?.cardRef || undefined,
@@ -1156,8 +1391,12 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
 
   const completeSale = () => {
     if (!cartItems.length) { toast({ title: "Cart is empty", variant: "destructive" }); return; }
-    if (paymentMode === "upi") { setShowUpiQr(true); return; }
-    if (paymentMode === "card") { setShowCardDialog(true); return; }
+    if (splitTotal < total - 0.01) {
+      toast({ title: "Amount short", description: `₹${fmt(total - splitTotal)} still due`, variant: "destructive" });
+      return;
+    }
+    if (splits.length === 1 && splits[0].mode === "upi") { setShowUpiQr(true); return; }
+    if (splits.length === 1 && splits[0].mode === "card") { setShowCardDialog(true); return; }
     doRecordSale();
   };
 
@@ -1234,7 +1473,12 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
               {Number(activeSession.opening_upi_float) > 0 && ` + ₹${fmt(activeSession.opening_upi_float)} UPI`}
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            {(parkedBills as any[]).length > 0 && (
+              <Button size="sm" variant="outline" onClick={() => setShowParkedBills(true)} data-testid="button-parked-bills">
+                <Layers className="h-4 w-4 mr-1" />{(parkedBills as any[]).length} Parked
+              </Button>
+            )}
             {lastSession && (
               <Button size="sm" variant="ghost" onClick={() => setShowLastSession(true)} data-testid="button-view-last-in-session">
                 View Last Session
@@ -1269,23 +1513,17 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
                   <span className="font-semibold text-right">{activeSession?.opened_at ? fmtTime(activeSession.opened_at) : "—"}</span>
                 </div>
               </div>
-              <F label="Closing Cash Count (₹)">
-                <CurrencyInput
-                  value={closingBalance}
-                  onChange={(e: any) => setClosingBalance(e.target.value)}
-                  placeholder="Count the cash in drawer"
-                  data-testid="input-closing-balance"
-                  autoFocus
-                />
+              <F label="Closing Cash (count denomination-wise)">
+                <DenominationInput value={closingDenom} onChange={setClosingDenom} />
               </F>
-              {closingBalance && (
+              {closingBalance > 0 && (
                 <div className={`text-sm p-2 rounded-md ${
-                  Number(closingBalance) < Number(activeSession?.opening_balance)
+                  closingBalance < Number(activeSession?.opening_balance)
                     ? "bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300"
                     : "bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300"
                 }`}>
-                  Variance: ₹{fmt(Number(closingBalance) - Number(activeSession?.opening_balance || 0))}
-                  {Number(closingBalance) < Number(activeSession?.opening_balance) ? " (shortage)" : " (surplus)"}
+                  Variance: ₹{fmt(closingBalance - Number(activeSession?.opening_balance || 0))}
+                  {closingBalance < Number(activeSession?.opening_balance) ? " (shortage)" : " (surplus)"}
                 </div>
               )}
             </div>
@@ -1293,7 +1531,7 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
               <Button variant="outline" onClick={() => setShowCloseDialog(false)}>Cancel</Button>
               <Button
                 variant="destructive"
-                onClick={() => closeSessionMut.mutate({ closing_balance: Number(closingBalance || 0) })}
+                onClick={() => closeSessionMut.mutate({ closing_balance: closingBalance, closing_denomination: closingDenom })}
                 disabled={closeSessionMut.isPending}
                 data-testid="button-confirm-close-session"
               >
@@ -1338,6 +1576,10 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
                   <span className="w-6 text-center text-sm">{it.quantity}</span>
                   <Button size="icon" variant="ghost" onClick={() => updateQty(i, it.quantity + 1)}><span className="text-base leading-none">+</span></Button>
                 </div>
+                <Button size="icon" variant="ghost" title="Override price" onClick={() => {
+                  const prod = (products as any[]).find(p => p.id === it.product_id);
+                  setMrpOverride({ product: prod || { id: it.product_id, name: it.product_name, mrp: 0, selling_price: it.unit_price }, cartIdx: i });
+                }}><Pencil className="h-3 w-3" /></Button>
                 <span className="w-20 text-right text-sm">₹{fmt(it.amount)}</span>
                 <Button size="icon" variant="ghost" onClick={() => setCartItems(p => p.filter((_, idx) => idx !== i))}><X className="h-3 w-3" /></Button>
               </div>
@@ -1360,27 +1602,28 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
               </Select>
             </F>
 
-            <F label="Payment Mode">
-              <Select value={paymentMode} onValueChange={setPaymentMode}>
-                <SelectTrigger data-testid="select-payment-mode"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="cash"><span className="flex items-center gap-2"><Wallet className="h-3.5 w-3.5" />Cash</span></SelectItem>
-                  <SelectItem value="upi"><span className="flex items-center gap-2"><Smartphone className="h-3.5 w-3.5" />UPI</span></SelectItem>
-                  <SelectItem value="card"><span className="flex items-center gap-2"><CreditCard className="h-3.5 w-3.5" />Card</span></SelectItem>
-                  <SelectItem value="wallet">Wallet</SelectItem>
-                </SelectContent>
-              </Select>
+            <F label="Payment">
+              <SplitPaymentPanel total={total} splits={splits} onSplitsChange={setSplits} />
             </F>
-
-            <F label="Amount Tendered (₹)">
-              <CurrencyInput value={amountPaid} onChange={(e: any) => setAmountPaid(e.target.value)} placeholder={fmt(total)} data-testid="input-amount-paid" />
-            </F>
-            {amountPaid && change >= 0 && <p className="text-sm text-green-700 dark:text-green-400 font-medium">Change: ₹{fmt(change)}</p>}
 
             <Button className="w-full" onClick={completeSale} disabled={saleMut.isPending || !cartItems.length} data-testid="button-complete-sale">
-              Complete Sale — ₹{fmt(total)}
+              {saleMut.isPending ? "Processing…" : `Complete Sale — ₹${fmt(total)}`}
             </Button>
-            {cartItems.length > 0 && <Button variant="outline" className="w-full" onClick={() => setCartItems([])}>Clear Cart</Button>}
+            {cartItems.length > 0 && (
+              <Button variant="outline" className="w-full" disabled={parkBillMut.isPending}
+                onClick={() => parkBillMut.mutate({
+                  session_id: activeSession?.id,
+                  counter_name: activeSession?.counter_name,
+                  cart_items: cartItems,
+                  customer_id: selectedCustomer?.id,
+                  customer_name: selectedCustomer?.name,
+                })}
+                data-testid="button-park-bill"
+              >
+                <PauseCircle className="h-4 w-4 mr-2" />{parkBillMut.isPending ? "Parking…" : "Park Bill"}
+              </Button>
+            )}
+            {cartItems.length > 0 && <Button variant="ghost" className="w-full" onClick={() => { setCartItems([]); setSplits([{ mode: "cash", amount: "" }]); }}>Clear Cart</Button>}
           </CardContent>
         </Card>
       </div>
@@ -1426,6 +1669,69 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
         session={activeSession}
         onClose={() => setShowPrintDialog(false)}
       />
+
+      {/* MRP Override / Price Edit Dialog */}
+      {mrpOverride && (
+        <MrpOverrideDialog
+          open={!!mrpOverride}
+          itemName={mrpOverride.product?.name || mrpOverride.product?.product_name || ""}
+          mrpRupees={Number(mrpOverride.product?.mrp || 0) / 100}
+          currentPrice={
+            mrpOverride.cartIdx !== undefined
+              ? cartItems[mrpOverride.cartIdx]?.unit_price
+              : Number(mrpOverride.product?.selling_price || mrpOverride.product?.price || 0)
+          }
+          onConfirm={(price) => {
+            if (mrpOverride.cartIdx !== undefined) {
+              const idx = mrpOverride.cartIdx;
+              setCartItems(p => p.map((it, i) => i !== idx ? it : { ...it, unit_price: price, amount: it.quantity * price }));
+            } else {
+              addToCart(mrpOverride.product, price);
+            }
+          }}
+          onClose={() => setMrpOverride(null)}
+        />
+      )}
+
+      {/* Parked Bills Dialog */}
+      <Dialog open={showParkedBills} onOpenChange={setShowParkedBills}>
+        <DialogContent className="max-w-md max-h-[90dvh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Layers className="h-4 w-4" />Parked Bills ({(parkedBills as any[]).length})
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            {(parkedBills as any[]).map((bill: any) => (
+              <div key={bill.id} className="flex items-center justify-between gap-2 p-3 rounded-md border">
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-sm">{bill.customer_name || "Walk-in"}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {Array.isArray(bill.cart_items) ? bill.cart_items.length : 0} item(s) · {fmtTime(bill.parked_at)}
+                  </p>
+                </div>
+                <div className="flex gap-1 shrink-0">
+                  <Button size="sm" onClick={() => {
+                    setCartItems(Array.isArray(bill.cart_items) ? bill.cart_items : []);
+                    setSelectedCustomer(bill.customer_id ? { id: bill.customer_id, name: bill.customer_name } : null);
+                    setSplits([{ mode: "cash", amount: "" }]);
+                    resumeBillMut.mutate(bill.id);
+                    setShowParkedBills(false);
+                  }} data-testid={`button-resume-bill-${bill.id}`}>
+                    <PlayCircle className="h-4 w-4 mr-1" />Resume
+                  </Button>
+                  <Button size="icon" variant="ghost" onClick={() => resumeBillMut.mutate(bill.id)} title="Discard">
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+            {!(parkedBills as any[]).length && (
+              <p className="text-center text-muted-foreground py-6 text-sm">No parked bills</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
