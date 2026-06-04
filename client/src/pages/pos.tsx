@@ -15,7 +15,8 @@ import {
   Plus, Search, ShoppingCart, Users, Tag, RotateCcw, TrendingUp, X,
   Pencil, Trash2, AlertTriangle, ShieldCheck, ArrowRight, CheckCircle2,
   Wallet, Smartphone, Clock, CreditCard, ChevronLeft, Eye, EyeOff,
-  QrCode, RefreshCw, Timer, BadgeCheck,
+  QrCode, RefreshCw, Timer, BadgeCheck, Printer, Monitor, Wifi, Settings2,
+  Check, Cpu, Receipt, WifiOff,
 } from "lucide-react";
 
 const fmt = (n: any) => Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
@@ -623,6 +624,450 @@ function OverviewTab() {
   );
 }
 
+// ── Card Terminal Dialog ───────────────────────────────────────────────────────
+type CardState = "loading" | "no_terminal" | "initiating" | "waiting" | "paid" | "failed";
+const TERMINAL_TYPE_LABELS: Record<string, string> = {
+  manual: "Manual Confirmation",
+  razorpay_pos: "Razorpay POS",
+  pine_labs: "Pine Labs Plutus",
+  ingenico: "Ingenico",
+  generic_http: "HTTP Terminal",
+};
+
+function CardTerminalDialog({ open, amount, sessionId, counterName, onClose, onPaid }: {
+  open: boolean; amount: number; sessionId: string | null; counterName: string;
+  onClose: () => void; onPaid: (terminalId: string | null, cardRef: string | null) => void;
+}) {
+  const [state, setState] = useState<CardState>("loading");
+  const [terminal, setTerminal] = useState<any>(null);
+  const [chargeId, setChargeId] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [cardRef, setCardRef] = useState("");
+  const pollRef = useRef<any>(null);
+
+  const initiatePayment = (t: any) => {
+    setState("initiating");
+    fetch("/api/pos/payments/initiate-card", {
+      method: "POST", credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ amount, session_id: sessionId, terminal_id: t.id }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) { setState("failed"); setErrorMsg(data.error); return; }
+        // Pine Labs / Ingenico return instant result
+        if (data.status === "paid") { setState("paid"); setTimeout(() => onPaid(t.id, data.card_ref || null), 1200); return; }
+        if (data.status === "failed") { setState("failed"); setErrorMsg("Payment declined by terminal"); return; }
+        // Razorpay POS / manual — wait for confirm
+        if (data.charge_id) setChargeId(data.charge_id);
+        setState("waiting");
+        if (data.charge_id && data.type === "razorpay_pos") {
+          pollRef.current = setInterval(async () => {
+            const r = await fetch(`/api/pos/payments/card-status/${data.charge_id}`, { credentials: "include" });
+            const s = await r.json();
+            if (s.status === "paid") { clearInterval(pollRef.current); setState("paid"); setTimeout(() => onPaid(t.id, s.card_ref||null), 1200); }
+            else if (s.status === "failed") { clearInterval(pollRef.current); setState("failed"); setErrorMsg("Payment declined"); }
+          }, 3000);
+        }
+      })
+      .catch(e => { setState("failed"); setErrorMsg("Network error: " + e.message); });
+  };
+
+  useEffect(() => {
+    if (!open) { clearInterval(pollRef.current); return; }
+    setState("loading"); setTerminal(null); setChargeId(null); setErrorMsg(""); setCardRef("");
+    if (!counterName) { setState("no_terminal"); return; }
+    fetch(`/api/pos/terminals/by-counter/${encodeURIComponent(counterName)}`, { credentials: "include" })
+      .then(r => r.json())
+      .then(data => {
+        if (data?.id) {
+          setTerminal(data);
+          if (data.terminal_type === "manual") setState("waiting");
+          else initiatePayment(data);
+        } else {
+          setState("no_terminal");
+        }
+      })
+      .catch(() => setState("no_terminal"));
+  }, [open, counterName]);
+
+  useEffect(() => () => clearInterval(pollRef.current), []);
+
+  const handleClose = () => { clearInterval(pollRef.current); onClose(); };
+
+  const handleManualConfirm = () => {
+    setState("paid");
+    setTimeout(() => onPaid(terminal?.id || null, cardRef || null), 800);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2"><CreditCard className="h-4 w-4" />Card Payment</DialogTitle>
+        </DialogHeader>
+        <div className="py-4 space-y-4 text-center">
+          {state === "loading" && (
+            <div className="flex flex-col items-center gap-3 py-4">
+              <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">Checking terminal assignment…</p>
+            </div>
+          )}
+
+          {state === "no_terminal" && (
+            <div className="space-y-4">
+              <div className="flex flex-col items-center gap-2 py-2">
+                <WifiOff className="h-10 w-10 text-muted-foreground" />
+                <p className="font-medium">No terminal assigned to {counterName}</p>
+                <p className="text-sm text-muted-foreground">Go to <strong>Terminals</strong> tab to assign a payment machine to this counter.</p>
+              </div>
+              <div className="rounded-md border p-3 text-left space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">Confirm manually instead</p>
+                <Input placeholder="Card approval / ref no. (optional)" value={cardRef} onChange={e => setCardRef(e.target.value)} />
+                <Button className="w-full" onClick={() => { setState("paid"); setTimeout(() => onPaid(null, cardRef || null), 800); }}>
+                  <Check className="h-4 w-4 mr-2" />Mark as Paid — ₹{fmt(amount)}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {state === "initiating" && (
+            <div className="flex flex-col items-center gap-3 py-4">
+              <Cpu className="h-10 w-10 text-blue-500 animate-pulse" />
+              <p className="font-medium">Sending to {terminal ? TERMINAL_TYPE_LABELS[terminal.terminal_type] : "terminal"}…</p>
+              <p className="text-sm text-muted-foreground">₹{fmt(amount)}</p>
+            </div>
+          )}
+
+          {state === "waiting" && (
+            <div className="space-y-4">
+              <div className="flex flex-col items-center gap-2">
+                <div className="h-16 w-16 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                  <CreditCard className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+                </div>
+                <p className="text-2xl font-bold">₹{fmt(amount)}</p>
+                {terminal && (
+                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <Monitor className="h-3.5 w-3.5" />
+                    <span>{terminal.terminal_name || TERMINAL_TYPE_LABELS[terminal.terminal_type]} — {counterName}</span>
+                  </div>
+                )}
+                <p className="text-sm text-muted-foreground">
+                  {terminal?.terminal_type === "razorpay_pos"
+                    ? "Waiting for card tap / swipe on terminal…"
+                    : "Swipe, insert or tap card on the terminal"}
+                </p>
+              </div>
+              {(terminal?.terminal_type === "manual" || !terminal) && (
+                <div className="space-y-2">
+                  <Input placeholder="Enter approval / ref no. (optional)" value={cardRef} onChange={e => setCardRef(e.target.value)} />
+                  <Button className="w-full" onClick={handleManualConfirm}>
+                    <Check className="h-4 w-4 mr-2" />Confirm Payment Received
+                  </Button>
+                </div>
+              )}
+              {terminal?.terminal_type === "razorpay_pos" && (
+                <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+                  <Wifi className="h-3.5 w-3.5 animate-pulse" />Polling terminal status…
+                </div>
+              )}
+            </div>
+          )}
+
+          {state === "paid" && (
+            <div className="flex flex-col items-center gap-3 py-4">
+              <div className="h-16 w-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-400" />
+              </div>
+              <p className="text-lg font-bold text-green-700 dark:text-green-400">Payment Successful!</p>
+              <p className="text-sm text-muted-foreground">₹{fmt(amount)} via Card</p>
+              {cardRef && <p className="text-xs font-mono bg-muted px-2 py-1 rounded">Ref: {cardRef}</p>}
+            </div>
+          )}
+
+          {state === "failed" && (
+            <div className="space-y-4">
+              <div className="flex flex-col items-center gap-2 py-2">
+                <AlertTriangle className="h-10 w-10 text-destructive" />
+                <p className="font-medium text-destructive">Payment Failed</p>
+                <p className="text-sm text-muted-foreground">{errorMsg}</p>
+              </div>
+              {terminal && <Button variant="outline" className="w-full" onClick={() => initiatePayment(terminal)}>Retry</Button>}
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          {state !== "paid" && (
+            <Button variant="ghost" size="sm" className="w-full" onClick={handleClose}>
+              Cancel — Use Different Payment
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── Print Receipt Dialog ───────────────────────────────────────────────────────
+function PrintReceiptDialog({ open, txn, saleItems, session, onClose }: {
+  open: boolean; txn: any; saleItems: any[]; session: any; onClose: () => void;
+}) {
+  const { data: company } = useQuery<any>({ queryKey: ["/api/settings/company"] });
+
+  const handlePrint = () => {
+    const el = document.getElementById("thermal-receipt-content");
+    if (!el) return;
+    const w = window.open("", "_blank", "width=420,height=700");
+    if (!w) return;
+    w.document.write(`<!DOCTYPE html><html><head><title>Receipt</title><style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body { font-family: 'Courier New', Courier, monospace; font-size: 12px; width: 80mm; margin: 0 auto; padding: 4mm; }
+      .center { text-align: center; } .right { text-align: right; }
+      .bold { font-weight: bold; } .sm { font-size: 10px; } .lg { font-size: 15px; }
+      .divider { border-top: 1px dashed #000; margin: 3px 0; }
+      table { width: 100%; border-collapse: collapse; }
+      td, th { padding: 1px 2px; font-size: 11px; }
+      th { font-weight: bold; border-bottom: 1px solid #000; }
+      @media print { body { width: 80mm; } }
+    </style></head><body>${el.innerHTML}</body></html>`);
+    w.document.close();
+    setTimeout(() => { w.focus(); w.print(); }, 300);
+  };
+
+  if (!txn) return null;
+  const now = new Date();
+  const storeName = company?.name || "SwachERP Store";
+  const storeAddress = company?.address || "";
+  const gstin = company?.gstin || "";
+  const payMode = (txn.payment_mode || "cash").toUpperCase();
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-sm max-h-[90dvh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2"><Receipt className="h-4 w-4" />Sale Receipt</DialogTitle>
+        </DialogHeader>
+
+        {/* Preview + printable content */}
+        <div id="thermal-receipt-content" className="font-mono text-xs leading-tight bg-white text-black p-3 rounded-md border space-y-1">
+          <div className="text-center font-bold text-sm">{storeName}</div>
+          {storeAddress && <div className="text-center text-[10px]">{storeAddress}</div>}
+          {gstin && <div className="text-center text-[10px]">GSTIN: {gstin}</div>}
+          <div className="border-t border-dashed border-gray-400 my-1" />
+          <div className="flex justify-between text-[10px]">
+            <span>Bill: {txn.transaction_no}</span>
+            <span>{now.toLocaleDateString("en-IN")}</span>
+          </div>
+          <div className="flex justify-between text-[10px]">
+            {session?.counter_name && <span>Counter: {session.counter_name}</span>}
+            <span>{now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</span>
+          </div>
+          {txn.customer_name && <div className="text-[10px]">Customer: {txn.customer_name}</div>}
+          <div className="border-t border-dashed border-gray-400 my-1" />
+          <table className="w-full text-[10px]">
+            <thead><tr><th className="text-left">Item</th><th className="text-right">Qty</th><th className="text-right">Rate</th><th className="text-right">Amt</th></tr></thead>
+            <tbody>
+              {saleItems.map((it: any, i: number) => (
+                <tr key={i}>
+                  <td className="max-w-[90px] truncate">{it.product_name}</td>
+                  <td className="text-right">{it.quantity}</td>
+                  <td className="text-right">₹{fmt(it.unit_price)}</td>
+                  <td className="text-right">₹{fmt(it.amount)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="border-t border-dashed border-gray-400 my-1" />
+          <div className="flex justify-between text-[10px]"><span>Subtotal</span><span>₹{fmt(txn.subtotal)}</span></div>
+          {Number(txn.tax_amount) > 0 && <div className="flex justify-between text-[10px]"><span>Tax</span><span>₹{fmt(txn.tax_amount)}</span></div>}
+          {Number(txn.discount_amount) > 0 && <div className="flex justify-between text-[10px]"><span>Discount</span><span>-₹{fmt(txn.discount_amount)}</span></div>}
+          <div className="flex justify-between font-bold text-[12px] border-t border-gray-400 pt-0.5">
+            <span>TOTAL</span><span>₹{fmt(txn.total_amount)}</span>
+          </div>
+          <div className="border-t border-dashed border-gray-400 my-1" />
+          <div className="flex justify-between text-[10px]">
+            <span>Payment: {payMode}</span>
+            {txn.card_ref && <span>Ref: {txn.card_ref}</span>}
+            {txn.razorpay_payment_id && !txn.card_ref && <span>Ref: {txn.razorpay_payment_id.slice(-8)}</span>}
+          </div>
+          <div className="flex justify-between text-[10px]">
+            <span>Paid: ₹{fmt(txn.amount_paid)}</span>
+            {Number(txn.change_given) > 0 && <span>Change: ₹{fmt(txn.change_given)}</span>}
+          </div>
+          <div className="border-t border-dashed border-gray-400 my-1" />
+          <div className="text-center text-[10px] space-y-0.5">
+            <div className="font-bold">Thank you for shopping!</div>
+            <div>Goods once sold will not be taken back</div>
+            <div>Powered by SwachERP</div>
+          </div>
+        </div>
+
+        <DialogFooter className="gap-2 flex-col sm:flex-row">
+          <Button onClick={handlePrint} className="w-full sm:w-auto">
+            <Printer className="h-4 w-4 mr-2" />Print Receipt
+          </Button>
+          <Button variant="outline" onClick={onClose} className="w-full sm:w-auto">Close</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── Terminal Settings Tab ──────────────────────────────────────────────────────
+function TerminalSettingsTab() {
+  const { toast } = useToast();
+  const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<any>(null);
+  const [form, setForm] = useState<any>({ terminal_type: "manual", port: 80 });
+
+  const { data: terminals = [] } = useQuery<any[]>({ queryKey: ["/api/pos/terminals"] });
+  const saveMut = useMutation({
+    mutationFn: (d: any) => editing ? apiRequest("PUT", `/api/pos/terminals/${editing.id}`, d) : apiRequest("POST", "/api/pos/terminals", d),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/pos/terminals"] }); setShowForm(false); toast({ title: "Terminal saved" }); }
+  });
+  const delMut = useMutation({
+    mutationFn: (id: string) => apiRequest("DELETE", `/api/pos/terminals/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/pos/terminals"] }),
+  });
+
+  const needsNetwork = ["pine_labs", "ingenico", "generic_http"].includes(form.terminal_type);
+  const needsTerminalId = ["razorpay_pos"].includes(form.terminal_type);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h3 className="font-semibold">Payment Terminals</h3>
+          <p className="text-sm text-muted-foreground">Assign hardware payment machines to POS counters. Supported: Razorpay POS, Pine Labs Plutus, Ingenico, or any HTTP-API terminal.</p>
+        </div>
+        <Button onClick={() => { setEditing(null); setForm({ terminal_type: "manual", port: 80, is_active: true }); setShowForm(true); }}>
+          <Plus className="h-4 w-4 mr-1" />Add Terminal
+        </Button>
+      </div>
+
+      {(terminals as any[]).length === 0 && (
+        <div className="rounded-md border border-dashed p-8 text-center text-muted-foreground">
+          <Monitor className="h-8 w-8 mx-auto mb-2 opacity-40" />
+          <p className="font-medium">No terminals configured</p>
+          <p className="text-sm mt-1">Add a terminal to enable hardware card payments at each counter.</p>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {(terminals as any[]).map((t: any) => (
+          <Card key={t.id}>
+            <CardContent className="p-4 space-y-2">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="font-semibold truncate">{t.terminal_name || TERMINAL_TYPE_LABELS[t.terminal_type]}</p>
+                  <p className="text-xs text-muted-foreground">Counter: {t.counter_name}</p>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Badge className={t.is_active ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-muted text-muted-foreground"}>
+                    {t.is_active ? "Active" : "Inactive"}
+                  </Badge>
+                </div>
+              </div>
+              <div className="text-xs text-muted-foreground space-y-0.5">
+                <div className="flex items-center gap-1"><Cpu className="h-3 w-3" />{TERMINAL_TYPE_LABELS[t.terminal_type]}</div>
+                {t.terminal_id && <div className="font-mono">ID: {t.terminal_id}</div>}
+                {t.ip_address && <div className="flex items-center gap-1"><Wifi className="h-3 w-3" />{t.ip_address}:{t.port}</div>}
+                {t.description && <div className="italic">{t.description}</div>}
+              </div>
+              <div className="flex gap-1 pt-1">
+                <Button size="icon" variant="ghost" onClick={() => { setEditing(t); setForm({ ...t }); setShowForm(true); }}><Pencil className="h-3.5 w-3.5" /></Button>
+                <Button size="icon" variant="ghost" onClick={() => delMut.mutate(t.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <Dialog open={showForm} onOpenChange={setShowForm}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>{editing ? "Edit" : "Add"} Terminal</DialogTitle></DialogHeader>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2">
+              <F label="Counter Name *">
+                <Input placeholder="e.g. Counter 1" value={form.counter_name || ""} onChange={e => setForm({ ...form, counter_name: e.target.value })} />
+              </F>
+            </div>
+            <div className="col-span-2">
+              <F label="Terminal Type *">
+                <Select value={form.terminal_type || "manual"} onValueChange={v => setForm({ ...form, terminal_type: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="manual">Manual Confirmation (No Hardware)</SelectItem>
+                    <SelectItem value="razorpay_pos">Razorpay POS</SelectItem>
+                    <SelectItem value="pine_labs">Pine Labs Plutus Smart</SelectItem>
+                    <SelectItem value="ingenico">Ingenico (Local API)</SelectItem>
+                    <SelectItem value="generic_http">Generic HTTP Terminal</SelectItem>
+                  </SelectContent>
+                </Select>
+              </F>
+            </div>
+            <div className="col-span-2">
+              <F label="Display Name">
+                <Input placeholder="e.g. Pine Labs - Billing 1" value={form.terminal_name || ""} onChange={e => setForm({ ...form, terminal_name: e.target.value })} />
+              </F>
+            </div>
+            {needsTerminalId && (
+              <div className="col-span-2">
+                <F label="Terminal ID (from Razorpay dashboard)">
+                  <Input placeholder="term_XXXXXXXXXXXX" value={form.terminal_id || ""} onChange={e => setForm({ ...form, terminal_id: e.target.value })} />
+                </F>
+              </div>
+            )}
+            {needsNetwork && (<>
+              <F label="IP Address">
+                <Input placeholder="192.168.1.100" value={form.ip_address || ""} onChange={e => setForm({ ...form, ip_address: e.target.value })} />
+              </F>
+              <F label="Port">
+                <Input type="number" placeholder="8080" value={form.port || ""} onChange={e => setForm({ ...form, port: Number(e.target.value) })} />
+              </F>
+              {form.terminal_type === "pine_labs" && (
+                <div className="col-span-2">
+                  <F label="Application / Merchant ID (Pine Labs)">
+                    <Input placeholder="Provided by Pine Labs" value={form.merchant_id || ""} onChange={e => setForm({ ...form, merchant_id: e.target.value })} />
+                  </F>
+                </div>
+              )}
+              {form.terminal_type === "generic_http" && (
+                <div className="col-span-2">
+                  <F label="API Key / Bearer Token (optional)">
+                    <Input placeholder="sk_live_..." value={form.api_key || ""} onChange={e => setForm({ ...form, api_key: e.target.value })} />
+                  </F>
+                </div>
+              )}
+            </>)}
+            <div className="col-span-2">
+              <F label="Notes (optional)">
+                <Input placeholder="e.g. Billing counter near entrance" value={form.description || ""} onChange={e => setForm({ ...form, description: e.target.value })} />
+              </F>
+            </div>
+            <div className="col-span-2">
+              <F label="Status">
+                <Select value={form.is_active !== false ? "true" : "false"} onValueChange={v => setForm({ ...form, is_active: v === "true" })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">Active</SelectItem>
+                    <SelectItem value="false">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </F>
+            </div>
+          </div>
+          <DialogFooter className="pt-2">
+            <Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
+            <Button onClick={() => saveMut.mutate(form)} disabled={saveMut.isPending || !form.counter_name}>Save Terminal</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
 // ── POS Terminal ──────────────────────────────────────────────────────────────
 function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
   const { toast } = useToast();
@@ -636,6 +1081,10 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
   const [showCloseDialog, setShowCloseDialog] = useState(false);
   const [closingBalance, setClosingBalance] = useState("");
   const [showUpiQr, setShowUpiQr] = useState(false);
+  const [showCardDialog, setShowCardDialog] = useState(false);
+  const [showPrintDialog, setShowPrintDialog] = useState(false);
+  const [lastSaleTxn, setLastSaleTxn] = useState<any>(null);
+  const [lastSaleItems, setLastSaleItems] = useState<any[]>([]);
 
   const { data: activeSession } = useQuery<any>({ queryKey: ["/api/pos/sessions/active"], refetchInterval: 30000 });
   const { data: products = [] } = useQuery<any[]>({ queryKey: ["/api/inventory/products"] });
@@ -662,12 +1111,15 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
 
   const saleMut = useMutation({
     mutationFn: (d: any) => apiRequest("POST", "/api/pos/transactions", d),
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/pos/transactions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/pos/stats"] });
       queryClient.invalidateQueries({ queryKey: ["/api/pos/sessions/active"] });
+      setLastSaleTxn(data);
+      setLastSaleItems([...cartItems]);
       setCartItems([]); setSelectedCustomer(null); setAmountPaid("");
-      setShowUpiQr(false);
+      setShowUpiQr(false); setShowCardDialog(false);
+      setShowPrintDialog(true);
       toast({ title: "Sale recorded!" });
     },
   });
@@ -688,7 +1140,7 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
   const total = subtotal + tax;
   const change = Number(amountPaid || 0) - total;
 
-  const doRecordSale = (razorpayPaymentId?: string | null) => {
+  const doRecordSale = (opts?: { razorpayPaymentId?: string | null; terminalId?: string | null; cardRef?: string | null }) => {
     saleMut.mutate({
       session_id: activeSession?.id || null,
       customer_id: selectedCustomer?.id || null,
@@ -696,18 +1148,17 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
       items: cartItems,
       payment_mode: paymentMode,
       amount_paid: Number(amountPaid) || total,
-      razorpay_payment_id: razorpayPaymentId || undefined,
+      razorpay_payment_id: opts?.razorpayPaymentId || undefined,
+      terminal_id: opts?.terminalId || undefined,
+      card_ref: opts?.cardRef || undefined,
     });
   };
 
   const completeSale = () => {
     if (!cartItems.length) { toast({ title: "Cart is empty", variant: "destructive" }); return; }
-    // UPI → show QR dialog; other modes → record immediately
-    if (paymentMode === "upi") {
-      setShowUpiQr(true);
-    } else {
-      doRecordSale();
-    }
+    if (paymentMode === "upi") { setShowUpiQr(true); return; }
+    if (paymentMode === "card") { setShowCardDialog(true); return; }
+    doRecordSale();
   };
 
   const filteredProducts = (products as any[]).filter(p =>
@@ -950,8 +1401,30 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
         onClose={() => setShowUpiQr(false)}
         onPaid={(razorpayPaymentId) => {
           setShowUpiQr(false);
-          doRecordSale(razorpayPaymentId);
+          doRecordSale({ razorpayPaymentId });
         }}
+      />
+
+      {/* Card Terminal Payment Dialog */}
+      <CardTerminalDialog
+        open={showCardDialog}
+        amount={total}
+        sessionId={activeSession?.id || null}
+        counterName={activeSession?.counter_name || ""}
+        onClose={() => setShowCardDialog(false)}
+        onPaid={(terminalId, cardRef) => {
+          setShowCardDialog(false);
+          doRecordSale({ terminalId, cardRef });
+        }}
+      />
+
+      {/* Print Receipt Dialog — auto-opens after each sale */}
+      <PrintReceiptDialog
+        open={showPrintDialog}
+        txn={lastSaleTxn}
+        saleItems={lastSaleItems}
+        session={activeSession}
+        onClose={() => setShowPrintDialog(false)}
       />
     </div>
   );
@@ -1183,6 +1656,7 @@ export default function POSPage() {
           <TabsTrigger value="returns"><RotateCcw className="h-3.5 w-3.5 mr-1" />Returns</TabsTrigger>
           <TabsTrigger value="promotions"><Tag className="h-3.5 w-3.5 mr-1" />Promotions</TabsTrigger>
           <TabsTrigger value="sessions">Sessions</TabsTrigger>
+          <TabsTrigger value="terminals"><Monitor className="h-3.5 w-3.5 mr-1" />Terminals</TabsTrigger>
         </TabsList>
         <div className="mt-4">
           <TabsContent value="overview"><OverviewTab /></TabsContent>
@@ -1194,6 +1668,7 @@ export default function POSPage() {
           <TabsContent value="returns"><ReturnsTab /></TabsContent>
           <TabsContent value="promotions"><PromotionsTab /></TabsContent>
           <TabsContent value="sessions"><SessionsTab /></TabsContent>
+          <TabsContent value="terminals"><TerminalSettingsTab /></TabsContent>
         </div>
       </Tabs>
     </div>

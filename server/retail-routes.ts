@@ -112,7 +112,7 @@ router.get("/transactions/:id/items", requireAuth, async (req: any, res) => {
 
 router.post("/transactions", requireAuth, async (req: any, res) => {
   try {
-    const { session_id, customer_id, customer_name, customer_phone, items, payment_mode, amount_paid, promotion_id, discount_amount: manualDiscount } = req.body;
+    const { session_id, customer_id, customer_name, customer_phone, items, payment_mode, amount_paid, promotion_id, discount_amount: manualDiscount, razorpay_payment_id, terminal_id: txnTerminalId, card_ref } = req.body;
     const no = "POS-" + Date.now();
     let subtotal = 0, tax_amount = 0, discount_amount = 0;
     for (const item of items) {
@@ -127,11 +127,12 @@ router.post("/transactions", requireAuth, async (req: any, res) => {
     const pts = Math.floor(total / 100);
 
     const txn = await db.execute(sql`
-      INSERT INTO pos_transactions (tenant_id, session_id, transaction_no, customer_id, customer_name, customer_phone, subtotal, tax_amount, discount_amount, total_amount, payment_mode, amount_paid, change_given, promotion_id, loyalty_points_earned)
+      INSERT INTO pos_transactions (tenant_id, session_id, transaction_no, customer_id, customer_name, customer_phone, subtotal, tax_amount, discount_amount, total_amount, payment_mode, amount_paid, change_given, promotion_id, loyalty_points_earned, razorpay_payment_id, terminal_id, card_ref)
       VALUES (${tid(req)}, ${session_id||null}, ${no}, ${customer_id||null},
               ${customer_name||null}, ${customer_phone||null}, ${subtotal}, ${tax_amount},
               ${discount_amount}, ${total}, ${payment_mode||'cash'}, ${amount_paid||total},
-              ${Math.max(0, change)}, ${promotion_id||null}, ${pts})
+              ${Math.max(0, change)}, ${promotion_id||null}, ${pts},
+              ${razorpay_payment_id||null}, ${txnTerminalId||null}, ${card_ref||null})
       RETURNING *`);
 
     const txnId = txn.rows[0].id;
@@ -428,6 +429,149 @@ router.post("/payments/webhook", async (req: any, res) => {
       }
     }
     res.json({ ok: true });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Hardware Terminals ────────────────────────────────────────────────────────
+router.get("/terminals", requireAuth, async (req: any, res) => {
+  try {
+    const rows = await db.execute(sql`SELECT * FROM pos_terminals WHERE tenant_id=${tid(req)} ORDER BY counter_name`);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.get("/terminals/by-counter/:counter", requireAuth, async (req: any, res) => {
+  try {
+    const rows = await db.execute(sql`SELECT * FROM pos_terminals WHERE tenant_id=${tid(req)} AND counter_name=${req.params.counter} AND is_active=true ORDER BY created_at DESC LIMIT 1`);
+    res.json(rows.rows[0] || {});
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.post("/terminals", requireAuth, async (req: any, res) => {
+  try {
+    const { counter_name, terminal_name, terminal_type, terminal_id, ip_address, port, api_key, merchant_id, description } = req.body;
+    const rows = await db.execute(sql`
+      INSERT INTO pos_terminals (tenant_id, counter_name, terminal_name, terminal_type, terminal_id, ip_address, port, api_key, merchant_id, description)
+      VALUES (${tid(req)}, ${counter_name}, ${terminal_name||null}, ${terminal_type||'manual'},
+              ${terminal_id||null}, ${ip_address||null}, ${port||80}, ${api_key||null},
+              ${merchant_id||null}, ${description||null})
+      RETURNING *`);
+    res.json(rows.rows[0]);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.put("/terminals/:id", requireAuth, async (req: any, res) => {
+  try {
+    const { counter_name, terminal_name, terminal_type, terminal_id, ip_address, port, api_key, merchant_id, description, is_active } = req.body;
+    const rows = await db.execute(sql`
+      UPDATE pos_terminals SET
+        counter_name=${counter_name}, terminal_name=${terminal_name||null}, terminal_type=${terminal_type||'manual'},
+        terminal_id=${terminal_id||null}, ip_address=${ip_address||null}, port=${port||80},
+        api_key=${api_key||null}, merchant_id=${merchant_id||null}, description=${description||null},
+        is_active=${is_active !== false}
+      WHERE id=${req.params.id} AND tenant_id=${tid(req)} RETURNING *`);
+    res.json(rows.rows[0]);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.delete("/terminals/:id", requireAuth, async (req: any, res) => {
+  try {
+    await db.execute(sql`DELETE FROM pos_terminals WHERE id=${req.params.id} AND tenant_id=${tid(req)}`);
+    res.json({ ok: true });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Card Terminal Payments ────────────────────────────────────────────────────
+router.post("/payments/initiate-card", requireAuth, async (req: any, res) => {
+  try {
+    const { amount, session_id, terminal_id } = req.body;
+    const tRows = await db.execute(sql`SELECT * FROM pos_terminals WHERE id=${terminal_id} AND tenant_id=${tid(req)}`);
+    const terminal = tRows.rows[0] as any;
+    if (!terminal) return res.status(404).json({ error: "Terminal not found" });
+
+    const amountPaise = Math.round(Number(amount) * 100);
+    const chargeId = terminal.terminal_type.toUpperCase().slice(0, 4) + "-" + Date.now();
+
+    if (terminal.terminal_type === "razorpay_pos") {
+      const auth = await getRazorpayAuth();
+      if (!auth) return res.status(503).json({ error: "Razorpay keys not configured" });
+      // Store pending record; real terminal push requires Razorpay POS SDK on hardware
+      await db.execute(sql`
+        INSERT INTO pos_upi_payments (tenant_id, session_id, qr_id, amount, amount_paise, status, expires_at)
+        VALUES (${tid(req)}, ${session_id||null}, ${chargeId}, ${amount}, ${amountPaise}, 'pending', NOW()+INTERVAL '10 minutes')`);
+      return res.json({ charge_id: chargeId, type: "razorpay_pos", terminal_name: terminal.terminal_name });
+    }
+
+    if (terminal.terminal_type === "pine_labs") {
+      try {
+        const resp = await fetch(`http://${terminal.ip_address}:${terminal.port||8080}/api/pay`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            Header: { ApplicationId: terminal.merchant_id||"1", UserId: "1", MethodId: "1001", VersionNo: "1.0" },
+            Detail: { TransactionType: "4001", BillingRefNo: chargeId, PaymentAmount: String(amountPaise) }
+          }),
+          signal: AbortSignal.timeout(60000),
+        });
+        const data = await resp.json() as any;
+        const paid = data?.Response?.ResponseCode === "00";
+        const cardRef = data?.Response?.RRN || data?.Response?.ApprovalCode || null;
+        await db.execute(sql`
+          INSERT INTO pos_upi_payments (tenant_id, session_id, qr_id, amount, amount_paise, status, razorpay_payment_id, expires_at)
+          VALUES (${tid(req)}, ${session_id||null}, ${chargeId}, ${amount}, ${amountPaise}, ${paid?"paid":"failed"}, ${cardRef||null}, NOW()+INTERVAL '5 minutes')`);
+        return res.json({ charge_id: chargeId, status: paid ? "paid" : "failed", card_ref: cardRef, type: "pine_labs" });
+      } catch (e: any) {
+        return res.status(503).json({ error: `Pine Labs terminal unreachable at ${terminal.ip_address}:${terminal.port}. ${e.message}` });
+      }
+    }
+
+    if (terminal.terminal_type === "ingenico") {
+      try {
+        const resp = await fetch(`http://${terminal.ip_address}:${terminal.port||8080}/sale`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount: amountPaise, currency: "356", reference: chargeId }),
+          signal: AbortSignal.timeout(60000),
+        });
+        const data = await resp.json() as any;
+        const paid = data?.responseCode === "00";
+        const cardRef = data?.rrn || data?.approvalCode || null;
+        await db.execute(sql`
+          INSERT INTO pos_upi_payments (tenant_id, session_id, qr_id, amount, amount_paise, status, razorpay_payment_id, expires_at)
+          VALUES (${tid(req)}, ${session_id||null}, ${chargeId}, ${amount}, ${amountPaise}, ${paid?"paid":"failed"}, ${cardRef||null}, NOW()+INTERVAL '5 minutes')`);
+        return res.json({ charge_id: chargeId, status: paid ? "paid" : "failed", card_ref: cardRef, type: "ingenico" });
+      } catch (e: any) {
+        return res.status(503).json({ error: `Ingenico terminal unreachable. ${e.message}` });
+      }
+    }
+
+    if (terminal.terminal_type === "generic_http") {
+      try {
+        const resp = await fetch(`http://${terminal.ip_address}:${terminal.port||80}/payment`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...(terminal.api_key ? { Authorization: `Bearer ${terminal.api_key}` } : {}) },
+          body: JSON.stringify({ amount: amountPaise, reference: chargeId }),
+          signal: AbortSignal.timeout(60000),
+        });
+        const data = await resp.json() as any;
+        const paid = data?.status === "success" || data?.responseCode === "00";
+        const cardRef = data?.reference || data?.rrn || null;
+        return res.json({ charge_id: chargeId, status: paid ? "paid" : "failed", card_ref: cardRef, type: "generic_http" });
+      } catch (e: any) {
+        return res.status(503).json({ error: `Terminal unreachable. ${e.message}` });
+      }
+    }
+
+    // manual — no hardware, frontend handles confirmation
+    return res.json({ charge_id: null, type: "manual" });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.get("/payments/card-status/:chargeId", requireAuth, async (req: any, res) => {
+  try {
+    const rows = await db.execute(sql`
+      SELECT status, razorpay_payment_id as card_ref FROM pos_upi_payments
+      WHERE qr_id=${req.params.chargeId} AND tenant_id=${tid(req)} LIMIT 1`);
+    const rec = rows.rows[0] as any;
+    res.json(rec ? { status: rec.status, card_ref: rec.card_ref } : { status: "pending" });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 

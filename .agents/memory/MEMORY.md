@@ -1,0 +1,2 @@
+- [POS payment terminals](pos-terminals.md) — terminals assigned per counter; pos_upi_payments table reused for card charge tracking
+- [POS receipt printing](pos-receipt.md) — thermal-style HTML printed via window.open; PrintReceiptDialog auto-opens after every sale
