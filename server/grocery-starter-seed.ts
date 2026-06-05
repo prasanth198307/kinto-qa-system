@@ -23,6 +23,8 @@ const ROLE_PERMISSIONS: Record<string, ScreenPerm[]> = {
     // Core
     ["dashboard",           VIEW], ["overview",          VIEW],
     ["reports",             VIEW], ["notification_settings", VIEW],
+    // POS Terminal — view sessions, sales history, returns, promotions
+    ["pos",                 VIEW],
     // Sales & Billing
     ["sales_dashboard",     VIEW], ["invoices",           VCE],
     ["payments",            VC  ], ["pending_payments",   VIEW],
@@ -34,6 +36,8 @@ const ROLE_PERMISSIONS: Record<string, ScreenPerm[]> = {
     ["products",            VIEW], ["inventory",          VIEW],
     ["product_categories",  VIEW], ["uom",                VIEW],
     ["price_lists",         VIEW], ["finished_goods",     VIEW],
+    // Stock adjustments — store manager can create write-offs
+    ["inventory_stock_adjustments", VCE],
     // Sales Orders
     ["sales_orders",        VCE ], ["sales_officers",     VIEW],
     // Purchase — view only
@@ -48,7 +52,9 @@ const ROLE_PERMISSIONS: Record<string, ScreenPerm[]> = {
   cashier: [
     // Core
     ["dashboard",       VIEW],
-    // POS / Billing only
+    // POS Terminal — full billing access
+    ["pos",             VC  ],
+    // Billing sub-screens
     ["sales_dashboard", VIEW], ["invoices",         VC  ],
     ["payments",        VC  ], ["pending_payments", VIEW],
     ["customer_advances", VIEW], ["credit_notes",   VIEW],
@@ -62,8 +68,13 @@ const ROLE_PERMISSIONS: Record<string, ScreenPerm[]> = {
     ["products",        VCE ], ["inventory",        FULL],
     ["product_categories", VIEW], ["uom",            VIEW],
     ["price_lists",     VIEW], ["finished_goods",   VCE ],
-    // GRN — full
-    ["goods_receipt_notes", FULL],
+    // GRN — full (including barcode scan)
+    ["goods_receipt_notes",       FULL],
+    ["inventory_grn_scan",        FULL],
+    // Stock adjustments — godown incharge records damage/expiry
+    ["inventory_stock_adjustments", FULL],
+    // Bulk import — for initial stock loading
+    ["inventory_bulk_import",     VC  ],
     // Warehouses & Transfers — full
     ["warehouses",      VIEW], ["stock_transfers",  FULL],
     // Purchase Orders — view only
@@ -79,13 +90,15 @@ const ROLE_PERMISSIONS: Record<string, ScreenPerm[]> = {
     ["vendor_types",    VCE ], ["vendor_debit_notes", VCE],
     ["vendor_analytics", VIEW], ["vendor_history",  VIEW],
     ["purchase_requisitions", FULL],
-    // GRN — full
-    ["goods_receipt_notes", FULL],
+    // GRN — full (including barcode scan)
+    ["goods_receipt_notes",   FULL],
+    ["inventory_grn_scan",    VIEW],
     // Approval workflows
     ["approval_workflows", VCE],
-    // Inventory — view
+    // Inventory — view + bulk import for onboarding new items
     ["products",        VIEW], ["inventory",        VIEW],
     ["product_categories", VIEW], ["uom",            VIEW],
+    ["inventory_bulk_import", VC],
     // Reports
     ["report_purchase_orders", VIEW], ["report_vendor_report", VIEW],
     // Warehouses — view

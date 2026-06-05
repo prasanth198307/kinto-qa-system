@@ -47,30 +47,30 @@ const GROCERY_ROLES = [
   {
     name: "Store Manager",
     who: "Manager",
-    perms: "Sales, POS, inventory view, reports — no payroll or accounts",
+    perms: "POS view, sales, invoicing, stock write-offs — no payroll or accounts",
     badge: "high",
-    screens: ["POS ✅", "Inventory (view)", "Purchase (view)", "Reports ✅"],
+    screens: ["POS (view) ✅", "Invoicing ✅", "Stock Adjustments ✅", "Purchase (view)", "Reports ✅"],
   },
   {
     name: "Cashier",
     who: "Billing counter staff",
-    perms: "POS Terminal only — create bills, view sales history",
+    perms: "POS Terminal — create bills, park bills, process split payments, view sales history",
     badge: "limited",
-    screens: ["POS ✅"],
+    screens: ["POS Terminal ✅", "Invoicing ✅"],
   },
   {
     name: "Godown Incharge",
     who: "Warehouse person",
-    perms: "Receive goods (GRN), stock transfers, serial/lot — no billing or accounts",
+    perms: "GRN + barcode scan, stock adjustments (damage/expiry), bulk import, stock transfers",
     badge: "medium",
-    screens: ["Inventory ✅", "GRN ✅", "Stock Transfers ✅"],
+    screens: ["Inventory ✅", "GRN ✅", "Barcode Scan ✅", "Stock Adjustments ✅", "Bulk Import ✅"],
   },
   {
     name: "Purchase Manager",
     who: "Buying person",
-    perms: "Create purchase orders, approve GRNs, manage vendors",
+    perms: "Create purchase orders, approve GRNs, barcode scan (view), bulk import, manage vendors",
     badge: "medium",
-    screens: ["Purchase Orders ✅", "GRN ✅", "Vendors ✅"],
+    screens: ["Purchase Orders ✅", "GRN ✅", "Vendors ✅", "Bulk Import ✅"],
   },
   {
     name: "Accountant",
@@ -101,13 +101,16 @@ const BADGE_LABEL: Record<string, string> = {
 
 // ── Permission matrix preview ─────────────────────────────────────────────────
 const PERM_MATRIX = [
-  { module: "POS / Billing",    admin: "✅", mgr: "✅", cashier: "✅", godown: "—",  purchase: "—",    acct: "—"  },
-  { module: "Inventory",        admin: "✅", mgr: "View", cashier: "—", godown: "✅", purchase: "View", acct: "—"  },
-  { module: "Purchase Orders",  admin: "✅", mgr: "View", cashier: "—", godown: "View", purchase: "✅", acct: "View" },
-  { module: "GRN",              admin: "✅", mgr: "View", cashier: "—", godown: "✅", purchase: "✅",   acct: "—"  },
-  { module: "GST / Accounts",   admin: "✅", mgr: "—",  cashier: "—", godown: "—",  purchase: "—",    acct: "✅" },
-  { module: "HR & Payroll",     admin: "✅", mgr: "—",  cashier: "—", godown: "—",  purchase: "—",    acct: "—"  },
-  { module: "Reports",          admin: "✅", mgr: "✅", cashier: "—", godown: "—",  purchase: "View", acct: "✅" },
+  { module: "POS Terminal",       admin: "✅", mgr: "View", cashier: "✅", godown: "—",    purchase: "—",    acct: "—"   },
+  { module: "Invoicing / Billing",admin: "✅", mgr: "✅",   cashier: "✅", godown: "—",    purchase: "—",    acct: "✅"  },
+  { module: "Inventory",          admin: "✅", mgr: "View", cashier: "—",  godown: "✅",   purchase: "View", acct: "—"   },
+  { module: "GRN + Barcode Scan", admin: "✅", mgr: "View", cashier: "—",  godown: "✅",   purchase: "✅",   acct: "—"   },
+  { module: "Stock Adjustments",  admin: "✅", mgr: "✅",   cashier: "—",  godown: "✅",   purchase: "—",    acct: "—"   },
+  { module: "Bulk Import",        admin: "✅", mgr: "—",   cashier: "—",  godown: "✅",   purchase: "✅",   acct: "—"   },
+  { module: "Purchase Orders",    admin: "✅", mgr: "View", cashier: "—",  godown: "View", purchase: "✅",   acct: "View"},
+  { module: "GST / Accounts",     admin: "✅", mgr: "—",   cashier: "—",  godown: "—",    purchase: "—",    acct: "✅"  },
+  { module: "HR & Payroll",       admin: "✅", mgr: "—",   cashier: "—",  godown: "—",    purchase: "—",    acct: "—"   },
+  { module: "Reports",            admin: "✅", mgr: "✅",   cashier: "View",godown: "—",   purchase: "View", acct: "✅"  },
 ];
 
 type Step = 1 | 2 | 3 | 4;

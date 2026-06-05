@@ -67,6 +67,9 @@ export const navItemToScreenKey: Record<string, string> = {
   'warehouses':                         'warehouses',
   'stock-transfers':                    'stock_transfers',
   'serial-lot-register':                'serial_lot_register',
+  'inventory-bulk-import':              'inventory_bulk_import',
+  'inventory-grn-scan':                 'inventory_grn_scan',
+  'inventory-stock-adjustments':        'inventory_stock_adjustments',
 
   // ── Production ────────────────────────────────────────────────────────────
   'raw-material-issuance':              'raw_material_issuance',
