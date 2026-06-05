@@ -66,9 +66,9 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
   ],
   sales_orders: [
     "sales-orders",
-    "sales-officers",
   ],
   production: [
+    "sales-officers",
     "raw-materials",
     "add-raw-material",
     "raw-material-types",
@@ -256,7 +256,7 @@ export const ROUTE_PLAN_REQUIREMENTS: Array<{ prefix: string; module: string; mi
 
   // Sales Orders
   { prefix: "/api/sales-orders",        module: "sales_orders",   minPlan: "basic" },
-  { prefix: "/api/sales-officers",      module: "sales_orders",   minPlan: "basic" },
+  { prefix: "/api/sales-officers",      module: "production",     minPlan: "professional" },
 
   // Production
   { prefix: "/api/raw-material-issuance", module: "production",   minPlan: "professional" },

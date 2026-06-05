@@ -26,7 +26,7 @@ import {
   CheckCircle2, Clock, XCircle, Loader2, FlaskConical, CreditCard,
   Eye, Trash2, AlertTriangle, Archive, Download, Database, CalendarClock,
   HardDrive, LogOut, Plus, ScrollText, AlertCircle, Shield, X, ImageIcon, Upload,
-  Package, KeyRound, EyeOff,
+  Package, KeyRound, EyeOff, Store,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -241,6 +241,17 @@ export default function SuperAdminTenants() {
     },
     onError: (err: any) => {
       toast({ title: "Failed to save", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const reseedGroceryMutation = useMutation({
+    mutationFn: (tenantId: number) =>
+      apiRequest("POST", `/api/admin/tenants/${tenantId}/seed-grocery`, {}).then(r => r.json()),
+    onSuccess: () => {
+      toast({ title: "Grocery settings re-applied", description: "Section labels and roles refreshed for this tenant." });
+    },
+    onError: (err: any) => {
+      toast({ title: "Re-apply failed", description: err.message, variant: "destructive" });
     },
   });
 
@@ -506,6 +517,18 @@ export default function SuperAdminTenants() {
                               >
                                 <Package className="h-4 w-4 mr-2" /> Manage Modules
                               </DropdownMenuItem>
+                              {tenant.industry === "Retail" && (
+                                <DropdownMenuItem
+                                  onClick={() => reseedGroceryMutation.mutate(tenant.id)}
+                                  disabled={reseedGroceryMutation.isPending}
+                                  data-testid={`button-reseed-grocery-${tenant.id}`}
+                                >
+                                  {reseedGroceryMutation.isPending
+                                    ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    : <Store className="h-4 w-4 mr-2" />}
+                                  Re-apply Grocery Settings
+                                </DropdownMenuItem>
+                              )}
                               <DropdownMenuItem
                                 onClick={() => setResetPwTenant(tenant)}
                                 data-testid={`button-reset-password-${tenant.id}`}

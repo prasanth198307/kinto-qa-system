@@ -95,7 +95,7 @@ const navItemToScreen: Record<string, string> = {
   'users': 'User Management',
   'role-permissions': 'User Management',
   'sales-orders': 'Purchase Orders',
-  'sales-officers': 'Sales Officers',
+  'sales-officers': 'Production',
   'vendors': 'Inventory Management',
   'vendor-types': 'Inventory Management',
   'machines': 'Machines',
