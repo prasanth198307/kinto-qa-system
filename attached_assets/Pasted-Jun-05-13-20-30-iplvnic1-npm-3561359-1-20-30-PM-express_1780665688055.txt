@@ -1,0 +1,24 @@
+Jun 05 13:20:30 iplvnic1 npm[3561359]: 1:20:30 PM [express] GET /api/machines 304 in 207ms :: [{"id":"80649cc4-2677-493d-a712-63f0833ae39d"…
+Jun 05 13:20:30 iplvnic1 npm[3561359]: 1:20:30 PM [express] GET /api/maintenance-plans 304 in 191ms :: []
+Jun 05 13:20:30 iplvnic1 npm[3561359]: 1:20:30 PM [express] GET /api/roles 304 in 219ms :: [{"id":"24aec8a1-dc0b-4629-a0b1-cf91a06e7b38","n…
+Jun 05 13:20:30 iplvnic1 npm[3561359]: 1:20:30 PM [express] GET /api/pm-task-list-templates 304 in 223ms :: []
+Jun 05 13:20:30 iplvnic1 npm[3561359]: 1:20:30 PM [express] GET /api/hr/module-labels 304 in 204ms :: []
+Jun 05 13:20:36 iplvnic1 npm[3561359]: [AUDIT] Role admin granted access to /api/roles/check-name (system role match)
+Jun 05 13:20:36 iplvnic1 npm[3561359]: 1:20:36 PM [express] GET /api/roles/check-name 404 in 9ms :: {"message":"Role not found"}
+Jun 05 13:20:37 iplvnic1 npm[3561359]: [AUDIT] Role admin granted access to /api/roles/check-name (system role match)
+Jun 05 13:20:37 iplvnic1 npm[3561359]: 1:20:37 PM [express] GET /api/roles/check-name 404 in 9ms :: {"message":"Role not found"}
+Jun 05 13:20:38 iplvnic1 npm[3561359]: [AUDIT] Role admin granted access to /api/roles/check-name (system role match)
+Jun 05 13:20:38 iplvnic1 npm[3561359]: 1:20:38 PM [express] GET /api/roles/check-name 404 in 10ms :: {"message":"Role not found"}
+Jun 05 13:20:39 iplvnic1 npm[3561359]: [AUDIT] Role admin granted access to /api/roles/check-name (system role match)
+Jun 05 13:20:39 iplvnic1 npm[3561359]: 1:20:39 PM [express] GET /api/roles/check-name 404 in 8ms :: {"message":"Role not found"}
+Jun 05 13:20:39 iplvnic1 npm[3561359]: [AUDIT] Role admin granted access to /api/roles/check-name (system role match)
+Jun 05 13:20:39 iplvnic1 npm[3561359]: 1:20:39 PM [express] GET /api/roles/check-name 404 in 9ms :: {"message":"Role not found"}
+Jun 05 13:20:40 iplvnic1 npm[3561359]: [AUDIT] Role admin granted access to /api/roles/check-name (system role match)
+Jun 05 13:20:40 iplvnic1 npm[3561359]: 1:20:40 PM [express] GET /api/roles/check-name 404 in 10ms :: {"message":"Role not found"}
+Jun 05 13:20:42 iplvnic1 npm[3561359]: [AUDIT] Role admin granted access to /api/roles/check-name (system role match)
+Jun 05 13:20:42 iplvnic1 npm[3561359]: 1:20:42 PM [express] GET /api/roles/check-name 404 in 11ms :: {"message":"Role not found"}
+Jun 05 13:20:43 iplvnic1 npm[3561359]: [AUDIT] Role admin granted access to /api/roles/check-name (system role match)
+Jun 05 13:20:43 iplvnic1 npm[3561359]: 1:20:43 PM [express] GET /api/roles/check-name 404 in 9ms :: {"message":"Role not found"}
+Jun 05 13:20:44 iplvnic1 npm[3561359]: [AUDIT] Role admin granted access to /api/roles/check-name (system role match)
+Jun 05 13:20:44 iplvnic1 npm[3561359]: 1:20:44 PM [express] GET /api/roles/check-name 404 in 12ms :: {"message":"Role not found"}
+[kinto@iplvnic1 kinto-qa-system]$ 

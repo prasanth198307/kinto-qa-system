@@ -18202,6 +18202,17 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
     }
   });
 
+  // ── GET /api/roles/check-name — must be BEFORE /:id to avoid Express matching "check-name" as an id ──
+  app.get('/api/roles/check-name', isAuthenticated, async (req: any, res) => {
+    const name = (req.query.name as string || '').trim().toLowerCase();
+    if (!name || name.length < 2) return res.json({ available: false, reason: 'invalid' });
+    const tenantId: number = (req.session as any)?.tenantId ?? req.user?.tenantId ?? 1;
+    const existing = await db.execute(sql`
+      SELECT id FROM roles WHERE LOWER(name) = ${name} AND tenant_id = ${tenantId} LIMIT 1
+    `);
+    return res.json({ available: (existing.rows as any[]).length === 0 });
+  });
+
   app.get('/api/roles/:id', requireRole('admin'), async (req: any, res) => {
     try {
       const { id } = req.params;
@@ -18214,17 +18225,6 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       console.error("Error fetching role:", error);
       res.status(500).json({ message: "Failed to fetch role" });
     }
-  });
-
-  // ── GET /api/roles/check-name — real-time role name availability ─────────
-  app.get('/api/roles/check-name', isAuthenticated, async (req: any, res) => {
-    const name = (req.query.name as string || '').trim().toLowerCase();
-    if (!name || name.length < 2) return res.json({ available: false, reason: 'invalid' });
-    const tenantId: number = (req.session as any)?.tenantId ?? req.user?.tenantId ?? 1;
-    const existing = await db.execute(sql`
-      SELECT id FROM roles WHERE LOWER(name) = ${name} AND tenant_id = ${tenantId} LIMIT 1
-    `);
-    return res.json({ available: (existing.rows as any[]).length === 0 });
   });
 
   app.post('/api/roles', requireRole('admin'), async (req: any, res) => {
