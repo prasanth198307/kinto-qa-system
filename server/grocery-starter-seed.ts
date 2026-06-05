@@ -238,9 +238,10 @@ export async function seedGroceryStarterData(tenantId: number): Promise<{
   // ── 4. Set grocery-specific module label overrides ───────────────────────────
   // Rename generic sections to grocery-friendly names
   const GROCERY_MODULE_LABELS = [
-    { key: "products",    label: "Inventory Management" },  // "Production & Inventory" → "Inventory Management"
-    { key: "gatepasses",  label: "Delivery & Dispatch" },   // "Dispatch & Logistics" → "Delivery & Dispatch"
-    { key: "purchase_orders", label: "Purchase & Vendors" }, // "Purchases" → "Purchase & Vendors"
+    { key: "products",        label: "Inventory Management" },  // "Production & Inventory" → "Inventory Management"
+    { key: "gatepasses",      label: "Delivery & Dispatch"  },  // "Dispatch & Logistics"  → "Delivery & Dispatch"
+    { key: "purchase_orders", label: "Purchase & Vendors"   },  // "Purchases"             → "Purchase & Vendors"
+    { key: "invoices",        label: "Sales & Billing"      },  // "Finance & Sales"       → "Sales & Billing"
   ];
   for (const { key, label } of GROCERY_MODULE_LABELS) {
     await db.execute(sql`
