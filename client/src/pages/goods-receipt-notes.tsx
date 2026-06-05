@@ -46,6 +46,117 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+function GRNViewDialog({ viewing, onClose, onSubmit, onApprove }: {
+  viewing: GRN;
+  onClose: () => void;
+  onSubmit: (id: number) => void;
+  onApprove: (id: number) => void;
+}) {
+  const { data: detail } = useQuery<any>({
+    queryKey: [`/api/generic/grn/${viewing.id}`],
+    enabled: !!viewing.id,
+  });
+  const viewingItems: any[] = detail?.items ?? [];
+
+  return (
+    <Dialog open={!!viewing} onOpenChange={onClose}>
+      <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{viewing.grn_number}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 pt-2">
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <p className="text-muted-foreground text-xs">Status</p>
+              <StatusBadge status={viewing.status} />
+            </div>
+            <div>
+              <p className="text-muted-foreground text-xs">Received Date</p>
+              <p className="font-medium">{viewing.received_date ? new Date(viewing.received_date).toLocaleDateString() : "—"}</p>
+            </div>
+            {viewing.po_id && (
+              <div>
+                <p className="text-muted-foreground text-xs">PO Reference</p>
+                <p className="font-mono font-medium">{viewing.po_id}</p>
+              </div>
+            )}
+            {viewing.vendor_name && (
+              <div>
+                <p className="text-muted-foreground text-xs">Vendor</p>
+                <p className="font-medium">{viewing.vendor_name}</p>
+              </div>
+            )}
+            {viewing.remarks && (
+              <div className="col-span-2">
+                <p className="text-muted-foreground text-xs">Remarks</p>
+                <p>{viewing.remarks}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Items with expiry badges */}
+          {viewingItems.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Items Received</p>
+              <div className="space-y-1.5">
+                {viewingItems.map((item: any, idx: number) => {
+                  const expiry = item.expiry_date ? new Date(item.expiry_date) : null;
+                  const daysLeft = expiry ? Math.ceil((expiry.getTime() - Date.now()) / 86400000) : null;
+                  const isExpired = daysLeft !== null && daysLeft <= 0;
+                  const isNearExpiry = daysLeft !== null && daysLeft <= 30;
+                  return (
+                    <div key={idx} className="flex items-start justify-between rounded-md border p-2.5 gap-3 text-sm" data-testid={`view-item-${idx}`}>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{item.description || `Item ${idx + 1}`}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Rcv: {item.received_qty} {item.unit_label || ''}
+                          {item.batch_number ? ` · Batch: ${item.batch_number}` : ''}
+                        </p>
+                      </div>
+                      <div className="shrink-0 text-right space-y-0.5">
+                        {isExpired && (
+                          <Badge variant="destructive" className="text-xs" data-testid={`badge-expired-${idx}`}>
+                            Expired
+                          </Badge>
+                        )}
+                        {!isExpired && isNearExpiry && (
+                          <Badge variant="destructive" className="text-xs" data-testid={`badge-near-expiry-${idx}`}>
+                            <AlertTriangle className="h-3 w-3 mr-1" />{daysLeft}d left
+                          </Badge>
+                        )}
+                        {expiry && !isNearExpiry && (
+                          <p className="text-xs text-muted-foreground">{expiry.toLocaleDateString('en-IN')}</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <InlineAttachments entityType="grn" entityId={viewing.id} label="GRN Attachments" />
+          <CustomFieldsSection entityType="grn" entityId={viewing.id} />
+        </div>
+        <DialogFooter className="gap-2 pt-2">
+          {(viewing.status === "received" || viewing.status === "draft") && (
+            <Button variant="outline" onClick={() => onSubmit(viewing.id)}
+              data-testid={`button-submit-grn-detail-${viewing.id}`}>
+              <SendHorizontal className="h-4 w-4 mr-2" />Submit for Approval
+            </Button>
+          )}
+          {viewing.status === "submitted" && (
+            <Button onClick={() => onApprove(viewing.id)}
+              data-testid={`button-approve-grn-detail-${viewing.id}`}>
+              <CheckCircle2 className="h-4 w-4 mr-2" />Approve & Update Stock
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function GoodsReceiptNotesPage() {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -228,59 +339,12 @@ export default function GoodsReceiptNotesPage() {
 
       {/* View GRN + Attachments Dialog */}
       {viewing && (
-        <Dialog open={!!viewing} onOpenChange={() => setViewing(null)}>
-          <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{viewing.grn_number}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 pt-2">
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <p className="text-muted-foreground text-xs">Status</p>
-                  <StatusBadge status={viewing.status} />
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-xs">Received Date</p>
-                  <p className="font-medium">{viewing.received_date ? new Date(viewing.received_date).toLocaleDateString() : "—"}</p>
-                </div>
-                {viewing.po_id && (
-                  <div>
-                    <p className="text-muted-foreground text-xs">PO Reference</p>
-                    <p className="font-mono font-medium">{viewing.po_id}</p>
-                  </div>
-                )}
-                {viewing.vendor_name && (
-                  <div>
-                    <p className="text-muted-foreground text-xs">Vendor</p>
-                    <p className="font-medium">{viewing.vendor_name}</p>
-                  </div>
-                )}
-                {viewing.remarks && (
-                  <div className="col-span-2">
-                    <p className="text-muted-foreground text-xs">Remarks</p>
-                    <p>{viewing.remarks}</p>
-                  </div>
-                )}
-              </div>
-              <InlineAttachments entityType="grn" entityId={viewing.id} label="GRN Attachments" />
-              <CustomFieldsSection entityType="grn" entityId={viewing.id} />
-            </div>
-            <DialogFooter className="gap-2 pt-2">
-              {(viewing.status === "received" || viewing.status === "draft") && (
-                <Button variant="outline" onClick={() => { submitMut.mutate(viewing.id); setViewing(null); }}
-                  data-testid={`button-submit-grn-detail-${viewing.id}`}>
-                  <SendHorizontal className="h-4 w-4 mr-2" />Submit for Approval
-                </Button>
-              )}
-              {viewing.status === "submitted" && (
-                <Button onClick={() => { approveMut.mutate(viewing.id); setViewing(null); }}
-                  data-testid={`button-approve-grn-detail-${viewing.id}`}>
-                  <CheckCircle2 className="h-4 w-4 mr-2" />Approve & Update Stock
-                </Button>
-              )}
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <GRNViewDialog
+          viewing={viewing}
+          onClose={() => setViewing(null)}
+          onSubmit={(id) => { submitMut.mutate(id); setViewing(null); }}
+          onApprove={(id) => { approveMut.mutate(id); setViewing(null); }}
+        />
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>

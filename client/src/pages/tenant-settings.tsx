@@ -832,6 +832,9 @@ export default function TenantSettings() {
               </div>
             </CardContent>
           </Card>
+
+          {/* ── Auto-PR on Reorder ── */}
+          <AutPRSettingCard />
         </TabsContent>
 
         {/* ── Module Labels ── */}
@@ -846,6 +849,53 @@ export default function TenantSettings() {
 
       </Tabs>
     </div>
+  );
+}
+
+// ─── Auto-PR on Reorder Setting ─────────────────────────────────────────────
+function AutPRSettingCard() {
+  const { toast } = useToast();
+  const { data: settings = {} } = useQuery<Record<string, string>>({
+    queryKey: ['/api/generic/platform-settings'],
+  });
+  const autoPR = settings['auto_pr_on_reorder'] === 'true';
+
+  const saveMut = useMutation({
+    mutationFn: (value: boolean) =>
+      apiRequest("PUT", "/api/generic/platform-settings", { auto_pr_on_reorder: String(value) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/generic/platform-settings'] });
+      toast({ title: "Setting saved" });
+    },
+    onError: () => toast({ title: "Failed to save", variant: "destructive" }),
+  });
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Package className="h-4 w-4" /> Inventory Automation
+        </CardTitle>
+        <CardDescription>Configure automatic actions for inventory events.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center justify-between gap-4 rounded-md border p-4">
+          <div className="space-y-0.5">
+            <p className="text-sm font-medium">Auto-create Purchase Requisition on Reorder</p>
+            <p className="text-xs text-muted-foreground">
+              When any item's stock falls to or below its reorder point, the system automatically
+              creates a draft Purchase Requisition for review — no manual step needed.
+            </p>
+          </div>
+          <Switch
+            checked={autoPR}
+            onCheckedChange={(v) => saveMut.mutate(v)}
+            disabled={saveMut.isPending}
+            data-testid="switch-auto-pr"
+          />
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

@@ -711,6 +711,19 @@ router.post("/stock-adjustments", requireAuth, async (req: any, res) => {
       } catch (_) { /* stock update is best-effort */ }
     }
 
+    // In-app notification: alert supervisors when adjustment needs approval (#1)
+    if (requiresApproval) {
+      try {
+        const adjId = String((inserted.rows[0] as any).id);
+        await db.execute(sql`
+          INSERT INTO system_alerts (alert_type, entity_type, entity_id, entity_name, severity, message, tenant_id)
+          VALUES ('adjustment_pending_approval', 'stock_adjustment', ${adjId},
+            ${prod.product_name}, 'info',
+            ${`Stock adjustment for "${prod.product_name}" (₹${totalValue.toFixed(0)}) requires supervisor approval before stock is updated.`},
+            ${tid})`);
+      } catch (_) {}
+    }
+
     res.json({ ...inserted.rows[0], requires_approval: requiresApproval });
   } catch (e: any) {
     res.status(500).json({ message: e.message });

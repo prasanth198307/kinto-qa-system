@@ -259,7 +259,7 @@ async function handleCreateGRN(req: any, res: any) {
     const actualNotes = notes || remarks || null;
     const num = `GRN-${Date.now()}`;
 
-    // Vendor GSTIN validation — warn if missing or malformed (ITC impact)
+    // Vendor GSTIN validation — block if no GSTIN + GST-applicable items; warn if malformed
     let gstin_warning: string | null = null;
     if (actualVendorId) {
       try {
@@ -268,12 +268,28 @@ async function handleCreateGRN(req: any, res: any) {
         if (v) {
           const gstin = (v.gst_number || '').trim().toUpperCase();
           if (!gstin) {
+            // Check if any item in this GRN is GST-applicable → BLOCK
+            let hasGstItem = false;
+            for (const it of (items || [])) {
+              const pid = it.productId || it.product_id;
+              if (pid) {
+                try {
+                  const gstChk = await db.execute(sql`SELECT 1 FROM products WHERE id::text=${String(pid)} AND tenant_id=${tid(req)} AND COALESCE(gst_percent,0)>0 LIMIT 1`);
+                  if (gstChk.rows.length > 0) { hasGstItem = true; break; }
+                } catch (_) {}
+              }
+            }
+            if (hasGstItem) {
+              return res.status(400).json({ message: `Vendor "${v.vendor_name || actualVendorId}" has no GSTIN on file. Cannot receive GST-applicable items without a valid vendor GSTIN — ITC would be disallowed by GSTN. Please update the vendor GSTIN in Vendor Master before saving this GRN.` });
+            }
             gstin_warning = `Vendor "${v.vendor_name || actualVendorId}" has no GSTIN on file. Input tax credit (ITC) may not be available for this GRN.`;
           } else if (!GSTIN_REGEX.test(gstin)) {
             gstin_warning = `Vendor GSTIN "${gstin}" appears invalid (expected 15-character format). Verify before claiming ITC.`;
           }
         }
-      } catch (_) {}
+      } catch (gstinErr: any) {
+        if (gstinErr.status === 400) throw gstinErr;
+      }
     }
 
     // received_by is an integer column (legacy); user.id is now UUID — pass null to avoid type error
@@ -321,6 +337,18 @@ router.patch("/grn/:id/submit", requireAuth, async (req: any, res) => {
       UPDATE goods_receipt_notes
       SET status='submitted', submitted_by_id=${(req.user as any)?.id ?? null}, submitted_at=NOW()
       WHERE id=${req.params.id} AND tenant_id=${tid(req)}`);
+
+    // In-app notification: create system alert for Purchase Manager approvers
+    try {
+      const gInfo = grnRows.rows[0] as any;
+      await db.execute(sql`
+        INSERT INTO system_alerts (alert_type, entity_type, entity_id, entity_name, severity, message, tenant_id)
+        VALUES ('grn_pending_approval', 'grn', ${req.params.id},
+          ${gInfo.grn_number ?? req.params.id}, 'info',
+          ${`GRN ${gInfo.grn_number ?? req.params.id} submitted — awaiting Purchase Manager approval.`},
+          ${tid(req)})`);
+    } catch (_) {}
+
     res.json({ ok: true });
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
@@ -372,6 +400,23 @@ router.patch("/grn/:id/approve", requireAuth, async (req: any, res) => {
     if (grn.po_id) {
       await db.execute(sql`UPDATE purchase_orders SET grn_status='received' WHERE id=${grn.po_id} AND tenant_id=${tid(req)}`).catch(() => {});
     }
+
+    // Expiry alerts: flag any items expiring within 30 days as system alerts (#4)
+    try {
+      const expiringItems = await db.execute(sql`
+        SELECT description, expiry_date FROM grn_items
+        WHERE grn_id=${req.params.id} AND tenant_id=${tid(req)} AND record_status=1
+          AND expiry_date IS NOT NULL AND expiry_date::date < CURRENT_DATE + INTERVAL '30 days'`);
+      for (const item of expiringItems.rows as any[]) {
+        const daysLeft = Math.max(0, Math.ceil((new Date(item.expiry_date).getTime() - Date.now()) / 86400000));
+        const itemName = item.description || 'Item';
+        await db.execute(sql`
+          INSERT INTO system_alerts (alert_type, entity_type, entity_id, entity_name, severity, message, tenant_id)
+          VALUES ('near_expiry', 'grn', ${req.params.id}, ${itemName}, 'warning',
+            ${`"${itemName}" in GRN ${grn.grn_number ?? req.params.id} expires in ${daysLeft} day${daysLeft === 1 ? '' : 's'} (${new Date(item.expiry_date).toLocaleDateString('en-IN')}).`},
+            ${tid(req)})`);
+      }
+    } catch (_) {}
 
     res.json({ ok: true, items_stocked: itemsRows.rows.length });
   } catch (e: any) { res.status(500).json({ message: e.message }); }
@@ -477,6 +522,63 @@ router.get("/audit-log", requireAuth, async (req: any, res) => {
   }
 });
 
+// ─── System Alerts (in-app notification inbox) ────────────────────────────────
+router.get("/system-alerts/count", requireAuth, async (req: any, res) => {
+  try {
+    const r = await db.execute(sql`SELECT COUNT(*) as count FROM system_alerts WHERE tenant_id=${tid(req)} AND status='active'`);
+    res.json({ count: Number((r.rows[0] as any)?.count ?? 0) });
+  } catch (_) { res.json({ count: 0 }); }
+});
+
+router.get("/system-alerts", requireAuth, async (req: any, res) => {
+  try {
+    const rows = await db.execute(sql`
+      SELECT * FROM system_alerts WHERE tenant_id=${tid(req)} AND status='active'
+      ORDER BY detected_at DESC LIMIT 50`);
+    res.json(rows.rows);
+  } catch (e: any) {
+    if (e.code === MISSING_TABLE) return res.json([]);
+    res.json([]);
+  }
+});
+
+router.patch("/system-alerts/:id/resolve", requireAuth, async (req: any, res) => {
+  try {
+    await db.execute(sql`
+      UPDATE system_alerts SET status='resolved', resolved_at=NOW(), resolved_by=${(req.user as any)?.id ?? null}
+      WHERE id=${req.params.id} AND tenant_id=${tid(req)}`);
+    res.json({ ok: true });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// ─── Per-Tenant Platform Settings (operational toggles) ──────────────────────
+router.get("/platform-settings", requireAuth, async (req: any, res) => {
+  try {
+    const tenantId = tid(req);
+    const prefix = `t${tenantId}:`;
+    const rows = await db.execute(sql`SELECT key, value FROM platform_settings WHERE key LIKE ${prefix + '%'}`);
+    const settings: Record<string, string> = {};
+    for (const r of rows.rows as any[]) {
+      settings[(r.key as string).slice(prefix.length)] = r.value;
+    }
+    res.json(settings);
+  } catch (_) { res.json({}); }
+});
+
+router.put("/platform-settings", requireAuth, async (req: any, res) => {
+  try {
+    const tenantId = tid(req);
+    const prefix = `t${tenantId}:`;
+    for (const [key, value] of Object.entries(req.body as Record<string, string>)) {
+      const scopedKey = prefix + key;
+      await db.execute(sql`
+        INSERT INTO platform_settings (key, value, updated_at) VALUES (${scopedKey}, ${String(value)}, NOW())
+        ON CONFLICT (key) DO UPDATE SET value=${String(value)}, updated_at=NOW()`);
+    }
+    res.json({ ok: true });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
 // ─── Reorder Alerts ───────────────────────────────────────────────────────────
 router.get("/reorder-alerts", requireAuth, async (req: any, res) => {
   try {
@@ -488,6 +590,40 @@ router.get("/reorder-alerts", requireAuth, async (req: any, res) => {
       WHERE p.tenant_id=${tid(req)} AND p.record_status=1 AND p.reorder_point > 0
       GROUP BY p.id, p.product_name, p.sku_code, p.reorder_point, p.reorder_qty
       HAVING COALESCE(SUM(CASE WHEN rmt.transaction_type='in' THEN rmt.quantity WHEN rmt.transaction_type='out' THEN -rmt.quantity ELSE 0 END),0) <= p.reorder_point`);
+
+    // Auto-generate draft PRs if the tenant setting is enabled (#5)
+    if (rows.rows.length > 0) {
+      try {
+        const settingKey = `t${tid(req)}:auto_pr_on_reorder`;
+        const settingRow = await db.execute(sql`SELECT value FROM platform_settings WHERE key=${settingKey} LIMIT 1`);
+        const autoPR = (settingRow.rows[0] as any)?.value === 'true';
+        if (autoPR) {
+          for (const item of rows.rows as any[]) {
+            // Skip if a draft/submitted PR for this product already exists within the last 7 days
+            const existing = await db.execute(sql`
+              SELECT pr.id FROM purchase_requisitions pr
+              JOIN purchase_requisition_items pri ON pri.pr_id=pr.id AND pri.tenant_id=${tid(req)}
+              WHERE pr.tenant_id=${tid(req)} AND pr.status IN ('draft','submitted')
+                AND pri.product_id=${String((item as any).id)}
+                AND pr.pr_date >= CURRENT_DATE - INTERVAL '7 days'
+              LIMIT 1`);
+            if ((existing.rows[0] as any)?.id) continue;
+            const prNum = `PR-AUTO-${Date.now()}-${(item as any).id}`;
+            const pr = await db.execute(sql`
+              INSERT INTO purchase_requisitions (tenant_id, pr_number, pr_date, department, notes, status)
+              VALUES (${tid(req)}, ${prNum}, CURRENT_DATE, 'Inventory',
+                ${`Auto-generated reorder PR for ${(item as any).name} (stock: ${(item as any).current_stock}, reorder point: ${(item as any).reorder_point})`},
+                'draft') RETURNING id`);
+            const prId = (pr.rows[0] as any).id;
+            await db.execute(sql`
+              INSERT INTO purchase_requisition_items (tenant_id, pr_id, product_id, description, quantity, uom, estimated_price, required_date)
+              VALUES (${tid(req)}, ${prId}, ${String((item as any).id)}, ${(item as any).name},
+                ${Number((item as any).reorder_qty || 1)}, 'Nos', 0, CURRENT_DATE + INTERVAL '7 days')`);
+          }
+        }
+      } catch (_) { /* auto-PR is best-effort */ }
+    }
+
     res.json(rows.rows);
   } catch (e: any) {
     if (e.code === MISSING_TABLE || e.code === MISSING_COLUMN) return res.json([]);

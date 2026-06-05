@@ -956,6 +956,13 @@ function AdminDashboard() {
     logoutMutation.mutate();
   };
 
+  // In-app notification badge — polls active system alerts every 60 s
+  const { data: alertCountData } = useQuery<{ count: number }>({
+    queryKey: ['/api/generic/system-alerts/count'],
+    refetchInterval: 60000,
+  });
+  const alertCount = alertCountData?.count ?? 0;
+
   const navSections: NavSection[] = [
     {
       id: "dashboard",
@@ -1377,7 +1384,7 @@ function AdminDashboard() {
     <DashboardShell
       title="Admin Dashboard"
       onLogoutClick={handleLogout}
-      notificationCount={0}
+      notificationCount={alertCount}
       navSections={resolvedNav}
       activeView={activeView}
       onNavigate={setActiveView}

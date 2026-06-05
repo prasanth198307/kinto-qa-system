@@ -1805,7 +1805,7 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
                 const expectedCash   = openingFloat + totalCashSales;
                 const variance       = closingBalance - expectedCash;
                 const absVariance    = Math.abs(variance);
-                const VARIANCE_GATE  = 200; // ₹200 threshold requires acknowledgement
+                const VARIANCE_GATE  = 100; // ₹100 threshold requires acknowledgement
                 const isShortage     = variance < 0;
                 const isSurplus      = variance > 0;
                 const needsGate      = absVariance > VARIANCE_GATE;
@@ -1868,7 +1868,7 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
                     .reduce((s: number, t: any) => s + Number(t.total_amount || 0), 0);
                   const expectedCash = Number(activeSession?.opening_balance || 0) + cashSales;
                   const variance = Math.abs(closingBalance - expectedCash);
-                  return variance > 200 && !varianceAcknowledged;
+                  return variance > 100 && !varianceAcknowledged;
                 })()}
                 data-testid="button-confirm-close-session"
               >
