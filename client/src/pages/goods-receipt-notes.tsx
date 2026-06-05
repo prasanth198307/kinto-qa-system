@@ -3,13 +3,13 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Package, Trash2, Eye } from "lucide-react";
+import { Plus, Package, Trash2, Eye, SendHorizontal, CheckCircle2, Clock } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { InlineAttachments } from "@/components/inline-attachments";
 import { CustomFieldsSection } from "@/components/custom-fields-section";
@@ -19,19 +19,32 @@ interface GRN {
   grn_number: string;
   po_id: string | null;
   vendor_id: string | null;
+  vendor_name: string | null;
   received_date: string;
   status: string;
   remarks: string;
   created_at: string;
 }
 
-const STATUS_BADGE: Record<string, any> = {
-  draft: "secondary",
-  received: "default",
-  inspected: "default",
-  accepted: "default",
-  rejected: "destructive",
+const STATUS_META: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+  draft:      { label: "Draft",      variant: "secondary"  },
+  received:   { label: "Received",   variant: "default"    },
+  submitted:  { label: "Submitted",  variant: "outline"    },
+  inspected:  { label: "Inspected",  variant: "default"    },
+  posted:     { label: "Posted",     variant: "default"    },
+  rejected:   { label: "Rejected",   variant: "destructive"},
 };
+
+function StatusBadge({ status }: { status: string }) {
+  const meta = STATUS_META[status] ?? { label: status, variant: "secondary" as const };
+  return (
+    <Badge variant={meta.variant} className="flex items-center gap-1 w-fit">
+      {status === "submitted" && <Clock className="h-3 w-3" />}
+      {status === "posted"    && <CheckCircle2 className="h-3 w-3" />}
+      {meta.label}
+    </Badge>
+  );
+}
 
 export default function GoodsReceiptNotesPage() {
   const { toast } = useToast();
@@ -51,9 +64,27 @@ export default function GoodsReceiptNotesPage() {
       toast({ title: "GRN created" });
       setOpen(false);
       setForm({ po_id: "", vendor_id: "", received_date: new Date().toISOString().split("T")[0], remarks: "" });
-      setItems([{ item_name: "", ordered_qty: 0, received_qty: 0, unit: "Nos", unit_price: 0 }]);
+      setItems([{ item_name: "", ordered_qty: 0, received_qty: 0, unit: "Nos", unit_price: 0, batch_number: "", lot_number: "", manufactured_date: "", expiry_date: "" }]);
     },
     onError: () => toast({ title: "Error creating GRN", variant: "destructive" }),
+  });
+
+  const submitMut = useMutation({
+    mutationFn: (id: number) => apiRequest("PATCH", `/api/generic/grn/${id}/submit`, {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/generic/grns"] });
+      toast({ title: "GRN submitted", description: "Sent for Purchase Manager approval." });
+    },
+    onError: (e: any) => toast({ title: "Submit failed", description: e.message, variant: "destructive" }),
+  });
+
+  const approveMut = useMutation({
+    mutationFn: (id: number) => apiRequest("PATCH", `/api/generic/grn/${id}/approve`, {}),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/generic/grns"] });
+      toast({ title: "GRN approved", description: `Stock updated for ${data.items_stocked ?? 0} item(s).` });
+    },
+    onError: (e: any) => toast({ title: "Approve failed", description: e.message, variant: "destructive" }),
   });
 
   function addItem() {
@@ -68,6 +99,8 @@ export default function GoodsReceiptNotesPage() {
     setItems(prev => prev.map((it, i) => i === idx ? { ...it, [field]: value } : it));
   }
 
+  const pendingCount = grns.filter(g => g.status === "submitted").length;
+
   return (
     <div className="p-4 sm:p-6 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -80,6 +113,14 @@ export default function GoodsReceiptNotesPage() {
         </Button>
       </div>
 
+      {/* Pending approval banner */}
+      {pendingCount > 0 && (
+        <div className="flex items-center gap-3 p-3 rounded-md border border-amber-200 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30 text-sm text-amber-800 dark:text-amber-200">
+          <Clock className="h-4 w-4 shrink-0" />
+          <span><strong>{pendingCount}</strong> GRN{pendingCount > 1 ? "s" : ""} pending approval. Purchase Manager must approve to update stock.</span>
+        </div>
+      )}
+
       <Card>
         <CardContent className="p-0">
           {isLoading ? (
@@ -91,6 +132,7 @@ export default function GoodsReceiptNotesPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>GRN Number</TableHead>
+                  <TableHead>Vendor</TableHead>
                   <TableHead>PO Reference</TableHead>
                   <TableHead>Received Date</TableHead>
                   <TableHead>Status</TableHead>
@@ -102,16 +144,33 @@ export default function GoodsReceiptNotesPage() {
                 {grns.map((grn) => (
                   <TableRow key={grn.id} data-testid={`row-grn-${grn.id}`}>
                     <TableCell className="font-mono text-sm font-medium">{grn.grn_number}</TableCell>
+                    <TableCell className="text-sm">{grn.vendor_name || "—"}</TableCell>
                     <TableCell className="font-mono text-sm">{grn.po_id || "—"}</TableCell>
                     <TableCell>{grn.received_date ? new Date(grn.received_date).toLocaleDateString() : "—"}</TableCell>
-                    <TableCell>
-                      <Badge variant={STATUS_BADGE[grn.status] || "secondary"}>{grn.status}</Badge>
-                    </TableCell>
+                    <TableCell><StatusBadge status={grn.status} /></TableCell>
                     <TableCell className="text-muted-foreground text-sm">{grn.remarks || "—"}</TableCell>
-                    <TableCell className="text-right">
-                      <Button size="icon" variant="ghost" onClick={() => setViewing(grn)} data-testid={`button-view-grn-${grn.id}`}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
+                    <TableCell>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button size="icon" variant="ghost" onClick={() => setViewing(grn)} data-testid={`button-view-grn-${grn.id}`}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        {(grn.status === "received" || grn.status === "draft") && (
+                          <Button size="sm" variant="outline" className="text-xs"
+                            onClick={() => submitMut.mutate(grn.id)}
+                            disabled={submitMut.isPending}
+                            data-testid={`button-submit-grn-${grn.id}`}>
+                            <SendHorizontal className="h-3 w-3 mr-1" />Submit
+                          </Button>
+                        )}
+                        {grn.status === "submitted" && (
+                          <Button size="sm" variant="default" className="text-xs"
+                            onClick={() => approveMut.mutate(grn.id)}
+                            disabled={approveMut.isPending}
+                            data-testid={`button-approve-grn-${grn.id}`}>
+                            <CheckCircle2 className="h-3 w-3 mr-1" />Approve
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -132,7 +191,7 @@ export default function GoodsReceiptNotesPage() {
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
                   <p className="text-muted-foreground text-xs">Status</p>
-                  <Badge variant={STATUS_BADGE[viewing.status] || "secondary"} className="mt-1">{viewing.status}</Badge>
+                  <StatusBadge status={viewing.status} />
                 </div>
                 <div>
                   <p className="text-muted-foreground text-xs">Received Date</p>
@@ -142,6 +201,12 @@ export default function GoodsReceiptNotesPage() {
                   <div>
                     <p className="text-muted-foreground text-xs">PO Reference</p>
                     <p className="font-mono font-medium">{viewing.po_id}</p>
+                  </div>
+                )}
+                {viewing.vendor_name && (
+                  <div>
+                    <p className="text-muted-foreground text-xs">Vendor</p>
+                    <p className="font-medium">{viewing.vendor_name}</p>
                   </div>
                 )}
                 {viewing.remarks && (
@@ -154,6 +219,20 @@ export default function GoodsReceiptNotesPage() {
               <InlineAttachments entityType="grn" entityId={viewing.id} label="GRN Attachments" />
               <CustomFieldsSection entityType="grn" entityId={viewing.id} />
             </div>
+            <DialogFooter className="gap-2 pt-2">
+              {(viewing.status === "received" || viewing.status === "draft") && (
+                <Button variant="outline" onClick={() => { submitMut.mutate(viewing.id); setViewing(null); }}
+                  data-testid={`button-submit-grn-detail-${viewing.id}`}>
+                  <SendHorizontal className="h-4 w-4 mr-2" />Submit for Approval
+                </Button>
+              )}
+              {viewing.status === "submitted" && (
+                <Button onClick={() => { approveMut.mutate(viewing.id); setViewing(null); }}
+                  data-testid={`button-approve-grn-detail-${viewing.id}`}>
+                  <CheckCircle2 className="h-4 w-4 mr-2" />Approve & Update Stock
+                </Button>
+              )}
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       )}

@@ -18,21 +18,22 @@ import {
 
 // ── Grocery module presets ─────────────────────────────────────────────────────
 const ALL_MODULES: { key: string; label: string; desc: string; preset: boolean }[] = [
-  { key: "invoicing",       label: "Invoicing & GST",          desc: "GST bills, payments, credit notes",           preset: true  },
-  { key: "purchase_orders", label: "Purchase Orders",           desc: "POs, vendor management, GRNs",                preset: true  },
-  { key: "basic_inventory", label: "Inventory Management",      desc: "Products, stock, UOM, serial/lot, expiry",    preset: true  },
-  { key: "sales_orders",    label: "Sales Orders",              desc: "Pre-invoice sales order management",          preset: true  },
-  { key: "gatepasses",      label: "Gatepasses & Dispatch",     desc: "Delivery challans, dispatch tracking",        preset: true  },
-  { key: "accounting",      label: "Accounting & Ledger",       desc: "Double-entry, COA, P&L, balance sheet",       preset: true  },
-  { key: "expenses",        label: "Expenses & Cash Register",  desc: "Expense vouchers, daily cash register",       preset: true  },
-  { key: "mis",             label: "MIS Analytics",             desc: "Executive dashboards and KPI analytics",      preset: true  },
-  { key: "crm",             label: "CRM",                       desc: "Customer management, pipeline tracking",      preset: true  },
-  { key: "hr_payroll",      label: "HR & Payroll",              desc: "Employees, attendance, salary, ESS portal",   preset: true  },
-  { key: "quality_returns", label: "Quality & Returns",         desc: "Sales returns, quality inspection",           preset: false },
-  { key: "documents",       label: "Document Management",       desc: "Contracts, certificates, expiry alerts",      preset: false },
-  { key: "whatsapp",        label: "WhatsApp Integration",      desc: "Automated messages, billing notifications",   preset: false },
-  { key: "maintenance",     label: "Preventive Maintenance",    desc: "PM schedules, equipment maintenance",         preset: false },
-  { key: "production",      label: "Production & BOM",          desc: "BOM-driven production (not for groceries)",   preset: false },
+  { key: "invoicing",       label: "Invoicing & GST",          desc: "GST bills, payments, credit notes",                           preset: true  },
+  { key: "pos",             label: "POS / Retail Terminal",     desc: "Touchscreen POS, split payments, parked bills, Z-report",     preset: true  },
+  { key: "purchase_orders", label: "Purchase Orders",           desc: "POs, vendor management, GRN approval workflow",               preset: true  },
+  { key: "basic_inventory", label: "Inventory Management",      desc: "Products, stock, UOM, serial/lot, expiry, bulk import",       preset: true  },
+  { key: "sales_orders",    label: "Sales Orders",              desc: "Pre-invoice sales order management",                          preset: true  },
+  { key: "gatepasses",      label: "Gatepasses & Dispatch",     desc: "Delivery challans, dispatch tracking",                        preset: true  },
+  { key: "accounting",      label: "Accounting & Ledger",       desc: "Double-entry, COA, P&L, balance sheet",                      preset: true  },
+  { key: "expenses",        label: "Expenses & Cash Register",  desc: "Expense vouchers, daily cash register",                      preset: true  },
+  { key: "mis",             label: "MIS Analytics",             desc: "Executive dashboards and KPI analytics",                     preset: true  },
+  { key: "crm",             label: "CRM",                       desc: "Customer management, loyalty cards, pipeline",               preset: true  },
+  { key: "hr_payroll",      label: "HR & Payroll",              desc: "Employees, attendance, salary, ESS portal",                  preset: true  },
+  { key: "quality_returns", label: "Quality & Returns",         desc: "Sales returns, quality inspection",                          preset: true  },
+  { key: "documents",       label: "Document Management",       desc: "Contracts, certificates, expiry alerts",                     preset: false },
+  { key: "whatsapp",        label: "WhatsApp Integration",      desc: "Digital receipts & billing notifications via WhatsApp",      preset: false },
+  { key: "maintenance",     label: "Preventive Maintenance",    desc: "Cold storage / refrigerator PM schedules",                   preset: false },
+  { key: "production",      label: "Production & BOM",          desc: "BOM-driven production (not relevant for grocery retail)",    preset: false },
 ];
 
 // ── Predefined grocery roles (shown in Step 2) ────────────────────────────────

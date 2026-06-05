@@ -1527,14 +1527,29 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
 
   const { data: parkedBills = [] } = useQuery<any[]>({ queryKey: ["/api/pos/parked-bills"] });
 
+  const [closedSessionId, setClosedSessionId] = useState<string | null>(null);
+  const [showZReport, setShowZReport] = useState(false);
+
+  const { data: zReportData } = useQuery<any>({
+    queryKey: ["/api/pos/sessions", closedSessionId, "z-report"],
+    queryFn: async () => {
+      const r = await fetch(`/api/pos/sessions/${closedSessionId}/z-report`, { credentials: "include" });
+      if (!r.ok) throw new Error("Failed to load Z-report");
+      return r.json();
+    },
+    enabled: !!closedSessionId && showZReport,
+  });
+
   const closeSessionMut = useMutation({
     mutationFn: (d: any) => apiRequest("POST", `/api/pos/sessions/${activeSession?.id}/close`, d),
-    onSuccess: () => {
+    onSuccess: (_data, _vars) => {
+      const sid = activeSession?.id;
       queryClient.invalidateQueries({ queryKey: ["/api/pos/sessions/active"] });
       queryClient.invalidateQueries({ queryKey: ["/api/pos/sessions/last"] });
       queryClient.invalidateQueries({ queryKey: ["/api/pos/sessions"] });
       setShowCloseDialog(false);
       setClosingDenom({});
+      if (sid) { setClosedSessionId(String(sid)); setShowZReport(true); }
       toast({ title: "Session closed", description: `${activeSession?.counter_name} session ended` });
     },
   });
@@ -1806,6 +1821,103 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Z-Report dialog */}
+        {showZReport && (
+          <Dialog open={showZReport} onOpenChange={v => { setShowZReport(v); if (!v) setClosedSessionId(null); }}>
+            <DialogContent className="max-w-md max-h-[90dvh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  Z-Report — End of Session
+                </DialogTitle>
+              </DialogHeader>
+              {!zReportData ? (
+                <div className="py-8 text-center text-sm text-muted-foreground">Loading report…</div>
+              ) : (() => {
+                const s = zReportData.session;
+                const cr = zReportData.cashReconciliation;
+                const bd: any[] = zReportData.paymentBreakdown || [];
+                const totalSales = bd.reduce((sum: number, r: any) => sum + Number(r.total || 0), 0);
+                const totalTxns  = bd.reduce((sum: number, r: any) => sum + Number(r.txn_count || 0), 0);
+                const MODE_LABEL: Record<string, string> = { cash: "Cash", upi: "UPI / QR", card: "Card / EDC", other: "Other" };
+                return (
+                  <div className="space-y-4 text-sm">
+                    {/* Session info */}
+                    <div className="p-3 rounded-md bg-muted/40 space-y-1">
+                      <p className="font-semibold">{s?.counter_name || "Counter"}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {s?.opened_at ? fmtTime(s.opened_at) : "—"} → {s?.closed_at ? fmtTime(s.closed_at) : "—"}
+                      </p>
+                    </div>
+
+                    {/* Sales summary */}
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Sales Summary</p>
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                        <span className="text-muted-foreground">Total Transactions</span>
+                        <span className="font-semibold text-right">{totalTxns}</span>
+                        <span className="text-muted-foreground">Gross Sales</span>
+                        <span className="font-semibold text-right">₹{fmt(totalSales)}</span>
+                      </div>
+                    </div>
+
+                    {/* Payment breakdown */}
+                    {bd.length > 0 && (
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Payment Breakdown</p>
+                        <div className="rounded-md border overflow-hidden">
+                          <table className="w-full text-xs">
+                            <thead className="bg-muted/50">
+                              <tr>
+                                <th className="text-left py-1.5 px-3 font-medium">Mode</th>
+                                <th className="text-right py-1.5 px-3 font-medium">Txns</th>
+                                <th className="text-right py-1.5 px-3 font-medium">Amount</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {bd.map((row: any) => (
+                                <tr key={row.payment_mode} className="border-t">
+                                  <td className="py-1.5 px-3 capitalize">{MODE_LABEL[row.payment_mode] ?? row.payment_mode}</td>
+                                  <td className="py-1.5 px-3 text-right text-muted-foreground">{row.txn_count}</td>
+                                  <td className="py-1.5 px-3 text-right font-medium">₹{fmt(Number(row.total))}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Cash reconciliation */}
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Cash Reconciliation</p>
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                        <span className="text-muted-foreground">Opening Float</span>
+                        <span className="text-right">₹{fmt(cr.openingFloat)}</span>
+                        <span className="text-muted-foreground">+ Cash Sales</span>
+                        <span className="text-right">₹{fmt(cr.cashSales)}</span>
+                        <span className="font-medium border-t pt-1">Expected in Drawer</span>
+                        <span className="font-semibold text-right border-t pt-1">₹{fmt(cr.expectedCash)}</span>
+                        <span className="text-muted-foreground">Physical Count</span>
+                        <span className="text-right">₹{fmt(cr.physicalCash)}</span>
+                        <span className={`font-semibold border-t pt-1 ${cr.variance < 0 ? "text-red-600 dark:text-red-400" : cr.variance > 0 ? "text-amber-600 dark:text-amber-400" : "text-green-600 dark:text-green-400"}`}>
+                          {cr.variance < 0 ? "Shortage" : cr.variance > 0 ? "Surplus" : "Balanced"}
+                        </span>
+                        <span className={`font-semibold text-right border-t pt-1 ${cr.variance < 0 ? "text-red-600 dark:text-red-400" : cr.variance > 0 ? "text-amber-600 dark:text-amber-400" : "text-green-600 dark:text-green-400"}`}>
+                          {cr.variance >= 0 ? "+" : ""}₹{fmt(cr.variance)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+              <DialogFooter className="gap-2 pt-2">
+                <Button variant="outline" onClick={() => window.print()} size="sm" data-testid="button-print-zreport">Print</Button>
+                <Button onClick={() => { setShowZReport(false); setClosedSessionId(null); }} data-testid="button-close-zreport">Done</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
 
         {/* Product search */}
         <div className="relative">

@@ -641,47 +641,100 @@ router.get("/stock-adjustments", requireAuth, async (req: any, res) => {
   }
 });
 
+const ADJUSTMENT_APPROVAL_THRESHOLD = 500; // ₹500 — adjustments above this need supervisor approval
+
 router.post("/stock-adjustments", requireAuth, async (req: any, res) => {
   try {
     const tid = req.session?.tenantId;
     const user = req.user;
-    const { product_id, adjustment_type, qty_change, unit_label, reason_notes, reference_no } = req.body;
+    const { product_id, adjustment_type, qty_change, unit_label, reason_notes, reference_no, unit_price } = req.body;
 
     if (!product_id) return res.status(400).json({ message: "product_id required" });
     if (!adjustment_type) return res.status(400).json({ message: "adjustment_type required" });
     if (!qty_change || Number(qty_change) <= 0) return res.status(400).json({ message: "qty_change must be > 0" });
 
-    // Resolve product details
     const prodRows = await db.execute(sql`
       SELECT id, product_name, sku_code, barcode FROM products
       WHERE id=${product_id} AND tenant_id=${tid} LIMIT 1`);
     const prod: any = prodRows.rows[0];
     if (!prod) return res.status(404).json({ message: "Product not found" });
 
-    // Determine sign: damaged/expired/theft/wastage = negative; found = positive; correction = positive (caller decides meaning)
     const NEGATIVE_TYPES = ['damaged', 'expired', 'theft', 'wastage'];
     const isNegative = NEGATIVE_TYPES.includes(adjustment_type);
     const signedQty = isNegative ? -Number(qty_change) : Number(qty_change);
 
-    // Insert adjustment record
+    const unitPriceRs = Number(unit_price || 0);
+    const totalValue  = unitPriceRs * Number(qty_change);
+    const requiresApproval = totalValue > ADJUSTMENT_APPROVAL_THRESHOLD;
+    const status = requiresApproval ? 'pending_approval' : 'approved';
+
     const inserted = await db.execute(sql`
       INSERT INTO stock_adjustments
         (tenant_id, product_id, product_name, sku_code, barcode, adjustment_type,
-         qty_change, unit_label, reason_notes, adjusted_by, reference_no)
+         qty_change, unit_label, reason_notes, adjusted_by, reference_no,
+         unit_price, total_value, status)
       VALUES
         (${tid}, ${product_id}, ${prod.product_name}, ${prod.sku_code ?? null},
          ${prod.barcode ?? null}, ${adjustment_type}, ${signedQty},
          ${unit_label ?? null}, ${reason_notes ?? null},
-         ${user?.username ?? user?.email ?? 'system'}, ${reference_no ?? null})
+         ${user?.username ?? user?.email ?? 'system'}, ${reference_no ?? null},
+         ${unitPriceRs}, ${totalValue}, ${status})
       RETURNING *`);
 
-    // Update warehouse_stock — find default warehouse and adjust
+    if (!requiresApproval) {
+      try {
+        const whRows = await db.execute(sql`
+          SELECT id FROM warehouses WHERE tenant_id=${tid} AND is_default=true LIMIT 1`);
+        const warehouseId = (whRows.rows[0] as any)?.id ?? null;
+        if (warehouseId) {
+          const itemIdStr = String(product_id);
+          const existing = await db.execute(sql`
+            SELECT id FROM warehouse_stock
+            WHERE tenant_id=${tid} AND warehouse_id=${warehouseId} AND item_id=${itemIdStr} LIMIT 1`);
+          if ((existing.rows[0] as any)?.id) {
+            await db.execute(sql`
+              UPDATE warehouse_stock SET quantity = GREATEST(0, quantity + ${signedQty})
+              WHERE tenant_id=${tid} AND warehouse_id=${warehouseId} AND item_id=${itemIdStr}`);
+          } else if (signedQty > 0) {
+            await db.execute(sql`
+              INSERT INTO warehouse_stock (tenant_id, warehouse_id, item_id, quantity, reserved)
+              VALUES (${tid}, ${warehouseId}, ${itemIdStr}, ${signedQty}, 0)`);
+          }
+        }
+      } catch (_) { /* stock update is best-effort */ }
+    }
+
+    res.json({ ...inserted.rows[0], requires_approval: requiresApproval });
+  } catch (e: any) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// ── Stock Adjustment — Approve / Reject ───────────────────────────────────────
+router.patch("/stock-adjustments/:id/approve", requireAuth, async (req: any, res) => {
+  try {
+    const tid = req.session?.tenantId;
+    const user = req.user;
+    const approver = user?.username ?? user?.email ?? 'admin';
+
+    const adjRows = await db.execute(sql`
+      SELECT * FROM stock_adjustments WHERE id=${req.params.id} AND tenant_id=${tid} LIMIT 1`);
+    const adj: any = adjRows.rows[0];
+    if (!adj) return res.status(404).json({ message: "Adjustment not found" });
+    if (adj.status !== 'pending_approval') return res.status(400).json({ message: "Adjustment is not pending approval" });
+
+    await db.execute(sql`
+      UPDATE stock_adjustments SET status='approved', approved_by=${approver}, approved_at=NOW()
+      WHERE id=${req.params.id} AND tenant_id=${tid}`);
+
+    // Apply the stock update now
     try {
       const whRows = await db.execute(sql`
         SELECT id FROM warehouses WHERE tenant_id=${tid} AND is_default=true LIMIT 1`);
       const warehouseId = (whRows.rows[0] as any)?.id ?? null;
-      if (warehouseId) {
-        const itemIdStr = String(product_id);
+      if (warehouseId && adj.product_id) {
+        const itemIdStr = String(adj.product_id);
+        const signedQty = Number(adj.qty_change);
         const existing = await db.execute(sql`
           SELECT id FROM warehouse_stock
           WHERE tenant_id=${tid} AND warehouse_id=${warehouseId} AND item_id=${itemIdStr} LIMIT 1`);
@@ -695,12 +748,30 @@ router.post("/stock-adjustments", requireAuth, async (req: any, res) => {
             VALUES (${tid}, ${warehouseId}, ${itemIdStr}, ${signedQty}, 0)`);
         }
       }
-    } catch (_) { /* stock update is best-effort */ }
+    } catch (_) {}
 
-    res.json(inserted.rows[0]);
-  } catch (e: any) {
-    res.status(500).json({ message: e.message });
-  }
+    res.json({ ok: true });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.patch("/stock-adjustments/:id/reject", requireAuth, async (req: any, res) => {
+  try {
+    const tid = req.session?.tenantId;
+    const user = req.user;
+    const { reason } = req.body;
+    const approver = user?.username ?? user?.email ?? 'admin';
+
+    const adjRows = await db.execute(sql`
+      SELECT id, status FROM stock_adjustments WHERE id=${req.params.id} AND tenant_id=${tid} LIMIT 1`);
+    if (!adjRows.rows[0]) return res.status(404).json({ message: "Adjustment not found" });
+
+    await db.execute(sql`
+      UPDATE stock_adjustments SET status='rejected', approved_by=${approver}, approved_at=NOW(),
+        rejected_reason=${reason ?? null}
+      WHERE id=${req.params.id} AND tenant_id=${tid}`);
+
+    res.json({ ok: true });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 
 export default router;

@@ -289,6 +289,74 @@ router.put("/grn/:id/post", requireAuth, async (req: any, res) => {
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 
+// ── GRN Submit (Godown → submitted) ──────────────────────────────────────────
+router.patch("/grn/:id/submit", requireAuth, async (req: any, res) => {
+  try {
+    const grnRows = await db.execute(sql`SELECT * FROM goods_receipt_notes WHERE id=${req.params.id} AND tenant_id=${tid(req)} LIMIT 1`);
+    if (!grnRows.rows[0]) return res.status(404).json({ message: "GRN not found" });
+    const current = (grnRows.rows[0] as any).status;
+    if (!['draft', 'received'].includes(current)) return res.status(400).json({ message: `Cannot submit a GRN with status: ${current}` });
+
+    await db.execute(sql`
+      UPDATE goods_receipt_notes
+      SET status='submitted', submitted_by_id=${(req.user as any)?.id ?? null}, submitted_at=NOW()
+      WHERE id=${req.params.id} AND tenant_id=${tid(req)}`);
+    res.json({ ok: true });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// ── GRN Approve (Purchase Manager/Admin → posted + stock update) ──────────────
+router.patch("/grn/:id/approve", requireAuth, async (req: any, res) => {
+  try {
+    const grnRows = await db.execute(sql`SELECT * FROM goods_receipt_notes WHERE id=${req.params.id} AND tenant_id=${tid(req)} LIMIT 1`);
+    if (!grnRows.rows[0]) return res.status(404).json({ message: "GRN not found" });
+    const grn: any = grnRows.rows[0];
+    if (grn.status !== 'submitted') return res.status(400).json({ message: "Only submitted GRNs can be approved" });
+
+    // Get GRN items to update stock
+    const itemsRows = await db.execute(sql`
+      SELECT gi.product_id, gi.received_qty FROM grn_items gi
+      WHERE gi.grn_id=${req.params.id} AND gi.tenant_id=${tid(req)} AND gi.record_status=1 AND gi.received_qty > 0`);
+
+    // Find default warehouse
+    const whRows = await db.execute(sql`SELECT id FROM warehouses WHERE tenant_id=${tid(req)} AND is_default=true LIMIT 1`);
+    const warehouseId = (whRows.rows[0] as any)?.id ?? null;
+
+    // Update warehouse stock for each item
+    if (warehouseId) {
+      for (const item of itemsRows.rows as any[]) {
+        if (!item.product_id || !item.received_qty) continue;
+        const itemIdStr = String(item.product_id);
+        const qty = Number(item.received_qty);
+        const existing = await db.execute(sql`
+          SELECT id FROM warehouse_stock WHERE tenant_id=${tid(req)} AND warehouse_id=${warehouseId} AND item_id=${itemIdStr} LIMIT 1`);
+        if ((existing.rows[0] as any)?.id) {
+          await db.execute(sql`
+            UPDATE warehouse_stock SET quantity = quantity + ${qty}
+            WHERE tenant_id=${tid(req)} AND warehouse_id=${warehouseId} AND item_id=${itemIdStr}`);
+        } else {
+          await db.execute(sql`
+            INSERT INTO warehouse_stock (tenant_id, warehouse_id, item_id, quantity, reserved)
+            VALUES (${tid(req)}, ${warehouseId}, ${itemIdStr}, ${qty}, 0)`);
+        }
+      }
+    }
+
+    // Mark GRN as posted
+    await db.execute(sql`
+      UPDATE goods_receipt_notes
+      SET status='posted', approved_by_id=${(req.user as any)?.id ?? null}, approved_at=NOW()
+      WHERE id=${req.params.id} AND tenant_id=${tid(req)}`);
+
+    // Also update linked PO grn_status
+    if (grn.po_id) {
+      await db.execute(sql`UPDATE purchase_orders SET grn_status='received' WHERE id=${grn.po_id} AND tenant_id=${tid(req)}`).catch(() => {});
+    }
+
+    res.json({ ok: true, items_stocked: itemsRows.rows.length });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
 // ─── Approval Rules ───────────────────────────────────────────────────────────
 router.get("/approval-rules", requireAuth, async (req: any, res) => {
   try {

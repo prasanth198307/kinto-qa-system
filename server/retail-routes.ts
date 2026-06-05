@@ -92,6 +92,56 @@ router.post("/sessions/:id/close", requireAuth, async (req: any, res) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
+// ── Z-Report (EOD session summary) ───────────────────────────────────────────
+router.get("/sessions/:id/z-report", requireAuth, async (req: any, res) => {
+  try {
+    const sessionRows = await db.execute(sql`
+      SELECT * FROM pos_sessions WHERE id=${req.params.id} AND tenant_id=${tid(req)} LIMIT 1`);
+    const session: any = sessionRows.rows[0];
+    if (!session) return res.status(404).json({ error: "Session not found" });
+
+    // Payment breakdown by mode
+    const breakdown = await db.execute(sql`
+      SELECT payment_mode, SUM(total_amount) AS total, COUNT(*) AS txn_count
+      FROM pos_transactions
+      WHERE session_id=${req.params.id}
+      GROUP BY payment_mode ORDER BY payment_mode`);
+
+    // Cash sales specifically (for reconciliation)
+    const cashRow = breakdown.rows.find((r: any) => r.payment_mode === 'cash');
+    const cashSales = Number(cashRow?.total || 0);
+
+    // For split payments — sum cash component from payment_splits JSONB
+    const splitCashRow = await db.execute(sql`
+      SELECT COALESCE(SUM((split_item->>'amount')::numeric),0) AS split_cash
+      FROM pos_transactions,
+        jsonb_array_elements(CASE WHEN payment_splits IS NOT NULL AND payment_splits::text <> '[]'
+          THEN payment_splits ELSE '[]'::jsonb END) AS split_item
+      WHERE session_id=${req.params.id}
+        AND (split_item->>'mode') = 'cash'
+        AND payment_mode <> 'cash'`);
+    const splitCash = Number((splitCashRow.rows[0] as any)?.split_cash || 0);
+
+    const totalCashSales = cashSales + splitCash;
+    const openingFloat   = Number(session.opening_balance || 0);
+    const expectedCash   = openingFloat + totalCashSales;
+    const physicalCash   = Number(session.closing_balance || 0);
+    const variance       = physicalCash - expectedCash;
+
+    res.json({
+      session,
+      paymentBreakdown: breakdown.rows,
+      cashReconciliation: {
+        openingFloat,
+        cashSales: totalCashSales,
+        expectedCash,
+        physicalCash,
+        variance,
+      },
+    });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
 // ── POS Transactions ──────────────────────────────────────────────────────────
 router.get("/transactions", requireAuth, async (req: any, res) => {
   try {

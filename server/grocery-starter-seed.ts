@@ -90,15 +90,16 @@ const ROLE_PERMISSIONS: Record<string, ScreenPerm[]> = {
     ["vendor_types",    VCE ], ["vendor_debit_notes", VCE],
     ["vendor_analytics", VIEW], ["vendor_history",  VIEW],
     ["purchase_requisitions", FULL],
-    // GRN — full (including barcode scan)
+    // GRN — full (including barcode scan view + GRN approval)
     ["goods_receipt_notes",   FULL],
     ["inventory_grn_scan",    VIEW],
-    // Approval workflows
-    ["approval_workflows", VCE],
+    // Approval workflows — Purchase Manager approves GRNs & stock adjustments above threshold
+    ["approval_workflows",    VCE ],
     // Inventory — view + bulk import for onboarding new items
     ["products",        VIEW], ["inventory",        VIEW],
     ["product_categories", VIEW], ["uom",            VIEW],
-    ["inventory_bulk_import", VC],
+    ["inventory_bulk_import",           VC  ],
+    ["inventory_stock_adjustments",     VIEW],
     // Reports
     ["report_purchase_orders", VIEW], ["report_vendor_report", VIEW],
     // Warehouses — view

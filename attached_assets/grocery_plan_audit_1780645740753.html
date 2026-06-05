@@ -1,0 +1,164 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.wrap{padding:1rem 0;font-size:13px;color:var(--color-text-primary)}
+.sec{margin-bottom:1.8rem}
+.sec-title{font-size:14px;font-weight:500;margin-bottom:10px;padding-bottom:7px;border-bottom:.5px solid var(--color-border-tertiary)}
+.b{display:inline-block;font-size:11px;font-weight:500;padding:2px 8px;border-radius:99px}
+.b-ok{background:var(--color-background-success);color:var(--color-text-success)}
+.b-warn{background:var(--color-background-warning);color:var(--color-text-warning)}
+.b-err{background:var(--color-background-danger);color:var(--color-text-danger)}
+.b-blue{background:var(--color-background-info);color:var(--color-text-info)}
+.b-gray{background:var(--color-background-secondary);color:var(--color-text-secondary)}
+.matrix{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:8px}
+.matrix th{background:var(--color-background-secondary);padding:7px 10px;text-align:left;font-weight:500;color:var(--color-text-secondary);border:.5px solid var(--color-border-tertiary);white-space:nowrap}
+.matrix td{padding:7px 10px;border:.5px solid var(--color-border-tertiary);color:var(--color-text-primary);vertical-align:top;font-size:11px;line-height:1.5}
+.matrix tr:nth-child(even) td{background:var(--color-background-secondary)}
+.tick{color:var(--color-text-success);font-weight:500}
+.cross{color:var(--color-text-danger)}
+.dash{color:var(--color-text-tertiary)}
+.warn-text{color:var(--color-text-warning);font-weight:500}
+.note{font-size:11px;color:var(--color-text-secondary);line-height:1.6;padding:10px 12px;background:var(--color-background-secondary);border-radius:var(--border-radius-md);margin-top:8px}
+.issue-box{border:.5px solid var(--color-border-danger);border-radius:var(--border-radius-lg);padding:12px 14px;margin-bottom:8px}
+.issue-title{font-size:12px;font-weight:500;color:var(--color-text-danger);margin-bottom:5px;display:flex;align-items:center;gap:6px}
+.issue-body{font-size:11px;color:var(--color-text-secondary);line-height:1.6}
+.warn-box{border:.5px solid var(--color-border-warning);border-radius:var(--border-radius-lg);padding:12px 14px;margin-bottom:8px}
+.warn-title{font-size:12px;font-weight:500;color:var(--color-text-warning);margin-bottom:5px;display:flex;align-items:center;gap:6px}
+.warn-body{font-size:11px;color:var(--color-text-secondary);line-height:1.6}
+.ok-box{border:.5px solid var(--color-border-success);border-radius:var(--border-radius-lg);padding:12px 14px;margin-bottom:8px}
+.ok-title{font-size:12px;font-weight:500;color:var(--color-text-success);margin-bottom:5px;display:flex;align-items:center;gap:6px}
+.ok-body{font-size:11px;color:var(--color-text-secondary);line-height:1.6}
+.summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:1.4rem}
+.scard{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 12px;text-align:center}
+.scard-num{font-size:22px;font-weight:500;margin-bottom:2px}
+.scard-lbl{font-size:10px;color:var(--color-text-secondary)}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.card{background:var(--color-background-primary);border:.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:12px 14px}
+.card-title{font-size:12px;font-weight:500;margin-bottom:6px}
+.card-body{font-size:11px;color:var(--color-text-secondary);line-height:1.6}
+code{font-family:var(--font-mono);font-size:10px;background:var(--color-background-secondary);padding:1px 4px;border-radius:3px;color:var(--color-text-primary)}
+.action-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:1rem}
+button{cursor:pointer}
+.btn-sm{font-size:11px;padding:4px 12px;border:.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);color:var(--color-text-primary)}
+</style>
+<div class="wrap">
+
+<div class="summary-grid">
+  <div class="scard"><div class="scard-num" style="color:var(--color-text-success)">✓ 22</div><div class="scard-lbl">Confirmed correct</div></div>
+  <div class="scard"><div class="scard-num" style="color:var(--color-text-danger)">✗ 4</div><div class="scard-lbl">Missing still</div></div>
+  <div class="scard"><div class="scard-num" style="color:var(--color-text-warning)">⚠ 3</div><div class="scard-lbl">Needs review</div></div>
+  <div class="scard"><div class="scard-num" style="color:var(--color-text-info)">→ 2</div><div class="scard-lbl">Role conflicts</div></div>
+</div>
+
+<div class="sec">
+  <div class="sec-title">Module plan — audit</div>
+  <table class="matrix">
+    <thead><tr><th>Module</th><th>Status</th><th>Audit finding</th></tr></thead>
+    <tbody>
+      <tr><td>Invoicing &amp; GST</td><td><span class="b b-ok">✓ correct</span></td><td>GST slab per item must be in product master — not just at invoice level. Confirm item-level HSN + GST% field exists.</td></tr>
+      <tr><td>Purchase Orders</td><td><span class="b b-ok">✓ correct</span></td><td>PO → GRN chain is complete. GRN barcode scan added this session — good.</td></tr>
+      <tr><td>Inventory Management</td><td><span class="b b-ok">✓ correct</span></td><td>Serial/lot + expiry listed. Bulk import + GRN scan added. Stock adjustments added. Complete for grocery.</td></tr>
+      <tr><td>Sales Orders</td><td><span class="b b-ok">✓ correct</span></td><td>No issues. Pre-invoice flow is standard.</td></tr>
+      <tr><td>Gatepasses &amp; Dispatch</td><td><span class="b b-ok">✓ correct</span></td><td>No issues for grocery context.</td></tr>
+      <tr><td>Accounting &amp; Ledger</td><td><span class="b b-ok">✓ correct</span></td><td>GSTR-1/3B export must be confirmed in this module — not just listed in Accountant role.</td></tr>
+      <tr><td>Expenses &amp; Cash Register</td><td><span class="b b-ok">✓ correct</span></td><td>EOD cash register report links to POS denomination breakup added this session — confirm these are wired together.</td></tr>
+      <tr><td>MIS Analytics</td><td><span class="b b-ok">✓ correct</span></td><td>No issues. KPI dashboard scope TBD.</td></tr>
+      <tr><td>CRM</td><td><span class="b b-warn">⚠ review</span></td><td>For a grocery store, CRM = loyalty card + customer phone number. Full pipeline CRM is overkill. Confirm this is simplified for grocery profile.</td></tr>
+      <tr><td>HR &amp; Payroll</td><td><span class="b b-ok">✓ correct</span></td><td>No issues. Complete module already.</td></tr>
+      <tr><td>Quality &amp; Returns</td><td><span class="b b-warn">⚠ review</span></td><td>Returns is optional here — but grocery stores do daily returns. Should this be default-on for grocery plan?</td></tr>
+      <tr><td>Production &amp; BOM</td><td><span class="b b-ok">✓ correct</span></td><td>Correctly excluded for grocery. KINTO uses this — separate plan.</td></tr>
+      <tr><td>WhatsApp Integration</td><td><span class="b b-ok">✓ optional</span></td><td>Good placement as optional. Digital receipt via WhatsApp is a strong grocery upsell.</td></tr>
+      <tr><td>Preventive Maintenance</td><td><span class="b b-ok">✓ optional</span></td><td>Cold storage / refrigerator PM scheduling — niche but valid optional.</td></tr>
+      <tr><td><strong>POS / Retail Terminal</strong></td><td><span class="b b-err">✗ missing</span></td><td>POS is not listed as a module at all! It's a role permission but not a plan-level module toggle. A grocery store on Basic plan should not get POS. Needs its own module entry.</td></tr>
+      <tr><td><strong>Weighing Scale Integration</strong></td><td><span class="b b-err">✗ missing</span></td><td>Critical for grocery. Not listed as a module or optional. Loose items (vegetables, pulses) cannot be billed without this. Should be optional add-on or part of POS module.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="sec">
+  <div class="sec-title">Role permissions — audit of this session's changes</div>
+  <table class="matrix">
+    <thead><tr><th>Role</th><th>Change made</th><th>Verdict</th><th>Finding</th></tr></thead>
+    <tbody>
+      <tr><td>Cashier</td><td>POS Terminal route added ✅ VC</td><td><span class="b b-ok">✓ correct</span></td><td>Create bills only — right. But confirm Cashier cannot void a bill without supervisor PIN — not specified anywhere yet.</td></tr>
+      <tr><td>Cashier</td><td>Denomination breakup, split payments, parked bills</td><td><span class="b b-ok">✓ correct</span></td><td>All three are essential POS features. Correctly scoped to Cashier + Admin.</td></tr>
+      <tr><td>Store Manager</td><td>POS → VIEW, stock_adjustments → VCE</td><td><span class="b b-ok">✓ correct</span></td><td>Manager can write off stock (damage/expiry). Good. But VCE on adjustments — can they <em>approve</em> their own adjustments? Needs a second-eye rule above ₹X value.</td></tr>
+      <tr><td>Godown Incharge</td><td>grn_scan FULL, stock_adjustments FULL, bulk_import VC</td><td><span class="b b-warn">⚠ review</span></td><td>Godown has FULL on both GRN scan and stock adjustments. They can receive stock AND write it off. No check on this — a bad actor could receive 100 units and write off 20 with no trace. Needs approval gate on adjustments above threshold.</td></tr>
+      <tr><td>Purchase Manager</td><td>grn_scan VIEW, bulk_import VC</td><td><span class="b b-ok">✓ correct</span></td><td>VIEW on GRN scan is correct — they can see what's being received. VC on bulk import for onboarding new items is correct.</td></tr>
+      <tr><td>Purchase Manager</td><td>GRN approval — not mentioned</td><td><span class="b b-err">✗ missing</span></td><td>We flagged this earlier — Godown creates GRN, Purchase Manager <em>approves</em>. This approval step is not in the role matrix. Who approves GRNs currently?</td></tr>
+      <tr><td>Accountant</td><td>No changes</td><td><span class="b b-ok">✓ correct</span></td><td>No issues. Accountant correctly stays out of POS and inventory operations.</td></tr>
+      <tr><td>HR Manager</td><td>No changes</td><td><span class="b b-ok">✓ correct</span></td><td>No issues.</td></tr>
+      <tr><td>All roles</td><td>Price override PIN — not mentioned</td><td><span class="b b-err">✗ missing</span></td><td>Ad-hoc price override at POS (e.g. near-expiry discount) needs supervisor PIN gate. No role has this defined yet.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="sec">
+  <div class="sec-title">New features — completeness check</div>
+  <table class="matrix">
+    <thead><tr><th>Feature</th><th>Route</th><th>Status</th><th>What's still missing</th></tr></thead>
+    <tbody>
+      <tr><td>Stock Adjustments</td><td><code>/inventory/stock-adjustments</code></td><td><span class="b b-ok">✓</span></td><td>Needs: reason codes (damaged / expired / theft / shrinkage), approval gate above ₹X, audit log with timestamp + user.</td></tr>
+      <tr><td>GRN Barcode Scan</td><td><code>/inventory/grn-scan</code></td><td><span class="b b-ok">✓</span></td><td>Needs: unknown barcode handling (3 options we designed), supplier invoice number field, GRN approval by Purchase Manager.</td></tr>
+      <tr><td>Inventory Bulk Import</td><td><code>/inventory/bulk-import</code></td><td><span class="b b-ok">✓</span></td><td>Needs: 3-mode selector (raw materials / finished goods / retail), domain-specific column validation, duplicate EAN handling (update vs reject).</td></tr>
+      <tr><td>FSSAI License</td><td>Company Settings + receipt</td><td><span class="b b-ok">✓</span></td><td>Confirm it prints on <em>every</em> POS thermal receipt automatically — not just GST invoice.</td></tr>
+      <tr><td>POS Denomination Breakup</td><td>Session open/close</td><td><span class="b b-ok">✓</span></td><td>Needs: denomination breakup at <em>close</em> too (EOD Z-report), not just open. Both ends needed for reconciliation.</td></tr>
+      <tr><td>POS Split Payments</td><td>POS Terminal checkout</td><td><span class="b b-ok">✓</span></td><td>Needs: UPI payment confirmation polling (how does system know UPI went through?), card EDC transaction ID capture.</td></tr>
+      <tr><td>POS Parked Bills</td><td>POS Terminal</td><td><span class="b b-ok">✓</span></td><td>Needs: max parked bills limit per counter (avoid abuse), parked bill timeout (auto-void after X mins?), visible parked bill indicator on counter screen.</td></tr>
+      <tr><td><strong>MRP lock</strong></td><td>POS + Invoicing</td><td><span class="b b-err">✗ missing</span></td><td>Not added this session. Selling price cannot exceed MRP — legally required in India. Must be enforced at both POS billing and manual invoice creation.</td></tr>
+      <tr><td><strong>EOD Z-report</strong></td><td>Sessions / Cash Register</td><td><span class="b b-err">✗ missing</span></td><td>Session close currently has no Z-report spec. Expected cash vs physical count, denomination-wise, overage/shortage flag, supervisor sign-off.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="sec">
+  <div class="sec-title">2 role conflicts to fix before going live</div>
+  <div class="issue-box">
+    <div class="issue-title"><i class="ti ti-alert-triangle" aria-hidden="true" style="font-size:14px"></i> Conflict 1 — Godown Incharge: receive AND write off with no approval</div>
+    <div class="issue-body">Godown has FULL on <code>inventory_grn_scan</code> (can receive goods) and FULL on <code>inventory_stock_adjustments</code> (can write off stock). Combined, they can inflate a GRN and immediately write off the surplus — undetectable without an audit trail and approval gate. Fix: stock adjustments above ₹500 value require Store Manager or Admin approval. All adjustments log user + timestamp + reason code.</div>
+  </div>
+  <div class="issue-box">
+    <div class="issue-title"><i class="ti ti-alert-triangle" aria-hidden="true" style="font-size:14px"></i> Conflict 2 — GRN approval owner undefined</div>
+    <div class="issue-body">Godown Incharge creates GRN via barcode scan. Purchase Manager has VIEW on <code>inventory_grn_scan</code>. But who <em>approves</em> the GRN to update stock? Currently nobody — the GRN either auto-posts (risky) or sits in draft forever. Fix: Purchase Manager gets an explicit <code>grn_approval</code> permission. GRN status flow: Draft → Submitted (Godown) → Approved (Purchase Mgr) → Stock updated.</div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="sec-title">What still needs to be built — priority order</div>
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title" style="color:var(--color-text-danger)">Must do before go-live</div>
+      <div class="card-body">
+        1. POS module as plan-level toggle<br>
+        2. MRP lock enforcement at POS + invoice<br>
+        3. GRN approval flow (Godown → Purchase Mgr)<br>
+        4. EOD Z-report / session close denomination count<br>
+        5. Stock adjustment approval gate + reason codes<br>
+        6. Cashier bill void — supervisor PIN required<br>
+        7. Price override PIN gate at POS
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="color:var(--color-text-warning)">High priority, next sprint</div>
+      <div class="card-body">
+        1. Weighing scale integration (loose items)<br>
+        2. UPI payment confirmation polling<br>
+        3. Parked bill limits + timeout<br>
+        4. 3-mode bulk import wizard (raw / FG / retail)<br>
+        5. Unknown barcode handling in GRN scan<br>
+        6. Expiry alert dashboard (7/15/30 day)<br>
+        7. CRM simplified to loyalty card for grocery
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="action-row">
+  <button class="btn-sm" onclick="sendPrompt('Design the GRN approval workflow — Draft to Submitted to Approved — with role gates in SwachERP')">GRN approval flow ↗</button>
+  <button class="btn-sm" onclick="sendPrompt('Design the EOD Z-report and session close denomination count screen for SwachERP grocery POS')">EOD Z-report screen ↗</button>
+  <button class="btn-sm" onclick="sendPrompt('Design stock adjustment approval gate with reason codes and audit trail for SwachERP inventory')">Stock adjustment gate ↗</button>
+  <button class="btn-sm" onclick="sendPrompt('How should MRP lock be enforced at both POS terminal and manual invoice in SwachERP?')">MRP lock spec ↗</button>
+  <button class="btn-sm" onclick="sendPrompt('Design the POS module as a plan-level toggle in SwachERP wizard — which plans include it, which do not')">POS module toggle ↗</button>
+</div>
+
+</div>
