@@ -341,6 +341,7 @@ const DASHBOARD_VALID_TABS = [
   'sales-returns', 'pending-payments', 'payment-management', 'credit-notes',
   'cancelled-invoices', 'write-off-report', 'dispatch-tracking', 'vendor-types', 'customer-outstanding-report',
   'spare-parts', 'tds-management', 'purchase-returns', 'scrap-management',
+  'goods-receipt-notes', 'purchase-requisitions', 'vendor-history', 'vendor-debit-notes', 'customer-advances',
   'hr-employees', 'hr-attendance', 'hr-leaves', 'hr-payroll', 'hr-reports',
   'hr-departments', 'hr-settings', 'hr-recruitment', 'hr-exit', 'hr-tds',
   'crm-leads', 'accounting', 'chart-of-accounts', 'ledger-entries', 'expense-management',
@@ -860,6 +861,18 @@ function CustomRoleDashboard({ roleName }: { roleName: string }) {
         return <NotificationSettings />;
       case 'data-import':
         return <DataImport />;
+      case 'goods-receipt-notes':
+        return <GoodsReceiptNotesPage />;
+      case 'purchase-requisitions':
+        return <PurchaseRequisitionsPage />;
+      case 'vendor-history':
+        return <VendorHistory />;
+      case 'vendor-debit-notes':
+        return <VendorDebitNotes />;
+      case 'customer-outstanding-report':
+        return <CustomerOutstandingReport />;
+      case 'customer-advances':
+        return <CustomerAdvances />;
       case 'roles':
         return (
           <div className="p-4">
@@ -1056,12 +1069,12 @@ function AdminDashboard() {
       label: "Purchases",
       items: [
         { id: "purchase-orders", label: "Purchase Orders", icon: ShoppingCart },
-        { id: "purchase-requisitions", label: "Purchase Requisitions", icon: ClipboardList, onClick: () => setLocation('/purchase-requisitions') },
-        { id: "goods-receipt-notes", label: "Goods Receipt Notes", icon: Package, onClick: () => setLocation('/goods-receipt-notes') },
+        { id: "purchase-requisitions", label: "Purchase Requisitions", icon: ClipboardList },
+        { id: "goods-receipt-notes", label: "Goods Receipt Notes", icon: Package },
         { id: "purchase-returns", label: "Purchase Returns", icon: PackageX, onClick: () => setLocation('/purchase-returns') },
-        { id: "vendor-history", label: "Vendor History", icon: History, onClick: () => setLocation('/vendor-history') },
-        { id: "vendor-debit-notes", label: "Vendor Debit Notes", icon: FileX, onClick: () => setLocation('/vendor-debit-notes') },
-        { id: "pending-payments", label: "Pending Payments", icon: IndianRupee, onClick: () => setLocation('/pending-payments') },
+        { id: "vendor-history", label: "Vendor History", icon: History },
+        { id: "vendor-debit-notes", label: "Vendor Debit Notes", icon: FileX },
+        { id: "pending-payments", label: "Pending Payments", icon: IndianRupee },
       ],
       quickActions: [
         { id: "add-purchase-order", label: "Create PO", icon: ShoppingCart, onClick: () => setActiveView("purchase-orders") },
@@ -1356,6 +1369,16 @@ function AdminDashboard() {
         return <ApiKeysPage />;
       case 'customer-outstanding-report':
         return <CustomerOutstandingReport />;
+      case 'customer-advances':
+        return <CustomerAdvances />;
+      case 'goods-receipt-notes':
+        return <GoodsReceiptNotesPage />;
+      case 'purchase-requisitions':
+        return <PurchaseRequisitionsPage />;
+      case 'vendor-history':
+        return <VendorHistory />;
+      case 'vendor-debit-notes':
+        return <VendorDebitNotes />;
       case 'data-import':
         return <DataImport />;
       case 'sales-dashboard':
@@ -2256,12 +2279,12 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       label: "Purchases",
       items: [
         { id: "purchase-orders", label: "Purchase Orders", icon: ShoppingCart, onClick: () => setLocation('/?tab=purchase-orders') },
-        { id: "purchase-requisitions", label: "Purchase Requisitions", icon: ClipboardList, onClick: () => setLocation('/purchase-requisitions') },
-        { id: "goods-receipt-notes", label: "Goods Receipt Notes", icon: Package, onClick: () => setLocation('/goods-receipt-notes') },
+        { id: "purchase-requisitions", label: "Purchase Requisitions", icon: ClipboardList },
+        { id: "goods-receipt-notes", label: "Goods Receipt Notes", icon: Package },
         { id: "purchase-returns", label: "Purchase Returns", icon: PackageX, onClick: () => setLocation('/purchase-returns') },
-        { id: "vendor-history", label: "Vendor History", icon: History, onClick: () => setLocation('/vendor-history') },
-        { id: "vendor-debit-notes", label: "Vendor Debit Notes", icon: FileX, onClick: () => setLocation('/vendor-debit-notes') },
-        { id: "pending-payments", label: "Pending Payments", icon: IndianRupee, onClick: () => setLocation('/pending-payments') },
+        { id: "vendor-history", label: "Vendor History", icon: History },
+        { id: "vendor-debit-notes", label: "Vendor Debit Notes", icon: FileX },
+        { id: "pending-payments", label: "Pending Payments", icon: IndianRupee },
       ],
     },
     {
