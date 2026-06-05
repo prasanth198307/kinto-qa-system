@@ -1027,9 +1027,6 @@ function AdminDashboard() {
       items: [
         { id: "sales-orders", label: "Sales Orders", icon: ClipboardList },
         { id: "invoices", label: "Sales Invoices", icon: Receipt },
-        { id: "vendor-history", label: "Vendor History", icon: History, onClick: () => setLocation('/vendor-history') },
-        { id: "vendor-debit-notes", label: "Vendor Debit Notes", icon: FileX, onClick: () => setLocation('/vendor-debit-notes') },
-        { id: "pending-payments", label: "Pending Payments", icon: IndianRupee, onClick: () => setLocation('/pending-payments') },
         { id: "customer-outstanding-report", label: "Customer Outstanding", icon: BarChart3, onClick: () => setLocation('/customer-outstanding-report') },
         { id: "payment-management", label: "Payment Management", icon: CreditCard, onClick: () => setLocation('/payment-management') },
         { id: "customer-advances", label: "Customer Advances", icon: Wallet, onClick: () => setLocation('/customer-advances') },
@@ -1040,7 +1037,6 @@ function AdminDashboard() {
       ],
       quickActions: [
         { id: "create-invoice", label: "Create Invoice", icon: Receipt, onClick: () => setActiveView("invoices") },
-        { id: "view-pending-payments", label: "View Payments", icon: IndianRupee, onClick: () => setActiveView("pending-payments") },
       ],
     },
     {
@@ -1060,7 +1056,12 @@ function AdminDashboard() {
       label: "Purchases",
       items: [
         { id: "purchase-orders", label: "Purchase Orders", icon: ShoppingCart },
+        { id: "purchase-requisitions", label: "Purchase Requisitions", icon: ClipboardList, onClick: () => setLocation('/purchase-requisitions') },
+        { id: "goods-receipt-notes", label: "Goods Receipt Notes", icon: Package, onClick: () => setLocation('/goods-receipt-notes') },
         { id: "purchase-returns", label: "Purchase Returns", icon: PackageX, onClick: () => setLocation('/purchase-returns') },
+        { id: "vendor-history", label: "Vendor History", icon: History, onClick: () => setLocation('/vendor-history') },
+        { id: "vendor-debit-notes", label: "Vendor Debit Notes", icon: FileX, onClick: () => setLocation('/vendor-debit-notes') },
+        { id: "pending-payments", label: "Pending Payments", icon: IndianRupee, onClick: () => setLocation('/pending-payments') },
       ],
       quickActions: [
         { id: "add-purchase-order", label: "Create PO", icon: ShoppingCart, onClick: () => setActiveView("purchase-orders") },
@@ -2231,9 +2232,6 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       items: [
         { id: "sales-orders", label: "Sales Orders", icon: ClipboardList, onClick: () => setLocation('/sales-orders') },
         { id: "invoices", label: "Sales Invoices", icon: Receipt, onClick: () => setLocation('/?tab=invoices') },
-        { id: "vendor-history", label: "Vendor History", icon: History, onClick: () => setLocation('/vendor-history') },
-        { id: "vendor-debit-notes", label: "Vendor Debit Notes", icon: FileX, onClick: () => setLocation('/vendor-debit-notes') },
-        { id: "pending-payments", label: "Pending Payments", icon: IndianRupee, onClick: () => setLocation('/pending-payments') },
         { id: "customer-outstanding-report", label: "Customer Outstanding", icon: BarChart3, onClick: () => setLocation('/customer-outstanding-report') },
         { id: "payment-management", label: "Payment Management", icon: CreditCard, onClick: () => setLocation('/payment-management') },
         { id: "customer-advances", label: "Customer Advances", icon: Wallet, onClick: () => setLocation('/customer-advances') },
@@ -2258,9 +2256,12 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       label: "Purchases",
       items: [
         { id: "purchase-orders", label: "Purchase Orders", icon: ShoppingCart, onClick: () => setLocation('/?tab=purchase-orders') },
-        { id: "purchase-returns", label: "Purchase Returns", icon: PackageX, onClick: () => setLocation('/purchase-returns') },
         { id: "purchase-requisitions", label: "Purchase Requisitions", icon: ClipboardList, onClick: () => setLocation('/purchase-requisitions') },
         { id: "goods-receipt-notes", label: "Goods Receipt Notes", icon: Package, onClick: () => setLocation('/goods-receipt-notes') },
+        { id: "purchase-returns", label: "Purchase Returns", icon: PackageX, onClick: () => setLocation('/purchase-returns') },
+        { id: "vendor-history", label: "Vendor History", icon: History, onClick: () => setLocation('/vendor-history') },
+        { id: "vendor-debit-notes", label: "Vendor Debit Notes", icon: FileX, onClick: () => setLocation('/vendor-debit-notes') },
+        { id: "pending-payments", label: "Pending Payments", icon: IndianRupee, onClick: () => setLocation('/pending-payments') },
       ],
     },
     {
