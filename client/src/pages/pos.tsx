@@ -177,24 +177,14 @@ function MrpOverrideDialog({ open, itemName, mrpRupees, currentPrice, onConfirm,
   onConfirm: (price: number) => void; onClose: () => void;
 }) {
   const { toast } = useToast();
-  const [newPrice, setNewPrice] = useState(String(currentPrice || ""));
-  const [step, setStep] = useState<"price" | "approval">("price");
-  const [mgr, setMgr] = useState({ username: "", password: "" });
-  const [showPass, setShowPass] = useState(false);
-  const [mgrError, setMgrError] = useState("");
-
-  const verifyMut = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/pos/sessions/verify-manager", mgr),
-    onSuccess: async (res: any) => {
-      const data = await res.json();
-      if (data.ok) { onConfirm(Number(newPrice)); onClose(); }
-      else setMgrError(data.message || "Verification failed");
-    },
-    onError: () => setMgrError("Verification failed"),
-  });
+  // Pre-fill with MRP if current price is above MRP, otherwise keep current price
+  const safeDefault = mrpRupees > 0 && currentPrice > mrpRupees ? String(mrpRupees) : String(currentPrice || "");
+  const [newPrice, setNewPrice] = useState(safeDefault);
+  const [priceError, setPriceError] = useState("");
 
   const handleClose = () => {
-    setStep("price"); setNewPrice(String(currentPrice || "")); setMgr({ username: "", password: "" }); setMgrError("");
+    setNewPrice(safeDefault);
+    setPriceError("");
     onClose();
   };
 
@@ -203,57 +193,46 @@ function MrpOverrideDialog({ open, itemName, mrpRupees, currentPrice, onConfirm,
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-amber-500" />Price Override
+            <AlertTriangle className="h-4 w-4 text-red-500" />MRP Ceiling — Price Locked
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <div className="p-3 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-700 text-sm text-amber-800 dark:text-amber-200">
+          {/* Hard-lock notice */}
+          <div className="p-3 rounded-md bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-700 text-sm text-red-800 dark:text-red-300">
             <p className="font-medium truncate">{itemName}</p>
-            <p className="text-xs mt-0.5">MRP is <strong>₹{fmt(mrpRupees)}</strong>. Selling above MRP requires supervisor approval.</p>
+            <p className="text-xs mt-0.5">
+              MRP is <strong>₹{fmt(mrpRupees)}</strong>. You cannot bill above MRP (Consumer Protection Act).
+              Enter a price at or below MRP to continue.
+            </p>
           </div>
-          {step === "price" && (
-            <F label="Override Price (₹)">
-              <CurrencyInput value={newPrice} onChange={(e: any) => setNewPrice(e.target.value)} placeholder={fmt(mrpRupees)} />
-            </F>
-          )}
-          {step === "approval" && (
-            <>
-              <p className="text-sm text-muted-foreground">Override to <strong>₹{fmt(Number(newPrice))}</strong> — above MRP ₹{fmt(mrpRupees)}. Supervisor must approve.</p>
-              <F label="Supervisor Username">
-                <Input value={mgr.username} onChange={e => { setMgr(m => ({ ...m, username: e.target.value })); setMgrError(""); }} placeholder="Login username" />
-              </F>
-              <F label="Supervisor Password">
-                <div className="relative">
-                  <Input type={showPass ? "text" : "password"} value={mgr.password} onChange={e => { setMgr(m => ({ ...m, password: e.target.value })); setMgrError(""); }} placeholder="••••••••" className="pr-10" />
-                  <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" onClick={() => setShowPass(v => !v)}>
-                    {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </F>
-              {mgrError && <p className="text-sm text-destructive flex items-center gap-1.5"><AlertTriangle className="h-3.5 w-3.5" />{mgrError}</p>}
-            </>
+          <F label={`Selling Price (₹) — max ₹${fmt(mrpRupees)}`}>
+            <CurrencyInput
+              value={newPrice}
+              onChange={(e: any) => { setNewPrice(e.target.value); setPriceError(""); }}
+              placeholder={fmt(mrpRupees)}
+            />
+          </F>
+          {priceError && (
+            <p className="text-sm text-destructive flex items-center gap-1.5">
+              <AlertTriangle className="h-3.5 w-3.5" />{priceError}
+            </p>
           )}
         </div>
         <DialogFooter className="gap-2">
-          {step === "approval" && (
-            <Button variant="ghost" size="sm" onClick={() => setStep("price")}><ChevronLeft className="h-4 w-4 mr-1" />Back</Button>
-          )}
           <Button variant="outline" onClick={handleClose}>Cancel</Button>
           <Button
             onClick={() => {
               const p = Number(newPrice);
-              if (!p || p <= 0) { toast({ title: "Enter a valid price", variant: "destructive" }); return; }
-              if (step === "price") {
-                if (p > mrpRupees) setStep("approval");
-                else { onConfirm(p); onClose(); }
-              } else {
-                if (!mgr.username || !mgr.password) { setMgrError("Enter supervisor credentials"); return; }
-                verifyMut.mutate();
+              if (!p || p <= 0) { setPriceError("Enter a valid price"); return; }
+              if (mrpRupees > 0 && p > mrpRupees) {
+                setPriceError(`Price cannot exceed MRP of ₹${fmt(mrpRupees)}`);
+                return;
               }
+              onConfirm(p);
+              onClose();
             }}
-            disabled={verifyMut.isPending}
           >
-            {step === "price" ? "Apply Price" : verifyMut.isPending ? "Verifying…" : "Approve & Apply"}
+            Apply Price
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -1529,6 +1508,18 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
 
   const [closedSessionId, setClosedSessionId] = useState<string | null>(null);
   const [showZReport, setShowZReport] = useState(false);
+  const [varianceAcknowledged, setVarianceAcknowledged] = useState(false);
+
+  // Live cash-sales breakdown used to compute accurate variance in close dialog
+  const { data: closeSessTxns = [] } = useQuery<any[]>({
+    queryKey: ["/api/pos/transactions", activeSession?.id, "close-preview"],
+    queryFn: async () => {
+      const r = await fetch(`/api/pos/transactions?session_id=${activeSession!.id}`, { credentials: "include" });
+      if (!r.ok) return [];
+      return r.json();
+    },
+    enabled: !!activeSession?.id && showCloseDialog,
+  });
 
   const { data: zReportData } = useQuery<any>({
     queryKey: ["/api/pos/sessions", closedSessionId, "z-report"],
@@ -1797,23 +1788,88 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
               <F label="Closing Cash (count denomination-wise)">
                 <DenominationInput value={closingDenom} onChange={setClosingDenom} />
               </F>
-              {closingBalance > 0 && (
-                <div className={`text-sm p-2 rounded-md ${
-                  closingBalance < Number(activeSession?.opening_balance)
-                    ? "bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300"
-                    : "bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300"
-                }`}>
-                  Variance: ₹{fmt(closingBalance - Number(activeSession?.opening_balance || 0))}
-                  {closingBalance < Number(activeSession?.opening_balance) ? " (shortage)" : " (surplus)"}
-                </div>
-              )}
+              {closingBalance > 0 && (() => {
+                // Accurate variance: opening float + cash sales this session
+                const cashTxns = closeSessTxns.filter((t: any) => t.payment_mode === 'cash');
+                const cashSales = cashTxns.reduce((s: number, t: any) => s + Number(t.total_amount || 0), 0);
+                // Also add split-payment cash components
+                const splitCash = closeSessTxns
+                  .flatMap((t: any) => {
+                    const sp = t.payment_splits;
+                    return Array.isArray(sp) ? sp : (sp ? JSON.parse(sp) : []);
+                  })
+                  .filter((s: any) => s?.mode === 'cash')
+                  .reduce((s: number, p: any) => s + Number(p.amount || 0), 0);
+                const totalCashSales = cashSales + splitCash;
+                const openingFloat   = Number(activeSession?.opening_balance || 0);
+                const expectedCash   = openingFloat + totalCashSales;
+                const variance       = closingBalance - expectedCash;
+                const absVariance    = Math.abs(variance);
+                const VARIANCE_GATE  = 200; // ₹200 threshold requires acknowledgement
+                const isShortage     = variance < 0;
+                const isSurplus      = variance > 0;
+                const needsGate      = absVariance > VARIANCE_GATE;
+
+                return (
+                  <div className="space-y-2">
+                    {/* Reconciliation breakdown */}
+                    <div className="text-xs rounded-md border p-2.5 space-y-1 bg-muted/30">
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>Opening float</span><span>₹{fmt(openingFloat)}</span>
+                      </div>
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>+ Cash sales ({cashTxns.length} txns)</span><span>₹{fmt(totalCashSales)}</span>
+                      </div>
+                      <div className="flex justify-between font-medium border-t pt-1">
+                        <span>Expected in drawer</span><span>₹{fmt(expectedCash)}</span>
+                      </div>
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>Physical count</span><span>₹{fmt(closingBalance)}</span>
+                      </div>
+                    </div>
+                    {/* Variance badge */}
+                    <div className={`text-sm p-2 rounded-md font-medium flex items-center justify-between ${
+                      isShortage
+                        ? "bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300"
+                        : isSurplus
+                          ? "bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300"
+                          : "bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300"
+                    }`}>
+                      <span>{isShortage ? "Shortage" : isSurplus ? "Surplus" : "Balanced"}</span>
+                      <span>{variance >= 0 ? "+" : ""}₹{fmt(variance)}</span>
+                    </div>
+                    {/* Variance gate — must acknowledge before closing */}
+                    {needsGate && (
+                      <label className="flex items-start gap-2 cursor-pointer text-sm rounded-md border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 p-2.5 text-amber-800 dark:text-amber-200">
+                        <input
+                          type="checkbox"
+                          className="mt-0.5 accent-amber-600"
+                          checked={varianceAcknowledged}
+                          onChange={e => setVarianceAcknowledged(e.target.checked)}
+                          data-testid="checkbox-variance-acknowledge"
+                        />
+                        <span>
+                          I acknowledge a {isShortage ? "cash shortage" : "cash surplus"} of <strong>₹{fmt(absVariance)}</strong> and confirm this close is intentional.
+                        </span>
+                      </label>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
             <DialogFooter className="gap-2 pt-2">
-              <Button variant="outline" onClick={() => setShowCloseDialog(false)}>Cancel</Button>
+              <Button variant="outline" onClick={() => { setShowCloseDialog(false); setVarianceAcknowledged(false); }}>Cancel</Button>
               <Button
                 variant="destructive"
                 onClick={() => closeSessionMut.mutate({ closing_balance: closingBalance, closing_denomination: closingDenom })}
-                disabled={closeSessionMut.isPending}
+                disabled={closeSessionMut.isPending || (() => {
+                  if (!closingBalance) return false;
+                  const cashSales = closeSessTxns.filter((t: any) => t.payment_mode === 'cash')
+                    .reduce((s: number, t: any) => s + Number(t.total_amount || 0), 0);
+                  const expectedCash = Number(activeSession?.opening_balance || 0) + cashSales;
+                  const variance = Math.abs(closingBalance - expectedCash);
+                  return variance > 200 && !varianceAcknowledged;
+                })()}
                 data-testid="button-confirm-close-session"
               >
                 {closeSessionMut.isPending ? "Closing…" : "Confirm Close"}
