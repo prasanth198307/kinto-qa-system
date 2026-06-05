@@ -499,22 +499,57 @@ router.get("/reorder-alerts", requireAuth, async (req: any, res) => {
 async function handleGSTR1(req: any, res: any) {
   try {
     const { month, year } = req.query as any;
+    const m = parseInt(month) || new Date().getMonth() + 1;
+    const y = parseInt(year)  || new Date().getFullYear();
+
     const rows = await db.execute(sql`
       SELECT i.invoice_number, i.invoice_date, i.buyer_name, i.buyer_gstin,
         i.subtotal, i.cgst_amount, i.sgst_amount, i.igst_amount, i.total_amount,
         i.place_of_supply, i.invoice_type
       FROM invoices i
       WHERE i.tenant_id=${tid(req)} AND i.status NOT IN ('cancelled','draft')
-        AND EXTRACT(MONTH FROM i.invoice_date::date)=${parseInt(month)||new Date().getMonth()+1}
-        AND EXTRACT(YEAR FROM i.invoice_date::date)=${parseInt(year)||new Date().getFullYear()}
+        AND EXTRACT(MONTH FROM i.invoice_date::date)=${m}
+        AND EXTRACT(YEAR FROM i.invoice_date::date)=${y}
       ORDER BY i.invoice_date`);
+
+    // HSN-wise summary — pulls hsn_code from invoice_items first, falls back to products.hsn_code
+    const hsnRows = await db.execute(sql`
+      SELECT
+        COALESCE(NULLIF(TRIM(ii.hsn_code),''), NULLIF(TRIM(p.hsn_code),''), 'N/A') AS hsn_code,
+        COALESCE(NULLIF(TRIM(p.product_name),''), ii.item_name, 'Unspecified')      AS description,
+        COALESCE(ii.cgst_rate + ii.sgst_rate + ii.igst_rate,
+                 CAST(p.gst_percent AS INTEGER), 0)                                  AS gst_rate,
+        COUNT(DISTINCT i.id)                                                          AS invoice_count,
+        COALESCE(SUM(ii.quantity), 0)                                                 AS total_qty,
+        COALESCE(SUM(ii.taxable_amount), 0)                                           AS taxable_value,
+        COALESCE(SUM(ii.cgst_amount), 0)                                              AS cgst,
+        COALESCE(SUM(ii.sgst_amount), 0)                                              AS sgst,
+        COALESCE(SUM(ii.igst_amount), 0)                                              AS igst,
+        COALESCE(SUM(ii.cgst_amount + ii.sgst_amount + ii.igst_amount), 0)            AS total_tax
+      FROM invoice_items ii
+      JOIN invoices i ON i.id = ii.invoice_id
+      LEFT JOIN products p ON p.id::text = ii.product_id::text AND p.tenant_id = ${tid(req)}
+      WHERE i.tenant_id = ${tid(req)} AND i.status NOT IN ('cancelled','draft')
+        AND EXTRACT(MONTH FROM i.invoice_date::date) = ${m}
+        AND EXTRACT(YEAR FROM i.invoice_date::date)  = ${y}
+      GROUP BY
+        COALESCE(NULLIF(TRIM(ii.hsn_code),''), NULLIF(TRIM(p.hsn_code),''), 'N/A'),
+        COALESCE(NULLIF(TRIM(p.product_name),''), ii.item_name, 'Unspecified'),
+        COALESCE(ii.cgst_rate + ii.sgst_rate + ii.igst_rate, CAST(p.gst_percent AS INTEGER), 0)
+      ORDER BY taxable_value DESC`).catch(() => ({ rows: [] as any[] }));
+
     const b2b = rows.rows.filter((r: any) => r.buyer_gstin);
     const b2c = rows.rows.filter((r: any) => !r.buyer_gstin);
-    const totalTax = rows.rows.reduce((sum: number, r: any) => sum + Number(r.cgst_amount||0) + Number(r.sgst_amount||0) + Number(r.igst_amount||0), 0);
-    const totalSupply = rows.rows.reduce((sum: number, r: any) => sum + Number(r.subtotal||0), 0);
-    res.json({ b2b, b2c, summary: { totalInvoices: rows.rows.length, totalSupply, totalTax } });
+    const totalTax    = rows.rows.reduce((s: number, r: any) => s + Number(r.cgst_amount||0) + Number(r.sgst_amount||0) + Number(r.igst_amount||0), 0);
+    const totalSupply = rows.rows.reduce((s: number, r: any) => s + Number(r.subtotal||0), 0);
+
+    res.json({
+      b2b, b2c,
+      hsnSummary: hsnRows.rows,
+      summary: { totalInvoices: rows.rows.length, totalSupply, totalTax },
+    });
   } catch (e: any) {
-    if (e.code === MISSING_COLUMN) return res.json({ b2b: [], b2c: [], summary: { totalInvoices: 0, totalSupply: 0, totalTax: 0 } });
+    if (e.code === MISSING_COLUMN) return res.json({ b2b: [], b2c: [], hsnSummary: [], summary: { totalInvoices: 0, totalSupply: 0, totalTax: 0 } });
     res.status(500).json({ message: e.message });
   }
 }

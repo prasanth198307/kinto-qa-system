@@ -92,6 +92,61 @@ router.post("/sessions/:id/close", requireAuth, async (req: any, res) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
+// ── Cross-counter Daily Summary ───────────────────────────────────────────────
+router.get("/sessions/daily-summary", requireAuth, async (req: any, res) => {
+  try {
+    const date = String(req.query.date || new Date().toISOString().split("T")[0]);
+    const t = req.session?.tenantId;
+
+    // Per-counter aggregates
+    const counterRows = await db.execute(sql`
+      SELECT
+        s.counter_name,
+        COUNT(DISTINCT s.id)                                    AS session_count,
+        COUNT(txn.id)                                           AS txn_count,
+        COALESCE(SUM(txn.total_amount), 0)                      AS gross_sales,
+        COALESCE(SUM(txn.discount_amount), 0)                   AS total_discount,
+        COALESCE(SUM(txn.tax_amount), 0)                        AS total_tax,
+        COALESCE(SUM(txn.total_amount - COALESCE(txn.tax_amount,0)), 0) AS net_sales
+      FROM pos_sessions s
+      LEFT JOIN pos_transactions txn
+        ON txn.session_id = s.id::text AND txn.tenant_id = ${t}
+      WHERE s.tenant_id = ${t}
+        AND DATE(s.opened_at) = ${date}::date
+      GROUP BY s.counter_name
+      ORDER BY s.counter_name`);
+
+    // Payment-mode breakdown across all counters for the day
+    const modeRows = await db.execute(sql`
+      SELECT
+        txn.payment_mode,
+        COUNT(*) AS txn_count,
+        COALESCE(SUM(txn.total_amount), 0) AS total
+      FROM pos_sessions s
+      JOIN pos_transactions txn
+        ON txn.session_id = s.id::text AND txn.tenant_id = ${t}
+      WHERE s.tenant_id = ${t}
+        AND DATE(s.opened_at) = ${date}::date
+      GROUP BY txn.payment_mode
+      ORDER BY txn.payment_mode`);
+
+    // Day-level totals
+    const totals = (counterRows.rows as any[]).reduce(
+      (acc, r) => ({
+        session_count:  acc.session_count  + Number(r.session_count),
+        txn_count:      acc.txn_count      + Number(r.txn_count),
+        gross_sales:    acc.gross_sales    + Number(r.gross_sales),
+        total_discount: acc.total_discount + Number(r.total_discount),
+        total_tax:      acc.total_tax      + Number(r.total_tax),
+        net_sales:      acc.net_sales      + Number(r.net_sales),
+      }),
+      { session_count: 0, txn_count: 0, gross_sales: 0, total_discount: 0, total_tax: 0, net_sales: 0 }
+    );
+
+    res.json({ date, counters: counterRows.rows, paymentBreakdown: modeRows.rows, totals });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
 // ── Z-Report (EOD session summary) ───────────────────────────────────────────
 router.get("/sessions/:id/z-report", requireAuth, async (req: any, res) => {
   try {

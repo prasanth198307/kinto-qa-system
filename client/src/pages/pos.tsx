@@ -2235,7 +2235,7 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
 
 // ── Sales History ─────────────────────────────────────────────────────────────
 function SalesHistoryTab() {
-  const [activeTab, setActiveTab] = useState<"txns" | "cashier" | "hourly">("txns");
+  const [activeTab, setActiveTab] = useState<"txns" | "cashier" | "hourly" | "daily">("txns");
   const [search, setSearch] = useState("");
   const [reportDate, setReportDate] = useState(new Date().toISOString().split("T")[0]);
   const { data: txns = [] } = useQuery<any[]>({ queryKey: ["/api/pos/transactions"] });
@@ -2246,7 +2246,16 @@ function SalesHistoryTab() {
       if (!r.ok) throw new Error("Failed");
       return r.json();
     },
-    enabled: activeTab !== "txns",
+    enabled: activeTab === "cashier" || activeTab === "hourly",
+  });
+  const { data: dailySummary } = useQuery<any>({
+    queryKey: ["/api/pos/sessions/daily-summary", reportDate],
+    queryFn: async () => {
+      const r = await fetch(`/api/pos/sessions/daily-summary?date=${reportDate}`, { credentials: "include" });
+      if (!r.ok) throw new Error("Failed");
+      return r.json();
+    },
+    enabled: activeTab === "daily",
   });
   const filtered = (txns as any[]).filter(t =>
     t.transaction_no?.includes(search) || t.customer_name?.toLowerCase().includes(search.toLowerCase())
@@ -2257,7 +2266,7 @@ function SalesHistoryTab() {
       {/* Tab switcher */}
       <div className="flex flex-wrap items-center gap-2 justify-between">
         <div className="flex gap-1 rounded-md border p-1 bg-muted/30">
-          {([["txns", "Transactions"], ["cashier", "By Cashier"], ["hourly", "Hourly"]] as const).map(([val, label]) => (
+          {([["txns", "Transactions"], ["cashier", "By Cashier"], ["hourly", "Hourly"], ["daily", "Daily Summary"]] as const).map(([val, label]) => (
             <button
               key={val}
               onClick={() => setActiveTab(val)}
@@ -2389,6 +2398,89 @@ function SalesHistoryTab() {
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {/* ── Daily Summary (cross-counter) ── */}
+      {activeTab === "daily" && (
+        <div className="space-y-4">
+          {!dailySummary ? (
+            <div className="p-8 text-center text-muted-foreground text-sm">Loading summary…</div>
+          ) : (
+            <>
+              {/* Day-level KPI strip */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[
+                  { label: "Gross Sales",    value: `₹${fmt(dailySummary.totals?.gross_sales)}` },
+                  { label: "Net Sales",      value: `₹${fmt(dailySummary.totals?.net_sales)}` },
+                  { label: "Tax Collected",  value: `₹${fmt(dailySummary.totals?.total_tax)}` },
+                  { label: "Transactions",   value: String(dailySummary.totals?.txn_count ?? 0) },
+                ].map(kpi => (
+                  <div key={kpi.label} className="rounded-md border p-3 bg-muted/20 space-y-0.5">
+                    <p className="text-xs text-muted-foreground">{kpi.label}</p>
+                    <p className="text-lg font-semibold">{kpi.value}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Per-counter breakdown */}
+              {(dailySummary.counters || []).length === 0 ? (
+                <div className="p-6 text-center text-sm text-muted-foreground rounded-md border">No sessions on {reportDate}</div>
+              ) : (
+                <div className="rounded-md border overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50">
+                      <tr>{["Counter", "Sessions", "Txns", "Gross Sales", "Discount", "Tax", "Net Sales"].map(h =>
+                        <th key={h} className="px-3 py-2 text-left font-medium whitespace-nowrap">{h}</th>
+                      )}</tr>
+                    </thead>
+                    <tbody>
+                      {(dailySummary.counters as any[]).map((c: any) => (
+                        <tr key={c.counter_name} className="border-t hover:bg-muted/30" data-testid={`row-counter-${c.counter_name}`}>
+                          <td className="px-3 py-2 font-medium">{c.counter_name || "—"}</td>
+                          <td className="px-3 py-2">{c.session_count}</td>
+                          <td className="px-3 py-2">{c.txn_count}</td>
+                          <td className="px-3 py-2 font-semibold">₹{fmt(c.gross_sales)}</td>
+                          <td className="px-3 py-2 text-amber-600 dark:text-amber-400">₹{fmt(c.total_discount)}</td>
+                          <td className="px-3 py-2">₹{fmt(c.total_tax)}</td>
+                          <td className="px-3 py-2 font-semibold text-green-700 dark:text-green-400">₹{fmt(c.net_sales)}</td>
+                        </tr>
+                      ))}
+                      {/* Totals row */}
+                      <tr className="border-t bg-muted/40 font-semibold">
+                        <td className="px-3 py-2">Total</td>
+                        <td className="px-3 py-2">{dailySummary.totals?.session_count}</td>
+                        <td className="px-3 py-2">{dailySummary.totals?.txn_count}</td>
+                        <td className="px-3 py-2">₹{fmt(dailySummary.totals?.gross_sales)}</td>
+                        <td className="px-3 py-2 text-amber-600 dark:text-amber-400">₹{fmt(dailySummary.totals?.total_discount)}</td>
+                        <td className="px-3 py-2">₹{fmt(dailySummary.totals?.total_tax)}</td>
+                        <td className="px-3 py-2 text-green-700 dark:text-green-400">₹{fmt(dailySummary.totals?.net_sales)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Payment-mode breakdown */}
+              {(dailySummary.paymentBreakdown || []).length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Payment Mode Breakdown</p>
+                  <div className="flex flex-wrap gap-3">
+                    {(dailySummary.paymentBreakdown as any[]).map((p: any) => {
+                      const MODE_LABEL: Record<string, string> = { cash: "Cash", upi: "UPI / QR", card: "Card / EDC", other: "Other" };
+                      return (
+                        <div key={p.payment_mode} className="rounded-md border px-4 py-2.5 bg-muted/20 text-center min-w-[110px]">
+                          <p className="text-xs text-muted-foreground capitalize">{MODE_LABEL[p.payment_mode] ?? p.payment_mode}</p>
+                          <p className="font-semibold">₹{fmt(p.total)}</p>
+                          <p className="text-xs text-muted-foreground">{p.txn_count} txn{Number(p.txn_count) === 1 ? "" : "s"}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
     </div>

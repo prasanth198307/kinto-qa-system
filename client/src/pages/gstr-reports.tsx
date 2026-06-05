@@ -45,7 +45,8 @@ export default function GSTRReportsPage() {
 
   const b2b = gstr1Data?.b2b || [];
   const b2c = gstr1Data?.b2c || [];
-  const goldSales = gstr1Data?.goldSales || [];
+  const goldSales  = gstr1Data?.goldSales   || [];
+  const hsnSummary = gstr1Data?.hsnSummary  || [];
   const sup_details = gstr3bData?.sup_details || {};
   const itc_elg = gstr3bData?.itc_elg || {};
 
@@ -222,6 +223,58 @@ export default function GSTRReportsPage() {
               </CardContent>
             </Card>
           )}
+
+          {/* HSN-wise Summary — wired to invoice_items.hsn_code + products.hsn_code */}
+          <Card>
+            <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2">
+              <CardTitle className="text-sm font-medium">HSN-wise Summary</CardTitle>
+              {hsnSummary.length > 0 && <Badge variant="secondary">{hsnSummary.length} HSN{hsnSummary.length > 1 ? "s" : ""}</Badge>}
+            </CardHeader>
+            <CardContent className="p-0">
+              {hsnSummary.length === 0 ? (
+                <div className="p-6 text-center text-muted-foreground text-sm">No HSN data for selected period. Ensure products have HSN codes set in Item Master.</div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>HSN Code</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead className="text-center">GST %</TableHead>
+                      <TableHead className="text-right">Taxable Value</TableHead>
+                      <TableHead className="text-right">CGST</TableHead>
+                      <TableHead className="text-right">SGST</TableHead>
+                      <TableHead className="text-right">IGST</TableHead>
+                      <TableHead className="text-right">Total Tax</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {hsnSummary.map((row: any, i: number) => (
+                      <TableRow key={i} data-testid={`row-hsn-${i}`}>
+                        <TableCell className="font-mono text-sm font-medium">{row.hsn_code}</TableCell>
+                        <TableCell className="text-sm max-w-[200px] truncate">{row.description}</TableCell>
+                        <TableCell className="text-center">{row.gst_rate ?? 0}%</TableCell>
+                        <TableCell className="text-right">₹{Number(row.taxable_value || 0).toLocaleString("en-IN")}</TableCell>
+                        <TableCell className="text-right">₹{Number(row.cgst || 0).toLocaleString("en-IN")}</TableCell>
+                        <TableCell className="text-right">₹{Number(row.sgst || 0).toLocaleString("en-IN")}</TableCell>
+                        <TableCell className="text-right">₹{Number(row.igst || 0).toLocaleString("en-IN")}</TableCell>
+                        <TableCell className="text-right font-semibold">₹{Number(row.total_tax || 0).toLocaleString("en-IN")}</TableCell>
+                      </TableRow>
+                    ))}
+                    {/* Totals row */}
+                    <TableRow className="bg-muted/40 font-semibold">
+                      <TableCell colSpan={3}>Total</TableCell>
+                      <TableCell className="text-right">₹{hsnSummary.reduce((s: number, r: any) => s + Number(r.taxable_value || 0), 0).toLocaleString("en-IN")}</TableCell>
+                      <TableCell className="text-right">₹{hsnSummary.reduce((s: number, r: any) => s + Number(r.cgst || 0), 0).toLocaleString("en-IN")}</TableCell>
+                      <TableCell className="text-right">₹{hsnSummary.reduce((s: number, r: any) => s + Number(r.sgst || 0), 0).toLocaleString("en-IN")}</TableCell>
+                      <TableCell className="text-right">₹{hsnSummary.reduce((s: number, r: any) => s + Number(r.igst || 0), 0).toLocaleString("en-IN")}</TableCell>
+                      <TableCell className="text-right">₹{hsnSummary.reduce((s: number, r: any) => s + Number(r.total_tax || 0), 0).toLocaleString("en-IN")}</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+
         </TabsContent>
 
         <TabsContent value="gstr3b" className="mt-4 space-y-4">
