@@ -58,17 +58,23 @@ export default function RoleManagement() {
   type RoleAvailStatus = 'idle' | 'checking' | 'available' | 'taken';
   const [roleNameStatus, setRoleNameStatus] = useState<RoleAvailStatus>('idle');
   const roleDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const roleAbort = useRef<AbortController | null>(null);
 
   const checkRoleName = (value: string) => {
     if (roleDebounce.current) clearTimeout(roleDebounce.current);
+    if (roleAbort.current) { roleAbort.current.abort(); roleAbort.current = null; }
     if (!value.trim() || value.trim().length < 2) { setRoleNameStatus('idle'); return; }
     setRoleNameStatus('checking');
     roleDebounce.current = setTimeout(async () => {
+      const controller = new AbortController();
+      roleAbort.current = controller;
       try {
-        const res = await fetch(`/api/roles/check-name?name=${encodeURIComponent(value.trim())}`);
+        const res = await fetch(`/api/roles/check-name?name=${encodeURIComponent(value.trim())}`, { signal: controller.signal });
         const data = await res.json();
         setRoleNameStatus(data.available ? 'available' : 'taken');
-      } catch { setRoleNameStatus('idle'); }
+      } catch (e: any) {
+        if (e?.name !== 'AbortError') setRoleNameStatus('idle');
+      }
     }, 500);
   };
   
