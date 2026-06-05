@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Package, Trash2, Eye, SendHorizontal, CheckCircle2, Clock } from "lucide-react";
+import { Plus, Package, Trash2, Eye, SendHorizontal, CheckCircle2, Clock, AlertTriangle } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { InlineAttachments } from "@/components/inline-attachments";
 import { CustomFieldsSection } from "@/components/custom-fields-section";
@@ -59,9 +59,18 @@ export default function GoodsReceiptNotesPage() {
 
   const createMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/generic/grns", { ...form, items }),
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/generic/grns"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/generic/grn-expiry-alerts"] });
       toast({ title: "GRN created" });
+      // GSTIN warning — surface after success so the GRN is saved but user is alerted
+      if (data?.gstin_warning) {
+        setTimeout(() => toast({
+          title: "Vendor GSTIN Warning",
+          description: data.gstin_warning,
+          variant: "destructive",
+        }), 400);
+      }
       setOpen(false);
       setForm({ po_id: "", vendor_id: "", received_date: new Date().toISOString().split("T")[0], remarks: "" });
       setItems([{ item_name: "", ordered_qty: 0, received_qty: 0, unit: "Nos", unit_price: 0, batch_number: "", lot_number: "", manufactured_date: "", expiry_date: "" }]);
@@ -101,6 +110,15 @@ export default function GoodsReceiptNotesPage() {
 
   const pendingCount = grns.filter(g => g.status === "submitted").length;
 
+  const { data: expiryAlerts = [] } = useQuery<any[]>({
+    queryKey: ["/api/generic/grn-expiry-alerts"],
+    queryFn: async () => {
+      const r = await fetch("/api/generic/grn-expiry-alerts?days=30", { credentials: "include" });
+      if (!r.ok) return [];
+      return r.json();
+    },
+  });
+
   return (
     <div className="p-4 sm:p-6 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -118,6 +136,34 @@ export default function GoodsReceiptNotesPage() {
         <div className="flex items-center gap-3 p-3 rounded-md border border-amber-200 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30 text-sm text-amber-800 dark:text-amber-200">
           <Clock className="h-4 w-4 shrink-0" />
           <span><strong>{pendingCount}</strong> GRN{pendingCount > 1 ? "s" : ""} pending approval. Purchase Manager must approve to update stock.</span>
+        </div>
+      )}
+
+      {/* Expiry alerts banner */}
+      {expiryAlerts.length > 0 && (
+        <div className="rounded-md border border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/30 text-sm text-red-800 dark:text-red-200 p-3 space-y-2" data-testid="banner-expiry-alerts">
+          <div className="flex items-center gap-2 font-semibold">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            {expiryAlerts.length} item{expiryAlerts.length > 1 ? "s" : ""} expiring within 30 days
+          </div>
+          <div className="space-y-1">
+            {expiryAlerts.slice(0, 5).map((a: any) => (
+              <div key={a.id} className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-red-700 dark:text-red-300">
+                <span className="font-medium">{a.description || `Product #${a.product_id}`}</span>
+                {a.batch_number && <span>Batch: {a.batch_number}</span>}
+                <span>GRN: {a.grn_number}</span>
+                <span className={Number(a.days_to_expiry) <= 7 ? "font-bold" : ""}>
+                  {Number(a.days_to_expiry) <= 0
+                    ? "Expired"
+                    : `${a.days_to_expiry} day${Number(a.days_to_expiry) === 1 ? "" : "s"} left`}
+                  {" "}({new Date(a.expiry_date).toLocaleDateString()})
+                </span>
+              </div>
+            ))}
+            {expiryAlerts.length > 5 && (
+              <p className="text-xs text-red-600 dark:text-red-400">+{expiryAlerts.length - 5} more items…</p>
+            )}
+          </div>
         </div>
       )}
 

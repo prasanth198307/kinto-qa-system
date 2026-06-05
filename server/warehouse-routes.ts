@@ -255,38 +255,45 @@ router.get("/products/lookup", requireAuth, async (req: any, res) => {
 });
 
 // ─── GRN Scan — confirm receipt (adds stock to warehouse_stock) ───────────────
+// ── GRN Scan Confirm — creates a GRN draft instead of updating stock directly ─
+// Stock is only updated when a Purchase Manager approves via PATCH /api/generic/grn/:id/approve
 router.post("/grn-scan/confirm", requireAuth, async (req: any, res) => {
   try {
     const tid = req.session?.tenantId;
     const { items, supplier } = req.body as { items: Array<{ product_id: number; qty: number; unit_label: string }>; supplier?: string };
     if (!Array.isArray(items) || !items.length) return res.status(400).json({ error: "No items provided" });
 
-    // Resolve default warehouse for this tenant
-    const whRows = await db.execute(sql`
-      SELECT id FROM warehouses WHERE tenant_id=${tid} AND is_default=true AND record_status=1 LIMIT 1`);
-    const warehouseId: number | null = whRows.rows.length ? (whRows.rows[0] as any).id : null;
+    // Create a GRN record with status='received' — requires Purchase Manager approval before stock is updated
+    const grnNum = `GRN-SCAN-${Date.now()}`;
+    const grn = await db.execute(sql`
+      INSERT INTO goods_receipt_notes (tenant_id, grn_number, received_date, vendor_id, remarks, status)
+      VALUES (${tid}, ${grnNum}, CURRENT_DATE, ${supplier || null},
+              'Created via barcode scan — submit for Purchase Manager approval', 'received')
+      RETURNING *`);
+    const grnId = (grn.rows[0] as any).id;
 
     let received = 0;
     for (const item of items) {
       if (!item.product_id || !item.qty || item.qty <= 0) continue;
-      const itemIdStr = String(item.product_id);
-      if (warehouseId) {
-        const existing = await db.execute(sql`
-          SELECT id FROM warehouse_stock WHERE tenant_id=${tid} AND warehouse_id=${warehouseId} AND item_id=${itemIdStr} LIMIT 1`);
-        if (existing.rows.length) {
-          await db.execute(sql`
-            UPDATE warehouse_stock SET quantity = quantity + ${item.qty}
-            WHERE tenant_id=${tid} AND warehouse_id=${warehouseId} AND item_id=${itemIdStr}`);
-        } else {
-          await db.execute(sql`
-            INSERT INTO warehouse_stock (tenant_id, warehouse_id, item_id, quantity, reserved)
-            VALUES (${tid}, ${warehouseId}, ${itemIdStr}, ${item.qty}, 0)`);
-        }
-      }
+      // Fetch product name for the GRN item description
+      const prodRows = await db.execute(sql`
+        SELECT product_name FROM products WHERE id=${item.product_id} AND tenant_id=${tid} LIMIT 1`);
+      const productName = (prodRows.rows[0] as any)?.product_name ?? null;
+
+      await db.execute(sql`
+        INSERT INTO grn_items (tenant_id, grn_id, product_id, description, ordered_qty, received_qty, rejected_qty, unit_price)
+        VALUES (${tid}, ${grnId}, ${item.product_id}, ${productName}, ${item.qty}, ${item.qty}, 0, 0)`);
       received++;
     }
 
-    res.json({ success: true, received, supplier: supplier || null, warehouse_id: warehouseId });
+    res.json({
+      success: true,
+      received,
+      grn_number: grnNum,
+      grn_id: grnId,
+      pending_approval: true,
+      message: `GRN ${grnNum} created with ${received} item(s). Submit it for Purchase Manager approval to update stock.`,
+    });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
@@ -722,6 +729,13 @@ router.patch("/stock-adjustments/:id/approve", requireAuth, async (req: any, res
     const adj: any = adjRows.rows[0];
     if (!adj) return res.status(404).json({ message: "Adjustment not found" });
     if (adj.status !== 'pending_approval') return res.status(400).json({ message: "Adjustment is not pending approval" });
+
+    // Prevent self-approval — a different user must approve
+    const currentUser = (user?.username ?? user?.email ?? '').toLowerCase();
+    const createdBy   = (adj.adjusted_by ?? '').toLowerCase();
+    if (currentUser && createdBy && currentUser === createdBy) {
+      return res.status(403).json({ message: "You cannot approve your own adjustment. Ask a different supervisor to approve." });
+    }
 
     await db.execute(sql`
       UPDATE stock_adjustments SET status='approved', approved_by=${approver}, approved_at=NOW()

@@ -78,15 +78,17 @@ export default function InventoryGrnScan() {
 
   const confirmMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/inventory/grn-scan/confirm", { items, supplier }),
-    onSuccess: () => {
-      const total = items.reduce((s, i) => s + i.qty, 0);
-      toast({ title: `Stock received — ${items.length} product(s), ${total} unit(s) added to godown` });
+    onSuccess: (data: any) => {
+      toast({
+        title: `GRN ${data.grn_number} created`,
+        description: data.message || `${data.received} item(s) received — pending Purchase Manager approval before stock updates.`,
+      });
       setItems([]);
       setSupplier("");
       setScanInput("");
       setTimeout(() => scanRef.current?.focus(), 100);
     },
-    onError: () => toast({ title: "Error confirming stock receipt", variant: "destructive" }),
+    onError: () => toast({ title: "Error creating GRN", variant: "destructive" }),
   });
 
   const adjustQty = (id: number, delta: number) => {

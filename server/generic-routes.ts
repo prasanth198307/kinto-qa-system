@@ -248,6 +248,8 @@ async function handleGetGRNs(req: any, res: any) {
     res.status(500).json({ message: e.message });
   }
 }
+const GSTIN_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+
 async function handleCreateGRN(req: any, res: any) {
   try {
     const { grnDate, received_date, poId, po_id, vendorId, vendor_id, notes, remarks, items } = req.body;
@@ -256,6 +258,24 @@ async function handleCreateGRN(req: any, res: any) {
     const actualVendorId = vendorId || vendor_id || null;
     const actualNotes = notes || remarks || null;
     const num = `GRN-${Date.now()}`;
+
+    // Vendor GSTIN validation — warn if missing or malformed (ITC impact)
+    let gstin_warning: string | null = null;
+    if (actualVendorId) {
+      try {
+        const vRows = await db.execute(sql`SELECT gst_number, vendor_name FROM vendors WHERE id=${actualVendorId} AND tenant_id=${tid(req)} LIMIT 1`);
+        const v: any = vRows.rows[0];
+        if (v) {
+          const gstin = (v.gst_number || '').trim().toUpperCase();
+          if (!gstin) {
+            gstin_warning = `Vendor "${v.vendor_name || actualVendorId}" has no GSTIN on file. Input tax credit (ITC) may not be available for this GRN.`;
+          } else if (!GSTIN_REGEX.test(gstin)) {
+            gstin_warning = `Vendor GSTIN "${gstin}" appears invalid (expected 15-character format). Verify before claiming ITC.`;
+          }
+        }
+      } catch (_) {}
+    }
+
     // received_by is an integer column (legacy); user.id is now UUID — pass null to avoid type error
     const grn = await db.execute(sql`INSERT INTO goods_receipt_notes (tenant_id,grn_number,received_date,po_id,vendor_id,remarks,status)
       VALUES (${tid(req)},${num},${actualDate},${actualPoId},${actualVendorId},${actualNotes},'received') RETURNING *`);
@@ -265,7 +285,7 @@ async function handleCreateGRN(req: any, res: any) {
         VALUES (${tid(req)},${grnId},${it.poItemId||null},${it.productId||null},${it.item_name||it.description||null},${it.orderedQty||it.ordered_qty||0},${it.receivedQty||it.received_qty||0},${it.rejectedQty||0},${it.unitPrice||it.unit_price||0},${it.batchNumber||it.batch_number||null},${it.lotNumber||it.lot_number||null},${it.manufacturedDate||it.manufactured_date||null},${it.expiryDate||it.expiry_date||null})`);
     }
     if (actualPoId) await db.execute(sql`UPDATE purchase_orders SET grn_status='partial' WHERE id=${actualPoId} AND tenant_id=${tid(req)}`).catch(() => {});
-    res.json(grn.rows[0]);
+    res.json({ ...grn.rows[0], gstin_warning });
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 }
 router.get("/grn", requireAuth, handleGetGRNs);
@@ -681,6 +701,30 @@ router.post("/attachments/:entityType/:entityId", requireAuth, uploadAttachment.
     res.json(r.rows[0]);
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
+// ── GRN Expiry Alerts — items expiring within N days (default 30) ─────────────
+router.get("/grn-expiry-alerts", requireAuth, async (req: any, res) => {
+  try {
+    const days = Math.min(Number(req.query.days || 30), 365);
+    const rows = await db.execute(sql`
+      SELECT gi.id, gi.grn_id, gi.product_id, gi.description, gi.expiry_date,
+             gi.batch_number, gi.lot_number, gi.received_qty,
+             g.grn_number, g.received_date,
+             (gi.expiry_date - CURRENT_DATE) AS days_to_expiry
+      FROM grn_items gi
+      JOIN goods_receipt_notes g ON g.id = gi.grn_id
+      WHERE gi.tenant_id = ${tid(req)}
+        AND gi.record_status = 1
+        AND gi.expiry_date IS NOT NULL
+        AND gi.expiry_date <= CURRENT_DATE + ${days}::int
+      ORDER BY gi.expiry_date ASC
+      LIMIT 50`);
+    res.json(rows.rows);
+  } catch (e: any) {
+    if (e.code === MISSING_TABLE || e.code === MISSING_COLUMN) return res.json([]);
+    res.status(500).json({ message: e.message });
+  }
+});
+
 router.delete("/attachments/:id", requireAuth, async (req: any, res) => {
   try {
     const row = await db.execute(sql`SELECT * FROM entity_attachments WHERE id=${req.params.id} AND tenant_id=${tid(req)}`);
