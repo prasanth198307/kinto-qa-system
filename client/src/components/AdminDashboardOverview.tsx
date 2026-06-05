@@ -31,6 +31,7 @@ export default function AdminDashboardOverview({ onNavigateToTab }: AdminDashboa
   const hasHR          = hasModule('hr_payroll');
   const hasInvoicing   = hasModule('invoicing');
   const hasInventory   = hasModule('basic_inventory');
+  const hasPOS         = hasModule('pos');
 
   // Only fetch what the plan allows
   const { data: users = [] } = useQuery<User[]>({
@@ -78,6 +79,12 @@ export default function AdminDashboardOverview({ onNavigateToTab }: AdminDashboa
     staleTime: 5 * 60 * 1000,
   });
 
+  const { data: posStats } = useQuery<any>({
+    queryKey: ['/api/pos/stats'],
+    enabled: hasPOS,
+    staleTime: 60 * 1000,
+  });
+
   const activeUsers      = users.filter(u => u.role).length;
   const activeMachines   = machines.filter(m => m.status === 'active').length;
   const lowStockParts    = spareParts.filter(p =>
@@ -86,7 +93,49 @@ export default function AdminDashboardOverview({ onNavigateToTab }: AdminDashboa
   const activePMPlans    = maintenancePlans.filter(p => p.isActive).length;
 
   // ── Build stats based on active modules ──────────────────────────────────────
-  const stats = [
+  const stats = hasPOS ? [
+    // POS / Retail dashboard stats
+    {
+      title: "Today's Sales",
+      value: `₹${(posStats?.todaySales ?? 0).toLocaleString('en-IN')}`,
+      subtitle: `${posStats?.todayTransactions ?? 0} transactions`,
+      icon: ShoppingCart,
+      color: "text-green-600",
+      bgColor: "bg-green-100",
+      testId: "stat-today-sales",
+      action: "pos",
+    },
+    {
+      title: "Monthly Sales",
+      value: `₹${(posStats?.monthlySales ?? 0).toLocaleString('en-IN')}`,
+      subtitle: "This month",
+      icon: BarChart2,
+      color: "text-blue-600",
+      bgColor: "bg-blue-100",
+      testId: "stat-monthly-sales",
+      action: "pos",
+    },
+    {
+      title: "Open Sessions",
+      value: posStats?.openSessions ?? 0,
+      subtitle: "Active counters",
+      icon: CreditCard,
+      color: "text-amber-600",
+      bgColor: "bg-amber-100",
+      testId: "stat-open-sessions",
+      action: "pos",
+    },
+    {
+      title: "Reorder Alerts",
+      value: reorderAlerts.length,
+      subtitle: reorderAlerts.length > 0 ? "Items below reorder point" : "All stock levels OK",
+      icon: AlertTriangle,
+      color: reorderAlerts.length > 0 ? "text-red-600" : "text-green-600",
+      bgColor: reorderAlerts.length > 0 ? "bg-red-100" : "bg-green-100",
+      testId: "stat-reorder-alerts",
+      action: "inventory",
+    },
+  ] : [
     {
       title: "Total Users",
       value: users.length,
@@ -182,10 +231,46 @@ export default function AdminDashboardOverview({ onNavigateToTab }: AdminDashboa
         always: false,
       },
     ] : []),
-  ].filter(s => s.always || true);
+  ];
 
   // ── Quick actions based on active modules ────────────────────────────────────
-  const quickActions = [
+  const quickActions = hasPOS ? [
+    {
+      title: "Open POS Terminal",
+      description: "Start a new billing session at the counter",
+      icon: ShoppingCart,
+      action: "pos",
+      color: "text-green-600",
+    },
+    {
+      title: "View Sales Report",
+      description: "Today's transactions and daily Z-report",
+      icon: BarChart2,
+      action: "pos",
+      color: "text-blue-600",
+    },
+    {
+      title: "Add Product",
+      description: "Register a new item with barcode and price",
+      icon: Package,
+      action: "inventory",
+      color: "text-purple-600",
+    },
+    {
+      title: "Receive Stock (GRN)",
+      description: "Record goods received from supplier",
+      icon: FileText,
+      action: "goods-receipt-notes",
+      color: "text-teal-600",
+    },
+    {
+      title: "Add New User",
+      description: "Create user account and assign role",
+      icon: Users,
+      action: "users",
+      color: "text-blue-600",
+    },
+  ] : [
     {
       title: "Add New User",
       description: "Create user account and assign role",
@@ -271,12 +356,16 @@ export default function AdminDashboardOverview({ onNavigateToTab }: AdminDashboa
   ].filter(a => a.always || true).slice(0, 5);
 
   // ── Dashboard title based on plan ────────────────────────────────────────────
-  const dashboardTitle = hasHR && !hasMaintenance && !hasWhatsapp
-    ? "HR & Payroll Dashboard"
-    : "Dashboard Overview";
-  const dashboardDesc = hasHR && !hasMaintenance && !hasWhatsapp
-    ? "Manage your workforce, payroll, and attendance"
-    : "Monitor your operations at a glance";
+  const dashboardTitle = hasPOS
+    ? "Retail & POS Dashboard"
+    : hasHR && !hasMaintenance && !hasWhatsapp
+      ? "HR & Payroll Dashboard"
+      : "Dashboard Overview";
+  const dashboardDesc = hasPOS
+    ? "Monitor your store sales, sessions, and inventory"
+    : hasHR && !hasMaintenance && !hasWhatsapp
+      ? "Manage your workforce, payroll, and attendance"
+      : "Monitor your operations at a glance";
 
   return (
     <div className="space-y-6">
