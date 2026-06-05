@@ -235,5 +235,20 @@ export async function seedGroceryStarterData(tenantId: number): Promise<{
     warehousesCreated.push(wh.name);
   }
 
+  // ── 4. Set grocery-specific module label overrides ───────────────────────────
+  // Rename generic sections to grocery-friendly names
+  const GROCERY_MODULE_LABELS = [
+    { key: "products",    label: "Inventory Management" },  // "Production & Inventory" → "Inventory Management"
+    { key: "gatepasses",  label: "Delivery & Dispatch" },   // "Dispatch & Logistics" → "Delivery & Dispatch"
+    { key: "purchase_orders", label: "Purchase & Vendors" }, // "Purchases" → "Purchase & Vendors"
+  ];
+  for (const { key, label } of GROCERY_MODULE_LABELS) {
+    await db.execute(sql`
+      INSERT INTO tenant_module_labels (tenant_id, module_key, custom_label)
+      VALUES (${tenantId}, ${key}, ${label})
+      ON CONFLICT (tenant_id, module_key) DO UPDATE SET custom_label = EXCLUDED.custom_label
+    `);
+  }
+
   return { rolesCreated, rolesSkipped, warehousesCreated, permissionsInserted };
 }

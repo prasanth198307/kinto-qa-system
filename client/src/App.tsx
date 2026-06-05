@@ -342,6 +342,7 @@ const DASHBOARD_VALID_TABS = [
   'cancelled-invoices', 'write-off-report', 'dispatch-tracking', 'vendor-types', 'customer-outstanding-report',
   'spare-parts', 'tds-management', 'purchase-returns', 'scrap-management',
   'goods-receipt-notes', 'purchase-requisitions', 'vendor-history', 'vendor-debit-notes', 'customer-advances',
+  'inventory-bulk-import', 'inventory-grn-scan', 'inventory-stock-adjustments',
   'hr-employees', 'hr-attendance', 'hr-leaves', 'hr-payroll', 'hr-reports',
   'hr-departments', 'hr-settings', 'hr-recruitment', 'hr-exit', 'hr-tds',
   'crm-leads', 'accounting', 'chart-of-accounts', 'ledger-entries', 'expense-management',
@@ -873,6 +874,12 @@ function CustomRoleDashboard({ roleName }: { roleName: string }) {
         return <CustomerOutstandingReport />;
       case 'customer-advances':
         return <CustomerAdvances />;
+      case 'inventory-bulk-import':
+        return <InventoryBulkImportPage />;
+      case 'inventory-grn-scan':
+        return <InventoryGrnScanPage />;
+      case 'inventory-stock-adjustments':
+        return <InventoryStockAdjustmentsPage />;
       case 'roles':
         return (
           <div className="p-4">
@@ -1018,6 +1025,9 @@ function AdminDashboard() {
         { id: "products", label: "Product Master", icon: Package },
         { id: "product-categories", label: "Product Categories", icon: Layers },
         { id: "product-types", label: "Product Types", icon: Archive },
+        { id: "inventory-bulk-import", label: "Bulk Import Products", icon: Upload, onClick: () => setLocation('/inventory/bulk-import') },
+        { id: "inventory-grn-scan", label: "GRN Scan (Barcode)", icon: Scan, onClick: () => setLocation('/inventory/grn-scan') },
+        { id: "inventory-stock-adjustments", label: "Stock Adjustments", icon: AlertTriangle, onClick: () => setLocation('/inventory/stock-adjustments') },
         { id: "raw-materials", label: "Raw Materials", icon: Box },
         { id: "finished-goods", label: "Finished Goods", icon: CheckCircle2 },
         { id: "raw-material-issuance", label: "Raw Material Issuance", icon: Package },
@@ -1047,6 +1057,7 @@ function AdminDashboard() {
         { id: "cancelled-invoices", label: "Cancelled Invoices", icon: FileX, onClick: () => setLocation('/cancelled-invoices') },
         { id: "write-off-report", label: "Write-Off Report", icon: XCircle, onClick: () => setLocation('/write-off-report') },
         { id: "sales-returns", label: "Sales Returns", icon: Package, onClick: () => setLocation('/sales-returns') },
+        { id: "sales-officers", label: "Sales Officers", icon: Users, onClick: () => setLocation('/sales-officers') },
       ],
       quickActions: [
         { id: "create-invoice", label: "Create Invoice", icon: Receipt, onClick: () => setActiveView("invoices") },
@@ -1161,7 +1172,6 @@ function AdminDashboard() {
       items: [
         { id: "users", label: "Users", icon: Users },
         { id: "role-permissions", label: "Role Permissions", icon: Shield },
-        { id: "sales-officers", label: "Sales Officers", icon: Users, onClick: () => setLocation('/sales-officers') },
         { id: "vendors", label: "Vendor Master", icon: Building2, onClick: () => setLocation('/vendor-management') },
         { id: "vendor-types", label: "Vendor Types", icon: Shield },
         { id: "machines", label: "Machines", icon: Settings },
@@ -1379,6 +1389,12 @@ function AdminDashboard() {
         return <VendorHistory />;
       case 'vendor-debit-notes':
         return <VendorDebitNotes />;
+      case 'inventory-bulk-import':
+        return <InventoryBulkImportPage />;
+      case 'inventory-grn-scan':
+        return <InventoryGrnScanPage />;
+      case 'inventory-stock-adjustments':
+        return <InventoryStockAdjustmentsPage />;
       case 'data-import':
         return <DataImport />;
       case 'sales-dashboard':
@@ -2244,9 +2260,9 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "spare-parts", label: "Spare Parts", icon: Wrench, onClick: () => setLocation('/spare-parts') },
         { id: "scrap-management", label: "Scrap Management", icon: Trash2, onClick: () => setLocation('/scrap-management') },
         { id: "warehouses", label: "Warehouses & Stock", icon: Archive, onClick: () => setLocation('/warehouses') },
-        { id: "inventory-bulk-import", label: "Bulk Import Products", icon: Upload, onClick: () => setLocation('/inventory/bulk-import') },
-        { id: "inventory-grn-scan", label: "GRN Scan (Barcode)", icon: Scan, onClick: () => setLocation('/inventory/grn-scan') },
-        { id: "inventory-stock-adjustments", label: "Stock Adjustments", icon: AlertTriangle, onClick: () => setLocation('/inventory/stock-adjustments') },
+        { id: "inventory-bulk-import", label: "Bulk Import Products", icon: Upload },
+        { id: "inventory-grn-scan", label: "GRN Scan (Barcode)", icon: Scan },
+        { id: "inventory-stock-adjustments", label: "Stock Adjustments", icon: AlertTriangle },
       ],
     },
     {
@@ -2255,6 +2271,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       items: [
         { id: "sales-orders", label: "Sales Orders", icon: ClipboardList, onClick: () => setLocation('/sales-orders') },
         { id: "invoices", label: "Sales Invoices", icon: Receipt, onClick: () => setLocation('/?tab=invoices') },
+        { id: "sales-officers", label: "Sales Officers", icon: Users, onClick: () => setLocation('/sales-officers') },
         { id: "customer-outstanding-report", label: "Customer Outstanding", icon: BarChart3, onClick: () => setLocation('/customer-outstanding-report') },
         { id: "payment-management", label: "Payment Management", icon: CreditCard, onClick: () => setLocation('/payment-management') },
         { id: "customer-advances", label: "Customer Advances", icon: Wallet, onClick: () => setLocation('/customer-advances') },
@@ -2385,7 +2402,6 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       items: [
         { id: "users", label: "Users", icon: Users, onClick: () => setLocation('/?tab=users') },
         { id: "role-permissions", label: "Role Permissions", icon: Shield, onClick: () => setLocation('/?tab=role-permissions') },
-        { id: "sales-officers", label: "Sales Officers", icon: Users, onClick: () => setLocation('/sales-officers') },
         { id: "vendors", label: "Vendor Master", icon: Building2, onClick: () => setLocation('/vendor-management') },
         { id: "vendor-types", label: "Vendor Types", icon: Shield, onClick: () => setLocation('/vendor-types') },
         { id: "machines", label: "Machines", icon: Settings, onClick: () => setLocation('/?tab=machines') },

@@ -6,10 +6,11 @@ interface ModuleLabel { module_key: string; custom_label: string; }
 
 const DEFAULT_LABELS: Record<string, string> = {
   invoices: "Invoices", purchase_orders: "Purchase Orders", customers: "Customers",
-  vendors: "Vendors", products: "Products / Items", raw_materials: "Raw Materials",
-  gatepasses: "Gate Passes", production: "Production Orders", quality: "Quality Checks",
+  vendors: "Vendors", products: "Production & Inventory", raw_materials: "Raw Materials",
+  gatepasses: "Dispatch & Logistics", production: "Production Orders", quality: "Quality Checks",
   maintenance: "Preventive Maintenance", hr: "HR & Payroll", projects: "Projects",
   assets: "Fixed Assets", expenses: "Expense Claims", timesheets: "Timesheets",
+  crm: "CRM & Leads", mis: "MIS Reports",
 };
 
 // Maps nav item IDs to module_keys so labels can be overridden
@@ -31,12 +32,15 @@ const NAV_ID_TO_MODULE_KEY: Record<string, string> = {
   timesheets: "timesheets",
 };
 
-// Section ID to module key mapping
+// Section ID to module key mapping — used to rename section headers
 const SECTION_ID_TO_MODULE_KEY: Record<string, string> = {
   "finance-section": "invoices",
   "purchases-section": "purchase_orders",
   "production-section": "products",
   "hr-section": "hr",
+  "dispatch-section": "gatepasses",
+  "crm-section": "crm",
+  "mis-section": "mis",
 };
 
 export function useModuleLabels() {
@@ -65,7 +69,7 @@ export function useModuleLabels() {
       const sectionKey = section.id ? SECTION_ID_TO_MODULE_KEY[section.id] : undefined;
       const newSection = { ...section };
       if (sectionKey && labelMap[sectionKey] && labelMap[sectionKey] !== DEFAULT_LABELS[sectionKey]) {
-        // Optionally rename section label if the section maps to a module
+        newSection.label = labelMap[sectionKey];
       }
       newSection.items = section.items.map(item => {
         const moduleKey = NAV_ID_TO_MODULE_KEY[item.id];
