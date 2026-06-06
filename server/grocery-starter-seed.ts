@@ -51,13 +51,13 @@ const ROLE_PERMISSIONS: Record<string, ScreenPerm[]> = {
 
   cashier: [
     // Core
-    ["dashboard",       VIEW],
-    // POS Terminal — full billing access
-    ["pos",             VC  ],
-    // Billing sub-screens
-    ["sales_dashboard", VIEW], ["invoices",         VC  ],
-    ["payments",        VC  ], ["pending_payments", VIEW],
-    ["customer_advances", VIEW], ["credit_notes",   VIEW],
+    ["dashboard",            VIEW],
+    // POS Terminal — the primary screen for a cashier
+    ["pos",                  VC  ],
+    // Create bills and record payments (counter billing)
+    ["invoices",             VC  ],
+    ["payments",             VC  ],
+    // View own shift's cash report
     ["report_cash_register", VIEW],
   ],
 
