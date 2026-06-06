@@ -1285,6 +1285,171 @@ app.use((req, res, next) => {
     console.error('[PLATFORM SETTINGS MIGRATION ERROR]', err);
   }
 
+  // ─── POS Tables & Columns migration ──────────────────────────────────────
+  // Ensures all POS-related tables and columns exist on production DBs that
+  // were created before the POS module was added.
+  try {
+    const { pool: pgPos } = await import("./db");
+    // 1. pos_sessions — add missing columns
+    await pgPos.query(`
+      CREATE TABLE IF NOT EXISTS pos_sessions (
+        id            text PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id     text NOT NULL,
+        user_id       text,
+        counter_name  text DEFAULT 'Counter 1',
+        opened_at     timestamptz DEFAULT now(),
+        closed_at     timestamptz,
+        opening_balance        numeric(12,2) DEFAULT 0,
+        closing_balance        numeric(12,2),
+        total_sales            numeric(12,2) DEFAULT 0,
+        total_transactions     integer DEFAULT 0,
+        status                 text DEFAULT 'open',
+        opening_upi_float      numeric(12,2) DEFAULT 0,
+        approved_by            text,
+        approval_note          text,
+        shift_type             text DEFAULT 'new',
+        shift_name             text DEFAULT 'Morning',
+        opening_denomination   jsonb DEFAULT '{}',
+        closing_denomination   jsonb DEFAULT '{}'
+      );
+      ALTER TABLE pos_sessions ADD COLUMN IF NOT EXISTS user_id text;
+      ALTER TABLE pos_sessions ADD COLUMN IF NOT EXISTS counter_name text DEFAULT 'Counter 1';
+      ALTER TABLE pos_sessions ADD COLUMN IF NOT EXISTS opening_upi_float numeric(12,2) DEFAULT 0;
+      ALTER TABLE pos_sessions ADD COLUMN IF NOT EXISTS approved_by text;
+      ALTER TABLE pos_sessions ADD COLUMN IF NOT EXISTS approval_note text;
+      ALTER TABLE pos_sessions ADD COLUMN IF NOT EXISTS shift_type text DEFAULT 'new';
+      ALTER TABLE pos_sessions ADD COLUMN IF NOT EXISTS shift_name text DEFAULT 'Morning';
+      ALTER TABLE pos_sessions ADD COLUMN IF NOT EXISTS opening_denomination jsonb DEFAULT '{}';
+      ALTER TABLE pos_sessions ADD COLUMN IF NOT EXISTS closing_denomination jsonb DEFAULT '{}';
+      CREATE INDEX IF NOT EXISTS pos_sessions_tenant_idx ON pos_sessions(tenant_id);
+    `);
+    // 2. pos_terminals
+    await pgPos.query(`
+      CREATE TABLE IF NOT EXISTS pos_terminals (
+        id            text PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id     text NOT NULL,
+        counter_name  text NOT NULL,
+        terminal_name text,
+        terminal_type text NOT NULL DEFAULT 'manual',
+        terminal_id   text,
+        ip_address    text,
+        port          integer DEFAULT 80,
+        api_key       text,
+        merchant_id   text,
+        description   text,
+        is_active     boolean DEFAULT true,
+        created_at    timestamptz DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS pos_terminals_tenant_idx ON pos_terminals(tenant_id);
+      CREATE INDEX IF NOT EXISTS pos_terminals_counter_idx ON pos_terminals(tenant_id, counter_name);
+    `);
+    // 3. pos_customers
+    await pgPos.query(`
+      CREATE TABLE IF NOT EXISTS pos_customers (
+        id                  text PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id           text NOT NULL,
+        customer_code       text,
+        name                text NOT NULL,
+        phone               text,
+        email               text,
+        address             text,
+        credit_limit        numeric(12,2) DEFAULT 0,
+        outstanding_balance numeric(12,2) DEFAULT 0,
+        loyalty_points      integer DEFAULT 0,
+        date_of_birth       date,
+        anniversary_date    date,
+        record_status       integer DEFAULT 1,
+        created_at          timestamptz DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS pos_customers_tenant_idx ON pos_customers(tenant_id);
+    `);
+    // 4. pos_parked_bills
+    await pgPos.query(`
+      CREATE TABLE IF NOT EXISTS pos_parked_bills (
+        id            text PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id     text NOT NULL,
+        session_id    text,
+        counter_name  text,
+        cart_items    jsonb DEFAULT '[]',
+        customer_id   text,
+        customer_name text,
+        notes         text,
+        parked_at     timestamptz DEFAULT now()
+      );
+    `);
+    // 5. pos_returns
+    await pgPos.query(`
+      CREATE TABLE IF NOT EXISTS pos_returns (
+        id                      text PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id               text NOT NULL,
+        return_number           text,
+        original_transaction_id text,
+        customer_id             text,
+        return_date             date DEFAULT CURRENT_DATE,
+        return_amount           numeric(12,2) DEFAULT 0,
+        reason                  text,
+        refund_mode             text DEFAULT 'cash',
+        processed_by            text,
+        notes                   text,
+        record_status           integer DEFAULT 1,
+        created_at              timestamptz DEFAULT now()
+      );
+    `);
+    // 6. pos_promotions
+    await pgPos.query(`
+      CREATE TABLE IF NOT EXISTS pos_promotions (
+        id                  text PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id           text NOT NULL,
+        promo_code          text,
+        name                text NOT NULL,
+        promo_type          text DEFAULT 'percentage',
+        discount_value      numeric(10,2) DEFAULT 0,
+        min_purchase_amount numeric(12,2) DEFAULT 0,
+        max_discount_amount numeric(12,2),
+        start_date          date,
+        end_date            date,
+        usage_limit         integer,
+        usage_count         integer DEFAULT 0,
+        is_active           boolean DEFAULT true,
+        record_status       integer DEFAULT 1,
+        created_at          timestamptz DEFAULT now()
+      );
+    `);
+    // 7. pos_upi_payments
+    await pgPos.query(`
+      CREATE TABLE IF NOT EXISTS pos_upi_payments (
+        id                  text PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id           text NOT NULL,
+        session_id          text,
+        qr_id               text,
+        amount              numeric(12,2),
+        amount_paise        integer,
+        status              text DEFAULT 'pending',
+        expires_at          timestamptz,
+        razorpay_payment_id text,
+        card_ref            text,
+        created_at          timestamptz DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS pos_upi_payments_qr_idx ON pos_upi_payments(qr_id);
+    `);
+    // 8. pos_transactions — add missing columns if table already existed
+    await pgPos.query(`
+      ALTER TABLE pos_transactions ADD COLUMN IF NOT EXISTS customer_phone text;
+      ALTER TABLE pos_transactions ADD COLUMN IF NOT EXISTS payment_splits jsonb;
+      ALTER TABLE pos_transactions ADD COLUMN IF NOT EXISTS loyalty_points_earned integer DEFAULT 0;
+      ALTER TABLE pos_transactions ADD COLUMN IF NOT EXISTS loyalty_points_redeemed integer DEFAULT 0;
+      ALTER TABLE pos_transactions ADD COLUMN IF NOT EXISTS loyalty_discount numeric(10,2) DEFAULT 0;
+      ALTER TABLE pos_transactions ADD COLUMN IF NOT EXISTS razorpay_payment_id text;
+      ALTER TABLE pos_transactions ADD COLUMN IF NOT EXISTS terminal_id text;
+      ALTER TABLE pos_transactions ADD COLUMN IF NOT EXISTS card_ref text;
+      ALTER TABLE pos_transactions ADD COLUMN IF NOT EXISTS promotion_id text;
+      ALTER TABLE pos_transactions ADD COLUMN IF NOT EXISTS change_given numeric(12,2) DEFAULT 0;
+    `);
+    console.log('[POS MIGRATION] All POS tables and columns OK');
+  } catch (err: any) {
+    console.error('[POS MIGRATION ERROR]', err.message);
+  }
+
   // ─── Ensure role_permissions(role_id, screen_key) unique constraint ───────
   // Required by seed-demo-tenant.ts and seed-tenant.ts ON CONFLICT (role_id, screen_key).
   // Missing on production DBs created before this constraint was added.
