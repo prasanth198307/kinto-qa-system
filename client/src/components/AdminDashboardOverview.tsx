@@ -7,6 +7,7 @@ import {
   CalendarCheck, CreditCard, FileText, BarChart2, ShoppingCart, Package,
 } from "lucide-react";
 import type { User, Machine, ChecklistTemplate, SparePartCatalog, MaintenancePlan } from "@shared/schema";
+import { usePermissions } from "@/hooks/use-permissions";
 
 interface AdminDashboardOverviewProps {
   onNavigateToTab: (tab: string) => void;
@@ -32,6 +33,13 @@ export default function AdminDashboardOverview({ onNavigateToTab }: AdminDashboa
   const hasInvoicing   = hasModule('invoicing');
   const hasInventory   = hasModule('basic_inventory');
   const hasPOS         = hasModule('pos');
+
+  // Permission-aware filtering for non-admin roles (e.g. Cashier, Godown Incharge)
+  const { hasPermission, role: userRole } = usePermissions();
+  const SYSTEM_ROLES = ['admin', 'manager', 'accountsmanager'];
+  const isSystemRole = SYSTEM_ROLES.includes(userRole.toLowerCase());
+  // Returns true if user has view permission for a screen, or if they are a system role (no restriction)
+  const canSee = (screenKey: string) => isSystemRole || userRole === '' || hasPermission(screenKey, 'view');
 
   // Only fetch what the plan allows
   const { data: users = [] } = useQuery<User[]>({
@@ -241,6 +249,7 @@ export default function AdminDashboardOverview({ onNavigateToTab }: AdminDashboa
       icon: ShoppingCart,
       action: "pos",
       color: "text-green-600",
+      requiredScreen: "pos",
     },
     {
       title: "View Sales Report",
@@ -248,6 +257,7 @@ export default function AdminDashboardOverview({ onNavigateToTab }: AdminDashboa
       icon: BarChart2,
       action: "pos",
       color: "text-blue-600",
+      requiredScreen: "report_cash_register",
     },
     {
       title: "Add Product",
@@ -255,6 +265,7 @@ export default function AdminDashboardOverview({ onNavigateToTab }: AdminDashboa
       icon: Package,
       action: "inventory",
       color: "text-purple-600",
+      requiredScreen: "products",
     },
     {
       title: "Receive Stock (GRN)",
@@ -262,6 +273,7 @@ export default function AdminDashboardOverview({ onNavigateToTab }: AdminDashboa
       icon: FileText,
       action: "goods-receipt-notes",
       color: "text-teal-600",
+      requiredScreen: "goods_receipt_notes",
     },
     {
       title: "Add New User",
@@ -269,8 +281,9 @@ export default function AdminDashboardOverview({ onNavigateToTab }: AdminDashboa
       icon: Users,
       action: "users",
       color: "text-blue-600",
+      requiredScreen: "users",
     },
-  ] : [
+  ].filter(a => canSee(a.requiredScreen)) : [
     {
       title: "Add New User",
       description: "Create user account and assign role",

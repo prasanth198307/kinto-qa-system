@@ -20,7 +20,10 @@ export default function TodayProductionStats() {
   });
 
   const modules: string[] = planFeatures?.modules ?? [];
-  const showProduction = modules.includes('invoicing') || modules.includes('production') || modules.includes('gatepasses');
+  // Never show manufacturing stats for retail/grocery (POS) tenants — those stats
+  // are meaningless there and confuse cashiers with "Raw Material Issued / Gatepasses" labels.
+  const hasPOS = modules.includes('pos');
+  const showProduction = !hasPOS && (modules.includes('invoicing') || modules.includes('production') || modules.includes('gatepasses'));
 
   const { data: stats, isLoading } = useQuery<TodayStats>({
     queryKey: ['/api/stats/today'],
