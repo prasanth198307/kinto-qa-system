@@ -209,13 +209,14 @@ export async function seedGroceryStarterData(tenantId: number): Promise<{
 
     for (const [screenKey, perm] of screenPerms) {
       await db.execute(sql`
-        INSERT INTO role_permissions (role_id, screen_key, can_view, can_create, can_edit, can_delete)
-        VALUES (${roleId}, ${screenKey}, ${perm.v}, ${perm.c}, ${perm.e}, ${perm.d})
+        INSERT INTO role_permissions (role_id, screen_key, can_view, can_create, can_edit, can_delete, tenant_id)
+        VALUES (${roleId}, ${screenKey}, ${perm.v}, ${perm.c}, ${perm.e}, ${perm.d}, ${tenantId})
         ON CONFLICT (role_id, screen_key) DO UPDATE SET
           can_view   = EXCLUDED.can_view,
           can_create = EXCLUDED.can_create,
           can_edit   = EXCLUDED.can_edit,
-          can_delete = EXCLUDED.can_delete
+          can_delete = EXCLUDED.can_delete,
+          tenant_id  = EXCLUDED.tenant_id
       `);
       permissionsInserted++;
     }
