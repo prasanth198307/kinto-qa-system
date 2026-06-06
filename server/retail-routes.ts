@@ -25,9 +25,15 @@ router.get("/sessions/active", requireAuth, async (req: any, res) => {
 // List distinct counter names from past sessions (for dropdown)
 router.get("/sessions/counters", requireAuth, async (req: any, res) => {
   try {
+    // Merge counter names from both pre-configured terminals AND past sessions
     const rows = await db.execute(sql`
-      SELECT DISTINCT counter_name FROM pos_sessions
-      WHERE tenant_id=${tid(req)} AND counter_name IS NOT NULL
+      SELECT counter_name FROM (
+        SELECT DISTINCT counter_name FROM pos_terminals
+        WHERE tenant_id=${tid(req)} AND counter_name IS NOT NULL AND is_active = true
+        UNION
+        SELECT DISTINCT counter_name FROM pos_sessions
+        WHERE tenant_id=${tid(req)} AND counter_name IS NOT NULL
+      ) combined
       ORDER BY counter_name`);
     res.json(rows.rows.map((r: any) => r.counter_name));
   } catch (e: any) { res.status(500).json({ error: e.message }); }
