@@ -69,6 +69,8 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
   ],
   production: [
     "sales-officers",
+    "mis-production",
+    "mis-manufacturing",
     "raw-materials",
     "add-raw-material",
     "raw-material-types",
@@ -104,13 +106,11 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
   ],
   mis: [
     "mis-dashboard",
-    "mis-production",
     "mis-inventory",
     "mis-sales",
     "mis-delivery",
     "mis-cash",
     "mis-financial",
-    "mis-manufacturing",
   ],
   expenses: [
     "expenses",
