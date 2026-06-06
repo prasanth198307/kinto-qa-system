@@ -517,7 +517,7 @@ export default function SuperAdminTenants() {
                               >
                                 <Package className="h-4 w-4 mr-2" /> Manage Modules
                               </DropdownMenuItem>
-                              {tenant.industry === "Retail" && (
+                              {(tenant.plan?.toLowerCase().includes("grocery") || tenant.industry?.toLowerCase().includes("retail") || tenant.industry?.toLowerCase().includes("grocery")) && (
                                 <DropdownMenuItem
                                   onClick={() => reseedGroceryMutation.mutate(tenant.id)}
                                   disabled={reseedGroceryMutation.isPending}
