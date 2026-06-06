@@ -19,137 +19,208 @@ type ScreenPerm = [string, Perm];
 // ── Per-role screen permissions ────────────────────────────────────────────────
 const ROLE_PERMISSIONS: Record<string, ScreenPerm[]> = {
 
+  // ── Store Manager ─────────────────────────────────────────────────────────────
+  // Oversees the whole store: sales, inventory view, staff ops, basic reports.
+  // NOT: accounts, payroll, PO creation, vendor management.
   store_manager: [
     // Core
-    ["dashboard",           VIEW], ["overview",          VIEW],
-    ["reports",             VIEW], ["notification_settings", VIEW],
-    // POS Terminal — view sessions, sales history, returns, promotions
-    ["pos",                 VIEW],
+    ["dashboard",                   VIEW], ["overview",            VIEW],
+    ["reports",                     VIEW], ["notification_settings", VIEW],
+    // POS — view sessions, sales history, Z-report
+    ["pos",                         VIEW],
     // Sales & Billing
-    ["sales_dashboard",     VIEW], ["invoices",           VCE],
-    ["payments",            VC  ], ["pending_payments",   VIEW],
-    ["customer_advances",   VIEW], ["credit_notes",       VC  ],
-    ["cancelled_invoices_report", VIEW],
-    ["report_invoices",     VIEW], ["report_monthly_sales", VIEW],
-    ["report_cash_register", VIEW],
-    // Inventory — view only
-    ["products",            VIEW], ["inventory",          VIEW],
-    ["product_categories",  VIEW], ["uom",                VIEW],
-    ["price_lists",         VIEW], ["finished_goods",     VIEW],
-    // Stock adjustments — store manager can create write-offs
-    ["inventory_stock_adjustments", VCE],
-    // Sales Orders
-    ["sales_orders",        VCE ], ["sales_officers",     VIEW],
+    ["sales_dashboard",             VIEW],
+    ["invoices",                    VCE ],
+    ["payment_management",          VIEW],
+    ["payments",                    VC  ],
+    ["pending_payments",            VIEW],
+    ["credit_notes",                VC  ],
+    ["cancelled_invoices_report",   VIEW],
+    ["sales_orders",                VCE ],
+    ["sales_returns",               VIEW],
+    // Inventory — view only (godown incharge manages stock)
+    ["products",                    VIEW],
+    ["inventory",                   VIEW],
+    ["product_categories",          VIEW],
+    ["uom",                         VIEW],
+    ["price_lists",                 VIEW],
+    ["serial_lot_register",         VIEW],
+    // Stock adjustments — manager can approve/create write-offs
+    ["inventory_stock_adjustments", VCE ],
     // Purchase — view only
-    ["purchase_orders",     VIEW], ["vendors",            VIEW],
-    ["goods_receipt_notes", VIEW], ["purchase_requisitions", VIEW],
+    ["purchase_orders",             VIEW],
+    ["vendors",                     VIEW],
+    ["goods_receipt_notes",         VIEW],
+    ["purchase_requisitions",       VIEW],
     // Warehouses — view only
-    ["warehouses",          VIEW], ["stock_transfers",    VIEW],
-    // Report
-    ["report_purchase_orders", VIEW],
+    ["warehouses",                  VIEW],
+    ["stock_transfers",             VIEW],
+    // MIS Analytics — store-level dashboard
+    ["mis_dashboard",               VIEW],
+    ["mis_sales",                   VIEW],
+    ["mis_inventory",               VIEW],
+    ["mis_cash",                    VIEW],
+    // Reports
+    ["report_invoices",             VIEW],
+    ["report_monthly_sales",        VIEW],
+    ["report_cash_register",        VIEW],
+    ["report_purchase_orders",      VIEW],
   ],
 
+  // ── Cashier ───────────────────────────────────────────────────────────────────
+  // Counter billing only. No accounts, no inventory, no management screens.
   cashier: [
-    // Core
     ["dashboard",            VIEW],
-    // POS Terminal — the primary screen for a cashier
+    // POS Terminal — primary screen
     ["pos",                  VC  ],
-    // Create bills and record payments (counter billing)
+    // Manual billing (non-POS invoices)
     ["invoices",             VC  ],
     ["payments",             VC  ],
-    // View own shift's cash report
+    // View own shift cash summary
     ["report_cash_register", VIEW],
   ],
 
+  // ── Godown Incharge ───────────────────────────────────────────────────────────
+  // Manages physical stock: receive goods, transfers, adjustments, bulk import.
+  // NOT: billing, accounts, purchase orders creation, pricing decisions.
   godown_incharge: [
-    // Core
-    ["dashboard",       VIEW],
-    // Inventory — full
-    ["products",        VCE ], ["inventory",        FULL],
-    ["product_categories", VIEW], ["uom",            VIEW],
-    ["price_lists",     VIEW], ["finished_goods",   VCE ],
-    // GRN — full (including barcode scan)
-    ["goods_receipt_notes",       FULL],
-    ["inventory_grn_scan",        FULL],
-    // Stock adjustments — godown incharge records damage/expiry
+    ["dashboard",                   VIEW],
+    // Products & Inventory — full control
+    ["products",                    VCE ],
+    ["inventory",                   FULL],
+    ["product_categories",          VIEW],
+    ["product_types",               VIEW],
+    ["uom",                         VIEW],
+    ["serial_lot_register",         FULL],
+    // GRN — receive goods against purchase orders
+    ["goods_receipt_notes",         FULL],
+    ["inventory_grn_scan",          FULL],
+    // Stock adjustments — damage, expiry, spoilage write-offs
     ["inventory_stock_adjustments", FULL],
-    // Bulk import — for initial stock loading
-    ["inventory_bulk_import",     VC  ],
-    // Warehouses & Transfers — full
-    ["warehouses",      VIEW], ["stock_transfers",  FULL],
-    // Purchase Orders — view only
-    ["purchase_orders", VIEW], ["vendors",          VIEW],
-    ["purchase_requisitions", VIEW],
+    // Bulk import — for initial stock upload / new product onboarding
+    ["inventory_bulk_import",       VC  ],
+    // Warehouses & Transfers — move stock between godown and store
+    ["warehouses",                  VIEW],
+    ["stock_transfers",             FULL],
+    // Purchase Orders — view only (to receive against them)
+    ["purchase_orders",             VIEW],
+    ["vendors",                     VIEW],
+    ["purchase_requisitions",       VC  ],
+    // Reports
+    ["report_purchase_orders",      VIEW],
   ],
 
+  // ── Purchase Manager ─────────────────────────────────────────────────────────
+  // End-to-end procurement: POs, vendors, GRN approval, requisitions.
+  // NOT: billing customers, HR, accounts.
   purchase_manager: [
-    // Core
-    ["dashboard",       VIEW], ["reports",          VIEW],
-    // Purchase — full
-    ["purchase_orders", FULL], ["vendors",          FULL],
-    ["vendor_types",    VCE ], ["vendor_debit_notes", VCE],
-    ["vendor_analytics", VIEW], ["vendor_history",  VIEW],
-    ["purchase_requisitions", FULL],
-    // GRN — full (including barcode scan view + GRN approval)
-    ["goods_receipt_notes",   FULL],
-    ["inventory_grn_scan",    VIEW],
-    // Approval workflows — Purchase Manager approves GRNs & stock adjustments above threshold
-    ["approval_workflows",    VCE ],
-    // Inventory — view + bulk import for onboarding new items
-    ["products",        VIEW], ["inventory",        VIEW],
-    ["product_categories", VIEW], ["uom",            VIEW],
-    ["inventory_bulk_import",           VC  ],
-    ["inventory_stock_adjustments",     VIEW],
+    ["dashboard",                   VIEW],
+    ["reports",                     VIEW],
+    // Procurement — full
+    ["purchase_orders",             FULL],
+    ["vendors",                     FULL],
+    ["vendor_types",                VCE ],
+    ["vendor_debit_notes",          VCE ],
+    ["vendor_analytics",            VIEW],
+    ["vendor_history",              VIEW],
+    ["purchase_requisitions",       FULL],
+    // GRN — approve and record
+    ["goods_receipt_notes",         FULL],
+    ["inventory_grn_scan",          VIEW],
+    // Approval workflows — GRN & high-value PO approvals
+    ["approval_workflows",          VCE ],
+    // Inventory — view to check stock levels before ordering
+    ["products",                    VIEW],
+    ["inventory",                   VIEW],
+    ["product_categories",          VIEW],
+    ["uom",                         VIEW],
+    ["price_lists",                 VIEW],
+    ["inventory_bulk_import",       VC  ],
+    ["inventory_stock_adjustments", VIEW],
+    ["warehouses",                  VIEW],
+    ["serial_lot_register",         VIEW],
     // Reports
-    ["report_purchase_orders", VIEW], ["report_vendor_report", VIEW],
-    // Warehouses — view
-    ["warehouses",      VIEW],
+    ["report_purchase_orders",      VIEW],
+    ["report_vendor_report",        VIEW],
   ],
 
+  // ── Accountant ───────────────────────────────────────────────────────────────
+  // Full accounts, GST, cash management. NOT: HR/payroll, inventory operations.
   accountant: [
-    // Core
-    ["dashboard",       VIEW], ["reports",          VIEW],
+    ["dashboard",                   VIEW],
+    ["reports",                     VIEW],
     // Sales & Invoicing — full
-    ["invoices",        FULL], ["payments",         FULL],
-    ["sales_dashboard", VIEW], ["customer_advances", FULL],
-    ["pending_payments", VIEW], ["credit_notes",    FULL],
-    ["cancelled_invoices_report", VIEW], ["write_off_report", VIEW],
-    ["payment_writeoff", FULL], ["invoice_templates", VIEW],
+    ["invoices",                    FULL],
+    ["payment_management",          FULL],
+    ["payments",                    FULL],
+    ["sales_dashboard",             VIEW],
+    ["customer_advances",           FULL],
+    ["pending_payments",            VIEW],
+    ["credit_notes",                FULL],
+    ["cancelled_invoices_report",   VIEW],
+    ["write_off_report",            VIEW],
+    ["payment_writeoff",            FULL],
+    ["invoice_templates",           VIEW],
+    ["bulk_payment_report",         VIEW],
     // GST
-    ["gst_reports",     VCE ],
-    // Accounting — full
-    ["chart_of_accounts", FULL], ["account_subtypes", FULL],
-    ["journal_entries", FULL], ["manual_journal_entry", FULL],
-    ["trial_balance",   VIEW], ["profit_loss",       VIEW],
-    ["balance_sheet",   VIEW], ["bank_transactions",  FULL],
-    ["banks",           FULL], ["ledger_view",        VIEW],
-    ["day_book",        VIEW], ["aging_report",       VIEW],
-    ["cash_flow_statement", VIEW], ["group_summary",  VIEW],
-    ["tds_management",  VCE ], ["debit_notes",       VCE ],
-    ["cost_centres",    VIEW], ["budget_variance",   VIEW],
-    // Expenses
-    ["expenses",        FULL], ["expense_categories", VCE],
-    ["monthly_expenses", FULL], ["cash_register",    FULL],
-    ["cash_register_report", VIEW], ["report_expenses", VIEW],
-    // Vendor — view
-    ["vendors",         VIEW], ["purchase_orders",   VIEW],
-    ["vendor_debit_notes", VIEW],
+    ["gst_reports",                 VCE ],
+    // Double-entry Accounting — full
+    ["chart_of_accounts",           FULL],
+    ["account_subtypes",            FULL],
+    ["journal_entries",             FULL],
+    ["manual_journal_entry",        FULL],
+    ["trial_balance",               VIEW],
+    ["profit_loss",                 VIEW],
+    ["balance_sheet",               VIEW],
+    ["bank_transactions",           FULL],
+    ["banks",                       FULL],
+    ["ledger_view",                 VIEW],
+    ["day_book",                    VIEW],
+    ["aging_report",                VIEW],
+    ["cash_flow_statement",         VIEW],
+    ["group_summary",               VIEW],
+    ["tds_management",              VCE ],
+    ["debit_notes",                 VCE ],
+    ["cost_centres",                VIEW],
+    ["budget_variance",             VIEW],
+    // Expenses & Cash Register
+    ["expenses",                    FULL],
+    ["expense_categories",          VCE ],
+    ["monthly_expenses",            FULL],
+    ["cash_register",               FULL],
+    ["report_expenses",             VIEW],
+    // Vendor — view only
+    ["vendors",                     VIEW],
+    ["purchase_orders",             VIEW],
+    ["vendor_debit_notes",          VIEW],
     // Reports
-    ["report_invoices", VIEW], ["report_gst",        VIEW],
-    ["report_payments", VIEW], ["report_monthly_sales", VIEW],
-    ["bulk_payment_report", VIEW],
+    ["report_invoices",             VIEW],
+    ["report_monthly_sales",        VIEW],
+    ["report_cash_register",        VIEW],
+    ["report_payments",             VIEW],
+    // MIS — financial visibility
+    ["mis_dashboard",               VIEW],
+    ["mis_sales",                   VIEW],
+    ["mis_cash",                    VIEW],
+    ["mis_financial",               VIEW],
   ],
 
+  // ── HR Manager ───────────────────────────────────────────────────────────────
+  // All HR & Payroll. NOT: billing, inventory, accounts.
   hr_manager: [
-    // Core
     ["dashboard",           VIEW],
-    // HR — full
-    ["hr_employees",        FULL], ["hr_attendance",    FULL],
-    ["hr_leaves",           FULL], ["hr_payroll",       FULL],
-    ["hr_exit_management",  FULL], ["hr_loans",         FULL],
-    ["hr_tds",              FULL], ["hr_reports",       VIEW],
-    ["hr_ess_admin",        FULL], ["hr_masters",       FULL],
-    ["hr_expense_claims",   FULL], ["hr_appraisals",    FULL],
+    ["hr_employees",        FULL],
+    ["hr_attendance",       FULL],
+    ["hr_leaves",           FULL],
+    ["hr_payroll",          FULL],
+    ["hr_exit_management",  FULL],
+    ["hr_loans",            FULL],
+    ["hr_tds",              FULL],
+    ["hr_reports",          VIEW],
+    ["hr_ess_admin",        FULL],
+    ["hr_masters",          FULL],
+    ["hr_expense_claims",   FULL],
+    ["hr_appraisals",       FULL],
     ["hr_recruitment",      FULL],
   ],
 };
