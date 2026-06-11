@@ -2660,27 +2660,41 @@ router.get("/salary-structures/:id/compute-basic", requireHR, async (req: any, r
     const components: any[] = typeof row.components === 'string'
       ? JSON.parse(row.components) : (row.components || []);
 
-    // Sum up percentage-of-basic earnings (non-BASIC components)
-    // Formula: CTC = basic + basic*pct_sum/100 + fixed_sum
-    //          basic = (CTC - fixed_sum) / (1 + pct_sum/100)
+    const earnings = components.filter((c: any) => c.type === 'earning');
+    const basicComp = earnings.find((c: any) => {
+      const code = (c.code || '').toUpperCase();
+      const name = (c.name || '').toLowerCase();
+      return code === 'BASIC' || name === 'basic' || name === 'basic salary';
+    });
+
+    // basic_salary in hr_employees is stored as MONTHLY; ctc is ANNUAL
+    const monthlyCTC = ctc / 12;
+    let basic = 0;
     let pctSum = 0;
     let fixedSum = 0;
-    for (const comp of components) {
-      if (comp.type !== 'earning') continue;
-      const code = (comp.code || '').toUpperCase();
-      const name = (comp.name || '').toLowerCase();
-      if (code === 'BASIC' || name === 'basic' || name === 'basic salary') continue;
-      const ft = comp.formula_type || 'fixed';
-      if (ft === 'percent_of_basic' || ft === 'percentage') {
-        pctSum += Number(comp.formula_value || 0);
+
+    if (basicComp) {
+      const ft = basicComp.formula_type || 'fixed';
+      if (ft === 'fixed') {
+        // Fixed monthly amount
+        basic = Number(basicComp.formula_value || 0);
       } else {
-        fixedSum += Number(comp.formula_value || 0);
+        // Percentage of monthly CTC (matches employee form logic exactly)
+        basic = Math.round(monthlyCTC * Number(basicComp.formula_value || 0) / 100);
       }
+    } else {
+      // No explicit BASIC component — back-calculate from other components
+      for (const comp of earnings) {
+        const ft = comp.formula_type || 'fixed';
+        if (ft === 'percent_of_basic' || ft === 'percentage') {
+          pctSum += Number(comp.formula_value || 0);
+        } else {
+          fixedSum += Number(comp.formula_value || 0);
+        }
+      }
+      const annualBasic = Math.round((ctc - fixedSum) / (1 + pctSum / 100));
+      basic = Math.round(annualBasic / 12);
     }
-    // basic_salary in hr_employees is stored as MONTHLY; ctc is ANNUAL
-    // compute annual basic first, then divide by 12 for monthly
-    const annualBasic = Math.round((ctc - fixedSum) / (1 + pctSum / 100));
-    const basic = Math.round(annualBasic / 12);
     res.json({ basic: Math.max(0, basic), pctSum, fixedSum });
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
