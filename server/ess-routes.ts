@@ -133,7 +133,7 @@ router.get("/payslips/:id", requireESS, async (req: any, res) => {
     const r = await db.execute(sql`
       SELECT p.*, pr.month, pr.year, pr.status as run_status,
         e.first_name, e.last_name, e.emp_code, e.pan, e.pf_number, e.esi_number,
-        e.bank_account_number, e.bank_name, e.bank_ifsc,
+        e.bank_account as bank_account_number, e.bank_name, e.ifsc as bank_ifsc,
         d.name as department_name, des.name as designation_name
       FROM hr_payslips p
       JOIN hr_payroll_runs pr ON p.payroll_run_id = pr.id

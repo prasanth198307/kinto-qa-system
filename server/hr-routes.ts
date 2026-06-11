@@ -2795,7 +2795,7 @@ router.get("/reports/attendance-summary", requireHR, async (req: any, res) => {
         COUNT(CASE WHEN a.status='on_leave' THEN 1 END) as leave_days,
         COUNT(CASE WHEN a.status='weekly_off' THEN 1 END) as weekly_off,
         COUNT(CASE WHEN a.status='holiday' THEN 1 END) as holidays,
-        COALESCE(SUM(CAST(ot.ot_hours AS numeric)), 0) as total_ot_hours
+        0 as total_ot_hours
       FROM hr_employees e
       LEFT JOIN hr_departments d ON e.department_id = d.id
       LEFT JOIN hr_designations des ON e.designation_id = des.id
@@ -2803,10 +2803,6 @@ router.get("/reports/attendance-summary", requireHR, async (req: any, res) => {
         AND EXTRACT(MONTH FROM a.date) = ${Number(month)}
         AND EXTRACT(YEAR FROM a.date) = ${Number(year)}
         AND a.record_status = 1
-      LEFT JOIN hr_ot_records ot ON ot.employee_id = e.id
-        AND EXTRACT(MONTH FROM ot.date) = ${Number(month)}
-        AND EXTRACT(YEAR FROM ot.date) = ${Number(year)}
-        AND ot.record_status = 1
       WHERE e.tenant_id=${tid} AND e.record_status=1 AND e.status='active'
       ${departmentId ? sql`AND e.department_id=${Number(departmentId)}` : sql``}
       GROUP BY e.id, e.emp_code, e.first_name, e.last_name, d.name, des.name
@@ -2859,8 +2855,8 @@ router.get("/reports/leave-balance", requireHR, async (req: any, res) => {
         e.emp_code, e.first_name, e.last_name,
         d.name as department_name, des.name as designation_name,
         lt.name as leave_type, lt.code as leave_code,
-        lb.total_days, lb.used_days, lb.pending_days,
-        (lb.total_days - lb.used_days - lb.pending_days) as balance_days
+        lb.entitled as total_days, lb.used as used_days, 0 as pending_days,
+        lb.balance as balance_days
       FROM hr_employees e
       LEFT JOIN hr_departments d ON e.department_id = d.id
       LEFT JOIN hr_designations des ON e.designation_id = des.id
