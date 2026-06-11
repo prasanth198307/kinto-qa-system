@@ -374,14 +374,12 @@ router.post("/admin/set-password", async (req: any, res) => {
 router.get("/expense-claims", requireESS, async (req: any, res) => {
   const tid = getEssTenantId(req);
   const eid = getEssEmployeeId(req);
-  const claims = await db.execute(sql`SELECT ec.*, e.first_name||' '||e.last_name AS employee_name
-    FROM hr_expense_claims ec JOIN hr_employees e ON e.id = ec.employee_id
-    WHERE ec.tenant_id=${tid} AND ec.employee_id=${eid} AND ec.record_status=1 ORDER BY ec.created_at DESC`);
-  const ids = (claims.rows as any[]).map((c: any) => c.id);
-  const items = ids.length > 0
-    ? await db.execute(sql`SELECT * FROM hr_expense_claim_items WHERE claim_id = ANY(${ids}::int[]) AND tenant_id=${tid}`)
-    : { rows: [] };
-  res.json({ claims: claims.rows, items: items.rows });
+  try {
+    const claims = await db.execute(sql`SELECT ec.*, e.first_name||' '||e.last_name AS employee_name
+      FROM hr_expense_claims ec JOIN hr_employees e ON e.id = ec.employee_id
+      WHERE ec.tenant_id=${tid} AND ec.employee_id=${eid} AND ec.record_status=1 ORDER BY ec.created_at DESC`);
+    res.json(claims.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 
 router.post("/expense-claims", requireESS, async (req: any, res) => {

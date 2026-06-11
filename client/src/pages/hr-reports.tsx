@@ -37,7 +37,9 @@ function EmployeeDirectoryReport() {
     queryKey: ["/api/hr/reports/employee-directory", status, deptId],
     queryFn: async () => {
       const r = await fetch(`/api/hr/reports/employee-directory?${queryParams}`, { credentials: "include" });
-      return r.json();
+      if (!r.ok) throw new Error((await r.json()).message || "Failed");
+      const d = await r.json();
+      return Array.isArray(d) ? d : [];
     }
   });
 
@@ -136,7 +138,9 @@ function AttendanceSummaryReport() {
     queryKey: ["/api/hr/reports/attendance-summary", month, year, deptId],
     queryFn: async () => {
       const r = await fetch(`/api/hr/reports/attendance-summary?${queryParams}`, { credentials: "include" });
-      return r.json();
+      if (!r.ok) throw new Error((await r.json()).message || "Failed");
+      const d = await r.json();
+      return Array.isArray(d) ? d : [];
     },
     enabled: fetched,
   });
@@ -227,7 +231,9 @@ function PayrollSummaryReport() {
     queryKey: ["/api/hr/reports/payroll-summary"],
     queryFn: async () => {
       const r = await fetch("/api/hr/reports/payroll-summary", { credentials: "include" });
-      return r.json();
+      if (!r.ok) throw new Error((await r.json()).message || "Failed");
+      const d = await r.json();
+      return Array.isArray(d) ? d : [];
     }
   });
 
@@ -319,7 +325,9 @@ function LeaveBalanceReport() {
     queryKey: ["/api/hr/reports/leave-balance", year, deptId],
     queryFn: async () => {
       const r = await fetch(`/api/hr/reports/leave-balance?${queryParams}`, { credentials: "include" });
-      return r.json();
+      if (!r.ok) throw new Error((await r.json()).message || "Failed");
+      const d = await r.json();
+      return Array.isArray(d) ? d : [];
     },
     enabled: fetched,
   });
@@ -425,7 +433,9 @@ function SalaryRevisionReport() {
     queryKey: ["/api/hr/reports/salary-revisions", fromDate, toDate, deptId],
     queryFn: async () => {
       const r = await fetch(`/api/hr/reports/salary-revisions?${queryParams}`, { credentials: "include" });
-      return r.json();
+      if (!r.ok) throw new Error((await r.json()).message || "Failed");
+      const d = await r.json();
+      return Array.isArray(d) ? d : [];
     },
     enabled: fetched,
   });

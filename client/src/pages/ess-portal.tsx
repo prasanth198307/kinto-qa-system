@@ -33,12 +33,19 @@ async function essFetch(path: string, opts?: RequestInit) {
 
 // ── Payslip Detail ─────────────────────────────────────────────────────────────
 function PayslipDetail({ payslipId, onClose }: { payslipId: number; onClose: () => void }) {
-  const { data: ps } = useQuery({
+  const { data: ps, isLoading, isError } = useQuery({
     queryKey: ["ess-payslip", payslipId],
     queryFn: () => essFetch(`/payslips/${payslipId}`),
   });
 
-  if (!ps) return <div className="p-8 text-center text-muted-foreground">Loading...</div>;
+  if (isLoading) return <div className="p-8 text-center text-muted-foreground">Loading payslip...</div>;
+  if (isError || !ps) return (
+    <div className="p-8 text-center text-muted-foreground">
+      <AlertCircle className="h-8 w-8 mx-auto mb-2 text-destructive" />
+      <p className="text-sm">Could not load payslip. Please try again.</p>
+      <Button size="sm" variant="outline" className="mt-3" onClick={onClose}>Close</Button>
+    </div>
+  );
 
   const components = ps.components ? (typeof ps.components === "string" ? JSON.parse(ps.components) : ps.components) : [];
   const earnings = components.filter((c: any) => c.type === "earning");
