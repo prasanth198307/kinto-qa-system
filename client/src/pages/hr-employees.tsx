@@ -877,18 +877,30 @@ function SalaryRevisionPanel({ emp }: { emp: any }) {
   const { data: computedBasic } = useQuery<{ basic: number; pctSum: number; fixedSum: number }>({
     queryKey: ["/api/hr/salary-structures/compute-basic", structureId, ctcVal],
     queryFn: async () => {
-      if (!structureId || !ctcVal) return { basic: 0, pctSum: 0, fixedSum: 0 };
+      if (!ctcVal) return { basic: 0, pctSum: 0, fixedSum: 0 };
+      if (!structureId) {
+        // No salary structure assigned — fallback: 40% of monthly CTC
+        return { basic: Math.round(ctcVal / 12 * 0.4), pctSum: 0, fixedSum: 0, fallback: true } as any;
+      }
       const r = await fetch(`/api/hr/salary-structures/${structureId}/compute-basic?ctc=${ctcVal}`, { credentials: "include" });
       return r.json();
     },
-    enabled: !!structureId && ctcVal > 0,
+    enabled: ctcVal > 0,
   });
 
-  // When CTC changes and we have a salary structure, auto-fill basic
+  // When CTC changes, auto-fill basic from structure (or fallback)
   useEffect(() => {
-    if (computedBasic && computedBasic.basic > 0 && ctcVal > 0) {
-      setForm(p => ({ ...p, newBasic: String(computedBasic.basic) }));
-      setBasicAutoCalc(true);
+    if (computedBasic && ctcVal > 0) {
+      const b = computedBasic.basic;
+      if (b > 0) {
+        setForm(p => ({ ...p, newBasic: String(b) }));
+        setBasicAutoCalc(true);
+      } else if (!structureId) {
+        // Structure missing and API returned 0 — use 40% fallback directly
+        const fallback = Math.round(ctcVal / 12 * 0.4);
+        setForm(p => ({ ...p, newBasic: String(fallback) }));
+        setBasicAutoCalc(true);
+      }
     }
   }, [computedBasic?.basic, ctcVal]);
 
@@ -974,8 +986,12 @@ function SalaryRevisionPanel({ emp }: { emp: any }) {
                   placeholder="0"
                   data-testid="input-new-ctc"
                 />
-                {structureId && ctcVal > 0 && (
-                  <p className="text-xs text-muted-foreground">Basic will be computed from salary structure</p>
+                {ctcVal > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    {structureId
+                      ? "Basic will be computed from assigned salary structure"
+                      : "No salary structure assigned — basic will default to 40% of monthly CTC. Adjust if needed."}
+                  </p>
                 )}
               </div>
               <div className="space-y-1.5">
@@ -995,7 +1011,11 @@ function SalaryRevisionPanel({ emp }: { emp: any }) {
                 />
                 {basicAutoCalc && computedBasic && (
                   <p className="text-xs text-muted-foreground">
-                    Computed: {computedBasic.pctSum > 0 ? `${computedBasic.pctSum}% other allowances` : 'Fixed components'} applied to CTC
+                    {!structureId
+                      ? "40% of monthly CTC (default — no structure assigned). You can edit this."
+                      : computedBasic.pctSum > 0
+                        ? `From structure: ${computedBasic.pctSum}% allowances applied`
+                        : "Computed from salary structure"}
                   </p>
                 )}
               </div>
