@@ -1926,6 +1926,23 @@ router.get("/payroll-runs/:id/salary-sheet", requireHR, async (req: any, res) =>
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet(`Salary ${monthName} ${year}`);
 
+    // Collect all unique extra earning component names across all payslips
+    // so we can add dynamic columns for Special Allowance, Bonus, etc.
+    const KNOWN_EARNING_CODES = new Set(['BASIC','HRA','LTA','TA','DA','OT','OT1','OVERTIME','PF_EMP','ESI_EMP','PT','TDS']);
+    const extraEarningCols: string[] = [];
+    for (const r of rows.rows as any[]) {
+      const comps: any[] = r.components
+        ? (typeof r.components === 'string' ? JSON.parse(r.components) : r.components)
+        : [];
+      for (const c of comps) {
+        if (c.type !== 'earning') continue;
+        const code = (c.code || '').toUpperCase();
+        if (!KNOWN_EARNING_CODES.has(code) && !extraEarningCols.includes(c.name)) {
+          extraEarningCols.push(c.name);
+        }
+      }
+    }
+
     const COLS = [
       { header: 'Sl.No', key: 'sl', width: 6 },
       { header: 'Emp ID', key: 'emp_code', width: 12 },
@@ -1939,19 +1956,28 @@ router.get("/payroll-runs/:id/salary-sheet", requireHR, async (req: any, res) =>
       { header: 'Sal Calendar Days', key: 'cal_days', width: 10 },
       { header: 'Present Days', key: 'pay_days', width: 10 },
       { header: 'Derivable Days', key: 'deriv_days', width: 10 },
+      // Earnings
       { header: 'BASIC', key: 'basic', width: 12 },
       { header: 'HRA', key: 'hra', width: 12 },
       { header: 'LTA', key: 'lta', width: 12 },
       { header: 'TA', key: 'ta', width: 12 },
       { header: 'DA', key: 'da', width: 12 },
-      { header: 'OT1', key: 'ot1', width: 10 },
-      { header: 'Total Earning', key: 'gross', width: 13 },
-      { header: 'PF', key: 'pf', width: 10 },
-      { header: 'ESI', key: 'esi', width: 10 },
+      { header: 'Special Allow.', key: 'spec', width: 13 },
+      ...extraEarningCols.map(n => ({ header: n, key: `extra_${n}`, width: 13 })),
+      { header: 'OT', key: 'ot1', width: 10 },
+      { header: 'Total Earning', key: 'gross', width: 14 },
+      // Deductions
+      { header: 'PF (Emp)', key: 'pf', width: 11 },
+      { header: 'ESI (Emp)', key: 'esi', width: 11 },
       { header: 'PT', key: 'pt', width: 10 },
-      { header: 'Total Deductions', key: 'total_ded', width: 14 },
-      { header: 'Net Amount', key: 'net', width: 13 },
+      { header: 'TDS', key: 'tds', width: 11 },
+      { header: 'Loan / Advance', key: 'loan', width: 13 },
+      { header: 'Total Deductions', key: 'total_ded', width: 15 },
+      { header: 'Net Amount', key: 'net', width: 14 },
     ];
+
+    const NUM_FIXED_COLS = 12;   // columns before first earning
+    const EARNING_START  = NUM_FIXED_COLS + 1;  // 1-based col index where earnings start
 
     ws.columns = COLS.map(c => ({ header: '', key: c.key, width: c.width }));
 
@@ -1964,13 +1990,42 @@ router.get("/payroll-runs/:id/salary-sheet", requireHR, async (req: any, res) =>
     titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9E1F2' } };
     ws.getRow(1).height = 22;
 
-    // Header row (row 2)
-    const headerRow = ws.getRow(2);
+    // Sub-header groups (row 2) — Earnings band / Deductions band
+    const earningEndIdx  = COLS.findIndex(c => c.key === 'gross') + 1;   // 1-based
+    const deductStartIdx = COLS.findIndex(c => c.key === 'pf') + 1;
+    const deductEndIdx   = COLS.findIndex(c => c.key === 'total_ded') + 1;
+
+    const groupRow = ws.getRow(2);
+    // label "Earnings" spanning earning cols
+    ws.mergeCells(2, EARNING_START, 2, earningEndIdx);
+    const eCell = groupRow.getCell(EARNING_START);
+    eCell.value = 'EARNINGS';
+    eCell.font = { bold: true, size: 9, color: { argb: 'FF1F4E79' } };
+    eCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDAE3F3' } };
+    eCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    // label "Deductions" spanning deduction cols
+    ws.mergeCells(2, deductStartIdx, 2, deductEndIdx);
+    const dCell = groupRow.getCell(deductStartIdx);
+    dCell.value = 'DEDUCTIONS';
+    dCell.font = { bold: true, size: 9, color: { argb: 'FF7B0000' } };
+    dCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFCE4D6' } };
+    dCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    groupRow.height = 16;
+
+    // Header row (row 3)
+    const headerRow = ws.getRow(3);
     COLS.forEach((c, i) => {
       const cell = headerRow.getCell(i + 1);
       cell.value = c.header;
       cell.font = { bold: true, size: 9 };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD6DCE4' } };
+      const colIdx = i + 1;
+      if (colIdx >= EARNING_START && colIdx <= earningEndIdx) {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9E1F2' } };
+      } else if (colIdx >= deductStartIdx && colIdx <= deductEndIdx) {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFCE4D6' } };
+      } else {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD6DCE4' } };
+      }
       cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
       cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
     });
@@ -1980,8 +2035,10 @@ router.get("/payroll-runs/:id/salary-sheet", requireHR, async (req: any, res) =>
     const fmtDate = (d: any) => d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
 
     let slNo = 1;
-    let totBasic = 0, totHRA = 0, totLTA = 0, totTA = 0, totDA = 0, totOT1 = 0, totGross = 0;
-    let totPF = 0, totESI = 0, totPT = 0, totDed = 0, totNet = 0;
+    let totBasic = 0, totHRA = 0, totLTA = 0, totTA = 0, totDA = 0, totSpec = 0;
+    const totExtra: Record<string, number> = {};
+    let totOT1 = 0, totGross = 0;
+    let totPF = 0, totESI = 0, totPT = 0, totTDS = 0, totLoan = 0, totDed = 0, totNet = 0;
 
     for (const r of rows.rows as any[]) {
       const comps: any[] = r.components
@@ -1989,26 +2046,41 @@ router.get("/payroll-runs/:id/salary-sheet", requireHR, async (req: any, res) =>
         : [];
 
       const getComp = (code: string) => {
-        const c = comps.find((x: any) => x.code?.toUpperCase() === code.toUpperCase() || x.name?.toUpperCase().includes(code.toUpperCase()));
+        const c = comps.find((x: any) =>
+          x.code?.toUpperCase() === code.toUpperCase() ||
+          x.name?.toUpperCase().includes(code.toUpperCase())
+        );
         return c ? Number(c.amount || 0) : 0;
       };
 
-      const basic   = getComp('BASIC') || fmt(r.basic_salary);
-      const hra     = getComp('HRA');
-      const lta     = getComp('LTA');
-      const ta      = getComp('TA');
-      const da      = getComp('DA');
-      const ot1     = getComp('OT1') || getComp('OT') || getComp('OVERTIME');
-      const gross   = fmt(r.gross_salary);
-      const pf      = fmt(r.pf_employee);
-      const esi     = fmt(r.esi_employee);
-      const pt      = fmt(r.pt);
+      const basic = getComp('BASIC') || fmt(r.basic_salary);
+      const hra   = getComp('HRA');
+      const lta   = getComp('LTA');
+      const ta    = getComp('TA');
+      const da    = getComp('DA');
+      const spec  = getComp('SPEC') || getComp('SPECIAL');
+      const ot1   = getComp('OT1') || getComp('OT') || getComp('OVERTIME');
+      const gross = fmt(r.gross_salary);
+      const pf    = fmt(r.pf_employee);
+      const esi   = fmt(r.esi_employee);
+      const pt    = fmt(r.pt);
+      const tds   = fmt(r.tds);
+      // Loan = total_deductions − pf − esi − pt − tds
+      const loan  = Math.max(0, fmt(r.total_deductions) - pf - esi - pt - tds);
       const totDedR = fmt(r.total_deductions);
-      const net     = fmt(r.net_salary);
+      const net   = fmt(r.net_salary);
 
-      totBasic += basic; totHRA += hra; totLTA += lta; totTA += ta; totDA += da; totOT1 += ot1;
-      totGross += gross; totPF += pf; totESI += esi; totPT += pt;
-      totDed += totDedR; totNet += net;
+      // Extra dynamic earning columns
+      const extraVals: number[] = extraEarningCols.map(colName => {
+        const c = comps.find((x: any) => x.name === colName && x.type === 'earning');
+        return c ? Number(c.amount || 0) : 0;
+      });
+
+      totBasic += basic; totHRA += hra; totLTA += lta; totTA += ta; totDA += da;
+      totSpec  += spec;  totOT1 += ot1; totGross += gross;
+      totPF += pf; totESI += esi; totPT += pt; totTDS += tds;
+      totLoan += loan; totDed += totDedR; totNet += net;
+      extraEarningCols.forEach((n, i) => { totExtra[n] = (totExtra[n] || 0) + extraVals[i]; });
 
       const dataRow = ws.addRow([
         slNo++,
@@ -2023,30 +2095,33 @@ router.get("/payroll-runs/:id/salary-sheet", requireHR, async (req: any, res) =>
         fmt(r.days_in_month),
         fmt(r.days_worked),
         fmt(r.days_worked),
-        basic, hra, lta, ta, da, ot1, gross, pf, esi, pt, totDedR, net,
+        basic, hra, lta, ta, da, spec, ...extraVals, ot1, gross,
+        pf, esi, pt, tds, loan, totDedR, net,
       ]);
 
       dataRow.eachCell((cell, colNum) => {
         cell.font = { size: 9 };
         cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
-        if (colNum >= 10) cell.alignment = { horizontal: 'right' };
-        if (colNum >= 13) cell.numFmt = '#,##0.00';
+        if (colNum >= EARNING_START) cell.alignment = { horizontal: 'right' };
+        if (colNum >= EARNING_START) cell.numFmt = '#,##0.00';
       });
       dataRow.getCell(1).alignment = { horizontal: 'center' };
     }
 
     // Totals row
     const totRow = ws.addRow([
-      '', '', 'TOTAL', '', '', '', '', '', '',
-      '', '', '',
-      totBasic, totHRA, totLTA, totTA, totDA, totOT1, totGross, totPF, totESI, totPT, totDed, totNet,
+      '', '', 'TOTAL', '', '', '', '', '', '', '', '', '',
+      totBasic, totHRA, totLTA, totTA, totDA, totSpec,
+      ...extraEarningCols.map(n => totExtra[n] || 0),
+      totOT1, totGross,
+      totPF, totESI, totPT, totTDS, totLoan, totDed, totNet,
     ]);
     totRow.eachCell((cell, colNum) => {
       cell.font = { bold: true, size: 9 };
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
       cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'medium' }, right: { style: 'thin' } };
-      if (colNum >= 10) cell.alignment = { horizontal: 'right' };
-      if (colNum >= 13) cell.numFmt = '#,##0.00';
+      if (colNum >= EARNING_START) cell.alignment = { horizontal: 'right' };
+      if (colNum >= EARNING_START) cell.numFmt = '#,##0.00';
     });
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
