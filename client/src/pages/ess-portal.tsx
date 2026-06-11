@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -37,6 +37,46 @@ function PayslipDetail({ payslipId, onClose }: { payslipId: number; onClose: () 
     queryKey: ["ess-payslip", payslipId],
     queryFn: () => essFetch(`/payslips/${payslipId}`),
   });
+  const { toast } = useToast();
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const printRef = useRef<HTMLDivElement>(null);
+
+  const downloadPDF = async () => {
+    if (!printRef.current || !ps) return;
+    setPdfLoading(true);
+    try {
+      const [jsPDFMod, html2canvasMod] = await Promise.all([
+        import("jspdf"),
+        import("html2canvas"),
+      ]);
+      const jsPDF = jsPDFMod.default;
+      const html2canvas = html2canvasMod.default;
+      const canvas = await html2canvas(printRef.current, { scale: 2, useCORS: true, backgroundColor: "#ffffff", logging: false });
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const imgHeight = (canvas.height * pageWidth) / canvas.width;
+      if (imgHeight <= pageHeight) {
+        pdf.addImage(imgData, "PNG", 0, 0, pageWidth, imgHeight);
+      } else {
+        let yPos = 0, remaining = imgHeight;
+        while (remaining > 0) {
+          const slice = Math.min(pageHeight, remaining);
+          pdf.addImage(imgData, "PNG", 0, -yPos, pageWidth, imgHeight);
+          remaining -= slice; yPos += slice;
+          if (remaining > 0) pdf.addPage();
+        }
+      }
+      const name = `${ps.first_name || ""}_${ps.last_name || ""}_${MONTH_NAMES[ps.month]}_${ps.year}`.replace(/\s+/g, "_");
+      pdf.save(`Payslip_${name}.pdf`);
+      toast({ title: "PDF downloaded" });
+    } catch (e: any) {
+      toast({ title: "PDF failed", description: e.message, variant: "destructive" });
+    } finally {
+      setPdfLoading(false);
+    }
+  };
 
   if (isLoading) return <div className="p-8 text-center text-muted-foreground">Loading payslip...</div>;
   if (isError || !ps) return (
@@ -52,19 +92,23 @@ function PayslipDetail({ payslipId, onClose }: { payslipId: number; onClose: () 
   const deductions = components.filter((c: any) => c.type === "deduction");
 
   return (
-    <div className="space-y-4" id="ess-payslip-print">
-      <div className="flex justify-between items-start">
+    <div className="space-y-4">
+      <div className="flex justify-between items-start flex-wrap gap-2">
         <div>
           <h2 className="font-semibold text-lg">Pay Slip — {MONTH_NAMES[ps.month]} {ps.year}</h2>
           <p className="text-sm text-muted-foreground">{ps.first_name} {ps.last_name} · {ps.emp_code}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Button size="sm" variant="outline" onClick={downloadPDF} disabled={pdfLoading} data-testid="btn-payslip-pdf">
+            <Download className="h-3.5 w-3.5 mr-1.5" />{pdfLoading ? "Generating..." : "Download PDF"}
+          </Button>
           <Button size="sm" variant="outline" onClick={() => window.print()}>
             <Printer className="h-3.5 w-3.5 mr-1.5" />Print
           </Button>
           <Button size="sm" variant="ghost" onClick={onClose}>Close</Button>
         </div>
       </div>
+      <div ref={printRef} className="space-y-4 bg-white text-black rounded-md p-1" id="ess-payslip-print">
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
         {[
@@ -115,6 +159,7 @@ function PayslipDetail({ payslipId, onClose }: { payslipId: number; onClose: () 
           </div>
         ))}
       </div>
+      </div>{/* end printRef */}
     </div>
   );
 }
