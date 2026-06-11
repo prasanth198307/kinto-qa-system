@@ -1510,21 +1510,26 @@ router.post("/payroll-runs", requireHR, async (req: any, res) => {
 function calcAnnualTax(taxableIncome: number, regime: string): number {
   if (taxableIncome <= 0) return 0;
   if (regime === 'new') {
-    // New regime slabs (FY 2024-25) with rebate u/s 87A up to ₹7L
+    // New regime slabs — FY 2025-26 (Union Budget 2025)
+    // Slabs: 0-4L=0%, 4-8L=5%, 8-12L=10%, 12-16L=15%, 16-20L=20%, 20-24L=25%, >24L=30%
+    // 87A rebate: full rebate if taxable income ≤ ₹12,00,000 (effectively tax-free up to ₹12.75L after std deduction)
     let tax = 0;
-    if (taxableIncome > 1500000) tax += (taxableIncome - 1500000) * 0.30;
-    if (taxableIncome > 1200000) tax += (Math.min(taxableIncome, 1500000) - 1200000) * 0.20;
-    if (taxableIncome > 900000) tax += (Math.min(taxableIncome, 1200000) - 900000) * 0.15;
-    if (taxableIncome > 600000) tax += (Math.min(taxableIncome, 900000) - 600000) * 0.10;
-    if (taxableIncome > 300000) tax += (Math.min(taxableIncome, 600000) - 300000) * 0.05;
-    if (taxableIncome <= 700000) tax = 0; // 87A rebate
+    if (taxableIncome > 2400000) tax += (taxableIncome - 2400000) * 0.30;
+    if (taxableIncome > 2000000) tax += (Math.min(taxableIncome, 2400000) - 2000000) * 0.25;
+    if (taxableIncome > 1600000) tax += (Math.min(taxableIncome, 2000000) - 1600000) * 0.20;
+    if (taxableIncome > 1200000) tax += (Math.min(taxableIncome, 1600000) - 1200000) * 0.15;
+    if (taxableIncome >  800000) tax += (Math.min(taxableIncome, 1200000) -  800000) * 0.10;
+    if (taxableIncome >  400000) tax += (Math.min(taxableIncome,  800000) -  400000) * 0.05;
+    if (taxableIncome <= 1200000) tax = 0; // 87A full rebate up to ₹12L
     return Math.round(tax);
   } else {
-    // Old regime slabs
+    // Old regime slabs — FY 2025-26 (unchanged)
+    // 0-2.5L=0%, 2.5-5L=5%, 5-10L=20%, >10L=30%
+    // 87A rebate: full rebate if taxable income ≤ ₹5,00,000
     let tax = 0;
     if (taxableIncome > 1000000) tax += (taxableIncome - 1000000) * 0.30;
-    if (taxableIncome > 500000) tax += (Math.min(taxableIncome, 1000000) - 500000) * 0.20;
-    if (taxableIncome > 250000) tax += (Math.min(taxableIncome, 500000) - 250000) * 0.05;
+    if (taxableIncome >  500000) tax += (Math.min(taxableIncome, 1000000) - 500000) * 0.20;
+    if (taxableIncome >  250000) tax += (Math.min(taxableIncome,  500000) - 250000) * 0.05;
     if (taxableIncome <= 500000) tax = 0; // 87A rebate
     return Math.round(tax);
   }
@@ -1599,9 +1604,42 @@ router.post("/payroll-runs/:id/process", requireHR, async (req: any, res) => {
       const lopDays = lop + absent;  // absent = LOP
       const attendancePct = workingDays > 0 ? Math.min(daysWorked, workingDays) / workingDays : 1;
 
-      // Check for mid-month salary revision — pro-rate if effective_date falls in this payroll month
+      // ── Salary revision logic ─────────────────────────────────────────────────
+      // emp.basic_salary reflects the CURRENT (possibly future-revised) salary.
+      // We must correct for two scenarios:
+      //
+      // Case A — Future revision: effective_date is AFTER this payroll month.
+      //   Saving a revision (e.g. June 1) immediately updates hr_employees.basic_salary
+      //   to the new amount. So May payroll would wrongly use the June salary.
+      //   Fix: if any revision's effective_date is beyond the last day of this payroll
+      //   month, use old_basic from that revision as the base salary.
+      //
+      // Case B — Mid-month revision: effective_date falls within this payroll month.
+      //   Pro-rate between old and new salary.
       let basicSalary = Number(emp.basic_salary || 0);
       let salaryRevisionNote = '';
+
+      // Last day of the payroll month (e.g. 2026-05-31 for May 2026)
+      const payrollMonthLastDay = new Date(Number(year), Number(month), 0);
+      const payrollMonthLastDayStr = payrollMonthLastDay.toISOString().split('T')[0];
+
+      // Case A: look for a revision that takes effect AFTER this payroll month
+      const futureRev = await db.execute(sql`
+        SELECT old_basic, new_basic, effective_date
+        FROM hr_salary_revisions
+        WHERE tenant_id=${tid} AND employee_id=${emp.id} AND record_status=1
+          AND effective_date::date > ${payrollMonthLastDayStr}::date
+        ORDER BY effective_date ASC
+        LIMIT 1
+      `);
+      if (futureRev.rows.length > 0) {
+        // Use the salary that was in effect BEFORE this future revision
+        const oldB = Number((futureRev.rows[0] as any).old_basic || 0);
+        if (oldB > 0) basicSalary = oldB;
+        salaryRevisionNote = `Using pre-revision salary ₹${basicSalary} (revision effective ${(futureRev.rows[0] as any).effective_date})`;
+      }
+
+      // Case B: mid-month revision this payroll month — pro-rate
       const revInMonth = await db.execute(sql`
         SELECT old_basic, new_basic, effective_date
         FROM hr_salary_revisions
