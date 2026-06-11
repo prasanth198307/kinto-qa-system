@@ -2602,7 +2602,10 @@ router.get("/salary-structures/:id/compute-basic", requireHR, async (req: any, r
         fixedSum += Number(comp.formula_value || 0);
       }
     }
-    const basic = Math.round((ctc - fixedSum) / (1 + pctSum / 100));
+    // basic_salary in hr_employees is stored as MONTHLY; ctc is ANNUAL
+    // compute annual basic first, then divide by 12 for monthly
+    const annualBasic = Math.round((ctc - fixedSum) / (1 + pctSum / 100));
+    const basic = Math.round(annualBasic / 12);
     res.json({ basic: Math.max(0, basic), pctSum, fixedSum });
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
