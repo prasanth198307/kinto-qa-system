@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { buildPayslipHtml } from "@/lib/payslip-templates";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -37,7 +38,10 @@ function PayslipDetail({ payslipId, onClose }: { payslipId: number; onClose: () 
     queryKey: ["ess-payslip", payslipId],
     queryFn: () => essFetch(`/payslips/${payslipId}`),
   });
-  const { data: tenantInfo } = useQuery<any>({ queryKey: ["/api/tenant/info"] });
+  const { data: psSettings } = useQuery<any>({
+    queryKey: ["ess-payslip-settings"],
+    queryFn: () => essFetch("/payslip-settings"),
+  });
   const { data: leavesData } = useQuery<any>({
     queryKey: ["ess-leaves"],
     queryFn: () => essFetch("/leaves"),
@@ -46,82 +50,8 @@ function PayslipDetail({ payslipId, onClose }: { payslipId: number; onClose: () 
 
   const openPrintWindow = (forPrint = false) => {
     if (!ps) return;
-    const components = ps.components ? (typeof ps.components === "string" ? JSON.parse(ps.components) : ps.components) : [];
-    const earnings = components.filter((c: any) => c.type === "earning");
-    const deductions = components.filter((c: any) => c.type === "deduction");
     const leaveBalances: any[] = leavesData?.balances || [];
-    const companyName = tenantInfo?.name || "—";
-    const monthName = MONTH_NAMES[ps.month] || "";
-    const fmtN = (n: any) => Number(n || 0).toLocaleString("en-IN");
-    const today = new Date().toLocaleDateString("en-IN");
-
-    const maxRows = Math.max(earnings.length, deductions.length);
-    const pairedRows = Array.from({ length: maxRows }, (_, i) => {
-      const e = earnings[i];
-      const d = deductions[i];
-      return `<tr>
-        <td>${e ? e.name : ""}</td><td class="r">${e ? "&#8377;" + fmtN(e.amount) : ""}</td>
-        <td>${d ? d.name : ""}</td><td class="r">${d ? "&#8377;" + fmtN(d.amount) : ""}</td>
-      </tr>`;
-    }).join("");
-
-    const leaveRows = leaveBalances.map((lb: any) => {
-      const bal = Number(lb.balance ?? 0);
-      return `<tr>
-        <td>${lb.leave_type_name || lb.type_code || ""}</td>
-        <td class="r">${Number(lb.entitled ?? 0).toFixed(1)}</td>
-        <td class="r">${Number(lb.used ?? 0).toFixed(1)}</td>
-        <td class="r" style="font-weight:bold;color:${bal > 0 ? "#166534" : "#c00"}">${bal.toFixed(1)}</td>
-      </tr>`;
-    }).join("");
-
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
-<title>Payslip ${ps.emp_code} ${monthName} ${ps.year}</title>
-<style>
-  body{font-family:Arial,sans-serif;font-size:12px;margin:24px;color:#222}
-  .header{display:flex;align-items:center;gap:16px;border-bottom:2px solid #1e40af;padding-bottom:10px;margin-bottom:12px}
-  .co-name{font-size:16px;font-weight:bold;color:#1e40af}
-  .slip-title{background:#1e40af;color:#fff;text-align:center;padding:4px 0;font-size:13px;font-weight:bold;margin-bottom:10px}
-  table{width:100%;border-collapse:collapse;margin-bottom:10px}
-  th,td{border:1px solid #ccc;padding:5px 8px;font-size:11px}
-  th{background:#e8edf8;text-align:left;font-size:11px}
-  .r{text-align:right}
-  .total{font-weight:bold;background:#f0f4ff}
-  .netpay{background:#1e40af;color:#fff;font-weight:bold;text-align:center;font-size:13px}
-  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px 12px;margin-bottom:10px;font-size:11px}
-  .lbl{color:#666}
-  @media print{body{margin:8px}}
-</style></head><body>
-<div class="header"><div><div class="co-name">${companyName}</div></div></div>
-<div class="slip-title">SALARY SLIP — ${monthName.toUpperCase()} ${ps.year}</div>
-<div class="grid">
-  <div><span class="lbl">Employee:</span> <b>${ps.first_name} ${ps.last_name}</b></div>
-  <div><span class="lbl">Code:</span> ${ps.emp_code}</div>
-  <div><span class="lbl">Department:</span> ${ps.department_name || "—"}</div>
-  <div><span class="lbl">Designation:</span> ${ps.designation_name || "—"}</div>
-  <div><span class="lbl">PAN:</span> ${ps.pan || "—"}</div>
-  <div><span class="lbl">PF No:</span> ${ps.pf_number || "—"}</div>
-  <div><span class="lbl">Days Worked:</span> ${Number(ps.days_worked || 0).toFixed(2)}/${ps.working_days || 26}</div>
-  <div><span class="lbl">LOP Days:</span> ${Number(ps.lop_days || 0).toFixed(2)}</div>
-  <div><span class="lbl">Bank:</span> ${ps.bank_name || "—"}&nbsp;&nbsp;A/c: ${ps.bank_account_number || "—"}</div>
-</div>
-<table>
-  <tr><th>Earnings</th><th class="r">Amount (&#8377;)</th><th>Deductions</th><th class="r">Amount (&#8377;)</th></tr>
-  ${pairedRows}
-  <tr class="total">
-    <td>Gross Salary</td><td class="r">&#8377;${fmtN(ps.gross_salary)}</td>
-    <td>Total Deductions</td><td class="r" style="color:#c00">&#8377;${fmtN(ps.total_deductions)}</td>
-  </tr>
-  <tr><td colspan="4" class="netpay">Net Pay: &#8377;${fmtN(ps.net_salary)}</td></tr>
-</table>
-${leaveRows ? `<table style="margin-top:10px">
-  <tr><th colspan="4" style="background:#e8edf8;font-size:11px">Leave Balance Summary — ${ps.year}</th></tr>
-  <tr><th>Leave Type</th><th class="r">Entitled</th><th class="r">Used</th><th class="r">Balance</th></tr>
-  ${leaveRows}
-</table>` : ""}
-<p style="font-size:10px;color:#888;text-align:center;margin-top:16px">This is a system-generated payslip. Not valid without company seal.<br>Generated on ${today}</p>
-</body></html>`;
-
+    const html = buildPayslipHtml(ps, psSettings, leaveBalances);
     const w = window.open("", "_blank", "width=860,height=1050");
     if (!w) { toast({ title: "Popup blocked", description: "Allow popups and try again", variant: "destructive" }); return; }
     w.document.write(html);

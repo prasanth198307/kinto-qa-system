@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { buildPayslipHtml, TEMPLATE_STYLES, SAMPLE_PS, SAMPLE_LEAVES } from "@/lib/payslip-templates";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
@@ -534,6 +535,29 @@ export default function HRPayrollPage() {
           {/* Display Options Tab */}
           {settingTab === "options" && (
             <div className="space-y-4">
+              {/* Template Style Picker */}
+              <div className="space-y-2">
+                <Label>Template Style</Label>
+                <div className="grid grid-cols-5 gap-2">
+                  {TEMPLATE_STYLES.map(tmpl => (
+                    <button
+                      key={tmpl.key}
+                      type="button"
+                      data-testid={`btn-template-${tmpl.key}`}
+                      onClick={() => setSettingsForm(f => ({ ...f, templateStyle: tmpl.key }))}
+                      className={`flex flex-col items-center gap-1.5 p-2.5 rounded-md border-2 transition-colors ${
+                        settingsForm.templateStyle === tmpl.key
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover-elevate"
+                      }`}
+                    >
+                      <div className="w-8 h-8 rounded-sm" style={{ background: tmpl.accent }} />
+                      <span className="text-xs font-semibold">{tmpl.label}</span>
+                      <span className="text-[9px] text-muted-foreground leading-tight text-center">{tmpl.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-md border">
                 <div>
                   <p className="text-sm font-medium">Show Employer Contributions</p>
@@ -573,78 +597,30 @@ export default function HRPayrollPage() {
           {/* Preview Tab */}
           {settingTab === "preview" && (() => {
             const f = settingsForm;
-            const coName = f.companyName || "Your Company Name";
-            const coAddr = [f.companyAddress, f.companyCity, f.companyState, f.companyPin].filter(Boolean).join(", ");
-            const coContact = [f.companyPhone ? `Ph: ${f.companyPhone}` : "", f.companyEmail].filter(Boolean).join(" | ");
-            const coReg = [f.companyGstin ? `GSTIN: ${f.companyGstin}` : "", f.companyCin ? `CIN: ${f.companyCin}` : ""].filter(Boolean).join(" | ");
-            const signatory = f.signatoryName ? `<div style="margin-top:24px;text-align:right;font-size:11px;border-top:1px solid #ddd;padding-top:8px;"><b>${f.signatoryName}</b>${f.signatoryDesignation ? `<br><span style="color:#555">${f.signatoryDesignation}</span>` : ""}<br>Authorised Signatory</div>` : "";
-            const footer = f.footerNote || "This is a system-generated payslip. Not valid without company seal.";
-            const logoSection = logoPreview ? `<img src="${logoPreview}" style="height:48px;object-fit:contain;margin-right:12px;">` : `<div style="width:48px;height:48px;border:1px dashed #aaa;display:flex;align-items:center;justify-content:center;font-size:9px;color:#aaa;margin-right:12px;">LOGO</div>`;
-            const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-  body{font-family:Arial,sans-serif;font-size:12px;margin:20px;color:#222;background:#fff}
-  .header{display:flex;align-items:center;border-bottom:2px solid #1e40af;padding-bottom:10px;margin-bottom:12px}
-  .co-name{font-size:15px;font-weight:bold;color:#1e40af}
-  .co-addr,.co-reg{font-size:10px;color:#555;margin-top:2px}
-  .slip-title{background:#1e40af;color:#fff;text-align:center;padding:4px 0;font-size:12px;font-weight:bold;margin-bottom:10px}
-  table{width:100%;border-collapse:collapse;margin-bottom:10px}
-  th,td{border:1px solid #ccc;padding:4px 7px;font-size:11px}
-  th{background:#e8edf8;text-align:left}
-  .r{text-align:right}
-  .total{font-weight:bold;background:#f0f4ff}
-  .netpay{background:#1e40af;color:#fff;font-weight:bold;text-align:center;font-size:12px}
-  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px 12px;margin-bottom:10px;font-size:11px}
-  .lbl{color:#666}
-  .badge{display:inline-block;background:#e8edf8;border-radius:3px;padding:1px 6px;font-size:10px;color:#1e40af}
-</style></head><body>
-<div class="header">
-  ${logoSection}
-  <div>
-    <div class="co-name">${coName}</div>
-    ${coAddr ? `<div class="co-addr">${coAddr}</div>` : ""}
-    ${coContact ? `<div class="co-addr">${coContact}</div>` : ""}
-    ${coReg ? `<div class="co-reg">${coReg}</div>` : ""}
-  </div>
-</div>
-<div class="slip-title">SALARY SLIP — APRIL 2025 <span class="badge" style="font-size:10px;color:#fff;background:rgba(255,255,255,0.25)">SAMPLE PREVIEW</span></div>
-<div class="grid">
-  <div><span class="lbl">Employee:</span> <b>Ramesh Kumar</b></div>
-  <div><span class="lbl">Code:</span> EMP-001</div>
-  <div><span class="lbl">Department:</span> Production</div>
-  <div><span class="lbl">Designation:</span> Senior Engineer</div>
-  <div><span class="lbl">PAN:</span> ABCDE1234F</div>
-  <div><span class="lbl">PF No:</span> TSHY12345678</div>
-  <div><span class="lbl">Days Worked:</span> 26/26</div>
-  <div><span class="lbl">LOP Days:</span> 0</div>
-  <div><span class="lbl">Bank:</span> SBI</div>
-</div>
-<table>
-  <tr><th>Earnings</th><th class="r">Amount (₹)</th><th>Deductions</th><th class="r">Amount (₹)</th></tr>
-  <tr><td>Basic Salary</td><td class="r">25,000</td><td>PF (Employee)</td><td class="r">3,000</td></tr>
-  <tr><td>HRA</td><td class="r">10,000</td><td>ESI (Employee)</td><td class="r">1,050</td></tr>
-  <tr><td>Special Allowance</td><td class="r">8,500</td><td>Professional Tax</td><td class="r">200</td></tr>
-  <tr><td>Travel Allowance</td><td class="r">3,200</td><td></td><td></td></tr>
-  <tr class="total"><td>Gross Salary</td><td class="r">46,700</td><td>Total Deductions</td><td class="r" style="color:#c00">4,250</td></tr>
-  <tr><td colspan="4" class="netpay">Net Pay: ₹42,450</td></tr>
-</table>
-${f.showEmployerContributions ? `<table><tr><th colspan="2">Employer Contributions</th></tr><tr><td>PF (Employer)</td><td class="r">₹3,000</td></tr><tr><td>ESI (Employer)</td><td class="r">₹1,991</td></tr></table>` : ""}
-<table style="margin-top:10px">
-  <tr><th colspan="4" style="background:#e8edf8;text-align:left;font-size:11px">Leave Balance Summary — ${new Date().getFullYear()}</th></tr>
-  <tr><th>Leave Type</th><th class="r">Entitled</th><th class="r">Used</th><th class="r">Balance</th></tr>
-  <tr><td>Casual Leave (CL)</td><td class="r">12.0</td><td class="r">2.0</td><td class="r" style="font-weight:bold;color:#166534">10.0</td></tr>
-  <tr><td>Sick Leave (SL)</td><td class="r">12.0</td><td class="r">0.0</td><td class="r" style="font-weight:bold;color:#166534">12.0</td></tr>
-  <tr><td>Earned Leave (EL)</td><td class="r">15.0</td><td class="r">3.0</td><td class="r" style="font-weight:bold;color:#166534">12.0</td></tr>
-  <tr><td>Loss of Pay (LOP)</td><td class="r">0.0</td><td class="r">0.0</td><td class="r" style="font-weight:bold;color:#c00">0.0</td></tr>
-</table>
-${signatory}
-<p style="font-size:10px;color:#888;text-align:center;margin-top:12px">${footer}<br>Generated on ${new Date().toLocaleDateString("en-IN")}</p>
-</body></html>`;
+            const previewSettings = {
+              template_style:            f.templateStyle,
+              company_name:              f.companyName || "Your Company Name",
+              company_address:           f.companyAddress,
+              company_city:              f.companyCity,
+              company_state:             f.companyState,
+              company_pin:               f.companyPin,
+              company_phone:             f.companyPhone,
+              company_email:             f.companyEmail,
+              company_gstin:             f.companyGstin,
+              company_cin:               f.companyCin,
+              signatory_name:            f.signatoryName,
+              signatory_designation:     f.signatoryDesignation,
+              show_employer_contributions: f.showEmployerContributions,
+              footer_note:               f.footerNote,
+            };
+            const html = buildPayslipHtml(SAMPLE_PS, previewSettings, SAMPLE_LEAVES, logoPreview || null, true);
             return (
               <div className="space-y-2">
-                <p className="text-xs text-muted-foreground">This is a sample preview showing how payslips will look with your current settings. Save the template to apply changes.</p>
+                <p className="text-xs text-muted-foreground">Live preview — reflects your selected template and settings. Switch templates to compare styles.</p>
                 <iframe
                   srcDoc={html}
                   className="w-full rounded-md border bg-white"
-                  style={{ height: "520px" }}
+                  style={{ height: "540px" }}
                   title="Payslip Preview"
                   sandbox="allow-same-origin"
                 />

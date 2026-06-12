@@ -147,6 +147,15 @@ router.get("/payslips/:id", requireESS, async (req: any, res) => {
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 
+// ── Payslip Settings (for template / branding) ────────────────────────────────
+router.get("/payslip-settings", requireESS, async (req: any, res) => {
+  const tid = getEssTenantId(req);
+  try {
+    const r = await db.execute(sql`SELECT * FROM hr_payslip_settings WHERE tenant_id=${tid}`);
+    res.json(r.rows[0] || {});
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
 // ── Attendance ────────────────────────────────────────────────────────────────
 router.get("/attendance", requireESS, async (req: any, res) => {
   const eid = getEssEmployeeId(req);
