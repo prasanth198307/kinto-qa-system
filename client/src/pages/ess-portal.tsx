@@ -37,45 +37,97 @@ function PayslipDetail({ payslipId, onClose }: { payslipId: number; onClose: () 
     queryKey: ["ess-payslip", payslipId],
     queryFn: () => essFetch(`/payslips/${payslipId}`),
   });
+  const { data: tenantInfo } = useQuery<any>({ queryKey: ["/api/tenant/info"] });
+  const { data: leavesData } = useQuery<any>({
+    queryKey: ["ess-leaves"],
+    queryFn: () => essFetch("/leaves"),
+  });
   const { toast } = useToast();
-  const [pdfLoading, setPdfLoading] = useState(false);
-  const printRef = useRef<HTMLDivElement>(null);
 
-  const downloadPDF = async () => {
-    if (!printRef.current || !ps) return;
-    setPdfLoading(true);
-    try {
-      const [jsPDFMod, html2canvasMod] = await Promise.all([
-        import("jspdf"),
-        import("html2canvas"),
-      ]);
-      const jsPDF = jsPDFMod.default;
-      const html2canvas = html2canvasMod.default;
-      const canvas = await html2canvas(printRef.current, { scale: 2, useCORS: true, backgroundColor: "#ffffff", logging: false });
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const imgHeight = (canvas.height * pageWidth) / canvas.width;
-      if (imgHeight <= pageHeight) {
-        pdf.addImage(imgData, "PNG", 0, 0, pageWidth, imgHeight);
-      } else {
-        let yPos = 0, remaining = imgHeight;
-        while (remaining > 0) {
-          const slice = Math.min(pageHeight, remaining);
-          pdf.addImage(imgData, "PNG", 0, -yPos, pageWidth, imgHeight);
-          remaining -= slice; yPos += slice;
-          if (remaining > 0) pdf.addPage();
-        }
-      }
-      const name = `${ps.first_name || ""}_${ps.last_name || ""}_${MONTH_NAMES[ps.month]}_${ps.year}`.replace(/\s+/g, "_");
-      pdf.save(`Payslip_${name}.pdf`);
-      toast({ title: "PDF downloaded" });
-    } catch (e: any) {
-      toast({ title: "PDF failed", description: e.message, variant: "destructive" });
-    } finally {
-      setPdfLoading(false);
-    }
+  const openPrintWindow = (forPrint = false) => {
+    if (!ps) return;
+    const components = ps.components ? (typeof ps.components === "string" ? JSON.parse(ps.components) : ps.components) : [];
+    const earnings = components.filter((c: any) => c.type === "earning");
+    const deductions = components.filter((c: any) => c.type === "deduction");
+    const leaveBalances: any[] = leavesData?.balances || [];
+    const companyName = tenantInfo?.name || "—";
+    const monthName = MONTH_NAMES[ps.month] || "";
+    const fmtN = (n: any) => Number(n || 0).toLocaleString("en-IN");
+    const today = new Date().toLocaleDateString("en-IN");
+
+    const maxRows = Math.max(earnings.length, deductions.length);
+    const pairedRows = Array.from({ length: maxRows }, (_, i) => {
+      const e = earnings[i];
+      const d = deductions[i];
+      return `<tr>
+        <td>${e ? e.name : ""}</td><td class="r">${e ? "&#8377;" + fmtN(e.amount) : ""}</td>
+        <td>${d ? d.name : ""}</td><td class="r">${d ? "&#8377;" + fmtN(d.amount) : ""}</td>
+      </tr>`;
+    }).join("");
+
+    const leaveRows = leaveBalances.map((lb: any) => {
+      const bal = Number(lb.balance ?? 0);
+      return `<tr>
+        <td>${lb.leave_type_name || lb.type_code || ""}</td>
+        <td class="r">${Number(lb.entitled ?? 0).toFixed(1)}</td>
+        <td class="r">${Number(lb.used ?? 0).toFixed(1)}</td>
+        <td class="r" style="font-weight:bold;color:${bal > 0 ? "#166534" : "#c00"}">${bal.toFixed(1)}</td>
+      </tr>`;
+    }).join("");
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>Payslip ${ps.emp_code} ${monthName} ${ps.year}</title>
+<style>
+  body{font-family:Arial,sans-serif;font-size:12px;margin:24px;color:#222}
+  .header{display:flex;align-items:center;gap:16px;border-bottom:2px solid #1e40af;padding-bottom:10px;margin-bottom:12px}
+  .co-name{font-size:16px;font-weight:bold;color:#1e40af}
+  .slip-title{background:#1e40af;color:#fff;text-align:center;padding:4px 0;font-size:13px;font-weight:bold;margin-bottom:10px}
+  table{width:100%;border-collapse:collapse;margin-bottom:10px}
+  th,td{border:1px solid #ccc;padding:5px 8px;font-size:11px}
+  th{background:#e8edf8;text-align:left;font-size:11px}
+  .r{text-align:right}
+  .total{font-weight:bold;background:#f0f4ff}
+  .netpay{background:#1e40af;color:#fff;font-weight:bold;text-align:center;font-size:13px}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px 12px;margin-bottom:10px;font-size:11px}
+  .lbl{color:#666}
+  @media print{body{margin:8px}}
+</style></head><body>
+<div class="header"><div><div class="co-name">${companyName}</div></div></div>
+<div class="slip-title">SALARY SLIP — ${monthName.toUpperCase()} ${ps.year}</div>
+<div class="grid">
+  <div><span class="lbl">Employee:</span> <b>${ps.first_name} ${ps.last_name}</b></div>
+  <div><span class="lbl">Code:</span> ${ps.emp_code}</div>
+  <div><span class="lbl">Department:</span> ${ps.department_name || "—"}</div>
+  <div><span class="lbl">Designation:</span> ${ps.designation_name || "—"}</div>
+  <div><span class="lbl">PAN:</span> ${ps.pan || "—"}</div>
+  <div><span class="lbl">PF No:</span> ${ps.pf_number || "—"}</div>
+  <div><span class="lbl">Days Worked:</span> ${Number(ps.days_worked || 0).toFixed(2)}/${ps.working_days || 26}</div>
+  <div><span class="lbl">LOP Days:</span> ${Number(ps.lop_days || 0).toFixed(2)}</div>
+  <div><span class="lbl">Bank:</span> ${ps.bank_name || "—"}&nbsp;&nbsp;A/c: ${ps.bank_account_number || "—"}</div>
+</div>
+<table>
+  <tr><th>Earnings</th><th class="r">Amount (&#8377;)</th><th>Deductions</th><th class="r">Amount (&#8377;)</th></tr>
+  ${pairedRows}
+  <tr class="total">
+    <td>Gross Salary</td><td class="r">&#8377;${fmtN(ps.gross_salary)}</td>
+    <td>Total Deductions</td><td class="r" style="color:#c00">&#8377;${fmtN(ps.total_deductions)}</td>
+  </tr>
+  <tr><td colspan="4" class="netpay">Net Pay: &#8377;${fmtN(ps.net_salary)}</td></tr>
+</table>
+${leaveRows ? `<table style="margin-top:10px">
+  <tr><th colspan="4" style="background:#e8edf8;font-size:11px">Leave Balance Summary — ${ps.year}</th></tr>
+  <tr><th>Leave Type</th><th class="r">Entitled</th><th class="r">Used</th><th class="r">Balance</th></tr>
+  ${leaveRows}
+</table>` : ""}
+<p style="font-size:10px;color:#888;text-align:center;margin-top:16px">This is a system-generated payslip. Not valid without company seal.<br>Generated on ${today}</p>
+</body></html>`;
+
+    const w = window.open("", "_blank", "width=860,height=1050");
+    if (!w) { toast({ title: "Popup blocked", description: "Allow popups and try again", variant: "destructive" }); return; }
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    if (forPrint) setTimeout(() => w.print(), 500);
   };
 
   if (isLoading) return <div className="p-8 text-center text-muted-foreground">Loading payslip...</div>;
@@ -99,22 +151,21 @@ function PayslipDetail({ payslipId, onClose }: { payslipId: number; onClose: () 
           <p className="text-sm text-muted-foreground">{ps.first_name} {ps.last_name} · {ps.emp_code}</p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <Button size="sm" variant="outline" onClick={downloadPDF} disabled={pdfLoading} data-testid="btn-payslip-pdf">
-            <Download className="h-3.5 w-3.5 mr-1.5" />{pdfLoading ? "Generating..." : "Download PDF"}
+          <Button size="sm" variant="outline" onClick={() => openPrintWindow(false)} data-testid="btn-payslip-pdf">
+            <Download className="h-3.5 w-3.5 mr-1.5" />Download PDF
           </Button>
-          <Button size="sm" variant="outline" onClick={() => window.print()}>
+          <Button size="sm" variant="outline" onClick={() => openPrintWindow(true)}>
             <Printer className="h-3.5 w-3.5 mr-1.5" />Print
           </Button>
           <Button size="sm" variant="ghost" onClick={onClose}>Close</Button>
         </div>
       </div>
-      <div ref={printRef} className="space-y-4 bg-white text-black rounded-md p-1" id="ess-payslip-print">
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
         {[
           ["Employee", `${ps.first_name} ${ps.last_name}`], ["Emp Code", ps.emp_code],
           ["Designation", ps.designation_name || "—"], ["Department", ps.department_name || "—"],
-          ["PAN", ps.pan || "Not provided"], ["PF Number", ps.pf_number || "—"],
+          ["PAN", ps.pan || "—"], ["PF Number", ps.pf_number || "—"],
           ["Bank", ps.bank_name || "—"], ["Account No.", ps.bank_account_number || "—"],
         ].map(([l, v]) => (
           <div key={l}><span className="text-muted-foreground">{l}: </span><span className="font-medium">{v}</span></div>
@@ -159,7 +210,6 @@ function PayslipDetail({ payslipId, onClose }: { payslipId: number; onClose: () 
           </div>
         ))}
       </div>
-      </div>{/* end printRef */}
     </div>
   );
 }
