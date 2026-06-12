@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Printer, MessageCircle, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { useRef, useState } from "react";
 
 const MONTHS = ["", "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December"];
@@ -30,8 +29,6 @@ function fmt(n: any) { return Number(n || 0).toLocaleString("en-IN"); }
 export default function HRPayslipPage() {
   const params = useParams<{ id: string }>();
   const { toast } = useToast();
-  const payslipRef = useRef<HTMLDivElement>(null);
-  const [pdfLoading, setPdfLoading] = useState(false);
 
   const { data: ps, isLoading, error } = useQuery({
     queryKey: ["/api/hr/payslips", params.id],
@@ -58,54 +55,140 @@ export default function HRPayslipPage() {
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
-  const downloadPDF = async () => {
-    if (!payslipRef.current) return;
-    setPdfLoading(true);
-    try {
-      const [jsPDFMod, html2canvasMod] = await Promise.all([
-        import("jspdf"),
-        import("html2canvas"),
-      ]);
-      const jsPDF = jsPDFMod.default;
-      const html2canvas = html2canvasMod.default;
+  const openPayslipWindow = (forPrint = false) => {
+    if (!ps) return;
+    const fmtN = (n: any) => Number(n || 0).toLocaleString("en-IN");
+    const companyName = company?.name || "—";
+    const today = new Date().toLocaleDateString("en-IN");
 
-      const canvas = await html2canvas(payslipRef.current, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: "#ffffff",
-        logging: false,
-      });
+    let comps: any[] = [];
+    try { comps = ps.components ? (typeof ps.components === "string" ? JSON.parse(ps.components) : ps.components) : []; } catch { comps = []; }
 
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = pageWidth;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    const showLegacy = comps.length === 0;
+    const earnings = showLegacy
+      ? [
+          { name: "Basic Salary", amount: ps.basic_salary },
+          ...(Number(ps.gross_salary) > Number(ps.basic_salary)
+            ? [{ name: "OT & Allowances", amount: Number(ps.gross_salary) - Number(ps.basic_salary) }]
+            : []),
+        ]
+      : comps.filter((c: any) => c.type === "earning");
 
-      if (imgHeight <= pageHeight) {
-        pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
-      } else {
-        let yPos = 0;
-        let remainingHeight = imgHeight;
-        while (remainingHeight > 0) {
-          const sliceHeight = Math.min(pageHeight, remainingHeight);
-          pdf.addImage(imgData, "PNG", 0, -yPos, imgWidth, imgHeight);
-          remainingHeight -= sliceHeight;
-          yPos += sliceHeight;
-          if (remainingHeight > 0) pdf.addPage();
-        }
-      }
+    const deductions = showLegacy
+      ? [
+          ...(Number(ps.pf_employee) > 0 ? [{ name: "PF (Employee)", amount: ps.pf_employee }] : []),
+          ...(Number(ps.esi_employee) > 0 ? [{ name: "ESI (Employee)", amount: ps.esi_employee }] : []),
+          ...(Number(ps.pt) > 0 ? [{ name: "Professional Tax", amount: ps.pt }] : []),
+          ...(Number(ps.tds) > 0 ? [{ name: "TDS", amount: ps.tds }] : []),
+          ...(Number(ps.other_deductions) > 0 ? [{ name: "Loan/Advance Recovery", amount: ps.other_deductions }] : []),
+        ]
+      : comps.filter((c: any) => c.type === "deduction");
 
-      const name = `${ps?.first_name || ""}_${ps?.last_name || ""}_${MONTHS[ps?.month]}_${ps?.year}`.replace(/\s+/g, "_");
-      pdf.save(`Payslip_${name}.pdf`);
-      toast({ title: "PDF downloaded" });
-    } catch (e: any) {
-      toast({ title: "PDF generation failed", description: e.message, variant: "destructive" });
-    } finally {
-      setPdfLoading(false);
-    }
+    const maxRows = Math.max(earnings.length, deductions.length);
+    const pairedRows = Array.from({ length: maxRows }, (_, i) => {
+      const e = earnings[i];
+      const d = deductions[i];
+      return `<tr>
+        <td>${e ? e.name : ""}</td><td class="r">${e ? "&#8377;" + fmtN(e.amount) : ""}</td>
+        <td>${d ? d.name : ""}</td><td class="r">${d ? '<span style="color:#c00">&#8377;' + fmtN(d.amount) + "</span>" : ""}</td>
+      </tr>`;
+    }).join("");
+
+    const leaveRows = (leaveBalances as any[]).map((b: any) => {
+      const bal = Number(b.balance || 0);
+      return `<tr>
+        <td>${b.leave_type_name || ""}</td>
+        <td class="r">${Number(b.entitled || 0).toFixed(1)}</td>
+        <td class="r">${Number(b.used || 0).toFixed(1)}</td>
+        <td class="r" style="font-weight:bold;color:${bal > 0 ? "#166534" : "#c00"}">${bal.toFixed(1)}</td>
+      </tr>`;
+    }).join("");
+
+    const employerRow = (psSettings?.show_employer_contributions !== false && (Number(ps.pf_employer) > 0 || Number(ps.esi_employer) > 0))
+      ? `<p style="font-size:10px;color:#555;margin-top:4px">
+          ${Number(ps.pf_employer) > 0 ? "Employer PF: <b>&#8377;" + fmtN(ps.pf_employer) + "</b>&nbsp;&nbsp;" : ""}
+          ${Number(ps.esi_employer) > 0 ? "Employer ESI: <b>&#8377;" + fmtN(ps.esi_employer) + "</b>" : ""}
+        </p>` : "";
+
+    const signatoryHtml = psSettings?.signatory_name
+      ? `<div style="text-align:right;margin-top:24px;font-size:11px">
+          <div style="border-bottom:1px solid #aaa;width:120px;margin-left:auto;margin-bottom:4px"></div>
+          <b>${psSettings.signatory_name}</b><br>
+          ${psSettings.signatory_designation ? `<span style="color:#666">${psSettings.signatory_designation}</span>` : ""}
+        </div>` : "";
+
+    const footerNote = psSettings?.footer_note
+      ? `<p style="font-size:10px;color:#888;margin-top:8px">${psSettings.footer_note}</p>` : "";
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>Payslip ${ps.emp_code} ${MONTHS[ps.month]} ${ps.year}</title>
+<style>
+  body{font-family:Arial,sans-serif;font-size:12px;margin:24px;color:#222}
+  .header{display:flex;align-items:center;gap:16px;border-bottom:2px solid #1e40af;padding-bottom:10px;margin-bottom:12px}
+  .co-name{font-size:16px;font-weight:bold;color:#1e40af}
+  .co-sub{font-size:10px;color:#555;margin-top:2px}
+  .slip-title{background:#1e40af;color:#fff;text-align:center;padding:4px 0;font-size:13px;font-weight:bold;margin-bottom:10px}
+  table{width:100%;border-collapse:collapse;margin-bottom:10px}
+  th,td{border:1px solid #ccc;padding:5px 8px;font-size:11px}
+  th{background:#e8edf8;text-align:left;font-size:11px}
+  .r{text-align:right}
+  .total{font-weight:bold;background:#f0f4ff}
+  .netpay{background:#1e40af;color:#fff;font-weight:bold;text-align:center;font-size:13px}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px 12px;margin-bottom:10px;font-size:11px}
+  .lbl{color:#666}
+  @media print{body{margin:8px}}
+</style></head><body>
+<div class="header">
+  ${company?.logoUrl ? `<img src="${company.logoUrl}" style="height:40px;object-fit:contain" />` : ""}
+  <div>
+    <div class="co-name">${companyName}</div>
+    ${company?.address ? `<div class="co-sub">${company.address}</div>` : ""}
+    ${company?.gstNumber ? `<div class="co-sub">GSTIN: ${company.gstNumber}</div>` : ""}
+  </div>
+</div>
+<div class="slip-title">SALARY SLIP — ${MONTHS[ps.month].toUpperCase()} ${ps.year}</div>
+<div class="grid">
+  <div><span class="lbl">Employee:</span> <b>${ps.first_name} ${ps.last_name}</b></div>
+  <div><span class="lbl">Code:</span> ${ps.emp_code}</div>
+  <div><span class="lbl">Department:</span> ${ps.department_name || "—"}</div>
+  <div><span class="lbl">Designation:</span> ${ps.designation_name || "—"}</div>
+  <div><span class="lbl">PAN:</span> ${ps.pan || "—"}</div>
+  <div><span class="lbl">PF No:</span> ${ps.pf_number || "—"}</div>
+  <div><span class="lbl">Days Worked:</span> ${Number(ps.days_worked || 0).toFixed(2)}/${ps.days_in_month || 26}</div>
+  <div><span class="lbl">LOP Days:</span> ${Number(ps.lop_days || 0).toFixed(2)}</div>
+  <div><span class="lbl">Bank A/c:</span> ${ps.bank_account || "—"}</div>
+</div>
+<table>
+  <tr><th>Earnings</th><th class="r">Amount (&#8377;)</th><th>Deductions</th><th class="r">Amount (&#8377;)</th></tr>
+  ${pairedRows}
+  <tr class="total">
+    <td>Gross Salary</td><td class="r">&#8377;${fmtN(ps.gross_salary)}</td>
+    <td>Total Deductions</td><td class="r" style="color:#c00">&#8377;${fmtN(ps.total_deductions)}</td>
+  </tr>
+  <tr><td colspan="4" class="netpay">Net Pay: &#8377;${fmtN(ps.net_salary)} &nbsp;|&nbsp; ${toWords(Number(ps.net_salary))}</td></tr>
+</table>
+${employerRow}
+${leaveRows ? `<table style="margin-top:10px">
+  <tr><th colspan="4" style="background:#e8edf8;font-size:11px">Leave Balance Summary — ${ps.year}</th></tr>
+  <tr><th>Leave Type</th><th class="r">Entitled</th><th class="r">Used</th><th class="r">Balance</th></tr>
+  ${leaveRows}
+</table>` : ""}
+${signatoryHtml}
+${footerNote}
+<p style="font-size:10px;color:#888;text-align:center;margin-top:16px;border-top:1px solid #eee;padding-top:8px">
+  This is a system-generated payslip. Not valid without company seal.&nbsp;&nbsp;Generated on ${today}
+</p>
+</body></html>`;
+
+    const w = window.open("", "_blank", "width=860,height=1050");
+    if (!w) { toast({ title: "Popup blocked", description: "Allow popups and try again", variant: "destructive" }); return; }
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    if (forPrint) setTimeout(() => w.print(), 500);
   };
+
+  const downloadPDF = () => openPayslipWindow(false);
 
   if (isLoading) return <div className="p-8 text-center">Loading payslip...</div>;
   if (error || !ps || ps.message) return <div className="p-8 text-center text-muted-foreground">Payslip not found</div>;
@@ -152,16 +235,15 @@ export default function HRPayslipPage() {
             <MessageCircle className="h-4 w-4 mr-1 text-green-600" />
             {sendWA.isPending ? "Sending..." : "Send WhatsApp"}
           </Button>
-          <Button size="sm" variant="outline" onClick={downloadPDF} disabled={pdfLoading} data-testid="btn-download-pdf">
-            <Download className="h-4 w-4 mr-1" />
-            {pdfLoading ? "Generating..." : "Download PDF"}
+          <Button size="sm" variant="outline" onClick={downloadPDF} data-testid="btn-download-pdf">
+            <Download className="h-4 w-4 mr-1" />Download PDF
           </Button>
-          <Button size="sm" onClick={() => window.print()}>
+          <Button size="sm" onClick={() => openPayslipWindow(true)}>
             <Printer className="h-4 w-4 mr-1" />Print
           </Button>
         </div>
 
-        <div ref={payslipRef} className="bg-white text-black rounded-lg border shadow-sm print:shadow-none print:border-none payslip-print">
+        <div className="bg-white text-black rounded-lg border shadow-sm print:shadow-none print:border-none payslip-print">
           {/* Header */}
           <div className="border-b p-5">
             <div className="flex items-start justify-between gap-4">
