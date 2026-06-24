@@ -32,6 +32,7 @@ const MODULE_MAP: Record<string, string> = {
   'gold':         '/api/gold-erp',
   'generic':      '/api/generic',
   'ess':          '/api/ess',
+  'core':         '/api',
 };
 
 async function authenticateApiKey(authHeader: string): Promise<{ tenantId: number; keyId: number; userId: number | null } | null> {
