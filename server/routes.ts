@@ -29127,6 +29127,60 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
     next();
   }
 
+
+  // POST /api/external/kinto-distributor-lead
+  app.options('/api/external/kinto-distributor-lead', (req: any, res: any) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+    res.sendStatus(204);
+  });
+
+  app.post('/api/external/kinto-distributor-lead', async (req: any, res: any) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    try {
+      const authHeader = req.headers['authorization'] || '';
+      const rawKey = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+      if (!rawKey) {
+        return res.status(401).json({ error: 'Unauthorized', message: 'Missing Authorization: Bearer <key> header' });
+      }
+      const keyHash = crypto.createHash('sha256').update(rawKey).digest('hex');
+      const keyRows = await db.execute(sql`
+        SELECT id, tenant_id, scopes FROM external_api_keys
+        WHERE key_hash = ${keyHash} AND is_active = 1 LIMIT 1
+      `);
+      const keyRecord = keyRows.rows[0] as any;
+      if (!keyRecord) {
+        return res.status(401).json({ error: 'Unauthorized', message: 'Invalid or revoked API key' });
+      }
+      db.execute(sql`UPDATE external_api_keys SET last_used_at = NOW() WHERE id = ${keyRecord.id}`).catch(() => {});
+      const tenantId = keyRecord.tenant_id;
+      const { name, phone, company, product_interest, source, status, notes, email } = req.body;
+      if (!name || !phone) {
+        return res.status(400).json({ error: 'Bad Request', message: 'name and phone are required' });
+      }
+      const cntRows = await db.execute(sql`SELECT COUNT(*) as cnt FROM crm_leads WHERE tenant_id = ${tenantId}`);
+      const cnt = Number((cntRows.rows[0] as any)?.cnt || 0) + 1;
+      const leadNo = 'LEAD-' + String(cnt).padStart(4, '0');
+      const result = await db.execute(sql`
+        INSERT INTO crm_leads (tenant_id, lead_no, name, phone, company, product_interest, source, status, notes, email)
+        VALUES (
+          ${tenantId}, ${leadNo}, ${name}, ${phone},
+          ${company ?? null},
+          ${product_interest ?? 'Kinto Water Distributorship'},
+          ${source ?? 'Kinto Distributor Ad'},
+          ${status ?? 'new'},
+          ${notes ?? ('Applied via Kinto Distributor Ad. Tier: ' + (product_interest ?? '') + '. District: ' + (company ?? ''))},
+          ${email ?? null}
+        )
+        RETURNING id, lead_no
+      `);
+      return res.status(201).json({ success: true, lead_no: (result.rows[0] as any).lead_no, id: (result.rows[0] as any).id });
+    } catch (e: any) {
+      return res.status(500).json({ error: 'Internal Server Error', message: e.message });
+    }
+  });
+
   // GET /api/superadmin/security/stats — platform-wide security summary
   app.get('/api/superadmin/security/stats', requireSuperAdmin, async (req: any, res) => {
     try {
