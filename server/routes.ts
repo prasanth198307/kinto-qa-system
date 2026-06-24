@@ -1,5 +1,6 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { forgotPasswordRateLimiter, resetPasswordRateLimiter } from "./security-middleware";
+import dynamicExternalApiRouter from './external-api-router';
 import { registerMFARoutes } from "./mfa-routes";
 import { validatePasswordStrength, isPasswordInHistory } from "./password-policy";
 import { createServer, type Server } from "http";
@@ -29128,6 +29129,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
   }
 
 
+  // Dynamic external API router — handles all UI-registered custom APIs
   // POST /api/external/kinto-distributor-lead
   app.options('/api/external/kinto-distributor-lead', (req: any, res: any) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -29180,6 +29182,9 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       return res.status(500).json({ error: 'Internal Server Error', message: e.message });
     }
   });
+
+  // Dynamic external API router — handles all UI-registered custom APIs
+  app.use('/api/external', dynamicExternalApiRouter);
 
   // GET /api/superadmin/security/stats — platform-wide security summary
   app.get('/api/superadmin/security/stats', requireSuperAdmin, async (req: any, res) => {
