@@ -1,6 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { forgotPasswordRateLimiter, resetPasswordRateLimiter } from "./security-middleware";
 import dynamicExternalApiRouter from './external-api-router';
+import externalApiProxy from './external-api-proxy';
 import { registerMFARoutes } from "./mfa-routes";
 import { validatePasswordStrength, isPasswordInHistory } from "./password-policy";
 import { createServer, type Server } from "http";
@@ -29184,7 +29185,10 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
   });
 
   // Dynamic external API router — handles all UI-registered custom APIs
+  app.use('/api/external/proxy', externalApiProxy);
   app.use('/api/external', dynamicExternalApiRouter);
+
+  // Generic proxy — forwards /api/external/proxy/:module/* to internal routers
 
   // GET /api/superadmin/security/stats — platform-wide security summary
   app.get('/api/superadmin/security/stats', requireSuperAdmin, async (req: any, res) => {
