@@ -141,8 +141,12 @@ app.use((req: any, res, next) => {
 app.use(
   express.json({
     limit: '10mb', // Increase limit for large import payloads
-    verify: (req, _res, buf) => {
-      req.rawBody = buf;
+    verify: (req: any, _res, buf) => {
+      try {
+        if (!req.path?.startsWith('/api/external/')) {
+          req.rawBody = buf;
+        }
+      } catch (_) {}
     },
   })
 );
