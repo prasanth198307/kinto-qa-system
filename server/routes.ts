@@ -29577,7 +29577,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
   { id: 'proxy_core_patch_api_tds_entries__id_deposit', module: 'finance', method: 'PATCH', path: '/api/external/proxy/core/tds-entries/:id/deposit', label: 'Finance: Patch Deposit', description: 'Patch deposit via finance module', category: 'Core', params: [], isCustom: false, isProxy: true },
   { id: 'proxy_core_post_api_demo_request', module: 'demo-request', method: 'POST', path: '/api/external/proxy/core/demo-request', label: 'Demo-Request: Create Demo Request', description: 'Create demo request via demo-request module', category: 'Core', params: [], isCustom: false, isProxy: true },
   { id: 'proxy_core_post_api_chat', module: 'chat', method: 'POST', path: '/api/external/proxy/core/chat', label: 'Chat: Create Chat', description: 'Create chat via chat module', category: 'Core', params: [], isCustom: false, isProxy: true },
-].filter((e: any) => tenantModules.length === 0 || !e.module || moduleSet.has(e.module));
+]; // Core routes always shown — access controlled at API key level
 
       res.json({ entries: [...builtIn, ...proxyEntries, ...coreEntries, ...custom], tenantModules });
     } catch (err) {
