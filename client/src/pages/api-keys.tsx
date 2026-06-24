@@ -399,6 +399,73 @@ function TryItPanel({ api }: { api: ApiCatalogEntry }) {
 }
 
 // ── Catalog Card ─────────────────────────────────────────────────────────────
+
+function ModuleGroupedCatalogue({ groups, onDelete }: {
+  groups: Map<string, ApiCatalogEntry[]>;
+  onDelete: (id: string) => void;
+}) {
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+
+  const toggle = (key: string) =>
+    setCollapsed(prev => ({ ...prev, [key]: !prev[key] }));
+
+  const collapseAll = () => {
+    const all: Record<string, boolean> = {};
+    groups.forEach((_, key) => { all[key] = true; });
+    setCollapsed(all);
+  };
+
+  const expandAll = () => setCollapsed({});
+
+  const allCollapsed = Array.from(groups.keys()).every(k => collapsed[k]);
+
+  return (
+    <div className="space-y-3">
+      <div className="flex justify-end gap-2">
+        <Button size="sm" variant="ghost" className="text-xs h-7" onClick={allCollapsed ? expandAll : collapseAll}>
+          {allCollapsed ? <><PlusCircle className="h-3 w-3 mr-1"/>Expand All</> : <><MinusCircle className="h-3 w-3 mr-1"/>Collapse All</>}
+        </Button>
+      </div>
+      {Array.from(groups.entries()).map(([moduleKey, apis]) => {
+        const isCollapsed = collapsed[moduleKey] ?? false;
+        return (
+          <div key={moduleKey} className="border rounded-lg overflow-hidden">
+            <button
+              className="w-full flex items-center justify-between px-4 py-3 bg-muted/50 hover:bg-muted transition-colors"
+              onClick={() => toggle(moduleKey)}
+            >
+              <div className="flex items-center gap-2">
+                <p className="text-xs font-semibold uppercase tracking-wide">
+                  {MODULE_LABELS[moduleKey] ?? (moduleKey === 'custom' ? 'Custom' : moduleKey.replace(/_/g, ' '))}
+                </p>
+                <Badge variant="secondary" className="text-xs">{apis.length}</Badge>
+                <span className="text-xs text-muted-foreground">
+                  {[...new Set(apis.map(a => a.method))].join(' · ')}
+                </span>
+              </div>
+              {isCollapsed
+                ? <ChevronDown className="h-4 w-4 text-muted-foreground"/>
+                : <ChevronUp className="h-4 w-4 text-muted-foreground"/>
+              }
+            </button>
+            {!isCollapsed && (
+              <div className="p-3 space-y-2">
+                {apis.map(api => (
+                  <ApiCatalogCard
+                    key={api.id}
+                    api={api}
+                    onDelete={onDelete}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function ApiCatalogCard({ api, onDelete }: { api: ApiCatalogEntry; onDelete?: (id: string) => void }) {
   const [expanded, setExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState<'docs' | 'try'>('docs');
@@ -1121,7 +1188,7 @@ export default function ApiKeysPage() {
               <p className="text-xs mt-1">APIs appear here based on your active plan modules. Use "Register API" to add custom endpoints.</p>
             </div>
           ) : (
-            /* Group entries by module */
+            /* Group entries by module with expand/collapse */
             (() => {
               const groups = new Map<string, ApiCatalogEntry[]>();
               catalogue.forEach(api => {
@@ -1130,25 +1197,10 @@ export default function ApiKeysPage() {
                 groups.get(key)!.push(api);
               });
               return (
-                <div className="space-y-6">
-                  {Array.from(groups.entries()).map(([moduleKey, apis]) => (
-                    <div key={moduleKey} className="space-y-3">
-                      <div className="flex items-center gap-2">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                          {MODULE_LABELS[moduleKey] ?? (moduleKey === 'custom' ? 'Custom' : moduleKey)}
-                        </p>
-                        <Badge variant="secondary" className="text-xs">{apis.length}</Badge>
-                      </div>
-                      {apis.map(api => (
-                        <ApiCatalogCard
-                          key={api.id}
-                          api={api}
-                          onDelete={id => deleteApiMutation.mutate(id)}
-                        />
-                      ))}
-                    </div>
-                  ))}
-                </div>
+                <ModuleGroupedCatalogue
+                  groups={groups}
+                  onDelete={id => deleteApiMutation.mutate(id)}
+                />
               );
             })()
           )}
