@@ -35,6 +35,7 @@ import educationRouter from "./education-routes";
 import logisticsRouter from "./logistics-routes";
 import realestateRouter from "./realestate-routes";
 import retailRouter from "./retail-routes";
+import eInvoiceRouter from "./einvoice-routes";
 import agricultureRouter from "./agriculture-routes";
 import goldErpRouter from "./gold-erp-routes";
 import goldErpRouter2 from "./gold-erp-routes2";
@@ -1905,6 +1906,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/logistics', logisticsRouter);
   app.use('/api/real-estate', realestateRouter);
   app.use('/api/pos', retailRouter);
+  app.use('/api/einvoice', eInvoiceRouter);
   app.use('/api/agriculture', agricultureRouter);
   app.use('/api/gold-erp', goldErpRouter);
   app.use('/api/gold-erp', goldErpRouter2);

@@ -196,6 +196,7 @@ import EducationPage from "@/pages/education";
 import LogisticsPage from "@/pages/logistics";
 import RealEstatePage from "@/pages/real-estate";
 import POSPage from "@/pages/pos";
+import EInvoicePage from "@/pages/einvoice";
 import AgriculturePage from "@/pages/agriculture";
 import GoldErpPage from "@/pages/gold-erp";
 import { parseISO } from "date-fns";
@@ -4038,6 +4039,7 @@ function Router() {
       <ProtectedRoute path="/logistics" component={LogisticsWrapper} />
       <ProtectedRoute path="/real-estate" component={RealEstateWrapper} />
       <ProtectedRoute path="/pos" component={POSWrapper} />
+        <ProtectedRoute path="/einvoice" component={EInvoicePage} />
       <ProtectedRoute path="/agriculture" component={AgricultureWrapper} />
       <ProtectedRoute path="/gold-erp" component={GoldErpWrapper} />
       <Route path="/ess" component={EssLogin} />
