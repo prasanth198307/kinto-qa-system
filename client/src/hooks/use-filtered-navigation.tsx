@@ -148,6 +148,8 @@ const navItemToScreen: Record<string, string> = {
   'audit-log': 'User Management',
   // Industry Verticals
   'healthcare': 'Industry Verticals',
+  'hotel': 'Industry Verticals',
+  'restaurant': 'Industry Verticals',
   'education': 'Industry Verticals',
   'logistics': 'Industry Verticals',
   'real-estate': 'Industry Verticals',

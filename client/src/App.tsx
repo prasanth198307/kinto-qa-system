@@ -84,7 +84,7 @@ import { ManagerChecklistAssignment } from "@/components/ManagerChecklistAssignm
 import PendingPaymentsDashboard from "@/components/PendingPaymentsDashboard";
 import { OperatorAssignedChecklists } from "@/components/OperatorAssignedChecklists";
 import { VerticalNavSidebar, type NavSection } from "@/components/VerticalNavSidebar";
-import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, ClipboardList, Settings, Calendar, Users, FileText, FileX, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator, IndianRupee, CreditCard, Upload, FolderOpen, Wallet, Car, BookOpen, Scale, BarChart3, Landmark, Tag, Trash2, PackageX, Loader2, Play, UserX, Briefcase, Target, Lock, Key, Gem, Star, MessageSquare, Camera, Crosshair, Coins, Award, RotateCcw, ShoppingBag, Gift, Zap, Globe, Wifi, Settings2, Scan } from "lucide-react";
+import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, ClipboardList, Settings, Calendar, Users, FileText, FileX, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator, IndianRupee, CreditCard, Upload, FolderOpen, Wallet, Car, BookOpen, Scale, BarChart3, Landmark, Tag, Trash2, PackageX, Loader2, Play, UserX, Briefcase, Target, Lock, Key, Gem, Star, MessageSquare, Camera, Crosshair, Coins, Award, RotateCcw, ShoppingBag, Gift, Zap, Globe, Wifi, Settings2, Scan, BedDouble, UtensilsCrossed } from "lucide-react";
 import CRMLeadsPage from "@/pages/crm-leads";
 import SalesDashboard from "@/components/SalesDashboard";
 import SalesOrdersPage from "@/pages/sales-orders";
@@ -192,6 +192,8 @@ import SecurityDashboardPage from "@/pages/security-dashboard";
 import SuperAdminSecurity from "@/pages/super-admin-security";
 import SuperAdminSetupWizard from "@/pages/super-admin-setup-wizard";
 import HealthcarePage from "@/pages/healthcare";
+import HotelPage from "@/pages/hotel";
+import RestaurantPage from "@/pages/restaurant";
 import EducationPage from "@/pages/education";
 import LogisticsPage from "@/pages/logistics";
 import RealEstatePage from "@/pages/real-estate";
@@ -348,7 +350,7 @@ const DASHBOARD_VALID_TABS = [
   'hr-departments', 'hr-settings', 'hr-recruitment', 'hr-exit', 'hr-tds',
   'crm-leads', 'accounting', 'chart-of-accounts', 'ledger-entries', 'expense-management',
   'cash-register', 'document-management',
-  'healthcare', 'education', 'logistics', 'real-estate', 'pos', 'agriculture', 'gold-erp',
+  'healthcare', 'education', 'logistics', 'real-estate', 'pos', 'agriculture', 'gold-erp', 'hotel', 'restaurant',
 ];
 
 function ReviewerDashboard() {
@@ -1198,6 +1200,8 @@ function AdminDashboard() {
         { id: "logistics", label: "Logistics & Transport", icon: Truck, onClick: () => setLocation('/logistics') },
         { id: "real-estate", label: "Real Estate", icon: Building2, onClick: () => setLocation('/real-estate') },
         { id: "agriculture", label: "Agriculture", icon: Layers, onClick: () => setLocation('/agriculture') },
+        { id: "hotel", label: "Hotel ERP", icon: BedDouble, onClick: () => setLocation('/hotel') },
+        { id: "restaurant", label: "Restaurant ERP", icon: UtensilsCrossed, onClick: () => setLocation('/restaurant') },
       ],
     },
     {
@@ -4041,6 +4045,8 @@ function Router() {
       <ProtectedRoute path="/pos" component={POSWrapper} />
         <ProtectedRoute path="/einvoice" component={EInvoicePage} />
       <ProtectedRoute path="/agriculture" component={AgricultureWrapper} />
+      <ProtectedRoute path="/hotel" component={HotelWrapper} />
+      <ProtectedRoute path="/restaurant" component={RestaurantWrapper} />
       <ProtectedRoute path="/gold-erp" component={GoldErpWrapper} />
       <Route path="/ess" component={EssLogin} />
       <Route path="/ess/portal" component={EssPortal} />
@@ -4520,6 +4526,38 @@ function AgricultureWrapper() {
       navSections={resolvedNav} activeView={activeView}
       onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
       <AgriculturePage />
+    </DashboardShell>
+  );
+}
+
+function HotelWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('hotel');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Hotel ERP" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
+      <HotelPage />
+    </DashboardShell>
+  );
+}
+
+function RestaurantWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('restaurant');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Restaurant ERP" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
+      <RestaurantPage />
     </DashboardShell>
   );
 }

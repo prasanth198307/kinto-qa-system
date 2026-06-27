@@ -31,6 +31,8 @@ import genericRouter from "./generic-routes";
 import projectRouter from "./project-routes";
 import assetRouter from "./asset-routes";
 import healthcareRouter from "./healthcare-routes";
+import hotelRouter from "./hotel-routes";
+import restaurantRouter from "./restaurant-routes";
 import educationRouter from "./education-routes";
 import logisticsRouter from "./logistics-routes";
 import realestateRouter from "./realestate-routes";
@@ -1902,6 +1904,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Industry Vertical routes
   app.use('/api/healthcare', healthcareRouter);
+  app.use('/api/hotel', hotelRouter);
+  app.use('/api/restaurant', restaurantRouter);
   app.use('/api/education', educationRouter);
   app.use('/api/logistics', logisticsRouter);
   app.use('/api/real-estate', realestateRouter);
