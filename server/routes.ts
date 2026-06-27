@@ -4414,7 +4414,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const vendorNamesToInclude = [vendor.vendorName, ...childVendors.map(cv => cv.vendorName)];
 
       // Get all invoices for this vendor family (parent + children)
-      const allInvoices = await storage.getAllInvoices();
+      const allInvoices = await storage.getAllInvoices((req.session as any)?.tenantId ?? req.user?.tenantId);
       const vendorInvoices = allInvoices.filter(inv => 
         vendorNamesToInclude.includes(inv.buyerName) && inv.recordStatus === 1
       );
@@ -5264,7 +5264,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Finished Goods API
   app.get('/api/finished-goods', isAuthenticated, async (req: any, res) => {
     try {
-      const goods = await storage.getAllFinishedGoods();
+      const goods = await storage.getAllFinishedGoods((req.session as any)?.tenantId ?? req.user?.tenantId);
       res.json(goods);
     } catch (error) {
       console.error("Error fetching finished goods:", error);
@@ -5317,7 +5317,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const excludeInvoiceId = req.query.excludeInvoiceId as string | undefined;
       
       // Step 1: Get all approved finished goods with quantity > 0
-      const allGoods = await storage.getAllFinishedGoods();
+      const allGoods = await storage.getAllFinishedGoods((req.session as any)?.tenantId ?? req.user?.tenantId);
       const approvedGoods = allGoods.filter(
         fg => fg.qualityStatus === 'approved' && fg.quantity > 0 && fg.recordStatus === 1
       );
@@ -5457,7 +5457,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { batchNumber } = req.params;
       const { productionDate, productId } = req.query;
-      const goods = await storage.getAllFinishedGoods();
+      const goods = await storage.getAllFinishedGoods((req.session as any)?.tenantId ?? req.user?.tenantId);
       
       // Find exact duplicate: same batch number + same production date + same product
       const existing = goods.find(g => {
@@ -5765,7 +5765,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Get all approved finished goods with stock > 0, ordered by production date (oldest first - FIFO)
-      const allFinishedGoods = await storage.getAllFinishedGoods();
+      const allFinishedGoods = await storage.getAllFinishedGoods((req.session as any)?.tenantId ?? req.user?.tenantId);
       
       const approvedGoods = allFinishedGoods
         .filter(fg => fg.qualityStatus === 'approved' && fg.quantity > 0 && fg.recordStatus === 1)
@@ -7343,7 +7343,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { page, pageSize, searchQuery, status, dateFrom, dateTo } = req.query;
       
-      const allGatepasses = await storage.getAllGatepasses();
+      const allGatepasses = await storage.getAllGatepasses((req.session as any)?.tenantId ?? req.user?.tenantId);
       
       // Get unique statuses for filter dropdown (from all data for consistency)
       const uniqueStatuses = Array.from(new Set(allGatepasses.map(gp => gp.status))).filter(Boolean);
@@ -9161,7 +9161,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const invoiceIdsWithGatepass = new Set(invoicesWithGatepasses.map(g => g.invoiceId));
       
       // Get all invoices
-      let allInvoicesRaw = await storage.getAllInvoices();
+      let allInvoicesRaw = await storage.getAllInvoices((req.session as any)?.tenantId ?? req.user?.tenantId);
       
       // Add hasGatepass flag to each invoice
       let allInvoices = allInvoicesRaw.map(inv => ({
@@ -11269,7 +11269,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       const { page, pageSize, customer } = req.query;
       
       // Get all invoices and payments (NOTE: Not scalable for very large datasets)
-      const allInvoices = await storage.getAllInvoices();
+      const allInvoices = await storage.getAllInvoices((req.session as any)?.tenantId ?? req.user?.tenantId);
       const allPayments = await storage.getAllPayments();
       
       // Get all credit notes and debit notes for outstanding balance calculation
@@ -15371,7 +15371,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       const decodedBuyerName = decodeURIComponent(buyerName);
       
       // Get all invoices for this buyer
-      const allInvoices = await storage.getAllInvoices();
+      const allInvoices = await storage.getAllInvoices((req.session as any)?.tenantId ?? req.user?.tenantId);
       const buyerInvoices = allInvoices.filter(inv => 
         inv.buyerName === decodedBuyerName && inv.recordStatus === 1
       );
@@ -15506,7 +15506,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       }
       
       // Get all invoices for aggregation (exclude cancelled)
-      const allInvoices = await storage.getAllInvoices();
+      const allInvoices = await storage.getAllInvoices((req.session as any)?.tenantId ?? req.user?.tenantId);
       const activeInvoices = allInvoices.filter(inv => inv.recordStatus === 1 && inv.status !== 'cancelled');
       
       // Get all credit notes
@@ -15720,7 +15720,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
         return res.status(404).json({ message: "No vendors found with this name" });
       }
 
-      const allInvoicesRaw = await storage.getAllInvoices();
+      const allInvoicesRaw = await storage.getAllInvoices((req.session as any)?.tenantId ?? req.user?.tenantId);
       const activeInvoices = allInvoicesRaw.filter(inv => inv.recordStatus === 1 && inv.status !== 'cancelled');
 
       const allCreditNotes = await db.select()
@@ -15849,7 +15849,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       
       // Get all invoices for this vendor family (parent + children)
       // Match on buyerName OR shipToName (same as the list endpoint)
-      const allInvoices = await storage.getAllInvoices();
+      const allInvoices = await storage.getAllInvoices((req.session as any)?.tenantId ?? req.user?.tenantId);
       let vendorInvoices = allInvoices.filter(inv => 
         vendorNamesToInclude.some(name => 
           name.toLowerCase() === inv.buyerName?.toLowerCase() ||
@@ -16127,7 +16127,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
         ...childVendors.map(cv => cv.shipToName || '')
       ].filter(Boolean);
       
-      const allInvoices = await storage.getAllInvoices();
+      const allInvoices = await storage.getAllInvoices((req.session as any)?.tenantId ?? req.user?.tenantId);
       const vendorInvoices = allInvoices.filter(inv => 
         vendorNamesToInclude.some(name => 
           name.toLowerCase() === inv.buyerName?.toLowerCase() ||
@@ -17280,7 +17280,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       const { period = 'monthly', year, dateFrom, dateTo } = req.query;
       
       // Fetch all invoices
-      const allInvoices = await storage.getAllInvoices();
+      const allInvoices = await storage.getAllInvoices((req.session as any)?.tenantId ?? req.user?.tenantId);
       
       // Fetch credit notes for net revenue calculation
       const allCreditNotes = await db.select().from(creditNotes).where(
@@ -17463,7 +17463,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       
       // Fetch all vendors, invoices, invoice items, payments, and vendor types
       const allVendors = await storage.getAllVendors();
-      const allInvoices = await storage.getAllInvoices();
+      const allInvoices = await storage.getAllInvoices((req.session as any)?.tenantId ?? req.user?.tenantId);
       const allPayments = await db.select().from(invoicePayments).where(and(eq(invoicePayments.recordStatus, 1), tc(invoicePayments)));
       const allVendorTypes = await storage.getAllVendorTypes();
       const vendorTypeLinks = await db.select().from(vendorVendorTypes).where(and(eq(vendorVendorTypes.recordStatus, 1), tc(vendorVendorTypes)));
@@ -17747,7 +17747,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
           const childVendors = allVendors.filter(v => v.parentVendorId === vendorId);
           const vendorNamesToInclude = [vendor.vendorName, ...childVendors.map(cv => cv.vendorName)];
 
-          const allInvoices = await storage.getAllInvoices();
+          const allInvoices = await storage.getAllInvoices((req.session as any)?.tenantId ?? req.user?.tenantId);
           const vendorInvoices = allInvoices.filter(inv =>
             vendorNamesToInclude.includes(inv.buyerName) && inv.recordStatus === 1
           );

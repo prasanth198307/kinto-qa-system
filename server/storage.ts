@@ -2395,7 +2395,10 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async getAllFinishedGoods(): Promise<FinishedGood[]> {
+  async getAllFinishedGoods(tenantId?: number): Promise<FinishedGood[]> {
+    if (tenantId) {
+      return await db.select().from(finishedGoods).where(and(eq(finishedGoods.recordStatus, 1), tc(finishedGoods), eq(finishedGoods.tenantId, tenantId)));
+    }
     return await db.select().from(finishedGoods).where(and(eq(finishedGoods.recordStatus, 1), tc(finishedGoods)));
   }
 
@@ -2478,7 +2481,10 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async getAllGatepasses(): Promise<Gatepass[]> {
+  async getAllGatepasses(tenantId?: number): Promise<Gatepass[]> {
+    if (tenantId) {
+      return await db.select().from(gatepasses).where(and(eq(gatepasses.recordStatus, 1), tc(gatepasses), eq(gatepasses.tenantId, tenantId)));
+    }
     return await db.select().from(gatepasses).where(and(eq(gatepasses.recordStatus, 1), tc(gatepasses)));
   }
 
@@ -2855,7 +2861,10 @@ export class DatabaseStorage implements IStorage {
     return newInvoice;
   }
 
-  async getAllInvoices(): Promise<Invoice[]> {
+  async getAllInvoices(tenantId?: number): Promise<Invoice[]> {
+    if (tenantId) {
+      return await db.select().from(invoices).where(and(eq(invoices.recordStatus, 1), tc(invoices), eq(invoices.tenantId, tenantId)));
+    }
     return await db.select().from(invoices).where(and(eq(invoices.recordStatus, 1), tc(invoices)));
   }
 
