@@ -123,12 +123,32 @@ export function registerBillingRoutes(app: Express): void {
   app.get("/api/billing/plans", async (req: any, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const keys = await getRazorpayKeys();
-    const plans = [
-      { plan: "basic",        label: "Basic",        priceMonthly: 29900,  currency: "INR", razorpayEnabled: !!keys },
-      { plan: "professional", label: "Professional",  priceMonthly: 69900,  currency: "INR", razorpayEnabled: !!keys },
-      { plan: "enterprise",   label: "Enterprise",    priceMonthly: 149900, currency: "INR", razorpayEnabled: !!keys },
-    ];
-    res.json({ plans, razorpayKeyId: keys?.keyId ?? null });
+    try {
+      const rows = await db.execute(sql`
+        SELECT slug, name, tagline, price_monthly, price_yearly, max_users,
+               is_active, is_featured, trial_days, modules, features
+        FROM subscription_plans
+        WHERE is_active = true
+        ORDER BY display_order ASC
+      `);
+      const plans = (rows.rows as any[]).map(p => ({
+        plan:            p.slug,
+        label:           p.name,
+        tagline:         p.tagline,
+        priceMonthly:    p.price_monthly,
+        priceYearly:     p.price_yearly,
+        maxUsers:        p.max_users,
+        isFeatured:      p.is_featured,
+        trialDays:       p.trial_days,
+        modules:         p.modules ?? [],
+        features:        p.features ?? [],
+        currency:        "INR",
+        razorpayEnabled: !!keys,
+      }));
+      res.json({ plans, razorpayKeyId: keys?.keyId ?? null });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
   });
 
   // ── GET /api/billing/subscription — current subscription status ───────────
@@ -266,6 +286,8 @@ export function registerBillingRoutes(app: Express): void {
               cancelled_at         = NULL,
               cancel_reason        = NULL,
               notes                = ${'Payment: ' + razorpay_payment_id},
+              last_payment_id      = ${razorpay_payment_id},
+              last_order_id        = ${razorpay_order_id},
               updated_at           = NOW()
       `);
 
@@ -563,10 +585,13 @@ export function registerBillingRoutes(app: Express): void {
         .filter(m => selectedModules.includes(m.slug) && !m.free && !planModuleSet.has(m.slug))
         .reduce((s, m) => s + m.priceMonthly, 0);
 
+      // Always use computedMonthly (fresh from catalog prices) not stale DB value
+      // DB monthly_amount can be stale if catalog prices changed after module selection
       res.json({
         selectedModules,
         planModules,
-        monthlyAmount:    row?.monthly_amount ?? computedMonthly,
+        monthlyAmount:    computedMonthly,
+        storedMonthlyAmount: row?.monthly_amount ?? 0,
         planSlug:         row?.plan_slug      ?? null,
         status:           row?.status         ?? null,
         currentPeriodEnd: row?.current_period_end ?? null,

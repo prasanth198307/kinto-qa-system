@@ -1315,11 +1315,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(eq(subscriptions.tenantId, targetTenantId))
         .returning();
 
+      // Calculate proration credit for mid-cycle plan changes
+      let proratedCredit = 0;
+      let proratedNotes = notes ?? `Plan changed to ${toPlan}`;
+      
+      if (newSub.currentPeriodEnd && fromPlan && fromPlan !== toPlan && fromPlan !== 'trial') {
+        const periodEnd = new Date(newSub.currentPeriodEnd).getTime();
+        const now2 = Date.now();
+        const totalDays = 30;
+        const remainingDays = Math.max(0, Math.ceil((periodEnd - now2) / (1000 * 60 * 60 * 24)));
+        
+        // Get old plan price
+        const [oldPlanRow] = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.slug, fromPlan));
+        if (oldPlanRow && remainingDays > 0) {
+          const oldMonthly = cycle === 'yearly' ? (oldPlanRow.priceYearly ?? 0) : (oldPlanRow.priceMonthly ?? 0);
+          proratedCredit = Math.round((oldMonthly / totalDays) * remainingDays);
+          proratedNotes = `Plan changed from ${fromPlan} to ${toPlan}. Proration credit: ₹${(proratedCredit/100).toFixed(2)} for ${remainingDays} unused days. ${notes ?? ''}`.trim();
+        }
+      }
+
       // Log billing event
       const eventType = fromPlan === toPlan ? 'plan_reactivated' : (
         ['trial','basic','professional','enterprise'].indexOf(toPlan) > ['trial','basic','professional','enterprise'].indexOf(fromPlan ?? '')
           ? 'upgraded' : 'downgraded'
       );
+      const newAmount = toPlan === 'trial' ? 0 : (cycle === 'yearly' ? planRow.priceYearly : planRow.priceMonthly);
       await db.insert(billingEvents).values({
         tenantId: targetTenantId,
         subscriptionId: newSub.id,
@@ -1327,10 +1347,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
         fromPlan,
         toPlan,
         billingCycle: cycle,
-        amount: toPlan === 'trial' ? 0 : (cycle === 'yearly' ? planRow.priceYearly : planRow.priceMonthly),
-        notes: notes ?? `Plan changed to ${toPlan}`,
+        amount: newAmount ?? 0,
+        notes: proratedNotes,
         createdBy: currentUser.username ?? 'super-admin',
       });
+
+      // If there is a proration credit — issue actual Razorpay refund
+      if (proratedCredit > 0) {
+        try {
+          // Get last payment ID from subscription
+          const lastPaymentRow = await db.execute(sql`
+            SELECT last_payment_id FROM subscriptions WHERE tenant_id = ${targetTenantId} LIMIT 1
+          `);
+          const lastPaymentId = (lastPaymentRow.rows[0] as any)?.last_payment_id;
+
+          if (lastPaymentId) {
+            const { default: Razorpay } = await import('razorpay');
+            const keysRow = await db.execute(sql`
+              SELECT value FROM platform_settings WHERE key = 'razorpay_key_id' LIMIT 1
+            `);
+            const secretRow = await db.execute(sql`
+              SELECT value FROM platform_settings WHERE key = 'razorpay_key_secret' LIMIT 1
+            `);
+            const keyId = (keysRow.rows[0] as any)?.value;
+            const keySecret = (secretRow.rows[0] as any)?.value;
+
+            if (keyId && keySecret) {
+              const instance = new Razorpay({ key_id: keyId, key_secret: keySecret });
+              const refund = await instance.payments.refund(lastPaymentId, {
+                amount: proratedCredit,
+                notes: {
+                  reason: `Proration credit — plan change from ${fromPlan} to ${toPlan}`,
+                  tenantId: String(targetTenantId),
+                  unusedDays: String(Math.ceil((new Date(newSub.currentPeriodEnd!).getTime() - Date.now()) / (1000 * 60 * 60 * 24))),
+                }
+              });
+              proratedNotes += ` | Refund ID: ${refund.id}`;
+              console.log(`[BILLING] Proration refund issued: ${refund.id} for ₹${proratedCredit/100}`);
+            }
+          }
+        } catch (refundErr: any) {
+          console.error('[BILLING] Razorpay refund failed:', refundErr.message);
+          // Non-fatal — log the credit event anyway for manual processing
+        }
+      }
+
+      // Log proration credit billing event
+      if (proratedCredit > 0) {
+        await db.insert(billingEvents).values({
+          tenantId: targetTenantId,
+          subscriptionId: newSub.id,
+          eventType: 'credit',
+          fromPlan,
+          toPlan,
+          billingCycle: cycle,
+          amount: -proratedCredit,  // negative = credit
+          notes: `Proration credit for unused days on ${fromPlan} plan`,
+          createdBy: currentUser.username ?? 'super-admin',
+        });
+      }
 
       // Update tenant record
       await db.update(tenants).set({
@@ -1382,6 +1457,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (recalcErr) {
         console.error('[PLAN CHANGE] monthly_amount recalc failed:', recalcErr);
         // Non-fatal — billing can be corrected from the marketplace
+      }
+
+      // Clean up selected_modules on downgrade — remove modules not in new plan
+      // This prevents orphaned module selections after downgrade
+      try {
+        const newPlanModules: string[] = Array.isArray(planRow.modules) ? planRow.modules as string[] : [];
+        const planModSet = new Set(newPlanModules);
+        const freeRows = await db.execute(sql`SELECT slug FROM module_catalog WHERE is_free = true`);
+        const freeSet = new Set((freeRows.rows as any[]).map((r: any) => r.slug));
+
+        const subRow2 = await db.execute(sql`
+          SELECT selected_modules FROM subscriptions WHERE tenant_id = ${targetTenantId} LIMIT 1
+        `);
+        const currentSelected: string[] = Array.isArray((subRow2.rows[0] as any)?.selected_modules)
+          ? (subRow2.rows[0] as any).selected_modules : [];
+
+        // On downgrade: keep only modules that are free OR in new plan
+        const isDowngrade = ['trial','basic','professional','enterprise'].indexOf(toPlan) 
+                            ['trial','basic','professional','enterprise'].indexOf(fromPlan ?? '');
+        if (isDowngrade) {
+          const cleanedModules = currentSelected.filter(s => freeSet.has(s) || planModSet.has(s));
+          await db.execute(sql`
+            UPDATE subscriptions SET selected_modules = ${JSON.stringify(cleanedModules)}::jsonb
+            WHERE tenant_id = ${targetTenantId}
+          `);
+        }
+      } catch (cleanupErr) {
+        console.error('[PLAN CHANGE] Module cleanup failed:', cleanupErr);
       }
 
       // Auto-sync role permissions for the new plan

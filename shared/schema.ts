@@ -101,6 +101,8 @@ export const subscriptions = pgTable("subscriptions", {
   cancelledAt: timestamp("cancelled_at", { mode: 'string' }),
   cancelReason: text("cancel_reason"),
   notes: text("notes"),
+  lastPaymentId: varchar("last_payment_id", { length: 100 }),  // Razorpay payment_id for refunds
+  lastOrderId: varchar("last_order_id", { length: 100 }),      // Razorpay order_id
   createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 });
