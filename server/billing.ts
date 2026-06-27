@@ -303,6 +303,41 @@ export function registerBillingRoutes(app: Express): void {
         )
       `);
 
+      // Recalculate add-on monthly_amount after plan change
+      // New plan may include previously paid modules — remove them from add-on billing
+      try {
+        const [newPlanRow] = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.slug, plan));
+        const newPlanModules: string[] = Array.isArray(newPlanRow?.modules) ? newPlanRow.modules as string[] : [];
+        const planModSet = new Set(newPlanModules);
+
+        const subRow = await db.execute(sql`
+          SELECT selected_modules FROM subscriptions WHERE tenant_id = ${tenantId} LIMIT 1
+        `);
+        const selectedMods: string[] = Array.isArray((subRow.rows[0] as any)?.selected_modules)
+          ? (subRow.rows[0] as any).selected_modules : [];
+
+        const catalogRows = await db.execute(sql`SELECT slug, price_monthly, is_free FROM module_catalog`);
+        const priceMap = new Map<string, number>();
+        const freeSet = new Set<string>();
+        for (const row of catalogRows.rows as any[]) {
+          priceMap.set(row.slug, row.price_monthly ?? 0);
+          if (row.is_free) freeSet.add(row.slug);
+        }
+
+        // Add-on = selected AND not free AND not included in new plan
+        const newMonthly = selectedMods
+          .filter(s => !freeSet.has(s) && !planModSet.has(s) && priceMap.has(s))
+          .reduce((sum, s) => sum + (priceMap.get(s) ?? 0), 0);
+
+        await db.execute(sql`
+          UPDATE subscriptions SET monthly_amount = ${newMonthly}, updated_at = NOW()
+          WHERE tenant_id = ${tenantId}
+        `);
+        console.log(`[BILLING] Recalculated add-on monthly_amount: ₹${newMonthly/100} for tenant ${tenantId}`);
+      } catch (recalcErr: any) {
+        console.error('[BILLING] monthly_amount recalc failed:', recalcErr.message);
+      }
+
       // Update session so UI reflects new plan immediately
       (req.session as any).tenantPlan   = plan;
       (req.session as any).tenantStatus = "active";
