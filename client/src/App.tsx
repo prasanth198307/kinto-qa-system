@@ -194,6 +194,10 @@ import SuperAdminSetupWizard from "@/pages/super-admin-setup-wizard";
 import HealthcarePage from "@/pages/healthcare";
 import HotelPage from "@/pages/hotel";
 import RestaurantPage from "@/pages/restaurant";
+import CRMPipelinePage from "@/pages/crm";
+import EcommercePage from "@/pages/ecommerce";
+import NGOPage from "@/pages/ngo";
+import PharmacyPage from "@/pages/pharmacy";
 import EducationPage from "@/pages/education";
 import LogisticsPage from "@/pages/logistics";
 import RealEstatePage from "@/pages/real-estate";
@@ -350,7 +354,7 @@ const DASHBOARD_VALID_TABS = [
   'hr-departments', 'hr-settings', 'hr-recruitment', 'hr-exit', 'hr-tds',
   'crm-leads', 'accounting', 'chart-of-accounts', 'ledger-entries', 'expense-management',
   'cash-register', 'document-management',
-  'healthcare', 'education', 'logistics', 'real-estate', 'pos', 'agriculture', 'gold-erp', 'hotel', 'restaurant',
+  'healthcare', 'education', 'logistics', 'real-estate', 'pos', 'agriculture', 'gold-erp', 'hotel', 'restaurant', 'crm-pipeline', 'ecommerce', 'ngo', 'pharmacy',
 ];
 
 function ReviewerDashboard() {
@@ -2426,6 +2430,12 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "logistics", label: "Logistics & Transport", icon: Truck, onClick: () => setLocation('/logistics') },
         { id: "real-estate", label: "Real Estate", icon: Building2, onClick: () => setLocation('/real-estate') },
         { id: "agriculture", label: "Agriculture", icon: Layers, onClick: () => setLocation('/agriculture') },
+        { id: "hotel", label: "Hotel ERP", icon: BedDouble, onClick: () => setLocation('/hotel') },
+        { id: "restaurant", label: "Restaurant ERP", icon: UtensilsCrossed, onClick: () => setLocation('/restaurant') },
+        { id: "crm-pipeline", label: "CRM Pipeline", icon: Target, onClick: () => setLocation('/crm-pipeline') },
+        { id: "ecommerce", label: "E-Commerce Sync", icon: ShoppingBag, onClick: () => setLocation('/ecommerce') },
+        { id: "ngo", label: "NGO / Trust ERP", icon: Heart, onClick: () => setLocation('/ngo') },
+        { id: "pharmacy", label: "Pharmacy ERP", icon: Pill, onClick: () => setLocation('/pharmacy') },
       ],
     },
     {
@@ -4045,6 +4055,10 @@ function Router() {
       <ProtectedRoute path="/pos" component={POSWrapper} />
         <ProtectedRoute path="/einvoice" component={EInvoicePage} />
       <ProtectedRoute path="/agriculture" component={AgricultureWrapper} />
+      <ProtectedRoute path="/crm-pipeline" component={CRMPipelineWrapper} />
+      <ProtectedRoute path="/ecommerce" component={EcommerceWrapper} />
+      <ProtectedRoute path="/ngo" component={NGOWrapper} />
+      <ProtectedRoute path="/pharmacy" component={PharmacyWrapper} />
       <ProtectedRoute path="/hotel" component={HotelWrapper} />
       <ProtectedRoute path="/restaurant" component={RestaurantWrapper} />
       <ProtectedRoute path="/gold-erp" component={GoldErpWrapper} />
