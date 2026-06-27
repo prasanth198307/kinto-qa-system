@@ -15,6 +15,7 @@ console.log("✅ DATABASE_URL:", process.env.DATABASE_URL ? "Set" : "Not set");
 // --- Dynamically import all other modules ---
 const expressModule = await import("express");
 const { registerRoutes } = await import("./routes");
+const { registerBillingRoutes } = await import("./billing");
 const { setupVite, serveStatic, log } = await import("./vite");
 const { notificationService } = await import("./notificationService");
 const { storage } = await import("./storage");
@@ -202,6 +203,7 @@ app.use((req, res, next) => {
 
 (async () => {
   const server = await registerRoutes(app);
+  registerBillingRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

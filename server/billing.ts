@@ -765,10 +765,7 @@ export function registerBillingRoutes(app: Express): void {
         freeModules,
       });
     } catch (err: any) {
-      await client.query('ROLLBACK').catch(() => {});
       res.status(500).json({ message: err.message });
-    } finally {
-      client.release();
     }
   });
 
