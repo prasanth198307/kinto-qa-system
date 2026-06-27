@@ -809,6 +809,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ─── Tenant info endpoint (for settings page + white-labeling) ─────────────
+  // GET /api/settings/company — company info for receipts/printouts
+  app.get('/api/settings/company', isAuthenticated, async (req: any, res) => {
+    const tenantId: number = (req.session as any).tenantId ?? req.user?.tenantId ?? 1;
+    try {
+      const [tenant] = await db.select({
+        name:        tenants.name,
+        gstNumber:   tenants.gstNumber,
+        address:     tenants.address,
+        phone:       tenants.contactPhone,
+        email:       tenants.billingEmail,
+        logoUrl:     tenants.logoUrl,
+        primaryColor: tenants.primaryColor,
+        fssaiNumber: tenants.fssaiNumber,
+      }).from(tenants).where(eq(tenants.id, tenantId)).limit(1);
+      res.json(tenant ?? {});
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   app.get('/api/tenant/info', async (req: any, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' });
     const tenantId: number = (req.session as any).tenantId ?? req.user?.tenantId ?? 1;

@@ -1494,7 +1494,7 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
       setTimeout(() => barcodeRef.current?.focus(), 100);
     }
   }, [activeSession?.id]);
-  const { data: products = [] } = useQuery<any[]>({ queryKey: ["/api/inventory/products"] });
+  const { data: products = [] } = useQuery<any[]>({ queryKey: ["/api/products"] });
   const { data: customers = [] } = useQuery<any[]>({ queryKey: ["/api/pos/customers"] });
   const { data: lastSession } = useQuery<any>({
     queryKey: ["/api/pos/sessions/last"],
