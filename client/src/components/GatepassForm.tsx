@@ -392,6 +392,7 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
       const allocationRequest = invoiceItems.map(invItem => ({
         productId: invItem.productId,
         quantity: invItem.quantity,
+        invoiceItemId: invItem.id,  // Keep duplicate products as separate lines
       }));
       
       // Pass excludeInvoiceId so this invoice's own reserved stock is available for allocation
@@ -574,17 +575,23 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
     invoiceItems.forEach(invItem => {
       const product = products.find(p => p.id === invItem.productId);
       if (product) {
-        summary[invItem.productId] = {
-          productName: product.productName,
+        const key = invItem.id || invItem.productId;
+        summary[key] = {
+          productName: product.productName + (invItem.unitPrice ? ` @ ₹${invItem.unitPrice}` : ''),
           invoiceQty: invItem.quantity,
-          dispatchedQty: 0
+          dispatchedQty: 0,
+          productId: invItem.productId,
         };
       }
     });
     
     // Sum up dispatched quantities per product from current items
     items.forEach(item => {
-      if (item.productId && summary[item.productId]) {
+      // Match by productId since gatepass items don't have invoiceItemId
+      const matchingKey = Object.keys(summary).find(k => summary[k].productId === item.productId && summary[k].dispatchedQty < summary[k].invoiceQty);
+      if (matchingKey) {
+        summary[matchingKey].dispatchedQty += item.quantityDispatched || 0;
+      } else if (item.productId && summary[item.productId]) {
         summary[item.productId].dispatchedQty += item.quantityDispatched || 0;
       }
     });

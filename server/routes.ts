@@ -5876,8 +5876,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       
       // For each invoice item, allocate from oldest batches first (FIFO)
+      // Each item is treated independently even if productId is same (different prices)
       for (const item of items) {
-        const { productId, quantity } = item;
+        const { productId, quantity, invoiceItemId } = item;
         let remainingQty = quantity;
         
         // Find all batches for this product - they're already sorted by production date (oldest first)
