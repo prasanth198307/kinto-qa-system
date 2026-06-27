@@ -226,6 +226,22 @@ router.get("/transactions/:id/items", requireAuth, async (req: any, res) => {
 router.post("/transactions", requireAuth, async (req: any, res) => {
   try {
     const { session_id, customer_id, customer_name, customer_phone, items, payment_mode, payment_splits, amount_paid, promotion_id, discount_amount: manualDiscount, loyalty_points_redeemed: loyaltyPtsRedeemed, loyalty_discount: loyaltyDisc, razorpay_payment_id, terminal_id: txnTerminalId, card_ref } = req.body;
+    
+    // MRP Lock — validate selling price does not exceed MRP for any item
+    const mrpViolations: string[] = [];
+    for (const item of items) {
+      if (item.mrp && item.unit_price > item.mrp) {
+        mrpViolations.push(`${item.product_name}: selling price ₹${item.unit_price} exceeds MRP ₹${item.mrp}`);
+      }
+    }
+    if (mrpViolations.length > 0) {
+      return res.status(422).json({ 
+        error: "MRP_VIOLATION", 
+        message: "Selling price cannot exceed MRP", 
+        violations: mrpViolations 
+      });
+    }
+
     const no = "POS-" + Date.now();
     let subtotal = 0, tax_amount = 0, discount_amount = 0;
     for (const item of items) {

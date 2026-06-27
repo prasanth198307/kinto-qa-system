@@ -9433,7 +9433,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!items || !Array.isArray(items) || items.length === 0) {
         return res.status(400).json({ message: "At least one invoice item is required" });
       }
-      
+
+      // MRP Lock — validate unit price does not exceed MRP for any item
+      const mrpViolations: string[] = [];
+      for (const item of items) {
+        if (item.mrp && item.unitPrice && Number(item.unitPrice) > Number(item.mrp)) {
+          mrpViolations.push(`${item.description || item.productId}: unit price ₹${item.unitPrice} exceeds MRP ₹${item.mrp}`);
+        }
+      }
+      if (mrpViolations.length > 0) {
+        return res.status(422).json({
+          error: "MRP_VIOLATION",
+          message: "Selling price cannot exceed MRP",
+          violations: mrpViolations
+        });
+      }
+
       // Check if this is a reissued invoice (has originalInvoiceId)
       const originalInvoiceId = header.originalInvoiceId || null;
       
