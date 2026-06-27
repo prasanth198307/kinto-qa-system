@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Loader2, Building2, User, Mail, Phone, Lock, Globe, ArrowLeft,
   CheckCircle2, XCircle, AlertCircle, Package, Palette, Upload, ImageIcon, ChevronRight,
@@ -80,6 +81,23 @@ export default function RegisterCompanyPage() {
   // Module selection
   const [selected, setSelected] = useState<Set<string>>(new Set(Array.from(FREE_SLUGS)));
   const [savingModules, setSavingModules] = useState(false);
+  const [moduleTab, setModuleTab] = useState<"plan" | "custom">("plan");
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+
+  // Load plans from DB
+  const { data: plansRaw = [] } = useQuery<any[]>({
+    queryKey: ["/api/subscription-plans"],
+  });
+  const REGISTER_PLANS = plansRaw
+    .filter((p: any) => !["trial", "gold_erp_plan", "humane", "expense"].includes(p.slug))
+    .map((p: any) => ({
+      slug: p.slug,
+      name: p.name,
+      priceMonthly: Math.round((p.priceMonthly ?? p.price_monthly ?? 0) / 100),
+      modules: Array.isArray(p.modules) ? p.modules : [],
+      features: Array.isArray(p.features) ? p.features : [],
+      isFeatured: p.isFeatured ?? p.is_featured ?? false,
+    }));
 
   // Load module catalog from DB — always fresh prices
   const { data: catalogRaw = [] } = useQuery<any[]>({
@@ -200,7 +218,20 @@ export default function RegisterCompanyPage() {
         username: registeredData?.username ?? form.email,
         password: form.password,
       });
-      const slugs = skip ? Array.from(FREE_SLUGS) : Array.from(selected);
+      let slugs: string[];
+      if (skip) {
+        slugs = Array.from(FREE_SLUGS);
+      } else if (moduleTab === "plan" && selectedPlan) {
+        // Use plan modules + free modules
+        const plan = REGISTER_PLANS.find(p => p.slug === selectedPlan);
+        slugs = Array.from(new Set([...Array.from(FREE_SLUGS), ...(plan?.modules ?? [])]));
+        // Also save the plan slug to subscription
+        try {
+          await apiRequest("POST", "/api/billing/select-plan", { planSlug: selectedPlan });
+        } catch { /* non-fatal */ }
+      } else {
+        slugs = Array.from(selected);
+      }
       await apiRequest("POST", "/api/billing/selected-modules", { selectedModules: slugs });
     } catch {
       // Non-fatal — modules can be configured later
@@ -503,66 +534,133 @@ export default function RegisterCompanyPage() {
           {/* ── Step 3: Module picker ──────────────────────────────────────── */}
           {step === "modules" && (
             <div className="space-y-4">
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle>Pick your modules</CardTitle>
-                  <CardDescription>Select what your business needs. Everything is free for 14 days.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-start gap-2.5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-xl px-3 py-2.5">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-300">Always free — no selection needed</p>
-                      <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-0.5">Dashboard, User Management, Roles & Permissions, Company Settings</p>
-                    </div>
-                  </div>
+              {/* Always free banner */}
+              <div className="flex items-start gap-2.5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-xl px-3 py-2.5">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-300">Always free — no selection needed</p>
+                  <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-0.5">Dashboard, User Management, Roles & Permissions, Company Settings</p>
+                </div>
+              </div>
 
-                  {CATEGORY_ORDER.map(cat => {
-                    const mods = PICKER_MODULES.filter(m => m.category === cat);
-                    const colors = CATEGORY_COLORS[cat] ?? "bg-muted text-muted-foreground border-border";
-                    return (
-                      <div key={cat}>
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${colors}`}>{cat}</span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          {mods.map(mod => {
-                            const isOn = selected.has(mod.slug);
-                            return (
-                              <button key={mod.slug} type="button" onClick={() => toggleModule(mod.slug)}
-                                data-testid={`module-pick-${mod.slug}`}
-                                className={`relative text-left p-3 rounded-xl border-2 transition-all ${isOn ? "border-primary bg-primary/5 ring-1 ring-primary/10" : "border-border bg-card hover:border-muted-foreground/30"}`}>
-                                {mod.popular && <span className="absolute -top-2 right-2 text-[9px] font-bold bg-amber-400 text-amber-900 px-1.5 py-0.5 rounded-full">Popular</span>}
-                                <div className="flex items-start justify-between gap-1">
-                                  <span className="text-xs font-semibold text-foreground leading-tight pr-1">{mod.name}</span>
-                                  <div className={`h-4 w-4 rounded-full border-2 shrink-0 flex items-center justify-center mt-0.5 ${isOn ? "bg-primary border-primary" : "border-muted-foreground/30"}`}>
-                                    {isOn && <CheckCircle2 className="h-2.5 w-2.5 text-white" />}
-                                  </div>
+              <Tabs value={moduleTab} onValueChange={v => setModuleTab(v as "plan" | "custom")}>
+                <TabsList className="w-full">
+                  <TabsTrigger value="plan" className="flex-1" data-testid="tab-choose-plan">Choose a Plan</TabsTrigger>
+                  <TabsTrigger value="custom" className="flex-1" data-testid="tab-build-own">Build Your Own</TabsTrigger>
+                </TabsList>
+
+                {/* ── Tab 1: Plan picker ── */}
+                <TabsContent value="plan" className="mt-3">
+                  <div className="space-y-3">
+                    <p className="text-xs text-muted-foreground">Pick a bundle — get a set of modules at a fixed monthly price.</p>
+                    {REGISTER_PLANS.map(plan => {
+                      const isSelected = selectedPlan === plan.slug;
+                      return (
+                        <button key={plan.slug} type="button" onClick={() => setSelectedPlan(plan.slug)}
+                          data-testid={`plan-pick-${plan.slug}`}
+                          className={`w-full text-left p-4 rounded-xl border-2 transition-all ${isSelected ? "border-primary bg-primary/5 ring-1 ring-primary/10" : "border-border bg-card hover:border-muted-foreground/30"}`}>
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-semibold">{plan.name}</span>
+                                {plan.isFeatured && <span className="text-[9px] font-bold bg-amber-400 text-amber-900 px-1.5 py-0.5 rounded-full">Popular</span>}
+                              </div>
+                              <div className="flex flex-wrap gap-1 mt-1.5">
+                                {plan.modules.slice(0, 6).map((m: string) => (
+                                  <span key={m} className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">{m.replace(/_/g, ' ')}</span>
+                                ))}
+                                {plan.modules.length > 6 && <span className="text-[10px] text-muted-foreground">+{plan.modules.length - 6} more</span>}
+                              </div>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <div className="flex items-center gap-1">
+                                <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center ${isSelected ? "bg-primary border-primary" : "border-muted-foreground/30"}`}>
+                                  {isSelected && <CheckCircle2 className="h-3 w-3 text-white" />}
                                 </div>
-                                <p className="text-xs text-muted-foreground mt-0.5">₹{mod.price}<span className="text-[10px]">/mo</span></p>
-                              </button>
-                            );
-                          })}
+                              </div>
+                              <p className="text-sm font-bold mt-1">{plan.priceMonthly > 0 ? `₹${plan.priceMonthly.toLocaleString("en-IN")}` : "Free"}</p>
+                              {plan.priceMonthly > 0 && <p className="text-[10px] text-muted-foreground">/mo after trial</p>}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </TabsContent>
+
+                {/* ── Tab 2: Module picker ── */}
+                <TabsContent value="custom" className="mt-3">
+                  <div className="space-y-3">
+                    <p className="text-xs text-muted-foreground">Pick only what you need. Pay per module, cancel anytime.</p>
+                    {CATEGORY_ORDER.map(cat => {
+                      const mods = PICKER_MODULES.filter(m => m.category === cat);
+                      if (!mods.length) return null;
+                      const colors = CATEGORY_COLORS[cat] ?? "bg-muted text-muted-foreground border-border";
+                      return (
+                        <div key={cat}>
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${colors}`}>{cat}</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            {mods.map(mod => {
+                              const isOn = selected.has(mod.slug);
+                              return (
+                                <button key={mod.slug} type="button" onClick={() => toggleModule(mod.slug)}
+                                  data-testid={`module-pick-${mod.slug}`}
+                                  className={`relative text-left p-3 rounded-xl border-2 transition-all ${isOn ? "border-primary bg-primary/5 ring-1 ring-primary/10" : "border-border bg-card hover:border-muted-foreground/30"}`}>
+                                  {mod.popular && <span className="absolute -top-2 right-2 text-[9px] font-bold bg-amber-400 text-amber-900 px-1.5 py-0.5 rounded-full">Popular</span>}
+                                  <div className="flex items-start justify-between gap-1">
+                                    <span className="text-xs font-semibold text-foreground leading-tight pr-1">{mod.name}</span>
+                                    <div className={`h-4 w-4 rounded-full border-2 shrink-0 flex items-center justify-center mt-0.5 ${isOn ? "bg-primary border-primary" : "border-muted-foreground/30"}`}>
+                                      {isOn && <CheckCircle2 className="h-2.5 w-2.5 text-white" />}
+                                    </div>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground mt-0.5">₹{mod.price}<span className="text-[10px]">/mo</span></p>
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </CardContent>
-              </Card>
+                      );
+                    })}
+                  </div>
+                </TabsContent>
+              </Tabs>
+
+              <Card>
 
               <Card>
                 <CardContent className="pt-4 space-y-3">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">{paidSelected.length} paid module{paidSelected.length !== 1 ? "s" : ""} selected</span>
-                    <div className="text-right">
-                      <span className="font-bold text-lg">{monthlyTotal > 0 ? `₹${monthlyTotal.toLocaleString("en-IN")}` : "₹0"}</span>
-                      <span className="text-xs text-muted-foreground">/mo after trial</span>
+                  {moduleTab === "plan" ? (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">
+                        {selectedPlan ? `${REGISTER_PLANS.find(p => p.slug === selectedPlan)?.name ?? selectedPlan} plan selected` : "No plan selected yet"}
+                      </span>
+                      <div className="text-right">
+                        <span className="font-bold text-lg">
+                          {selectedPlan ? (REGISTER_PLANS.find(p => p.slug === selectedPlan)?.priceMonthly ?? 0) > 0
+                            ? `₹${(REGISTER_PLANS.find(p => p.slug === selectedPlan)?.priceMonthly ?? 0).toLocaleString("en-IN")}`
+                            : "Free"
+                          : "₹0"}
+                        </span>
+                        <span className="text-xs text-muted-foreground">/mo after trial</span>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">{paidSelected.length} paid module{paidSelected.length !== 1 ? "s" : ""} selected</span>
+                      <div className="text-right">
+                        <span className="font-bold text-lg">{monthlyTotal > 0 ? `₹${monthlyTotal.toLocaleString("en-IN")}` : "₹0"}</span>
+                        <span className="text-xs text-muted-foreground">/mo after trial</span>
+                      </div>
+                    </div>
+                  )}
                   <p className="text-xs text-muted-foreground">14-day trial is completely free. You won't be charged until your trial ends.</p>
                   <div className="flex gap-2">
                     <Button variant="outline" className="flex-1" onClick={() => handleSaveModules(true)} disabled={savingModules} data-testid="button-skip-modules">Skip for now</Button>
-                    <Button className="flex-1" onClick={() => handleSaveModules(false)} disabled={savingModules} data-testid="button-confirm-modules">
+                    <Button className="flex-1" onClick={() => handleSaveModules(false)}
+                      disabled={savingModules || (moduleTab === "plan" && !selectedPlan)}
+                      data-testid="button-confirm-modules">
                       {savingModules ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Saving…</> : <>Continue <ChevronRight className="h-4 w-4 ml-1" /></>}
                     </Button>
                   </div>

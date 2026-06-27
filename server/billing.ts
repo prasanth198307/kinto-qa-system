@@ -682,6 +682,31 @@ export function registerBillingRoutes(app: Express): void {
     }
   });
 
+  // ── POST /api/billing/select-plan — save selected plan slug on registration ──
+  app.post("/api/billing/select-plan", async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const tenantId: number = (req.session as any).tenantId;
+    const { planSlug } = req.body;
+    if (!planSlug) return res.status(400).json({ message: "planSlug required" });
+    try {
+      const planRows = await db.execute(sql`SELECT id, price_monthly, modules FROM subscription_plans WHERE slug = ${planSlug} AND is_active = true LIMIT 1`);
+      const plan = (planRows.rows as any[])[0];
+      if (!plan) return res.status(400).json({ message: "Invalid plan" });
+      await db.execute(sql`
+        UPDATE subscriptions SET
+          plan_slug = ${planSlug},
+          plan_id = ${plan.id},
+          monthly_amount = ${plan.price_monthly ?? 0},
+          updated_at = NOW()
+        WHERE tenant_id = ${tenantId}
+      `);
+      await db.execute(sql`UPDATE tenants SET plan = ${planSlug}, updated_at = NOW() WHERE id = ${tenantId}`);
+      res.json({ success: true, planSlug });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   // ── GET /api/admin/module-catalog — super-admin: all modules (incl inactive)
   app.get("/api/admin/module-catalog", async (req: any, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
