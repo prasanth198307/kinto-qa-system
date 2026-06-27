@@ -628,8 +628,6 @@ export default function RegisterCompanyPage() {
               </Tabs>
 
               <Card>
-
-              <Card>
                 <CardContent className="pt-4 space-y-3">
                   {moduleTab === "plan" ? (
                     <div className="flex items-center justify-between text-sm">

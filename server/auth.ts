@@ -353,6 +353,22 @@ export function setupAuth(app: Express) {
         .set({ corsOrigins: [defaultOrigin] })
         .where(eq(tenants.id, newTenant.id));
 
+      // Create trial subscription record — required for module marketplace and billing to work
+      const trialPeriodEnd = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+      await db.execute(sql`
+        INSERT INTO subscriptions (
+          tenant_id, plan_id, plan_slug, billing_cycle, status,
+          started_at, current_period_start, current_period_end,
+          selected_modules, monthly_amount, notes, created_at, updated_at
+        )
+        VALUES (
+          ${newTenant.id}, 1, 'trial', 'trial', 'trial',
+          NOW(), NOW(), ${trialPeriodEnd},
+          '[]'::jsonb, 0, 'Auto-created on registration', NOW(), NOW()
+        )
+        ON CONFLICT (tenant_id) DO NOTHING
+      `);
+
       console.log(`✅ New tenant registered: ${newTenant.name} (${newTenant.slug}) with admin: ${adminUsername}`);
 
       return res.status(201).json({
