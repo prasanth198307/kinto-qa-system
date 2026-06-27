@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { KintoLogo } from "@/components/branding/KintoLogo";
 import { apiRequest } from "@/lib/queryClient";
+import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 
 type Step = "company" | "admin" | "modules" | "branding" | "success";
@@ -19,23 +20,6 @@ type SlugStatus = "idle" | "checking" | "available" | "taken" | "invalid";
 
 // ─── Module picker data ───────────────────────────────────────────────────────
 const FREE_SLUGS = new Set(["user_management", "roles", "company_settings", "dashboard"]);
-
-const PICKER_MODULES = [
-  { category: "Finance",    slug: "invoicing",    name: "GST Invoicing",       price: 699,  popular: true },
-  { category: "Finance",    slug: "accounting",   name: "Accounting & Ledger", price: 899,  popular: false },
-  { category: "Inventory",  slug: "inventory",    name: "Inventory",           price: 599,  popular: true },
-  { category: "Inventory",  slug: "purchase",     name: "Purchase & PO",       price: 499,  popular: false },
-  { category: "Production", slug: "production",   name: "Production / BOM",    price: 699,  popular: false },
-  { category: "Production", slug: "quality",      name: "Quality Assurance",   price: 399,  popular: false },
-  { category: "HR",         slug: "hr_payroll",   name: "HR & Payroll",        price: 799,  popular: true },
-  { category: "HR",         slug: "attendance",   name: "Attendance & Leave",  price: 349,  popular: false },
-  { category: "Sales",      slug: "crm",          name: "CRM & Leads",         price: 499,  popular: false },
-  { category: "Sales",      slug: "sales",        name: "Sales Orders",        price: 399,  popular: false },
-  { category: "Industry",   slug: "healthcare",   name: "Healthcare",          price: 999,  popular: false },
-  { category: "Industry",   slug: "education",    name: "Education ERP",       price: 999,  popular: false },
-  { category: "Industry",   slug: "logistics",    name: "Logistics & Fleet",   price: 799,  popular: false },
-  { category: "Industry",   slug: "pos",          name: "Retail / POS",        price: 699,  popular: false },
-];
 
 const CATEGORY_ORDER = ["Finance", "Inventory", "Production", "HR", "Sales", "Industry"];
 
@@ -96,6 +80,20 @@ export default function RegisterCompanyPage() {
   // Module selection
   const [selected, setSelected] = useState<Set<string>>(new Set(Array.from(FREE_SLUGS)));
   const [savingModules, setSavingModules] = useState(false);
+
+  // Load module catalog from DB — always fresh prices
+  const { data: catalogRaw = [] } = useQuery<any[]>({
+    queryKey: ["/api/public/module-catalog"],
+  });
+  const PICKER_MODULES = catalogRaw
+    .filter((m: any) => !m.free)
+    .map((m: any) => ({
+      category: m.category ?? 'Other',
+      slug: m.slug,
+      name: m.name,
+      price: Math.round((m.priceMonthly ?? 0) / 100),
+      popular: m.popular ?? false,
+    }));
 
   // Branding
   const [logoFile, setLogoFile] = useState<File | null>(null);
