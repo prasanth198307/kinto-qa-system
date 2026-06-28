@@ -13,27 +13,60 @@ const api = (m: string, u: string, b?: any) =>
 const fmt = (n: any) => Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
 
 const REPORT_TYPES = [
+  { value: "daily-summary", label: "Daily Summary" },
   { value: "hourly-sales", label: "Hourly Sales" },
-  { value: "item-wise", label: "Item-wise" },
-  { value: "category-wise", label: "Category-wise" },
-  { value: "cashier-wise", label: "Cashier-wise" },
-  { value: "void-discount", label: "Void and Discount" },
-  { value: "eod-summary", label: "EOD Summary" },
+  { value: "item-wise", label: "Item-wise Sales" },
+  { value: "category-wise", label: "Category-wise Sales" },
+  { value: "cashier-shift", label: "Cashier Shift" },
+  { value: "void-discount", label: "Void & Discount" },
+  { value: "complimentary", label: "Complimentary" },
+  { value: "gst-summary", label: "GST Summary" },
+  { value: "payment-modes", label: "Payment Modes" },
+  { value: "wastage-summary", label: "Wastage Summary" },
+  { value: "loyalty-summary", label: "Loyalty Summary" },
 ];
 
-export default function RestaurantReportsPage() {
-  const { toast } = useToast();
-  const [reportType, setReportType] = useState("eod-summary");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
-  const [reportData, setReportData] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
+const COLUMNS: Record<string, string[]> = {
+  "daily-summary": ["date", "orders", "covers", "avg_bill", "total_sales", "gst", "payment_breakdown"],
+  "hourly-sales": ["hour", "orders", "revenue"],
+  "item-wise": ["item_name", "category", "qty_sold", "revenue", "avg_price"],
+  "category-wise": ["category", "items_sold", "revenue", "contribution_pct"],
+  "cashier-shift": ["cashier", "shift", "orders", "sales", "voids", "discounts"],
+  "void-discount": ["time", "table", "item", "reason", "amount", "cashier"],
+  "complimentary": ["time", "table", "item", "reason", "amount", "approved_by"],
+  "gst-summary": ["gst_rate", "taxable_amount", "gst_amount", "total"],
+  "payment-modes": ["mode", "count", "amount", "percentage"],
+  "wastage-summary": ["reason", "qty", "cost"],
+  "loyalty-summary": ["type", "count", "points", "amount"],
+};
 
-  const fetchReport = async () => {
+const colLabel = (c: string) => c.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+
+function exportCSV(data: any[], reportType: string) {
+  if (!data.length) return;
+  const cols = Object.keys(data[0]);
+  const rows = [cols.join(","), ...data.map(r => cols.map(c => JSON.stringify(r[c] ?? "")).join(","))];
+  const blob = new Blob([rows.join("\n")], { type: "text/csv" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `${reportType}-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+}
+
+export default function RestaurantReportsPage() {
+  const today = new Date().toISOString().slice(0, 10);
+  const [fromDate, setFromDate] = useState(today);
+  const [toDate, setToDate] = useState(today);
+  const [reportType, setReportType] = useState("daily-summary");
+  const [reportData, setReportData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
+
+  const loadReport = async () => {
     setLoading(true);
     try {
-      const data = await api("GET", `/api/restaurant/reports/${reportType}?from=${from}&to=${to}`);
-      setReportData(data);
+      const res = await api("GET", `/api/restaurant/reports/${reportType}?from=${fromDate}&to=${toDate}`);
+      setReportData(Array.isArray(res) ? res : res.data || []);
     } catch {
       toast({ title: "Failed to load report", variant: "destructive" });
     } finally {
@@ -41,59 +74,81 @@ export default function RestaurantReportsPage() {
     }
   };
 
-  const rows: any[] = Array.isArray(reportData) ? reportData : reportData?.data || reportData?.rows || [];
-  const cols = rows.length > 0 ? Object.keys(rows[0]) : [];
+  const cols = reportData.length > 0 ? Object.keys(reportData[0]) : (COLUMNS[reportType] || []);
+
+  // Summary stats from daily-summary data or any report
+  const totalOrders = reportData.reduce((s, r) => s + Number(r.orders || 0), 0);
+  const totalRevenue = reportData.reduce((s, r) => s + Number(r.total_sales || r.revenue || r.amount || 0), 0);
+  const avgBill = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 space-y-4">
       <h1 className="text-2xl font-bold">Reports</h1>
-      <Card>
-        <CardHeader><CardTitle>Report Parameters</CardTitle></CardHeader>
-        <CardContent>
-          <div className="flex gap-3 flex-wrap items-end">
-            <div>
-              <div className="text-sm text-gray-500 mb-1">Report Type</div>
-              <Select value={reportType} onValueChange={setReportType}>
-                <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {REPORT_TYPES.map(r => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <div className="text-sm text-gray-500 mb-1">From</div>
-              <Input type="date" value={from} onChange={e => setFrom(e.target.value)} className="w-36" />
-            </div>
-            <div>
-              <div className="text-sm text-gray-500 mb-1">To</div>
-              <Input type="date" value={to} onChange={e => setTo(e.target.value)} className="w-36" />
-            </div>
-            <Button onClick={fetchReport} disabled={loading}>{loading ? "Loading..." : "Fetch Report"}</Button>
+
+      {/* Filters */}
+      <Card><CardContent className="pt-4">
+        <div className="flex flex-wrap gap-3 items-end">
+          <div className="flex flex-col gap-1"><label className="text-xs text-muted-foreground">From Date</label>
+            <Input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="w-40" />
           </div>
+          <div className="flex flex-col gap-1"><label className="text-xs text-muted-foreground">To Date</label>
+            <Input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="w-40" />
+          </div>
+          <div className="flex flex-col gap-1"><label className="text-xs text-muted-foreground">Report Type</label>
+            <Select value={reportType} onValueChange={setReportType}>
+              <SelectTrigger className="w-52"><SelectValue /></SelectTrigger>
+              <SelectContent>{REPORT_TYPES.map(r => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <Button onClick={loadReport} disabled={loading}>{loading ? "Loading..." : "Load Report"}</Button>
+          {reportData.length > 0 && <Button variant="outline" onClick={() => exportCSV(reportData, reportType)}>Export CSV</Button>}
+        </div>
+      </CardContent></Card>
+
+      {/* Summary Stats */}
+      {reportData.length > 0 && (
+        <div className="grid grid-cols-3 gap-4">
+          <Card><CardHeader><CardTitle className="text-sm">Total Orders</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold">{totalOrders.toLocaleString("en-IN")}</p></CardContent></Card>
+          <Card><CardHeader><CardTitle className="text-sm">Total Revenue</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold text-green-600">₹{fmt(totalRevenue)}</p></CardContent></Card>
+          <Card><CardHeader><CardTitle className="text-sm">Avg Bill</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold text-blue-600">₹{fmt(avgBill)}</p></CardContent></Card>
+        </div>
+      )}
+
+      {/* Report Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            {REPORT_TYPES.find(r => r.value === reportType)?.label}
+            {reportData.length > 0 && <Badge variant="secondary">{reportData.length} rows</Badge>}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {reportData.length === 0 ? (
+            <p className="text-center text-muted-foreground py-12">Select a report type and click "Load Report" to view data.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>{cols.map(c => <TableHead key={c}>{colLabel(c)}</TableHead>)}</TableRow>
+                </TableHeader>
+                <TableBody>
+                  {reportData.map((row, i) => (
+                    <TableRow key={i}>
+                      {cols.map(c => (
+                        <TableCell key={c}>
+                          {typeof row[c] === "number"
+                            ? (c.includes("pct") || c.includes("percentage") ? `${fmt(row[c])}%` : c.includes("amount") || c.includes("sales") || c.includes("revenue") || c.includes("cost") || c.includes("bill") || c.includes("total") ? `₹${fmt(row[c])}` : fmt(row[c]))
+                            : String(row[c] ?? "-")}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
-      {rows.length > 0 && (
-        <Card>
-          <CardHeader><CardTitle>{REPORT_TYPES.find(r => r.value === reportType)?.label} Report</CardTitle></CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>{cols.map(c => <TableHead key={c} className="capitalize">{c.replace(/_/g," ")}</TableHead>)}</TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.map((row: any, i: number) => (
-                  <TableRow key={i}>
-                    {cols.map(c => <TableCell key={c}>{typeof row[c] === "number" ? fmt(row[c]) : String(row[c] ?? "-")}</TableCell>)}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
-      {reportData && rows.length === 0 && (
-        <div className="text-center text-gray-400 py-8">No data for selected parameters</div>
-      )}
     </div>
   );
 }

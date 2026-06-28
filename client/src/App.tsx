@@ -1315,14 +1315,6 @@ function AdminDashboard() {
       ],
     },
     {
-      id: "crm-section",
-      label: "CRM & Leads",
-      items: [
-        { id: "crm-leads", label: "Lead Management", icon: Target, onClick: () => setLocation('/crm/leads') },
-        { id: "crm-surveys", label: "Feedback & Surveys", icon: Star, onClick: () => setLocation('/crm/surveys') },
-      ],
-    },
-    {
       id: "master-section",
       label: "Master Data",
       items: [
@@ -1345,39 +1337,25 @@ function AdminDashboard() {
       ],
     },
     {
-      id: "industry-section",
-      label: "Industry Verticals",
-      items: [
-        { id: "healthcare", label: "Healthcare", icon: Briefcase, onClick: () => setLocation('/healthcare') },
-        { id: "education", label: "Education", icon: BookOpen, onClick: () => setLocation('/education') },
-        { id: "logistics", label: "Logistics & Transport", icon: Truck, onClick: () => setLocation('/logistics') },
-        { id: "real-estate", label: "Real Estate", icon: Building2, onClick: () => setLocation('/real-estate') },
-        { id: "agriculture", label: "Agriculture", icon: Layers, onClick: () => setLocation('/agriculture') },
-        { id: "hotel", label: "Hotel ERP", icon: BedDouble, onClick: () => setLocation('/hotel') },
-        { id: "restaurant", label: "Restaurant ERP", icon: UtensilsCrossed, onClick: () => setLocation('/restaurant') },
-        { id: "nidhi-company", label: "Nidhi / NBFC", icon: Landmark, onClick: () => setLocation('/nidhi-company') },
-      ],
-    },
-    {
       id: "finance-erp-section",
       label: "Finance ERP",
       items: [
         { id: "finance-erp", label: "CFO Dashboard", icon: BarChart3, onClick: () => setLocation('/finance-erp') },
-        { id: "invoices", label: "Invoices", icon: Receipt, onClick: () => setLocation('/invoices') },
+        { id: "invoices", label: "Invoices", icon: Receipt, onClick: () => setLocation('/?tab=invoices') },
         { id: "expenses", label: "Expenses", icon: Wallet, onClick: () => setLocation('/expenses') },
         { id: "journal-entries", label: "Journal Entries", icon: BookOpen, onClick: () => setLocation('/journal-entries') },
         { id: "chart-of-accounts", label: "Chart of Accounts", icon: Layers, onClick: () => setLocation('/chart-of-accounts') },
         { id: "bank-transactions", label: "Bank Reconciliation", icon: CreditCard, onClick: () => setLocation('/bank-transactions') },
         { id: "gstr-reports", label: "GST Reports", icon: FileText, onClick: () => setLocation('/gstr-reports') },
         { id: "tds-management", label: "TDS Management", icon: FileText, onClick: () => setLocation('/tds-management') },
-        { id: "budgets", label: "Budget Management", icon: Target, onClick: () => setLocation('/budgets') },
+        { id: "budgets", label: "Budget Management", icon: Target, onClick: () => setLocation('/budget-variance') },
         { id: "fixed-assets", label: "Fixed Assets", icon: Building2, onClick: () => setLocation('/fixed-assets') },
-        { id: "mis-dashboard", label: "MIS Reports", icon: BarChart3, onClick: () => setLocation('/mis-dashboard') },
+        { id: "mis-dashboard", label: "MIS Reports", icon: BarChart3, onClick: () => setLocation('/mis') },
       ],
     },
     {
       id: "masters-section",
-      label: "Master Data",
+      label: "ERP Masters",
       items: [
         { id: "masters/hsn-codes", label: "HSN Codes", icon: Tag, onClick: () => setLocation('/masters/hsn-codes') },
         { id: "masters/sac-codes", label: "SAC Codes", icon: Tag, onClick: () => setLocation('/masters/sac-codes') },
@@ -1547,7 +1525,8 @@ function AdminDashboard() {
       id: "crm-erp-section",
       label: "CRM ERP",
       items: [
-        { id: "crm-leads", label: "Leads", icon: Target, onClick: () => setLocation('/crm-leads') },
+        { id: "crm-leads", label: "Lead Management", icon: Target, onClick: () => setLocation('/crm/leads') },
+        { id: "crm-surveys", label: "Feedback & Surveys", icon: Star, onClick: () => setLocation('/crm/surveys') },
         { id: "crm/pipeline", label: "Pipeline", icon: TrendingUp, onClick: () => setLocation('/crm/pipeline') },
         { id: "crm/contacts", label: "Contacts", icon: Users, onClick: () => setLocation('/crm/contacts') },
         { id: "crm/accounts", label: "Accounts", icon: Building2, onClick: () => setLocation('/crm/accounts') },
@@ -2741,14 +2720,6 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       ],
     },
     {
-      id: "crm-section",
-      label: "CRM & Leads",
-      items: [
-        { id: "crm-leads", label: "Lead Management", icon: Target, onClick: () => setLocation('/crm/leads') },
-        { id: "crm-surveys", label: "Feedback & Surveys", icon: Star, onClick: () => setLocation('/crm/surveys') },
-      ],
-    },
-    {
       id: "hr-section",
       label: "HR & Payroll",
       items: [
@@ -2801,43 +2772,25 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       ],
     },
     {
-      id: "industry-section",
-      label: "Industry Verticals",
-      items: [
-        { id: "healthcare", label: "Healthcare", icon: Briefcase, onClick: () => setLocation('/healthcare') },
-        { id: "education", label: "Education", icon: BookOpen, onClick: () => setLocation('/education') },
-        { id: "logistics", label: "Logistics & Transport", icon: Truck, onClick: () => setLocation('/logistics') },
-        { id: "real-estate", label: "Real Estate", icon: Building2, onClick: () => setLocation('/real-estate') },
-        { id: "agriculture", label: "Agriculture", icon: Layers, onClick: () => setLocation('/agriculture') },
-        { id: "hotel", label: "Hotel ERP", icon: BedDouble, onClick: () => setLocation('/hotel') },
-        { id: "restaurant", label: "Restaurant ERP", icon: UtensilsCrossed, onClick: () => setLocation('/restaurant') },
-        { id: "crm-pipeline", label: "CRM Pipeline", icon: Target, onClick: () => setLocation('/crm-pipeline') },
-        { id: "ecommerce", label: "E-Commerce Sync", icon: ShoppingBag, onClick: () => setLocation('/ecommerce') },
-        { id: "ngo", label: "NGO / Trust ERP", icon: Heart, onClick: () => setLocation('/ngo') },
-        { id: "pharmacy", label: "Pharmacy ERP", icon: Pill, onClick: () => setLocation('/pharmacy') },
-        { id: "nidhi-company", label: "Nidhi / NBFC", icon: Landmark, onClick: () => setLocation('/nidhi-company') },
-      ],
-    },
-    {
       id: "finance-erp-section",
       label: "Finance ERP",
       items: [
         { id: "finance-erp", label: "CFO Dashboard", icon: BarChart3, onClick: () => setLocation('/finance-erp') },
-        { id: "invoices", label: "Invoices", icon: Receipt, onClick: () => setLocation('/invoices') },
+        { id: "invoices", label: "Invoices", icon: Receipt, onClick: () => setLocation('/?tab=invoices') },
         { id: "expenses", label: "Expenses", icon: Wallet, onClick: () => setLocation('/expenses') },
         { id: "journal-entries", label: "Journal Entries", icon: BookOpen, onClick: () => setLocation('/journal-entries') },
         { id: "chart-of-accounts", label: "Chart of Accounts", icon: Layers, onClick: () => setLocation('/chart-of-accounts') },
         { id: "bank-transactions", label: "Bank Reconciliation", icon: CreditCard, onClick: () => setLocation('/bank-transactions') },
         { id: "gstr-reports", label: "GST Reports", icon: FileText, onClick: () => setLocation('/gstr-reports') },
         { id: "tds-management", label: "TDS Management", icon: FileText, onClick: () => setLocation('/tds-management') },
-        { id: "budgets", label: "Budget Management", icon: Target, onClick: () => setLocation('/budgets') },
+        { id: "budgets", label: "Budget Management", icon: Target, onClick: () => setLocation('/budget-variance') },
         { id: "fixed-assets", label: "Fixed Assets", icon: Building2, onClick: () => setLocation('/fixed-assets') },
-        { id: "mis-dashboard", label: "MIS Reports", icon: BarChart3, onClick: () => setLocation('/mis-dashboard') },
+        { id: "mis-dashboard", label: "MIS Reports", icon: BarChart3, onClick: () => setLocation('/mis') },
       ],
     },
     {
       id: "masters-section",
-      label: "Master Data",
+      label: "ERP Masters",
       items: [
         { id: "masters/hsn-codes", label: "HSN Codes", icon: Tag, onClick: () => setLocation('/masters/hsn-codes') },
         { id: "masters/sac-codes", label: "SAC Codes", icon: Tag, onClick: () => setLocation('/masters/sac-codes') },
@@ -3007,7 +2960,8 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       id: "crm-erp-section",
       label: "CRM ERP",
       items: [
-        { id: "crm-leads", label: "Leads", icon: Target, onClick: () => setLocation('/crm-leads') },
+        { id: "crm-leads", label: "Lead Management", icon: Target, onClick: () => setLocation('/crm/leads') },
+        { id: "crm-surveys", label: "Feedback & Surveys", icon: Star, onClick: () => setLocation('/crm/surveys') },
         { id: "crm/pipeline", label: "Pipeline", icon: TrendingUp, onClick: () => setLocation('/crm/pipeline') },
         { id: "crm/contacts", label: "Contacts", icon: Users, onClick: () => setLocation('/crm/contacts') },
         { id: "crm/accounts", label: "Accounts", icon: Building2, onClick: () => setLocation('/crm/accounts') },
@@ -4673,19 +4627,143 @@ function Router() {
       <ProtectedRoute path="/gstr-reports" component={GSTRReportsWrapper} />
       <ProtectedRoute path="/audit-log" component={AuditLogWrapper} />
       <ProtectedRoute path="/security-dashboard" component={SecurityDashboardPage} />
-      <ProtectedRoute path="/healthcare" component={HealthcareWrapper} />
-      <ProtectedRoute path="/education" component={EducationWrapper} />
-      <ProtectedRoute path="/logistics" component={LogisticsWrapper} />
-      <ProtectedRoute path="/real-estate" component={RealEstateWrapper} />
       <ProtectedRoute path="/pos" component={POSWrapper} />
         <ProtectedRoute path="/einvoice" component={EInvoicePage} />
-      <ProtectedRoute path="/agriculture" component={AgricultureWrapper} />
       <ProtectedRoute path="/crm-pipeline" component={CRMPipelineLegacyWrapper} />
-      <ProtectedRoute path="/ecommerce" component={EcommerceWrapper} />
-      <ProtectedRoute path="/ngo" component={NGOWrapper} />
-      <ProtectedRoute path="/pharmacy" component={PharmacyWrapper} />
-        <ProtectedRoute path="/nidhi-company" component={NidhiWrapper} />
         <ProtectedRoute path="/finance-erp" component={FinanceErpWrapper} />
+
+      <ProtectedRoute path="/restaurant/pos" component={RestaurantPOSWrapper} />
+      <ProtectedRoute path="/restaurant/kitchen" component={RestaurantKitchenWrapper} />
+      <ProtectedRoute path="/restaurant/tables" component={RestaurantTablesWrapper} />
+      <ProtectedRoute path="/restaurant/menu" component={RestaurantMenuWrapper} />
+      <ProtectedRoute path="/restaurant/orders" component={RestaurantOrdersWrapper} />
+      <ProtectedRoute path="/restaurant/delivery" component={RestaurantDeliveryWrapper} />
+      <ProtectedRoute path="/restaurant/reservations" component={RestaurantReservationsWrapper} />
+      <ProtectedRoute path="/restaurant/shifts" component={RestaurantShiftsWrapper} />
+      <ProtectedRoute path="/restaurant/customers" component={RestaurantCustomersWrapper} />
+      <ProtectedRoute path="/restaurant/inventory" component={RestaurantInventoryWrapper} />
+      <ProtectedRoute path="/restaurant/outlets" component={RestaurantOutletsWrapper} />
+      <ProtectedRoute path="/restaurant/reports" component={RestaurantReportsWrapper} />
+      <ProtectedRoute path="/hotel/front-desk" component={HotelFrontDeskWrapper} />
+      <ProtectedRoute path="/hotel/reservations" component={HotelReservationsWrapper} />
+      <ProtectedRoute path="/hotel/checkin" component={HotelCheckinWrapper} />
+      <ProtectedRoute path="/hotel/rooms" component={HotelRoomsWrapper} />
+      <ProtectedRoute path="/hotel/folio" component={HotelFolioWrapper} />
+      <ProtectedRoute path="/hotel/housekeeping" component={HotelHousekeepingWrapper} />
+      <ProtectedRoute path="/hotel/rates" component={HotelRatesWrapper} />
+      <ProtectedRoute path="/hotel/corporate" component={HotelCorporateWrapper} />
+      <ProtectedRoute path="/hotel/night-audit" component={HotelNightAuditWrapper} />
+      <ProtectedRoute path="/hotel/reports" component={HotelReportsWrapper} />
+      <ProtectedRoute path="/healthcare/patients" component={HealthcarePatientsWrapper} />
+      <ProtectedRoute path="/healthcare/opd" component={HealthcareOPDWrapper} />
+      <ProtectedRoute path="/healthcare/ipd" component={HealthcareIPDWrapper} />
+      <ProtectedRoute path="/healthcare/beds" component={HealthcareBedsWrapper} />
+      <ProtectedRoute path="/healthcare/ot" component={HealthcareOTWrapper} />
+      <ProtectedRoute path="/healthcare/lab" component={HealthcareLabWrapper} />
+      <ProtectedRoute path="/healthcare/nursing" component={HealthcareNursingWrapper} />
+      <ProtectedRoute path="/healthcare/insurance" component={HealthcareInsuranceWrapper} />
+      <ProtectedRoute path="/healthcare/doctors" component={HealthcareDoctorsWrapper} />
+      <ProtectedRoute path="/healthcare/blood-bank" component={HealthcareBloodBankWrapper} />
+      <ProtectedRoute path="/healthcare/reports" component={HealthcareReportsWrapper} />
+      <ProtectedRoute path="/education/students" component={EducationStudentsWrapper} />
+      <ProtectedRoute path="/education/admissions" component={EducationAdmissionsWrapper} />
+      <ProtectedRoute path="/education/classes" component={EducationClassesWrapper} />
+      <ProtectedRoute path="/education/attendance" component={EducationAttendanceWrapper} />
+      <ProtectedRoute path="/education/exams" component={EducationExamsWrapper} />
+      <ProtectedRoute path="/education/fees" component={EducationFeesWrapper} />
+      <ProtectedRoute path="/education/timetable" component={EducationTimetableWrapper} />
+      <ProtectedRoute path="/education/homework" component={EducationHomeworkWrapper} />
+      <ProtectedRoute path="/education/online-exams" component={EducationOnlineExamsWrapper} />
+      <ProtectedRoute path="/education/library" component={EducationLibraryWrapper} />
+      <ProtectedRoute path="/education/transport" component={EducationTransportWrapper} />
+      <ProtectedRoute path="/education/hostel" component={EducationHostelWrapper} />
+      <ProtectedRoute path="/education/parent-portal" component={EducationParentPortalWrapper} />
+      <ProtectedRoute path="/education/reports" component={EducationReportsWrapper} />
+      <ProtectedRoute path="/real-estate/projects" component={RealEstateProjectsWrapper} />
+      <ProtectedRoute path="/real-estate/crm" component={RealEstateCRMWrapper} />
+      <ProtectedRoute path="/real-estate/bookings" component={RealEstateBookingsWrapper} />
+      <ProtectedRoute path="/real-estate/collections" component={RealEstateCollectionsWrapper} />
+      <ProtectedRoute path="/real-estate/brokers" component={RealEstateBrokersWrapper} />
+      <ProtectedRoute path="/real-estate/construction" component={RealEstateConstructionWrapper} />
+      <ProtectedRoute path="/real-estate/documents" component={RealEstateDocumentsWrapper} />
+      <ProtectedRoute path="/real-estate/customer-portal" component={RealEstateCustomerPortalWrapper} />
+      <ProtectedRoute path="/real-estate/society" component={RealEstateSocietyWrapper} />
+      <ProtectedRoute path="/real-estate/reports" component={RealEstateReportsWrapper} />
+      <ProtectedRoute path="/logistics/fleet" component={LogisticsFleetWrapper} />
+      <ProtectedRoute path="/logistics/drivers" component={LogisticsDriversWrapper} />
+      <ProtectedRoute path="/logistics/trips" component={LogisticsTripsWrapper} />
+      <ProtectedRoute path="/logistics/gps" component={LogisticsGPSWrapper} />
+      <ProtectedRoute path="/logistics/consignments" component={LogisticsConsignmentsWrapper} />
+      <ProtectedRoute path="/logistics/freight" component={LogisticsFreightWrapper} />
+      <ProtectedRoute path="/logistics/epod" component={LogisticsEPODWrapper} />
+      <ProtectedRoute path="/logistics/fuel" component={LogisticsFuelWrapper} />
+      <ProtectedRoute path="/logistics/documents" component={LogisticsDocumentsWrapper} />
+      <ProtectedRoute path="/logistics/reports" component={LogisticsReportsWrapper} />
+      <ProtectedRoute path="/agriculture/farms" component={AgricultureFarmsWrapper} />
+      <ProtectedRoute path="/agriculture/crops" component={AgricultureCropsWrapper} />
+      <ProtectedRoute path="/agriculture/inputs" component={AgricultureInputsWrapper} />
+      <ProtectedRoute path="/agriculture/harvest" component={AgricultureHarvestWrapper} />
+      <ProtectedRoute path="/agriculture/weather" component={AgricultureWeatherWrapper} />
+      <ProtectedRoute path="/agriculture/schemes" component={AgricultureSchemesWrapper} />
+      <ProtectedRoute path="/agriculture/fpo" component={AgricultureFPOWrapper} />
+      <ProtectedRoute path="/agriculture/market" component={AgricultureMarketWrapper} />
+      <ProtectedRoute path="/agriculture/reports" component={AgricultureReportsWrapper} />
+      <ProtectedRoute path="/ngo/donors" component={NGODonorsWrapper} />
+      <ProtectedRoute path="/ngo/donations" component={NGODonationsWrapper} />
+      <ProtectedRoute path="/ngo/80g" component={NGO80GWrapper} />
+      <ProtectedRoute path="/ngo/projects" component={NGOProjectsWrapper} />
+      <ProtectedRoute path="/ngo/beneficiaries" component={NGOBeneficiariesWrapper} />
+      <ProtectedRoute path="/ngo/grants" component={NGOGrantsWrapper} />
+      <ProtectedRoute path="/ngo/volunteers" component={NGOVolunteersWrapper} />
+      <ProtectedRoute path="/ngo/fcra" component={NGOFCRAWrapper} />
+      <ProtectedRoute path="/ngo/reports" component={NGOReportsWrapper} />
+      <ProtectedRoute path="/pharmacy/billing" component={PharmacyBillingWrapper} />
+      <ProtectedRoute path="/pharmacy/drugs" component={PharmacyDrugsWrapper} />
+      <ProtectedRoute path="/pharmacy/stock" component={PharmacyStockWrapper} />
+      <ProtectedRoute path="/pharmacy/purchases" component={PharmacyPurchasesWrapper} />
+      <ProtectedRoute path="/pharmacy/schedule-h" component={PharmacyScheduleHWrapper} />
+      <ProtectedRoute path="/pharmacy/schedule-x" component={PharmacyScheduleXWrapper} />
+      <ProtectedRoute path="/pharmacy/licenses" component={PharmacyLicensesWrapper} />
+      <ProtectedRoute path="/pharmacy/expiry" component={PharmacyExpiryWrapper} />
+      <ProtectedRoute path="/pharmacy/reports" component={PharmacyReportsWrapper} />
+      <ProtectedRoute path="/crm/pipeline" component={CRMPipelineWrapper} />
+      <ProtectedRoute path="/crm/contacts" component={CRMContactsWrapper} />
+      <ProtectedRoute path="/crm/accounts" component={CRMAccountsWrapper} />
+      <ProtectedRoute path="/crm/activities" component={CRMActivitiesWrapper} />
+      <ProtectedRoute path="/crm/email-campaigns" component={CRMEmailCampaignsWrapper} />
+      <ProtectedRoute path="/crm/whatsapp" component={CRMWhatsAppWrapper} />
+      <ProtectedRoute path="/crm/reports" component={CRMReportsWrapper} />
+      <ProtectedRoute path="/nidhi/members" component={NidhiMembersWrapper} />
+      <ProtectedRoute path="/nidhi/deposits" component={NidhiDepositsWrapper} />
+      <ProtectedRoute path="/nidhi/loans" component={NidhiLoansWrapper} />
+      <ProtectedRoute path="/nidhi/emi" component={NidhiEMIWrapper} />
+      <ProtectedRoute path="/nidhi/shares" component={NidhiSharesWrapper} />
+      <ProtectedRoute path="/nidhi/gold-rates" component={NidhiGoldRatesWrapper} />
+      <ProtectedRoute path="/nidhi/interest-rates" component={NidhiInterestRatesWrapper} />
+      <ProtectedRoute path="/nidhi/daily-collection" component={NidhiDailyCollectionWrapper} />
+      <ProtectedRoute path="/nidhi/compliance" component={NidhiComplianceWrapper} />
+      <ProtectedRoute path="/nidhi/reports" component={NidhiReportsWrapper} />
+      <ProtectedRoute path="/ecommerce/dashboard" component={EcommerceDashboardWrapper} />
+      <ProtectedRoute path="/ecommerce/orders" component={EcommerceOrdersWrapper} />
+      <ProtectedRoute path="/ecommerce/listings" component={EcommerceListingsWrapper} />
+      <ProtectedRoute path="/ecommerce/shipments" component={EcommerceShipmentsWrapper} />
+      <ProtectedRoute path="/ecommerce/returns" component={EcommerceReturnsWrapper} />
+      <ProtectedRoute path="/ecommerce/settlements" component={EcommerceSettlementsWrapper} />
+      <ProtectedRoute path="/ecommerce/channels" component={EcommerceChannelsWrapper} />
+      <ProtectedRoute path="/ecommerce/reports" component={EcommerceReportsWrapper} />
+      <ProtectedRoute path="/masters/hsn-codes" component={MastersHSNCodesWrapper} />
+      <ProtectedRoute path="/masters/sac-codes" component={MastersSACCodesWrapper} />
+      <ProtectedRoute path="/masters/tax-config" component={MastersTaxConfigWrapper} />
+      <ProtectedRoute path="/masters/states-countries" component={MastersStatesCountriesWrapper} />
+      <ProtectedRoute path="/masters/bank-master" component={MastersBankMasterWrapper} />
+      <ProtectedRoute path="/masters/branches" component={MastersBranchesWrapper} />
+      <ProtectedRoute path="/masters/doc-numbering" component={MastersDocNumberingWrapper} />
+      <ProtectedRoute path="/masters/email-templates" component={MastersEmailTemplatesWrapper} />
+      <ProtectedRoute path="/masters/sms-templates" component={MastersSMSTemplatesWrapper} />
+      <ProtectedRoute path="/masters/approval-matrix" component={MastersApprovalMatrixWrapper} />
+      <ProtectedRoute path="/masters/feature-flags" component={MastersFeatureFlagsWrapper} />
+      <ProtectedRoute path="/masters/print-templates" component={MastersPrintTemplatesWrapper} />
+      <ProtectedRoute path="/masters/webhooks" component={MastersWebhooksWrapper} />
       <ProtectedRoute path="/restaurant-enterprise" component={RestaurantEnterpriseWrapper} />
       <ProtectedRoute path="/hotel-enterprise" component={HotelEnterpriseWrapper} />
       <ProtectedRoute path="/healthcare-enterprise" component={HealthcareEnterpriseWrapper} />
@@ -4701,8 +4779,6 @@ function Router() {
           <ProtectedRoute path="/ecommerce-enterprise" component={EcommerceEnterpriseWrapper} />
           <ProtectedRoute path="/healthcare-enterprise2" component={HealthcareEnterprise2Wrapper} />
           <ProtectedRoute path="/education-enterprise2" component={EducationEnterprise2Wrapper} />
-      <ProtectedRoute path="/hotel" component={HotelWrapper} />
-      <ProtectedRoute path="/restaurant" component={RestaurantWrapper} />
       <ProtectedRoute path="/gold-erp" component={GoldErpWrapper} />
       <Route path="/ess" component={EssLogin} />
       <Route path="/ess/portal" component={EssPortal} />
