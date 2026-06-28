@@ -222,18 +222,18 @@ import AgricultureEnterprisePage from "@/pages/agriculture-enterprise";
 import EcommerceEnterprisePage from "@/pages/ecommerce-enterprise";
 import HealthcareEnterprise2Page from "@/pages/healthcare-enterprise2";
 import EducationEnterprise2Page from "@/pages/education-enterprise2";
-import RestaurantPOSPage from "@/pages/restaurant/pos";
-import RestaurantKitchenPage from "@/pages/restaurant/kitchen";
-import RestaurantTablesPage from "@/pages/restaurant/tables";
-import RestaurantMenuPage from "@/pages/restaurant/menu";
-import RestaurantOrdersPage from "@/pages/restaurant/orders";
-import RestaurantDeliveryPage from "@/pages/restaurant/delivery";
-import RestaurantReservationsPage from "@/pages/restaurant/reservations";
-import RestaurantShiftsPage from "@/pages/restaurant/shifts";
-import RestaurantCustomersPage from "@/pages/restaurant/customers";
-import RestaurantInventoryPage from "@/pages/restaurant/inventory";
-import RestaurantOutletsPage from "@/pages/restaurant/outlets";
-import RestaurantReportsPage from "@/pages/restaurant/reports";
+import RestaurantPOSPage from "@/pages/restaurant-pos";
+import RestaurantKitchenPage from "@/pages/restaurant-kitchen";
+import RestaurantTablesPage from "@/pages/restaurant-tables";
+import RestaurantMenuPage from "@/pages/restaurant-menu";
+import RestaurantOrdersPage from "@/pages/restaurant-orders";
+import RestaurantDeliveryPage from "@/pages/restaurant-delivery";
+import RestaurantReservationsPage from "@/pages/restaurant-reservations";
+import RestaurantShiftsPage from "@/pages/restaurant-shifts";
+import RestaurantCustomersPage from "@/pages/restaurant-customers";
+import RestaurantInventoryPage from "@/pages/restaurant-inventory";
+import RestaurantOutletsPage from "@/pages/restaurant-outlets";
+import RestaurantReportsPage from "@/pages/restaurant-reports";
 import HotelFrontDeskPage from "@/pages/hotel/front-desk";
 import HotelReservationsPage from "@/pages/hotel/reservations";
 import HotelCheckinPage from "@/pages/hotel/checkin";
@@ -1376,18 +1376,18 @@ function AdminDashboard() {
       id: "restaurant-erp-section",
       label: "Restaurant / F&B ERP",
       items: [
-        { id: "restaurant/pos", label: "POS Terminal", icon: UtensilsCrossed, onClick: () => setLocation('/restaurant/pos') },
-        { id: "restaurant/kitchen", label: "Kitchen Display", icon: UtensilsCrossed, onClick: () => setLocation('/restaurant/kitchen') },
-        { id: "restaurant/tables", label: "Tables & Floor Plan", icon: LayoutDashboard, onClick: () => setLocation('/restaurant/tables') },
-        { id: "restaurant/menu", label: "Menu Management", icon: BookOpen, onClick: () => setLocation('/restaurant/menu') },
-        { id: "restaurant/orders", label: "Orders & KOT", icon: ClipboardList, onClick: () => setLocation('/restaurant/orders') },
-        { id: "restaurant/delivery", label: "Delivery Orders", icon: Truck, onClick: () => setLocation('/restaurant/delivery') },
-        { id: "restaurant/reservations", label: "Reservations", icon: Calendar, onClick: () => setLocation('/restaurant/reservations') },
-        { id: "restaurant/shifts", label: "Shifts & Cash", icon: Clock, onClick: () => setLocation('/restaurant/shifts') },
-        { id: "restaurant/customers", label: "Customers & Loyalty", icon: Users, onClick: () => setLocation('/restaurant/customers') },
-        { id: "restaurant/inventory", label: "Inventory & Recipes", icon: Package, onClick: () => setLocation('/restaurant/inventory') },
-        { id: "restaurant/outlets", label: "Outlets & Terminals", icon: Building2, onClick: () => setLocation('/restaurant/outlets') },
-        { id: "restaurant/reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/restaurant/reports') },
+        { id: "restaurant-pos", label: "POS Terminal", icon: UtensilsCrossed, onClick: () => setLocation('/restaurant-pos') },
+        { id: "restaurant-kitchen", label: "Kitchen Display", icon: UtensilsCrossed, onClick: () => setLocation('/restaurant-kitchen') },
+        { id: "restaurant-tables", label: "Tables & Floor Plan", icon: LayoutDashboard, onClick: () => setLocation('/restaurant-tables') },
+        { id: "restaurant-menu", label: "Menu Management", icon: BookOpen, onClick: () => setLocation('/restaurant-menu') },
+        { id: "restaurant-orders", label: "Orders & KOT", icon: ClipboardList, onClick: () => setLocation('/restaurant-orders') },
+        { id: "restaurant-delivery", label: "Delivery Orders", icon: Truck, onClick: () => setLocation('/restaurant-delivery') },
+        { id: "restaurant-reservations", label: "Reservations", icon: Calendar, onClick: () => setLocation('/restaurant-reservations') },
+        { id: "restaurant-shifts", label: "Shifts & Cash", icon: Clock, onClick: () => setLocation('/restaurant-shifts') },
+        { id: "restaurant-customers", label: "Customers & Loyalty", icon: Users, onClick: () => setLocation('/restaurant-customers') },
+        { id: "restaurant-inventory", label: "Inventory & Recipes", icon: Package, onClick: () => setLocation('/restaurant-inventory') },
+        { id: "restaurant-outlets", label: "Outlets & Terminals", icon: Building2, onClick: () => setLocation('/restaurant-outlets') },
+        { id: "restaurant-reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/restaurant-reports') },
       ],
     },
     {
@@ -2811,18 +2811,18 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       id: "restaurant-erp-section",
       label: "Restaurant / F&B ERP",
       items: [
-        { id: "restaurant/pos", label: "POS Terminal", icon: UtensilsCrossed, onClick: () => setLocation('/restaurant/pos') },
-        { id: "restaurant/kitchen", label: "Kitchen Display", icon: UtensilsCrossed, onClick: () => setLocation('/restaurant/kitchen') },
-        { id: "restaurant/tables", label: "Tables & Floor Plan", icon: LayoutDashboard, onClick: () => setLocation('/restaurant/tables') },
-        { id: "restaurant/menu", label: "Menu Management", icon: BookOpen, onClick: () => setLocation('/restaurant/menu') },
-        { id: "restaurant/orders", label: "Orders & KOT", icon: ClipboardList, onClick: () => setLocation('/restaurant/orders') },
-        { id: "restaurant/delivery", label: "Delivery Orders", icon: Truck, onClick: () => setLocation('/restaurant/delivery') },
-        { id: "restaurant/reservations", label: "Reservations", icon: Calendar, onClick: () => setLocation('/restaurant/reservations') },
-        { id: "restaurant/shifts", label: "Shifts & Cash", icon: Clock, onClick: () => setLocation('/restaurant/shifts') },
-        { id: "restaurant/customers", label: "Customers & Loyalty", icon: Users, onClick: () => setLocation('/restaurant/customers') },
-        { id: "restaurant/inventory", label: "Inventory & Recipes", icon: Package, onClick: () => setLocation('/restaurant/inventory') },
-        { id: "restaurant/outlets", label: "Outlets & Terminals", icon: Building2, onClick: () => setLocation('/restaurant/outlets') },
-        { id: "restaurant/reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/restaurant/reports') },
+        { id: "restaurant-pos", label: "POS Terminal", icon: UtensilsCrossed, onClick: () => setLocation('/restaurant-pos') },
+        { id: "restaurant-kitchen", label: "Kitchen Display", icon: UtensilsCrossed, onClick: () => setLocation('/restaurant-kitchen') },
+        { id: "restaurant-tables", label: "Tables & Floor Plan", icon: LayoutDashboard, onClick: () => setLocation('/restaurant-tables') },
+        { id: "restaurant-menu", label: "Menu Management", icon: BookOpen, onClick: () => setLocation('/restaurant-menu') },
+        { id: "restaurant-orders", label: "Orders & KOT", icon: ClipboardList, onClick: () => setLocation('/restaurant-orders') },
+        { id: "restaurant-delivery", label: "Delivery Orders", icon: Truck, onClick: () => setLocation('/restaurant-delivery') },
+        { id: "restaurant-reservations", label: "Reservations", icon: Calendar, onClick: () => setLocation('/restaurant-reservations') },
+        { id: "restaurant-shifts", label: "Shifts & Cash", icon: Clock, onClick: () => setLocation('/restaurant-shifts') },
+        { id: "restaurant-customers", label: "Customers & Loyalty", icon: Users, onClick: () => setLocation('/restaurant-customers') },
+        { id: "restaurant-inventory", label: "Inventory & Recipes", icon: Package, onClick: () => setLocation('/restaurant-inventory') },
+        { id: "restaurant-outlets", label: "Outlets & Terminals", icon: Building2, onClick: () => setLocation('/restaurant-outlets') },
+        { id: "restaurant-reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/restaurant-reports') },
       ],
     },
     {
@@ -4632,18 +4632,18 @@ function Router() {
       <ProtectedRoute path="/crm-pipeline" component={CRMPipelineLegacyWrapper} />
         <ProtectedRoute path="/finance-erp" component={FinanceErpWrapper} />
 
-      <ProtectedRoute path="/restaurant/pos" component={RestaurantPOSWrapper} />
-      <ProtectedRoute path="/restaurant/kitchen" component={RestaurantKitchenWrapper} />
-      <ProtectedRoute path="/restaurant/tables" component={RestaurantTablesWrapper} />
-      <ProtectedRoute path="/restaurant/menu" component={RestaurantMenuWrapper} />
-      <ProtectedRoute path="/restaurant/orders" component={RestaurantOrdersWrapper} />
-      <ProtectedRoute path="/restaurant/delivery" component={RestaurantDeliveryWrapper} />
-      <ProtectedRoute path="/restaurant/reservations" component={RestaurantReservationsWrapper} />
-      <ProtectedRoute path="/restaurant/shifts" component={RestaurantShiftsWrapper} />
-      <ProtectedRoute path="/restaurant/customers" component={RestaurantCustomersWrapper} />
-      <ProtectedRoute path="/restaurant/inventory" component={RestaurantInventoryWrapper} />
-      <ProtectedRoute path="/restaurant/outlets" component={RestaurantOutletsWrapper} />
-      <ProtectedRoute path="/restaurant/reports" component={RestaurantReportsWrapper} />
+      <ProtectedRoute path="/restaurant-pos" component={RestaurantPOSWrapper} />
+      <ProtectedRoute path="/restaurant-kitchen" component={RestaurantKitchenWrapper} />
+      <ProtectedRoute path="/restaurant-tables" component={RestaurantTablesWrapper} />
+      <ProtectedRoute path="/restaurant-menu" component={RestaurantMenuWrapper} />
+      <ProtectedRoute path="/restaurant-orders" component={RestaurantOrdersWrapper} />
+      <ProtectedRoute path="/restaurant-delivery" component={RestaurantDeliveryWrapper} />
+      <ProtectedRoute path="/restaurant-reservations" component={RestaurantReservationsWrapper} />
+      <ProtectedRoute path="/restaurant-shifts" component={RestaurantShiftsWrapper} />
+      <ProtectedRoute path="/restaurant-customers" component={RestaurantCustomersWrapper} />
+      <ProtectedRoute path="/restaurant-inventory" component={RestaurantInventoryWrapper} />
+      <ProtectedRoute path="/restaurant-outlets" component={RestaurantOutletsWrapper} />
+      <ProtectedRoute path="/restaurant-reports" component={RestaurantReportsWrapper} />
       <ProtectedRoute path="/hotel/front-desk" component={HotelFrontDeskWrapper} />
       <ProtectedRoute path="/hotel/reservations" component={HotelReservationsWrapper} />
       <ProtectedRoute path="/hotel/checkin" component={HotelCheckinWrapper} />
@@ -5368,18 +5368,18 @@ function makeWrapper(title: string, activeId: string, PageComponent: React.Compo
     );
   };
 }
-const RestaurantPOSWrapper = makeWrapper('POS Terminal', 'restaurant/pos', RestaurantPOSPage);
-const RestaurantKitchenWrapper = makeWrapper('Kitchen Display', 'restaurant/kitchen', RestaurantKitchenPage);
-const RestaurantTablesWrapper = makeWrapper('Tables & Floor Plan', 'restaurant/tables', RestaurantTablesPage);
-const RestaurantMenuWrapper = makeWrapper('Menu Management', 'restaurant/menu', RestaurantMenuPage);
-const RestaurantOrdersWrapper = makeWrapper('Orders & KOT', 'restaurant/orders', RestaurantOrdersPage);
-const RestaurantDeliveryWrapper = makeWrapper('Delivery Orders', 'restaurant/delivery', RestaurantDeliveryPage);
-const RestaurantReservationsWrapper = makeWrapper('Reservations', 'restaurant/reservations', RestaurantReservationsPage);
-const RestaurantShiftsWrapper = makeWrapper('Shifts & Cash', 'restaurant/shifts', RestaurantShiftsPage);
-const RestaurantCustomersWrapper = makeWrapper('Customers & Loyalty', 'restaurant/customers', RestaurantCustomersPage);
-const RestaurantInventoryWrapper = makeWrapper('Inventory & Recipes', 'restaurant/inventory', RestaurantInventoryPage);
-const RestaurantOutletsWrapper = makeWrapper('Outlets & Terminals', 'restaurant/outlets', RestaurantOutletsPage);
-const RestaurantReportsWrapper = makeWrapper('Reports', 'restaurant/reports', RestaurantReportsPage);
+const RestaurantPOSWrapper = makeWrapper('POS Terminal', 'restaurant-pos', RestaurantPOSPage);
+const RestaurantKitchenWrapper = makeWrapper('Kitchen Display', 'restaurant-kitchen', RestaurantKitchenPage);
+const RestaurantTablesWrapper = makeWrapper('Tables & Floor Plan', 'restaurant-tables', RestaurantTablesPage);
+const RestaurantMenuWrapper = makeWrapper('Menu Management', 'restaurant-menu', RestaurantMenuPage);
+const RestaurantOrdersWrapper = makeWrapper('Orders & KOT', 'restaurant-orders', RestaurantOrdersPage);
+const RestaurantDeliveryWrapper = makeWrapper('Delivery Orders', 'restaurant-delivery', RestaurantDeliveryPage);
+const RestaurantReservationsWrapper = makeWrapper('Reservations', 'restaurant-reservations', RestaurantReservationsPage);
+const RestaurantShiftsWrapper = makeWrapper('Shifts & Cash', 'restaurant-shifts', RestaurantShiftsPage);
+const RestaurantCustomersWrapper = makeWrapper('Customers & Loyalty', 'restaurant-customers', RestaurantCustomersPage);
+const RestaurantInventoryWrapper = makeWrapper('Inventory & Recipes', 'restaurant-inventory', RestaurantInventoryPage);
+const RestaurantOutletsWrapper = makeWrapper('Outlets & Terminals', 'restaurant-outlets', RestaurantOutletsPage);
+const RestaurantReportsWrapper = makeWrapper('Reports', 'restaurant-reports', RestaurantReportsPage);
 const HotelFrontDeskWrapper = makeWrapper('Front Desk', 'hotel/front-desk', HotelFrontDeskPage);
 const HotelReservationsWrapper = makeWrapper('Reservations', 'hotel/reservations', HotelReservationsPage);
 const HotelCheckinWrapper = makeWrapper('Check-in / Check-out', 'hotel/checkin', HotelCheckinPage);
