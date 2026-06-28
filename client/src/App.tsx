@@ -84,7 +84,7 @@ import { ManagerChecklistAssignment } from "@/components/ManagerChecklistAssignm
 import PendingPaymentsDashboard from "@/components/PendingPaymentsDashboard";
 import { OperatorAssignedChecklists } from "@/components/OperatorAssignedChecklists";
 import { VerticalNavSidebar, type NavSection } from "@/components/VerticalNavSidebar";
-import { AlertTriangle, Archive, Award, BarChart3, BedDouble, Bell, BookOpen, Box, Briefcase, Building2, Calculator, Calendar, Camera, Car, CheckCircle, CheckCircle2, ClipboardCheck, ClipboardList, Clock, Coins, CreditCard, Crosshair, Factory, FileStack, FileText, FileX, FolderOpen, Gem, Gift, Globe, Heart, History, IndianRupee, Key, Landmark, Layers, LayoutDashboard, ListChecks, Loader2, Lock, LogOut, MessageSquare, Package, PackageX, Pill, Play, Plus, Receipt, RotateCcw, Scale, Scan, Settings, Settings2, Shield, ShoppingBag, ShoppingCart, Star, Tag, Target, Trash2, TrendingUp, Truck, Upload, UserX, Users, UtensilsCrossed, Wallet, Wifi, Wrench, XCircle, Zap , Database, GraduationCap, HeartPulse, Home } from "lucide-react";
+import { AlertTriangle, Archive, Award, BarChart3, BedDouble, Bell, BookOpen, Box, Briefcase, Building2, Calculator, Calendar, Camera, Car, CheckCircle, CheckCircle2, ClipboardCheck, ClipboardList, Clock, Coins, CreditCard, Crosshair, Factory, FileStack, FileText, FileX, FolderOpen, Gem, Gift, Globe, Heart, History, IndianRupee, Key, Landmark, Layers, LayoutDashboard, ListChecks, Loader2, Lock, LogOut, MessageSquare, Package, PackageX, Pill, Play, Plus, Receipt, RotateCcw, Scale, Scan, Settings, Settings2, Shield, ShoppingBag, ShoppingCart, Star, Tag, Target, Trash2, TrendingUp, Truck, Upload, UserX, Users, UtensilsCrossed, Wallet, Wifi, Wrench, XCircle, Zap , Database, GraduationCap, HeartPulse, Home, Leaf } from "lucide-react";
 import CRMLeadsPage from "@/pages/crm-leads";
 import SalesDashboard from "@/components/SalesDashboard";
 import SalesOrdersPage from "@/pages/sales-orders";
@@ -213,6 +213,15 @@ import HealthcareEnterprisePage from "@/pages/healthcare-enterprise";
 import EducationEnterprisePage from "@/pages/education-enterprise";
 import RealEstateEnterprisePage from "@/pages/real-estate-enterprise";
 import MastersPage from "@/pages/masters";
+import RetailEnterprisePage from "@/pages/retail-enterprise";
+import PharmacyEnterprisePage from "@/pages/pharmacy-enterprise";
+import LogisticsEnterprisePage from "@/pages/logistics-enterprise";
+import CRMEnterprisePage from "@/pages/crm-enterprise";
+import NGOEnterprisePage from "@/pages/ngo-enterprise";
+import AgricultureEnterprisePage from "@/pages/agriculture-enterprise";
+import EcommerceEnterprisePage from "@/pages/ecommerce-enterprise";
+import HealthcareEnterprise2Page from "@/pages/healthcare-enterprise2";
+import EducationEnterprise2Page from "@/pages/education-enterprise2";
 import { parseISO } from "date-fns";
 
 type Role = 'admin' | 'operator' | 'reviewer' | 'manager';
@@ -1228,6 +1237,15 @@ function AdminDashboard() {
         { id: "education-enterprise", label: "Education Enterprise", icon: GraduationCap, onClick: () => setLocation('/education-enterprise') },
         { id: "real-estate-enterprise", label: "Real Estate Enterprise", icon: Home, onClick: () => setLocation('/real-estate-enterprise') },
         { id: "masters", label: "Global Masters", icon: Database, onClick: () => setLocation('/masters') },
+        { id: "retail-enterprise", label: "Retail POS Plus", icon: ShoppingBag, onClick: () => setLocation('/retail-enterprise') },
+        { id: "pharmacy-enterprise", label: "Pharmacy Plus", icon: Pill, onClick: () => setLocation('/pharmacy-enterprise') },
+        { id: "logistics-enterprise", label: "Fleet & Logistics Plus", icon: Truck, onClick: () => setLocation('/logistics-enterprise') },
+        { id: "crm-enterprise", label: "CRM Plus", icon: Users, onClick: () => setLocation('/crm-enterprise') },
+        { id: "ngo-enterprise", label: "NGO/Trust Plus", icon: Heart, onClick: () => setLocation('/ngo-enterprise') },
+        { id: "agriculture-enterprise", label: "Agriculture Plus", icon: Leaf, onClick: () => setLocation('/agriculture-enterprise') },
+        { id: "ecommerce-enterprise", label: "E-Commerce Plus", icon: Globe, onClick: () => setLocation('/ecommerce-enterprise') },
+        { id: "healthcare-enterprise2", label: "Healthcare Advanced", icon: HeartPulse, onClick: () => setLocation('/healthcare-enterprise2') },
+        { id: "education-enterprise2", label: "Education Advanced", icon: GraduationCap, onClick: () => setLocation('/education-enterprise2') },
       ],
     },
     {
@@ -2472,6 +2490,15 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "education-enterprise", label: "Education Enterprise", icon: GraduationCap, onClick: () => setLocation('/education-enterprise') },
         { id: "real-estate-enterprise", label: "Real Estate Enterprise", icon: Home, onClick: () => setLocation('/real-estate-enterprise') },
         { id: "masters", label: "Global Masters", icon: Database, onClick: () => setLocation('/masters') },
+        { id: "retail-enterprise", label: "Retail POS Plus", icon: ShoppingBag, onClick: () => setLocation('/retail-enterprise') },
+        { id: "pharmacy-enterprise", label: "Pharmacy Plus", icon: Pill, onClick: () => setLocation('/pharmacy-enterprise') },
+        { id: "logistics-enterprise", label: "Fleet & Logistics Plus", icon: Truck, onClick: () => setLocation('/logistics-enterprise') },
+        { id: "crm-enterprise", label: "CRM Plus", icon: Users, onClick: () => setLocation('/crm-enterprise') },
+        { id: "ngo-enterprise", label: "NGO/Trust Plus", icon: Heart, onClick: () => setLocation('/ngo-enterprise') },
+        { id: "agriculture-enterprise", label: "Agriculture Plus", icon: Leaf, onClick: () => setLocation('/agriculture-enterprise') },
+        { id: "ecommerce-enterprise", label: "E-Commerce Plus", icon: Globe, onClick: () => setLocation('/ecommerce-enterprise') },
+        { id: "healthcare-enterprise2", label: "Healthcare Advanced", icon: HeartPulse, onClick: () => setLocation('/healthcare-enterprise2') },
+        { id: "education-enterprise2", label: "Education Advanced", icon: GraduationCap, onClick: () => setLocation('/education-enterprise2') },
       ],
     },
     {
@@ -4119,6 +4146,15 @@ function Router() {
       <ProtectedRoute path="/education-enterprise" component={EducationEnterpriseWrapper} />
       <ProtectedRoute path="/real-estate-enterprise" component={RealEstateEnterpriseWrapper} />
       <ProtectedRoute path="/masters" component={MastersWrapper} />
+          <ProtectedRoute path="/retail-enterprise" component={RetailEnterpriseWrapper} />
+          <ProtectedRoute path="/pharmacy-enterprise" component={PharmacyEnterpriseWrapper} />
+          <ProtectedRoute path="/logistics-enterprise" component={LogisticsEnterpriseWrapper} />
+          <ProtectedRoute path="/crm-enterprise" component={CRMEnterpriseWrapper} />
+          <ProtectedRoute path="/ngo-enterprise" component={NGOEnterpriseWrapper} />
+          <ProtectedRoute path="/agriculture-enterprise" component={AgricultureEnterpriseWrapper} />
+          <ProtectedRoute path="/ecommerce-enterprise" component={EcommerceEnterpriseWrapper} />
+          <ProtectedRoute path="/healthcare-enterprise2" component={HealthcareEnterprise2Wrapper} />
+          <ProtectedRoute path="/education-enterprise2" component={EducationEnterprise2Wrapper} />
       <ProtectedRoute path="/hotel" component={HotelWrapper} />
       <ProtectedRoute path="/restaurant" component={RestaurantWrapper} />
       <ProtectedRoute path="/gold-erp" component={GoldErpWrapper} />
@@ -4772,6 +4808,141 @@ function RealEstateEnterpriseWrapper() {
   );
 }
 
+function RetailEnterpriseWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState("retail-enterprise");
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Retail POS Enterprise" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === "overview" ? "/" : "/"); }}>
+      <RetailEnterprisePage />
+    </DashboardShell>
+  );
+}
+function PharmacyEnterpriseWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState("pharmacy-enterprise");
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Pharmacy Enterprise" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === "overview" ? "/" : "/"); }}>
+      <PharmacyEnterprisePage />
+    </DashboardShell>
+  );
+}
+function LogisticsEnterpriseWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState("logistics-enterprise");
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Logistics Enterprise" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === "overview" ? "/" : "/"); }}>
+      <LogisticsEnterprisePage />
+    </DashboardShell>
+  );
+}
+function CRMEnterpriseWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState("crm-enterprise");
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="CRM Enterprise" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === "overview" ? "/" : "/"); }}>
+      <CRMEnterprisePage />
+    </DashboardShell>
+  );
+}
+function NGOEnterpriseWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState("ngo-enterprise");
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="NGO / Trust Enterprise" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === "overview" ? "/" : "/"); }}>
+      <NGOEnterprisePage />
+    </DashboardShell>
+  );
+}
+function AgricultureEnterpriseWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState("agriculture-enterprise");
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Agriculture Enterprise" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === "overview" ? "/" : "/"); }}>
+      <AgricultureEnterprisePage />
+    </DashboardShell>
+  );
+}
+function EcommerceEnterpriseWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState("ecommerce-enterprise");
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="E-Commerce Enterprise" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === "overview" ? "/" : "/"); }}>
+      <EcommerceEnterprisePage />
+    </DashboardShell>
+  );
+}
+function HealthcareEnterprise2Wrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState("healthcare-enterprise2");
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Healthcare Advanced" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === "overview" ? "/" : "/"); }}>
+      <HealthcareEnterprise2Page />
+    </DashboardShell>
+  );
+}
+function EducationEnterprise2Wrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState("education-enterprise2");
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Education Advanced" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === "overview" ? "/" : "/"); }}>
+      <EducationEnterprise2Page />
+    </DashboardShell>
+  );
+}
 function MastersWrapper() {
   const { logoutMutation } = useAuth();
   const [, setLocation] = useLocation();
