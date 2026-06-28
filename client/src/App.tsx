@@ -222,6 +222,138 @@ import AgricultureEnterprisePage from "@/pages/agriculture-enterprise";
 import EcommerceEnterprisePage from "@/pages/ecommerce-enterprise";
 import HealthcareEnterprise2Page from "@/pages/healthcare-enterprise2";
 import EducationEnterprise2Page from "@/pages/education-enterprise2";
+import RestaurantPOSPage from "@/pages/restaurant/pos";
+import RestaurantKitchenPage from "@/pages/restaurant/kitchen";
+import RestaurantTablesPage from "@/pages/restaurant/tables";
+import RestaurantMenuPage from "@/pages/restaurant/menu";
+import RestaurantOrdersPage from "@/pages/restaurant/orders";
+import RestaurantDeliveryPage from "@/pages/restaurant/delivery";
+import RestaurantReservationsPage from "@/pages/restaurant/reservations";
+import RestaurantShiftsPage from "@/pages/restaurant/shifts";
+import RestaurantCustomersPage from "@/pages/restaurant/customers";
+import RestaurantInventoryPage from "@/pages/restaurant/inventory";
+import RestaurantOutletsPage from "@/pages/restaurant/outlets";
+import RestaurantReportsPage from "@/pages/restaurant/reports";
+import HotelFrontDeskPage from "@/pages/hotel/front-desk";
+import HotelReservationsPage from "@/pages/hotel/reservations";
+import HotelCheckinPage from "@/pages/hotel/checkin";
+import HotelRoomsPage from "@/pages/hotel/rooms";
+import HotelFolioPage from "@/pages/hotel/folio";
+import HotelHousekeepingPage from "@/pages/hotel/housekeeping";
+import HotelRatesPage from "@/pages/hotel/rates";
+import HotelCorporatePage from "@/pages/hotel/corporate";
+import HotelNightAuditPage from "@/pages/hotel/night-audit";
+import HotelReportsPage from "@/pages/hotel/reports";
+import HealthcarePatientsPage from "@/pages/healthcare/patients";
+import HealthcareOPDPage from "@/pages/healthcare/opd";
+import HealthcareIPDPage from "@/pages/healthcare/ipd";
+import HealthcareBedsPage from "@/pages/healthcare/beds";
+import HealthcareOTPage from "@/pages/healthcare/ot";
+import HealthcareLabPage from "@/pages/healthcare/lab";
+import HealthcareNursingPage from "@/pages/healthcare/nursing";
+import HealthcareInsurancePage from "@/pages/healthcare/insurance";
+import HealthcareDoctorsPage from "@/pages/healthcare/doctors";
+import HealthcareBloodBankPage from "@/pages/healthcare/blood-bank";
+import HealthcareReportsPage from "@/pages/healthcare/reports";
+import EducationStudentsPage from "@/pages/education/students";
+import EducationAdmissionsPage from "@/pages/education/admissions";
+import EducationClassesPage from "@/pages/education/classes";
+import EducationAttendancePage from "@/pages/education/attendance";
+import EducationExamsPage from "@/pages/education/exams";
+import EducationFeesPage from "@/pages/education/fees";
+import EducationTimetablePage from "@/pages/education/timetable";
+import EducationHomeworkPage from "@/pages/education/homework";
+import EducationOnlineExamsPage from "@/pages/education/online-exams";
+import EducationLibraryPage from "@/pages/education/library";
+import EducationTransportPage from "@/pages/education/transport";
+import EducationHostelPage from "@/pages/education/hostel";
+import EducationParentPortalPage from "@/pages/education/parent-portal";
+import EducationReportsPage from "@/pages/education/reports";
+import RealEstateProjectsPage from "@/pages/real-estate/projects";
+import RealEstateCRMPage from "@/pages/real-estate/crm";
+import RealEstateBookingsPage from "@/pages/real-estate/bookings";
+import RealEstateCollectionsPage from "@/pages/real-estate/collections";
+import RealEstateBrokersPage from "@/pages/real-estate/brokers";
+import RealEstateConstructionPage from "@/pages/real-estate/construction";
+import RealEstateDocumentsPage from "@/pages/real-estate/documents";
+import RealEstateCustomerPortalPage from "@/pages/real-estate/customer-portal";
+import RealEstateSocietyPage from "@/pages/real-estate/society";
+import RealEstateReportsPage from "@/pages/real-estate/reports";
+import LogisticsFleetPage from "@/pages/logistics/fleet";
+import LogisticsDriversPage from "@/pages/logistics/drivers";
+import LogisticsTripsPage from "@/pages/logistics/trips";
+import LogisticsGPSPage from "@/pages/logistics/gps";
+import LogisticsConsignmentsPage from "@/pages/logistics/consignments";
+import LogisticsFreightPage from "@/pages/logistics/freight";
+import LogisticsEPODPage from "@/pages/logistics/epod";
+import LogisticsFuelPage from "@/pages/logistics/fuel";
+import LogisticsDocumentsPage from "@/pages/logistics/documents";
+import LogisticsReportsPage from "@/pages/logistics/reports";
+import AgricultureFarmsPage from "@/pages/agriculture/farms";
+import AgricultureCropsPage from "@/pages/agriculture/crops";
+import AgricultureInputsPage from "@/pages/agriculture/inputs";
+import AgricultureHarvestPage from "@/pages/agriculture/harvest";
+import AgricultureWeatherPage from "@/pages/agriculture/weather";
+import AgricultureSchemesPage from "@/pages/agriculture/schemes";
+import AgricultureFPOPage from "@/pages/agriculture/fpo";
+import AgricultureMarketPage from "@/pages/agriculture/market";
+import AgricultureReportsPage from "@/pages/agriculture/reports";
+import NGODonorsPage from "@/pages/ngo/donors";
+import NGODonationsPage from "@/pages/ngo/donations";
+import NGO80GPage from "@/pages/ngo/80g";
+import NGOProjectsPage from "@/pages/ngo/projects";
+import NGOBeneficiariesPage from "@/pages/ngo/beneficiaries";
+import NGOGrantsPage from "@/pages/ngo/grants";
+import NGOVolunteersPage from "@/pages/ngo/volunteers";
+import NGOFCRAPage from "@/pages/ngo/fcra";
+import NGOReportsPage from "@/pages/ngo/reports";
+import PharmacyBillingPage from "@/pages/pharmacy/billing";
+import PharmacyDrugsPage from "@/pages/pharmacy/drugs";
+import PharmacyStockPage from "@/pages/pharmacy/stock";
+import PharmacyPurchasesPage from "@/pages/pharmacy/purchases";
+import PharmacyScheduleHPage from "@/pages/pharmacy/schedule-h";
+import PharmacyScheduleXPage from "@/pages/pharmacy/schedule-x";
+import PharmacyLicensesPage from "@/pages/pharmacy/licenses";
+import PharmacyExpiryPage from "@/pages/pharmacy/expiry";
+import PharmacyReportsPage from "@/pages/pharmacy/reports";
+import CRMPipelinePage from "@/pages/crm/pipeline";
+import CRMContactsPage from "@/pages/crm/contacts";
+import CRMAccountsPage from "@/pages/crm/accounts";
+import CRMActivitiesPage from "@/pages/crm/activities";
+import CRMEmailCampaignsPage from "@/pages/crm/email-campaigns";
+import CRMWhatsAppPage from "@/pages/crm/whatsapp";
+import CRMReportsPage from "@/pages/crm/reports";
+import NidhiMembersPage from "@/pages/nidhi/members";
+import NidhiDepositsPage from "@/pages/nidhi/deposits";
+import NidhiLoansPage from "@/pages/nidhi/loans";
+import NidhiEMIPage from "@/pages/nidhi/emi";
+import NidhiSharesPage from "@/pages/nidhi/shares";
+import NidhiGoldRatesPage from "@/pages/nidhi/gold-rates";
+import NidhiInterestRatesPage from "@/pages/nidhi/interest-rates";
+import NidhiDailyCollectionPage from "@/pages/nidhi/daily-collection";
+import NidhiCompliancePage from "@/pages/nidhi/compliance";
+import NidhiReportsPage from "@/pages/nidhi/reports";
+import EcommerceDashboardPage from "@/pages/ecommerce/dashboard";
+import EcommerceOrdersPage from "@/pages/ecommerce/orders";
+import EcommerceListingsPage from "@/pages/ecommerce/listings";
+import EcommerceShipmentsPage from "@/pages/ecommerce/shipments";
+import EcommerceReturnsPage from "@/pages/ecommerce/returns";
+import EcommerceSettlementsPage from "@/pages/ecommerce/settlements";
+import EcommerceChannelsPage from "@/pages/ecommerce/channels";
+import EcommerceReportsPage from "@/pages/ecommerce/reports";
+import MastersHSNCodesPage from "@/pages/masters/hsn-codes";
+import MastersSACCodesPage from "@/pages/masters/sac-codes";
+import MastersTaxConfigPage from "@/pages/masters/tax-config";
+import MastersStatesCountriesPage from "@/pages/masters/states-countries";
+import MastersBankMasterPage from "@/pages/masters/bank-master";
+import MastersBranchesPage from "@/pages/masters/branches";
+import MastersDocNumberingPage from "@/pages/masters/doc-numbering";
+import MastersEmailTemplatesPage from "@/pages/masters/email-templates";
+import MastersSMSTemplatesPage from "@/pages/masters/sms-templates";
+import MastersApprovalMatrixPage from "@/pages/masters/approval-matrix";
+import MastersFeatureFlagsPage from "@/pages/masters/feature-flags";
+import MastersPrintTemplatesPage from "@/pages/masters/print-templates";
+import MastersWebhooksPage from "@/pages/masters/webhooks";
 import { parseISO } from "date-fns";
 
 type Role = 'admin' | 'operator' | 'reviewer' | 'manager';
@@ -1230,22 +1362,229 @@ function AdminDashboard() {
       id: "finance-erp-section",
       label: "Finance ERP",
       items: [
-        { id: "finance-erp", label: "Finance ERP", icon: BarChart3, onClick: () => setLocation('/finance-erp') },
-        { id: "restaurant-enterprise", label: "eMenu Enterprise", icon: UtensilsCrossed, onClick: () => setLocation('/restaurant-enterprise') },
-        { id: "hotel-enterprise", label: "Hotel Enterprise", icon: Building2, onClick: () => setLocation('/hotel-enterprise') },
-        { id: "healthcare-enterprise", label: "Healthcare Enterprise", icon: HeartPulse, onClick: () => setLocation('/healthcare-enterprise') },
-        { id: "education-enterprise", label: "Education Enterprise", icon: GraduationCap, onClick: () => setLocation('/education-enterprise') },
-        { id: "real-estate-enterprise", label: "Real Estate Enterprise", icon: Home, onClick: () => setLocation('/real-estate-enterprise') },
-        { id: "masters", label: "Global Masters", icon: Database, onClick: () => setLocation('/masters') },
-        { id: "retail-enterprise", label: "Retail POS Plus", icon: ShoppingBag, onClick: () => setLocation('/retail-enterprise') },
-        { id: "pharmacy-enterprise", label: "Pharmacy Plus", icon: Pill, onClick: () => setLocation('/pharmacy-enterprise') },
-        { id: "logistics-enterprise", label: "Fleet & Logistics Plus", icon: Truck, onClick: () => setLocation('/logistics-enterprise') },
-        { id: "crm-enterprise", label: "CRM Plus", icon: Users, onClick: () => setLocation('/crm-enterprise') },
-        { id: "ngo-enterprise", label: "NGO/Trust Plus", icon: Heart, onClick: () => setLocation('/ngo-enterprise') },
-        { id: "agriculture-enterprise", label: "Agriculture Plus", icon: Leaf, onClick: () => setLocation('/agriculture-enterprise') },
-        { id: "ecommerce-enterprise", label: "E-Commerce Plus", icon: Globe, onClick: () => setLocation('/ecommerce-enterprise') },
-        { id: "healthcare-enterprise2", label: "Healthcare Advanced", icon: HeartPulse, onClick: () => setLocation('/healthcare-enterprise2') },
-        { id: "education-enterprise2", label: "Education Advanced", icon: GraduationCap, onClick: () => setLocation('/education-enterprise2') },
+        { id: "finance-erp", label: "CFO Dashboard", icon: BarChart3, onClick: () => setLocation('/finance-erp') },
+        { id: "invoices", label: "Invoices", icon: Receipt, onClick: () => setLocation('/invoices') },
+        { id: "expenses", label: "Expenses", icon: Wallet, onClick: () => setLocation('/expenses') },
+        { id: "journal-entries", label: "Journal Entries", icon: BookOpen, onClick: () => setLocation('/journal-entries') },
+        { id: "chart-of-accounts", label: "Chart of Accounts", icon: Layers, onClick: () => setLocation('/chart-of-accounts') },
+        { id: "bank-transactions", label: "Bank Reconciliation", icon: CreditCard, onClick: () => setLocation('/bank-transactions') },
+        { id: "gstr-reports", label: "GST Reports", icon: FileText, onClick: () => setLocation('/gstr-reports') },
+        { id: "tds-management", label: "TDS Management", icon: FileText, onClick: () => setLocation('/tds-management') },
+        { id: "budgets", label: "Budget Management", icon: Target, onClick: () => setLocation('/budgets') },
+        { id: "fixed-assets", label: "Fixed Assets", icon: Building2, onClick: () => setLocation('/fixed-assets') },
+        { id: "mis-dashboard", label: "MIS Reports", icon: BarChart3, onClick: () => setLocation('/mis-dashboard') },
+      ],
+    },
+    {
+      id: "masters-section",
+      label: "Master Data",
+      items: [
+        { id: "masters/hsn-codes", label: "HSN Codes", icon: Tag, onClick: () => setLocation('/masters/hsn-codes') },
+        { id: "masters/sac-codes", label: "SAC Codes", icon: Tag, onClick: () => setLocation('/masters/sac-codes') },
+        { id: "masters/tax-config", label: "Tax Configuration", icon: Settings, onClick: () => setLocation('/masters/tax-config') },
+        { id: "masters/states-countries", label: "States & Countries", icon: Globe, onClick: () => setLocation('/masters/states-countries') },
+        { id: "masters/bank-master", label: "Bank Master", icon: Landmark, onClick: () => setLocation('/masters/bank-master') },
+        { id: "masters/branches", label: "Branches", icon: Building2, onClick: () => setLocation('/masters/branches') },
+        { id: "masters/doc-numbering", label: "Document Numbering", icon: FileText, onClick: () => setLocation('/masters/doc-numbering') },
+        { id: "masters/email-templates", label: "Email Templates", icon: MessageSquare, onClick: () => setLocation('/masters/email-templates') },
+        { id: "masters/sms-templates", label: "SMS Templates", icon: MessageSquare, onClick: () => setLocation('/masters/sms-templates') },
+        { id: "masters/approval-matrix", label: "Approval Matrix", icon: CheckCircle, onClick: () => setLocation('/masters/approval-matrix') },
+        { id: "masters/feature-flags", label: "Feature Flags", icon: Zap, onClick: () => setLocation('/masters/feature-flags') },
+        { id: "masters/print-templates", label: "Print Templates", icon: FileText, onClick: () => setLocation('/masters/print-templates') },
+        { id: "masters/webhooks", label: "Webhooks", icon: Wifi, onClick: () => setLocation('/masters/webhooks') },
+      ],
+    },
+    {
+      id: "restaurant-erp-section",
+      label: "Restaurant / F&B ERP",
+      items: [
+        { id: "restaurant/pos", label: "POS Terminal", icon: UtensilsCrossed, onClick: () => setLocation('/restaurant/pos') },
+        { id: "restaurant/kitchen", label: "Kitchen Display", icon: UtensilsCrossed, onClick: () => setLocation('/restaurant/kitchen') },
+        { id: "restaurant/tables", label: "Tables & Floor Plan", icon: LayoutDashboard, onClick: () => setLocation('/restaurant/tables') },
+        { id: "restaurant/menu", label: "Menu Management", icon: BookOpen, onClick: () => setLocation('/restaurant/menu') },
+        { id: "restaurant/orders", label: "Orders & KOT", icon: ClipboardList, onClick: () => setLocation('/restaurant/orders') },
+        { id: "restaurant/delivery", label: "Delivery Orders", icon: Truck, onClick: () => setLocation('/restaurant/delivery') },
+        { id: "restaurant/reservations", label: "Reservations", icon: Calendar, onClick: () => setLocation('/restaurant/reservations') },
+        { id: "restaurant/shifts", label: "Shifts & Cash", icon: Clock, onClick: () => setLocation('/restaurant/shifts') },
+        { id: "restaurant/customers", label: "Customers & Loyalty", icon: Users, onClick: () => setLocation('/restaurant/customers') },
+        { id: "restaurant/inventory", label: "Inventory & Recipes", icon: Package, onClick: () => setLocation('/restaurant/inventory') },
+        { id: "restaurant/outlets", label: "Outlets & Terminals", icon: Building2, onClick: () => setLocation('/restaurant/outlets') },
+        { id: "restaurant/reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/restaurant/reports') },
+      ],
+    },
+    {
+      id: "hotel-erp-section",
+      label: "Hotel ERP",
+      items: [
+        { id: "hotel/front-desk", label: "Front Desk", icon: Building2, onClick: () => setLocation('/hotel/front-desk') },
+        { id: "hotel/reservations", label: "Reservations", icon: Calendar, onClick: () => setLocation('/hotel/reservations') },
+        { id: "hotel/checkin", label: "Check-in / Check-out", icon: CheckCircle, onClick: () => setLocation('/hotel/checkin') },
+        { id: "hotel/rooms", label: "Room Management", icon: BedDouble, onClick: () => setLocation('/hotel/rooms') },
+        { id: "hotel/folio", label: "Folio & Billing", icon: Receipt, onClick: () => setLocation('/hotel/folio') },
+        { id: "hotel/housekeeping", label: "Housekeeping", icon: CheckCircle, onClick: () => setLocation('/hotel/housekeeping') },
+        { id: "hotel/rates", label: "Rate Plans", icon: Tag, onClick: () => setLocation('/hotel/rates') },
+        { id: "hotel/corporate", label: "Corporate & Agents", icon: Briefcase, onClick: () => setLocation('/hotel/corporate') },
+        { id: "hotel/night-audit", label: "Night Audit", icon: Clock, onClick: () => setLocation('/hotel/night-audit') },
+        { id: "hotel/reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/hotel/reports') },
+      ],
+    },
+    {
+      id: "healthcare-erp-section",
+      label: "Healthcare ERP",
+      items: [
+        { id: "healthcare/patients", label: "Patient Registration", icon: Users, onClick: () => setLocation('/healthcare/patients') },
+        { id: "healthcare/opd", label: "OPD & Appointments", icon: Calendar, onClick: () => setLocation('/healthcare/opd') },
+        { id: "healthcare/ipd", label: "IPD & Admissions", icon: BedDouble, onClick: () => setLocation('/healthcare/ipd') },
+        { id: "healthcare/beds", label: "Bed Management", icon: BedDouble, onClick: () => setLocation('/healthcare/beds') },
+        { id: "healthcare/ot", label: "OT Scheduling", icon: Clock, onClick: () => setLocation('/healthcare/ot') },
+        { id: "healthcare/lab", label: "Lab & Diagnostics", icon: ClipboardList, onClick: () => setLocation('/healthcare/lab') },
+        { id: "healthcare/nursing", label: "Nursing & Vitals", icon: HeartPulse, onClick: () => setLocation('/healthcare/nursing') },
+        { id: "pharmacy/billing", label: "Pharmacy Link", icon: Pill, onClick: () => setLocation('/pharmacy/billing') },
+        { id: "healthcare/insurance", label: "Insurance & TPA", icon: Shield, onClick: () => setLocation('/healthcare/insurance') },
+        { id: "healthcare/doctors", label: "Doctor Management", icon: Users, onClick: () => setLocation('/healthcare/doctors') },
+        { id: "healthcare/blood-bank", label: "Blood Bank", icon: Heart, onClick: () => setLocation('/healthcare/blood-bank') },
+        { id: "healthcare/reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/healthcare/reports') },
+      ],
+    },
+    {
+      id: "education-erp-section",
+      label: "Education ERP",
+      items: [
+        { id: "education/students", label: "Students", icon: Users, onClick: () => setLocation('/education/students') },
+        { id: "education/admissions", label: "Admissions", icon: FolderOpen, onClick: () => setLocation('/education/admissions') },
+        { id: "education/classes", label: "Classes & Subjects", icon: BookOpen, onClick: () => setLocation('/education/classes') },
+        { id: "education/attendance", label: "Attendance", icon: CheckCircle, onClick: () => setLocation('/education/attendance') },
+        { id: "education/exams", label: "Examinations", icon: ClipboardList, onClick: () => setLocation('/education/exams') },
+        { id: "education/fees", label: "Fee Management", icon: IndianRupee, onClick: () => setLocation('/education/fees') },
+        { id: "education/timetable", label: "Timetable", icon: Calendar, onClick: () => setLocation('/education/timetable') },
+        { id: "education/homework", label: "Homework", icon: BookOpen, onClick: () => setLocation('/education/homework') },
+        { id: "education/online-exams", label: "Online Exams", icon: ClipboardList, onClick: () => setLocation('/education/online-exams') },
+        { id: "education/library", label: "Library", icon: BookOpen, onClick: () => setLocation('/education/library') },
+        { id: "education/transport", label: "Transport", icon: Truck, onClick: () => setLocation('/education/transport') },
+        { id: "education/hostel", label: "Hostel", icon: BedDouble, onClick: () => setLocation('/education/hostel') },
+        { id: "education/parent-portal", label: "Parent Portal", icon: Users, onClick: () => setLocation('/education/parent-portal') },
+        { id: "education/reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/education/reports') },
+      ],
+    },
+    {
+      id: "real-estate-erp-section",
+      label: "Real Estate ERP",
+      items: [
+        { id: "real-estate/projects", label: "Projects & Units", icon: Building2, onClick: () => setLocation('/real-estate/projects') },
+        { id: "real-estate/crm", label: "Sales CRM", icon: Users, onClick: () => setLocation('/real-estate/crm') },
+        { id: "real-estate/bookings", label: "Bookings", icon: Calendar, onClick: () => setLocation('/real-estate/bookings') },
+        { id: "real-estate/collections", label: "Payment Collections", icon: IndianRupee, onClick: () => setLocation('/real-estate/collections') },
+        { id: "real-estate/brokers", label: "Broker Management", icon: Users, onClick: () => setLocation('/real-estate/brokers') },
+        { id: "real-estate/construction", label: "Construction", icon: Wrench, onClick: () => setLocation('/real-estate/construction') },
+        { id: "real-estate/documents", label: "Documents", icon: FolderOpen, onClick: () => setLocation('/real-estate/documents') },
+        { id: "real-estate/customer-portal", label: "Customer Portal", icon: Users, onClick: () => setLocation('/real-estate/customer-portal') },
+        { id: "real-estate/society", label: "Society", icon: Building2, onClick: () => setLocation('/real-estate/society') },
+        { id: "real-estate/reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/real-estate/reports') },
+      ],
+    },
+    {
+      id: "logistics-erp-section",
+      label: "Logistics ERP",
+      items: [
+        { id: "logistics/fleet", label: "Fleet Management", icon: Truck, onClick: () => setLocation('/logistics/fleet') },
+        { id: "logistics/drivers", label: "Drivers", icon: Users, onClick: () => setLocation('/logistics/drivers') },
+        { id: "logistics/trips", label: "Trip Management", icon: Car, onClick: () => setLocation('/logistics/trips') },
+        { id: "logistics/gps", label: "GPS Tracking", icon: Crosshair, onClick: () => setLocation('/logistics/gps') },
+        { id: "logistics/consignments", label: "Consignments", icon: Package, onClick: () => setLocation('/logistics/consignments') },
+        { id: "logistics/freight", label: "Freight Billing", icon: Receipt, onClick: () => setLocation('/logistics/freight') },
+        { id: "logistics/epod", label: "ePOD", icon: ClipboardCheck, onClick: () => setLocation('/logistics/epod') },
+        { id: "logistics/fuel", label: "Fuel Management", icon: Zap, onClick: () => setLocation('/logistics/fuel') },
+        { id: "logistics/documents", label: "Vehicle Documents", icon: FolderOpen, onClick: () => setLocation('/logistics/documents') },
+        { id: "logistics/reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/logistics/reports') },
+      ],
+    },
+    {
+      id: "agriculture-erp-section",
+      label: "Agriculture ERP",
+      items: [
+        { id: "agriculture/farms", label: "Farms & Farmers", icon: Leaf, onClick: () => setLocation('/agriculture/farms') },
+        { id: "agriculture/crops", label: "Crop Management", icon: Leaf, onClick: () => setLocation('/agriculture/crops') },
+        { id: "agriculture/inputs", label: "Crop Inputs", icon: Package, onClick: () => setLocation('/agriculture/inputs') },
+        { id: "agriculture/harvest", label: "Harvest Records", icon: Archive, onClick: () => setLocation('/agriculture/harvest') },
+        { id: "agriculture/weather", label: "Weather & Advisory", icon: Wifi, onClick: () => setLocation('/agriculture/weather') },
+        { id: "agriculture/schemes", label: "Govt Schemes", icon: Shield, onClick: () => setLocation('/agriculture/schemes') },
+        { id: "agriculture/fpo", label: "FPO Management", icon: Users, onClick: () => setLocation('/agriculture/fpo') },
+        { id: "agriculture/market", label: "Market Prices", icon: TrendingUp, onClick: () => setLocation('/agriculture/market') },
+        { id: "agriculture/reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/agriculture/reports') },
+      ],
+    },
+    {
+      id: "ngo-erp-section",
+      label: "NGO / Trust ERP",
+      items: [
+        { id: "ngo/donors", label: "Donors", icon: Heart, onClick: () => setLocation('/ngo/donors') },
+        { id: "ngo/donations", label: "Donations", icon: Gift, onClick: () => setLocation('/ngo/donations') },
+        { id: "ngo/80g", label: "80G Receipts", icon: Receipt, onClick: () => setLocation('/ngo/80g') },
+        { id: "ngo/projects", label: "Projects", icon: FolderOpen, onClick: () => setLocation('/ngo/projects') },
+        { id: "ngo/beneficiaries", label: "Beneficiaries", icon: Users, onClick: () => setLocation('/ngo/beneficiaries') },
+        { id: "ngo/grants", label: "Grants", icon: Award, onClick: () => setLocation('/ngo/grants') },
+        { id: "ngo/volunteers", label: "Volunteers", icon: Users, onClick: () => setLocation('/ngo/volunteers') },
+        { id: "ngo/fcra", label: "FCRA Compliance", icon: Shield, onClick: () => setLocation('/ngo/fcra') },
+        { id: "ngo/reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/ngo/reports') },
+      ],
+    },
+    {
+      id: "pharmacy-erp-section",
+      label: "Pharmacy ERP",
+      items: [
+        { id: "pharmacy/billing", label: "Drug Billing POS", icon: Pill, onClick: () => setLocation('/pharmacy/billing') },
+        { id: "pharmacy/drugs", label: "Drug Master", icon: Pill, onClick: () => setLocation('/pharmacy/drugs') },
+        { id: "pharmacy/stock", label: "Stock Management", icon: Package, onClick: () => setLocation('/pharmacy/stock') },
+        { id: "pharmacy/purchases", label: "Purchase Management", icon: ShoppingCart, onClick: () => setLocation('/pharmacy/purchases') },
+        { id: "pharmacy/schedule-h", label: "Schedule H Register", icon: ClipboardList, onClick: () => setLocation('/pharmacy/schedule-h') },
+        { id: "pharmacy/schedule-x", label: "Schedule X Register", icon: ClipboardList, onClick: () => setLocation('/pharmacy/schedule-x') },
+        { id: "pharmacy/licenses", label: "Drug Licenses", icon: Shield, onClick: () => setLocation('/pharmacy/licenses') },
+        { id: "pharmacy/expiry", label: "Expiry Alerts", icon: Clock, onClick: () => setLocation('/pharmacy/expiry') },
+        { id: "pharmacy/reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/pharmacy/reports') },
+      ],
+    },
+    {
+      id: "crm-erp-section",
+      label: "CRM ERP",
+      items: [
+        { id: "crm-leads", label: "Leads", icon: Target, onClick: () => setLocation('/crm-leads') },
+        { id: "crm/pipeline", label: "Pipeline", icon: TrendingUp, onClick: () => setLocation('/crm/pipeline') },
+        { id: "crm/contacts", label: "Contacts", icon: Users, onClick: () => setLocation('/crm/contacts') },
+        { id: "crm/accounts", label: "Accounts", icon: Building2, onClick: () => setLocation('/crm/accounts') },
+        { id: "crm/activities", label: "Activities", icon: Calendar, onClick: () => setLocation('/crm/activities') },
+        { id: "crm/email-campaigns", label: "Email Campaigns", icon: MessageSquare, onClick: () => setLocation('/crm/email-campaigns') },
+        { id: "crm/whatsapp", label: "WhatsApp CRM", icon: MessageSquare, onClick: () => setLocation('/crm/whatsapp') },
+        { id: "crm/reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/crm/reports') },
+      ],
+    },
+    {
+      id: "nidhi-erp-section",
+      label: "Nidhi / NBFC ERP",
+      items: [
+        { id: "nidhi/members", label: "Members", icon: Users, onClick: () => setLocation('/nidhi/members') },
+        { id: "nidhi/deposits", label: "Deposits", icon: Coins, onClick: () => setLocation('/nidhi/deposits') },
+        { id: "nidhi/loans", label: "Loans", icon: Landmark, onClick: () => setLocation('/nidhi/loans') },
+        { id: "nidhi/emi", label: "EMI Collection", icon: IndianRupee, onClick: () => setLocation('/nidhi/emi') },
+        { id: "nidhi/shares", label: "Share Management", icon: TrendingUp, onClick: () => setLocation('/nidhi/shares') },
+        { id: "nidhi/gold-rates", label: "Gold Rates", icon: Gem, onClick: () => setLocation('/nidhi/gold-rates') },
+        { id: "nidhi/interest-rates", label: "Interest Rates", icon: TrendingUp, onClick: () => setLocation('/nidhi/interest-rates') },
+        { id: "nidhi/daily-collection", label: "Daily Collection", icon: Wallet, onClick: () => setLocation('/nidhi/daily-collection') },
+        { id: "nidhi/compliance", label: "Compliance (NDH)", icon: Shield, onClick: () => setLocation('/nidhi/compliance') },
+        { id: "nidhi/reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/nidhi/reports') },
+      ],
+    },
+    {
+      id: "ecommerce-erp-section",
+      label: "E-Commerce ERP",
+      items: [
+        { id: "ecommerce/dashboard", label: "Dashboard", icon: LayoutDashboard, onClick: () => setLocation('/ecommerce/dashboard') },
+        { id: "ecommerce/orders", label: "Orders", icon: ShoppingCart, onClick: () => setLocation('/ecommerce/orders') },
+        { id: "ecommerce/listings", label: "Listings", icon: Package, onClick: () => setLocation('/ecommerce/listings') },
+        { id: "ecommerce/shipments", label: "Shipments", icon: Truck, onClick: () => setLocation('/ecommerce/shipments') },
+        { id: "ecommerce/returns", label: "Returns & RTO", icon: RotateCcw, onClick: () => setLocation('/ecommerce/returns') },
+        { id: "ecommerce/settlements", label: "Settlements", icon: Wallet, onClick: () => setLocation('/ecommerce/settlements') },
+        { id: "ecommerce/channels", label: "Channels", icon: Globe, onClick: () => setLocation('/ecommerce/channels') },
+        { id: "ecommerce/reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/ecommerce/reports') },
       ],
     },
     {
@@ -2483,22 +2822,229 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       id: "finance-erp-section",
       label: "Finance ERP",
       items: [
-        { id: "finance-erp", label: "Finance ERP", icon: BarChart3, onClick: () => setLocation('/finance-erp') },
-        { id: "restaurant-enterprise", label: "eMenu Enterprise", icon: UtensilsCrossed, onClick: () => setLocation('/restaurant-enterprise') },
-        { id: "hotel-enterprise", label: "Hotel Enterprise", icon: Building2, onClick: () => setLocation('/hotel-enterprise') },
-        { id: "healthcare-enterprise", label: "Healthcare Enterprise", icon: HeartPulse, onClick: () => setLocation('/healthcare-enterprise') },
-        { id: "education-enterprise", label: "Education Enterprise", icon: GraduationCap, onClick: () => setLocation('/education-enterprise') },
-        { id: "real-estate-enterprise", label: "Real Estate Enterprise", icon: Home, onClick: () => setLocation('/real-estate-enterprise') },
-        { id: "masters", label: "Global Masters", icon: Database, onClick: () => setLocation('/masters') },
-        { id: "retail-enterprise", label: "Retail POS Plus", icon: ShoppingBag, onClick: () => setLocation('/retail-enterprise') },
-        { id: "pharmacy-enterprise", label: "Pharmacy Plus", icon: Pill, onClick: () => setLocation('/pharmacy-enterprise') },
-        { id: "logistics-enterprise", label: "Fleet & Logistics Plus", icon: Truck, onClick: () => setLocation('/logistics-enterprise') },
-        { id: "crm-enterprise", label: "CRM Plus", icon: Users, onClick: () => setLocation('/crm-enterprise') },
-        { id: "ngo-enterprise", label: "NGO/Trust Plus", icon: Heart, onClick: () => setLocation('/ngo-enterprise') },
-        { id: "agriculture-enterprise", label: "Agriculture Plus", icon: Leaf, onClick: () => setLocation('/agriculture-enterprise') },
-        { id: "ecommerce-enterprise", label: "E-Commerce Plus", icon: Globe, onClick: () => setLocation('/ecommerce-enterprise') },
-        { id: "healthcare-enterprise2", label: "Healthcare Advanced", icon: HeartPulse, onClick: () => setLocation('/healthcare-enterprise2') },
-        { id: "education-enterprise2", label: "Education Advanced", icon: GraduationCap, onClick: () => setLocation('/education-enterprise2') },
+        { id: "finance-erp", label: "CFO Dashboard", icon: BarChart3, onClick: () => setLocation('/finance-erp') },
+        { id: "invoices", label: "Invoices", icon: Receipt, onClick: () => setLocation('/invoices') },
+        { id: "expenses", label: "Expenses", icon: Wallet, onClick: () => setLocation('/expenses') },
+        { id: "journal-entries", label: "Journal Entries", icon: BookOpen, onClick: () => setLocation('/journal-entries') },
+        { id: "chart-of-accounts", label: "Chart of Accounts", icon: Layers, onClick: () => setLocation('/chart-of-accounts') },
+        { id: "bank-transactions", label: "Bank Reconciliation", icon: CreditCard, onClick: () => setLocation('/bank-transactions') },
+        { id: "gstr-reports", label: "GST Reports", icon: FileText, onClick: () => setLocation('/gstr-reports') },
+        { id: "tds-management", label: "TDS Management", icon: FileText, onClick: () => setLocation('/tds-management') },
+        { id: "budgets", label: "Budget Management", icon: Target, onClick: () => setLocation('/budgets') },
+        { id: "fixed-assets", label: "Fixed Assets", icon: Building2, onClick: () => setLocation('/fixed-assets') },
+        { id: "mis-dashboard", label: "MIS Reports", icon: BarChart3, onClick: () => setLocation('/mis-dashboard') },
+      ],
+    },
+    {
+      id: "masters-section",
+      label: "Master Data",
+      items: [
+        { id: "masters/hsn-codes", label: "HSN Codes", icon: Tag, onClick: () => setLocation('/masters/hsn-codes') },
+        { id: "masters/sac-codes", label: "SAC Codes", icon: Tag, onClick: () => setLocation('/masters/sac-codes') },
+        { id: "masters/tax-config", label: "Tax Configuration", icon: Settings, onClick: () => setLocation('/masters/tax-config') },
+        { id: "masters/states-countries", label: "States & Countries", icon: Globe, onClick: () => setLocation('/masters/states-countries') },
+        { id: "masters/bank-master", label: "Bank Master", icon: Landmark, onClick: () => setLocation('/masters/bank-master') },
+        { id: "masters/branches", label: "Branches", icon: Building2, onClick: () => setLocation('/masters/branches') },
+        { id: "masters/doc-numbering", label: "Document Numbering", icon: FileText, onClick: () => setLocation('/masters/doc-numbering') },
+        { id: "masters/email-templates", label: "Email Templates", icon: MessageSquare, onClick: () => setLocation('/masters/email-templates') },
+        { id: "masters/sms-templates", label: "SMS Templates", icon: MessageSquare, onClick: () => setLocation('/masters/sms-templates') },
+        { id: "masters/approval-matrix", label: "Approval Matrix", icon: CheckCircle, onClick: () => setLocation('/masters/approval-matrix') },
+        { id: "masters/feature-flags", label: "Feature Flags", icon: Zap, onClick: () => setLocation('/masters/feature-flags') },
+        { id: "masters/print-templates", label: "Print Templates", icon: FileText, onClick: () => setLocation('/masters/print-templates') },
+        { id: "masters/webhooks", label: "Webhooks", icon: Wifi, onClick: () => setLocation('/masters/webhooks') },
+      ],
+    },
+    {
+      id: "restaurant-erp-section",
+      label: "Restaurant / F&B ERP",
+      items: [
+        { id: "restaurant/pos", label: "POS Terminal", icon: UtensilsCrossed, onClick: () => setLocation('/restaurant/pos') },
+        { id: "restaurant/kitchen", label: "Kitchen Display", icon: UtensilsCrossed, onClick: () => setLocation('/restaurant/kitchen') },
+        { id: "restaurant/tables", label: "Tables & Floor Plan", icon: LayoutDashboard, onClick: () => setLocation('/restaurant/tables') },
+        { id: "restaurant/menu", label: "Menu Management", icon: BookOpen, onClick: () => setLocation('/restaurant/menu') },
+        { id: "restaurant/orders", label: "Orders & KOT", icon: ClipboardList, onClick: () => setLocation('/restaurant/orders') },
+        { id: "restaurant/delivery", label: "Delivery Orders", icon: Truck, onClick: () => setLocation('/restaurant/delivery') },
+        { id: "restaurant/reservations", label: "Reservations", icon: Calendar, onClick: () => setLocation('/restaurant/reservations') },
+        { id: "restaurant/shifts", label: "Shifts & Cash", icon: Clock, onClick: () => setLocation('/restaurant/shifts') },
+        { id: "restaurant/customers", label: "Customers & Loyalty", icon: Users, onClick: () => setLocation('/restaurant/customers') },
+        { id: "restaurant/inventory", label: "Inventory & Recipes", icon: Package, onClick: () => setLocation('/restaurant/inventory') },
+        { id: "restaurant/outlets", label: "Outlets & Terminals", icon: Building2, onClick: () => setLocation('/restaurant/outlets') },
+        { id: "restaurant/reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/restaurant/reports') },
+      ],
+    },
+    {
+      id: "hotel-erp-section",
+      label: "Hotel ERP",
+      items: [
+        { id: "hotel/front-desk", label: "Front Desk", icon: Building2, onClick: () => setLocation('/hotel/front-desk') },
+        { id: "hotel/reservations", label: "Reservations", icon: Calendar, onClick: () => setLocation('/hotel/reservations') },
+        { id: "hotel/checkin", label: "Check-in / Check-out", icon: CheckCircle, onClick: () => setLocation('/hotel/checkin') },
+        { id: "hotel/rooms", label: "Room Management", icon: BedDouble, onClick: () => setLocation('/hotel/rooms') },
+        { id: "hotel/folio", label: "Folio & Billing", icon: Receipt, onClick: () => setLocation('/hotel/folio') },
+        { id: "hotel/housekeeping", label: "Housekeeping", icon: CheckCircle, onClick: () => setLocation('/hotel/housekeeping') },
+        { id: "hotel/rates", label: "Rate Plans", icon: Tag, onClick: () => setLocation('/hotel/rates') },
+        { id: "hotel/corporate", label: "Corporate & Agents", icon: Briefcase, onClick: () => setLocation('/hotel/corporate') },
+        { id: "hotel/night-audit", label: "Night Audit", icon: Clock, onClick: () => setLocation('/hotel/night-audit') },
+        { id: "hotel/reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/hotel/reports') },
+      ],
+    },
+    {
+      id: "healthcare-erp-section",
+      label: "Healthcare ERP",
+      items: [
+        { id: "healthcare/patients", label: "Patient Registration", icon: Users, onClick: () => setLocation('/healthcare/patients') },
+        { id: "healthcare/opd", label: "OPD & Appointments", icon: Calendar, onClick: () => setLocation('/healthcare/opd') },
+        { id: "healthcare/ipd", label: "IPD & Admissions", icon: BedDouble, onClick: () => setLocation('/healthcare/ipd') },
+        { id: "healthcare/beds", label: "Bed Management", icon: BedDouble, onClick: () => setLocation('/healthcare/beds') },
+        { id: "healthcare/ot", label: "OT Scheduling", icon: Clock, onClick: () => setLocation('/healthcare/ot') },
+        { id: "healthcare/lab", label: "Lab & Diagnostics", icon: ClipboardList, onClick: () => setLocation('/healthcare/lab') },
+        { id: "healthcare/nursing", label: "Nursing & Vitals", icon: HeartPulse, onClick: () => setLocation('/healthcare/nursing') },
+        { id: "pharmacy/billing", label: "Pharmacy Link", icon: Pill, onClick: () => setLocation('/pharmacy/billing') },
+        { id: "healthcare/insurance", label: "Insurance & TPA", icon: Shield, onClick: () => setLocation('/healthcare/insurance') },
+        { id: "healthcare/doctors", label: "Doctor Management", icon: Users, onClick: () => setLocation('/healthcare/doctors') },
+        { id: "healthcare/blood-bank", label: "Blood Bank", icon: Heart, onClick: () => setLocation('/healthcare/blood-bank') },
+        { id: "healthcare/reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/healthcare/reports') },
+      ],
+    },
+    {
+      id: "education-erp-section",
+      label: "Education ERP",
+      items: [
+        { id: "education/students", label: "Students", icon: Users, onClick: () => setLocation('/education/students') },
+        { id: "education/admissions", label: "Admissions", icon: FolderOpen, onClick: () => setLocation('/education/admissions') },
+        { id: "education/classes", label: "Classes & Subjects", icon: BookOpen, onClick: () => setLocation('/education/classes') },
+        { id: "education/attendance", label: "Attendance", icon: CheckCircle, onClick: () => setLocation('/education/attendance') },
+        { id: "education/exams", label: "Examinations", icon: ClipboardList, onClick: () => setLocation('/education/exams') },
+        { id: "education/fees", label: "Fee Management", icon: IndianRupee, onClick: () => setLocation('/education/fees') },
+        { id: "education/timetable", label: "Timetable", icon: Calendar, onClick: () => setLocation('/education/timetable') },
+        { id: "education/homework", label: "Homework", icon: BookOpen, onClick: () => setLocation('/education/homework') },
+        { id: "education/online-exams", label: "Online Exams", icon: ClipboardList, onClick: () => setLocation('/education/online-exams') },
+        { id: "education/library", label: "Library", icon: BookOpen, onClick: () => setLocation('/education/library') },
+        { id: "education/transport", label: "Transport", icon: Truck, onClick: () => setLocation('/education/transport') },
+        { id: "education/hostel", label: "Hostel", icon: BedDouble, onClick: () => setLocation('/education/hostel') },
+        { id: "education/parent-portal", label: "Parent Portal", icon: Users, onClick: () => setLocation('/education/parent-portal') },
+        { id: "education/reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/education/reports') },
+      ],
+    },
+    {
+      id: "real-estate-erp-section",
+      label: "Real Estate ERP",
+      items: [
+        { id: "real-estate/projects", label: "Projects & Units", icon: Building2, onClick: () => setLocation('/real-estate/projects') },
+        { id: "real-estate/crm", label: "Sales CRM", icon: Users, onClick: () => setLocation('/real-estate/crm') },
+        { id: "real-estate/bookings", label: "Bookings", icon: Calendar, onClick: () => setLocation('/real-estate/bookings') },
+        { id: "real-estate/collections", label: "Payment Collections", icon: IndianRupee, onClick: () => setLocation('/real-estate/collections') },
+        { id: "real-estate/brokers", label: "Broker Management", icon: Users, onClick: () => setLocation('/real-estate/brokers') },
+        { id: "real-estate/construction", label: "Construction", icon: Wrench, onClick: () => setLocation('/real-estate/construction') },
+        { id: "real-estate/documents", label: "Documents", icon: FolderOpen, onClick: () => setLocation('/real-estate/documents') },
+        { id: "real-estate/customer-portal", label: "Customer Portal", icon: Users, onClick: () => setLocation('/real-estate/customer-portal') },
+        { id: "real-estate/society", label: "Society", icon: Building2, onClick: () => setLocation('/real-estate/society') },
+        { id: "real-estate/reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/real-estate/reports') },
+      ],
+    },
+    {
+      id: "logistics-erp-section",
+      label: "Logistics ERP",
+      items: [
+        { id: "logistics/fleet", label: "Fleet Management", icon: Truck, onClick: () => setLocation('/logistics/fleet') },
+        { id: "logistics/drivers", label: "Drivers", icon: Users, onClick: () => setLocation('/logistics/drivers') },
+        { id: "logistics/trips", label: "Trip Management", icon: Car, onClick: () => setLocation('/logistics/trips') },
+        { id: "logistics/gps", label: "GPS Tracking", icon: Crosshair, onClick: () => setLocation('/logistics/gps') },
+        { id: "logistics/consignments", label: "Consignments", icon: Package, onClick: () => setLocation('/logistics/consignments') },
+        { id: "logistics/freight", label: "Freight Billing", icon: Receipt, onClick: () => setLocation('/logistics/freight') },
+        { id: "logistics/epod", label: "ePOD", icon: ClipboardCheck, onClick: () => setLocation('/logistics/epod') },
+        { id: "logistics/fuel", label: "Fuel Management", icon: Zap, onClick: () => setLocation('/logistics/fuel') },
+        { id: "logistics/documents", label: "Vehicle Documents", icon: FolderOpen, onClick: () => setLocation('/logistics/documents') },
+        { id: "logistics/reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/logistics/reports') },
+      ],
+    },
+    {
+      id: "agriculture-erp-section",
+      label: "Agriculture ERP",
+      items: [
+        { id: "agriculture/farms", label: "Farms & Farmers", icon: Leaf, onClick: () => setLocation('/agriculture/farms') },
+        { id: "agriculture/crops", label: "Crop Management", icon: Leaf, onClick: () => setLocation('/agriculture/crops') },
+        { id: "agriculture/inputs", label: "Crop Inputs", icon: Package, onClick: () => setLocation('/agriculture/inputs') },
+        { id: "agriculture/harvest", label: "Harvest Records", icon: Archive, onClick: () => setLocation('/agriculture/harvest') },
+        { id: "agriculture/weather", label: "Weather & Advisory", icon: Wifi, onClick: () => setLocation('/agriculture/weather') },
+        { id: "agriculture/schemes", label: "Govt Schemes", icon: Shield, onClick: () => setLocation('/agriculture/schemes') },
+        { id: "agriculture/fpo", label: "FPO Management", icon: Users, onClick: () => setLocation('/agriculture/fpo') },
+        { id: "agriculture/market", label: "Market Prices", icon: TrendingUp, onClick: () => setLocation('/agriculture/market') },
+        { id: "agriculture/reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/agriculture/reports') },
+      ],
+    },
+    {
+      id: "ngo-erp-section",
+      label: "NGO / Trust ERP",
+      items: [
+        { id: "ngo/donors", label: "Donors", icon: Heart, onClick: () => setLocation('/ngo/donors') },
+        { id: "ngo/donations", label: "Donations", icon: Gift, onClick: () => setLocation('/ngo/donations') },
+        { id: "ngo/80g", label: "80G Receipts", icon: Receipt, onClick: () => setLocation('/ngo/80g') },
+        { id: "ngo/projects", label: "Projects", icon: FolderOpen, onClick: () => setLocation('/ngo/projects') },
+        { id: "ngo/beneficiaries", label: "Beneficiaries", icon: Users, onClick: () => setLocation('/ngo/beneficiaries') },
+        { id: "ngo/grants", label: "Grants", icon: Award, onClick: () => setLocation('/ngo/grants') },
+        { id: "ngo/volunteers", label: "Volunteers", icon: Users, onClick: () => setLocation('/ngo/volunteers') },
+        { id: "ngo/fcra", label: "FCRA Compliance", icon: Shield, onClick: () => setLocation('/ngo/fcra') },
+        { id: "ngo/reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/ngo/reports') },
+      ],
+    },
+    {
+      id: "pharmacy-erp-section",
+      label: "Pharmacy ERP",
+      items: [
+        { id: "pharmacy/billing", label: "Drug Billing POS", icon: Pill, onClick: () => setLocation('/pharmacy/billing') },
+        { id: "pharmacy/drugs", label: "Drug Master", icon: Pill, onClick: () => setLocation('/pharmacy/drugs') },
+        { id: "pharmacy/stock", label: "Stock Management", icon: Package, onClick: () => setLocation('/pharmacy/stock') },
+        { id: "pharmacy/purchases", label: "Purchase Management", icon: ShoppingCart, onClick: () => setLocation('/pharmacy/purchases') },
+        { id: "pharmacy/schedule-h", label: "Schedule H Register", icon: ClipboardList, onClick: () => setLocation('/pharmacy/schedule-h') },
+        { id: "pharmacy/schedule-x", label: "Schedule X Register", icon: ClipboardList, onClick: () => setLocation('/pharmacy/schedule-x') },
+        { id: "pharmacy/licenses", label: "Drug Licenses", icon: Shield, onClick: () => setLocation('/pharmacy/licenses') },
+        { id: "pharmacy/expiry", label: "Expiry Alerts", icon: Clock, onClick: () => setLocation('/pharmacy/expiry') },
+        { id: "pharmacy/reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/pharmacy/reports') },
+      ],
+    },
+    {
+      id: "crm-erp-section",
+      label: "CRM ERP",
+      items: [
+        { id: "crm-leads", label: "Leads", icon: Target, onClick: () => setLocation('/crm-leads') },
+        { id: "crm/pipeline", label: "Pipeline", icon: TrendingUp, onClick: () => setLocation('/crm/pipeline') },
+        { id: "crm/contacts", label: "Contacts", icon: Users, onClick: () => setLocation('/crm/contacts') },
+        { id: "crm/accounts", label: "Accounts", icon: Building2, onClick: () => setLocation('/crm/accounts') },
+        { id: "crm/activities", label: "Activities", icon: Calendar, onClick: () => setLocation('/crm/activities') },
+        { id: "crm/email-campaigns", label: "Email Campaigns", icon: MessageSquare, onClick: () => setLocation('/crm/email-campaigns') },
+        { id: "crm/whatsapp", label: "WhatsApp CRM", icon: MessageSquare, onClick: () => setLocation('/crm/whatsapp') },
+        { id: "crm/reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/crm/reports') },
+      ],
+    },
+    {
+      id: "nidhi-erp-section",
+      label: "Nidhi / NBFC ERP",
+      items: [
+        { id: "nidhi/members", label: "Members", icon: Users, onClick: () => setLocation('/nidhi/members') },
+        { id: "nidhi/deposits", label: "Deposits", icon: Coins, onClick: () => setLocation('/nidhi/deposits') },
+        { id: "nidhi/loans", label: "Loans", icon: Landmark, onClick: () => setLocation('/nidhi/loans') },
+        { id: "nidhi/emi", label: "EMI Collection", icon: IndianRupee, onClick: () => setLocation('/nidhi/emi') },
+        { id: "nidhi/shares", label: "Share Management", icon: TrendingUp, onClick: () => setLocation('/nidhi/shares') },
+        { id: "nidhi/gold-rates", label: "Gold Rates", icon: Gem, onClick: () => setLocation('/nidhi/gold-rates') },
+        { id: "nidhi/interest-rates", label: "Interest Rates", icon: TrendingUp, onClick: () => setLocation('/nidhi/interest-rates') },
+        { id: "nidhi/daily-collection", label: "Daily Collection", icon: Wallet, onClick: () => setLocation('/nidhi/daily-collection') },
+        { id: "nidhi/compliance", label: "Compliance (NDH)", icon: Shield, onClick: () => setLocation('/nidhi/compliance') },
+        { id: "nidhi/reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/nidhi/reports') },
+      ],
+    },
+    {
+      id: "ecommerce-erp-section",
+      label: "E-Commerce ERP",
+      items: [
+        { id: "ecommerce/dashboard", label: "Dashboard", icon: LayoutDashboard, onClick: () => setLocation('/ecommerce/dashboard') },
+        { id: "ecommerce/orders", label: "Orders", icon: ShoppingCart, onClick: () => setLocation('/ecommerce/orders') },
+        { id: "ecommerce/listings", label: "Listings", icon: Package, onClick: () => setLocation('/ecommerce/listings') },
+        { id: "ecommerce/shipments", label: "Shipments", icon: Truck, onClick: () => setLocation('/ecommerce/shipments') },
+        { id: "ecommerce/returns", label: "Returns & RTO", icon: RotateCcw, onClick: () => setLocation('/ecommerce/returns') },
+        { id: "ecommerce/settlements", label: "Settlements", icon: Wallet, onClick: () => setLocation('/ecommerce/settlements') },
+        { id: "ecommerce/channels", label: "Channels", icon: Globe, onClick: () => setLocation('/ecommerce/channels') },
+        { id: "ecommerce/reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/ecommerce/reports') },
       ],
     },
     {
@@ -3950,7 +4496,7 @@ function CRMLeadsWrapper() {
   );
 }
 
-function CRMPipelineWrapper() {
+function CRMPipelineLegacyWrapper() {
   const { logoutMutation } = useAuth();
   const [, setLocation] = useLocation();
   const [activeView, setActiveView] = useState('crm-pipeline');
@@ -4134,7 +4680,7 @@ function Router() {
       <ProtectedRoute path="/pos" component={POSWrapper} />
         <ProtectedRoute path="/einvoice" component={EInvoicePage} />
       <ProtectedRoute path="/agriculture" component={AgricultureWrapper} />
-      <ProtectedRoute path="/crm-pipeline" component={CRMPipelineWrapper} />
+      <ProtectedRoute path="/crm-pipeline" component={CRMPipelineLegacyWrapper} />
       <ProtectedRoute path="/ecommerce" component={EcommerceWrapper} />
       <ProtectedRoute path="/ngo" component={NGOWrapper} />
       <ProtectedRoute path="/pharmacy" component={PharmacyWrapper} />
@@ -4727,6 +5273,157 @@ function PharmacyWrapper() {
   );
 }
 
+
+
+function makeWrapper(title: string, activeId: string, PageComponent: React.ComponentType<any>) {
+  return function GenericPageWrapper() {
+    const { logoutMutation } = useAuth();
+    const [, setLocation] = useLocation();
+    const [activeView, setActiveView] = useState(activeId);
+    const allNavSections = getAdminNavSections(setLocation);
+    const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+    const resolvedNav = isLoading ? allNavSections : navSections;
+    return (
+      <DashboardShell title={title} onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+        navSections={resolvedNav} activeView={activeView}
+        onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : '/?tab=' + v); }}>
+        <PageComponent />
+      </DashboardShell>
+    );
+  };
+}
+const RestaurantPOSWrapper = makeWrapper('POS Terminal', 'restaurant/pos', RestaurantPOSPage);
+const RestaurantKitchenWrapper = makeWrapper('Kitchen Display', 'restaurant/kitchen', RestaurantKitchenPage);
+const RestaurantTablesWrapper = makeWrapper('Tables & Floor Plan', 'restaurant/tables', RestaurantTablesPage);
+const RestaurantMenuWrapper = makeWrapper('Menu Management', 'restaurant/menu', RestaurantMenuPage);
+const RestaurantOrdersWrapper = makeWrapper('Orders & KOT', 'restaurant/orders', RestaurantOrdersPage);
+const RestaurantDeliveryWrapper = makeWrapper('Delivery Orders', 'restaurant/delivery', RestaurantDeliveryPage);
+const RestaurantReservationsWrapper = makeWrapper('Reservations', 'restaurant/reservations', RestaurantReservationsPage);
+const RestaurantShiftsWrapper = makeWrapper('Shifts & Cash', 'restaurant/shifts', RestaurantShiftsPage);
+const RestaurantCustomersWrapper = makeWrapper('Customers & Loyalty', 'restaurant/customers', RestaurantCustomersPage);
+const RestaurantInventoryWrapper = makeWrapper('Inventory & Recipes', 'restaurant/inventory', RestaurantInventoryPage);
+const RestaurantOutletsWrapper = makeWrapper('Outlets & Terminals', 'restaurant/outlets', RestaurantOutletsPage);
+const RestaurantReportsWrapper = makeWrapper('Reports', 'restaurant/reports', RestaurantReportsPage);
+const HotelFrontDeskWrapper = makeWrapper('Front Desk', 'hotel/front-desk', HotelFrontDeskPage);
+const HotelReservationsWrapper = makeWrapper('Reservations', 'hotel/reservations', HotelReservationsPage);
+const HotelCheckinWrapper = makeWrapper('Check-in / Check-out', 'hotel/checkin', HotelCheckinPage);
+const HotelRoomsWrapper = makeWrapper('Room Management', 'hotel/rooms', HotelRoomsPage);
+const HotelFolioWrapper = makeWrapper('Folio & Billing', 'hotel/folio', HotelFolioPage);
+const HotelHousekeepingWrapper = makeWrapper('Housekeeping', 'hotel/housekeeping', HotelHousekeepingPage);
+const HotelRatesWrapper = makeWrapper('Rate Plans', 'hotel/rates', HotelRatesPage);
+const HotelCorporateWrapper = makeWrapper('Corporate & Agents', 'hotel/corporate', HotelCorporatePage);
+const HotelNightAuditWrapper = makeWrapper('Night Audit', 'hotel/night-audit', HotelNightAuditPage);
+const HotelReportsWrapper = makeWrapper('Reports', 'hotel/reports', HotelReportsPage);
+const HealthcarePatientsWrapper = makeWrapper('Patient Registration', 'healthcare/patients', HealthcarePatientsPage);
+const HealthcareOPDWrapper = makeWrapper('OPD & Appointments', 'healthcare/opd', HealthcareOPDPage);
+const HealthcareIPDWrapper = makeWrapper('IPD & Admissions', 'healthcare/ipd', HealthcareIPDPage);
+const HealthcareBedsWrapper = makeWrapper('Bed Management', 'healthcare/beds', HealthcareBedsPage);
+const HealthcareOTWrapper = makeWrapper('OT Scheduling', 'healthcare/ot', HealthcareOTPage);
+const HealthcareLabWrapper = makeWrapper('Lab & Diagnostics', 'healthcare/lab', HealthcareLabPage);
+const HealthcareNursingWrapper = makeWrapper('Nursing & Vitals', 'healthcare/nursing', HealthcareNursingPage);
+const HealthcareInsuranceWrapper = makeWrapper('Insurance & TPA', 'healthcare/insurance', HealthcareInsurancePage);
+const HealthcareDoctorsWrapper = makeWrapper('Doctor Management', 'healthcare/doctors', HealthcareDoctorsPage);
+const HealthcareBloodBankWrapper = makeWrapper('Blood Bank', 'healthcare/blood-bank', HealthcareBloodBankPage);
+const HealthcareReportsWrapper = makeWrapper('Reports', 'healthcare/reports', HealthcareReportsPage);
+const EducationStudentsWrapper = makeWrapper('Students', 'education/students', EducationStudentsPage);
+const EducationAdmissionsWrapper = makeWrapper('Admissions', 'education/admissions', EducationAdmissionsPage);
+const EducationClassesWrapper = makeWrapper('Classes & Subjects', 'education/classes', EducationClassesPage);
+const EducationAttendanceWrapper = makeWrapper('Attendance', 'education/attendance', EducationAttendancePage);
+const EducationExamsWrapper = makeWrapper('Examinations', 'education/exams', EducationExamsPage);
+const EducationFeesWrapper = makeWrapper('Fee Management', 'education/fees', EducationFeesPage);
+const EducationTimetableWrapper = makeWrapper('Timetable', 'education/timetable', EducationTimetablePage);
+const EducationHomeworkWrapper = makeWrapper('Homework', 'education/homework', EducationHomeworkPage);
+const EducationOnlineExamsWrapper = makeWrapper('Online Exams', 'education/online-exams', EducationOnlineExamsPage);
+const EducationLibraryWrapper = makeWrapper('Library', 'education/library', EducationLibraryPage);
+const EducationTransportWrapper = makeWrapper('Transport', 'education/transport', EducationTransportPage);
+const EducationHostelWrapper = makeWrapper('Hostel', 'education/hostel', EducationHostelPage);
+const EducationParentPortalWrapper = makeWrapper('Parent Portal', 'education/parent-portal', EducationParentPortalPage);
+const EducationReportsWrapper = makeWrapper('Reports', 'education/reports', EducationReportsPage);
+const RealEstateProjectsWrapper = makeWrapper('Projects & Units', 'real-estate/projects', RealEstateProjectsPage);
+const RealEstateCRMWrapper = makeWrapper('Sales CRM', 'real-estate/crm', RealEstateCRMPage);
+const RealEstateBookingsWrapper = makeWrapper('Bookings', 'real-estate/bookings', RealEstateBookingsPage);
+const RealEstateCollectionsWrapper = makeWrapper('Payment Collections', 'real-estate/collections', RealEstateCollectionsPage);
+const RealEstateBrokersWrapper = makeWrapper('Broker Management', 'real-estate/brokers', RealEstateBrokersPage);
+const RealEstateConstructionWrapper = makeWrapper('Construction', 'real-estate/construction', RealEstateConstructionPage);
+const RealEstateDocumentsWrapper = makeWrapper('Documents', 'real-estate/documents', RealEstateDocumentsPage);
+const RealEstateCustomerPortalWrapper = makeWrapper('Customer Portal', 'real-estate/customer-portal', RealEstateCustomerPortalPage);
+const RealEstateSocietyWrapper = makeWrapper('Society', 'real-estate/society', RealEstateSocietyPage);
+const RealEstateReportsWrapper = makeWrapper('Reports', 'real-estate/reports', RealEstateReportsPage);
+const LogisticsFleetWrapper = makeWrapper('Fleet Management', 'logistics/fleet', LogisticsFleetPage);
+const LogisticsDriversWrapper = makeWrapper('Drivers', 'logistics/drivers', LogisticsDriversPage);
+const LogisticsTripsWrapper = makeWrapper('Trip Management', 'logistics/trips', LogisticsTripsPage);
+const LogisticsGPSWrapper = makeWrapper('GPS Tracking', 'logistics/gps', LogisticsGPSPage);
+const LogisticsConsignmentsWrapper = makeWrapper('Consignments', 'logistics/consignments', LogisticsConsignmentsPage);
+const LogisticsFreightWrapper = makeWrapper('Freight Billing', 'logistics/freight', LogisticsFreightPage);
+const LogisticsEPODWrapper = makeWrapper('ePOD', 'logistics/epod', LogisticsEPODPage);
+const LogisticsFuelWrapper = makeWrapper('Fuel Management', 'logistics/fuel', LogisticsFuelPage);
+const LogisticsDocumentsWrapper = makeWrapper('Vehicle Documents', 'logistics/documents', LogisticsDocumentsPage);
+const LogisticsReportsWrapper = makeWrapper('Reports', 'logistics/reports', LogisticsReportsPage);
+const AgricultureFarmsWrapper = makeWrapper('Farms & Farmers', 'agriculture/farms', AgricultureFarmsPage);
+const AgricultureCropsWrapper = makeWrapper('Crop Management', 'agriculture/crops', AgricultureCropsPage);
+const AgricultureInputsWrapper = makeWrapper('Crop Inputs', 'agriculture/inputs', AgricultureInputsPage);
+const AgricultureHarvestWrapper = makeWrapper('Harvest Records', 'agriculture/harvest', AgricultureHarvestPage);
+const AgricultureWeatherWrapper = makeWrapper('Weather & Advisory', 'agriculture/weather', AgricultureWeatherPage);
+const AgricultureSchemesWrapper = makeWrapper('Govt Schemes', 'agriculture/schemes', AgricultureSchemesPage);
+const AgricultureFPOWrapper = makeWrapper('FPO Management', 'agriculture/fpo', AgricultureFPOPage);
+const AgricultureMarketWrapper = makeWrapper('Market Prices', 'agriculture/market', AgricultureMarketPage);
+const AgricultureReportsWrapper = makeWrapper('Reports', 'agriculture/reports', AgricultureReportsPage);
+const NGODonorsWrapper = makeWrapper('Donors', 'ngo/donors', NGODonorsPage);
+const NGODonationsWrapper = makeWrapper('Donations', 'ngo/donations', NGODonationsPage);
+const NGO80GWrapper = makeWrapper('80G Receipts', 'ngo/80g', NGO80GPage);
+const NGOProjectsWrapper = makeWrapper('Projects', 'ngo/projects', NGOProjectsPage);
+const NGOBeneficiariesWrapper = makeWrapper('Beneficiaries', 'ngo/beneficiaries', NGOBeneficiariesPage);
+const NGOGrantsWrapper = makeWrapper('Grants', 'ngo/grants', NGOGrantsPage);
+const NGOVolunteersWrapper = makeWrapper('Volunteers', 'ngo/volunteers', NGOVolunteersPage);
+const NGOFCRAWrapper = makeWrapper('FCRA Compliance', 'ngo/fcra', NGOFCRAPage);
+const NGOReportsWrapper = makeWrapper('Reports', 'ngo/reports', NGOReportsPage);
+const PharmacyBillingWrapper = makeWrapper('Drug Billing POS', 'pharmacy/billing', PharmacyBillingPage);
+const PharmacyDrugsWrapper = makeWrapper('Drug Master', 'pharmacy/drugs', PharmacyDrugsPage);
+const PharmacyStockWrapper = makeWrapper('Stock Management', 'pharmacy/stock', PharmacyStockPage);
+const PharmacyPurchasesWrapper = makeWrapper('Purchase Management', 'pharmacy/purchases', PharmacyPurchasesPage);
+const PharmacyScheduleHWrapper = makeWrapper('Schedule H Register', 'pharmacy/schedule-h', PharmacyScheduleHPage);
+const PharmacyScheduleXWrapper = makeWrapper('Schedule X Register', 'pharmacy/schedule-x', PharmacyScheduleXPage);
+const PharmacyLicensesWrapper = makeWrapper('Drug Licenses', 'pharmacy/licenses', PharmacyLicensesPage);
+const PharmacyExpiryWrapper = makeWrapper('Expiry Alerts', 'pharmacy/expiry', PharmacyExpiryPage);
+const PharmacyReportsWrapper = makeWrapper('Reports', 'pharmacy/reports', PharmacyReportsPage);
+const CRMPipelineWrapper = makeWrapper('Pipeline', 'crm/pipeline', CRMPipelinePage);
+const CRMContactsWrapper = makeWrapper('Contacts', 'crm/contacts', CRMContactsPage);
+const CRMAccountsWrapper = makeWrapper('Accounts', 'crm/accounts', CRMAccountsPage);
+const CRMActivitiesWrapper = makeWrapper('Activities', 'crm/activities', CRMActivitiesPage);
+const CRMEmailCampaignsWrapper = makeWrapper('Email Campaigns', 'crm/email-campaigns', CRMEmailCampaignsPage);
+const CRMWhatsAppWrapper = makeWrapper('WhatsApp CRM', 'crm/whatsapp', CRMWhatsAppPage);
+const CRMReportsWrapper = makeWrapper('Reports', 'crm/reports', CRMReportsPage);
+const NidhiMembersWrapper = makeWrapper('Members', 'nidhi/members', NidhiMembersPage);
+const NidhiDepositsWrapper = makeWrapper('Deposits', 'nidhi/deposits', NidhiDepositsPage);
+const NidhiLoansWrapper = makeWrapper('Loans', 'nidhi/loans', NidhiLoansPage);
+const NidhiEMIWrapper = makeWrapper('EMI Collection', 'nidhi/emi', NidhiEMIPage);
+const NidhiSharesWrapper = makeWrapper('Share Management', 'nidhi/shares', NidhiSharesPage);
+const NidhiGoldRatesWrapper = makeWrapper('Gold Rates', 'nidhi/gold-rates', NidhiGoldRatesPage);
+const NidhiInterestRatesWrapper = makeWrapper('Interest Rates', 'nidhi/interest-rates', NidhiInterestRatesPage);
+const NidhiDailyCollectionWrapper = makeWrapper('Daily Collection', 'nidhi/daily-collection', NidhiDailyCollectionPage);
+const NidhiComplianceWrapper = makeWrapper('Compliance (NDH)', 'nidhi/compliance', NidhiCompliancePage);
+const NidhiReportsWrapper = makeWrapper('Reports', 'nidhi/reports', NidhiReportsPage);
+const EcommerceDashboardWrapper = makeWrapper('Dashboard', 'ecommerce/dashboard', EcommerceDashboardPage);
+const EcommerceOrdersWrapper = makeWrapper('Orders', 'ecommerce/orders', EcommerceOrdersPage);
+const EcommerceListingsWrapper = makeWrapper('Listings', 'ecommerce/listings', EcommerceListingsPage);
+const EcommerceShipmentsWrapper = makeWrapper('Shipments', 'ecommerce/shipments', EcommerceShipmentsPage);
+const EcommerceReturnsWrapper = makeWrapper('Returns & RTO', 'ecommerce/returns', EcommerceReturnsPage);
+const EcommerceSettlementsWrapper = makeWrapper('Settlements', 'ecommerce/settlements', EcommerceSettlementsPage);
+const EcommerceChannelsWrapper = makeWrapper('Channels', 'ecommerce/channels', EcommerceChannelsPage);
+const EcommerceReportsWrapper = makeWrapper('Reports', 'ecommerce/reports', EcommerceReportsPage);
+const MastersHSNCodesWrapper = makeWrapper('HSN Codes', 'masters/hsn-codes', MastersHSNCodesPage);
+const MastersSACCodesWrapper = makeWrapper('SAC Codes', 'masters/sac-codes', MastersSACCodesPage);
+const MastersTaxConfigWrapper = makeWrapper('Tax Configuration', 'masters/tax-config', MastersTaxConfigPage);
+const MastersStatesCountriesWrapper = makeWrapper('States & Countries', 'masters/states-countries', MastersStatesCountriesPage);
+const MastersBankMasterWrapper = makeWrapper('Bank Master', 'masters/bank-master', MastersBankMasterPage);
+const MastersBranchesWrapper = makeWrapper('Branches', 'masters/branches', MastersBranchesPage);
+const MastersDocNumberingWrapper = makeWrapper('Document Numbering', 'masters/doc-numbering', MastersDocNumberingPage);
+const MastersEmailTemplatesWrapper = makeWrapper('Email Templates', 'masters/email-templates', MastersEmailTemplatesPage);
+const MastersSMSTemplatesWrapper = makeWrapper('SMS Templates', 'masters/sms-templates', MastersSMSTemplatesPage);
+const MastersApprovalMatrixWrapper = makeWrapper('Approval Matrix', 'masters/approval-matrix', MastersApprovalMatrixPage);
+const MastersFeatureFlagsWrapper = makeWrapper('Feature Flags', 'masters/feature-flags', MastersFeatureFlagsPage);
+const MastersPrintTemplatesWrapper = makeWrapper('Print Templates', 'masters/print-templates', MastersPrintTemplatesPage);
+const MastersWebhooksWrapper = makeWrapper('Webhooks', 'masters/webhooks', MastersWebhooksPage);
 
 function RestaurantEnterpriseWrapper() {
   const { logoutMutation } = useAuth();
