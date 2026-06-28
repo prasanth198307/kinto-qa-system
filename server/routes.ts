@@ -1914,7 +1914,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/ecommerce', ecommerceRouter);
   app.use('/api/ngo', ngoRouter);
   app.use('/api/pharmacy', pharmacyRouter);
-  app.use('/api/nidhi', nidhiRouter);
+  app.use('/api/nidhi-company', nidhiRouter);
   app.use('/api/finance', financeErpRouter);
   app.use('/api/education', educationRouter);
   app.use('/api/logistics', logisticsRouter);
