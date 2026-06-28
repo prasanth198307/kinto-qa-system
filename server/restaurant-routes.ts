@@ -1228,4 +1228,130 @@ router.get("/stats", requireAuth, async (req, res) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
+
+// ─── QR ORDERING (PUBLIC) ─────────────────────────────────────────────────────
+router.post(/qr-session/create, requireAuth, async (req: any, res) => {
+  try {
+    const { table_id } = req.body;
+    const table = await db.execute(sql`SELECT * FROM restaurant_tables WHERE id=${table_id} AND tenant_id=${tid(req)}`);
+    if (!table.rows[0]) return res.status(404).json({ error: 'Table not found' });
+    const token = require('crypto').randomBytes(24).toString('hex');
+    const expires = new Date(Date.now() + 2 * 60 * 60 * 1000); // 2 hours
+    await db.execute(sql`
+      INSERT INTO qr_order_sessions (tenant_id, table_id, table_number, session_token, expires_at)
+      VALUES (${tid(req)}, ${table_id}, ${(table.rows[0] as any).table_number}, ${token}, ${expires.toISOString()})
+      ON CONFLICT (session_token) DO NOTHING`);
+    res.json({ session_token: token, table_number: (table.rows[0] as any).table_number, expires_at: expires });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// PUBLIC: no auth required — for customer QR scan
+router.get(/qr/menu/:token, async (req: any, res) => {
+  try {
+    const session = await db.execute(sql`SELECT * FROM qr_order_sessions WHERE session_token=${req.params.token} AND status='active' AND expires_at > NOW()`);
+    if (!session.rows[0]) return res.status(404).json({ error: 'Invalid or expired QR session' });
+    const s = session.rows[0] as any;
+    const [categories, items] = await Promise.all([
+      db.execute(sql`SELECT * FROM restaurant_menu_categories WHERE tenant_id=${s.tenant_id} AND is_active=1 ORDER BY sort_order`),
+      db.execute(sql`SELECT mi.*, mc.name as category_name FROM restaurant_menu_items mi LEFT JOIN restaurant_menu_categories mc ON mc.id=mi.category_id WHERE mi.tenant_id=${s.tenant_id} AND mi.is_available=true ORDER BY mc.sort_order, mi.display_order`)
+    ]);
+    res.json({ table_number: s.table_number, categories: categories.rows, items: items.rows });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.post(/qr/order/:token, async (req: any, res) => {
+  try {
+    const session = await db.execute(sql`SELECT * FROM qr_order_sessions WHERE session_token=${req.params.token} AND status='active' AND expires_at > NOW()`);
+    if (!session.rows[0]) return res.status(404).json({ error: 'Invalid or expired QR session' });
+    const s = session.rows[0] as any;
+    const { items, customer_name, customer_phone } = req.body;
+    if (!items?.length) return res.status(400).json({ error: 'No items provided' });
+    // Update session with customer info
+    if (customer_name) await db.execute(sql`UPDATE qr_order_sessions SET customer_name=${customer_name}, customer_phone=${customer_phone||null} WHERE id=${s.id}`);
+    // Create KOT
+    const kotNo = 'QR-' + Date.now();
+    const subtotal = items.reduce((sum: number, i: any) => sum + (Number(i.rate||0) * Number(i.quantity||1)), 0);
+    const gst = Math.round(subtotal * 0.05 * 100) / 100;
+    const grand_total = subtotal + gst;
+    const kot = await db.execute(sql`
+      INSERT INTO kot_orders (tenant_id, kot_number, table_id, table_number, order_type, status, subtotal, gst_amount, grand_total, cashier_name, outlet_id)
+      VALUES (${s.tenant_id}, ${kotNo}, ${s.table_id}, ${s.table_number}, 'qr_order', 'pending', ${subtotal}, ${gst}, ${grand_total}, 'QR Self-Order', null)
+      RETURNING *`);
+    const kotId = (kot.rows[0] as any).id;
+    for (const item of items) {
+      await db.execute(sql`INSERT INTO kot_items (kot_id, menu_item_id, quantity, rate, amount, special_instructions, course) VALUES (${kotId}, ${item.menu_item_id}, ${item.quantity||1}, ${item.rate||0}, ${(item.rate||0)*(item.quantity||1)}, ${item.special_instructions||null}, ${item.course||'main'})`);
+    }
+    await db.execute(sql`UPDATE restaurant_tables SET status='occupied', current_kot_id=${kotId}, occupied_since=NOW() WHERE id=${s.table_id}`);
+    res.json({ kot_id: kotId, kot_number: kotNo, subtotal, gst, grand_total });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ─── MISSING REPORTS ─────────────────────────────────────────────────────────
+router.get(/reports/food-cost, requireAuth, async (req: any, res) => {
+  try {
+    const from = req.query.from || new Date().toISOString().slice(0,10);
+    const to = req.query.to || new Date().toISOString().slice(0,10);
+    const result = await db.execute(sql`
+      SELECT mi.name as item_name, mc.name as category,
+        COALESCE(SUM(ki.quantity),0) as qty_sold,
+        COALESCE(SUM(ki.amount),0) as revenue,
+        COALESCE(AVG(mi.cost_price),0) as avg_cost_price,
+        COALESCE(SUM(ki.quantity * mi.cost_price),0) as total_food_cost,
+        CASE WHEN SUM(ki.amount)>0 THEN ROUND((1 - SUM(ki.quantity*mi.cost_price)/SUM(ki.amount))*100,1) ELSE 0 END as margin_pct
+      FROM kot_items ki
+      JOIN kot_orders ko ON ko.id=ki.kot_id
+      JOIN restaurant_menu_items mi ON mi.id=ki.menu_item_id
+      LEFT JOIN restaurant_menu_categories mc ON mc.id=mi.category_id
+      WHERE ko.tenant_id=${tid(req)} AND ko.status='paid'
+        AND DATE(ko.created_at) BETWEEN ${from} AND ${to}
+        AND ki.is_void=0
+      GROUP BY mi.id, mi.name, mi.cost_price, mc.name
+      ORDER BY total_food_cost DESC`);
+    res.json(result.rows);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.get(/reports/table-analytics, requireAuth, async (req: any, res) => {
+  try {
+    const from = req.query.from || new Date().toISOString().slice(0,10);
+    const to = req.query.to || new Date().toISOString().slice(0,10);
+    const result = await db.execute(sql`
+      SELECT ko.table_number,
+        COUNT(ko.id) as total_orders,
+        COALESCE(SUM(ko.covers),0) as total_covers,
+        COALESCE(SUM(ko.grand_total),0) as total_revenue,
+        COALESCE(AVG(ko.grand_total),0) as avg_bill,
+        COALESCE(AVG(EXTRACT(EPOCH FROM (ko.updated_at - ko.created_at))/60),0) as avg_turnaround_mins
+      FROM kot_orders ko
+      WHERE ko.tenant_id=${tid(req)} AND ko.status='paid'
+        AND DATE(ko.created_at) BETWEEN ${from} AND ${to}
+        AND ko.table_number IS NOT NULL
+      GROUP BY ko.table_number
+      ORDER BY total_revenue DESC`);
+    res.json(result.rows);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.get(/reports/outlet-comparison, requireAuth, async (req: any, res) => {
+  try {
+    const from = req.query.from || new Date().toISOString().slice(0,10);
+    const to = req.query.to || new Date().toISOString().slice(0,10);
+    const result = await db.execute(sql`
+      SELECT COALESCE(ro.outlet_name, 'Main Outlet') as outlet_name,
+        COUNT(ko.id) as total_orders,
+        COALESCE(SUM(ko.covers),0) as total_covers,
+        COALESCE(SUM(ko.grand_total),0) as total_revenue,
+        COALESCE(AVG(ko.grand_total),0) as avg_bill,
+        COALESCE(SUM(ko.gst_amount),0) as total_gst
+      FROM kot_orders ko
+      LEFT JOIN restaurant_outlets ro ON ro.id=ko.outlet_id
+      WHERE ko.tenant_id=${tid(req)} AND ko.status='paid'
+        AND DATE(ko.created_at) BETWEEN ${from} AND ${to}
+      GROUP BY ko.outlet_id, ro.outlet_name
+      ORDER BY total_revenue DESC`);
+    res.json(result.rows);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+
 export default router;

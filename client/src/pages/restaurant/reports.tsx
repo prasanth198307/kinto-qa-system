@@ -24,6 +24,9 @@ const REPORT_TYPES = [
   { value: "payment-modes", label: "Payment Modes" },
   { value: "wastage-summary", label: "Wastage Summary" },
   { value: "loyalty-summary", label: "Loyalty Summary" },
+  { value: "food-cost", label: "Food Cost Analysis" },
+  { value: "table-analytics", label: "Table Analytics" },
+  { value: "outlet-comparison", label: "Outlet Comparison" },
 ];
 
 const COLUMNS: Record<string, string[]> = {
