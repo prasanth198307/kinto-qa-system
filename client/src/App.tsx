@@ -3889,6 +3889,22 @@ function CRMLeadsWrapper() {
   );
 }
 
+function CRMPipelineWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('crm-pipeline');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="CRM Pipeline" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
+      <CRMPipelinePage />
+    </DashboardShell>
+  );
+}
+
 function HRRecruitmentWrapper() {
   const { logoutMutation } = useAuth();
   const [, setLocation] = useLocation();
