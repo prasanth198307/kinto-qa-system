@@ -141,6 +141,7 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
   crm: [
     "crm-leads",
     "crm-surveys",
+    "crm-enterprise",
   ],
   hr_payroll: [
     "hr-employees",
@@ -178,23 +179,54 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
   ],
   healthcare: [
     "healthcare",
+    "healthcare-enterprise",
+    "healthcare-enterprise2",
   ],
   education: [
     "education",
+    "education-enterprise",
+    "education-enterprise2",
   ],
   logistics_transport: [
     "logistics",
+    "logistics-enterprise",
   ],
   real_estate: [
     "real-estate",
+    "real-estate-enterprise",
   ],
   pos: [
     "pos",
+    "retail-enterprise",
   ],
   agriculture: [
     "agriculture",
+    "agriculture-enterprise",
   ],
-  gold_erp: [
+  restaurant: [
+    "restaurant",
+    "restaurant-enterprise",
+  ],
+  hotel: [
+    "hotel",
+    "hotel-enterprise",
+  ],
+  ngo: [
+    "ngo",
+    "ngo-enterprise",
+  ],
+  pharmacy: [
+    "pharmacy",
+    "pharmacy-enterprise",
+  ],
+  ecommerce: [
+    "ecommerce",
+    "ecommerce-enterprise",
+  ],
+  masters: [
+    "masters",
+  ],
+    gold_erp: [
     "gold-erp",
     // Core
     "gold-erp-overview", "gold-erp-rates", "gold-erp-karigar", "gold-erp-items", "gold-erp-estimates",
@@ -229,7 +261,7 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
 // DB subscription_plans.modules is the authoritative source — these code constants
 // serve as the fallback when a plan slug has no DB record.
 // Keep in sync with the subscription_plans table values.
-const INDUSTRY_MODULES     = ["healthcare", "education", "logistics_transport", "real_estate", "pos", "agriculture", "gold_erp"];
+const INDUSTRY_MODULES     = ["healthcare", "education", "logistics_transport", "real_estate", "pos", "agriculture", "gold_erp", "restaurant", "hotel", "ngo", "pharmacy", "ecommerce", "masters"];
 const TRIAL_MODULES        = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "production", "quality_returns", "accounting", "mis", "expenses", "documents", "crm", "whatsapp", "maintenance", "hr_payroll", "recurring_invoices", "warehouses", "projects", "fixed_assets", "multi_currency", ...INDUSTRY_MODULES];
 const BASIC_MODULES        = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "expenses", "documents"];
 const PROFESSIONAL_MODULES = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "production", "quality_returns", "accounting", "mis", "expenses", "documents", "whatsapp", "maintenance", "crm", "api_hub", "recurring_invoices", "warehouses"];
@@ -386,6 +418,16 @@ const CATALOG_TO_PLAN_MODULE: Record<string, string> = {
   user_management: "basic_inventory",
   roles:           "basic_inventory",
   company_settings:"basic_inventory",
+  restaurant:      "restaurant",
+  hotel:           "hotel",
+  ngo:             "ngo",
+  pharmacy:        "pharmacy",
+  ecommerce:       "ecommerce",
+  retail_pos:      "pos",
+  healthcare:      "healthcare",
+  education:       "education",
+  real_estate:     "real_estate",
+  agriculture:     "agriculture",
 };
 
 // ── Feature summary using DB-sourced module list ──────────────────────────────
