@@ -154,6 +154,8 @@ const navItemToScreen: Record<string, string> = {
   'ecommerce': 'Industry Verticals',
   'ngo': 'Industry Verticals',
   'pharmacy': 'Industry Verticals',
+    'nidhi-company': 'Industry Verticals',
+    'finance-erp': 'Finance',
   'education': 'Industry Verticals',
   'logistics': 'Industry Verticals',
   'real-estate': 'Industry Verticals',

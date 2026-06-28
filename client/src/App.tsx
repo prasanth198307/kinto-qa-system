@@ -198,6 +198,8 @@ import CRMPipelinePage from "@/pages/crm";
 import EcommercePage from "@/pages/ecommerce";
 import NGOPage from "@/pages/ngo";
 import PharmacyPage from "@/pages/pharmacy";
+import NidhiPage from "@/pages/nidhi";
+import FinanceErpPage from "@/pages/finance-erp";
 import EducationPage from "@/pages/education";
 import LogisticsPage from "@/pages/logistics";
 import RealEstatePage from "@/pages/real-estate";
@@ -354,7 +356,7 @@ const DASHBOARD_VALID_TABS = [
   'hr-departments', 'hr-settings', 'hr-recruitment', 'hr-exit', 'hr-tds',
   'crm-leads', 'accounting', 'chart-of-accounts', 'ledger-entries', 'expense-management',
   'cash-register', 'document-management',
-  'healthcare', 'education', 'logistics', 'real-estate', 'pos', 'agriculture', 'gold-erp', 'hotel', 'restaurant', 'crm-pipeline', 'ecommerce', 'ngo', 'pharmacy',
+  'healthcare', 'education', 'logistics', 'real-estate', 'pos', 'agriculture', 'gold-erp', 'hotel', 'restaurant', 'crm-pipeline', 'ecommerce', 'ngo', 'pharmacy', 'nidhi-company', 'finance-erp',
 ];
 
 function ReviewerDashboard() {
@@ -4059,6 +4061,8 @@ function Router() {
       <ProtectedRoute path="/ecommerce" component={EcommerceWrapper} />
       <ProtectedRoute path="/ngo" component={NGOWrapper} />
       <ProtectedRoute path="/pharmacy" component={PharmacyWrapper} />
+        <ProtectedRoute path="/nidhi-company" component={NidhiWrapper} />
+        <ProtectedRoute path="/finance-erp" component={FinanceErpWrapper} />
       <ProtectedRoute path="/hotel" component={HotelWrapper} />
       <ProtectedRoute path="/restaurant" component={RestaurantWrapper} />
       <ProtectedRoute path="/gold-erp" component={GoldErpWrapper} />

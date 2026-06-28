@@ -45,6 +45,8 @@ import hrExtraRouter from "./hr-extra-routes";
 import ecommerceRouter from "./ecommerce-routes";
 import ngoRouter from "./ngo-routes";
 import pharmacyRouter from "./pharmacy-routes";
+import nidhiRouter from "./nidhi-routes";
+import financeErpRouter from "./finance-erp-routes";
 import { seedTenantPermissions, syncAndUnlockByPlan } from "./seed-permissions";
 import { whatsappConversationService } from "./whatsappConversationService";
 import { calculateBOMSuggestions } from "@shared/calculations";
@@ -1912,6 +1914,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/ecommerce', ecommerceRouter);
   app.use('/api/ngo', ngoRouter);
   app.use('/api/pharmacy', pharmacyRouter);
+  app.use('/api/nidhi', nidhiRouter);
+  app.use('/api/finance', financeErpRouter);
   app.use('/api/education', educationRouter);
   app.use('/api/logistics', logisticsRouter);
   app.use('/api/real-estate', realestateRouter);
