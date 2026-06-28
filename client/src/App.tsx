@@ -1208,6 +1208,14 @@ function AdminDashboard() {
         { id: "agriculture", label: "Agriculture", icon: Layers, onClick: () => setLocation('/agriculture') },
         { id: "hotel", label: "Hotel ERP", icon: BedDouble, onClick: () => setLocation('/hotel') },
         { id: "restaurant", label: "Restaurant ERP", icon: UtensilsCrossed, onClick: () => setLocation('/restaurant') },
+        { id: "nidhi-company", label: "Nidhi / NBFC", icon: Landmark, onClick: () => setLocation('/nidhi-company') },
+      ],
+    },
+    {
+      id: "finance-erp-section",
+      label: "Finance ERP",
+      items: [
+        { id: "finance-erp", label: "Finance ERP", icon: BarChart3, onClick: () => setLocation('/finance-erp') },
       ],
     },
     {
@@ -2438,6 +2446,14 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "ecommerce", label: "E-Commerce Sync", icon: ShoppingBag, onClick: () => setLocation('/ecommerce') },
         { id: "ngo", label: "NGO / Trust ERP", icon: Heart, onClick: () => setLocation('/ngo') },
         { id: "pharmacy", label: "Pharmacy ERP", icon: Pill, onClick: () => setLocation('/pharmacy') },
+        { id: "nidhi-company", label: "Nidhi / NBFC", icon: Landmark, onClick: () => setLocation('/nidhi-company') },
+      ],
+    },
+    {
+      id: "finance-erp-section",
+      label: "Finance ERP",
+      items: [
+        { id: "finance-erp", label: "Finance ERP", icon: BarChart3, onClick: () => setLocation('/finance-erp') },
       ],
     },
     {
