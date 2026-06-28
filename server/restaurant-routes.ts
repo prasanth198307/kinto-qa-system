@@ -1230,7 +1230,7 @@ router.get("/stats", requireAuth, async (req, res) => {
 
 
 // ─── QR ORDERING (PUBLIC) ─────────────────────────────────────────────────────
-router.post(/qr-session/create, requireAuth, async (req: any, res) => {
+router.post("/qr-session/create", requireAuth, async (req: any, res) => {
   try {
     const { table_id } = req.body;
     const table = await db.execute(sql`SELECT * FROM restaurant_tables WHERE id=${table_id} AND tenant_id=${tid(req)}`);
@@ -1246,7 +1246,7 @@ router.post(/qr-session/create, requireAuth, async (req: any, res) => {
 });
 
 // PUBLIC: no auth required — for customer QR scan
-router.get(/qr/menu/:token, async (req: any, res) => {
+router.get("/qr/menu/:token", async (req: any, res) => {
   try {
     const session = await db.execute(sql`SELECT * FROM qr_order_sessions WHERE session_token=${req.params.token} AND status='active' AND expires_at > NOW()`);
     if (!session.rows[0]) return res.status(404).json({ error: 'Invalid or expired QR session' });
@@ -1259,7 +1259,7 @@ router.get(/qr/menu/:token, async (req: any, res) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-router.post(/qr/order/:token, async (req: any, res) => {
+router.post("/qr/order/:token", async (req: any, res) => {
   try {
     const session = await db.execute(sql`SELECT * FROM qr_order_sessions WHERE session_token=${req.params.token} AND status='active' AND expires_at > NOW()`);
     if (!session.rows[0]) return res.status(404).json({ error: 'Invalid or expired QR session' });
@@ -1287,7 +1287,7 @@ router.post(/qr/order/:token, async (req: any, res) => {
 });
 
 // ─── MISSING REPORTS ─────────────────────────────────────────────────────────
-router.get(/reports/food-cost, requireAuth, async (req: any, res) => {
+router.get("/reports/food-cost", requireAuth, async (req: any, res) => {
   try {
     const from = req.query.from || new Date().toISOString().slice(0,10);
     const to = req.query.to || new Date().toISOString().slice(0,10);
@@ -1311,7 +1311,7 @@ router.get(/reports/food-cost, requireAuth, async (req: any, res) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-router.get(/reports/table-analytics, requireAuth, async (req: any, res) => {
+router.get("/reports/table-analytics", requireAuth, async (req: any, res) => {
   try {
     const from = req.query.from || new Date().toISOString().slice(0,10);
     const to = req.query.to || new Date().toISOString().slice(0,10);
@@ -1332,7 +1332,7 @@ router.get(/reports/table-analytics, requireAuth, async (req: any, res) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-router.get(/reports/outlet-comparison, requireAuth, async (req: any, res) => {
+router.get("/reports/outlet-comparison", requireAuth, async (req: any, res) => {
   try {
     const from = req.query.from || new Date().toISOString().slice(0,10);
     const to = req.query.to || new Date().toISOString().slice(0,10);
