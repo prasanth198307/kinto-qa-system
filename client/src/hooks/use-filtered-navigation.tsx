@@ -160,6 +160,21 @@ const navItemToScreen: Record<string, string> = {
   'logistics': 'Industry Verticals',
   'real-estate': 'Industry Verticals',
   'agriculture': 'Industry Verticals',
+  'restaurant-enterprise':   'Industry Verticals',
+  'hotel-enterprise':        'Industry Verticals',
+  'healthcare-enterprise':   'Industry Verticals',
+  'healthcare-enterprise2':  'Industry Verticals',
+  'education-enterprise':    'Industry Verticals',
+  'education-enterprise2':   'Industry Verticals',
+  'logistics-enterprise':    'Industry Verticals',
+  'real-estate-enterprise':  'Industry Verticals',
+  'retail-enterprise':       'Point of Sale',
+  'pharmacy-enterprise':     'Industry Verticals',
+  'ngo-enterprise':          'Industry Verticals',
+  'crm-enterprise':          'Industry Verticals',
+  'agriculture-enterprise':  'Industry Verticals',
+  'ecommerce-enterprise':    'Industry Verticals',
+  'masters':                 'User Management',
   // Standalone modules (separate nav sections)
   'pos': 'Point of Sale',
   'gold-erp': 'Gold & Jewellery ERP',
@@ -317,11 +332,17 @@ function filterNavSectionsByPlan(sections: NavSection[], allowedNavItems: string
 
 export function useFilteredNavigation(allNavSections: NavSection[]) {
   const { permissions, role: roleName, roles: allRoles, isLoading: permissionsLoading } = usePermissions();
+  const { user } = useAuth();
   const { allowedNavItems, isLoading: planLoading } = usePlanFeatures();
   const { applyModuleLabelsToNav } = useModuleLabels();
   const lastValidRef = useRef<NavSection[]>([]);
   
   const navSections = useMemo(() => {
+    if ((user as any)?.isSuperAdmin) {
+      const labeled = applyModuleLabelsToNav(allNavSections);
+      lastValidRef.current = labeled;
+      return labeled;
+    }
     // First apply plan-level filtering (hides modules not in subscription)
     const planFiltered = allowedNavItems.length > 0
       ? filterNavSectionsByPlan(allNavSections, allowedNavItems)
@@ -345,7 +366,7 @@ export function useFilteredNavigation(allNavSections: NavSection[]) {
       lastValidRef.current = labeled;
     }
     return labeled.length > 0 ? labeled : lastValidRef.current;
-  }, [allNavSections, permissions, permissionsLoading, roleName, allowedNavItems, applyModuleLabelsToNav]);
+  }, [allNavSections, permissions, permissionsLoading, roleName, allowedNavItems, applyModuleLabelsToNav, user]);
 
   return { 
     navSections,
