@@ -10,116 +10,363 @@ import { useToast } from "@/hooks/use-toast";
 
 const api = (m: string, u: string, b?: any) =>
   fetch(u, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined, credentials: "include" }).then(r => r.json());
-const fmt = (n: any) => Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
+const fmt = (n: any) => "₹" + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
 
-const UNITS = ["kg", "g", "L", "ml", "pcs"];
-const REASONS = ["overcooked", "expired", "dropped", "spoiled", "other"];
+const today = new Date().toISOString().split("T")[0];
+const UNITS = ["kg", "g", "L", "ml", "pcs", "nos"];
+const WASTE_REASONS = ["overcooked", "expired", "dropped", "spoiled", "other"];
+const REASON_COLORS: Record<string, string> = {
+  overcooked: "bg-orange-100 text-orange-800",
+  expired: "bg-red-100 text-red-800",
+  dropped: "bg-yellow-100 text-yellow-800",
+  spoiled: "bg-red-100 text-red-800",
+  other: "bg-gray-100 text-gray-600",
+};
 
 export default function RestaurantInventoryPage() {
-  const [tab, setTab] = useState<"recipes" | "wastage" | "deductions">("recipes");
   const { toast } = useToast();
   const qc = useQueryClient();
 
-  const { data: recipes = [] } = useQuery({ queryKey: ["/api/restaurant/recipes"], queryFn: () => api("GET", "/api/restaurant/recipes") });
-  const { data: menuItems = [] } = useQuery({ queryKey: ["/api/restaurant/menu-items"], queryFn: () => api("GET", "/api/restaurant/menu-items") });
-  const { data: wastage = [] } = useQuery({ queryKey: ["/api/restaurant/wastage"], queryFn: () => api("GET", "/api/restaurant/wastage") });
+  const [tab, setTab] = useState<"recipes" | "wastage" | "stock">("recipes");
+  const [expandedItem, setExpandedItem] = useState<number | null>(null);
 
+  // Recipe form
   const [recipeForm, setRecipeForm] = useState({ menu_item_id: "", ingredient_name: "", quantity: "", unit: "kg", cost: "" });
-  const [wastageForm, setWastageForm] = useState({ item_name: "", quantity: "", unit: "kg", cost_per_unit: "", reason: "expired", recorded_by: "", waste_date: new Date().toISOString().slice(0, 10) });
+  const [editRecipeId, setEditRecipeId] = useState<number | null>(null);
 
-  const addRecipe = useMutation({
-    mutationFn: (d: any) => api("POST", "/api/restaurant/recipes", d),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/restaurant/recipes"] }); toast({ title: "Ingredient added" }); setRecipeForm({ menu_item_id: "", ingredient_name: "", quantity: "", unit: "kg", cost: "" }); },
+  // Wastage form
+  const [wastageForm, setWastageForm] = useState({ item_name: "", quantity: "", unit: "kg", cost_per_unit: "", reason: "other", waste_date: today, recorded_by: "" });
+
+  // Stock deduct form
+  const [stockForm, setStockForm] = useState({ outlet_id: "", ingredient_name: "", quantity: "", unit: "kg", reason: "manual" });
+
+  const { data: recipes = [] } = useQuery({
+    queryKey: ["/api/restaurant/recipes"],
+    queryFn: () => api("GET", "/api/restaurant/recipes"),
+    enabled: tab === "recipes",
   });
-  const delRecipe = useMutation({
+
+  const { data: menuItems = [] } = useQuery({
+    queryKey: ["/api/restaurant/menu-items"],
+    queryFn: () => api("GET", "/api/restaurant/menu-items"),
+    enabled: tab === "recipes",
+  });
+
+  const { data: wastage = [] } = useQuery({
+    queryKey: ["/api/restaurant/wastage"],
+    queryFn: () => api("GET", "/api/restaurant/wastage"),
+    enabled: tab === "wastage",
+  });
+
+  const { data: wastageSummary } = useQuery({
+    queryKey: ["/api/restaurant/wastage/summary"],
+    queryFn: () => api("GET", "/api/restaurant/wastage/summary"),
+    enabled: tab === "wastage" || tab === "stock",
+  });
+
+  const { data: outlets = [] } = useQuery({
+    queryKey: ["/api/restaurant/outlets"],
+    queryFn: () => api("GET", "/api/restaurant/outlets"),
+    enabled: tab === "stock",
+  });
+
+  const invalidateRecipes = () => qc.invalidateQueries({ queryKey: ["/api/restaurant/recipes"] });
+  const invalidateWastage = () => qc.invalidateQueries({ queryKey: ["/api/restaurant/wastage"] });
+
+  const recipeMut = useMutation({
+    mutationFn: (data: any) => editRecipeId
+      ? api("PUT", `/api/restaurant/recipes/${editRecipeId}`, data)
+      : api("POST", "/api/restaurant/recipes", data),
+    onSuccess: () => { toast({ title: editRecipeId ? "Recipe updated" : "Ingredient added" }); invalidateRecipes(); resetRecipeForm(); },
+    onError: () => toast({ title: "Error saving recipe", variant: "destructive" }),
+  });
+
+  const deleteRecipeMut = useMutation({
     mutationFn: (id: number) => api("DELETE", `/api/restaurant/recipes/${id}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/restaurant/recipes"] }),
-  });
-  const addWastage = useMutation({
-    mutationFn: (d: any) => api("POST", "/api/restaurant/wastage", d),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/restaurant/wastage"] }); toast({ title: "Wastage recorded" }); setWastageForm({ item_name: "", quantity: "", unit: "kg", cost_per_unit: "", reason: "expired", recorded_by: "", waste_date: new Date().toISOString().slice(0, 10) }); },
+    onSuccess: () => { toast({ title: "Ingredient removed" }); invalidateRecipes(); },
   });
 
-  // Group recipes by menu item
-  const grouped = (recipes as any[]).reduce((acc: any, r: any) => { const k = r.menu_item_name || r.menu_item_id; acc[k] = [...(acc[k] || []), r]; return acc; }, {});
+  const wastageMut = useMutation({
+    mutationFn: (data: any) => api("POST", "/api/restaurant/wastage", data),
+    onSuccess: () => { toast({ title: "Wastage recorded" }); invalidateWastage(); resetWastageForm(); },
+    onError: () => toast({ title: "Error recording wastage", variant: "destructive" }),
+  });
 
-  const today = new Date().toISOString().slice(0, 10);
-  const todayCost = (wastage as any[]).filter((w: any) => w.waste_date?.slice(0, 10) === today).reduce((s: number, w: any) => s + Number(w.total_cost || 0), 0);
-  const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
-  const weekCost = (wastage as any[]).filter((w: any) => w.waste_date?.slice(0, 10) >= weekAgo).reduce((s: number, w: any) => s + Number(w.total_cost || 0), 0);
+  const stockMut = useMutation({
+    mutationFn: (data: any) => api("POST", "/api/restaurant/stock/deduct", data),
+    onSuccess: () => { toast({ title: "Stock deducted" }); },
+    onError: () => toast({ title: "Error deducting stock", variant: "destructive" }),
+  });
+
+  const resetRecipeForm = () => { setRecipeForm({ menu_item_id: "", ingredient_name: "", quantity: "", unit: "kg", cost: "" }); setEditRecipeId(null); };
+  const resetWastageForm = () => { setWastageForm({ item_name: "", quantity: "", unit: "kg", cost_per_unit: "", reason: "other", waste_date: today, recorded_by: "" }); };
+
+  // Group recipes by menu_item_id
+  const recipesByItem: Record<string, any[]> = {};
+  (recipes as any[]).forEach((r: any) => {
+    const key = r.menu_item_id || "unassigned";
+    if (!recipesByItem[key]) recipesByItem[key] = [];
+    recipesByItem[key].push(r);
+  });
+
+  const getItemCost = (ingredients: any[]) => ingredients.reduce((s, i) => s + (parseFloat(i.quantity) || 0) * (parseFloat(i.cost) || 0), 0);
+  const getMenuItemPrice = (id: string) => menuItems.find((m: any) => String(m.id) === String(id))?.price || 0;
+  const getFoodCostPct = (cost: number, price: number) => price > 0 ? (cost / price) * 100 : 0;
+  const foodCostBadge = (pct: number) => pct < 30 ? "bg-green-100 text-green-800" : pct < 50 ? "bg-yellow-100 text-yellow-800" : "bg-red-100 text-red-800";
+
+  const wastageToday = (wastage as any[]).filter(w => w.waste_date?.split("T")[0] === today).reduce((s, w) => s + (w.total_cost || 0), 0);
+  const wastageWeek = (wastage as any[]).filter(w => {
+    const d = new Date(w.waste_date || w.created_at);
+    const now = new Date();
+    return (now.getTime() - d.getTime()) < 7 * 86400000;
+  }).reduce((s, w) => s + (w.total_cost || 0), 0);
+  const wastageMonth = (wastage as any[]).reduce((s, w) => s + (w.total_cost || 0), 0);
+  const topWasted = (wastageSummary as any[])?.sort((a, b) => b.total_cost - a.total_cost)?.[0];
 
   return (
-    <div className="p-4 space-y-4">
-      <h1 className="text-2xl font-bold">Inventory Management</h1>
-      <div className="flex gap-2">
-        {(["recipes", "wastage", "deductions"] as const).map(t => (
-          <Button key={t} variant={tab === t ? "default" : "outline"} onClick={() => setTab(t)} className="capitalize">{t === "deductions" ? "Stock Deductions" : t === "wastage" ? "Food Wastage" : "Recipes"}</Button>
-        ))}
+    <div className="p-6 space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">Inventory</h1>
+        <div className="flex gap-2">
+          {(["recipes", "wastage", "stock"] as const).map(t => (
+            <Button key={t} variant={tab === t ? "default" : "outline"} onClick={() => setTab(t)}>
+              {t === "recipes" ? "Recipes" : t === "wastage" ? "Food Wastage" : "Stock Log"}
+            </Button>
+          ))}
+        </div>
       </div>
 
       {tab === "recipes" && (
         <div className="space-y-4">
-          <Card><CardHeader><CardTitle>Add Ingredient to Recipe</CardTitle></CardHeader>
-            <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              <Select value={recipeForm.menu_item_id} onValueChange={v => setRecipeForm(p => ({ ...p, menu_item_id: v }))}>
-                <SelectTrigger><SelectValue placeholder="Menu Item" /></SelectTrigger>
-                <SelectContent>{(menuItems as any[]).map((m: any) => <SelectItem key={m.id} value={String(m.id)}>{m.item_name}</SelectItem>)}</SelectContent>
-              </Select>
-              <Input placeholder="Ingredient Name" value={recipeForm.ingredient_name} onChange={e => setRecipeForm(p => ({ ...p, ingredient_name: e.target.value }))} />
-              <Input placeholder="Quantity" type="number" value={recipeForm.quantity} onChange={e => setRecipeForm(p => ({ ...p, quantity: e.target.value }))} />
-              <Select value={recipeForm.unit} onValueChange={v => setRecipeForm(p => ({ ...p, unit: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{UNITS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
-              </Select>
-              <Input placeholder="Cost (₹)" type="number" value={recipeForm.cost} onChange={e => setRecipeForm(p => ({ ...p, cost: e.target.value }))} />
-              <Button onClick={() => addRecipe.mutate(recipeForm)}>Add Ingredient</Button>
+          <Card>
+            <CardHeader><CardTitle>Add Recipe Ingredient</CardTitle></CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-5 gap-3 items-end">
+                <div><label className="text-sm font-medium">Menu Item</label>
+                  <Select value={recipeForm.menu_item_id} onValueChange={v => setRecipeForm(f => ({ ...f, menu_item_id: v }))}>
+                    <SelectTrigger><SelectValue placeholder="Select item" /></SelectTrigger>
+                    <SelectContent>{menuItems.map((m: any) => <SelectItem key={m.id} value={String(m.id)}>{m.item_name}</SelectItem>)}</SelectContent>
+                  </Select></div>
+                <div><label className="text-sm font-medium">Ingredient</label>
+                  <Input value={recipeForm.ingredient_name} onChange={e => setRecipeForm(f => ({ ...f, ingredient_name: e.target.value }))} placeholder="e.g. Flour" /></div>
+                <div><label className="text-sm font-medium">Qty</label>
+                  <Input type="number" value={recipeForm.quantity} onChange={e => setRecipeForm(f => ({ ...f, quantity: e.target.value }))} /></div>
+                <div><label className="text-sm font-medium">Unit</label>
+                  <Select value={recipeForm.unit} onValueChange={v => setRecipeForm(f => ({ ...f, unit: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{UNITS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
+                  </Select></div>
+                <div><label className="text-sm font-medium">Cost/unit (₹)</label>
+                  <Input type="number" value={recipeForm.cost} onChange={e => setRecipeForm(f => ({ ...f, cost: e.target.value }))} /></div>
+              </div>
+              <div className="flex gap-2 mt-3">
+                <Button onClick={() => recipeMut.mutate({ ...recipeForm, quantity: parseFloat(recipeForm.quantity), cost: parseFloat(recipeForm.cost) })} disabled={!recipeForm.menu_item_id || !recipeForm.ingredient_name || recipeMut.isPending}>
+                  {recipeMut.isPending ? "Saving..." : editRecipeId ? "Update" : "Add Ingredient"}
+                </Button>
+                {editRecipeId && <Button variant="outline" onClick={resetRecipeForm}>Cancel</Button>}
+              </div>
             </CardContent>
           </Card>
-          {Object.entries(grouped).map(([item, rows]: [string, any]) => (
-            <Card key={item}><CardHeader><CardTitle>{item}</CardTitle></CardHeader>
-              <CardContent><Table><TableHeader><TableRow><TableHead>Ingredient</TableHead><TableHead>Qty</TableHead><TableHead>Unit</TableHead><TableHead>Cost</TableHead><TableHead></TableHead></TableRow></TableHeader>
-                <TableBody>{rows.map((r: any) => (<TableRow key={r.id}><TableCell>{r.ingredient_name}</TableCell><TableCell>{r.quantity}</TableCell><TableCell>{r.unit}</TableCell><TableCell>₹{fmt(r.cost)}</TableCell><TableCell><Button size="sm" variant="destructive" onClick={() => delRecipe.mutate(r.id)}>Del</Button></TableCell></TableRow>))}</TableBody>
-              </Table></CardContent>
-            </Card>
-          ))}
+
+          <div className="space-y-2">
+            {Object.entries(recipesByItem).map(([itemId, ingredients]) => {
+              const item = menuItems.find((m: any) => String(m.id) === itemId);
+              const cost = getItemCost(ingredients);
+              const price = getMenuItemPrice(itemId);
+              const pct = getFoodCostPct(cost, price);
+              return (
+                <Card key={itemId}>
+                  <CardHeader className="cursor-pointer py-3" onClick={() => setExpandedItem(expandedItem === parseInt(itemId) ? null : parseInt(itemId))}>
+                    <div className="flex justify-between items-center">
+                      <CardTitle className="text-base">{item?.item_name || `Item #${itemId}`}</CardTitle>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-500">Cost: {fmt(cost)}</span>
+                        {price > 0 && <span className={`px-2 py-0.5 rounded text-xs ${foodCostBadge(pct)}`}>Food Cost {pct.toFixed(1)}%</span>}
+                        <span className="text-gray-400">{expandedItem === parseInt(itemId) ? "▲" : "▼"}</span>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  {expandedItem === parseInt(itemId) && (
+                    <CardContent>
+                      <Table>
+                        <TableHeader><TableRow><TableHead>Ingredient</TableHead><TableHead>Qty</TableHead><TableHead>Unit</TableHead><TableHead>Cost/Unit</TableHead><TableHead>Total</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
+                        <TableBody>
+                          {ingredients.map((ing: any) => (
+                            <TableRow key={ing.id}>
+                              <TableCell>{ing.ingredient_name}</TableCell>
+                              <TableCell>{ing.quantity}</TableCell>
+                              <TableCell>{ing.unit}</TableCell>
+                              <TableCell>{fmt(ing.cost)}</TableCell>
+                              <TableCell>{fmt((parseFloat(ing.quantity) || 0) * (parseFloat(ing.cost) || 0))}</TableCell>
+                              <TableCell>
+                                <Button size="sm" variant="ghost" onClick={() => { setRecipeForm({ menu_item_id: String(ing.menu_item_id), ingredient_name: ing.ingredient_name, quantity: String(ing.quantity), unit: ing.unit, cost: String(ing.cost) }); setEditRecipeId(ing.id); }}>Edit</Button>
+                                <Button size="sm" variant="ghost" className="text-red-600" onClick={() => { if (confirm("Remove this ingredient?")) deleteRecipeMut.mutate(ing.id); }}>Del</Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  )}
+                </Card>
+              );
+            })}
+            {Object.keys(recipesByItem).length === 0 && <p className="text-center text-gray-400 py-8">No recipes defined yet. Add ingredients above.</p>}
+          </div>
         </div>
       )}
 
       {tab === "wastage" && (
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <Card><CardHeader><CardTitle>Today's Wastage</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold text-red-600">₹{fmt(todayCost)}</p></CardContent></Card>
-            <Card><CardHeader><CardTitle>This Week</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold text-orange-600">₹{fmt(weekCost)}</p></CardContent></Card>
+          <div className="grid grid-cols-4 gap-4">
+            {[
+              { label: "Today's Waste", value: fmt(wastageToday) },
+              { label: "This Week", value: fmt(wastageWeek) },
+              { label: "This Month", value: fmt(wastageMonth) },
+              { label: "Top Wasted", value: topWasted?.reason || "—" },
+            ].map(c => <Card key={c.label}><CardContent className="pt-4"><p className="text-sm text-gray-500">{c.label}</p><p className="text-xl font-bold">{c.value}</p></CardContent></Card>)}
           </div>
-          <Card><CardHeader><CardTitle>Record Wastage</CardTitle></CardHeader>
-            <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <Input placeholder="Item Name" value={wastageForm.item_name} onChange={e => setWastageForm(p => ({ ...p, item_name: e.target.value }))} />
-              <Input placeholder="Quantity" type="number" value={wastageForm.quantity} onChange={e => setWastageForm(p => ({ ...p, quantity: e.target.value }))} />
-              <Select value={wastageForm.unit} onValueChange={v => setWastageForm(p => ({ ...p, unit: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{UNITS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent></Select>
-              <Input placeholder="Cost/Unit (₹)" type="number" value={wastageForm.cost_per_unit} onChange={e => setWastageForm(p => ({ ...p, cost_per_unit: e.target.value }))} />
-              <Select value={wastageForm.reason} onValueChange={v => setWastageForm(p => ({ ...p, reason: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{REASONS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent></Select>
-              <Input placeholder="Recorded By" value={wastageForm.recorded_by} onChange={e => setWastageForm(p => ({ ...p, recorded_by: e.target.value }))} />
-              <Input type="date" value={wastageForm.waste_date} onChange={e => setWastageForm(p => ({ ...p, waste_date: e.target.value }))} />
-              <Button onClick={() => addWastage.mutate(wastageForm)}>Record</Button>
+
+          <Card>
+            <CardHeader><CardTitle>Record Wastage</CardTitle></CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-3 gap-3">
+                <div><label className="text-sm font-medium">Item Name</label>
+                  <Input value={wastageForm.item_name} onChange={e => setWastageForm(f => ({ ...f, item_name: e.target.value }))} placeholder="Item wasted" /></div>
+                <div><label className="text-sm font-medium">Quantity</label>
+                  <Input type="number" value={wastageForm.quantity} onChange={e => setWastageForm(f => ({ ...f, quantity: e.target.value }))} /></div>
+                <div><label className="text-sm font-medium">Unit</label>
+                  <Select value={wastageForm.unit} onValueChange={v => setWastageForm(f => ({ ...f, unit: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{UNITS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
+                  </Select></div>
+                <div><label className="text-sm font-medium">Cost/Unit (₹)</label>
+                  <Input type="number" value={wastageForm.cost_per_unit} onChange={e => setWastageForm(f => ({ ...f, cost_per_unit: e.target.value }))} /></div>
+                <div><label className="text-sm font-medium">Reason</label>
+                  <Select value={wastageForm.reason} onValueChange={v => setWastageForm(f => ({ ...f, reason: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{WASTE_REASONS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
+                  </Select></div>
+                <div><label className="text-sm font-medium">Date</label>
+                  <Input type="date" value={wastageForm.waste_date} onChange={e => setWastageForm(f => ({ ...f, waste_date: e.target.value }))} /></div>
+                <div><label className="text-sm font-medium">Recorded By</label>
+                  <Input value={wastageForm.recorded_by} onChange={e => setWastageForm(f => ({ ...f, recorded_by: e.target.value }))} /></div>
+              </div>
+              <div className="mt-3 flex items-center gap-3">
+                {wastageForm.quantity && wastageForm.cost_per_unit && (
+                  <span className="text-sm text-gray-600">Total: {fmt(parseFloat(wastageForm.quantity) * parseFloat(wastageForm.cost_per_unit))}</span>
+                )}
+                <Button onClick={() => wastageMut.mutate({ ...wastageForm, quantity: parseFloat(wastageForm.quantity), cost_per_unit: parseFloat(wastageForm.cost_per_unit) })}
+                  disabled={!wastageForm.item_name || !wastageForm.quantity || wastageMut.isPending}>
+                  {wastageMut.isPending ? "Recording..." : "Record Wastage"}
+                </Button>
+              </div>
             </CardContent>
           </Card>
-          <Card><CardHeader><CardTitle>Wastage Log</CardTitle></CardHeader>
-            <CardContent><Table><TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Item</TableHead><TableHead>Qty</TableHead><TableHead>Unit</TableHead><TableHead>Cost/Unit</TableHead><TableHead>Total</TableHead><TableHead>Reason</TableHead><TableHead>By</TableHead></TableRow></TableHeader>
-              <TableBody>{(wastage as any[]).map((w: any) => (<TableRow key={w.id}><TableCell>{w.waste_date?.slice(0, 10)}</TableCell><TableCell>{w.item_name}</TableCell><TableCell>{w.quantity}</TableCell><TableCell>{w.unit}</TableCell><TableCell>₹{fmt(w.cost_per_unit)}</TableCell><TableCell>₹{fmt(w.total_cost)}</TableCell><TableCell><Badge variant="outline">{w.reason}</Badge></TableCell><TableCell>{w.recorded_by}</TableCell></TableRow>))}</TableBody>
-            </Table></CardContent>
+
+          <Card>
+            <CardHeader><CardTitle>Wastage Log</CardTitle></CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Item</TableHead><TableHead>Qty</TableHead><TableHead>Unit</TableHead><TableHead>Cost/Unit</TableHead><TableHead>Total Cost</TableHead><TableHead>Reason</TableHead><TableHead>By</TableHead></TableRow></TableHeader>
+                <TableBody>
+                  {(wastage as any[]).length === 0 ? (
+                    <TableRow><TableCell colSpan={8} className="text-center text-gray-400">No wastage records</TableCell></TableRow>
+                  ) : (wastage as any[]).map((w: any) => (
+                    <TableRow key={w.id}>
+                      <TableCell>{w.waste_date?.split("T")[0]}</TableCell>
+                      <TableCell>{w.item_name}</TableCell>
+                      <TableCell>{w.quantity}</TableCell>
+                      <TableCell>{w.unit}</TableCell>
+                      <TableCell>{fmt(w.cost_per_unit)}</TableCell>
+                      <TableCell>{fmt(w.total_cost || (w.quantity * w.cost_per_unit))}</TableCell>
+                      <TableCell><span className={`px-2 py-0.5 rounded text-xs ${REASON_COLORS[w.reason] || "bg-gray-100"}`}>{w.reason}</span></TableCell>
+                      <TableCell>{w.recorded_by || "—"}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
           </Card>
+
+          {wastageSummary && (
+            <Card>
+              <CardHeader><CardTitle>Wastage by Reason</CardTitle></CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader><TableRow><TableHead>Reason</TableHead><TableHead>Count</TableHead><TableHead>Total Cost</TableHead></TableRow></TableHeader>
+                  <TableBody>
+                    {(wastageSummary as any[]).map((s: any) => (
+                      <TableRow key={s.reason}>
+                        <TableCell><span className={`px-2 py-0.5 rounded text-xs ${REASON_COLORS[s.reason] || "bg-gray-100"}`}>{s.reason}</span></TableCell>
+                        <TableCell>{s.count}</TableCell>
+                        <TableCell>{fmt(s.total_cost)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
 
-      {tab === "deductions" && (
-        <Card><CardHeader><CardTitle>Stock Deductions</CardTitle></CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground mb-4">Stock is automatically deducted when orders are paid. Deductions are based on recipe ingredients linked to each menu item.</p>
-            <Table><TableHeader><TableRow><TableHead>Order ID</TableHead><TableHead>Item</TableHead><TableHead>Ingredient</TableHead><TableHead>Deducted Qty</TableHead><TableHead>Unit</TableHead><TableHead>Time</TableHead></TableRow></TableHeader>
-              <TableBody><TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Deductions are logged automatically on order payment.</TableCell></TableRow></TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+      {tab === "stock" && (
+        <div className="space-y-4">
+          <Card className="bg-blue-50 border-blue-200">
+            <CardContent className="pt-4 text-sm text-blue-800">
+              Stock is automatically deducted when payments are recorded. Use the form below for manual corrections only.
+            </CardContent>
+          </Card>
+
+          {wastageSummary && (
+            <Card>
+              <CardHeader><CardTitle>Stock Deduction Summary by Reason</CardTitle></CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader><TableRow><TableHead>Reason</TableHead><TableHead>Occurrences</TableHead><TableHead>Total Cost</TableHead></TableRow></TableHeader>
+                  <TableBody>
+                    {(wastageSummary as any[]).map((s: any) => (
+                      <TableRow key={s.reason}>
+                        <TableCell><span className={`px-2 py-0.5 rounded text-xs ${REASON_COLORS[s.reason] || "bg-gray-100"}`}>{s.reason}</span></TableCell>
+                        <TableCell>{s.count}</TableCell>
+                        <TableCell>{fmt(s.total_cost)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
+
+          <Card>
+            <CardHeader><CardTitle>Manual Stock Deduction</CardTitle></CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="text-sm font-medium">Outlet</label>
+                  <Select value={stockForm.outlet_id} onValueChange={v => setStockForm(f => ({ ...f, outlet_id: v }))}>
+                    <SelectTrigger><SelectValue placeholder="Select outlet" /></SelectTrigger>
+                    <SelectContent>{outlets.map((o: any) => <SelectItem key={o.id} value={String(o.id)}>{o.outlet_name}</SelectItem>)}</SelectContent>
+                  </Select></div>
+                <div><label className="text-sm font-medium">Ingredient Name</label>
+                  <Input value={stockForm.ingredient_name} onChange={e => setStockForm(f => ({ ...f, ingredient_name: e.target.value }))} placeholder="Ingredient to deduct" /></div>
+                <div><label className="text-sm font-medium">Quantity</label>
+                  <Input type="number" value={stockForm.quantity} onChange={e => setStockForm(f => ({ ...f, quantity: e.target.value }))} /></div>
+                <div><label className="text-sm font-medium">Unit</label>
+                  <Select value={stockForm.unit} onValueChange={v => setStockForm(f => ({ ...f, unit: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{UNITS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
+                  </Select></div>
+                <div className="col-span-2"><label className="text-sm font-medium">Reason</label>
+                  <Input value={stockForm.reason} onChange={e => setStockForm(f => ({ ...f, reason: e.target.value }))} placeholder="Reason for manual deduction" /></div>
+              </div>
+              <Button className="mt-3" onClick={() => stockMut.mutate({ outlet_id: stockForm.outlet_id, items: [{ ingredient_name: stockForm.ingredient_name, quantity: parseFloat(stockForm.quantity), unit: stockForm.unit }], kot_id: null })}
+                disabled={!stockForm.ingredient_name || !stockForm.quantity || stockMut.isPending}>
+                {stockMut.isPending ? "Deducting..." : "Deduct Stock"}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   );
