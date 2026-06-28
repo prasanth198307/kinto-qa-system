@@ -49,7 +49,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Pencil, Trash2, Search, Package, Layers, Box, CheckCircle, Users, Minus, Check, X, Printer, CalendarIcon, AlertTriangle, ArrowLeft, Recycle } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Package, Layers, Box, CheckCircle, Users, Minus, Check, X, Printer, CalendarIcon, AlertTriangle, ArrowLeft, Recycle, ChevronRight } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format, parseISO, isWithinInterval } from "date-fns";
