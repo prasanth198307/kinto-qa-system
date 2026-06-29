@@ -354,6 +354,7 @@ import MastersApprovalMatrixPage from "@/pages/masters/approval-matrix";
 import MastersFeatureFlagsPage from "@/pages/masters/feature-flags";
 import MastersPrintTemplatesPage from "@/pages/masters/print-templates";
 import MastersWebhooksPage from "@/pages/masters/webhooks";
+import RestaurantFeedbackPublicPage from "@/pages/restaurant-feedback-public";
 import { parseISO } from "date-fns";
 
 type Role = 'admin' | 'operator' | 'reviewer' | 'manager';
@@ -4512,6 +4513,8 @@ function Router() {
       <Route path="/features" component={FeaturesPage} />
       <Route path="/solutions" component={SolutionsPage} />
       <Route path="/pricing" component={PricingPage} />
+      <Route path="/restaurant-feedback/:outletId" component={RestaurantFeedbackPublicPage} />
+      <Route path="/restaurant-feedback" component={RestaurantFeedbackPublicPage} />
       <ProtectedRoute path="/super-admin/overview" component={() => <SuperAdminOverview />} />
       <ProtectedRoute path="/super-admin/tenants" component={() => <SuperAdminTenants />} />
       <ProtectedRoute path="/super-admin/billing" component={() => <SuperAdminBilling />} />

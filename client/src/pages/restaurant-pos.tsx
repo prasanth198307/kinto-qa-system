@@ -65,6 +65,10 @@ export default function RestaurantPOSPage() {
   const [creditAccount, setCreditAccount] = useState("");
   const [creditDueDate, setCreditDueDate] = useState("");
   const [creditNotes, setCreditNotes] = useState("");
+  const [gcNumber, setGcNumber] = useState("");
+  const [gcData, setGcData] = useState<any>(null);
+  const [gcCheckLoading, setGcCheckLoading] = useState(false);
+  const [gcRedeemAmount, setGcRedeemAmount] = useState(0);
 
   const searchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -172,6 +176,9 @@ export default function RestaurantPOSPage() {
     setCreditAccount("");
     setCreditDueDate("");
     setCreditNotes("");
+    setGcNumber("");
+    setGcData(null);
+    setGcRedeemAmount(0);
   };
 
   const lookupCustomer = async () => {
@@ -300,6 +307,11 @@ export default function RestaurantPOSPage() {
 
   const completePayment = useMutation({
     mutationFn: async () => {
+      if (paymentMode === "gift_card") {
+        if (!gcData || gcRedeemAmount <= 0) throw new Error("Please validate a gift card first");
+        await api("POST", "/api/restaurant/gift-cards/" + gcNumber + "/redeem", { amount: gcRedeemAmount, kot_order_id: activeKotId });
+        return api("POST", "/api/restaurant/kot/orders/" + activeKotId + "/payment", { payment_mode: "gift_card", gift_card_number: gcNumber, gift_card_amount: gcRedeemAmount, grand_total: grandTotal });
+      }
       if (paymentMode === "credit") {
         return api("POST", `/api/restaurant/kot/orders/${activeKotId}/credit-bill`, {
           customer_name: creditCustomerName,
@@ -783,13 +795,13 @@ export default function RestaurantPOSPage() {
               {/* Payment mode tabs */}
               <div>
                 <div className="flex border rounded-lg overflow-hidden">
-                  {["cash", "upi", "card", "split", "credit"].map(mode => (
+                  {["cash", "upi", "card", "split", "credit", "gift_card"].map(mode => (
                     <button
                       key={mode}
                       onClick={() => setPaymentMode(mode)}
-                      className={`flex-1 py-2 text-sm font-medium transition-colors capitalize ${paymentMode === mode ? "bg-blue-600 text-white" : "bg-white text-gray-600 hover:bg-gray-50"}`}
+                      className={`flex-1 py-2 text-sm font-medium transition-colors ${paymentMode === mode ? "bg-blue-600 text-white" : "bg-white text-gray-600 hover:bg-gray-50"}`}
                     >
-                      {mode}
+                      {mode === "gift_card" ? "Gift Card" : mode.charAt(0).toUpperCase() + mode.slice(1)}
                     </button>
                   ))}
                 </div>
@@ -920,6 +932,54 @@ export default function RestaurantPOSPage() {
                         <Input value={creditNotes} onChange={e => setCreditNotes(e.target.value)} placeholder="Optional notes" />
                       </div>
                       <p className="text-xs text-gray-500">Amount will be recorded as credit: {fmt(grandTotal)}</p>
+                    </div>
+                  )}
+
+                  {paymentMode === "gift_card" && (
+                    <div className="space-y-3">
+                      <div className="flex gap-2">
+                        <Input
+                          value={gcNumber}
+                          onChange={e => setGcNumber(e.target.value.toUpperCase())}
+                          placeholder="Gift card number"
+                          className="flex-1 h-9"
+                        />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={async () => {
+                            if (!gcNumber) return;
+                            setGcCheckLoading(true);
+                            try {
+                              const data = await api("GET", "/api/restaurant/gift-cards/" + gcNumber + "/balance");
+                              if (data.error) { toast({ title: data.error, variant: "destructive" }); setGcData(null); }
+                              else { setGcData(data); setGcRedeemAmount(Math.min(Number(data.current_balance), grandTotal)); }
+                            } catch { toast({ title: "Card lookup failed", variant: "destructive" }); }
+                            setGcCheckLoading(false);
+                          }}
+                          disabled={!gcNumber || gcCheckLoading}
+                        >{gcCheckLoading ? "..." : "Check"}</Button>
+                      </div>
+                      {gcData && (
+                        <div className="p-3 bg-green-50 border border-green-200 rounded space-y-2">
+                          <div className="flex justify-between">
+                            <span className="text-green-700 font-medium text-sm">Card Valid</span>
+                            <span className="text-green-700 font-bold text-sm">Balance: {fmt(gcData.current_balance)}</span>
+                          </div>
+                          {gcData.purchaser_name && <div className="text-xs text-gray-600">Issued to: {gcData.purchaser_name}</div>}
+                          <div>
+                            <label className="text-xs text-gray-500 mb-1 block">Amount to Redeem</label>
+                            <Input type="number" value={gcRedeemAmount}
+                              onChange={e => setGcRedeemAmount(Math.min(Number(e.target.value), Number(gcData.current_balance), grandTotal))}
+                              className="h-8 text-sm" />
+                          </div>
+                          {gcRedeemAmount < grandTotal && (
+                            <p className="text-xs text-orange-600">Remaining {fmt(grandTotal - gcRedeemAmount)} collect separately</p>
+                          )}
+                          <div className="text-xs text-gray-500">Balance after: {fmt(Number(gcData.current_balance) - gcRedeemAmount)}</div>
+                        </div>
+                      )}
+                      {!gcData && <p className="text-xs text-gray-500">Enter gift card number and click Check</p>}
                     </div>
                   )}
                 </div>

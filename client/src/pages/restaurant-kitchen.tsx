@@ -136,16 +136,20 @@ export default function RestaurantKitchenPage() {
   const [orders, setOrders] = useState<KotOrder[]>([]);
   const [lastUpdated, setLastUpdated] = useState(new Date());
   const [secondsSinceUpdate, setSecondsSinceUpdate] = useState(0);
+  const [connected, setConnected] = useState(false);
   const [tick, setTick] = useState(0);
 
   const previousOrderIds = useRef<Set<string>>(new Set());
 
   // Poll for orders every 5 seconds
   useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        const data = await api("GET", "/api/restaurant/kot/orders/kitchen");
-        if (Array.isArray(data)) {
+    let es: EventSource;
+    const connect = () => {
+      es = new EventSource('/api/restaurant/kitchen/live-orders');
+      es.onopen = () => { setConnected(true); };
+      es.onmessage = (e) => {
+        try {
+          const data: KotOrder[] = JSON.parse(e.data);
           const newIds = new Set(data.map((o: any) => String(o.id)));
           const hasNew = data.some((o: any) => !previousOrderIds.current.has(String(o.id)));
           if (hasNew && soundEnabled && previousOrderIds.current.size > 0) {
@@ -155,15 +159,16 @@ export default function RestaurantKitchenPage() {
           setOrders(data);
           setLastUpdated(new Date());
           setSecondsSinceUpdate(0);
-        }
-      } catch (e) {
-        // silently fail, keep showing existing orders
-      }
+        } catch {}
+      };
+      es.onerror = () => {
+        setConnected(false);
+        es.close();
+        setTimeout(connect, 5000);
+      };
     };
-
-    fetchOrders();
-    const interval = setInterval(fetchOrders, 5000);
-    return () => clearInterval(interval);
+    connect();
+    return () => { if (es) es.close(); };
   }, [soundEnabled]);
 
   // Update "seconds since" counter every second
@@ -306,7 +311,10 @@ export default function RestaurantKitchenPage() {
             </h1>
             <p className="text-gray-400 text-sm mt-0.5">
               Last updated:{" "}
-              <span className={secondsSinceUpdate > 8 ? "text-red-400" : "text-green-400"}>
+              <span className={`px-2 py-0.5 rounded text-xs font-medium ${connected ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'}`}>
+                {connected ? '🟢 Live' : '🔴 Reconnecting...'}
+              </span>
+              <span className="text-xs text-gray-500">
                 {secondsSinceUpdate}s ago
               </span>
             </p>

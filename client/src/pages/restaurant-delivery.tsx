@@ -100,6 +100,10 @@ export default function RestaurantDeliveryPage() {
 
   // ─── ADD ORDER PANEL ──────────────────────────────────────────────────────
   const [showPanel, setShowPanel] = useState(false);
+  const [mainTab, setMainTab] = useState<"delivery" | "whatsapp">("delivery");
+  const [confirmingWA, setConfirmingWA] = useState<any>(null);
+  const [waItems, setWaItems] = useState<{name:string;price:number;quantity:number}[]>([{name:"",price:0,quantity:1}]);
+  const [waOrderType, setWaOrderType] = useState("delivery");
   const [form, setForm] = useState<Partial<DeliveryOrder>>(emptyOrder());
 
   // ─── DISPATCH MODAL ───────────────────────────────────────────────────────
@@ -170,6 +174,26 @@ export default function RestaurantDeliveryPage() {
   };
 
   const dispatchedOrders = orders.filter(o => o.status === "dispatched");
+
+  const { data: waOrders = [], refetch: refetchWA } = useQuery({
+    queryKey: ["/api/restaurant/whatsapp/pending-orders"],
+    queryFn: () => api("GET", "/api/restaurant/whatsapp/pending-orders"),
+    refetchInterval: 30000,
+    enabled: mainTab === "whatsapp",
+  });
+
+  const confirmWAMutation = useMutation({
+    mutationFn: ({ id, ...data }: any) => api("POST", "/api/restaurant/whatsapp/pending-orders/" + id + "/confirm", data),
+    onSuccess: (result) => {
+      refetchWA();
+      setConfirmingWA(null);
+      setWaItems([{name:"",price:0,quantity:1}]);
+      toast({ title: "KOT created: " + (result.kot_number || "") });
+    },
+    onError: () => toast({ title: "Failed to confirm order", variant: "destructive" }),
+  });
+
+  const fmt2 = (n: any) => "₹" + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
 
   return (
     <div className="p-4 space-y-4">

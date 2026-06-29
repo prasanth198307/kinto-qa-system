@@ -1619,4 +1619,241 @@ router.post("/reports/send-eod-email", requireAuth, async (req: any, res: any) =
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
+// ── SSE KITCHEN LIVE ORDERS ────────────────────────────────────────────────
+router.get("/kitchen/live-orders", requireAuth, async (req: any, res: any) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders();
+
+  const t = tid(req);
+  const send = async () => {
+    try {
+      const orders = await db.execute(sql`
+        SELECT ko.id, ko.kot_number, ko.table_number, ko.order_type,
+          ko.status, ko.covers, ko.created_at, ko.outlet_id,
+          json_agg(json_build_object(
+            'id', ki.id,
+            'item_name', ki.item_name,
+            'quantity', ki.quantity,
+            'kitchen_status', COALESCE(ki.kitchen_status,'pending'),
+            'kitchen_station', COALESCE(ki.kitchen_station,'main'),
+            'course', COALESCE(ki.course,'main'),
+            'is_void', COALESCE(ki.is_void,0),
+            'modifiers', COALESCE(ki.modifiers,'[]'::jsonb),
+            'special_instructions', ki.special_instructions,
+            'fired_at', ki.fired_at,
+            'ready_at', ki.ready_at
+          ) ORDER BY ki.created_at) as items
+        FROM kot_orders ko
+        LEFT JOIN kot_items ki ON ki.kot_id = ko.id
+        WHERE ko.tenant_id = ${t}
+          AND ko.status IN ('pending','in_progress','ready')
+          AND ko.record_status = 1
+        GROUP BY ko.id
+        ORDER BY ko.created_at ASC
+        LIMIT 50
+      `);
+      res.write(`data: ${JSON.stringify(orders.rows)}\n\n`);
+    } catch(e) {
+      res.write(`data: []\n\n`);
+    }
+  };
+
+  await send();
+  const interval = setInterval(send, 3000);
+  req.on('close', () => { clearInterval(interval); res.end(); });
+});
+
+// ── GIFT CARDS ─────────────────────────────────────────────────────────────
+router.get("/gift-cards", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const rows = await db.execute(sql`SELECT * FROM gift_cards WHERE tenant_id = ${t} ORDER BY created_at DESC LIMIT 100`);
+    res.json(rows.rows || []);
+  } catch { res.json([]); }
+});
+
+router.post("/gift-cards/issue", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const { amount, purchaser_name, purchaser_phone, expires_at } = req.body;
+    const card_number = 'GC' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2,5).toUpperCase();
+    await db.execute(sql`
+      INSERT INTO gift_cards (tenant_id, card_number, original_amount, current_balance, purchaser_name, purchaser_phone, expires_at, status, issued_at)
+      VALUES (${t}, ${card_number}, ${amount}, ${amount}, ${purchaser_name||null}, ${purchaser_phone||null}, ${expires_at||null}, 'active', NOW())`);
+    await db.execute(sql`
+      INSERT INTO gift_card_transactions (tenant_id, card_number, transaction_type, amount, balance_after, created_at)
+      VALUES (${t}, ${card_number}, 'issue', ${amount}, ${amount}, NOW())`);
+    res.json({ success: true, card_number });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.get("/gift-cards/:number/balance", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const rows = await db.execute(sql`SELECT * FROM gift_cards WHERE tenant_id = ${t} AND card_number = ${req.params.number}`);
+    if (!rows.rows.length) return res.status(404).json({ error: "Card not found" });
+    const card = rows.rows[0] as any;
+    if (card.status !== 'active') return res.status(400).json({ error: "Card is " + card.status });
+    if (card.expires_at && new Date(card.expires_at) < new Date()) return res.status(400).json({ error: "Card expired" });
+    res.json(card);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.post("/gift-cards/:number/redeem", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const { amount, kot_order_id } = req.body;
+    const rows = await db.execute(sql`SELECT * FROM gift_cards WHERE tenant_id = ${t} AND card_number = ${req.params.number} AND status = 'active'`);
+    if (!rows.rows.length) return res.status(404).json({ error: "Card not found or inactive" });
+    const card = rows.rows[0] as any;
+    const redeemAmt = Math.min(Number(amount), Number(card.current_balance));
+    const newBalance = Number(card.current_balance) - redeemAmt;
+    await db.execute(sql`UPDATE gift_cards SET current_balance = ${newBalance}, status = ${newBalance <= 0 ? 'exhausted' : 'active'} WHERE tenant_id = ${t} AND card_number = ${req.params.number}`);
+    await db.execute(sql`INSERT INTO gift_card_transactions (tenant_id, card_number, transaction_type, amount, kot_order_id, balance_after, created_at) VALUES (${t}, ${req.params.number}, 'redeem', ${redeemAmt}, ${kot_order_id||null}, ${newBalance}, NOW())`);
+    res.json({ success: true, redeemed: redeemAmt, remaining_balance: newBalance });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.get("/gift-cards/:number/transactions", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const rows = await db.execute(sql`SELECT * FROM gift_card_transactions WHERE tenant_id = ${t} AND card_number = ${req.params.number} ORDER BY created_at DESC`);
+    res.json(rows.rows || []);
+  } catch { res.json([]); }
+});
+
+// ── FRANCHISE ──────────────────────────────────────────────────────────────
+router.get("/franchise/summary", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const cfg = await db.execute(sql`SELECT royalty_pct FROM franchise_config WHERE tenant_id = ${t} LIMIT 1`);
+    const royaltyPct = Number((cfg.rows[0] as any)?.royalty_pct || 5);
+    const outlets = await db.execute(sql`
+      SELECT o.id, o.outlet_name, o.outlet_code,
+        COALESCE(SUM(CASE WHEN ko.payment_status='paid' AND DATE_TRUNC('month', ko.created_at) = DATE_TRUNC('month', NOW()) THEN ko.grand_total ELSE 0 END), 0) as revenue_mtd,
+        COUNT(CASE WHEN ko.payment_status='paid' AND DATE_TRUNC('month', ko.created_at) = DATE_TRUNC('month', NOW()) THEN 1 END) as orders_mtd
+      FROM restaurant_outlets o
+      LEFT JOIN kot_orders ko ON ko.outlet_id = o.id AND ko.tenant_id = ${t}
+      WHERE o.tenant_id = ${t}
+      GROUP BY o.id, o.outlet_name, o.outlet_code
+      ORDER BY revenue_mtd DESC`);
+    const rows = (outlets.rows || []).map((r: any) => ({
+      ...r,
+      royalty_pct: royaltyPct,
+      royalty_due: Number(r.revenue_mtd) * royaltyPct / 100
+    }));
+    res.json({ outlets: rows, royalty_pct: royaltyPct, total_revenue: rows.reduce((s: number, r: any) => s + Number(r.revenue_mtd), 0), total_royalty: rows.reduce((s: number, r: any) => s + r.royalty_due, 0) });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.get("/franchise/royalty-config", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const rows = await db.execute(sql`SELECT * FROM franchise_config WHERE tenant_id = ${t} LIMIT 1`);
+    res.json(rows.rows[0] || { royalty_pct: 5 });
+  } catch { res.json({ royalty_pct: 5 }); }
+});
+
+router.put("/franchise/royalty-config", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const { royalty_pct } = req.body;
+    await db.execute(sql`INSERT INTO franchise_config (tenant_id, royalty_pct, updated_at) VALUES (${t}, ${royalty_pct}, NOW()) ON CONFLICT DO NOTHING`);
+    await db.execute(sql`UPDATE franchise_config SET royalty_pct = ${royalty_pct}, updated_at = NOW() WHERE tenant_id = ${t}`);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── OUTLET CURRENCY & CLOUD KITCHEN SETTINGS ──────────────────────────────
+router.put("/outlets/:id/currency", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const { currency, currency_symbol, tax_type, tax_rate, tax_number, country, language } = req.body;
+    await db.execute(sql`
+      UPDATE restaurant_outlets SET
+        currency = COALESCE(${currency}, currency),
+        currency_symbol = COALESCE(${currency_symbol}, currency_symbol),
+        tax_type = COALESCE(${tax_type}, tax_type),
+        tax_rate = COALESCE(${tax_rate}, tax_rate),
+        tax_number = COALESCE(${tax_number}, tax_number),
+        country = COALESCE(${country}, country),
+        language = COALESCE(${language}, language)
+      WHERE id = ${req.params.id} AND tenant_id = ${t}`);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.put("/outlets/:id/cloud-kitchen-mode", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const { is_cloud_kitchen } = req.body;
+    await db.execute(sql`UPDATE restaurant_outlets SET is_cloud_kitchen = ${is_cloud_kitchen} WHERE id = ${req.params.id} AND tenant_id = ${t}`);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── MENU TRANSLATIONS ──────────────────────────────────────────────────────
+router.get("/menu-items/:id/translations", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const rows = await db.execute(sql`SELECT * FROM menu_item_translations WHERE tenant_id = ${t} AND menu_item_id = ${req.params.id}`);
+    res.json(rows.rows || []);
+  } catch { res.json([]); }
+});
+
+router.put("/menu-items/:id/translate", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const { language_code, translated_name, translated_description } = req.body;
+    await db.execute(sql`
+      INSERT INTO menu_item_translations (tenant_id, menu_item_id, language_code, translated_name, translated_description, created_at)
+      VALUES (${t}, ${req.params.id}, ${language_code}, ${translated_name}, ${translated_description||null}, NOW())
+      ON CONFLICT (tenant_id, menu_item_id, language_code)
+      DO UPDATE SET translated_name = ${translated_name}, translated_description = ${translated_description||null}`);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── WHATSAPP ORDERS (whatsapp_orders table) ────────────────────────────────
+router.post("/whatsapp/webhook", async (req: any, res: any) => {
+  try {
+    const { phone, message, tenant_id = 1 } = req.body;
+    await db.execute(sql`INSERT INTO whatsapp_orders (tenant_id, phone, raw_message, status, created_at) VALUES (${tenant_id}, ${phone||'unknown'}, ${message||''}, 'pending', NOW())`);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.get("/whatsapp/pending-orders", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const rows = await db.execute(sql`SELECT * FROM whatsapp_orders WHERE tenant_id = ${t} ORDER BY created_at DESC LIMIT 50`);
+    res.json(rows.rows || []);
+  } catch { res.json([]); }
+});
+
+router.post("/whatsapp/pending-orders/:id/confirm", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const { items, table_number, order_type } = req.body;
+    const kotNo = `WA-${Date.now()}`;
+    const subtotal = (items || []).reduce((s: number, i: any) => s + (Number(i.price) * Number(i.quantity)), 0);
+    const gst = Math.round(subtotal * 0.05 * 100) / 100;
+    const grandTotal = subtotal + gst;
+    const kot = await db.execute(sql`
+      INSERT INTO kot_orders (tenant_id, kot_number, table_number, order_type, status, subtotal, gst_amount, grand_total, record_status, created_at)
+      VALUES (${t}, ${kotNo}, ${table_number||'WhatsApp'}, ${order_type||'delivery'}, 'pending', ${subtotal}, ${gst}, ${grandTotal}, 1, NOW())
+      RETURNING *`);
+    const kotId = (kot.rows[0] as any).id;
+    for (const item of (items || [])) {
+      await db.execute(sql`
+        INSERT INTO kot_items (tenant_id, kot_id, item_name, quantity, unit_price, total_price, kitchen_status, created_at)
+        VALUES (${t}, ${kotId}, ${item.name}, ${item.quantity}, ${item.price}, ${item.price * item.quantity}, 'pending', NOW())`);
+    }
+    await db.execute(sql`UPDATE whatsapp_orders SET status = 'confirmed', kot_id = ${kotId} WHERE id = ${req.params.id} AND tenant_id = ${t}`);
+    res.json({ success: true, kot_id: kotId, kot_number: kotNo });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
 export default router;
