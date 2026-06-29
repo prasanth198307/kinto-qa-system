@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,11 +30,319 @@ const emptyOutlet = { outlet_code: "", outlet_name: "", outlet_type: "dine_in", 
 const emptyTerminal = { terminal_name: "", terminal_code: "", outlet_id: "", terminal_type: "pos", printer_ip: "", printer_port: "9100", printer_type: "thermal", is_active: true };
 const emptyPrinter = { printer_name: "", printer_type: "thermal", connection_type: "network", ip_address: "", port: "9100", paper_size: "80mm", stations: [] as string[], print_types: [] as string[], is_active: true };
 
+
+const COUNTRY_PRESETS = [
+  { country: "India", tax_name: "GST", tax_rate: 5, currency: "INR", currency_symbol: "₹", flag: "🇮🇳" },
+  { country: "UAE", tax_name: "VAT", tax_rate: 5, currency: "AED", currency_symbol: "د.إ", flag: "🇦🇪" },
+  { country: "Saudi Arabia", tax_name: "VAT", tax_rate: 15, currency: "SAR", currency_symbol: "ر.س", flag: "🇸🇦" },
+  { country: "UK", tax_name: "VAT", tax_rate: 20, currency: "GBP", currency_symbol: "£", flag: "🇬🇧" },
+  { country: "USA", tax_name: "Sales Tax", tax_rate: 8, currency: "USD", currency_symbol: "$", flag: "🇺🇸" },
+  { country: "Singapore", tax_name: "GST", tax_rate: 9, currency: "SGD", currency_symbol: "S$", flag: "🇸🇬" },
+  { country: "Bahrain", tax_name: "VAT", tax_rate: 10, currency: "BHD", currency_symbol: "BD", flag: "🇧🇭" },
+  { country: "Qatar", tax_name: "VAT", tax_rate: 5, currency: "QAR", currency_symbol: "QR", flag: "🇶🇦" },
+];
+
+function TaxCurrencyTab() {
+  const { toast } = useToast();
+  const [configs, setConfigs] = useState<any[]>([]);
+  const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
+  const [form, setForm] = useState({ tax_number: "", tax_rate: "", invoice_prefix: "", currency: "", currency_symbol: "" });
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/restaurant/tax/countries")
+      .then(r => r.json())
+      .then(data => setConfigs(Array.isArray(data) ? data : []))
+      .catch(() => setConfigs(COUNTRY_PRESETS as any[]));
+  }, []);
+
+  const loadCountry = (country: string) => {
+    setSelectedCountry(country);
+    const existing = configs.find(c => c.country === country);
+    const preset = COUNTRY_PRESETS.find(p => p.country === country);
+    const data = { ...preset, ...existing };
+    setForm({
+      tax_number: data.tax_number || "",
+      tax_rate: String(data.tax_rate || ""),
+      invoice_prefix: data.invoice_prefix || "",
+      currency: data.currency || "",
+      currency_symbol: data.currency_symbol || "",
+    });
+  };
+
+  const save = async () => {
+    if (!selectedCountry) return;
+    setSaving(true);
+    try {
+      await fetch(`/api/restaurant/tax/${encodeURIComponent(selectedCountry)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      toast({ title: `${selectedCountry} tax config saved!` });
+      const updated = await fetch("/api/restaurant/tax/countries").then(r => r.json());
+      setConfigs(Array.isArray(updated) ? updated : []);
+    } catch { toast({ title: "Save failed", variant: "destructive" } as any); }
+    setSaving(false);
+  };
+
+  const testCalc = async () => {
+    if (!selectedCountry) return;
+    setLoading(true);
+    try {
+      const result = await fetch("/api/restaurant/tax/calculate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: 1000, country: selectedCountry }),
+      }).then(r => r.json());
+      toast({ title: `Tax Calculation: ${result.currency_symbol}1000 + ${result.tax_name} ${result.tax_rate}% = ${result.currency_symbol}${result.total}` });
+    } catch { toast({ title: "Calculation failed", variant: "destructive" } as any); }
+    setLoading(false);
+  };
+
+  return (
+    <div className="space-y-5">
+      <div className="grid lg:grid-cols-3 gap-5">
+        <div className="space-y-2">
+          <h3 className="font-semibold text-sm text-gray-700 mb-3">Select Country / Region</h3>
+          {COUNTRY_PRESETS.map(preset => {
+            const saved = configs.find(c => c.country === preset.country);
+            return (
+              <button
+                key={preset.country}
+                onClick={() => loadCountry(preset.country)}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-colors ${selectedCountry === preset.country ? "bg-blue-50 border-blue-400" : "bg-white border-gray-100 hover:border-gray-300"}`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">{preset.flag}</span>
+                  <div className="text-left">
+                    <div className="font-semibold text-sm">{preset.country}</div>
+                    <div className="text-xs text-gray-500">{preset.tax_name} {preset.tax_rate}% · {preset.currency_symbol} {preset.currency}</div>
+                  </div>
+                </div>
+                {saved?.tax_number && <span className="text-xs text-green-500 font-semibold">✓ Configured</span>}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="lg:col-span-2">
+          {!selectedCountry ? (
+            <div className="flex items-center justify-center h-64 text-gray-400 bg-gray-50 rounded-2xl">
+              <div className="text-center"><div className="text-5xl mb-3">🌍</div><p>Select a country to configure tax settings</p></div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {(() => {
+                const preset = COUNTRY_PRESETS.find(p => p.country === selectedCountry)!;
+                return (
+                  <>
+                    <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
+                      <span className="text-4xl">{preset.flag}</span>
+                      <div>
+                        <h3 className="font-bold text-lg">{selectedCountry}</h3>
+                        <p className="text-sm text-gray-600">Configure {preset.tax_name} registration and invoice settings</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs font-semibold text-gray-600 block mb-1 uppercase tracking-wide">{preset.tax_name} Registration Number</label>
+                        <Input
+                          placeholder={selectedCountry === "India" ? "22AAAAA0000A1Z5" : selectedCountry === "UAE" ? "100123456789003" : `Your ${preset.tax_name} number`}
+                          value={form.tax_number}
+                          onChange={e => setForm(f => ({ ...f, tax_number: e.target.value }))}
+                        />
+                        <p className="text-xs text-gray-400 mt-1">
+                          {selectedCountry === "India" && "15-digit GSTIN"}
+                          {selectedCountry === "UAE" && "15-digit TRN (Tax Registration Number)"}
+                          {selectedCountry === "Saudi Arabia" && "15-digit TRN (ZATCA)"}
+                          {(selectedCountry === "UK" || selectedCountry === "USA") && "VAT/EIN number"}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-gray-600 block mb-1 uppercase tracking-wide">{preset.tax_name} Rate (%)</label>
+                        <Input type="number" step="0.1" value={form.tax_rate || preset.tax_rate} onChange={e => setForm(f => ({ ...f, tax_rate: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-gray-600 block mb-1 uppercase tracking-wide">Currency Code</label>
+                        <Input value={form.currency || preset.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-gray-600 block mb-1 uppercase tracking-wide">Currency Symbol</label>
+                        <Input value={form.currency_symbol || preset.currency_symbol} onChange={e => setForm(f => ({ ...f, currency_symbol: e.target.value }))} />
+                      </div>
+                      <div className="col-span-2">
+                        <label className="text-xs font-semibold text-gray-600 block mb-1 uppercase tracking-wide">Invoice Number Prefix</label>
+                        <Input placeholder="e.g. INV, UAE-INV, SA-INV" value={form.invoice_prefix} onChange={e => setForm(f => ({ ...f, invoice_prefix: e.target.value }))} />
+                      </div>
+                    </div>
+
+                    {selectedCountry === "Saudi Arabia" && (
+                      <div className="p-4 bg-green-50 rounded-xl border border-green-200">
+                        <div className="font-semibold text-green-800 mb-1">🇸🇦 ZATCA Phase 2 Compliance</div>
+                        <p className="text-xs text-green-700">SwachERP generates ZATCA-compliant invoices with TLV-encoded QR codes as required by Saudi Arabia's e-invoicing mandate. Enter your TRN above to enable.</p>
+                        <button className="mt-2 text-xs text-green-600 border border-green-300 px-3 py-1 rounded-lg hover:bg-green-100" onClick={() => window.open("/api/restaurant/tax/zatca/generate", "_blank")}>Test ZATCA QR Generation</button>
+                      </div>
+                    )}
+
+                    {selectedCountry === "UAE" && (
+                      <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
+                        <div className="font-semibold text-blue-800 mb-1">🇦🇪 UAE FTA Compliance</div>
+                        <p className="text-xs text-blue-700">SwachERP generates UAE FTA-compliant VAT invoices with English and Arabic fields as required. Use the VAT Return Report under Analytics to file quarterly returns.</p>
+                      </div>
+                    )}
+
+                    <div className="flex gap-3">
+                      <button onClick={testCalc} disabled={loading} className="px-4 py-2 border rounded-lg text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50">
+                        {loading ? "Testing..." : "Test Calculation"}
+                      </button>
+                      <button onClick={save} disabled={saving} className="flex-1 bg-blue-600 text-white rounded-lg px-4 py-2 text-sm font-semibold hover:bg-blue-700 disabled:opacity-50">
+                        {saving ? "Saving..." : `Save ${selectedCountry} Configuration`}
+                      </button>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FranchiseTab() {
+  const { toast } = useToast();
+  const [config, setConfig] = useState<any>(null);
+  const [saving, setSaving] = useState(false);
+
+  const { data: summary } = useQuery({
+    queryKey: ["/api/restaurant/franchise/summary"],
+    queryFn: () => fetch("/api/restaurant/franchise/summary").then(r => r.json()),
+  });
+
+  const { data: royaltyConfig } = useQuery({
+    queryKey: ["/api/restaurant/franchise/royalty-config"],
+    queryFn: () => fetch("/api/restaurant/franchise/royalty-config").then(r => r.json()),
+    onSuccess: (data: any) => setConfig(data),
+  });
+
+  const cfg = config || royaltyConfig || { royalty_pct: 5, marketing_fee_pct: 2, min_royalty: 5000, payment_cycle: "monthly" };
+  const summaryData = (summary as any) || { total_outlets: 0, total_revenue: 0, total_royalty: 0, outlets: [] };
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await fetch("/api/restaurant/franchise/royalty-config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(cfg),
+      });
+      toast({ title: "Franchise config saved!" });
+    } catch { toast({ title: "Save failed", variant: "destructive" } as any); }
+    setSaving(false);
+  };
+
+  return (
+    <div className="space-y-5">
+      <div className="grid md:grid-cols-3 gap-4">
+        {[
+          { label: "Franchise Outlets", value: summaryData.total_outlets || 0, icon: "🏢" },
+          { label: "Total Network Revenue", value: `₹${Number(summaryData.total_revenue || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`, icon: "💰" },
+          { label: "Royalty Earned (month)", value: `₹${Number(summaryData.total_royalty || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`, icon: "📊" },
+        ].map(s => (
+          <Card key={s.label} className="border-0 shadow-sm">
+            <CardContent className="pt-4 pb-3 flex items-center gap-3">
+              <span className="text-3xl">{s.icon}</span>
+              <div><div className="text-xl font-black">{s.value}</div><div className="text-xs text-gray-500">{s.label}</div></div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-5">
+        <Card className="border-0 shadow-sm">
+          <CardHeader><CardTitle className="text-base">Royalty Configuration</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <label className="text-xs font-semibold text-gray-600 block mb-1">Royalty % (of net sales)</label>
+              <div className="flex items-center gap-2">
+                <Input type="number" step="0.5" value={cfg.royalty_pct} onChange={e => setConfig((c: any) => ({ ...c, royalty_pct: e.target.value }))} className="flex-1" />
+                <span className="text-gray-500">%</span>
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 block mb-1">Marketing Fee % (of net sales)</label>
+              <div className="flex items-center gap-2">
+                <Input type="number" step="0.5" value={cfg.marketing_fee_pct} onChange={e => setConfig((c: any) => ({ ...c, marketing_fee_pct: e.target.value }))} className="flex-1" />
+                <span className="text-gray-500">%</span>
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 block mb-1">Minimum Royalty (₹ per cycle)</label>
+              <Input type="number" value={cfg.min_royalty} onChange={e => setConfig((c: any) => ({ ...c, min_royalty: e.target.value }))} />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 block mb-1">Payment Cycle</label>
+              <select className="w-full border rounded-lg px-3 py-2 text-sm" value={cfg.payment_cycle} onChange={e => setConfig((c: any) => ({ ...c, payment_cycle: e.target.value }))}>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+                <option value="quarterly">Quarterly</option>
+              </select>
+            </div>
+            <div className="p-3 bg-blue-50 rounded-xl text-sm text-blue-700">
+              <div className="font-semibold mb-1">Example Calculation</div>
+              Net Sales: ₹1,00,000<br />
+              Royalty ({cfg.royalty_pct}%): ₹{(100000 * Number(cfg.royalty_pct) / 100).toLocaleString("en-IN")}<br />
+              Marketing Fee ({cfg.marketing_fee_pct}%): ₹{(100000 * Number(cfg.marketing_fee_pct) / 100).toLocaleString("en-IN")}<br />
+              <strong>Total Due: ₹{(100000 * (Number(cfg.royalty_pct) + Number(cfg.marketing_fee_pct)) / 100).toLocaleString("en-IN")}</strong>
+            </div>
+            <button onClick={save} disabled={saving} className="w-full bg-blue-600 text-white rounded-lg py-2 text-sm font-semibold hover:bg-blue-700 disabled:opacity-50">
+              {saving ? "Saving..." : "Save Royalty Config"}
+            </button>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-sm">
+          <CardHeader><CardTitle className="text-base">Franchise Outlet Performance</CardTitle></CardHeader>
+          <CardContent>
+            {(summaryData.outlets || []).length > 0 ? (
+              <table className="w-full text-sm">
+                <thead className="text-xs text-gray-500 uppercase"><tr>
+                  <th className="text-left py-1.5">Outlet</th>
+                  <th className="text-right py-1.5">Revenue</th>
+                  <th className="text-right py-1.5">Royalty</th>
+                </tr></thead>
+                <tbody className="divide-y">
+                  {summaryData.outlets.map((o: any) => (
+                    <tr key={o.id}>
+                      <td className="py-2 font-medium">{o.name}</td>
+                      <td className="py-2 text-right">₹{Number(o.revenue).toLocaleString("en-IN", { maximumFractionDigits: 0 })}</td>
+                      <td className="py-2 text-right text-blue-600">₹{Number(o.royalty).toLocaleString("en-IN", { maximumFractionDigits: 0 })}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className="text-center text-gray-400 py-8">
+                <div className="text-4xl mb-2">🏢</div>
+                <p className="text-sm">No franchise outlets configured yet.</p>
+                <p className="text-xs mt-1">Add outlets from the Outlets tab and mark them as franchise.</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
 export default function RestaurantOutletsPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
 
-  const [tab, setTab] = useState<"outlets" | "terminals" | "printers" | "central-kitchen">("outlets");
+  const [tab, setTab] = useState<"outlets" | "terminals" | "printers" | "central-kitchen" | "tax-currency" | "franchise">("outlets");
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
 
@@ -181,6 +489,12 @@ export default function RestaurantOutletsPage() {
               {t === "central-kitchen" ? "Central Kitchen" : t.charAt(0).toUpperCase() + t.slice(1)}
             </Button>
           ))}
+          <Button key="tax-currency" variant={tab === "tax-currency" ? "default" : "outline"} onClick={() => setTab("tax-currency" as any)}>
+            🌍 Tax & Currency
+          </Button>
+          <Button key="franchise" variant={tab === "franchise" ? "default" : "outline"} onClick={() => setTab("franchise" as any)}>
+            🏢 Franchise
+          </Button>
         </div>
       </div>
 
@@ -563,6 +877,8 @@ export default function RestaurantOutletsPage() {
           )}
         </div>
       )}
+      {tab === "tax-currency" && <TaxCurrencyTab />}
+      {tab === "franchise" && <FranchiseTab />}
     </div>
   );
 }

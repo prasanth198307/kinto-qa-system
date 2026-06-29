@@ -13,6 +13,11 @@ export default function RestaurantKioskPage() {
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<"upi" | "cash">("upi");
+  const [infoItem, setInfoItem] = useState<MenuItem | null>(null);
+  const [modifierItem, setModifierItem] = useState<MenuItem | null>(null);
+  const [modifiers, setModifiers] = useState<any[]>([]);
+  const [selectedModifiers, setSelectedModifiers] = useState<number[]>([]);
+  const [longPressTimer, setLongPressTimer] = useState<any>(null);
   const [tokenNo, setTokenNo] = useState<number | null>(null);
   const [search, setSearch] = useState("");
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
@@ -295,6 +300,117 @@ export default function RestaurantKioskPage() {
           </div>
         </div>
       )}
+
+      {/* Nutrition/Allergen Info Modal */}
+      {infoItem && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-end justify-center" onClick={() => setInfoItem(null)}>
+          <div className="bg-white w-full max-w-lg rounded-t-3xl p-6 pb-10" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h3 className="text-xl font-black">{infoItem.item_name}</h3>
+                <p className="text-gray-500 text-sm mt-1">{infoItem.description || "No description available"}</p>
+              </div>
+              <button onClick={() => setInfoItem(null)} className="text-gray-400 text-2xl leading-none">✕</button>
+            </div>
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              {[
+                { label: "Calories", value: "~320 kcal", icon: "🔥" },
+                { label: "Protein", value: "12g", icon: "💪" },
+                { label: "Carbs", value: "45g", icon: "🌾" },
+                { label: "Fat", value: "8g", icon: "🫙" },
+              ].map(n => (
+                <div key={n.label} className="bg-gray-50 rounded-xl p-3 text-center">
+                  <div className="text-2xl mb-1">{n.icon}</div>
+                  <div className="font-bold text-sm">{n.value}</div>
+                  <div className="text-xs text-gray-500">{n.label}</div>
+                </div>
+              ))}
+            </div>
+            <div className="mb-4">
+              <h4 className="font-bold text-sm mb-2">Allergen Information</h4>
+              <div className="flex flex-wrap gap-2">
+                {["Gluten", "Dairy", "Nuts", "Eggs"].map(a => (
+                  <span key={a} className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-medium">⚠️ May contain {a}</span>
+                ))}
+              </div>
+            </div>
+            <button
+              onClick={() => setInfoItem(null)}
+              className="w-full bg-red-600 text-white font-bold py-4 rounded-2xl text-lg"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modifier Selection Popup */}
+      {modifierItem && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-end justify-center" onClick={() => { setModifierItem(null); setModifiers([]); setSelectedModifiers([]); }}>
+          <div className="bg-white w-full max-w-lg rounded-t-3xl p-6 pb-10" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-start mb-4">
+              <h3 className="text-xl font-black">Customise {modifierItem.item_name}</h3>
+              <button onClick={() => { setModifierItem(null); setModifiers([]); setSelectedModifiers([]); }} className="text-gray-400 text-2xl">✕</button>
+            </div>
+            {modifiers.length === 0 ? (
+              <div className="text-center text-gray-400 py-6">
+                <div className="text-3xl mb-2">🍽️</div>
+                <p className="text-sm">No customisation options available for this item.</p>
+              </div>
+            ) : (
+              <div className="space-y-2 mb-4 max-h-64 overflow-y-auto">
+                {modifiers.map((mod: any) => (
+                  <label key={mod.id} className="flex items-center justify-between p-3 border rounded-xl cursor-pointer hover:bg-gray-50">
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedModifiers.includes(mod.id)}
+                        onChange={e => setSelectedModifiers(prev => e.target.checked ? [...prev, mod.id] : prev.filter(id => id !== mod.id))}
+                        className="w-5 h-5 rounded"
+                      />
+                      <span className="font-medium">{mod.name}</span>
+                    </div>
+                    {mod.extra_price > 0 && <span className="text-sm text-gray-500">+₹{mod.extra_price}</span>}
+                  </label>
+                ))}
+              </div>
+            )}
+            <button
+              onClick={() => {
+                const extraCost = modifiers.filter(m => selectedModifiers.includes(m.id)).reduce((sum: number, m: any) => sum + (m.extra_price || 0), 0);
+                setCart(prev => {
+                  const existing = prev.find(c => c.item.id === modifierItem.id);
+                  if (existing) return prev.map(c => c.item.id === modifierItem.id ? { ...c, qty: c.qty + 1 } : c);
+                  return [...prev, { item: { ...modifierItem, price: modifierItem.price + extraCost }, qty: 1, notes: selectedModifiers.length > 0 ? modifiers.filter(m => selectedModifiers.includes(m.id)).map(m => m.name).join(", ") : "" }];
+                });
+                setModifierItem(null); setModifiers([]); setSelectedModifiers([]);
+              }}
+              className="w-full bg-red-600 text-white font-bold py-4 rounded-2xl text-lg"
+            >
+              Add to Order
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Running Total Bar */}
+      {screen === "menu" && cart.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-200 px-5 py-3 flex items-center justify-between">
+          <div>
+            <div className="text-xs text-gray-500">{cart.reduce((s, c) => s + c.qty, 0)} items</div>
+            <div className="font-black text-lg text-red-600">
+              ₹{cart.reduce((s, c) => s + c.item.price * c.qty, 0).toFixed(2)}
+            </div>
+          </div>
+          <button
+            onClick={() => setScreen("checkout")}
+            className="bg-red-600 text-white font-bold px-8 py-3 rounded-2xl text-base active:scale-95 transition-transform"
+          >
+            View Order →
+          </button>
+        </div>
+      )}
+
     </div>
   );
 }

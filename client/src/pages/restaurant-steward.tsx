@@ -15,6 +15,53 @@ interface Category { id: number; category_name: string; }
 interface Table { id: number; table_name: string; capacity: number; status: string; }
 interface CartItem { item: MenuItem; qty: number; notes: string; }
 
+
+function RecentKOTs({ tableId }: { tableId: number }) {
+  const { data: orders = [] } = useQuery({
+    queryKey: ["/api/restaurant/kot/orders", tableId],
+    queryFn: () => fetch(`/api/restaurant/kot/orders?table_id=${tableId}`).then(r => r.json()),
+    enabled: !!tableId,
+    refetchInterval: 30000,
+  });
+
+  const recentOrders = Array.isArray(orders) ? orders.slice(0, 5) : [];
+  if (recentOrders.length === 0) return null;
+
+  return (
+    <div className="fixed bottom-20 left-3 z-20 w-64">
+      <details className="bg-white rounded-2xl shadow-xl border border-gray-200">
+        <summary className="px-3 py-2 text-sm font-semibold text-gray-700 cursor-pointer">
+          📋 Recent KOTs — Table {tableId} ({recentOrders.length})
+        </summary>
+        <div className="px-3 pb-3 max-h-56 overflow-y-auto divide-y">
+          {recentOrders.map((o: any) => {
+            const items = Array.isArray(o.items) ? o.items : (typeof o.items_json === "string" ? JSON.parse(o.items_json || "[]") : o.items_json || []);
+            return (
+              <div key={o.id} className="py-2 text-xs">
+                <div className="flex justify-between items-center">
+                  <span className="font-semibold">KOT #{o.kot_no || o.id}</span>
+                  <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${o.status === "served" ? "bg-green-100 text-green-700" : o.status === "preparing" ? "bg-yellow-100 text-yellow-700" : "bg-blue-100 text-blue-700"}`}>
+                    {o.status || "sent"}
+                  </span>
+                </div>
+                <div className="text-gray-500 mt-0.5">
+                  {items.slice(0, 3).map((item: any, idx: number) => (
+                    <span key={idx}>{item.item_name || item.name} ×{item.qty || item.quantity}{idx < Math.min(items.length, 3) - 1 ? ", " : ""}</span>
+                  ))}
+                  {items.length > 3 && <span className="text-gray-400"> +{items.length - 3} more</span>}
+                </div>
+                {o.created_at && (
+                  <div className="text-gray-400 mt-0.5">{new Date(o.created_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </details>
+    </div>
+  );
+}
+
 export default function RestaurantStewardPage() {
   const { toast } = useToast();
   const { isOnline, pendingCount, syncPending } = useOffline();
@@ -310,6 +357,20 @@ export default function RestaurantStewardPage() {
           </details>
         </div>
       )}
+
+      {/* Active Tables Indicator */}
+      {!cartOpen && selectedTable && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 bg-white border border-gray-200 rounded-2xl shadow-lg px-4 py-2">
+          <span className="text-green-500 font-bold text-sm">● Active:</span>
+          <span className="font-semibold text-sm">{tables.find((t: any) => t.id === selectedTable)?.table_name || `Table ${selectedTable}`}</span>
+        </div>
+      )}
+
+      {/* Recent KOTs for selected table */}
+      {selectedTable && !cartOpen && (
+        <RecentKOTs tableId={selectedTable} />
+      )}
+
     </div>
   );
 }

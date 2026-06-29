@@ -27,8 +27,240 @@ const emptyItem = (): Partial<MenuItem> => ({ name: "", description: "", categor
 const emptyModifier = (): Partial<Modifier> => ({ name: "", modifier_type: "addon", is_required: false, max_selection: 1 });
 const emptyCombo = (): Partial<Combo> => ({ combo_name: "", description: "", combo_price: 0, gst_pct: 5, is_available: true, valid_from: "", valid_to: "" });
 
+
+const SUPPORTED_LANGUAGES = [
+  { code: "ar", name: "Arabic", flag: "🇸🇦", rtl: true },
+  { code: "hi", name: "Hindi", flag: "🇮🇳", rtl: false },
+  { code: "fr", name: "French", flag: "🇫🇷", rtl: false },
+  { code: "de", name: "German", flag: "🇩🇪", rtl: false },
+  { code: "zh", name: "Chinese", flag: "🇨🇳", rtl: false },
+  { code: "es", name: "Spanish", flag: "🇪🇸", rtl: false },
+  { code: "ta", name: "Tamil", flag: "🇮🇳", rtl: false },
+  { code: "ur", name: "Urdu", flag: "🇵🇰", rtl: true },
+];
+
+function TranslationsPanel({ menuItems }: { menuItems: any[] }) {
+  const { toast } = useToast();
+  const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [selectedLang, setSelectedLang] = useState("ar");
+  const [translations, setTranslations] = useState<Record<string, { name: string; description: string }>>({});
+  const [saving, setSaving] = useState(false);
+  const [loadingTranslation, setLoadingTranslation] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const filteredItems = (menuItems as any[]).filter(item =>
+    !search || item.item_name?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const loadTranslations = async (item: any) => {
+    setSelectedItem(item);
+    try {
+      const data = await fetch(`/api/restaurant/menu-items/${item.id}/translations`).then(r => r.json());
+      setTranslations(data?.translations || {});
+    } catch {
+      setTranslations({});
+    }
+  };
+
+  const saveTranslations = async () => {
+    if (!selectedItem) return;
+    setSaving(true);
+    try {
+      await fetch(`/api/restaurant/menu-items/${selectedItem.id}/translations`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(translations),
+      });
+      toast({ title: "Translations saved!" });
+    } catch {
+      toast({ title: "Failed to save", variant: "destructive" } as any);
+    }
+    setSaving(false);
+  };
+
+  const autoTranslate = async (lang: string) => {
+    if (!selectedItem) return;
+    setLoadingTranslation(true);
+    try {
+      const result = await fetch(`/api/restaurant/menu-items/${selectedItem.id}/translate`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ target_language: lang }),
+      }).then(r => r.json());
+      if (result.translation) {
+        setTranslations(prev => ({ ...prev, [lang]: result.translation }));
+        toast({ title: `Auto-translated to ${SUPPORTED_LANGUAGES.find(l => l.code === lang)?.name}!` });
+      }
+    } catch {
+      toast({ title: "Auto-translate not configured. Enter manually.", variant: "destructive" } as any);
+    }
+    setLoadingTranslation(false);
+  };
+
+  const updateField = (lang: string, field: "name" | "description", value: string) => {
+    setTranslations(prev => ({
+      ...prev,
+      [lang]: { name: prev[lang]?.name || "", description: prev[lang]?.description || "", [field]: value },
+    }));
+  };
+
+  const completionCount = selectedItem
+    ? SUPPORTED_LANGUAGES.filter(l => translations[l.code]?.name).length
+    : 0;
+
+  return (
+    <div className="grid lg:grid-cols-3 gap-5">
+      <div>
+        <div className="mb-3">
+          <Input placeholder="Search items..." value={search} onChange={e => setSearch(e.target.value)} className="h-8 text-sm" />
+        </div>
+        <div className="space-y-1 max-h-[500px] overflow-y-auto">
+          {filteredItems.map((item: any) => {
+            const langCount = Object.values(translations).filter(Boolean).length;
+            return (
+              <button
+                key={item.id}
+                onClick={() => loadTranslations(item)}
+                className={`w-full text-left px-3 py-2.5 rounded-lg border transition-colors ${selectedItem?.id === item.id ? "bg-blue-50 border-blue-300 text-blue-700" : "bg-white border-gray-100 hover:bg-gray-50"}`}
+              >
+                <div className="font-medium text-sm truncate">{item.item_name}</div>
+                <div className="text-xs text-gray-400 mt-0.5 flex items-center gap-2">
+                  <span>Rs.{item.price}</span>
+                  {selectedItem?.id === item.id && langCount > 0 && (
+                    <span className="text-green-500">{completionCount}/{SUPPORTED_LANGUAGES.length} languages</span>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+          {filteredItems.length === 0 && <p className="text-gray-400 text-sm text-center py-6">No items found</p>}
+        </div>
+      </div>
+
+      <div className="lg:col-span-2">
+        {!selectedItem ? (
+          <div className="flex items-center justify-center h-64 text-gray-400">
+            <div className="text-center">
+              <div className="text-5xl mb-3">🌐</div>
+              <p className="font-medium">Select a menu item to translate</p>
+              <p className="text-sm mt-1">Translations let customers see menus in their language</p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+              <div>
+                <div className="font-bold text-lg">{selectedItem.item_name}</div>
+                <div className="text-sm text-gray-500">Original (English) · Rs.{selectedItem.price}</div>
+                {selectedItem.description && <div className="text-xs text-gray-400 mt-0.5">{selectedItem.description}</div>}
+              </div>
+              <div className="text-right">
+                <div className="text-2xl font-black text-blue-600">{completionCount}</div>
+                <div className="text-xs text-gray-500">of {SUPPORTED_LANGUAGES.length} done</div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-1">
+              {SUPPORTED_LANGUAGES.map(lang => (
+                <button
+                  key={lang.code}
+                  onClick={() => setSelectedLang(lang.code)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                    selectedLang === lang.code ? "bg-blue-600 text-white border-blue-600" :
+                    translations[lang.code]?.name ? "bg-green-50 text-green-700 border-green-200" :
+                    "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                  }`}
+                >
+                  {lang.flag} {lang.name}
+                  {translations[lang.code]?.name && selectedLang !== lang.code && <span className="text-green-400">done</span>}
+                </button>
+              ))}
+            </div>
+
+            {SUPPORTED_LANGUAGES.filter(l => l.code === selectedLang).map(lang => (
+              <div key={lang.code} className="space-y-3 p-4 bg-gray-50 rounded-xl">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold flex items-center gap-2">{lang.flag} {lang.name} {lang.rtl && <Badge variant="secondary" className="text-xs">RTL</Badge>}</h3>
+                  <button
+                    onClick={() => autoTranslate(lang.code)}
+                    disabled={loadingTranslation}
+                    className="text-xs text-blue-600 hover:text-blue-800 border border-blue-200 px-3 py-1 rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50"
+                  >
+                    {loadingTranslation ? "Translating..." : "Auto-Translate"}
+                  </button>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 font-medium block mb-1">Item Name in {lang.name}</label>
+                  <Input
+                    dir={lang.rtl ? "rtl" : "ltr"}
+                    placeholder={`${selectedItem.item_name} in ${lang.name}...`}
+                    value={translations[lang.code]?.name || ""}
+                    onChange={e => updateField(lang.code, "name", e.target.value)}
+                    className={lang.rtl ? "text-right text-lg" : ""}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 font-medium block mb-1">Description in {lang.name} (optional)</label>
+                  <textarea
+                    dir={lang.rtl ? "rtl" : "ltr"}
+                    className={`w-full border rounded-lg p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-300 ${lang.rtl ? "text-right" : ""}`}
+                    rows={2}
+                    placeholder={`Description in ${lang.name}...`}
+                    value={translations[lang.code]?.description || ""}
+                    onChange={e => updateField(lang.code, "description", e.target.value)}
+                  />
+                </div>
+                {translations[lang.code]?.name && (
+                  <div className="p-3 bg-white rounded-lg border text-sm">
+                    <div className="text-xs text-gray-400 mb-1">Preview:</div>
+                    <div dir={lang.rtl ? "rtl" : "ltr"} className={`font-semibold ${lang.rtl ? "text-right text-lg" : ""}`}>{translations[lang.code]?.name}</div>
+                    {translations[lang.code]?.description && (
+                      <div dir={lang.rtl ? "rtl" : "ltr"} className={`text-gray-500 text-xs mt-0.5 ${lang.rtl ? "text-right" : ""}`}>{translations[lang.code]?.description}</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {Object.keys(translations).length > 0 && (
+              <div className="p-3 bg-white border rounded-xl">
+                <div className="text-xs text-gray-500 font-medium mb-2">All Translations Summary</div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {SUPPORTED_LANGUAGES.map(lang => (
+                    <div key={lang.code} className={`flex items-center gap-1.5 text-xs py-1 ${translations[lang.code]?.name ? "text-green-700" : "text-gray-300"}`}>
+                      <span>{lang.flag}</span>
+                      <span className="font-medium">{lang.name}:</span>
+                      <span className="truncate">{translations[lang.code]?.name || "none"}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setSelectedItem(null); setTranslations({}); }}
+                className="px-4 py-2 border rounded-lg text-sm text-gray-600 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveTranslations}
+                disabled={saving}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-50"
+              >
+                {saving ? "Saving..." : "Save All Translations"}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function RestaurantMenuPage() {
-  const [tab, setTab] = useState<"items" | "categories" | "modifiers">("items");
+  const [tab, setTab] = useState<"items" | "categories" | "modifiers" | "translations">("items");
   const { toast } = useToast();
   const qc = useQueryClient();
 
@@ -163,6 +395,9 @@ export default function RestaurantMenuPage() {
               {t === "items" ? "Menu Items" : t === "categories" ? "Categories" : "Modifiers & Combos"}
             </Button>
           ))}
+          <Button key="translations" variant={tab === "translations" ? "default" : "outline"} size="sm" onClick={() => setTab("translations")}>
+            🌐 Translations
+          </Button>
         </div>
       </div>
 
@@ -588,6 +823,19 @@ export default function RestaurantMenuPage() {
                   </div>
                 ))}
               </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+      {tab === "translations" && (
+        <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Multi-Language Menu Translations</CardTitle>
+              <p className="text-sm text-gray-500">Configure menu item names and descriptions in multiple languages. The kiosk and steward app will display in the guest's preferred language.</p>
+            </CardHeader>
+            <CardContent>
+              <TranslationsPanel menuItems={menuItems} />
             </CardContent>
           </Card>
         </div>

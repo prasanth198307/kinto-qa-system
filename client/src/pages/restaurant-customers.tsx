@@ -28,11 +28,187 @@ function StarRating({ value }: { value: number }) {
   );
 }
 
+
+function GiftCardsTab() {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [form, setForm] = useState({ card_number: "", initial_balance: "", expiry_date: "", customer_name: "", customer_phone: "" });
+  const [searchCard, setSearchCard] = useState("");
+  const [foundCard, setFoundCard] = useState<any>(null);
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [redeemAmount, setRedeemAmount] = useState("");
+
+  const { data: giftCards = [], refetch } = useQuery({
+    queryKey: ["/api/restaurant/gift-cards"],
+    queryFn: () => fetch("/api/restaurant/gift-cards").then(r => r.json()),
+  });
+  const cards: any[] = Array.isArray(giftCards) ? giftCards : (giftCards as any)?.data || [];
+
+  const createCard = useMutation({
+    mutationFn: () => fetch("/api/restaurant/gift-cards", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...form, initial_balance: Number(form.initial_balance) }),
+    }).then(r => r.json()),
+    onSuccess: (d: any) => {
+      if (d.error) { toast({ title: d.error, variant: "destructive" } as any); return; }
+      toast({ title: `Gift Card created! #${d.card_number || form.card_number}` });
+      setForm({ card_number: "", initial_balance: "", expiry_date: "", customer_name: "", customer_phone: "" });
+      refetch();
+    },
+  });
+
+  const lookupCard = async () => {
+    if (!searchCard.trim()) return;
+    setLookupLoading(true);
+    try {
+      const data = await fetch(`/api/restaurant/gift-cards/${searchCard.trim()}/balance`).then(r => r.json());
+      setFoundCard(data?.error ? null : data);
+      if (data?.error) toast({ title: data.error, variant: "destructive" } as any);
+    } catch { toast({ title: "Lookup failed", variant: "destructive" } as any); }
+    setLookupLoading(false);
+  };
+
+  const redeemCard = useMutation({
+    mutationFn: () => fetch(`/api/restaurant/gift-cards/${foundCard.card_number}/redeem`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ amount: Number(redeemAmount) }),
+    }).then(r => r.json()),
+    onSuccess: (d: any) => {
+      if (d.error) { toast({ title: d.error, variant: "destructive" } as any); return; }
+      toast({ title: `Redeemed Rs.${redeemAmount}! New balance: Rs.${d.remaining_balance}` });
+      setFoundCard((prev: any) => ({ ...prev, balance: d.remaining_balance }));
+      setRedeemAmount("");
+      refetch();
+    },
+  });
+
+  const generateCardNo = () => {
+    const prefix = "GC";
+    const random = Math.floor(Math.random() * 900000000 + 100000000);
+    setForm(f => ({ ...f, card_number: `${prefix}${random}` }));
+  };
+
+  const totalBalance = cards.reduce((s: number, c: any) => s + Number(c.balance || 0), 0);
+  const activeCards = cards.filter((c: any) => c.is_active !== false);
+
+  return (
+    <div className="space-y-5">
+      <div className="grid grid-cols-3 gap-4">
+        <Card className="border-0 shadow-sm"><CardContent className="pt-4 pb-3 text-center"><div className="text-2xl font-black text-purple-600">{cards.length}</div><div className="text-xs text-gray-500">Total Cards Issued</div></CardContent></Card>
+        <Card className="border-0 shadow-sm"><CardContent className="pt-4 pb-3 text-center"><div className="text-2xl font-black text-green-600">{activeCards.length}</div><div className="text-xs text-gray-500">Active Cards</div></CardContent></Card>
+        <Card className="border-0 shadow-sm"><CardContent className="pt-4 pb-3 text-center"><div className="text-2xl font-black text-blue-600">Rs.{totalBalance.toFixed(0)}</div><div className="text-xs text-gray-500">Total Outstanding Balance</div></CardContent></Card>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-5">
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="pb-2"><CardTitle className="text-base">Issue New Gift Card</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex gap-2">
+              <Input placeholder="Card Number (e.g. GC123456)" value={form.card_number} onChange={e => setForm(f => ({ ...f, card_number: e.target.value }))} className="flex-1" />
+              <Button variant="outline" size="sm" onClick={generateCardNo}>Generate</Button>
+            </div>
+            <Input placeholder="Rs. Initial Balance" type="number" value={form.initial_balance} onChange={e => setForm(f => ({ ...f, initial_balance: e.target.value }))} />
+            <Input placeholder="Expiry Date" type="date" value={form.expiry_date} onChange={e => setForm(f => ({ ...f, expiry_date: e.target.value }))} />
+            <Input placeholder="Customer Name (optional)" value={form.customer_name} onChange={e => setForm(f => ({ ...f, customer_name: e.target.value }))} />
+            <Input placeholder="Customer Phone (optional)" value={form.customer_phone} onChange={e => setForm(f => ({ ...f, customer_phone: e.target.value }))} />
+            <Button className="w-full" onClick={() => createCard.mutate()} disabled={!form.card_number || !form.initial_balance || createCard.isPending}>
+              {createCard.isPending ? "Issuing..." : "Issue Gift Card"}
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="pb-2"><CardTitle className="text-base">Check Balance and Redeem</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex gap-2">
+              <Input placeholder="Enter card number..." value={searchCard} onChange={e => setSearchCard(e.target.value)} onKeyDown={e => e.key === "Enter" && lookupCard()} />
+              <Button variant="outline" onClick={lookupCard} disabled={lookupLoading}>{lookupLoading ? "..." : "Check"}</Button>
+            </div>
+            {foundCard && (
+              <div className="p-4 bg-gradient-to-br from-purple-50 to-blue-50 rounded-xl border border-purple-200">
+                <div className="flex justify-between mb-2">
+                  <div>
+                    <div className="font-bold text-purple-800">#{foundCard.card_number}</div>
+                    {foundCard.customer_name && <div className="text-sm text-purple-600">{foundCard.customer_name}</div>}
+                    {foundCard.customer_phone && <div className="text-xs text-gray-500">{foundCard.customer_phone}</div>}
+                  </div>
+                  <div className="text-right">
+                    <div className="text-3xl font-black text-purple-700">Rs.{Number(foundCard.balance || 0).toFixed(2)}</div>
+                    <div className="text-xs text-gray-500">balance</div>
+                  </div>
+                </div>
+                {foundCard.expiry_date && <div className="text-xs text-gray-500 mb-3">Expires: {new Date(foundCard.expiry_date).toLocaleDateString("en-IN")}</div>}
+                <div className="flex gap-2 items-center">
+                  <Input
+                    placeholder="Redeem amount..."
+                    type="number"
+                    value={redeemAmount}
+                    onChange={e => setRedeemAmount(e.target.value)}
+                    max={foundCard.balance}
+                    className="flex-1"
+                  />
+                  <Button
+                    onClick={() => redeemCard.mutate()}
+                    disabled={!redeemAmount || Number(redeemAmount) > Number(foundCard.balance) || redeemCard.isPending}
+                    className="bg-purple-600 hover:bg-purple-700"
+                  >
+                    Redeem
+                  </Button>
+                </div>
+                {redeemAmount && Number(redeemAmount) > Number(foundCard.balance) && (
+                  <p className="text-xs text-red-500 mt-1">Amount exceeds card balance</p>
+                )}
+              </div>
+            )}
+            {!foundCard && !lookupLoading && <p className="text-xs text-gray-400 text-center py-4">Enter a card number and click Check to see balance</p>}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="border-0 shadow-sm">
+        <CardHeader className="pb-2"><CardTitle className="text-base">All Gift Cards</CardTitle></CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 text-xs text-gray-600 uppercase">
+                <tr>
+                  {["Card Number", "Customer", "Balance", "Initial", "Expiry", "Status"].map(h => (
+                    <th key={h} className="text-left px-3 py-2.5 font-semibold">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {cards.map((card: any) => (
+                  <tr key={card.id} className="hover:bg-gray-50">
+                    <td className="px-3 py-2.5 font-mono font-semibold text-purple-700">{card.card_number}</td>
+                    <td className="px-3 py-2.5">{card.customer_name || <span className="text-gray-400">none</span>}<br /><span className="text-xs text-gray-400">{card.customer_phone}</span></td>
+                    <td className="px-3 py-2.5 font-bold text-green-700">Rs.{Number(card.balance).toFixed(2)}</td>
+                    <td className="px-3 py-2.5 text-gray-500">Rs.{Number(card.initial_balance || card.balance).toFixed(2)}</td>
+                    <td className="px-3 py-2.5 text-gray-500">{card.expiry_date ? new Date(card.expiry_date).toLocaleDateString("en-IN") : "none"}</td>
+                    <td className="px-3 py-2.5">
+                      <Badge variant={card.is_active !== false ? "default" : "secondary"} className="text-xs">
+                        {card.is_active !== false ? "Active" : "Inactive"}
+                      </Badge>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {cards.length === 0 && <div className="text-center py-8 text-gray-400 text-sm">No gift cards issued yet</div>}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export default function RestaurantCustomersPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
 
-  const [tab, setTab] = useState<"customers" | "loyalty" | "feedback">("customers");
+  const [tab, setTab] = useState<"customers" | "loyalty" | "feedback" | "gift-cards">("customers");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -141,6 +317,9 @@ export default function RestaurantCustomersPage() {
           <Button variant={tab === "customers" ? "default" : "outline"} onClick={() => setTab("customers")}>Customers</Button>
           <Button variant={tab === "loyalty" ? "default" : "outline"} onClick={() => setTab("loyalty")}>Loyalty Program</Button>
           <Button variant={tab === "feedback" ? "default" : "outline"} onClick={() => setTab("feedback")}>Feedback</Button>
+          <Button variant={tab === "gift-cards" ? "default" : "outline"} onClick={() => setTab("gift-cards")}>
+            Gift Cards
+          </Button>
         </div>
       </div>
 
@@ -448,6 +627,7 @@ export default function RestaurantCustomersPage() {
           </Card>
         </div>
       )}
+      {tab === "gift-cards" && <GiftCardsTab />}
     </div>
   );
 }
