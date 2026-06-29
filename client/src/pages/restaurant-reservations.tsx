@@ -35,6 +35,12 @@ export default function RestaurantReservationsPage() {
   const [seatReservationId, setSeatReservationId] = useState<number | null>(null);
   const [selectedTableId, setSelectedTableId] = useState("");
 
+  // Waitlist state
+  const [showWaitlistForm, setShowWaitlistForm] = useState(false);
+  const [waitlistName, setWaitlistName] = useState("");
+  const [waitlistPhone, setWaitlistPhone] = useState("");
+  const [waitlistCovers, setWaitlistCovers] = useState(2);
+
   const [form, setForm] = useState({
     customer_name: "", customer_phone: "", reservation_date: today,
     reservation_time: "19:00", covers: 2, outlet_id: "", notes: "",
@@ -315,6 +321,69 @@ export default function RestaurantReservationsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Waitlist Section */}
+      <div className="mt-6">
+        <div className="flex justify-between items-center mb-3">
+          <h3 className="text-lg font-semibold">Walk-in Waitlist</h3>
+          <Button onClick={() => setShowWaitlistForm(true)} size="sm">+ Add to Waitlist</Button>
+        </div>
+
+        {/* Active waitlist - filter reservations with status='waitlist' */}
+        <div className="space-y-2">
+          {(reservations || []).filter((r: any) => r.status === 'waitlist').map((w: any) => (
+            <div key={w.id} className="flex items-center justify-between p-3 bg-orange-50 border border-orange-200 rounded-lg">
+              <div>
+                <span className="font-medium">{w.customer_name}</span>
+                <span className="text-sm text-gray-500 ml-2">({w.covers} guests)</span>
+                <span className="text-xs text-gray-400 ml-2">{w.customer_phone}</span>
+                <span className="text-xs text-gray-400 ml-2">Since: {new Date(w.created_at).toLocaleTimeString()}</span>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => {
+                  statusMut.mutate({ id: w.id, status: 'seated' });
+                }}>Seat Now</Button>
+                <Button size="sm" variant="ghost" onClick={() => {
+                  toast({ title: `Call ${w.customer_name} (${w.customer_phone}) — table ready!` });
+                }}>📞 Notify</Button>
+                <Button size="sm" variant="ghost" onClick={() => {
+                  statusMut.mutate({ id: w.id, status: 'cancelled' });
+                }} className="text-red-500">✕</Button>
+              </div>
+            </div>
+          ))}
+          {(reservations || []).filter((r: any) => r.status === 'waitlist').length === 0 && (
+            <p className="text-gray-400 text-sm text-center py-4">No one on the waitlist</p>
+          )}
+        </div>
+
+        {/* Add to Waitlist form */}
+        {showWaitlistForm && (
+          <div className="mt-3 p-4 border rounded-lg bg-gray-50">
+            <h4 className="font-medium mb-3">Add to Waitlist</h4>
+            <div className="grid grid-cols-3 gap-3">
+              <Input placeholder="Customer name" value={waitlistName} onChange={e => setWaitlistName(e.target.value)} />
+              <Input placeholder="Phone" value={waitlistPhone} onChange={e => setWaitlistPhone(e.target.value)} />
+              <Input type="number" placeholder="Guests" min={1} max={20} value={waitlistCovers} onChange={e => setWaitlistCovers(Number(e.target.value))} />
+            </div>
+            <div className="flex gap-2 mt-3">
+              <Button onClick={() => {
+                createMut.mutate({
+                  customer_name: waitlistName,
+                  customer_phone: waitlistPhone,
+                  covers: waitlistCovers,
+                  reservation_date: new Date().toISOString().split('T')[0],
+                  reservation_time: new Date().toTimeString().slice(0, 5),
+                  status: 'waitlist'
+                });
+                setShowWaitlistForm(false);
+                setWaitlistName(''); setWaitlistPhone(''); setWaitlistCovers(2);
+              }}>Add to Waitlist</Button>
+              <Button variant="outline" onClick={() => setShowWaitlistForm(false)}>Cancel</Button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

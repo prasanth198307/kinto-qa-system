@@ -1354,4 +1354,269 @@ router.get("/reports/outlet-comparison", requireAuth, async (req: any, res) => {
 });
 
 
+// ── ITEM VARIATIONS ──────────────────────────────────────────────────────────
+router.get("/menu-items/:id/variations", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const rows = await db.execute(sql`
+      SELECT * FROM menu_item_variations
+      WHERE menu_item_id = ${req.params.id} AND tenant_id = ${t}
+      ORDER BY sort_order`);
+    res.json(rows.rows || []);
+  } catch { res.json([]); }
+});
+
+router.post("/menu-items/:id/variations", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const { variation_name, price_modifier, sku, is_available = true, sort_order = 0 } = req.body;
+    await db.execute(sql`
+      INSERT INTO menu_item_variations (tenant_id, menu_item_id, variation_name, price_modifier, sku, is_available, sort_order, created_at)
+      VALUES (${t}, ${req.params.id}, ${variation_name}, ${price_modifier || 0}, ${sku || null}, ${is_available}, ${sort_order}, NOW())`);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.put("/menu-item-variations/:id", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const { variation_name, price_modifier, sku, is_available, sort_order } = req.body;
+    await db.execute(sql`
+      UPDATE menu_item_variations SET
+        variation_name = COALESCE(${variation_name}, variation_name),
+        price_modifier = COALESCE(${price_modifier}, price_modifier),
+        sku = COALESCE(${sku}, sku),
+        is_available = COALESCE(${is_available}, is_available),
+        sort_order = COALESCE(${sort_order}, sort_order)
+      WHERE id = ${req.params.id} AND tenant_id = ${t}`);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.delete("/menu-item-variations/:id", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    await db.execute(sql`DELETE FROM menu_item_variations WHERE id = ${req.params.id} AND tenant_id = ${t}`);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── MULTI-OUTLET MENU SYNC ────────────────────────────────────────────────────
+router.post("/menu/sync-to-outlets", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const { item_ids, outlet_ids } = req.body;
+    if (!Array.isArray(item_ids) || !Array.isArray(outlet_ids)) {
+      return res.status(400).json({ error: "item_ids and outlet_ids must be arrays" });
+    }
+    // Record sync entries
+    for (const item_id of item_ids) {
+      for (const outlet_id of outlet_ids) {
+        await db.execute(sql`
+          INSERT INTO menu_outlet_sync (tenant_id, menu_item_id, outlet_id, synced_at)
+          VALUES (${t}, ${item_id}, ${outlet_id}, NOW())
+          ON CONFLICT (tenant_id, menu_item_id, outlet_id) DO UPDATE SET synced_at = NOW()`);
+      }
+    }
+    res.json({ success: true, synced: item_ids.length * outlet_ids.length });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── CENTRAL KITCHEN ───────────────────────────────────────────────────────────
+router.get("/central-kitchen/dispatches", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const rows = await db.execute(sql`
+      SELECT * FROM central_kitchen_dispatches
+      WHERE tenant_id = ${t}
+      ORDER BY created_at DESC LIMIT 100`);
+    res.json(rows.rows || []);
+  } catch { res.json([]); }
+});
+
+router.post("/central-kitchen/dispatches", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const { dispatch_number, from_outlet_id, to_outlet_id, items, notes, dispatch_date } = req.body;
+    const num = dispatch_number || `CK-${Date.now()}`;
+    const result = await db.execute(sql`
+      INSERT INTO central_kitchen_dispatches (tenant_id, dispatch_number, from_outlet_id, to_outlet_id, items_json, notes, dispatch_date, status, created_at)
+      VALUES (${t}, ${num}, ${from_outlet_id || null}, ${to_outlet_id || null}, ${JSON.stringify(items || [])}, ${notes || null}, ${dispatch_date || new Date().toISOString().split('T')[0]}, 'dispatched', NOW())
+      RETURNING id`);
+    res.json({ success: true, id: result.rows[0]?.id });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.put("/central-kitchen/dispatches/:id/receive", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const { received_by, received_notes, received_items } = req.body;
+    await db.execute(sql`
+      UPDATE central_kitchen_dispatches SET
+        status = 'received',
+        received_at = NOW(),
+        received_by = ${received_by || null},
+        received_notes = ${received_notes || null},
+        received_items_json = ${JSON.stringify(received_items || [])}
+      WHERE id = ${req.params.id} AND tenant_id = ${t}`);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── CUSTOMER FEEDBACK (PUBLIC) ────────────────────────────────────────────────
+router.post("/feedback", async (req: any, res: any) => {
+  try {
+    const { tenant_id = 1, table_number, food_rating, service_rating, ambience_rating, overall_rating, comment, customer_name, customer_phone, kot_order_id } = req.body;
+    await db.execute(sql`
+      INSERT INTO restaurant_feedback (tenant_id, table_number, food_rating, service_rating, ambience_rating, overall_rating, comment, customer_name, customer_phone, kot_order_id, created_at)
+      VALUES (${tenant_id}, ${table_number || null}, ${food_rating || null}, ${service_rating || null}, ${ambience_rating || null}, ${overall_rating || null}, ${comment || null}, ${customer_name || null}, ${customer_phone || null}, ${kot_order_id || null}, NOW())`);
+    res.json({ success: true, message: "Thank you for your feedback!" });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.get("/feedback", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const rows = await db.execute(sql`
+      SELECT * FROM restaurant_feedback WHERE tenant_id = ${t}
+      ORDER BY created_at DESC LIMIT 200`);
+    res.json(rows.rows || []);
+  } catch { res.json([]); }
+});
+
+router.get("/feedback/summary", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const rows = await db.execute(sql`
+      SELECT
+        COUNT(*) as total_reviews,
+        ROUND(AVG(food_rating),1) as avg_food,
+        ROUND(AVG(service_rating),1) as avg_service,
+        ROUND(AVG(ambience_rating),1) as avg_ambience,
+        ROUND(AVG(overall_rating),1) as avg_overall,
+        COUNT(CASE WHEN overall_rating >= 4 THEN 1 END) as positive_count,
+        COUNT(CASE WHEN overall_rating <= 2 THEN 1 END) as negative_count
+      FROM restaurant_feedback WHERE tenant_id = ${t}`);
+    res.json(rows.rows[0] || {});
+  } catch { res.json({}); }
+});
+
+// ── WHATSAPP ORDERS ───────────────────────────────────────────────────────────
+router.post("/whatsapp/receive", async (req: any, res: any) => {
+  // Webhook — store raw payload, no auth required
+  try {
+    const { from, message, tenant_id = 1 } = req.body;
+    await db.execute(sql`
+      INSERT INTO whatsapp_order_messages (tenant_id, from_number, raw_message, status, received_at)
+      VALUES (${tenant_id}, ${from || 'unknown'}, ${JSON.stringify(req.body)}, 'received', NOW())`);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.get("/whatsapp/orders", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const rows = await db.execute(sql`
+      SELECT * FROM whatsapp_order_messages WHERE tenant_id = ${t}
+      ORDER BY received_at DESC LIMIT 100`);
+    res.json(rows.rows || []);
+  } catch { res.json([]); }
+});
+
+router.post("/whatsapp/orders/:id/confirm", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const { items, customer_name, delivery_address, total_amount } = req.body;
+    await db.execute(sql`
+      UPDATE whatsapp_order_messages SET
+        status = 'confirmed',
+        confirmed_at = NOW(),
+        order_details = ${JSON.stringify({ items, customer_name, delivery_address, total_amount })}
+      WHERE id = ${req.params.id} AND tenant_id = ${t}`);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── CREDIT BILLING ────────────────────────────────────────────────────────────
+router.post("/kot/orders/:id/credit-bill", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const { customer_id, customer_name, credit_account, due_date, notes } = req.body;
+    // Get order total
+    const order = await db.execute(sql`SELECT * FROM kot_orders WHERE id = ${req.params.id} AND tenant_id = ${t}`);
+    if (!order.rows.length) return res.status(404).json({ error: "Order not found" });
+    await db.execute(sql`
+      UPDATE kot_orders SET
+        payment_status = 'credit',
+        payment_mode = 'credit',
+        credit_customer_id = ${customer_id || null},
+        credit_customer_name = ${customer_name || null},
+        credit_account = ${credit_account || null},
+        credit_due_date = ${due_date || null},
+        credit_notes = ${notes || null},
+        paid_at = NOW()
+      WHERE id = ${req.params.id} AND tenant_id = ${t}`);
+    // Close the table
+    const o = order.rows[0] as any;
+    if (o.table_id) {
+      await db.execute(sql`UPDATE restaurant_tables SET status = 'available', current_kot_id = NULL WHERE id = ${o.table_id} AND tenant_id = ${t}`);
+    }
+    res.json({ success: true, message: "Credit bill recorded" });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── STOCK LOW-STOCK ALERTS ────────────────────────────────────────────────────
+router.get("/stock/low-stock", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    // Aggregate deductions vs a simple reorder_level table (or recipes)
+    const rows = await db.execute(sql`
+      SELECT
+        ingredient_name,
+        SUM(quantity) as total_deducted,
+        unit,
+        MIN(created_at) as first_used,
+        MAX(created_at) as last_used
+      FROM restaurant_stock_deductions
+      WHERE tenant_id = ${t}
+      GROUP BY ingredient_name, unit
+      ORDER BY total_deducted DESC`);
+    // Return with mock reorder level of 5 units — real impl would join ingredient_reorder_levels table
+    const withAlert = (rows.rows || []).map((r: any) => ({
+      ...r,
+      reorder_level: 5,
+      is_low: Number(r.total_deducted) > 3, // simplistic: if used a lot recently flag it
+      alert: Number(r.total_deducted) > 3 ? "Low Stock" : "OK"
+    }));
+    res.json(withAlert);
+  } catch { res.json([]); }
+});
+
+// ── EOD EMAIL ─────────────────────────────────────────────────────────────────
+router.post("/reports/send-eod-email", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const { email, date } = req.body;
+    const reportDate = date || new Date().toISOString().split('T')[0];
+    // Compile daily summary
+    const summary = await db.execute(sql`
+      SELECT
+        COUNT(*) as total_orders,
+        SUM(CASE WHEN payment_status = 'paid' THEN grand_total ELSE 0 END) as total_revenue,
+        SUM(CASE WHEN payment_status = 'paid' THEN gst_amount ELSE 0 END) as total_gst,
+        AVG(CASE WHEN payment_status = 'paid' THEN grand_total END) as avg_bill,
+        COUNT(CASE WHEN is_complimentary = true THEN 1 END) as complimentary_count
+      FROM kot_orders
+      WHERE tenant_id = ${t} AND DATE(created_at) = ${reportDate}`);
+    // In production this would send an email via nodemailer/sendgrid
+    // For now return the summary data
+    const s = summary.rows[0] as any;
+    res.json({
+      success: true,
+      message: `EOD summary for ${reportDate} ${email ? 'would be sent to ' + email : '(no email configured)'}`,
+      summary: s
+    });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
 export default router;

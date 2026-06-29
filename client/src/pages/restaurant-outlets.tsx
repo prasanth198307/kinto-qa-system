@@ -34,7 +34,7 @@ export default function RestaurantOutletsPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
 
-  const [tab, setTab] = useState<"outlets" | "terminals" | "printers">("outlets");
+  const [tab, setTab] = useState<"outlets" | "terminals" | "printers" | "central-kitchen">("outlets");
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
 
@@ -43,6 +43,14 @@ export default function RestaurantOutletsPage() {
   const [printerForm, setPrinterForm] = useState({ ...emptyPrinter });
   const [qrToken, setQrToken] = useState<string | null>(null);
   const [qrOutletId, setQrOutletId] = useState<number | null>(null);
+
+  // Central Kitchen state
+  const [showDispatchForm, setShowDispatchForm] = useState(false);
+  const [dispatchForm, setDispatchForm] = useState({
+    from_outlet_id: '', to_outlet_id: '', items: [{ item_name: '', quantity: 0, unit: 'kg' }], notes: '', dispatch_date: new Date().toISOString().split('T')[0]
+  });
+  const [receivedBy, setReceivedBy] = useState<Record<number, string>>({});
+  const [expandedDispatch, setExpandedDispatch] = useState<number | null>(null);
 
   const { data: outlets = [], isLoading: loadingOutlets } = useQuery({
     queryKey: ["/api/restaurant/outlets"],
@@ -59,6 +67,12 @@ export default function RestaurantOutletsPage() {
     queryKey: ["/api/restaurant/printers"],
     queryFn: () => api("GET", "/api/restaurant/printers"),
     enabled: tab === "printers",
+  });
+
+  const { data: dispatches = [], refetch: refetchDispatches } = useQuery({
+    queryKey: ['/api/restaurant/central-kitchen/dispatches'],
+    queryFn: () => api("GET", "/api/restaurant/central-kitchen/dispatches"),
+    enabled: tab === "central-kitchen",
   });
 
   const invalidate = (key: string) => qc.invalidateQueries({ queryKey: [key] });
@@ -108,7 +122,23 @@ export default function RestaurantOutletsPage() {
     onError: () => toast({ title: "Error generating QR", variant: "destructive" }),
   });
 
+  const createDispatchMutation = useMutation({
+    mutationFn: (data: any) => api("POST", "/api/restaurant/central-kitchen/dispatches", data),
+    onSuccess: () => { refetchDispatches(); setShowDispatchForm(false); toast({ title: "Dispatch created" }); resetDispatchForm(); },
+    onError: () => toast({ title: "Error creating dispatch", variant: "destructive" }),
+  });
+
+  const receiveDispatchMutation = useMutation({
+    mutationFn: ({ id, ...data }: any) => api("PUT", `/api/restaurant/central-kitchen/dispatches/${id}/receive`, data),
+    onSuccess: () => { refetchDispatches(); toast({ title: "Dispatch received" }); },
+    onError: () => toast({ title: "Error receiving dispatch", variant: "destructive" }),
+  });
+
   const resetForm = () => { setShowForm(false); setEditId(null); setOutletForm({ ...emptyOutlet }); setTerminalForm({ ...emptyTerminal }); setPrinterForm({ ...emptyPrinter }); };
+
+  const resetDispatchForm = () => {
+    setDispatchForm({ from_outlet_id: '', to_outlet_id: '', items: [{ item_name: '', quantity: 0, unit: 'kg' }], notes: '', dispatch_date: new Date().toISOString().split('T')[0] });
+  };
 
   const startEditOutlet = (o: any) => {
     setOutletForm({ outlet_code: o.outlet_code || "", outlet_name: o.outlet_name || "", outlet_type: o.outlet_type || "dine_in", address: o.address || "", city: o.city || "", gstin: o.gstin || "", phone: o.phone || "", manager_name: o.manager_name || "", service_charge_pct: String(o.service_charge_pct || 0), is_service_charge_enabled: o.is_service_charge_enabled ?? false, is_active: o.is_active ?? true });
@@ -127,6 +157,18 @@ export default function RestaurantOutletsPage() {
 
   const toggleCheckbox = (arr: string[], val: string) => arr.includes(val) ? arr.filter(x => x !== val) : [...arr, val];
 
+  const addDispatchItem = () => {
+    setDispatchForm(f => ({ ...f, items: [...f.items, { item_name: '', quantity: 0, unit: 'kg' }] }));
+  };
+
+  const updateDispatchItem = (idx: number, field: string, value: any) => {
+    setDispatchForm(f => ({ ...f, items: f.items.map((it, i) => i === idx ? { ...it, [field]: value } : it) }));
+  };
+
+  const removeDispatchItem = (idx: number) => {
+    setDispatchForm(f => ({ ...f, items: f.items.filter((_, i) => i !== idx) }));
+  };
+
   const activeCount = (outlets as any[]).filter((o: any) => o.is_active).length;
 
   return (
@@ -134,9 +176,9 @@ export default function RestaurantOutletsPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Outlets & Infrastructure</h1>
         <div className="flex gap-2">
-          {(["outlets", "terminals", "printers"] as const).map(t => (
+          {(["outlets", "terminals", "printers", "central-kitchen"] as const).map(t => (
             <Button key={t} variant={tab === t ? "default" : "outline"} onClick={() => { setTab(t); resetForm(); }}>
-              {t.charAt(0).toUpperCase() + t.slice(1)}
+              {t === "central-kitchen" ? "Central Kitchen" : t.charAt(0).toUpperCase() + t.slice(1)}
             </Button>
           ))}
         </div>
@@ -374,6 +416,152 @@ export default function RestaurantOutletsPage() {
             </CardContent>
           </Card>
         </>
+      )}
+
+      {tab === "central-kitchen" && (
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg font-semibold">Central Kitchen Dispatches</h2>
+            <Button onClick={() => setShowDispatchForm(true)}>+ New Dispatch</Button>
+          </div>
+
+          {/* Dispatch list */}
+          <div className="space-y-3">
+            {(dispatches as any[]).length === 0 ? (
+              <p className="text-center text-gray-400 py-8">No dispatches yet</p>
+            ) : (dispatches as any[]).map((d: any) => {
+              const items = Array.isArray(d.items_json) ? d.items_json : (typeof d.items_json === 'string' ? JSON.parse(d.items_json || '[]') : []);
+              return (
+                <Card key={d.id} className={d.status === 'received' ? 'border-green-200' : 'border-blue-200'}>
+                  <CardContent className="pt-4">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-semibold">{d.dispatch_number || `#${d.id}`}</span>
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${d.status === 'received' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                            {d.status}
+                          </span>
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          <span>{d.from_outlet_name || d.from_outlet_id}</span>
+                          <span className="mx-2">→</span>
+                          <span>{d.to_outlet_name || d.to_outlet_id}</span>
+                        </div>
+                        <div className="text-xs text-gray-400 mt-1">
+                          {d.dispatch_date ? new Date(d.dispatch_date).toLocaleDateString() : '—'} · {items.length} item(s)
+                        </div>
+                      </div>
+                      <div className="flex gap-2 items-start">
+                        {d.status === 'dispatched' && (
+                          <div className="flex gap-2 items-center">
+                            <Input
+                              placeholder="Received by"
+                              className="w-32 h-8 text-sm"
+                              value={receivedBy[d.id] || ''}
+                              onChange={e => setReceivedBy(prev => ({ ...prev, [d.id]: e.target.value }))}
+                            />
+                            <Button size="sm" variant="outline" className="text-green-700 border-green-300" onClick={() => {
+                              receiveDispatchMutation.mutate({ id: d.id, received_by: receivedBy[d.id] || '' });
+                            }}>Mark Received</Button>
+                          </div>
+                        )}
+                        <Button size="sm" variant="ghost" onClick={() => setExpandedDispatch(expandedDispatch === d.id ? null : d.id)}>
+                          {expandedDispatch === d.id ? '▲' : '▼'}
+                        </Button>
+                      </div>
+                    </div>
+                    {expandedDispatch === d.id && items.length > 0 && (
+                      <div className="mt-3 border-t pt-3">
+                        <p className="text-xs font-medium text-gray-500 mb-2">Items</p>
+                        <div className="space-y-1">
+                          {items.map((item: any, idx: number) => (
+                            <div key={idx} className="flex gap-4 text-sm">
+                              <span className="font-medium">{item.item_name}</span>
+                              <span className="text-gray-500">{item.quantity} {item.unit}</span>
+                            </div>
+                          ))}
+                        </div>
+                        {d.notes && <p className="text-xs text-gray-400 mt-2">Notes: {d.notes}</p>}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* New Dispatch Form */}
+          {showDispatchForm && (
+            <Card className="border-2 border-blue-200">
+              <CardHeader><CardTitle>New Dispatch</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium">From Outlet</label>
+                    <Select value={dispatchForm.from_outlet_id} onValueChange={v => setDispatchForm(f => ({ ...f, from_outlet_id: v }))}>
+                      <SelectTrigger><SelectValue placeholder="Select outlet" /></SelectTrigger>
+                      <SelectContent>{(outlets as any[]).map((o: any) => <SelectItem key={o.id} value={String(o.id)}>{o.outlet_name}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">To Outlet</label>
+                    <Select value={dispatchForm.to_outlet_id} onValueChange={v => setDispatchForm(f => ({ ...f, to_outlet_id: v }))}>
+                      <SelectTrigger><SelectValue placeholder="Select outlet" /></SelectTrigger>
+                      <SelectContent>{(outlets as any[]).map((o: any) => <SelectItem key={o.id} value={String(o.id)}>{o.outlet_name}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Dispatch Date</label>
+                    <Input type="date" value={dispatchForm.dispatch_date} onChange={e => setDispatchForm(f => ({ ...f, dispatch_date: e.target.value }))} />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-sm font-medium">Items</label>
+                    <Button size="sm" variant="outline" onClick={addDispatchItem}>+ Add Item</Button>
+                  </div>
+                  <div className="space-y-2">
+                    {dispatchForm.items.map((item, idx) => (
+                      <div key={idx} className="flex gap-2 items-center">
+                        <Input placeholder="Item name" value={item.item_name} onChange={e => updateDispatchItem(idx, 'item_name', e.target.value)} className="flex-1" />
+                        <Input type="number" placeholder="Qty" value={item.quantity || ''} onChange={e => updateDispatchItem(idx, 'quantity', parseFloat(e.target.value) || 0)} className="w-24" />
+                        <Select value={item.unit} onValueChange={v => updateDispatchItem(idx, 'unit', v)}>
+                          <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                          <SelectContent>{["kg", "g", "L", "ml", "pcs"].map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
+                        </Select>
+                        {dispatchForm.items.length > 1 && (
+                          <Button size="sm" variant="ghost" className="text-red-500" onClick={() => removeDispatchItem(idx)}>✕</Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium">Notes</label>
+                  <textarea className="w-full border rounded p-2 text-sm mt-1" rows={2} value={dispatchForm.notes} onChange={e => setDispatchForm(f => ({ ...f, notes: e.target.value }))} placeholder="Any notes about this dispatch..." />
+                </div>
+
+                <div className="flex gap-2">
+                  <Button onClick={() => {
+                    createDispatchMutation.mutate({
+                      from_outlet_id: dispatchForm.from_outlet_id,
+                      to_outlet_id: dispatchForm.to_outlet_id,
+                      items_json: dispatchForm.items,
+                      notes: dispatchForm.notes,
+                      dispatch_date: dispatchForm.dispatch_date,
+                      status: 'dispatched'
+                    });
+                  }} disabled={!dispatchForm.from_outlet_id || !dispatchForm.to_outlet_id || createDispatchMutation.isPending}>
+                    {createDispatchMutation.isPending ? "Creating..." : "Create Dispatch"}
+                  </Button>
+                  <Button variant="outline" onClick={() => { setShowDispatchForm(false); resetDispatchForm(); }}>Cancel</Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       )}
     </div>
   );

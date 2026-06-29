@@ -70,6 +70,14 @@ export default function RestaurantInventoryPage() {
     enabled: tab === "stock",
   });
 
+  // Low stock query — component level so it's always available in stock tab
+  const { data: lowStockItems = [] } = useQuery({
+    queryKey: ['/api/restaurant/stock/low-stock'],
+    queryFn: () => api("GET", "/api/restaurant/stock/low-stock"),
+    enabled: tab === "stock",
+    refetchInterval: tab === "stock" ? 60000 : false,
+  });
+
   const invalidateRecipes = () => qc.invalidateQueries({ queryKey: ["/api/restaurant/recipes"] });
   const invalidateWastage = () => qc.invalidateQueries({ queryKey: ["/api/restaurant/wastage"] });
 
@@ -318,6 +326,59 @@ export default function RestaurantInventoryPage() {
               Stock is automatically deducted when payments are recorded. Use the form below for manual corrections only.
             </CardContent>
           </Card>
+
+          {/* Low Stock Alerts */}
+          {(lowStockItems as any[]).filter((i: any) => i.is_low).length > 0 && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-red-600 font-semibold">⚠️ Low Stock Alerts ({(lowStockItems as any[]).filter((i: any) => i.is_low).length} items)</span>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                {(lowStockItems as any[]).filter((i: any) => i.is_low).map((item: any, idx: number) => (
+                  <div key={idx} className="bg-white border border-red-100 rounded p-2 text-sm">
+                    <div className="font-medium text-red-700">{item.ingredient_name}</div>
+                    <div className="text-xs text-gray-500">Used: {item.total_deducted} {item.unit}</div>
+                    <div className="text-xs text-orange-500">Alert: {item.alert}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Full stock usage table */}
+          {(lowStockItems as any[]).length > 0 && (
+            <Card>
+              <CardHeader><CardTitle>Stock Usage</CardTitle></CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Ingredient</TableHead>
+                      <TableHead>Total Used</TableHead>
+                      <TableHead>Unit</TableHead>
+                      <TableHead>Last Used</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(lowStockItems as any[]).map((item: any, idx: number) => (
+                      <TableRow key={idx} className={item.is_low ? 'bg-red-50' : ''}>
+                        <TableCell className="font-medium">{item.ingredient_name}</TableCell>
+                        <TableCell>{item.total_deducted}</TableCell>
+                        <TableCell>{item.unit}</TableCell>
+                        <TableCell>{item.last_used ? new Date(item.last_used).toLocaleDateString() : '-'}</TableCell>
+                        <TableCell>
+                          <Badge className={item.is_low ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}>
+                            {item.alert}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
 
           {wastageSummary && (
             <Card>

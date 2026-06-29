@@ -59,6 +59,13 @@ export default function RestaurantPOSPage() {
   const [complimentaryReason, setComplimentaryReason] = useState("");
   const [showCompModal, setShowCompModal] = useState(false);
   const [customerOpen, setCustomerOpen] = useState(false);
+
+  // Credit billing state
+  const [creditCustomerName, setCreditCustomerName] = useState("");
+  const [creditAccount, setCreditAccount] = useState("");
+  const [creditDueDate, setCreditDueDate] = useState("");
+  const [creditNotes, setCreditNotes] = useState("");
+
   const searchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -161,6 +168,10 @@ export default function RestaurantPOSPage() {
     setOrderType("dine_in");
     setCovers(1);
     setCustomerOpen(false);
+    setCreditCustomerName("");
+    setCreditAccount("");
+    setCreditDueDate("");
+    setCreditNotes("");
   };
 
   const lookupCustomer = async () => {
@@ -289,6 +300,14 @@ export default function RestaurantPOSPage() {
 
   const completePayment = useMutation({
     mutationFn: async () => {
+      if (paymentMode === "credit") {
+        return api("POST", `/api/restaurant/kot/orders/${activeKotId}/credit-bill`, {
+          customer_name: creditCustomerName,
+          credit_account: creditAccount,
+          due_date: creditDueDate,
+          notes: creditNotes,
+        });
+      }
       const paymentPayload: any = {
         payment_mode: paymentMode,
         amount: grandTotal,
@@ -304,7 +323,7 @@ export default function RestaurantPOSPage() {
       return api("POST", `/api/restaurant/kot/orders/${activeKotId}/payment`, paymentPayload);
     },
     onSuccess: () => {
-      toast({ title: "Payment complete!", description: `${fmt(grandTotal)} collected` });
+      toast({ title: paymentMode === "credit" ? "Credit bill recorded!" : "Payment complete!", description: paymentMode === "credit" ? "Order recorded as credit" : `${fmt(grandTotal)} collected` });
       setShowPaymentModal(false);
       clearTable();
       qc.invalidateQueries({ queryKey: ["/api/restaurant/tables"] });
@@ -764,7 +783,7 @@ export default function RestaurantPOSPage() {
               {/* Payment mode tabs */}
               <div>
                 <div className="flex border rounded-lg overflow-hidden">
-                  {["cash", "upi", "card", "split"].map(mode => (
+                  {["cash", "upi", "card", "split", "credit"].map(mode => (
                     <button
                       key={mode}
                       onClick={() => setPaymentMode(mode)}
@@ -881,6 +900,28 @@ export default function RestaurantPOSPage() {
                       })()}
                     </div>
                   )}
+
+                  {paymentMode === "credit" && (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-sm font-medium">Customer Name</label>
+                        <Input value={creditCustomerName} onChange={e => setCreditCustomerName(e.target.value)} placeholder="Customer / Company name" />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Credit Account</label>
+                        <Input value={creditAccount} onChange={e => setCreditAccount(e.target.value)} placeholder="Account code or reference" />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Due Date</label>
+                        <Input type="date" value={creditDueDate} onChange={e => setCreditDueDate(e.target.value)} />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Notes</label>
+                        <Input value={creditNotes} onChange={e => setCreditNotes(e.target.value)} placeholder="Optional notes" />
+                      </div>
+                      <p className="text-xs text-gray-500">Amount will be recorded as credit: {fmt(grandTotal)}</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -892,7 +933,7 @@ export default function RestaurantPOSPage() {
                 disabled={completePayment.isPending}
                 onClick={() => completePayment.mutate()}
               >
-                {completePayment.isPending ? "Processing..." : `Complete — ${fmt(grandTotal)}`}
+                {completePayment.isPending ? "Processing..." : paymentMode === "credit" ? `Record Credit — ${fmt(grandTotal)}` : `Complete — ${fmt(grandTotal)}`}
               </Button>
             </div>
           </div>

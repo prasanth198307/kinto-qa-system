@@ -21,11 +21,18 @@ const TIER_ICON: Record<string, string> = { bronze: "🥉", silver: "🥈", gold
 
 const emptyForm = { customer_name: "", customer_phone: "", email: "", date_of_birth: "", anniversary_date: "", gstin: "", address: "" };
 
+function StarRating({ value }: { value: number }) {
+  const rounded = Math.round(value * 10) / 10;
+  return (
+    <span className="font-medium text-yellow-600">★ {rounded.toFixed(1)}</span>
+  );
+}
+
 export default function RestaurantCustomersPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
 
-  const [tab, setTab] = useState<"customers" | "loyalty">("customers");
+  const [tab, setTab] = useState<"customers" | "loyalty" | "feedback">("customers");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -53,6 +60,19 @@ export default function RestaurantCustomersPage() {
     queryKey: ["/api/restaurant/customers", selectedCustomer?.id, "history"],
     queryFn: () => api("GET", `/api/restaurant/customers/${selectedCustomer.id}/history`),
     enabled: !!selectedCustomer?.id,
+  });
+
+  // Feedback queries
+  const { data: feedbackSummary = {} as any } = useQuery({
+    queryKey: ['/api/restaurant/feedback/summary'],
+    queryFn: () => api("GET", "/api/restaurant/feedback/summary"),
+    enabled: tab === "feedback",
+  });
+
+  const { data: feedbackList = [] } = useQuery({
+    queryKey: ['/api/restaurant/feedback'],
+    queryFn: () => api("GET", "/api/restaurant/feedback"),
+    enabled: tab === "feedback",
   });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["/api/restaurant/customers"] });
@@ -107,6 +127,12 @@ export default function RestaurantCustomersPage() {
 
   const effectiveConfig = configForm.id ? configForm : (config || {});
 
+  // Feedback derived counts
+  const fbTotal = (feedbackList as any[]).length;
+  const fbPositive = (feedbackList as any[]).filter((f: any) => (f.overall_rating || f.rating) >= 4).length;
+  const fbNegative = (feedbackList as any[]).filter((f: any) => (f.overall_rating || f.rating) <= 2).length;
+  const fbAvgOverall = feedbackSummary.avg_overall ?? (fbTotal > 0 ? (feedbackList as any[]).reduce((s: number, f: any) => s + (f.overall_rating || f.rating || 0), 0) / fbTotal : 0);
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
@@ -114,6 +140,7 @@ export default function RestaurantCustomersPage() {
         <div className="flex gap-2">
           <Button variant={tab === "customers" ? "default" : "outline"} onClick={() => setTab("customers")}>Customers</Button>
           <Button variant={tab === "loyalty" ? "default" : "outline"} onClick={() => setTab("loyalty")}>Loyalty Program</Button>
+          <Button variant={tab === "feedback" ? "default" : "outline"} onClick={() => setTab("feedback")}>Feedback</Button>
         </div>
       </div>
 
@@ -326,6 +353,96 @@ export default function RestaurantCustomersPage() {
                     </Button>
                   </div>
                 </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {tab === "feedback" && (
+        <div className="space-y-6">
+          {/* Summary cards */}
+          <div className="grid grid-cols-4 gap-4">
+            <Card><CardContent className="pt-4">
+              <p className="text-sm text-gray-500">Total Reviews</p>
+              <p className="text-2xl font-bold">{feedbackSummary.total_count ?? fbTotal}</p>
+            </CardContent></Card>
+            <Card><CardContent className="pt-4">
+              <p className="text-sm text-gray-500">Avg Overall</p>
+              <p className="text-2xl font-bold text-yellow-600">★ {(feedbackSummary.avg_overall ?? fbAvgOverall).toFixed(1)}</p>
+            </CardContent></Card>
+            <Card><CardContent className="pt-4">
+              <p className="text-sm text-gray-500">Positive (≥4 stars)</p>
+              <p className="text-2xl font-bold text-green-600">{feedbackSummary.positive_count ?? fbPositive}</p>
+            </CardContent></Card>
+            <Card><CardContent className="pt-4">
+              <p className="text-sm text-gray-500">Negative (≤2 stars)</p>
+              <p className="text-2xl font-bold text-red-600">{feedbackSummary.negative_count ?? fbNegative}</p>
+            </CardContent></Card>
+          </div>
+
+          {/* Rating breakdown */}
+          {(feedbackSummary.avg_food !== undefined || feedbackSummary.avg_service !== undefined || feedbackSummary.avg_ambience !== undefined) && (
+            <Card>
+              <CardContent className="pt-4">
+                <div className="flex gap-8 text-sm">
+                  {feedbackSummary.avg_food !== undefined && (
+                    <div><span className="text-gray-500">Food</span> <StarRating value={feedbackSummary.avg_food} /></div>
+                  )}
+                  {feedbackSummary.avg_service !== undefined && (
+                    <div><span className="text-gray-500">Service</span> <StarRating value={feedbackSummary.avg_service} /></div>
+                  )}
+                  {feedbackSummary.avg_ambience !== undefined && (
+                    <div><span className="text-gray-500">Ambience</span> <StarRating value={feedbackSummary.avg_ambience} /></div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Feedback table */}
+          <Card>
+            <CardHeader><CardTitle>All Feedback ({(feedbackList as any[]).length})</CardTitle></CardHeader>
+            <CardContent>
+              {(feedbackList as any[]).length === 0 ? (
+                <p className="text-center text-gray-400 py-8">No feedback yet</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Table</TableHead>
+                      <TableHead>Customer</TableHead>
+                      <TableHead>Food</TableHead>
+                      <TableHead>Service</TableHead>
+                      <TableHead>Ambience</TableHead>
+                      <TableHead>Overall</TableHead>
+                      <TableHead>Comment</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(feedbackList as any[]).map((fb: any, i: number) => {
+                      const overall = fb.overall_rating ?? fb.rating ?? 0;
+                      const rowClass = overall >= 4 ? "bg-green-50" : overall <= 2 ? "bg-red-50" : "";
+                      return (
+                        <TableRow key={fb.id ?? i} className={rowClass}>
+                          <TableCell className="text-xs">{(fb.created_at || fb.submitted_at || "")?.split("T")[0] || "—"}</TableCell>
+                          <TableCell>{fb.table_number || fb.table_id || "—"}</TableCell>
+                          <TableCell>{fb.customer_name || fb.customer_phone || "—"}</TableCell>
+                          <TableCell>{fb.food_rating != null ? <span className="text-yellow-600">★ {fb.food_rating}</span> : "—"}</TableCell>
+                          <TableCell>{fb.service_rating != null ? <span className="text-yellow-600">★ {fb.service_rating}</span> : "—"}</TableCell>
+                          <TableCell>{fb.ambience_rating != null ? <span className="text-yellow-600">★ {fb.ambience_rating}</span> : "—"}</TableCell>
+                          <TableCell>
+                            <span className={`font-bold ${overall >= 4 ? "text-green-700" : overall <= 2 ? "text-red-600" : "text-gray-700"}`}>
+                              ★ {overall}
+                            </span>
+                          </TableCell>
+                          <TableCell className="max-w-xs text-xs text-gray-600 truncate">{fb.comment || fb.remarks || "—"}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
               )}
             </CardContent>
           </Card>

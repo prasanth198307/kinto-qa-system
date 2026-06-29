@@ -62,6 +62,10 @@ export default function RestaurantMenuPage() {
   const [search, setSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
+  // ─── VARIATIONS STATE ─────────────────────────────────────────────────────
+  const [showAddVariation, setShowAddVariation] = useState(false);
+  const [variationForm, setVariationForm] = useState({ variation_name: '', price_modifier: 0, sku: '' });
+
   const saveItem = useMutation({
     mutationFn: (d: Partial<MenuItem>) => editItemId ? api("PUT", `/api/restaurant/menu-items/${editItemId}`, d) : api("POST", "/api/restaurant/menu-items", d),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/restaurant/menu-items"] }); setShowItemPanel(false); setItemForm(emptyItem()); setEditItemId(null); toast({ title: "Item saved" }); },
@@ -81,6 +85,27 @@ export default function RestaurantMenuPage() {
     setSelectedIds([]);
     toast({ title: `${selectedIds.length} items ${enable ? "enabled" : "disabled"}` });
   };
+
+  // ─── VARIATIONS QUERY & MUTATIONS ─────────────────────────────────────────
+  const { data: variations = [], refetch: refetchVariations } = useQuery({
+    queryKey: ['/api/restaurant/menu-items', editItemId, 'variations'],
+    queryFn: () => editItemId ? api("GET", `/api/restaurant/menu-items/${editItemId}/variations`) : Promise.resolve([]),
+    enabled: !!editItemId,
+  });
+
+  const addVariationMutation = useMutation({
+    mutationFn: (data: any) => api("POST", `/api/restaurant/menu-items/${editItemId}/variations`, data),
+    onSuccess: () => {
+      refetchVariations();
+      setShowAddVariation(false);
+      setVariationForm({ variation_name: '', price_modifier: 0, sku: '' });
+      toast({ title: "Variation added" });
+    },
+  });
+  const deleteVariationMutation = useMutation({
+    mutationFn: (vid: any) => api("DELETE", `/api/restaurant/menu-item-variations/${vid}`, {}),
+    onSuccess: () => refetchVariations(),
+  });
 
   const filteredItems = menuItems.filter(i => {
     if (catFilter !== "all" && String(i.category_id) !== catFilter) return false;
@@ -228,7 +253,7 @@ export default function RestaurantMenuPage() {
                   <Button size="sm" variant="outline" onClick={() => bulkToggle(false)}>Disable Selected ({selectedIds.length})</Button>
                 </>
               )}
-              <Button size="sm" onClick={() => { setItemForm(emptyItem()); setEditItemId(null); setShowItemPanel(true); }}>+ Add Item</Button>
+              <Button size="sm" onClick={() => { setItemForm(emptyItem()); setEditItemId(null); setShowItemPanel(true); setShowAddVariation(false); }}>+ Add Item</Button>
             </div>
           </div>
 
@@ -314,8 +339,82 @@ export default function RestaurantMenuPage() {
                   <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={itemForm.is_available ?? true} onChange={e => setItemForm(f => ({ ...f, is_available: e.target.checked }))} /> Available</label>
                   <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={itemForm.is_featured ?? false} onChange={e => setItemForm(f => ({ ...f, is_featured: e.target.checked }))} /> Featured</label>
                 </div>
+
+                {/* ── VARIATIONS SECTION ── */}
+                {editItemId && (
+                  <div className="col-span-3 border-t pt-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <h4 className="font-medium text-sm">Item Variations (sizes, types)</h4>
+                      <Button size="sm" onClick={() => setShowAddVariation(true)} variant="outline">+ Add Variation</Button>
+                    </div>
+                    {variations.length > 0 && (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Price Adj (±₹)</TableHead>
+                            <TableHead>SKU</TableHead>
+                            <TableHead></TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {(variations as any[]).map((v: any) => (
+                            <TableRow key={v.id}>
+                              <TableCell className="font-medium">{v.variation_name}</TableCell>
+                              <TableCell className={v.price_modifier >= 0 ? "text-green-600" : "text-red-600"}>
+                                {v.price_modifier >= 0 ? "+" : ""}{fmt(v.price_modifier)}
+                              </TableCell>
+                              <TableCell className="text-muted-foreground text-xs">{v.sku || "—"}</TableCell>
+                              <TableCell>
+                                <Button size="sm" variant="ghost" className="text-destructive h-6 px-2"
+                                  onClick={() => { if (confirm(`Delete variation "${v.variation_name}"?`)) deleteVariationMutation.mutate(v.id); }}>
+                                  Del
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                    {variations.length === 0 && !showAddVariation && (
+                      <p className="text-xs text-muted-foreground">No variations yet. Add sizes or types above.</p>
+                    )}
+                    {showAddVariation && (
+                      <div className="border rounded p-3 bg-muted/30 space-y-2 mt-2">
+                        <div className="text-sm font-medium">New Variation</div>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <label className="text-xs font-medium">Variation Name *</label>
+                            <Input placeholder="e.g. Small, Large, Spicy" value={variationForm.variation_name}
+                              onChange={e => setVariationForm(f => ({ ...f, variation_name: e.target.value }))} />
+                          </div>
+                          <div>
+                            <label className="text-xs font-medium">Price Adjustment (±₹)</label>
+                            <Input type="number" placeholder="0" value={variationForm.price_modifier}
+                              onChange={e => setVariationForm(f => ({ ...f, price_modifier: Number(e.target.value) }))} />
+                          </div>
+                          <div>
+                            <label className="text-xs font-medium">SKU (optional)</label>
+                            <Input placeholder="SKU code" value={variationForm.sku}
+                              onChange={e => setVariationForm(f => ({ ...f, sku: e.target.value }))} />
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button size="sm" onClick={() => addVariationMutation.mutate(variationForm)}
+                            disabled={!variationForm.variation_name || addVariationMutation.isPending}>
+                            {addVariationMutation.isPending ? "Adding..." : "Add"}
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => { setShowAddVariation(false); setVariationForm({ variation_name: '', price_modifier: 0, sku: '' }); }}>
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className="col-span-3 flex gap-2 justify-end">
-                  <Button variant="outline" onClick={() => setShowItemPanel(false)}>Cancel</Button>
+                  <Button variant="outline" onClick={() => { setShowItemPanel(false); setShowAddVariation(false); }}>Cancel</Button>
                   <Button onClick={() => saveItem.mutate(itemForm)} disabled={!itemForm.name || !itemForm.price}>Save Item</Button>
                 </div>
               </CardContent>
@@ -349,7 +448,7 @@ export default function RestaurantMenuPage() {
                         </button>
                       </TableCell>
                       <TableCell className="flex gap-1">
-                        <Button size="sm" variant="outline" onClick={() => { setItemForm(item); setEditItemId(item.id); setShowItemPanel(true); }}>Edit</Button>
+                        <Button size="sm" variant="outline" onClick={() => { setItemForm(item); setEditItemId(item.id); setShowItemPanel(true); setShowAddVariation(false); }}>Edit</Button>
                         <Button size="sm" variant="destructive" onClick={() => { if (confirm(`Delete "${item.name}"?`)) deleteItem.mutate(item.id); }}>Del</Button>
                       </TableCell>
                     </TableRow>
