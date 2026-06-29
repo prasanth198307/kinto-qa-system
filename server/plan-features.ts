@@ -218,10 +218,13 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
     "agriculture/weather", "agriculture/schemes", "agriculture/fpo", "agriculture/market", "agriculture/reports",
   ],
   restaurant: [
-    "restaurant", "restaurant-enterprise",
+    "restaurant", "restaurant-enterprise", "restaurant-erp-section",
     "restaurant/pos", "restaurant/kitchen", "restaurant/tables", "restaurant/menu",
     "restaurant/orders", "restaurant/delivery", "restaurant/reservations", "restaurant/shifts",
     "restaurant/customers", "restaurant/inventory", "restaurant/outlets", "restaurant/reports",
+    "restaurant-pos", "restaurant-kitchen", "restaurant-tables", "restaurant-menu",
+    "restaurant-orders", "restaurant-delivery", "restaurant-reservations", "restaurant-shifts",
+    "restaurant-customers", "restaurant-inventory", "restaurant-outlets", "restaurant-reports",
   ],
   hotel: [
     "hotel", "hotel-enterprise",
