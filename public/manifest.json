@@ -1,0 +1,38 @@
+{
+  "name": "SwachERP Steward",
+  "short_name": "Steward",
+  "description": "Waiter ordering app — SwachERP Restaurant POS",
+  "start_url": "/restaurant-steward",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#dc2626",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='24' fill='%23dc2626'/><text y='130' x='50' font-size='110' font-family='sans-serif'>🍽</text></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='64' fill='%23dc2626'/><text y='360' x='100' font-size='320' font-family='sans-serif'>🍽</text></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "food"],
+  "shortcuts": [
+    {
+      "name": "New Order",
+      "url": "/restaurant-steward",
+      "description": "Take a new table order"
+    },
+    {
+      "name": "POS",
+      "url": "/restaurant-pos",
+      "description": "Open POS terminal"
+    }
+  ]
+}

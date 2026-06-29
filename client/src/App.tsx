@@ -234,6 +234,11 @@ import RestaurantCustomersPage from "@/pages/restaurant-customers";
 import RestaurantInventoryPage from "@/pages/restaurant-inventory";
 import RestaurantOutletsPage from "@/pages/restaurant-outlets";
 import RestaurantReportsPage from "@/pages/restaurant-reports";
+import RestaurantStewardPage from "@/pages/restaurant-steward";
+import RestaurantKioskPage from "@/pages/restaurant-kiosk";
+import RestaurantAggregatorsPage from "@/pages/restaurant-aggregators";
+import RestaurantAnalyticsPage from "@/pages/restaurant-analytics";
+import RestaurantStaffPage from "@/pages/restaurant-staff";
 import HotelFrontDeskPage from "@/pages/hotel/front-desk";
 import HotelReservationsPage from "@/pages/hotel/reservations";
 import HotelCheckinPage from "@/pages/hotel/checkin";
@@ -1389,6 +1394,10 @@ function AdminDashboard() {
         { id: "restaurant-inventory", label: "Inventory & Recipes", icon: Package, onClick: () => setLocation('/restaurant-inventory') },
         { id: "restaurant-outlets", label: "Outlets & Terminals", icon: Building2, onClick: () => setLocation('/restaurant-outlets') },
         { id: "restaurant-reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/restaurant-reports') },
+        { id: "restaurant-aggregators", label: "Delivery Platforms", icon: Truck, onClick: () => setLocation('/restaurant-aggregators') },
+        { id: "restaurant-analytics", label: "Analytics & BI", icon: BarChart3, onClick: () => setLocation('/restaurant-analytics') },
+        { id: "restaurant-staff", label: "Staff & Tips", icon: Users, onClick: () => setLocation('/restaurant-staff') },
+        { id: "restaurant-steward", label: "Steward App", icon: UtensilsCrossed, onClick: () => setLocation('/restaurant-steward') },
       ],
     },
     {
@@ -2824,6 +2833,10 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "restaurant-inventory", label: "Inventory & Recipes", icon: Package, onClick: () => setLocation('/restaurant-inventory') },
         { id: "restaurant-outlets", label: "Outlets & Terminals", icon: Building2, onClick: () => setLocation('/restaurant-outlets') },
         { id: "restaurant-reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/restaurant-reports') },
+        { id: "restaurant-aggregators", label: "Delivery Platforms", icon: Truck, onClick: () => setLocation('/restaurant-aggregators') },
+        { id: "restaurant-analytics", label: "Analytics & BI", icon: BarChart3, onClick: () => setLocation('/restaurant-analytics') },
+        { id: "restaurant-staff", label: "Staff & Tips", icon: Users, onClick: () => setLocation('/restaurant-staff') },
+        { id: "restaurant-steward", label: "Steward App", icon: UtensilsCrossed, onClick: () => setLocation('/restaurant-steward') },
       ],
     },
     {
@@ -4515,6 +4528,8 @@ function Router() {
       <Route path="/pricing" component={PricingPage} />
       <Route path="/restaurant-feedback/:outletId" component={RestaurantFeedbackPublicPage} />
       <Route path="/restaurant-feedback" component={RestaurantFeedbackPublicPage} />
+      <Route path="/restaurant-kiosk/:outletId" component={RestaurantKioskPage} />
+      <Route path="/restaurant-kiosk" component={RestaurantKioskPage} />
       <ProtectedRoute path="/super-admin/overview" component={() => <SuperAdminOverview />} />
       <ProtectedRoute path="/super-admin/tenants" component={() => <SuperAdminTenants />} />
       <ProtectedRoute path="/super-admin/billing" component={() => <SuperAdminBilling />} />
@@ -4647,6 +4662,10 @@ function Router() {
       <ProtectedRoute path="/restaurant-inventory" component={RestaurantInventoryWrapper} />
       <ProtectedRoute path="/restaurant-outlets" component={RestaurantOutletsWrapper} />
       <ProtectedRoute path="/restaurant-reports" component={RestaurantReportsWrapper} />
+      <ProtectedRoute path="/restaurant-aggregators" component={RestaurantAggregatorsWrapper} />
+      <ProtectedRoute path="/restaurant-analytics" component={RestaurantAnalyticsWrapper} />
+      <ProtectedRoute path="/restaurant-staff" component={RestaurantStaffWrapper} />
+      <ProtectedRoute path="/restaurant-steward" component={RestaurantStewardWrapper} />
       <ProtectedRoute path="/hotel/front-desk" component={HotelFrontDeskWrapper} />
       <ProtectedRoute path="/hotel/reservations" component={HotelReservationsWrapper} />
       <ProtectedRoute path="/hotel/checkin" component={HotelCheckinWrapper} />
@@ -5383,6 +5402,10 @@ const RestaurantCustomersWrapper = makeWrapper('Customers & Loyalty', 'restauran
 const RestaurantInventoryWrapper = makeWrapper('Inventory & Recipes', 'restaurant-inventory', RestaurantInventoryPage);
 const RestaurantOutletsWrapper = makeWrapper('Outlets & Terminals', 'restaurant-outlets', RestaurantOutletsPage);
 const RestaurantReportsWrapper = makeWrapper('Reports', 'restaurant-reports', RestaurantReportsPage);
+const RestaurantAggregatorsWrapper = makeWrapper('Delivery Platforms', 'restaurant-aggregators', RestaurantAggregatorsPage);
+const RestaurantAnalyticsWrapper = makeWrapper('Analytics & BI', 'restaurant-analytics', RestaurantAnalyticsPage);
+const RestaurantStaffWrapper = makeWrapper('Staff & Tips', 'restaurant-staff', RestaurantStaffPage);
+const RestaurantStewardWrapper = makeWrapper('Steward App', 'restaurant-steward', RestaurantStewardPage);
 const HotelFrontDeskWrapper = makeWrapper('Front Desk', 'hotel/front-desk', HotelFrontDeskPage);
 const HotelReservationsWrapper = makeWrapper('Reservations', 'hotel/reservations', HotelReservationsPage);
 const HotelCheckinWrapper = makeWrapper('Check-in / Check-out', 'hotel/checkin', HotelCheckinPage);

@@ -225,6 +225,7 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
     "restaurant-pos", "restaurant-kitchen", "restaurant-tables", "restaurant-menu",
     "restaurant-orders", "restaurant-delivery", "restaurant-reservations", "restaurant-shifts",
     "restaurant-customers", "restaurant-inventory", "restaurant-outlets", "restaurant-reports",
+    "restaurant-aggregators", "restaurant-analytics", "restaurant-staff", "restaurant-steward", "restaurant-kiosk",
   ],
   hotel: [
     "hotel", "hotel-enterprise",

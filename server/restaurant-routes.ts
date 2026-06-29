@@ -1856,4 +1856,76 @@ router.post("/whatsapp/pending-orders/:id/confirm", requireAuth, async (req: any
     res.json({ success: true, kot_id: kotId, kot_number: kotNo });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
+
+// ── STAFF SCHEDULES ───────────────────────────────────────────────────────────
+router.get("/staff/schedules", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const { from, to } = req.query;
+    const fromDate = from || new Date(Date.now() - 3*86400000).toISOString().split('T')[0];
+    const toDate = to || new Date(Date.now() + 4*86400000).toISOString().split('T')[0];
+    const rows = await db.execute(sql`SELECT * FROM staff_schedules WHERE tenant_id = ${t} AND schedule_date BETWEEN ${fromDate} AND ${toDate} ORDER BY schedule_date, shift_start`);
+    res.json(rows.rows || []);
+  } catch { res.json([]); }
+});
+router.post("/staff/schedules", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const { staff_name, staff_role, outlet_id, schedule_date, shift_start, shift_end } = req.body;
+    await db.execute(sql`INSERT INTO staff_schedules (tenant_id, staff_name, staff_role, outlet_id, schedule_date, shift_start, shift_end, status) VALUES (${t}, ${staff_name}, ${staff_role||null}, ${outlet_id||null}, ${schedule_date}, ${shift_start}, ${shift_end}, 'scheduled')`);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+router.put("/staff/schedules/:id/clock-in", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    await db.execute(sql`UPDATE staff_schedules SET actual_start = NOW(), status = 'clocked_in' WHERE id = ${req.params.id} AND tenant_id = ${t}`);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+router.put("/staff/schedules/:id/clock-out", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    await db.execute(sql`UPDATE staff_schedules SET actual_end = NOW(), status = 'clocked_out' WHERE id = ${req.params.id} AND tenant_id = ${t}`);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+router.get("/staff/attendance", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const today = new Date().toISOString().split('T')[0];
+    const rows = await db.execute(sql`SELECT *, EXTRACT(EPOCH FROM (COALESCE(actual_end, NOW()) - COALESCE(actual_start, NOW())))/3600 as hours_worked FROM staff_schedules WHERE tenant_id = ${t} AND schedule_date = ${today} ORDER BY shift_start`);
+    res.json(rows.rows || []);
+  } catch { res.json([]); }
+});
+router.delete("/staff/schedules/:id", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    await db.execute(sql`DELETE FROM staff_schedules WHERE id = ${req.params.id} AND tenant_id = ${t}`);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── OFFLINE SYNC ──────────────────────────────────────────────────────────────
+router.post("/offline-sync", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const { kots, device_id } = req.body;
+    const results = [];
+    for (const kot of (kots || [])) {
+      const kotNo = kot.kot_number || `OFFLINE-${Date.now()}`;
+      const result = await db.execute(sql`
+        INSERT INTO kot_orders (tenant_id, kot_number, table_number, table_id, order_type, status, covers, subtotal, gst_amount, grand_total, cashier_name, outlet_id, record_status, created_at)
+        VALUES (${t}, ${kotNo}, ${kot.table_number||null}, ${kot.table_id||null}, ${kot.order_type||'dine_in'}, 'pending', ${kot.covers||1}, ${kot.subtotal||0}, ${kot.gst_amount||0}, ${kot.grand_total||0}, ${kot.cashier_name||'Offline'}, ${kot.outlet_id||null}, 1, ${kot.created_at||'NOW()'})
+        RETURNING id, kot_number`);
+      const kotId = (result.rows[0] as any)?.id;
+      for (const item of (kot.items || [])) {
+        await db.execute(sql`INSERT INTO kot_items (tenant_id, kot_id, item_name, quantity, unit_price, total_price, kitchen_status, created_at) VALUES (${t}, ${kotId}, ${item.item_name}, ${item.quantity}, ${item.rate||item.unit_price||0}, ${item.amount||item.total_price||0}, 'pending', NOW())`);
+      }
+      results.push({ offline_id: kot.offline_id, server_id: kotId, kot_number: kotNo });
+    }
+    res.json({ success: true, synced: results.length, results });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
 export default router;

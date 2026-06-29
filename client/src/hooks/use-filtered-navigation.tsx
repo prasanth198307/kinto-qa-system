@@ -164,6 +164,8 @@ const navItemToScreen: Record<string, string> = {
   'restaurant-customers': 'Industry Verticals', 'restaurant-inventory': 'Industry Verticals',
   'restaurant-outlets': 'Industry Verticals', 'restaurant-reports': 'Industry Verticals',
   'restaurant-erp-section': 'Industry Verticals',
+  'restaurant-aggregators': 'Industry Verticals', 'restaurant-analytics': 'Industry Verticals',
+  'restaurant-staff': 'Industry Verticals', 'restaurant-steward': 'Industry Verticals',
   'hotel/front-desk': 'Industry Verticals', 'hotel/reservations': 'Industry Verticals',
   'hotel/checkin': 'Industry Verticals', 'hotel/rooms': 'Industry Verticals',
   'hotel/folio': 'Industry Verticals', 'hotel/housekeeping': 'Industry Verticals',
