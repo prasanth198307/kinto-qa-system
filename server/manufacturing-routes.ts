@@ -39,7 +39,7 @@ router.get("/work-orders", auth, async (req: any, res) => {
         (SELECT COUNT(*) FROM production_entries pe WHERE pe.issuance_id = wo.issuance_id AND pe.tenant_id = ${tenantId}) AS production_count
       FROM work_orders wo
       LEFT JOIN products p ON p.id = wo.product_id
-      LEFT JOIN unit_of_measurements u ON u.id = wo.uom_id
+      LEFT JOIN uom u ON u.id = wo.uom_id
       WHERE wo.tenant_id = ${tenantId}
         AND (${status ?? null}::text IS NULL OR wo.status = ${status ?? null})
         AND (${productId ?? null}::text IS NULL OR wo.product_id = ${productId ?? null})
@@ -64,7 +64,7 @@ router.get("/work-orders/:id", auth, async (req: any, res) => {
       SELECT wo.*, p.product_name, p.product_code, u.name AS uom_name
       FROM work_orders wo
       LEFT JOIN products p ON p.id = wo.product_id
-      LEFT JOIN unit_of_measurements u ON u.id = wo.uom_id
+      LEFT JOIN uom u ON u.id = wo.uom_id
       WHERE wo.id = ${req.params.id} AND wo.tenant_id = ${tenantId}
     `);
     if (!rows.rows.length) return res.status(404).json({ message: "Not found" });
