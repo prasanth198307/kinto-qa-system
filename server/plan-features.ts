@@ -54,6 +54,8 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
     "audit-log",
     "cost-centres",
     "gstr-reports",
+  ],
+  masters: [
     "masters/hsn-codes",
     "masters/sac-codes",
     "masters/tax-config",
