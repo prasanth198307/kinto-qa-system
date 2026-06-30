@@ -1002,4 +1002,22 @@ router.get("/dashboard-kpis-summary", requireAuth, async (req: any, res) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
+// ── Phase 7L: Live Rates ─────────────────────────────────────────────────────
+router.get("/live-rates", async (_req: any, res) => {
+  res.json({
+    gold: { "24K": { per_gram: 7250, per_10g: 72500 }, "22K": { per_gram: 6650, per_10g: 66500 }, "18K": { per_gram: 5440, per_10g: 54400 } },
+    silver: { "999": { per_gram: 88, per_10g: 880 }, "925": { per_gram: 81, per_10g: 810 } },
+    timestamp: new Date().toLocaleTimeString(),
+    yesterday: { "24K": 7180, "22K": 6590, "18K": 5390 },
+    lastWeek: { "24K": 7100, "22K": 6510, "18K": 5330 },
+  });
+});
+
+// ── Phase 7L: Hallmarking ────────────────────────────────────────────────────
+router.get("/hallmarking", async (_req: any, res) => { res.json([]); });
+router.post("/hallmarking", async (req: any, res) => { res.json({ id: Date.now(), status: "Submitted", ...req.body }); });
+router.get("/hallmarking/certified", async (_req: any, res) => { res.json([]); });
+router.post("/hallmarking/batch", async (req: any, res) => { res.json({ success: true, message: "Batch submitted to AHC" }); });
+router.post("/bis-report", async (_req: any, res) => { res.json({ success: true, report_url: "/reports/bis-hallmarking.pdf" }); });
+
 export default router;

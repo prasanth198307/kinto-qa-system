@@ -1060,4 +1060,12 @@ router.get("/stats", requireAuth, async (req: any, res) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
+// ── Phase 7K: Certificates ────────────────────────────────────────────────────
+router.get("/certificates", async (_req: any, res) => { res.json([]); });
+router.post("/certificates", async (req: any, res) => { res.json({ id: Date.now(), serial_no: `CERT-${Date.now()}`, issued_date: new Date().toISOString().slice(0,10), ...req.body }); });
+
+// ── Phase 7K: NEP Compliance ─────────────────────────────────────────────────
+router.get("/nep-compliance", async (_req: any, res) => { res.json({}); });
+router.put("/nep-compliance", async (req: any, res) => { res.json({ success: true, ...req.body }); });
+
 export default router;

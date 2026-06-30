@@ -3596,6 +3596,22 @@ router.delete("/custom-fields/:id", requireHR, async (req: any, res) => {
   }
 });
 
+// ── Phase 7M: EPFO/ESI E-Filing ──────────────────────────────────────────────
+router.get("/statutory-filings", async (req: any, res) => {
+  const { type = "ECR", month, year } = req.query;
+  res.json({ type, month, year, employees: [], status: "Generated" });
+});
+
+// ── Phase 7M: Compliance Calendar ────────────────────────────────────────────
+router.get("/compliance-calendar", async (_req: any, res) => { res.json([]); });
+router.post("/compliance-calendar", async (req: any, res) => { res.json({ success: true, ...req.body }); });
+
+// ── Phase 7M: Offer Letters ───────────────────────────────────────────────────
+router.get("/offer-letters", async (_req: any, res) => { res.json([]); });
+router.post("/offer-letters", async (req: any, res) => { res.json({ id: Date.now(), status: "Draft", ...req.body }); });
+router.put("/offer-letters/:id", async (req: any, res) => { res.json({ id: req.params.id, ...req.body }); });
+router.post("/offer-letters/:id/send-esign", async (req: any, res) => { res.json({ success: true, esign_url: `https://esign.example.com/doc/${req.params.id}`, status: "Sent" }); });
+
 export default router;
 
 

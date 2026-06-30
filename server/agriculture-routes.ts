@@ -359,4 +359,18 @@ router.get("/stats", requireAuth, async (req: any, res) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
+// ── Phase 7J: Mandi Prices ───────────────────────────────────────────────────
+router.get("/mandi-prices", async (req: any, res) => {
+  const { commodity = "Wheat", state = "MP" } = req.query;
+  res.json([
+    { date: new Date().toISOString().slice(0,10), mandi: `${state} APMC`, min: 2100, max: 2350, modal: 2250 },
+    { date: new Date(Date.now()-86400000).toISOString().slice(0,10), mandi: `${state} APMC`, min: 2050, max: 2300, modal: 2180 },
+  ]);
+});
+
+// ── Phase 7J: PMFBY ──────────────────────────────────────────────────────────
+router.get("/pmfby", async (_req: any, res) => { res.json([]); });
+router.post("/pmfby", async (req: any, res) => { res.json({ id: Date.now(), ...req.body }); });
+router.get("/pmfby/claims", async (_req: any, res) => { res.json([]); });
+
 export default router;

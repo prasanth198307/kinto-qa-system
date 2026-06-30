@@ -199,6 +199,26 @@ import POSPage from "@/pages/pos";
 import EInvoicePage from "@/pages/einvoice";
 import AgriculturePage from "@/pages/agriculture";
 import GoldErpPage from "@/pages/gold-erp";
+// Phase 7J — Agriculture ERP
+import AgricultureMandiPricesPage from "@/pages/agriculture/mandi-prices";
+import AgriculturePMFBYPage from "@/pages/agriculture/pmfby";
+// Phase 7K — Education ERP
+import EducationCertificatesPage from "@/pages/education/certificates";
+import EducationNEPCompliancePage from "@/pages/education/nep-compliance";
+// Phase 7L — Gold ERP
+import GoldLiveRatesPage from "@/pages/gold-erp/live-rates";
+import GoldHallmarkingPage from "@/pages/gold-erp/hallmarking";
+// Phase 7M — HR ERP
+import HREPFOFilingPage from "@/pages/hr/epfo-filing";
+import HRComplianceCalendarPage from "@/pages/hr/compliance-calendar";
+import HROfferLettersPage from "@/pages/hr/offer-letters";
+// Phase 7N — Retail ERP
+import RetailFranchisePage from "@/pages/retail/franchise";
+import RetailB2BPortalPage from "@/pages/retail/b2b-portal";
+// Phase 7O — Manufacturing ERP
+import ManufacturingMRPPage from "@/pages/manufacturing/mrp";
+import ManufacturingWorkOrdersPage from "@/pages/manufacturing/work-orders";
+import ManufacturingQualityPage from "@/pages/manufacturing/quality";
 import { parseISO } from "date-fns";
 
 type Role = 'admin' | 'operator' | 'reviewer' | 'manager';
@@ -1038,6 +1058,9 @@ function AdminDashboard() {
         { id: "variance-analytics", label: "Variance Analytics", icon: TrendingUp },
         { id: "spare-parts-stock", label: "Spare Parts Stock", icon: Wrench },
         { id: "scrap-management", label: "Scrap Management", icon: Trash2, onClick: () => setLocation('/scrap-management') },
+        { id: "manufacturing/mrp", label: "MRP Engine", icon: Calculator, onClick: () => setLocation('/manufacturing/mrp') },
+        { id: "manufacturing/work-orders", label: "Work Orders", icon: ListChecks, onClick: () => setLocation('/manufacturing/work-orders') },
+        { id: "manufacturing/quality", label: "Quality Control", icon: CheckCircle, onClick: () => setLocation('/manufacturing/quality') },
       ],
       quickActions: [
         { id: "add-product", label: "Add Product", icon: Package, onClick: () => setActiveView("products") },
@@ -1157,6 +1180,9 @@ function AdminDashboard() {
         { id: "hr-support-desk", label: "Support Desk", icon: MessageSquare, onClick: () => setLocation('/hr/support-desk') },
         { id: "hr-reports", label: "HR Reports", icon: BarChart3, onClick: () => setLocation('/hr/reports') },
         { id: "hr-masters", label: "HR Masters", icon: Settings, onClick: () => setLocation('/hr/masters') },
+        { id: "hr-epfo-filing", label: "EPFO/ESI E-Filing", icon: FileText, onClick: () => setLocation('/hr/epfo-filing') },
+        { id: "hr-compliance-calendar", label: "Compliance Calendar", icon: Calendar, onClick: () => setLocation('/hr/compliance-calendar') },
+        { id: "hr-offer-letters", label: "Offer Letters", icon: FileText, onClick: () => setLocation('/hr/offer-letters') },
       ],
     },
     {
@@ -1198,6 +1224,10 @@ function AdminDashboard() {
         { id: "logistics", label: "Logistics & Transport", icon: Truck, onClick: () => setLocation('/logistics') },
         { id: "real-estate", label: "Real Estate", icon: Building2, onClick: () => setLocation('/real-estate') },
         { id: "agriculture", label: "Agriculture", icon: Layers, onClick: () => setLocation('/agriculture') },
+        { id: "agriculture/mandi-prices", label: "Mandi Price Feed", icon: TrendingUp, onClick: () => setLocation('/agriculture/mandi-prices') },
+        { id: "agriculture/pmfby", label: "PMFBY Insurance", icon: Shield, onClick: () => setLocation('/agriculture/pmfby') },
+        { id: "education/certificates", label: "Certificates", icon: FileText, onClick: () => setLocation('/education/certificates') },
+        { id: "education/nep-compliance", label: "NEP 2020 Compliance", icon: CheckCircle, onClick: () => setLocation('/education/nep-compliance') },
       ],
     },
     {
@@ -1205,6 +1235,8 @@ function AdminDashboard() {
       label: "Point of Sale",
       items: [
         { id: "pos", label: "POS Terminal", icon: ShoppingCart, onClick: () => setLocation('/pos') },
+        { id: "retail/franchise", label: "Franchise Management", icon: Building2, onClick: () => setLocation('/retail/franchise') },
+        { id: "retail/b2b-portal", label: "B2B Portal", icon: Layers, onClick: () => setLocation('/retail/b2b-portal') },
       ],
     },
     ...buildGoldNavSections(setLocation),
@@ -2106,6 +2138,8 @@ function buildGoldNavSections(setLocation: (path: string) => void): NavSection[]
           id: "gold-erp-core",
           label: "Core",
           items: [
+            { id: "gold-erp-live-rates",    label: "Live Gold Rates",     icon: TrendingUp,      onClick: () => setLocation("/gold-erp/live-rates") },
+            { id: "gold-erp-hallmarking-page", label: "BIS Hallmarking",  icon: Award,           onClick: () => setLocation("/gold-erp/hallmarking") },
             { id: "gold-erp-overview",      label: "Overview",            icon: LayoutDashboard, onClick: () => go("overview") },
             { id: "gold-erp-rates",         label: "Metal Rates",         icon: TrendingUp,      onClick: () => go("rates") },
             { id: "gold-erp-karigar",       label: "Karigar",             icon: Users,           onClick: () => go("karigar") },
@@ -2260,6 +2294,9 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "variance-analytics", label: "Variance Analytics", icon: TrendingUp, onClick: () => setLocation('/?tab=variance-analytics') },
         { id: "spare-parts", label: "Spare Parts", icon: Wrench, onClick: () => setLocation('/spare-parts') },
         { id: "scrap-management", label: "Scrap Management", icon: Trash2, onClick: () => setLocation('/scrap-management') },
+        { id: "manufacturing/mrp", label: "MRP Engine", icon: Calculator, onClick: () => setLocation('/manufacturing/mrp') },
+        { id: "manufacturing/work-orders", label: "Work Orders", icon: ListChecks, onClick: () => setLocation('/manufacturing/work-orders') },
+        { id: "manufacturing/quality", label: "Quality Control", icon: CheckCircle, onClick: () => setLocation('/manufacturing/quality') },
         { id: "warehouses", label: "Warehouses & Stock", icon: Archive, onClick: () => setLocation('/warehouses') },
         { id: "inventory-bulk-import", label: "Bulk Import Products", icon: Upload },
         { id: "inventory-grn-scan", label: "GRN Scan (Barcode)", icon: Scan },
@@ -2422,6 +2459,10 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "logistics", label: "Logistics & Transport", icon: Truck, onClick: () => setLocation('/logistics') },
         { id: "real-estate", label: "Real Estate", icon: Building2, onClick: () => setLocation('/real-estate') },
         { id: "agriculture", label: "Agriculture", icon: Layers, onClick: () => setLocation('/agriculture') },
+        { id: "agriculture/mandi-prices", label: "Mandi Price Feed", icon: TrendingUp, onClick: () => setLocation('/agriculture/mandi-prices') },
+        { id: "agriculture/pmfby", label: "PMFBY Insurance", icon: Shield, onClick: () => setLocation('/agriculture/pmfby') },
+        { id: "education/certificates", label: "Certificates", icon: FileText, onClick: () => setLocation('/education/certificates') },
+        { id: "education/nep-compliance", label: "NEP 2020 Compliance", icon: CheckCircle, onClick: () => setLocation('/education/nep-compliance') },
       ],
     },
     {
@@ -2429,6 +2470,8 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       label: "Point of Sale",
       items: [
         { id: "pos", label: "POS Terminal", icon: ShoppingCart, onClick: () => setLocation('/pos') },
+        { id: "retail/franchise", label: "Franchise Management", icon: Building2, onClick: () => setLocation('/retail/franchise') },
+        { id: "retail/b2b-portal", label: "B2B Portal", icon: Layers, onClick: () => setLocation('/retail/b2b-portal') },
       ],
     },
     ...buildGoldNavSections(setLocation),
@@ -4042,6 +4085,26 @@ function Router() {
         <ProtectedRoute path="/einvoice" component={EInvoicePage} />
       <ProtectedRoute path="/agriculture" component={AgricultureWrapper} />
       <ProtectedRoute path="/gold-erp" component={GoldErpWrapper} />
+      {/* Phase 7J — Agriculture */}
+      <ProtectedRoute path="/agriculture/mandi-prices" component={() => <AgricultureMandiPricesPage />} />
+      <ProtectedRoute path="/agriculture/pmfby" component={() => <AgriculturePMFBYPage />} />
+      {/* Phase 7K — Education */}
+      <ProtectedRoute path="/education/certificates" component={() => <EducationCertificatesPage />} />
+      <ProtectedRoute path="/education/nep-compliance" component={() => <EducationNEPCompliancePage />} />
+      {/* Phase 7L — Gold ERP */}
+      <ProtectedRoute path="/gold-erp/live-rates" component={() => <GoldLiveRatesPage />} />
+      <ProtectedRoute path="/gold-erp/hallmarking" component={() => <GoldHallmarkingPage />} />
+      {/* Phase 7M — HR */}
+      <ProtectedRoute path="/hr/epfo-filing" component={() => <HREPFOFilingPage />} />
+      <ProtectedRoute path="/hr/compliance-calendar" component={() => <HRComplianceCalendarPage />} />
+      <ProtectedRoute path="/hr/offer-letters" component={() => <HROfferLettersPage />} />
+      {/* Phase 7N — Retail */}
+      <ProtectedRoute path="/retail/franchise" component={() => <RetailFranchisePage />} />
+      <ProtectedRoute path="/retail/b2b-portal" component={() => <RetailB2BPortalPage />} />
+      {/* Phase 7O — Manufacturing */}
+      <ProtectedRoute path="/manufacturing/mrp" component={() => <ManufacturingMRPPage />} />
+      <ProtectedRoute path="/manufacturing/work-orders" component={() => <ManufacturingWorkOrdersPage />} />
+      <ProtectedRoute path="/manufacturing/quality" component={() => <ManufacturingQualityPage />} />
       <Route path="/ess" component={EssLogin} />
       <Route path="/ess/portal" component={EssPortal} />
       <ProtectedRoute path="/journal-entry/new" component={ManualJournalEntryPageWrapper} />
