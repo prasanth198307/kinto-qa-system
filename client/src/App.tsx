@@ -199,6 +199,9 @@ import POSPage from "@/pages/pos";
 import EInvoicePage from "@/pages/einvoice";
 import AgriculturePage from "@/pages/agriculture";
 import GoldErpPage from "@/pages/gold-erp";
+import AccountsPayablePage from "@/pages/accounts-payable";
+import BankReconciliationPage from "@/pages/bank-reconciliation";
+import PeriodClosePage from "@/pages/period-close";
 import { parseISO } from "date-fns";
 
 type Role = 'admin' | 'operator' | 'reviewer' | 'manager';
@@ -1123,6 +1126,9 @@ function AdminDashboard() {
         { id: "ledger-view", label: "Ledger View", icon: BookOpen, onClick: () => setLocation('/ledger-view') },
         { id: "day-book", label: "Day Book", icon: FileStack, onClick: () => setLocation('/day-book') },
         { id: "aging-report", label: "Outstanding/Aging", icon: AlertTriangle, onClick: () => setLocation('/aging-report') },
+        { id: "accounts-payable", label: "Accounts Payable", icon: FileStack, onClick: () => setLocation('/accounts-payable') },
+        { id: "bank-reconciliation", label: "Bank Reconciliation", icon: Landmark, onClick: () => setLocation('/bank-reconciliation') },
+        { id: "period-close", label: "Period-End Close", icon: Lock, onClick: () => setLocation('/period-close') },
         { id: "cash-flow-statement", label: "Cash Flow Statement", icon: TrendingUp, onClick: () => setLocation('/cash-flow-statement') },
         { id: "group-summary", label: "Group Summary", icon: Layers, onClick: () => setLocation('/group-summary') },
         { id: "budget-variance", label: "Budget & Variance", icon: Scale, onClick: () => setLocation('/budget-variance') },
@@ -3994,6 +4000,9 @@ function Router() {
       <ProtectedRoute path="/ledger-view" component={LedgerViewPageWrapper} />
       <ProtectedRoute path="/day-book" component={DayBookPageWrapper} />
       <ProtectedRoute path="/aging-report" component={AgingReportPageWrapper} />
+      <ProtectedRoute path="/accounts-payable" component={() => <AccountsPayablePage />} />
+      <ProtectedRoute path="/bank-reconciliation" component={() => <BankReconciliationPage />} />
+      <ProtectedRoute path="/period-close" component={() => <PeriodClosePage />} />
       <ProtectedRoute path="/cash-flow-statement" component={CashFlowStatementPageWrapper} />
       <ProtectedRoute path="/group-summary" component={GroupSummaryPageWrapper} />
       <ProtectedRoute path="/budget-variance" component={BudgetVariancePageWrapper} />
