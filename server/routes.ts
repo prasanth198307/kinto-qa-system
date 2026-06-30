@@ -31175,6 +31175,9 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
     if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' });
     const { ip, port, html } = req.body;
     if (!ip || !port) return res.status(400).json({ message: 'ip and port are required' });
+    // For now return success — full ESC/POS encoding is complex and
+    // the window.print() fallback works for most thermal printer setups.
+    // In production: use net.Socket to send ESC/POS bytes to the printer.
     try {
       const net = await import('net');
       const socket = new net.Socket();
@@ -31182,6 +31185,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
         const timeout = setTimeout(() => { socket.destroy(); reject(new Error('Printer timeout')); }, 3000);
         socket.connect(Number(port), ip, () => {
           clearTimeout(timeout);
+          // Send a minimal ESC/POS receipt with the bill number extracted from html
           const text = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().substring(0, 500);
           socket.write(Buffer.from('\x1B\x40' + text + '\n\n\n\x1D\x56\x41\x00', 'utf8'));
           socket.end();
@@ -31191,13 +31195,13 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       });
       res.json({ success: true });
     } catch (err: any) {
+      // Non-fatal — client falls back to window.print()
       res.json({ success: false, message: err.message });
     }
   });
 
   // =====================================================  // ACCOUNTING PERIODS (Phase 3.3)
-  // ============================================================
-  app.get('/api/finance-erp/periods', async (req: any, res) => {
+  // =====================================================  app.get('/api/finance-erp/periods', async (req: any, res) => {
     try {
       const tenantId = req.session?.tenantId ?? req.user?.tenantId;
       const result = await db.execute(sql`
@@ -31321,6 +31325,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
   app.post('/api/real-estate/demand-letters/generate', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json({ generated: true }); });
   app.get('/api/real-estate/project-pl/:projectId', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json(null); });
 
+=======
   const httpServer = createServer(app);
   return httpServer;
 }

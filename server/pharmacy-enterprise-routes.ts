@@ -101,9 +101,10 @@ router.get("/registers/schedule-h", auth, async (req: any, res: any) => {
   try {
     const tid = getTenantId(req);
     const r = await db.execute(sql`
-      SELECT r.*, r.product_name AS drug_name, 'H' AS schedule_type
+      SELECT r.*, d.name AS drug_name, d.generic_name, d.schedule_type
       FROM pharmacy_compliance_registers r
-      WHERE r.tenant_id = ${tid} AND r.register_type = 'H'
+      JOIN pharmacy_drugs d ON d.id = r.drug_id
+      WHERE r.tenant_id = ${tid} AND d.schedule_type = 'H'
       ORDER BY r.sale_date DESC
     `);
     res.json(r.rows);
@@ -116,9 +117,10 @@ router.get("/registers/schedule-h1", auth, async (req: any, res: any) => {
   try {
     const tid = getTenantId(req);
     const r = await db.execute(sql`
-      SELECT r.*, r.product_name AS drug_name, 'H1' AS schedule_type
+      SELECT r.*, d.name AS drug_name, d.generic_name, d.schedule_type
       FROM pharmacy_compliance_registers r
-      WHERE r.tenant_id = ${tid} AND r.register_type = 'H1'
+      JOIN pharmacy_drugs d ON d.id = r.drug_id
+      WHERE r.tenant_id = ${tid} AND d.schedule_type = 'H1'
       ORDER BY r.sale_date DESC
     `);
     res.json(r.rows);
@@ -131,9 +133,10 @@ router.get("/registers/schedule-x", auth, async (req: any, res: any) => {
   try {
     const tid = getTenantId(req);
     const r = await db.execute(sql`
-      SELECT r.*, r.product_name AS drug_name, 'X' AS schedule_type
+      SELECT r.*, d.name AS drug_name, d.generic_name, d.schedule_type
       FROM pharmacy_compliance_registers r
-      WHERE r.tenant_id = ${tid} AND r.register_type = 'X'
+      JOIN pharmacy_drugs d ON d.id = r.drug_id
+      WHERE r.tenant_id = ${tid} AND d.schedule_type = 'X'
       ORDER BY r.sale_date DESC
     `);
     res.json(r.rows);
@@ -148,10 +151,11 @@ router.get("/registers/:type/export", auth, async (req: any, res: any) => {
     const { type } = req.params;
     const scheduleType = type.toUpperCase();
     const r = await db.execute(sql`
-      SELECT r.sale_date, r.patient_name, r.product_name AS drug_name, r.prescription_no,
-        r.quantity as qty_sold, r.batch_no
+      SELECT r.sale_date, r.patient_name, r.doctor_name, r.prescription_no,
+        d.name AS drug_name, d.generic_name, r.qty_sold, r.batch_no, r.bill_no
       FROM pharmacy_compliance_registers r
-      WHERE r.tenant_id = ${tid} AND r.register_type = ${scheduleType}
+      JOIN pharmacy_drugs d ON d.id = r.drug_id
+      WHERE r.tenant_id = ${tid} AND d.schedule_type = ${scheduleType}
       ORDER BY r.sale_date ASC
     `);
     // Return data for Excel generation at the client layer
@@ -182,8 +186,9 @@ router.get("/prescriptions", auth, async (req: any, res: any) => {
   try {
     const tid = getTenantId(req);
     const r = await db.execute(sql`
-      SELECT p.*
+      SELECT p.*, s.bill_no
       FROM pharmacy_prescriptions p
+      LEFT JOIN pharmacy_sales s ON s.id = p.sale_id
       WHERE p.tenant_id = ${tid}
       ORDER BY p.id DESC LIMIT 100
     `);

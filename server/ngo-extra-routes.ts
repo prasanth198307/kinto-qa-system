@@ -25,12 +25,12 @@ router.get("/receipts/80g", auth, async (req: any, res: any) => {
     const fy = req.query.fy ?? getCurrentFY();
     const { from, to } = getFYDates(fy as string);
     const r = await db.execute(sql`
-      SELECT r.*, d.name AS donor_name_j, d.pan_number, d.address
+      SELECT r.*, d.name AS donor_name, d.pan_number, d.address
       FROM ngo_80g_receipts r
-      JOIN ngo_donors d ON d.id = r.donor_id
+      JOIN donors d ON d.id = r.donor_id
       WHERE r.tenant_id = ${tid}
-        AND r.issued_date BETWEEN ${from} AND ${to}
-      ORDER BY r.issued_date DESC
+        AND r.receipt_date BETWEEN ${from} AND ${to}
+      ORDER BY r.receipt_date DESC
     `);
     res.json(r.rows);
   } catch (e: any) {
@@ -43,17 +43,19 @@ router.post("/receipts/80g/generate", auth, async (req: any, res: any) => {
     const tid = getTenantId(req);
     const { donation_id } = req.body;
     const donation = await db.execute(sql`
-      SELECT dn.*, d.name AS donor_name_j, d.pan_number, d.address, d.email
-      FROM ngo_donations dn
-      JOIN ngo_donors d ON d.id = dn.donor_id
+      SELECT dn.*, d.name AS donor_name, d.pan_number, d.address, d.email
+      FROM donations dn
+      JOIN donors d ON d.id = dn.donor_id
       WHERE dn.id = ${donation_id} AND dn.tenant_id = ${tid}
     `);
     if (!donation.rows[0]) return res.status(404).json({ message: "Donation not found" });
     const don = donation.rows[0] as any;
     const receiptNo = `80G-${tid}-${Date.now()}`;
     const r = await db.execute(sql`
-      INSERT INTO ngo_80g_receipts (tenant_id, donation_id, donor_id, receipt_number, issued_date, amount, financial_year)
-      VALUES (${tid}, ${donation_id}, ${don.donor_id}, ${receiptNo}, NOW(), ${don.amount}, '2025-26')
+      INSERT INTO ngo_80g_receipts (tenant_id, donation_id, donor_id, receipt_no, receipt_date,
+        amount, donor_name, pan_number, donor_address, created_at)
+      VALUES (${tid}, ${donation_id}, ${don.donor_id}, ${receiptNo}, NOW(),
+        ${don.amount}, ${don.donor_name}, ${don.pan_number}, ${don.address}, NOW())
       RETURNING *
     `);
     res.json(r.rows[0]);
@@ -67,12 +69,12 @@ router.get("/receipts/80g/:id/pdf-data", auth, async (req: any, res: any) => {
     const tid = getTenantId(req);
     const { id } = req.params;
     const r = await db.execute(sql`
-      SELECT r.*, d.name AS donor_name_j, d.pan_number, d.address, d.email, d.phone,
+      SELECT r.*, d.name AS donor_name, d.pan_number, d.address, d.email, d.phone,
         dn.purpose, dn.payment_mode, dn.cheque_no, dn.bank_name,
         o.name AS org_name, o.registration_no, o.reg_80g_no, o.reg_12a_no, o.address AS org_address
       FROM ngo_80g_receipts r
-      JOIN ngo_donors d ON d.id = r.donor_id
-      JOIN ngo_donations dn ON dn.id = r.donation_id
+      JOIN donors d ON d.id = r.donor_id
+      JOIN donations dn ON dn.id = r.donation_id
       CROSS JOIN ngo_organization_details o
       WHERE r.id = ${id} AND r.tenant_id = ${tid} AND o.tenant_id = ${tid}
     `);
@@ -89,9 +91,9 @@ router.post("/receipts/80g/bulk-generate", auth, async (req: any, res: any) => {
     const fy = req.body.fy ?? getCurrentFY();
     const { from, to } = getFYDates(fy);
     const donations = await db.execute(sql`
-      SELECT dn.id AS donation_id, dn.donor_id, dn.amount, d.name AS donor_name_j, d.pan_number, d.address
-      FROM ngo_donations dn
-      JOIN ngo_donors d ON d.id = dn.donor_id
+      SELECT dn.id AS donation_id, dn.donor_id, dn.amount, d.name AS donor_name, d.pan_number, d.address
+      FROM donations dn
+      JOIN donors d ON d.id = dn.donor_id
       LEFT JOIN ngo_80g_receipts r ON r.donation_id = dn.id
       WHERE dn.tenant_id = ${tid}
         AND dn.donation_date BETWEEN ${from} AND ${to}
@@ -102,8 +104,10 @@ router.post("/receipts/80g/bulk-generate", auth, async (req: any, res: any) => {
     for (const don of donations.rows as any[]) {
       const receiptNo = `80G-${tid}-${don.donation_id}`;
       const r = await db.execute(sql`
-        INSERT INTO ngo_80g_receipts (tenant_id, donation_id, donor_id, receipt_number, issued_date, amount, financial_year)
-        VALUES (${tid}, ${don.donation_id}, ${don.donor_id}, ${receiptNo}, NOW(), ${don.amount}, '2025-26')
+        INSERT INTO ngo_80g_receipts (tenant_id, donation_id, donor_id, receipt_no, receipt_date,
+          amount, donor_name, pan_number, donor_address, created_at)
+        VALUES (${tid}, ${don.donation_id}, ${don.donor_id}, ${receiptNo}, NOW(),
+          ${don.amount}, ${don.donor_name}, ${don.pan_number}, ${don.address}, NOW())
         ON CONFLICT (donation_id) DO NOTHING
         RETURNING *
       `);
@@ -121,11 +125,11 @@ router.get("/form-10bd/data", auth, async (req: any, res: any) => {
     const fy = req.query.fy ?? getCurrentFY();
     const { from, to } = getFYDates(fy as string);
     const r = await db.execute(sql`
-      SELECT d.name AS donor_name_j, d.pan_number, d.address, d.donor_type,
+      SELECT d.name AS donor_name, d.pan_number, d.address, d.donor_type,
         SUM(dn.amount) AS total_donated,
         COUNT(dn.id) AS donation_count
-      FROM ngo_donations dn
-      JOIN ngo_donors d ON d.id = dn.donor_id
+      FROM donations dn
+      JOIN donors d ON d.id = dn.donor_id
       WHERE dn.tenant_id = ${tid}
         AND dn.donation_date BETWEEN ${from} AND ${to}
         AND dn.eligible_80g = true
@@ -142,12 +146,12 @@ router.post("/form-10be/generate", auth, async (req: any, res: any) => {
   try {
     const tid = getTenantId(req);
     const { donor_id } = req.body;
-    const donor = await db.execute(sql`SELECT * FROM ngo_donors WHERE id = ${donor_id} AND tenant_id = ${tid}`);
+    const donor = await db.execute(sql`SELECT * FROM donors WHERE id = ${donor_id} AND tenant_id = ${tid}`);
     if (!donor.rows[0]) return res.status(404).json({ message: "Donor not found" });
     const receipts = await db.execute(sql`
       SELECT r.*, dn.donation_date, dn.purpose
       FROM ngo_80g_receipts r
-      JOIN ngo_donations dn ON dn.id = r.donation_id
+      JOIN donations dn ON dn.id = r.donation_id
       WHERE r.donor_id = ${donor_id} AND r.tenant_id = ${tid}
       ORDER BY dn.donation_date
     `);
@@ -275,7 +279,7 @@ router.post("/donations/online/create", auth, async (req: any, res: any) => {
     `);
     const razorpayOrderId = `order_${Date.now()}`;
     await db.execute(sql`
-      UPDATE ngo_donations SET razorpay_order_id = ${razorpayOrderId} WHERE id = ${(order.rows[0] as any).id}
+      UPDATE donations SET razorpay_order_id = ${razorpayOrderId} WHERE id = ${(order.rows[0] as any).id}
     `);
     res.json({
       donation_id: (order.rows[0] as any).id,
@@ -293,7 +297,7 @@ router.post("/donations/online/confirm", auth, async (req: any, res: any) => {
     const tid = getTenantId(req);
     const { razorpay_payment_id, razorpay_order_id } = req.body;
     const donation = await db.execute(sql`
-      UPDATE ngo_donations SET razorpay_payment_id = ${razorpay_payment_id}, status = 'completed'
+      UPDATE donations SET razorpay_payment_id = ${razorpay_payment_id}, status = 'completed'
       WHERE razorpay_order_id = ${razorpay_order_id} AND tenant_id = ${tid}
       RETURNING *
     `);
@@ -301,7 +305,7 @@ router.post("/donations/online/confirm", auth, async (req: any, res: any) => {
     const don = donation.rows[0] as any;
     const receiptNo = `80G-${tid}-${don.id}`;
     const receipt = await db.execute(sql`
-      INSERT INTO ngo_80g_receipts (tenant_id, donation_id, donor_id, receipt_number, receipt_date,
+      INSERT INTO ngo_80g_receipts (tenant_id, donation_id, donor_id, receipt_no, receipt_date,
         amount, donor_name, created_at)
       VALUES (${tid}, ${don.id}, ${don.donor_id}, ${receiptNo}, NOW(), ${don.amount}, ${don.donor_name}, NOW())
       ON CONFLICT (donation_id) DO NOTHING
@@ -334,7 +338,7 @@ router.post("/donor-portal/access", auth, async (req: any, res: any) => {
     const tid = getTenantId(req);
     const { email, phone } = req.body;
     const donor = await db.execute(sql`
-      SELECT * FROM ngo_donors WHERE tenant_id = ${tid}
+      SELECT * FROM donors WHERE tenant_id = ${tid}
         AND (email = ${email} OR phone = ${phone})
       LIMIT 1
     `);
@@ -359,14 +363,14 @@ router.get("/donor-portal/:token", async (req: any, res: any) => {
     const tokenRow = await db.execute(sql`
       SELECT t.*, d.name, d.email, d.phone, d.address, t.tenant_id
       FROM ngo_donor_portal_tokens t
-      JOIN ngo_donors d ON d.id = t.donor_id
+      JOIN donors d ON d.id = t.donor_id
       WHERE t.token = ${token} AND t.expires_at > NOW()
       LIMIT 1
     `);
     if (!tokenRow.rows[0]) return res.status(401).json({ message: "Invalid or expired token" });
     const t = tokenRow.rows[0] as any;
     const donations = await db.execute(sql`
-      SELECT dn.*, r.receipt_number FROM ngo_donations dn
+      SELECT dn.*, r.receipt_no FROM donations dn
       LEFT JOIN ngo_80g_receipts r ON r.donation_id = dn.id
       WHERE dn.donor_id = ${t.donor_id} AND dn.tenant_id = ${t.tenant_id}
       ORDER BY dn.donation_date DESC
@@ -392,9 +396,9 @@ router.get("/donor-portal/:token/receipts", async (req: any, res: any) => {
     const r = await db.execute(sql`
       SELECT r.*, dn.donation_date, dn.purpose, dn.payment_mode
       FROM ngo_80g_receipts r
-      JOIN ngo_donations dn ON dn.id = r.donation_id
+      JOIN donations dn ON dn.id = r.donation_id
       WHERE r.donor_id = ${t.donor_id} AND r.tenant_id = ${t.tenant_id}
-      ORDER BY r.issued_date DESC
+      ORDER BY r.receipt_date DESC
     `);
     res.json(r.rows);
   } catch (e: any) {
@@ -409,25 +413,25 @@ router.get("/donors/segments", auth, async (req: any, res: any) => {
     const tid = getTenantId(req);
     const major = await db.execute(sql`
       SELECT COUNT(*) AS count FROM (
-        SELECT donor_id FROM ngo_donations WHERE tenant_id = ${tid}
+        SELECT donor_id FROM donations WHERE tenant_id = ${tid} AND status = 'completed'
         GROUP BY donor_id HAVING SUM(amount) > 100000
       ) t
     `);
     const regular = await db.execute(sql`
       SELECT COUNT(*) AS count FROM (
-        SELECT donor_id FROM ngo_donations WHERE tenant_id = ${tid}
+        SELECT donor_id FROM donations WHERE tenant_id = ${tid} AND status = 'completed'
         GROUP BY donor_id HAVING COUNT(*) >= 3
       ) t
     `);
     const oneTime = await db.execute(sql`
       SELECT COUNT(*) AS count FROM (
-        SELECT donor_id FROM ngo_donations WHERE tenant_id = ${tid}
+        SELECT donor_id FROM donations WHERE tenant_id = ${tid} AND status = 'completed'
         GROUP BY donor_id HAVING COUNT(*) = 1
       ) t
     `);
     const lapsed = await db.execute(sql`
       SELECT COUNT(*) AS count FROM (
-        SELECT donor_id FROM ngo_donations WHERE tenant_id = ${tid}
+        SELECT donor_id FROM donations WHERE tenant_id = ${tid} AND status = 'completed'
         GROUP BY donor_id HAVING MAX(donation_date) < CURRENT_DATE - INTERVAL '12 months'
       ) t
     `);
@@ -447,9 +451,9 @@ router.get("/donors/major", auth, async (req: any, res: any) => {
     const tid = getTenantId(req);
     const r = await db.execute(sql`
       SELECT d.id, d.name, d.email, d.phone, SUM(dn.amount) AS lifetime_giving, COUNT(dn.id) AS donation_count
-      FROM ngo_donors d
-      JOIN ngo_donations dn ON dn.donor_id = d.id
-      WHERE d.tenant_id = ${tid}
+      FROM donors d
+      JOIN donations dn ON dn.donor_id = d.id
+      WHERE d.tenant_id = ${tid} AND dn.status = 'completed'
       GROUP BY d.id, d.name, d.email, d.phone
       HAVING SUM(dn.amount) > 100000
       ORDER BY lifetime_giving DESC
@@ -467,9 +471,9 @@ router.get("/donors/lapsed", auth, async (req: any, res: any) => {
       SELECT d.id, d.name, d.email, d.phone,
         MAX(dn.donation_date) AS last_donation_date,
         SUM(dn.amount) AS lifetime_giving
-      FROM ngo_donors d
-      JOIN ngo_donations dn ON dn.donor_id = d.id
-      WHERE d.tenant_id = ${tid}
+      FROM donors d
+      JOIN donations dn ON dn.donor_id = d.id
+      WHERE d.tenant_id = ${tid} AND dn.status = 'completed'
       GROUP BY d.id, d.name, d.email, d.phone
       HAVING MAX(dn.donation_date) < CURRENT_DATE - INTERVAL '12 months'
       ORDER BY last_donation_date ASC
@@ -484,7 +488,7 @@ router.post("/donors/:id/thank-you", auth, async (req: any, res: any) => {
   try {
     const tid = getTenantId(req);
     const { id } = req.params;
-    const donor = await db.execute(sql`SELECT * FROM ngo_donors WHERE id = ${id} AND tenant_id = ${tid}`);
+    const donor = await db.execute(sql`SELECT * FROM donors WHERE id = ${id} AND tenant_id = ${tid}`);
     if (!donor.rows[0]) return res.status(404).json({ message: "Donor not found" });
     await db.execute(sql`
       INSERT INTO ngo_donor_communications (tenant_id, donor_id, type, message, sent_at)
@@ -621,7 +625,7 @@ router.get("/reports/80g-summary", auth, async (req: any, res: any) => {
         COUNT(CASE WHEN donor_type = 'individual' THEN 1 END) AS individual_count,
         COUNT(CASE WHEN donor_type = 'corporate' THEN 1 END) AS corporate_count
       FROM donations
-      WHERE tenant_id = ${tid}
+      WHERE tenant_id = ${tid} AND status = 'completed'
         AND (${from}::date IS NULL OR donation_date >= ${from}::date)
         AND (${to}::date IS NULL OR donation_date <= ${to}::date)
     `);
@@ -640,8 +644,8 @@ router.get("/reports/donor-wise", auth, async (req: any, res: any) => {
         COUNT(dn.id) AS donation_count,
         COALESCE(SUM(dn.amount), 0) AS total_given,
         COUNT(r.id) AS receipts_generated
-      FROM ngo_donors d
-      LEFT JOIN ngo_donations dn ON dn.donor_id = d.id
+      FROM donors d
+      LEFT JOIN donations dn ON dn.donor_id = d.id AND dn.status = 'completed'
         AND (${from}::date IS NULL OR dn.donation_date >= ${from}::date)
         AND (${to}::date IS NULL OR dn.donation_date <= ${to}::date)
       LEFT JOIN ngo_80g_receipts r ON r.donor_id = d.id
@@ -711,7 +715,7 @@ router.get("/reports/annual-report", auth, async (req: any, res: any) => {
     const { from, to } = getFYDates(fy as string);
     const donations = await db.execute(sql`
       SELECT COUNT(*) AS count, COALESCE(SUM(amount), 0) AS total
-      FROM ngo_donations WHERE tenant_id = ${tid}
+      FROM donations WHERE tenant_id = ${tid} AND status = 'completed'
         AND donation_date BETWEEN ${from} AND ${to}
     `);
     const foreign = await db.execute(sql`
@@ -748,9 +752,9 @@ router.get("/reports/csr", auth, async (req: any, res: any) => {
         SUM(dn.amount) AS csr_contribution,
         COUNT(dn.id) AS payments,
         STRING_AGG(DISTINCT dn.purpose, ', ') AS purposes
-      FROM ngo_donations dn
-      JOIN ngo_donors d ON d.id = dn.donor_id
-      WHERE dn.tenant_id = ${tid} AND d.donor_type = 'corporate'
+      FROM donations dn
+      JOIN donors d ON d.id = dn.donor_id
+      WHERE dn.tenant_id = ${tid} AND dn.status = 'completed' AND d.donor_type = 'corporate'
         AND (${from}::date IS NULL OR dn.donation_date >= ${from}::date)
         AND (${to}::date IS NULL OR dn.donation_date <= ${to}::date)
       GROUP BY d.id, d.name, d.pan_number
@@ -770,9 +774,9 @@ router.get("/reports/government", auth, async (req: any, res: any) => {
     const donors = await db.execute(sql`
       SELECT d.name, d.pan_number, d.address, d.donor_type, d.email, d.phone,
         SUM(dn.amount) AS total, COUNT(dn.id) AS donation_count
-      FROM ngo_donations dn
-      JOIN ngo_donors d ON d.id = dn.donor_id
-      WHERE dn.tenant_id = ${tid}
+      FROM donations dn
+      JOIN donors d ON d.id = dn.donor_id
+      WHERE dn.tenant_id = ${tid} AND dn.status = 'completed'
         AND dn.donation_date BETWEEN ${from} AND ${to}
       GROUP BY d.id, d.name, d.pan_number, d.address, d.donor_type, d.email, d.phone
       ORDER BY d.name
