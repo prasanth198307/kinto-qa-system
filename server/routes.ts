@@ -65,6 +65,7 @@ import crmExtraRouter from "./crm-extra-routes";
 import agricultureExtraRouter from "./agriculture-extra-routes";
 import ecommerceExtraRouter from "./ecommerce-extra-routes";
 import financeErpRouter from "./finance-erp-routes";
+import { recurringJournalRouter, processRecurringJournals } from "./recurring-journal-service";
 import { seedTenantPermissions, syncAndUnlockByPlan } from "./seed-permissions";
 import { whatsappConversationService } from "./whatsappConversationService";
 import { calculateBOMSuggestions } from "@shared/calculations";
@@ -2013,6 +2014,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/gold-erp', goldErpRouter);
   app.use('/api/gold-erp', goldErpRouter2);
   app.use('/api/hr', hrExtraRouter);
+  app.use('/api/recurring-journals', recurringJournalRouter);
+
+  // Daily recurring journal processor — runs at startup then every 24h
+  processRecurringJournals().catch(e => console.error("Recurring journals init:", e));
+  setInterval(() => processRecurringJournals().catch(e => console.error("Recurring journals cron:", e)), 24 * 60 * 60 * 1000);
 
   // Auth routes are handled by setupAuth() in auth.ts
   // /api/register, /api/login, /api/logout, /api/user are automatically set up

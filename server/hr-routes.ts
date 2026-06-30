@@ -3,6 +3,7 @@ import { db } from "./db";
 import { sql } from "drizzle-orm";
 import multer from "multer";
 import path from "path";
+import { journalForPayroll } from "./journal-service";
 import fs from "fs";
 import { whatsappService } from "./whatsappService";
 import archiver from "archiver";
@@ -1860,6 +1861,20 @@ router.put("/payroll-runs/:id/lock", requireHR, async (req: any, res) => {
   try {
     await db.execute(sql`UPDATE hr_payroll_runs SET status='locked', locked_at=NOW() WHERE id=${req.params.id} AND tenant_id=${tid}`);
     await db.execute(sql`UPDATE hr_payslips SET status='locked' WHERE payroll_run_id=${req.params.id} AND tenant_id=${tid}`);
+
+    // Phase 1.3 — Post payroll journal to Finance & Accounts GL
+    try {
+      const runRows = await db.execute(sql`SELECT * FROM hr_payroll_runs WHERE id=${req.params.id} AND tenant_id=${tid}`);
+      const payslipRows = await db.execute(sql`SELECT * FROM hr_payslips WHERE payroll_run_id=${req.params.id} AND tenant_id=${tid}`);
+      const run = (runRows.rows?.[0] as any);
+      if (run) {
+        run.tenant_id = tid;
+        await journalForPayroll(run, payslipRows.rows ?? []);
+      }
+    } catch (glErr) {
+      console.error("Payroll GL posting failed (non-fatal):", glErr);
+    }
+
     res.json({ success: true });
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
