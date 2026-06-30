@@ -103,6 +103,7 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
     "budget-variance",
     "tds-management",
     "currency-management",
+    "tax-engine",
   ],
   mis: [
     "mis-dashboard",

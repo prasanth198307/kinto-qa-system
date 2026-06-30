@@ -67,6 +67,7 @@ import agricultureExtraRouter from "./agriculture-extra-routes";
 import ecommerceExtraRouter from "./ecommerce-extra-routes";
 import financeErpRouter from "./finance-erp-routes";
 import { recurringJournalRouter, processRecurringJournals } from "./recurring-journal-service";
+import { taxRouter } from "./tax-routes";
 import { seedTenantPermissions, syncAndUnlockByPlan } from "./seed-permissions";
 import { whatsappConversationService } from "./whatsappConversationService";
 import { calculateBOMSuggestions } from "@shared/calculations";
@@ -2017,6 +2018,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/hr', hrExtraRouter);
   app.use('/api/recurring-journals', recurringJournalRouter);
   app.use('/api/ap', apRouter);
+  app.use('/api/tax', taxRouter);
 
   // Daily recurring journal processor — runs at startup then every 24h
   processRecurringJournals().catch(e => console.error("Recurring journals init:", e));
