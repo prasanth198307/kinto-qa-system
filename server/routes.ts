@@ -31284,7 +31284,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       res.status(500).json({ message: err.message });
     }
   });
-=======
+
   // ─── Phase 7F: Nidhi ERP Stubs ────────────────────────────────────────────
   app.get('/api/nidhi/loan-applications', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json([]); });
   app.post('/api/nidhi/loan-applications', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json({ id: Date.now(), ...req.body }); });

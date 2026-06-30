@@ -271,7 +271,6 @@ import HotelBanquetPage from "@/pages/hotel/banquet";
 import OndcIntegrationPage from "@/pages/restaurant/ondc-integration";
 import MultiCompanyPage from "@/pages/multi-company";
 import GSTRFilingPage from "@/pages/gstr-filing";
->>>>>>> worktree-agent-aa932a7e90941a150
 import HealthcarePatientsPage from "@/pages/healthcare/patients";
 import HealthcareOPDPage from "@/pages/healthcare/opd";
 import HealthcareIPDPage from "@/pages/healthcare/ipd";
