@@ -415,6 +415,87 @@ router.patch("/eway-bills/:id/cancel", requireRole("admin", "manager"), async (r
   } catch (err) { console.error(err); res.status(500).json({ message: "Failed to cancel E-Way Bill" }); }
 });
 
+// Fetch invoice data for EWB pre-fill
+router.get("/eway-bills/invoice-prefill/:invoiceId", auth, async (req: any, res) => {
+  try {
+    const tenantId = getTenantId(req);
+    const { invoiceId } = req.params;
+
+    const invRes = await db.execute(sql`
+      SELECT i.*,
+             t.gst_number AS tenant_gstin, t.name AS tenant_name, t.address AS tenant_address
+      FROM invoices i
+      LEFT JOIN tenants t ON t.id = ${tenantId}
+      WHERE i.id = ${invoiceId} AND i.tenant_id = ${tenantId}
+      LIMIT 1
+    `);
+    if (!invRes.rows.length) return res.status(404).json({ message: "Invoice not found" });
+    const inv = invRes.rows[0] as any;
+
+    // Fetch first item for HSN/product/rate details
+    const itemRes = await db.execute(sql`
+      SELECT ii.*, p.name AS product_name
+      FROM invoice_items ii
+      LEFT JOIN products p ON p.id = ii.product_id
+      WHERE ii.invoice_id = ${invoiceId} AND ii.tenant_id = ${tenantId}
+      ORDER BY ii.id LIMIT 1
+    `);
+    const item = itemRes.rows[0] as any;
+
+    res.json({
+      invoice_id: inv.id,
+      invoice_number: inv.invoice_number,
+      invoice_date: inv.invoice_date,
+      // Consignor (From) — seller details
+      from_gstin: inv.seller_gstin ?? inv.tenant_gstin ?? "",
+      from_name: inv.seller_name ?? inv.tenant_name ?? "",
+      from_addr1: inv.seller_address ?? inv.tenant_address ?? "",
+      from_place: "", // not stored separately — user fills
+      from_pincode: "", // not stored separately — user fills
+      from_state_code: inv.seller_state_code ?? "36",
+      // Consignee (To) — buyer/ship-to details
+      to_gstin: inv.buyer_gstin ?? "",
+      to_name: inv.ship_to_name ?? inv.buyer_name ?? "",
+      to_addr1: inv.ship_to_address ?? inv.buyer_address ?? "",
+      to_place: inv.ship_to_city ?? "",
+      to_pincode: inv.ship_to_pincode ?? "",
+      to_state_code: inv.buyer_state_code ?? "36",
+      // Goods (from first invoice item)
+      product_name: item?.product_name ?? item?.description ?? "",
+      hsn_code: item?.hsn_code ?? "",
+      quantity: item?.quantity ?? 1,
+      qty_unit: "NOS",
+      taxable_value: Number(inv.subtotal ?? 0),
+      cgst_rate: item?.cgst_rate ?? "9",
+      sgst_rate: item?.sgst_rate ?? "9",
+      igst_rate: item?.igst_rate ?? "0",
+      cess_rate: item?.cess_rate ?? "0",
+      total_invoice_value: Number(inv.total_amount ?? 0),
+      // Transport (if already filled on invoice)
+      transport_mode: inv.transport_mode ?? "1",
+      vehicle_no: inv.vehicle_number ?? "",
+    });
+  } catch (err) { console.error(err); res.status(500).json({ message: "Failed to fetch invoice" }); }
+});
+
+// List invoices for EWB picker (search by invoice number)
+router.get("/eway-bills/invoices-search", auth, async (req: any, res) => {
+  try {
+    const tenantId = getTenantId(req);
+    const q = req.query.q ? `%${req.query.q}%` : "%";
+    const rows = await db.execute(sql`
+      SELECT id, invoice_number, invoice_date, buyer_name, total_amount, eway_bill_number
+      FROM invoices
+      WHERE tenant_id = ${tenantId}
+        AND record_status != 'deleted'
+        AND (invoice_number ILIKE ${q} OR buyer_name ILIKE ${q})
+        AND total_amount >= 50000
+      ORDER BY invoice_date DESC LIMIT 30
+    `);
+    res.json(rows.rows);
+  } catch (err) { console.error(err); res.status(500).json({ message: "Failed" }); }
+});
+
 router.get("/eway-bills/summary", auth, async (req: any, res) => {
   try {
     const tenantId = getTenantId(req);

@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
-import { FileText, Printer, XCircle, RefreshCw, Settings, CheckCircle2, AlertTriangle } from "lucide-react";
+import { FileText, Printer, XCircle, Settings, CheckCircle2, AlertTriangle, Search, Zap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const api = (method: string, path: string, body?: any) =>
@@ -61,6 +61,7 @@ const TRANSPORT_MODES = [{ code: "1", name: "Road" }, { code: "2", name: "Rail" 
 const VEHICLE_TYPES = [{ code: "R", name: "Regular" }, { code: "O", name: "ODC (Over Dimensional Cargo)" }];
 
 const emptyForm = {
+  invoiceId: "" as string | undefined,
   // Document
   supplyType: "O", subSupplyType: "1", docType: "INV",
   docNo: "", docDate: new Date().toISOString().slice(0, 10),
@@ -88,6 +89,9 @@ export default function EWayBillPage() {
   const [credForm, setCredForm] = useState({ gstin: "", username: "", password: "", apiMode: "sandbox" });
   const [credOpen, setCredOpen] = useState(false);
   const [generated, setGenerated] = useState<any>(null);
+  const [invoiceSearch, setInvoiceSearch] = useState("");
+  const [invoicePickerOpen, setInvoicePickerOpen] = useState(false);
+  const [loadingInvoice, setLoadingInvoice] = useState(false);
 
   const { data: ewbList = [] } = useQuery<any[]>({
     queryKey: ["manufacturing-eway-bills"],
@@ -97,8 +101,60 @@ export default function EWayBillPage() {
     queryKey: ["ewb-credentials"],
     queryFn: () => api("GET", "/api/manufacturing/eway-bills/credentials").catch(() => null),
   });
+  const { data: invoiceResults = [] } = useQuery<any[]>({
+    queryKey: ["ewb-invoice-search", invoiceSearch],
+    queryFn: () => api("GET", `/api/manufacturing/eway-bills/invoices-search?q=${encodeURIComponent(invoiceSearch)}`).catch(() => []),
+    enabled: invoicePickerOpen,
+  });
 
   const f = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }));
+
+  const loadInvoice = async (invoiceId: string) => {
+    setLoadingInvoice(true);
+    try {
+      const data = await api("GET", `/api/manufacturing/eway-bills/invoice-prefill/${invoiceId}`);
+      setForm(p => ({
+        ...p,
+        invoiceId: data.invoice_id,
+        docNo: data.invoice_number ?? p.docNo,
+        docDate: data.invoice_date ? new Date(data.invoice_date).toISOString().slice(0, 10) : p.docDate,
+        // From (Consignor)
+        fromGstin: data.from_gstin ?? p.fromGstin,
+        fromTrdName: data.from_name ?? p.fromTrdName,
+        fromAddr1: data.from_addr1 ?? p.fromAddr1,
+        fromPlace: data.from_place ?? p.fromPlace,
+        fromPincode: data.from_pincode ?? p.fromPincode,
+        fromStateCode: data.from_state_code ?? p.fromStateCode,
+        // To (Consignee)
+        toGstin: data.to_gstin ?? p.toGstin,
+        isUrp: !data.to_gstin,
+        toTrdName: data.to_name ?? p.toTrdName,
+        toAddr1: data.to_addr1 ?? p.toAddr1,
+        toPlace: data.to_place ?? p.toPlace,
+        toPincode: data.to_pincode ?? p.toPincode,
+        toStateCode: data.to_state_code ?? p.toStateCode,
+        // Goods
+        productName: data.product_name ?? p.productName,
+        hsnCode: data.hsn_code ?? p.hsnCode,
+        quantity: String(data.quantity ?? p.quantity),
+        taxableValue: String(data.taxable_value ?? p.taxableValue),
+        cgstRate: String(data.cgst_rate ?? p.cgstRate),
+        sgstRate: String(data.sgst_rate ?? p.sgstRate),
+        igstRate: String(data.igst_rate ?? p.igstRate),
+        cessRate: String(data.cess_rate ?? p.cessRate),
+        totalInvoiceValue: String(data.total_invoice_value ?? p.totalInvoiceValue),
+        // Transport
+        transMode: data.transport_mode ?? p.transMode,
+        vehicleNo: data.vehicle_no ?? p.vehicleNo,
+      }));
+      setInvoicePickerOpen(false);
+      toast({ title: `Invoice ${data.invoice_number} loaded`, description: "Review and fill any missing fields (seller pincode/city if needed), then submit." });
+    } catch {
+      toast({ title: "Failed to load invoice", variant: "destructive" });
+    } finally {
+      setLoadingInvoice(false);
+    }
+  };
 
   // Auto-detect interstate: different state codes = IGST
   const isInterState = form.fromStateCode !== form.toStateCode;
@@ -258,6 +314,65 @@ export default function EWayBillPage() {
 
         <TabsContent value="generate">
           <div className="space-y-4">
+
+            {/* Invoice Auto-Fill */}
+            <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800">
+              <CardContent className="pt-4">
+                <div className="flex items-center gap-3">
+                  <Zap className="w-5 h-5 text-blue-600 shrink-0" />
+                  <div className="flex-1">
+                    <p className="font-semibold text-sm text-blue-800 dark:text-blue-200">Auto-fill from Invoice</p>
+                    <p className="text-xs text-blue-600 dark:text-blue-400">Select an existing invoice to populate all fields automatically</p>
+                  </div>
+                  <Dialog open={invoicePickerOpen} onOpenChange={setInvoicePickerOpen}>
+                    <DialogTrigger asChild>
+                      <Button size="sm" variant="default">
+                        <Search className="w-4 h-4 mr-2" />
+                        {form.invoiceId ? `Invoice: ${form.docNo}` : "Select Invoice"}
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-lg">
+                      <DialogHeader><DialogTitle>Select Invoice to Generate EWB</DialogTitle></DialogHeader>
+                      <div className="space-y-3">
+                        <p className="text-xs text-muted-foreground">Showing invoices ≥ ₹50,000 (EWB mandatory threshold). Search by invoice number or buyer name.</p>
+                        <Input
+                          placeholder="Search invoice no or buyer name..."
+                          value={invoiceSearch}
+                          onChange={e => setInvoiceSearch(e.target.value)}
+                          autoFocus
+                        />
+                        <div className="max-h-72 overflow-y-auto space-y-1">
+                          {(invoiceResults as any[]).length === 0 ? (
+                            <p className="text-sm text-center text-muted-foreground py-6">No invoices found</p>
+                          ) : (invoiceResults as any[]).map((inv: any) => (
+                            <button
+                              key={inv.id}
+                              className="w-full text-left px-3 py-2 rounded hover:bg-muted border text-sm flex justify-between items-center gap-2"
+                              onClick={() => loadInvoice(inv.id)}
+                              disabled={loadingInvoice}
+                            >
+                              <div>
+                                <span className="font-semibold">{inv.invoice_number}</span>
+                                <span className="text-muted-foreground ml-2 text-xs">{inv.buyer_name}</span>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <div className="font-medium">₹{Number(inv.total_amount).toLocaleString("en-IN")}</div>
+                                <div className="text-xs text-muted-foreground">{inv.invoice_date ? new Date(inv.invoice_date).toLocaleDateString("en-IN") : ""}</div>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                        {form.invoiceId && (
+                          <Button size="sm" variant="outline" className="w-full" onClick={() => { setForm({ ...emptyForm }); setInvoicePickerOpen(false); }}>
+                            Clear & Fill Manually
+                          </Button>
+                        )}
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Section 1: Document Details */}
             <Card>
