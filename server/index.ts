@@ -154,6 +154,19 @@ app.use(
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
 // Serve static files
+// sw.js must never be HTTP-cached so browsers always fetch the latest SW
+app.get("/sw.js", (_req, res) => {
+  const swPath = path.join(process.cwd(), "public", "sw.js");
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
+  res.setHeader("Content-Type", "application/javascript; charset=UTF-8");
+  if (require("fs").existsSync(swPath)) {
+    res.sendFile(swPath);
+  } else {
+    res.status(404).end();
+  }
+});
 app.use(express.static("public"));
 app.use('/uploads', express.static('uploads'));
 // Logos are uploaded to client/public/logos/ at runtime (after build) so they

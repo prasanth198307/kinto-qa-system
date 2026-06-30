@@ -1,0 +1,15 @@
+-- Add country/currency/timezone config to tenants
+ALTER TABLE tenants 
+  ADD COLUMN IF NOT EXISTS country_code VARCHAR(3) DEFAULT 'IN',
+  ADD COLUMN IF NOT EXISTS currency_code VARCHAR(10) DEFAULT 'INR',
+  ADD COLUMN IF NOT EXISTS currency_symbol VARCHAR(5) DEFAULT '₹',
+  ADD COLUMN IF NOT EXISTS timezone VARCHAR(60) DEFAULT 'Asia/Kolkata',
+  ADD COLUMN IF NOT EXISTS date_format VARCHAR(20) DEFAULT 'DD/MM/YYYY',
+  ADD COLUMN IF NOT EXISTS tax_regime VARCHAR(20) DEFAULT 'GST';
+
+-- Add config columns to countries
+ALTER TABLE countries 
+  ADD COLUMN IF NOT EXISTS currency_symbol VARCHAR(5),
+  ADD COLUMN IF NOT EXISTS timezone VARCHAR(60),
+  ADD COLUMN IF NOT EXISTS tax_regime VARCHAR(20) DEFAULT 'GST',
+  ADD COLUMN IF NOT EXISTS date_format VARCHAR(20) DEFAULT 'DD/MM/YYYY';

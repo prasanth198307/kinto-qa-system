@@ -76,10 +76,50 @@ export function serveStatic(app: Express) {
     );
   }
 
-  app.use(express.static(distPath));
+  // sw.js must never be HTTP-cached — serve it directly with hard no-store so browsers
+  // always fetch the latest version (prevents the stale-SW → stale-HTML → MIME error loop)
+  app.get("/sw.js", (_req, res) => {
+    const swPath = path.resolve(distPath, "sw.js");
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+    res.setHeader("Content-Type", "application/javascript; charset=UTF-8");
+    res.sendFile(swPath);
+  });
+
+  // Kill-switch page: unregisters all service workers and clears caches, then redirects to /
+  app.get("/clear-sw", (_req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    res.setHeader("Content-Type", "text/html");
+    res.send(`<!DOCTYPE html><html><head><title>Clearing cache…</title></head><body>
+<p>Clearing service worker and cache…</p>
+<script>
+(async () => {
+  if ('serviceWorker' in navigator) {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    for (const r of regs) await r.unregister();
+  }
+  const keys = await caches.keys();
+  await Promise.all(keys.map(k => caches.delete(k)));
+  window.location.replace('/');
+})();
+</script></body></html>`);
+  });
+
+  // Versioned assets get long-lived cache; everything else (index.html) gets no-store
+  app.use(express.static(distPath, {
+    setHeaders(res, filePath) {
+      if (filePath.includes("/assets/")) {
+        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      } else if (filePath.endsWith("sw.js") || filePath.endsWith("index.html")) {
+        res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+      }
+    }
+  }));
 
   // fall through to index.html if the file doesn't exist
   app.use("*", (_req, res) => {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
     res.sendFile(path.resolve(distPath, "index.html"));
   });
 }

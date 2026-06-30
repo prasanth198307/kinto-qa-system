@@ -147,11 +147,118 @@ const navItemToScreen: Record<string, string> = {
   'approval-workflows': 'User Management',
   'audit-log': 'User Management',
   // Industry Verticals
-  'healthcare': 'Industry Verticals',
-  'education': 'Industry Verticals',
-  'logistics': 'Industry Verticals',
-  'real-estate': 'Industry Verticals',
-  'agriculture': 'Industry Verticals',
+  'crm-pipeline': 'Industry Verticals',
+    'finance-erp': 'Finance',
+  // Individual ERP screen nav IDs
+  'restaurant/pos': 'restaurant', 'restaurant/kitchen': 'restaurant',
+  'restaurant/tables': 'restaurant', 'restaurant/menu': 'restaurant',
+  'restaurant/orders': 'restaurant', 'restaurant/delivery': 'restaurant',
+  'restaurant/reservations': 'restaurant', 'restaurant/shifts': 'restaurant',
+  'restaurant/customers': 'restaurant', 'restaurant/inventory': 'restaurant',
+  'restaurant/outlets': 'restaurant', 'restaurant/reports': 'restaurant',
+  // Hyphen-format IDs (actual nav item IDs used in App.tsx)
+  'restaurant-pos': 'restaurant', 'restaurant-kitchen': 'restaurant',
+  'restaurant-tables': 'restaurant', 'restaurant-menu': 'restaurant',
+  'restaurant-orders': 'restaurant', 'restaurant-delivery': 'restaurant',
+  'restaurant-reservations': 'restaurant', 'restaurant-shifts': 'restaurant',
+  'restaurant-customers': 'restaurant', 'restaurant-inventory': 'restaurant',
+  'restaurant-outlets': 'restaurant', 'restaurant-reports': 'restaurant',
+  'restaurant-erp-section': 'restaurant',
+  'restaurant-aggregators': 'restaurant', 'restaurant-analytics': 'restaurant',
+  'restaurant-staff': 'restaurant', 'restaurant-steward': 'restaurant',
+  'restaurant-franchise': 'restaurant',
+  'restaurant-tax-settings': 'restaurant',
+  'restaurant-gift-cards': 'restaurant',
+  'restaurant-central-kitchen': 'restaurant',
+  'restaurant-menu-translations': 'restaurant',
+  'restaurant-table-order': 'restaurant',
+  'restaurant-cds': 'restaurant',
+  'restaurant-campaigns': 'restaurant',
+  'restaurant-recipes': 'restaurant',
+  'restaurant-payment-terminal': 'restaurant',
+  'restaurant-menu-translations': 'restaurant',
+  'restaurant-franchise': 'restaurant',
+  'restaurant-gift-cards': 'restaurant',
+  'restaurant-central-kitchen': 'restaurant',
+  'restaurant-kiosk': 'restaurant',
+  'hotel/front-desk': 'Industry Verticals', 'hotel/reservations': 'Industry Verticals',
+  'hotel/checkin': 'Industry Verticals', 'hotel/rooms': 'Industry Verticals',
+  'hotel/folio': 'Industry Verticals', 'hotel/housekeeping': 'Industry Verticals',
+  'hotel/rates': 'Industry Verticals', 'hotel/corporate': 'Industry Verticals',
+  'hotel/night-audit': 'Industry Verticals', 'hotel/reports': 'Industry Verticals',
+  'healthcare/patients': 'Industry Verticals', 'healthcare/opd': 'Industry Verticals',
+  'healthcare/ipd': 'Industry Verticals', 'healthcare/beds': 'Industry Verticals',
+  'healthcare/ot': 'Industry Verticals', 'healthcare/lab': 'Industry Verticals',
+  'healthcare/nursing': 'Industry Verticals', 'healthcare/insurance': 'Industry Verticals',
+  'healthcare/doctors': 'Industry Verticals', 'healthcare/blood-bank': 'Industry Verticals',
+  'healthcare/reports': 'Industry Verticals',
+  'education/students': 'Industry Verticals', 'education/admissions': 'Industry Verticals',
+  'education/classes': 'Industry Verticals', 'education/attendance': 'Industry Verticals',
+  'education/exams': 'Industry Verticals', 'education/fees': 'Industry Verticals',
+  'education/timetable': 'Industry Verticals', 'education/homework': 'Industry Verticals',
+  'education/online-exams': 'Industry Verticals', 'education/library': 'Industry Verticals',
+  'education/transport': 'Industry Verticals', 'education/hostel': 'Industry Verticals',
+  'education/parent-portal': 'Industry Verticals', 'education/reports': 'Industry Verticals',
+  'real-estate/projects': 'Industry Verticals', 'real-estate/crm': 'Industry Verticals',
+  'real-estate/bookings': 'Industry Verticals', 'real-estate/collections': 'Industry Verticals',
+  'real-estate/brokers': 'Industry Verticals', 'real-estate/construction': 'Industry Verticals',
+  'real-estate/documents': 'Industry Verticals', 'real-estate/customer-portal': 'Industry Verticals',
+  'real-estate/society': 'Industry Verticals', 'real-estate/reports': 'Industry Verticals',
+  'logistics/fleet': 'Industry Verticals', 'logistics/drivers': 'Industry Verticals',
+  'logistics/trips': 'Industry Verticals', 'logistics/gps': 'Industry Verticals',
+  'logistics/consignments': 'Industry Verticals', 'logistics/freight': 'Industry Verticals',
+  'logistics/epod': 'Industry Verticals', 'logistics/fuel': 'Industry Verticals',
+  'logistics/documents': 'Industry Verticals', 'logistics/reports': 'Industry Verticals',
+  'agriculture/farms': 'Industry Verticals', 'agriculture/crops': 'Industry Verticals',
+  'agriculture/inputs': 'Industry Verticals', 'agriculture/harvest': 'Industry Verticals',
+  'agriculture/weather': 'Industry Verticals', 'agriculture/schemes': 'Industry Verticals',
+  'agriculture/fpo': 'Industry Verticals', 'agriculture/market': 'Industry Verticals',
+  'agriculture/reports': 'Industry Verticals',
+  'ngo/donors': 'Industry Verticals', 'ngo/donations': 'Industry Verticals',
+  'ngo/80g': 'Industry Verticals', 'ngo/projects': 'Industry Verticals',
+  'ngo/beneficiaries': 'Industry Verticals', 'ngo/grants': 'Industry Verticals',
+  'ngo/volunteers': 'Industry Verticals', 'ngo/fcra': 'Industry Verticals',
+  'ngo/reports': 'Industry Verticals',
+  'pharmacy/billing': 'Industry Verticals', 'pharmacy/drugs': 'Industry Verticals',
+  'pharmacy/stock': 'Industry Verticals', 'pharmacy/purchases': 'Industry Verticals',
+  'pharmacy/schedule-h': 'Industry Verticals', 'pharmacy/schedule-x': 'Industry Verticals',
+  'pharmacy/licenses': 'Industry Verticals', 'pharmacy/expiry': 'Industry Verticals',
+  'pharmacy/reports': 'Industry Verticals',
+  'crm/pipeline': 'Industry Verticals', 'crm/contacts': 'Industry Verticals',
+  'crm/accounts': 'Industry Verticals', 'crm/activities': 'Industry Verticals',
+  'crm/email-campaigns': 'Industry Verticals', 'crm/whatsapp': 'Industry Verticals',
+  'crm/reports': 'Industry Verticals',
+  'nidhi/members': 'Industry Verticals', 'nidhi/deposits': 'Industry Verticals',
+  'nidhi/loans': 'Industry Verticals', 'nidhi/emi': 'Industry Verticals',
+  'nidhi/shares': 'Industry Verticals', 'nidhi/gold-rates': 'Industry Verticals',
+  'nidhi/interest-rates': 'Industry Verticals', 'nidhi/daily-collection': 'Industry Verticals',
+  'nidhi/compliance': 'Industry Verticals', 'nidhi/reports': 'Industry Verticals',
+  'ecommerce/dashboard': 'Industry Verticals', 'ecommerce/orders': 'Industry Verticals',
+  'ecommerce/listings': 'Industry Verticals', 'ecommerce/shipments': 'Industry Verticals',
+  'ecommerce/returns': 'Industry Verticals', 'ecommerce/settlements': 'Industry Verticals',
+  'ecommerce/channels': 'Industry Verticals', 'ecommerce/reports': 'Industry Verticals',
+  'masters/hsn-codes': 'User Management', 'masters/sac-codes': 'User Management',
+  'masters/tax-config': 'User Management', 'masters/states-countries': 'User Management',
+  'masters/bank-master': 'User Management', 'masters/branches': 'User Management',
+  'masters/doc-numbering': 'User Management', 'masters/email-templates': 'User Management',
+  'masters/sms-templates': 'User Management', 'masters/approval-matrix': 'User Management',
+  'masters/feature-flags': 'User Management', 'masters/print-templates': 'User Management',
+  'masters/webhooks': 'User Management',
+  'restaurant-enterprise':   'restaurant',
+  'hotel-enterprise':        'Industry Verticals',
+  'healthcare-enterprise':   'Industry Verticals',
+  'healthcare-enterprise2':  'Industry Verticals',
+  'education-enterprise':    'Industry Verticals',
+  'education-enterprise2':   'Industry Verticals',
+  'logistics-enterprise':    'Industry Verticals',
+  'real-estate-enterprise':  'Industry Verticals',
+  'retail-enterprise':       'Point of Sale',
+  'pharmacy-enterprise':     'Industry Verticals',
+  'ngo-enterprise':          'Industry Verticals',
+  'crm-enterprise':          'Industry Verticals',
+  'agriculture-enterprise':  'Industry Verticals',
+  'ecommerce-enterprise':    'Industry Verticals',
+  'masters':                 'User Management',
   // Standalone modules (separate nav sections)
   'pos': 'Point of Sale',
   'gold-erp': 'Gold & Jewellery ERP',
@@ -309,11 +416,17 @@ function filterNavSectionsByPlan(sections: NavSection[], allowedNavItems: string
 
 export function useFilteredNavigation(allNavSections: NavSection[]) {
   const { permissions, role: roleName, roles: allRoles, isLoading: permissionsLoading } = usePermissions();
+  const { user } = useAuth();
   const { allowedNavItems, isLoading: planLoading } = usePlanFeatures();
   const { applyModuleLabelsToNav } = useModuleLabels();
   const lastValidRef = useRef<NavSection[]>([]);
   
   const navSections = useMemo(() => {
+    if ((user as any)?.isSuperAdmin) {
+      const labeled = applyModuleLabelsToNav(allNavSections);
+      lastValidRef.current = labeled;
+      return labeled;
+    }
     // First apply plan-level filtering (hides modules not in subscription)
     const planFiltered = allowedNavItems.length > 0
       ? filterNavSectionsByPlan(allNavSections, allowedNavItems)
@@ -337,7 +450,7 @@ export function useFilteredNavigation(allNavSections: NavSection[]) {
       lastValidRef.current = labeled;
     }
     return labeled.length > 0 ? labeled : lastValidRef.current;
-  }, [allNavSections, permissions, permissionsLoading, roleName, allowedNavItems, applyModuleLabelsToNav]);
+  }, [allNavSections, permissions, permissionsLoading, roleName, allowedNavItems, applyModuleLabelsToNav, user]);
 
   return { 
     navSections,

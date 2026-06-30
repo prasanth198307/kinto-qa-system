@@ -31,6 +31,8 @@ import genericRouter from "./generic-routes";
 import projectRouter from "./project-routes";
 import assetRouter from "./asset-routes";
 import healthcareRouter from "./healthcare-routes";
+import hotelRouter from "./hotel-routes";
+import restaurantRouter from "./restaurant-routes";
 import educationRouter from "./education-routes";
 import logisticsRouter from "./logistics-routes";
 import realestateRouter from "./realestate-routes";
@@ -40,6 +42,29 @@ import agricultureRouter from "./agriculture-routes";
 import goldErpRouter from "./gold-erp-routes";
 import goldErpRouter2 from "./gold-erp-routes2";
 import hrExtraRouter from "./hr-extra-routes";
+import ecommerceRouter from "./ecommerce-routes";
+import ngoRouter from "./ngo-routes";
+import pharmacyRouter from "./pharmacy-routes";
+import nidhiRouter from "./nidhi-routes";
+import restaurantEnterpriseRouter from "./restaurant-enterprise-routes";
+import aggregatorRouter from "./restaurant-aggregator-routes";
+import restaurantTaxRouter from "./restaurant-tax-routes";
+import restaurantAnalyticsRouter from "./restaurant-analytics-routes";
+import hotelEnterpriseRouter from "./hotel-enterprise-routes";
+import healthcareEnterpriseRouter from "./healthcare-enterprise-routes";
+import educationEnterpriseRouter from "./education-enterprise-routes";
+import realestateEnterpriseRouter from "./realestate-enterprise-routes";
+import mastersRouter from "./masters-routes";
+import retailExtraRouter from "./retail-extra-routes";
+import pharmacyEnterpriseRouter from "./pharmacy-enterprise-routes";
+import healthcareExtraRouter from "./healthcare-extra-routes";
+import educationExtraRouter from "./education-extra-routes";
+import logisticsExtraRouter from "./logistics-extra-routes";
+import ngoExtraRouter from "./ngo-extra-routes";
+import crmExtraRouter from "./crm-extra-routes";
+import agricultureExtraRouter from "./agriculture-extra-routes";
+import ecommerceExtraRouter from "./ecommerce-extra-routes";
+import financeErpRouter from "./finance-erp-routes";
 import { seedTenantPermissions, syncAndUnlockByPlan } from "./seed-permissions";
 import { whatsappConversationService } from "./whatsappConversationService";
 import { calculateBOMSuggestions } from "@shared/calculations";
@@ -736,6 +761,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Plan enforcement middleware — blocks API access to modules outside the tenant's plan
   app.use(planEnforcementMiddleware);
+
+  // ─── Tenant config endpoint ──────────────────────────────────────────────
+  // Returns currency, timezone, tax_regime, date_format for the current tenant
+  app.get('/api/tenant-config', async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' });
+    const tenantId: number = (req.session as any).tenantId ?? req.user?.tenantId ?? 1;
+    try {
+      const rows = await db.execute(sql`
+        SELECT currency_code, currency_symbol, country_code, timezone, tax_regime, date_format
+        FROM tenants WHERE id = ${tenantId} LIMIT 1
+      `);
+      const row = (rows.rows as any[])[0];
+      res.json({
+        currency_code:   row?.currency_code   ?? 'INR',
+        currency_symbol: row?.currency_symbol ?? '₹',
+        country_code:    row?.country_code    ?? 'IN',
+        timezone:        row?.timezone        ?? 'Asia/Kolkata',
+        tax_regime:      row?.tax_regime      ?? 'GST',
+        date_format:     row?.date_format     ?? 'DD/MM/YYYY',
+      });
+    } catch {
+      res.json({ currency_code: 'INR', currency_symbol: '₹', country_code: 'IN', timezone: 'Asia/Kolkata', tax_regime: 'GST', date_format: 'DD/MM/YYYY' });
+    }
+  });
 
   // ─── Plan features endpoint ───────────────────────────────────────────────
   // Returns the list of modules and nav items allowed for the current tenant's plan
@@ -1626,7 +1675,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const currentUser = req.user as any;
     if (!currentUser?.isSuperAdmin) return res.status(403).json({ message: 'Super-admin only' });
-    const { name, slug, plan, adminUsername, adminPassword, adminEmail, maxUsers, trialDays, industry } = req.body;
+    const { name, slug, plan, adminUsername, adminPassword, adminEmail, maxUsers, trialDays, industry, country_code } = req.body;
     if (!name || !slug || !adminUsername || !adminPassword) {
       return res.status(400).json({ message: 'name, slug, adminUsername, adminPassword are required' });
     }
@@ -1641,13 +1690,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(409).json({ message: `Username "${adminUsername}" is already taken. Please choose a different admin username.` });
       }
 
-      const planSlug = plan ?? 'trial';
+      const VALID_PLAN_SLUGS = ['restaurant', 'hotel', 'healthcare', 'pharmacy', 'retail', 'trial', 'enterprise', 'crm', 'agriculture', 'education', 'logistics', 'ngo', 'real_estate'];
+      const planSlug = plan && VALID_PLAN_SLUGS.includes(plan) ? plan : 'trial';
+      if (plan && !VALID_PLAN_SLUGS.includes(plan)) {
+        console.warn(`[TENANT SETUP] Unknown plan slug "${plan}", defaulting to trial`);
+      }
       const [planRow] = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.slug, planSlug));
       const trialEnd = trialDays ? new Date(Date.now() + parseInt(trialDays) * 24 * 60 * 60 * 1000).toISOString() : null;
 
       // Hash password before transaction (async work outside tx is safer)
       const { hashPassword } = await import('./auth');
       const hashed = await hashPassword(adminPassword);
+
+      // Auto-lookup country details if country_code provided
+      let countryFields: Record<string, string> = {};
+      if (country_code) {
+        try {
+          const cRows = await db.execute(sql`
+            SELECT currency_code, currency_symbol, timezone, tax_regime, date_format
+            FROM countries WHERE country_code = ${country_code} LIMIT 1
+          `);
+          const cr = (cRows.rows as any[])[0];
+          if (cr) {
+            countryFields = {
+              country_code,
+              currency_code:   cr.currency_code   ?? 'INR',
+              currency_symbol: cr.currency_symbol ?? '₹',
+              timezone:        cr.timezone        ?? 'Asia/Kolkata',
+              tax_regime:      cr.tax_regime      ?? 'GST',
+              date_format:     cr.date_format     ?? 'DD/MM/YYYY',
+            };
+          }
+        } catch { /* countries table may not exist — skip gracefully */ }
+      }
 
       // Wrap everything in a transaction so partial failures don't leave orphaned tenants
       const result = await db.transaction(async (tx) => {
@@ -1663,6 +1738,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           ...(industry ? { industry } : {}),
+          ...countryFields,
         } as any).returning();
 
         // Create subscription
@@ -1902,6 +1978,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Industry Vertical routes
   app.use('/api/healthcare', healthcareRouter);
+  app.use('/api/hotel', hotelRouter);
+  app.use('/api/restaurant', restaurantRouter);
+  app.use('/api/ecommerce', ecommerceRouter);
+  app.use('/api/ngo', ngoRouter);
+  app.use('/api/pharmacy', pharmacyRouter);
+  app.use('/api/nidhi-company', nidhiRouter);
+  app.use('/api/finance', financeErpRouter);
+  app.use('/api/restaurant', restaurantEnterpriseRouter);
+  app.use('/api/aggregators', aggregatorRouter);
+  app.use('/api/restaurant/tax', restaurantTaxRouter);
+  app.use('/api/restaurant/analytics', restaurantAnalyticsRouter);
+  app.use('/api/hotel', hotelEnterpriseRouter);
+  app.use('/api/healthcare', healthcareEnterpriseRouter);
+  app.use('/api/education', educationEnterpriseRouter);
+  app.use('/api/real-estate', realestateEnterpriseRouter);
+  app.use('/api/masters', mastersRouter);
+  app.use('/api/pos', retailExtraRouter);
+  app.use('/api/pharmacy', pharmacyEnterpriseRouter);
+  app.use('/api/healthcare', healthcareExtraRouter);
+  app.use('/api/education', educationExtraRouter);
+  app.use('/api/logistics', logisticsExtraRouter);
+  app.use('/api/ngo', ngoExtraRouter);
+  app.use('/api/crm', crmExtraRouter);
+  app.use('/api/agriculture', agricultureExtraRouter);
+  app.use('/api/ecommerce', ecommerceExtraRouter);
   app.use('/api/education', educationRouter);
   app.use('/api/logistics', logisticsRouter);
   app.use('/api/real-estate', realestateRouter);
@@ -5093,7 +5194,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/raw-materials', isAuthenticated, async (req: any, res) => {
     try {
       const materials = await storage.getAllRawMaterials();
-      res.json(materials);
+      // Add name/unit aliases so recipe and other pages can use rm.name / rm.unit
+      const mapped = materials.map((m: any) => ({ ...m, name: m.materialName, unit: m.baseUnit, cost_per_unit: m.unitCost }));
+      res.json(mapped);
     } catch (error: any) {
       console.error("Error fetching raw materials:", error);
       console.error("Error stack:", error?.stack);
@@ -18389,6 +18492,15 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       };
       
       const created = await storage.createRole(roleData);
+
+      // Auto-seed plan-appropriate permissions for the new role
+      try {
+        await syncAndUnlockByPlan(tenantId);
+        console.log(`[ROLE SETUP] Synced plan permissions for new role "${name}" in tenant ${tenantId}`);
+      } catch (syncErr: any) {
+        console.error(`[ROLE SETUP] Permission sync failed for new role (non-fatal):`, syncErr.message);
+      }
+
       res.json(created);
     } catch (error: any) {
       if (error?.code === '23505') { // Unique constraint violation
@@ -30883,6 +30995,36 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
     }
   });
 
+
+  // ─── Thermal print proxy (for network ESC/POS printers) ──────────────────
+  app.post('/api/print/thermal', async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' });
+    const { ip, port, html } = req.body;
+    if (!ip || !port) return res.status(400).json({ message: 'ip and port are required' });
+    // For now return success — full ESC/POS encoding is complex and
+    // the window.print() fallback works for most thermal printer setups.
+    // In production: use net.Socket to send ESC/POS bytes to the printer.
+    try {
+      const net = await import('net');
+      const socket = new net.Socket();
+      await new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => { socket.destroy(); reject(new Error('Printer timeout')); }, 3000);
+        socket.connect(Number(port), ip, () => {
+          clearTimeout(timeout);
+          // Send a minimal ESC/POS receipt with the bill number extracted from html
+          const text = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().substring(0, 500);
+          socket.write(Buffer.from('\x1B\x40' + text + '\n\n\n\x1D\x56\x41\x00', 'utf8'));
+          socket.end();
+          resolve();
+        });
+        socket.on('error', (err) => { clearTimeout(timeout); reject(err); });
+      });
+      res.json({ success: true });
+    } catch (err: any) {
+      // Non-fatal — client falls back to window.print()
+      res.json({ success: false, message: err.message });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;
