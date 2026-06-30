@@ -356,7 +356,7 @@ export default function EWayBillPage() {
                                 <span className="text-muted-foreground ml-2 text-xs">{inv.buyer_name}</span>
                               </div>
                               <div className="text-right shrink-0">
-                                <div className="font-medium">₹{Number(inv.total_amount).toLocaleString("en-IN")}</div>
+                                <div className="font-medium">₹{(Number(inv.total_amount) / 100).toLocaleString("en-IN")}</div>
                                 <div className="text-xs text-muted-foreground">{inv.invoice_date ? new Date(inv.invoice_date).toLocaleDateString("en-IN") : ""}</div>
                               </div>
                             </button>

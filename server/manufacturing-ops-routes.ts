@@ -465,12 +465,12 @@ router.get("/eway-bills/invoice-prefill/:invoiceId", auth, async (req: any, res)
       hsn_code: item?.hsn_code ?? "",
       quantity: item?.quantity ?? 1,
       qty_unit: "NOS",
-      taxable_value: Number(inv.subtotal ?? 0),
+      taxable_value: +(Number(inv.subtotal ?? 0) / 100).toFixed(2),
       cgst_rate: item?.cgst_rate ?? "9",
       sgst_rate: item?.sgst_rate ?? "9",
       igst_rate: item?.igst_rate ?? "0",
       cess_rate: item?.cess_rate ?? "0",
-      total_invoice_value: Number(inv.total_amount ?? 0),
+      total_invoice_value: +(Number(inv.total_amount ?? 0) / 100).toFixed(2),
       // Transport (if already filled on invoice)
       transport_mode: inv.transport_mode ?? "1",
       vehicle_no: inv.vehicle_number ?? "",
@@ -489,7 +489,7 @@ router.get("/eway-bills/invoices-search", auth, async (req: any, res) => {
       WHERE tenant_id = ${tenantId}
         AND record_status != 0
         AND (invoice_number ILIKE ${q} OR buyer_name ILIKE ${q})
-        AND total_amount >= 50000
+        AND total_amount >= 5000000
       ORDER BY invoice_date DESC LIMIT 30
     `);
     res.json(rows.rows);
