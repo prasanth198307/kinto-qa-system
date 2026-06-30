@@ -7,6 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 const api = (m: string, u: string, b?: any) =>
   fetch(u, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined, credentials: "include" }).then(r => r.json());
@@ -19,6 +22,136 @@ function elapsed(since: string) {
   const h = Math.floor(ms / 3600000);
   const m = Math.floor((ms % 3600000) / 60000);
   return `${h}h ${m}m`;
+}
+
+// ── Z-Report Action Buttons ───────────────────────────────────────────────────
+function ZReportActions({ shift, onDone }: { shift: any; onDone: () => void }) {
+  const { toast } = useToast();
+  const [journalModal, setJournalModal] = useState(false);
+  const [cashModal, setCashModal] = useState(false);
+  const [closeModal, setCloseModal] = useState(false);
+  const [journal, setJournal] = useState<any>(null);
+  const [cashForm, setCashForm] = useState({ opening_cash: "", closing_cash: "", actual_cash: "" });
+  const [closeForm, setCloseForm] = useState({ closing_notes: "", tips_collected: "" });
+
+  const postJournal = async () => {
+    const res = await api("POST", `/api/restaurant/shifts/${shift.id}/post-journal`, {});
+    if (res.error) { toast({ title: res.error, variant: "destructive" }); return; }
+    toast({ title: "Journal entry posted successfully" });
+    const je = await api("GET", `/api/restaurant/shifts/${shift.id}/journal`);
+    setJournal(je);
+    setJournalModal(true);
+    onDone();
+  };
+
+  const openJournal = async () => {
+    const je = await api("GET", `/api/restaurant/shifts/${shift.id}/journal`);
+    setJournal(je);
+    setJournalModal(true);
+  };
+
+  const postCash = async () => {
+    const res = await api("POST", `/api/restaurant/shifts/${shift.id}/post-cash-settlement`, cashForm);
+    if (res.error) { toast({ title: res.error, variant: "destructive" }); return; }
+    toast({ title: res.message || "Cash settlement saved" });
+    setCashModal(false);
+    onDone();
+  };
+
+  const closeShiftHR = async () => {
+    const res = await api("POST", `/api/restaurant/shifts/${shift.id}/close`, closeForm);
+    if (res.error) { toast({ title: res.error, variant: "destructive" }); return; }
+    toast({ title: `Shift closed — ${res.hours_worked}h recorded in HR attendance` });
+    setCloseModal(false);
+    onDone();
+  };
+
+  const alreadyPosted = !!shift.journal_entry_id;
+
+  return (
+    <>
+      <div className="flex gap-1 flex-wrap">
+        {alreadyPosted ? (
+          <Button size="sm" variant="outline" className="text-green-700 border-green-400" onClick={openJournal}>
+            ✓ Journal
+          </Button>
+        ) : (
+          <Button size="sm" variant="outline" onClick={postJournal}>Post Journal</Button>
+        )}
+        <Button size="sm" variant="outline" onClick={() => setCashModal(true)}>Cash Settlement</Button>
+        {shift.status !== "closed" && (
+          <Button size="sm" variant="outline" className="text-red-600 border-red-400" onClick={() => setCloseModal(true)}>Close Shift</Button>
+        )}
+      </div>
+
+      {/* Journal Modal */}
+      <Dialog open={journalModal} onOpenChange={setJournalModal}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Journal Entry — Shift {shift.id}</DialogTitle></DialogHeader>
+          {journal ? (
+            <div className="space-y-3 text-sm">
+              <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
+                <span>Ref: {journal.reference_no}</span>
+                <span>Date: {journal.entry_date}</span>
+                <span className="col-span-2">Narration: {journal.narration}</span>
+              </div>
+              <Table>
+                <TableHeader><TableRow><TableHead>Account</TableHead><TableHead>Debit</TableHead><TableHead>Credit</TableHead></TableRow></TableHeader>
+                <TableBody>
+                  {(journal.lines || []).filter((l: any) => l.account).map((l: any, i: number) => (
+                    <TableRow key={i}>
+                      <TableCell>{l.account}</TableCell>
+                      <TableCell>{l.debit > 0 ? fmt(l.debit) : "—"}</TableCell>
+                      <TableCell>{l.credit > 0 ? fmt(l.credit) : "—"}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : <p className="text-gray-400 text-center py-4">No journal entry found</p>}
+        </DialogContent>
+      </Dialog>
+
+      {/* Cash Settlement Modal */}
+      <Dialog open={cashModal} onOpenChange={setCashModal}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Cash Settlement — Shift {shift.id}</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            {(["opening_cash","closing_cash","actual_cash"] as const).map(k => (
+              <div key={k}>
+                <Label>{k.replace(/_/g," ").replace(/\b\w/g,c=>c.toUpperCase())}</Label>
+                <Input type="number" value={cashForm[k]} onChange={e => setCashForm(f => ({...f,[k]:e.target.value}))} placeholder="0.00" />
+              </div>
+            ))}
+            {cashForm.closing_cash && cashForm.actual_cash && (
+              <p className={`text-sm font-medium ${Number(cashForm.actual_cash)-Number(cashForm.closing_cash) >= 0 ? "text-green-700":"text-red-700"}`}>
+                Variance: {fmt(Number(cashForm.actual_cash)-Number(cashForm.closing_cash))}
+              </p>
+            )}
+            <Button className="w-full" onClick={postCash}>Save Settlement</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Close Shift Modal */}
+      <Dialog open={closeModal} onOpenChange={setCloseModal}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Close Shift {shift.id} (HR Integration)</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>Tips Collected</Label>
+              <Input type="number" value={closeForm.tips_collected} onChange={e => setCloseForm(f => ({...f,tips_collected:e.target.value}))} placeholder="0.00" />
+            </div>
+            <div>
+              <Label>Closing Notes</Label>
+              <Textarea value={closeForm.closing_notes} onChange={e => setCloseForm(f => ({...f,closing_notes:e.target.value}))} rows={3} />
+            </div>
+            <Button className="w-full bg-red-600 hover:bg-red-700 text-white" onClick={closeShiftHR}>Close & Record Attendance</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
 }
 
 export default function RestaurantShiftsPage() {
@@ -255,19 +388,20 @@ export default function RestaurantShiftsPage() {
                   <TableHead>Orders</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Duration</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {shifts.length === 0 ? (
-                  <TableRow><TableCell colSpan={11} className="text-center text-gray-400">No shifts found</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={12} className="text-center text-gray-400">No shifts found</TableCell></TableRow>
                 ) : shifts.map((s: any) => {
                   const v = (s.closing_cash || 0) - (s.opening_cash || 0) - (s.expected_cash || 0);
                   const dur = s.opened_at && s.closed_at
                     ? Math.round((new Date(s.closed_at).getTime() - new Date(s.opened_at).getTime()) / 60000)
                     : null;
                   return (
-                    <TableRow key={s.id} className="cursor-pointer hover:bg-gray-50" onClick={() => setSummaryShift(s)}>
-                      <TableCell className="font-medium">{s.shift_name}</TableCell>
+                    <TableRow key={s.id} className="hover:bg-gray-50">
+                      <TableCell className="font-medium cursor-pointer" onClick={() => setSummaryShift(s)}>{s.shift_name}</TableCell>
                       <TableCell>{s.opened_at?.split("T")[0]}</TableCell>
                       <TableCell>{s.cashier_name}</TableCell>
                       <TableCell>{s.terminal_name || "—"}</TableCell>
@@ -278,6 +412,7 @@ export default function RestaurantShiftsPage() {
                       <TableCell>{s.total_orders || 0}</TableCell>
                       <TableCell><Badge variant={s.status === "open" ? "default" : "secondary"}>{s.status || "closed"}</Badge></TableCell>
                       <TableCell>{dur != null ? `${Math.floor(dur / 60)}h ${dur % 60}m` : "—"}</TableCell>
+                      <TableCell><ZReportActions shift={s} onDone={invalidate} /></TableCell>
                     </TableRow>
                   );
                 })}

@@ -123,8 +123,28 @@ export default function SuperAdminTenants() {
   const [showDeletionAudit, setShowDeletionAudit] = useState(false);
   const [createForm, setCreateForm] = useState({
     name: "", slug: "", plan: "trial", adminUsername: "", adminPassword: "",
-    adminEmail: "", maxUsers: "5", trialDays: "14", industry: "",
+    adminEmail: "", maxUsers: "5", trialDays: "14", industry: "", country_code: "",
   });
+
+  const SEEDED_COUNTRIES = [
+    { code: "IN", name: "India", currency: "INR", symbol: "₹", tz: "Asia/Kolkata" },
+    { code: "AE", name: "UAE", currency: "AED", symbol: "د.إ", tz: "Asia/Dubai" },
+    { code: "US", name: "United States", currency: "USD", symbol: "$", tz: "America/New_York" },
+    { code: "GB", name: "United Kingdom", currency: "GBP", symbol: "£", tz: "Europe/London" },
+    { code: "SG", name: "Singapore", currency: "SGD", symbol: "S$", tz: "Asia/Singapore" },
+    { code: "MY", name: "Malaysia", currency: "MYR", symbol: "RM", tz: "Asia/Kuala_Lumpur" },
+    { code: "AU", name: "Australia", currency: "AUD", symbol: "A$", tz: "Australia/Sydney" },
+    { code: "CA", name: "Canada", currency: "CAD", symbol: "C$", tz: "America/Toronto" },
+    { code: "NG", name: "Nigeria", currency: "NGN", symbol: "₦", tz: "Africa/Lagos" },
+    { code: "KE", name: "Kenya", currency: "KES", symbol: "KSh", tz: "Africa/Nairobi" },
+    { code: "ZA", name: "South Africa", currency: "ZAR", symbol: "R", tz: "Africa/Johannesburg" },
+    { code: "BD", name: "Bangladesh", currency: "BDT", symbol: "৳", tz: "Asia/Dhaka" },
+    { code: "PK", name: "Pakistan", currency: "PKR", symbol: "₨", tz: "Asia/Karachi" },
+    { code: "LK", name: "Sri Lanka", currency: "LKR", symbol: "Rs", tz: "Asia/Colombo" },
+    { code: "NP", name: "Nepal", currency: "NPR", symbol: "रू", tz: "Asia/Kathmandu" },
+  ];
+
+  const selectedCountry = SEEDED_COUNTRIES.find(c => c.code === createForm.country_code);
 
   const { data: tenants = [], isLoading, isError, refetch } = useQuery<Tenant[]>({
     queryKey: ["/api/admin/tenants"],
@@ -153,7 +173,7 @@ export default function SuperAdminTenants() {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/tenants"] });
       toast({ title: "Tenant created", description: data.message });
       setShowCreateTenant(false);
-      setCreateForm({ name: "", slug: "", plan: "trial", adminUsername: "", adminPassword: "", adminEmail: "", maxUsers: "5", trialDays: "14", industry: "" });
+      setCreateForm({ name: "", slug: "", plan: "trial", adminUsername: "", adminPassword: "", adminEmail: "", maxUsers: "5", trialDays: "14", industry: "", country_code: "" });
     },
     onError: (err: any) => toast({ title: "Creation failed", description: err.message, variant: "destructive" }),
   });
@@ -930,6 +950,24 @@ export default function SuperAdminTenants() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Country</Label>
+              <Select value={createForm.country_code} onValueChange={(v) => setCreateForm((f) => ({ ...f, country_code: v }))}>
+                <SelectTrigger data-testid="select-create-country">
+                  <SelectValue placeholder="Select country (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SEEDED_COUNTRIES.map((c) => (
+                    <SelectItem key={c.code} value={c.code}>{c.name} ({c.currency})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedCountry && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Currency: {selectedCountry.symbol} {selectedCountry.currency} &nbsp;·&nbsp; Timezone: {selectedCountry.tz}
+                </p>
+              )}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">

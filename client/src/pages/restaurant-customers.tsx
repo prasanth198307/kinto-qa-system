@@ -208,7 +208,7 @@ export default function RestaurantCustomersPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
 
-  const [tab, setTab] = useState<"customers" | "loyalty" | "feedback" | "gift-cards">("customers");
+  const [tab, setTab] = useState<"customers" | "loyalty" | "feedback">("customers");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -274,6 +274,24 @@ export default function RestaurantCustomersPage() {
     onError: () => toast({ title: "Error updating config", variant: "destructive" }),
   });
 
+  const syncCrmMut = useMutation({
+    mutationFn: (id: number) => api("POST", `/api/restaurant/customers/${id}/sync-crm`, {}),
+    onSuccess: (d: any) => { toast({ title: d.success ? `Synced to CRM (contact #${d.crm_contact_id})` : "Sync failed" }); invalidate(); },
+    onError: () => toast({ title: "CRM sync failed", variant: "destructive" }),
+  });
+
+  const bulkSyncCrmMut = useMutation({
+    mutationFn: () => api("POST", "/api/restaurant/customers/bulk-sync-crm", {}),
+    onSuccess: (d: any) => toast({ title: `Bulk sync done: ${d.synced} synced, ${d.skipped} skipped` }),
+    onError: () => toast({ title: "Bulk sync failed", variant: "destructive" }),
+  });
+
+  const postToMisMut = useMutation({
+    mutationFn: () => api("POST", "/api/restaurant/reports/post-to-mis", {}),
+    onSuccess: (d: any) => toast({ title: `Posted to MIS for ${d.date}: ${d.summary?.order_count || 0} orders` }),
+    onError: () => toast({ title: "Post to MIS failed", variant: "destructive" }),
+  });
+
   const resetForm = () => { setForm({ ...emptyForm }); setShowForm(false); setEditId(null); };
 
   const startEdit = (c: any) => {
@@ -317,9 +335,7 @@ export default function RestaurantCustomersPage() {
           <Button variant={tab === "customers" ? "default" : "outline"} onClick={() => setTab("customers")}>Customers</Button>
           <Button variant={tab === "loyalty" ? "default" : "outline"} onClick={() => setTab("loyalty")}>Loyalty Program</Button>
           <Button variant={tab === "feedback" ? "default" : "outline"} onClick={() => setTab("feedback")}>Feedback</Button>
-          <Button variant={tab === "gift-cards" ? "default" : "outline"} onClick={() => setTab("gift-cards")}>
-            Gift Cards
-          </Button>
+          <Button variant="outline" onClick={() => window.location.href = '/restaurant-gift-cards'}>🎁 Gift Cards ↗</Button>
         </div>
       </div>
 
@@ -340,6 +356,12 @@ export default function RestaurantCustomersPage() {
           <div className="flex gap-3">
             <Input placeholder="Search by name or phone..." value={search} onChange={e => handleSearchChange(e.target.value)} className="max-w-xs" />
             <Button onClick={() => { resetForm(); setShowForm(true); }}>+ Add Customer</Button>
+            <Button variant="outline" onClick={() => bulkSyncCrmMut.mutate()} disabled={bulkSyncCrmMut.isPending} title="Sync all unlinked customers to shared CRM">
+              {bulkSyncCrmMut.isPending ? "Syncing..." : "Bulk Sync to CRM"}
+            </Button>
+            <Button variant="outline" onClick={() => postToMisMut.mutate()} disabled={postToMisMut.isPending} title="Post today's sales to shared MIS dashboard">
+              {postToMisMut.isPending ? "Posting..." : "Post to MIS"}
+            </Button>
           </div>
 
           {showForm && (
@@ -469,7 +491,12 @@ export default function RestaurantCustomersPage() {
                         <TableCell>{fmt(c.total_spend)}</TableCell>
                         <TableCell>{c.last_visit?.split("T")[0] || "—"}</TableCell>
                         <TableCell onClick={e => e.stopPropagation()}>
-                          <Button size="sm" variant="ghost" onClick={() => startEdit(c)}>Edit</Button>
+                          <div className="flex gap-1 items-center">
+                            <Button size="sm" variant="ghost" onClick={() => startEdit(c)}>Edit</Button>
+                            <Button size="sm" variant="outline" className={c.crm_contact_id ? "text-green-700 border-green-400" : ""} onClick={() => syncCrmMut.mutate(c.id)} disabled={syncCrmMut.isPending} title={c.crm_contact_id ? `Linked to CRM #${c.crm_contact_id}` : "Sync to CRM"}>
+                              {c.crm_contact_id ? "✓ CRM" : "Sync CRM"}
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -627,7 +654,7 @@ export default function RestaurantCustomersPage() {
           </Card>
         </div>
       )}
-      {tab === "gift-cards" && <GiftCardsTab />}
+
     </div>
   );
 }

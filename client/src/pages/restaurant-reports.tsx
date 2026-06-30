@@ -32,6 +32,7 @@ const REPORTS = [
   { id: "franchise",       label: "Franchise Summary",  icon: "🏢" },
   { id: "feedback",        label: "Customer Feedback",  icon: "💬" },
   { id: "eod-email",       label: "EOD Email",          icon: "📧" },
+  { id: "tally-export",    label: "Tally Export",       icon: "📤" },
 ];
 
 type ColFormat = "currency" | "pct" | "number" | "text" | "badge";
@@ -218,6 +219,112 @@ function FeedbackReport() {
   );
 }
 
+function TallyExportTab() {
+  const today = new Date().toISOString().split("T")[0];
+  const [from, setFrom] = useState(today);
+  const [to, setTo] = useState(today);
+  const [salesLedger, setSalesLedger] = useState("Food Sales A/c");
+  const [cashLedger, setCashLedger] = useState("Cash-in-Hand");
+  const [bankLedger, setBankLedger] = useState("HDFC Current A/c");
+  const [cgstLedger, setCgstLedger] = useState("Output CGST A/c");
+  const [sgstLedger, setSgstLedger] = useState("Output SGST A/c");
+  const [xmlPreview, setXmlPreview] = useState("");
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
+
+  const generateXml = async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({ from, to, sales_ledger: salesLedger, cash_ledger: cashLedger, bank_ledger: bankLedger, cgst_ledger: cgstLedger, sgst_ledger: sgstLedger });
+      const res = await fetch(`/api/restaurant/reports/tally-xml?${params}`, { credentials: "include" });
+      const text = await res.text();
+      setXmlPreview(text);
+    } catch {
+      toast({ title: "Failed to generate XML", variant: "destructive" });
+    }
+    setLoading(false);
+  };
+
+  const downloadXml = () => {
+    if (!xmlPreview) return;
+    const blob = new Blob([xmlPreview], { type: "application/xml" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `tally-export-${from}-${to}.xml`;
+    a.click();
+  };
+
+  return (
+    <div className="space-y-5">
+      <div className="grid grid-cols-2 gap-4">
+        <Card>
+          <CardHeader><CardTitle className="text-sm">Date Range</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex gap-2 items-center">
+              <label className="text-xs text-gray-500 w-10">From</label>
+              <Input type="date" value={from} onChange={e => setFrom(e.target.value)} className="h-8 text-xs" />
+            </div>
+            <div className="flex gap-2 items-center">
+              <label className="text-xs text-gray-500 w-10">To</label>
+              <Input type="date" value={to} onChange={e => setTo(e.target.value)} className="h-8 text-xs" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle className="text-sm">Ledger Mapping</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            {[
+              { label: "Food Sales →", val: salesLedger, set: setSalesLedger },
+              { label: "Cash →", val: cashLedger, set: setCashLedger },
+              { label: "Card/UPI →", val: bankLedger, set: setBankLedger },
+              { label: "CGST →", val: cgstLedger, set: setCgstLedger },
+              { label: "SGST →", val: sgstLedger, set: setSgstLedger },
+            ].map(({ label, val, set }) => (
+              <div key={label} className="flex gap-2 items-center">
+                <label className="text-xs text-gray-500 w-20 shrink-0">{label}</label>
+                <Input value={val} onChange={e => set(e.target.value)} className="h-7 text-xs" />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="flex gap-3">
+        <Button onClick={generateXml} disabled={loading} className="gap-2">
+          {loading ? "Generating..." : "📤 Generate Tally XML"}
+        </Button>
+        {xmlPreview && (
+          <Button variant="outline" onClick={downloadXml} className="gap-2">⬇ Download XML</Button>
+        )}
+      </div>
+
+      {xmlPreview && (
+        <Card>
+          <CardHeader><CardTitle className="text-sm">XML Preview</CardTitle></CardHeader>
+          <CardContent>
+            <pre className="text-xs bg-gray-900 text-green-400 p-4 rounded overflow-auto max-h-80 font-mono">
+              {xmlPreview}
+            </pre>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card className="border-blue-200 bg-blue-50">
+        <CardContent className="pt-4">
+          <p className="text-sm font-semibold text-blue-800 mb-2">How to import in Tally:</p>
+          <ol className="text-sm text-blue-700 space-y-1 list-decimal list-inside">
+            <li>Open Tally Prime / Tally ERP 9</li>
+            <li>Go to <strong>Gateway of Tally → Import Data → Vouchers</strong></li>
+            <li>Select the downloaded XML file</li>
+            <li>Tally will create Sales vouchers for each day automatically</li>
+            <li>Verify ledger names match exactly with your Tally chart of accounts</li>
+          </ol>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export default function RestaurantReportsPage() {
   const { toast } = useToast();
   const [activeReport, setActiveReport] = useState("daily-summary");
@@ -255,7 +362,7 @@ export default function RestaurantReportsPage() {
   };
 
   const loadReport = async () => {
-    if (activeReport === "eod-email" || activeReport === "feedback") return;
+    if (activeReport === "eod-email" || activeReport === "feedback" || activeReport === "tally-export") return;
     setLoading(true);
     try {
       let url = "";
@@ -359,7 +466,7 @@ export default function RestaurantReportsPage() {
         </div>
 
         {/* Top filter bar */}
-        {activeReport !== "eod-email" && activeReport !== "feedback" && (
+        {activeReport !== "eod-email" && activeReport !== "feedback" && activeReport !== "tally-export" && (
           <div className="flex flex-wrap gap-2 mb-4 items-center bg-gray-50 p-3 rounded border">
             {["today", "yesterday", "week", "month"].map(p => (
               <Button key={p} size="sm" variant="outline" onClick={() => applyPreset(p)} className="capitalize h-7 text-xs">{p}</Button>
@@ -491,6 +598,9 @@ export default function RestaurantReportsPage() {
         {/* FEEDBACK */}
         {activeReport === "feedback" && <FeedbackReport />}
 
+        {/* TALLY EXPORT */}
+        {activeReport === "tally-export" && <TallyExportTab />}
+
         {/* EOD EMAIL */}
         {activeReport === "eod-email" && (
           <div className="max-w-lg">
@@ -523,7 +633,7 @@ export default function RestaurantReportsPage() {
         )}
 
         {/* GENERIC TABLE */}
-        {activeReport !== "eod-email" && activeReport !== "feedback" && (
+        {activeReport !== "eod-email" && activeReport !== "feedback" && activeReport !== "tally-export" && (
           <>
             {loading && (
               <div className="space-y-2">

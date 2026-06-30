@@ -239,6 +239,17 @@ import RestaurantKioskPage from "@/pages/restaurant-kiosk";
 import RestaurantAggregatorsPage from "@/pages/restaurant-aggregators";
 import RestaurantAnalyticsPage from "@/pages/restaurant-analytics";
 import RestaurantStaffPage from "@/pages/restaurant-staff";
+import RestaurantFranchisePage from "@/pages/restaurant-franchise";
+import RestaurantTaxSettingsPage from "@/pages/restaurant-tax-settings";
+import RestaurantGiftCardsPage from "@/pages/restaurant-gift-cards";
+import RestaurantCentralKitchenPage from "@/pages/restaurant-central-kitchen";
+import RestaurantMenuTranslationsPage from "@/pages/restaurant-menu-translations";
+import RestaurantTableOrderPage from "@/pages/restaurant-table-order";
+import RestaurantCDSPage from "@/pages/restaurant-cds";
+import RestaurantCampaignsPage from "@/pages/restaurant-campaigns";
+import RestaurantRecipesPage from "@/pages/restaurant-recipes";
+import RestaurantOnlineOrderPage from "@/pages/restaurant-online-order";
+import RestaurantPaymentTerminalPage from "@/pages/restaurant-payment-terminal";
 import HotelFrontDeskPage from "@/pages/hotel/front-desk";
 import HotelReservationsPage from "@/pages/hotel/reservations";
 import HotelCheckinPage from "@/pages/hotel/checkin";
@@ -1398,6 +1409,13 @@ function AdminDashboard() {
         { id: "restaurant-analytics", label: "Analytics & BI", icon: BarChart3, onClick: () => setLocation('/restaurant-analytics') },
         { id: "restaurant-staff", label: "Staff & Tips", icon: Users, onClick: () => setLocation('/restaurant-staff') },
         { id: "restaurant-steward", label: "Steward App", icon: UtensilsCrossed, onClick: () => setLocation('/restaurant-steward') },
+        { id: "restaurant-franchise", label: "Franchise", icon: Building2, onClick: () => setLocation('/restaurant-franchise') },
+        { id: "restaurant-central-kitchen", label: "Central Kitchen", icon: Package, onClick: () => setLocation('/restaurant-central-kitchen') },
+        { id: "restaurant-campaigns", label: "Campaigns", icon: BarChart3, onClick: () => setLocation('/restaurant-campaigns') },
+        { id: "restaurant-gift-cards", label: "Gift Cards", icon: Package, onClick: () => setLocation('/restaurant-gift-cards') },
+        { id: "restaurant-recipes", label: "Recipe Costing", icon: UtensilsCrossed, onClick: () => setLocation('/restaurant-recipes') },
+        { id: "restaurant-payment-terminal", label: "Payment Terminal", icon: Package, onClick: () => setLocation('/restaurant-payment-terminal') },
+        { id: "restaurant-menu-translations", label: "Menu Translations", icon: Package, onClick: () => setLocation('/restaurant-menu-translations') },
       ],
     },
     {
@@ -2837,6 +2855,13 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "restaurant-analytics", label: "Analytics & BI", icon: BarChart3, onClick: () => setLocation('/restaurant-analytics') },
         { id: "restaurant-staff", label: "Staff & Tips", icon: Users, onClick: () => setLocation('/restaurant-staff') },
         { id: "restaurant-steward", label: "Steward App", icon: UtensilsCrossed, onClick: () => setLocation('/restaurant-steward') },
+        { id: "restaurant-franchise", label: "Franchise", icon: Building2, onClick: () => setLocation('/restaurant-franchise') },
+        { id: "restaurant-central-kitchen", label: "Central Kitchen", icon: Package, onClick: () => setLocation('/restaurant-central-kitchen') },
+        { id: "restaurant-campaigns", label: "Campaigns", icon: BarChart3, onClick: () => setLocation('/restaurant-campaigns') },
+        { id: "restaurant-gift-cards", label: "Gift Cards", icon: Package, onClick: () => setLocation('/restaurant-gift-cards') },
+        { id: "restaurant-recipes", label: "Recipe Costing", icon: UtensilsCrossed, onClick: () => setLocation('/restaurant-recipes') },
+        { id: "restaurant-payment-terminal", label: "Payment Terminal", icon: Package, onClick: () => setLocation('/restaurant-payment-terminal') },
+        { id: "restaurant-menu-translations", label: "Menu Translations", icon: Package, onClick: () => setLocation('/restaurant-menu-translations') },
       ],
     },
     {
@@ -4530,6 +4555,7 @@ function Router() {
       <Route path="/restaurant-feedback" component={RestaurantFeedbackPublicPage} />
       <Route path="/restaurant-kiosk/:outletId" component={RestaurantKioskPage} />
       <Route path="/restaurant-kiosk" component={RestaurantKioskPage} />
+      <Route path="/order/:slug" component={RestaurantOnlineOrderPage} />
       <ProtectedRoute path="/super-admin/overview" component={() => <SuperAdminOverview />} />
       <ProtectedRoute path="/super-admin/tenants" component={() => <SuperAdminTenants />} />
       <ProtectedRoute path="/super-admin/billing" component={() => <SuperAdminBilling />} />
@@ -4666,6 +4692,17 @@ function Router() {
       <ProtectedRoute path="/restaurant-analytics" component={RestaurantAnalyticsWrapper} />
       <ProtectedRoute path="/restaurant-staff" component={RestaurantStaffWrapper} />
       <ProtectedRoute path="/restaurant-steward" component={RestaurantStewardWrapper} />
+      <ProtectedRoute path="/restaurant-franchise" component={RestaurantFranchiseWrapper} />
+      <ProtectedRoute path="/restaurant-tax-settings" component={RestaurantTaxSettingsWrapper} />
+      <ProtectedRoute path="/restaurant-gift-cards" component={RestaurantGiftCardsWrapper} />
+      <ProtectedRoute path="/restaurant-central-kitchen" component={RestaurantCentralKitchenWrapper} />
+      <ProtectedRoute path="/restaurant-menu-translations" component={RestaurantMenuTranslationsWrapper} />
+      <ProtectedRoute path="/restaurant-campaigns" component={RestaurantCampaignsWrapper} />
+      <ProtectedRoute path="/restaurant-recipes" component={RestaurantRecipesWrapper} />
+      <ProtectedRoute path="/restaurant-payment-terminal" component={RestaurantPaymentTerminalWrapper} />
+      <Route path="/restaurant-table-order/:outletId/:tableId" component={RestaurantTableOrderPage} />
+      <Route path="/restaurant-table-order/:outletId" component={RestaurantTableOrderPage} />
+      <Route path="/restaurant-cds" component={RestaurantCDSPage} />
       <ProtectedRoute path="/hotel/front-desk" component={HotelFrontDeskWrapper} />
       <ProtectedRoute path="/hotel/reservations" component={HotelReservationsWrapper} />
       <ProtectedRoute path="/hotel/checkin" component={HotelCheckinWrapper} />
@@ -5406,6 +5443,14 @@ const RestaurantAggregatorsWrapper = makeWrapper('Delivery Platforms', 'restaura
 const RestaurantAnalyticsWrapper = makeWrapper('Analytics & BI', 'restaurant-analytics', RestaurantAnalyticsPage);
 const RestaurantStaffWrapper = makeWrapper('Staff & Tips', 'restaurant-staff', RestaurantStaffPage);
 const RestaurantStewardWrapper = makeWrapper('Steward App', 'restaurant-steward', RestaurantStewardPage);
+const RestaurantFranchiseWrapper = makeWrapper('Franchise Management', 'restaurant-franchise', RestaurantFranchisePage);
+const RestaurantTaxSettingsWrapper = makeWrapper('Tax & Currency', 'restaurant-tax-settings', RestaurantTaxSettingsPage);
+const RestaurantGiftCardsWrapper = makeWrapper('Gift Cards', 'restaurant-gift-cards', RestaurantGiftCardsPage);
+const RestaurantCentralKitchenWrapper = makeWrapper('Central Kitchen', 'restaurant-central-kitchen', RestaurantCentralKitchenPage);
+const RestaurantMenuTranslationsWrapper = makeWrapper('Menu Translations', 'restaurant-menu-translations', RestaurantMenuTranslationsPage);
+const RestaurantCampaignsWrapper = makeWrapper('Marketing Campaigns', 'restaurant-campaigns', RestaurantCampaignsPage);
+const RestaurantRecipesWrapper = makeWrapper('Recipe & Food Costing', 'restaurant-recipes', RestaurantRecipesPage);
+const RestaurantPaymentTerminalWrapper = makeWrapper('Payment Terminals', 'restaurant-payment-terminal', RestaurantPaymentTerminalPage);
 const HotelFrontDeskWrapper = makeWrapper('Front Desk', 'hotel/front-desk', HotelFrontDeskPage);
 const HotelReservationsWrapper = makeWrapper('Reservations', 'hotel/reservations', HotelReservationsPage);
 const HotelCheckinWrapper = makeWrapper('Check-in / Check-out', 'hotel/checkin', HotelCheckinPage);

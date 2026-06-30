@@ -135,12 +135,12 @@ router.get("/modifiers", auth, async (req: any, res: any) => {
   try {
     const tid = getTenantId(req);
     const r = await db.execute(sql`
-      SELECT m.*, json_agg(o.*) AS options
+      SELECT m.*, COALESCE(json_agg(json_build_object('id',o.id,'option_name',o.option_name,'price_adjustment',o.price_adjustment,'is_default',o.is_default)) FILTER (WHERE o.id IS NOT NULL), '[]') AS options
       FROM menu_modifiers m
-      LEFT JOIN menu_modifier_options o ON o.modifier_id = m.id
-      WHERE m.tenant_id=${tid}
+      LEFT JOIN menu_modifier_options o ON o.modifier_id = m.id AND (o.record_status IS NULL OR o.record_status != 'deleted')
+      WHERE m.tenant_id=${tid} AND (m.record_status IS NULL OR m.record_status != 'deleted')
       GROUP BY m.id
-      ORDER BY m.id`);
+      ORDER BY m.name`);
     res.json(r.rows);
   } catch (e: any) {
     res.status(500).json({ message: e.message });
@@ -150,17 +150,17 @@ router.get("/modifiers", auth, async (req: any, res: any) => {
 router.post("/modifiers", auth, async (req: any, res: any) => {
   try {
     const tid = getTenantId(req);
-    const { name, selection_type, is_required, options } = req.body;
+    const { name, modifier_type, is_required, options } = req.body;
     const r = await db.execute(sql`
-      INSERT INTO menu_modifiers (tenant_id, name, selection_type, is_required)
-      VALUES (${tid}, ${name}, ${selection_type}, ${is_required ?? false})
+      INSERT INTO menu_modifiers (tenant_id, name, modifier_type, is_required)
+      VALUES (${tid}, ${name}, ${modifier_type ?? 'single'}, ${is_required ?? false})
       RETURNING *`);
     const modifier = r.rows[0] as any;
     if (options && Array.isArray(options)) {
       for (const opt of options) {
         await db.execute(sql`
-          INSERT INTO menu_modifier_options (tenant_id, modifier_id, name, price)
-          VALUES (${tid}, ${modifier.id}, ${opt.name}, ${opt.price ?? 0})`);
+          INSERT INTO menu_modifier_options (tenant_id, modifier_id, option_name, price_adjustment)
+          VALUES (${tid}, ${modifier.id}, ${opt.option_name ?? opt.name}, ${opt.price_adjustment ?? opt.price ?? 0})`);
       }
     }
     res.json(modifier);
@@ -173,10 +173,10 @@ router.put("/modifiers/:id", auth, async (req: any, res: any) => {
   try {
     const tid = getTenantId(req);
     const { id } = req.params;
-    const { name, selection_type, is_required } = req.body;
+    const { name, modifier_type, is_required } = req.body;
     const r = await db.execute(sql`
       UPDATE menu_modifiers
-      SET name=${name}, selection_type=${selection_type}, is_required=${is_required}
+      SET name=${name}, modifier_type=${modifier_type}, is_required=${is_required}
       WHERE id=${id} AND tenant_id=${tid}
       RETURNING *`);
     res.json(r.rows[0]);
@@ -1092,6 +1092,235 @@ router.get("/reports/eod-summary", auth, async (req: any, res: any) => {
   } catch (e: any) {
     res.status(500).json({ message: e.message });
   }
+});
+
+// ─── Dashboard summary ───────────────────────────────────────────────────────
+router.get("/dashboard/summary", auth, async (req: any, res: any) => {
+  const tenantId = getTenantId(req);
+  try {
+    const today = new Date(); today.setHours(0,0,0,0);
+    const yest  = new Date(today); yest.setDate(yest.getDate()-1);
+
+    const [rev, yrev, orders, tables, pendingKot, staff] = await Promise.all([
+      db.execute(sql`SELECT COALESCE(SUM(total_amount),0) AS total FROM kot_orders WHERE tenant_id=${tenantId} AND created_at >= ${today.toISOString()} AND status NOT IN ('void','merged')`),
+      db.execute(sql`SELECT COALESCE(SUM(total_amount),0) AS total FROM kot_orders WHERE tenant_id=${tenantId} AND created_at >= ${yest.toISOString()} AND created_at < ${today.toISOString()} AND status NOT IN ('void','merged')`),
+      db.execute(sql`SELECT COUNT(*) AS cnt FROM kot_orders WHERE tenant_id=${tenantId} AND created_at >= ${today.toISOString()} AND status NOT IN ('void','merged')`),
+      db.execute(sql`SELECT COUNT(*) AS total, COUNT(CASE WHEN status='occupied' THEN 1 END) AS occupied FROM restaurant_tables WHERE tenant_id=${tenantId}`),
+      db.execute(sql`SELECT COUNT(*) AS cnt FROM kot_orders WHERE tenant_id=${tenantId} AND status='pending'`),
+      db.execute(sql`SELECT COUNT(*) AS cnt FROM restaurant_staff_profiles WHERE tenant_id=${tenantId} AND is_active=1`),
+    ]);
+
+    const todayRev  = Number(rev.rows[0]?.total  ?? 0);
+    const yestRev   = Number(yrev.rows[0]?.total  ?? 0);
+    const revChange = yestRev > 0 ? Math.round(((todayRev - yestRev) / yestRev) * 100) : 0;
+
+    res.json({
+      todayRevenue:   todayRev,
+      revenueChange:  revChange,
+      ordersToday:    Number(orders.rows[0]?.cnt ?? 0),
+      activeTables:   Number(tables.rows[0]?.occupied ?? 0),
+      totalTables:    Number(tables.rows[0]?.total ?? 0),
+      pendingKOTs:    Number(pendingKot.rows[0]?.cnt ?? 0),
+      staffOnDuty:    Number(staff.rows[0]?.cnt ?? 0),
+    });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.get("/dashboard/payment-modes", auth, async (req: any, res: any) => {
+  const tenantId = getTenantId(req);
+  try {
+    const today = new Date(); today.setHours(0,0,0,0);
+    const r = await db.execute(sql`
+      SELECT payment_mode, COALESCE(SUM(total_amount),0) AS total, COUNT(*) AS cnt
+      FROM kot_orders
+      WHERE tenant_id=${tenantId} AND created_at >= ${today.toISOString()} AND status NOT IN ('void','merged')
+      GROUP BY payment_mode ORDER BY total DESC`);
+    res.json(r.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.get("/dashboard/top-items", auth, async (req: any, res: any) => {
+  const tenantId = getTenantId(req);
+  try {
+    const today = new Date(); today.setHours(0,0,0,0);
+    const r = await db.execute(sql`
+      SELECT ki.item_name AS name, SUM(ki.quantity) AS qty, SUM(ki.total_price) AS revenue
+      FROM kot_items ki
+      JOIN kot_orders ko ON ko.id = ki.kot_id
+      WHERE ko.tenant_id=${tenantId} AND ko.created_at >= ${today.toISOString()} AND ko.status NOT IN ('void','merged')
+      GROUP BY ki.item_name ORDER BY qty DESC LIMIT 8`);
+    res.json(r.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.get("/dashboard/weekly", auth, async (req: any, res: any) => {
+  const tenantId = getTenantId(req);
+  try {
+    const r = await db.execute(sql`
+      SELECT DATE(created_at) AS day, COALESCE(SUM(total_amount),0) AS revenue, COUNT(*) AS orders
+      FROM kot_orders
+      WHERE tenant_id=${tenantId} AND created_at >= NOW() - INTERVAL '7 days' AND status NOT IN ('void','merged')
+      GROUP BY DATE(created_at) ORDER BY day`);
+    res.json(r.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.get("/dashboard/aggregator-pending", auth, async (req: any, res: any) => {
+  const tenantId = getTenantId(req);
+  try {
+    const r = await db.execute(sql`
+      SELECT order_type, COUNT(*) AS cnt
+      FROM kot_orders
+      WHERE tenant_id=${tenantId} AND order_type IN ('swiggy','zomato','uber_eats','talabat','ondc') AND status='pending'
+      GROUP BY order_type`);
+    const out: Record<string,number> = {};
+    r.rows.forEach((row: any) => { out[row.order_type] = Number(row.cnt); });
+    res.json(out);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// ─── Customers recent ─────────────────────────────────────────────────────────
+router.get("/customers/recent", auth, async (req: any, res: any) => {
+  const tenantId = getTenantId(req);
+  try {
+    const r = await db.execute(sql`
+      SELECT rc.id, rc.name, rc.phone, rc.loyalty_points,
+             MAX(ko.created_at) AS last_visit,
+             COUNT(ko.id) AS total_orders
+      FROM restaurant_customers rc
+      LEFT JOIN kot_orders ko ON ko.customer_phone = rc.phone AND ko.tenant_id=${tenantId}
+      WHERE rc.tenant_id=${tenantId}
+      GROUP BY rc.id ORDER BY last_visit DESC NULLS LAST LIMIT 10`);
+    res.json(r.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// ─── CDS active bill ─────────────────────────────────────────────────────────
+router.get("/cds/active-bill", async (req: any, res: any) => {
+  const terminalId = req.query.terminalId;
+  const outletId   = req.query.outletId;
+  try {
+    let tenantId = "1";
+    if (outletId) {
+      const tR = await db.execute(sql`SELECT tenant_id FROM restaurant_outlets WHERE id=${outletId} LIMIT 1`);
+      if (tR.rows[0]) tenantId = String(tR.rows[0].tenant_id);
+    }
+    const r = await db.execute(sql`
+      SELECT ko.id, ko.table_number, ko.total_amount, ko.discount AS discount_amount, ko.tax_amount, ko.status,
+             JSON_AGG(JSON_BUILD_OBJECT('name', ki.item_name, 'quantity', ki.quantity, 'price', ki.unit_price)) AS items
+      FROM kot_orders ko
+      JOIN kot_items ki ON ki.kot_id = ko.id
+      WHERE ko.tenant_id=${tenantId} AND ko.outlet_id=${outletId ?? null}
+        AND ko.status IN ('pending','in_progress') AND ko.payment_status != 'paid'
+      GROUP BY ko.id ORDER BY ko.created_at DESC LIMIT 1`);
+    res.json(r.rows[0] ?? null);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// ─── Payment terminal ─────────────────────────────────────────────────────────
+router.get("/payment-terminal/config", auth, async (req: any, res: any) => {
+  const tenantId = getTenantId(req);
+  try {
+    const r = await db.execute(sql`SELECT * FROM tenant_configs WHERE tenant_id=${tenantId} AND key LIKE 'payment_terminal_%'`);
+    const cfg: Record<string,string> = {};
+    r.rows.forEach((row: any) => { cfg[row.key] = row.value; });
+    res.json(cfg);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/payment-terminal/config", auth, async (req: any, res: any) => {
+  const tenantId = getTenantId(req);
+  const { key, value } = req.body;
+  try {
+    await db.execute(sql`
+      INSERT INTO tenant_configs (tenant_id, key, value) VALUES (${tenantId}, ${key}, ${value})
+      ON CONFLICT (tenant_id, key) DO UPDATE SET value=EXCLUDED.value`);
+    res.json({ ok: true });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/payment-terminal/razorpay/initiate", auth, async (req: any, res: any) => {
+  const tenantId = getTenantId(req);
+  const { amount, kotId } = req.body;
+  try {
+    const logR = await db.execute(sql`
+      INSERT INTO payment_terminal_logs (tenant_id, kot_id, provider, amount, status, initiated_at)
+      VALUES (${tenantId}, ${kotId ?? null}, 'razorpay', ${amount}, 'initiated', NOW())
+      RETURNING id`);
+    res.json({ success: true, logId: logR.rows[0]?.id, message: `Razorpay POS initiated for ₹${amount}` });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.get("/payment-terminal/razorpay/status/:id", auth, async (req: any, res: any) => {
+  try {
+    const r = await db.execute(sql`SELECT * FROM payment_terminal_logs WHERE id=${req.params.id}`);
+    res.json(r.rows[0] ?? { status: 'not_found' });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/payment-terminal/pinelabs/initiate", auth, async (req: any, res: any) => {
+  const tenantId = getTenantId(req);
+  const { amount, kotId } = req.body;
+  try {
+    const logR = await db.execute(sql`
+      INSERT INTO payment_terminal_logs (tenant_id, kot_id, provider, amount, status, initiated_at)
+      VALUES (${tenantId}, ${kotId ?? null}, 'pinelabs', ${amount}, 'initiated', NOW())
+      RETURNING id`);
+    res.json({ success: true, logId: logR.rows[0]?.id, message: `Pine Labs Plutus initiated for ₹${amount}` });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.get("/payment-terminal/logs", auth, async (req: any, res: any) => {
+  const tenantId = getTenantId(req);
+  try {
+    const r = await db.execute(sql`SELECT * FROM payment_terminal_logs WHERE tenant_id=${tenantId} ORDER BY initiated_at DESC LIMIT 50`);
+    res.json(r.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// ─── Online storefront ────────────────────────────────────────────────────────
+router.get("/storefront/:slug", async (req: any, res: any) => {
+  try {
+    const r = await db.execute(sql`SELECT id, name, address, phone, tenant_id FROM restaurant_outlets WHERE online_slug=${req.params.slug} AND is_online_enabled=true LIMIT 1`);
+    if (!r.rows[0]) return res.status(404).json({ message: "Store not found" });
+    res.json(r.rows[0]);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.get("/storefront/:slug/menu", async (req: any, res: any) => {
+  try {
+    const outletR = await db.execute(sql`SELECT id, tenant_id FROM restaurant_outlets WHERE online_slug=${req.params.slug} AND is_online_enabled=true LIMIT 1`);
+    if (!outletR.rows[0]) return res.status(404).json({ message: "Store not found" });
+    const { id: outletId, tenant_id } = outletR.rows[0] as any;
+    const cats  = await db.execute(sql`SELECT * FROM menu_categories WHERE tenant_id=${tenant_id} AND is_active=true ORDER BY sort_order`);
+    const items = await db.execute(sql`SELECT * FROM menu_items WHERE tenant_id=${tenant_id} AND is_available=true ORDER BY name`);
+    res.json({ categories: cats.rows, items: items.rows });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/storefront/:slug/order", async (req: any, res: any) => {
+  try {
+    const outletR = await db.execute(sql`SELECT id, tenant_id FROM restaurant_outlets WHERE online_slug=${req.params.slug} AND is_online_enabled=true LIMIT 1`);
+    if (!outletR.rows[0]) return res.status(404).json({ message: "Store not found" });
+    const { id: outletId, tenant_id } = outletR.rows[0] as any;
+    const { items, customer, paymentMode, totalAmount } = req.body;
+    const kotR = await db.execute(sql`
+      INSERT INTO kot_orders (tenant_id, outlet_id, source, customer_name, customer_phone, total_amount, payment_mode, status, payment_status, created_at)
+      VALUES (${tenant_id}, ${outletId}, 'online', ${customer?.name ?? null}, ${customer?.phone ?? null}, ${totalAmount}, ${paymentMode ?? 'online'}, 'pending', 'pending', NOW())
+      RETURNING id, token_number`);
+    const kot = kotR.rows[0] as any;
+    for (const item of (items ?? [])) {
+      await db.execute(sql`INSERT INTO kot_items (kot_id, menu_item_id, name, quantity, unit_price, total_price) VALUES (${kot.id}, ${item.id}, ${item.name}, ${item.quantity}, ${item.price}, ${item.price * item.quantity})`);
+    }
+    res.json({ success: true, orderId: kot.id, tokenNumber: kot.token_number });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.get("/storefront/:slug/order/:orderId/status", async (req: any, res: any) => {
+  try {
+    const r = await db.execute(sql`SELECT id, status, payment_status, token_number, created_at FROM kot_orders WHERE id=${req.params.orderId} LIMIT 1`);
+    res.json(r.rows[0] ?? { status: 'not_found' });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 
 export default router;

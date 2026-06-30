@@ -86,9 +86,21 @@ async function handleIncomingOrder(tenantId: string, platform: string, orderData
 }
 
 // ── Platform Webhooks (PUBLIC) ────────────────────────────────────────────────
+async function resolveTenantId(body: any, platform: string, fallback: any): Promise<string> {
+  const restaurantId = body?.restaurant_id || body?.outlet_id || body?.store_id || body?.restaurantId;
+  if (restaurantId) {
+    try {
+      const cfgRows = await db.execute(sql`SELECT tenant_id FROM aggregator_configs WHERE restaurant_id = ${String(restaurantId)} AND platform = ${platform} LIMIT 1`);
+      const found = (cfgRows.rows[0] as any)?.tenant_id;
+      if (found) return String(found);
+    } catch { /* fall through */ }
+  }
+  return String(fallback || "1");
+}
+
 router.post("/swiggy/webhook", async (req: any, res: any) => {
   try {
-    const tenantId = req.query.tenant_id || "1";
+    const tenantId = await resolveTenantId(req.body, "swiggy", req.query.tenant_id);
     await handleIncomingOrder(tenantId, "swiggy", req.body);
     res.json({ status: "accepted", message: "Order received" });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -96,7 +108,7 @@ router.post("/swiggy/webhook", async (req: any, res: any) => {
 
 router.post("/zomato/webhook", async (req: any, res: any) => {
   try {
-    const tenantId = req.query.tenant_id || "1";
+    const tenantId = await resolveTenantId(req.body, "zomato", req.query.tenant_id);
     await handleIncomingOrder(tenantId, "zomato", req.body);
     res.json({ status: "accepted" });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -104,7 +116,7 @@ router.post("/zomato/webhook", async (req: any, res: any) => {
 
 router.post("/ubereats/webhook", async (req: any, res: any) => {
   try {
-    const tenantId = req.query.tenant_id || "1";
+    const tenantId = await resolveTenantId(req.body, "ubereats", req.query.tenant_id);
     await handleIncomingOrder(tenantId, "ubereats", req.body);
     res.json({ status: "success" });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -112,7 +124,7 @@ router.post("/ubereats/webhook", async (req: any, res: any) => {
 
 router.post("/talabat/webhook", async (req: any, res: any) => {
   try {
-    const tenantId = req.query.tenant_id || "1";
+    const tenantId = await resolveTenantId(req.body, "talabat", req.query.tenant_id);
     await handleIncomingOrder(tenantId, "talabat", req.body);
     res.json({ status: "ok" });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -120,7 +132,9 @@ router.post("/talabat/webhook", async (req: any, res: any) => {
 
 router.post("/ondc/webhook", async (req: any, res: any) => {
   try {
-    const tenantId = req.query.tenant_id || "1";
+    // ONDC uses provider.id or context.bpp_id to identify the restaurant
+    const ondcRestaurantId = req.body?.message?.order?.provider?.id || req.body?.context?.bpp_id;
+    const tenantId = await resolveTenantId({ restaurant_id: ondcRestaurantId }, "ondc", req.query.tenant_id);
     const ondcOrder = {
       orderId: req.body?.message?.order?.id,
       customer: { name: req.body?.message?.order?.billing?.name, phone: req.body?.message?.order?.billing?.phone },

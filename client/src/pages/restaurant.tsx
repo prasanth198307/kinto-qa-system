@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -732,36 +732,15 @@ function ReportsTab() {
   );
 }
 
-// ── Main Page ─────────────────────────────────────────────────────────────────
+// ── Main Page — redirect to enterprise dashboard ───────────────────────────────
 export default function RestaurantPage() {
+  useEffect(() => { window.location.replace('/restaurant-enterprise'); }, []);
   return (
-    <div className="p-4 md:p-6 space-y-4">
-      <div className="flex items-center gap-3">
-        <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
-          <UtensilsCrossed className="h-6 w-6 text-orange-600" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold">Restaurant ERP</h1>
-          <p className="text-sm text-muted-foreground">POS, KOT, kitchen display & delivery</p>
-        </div>
+    <div className="p-6 flex items-center justify-center min-h-[300px]">
+      <div className="text-center">
+        <UtensilsCrossed className="h-10 w-10 text-orange-500 mx-auto mb-3" />
+        <p className="text-gray-500">Redirecting to Restaurant Dashboard...</p>
       </div>
-
-      <Tabs defaultValue="pos">
-        <TabsList className="flex-wrap">
-          <TabsTrigger value="pos">POS / KOT</TabsTrigger>
-          <TabsTrigger value="tables">Tables</TabsTrigger>
-          <TabsTrigger value="menu">Menu</TabsTrigger>
-          <TabsTrigger value="kitchen">Kitchen Display</TabsTrigger>
-          <TabsTrigger value="delivery">Delivery</TabsTrigger>
-          <TabsTrigger value="reports">Reports</TabsTrigger>
-        </TabsList>
-        <TabsContent value="pos"><POSKOTTab /></TabsContent>
-        <TabsContent value="tables"><TablesTab /></TabsContent>
-        <TabsContent value="menu"><MenuTab /></TabsContent>
-        <TabsContent value="kitchen"><KitchenDisplayTab /></TabsContent>
-        <TabsContent value="delivery"><DeliveryTab /></TabsContent>
-        <TabsContent value="reports"><ReportsTab /></TabsContent>
-      </Tabs>
     </div>
   );
 }

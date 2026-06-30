@@ -1,6 +1,5 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { DashboardShell } from "@/components/DashboardShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -184,7 +183,7 @@ export default function RestaurantAnalyticsPage() {
   ] as const;
 
   return (
-    <DashboardShell activeNavId="restaurant-analytics" title="Analytics & Business Intelligence">
+    <>
       <div className="p-6 space-y-5">
         {/* Date range + presets */}
         <div className="flex flex-wrap gap-3 items-end bg-white border rounded-xl p-4">
@@ -516,6 +515,6 @@ export default function RestaurantAnalyticsPage() {
           </div>
         )}
       </div>
-    </DashboardShell>
+    </>
   );
 }

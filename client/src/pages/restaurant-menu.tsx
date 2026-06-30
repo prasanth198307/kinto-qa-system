@@ -260,12 +260,12 @@ function TranslationsPanel({ menuItems }: { menuItems: any[] }) {
 }
 
 export default function RestaurantMenuPage() {
-  const [tab, setTab] = useState<"items" | "categories" | "modifiers" | "translations">("items");
+  const [tab, setTab] = useState<"items" | "categories" | "modifiers">("items");
   const { toast } = useToast();
   const qc = useQueryClient();
 
   // ─── CATEGORIES ───────────────────────────────────────────────────────────
-  const { data: categories = [] } = useQuery<Category[]>({ queryKey: ["/api/restaurant/menu-categories"], queryFn: () => api("GET", "/api/restaurant/menu-categories") });
+  const { data: categories = [] } = useQuery<Category[]>({ queryKey: ["/api/restaurant/menu-categories"], queryFn: () => api("GET", "/api/restaurant/menu-categories").then((r: any) => Array.isArray(r) ? r : []) });
   const [catForm, setCatForm] = useState<Partial<Category>>(emptyCategory());
   const [editCatId, setEditCatId] = useState<number | null>(null);
   const [showCatForm, setShowCatForm] = useState(false);
@@ -285,7 +285,7 @@ export default function RestaurantMenuPage() {
   });
 
   // ─── MENU ITEMS ───────────────────────────────────────────────────────────
-  const { data: menuItems = [] } = useQuery<MenuItem[]>({ queryKey: ["/api/restaurant/menu-items"], queryFn: () => api("GET", "/api/restaurant/menu-items") });
+  const { data: menuItems = [] } = useQuery<MenuItem[]>({ queryKey: ["/api/restaurant/menu-items"], queryFn: () => api("GET", "/api/restaurant/menu-items").then((r: any) => Array.isArray(r) ? r : []) });
   const [itemForm, setItemForm] = useState<Partial<MenuItem>>(emptyItem());
   const [editItemId, setEditItemId] = useState<number | null>(null);
   const [showItemPanel, setShowItemPanel] = useState(false);
@@ -347,7 +347,7 @@ export default function RestaurantMenuPage() {
   });
 
   // ─── MODIFIERS ────────────────────────────────────────────────────────────
-  const { data: modifiers = [] } = useQuery<Modifier[]>({ queryKey: ["/api/restaurant/modifiers"], queryFn: () => api("GET", "/api/restaurant/modifiers") });
+  const { data: modifiers = [] } = useQuery<Modifier[]>({ queryKey: ["/api/restaurant/modifiers"], queryFn: () => api("GET", "/api/restaurant/modifiers").then((r: any) => Array.isArray(r) ? r : []) });
   const [modForm, setModForm] = useState<Partial<Modifier>>(emptyModifier());
   const [expandedMod, setExpandedMod] = useState<number | null>(null);
   const [optionForms, setOptionForms] = useState<Record<number, { option_name: string; price_adjustment: number }>>({});
@@ -370,7 +370,7 @@ export default function RestaurantMenuPage() {
   });
 
   // ─── COMBOS ───────────────────────────────────────────────────────────────
-  const { data: combos = [] } = useQuery<Combo[]>({ queryKey: ["/api/restaurant/combos"], queryFn: () => api("GET", "/api/restaurant/combos") });
+  const { data: combos = [] } = useQuery<Combo[]>({ queryKey: ["/api/restaurant/combos"], queryFn: () => api("GET", "/api/restaurant/combos").then((r: any) => Array.isArray(r) ? r : []) });
   const [comboForm, setComboForm] = useState<Partial<Combo>>(emptyCombo());
   const [editComboId, setEditComboId] = useState<number | null>(null);
 
@@ -395,9 +395,7 @@ export default function RestaurantMenuPage() {
               {t === "items" ? "Menu Items" : t === "categories" ? "Categories" : "Modifiers & Combos"}
             </Button>
           ))}
-          <Button key="translations" variant={tab === "translations" ? "default" : "outline"} size="sm" onClick={() => setTab("translations")}>
-            🌐 Translations
-          </Button>
+          <Button variant="outline" size="sm" onClick={() => window.location.href = '/restaurant-menu-translations'}>🌐 Translations ↗</Button>
         </div>
       </div>
 
@@ -823,19 +821,6 @@ export default function RestaurantMenuPage() {
                   </div>
                 ))}
               </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-      {tab === "translations" && (
-        <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Multi-Language Menu Translations</CardTitle>
-              <p className="text-sm text-gray-500">Configure menu item names and descriptions in multiple languages. The kiosk and steward app will display in the guest's preferred language.</p>
-            </CardHeader>
-            <CardContent>
-              <TranslationsPanel menuItems={menuItems} />
             </CardContent>
           </Card>
         </div>

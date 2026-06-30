@@ -300,28 +300,37 @@ router.delete("/menu-items/:id", requireAuth, async (req, res) => {
 // ─── MODIFIERS ────────────────────────────────────────────────────────────────
 router.get("/modifiers", requireAuth, async (req, res) => {
   try {
-    const result = await db.execute(sql`SELECT * FROM restaurant_modifiers WHERE tenant_id=${tid(req)} ORDER BY name`);
+    const result = await db.execute(sql`
+      SELECT m.*, COALESCE(json_agg(json_build_object('id',o.id,'option_name',o.option_name,'price_adjustment',o.price_adjustment,'is_default',o.is_default)) FILTER (WHERE o.id IS NOT NULL), '[]') AS options
+      FROM menu_modifiers m
+      LEFT JOIN menu_modifier_options o ON o.modifier_id = m.id AND (o.record_status IS NULL OR o.record_status != 'deleted')
+      WHERE m.tenant_id=${tid(req)} AND (m.record_status IS NULL OR m.record_status != 'deleted')
+      GROUP BY m.id ORDER BY m.name`);
     res.json(result.rows);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
 router.post("/modifiers", requireAuth, async (req, res) => {
   try {
-    const { name, is_required, min_select, max_select } = req.body;
+    const { name, modifier_type, is_required, min_selection, max_selection, options } = req.body;
     const result = await db.execute(sql`
-      INSERT INTO restaurant_modifiers (tenant_id, name, is_required, min_select, max_select)
-      VALUES (${tid(req)}, ${name}, ${is_required ?? false}, ${min_select ?? 0}, ${max_select ?? 1})
+      INSERT INTO menu_modifiers (tenant_id, name, modifier_type, is_required, min_selection, max_selection)
+      VALUES (${tid(req)}, ${name}, ${modifier_type ?? 'single'}, ${is_required ?? false}, ${min_selection ?? 0}, ${max_selection ?? 1})
       RETURNING *`);
-    res.json(result.rows[0]);
+    const mod = result.rows[0] as any;
+    for (const opt of (options || [])) {
+      await db.execute(sql`INSERT INTO menu_modifier_options (tenant_id, modifier_id, option_name, price_adjustment) VALUES (${tid(req)}, ${mod.id}, ${opt.option_name ?? opt.name}, ${opt.price_adjustment ?? opt.price ?? 0})`);
+    }
+    res.json(mod);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
 router.put("/modifiers/:id", requireAuth, async (req, res) => {
   try {
-    const { name, is_required, min_select, max_select } = req.body;
+    const { name, modifier_type, is_required, min_selection, max_selection } = req.body;
     const result = await db.execute(sql`
-      UPDATE restaurant_modifiers SET name=${name}, is_required=${is_required},
-        min_select=${min_select}, max_select=${max_select}
+      UPDATE menu_modifiers SET name=${name}, modifier_type=${modifier_type}, is_required=${is_required},
+        min_selection=${min_selection}, max_selection=${max_selection}
       WHERE id=${req.params.id} AND tenant_id=${tid(req)} RETURNING *`);
     res.json(result.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -329,17 +338,18 @@ router.put("/modifiers/:id", requireAuth, async (req, res) => {
 
 router.delete("/modifiers/:id", requireAuth, async (req, res) => {
   try {
-    await db.execute(sql`DELETE FROM restaurant_modifiers WHERE id=${req.params.id} AND tenant_id=${tid(req)}`);
+    await db.execute(sql`DELETE FROM menu_modifier_options WHERE modifier_id=${req.params.id}`);
+    await db.execute(sql`DELETE FROM menu_modifiers WHERE id=${req.params.id} AND tenant_id=${tid(req)}`);
     res.json({ success: true });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
 router.post("/modifiers/:id/options", requireAuth, async (req, res) => {
   try {
-    const { name, extra_price } = req.body;
+    const { option_name, price_adjustment } = req.body;
     const result = await db.execute(sql`
-      INSERT INTO restaurant_modifier_options (tenant_id, modifier_id, name, extra_price)
-      VALUES (${tid(req)}, ${req.params.id}, ${name}, ${extra_price ?? 0})
+      INSERT INTO menu_modifier_options (tenant_id, modifier_id, option_name, price_adjustment)
+      VALUES (${tid(req)}, ${req.params.id}, ${option_name}, ${price_adjustment ?? 0})
       RETURNING *`);
     res.json(result.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -347,7 +357,7 @@ router.post("/modifiers/:id/options", requireAuth, async (req, res) => {
 
 router.delete("/modifiers/:id/options/:optionId", requireAuth, async (req, res) => {
   try {
-    await db.execute(sql`DELETE FROM restaurant_modifier_options WHERE id=${req.params.optionId} AND modifier_id=${req.params.id} AND tenant_id=${tid(req)}`);
+    await db.execute(sql`DELETE FROM menu_modifier_options WHERE id=${req.params.optionId} AND modifier_id=${req.params.id}`);
     res.json({ success: true });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
@@ -355,17 +365,17 @@ router.delete("/modifiers/:id/options/:optionId", requireAuth, async (req, res) 
 // ─── COMBOS ───────────────────────────────────────────────────────────────────
 router.get("/combos", requireAuth, async (req, res) => {
   try {
-    const result = await db.execute(sql`SELECT * FROM restaurant_combos WHERE tenant_id=${tid(req)} ORDER BY name`);
+    const result = await db.execute(sql`SELECT * FROM menu_combos WHERE tenant_id=${tid(req)} AND (record_status IS NULL OR record_status != 'deleted') ORDER BY combo_name`);
     res.json(result.rows);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
 router.post("/combos", requireAuth, async (req, res) => {
   try {
-    const { name, description, price, items, is_active } = req.body;
+    const { combo_name, description, combo_price, is_available } = req.body;
     const result = await db.execute(sql`
-      INSERT INTO restaurant_combos (tenant_id, name, description, price, items, is_active)
-      VALUES (${tid(req)}, ${name}, ${description}, ${price}, ${JSON.stringify(items || [])}, ${is_active ?? true})
+      INSERT INTO menu_combos (tenant_id, combo_name, description, combo_price, is_available)
+      VALUES (${tid(req)}, ${combo_name}, ${description}, ${combo_price}, ${is_available ?? true})
       RETURNING *`);
     res.json(result.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -373,10 +383,10 @@ router.post("/combos", requireAuth, async (req, res) => {
 
 router.put("/combos/:id", requireAuth, async (req, res) => {
   try {
-    const { name, description, price, items, is_active } = req.body;
+    const { combo_name, description, combo_price, is_available } = req.body;
     const result = await db.execute(sql`
-      UPDATE restaurant_combos SET name=${name}, description=${description}, price=${price},
-        items=${JSON.stringify(items || [])}, is_active=${is_active}
+      UPDATE menu_combos SET combo_name=${combo_name}, description=${description},
+        combo_price=${combo_price}, is_available=${is_available}
       WHERE id=${req.params.id} AND tenant_id=${tid(req)} RETURNING *`);
     res.json(result.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -384,7 +394,7 @@ router.put("/combos/:id", requireAuth, async (req, res) => {
 
 router.delete("/combos/:id", requireAuth, async (req, res) => {
   try {
-    await db.execute(sql`DELETE FROM restaurant_combos WHERE id=${req.params.id} AND tenant_id=${tid(req)}`);
+    await db.execute(sql`DELETE FROM menu_combos WHERE id=${req.params.id} AND tenant_id=${tid(req)}`);
     res.json({ success: true });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
@@ -549,7 +559,7 @@ router.get("/recipes", requireAuth, async (req, res) => {
   try {
     const result = await db.execute(sql`
       SELECT r.*, mi.name as item_name FROM restaurant_recipes r
-      LEFT JOIN menu_items mi ON r.menu_item_id = mi.id
+      LEFT JOIN menu_items mi ON r.menu_item_id::text = mi.id
       WHERE r.tenant_id=${tid(req)} ORDER BY mi.name`);
     res.json(result.rows);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -1015,6 +1025,18 @@ router.get("/wastage/summary", requireAuth, async (req, res) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
+// ─── PRINTER CONFIG (station filter for POS print routing) ───────────────────
+router.get("/printer-config", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  const { station } = req.query;
+  try {
+    const rows = station
+      ? await db.execute(sql`SELECT * FROM printer_config WHERE tenant_id=${t} AND (stations IS NULL OR stations ? ${station}) AND is_active = true LIMIT 1`)
+      : await db.execute(sql`SELECT * FROM printer_config WHERE tenant_id=${t} AND is_default = true LIMIT 1`);
+    res.json((rows.rows as any[])[0] ?? null);
+  } catch { res.json(null); }
+});
+
 // ─── PRINTERS ─────────────────────────────────────────────────────────────────
 router.get("/printers", requireAuth, async (req, res) => {
   try {
@@ -1252,8 +1274,8 @@ router.get("/qr/menu/:token", async (req: any, res) => {
     if (!session.rows[0]) return res.status(404).json({ error: 'Invalid or expired QR session' });
     const s = session.rows[0] as any;
     const [categories, items] = await Promise.all([
-      db.execute(sql`SELECT * FROM restaurant_menu_categories WHERE tenant_id=${s.tenant_id} AND is_active=1 ORDER BY sort_order`),
-      db.execute(sql`SELECT mi.*, mc.name as category_name FROM restaurant_menu_items mi LEFT JOIN restaurant_menu_categories mc ON mc.id=mi.category_id WHERE mi.tenant_id=${s.tenant_id} AND mi.is_available=true ORDER BY mc.sort_order, mi.display_order`)
+      db.execute(sql`SELECT * FROM menu_categories WHERE tenant_id=${s.tenant_id} AND (is_active IS NULL OR is_active=true) ORDER BY sort_order`),
+      db.execute(sql`SELECT mi.*, mc.name as category_name FROM menu_items mi LEFT JOIN menu_categories mc ON mc.id=mi.category_id WHERE mi.tenant_id=${s.tenant_id} AND (mi.is_available IS NULL OR mi.is_available=true) ORDER BY mc.sort_order, mi.display_order`)
     ]);
     res.json({ table_number: s.table_number, categories: categories.rows, items: items.rows });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -1466,7 +1488,15 @@ router.put("/central-kitchen/dispatches/:id/receive", requireAuth, async (req: a
 // ── CUSTOMER FEEDBACK (PUBLIC) ────────────────────────────────────────────────
 router.post("/feedback", async (req: any, res: any) => {
   try {
-    const { tenant_id = 1, table_number, food_rating, service_rating, ambience_rating, overall_rating, comment, customer_name, customer_phone, kot_order_id } = req.body;
+    const { outlet_id, table_number, food_rating, service_rating, ambience_rating, overall_rating, comment, customer_name, customer_phone, kot_order_id } = req.body;
+    let tenant_id = req.body.tenant_id || 1;
+    if (outlet_id) {
+      try {
+        const outletRows = await db.execute(sql`SELECT tenant_id FROM restaurant_outlets WHERE id = ${outlet_id} LIMIT 1`);
+        const found = (outletRows.rows[0] as any)?.tenant_id;
+        if (found) tenant_id = found;
+      } catch { /* fall through */ }
+    }
     await db.execute(sql`
       INSERT INTO restaurant_feedback (tenant_id, table_number, food_rating, service_rating, ambience_rating, overall_rating, comment, customer_name, customer_phone, kot_order_id, created_at)
       VALUES (${tenant_id}, ${table_number || null}, ${food_rating || null}, ${service_rating || null}, ${ambience_rating || null}, ${overall_rating || null}, ${comment || null}, ${customer_name || null}, ${customer_phone || null}, ${kot_order_id || null}, NOW())`);
@@ -1505,7 +1535,16 @@ router.get("/feedback/summary", requireAuth, async (req: any, res: any) => {
 router.post("/whatsapp/receive", async (req: any, res: any) => {
   // Webhook — store raw payload, no auth required
   try {
-    const { from, message, tenant_id = 1 } = req.body;
+    const { from, message } = req.body;
+    const outlet_id = req.body.outlet_id;
+    let tenant_id = req.body.tenant_id || 1;
+    if (outlet_id) {
+      try {
+        const outletRows = await db.execute(sql`SELECT tenant_id FROM restaurant_outlets WHERE id = ${outlet_id} LIMIT 1`);
+        const found = (outletRows.rows[0] as any)?.tenant_id;
+        if (found) tenant_id = found;
+      } catch { /* fall through */ }
+    }
     await db.execute(sql`
       INSERT INTO whatsapp_order_messages (tenant_id, from_number, raw_message, status, received_at)
       VALUES (${tenant_id}, ${from || 'unknown'}, ${JSON.stringify(req.body)}, 'received', NOW())`);
@@ -1820,7 +1859,16 @@ router.put("/menu-items/:id/translate", requireAuth, async (req: any, res: any) 
 // ── WHATSAPP ORDERS (whatsapp_orders table) ────────────────────────────────
 router.post("/whatsapp/webhook", async (req: any, res: any) => {
   try {
-    const { phone, message, tenant_id = 1 } = req.body;
+    const { phone, message } = req.body;
+    const outlet_id = req.body.outlet_id;
+    let tenant_id = req.body.tenant_id || 1;
+    if (outlet_id) {
+      try {
+        const outletRows = await db.execute(sql`SELECT tenant_id FROM restaurant_outlets WHERE id = ${outlet_id} LIMIT 1`);
+        const found = (outletRows.rows[0] as any)?.tenant_id;
+        if (found) tenant_id = found;
+      } catch { /* fall through */ }
+    }
     await db.execute(sql`INSERT INTO whatsapp_orders (tenant_id, phone, raw_message, status, created_at) VALUES (${tenant_id}, ${phone||'unknown'}, ${message||''}, 'pending', NOW())`);
     res.json({ success: true });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -1926,6 +1974,1329 @@ router.post("/offline-sync", requireAuth, async (req: any, res: any) => {
     }
     res.json({ success: true, synced: results.length, results });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Recipe Costing ──────────────────────────────────────────────────────────
+router.get("/recipes/food-cost-report", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const { from = new Date().toISOString().slice(0,10), to = new Date().toISOString().slice(0,10) } = req.query;
+    const rows = await db.execute(sql`
+      SELECT mi.name, mi.price AS selling_price,
+      COALESCE((SELECT SUM(ri2.quantity * ri2.cost_per_unit) FROM restaurant_recipe_ingredients ri2 JOIN restaurant_recipes r2 ON r2.id = ri2.recipe_id WHERE r2.menu_item_id::text = mi.id AND r2.tenant_id = ${t}), 0) as food_cost,
+      COUNT(ki.id) as qty_sold,
+      COUNT(ki.id) * mi.price as total_revenue,
+      COUNT(ki.id) * COALESCE((SELECT SUM(ri2.quantity * ri2.cost_per_unit) FROM restaurant_recipe_ingredients ri2 JOIN restaurant_recipes r2 ON r2.id = ri2.recipe_id WHERE r2.menu_item_id::text = mi.id AND r2.tenant_id = ${t}), 0) as total_food_cost
+      FROM menu_items mi
+      LEFT JOIN kot_items ki ON ki.item_name = mi.name AND ki.tenant_id = ${t}
+      LEFT JOIN kot_orders ko ON ko.id = ki.kot_id AND ko.status = 'paid' AND DATE(ko.created_at) BETWEEN ${from} AND ${to}
+      WHERE mi.tenant_id = ${t}
+      GROUP BY mi.id, mi.name, mi.selling_price
+      ORDER BY total_food_cost DESC`);
+    res.json(rows.rows || []);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.get("/recipes", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const rows = await db.execute(sql`
+      SELECT r.*, mi.name as menu_item_name, mi.selling_price,
+      COALESCE((SELECT SUM(ri.quantity * ri.cost_per_unit) FROM restaurant_recipe_ingredients ri WHERE ri.recipe_id = r.id), 0) as food_cost
+      FROM restaurant_recipes r
+      JOIN menu_items mi ON mi.id = r.menu_item_id::text AND mi.tenant_id = ${t}
+      WHERE r.tenant_id = ${t}
+      ORDER BY r.id DESC`);
+    res.json(rows.rows || []);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.get("/recipes/:id/ingredients", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const rows = await db.execute(sql`
+      SELECT ri.*, rm.material_name as raw_material_name_db, rm.base_unit as rm_unit
+      FROM restaurant_recipe_ingredients ri
+      LEFT JOIN raw_materials rm ON rm.id = ri.raw_material_id::text AND rm.tenant_id = ${t}
+      WHERE ri.recipe_id = ${req.params.id} AND ri.tenant_id = ${t}
+      ORDER BY ri.id`);
+    res.json(rows.rows || []);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.post("/recipes", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const { menu_item_id, yield_qty, yield_unit, prep_time_minutes, notes } = req.body;
+    const result = await db.execute(sql`
+      INSERT INTO restaurant_recipes (tenant_id, menu_item_id, yield_qty, yield_unit, prep_time_minutes, notes, created_at)
+      VALUES (${t}, ${menu_item_id}, ${yield_qty||1}, ${yield_unit||'portion'}, ${prep_time_minutes||null}, ${notes||null}, NOW())
+      ON CONFLICT (tenant_id, menu_item_id) DO UPDATE SET yield_qty=${yield_qty||1}, yield_unit=${yield_unit||'portion'}, prep_time_minutes=${prep_time_minutes||null}, notes=${notes||null}
+      RETURNING id`);
+    res.json({ success: true, id: result.rows[0]?.id });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.post("/recipes/:id/ingredients", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const { raw_material_id, raw_material_name, quantity, unit, cost_per_unit } = req.body;
+    await db.execute(sql`
+      INSERT INTO restaurant_recipe_ingredients (tenant_id, recipe_id, raw_material_id, raw_material_name, quantity, unit, cost_per_unit)
+      VALUES (${t}, ${req.params.id}, ${raw_material_id||null}, ${raw_material_name}, ${quantity}, ${unit}, ${cost_per_unit})`);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.delete("/recipes/:recipeId/ingredients/:ingId", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    await db.execute(sql`DELETE FROM restaurant_recipe_ingredients WHERE id=${req.params.ingId} AND recipe_id=${req.params.recipeId} AND tenant_id=${t}`);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Tally XML Export ─────────────────────────────────────────────────────────
+router.get("/reports/tally-xml", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const { from, to, sales_ledger = 'Food Sales A/c', cash_ledger = 'Cash-in-Hand', bank_ledger = 'HDFC Current A/c', cgst_ledger = 'Output CGST A/c', sgst_ledger = 'Output SGST A/c' } = req.query;
+    const rows = await db.execute(sql`
+      SELECT DATE(ko.created_at) as sale_date,
+      SUM(CASE WHEN ko.payment_mode='cash' THEN ko.total_amount ELSE 0 END) as cash_sales,
+      SUM(CASE WHEN ko.payment_mode IN ('card','upi','online') THEN ko.total_amount ELSE 0 END) as bank_sales,
+      SUM(ko.total_amount) as gross_sales,
+      SUM(COALESCE(ko.gst_amount, 0)) as gst_amount
+      FROM kot_orders ko
+      WHERE ko.tenant_id=${t} AND ko.status='paid' AND DATE(ko.created_at) BETWEEN ${from||new Date().toISOString().slice(0,10)} AND ${to||new Date().toISOString().slice(0,10)}
+      GROUP BY DATE(ko.created_at) ORDER BY sale_date`);
+
+    const vouchers = (rows.rows || []).map((r: any) => {
+      const taxable = Number(r.gross_sales) - Number(r.gst_amount);
+      const cgst = Number(r.gst_amount) / 2;
+      const sgst = Number(r.gst_amount) / 2;
+      const debitLedger = Number(r.cash_sales) > 0 ? cash_ledger : bank_ledger;
+      return `<TALLYMESSAGE xmlns:UDF="TallyUDF">
+<VOUCHER VCHTYPE="Sales" ACTION="Create">
+<DATE>${String(r.sale_date).replace(/-/g,'')}</DATE>
+<NARRATION>Daily Sales - ${r.sale_date}</NARRATION>
+<ALLLEDGERENTRIES.LIST>
+<LEDGERNAME>${debitLedger}</LEDGERNAME>
+<ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
+<AMOUNT>-${r.gross_sales}</AMOUNT>
+</ALLLEDGERENTRIES.LIST>
+<ALLLEDGERENTRIES.LIST>
+<LEDGERNAME>${sales_ledger}</LEDGERNAME>
+<ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+<AMOUNT>${taxable.toFixed(2)}</AMOUNT>
+</ALLLEDGERENTRIES.LIST>
+<ALLLEDGERENTRIES.LIST>
+<LEDGERNAME>${cgst_ledger}</LEDGERNAME>
+<ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+<AMOUNT>${cgst.toFixed(2)}</AMOUNT>
+</ALLLEDGERENTRIES.LIST>
+<ALLLEDGERENTRIES.LIST>
+<LEDGERNAME>${sgst_ledger}</LEDGERNAME>
+<ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+<AMOUNT>${sgst.toFixed(2)}</AMOUNT>
+</ALLLEDGERENTRIES.LIST>
+</VOUCHER>
+</TALLYMESSAGE>`;
+    }).join('\n');
+
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<ENVELOPE>\n<HEADER><TALLYREQUEST>Import Data</TALLYREQUEST></HEADER>\n<BODY><IMPORTDATA><REQUESTDESC><REPORTNAME>Vouchers</REPORTNAME></REQUESTDESC><REQUESTDATA>${vouchers}</REQUESTDATA></IMPORTDATA></BODY>\n</ENVELOPE>`;
+
+    res.setHeader('Content-Type', 'application/xml');
+    res.setHeader('Content-Disposition', `attachment; filename="tally-export-${from}-${to}.xml"`);
+    res.send(xml);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Marketing Campaigns ─────────────────────────────────────────────────────
+router.get("/campaigns", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const rows = await db.execute(sql`SELECT * FROM restaurant_campaigns WHERE tenant_id=${t} ORDER BY created_at DESC LIMIT 50`);
+    res.json(rows.rows || []);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.post("/campaigns", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const { name, segment, channel, message, scheduled_at } = req.body;
+    let customerCount = 0;
+    try {
+      if (segment === 'all') {
+        const r = await db.execute(sql`SELECT COUNT(*) as cnt FROM restaurant_customers WHERE tenant_id=${t}`);
+        customerCount = Number((r.rows[0] as any)?.cnt || 0);
+      } else if (segment === 'churned') {
+        const r = await db.execute(sql`SELECT COUNT(*) as cnt FROM restaurant_customers WHERE tenant_id=${t} AND last_visit_date < NOW() - INTERVAL '30 days'`);
+        customerCount = Number((r.rows[0] as any)?.cnt || 0);
+      } else if (segment === 'vip') {
+        const r = await db.execute(sql`SELECT COUNT(*) as cnt FROM restaurant_customers WHERE tenant_id=${t} AND total_spend > 5000`);
+        customerCount = Number((r.rows[0] as any)?.cnt || 0);
+      } else if (segment === 'birthday') {
+        const r = await db.execute(sql`SELECT COUNT(*) as cnt FROM restaurant_customers WHERE tenant_id=${t} AND EXTRACT(MONTH FROM dob) = EXTRACT(MONTH FROM NOW()) AND EXTRACT(DAY FROM dob) = EXTRACT(DAY FROM NOW())`);
+        customerCount = Number((r.rows[0] as any)?.cnt || 0);
+      }
+    } catch {}
+    await db.execute(sql`INSERT INTO restaurant_campaigns (tenant_id, name, segment, channel, message, scheduled_at, status, customer_count, created_at) VALUES (${t}, ${name}, ${segment}, ${channel}, ${message}, ${scheduled_at||null}, 'scheduled', ${customerCount}, NOW())`);
+    res.json({ success: true, customer_count: customerCount });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.get("/campaigns/segments/count", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const all = await db.execute(sql`SELECT COUNT(*) as cnt FROM restaurant_customers WHERE tenant_id=${t}`);
+    const churned = await db.execute(sql`SELECT COUNT(*) as cnt FROM restaurant_customers WHERE tenant_id=${t} AND last_visit_date < NOW() - INTERVAL '30 days'`);
+    const vip = await db.execute(sql`SELECT COUNT(*) as cnt FROM restaurant_customers WHERE tenant_id=${t} AND total_spend > 5000`);
+    const birthday = await db.execute(sql`SELECT COUNT(*) as cnt FROM restaurant_customers WHERE tenant_id=${t} AND EXTRACT(MONTH FROM dob) = EXTRACT(MONTH FROM NOW()) AND EXTRACT(DAY FROM dob) = EXTRACT(DAY FROM NOW())`);
+    const newCustomers = await db.execute(sql`SELECT COUNT(*) as cnt FROM restaurant_customers WHERE tenant_id=${t} AND created_at >= NOW() - INTERVAL '7 days'`);
+    res.json({
+      all: Number((all.rows[0] as any)?.cnt||0),
+      churned: Number((churned.rows[0] as any)?.cnt||0),
+      vip: Number((vip.rows[0] as any)?.cnt||0),
+      birthday: Number((birthday.rows[0] as any)?.cnt||0),
+      new_customers: Number((newCustomers.rows[0] as any)?.cnt||0)
+    });
+  } catch { res.json({ all: 0, churned: 0, vip: 0, birthday: 0, new_customers: 0 }); }
+});
+
+// ── HR Integration ────────────────────────────────────────────────────────────
+// List HR employees for this tenant (to link as restaurant staff)
+router.get("/staff/hr-employees", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  try {
+    const rows = await db.execute(sql`
+      SELECT e.id, (e.first_name || ' ' || e.last_name) AS name, e.emp_code AS employee_code,
+        e.department_id AS department, e.designation_id AS designation,
+        rsp.role as restaurant_role, rsp.outlet_id, rsp.id as profile_id
+      FROM hr_employees e
+      LEFT JOIN restaurant_staff_profiles rsp ON rsp.employee_id = e.id AND rsp.tenant_id = ${t}
+      WHERE e.tenant_id = ${t} AND e.status = 'active'
+      ORDER BY e.first_name`);
+    res.json(rows.rows || []);
+  } catch(e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// Link an HR employee as restaurant staff
+router.post("/staff/link-employee", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  const { employee_id, role, outlet_id, tip_share_pct = 0 } = req.body;
+  try {
+    await db.execute(sql`
+      INSERT INTO restaurant_staff_profiles (tenant_id, employee_id, role, outlet_id, tip_share_pct, is_active)
+      VALUES (${t}, ${employee_id}, ${role}, ${outlet_id||null}, ${tip_share_pct}, 1)
+      ON CONFLICT (tenant_id, employee_id) DO UPDATE SET role=${role}, outlet_id=${outlet_id||null}, tip_share_pct=${tip_share_pct}`);
+    res.json({ success: true });
+  } catch(e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// Unlink employee from restaurant
+router.delete("/staff/link-employee/:employeeId", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  await db.execute(sql`DELETE FROM restaurant_staff_profiles WHERE employee_id=${req.params.employeeId} AND tenant_id=${t}`);
+  res.json({ success: true });
+});
+
+// Get restaurant staff with HR data merged
+router.get("/staff/profiles", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  try {
+    const rows = await db.execute(sql`
+      SELECT rsp.*, (e.first_name || ' ' || e.last_name) AS name, e.emp_code AS employee_code,
+        e.phone, e.department_id AS department, e.designation_id AS designation,
+        e.join_date AS date_of_joining, e.basic_salary,
+        ro.outlet_name
+      FROM restaurant_staff_profiles rsp
+      LEFT JOIN hr_employees e ON e.id = rsp.employee_id
+      LEFT JOIN restaurant_outlets ro ON ro.id::text = rsp.outlet_id::text
+      WHERE rsp.tenant_id = ${t} ORDER BY e.first_name`);
+    res.json(rows.rows || []);
+  } catch(e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// Staff attendance summary (from hr_attendance)
+router.get("/staff/attendance-summary", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  const { month = new Date().toISOString().slice(0,7) } = req.query;
+  try {
+    const rows = await db.execute(sql`
+      SELECT (e.first_name || ' ' || e.last_name) AS name, e.emp_code AS employee_code, rsp.role,
+        COUNT(ha.id) as days_present, COALESCE(SUM(ha.working_hours),0) as hours_worked,
+        COALESCE(SUM(ss.tips_collected),0) as tips_earned
+      FROM restaurant_staff_profiles rsp
+      JOIN hr_employees e ON e.id = rsp.employee_id
+      LEFT JOIN hr_attendance ha ON ha.employee_id = e.id AND ha.tenant_id = ${t} AND TO_CHAR(ha.date,'YYYY-MM') = ${month}
+      LEFT JOIN staff_schedules ss ON ss.employee_id = e.id AND ss.tenant_id = ${t} AND TO_CHAR(ss.start_time,'YYYY-MM') = ${month}
+      WHERE rsp.tenant_id = ${t}
+      GROUP BY e.id, e.first_name, e.last_name, e.emp_code, rsp.role
+      ORDER BY e.first_name`);
+    res.json(rows.rows || []);
+  } catch(e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Vendor Master Integration ─────────────────────────────────────────────────
+router.get("/inventory/vendors", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  try {
+    const rows = await db.execute(sql`
+      SELECT id, vendor_name AS name, contact_person, mobile_number AS phone, email, gst_number, address
+      FROM vendors WHERE tenant_id = ${t} AND is_active != '0' AND is_active != 'false'
+      ORDER BY vendor_name`);
+    res.json(rows.rows || []);
+  } catch(e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// Link a purchase to a vendor
+router.put("/inventory/purchases/:id/link-vendor", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  const { vendor_id } = req.body;
+  try {
+    await db.execute(sql`UPDATE raw_material_purchases SET vendor_id=${vendor_id} WHERE id=${req.params.id} AND tenant_id=${t}`);
+    res.json({ success: true });
+  } catch(e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// Vendor purchase history for restaurant
+router.get("/inventory/vendor-purchases", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  try {
+    const rows = await db.execute(sql`
+      SELECT rmt.id, rmt.created_at, rmt.quantity, rmt.reference, rmt.remarks,
+             rm.material_name as item_name, rm.uom_id as unit
+      FROM raw_material_transactions rmt
+      JOIN raw_materials rm ON rm.id = rmt.material_id AND rm.tenant_id = ${t}
+      WHERE rmt.tenant_id = ${t} AND rmt.transaction_type = 'purchase'
+      ORDER BY rmt.created_at DESC LIMIT 100`);
+    res.json(rows.rows || []);
+  } catch(e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// Create purchase order from restaurant (links to shared PO module)
+router.post("/inventory/purchase-request", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  const { vendor_id, items, delivery_date, notes } = req.body;
+  try {
+    const poResult = await db.execute(sql`
+      INSERT INTO purchase_orders (tenant_id, vendor_id, order_date, expected_delivery, status, notes, created_at)
+      VALUES (${t}, ${vendor_id}, NOW(), ${delivery_date||null}, 'pending', ${notes||'Restaurant ingredient request'}, NOW())
+      RETURNING id`);
+    const poId = poResult.rows?.[0]?.id;
+    for (const item of (items || [])) {
+      await db.execute(sql`INSERT INTO purchase_order_items (purchase_order_id, product_id, product_name, quantity, unit, unit_price, total_price)
+        VALUES (${poId}, ${item.product_id||null}, ${item.name}, ${item.qty}, ${item.unit||'kg'}, ${item.price||0}, ${(item.qty||0)*(item.price||0)})`);
+    }
+    res.json({ success: true, po_id: poId });
+  } catch(e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Raw Material / Inventory Integration ──────────────────────────────────────
+// Get shared raw materials catalog
+router.get("/inventory/raw-materials-catalog", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  try {
+    let rows: any;
+    try {
+      rows = await db.execute(sql`SELECT id, name, unit, description FROM raw_materials WHERE tenant_id=${t} AND is_active != 0 ORDER BY name LIMIT 500`);
+    } catch {
+      rows = { rows: [] };
+    }
+    res.json(rows.rows || []);
+  } catch(e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// Get restaurant stock levels
+router.get("/inventory/stock", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  const { outlet_id } = req.query;
+  try {
+    let query = outlet_id
+      ? sql`SELECT * FROM restaurant_raw_material_stock WHERE tenant_id=${t} AND outlet_id=${outlet_id} ORDER BY raw_material_name`
+      : sql`SELECT * FROM restaurant_raw_material_stock WHERE tenant_id=${t} ORDER BY raw_material_name`;
+    const rows = await db.execute(query);
+    res.json(rows.rows || []);
+  } catch(e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// Deduct stock when KOT is placed (called from POS)
+router.post("/inventory/deduct", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  const { items, outlet_id } = req.body;
+  try {
+    const lowStock: any[] = [];
+    for (const item of (items || [])) {
+      const updated = await db.execute(sql`
+        UPDATE restaurant_raw_material_stock
+        SET current_stock = GREATEST(0, current_stock - ${item.qty}), last_updated = NOW()
+        WHERE tenant_id = ${t} AND raw_material_name = ${item.name} AND (outlet_id = ${outlet_id||null} OR outlet_id IS NULL)
+        RETURNING current_stock, min_stock, raw_material_name`);
+      if (updated.rows?.[0]) {
+        const row = updated.rows[0];
+        if (Number(row.current_stock) <= Number(row.min_stock)) {
+          lowStock.push({ name: row.raw_material_name, stock: row.current_stock, min: row.min_stock });
+        }
+      }
+    }
+    res.json({ success: true, low_stock_alerts: lowStock });
+  } catch(e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// Receive stock (after purchase)
+router.post("/inventory/receive", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  const { raw_material_name, quantity, unit, outlet_id, raw_material_id } = req.body;
+  try {
+    await db.execute(sql`
+      INSERT INTO restaurant_raw_material_stock (tenant_id, raw_material_id, raw_material_name, unit, current_stock, outlet_id, last_updated)
+      VALUES (${t}, ${raw_material_id||null}, ${raw_material_name}, ${unit||'kg'}, ${quantity}, ${outlet_id||null}, NOW())
+      ON CONFLICT (tenant_id, raw_material_name, outlet_id) DO UPDATE
+        SET current_stock = restaurant_raw_material_stock.current_stock + ${quantity}, last_updated = NOW()`);
+    res.json({ success: true });
+  } catch(e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// Low stock report
+router.get("/inventory/low-stock", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  try {
+    const rows = await db.execute(sql`
+      SELECT * FROM restaurant_raw_material_stock
+      WHERE tenant_id=${t} AND current_stock <= min_stock
+      ORDER BY (min_stock - current_stock) DESC`);
+    res.json(rows.rows || []);
+  } catch { res.json([]); }
+});
+
+// ── Steward KOT Attribution ───────────────────────────────────────────────────
+router.get("/staff/waiter-performance", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  const { from = new Date().toISOString().slice(0,10), to = new Date().toISOString().slice(0,10) } = req.query;
+  try {
+    const rows = await db.execute(sql`
+      SELECT ko.waiter_name, ko.waiter_employee_id,
+        COUNT(ko.id) as orders_served, COALESCE(SUM(ko.total_amount),0) as revenue_generated,
+        COALESCE(AVG(ko.total_amount),0) as avg_bill_value,
+        COALESCE(SUM(ss.tips_collected),0) as tips_earned,
+        COUNT(DISTINCT ko.table_id) as tables_served
+      FROM kot_orders ko
+      LEFT JOIN staff_schedules ss ON ss.employee_id = ko.waiter_employee_id AND ss.tenant_id = ${t}
+        AND DATE(ss.start_time) BETWEEN ${from} AND ${to}
+      WHERE ko.tenant_id = ${t} AND ko.status = 'paid'
+        AND DATE(ko.created_at) BETWEEN ${from} AND ${to}
+        AND ko.waiter_name IS NOT NULL
+      GROUP BY ko.waiter_name, ko.waiter_employee_id
+      ORDER BY revenue_generated DESC`);
+    res.json(rows.rows || []);
+  } catch(e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// Assign waiter to KOT
+router.put("/kot/:id/assign-waiter", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  const { waiter_employee_id, waiter_name } = req.body;
+  try {
+    await db.execute(sql`UPDATE kot_orders SET waiter_employee_id=${waiter_employee_id||null}, waiter_name=${waiter_name} WHERE id=${req.params.id} AND tenant_id=${t}`);
+    res.json({ success: true });
+  } catch(e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Z-Report → Finance Journal Entry ─────────────────────────────────────────
+router.post("/shifts/:id/post-journal", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  try {
+    const shiftRows = await db.execute(sql`SELECT * FROM staff_schedules WHERE id=${req.params.id} AND tenant_id=${t} LIMIT 1`);
+    const shift = shiftRows.rows?.[0];
+    if (!shift) return res.status(404).json({ error: "Shift not found" });
+
+    const salesRows = await db.execute(sql`
+      SELECT COALESCE(SUM(subtotal),0) as subtotal, COALESCE(SUM(gst_amount),0) as gst, COALESCE(SUM(total_amount),0) as total,
+      COALESCE(SUM(CASE WHEN payment_mode='cash' THEN total_amount ELSE 0 END),0) as cash_collected,
+      COALESCE(SUM(CASE WHEN payment_mode IN ('card','upi','online') THEN total_amount ELSE 0 END),0) as bank_collected
+      FROM kot_orders
+      WHERE tenant_id=${t} AND status='paid'
+      AND created_at >= ${shift.start_time} AND (${shift.end_time} IS NULL OR created_at <= ${shift.end_time})`);
+    const sales = salesRows.rows?.[0] || {};
+
+    const existingRows = await db.execute(sql`SELECT id FROM journal_entries WHERE tenant_id=${t} AND narration LIKE ${'%Shift-' + req.params.id + '%'} LIMIT 1`);
+    if (existingRows.rows?.[0]) return res.status(400).json({ error: "Journal entry already posted for this shift" });
+
+    const today = new Date().toISOString().slice(0,10);
+    const narration = `Restaurant Daily Sales — Shift-${req.params.id} — ${today}`;
+    const jeResult = await db.execute(sql`
+      INSERT INTO journal_entries (tenant_id, entry_date, narration, reference_no, status, created_at)
+      VALUES (${t}, ${today}, ${narration}, ${'ZRPT-' + req.params.id}, 'posted', NOW())
+      RETURNING id`);
+    const jeId = jeResult.rows?.[0]?.id;
+
+    if (Number(sales.cash_collected) > 0) {
+      await db.execute(sql`INSERT INTO journal_entry_lines (journal_entry_id, tenant_id, account_name, debit, credit) VALUES (${jeId}, ${t}, 'Cash-in-Hand', ${sales.cash_collected}, 0)`);
+    }
+    if (Number(sales.bank_collected) > 0) {
+      await db.execute(sql`INSERT INTO journal_entry_lines (journal_entry_id, tenant_id, account_name, debit, credit) VALUES (${jeId}, ${t}, 'Bank Account', ${sales.bank_collected}, 0)`);
+    }
+    if (Number(sales.subtotal) > 0) {
+      await db.execute(sql`INSERT INTO journal_entry_lines (journal_entry_id, tenant_id, account_name, debit, credit) VALUES (${jeId}, ${t}, 'Food Sales A/c', 0, ${sales.subtotal})`);
+    }
+    if (Number(sales.gst) > 0) {
+      await db.execute(sql`INSERT INTO journal_entry_lines (journal_entry_id, tenant_id, account_name, debit, credit) VALUES (${jeId}, ${t}, 'Output GST Payable', 0, ${sales.gst})`);
+    }
+
+    await db.execute(sql`UPDATE staff_schedules SET journal_entry_id=${jeId} WHERE id=${req.params.id} AND tenant_id=${t}`);
+
+    res.json({ success: true, journal_entry_id: jeId, sales_summary: sales });
+  } catch(e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.get("/shifts/:id/journal", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  try {
+    const rows = await db.execute(sql`
+      SELECT je.*, json_agg(json_build_object('account',jel.account_name,'debit',jel.debit,'credit',jel.credit)) as lines
+      FROM journal_entries je
+      LEFT JOIN journal_entry_lines jel ON jel.journal_entry_id = je.id
+      WHERE je.tenant_id=${t} AND je.narration LIKE ${'%Shift-' + req.params.id + '%'}
+      GROUP BY je.id LIMIT 1`);
+    res.json(rows.rows?.[0] || null);
+  } catch { res.json(null); }
+});
+
+// ── Cash Settlement → Shared Expenses ────────────────────────────────────────
+router.post("/shifts/:id/post-cash-settlement", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  const { opening_cash, closing_cash, actual_cash } = req.body;
+  try {
+    const shiftRows = await db.execute(sql`SELECT * FROM staff_schedules WHERE id=${req.params.id} AND tenant_id=${t} LIMIT 1`);
+    const shift = shiftRows.rows?.[0];
+    if (!shift) return res.status(404).json({ error: "Shift not found" });
+
+    const variance = Number(actual_cash) - Number(closing_cash);
+    const today = new Date().toISOString().slice(0,10);
+
+    if (Math.abs(variance) > 0) {
+      const description = variance < 0
+        ? `Cash shortage — Shift ${req.params.id} — Expected: ₹${closing_cash}, Actual: ₹${actual_cash}`
+        : `Cash excess — Shift ${req.params.id} — Expected: ₹${closing_cash}, Actual: ₹${actual_cash}`;
+      const expResult = await db.execute(sql`
+        INSERT INTO expenses (tenant_id, expense_date, category, description, amount, payment_mode, status, created_at)
+        VALUES (${t}, ${today}, 'Cash Variance', ${description}, ${Math.abs(variance)}, 'cash', 'approved', NOW())
+        RETURNING id`);
+      await db.execute(sql`UPDATE staff_schedules SET expense_id=${expResult.rows?.[0]?.id}, opening_cash=${opening_cash}, closing_cash=${closing_cash}, actual_cash=${actual_cash}, cash_variance=${variance} WHERE id=${req.params.id} AND tenant_id=${t}`);
+    } else {
+      await db.execute(sql`UPDATE staff_schedules SET opening_cash=${opening_cash}, closing_cash=${closing_cash}, actual_cash=${actual_cash}, cash_variance=0 WHERE id=${req.params.id} AND tenant_id=${t}`);
+    }
+
+    res.json({ success: true, variance, message: variance === 0 ? 'Cash balanced' : `Variance of ₹${Math.abs(variance)} logged to expenses` });
+  } catch(e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Shift → HR Attendance ─────────────────────────────────────────────────────
+router.post("/shifts/:id/close", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  const { closing_notes, tips_collected } = req.body;
+  try {
+    const shiftRows = await db.execute(sql`SELECT * FROM staff_schedules WHERE id=${req.params.id} AND tenant_id=${t} LIMIT 1`);
+    const shift = shiftRows.rows?.[0];
+    if (!shift) return res.status(404).json({ error: "Shift not found" });
+
+    const endTime = new Date();
+    const startTime = new Date(shift.start_time);
+    const hoursWorked = (endTime.getTime() - startTime.getTime()) / 3600000;
+
+    await db.execute(sql`UPDATE staff_schedules SET status='closed', end_time=${endTime.toISOString()}, tips_collected=${tips_collected||0}, notes=${closing_notes||null} WHERE id=${req.params.id} AND tenant_id=${t}`);
+
+    if (shift.employee_id) {
+      await db.execute(sql`
+        INSERT INTO hr_attendance (tenant_id, employee_id, attendance_date, check_in, check_out, status, hours_worked, remarks)
+        VALUES (${t}, ${shift.employee_id}, ${new Date(startTime).toISOString().slice(0,10)}, ${startTime.toISOString()}, ${endTime.toISOString()}, 'present', ${Math.round(hoursWorked * 100)/100}, ${'Restaurant shift ' + req.params.id})
+        ON CONFLICT (tenant_id, employee_id, attendance_date) DO UPDATE SET check_out=${endTime.toISOString()}, hours_worked=${Math.round(hoursWorked * 100)/100}, status='present'`);
+    }
+
+    res.json({ success: true, hours_worked: Math.round(hoursWorked * 10)/10 });
+  } catch(e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// Open a new shift and clock in (HR integration)
+router.post("/shifts/open", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  const { employee_id, outlet_id, shift_type = 'morning', opening_cash = 0 } = req.body;
+  try {
+    let staffName = req.body.staff_name || 'Staff';
+    if (employee_id) {
+      const empRows = await db.execute(sql`SELECT (first_name || ' ' || last_name) AS name FROM hr_employees WHERE id=${employee_id} AND tenant_id=${t} LIMIT 1`);
+      staffName = empRows.rows?.[0]?.name || staffName;
+    }
+    const result = await db.execute(sql`
+      INSERT INTO staff_schedules (tenant_id, employee_id, staff_name, outlet_id, shift_type, start_time, status, opening_cash, created_at)
+      VALUES (${t}, ${employee_id||null}, ${staffName}, ${outlet_id||null}, ${shift_type}, NOW(), 'open', ${opening_cash}, NOW())
+      RETURNING id`);
+    if (employee_id) {
+      const today = new Date().toISOString().slice(0,10);
+      await db.execute(sql`
+        INSERT INTO hr_attendance (tenant_id, employee_id, attendance_date, check_in, status, remarks)
+        VALUES (${t}, ${employee_id}, ${today}, NOW(), 'present', 'Restaurant shift opened')
+        ON CONFLICT (tenant_id, employee_id, attendance_date) DO UPDATE SET check_in=NOW(), status='present'`);
+    }
+    res.json({ success: true, shift_id: result.rows?.[0]?.id });
+  } catch(e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── CRM Contact Integration ───────────────────────────────────────────────────
+// Sync restaurant customer → shared CRM contact (opt-in, non-destructive)
+router.post("/customers/:id/sync-crm", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  try {
+    const custRows = await db.execute(sql`SELECT * FROM restaurant_customers WHERE id=${req.params.id} AND tenant_id=${t} LIMIT 1`);
+    const cust = custRows.rows?.[0];
+    if (!cust) return res.status(404).json({ error: "Customer not found" });
+
+    const existRows = await db.execute(sql`SELECT id FROM crm_contacts WHERE tenant_id=${t} AND phone=${(cust as any).phone} LIMIT 1`);
+    let crmId = (existRows.rows?.[0] as any)?.id;
+
+    if (!crmId) {
+      const crmResult = await db.execute(sql`
+        INSERT INTO crm_contacts (tenant_id, first_name, last_name, phone, email, source, tags, created_at)
+        VALUES (${t}, ${((cust as any).name||'').split(' ')[0]}, ${((cust as any).name||'').split(' ').slice(1).join(' ')||null}, ${(cust as any).phone||null}, ${(cust as any).email||null}, 'restaurant', 'restaurant-customer', NOW())
+        RETURNING id`);
+      crmId = (crmResult.rows?.[0] as any)?.id;
+    } else {
+      await db.execute(sql`UPDATE crm_contacts SET first_name=${((cust as any).name||'').split(' ')[0]}, email=${(cust as any).email||null}, updated_at=NOW() WHERE id=${crmId} AND tenant_id=${t}`);
+    }
+
+    await db.execute(sql`UPDATE restaurant_customers SET crm_contact_id=${crmId} WHERE id=${req.params.id} AND tenant_id=${t}`);
+    res.json({ success: true, crm_contact_id: crmId });
+  } catch(e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// Bulk sync all restaurant customers to CRM
+router.post("/customers/bulk-sync-crm", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  try {
+    const custRows = await db.execute(sql`SELECT * FROM restaurant_customers WHERE tenant_id=${t} AND crm_contact_id IS NULL AND phone IS NOT NULL LIMIT 500`);
+    let synced = 0, skipped = 0;
+    for (const cust of (custRows.rows || [])) {
+      try {
+        const existRows = await db.execute(sql`SELECT id FROM crm_contacts WHERE tenant_id=${t} AND phone=${(cust as any).phone} LIMIT 1`);
+        let crmId = (existRows.rows?.[0] as any)?.id;
+        if (!crmId) {
+          const r = await db.execute(sql`INSERT INTO crm_contacts (tenant_id, first_name, last_name, phone, email, source, tags, created_at) VALUES (${t}, ${((cust as any).name||'').split(' ')[0]}, ${((cust as any).name||'').split(' ').slice(1).join(' ')||null}, ${(cust as any).phone}, ${(cust as any).email||null}, 'restaurant', 'restaurant-customer', NOW()) ON CONFLICT DO NOTHING RETURNING id`);
+          crmId = (r.rows?.[0] as any)?.id;
+        }
+        if (crmId) {
+          await db.execute(sql`UPDATE restaurant_customers SET crm_contact_id=${crmId} WHERE id=${(cust as any).id} AND tenant_id=${t}`);
+          synced++;
+        }
+      } catch { skipped++; }
+    }
+    res.json({ success: true, synced, skipped });
+  } catch(e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// View customer's CRM profile
+router.get("/customers/:id/crm-profile", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  try {
+    const custRows = await db.execute(sql`SELECT crm_contact_id FROM restaurant_customers WHERE id=${req.params.id} AND tenant_id=${t} LIMIT 1`);
+    const crmId = (custRows.rows?.[0] as any)?.crm_contact_id;
+    if (!crmId) return res.json({ linked: false });
+    const crmRows = await db.execute(sql`SELECT * FROM crm_contacts WHERE id=${crmId} AND tenant_id=${t} LIMIT 1`);
+    res.json({ linked: true, contact: crmRows.rows?.[0], interactions: [] });
+  } catch(e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── MIS Integration ───────────────────────────────────────────────────────────
+router.post("/reports/post-to-mis", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  const { date = new Date().toISOString().slice(0,10) } = req.body;
+  try {
+    const salesRows = await db.execute(sql`
+      SELECT COALESCE(SUM(total_amount),0) as total_revenue,
+        COALESCE(SUM(gst_amount),0) as gst_collected,
+        COUNT(*) as order_count,
+        COALESCE(AVG(total_amount),0) as avg_order_value
+      FROM kot_orders WHERE tenant_id=${t} AND status='paid' AND DATE(created_at)=${date}`);
+    const s = (salesRows.rows?.[0] || {}) as any;
+
+    await db.execute(sql`
+      INSERT INTO mis_daily_sales (tenant_id, sale_date, revenue, tax_collected, order_count, avg_order_value, source_module, created_at)
+      VALUES (${t}, ${date}, ${s.total_revenue||0}, ${s.gst_collected||0}, ${s.order_count||0}, ${s.avg_order_value||0}, 'restaurant', NOW())
+      ON CONFLICT (tenant_id, sale_date, source_module) DO UPDATE
+        SET revenue=${s.total_revenue||0}, tax_collected=${s.gst_collected||0}, order_count=${s.order_count||0}, avg_order_value=${s.avg_order_value||0}`);
+
+    res.json({ success: true, date, summary: s });
+  } catch(e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.get("/reports/mis-summary", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  const { from, to } = req.query;
+  const today = new Date().toISOString().slice(0,10);
+  try {
+    const rows = await db.execute(sql`
+      SELECT sale_date, revenue, tax_collected, order_count, avg_order_value
+      FROM mis_daily_sales
+      WHERE tenant_id=${t} AND source_module='restaurant'
+        AND sale_date BETWEEN ${from||today} AND ${to||today}
+      ORDER BY sale_date ASC`);
+    res.json(rows.rows || []);
+  } catch { res.json([]); }
+});
+
+// ── Loyalty → CRM Integration ─────────────────────────────────────────────────
+router.post("/customers/loyalty-to-crm-campaign", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  const { segment = 'vip', campaign_name, message } = req.body;
+  try {
+    let customers: any[] = [];
+    if (segment === 'vip') {
+      const r = await db.execute(sql`SELECT * FROM restaurant_customers WHERE tenant_id=${t} AND total_spend > 5000 AND crm_contact_id IS NOT NULL`);
+      customers = r.rows || [];
+    } else if (segment === 'churned') {
+      const r = await db.execute(sql`SELECT * FROM restaurant_customers WHERE tenant_id=${t} AND last_visit_date < NOW() - INTERVAL '30 days' AND crm_contact_id IS NOT NULL`);
+      customers = r.rows || [];
+    } else if (segment === 'new') {
+      const r = await db.execute(sql`SELECT * FROM restaurant_customers WHERE tenant_id=${t} AND created_at >= NOW() - INTERVAL '7 days' AND crm_contact_id IS NOT NULL`);
+      customers = r.rows || [];
+    }
+
+    if (!customers.length) return res.json({ success: false, message: "No linked CRM customers in this segment. Run bulk sync first." });
+
+    const campResult = await db.execute(sql`
+      INSERT INTO crm_campaigns (tenant_id, name, status, sent_count, created_at)
+      VALUES (${t}, ${campaign_name||('Restaurant ' + segment + ' campaign')}, 'draft', 0, NOW())
+      RETURNING id`);
+    const campId = (campResult.rows?.[0] as any)?.id;
+
+    for (const cust of customers) {
+      await db.execute(sql`INSERT INTO crm_campaign_contacts (campaign_id, contact_id, tenant_id) VALUES (${campId}, ${(cust as any).crm_contact_id}, ${t}) ON CONFLICT DO NOTHING`);
+    }
+
+    res.json({ success: true, campaign_id: campId, contact_count: customers.length });
+  } catch(e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.post("/customers/:id/sync-loyalty-to-crm", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  try {
+    const custRows = await db.execute(sql`SELECT * FROM restaurant_customers WHERE id=${req.params.id} AND tenant_id=${t} LIMIT 1`);
+    const cust = custRows.rows?.[0] as any;
+    if (!cust?.crm_contact_id) return res.json({ success: false, message: "Customer not linked to CRM" });
+    await db.execute(sql`UPDATE crm_contacts SET notes=${('Loyalty: ' + (cust.loyalty_points||0) + ' pts | Spend: ₹' + (cust.total_spend||0))} WHERE id=${cust.crm_contact_id} AND tenant_id=${t}`);
+    res.json({ success: true });
+  } catch(e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Reservations → CRM Calendar ───────────────────────────────────────────────
+router.post("/reservations/:id/sync-crm-calendar", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  try {
+    const rsvRows = await db.execute(sql`SELECT * FROM restaurant_reservations WHERE id=${req.params.id} AND tenant_id=${t} LIMIT 1`);
+    const rsv = rsvRows.rows?.[0] as any;
+    if (!rsv) return res.status(404).json({ error: "Reservation not found" });
+
+    let crmContactId = rsv.crm_contact_id;
+    if (!crmContactId && rsv.customer_phone) {
+      const existRows = await db.execute(sql`SELECT id FROM crm_contacts WHERE tenant_id=${t} AND phone=${rsv.customer_phone} LIMIT 1`);
+      crmContactId = (existRows.rows?.[0] as any)?.id;
+      if (!crmContactId) {
+        const r = await db.execute(sql`INSERT INTO crm_contacts (tenant_id, first_name, phone, source, created_at) VALUES (${t}, ${rsv.customer_name||'Guest'}, ${rsv.customer_phone}, 'restaurant-reservation', NOW()) RETURNING id`);
+        crmContactId = (r.rows?.[0] as any)?.id;
+      }
+      await db.execute(sql`UPDATE restaurant_reservations SET crm_contact_id=${crmContactId} WHERE id=${req.params.id} AND tenant_id=${t}`);
+    }
+
+    const eventTitle = `Table ${rsv.table_id||'?'} Reservation — ${rsv.customer_name||'Guest'} (${rsv.party_size||1} pax)`;
+    const eventResult = await db.execute(sql`
+      INSERT INTO crm_calendar_events (tenant_id, contact_id, title, event_date, event_time, duration_minutes, event_type, notes, status, created_at)
+      VALUES (${t}, ${crmContactId}, ${eventTitle}, ${rsv.reservation_date||rsv.date}, ${rsv.reservation_time||rsv.time||'12:00'}, 90, 'reservation', ${rsv.notes||null}, 'confirmed', NOW())
+      ON CONFLICT DO NOTHING RETURNING id`);
+
+    res.json({ success: true, crm_event_id: (eventResult.rows?.[0] as any)?.id, crm_contact_id: crmContactId });
+  } catch(e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.post("/reservations/sync-all-crm", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  const today = new Date().toISOString().slice(0,10);
+  try {
+    const rsvRows = await db.execute(sql`SELECT * FROM restaurant_reservations WHERE tenant_id=${t} AND reservation_date = ${today} AND status = 'confirmed'`);
+    let synced = 0;
+    for (const rsv of (rsvRows.rows || [])) {
+      try {
+        const r = rsv as any;
+        let crmId = r.crm_contact_id;
+        if (!crmId && r.customer_phone) {
+          const er = await db.execute(sql`SELECT id FROM crm_contacts WHERE tenant_id=${t} AND phone=${r.customer_phone} LIMIT 1`);
+          crmId = (er.rows?.[0] as any)?.id;
+          if (!crmId) {
+            const cr = await db.execute(sql`INSERT INTO crm_contacts (tenant_id, first_name, phone, source, created_at) VALUES (${t}, ${r.customer_name||'Guest'}, ${r.customer_phone}, 'restaurant', NOW()) RETURNING id`);
+            crmId = (cr.rows?.[0] as any)?.id;
+          }
+        }
+        if (crmId) {
+          await db.execute(sql`INSERT INTO crm_calendar_events (tenant_id, contact_id, title, event_date, event_time, duration_minutes, event_type, status, created_at)
+            VALUES (${t}, ${crmId}, ${'Reservation — ' + (r.customer_name||'Guest')}, ${today}, ${r.reservation_time||'12:00'}, 90, 'reservation', 'confirmed', NOW()) ON CONFLICT DO NOTHING`);
+          await db.execute(sql`UPDATE restaurant_reservations SET crm_contact_id=${crmId} WHERE id=${r.id} AND tenant_id=${t}`);
+          synced++;
+        }
+      } catch {}
+    }
+    res.json({ success: true, synced });
+  } catch(e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Online Ordering (public storefront) ─────────────────────────────────────
+router.get("/storefront/:slug", async (req: any, res: any) => {
+  try {
+    const rows = await db.execute(sql`
+      SELECT ro.*, t.name as tenant_name, t.id as tenant_id
+      FROM restaurant_outlets ro
+      JOIN tenants t ON t.id = ro.tenant_id
+      WHERE ro.slug = ${req.params.slug} AND ro.is_active = 1
+      LIMIT 1`);
+    const outlet = rows.rows?.[0];
+    if (!outlet) return res.status(404).json({ error: "Restaurant not found" });
+    res.json(outlet);
+  } catch(e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.get("/storefront/:slug/menu", async (req: any, res: any) => {
+  try {
+    const outletRows = await db.execute(sql`SELECT tenant_id FROM restaurant_outlets WHERE slug = ${req.params.slug} AND is_active = 1 LIMIT 1`);
+    const tenantId = outletRows.rows?.[0]?.tenant_id;
+    if (!tenantId) return res.status(404).json({ error: "Not found" });
+    const cats = await db.execute(sql`SELECT * FROM restaurant_menu_categories WHERE tenant_id = ${tenantId} AND is_active != 0 ORDER BY sort_order, name`);
+    const items = await db.execute(sql`SELECT * FROM restaurant_menu_items WHERE tenant_id = ${tenantId} AND is_active != 0 ORDER BY sort_order, name`);
+    res.json({ categories: cats.rows || [], items: items.rows || [] });
+  } catch(e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.post("/storefront/:slug/order", async (req: any, res: any) => {
+  try {
+    const outletRows = await db.execute(sql`SELECT id, tenant_id FROM restaurant_outlets WHERE slug = ${req.params.slug} AND is_active = 1 LIMIT 1`);
+    const outlet = outletRows.rows?.[0];
+    if (!outlet) return res.status(404).json({ error: "Not found" });
+    const { items, customer_name, customer_phone, customer_address, delivery_type = 'delivery', notes, payment_mode = 'cod' } = req.body;
+    if (!items?.length) return res.status(400).json({ error: "No items" });
+    const subtotal = items.reduce((s: number, i: any) => s + (i.price * i.qty), 0);
+    const gst = Math.round(subtotal * 0.05 * 100) / 100;
+    const total = subtotal + gst;
+    const tokenNo = Math.floor(1000 + Math.random() * 9000);
+    const result = await db.execute(sql`
+      INSERT INTO kot_orders (tenant_id, outlet_id, table_id, status, source, customer_name, customer_phone,
+        delivery_address, delivery_type, payment_mode, subtotal, gst_amount, total_amount, token_no, notes, created_at)
+      VALUES (${outlet.tenant_id}, ${outlet.id}, null, 'open', 'online', ${customer_name||'Guest'}, ${customer_phone||null},
+        ${customer_address||null}, ${delivery_type}, ${payment_mode}, ${subtotal}, ${gst}, ${total}, ${tokenNo}, ${notes||null}, NOW())
+      RETURNING id`);
+    const kotId = result.rows[0]?.id;
+    for (const item of items) {
+      await db.execute(sql`INSERT INTO kot_items (tenant_id, kot_id, item_name, category_name, quantity, unit_price, total_price, is_void)
+        VALUES (${outlet.tenant_id}, ${kotId}, ${item.name}, ${item.category||''}, ${item.qty}, ${item.price}, ${item.price * item.qty}, 0)`);
+    }
+    res.json({ success: true, order_id: kotId, token_no: tokenNo, total, estimated_time: 30 });
+  } catch(e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.get("/storefront/:slug/order/:orderId/status", async (req: any, res: any) => {
+  try {
+    const rows = await db.execute(sql`SELECT id, status, token_no, total_amount, created_at FROM kot_orders WHERE id = ${req.params.orderId} LIMIT 1`);
+    res.json(rows.rows?.[0] || null);
+  } catch { res.json(null); }
+});
+
+// ── Payment Terminal Integration ─────────────────────────────────────────────
+router.post("/payment-terminal/razorpay/initiate", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  const { amount, kot_id, description = 'Restaurant Bill' } = req.body;
+  try {
+    const cfgRows = await db.execute(sql`SELECT config_value FROM tenant_configs WHERE tenant_id=${t} AND config_key='razorpay_key_id' LIMIT 1`);
+    const secretRows = await db.execute(sql`SELECT config_value FROM tenant_configs WHERE tenant_id=${t} AND config_key='razorpay_key_secret' LIMIT 1`);
+    const keyId = cfgRows.rows?.[0]?.config_value;
+    const keySecret = secretRows.rows?.[0]?.config_value;
+    if (!keyId || !keySecret) {
+      return res.status(400).json({ error: "Razorpay not configured. Go to Settings > Payment Terminals to add credentials." });
+    }
+    const auth = Buffer.from(`${keyId}:${keySecret}`).toString('base64');
+    const rzpRes: any = await fetch('https://api.razorpay.com/v1/payment_links', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Basic ${auth}` },
+      body: JSON.stringify({
+        amount: Math.round(amount * 100),
+        currency: 'INR',
+        description,
+        reference_id: `KOT-${kot_id}-${Date.now()}`,
+        notify: { sms: false, email: false },
+        reminder_enable: false,
+        callback_url: '',
+        callback_method: 'get',
+      })
+    }).then((r: any) => r.json());
+    if (rzpRes.error) return res.status(400).json({ error: rzpRes.error.description || 'Razorpay error' });
+    await db.execute(sql`INSERT INTO payment_terminal_logs (tenant_id, kot_id, terminal_type, amount, reference_id, status, created_at)
+      VALUES (${t}, ${kot_id}, 'razorpay', ${amount}, ${rzpRes.id}, 'initiated', NOW())
+      ON CONFLICT DO NOTHING`);
+    res.json({ success: true, payment_link: rzpRes.short_url, payment_link_id: rzpRes.id, amount });
+  } catch(e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.get("/payment-terminal/razorpay/status/:paymentLinkId", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  try {
+    const cfgRows = await db.execute(sql`SELECT config_value FROM tenant_configs WHERE tenant_id=${t} AND config_key='razorpay_key_id' LIMIT 1`);
+    const secretRows = await db.execute(sql`SELECT config_value FROM tenant_configs WHERE tenant_id=${t} AND config_key='razorpay_key_secret' LIMIT 1`);
+    const keyId = cfgRows.rows?.[0]?.config_value;
+    const keySecret = secretRows.rows?.[0]?.config_value;
+    if (!keyId || !keySecret) return res.json({ status: 'unconfigured' });
+    const auth = Buffer.from(`${keyId}:${keySecret}`).toString('base64');
+    const rzpRes: any = await fetch(`https://api.razorpay.com/v1/payment_links/${req.params.paymentLinkId}`, {
+      headers: { 'Authorization': `Basic ${auth}` }
+    }).then((r: any) => r.json());
+    res.json({ status: rzpRes.status, amount_paid: rzpRes.amount_paid / 100, payment_id: rzpRes.payments?.[0]?.payment_id });
+  } catch(e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.post("/payment-terminal/pinelabs/initiate", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  const { amount, kot_id } = req.body;
+  try {
+    const cfgRows = await db.execute(sql`SELECT config_value FROM tenant_configs WHERE tenant_id=${t} AND config_key='pinelabs_merchant_id' LIMIT 1`);
+    const merchantId = cfgRows.rows?.[0]?.config_value;
+    if (!merchantId) return res.status(400).json({ error: "Pine Labs not configured. Add your Merchant ID in Settings > Payment Terminals." });
+    const txnRef = `KOT${kot_id}${Date.now()}`;
+    await db.execute(sql`INSERT INTO payment_terminal_logs (tenant_id, kot_id, terminal_type, amount, reference_id, status, created_at)
+      VALUES (${t}, ${kot_id}, 'pinelabs', ${amount}, ${txnRef}, 'initiated', NOW())
+      ON CONFLICT DO NOTHING`);
+    res.json({ success: true, mode: 'pinelabs', txn_ref: txnRef, amount,
+      message: "Amount pushed to Pine Labs terminal. Customer should swipe/tap card.",
+      plutus_payload: { MerchantID: merchantId, BatchNumber: 1, SequenceNumber: 1, TransactionType: 4001, Amount: Math.round(amount * 100), InvoiceNumber: txnRef }
+    });
+  } catch(e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.get("/payment-terminal/config", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  try {
+    const rows = await db.execute(sql`SELECT config_key, config_value FROM tenant_configs WHERE tenant_id=${t} AND config_key IN ('razorpay_key_id','pinelabs_merchant_id','payment_terminal_mode')`);
+    const cfg: Record<string,string> = {};
+    (rows.rows || []).forEach((r: any) => { cfg[r.config_key] = r.config_value; });
+    res.json(cfg);
+  } catch { res.json({}); }
+});
+
+router.post("/payment-terminal/config", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  const { razorpay_key_id, razorpay_key_secret, pinelabs_merchant_id, payment_terminal_mode } = req.body;
+  const pairs: [string, any][] = ([
+    ['razorpay_key_id', razorpay_key_id],
+    ['razorpay_key_secret', razorpay_key_secret],
+    ['pinelabs_merchant_id', pinelabs_merchant_id],
+    ['payment_terminal_mode', payment_terminal_mode],
+  ] as [string, any][]).filter(([_, v]) => v !== undefined && v !== null);
+  for (const [key, value] of pairs) {
+    await db.execute(sql`INSERT INTO tenant_configs (tenant_id, config_key, config_value) VALUES (${t}, ${key}, ${value}) ON CONFLICT (tenant_id, config_key) DO UPDATE SET config_value = ${value}`);
+  }
+  res.json({ success: true });
+});
+
+router.get("/payment-terminal/logs", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  const rows = await db.execute(sql`SELECT * FROM payment_terminal_logs WHERE tenant_id=${t} ORDER BY created_at DESC LIMIT 50`);
+  res.json(rows.rows || []);
+});
+
+
+// ── Tax Config → Shared Masters (Task 20) ────────────────────────────────────
+router.get("/tax/effective-rate", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  const { country_code = 'IN', amount = 0 } = req.query;
+  try {
+    let rate = 5;
+    const cfgRows = await db.execute(sql`SELECT tax_rate FROM country_tax_config WHERE tenant_id=${t} AND country_code=${country_code} LIMIT 1`);
+    if (cfgRows.rows?.[0]) rate = Number(cfgRows.rows[0].tax_rate);
+    const taxAmount = Math.round(Number(amount) * rate / 100 * 100) / 100;
+    res.json({ country_code, rate, tax_amount: taxAmount, taxable_amount: Number(amount), total: Number(amount) + taxAmount });
+  } catch { res.json({ country_code, rate: 5, tax_amount: 0, total: Number(amount) }); }
+});
+
+// ── Outlets → Branches (Task 21) ──────────────────────────────────────────────
+router.get("/outlets/branches", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  try {
+    const rows = await db.execute(sql`SELECT id, branch_name AS name, branch_code AS code FROM branches WHERE tenant_id=${t} AND is_active=true ORDER BY branch_name`);
+    res.json(rows.rows || []);
+  } catch { res.json([]); }
+});
+
+router.put("/outlets/:id/link-branch", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  const { branch_id, cost_center_id } = req.body;
+  try {
+    await db.execute(sql`UPDATE restaurant_outlets SET branch_id=${branch_id||null}, cost_center_id=${cost_center_id||null} WHERE id=${req.params.id} AND tenant_id=${t}`);
+    res.json({ success: true });
+  } catch(e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Steward Auth → User Management (Task 23) ─────────────────────────────────
+router.get("/staff/app-users", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  try {
+    const rows = await db.execute(sql`SELECT id, username, email, role FROM users WHERE tenant_id=${t} ORDER BY username`);
+    res.json(rows.rows || []);
+  } catch(e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.post("/staff/assign-steward-role", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  const { user_id, outlet_id } = req.body;
+  try {
+    const userRows = await db.execute(sql`SELECT role FROM users WHERE id=${user_id} AND tenant_id=${t} LIMIT 1`);
+    const userRole = userRows.rows?.[0]?.role;
+    if (userRole) {
+      const roleRows = await db.execute(sql`SELECT id FROM roles WHERE name=${userRole} AND tenant_id=${t} LIMIT 1`);
+      const roleId = roleRows.rows?.[0]?.id;
+      if (roleId) {
+        for (const screen of ['restaurant_steward','restaurant_tables','restaurant_orders','restaurant_pos']) {
+          await db.execute(sql`INSERT INTO role_permissions (role_id, screen_key, can_view, can_create, can_edit, can_delete) VALUES (${roleId}, ${screen}, 1, 1, 0, 0) ON CONFLICT (role_id, screen_key) DO NOTHING`);
+        }
+      }
+    }
+    await db.execute(sql`INSERT INTO restaurant_staff_assignments (tenant_id, user_id, outlet_id, role, assigned_at) VALUES (${t}, ${user_id}, ${outlet_id||null}, 'steward', NOW()) ON CONFLICT DO NOTHING`);
+    res.json({ success: true });
+  } catch(e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── KOT → Shared Invoice for B2B (Task 27) ───────────────────────────────────
+router.post("/kot/:id/create-invoice", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  try {
+    const kotRows = await db.execute(sql`SELECT * FROM kot_orders WHERE id=${req.params.id} AND tenant_id=${t} LIMIT 1`);
+    const kot = kotRows.rows?.[0];
+    if (!kot) return res.status(404).json({ error: "KOT not found" });
+    const itemRows = await db.execute(sql`SELECT * FROM kot_items WHERE kot_id=${req.params.id} AND is_void != 1`);
+    const invoiceNo = 'REST-' + Date.now();
+    const invResult = await db.execute(sql`
+      INSERT INTO invoices (tenant_id, invoice_no, invoice_type, customer_name, customer_phone, invoice_date, subtotal, gst_amount, total_amount, payment_mode, status, notes, created_at)
+      VALUES (${t}, ${invoiceNo}, 'restaurant', ${kot.customer_name||'Walk-in'}, ${kot.customer_phone||null}, NOW(), ${kot.subtotal||0}, ${kot.gst_amount||0}, ${kot.total_amount||0}, ${kot.payment_mode||'cash'}, 'paid', ${'KOT #' + req.params.id}, NOW())
+      RETURNING id`);
+    const invoiceId = invResult.rows?.[0]?.id;
+    for (const item of (itemRows.rows || [])) {
+      await db.execute(sql`INSERT INTO invoice_items (invoice_id, product_name, quantity, unit_price, total_price, tax_rate) VALUES (${invoiceId}, ${item.item_name}, ${item.quantity}, ${item.unit_price}, ${item.total_price}, 5)`).catch(()=>{});
+    }
+    await db.execute(sql`UPDATE kot_orders SET invoice_id=${invoiceId} WHERE id=${req.params.id} AND tenant_id=${t}`).catch(()=>{});
+    res.json({ success: true, invoice_id: invoiceId, invoice_no: invoiceNo });
+  } catch(e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Inventory → Warehouse (Task 28) ──────────────────────────────────────────
+router.get("/inventory/warehouses", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  try {
+    const rows = await db.execute(sql`SELECT id, name, location, is_active FROM warehouses WHERE tenant_id=${t} AND is_active != 0 ORDER BY name`);
+    res.json(rows.rows || []);
+  } catch { res.json([]); }
+});
+
+// ── Approval Workflows (Task 31) ──────────────────────────────────────────────
+router.get("/approvals", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  const { status = 'pending' } = req.query;
+  const rows = await db.execute(sql`SELECT * FROM restaurant_approval_requests WHERE tenant_id=${t} AND status=${status} ORDER BY created_at DESC LIMIT 50`);
+  res.json(rows.rows || []);
+});
+
+router.post("/approvals", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  const { request_type, reference_id, amount, reason, requested_by } = req.body;
+  const result = await db.execute(sql`INSERT INTO restaurant_approval_requests (tenant_id, request_type, reference_id, amount, reason, requested_by, status, created_at) VALUES (${t}, ${request_type}, ${reference_id||null}, ${amount||0}, ${reason||null}, ${requested_by||'Unknown'}, 'pending', NOW()) RETURNING id`);
+  res.json({ success: true, id: result.rows?.[0]?.id });
+});
+
+router.post("/approvals/:id/approve", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  const { approved_by } = req.body;
+  await db.execute(sql`UPDATE restaurant_approval_requests SET status='approved', approved_by=${approved_by||'Manager'}, approved_at=NOW() WHERE id=${req.params.id} AND tenant_id=${t}`);
+  res.json({ success: true });
+});
+
+router.post("/approvals/:id/reject", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  const { rejection_reason } = req.body;
+  await db.execute(sql`UPDATE restaurant_approval_requests SET status='rejected', rejection_reason=${rejection_reason||''}, approved_at=NOW() WHERE id=${req.params.id} AND tenant_id=${t}`);
+  res.json({ success: true });
+});
+
+router.get("/approvals/pending-count", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  try {
+    const rows = await db.execute(sql`SELECT COUNT(*) as cnt FROM restaurant_approval_requests WHERE tenant_id=${t} AND status='pending'`);
+    res.json({ count: rows.rows?.[0]?.cnt || 0 });
+  } catch { res.json({ count: 0 }); }
+});
+
+// ── Multi-currency exchange rates ─────────────────────────────────────────────
+router.get("/currencies", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  try {
+    // Return latest rate per currency from currency_rates (or tenant's configured currencies)
+    const rows = await db.execute(sql`
+      SELECT DISTINCT ON (currency_code) currency_code, rate_to_inr, rate_date
+      FROM currency_rates
+      WHERE tenant_id = ${t}
+      ORDER BY currency_code, rate_date DESC
+    `);
+    res.json(Array.isArray(rows.rows) ? rows.rows : []);
+  } catch {
+    // currency_rates table may not exist — return empty
+    res.json([]);
+  }
+});
+
+// ── POS Promotions ───────────────────────────────────────────────────────────
+router.post("/pos/apply-promo", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  const { promo_code, subtotal } = req.body;
+  if (!promo_code) return res.status(400).json({ valid: false, message: "promo_code is required" });
+  try {
+    const rows = await db.execute(sql`
+      SELECT * FROM pos_promotions
+      WHERE tenant_id = ${t}
+        AND promo_code = ${promo_code}
+        AND is_active = true
+        AND (end_date IS NULL OR end_date >= NOW())
+        AND (start_date IS NULL OR start_date <= NOW())
+      LIMIT 1
+    `);
+    const promo = (rows.rows as any[])[0];
+    if (!promo) return res.json({ valid: false, message: "Invalid or expired promo code" });
+    const sub = Number(subtotal) || 0;
+    if (promo.min_purchase_amount && sub < Number(promo.min_purchase_amount)) {
+      return res.json({ valid: false, message: `Minimum purchase of ${promo.min_purchase_amount} required` });
+    }
+    let discount_amount = 0;
+    if (promo.promo_type === "pct") {
+      const raw = sub * Number(promo.discount_value) / 100;
+      discount_amount = promo.max_discount_amount ? Math.min(raw, Number(promo.max_discount_amount)) : raw;
+    } else {
+      discount_amount = Number(promo.discount_value);
+    }
+    discount_amount = Math.round(discount_amount * 100) / 100;
+    res.json({ valid: true, promo_name: promo.promo_name || promo_code, discount_amount, promo_code });
+  } catch (err: any) {
+    console.error("apply-promo error:", err);
+    res.status(500).json({ valid: false, message: "Server error" });
+  }
+});
+
+router.get("/pos/promotions", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  try {
+    const rows = await db.execute(sql`SELECT * FROM pos_promotions WHERE tenant_id = ${t} ORDER BY created_at DESC`);
+    res.json(Array.isArray(rows.rows) ? rows.rows : []);
+  } catch { res.json([]); }
+});
+
+router.post("/pos/promotions", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  const { promo_code, promo_name, promo_type, discount_value, min_purchase_amount, max_discount_amount, start_date, end_date } = req.body;
+  if (!promo_code || !promo_type || !discount_value) return res.status(400).json({ message: "promo_code, promo_type, discount_value required" });
+  try {
+    const r = await db.execute(sql`
+      INSERT INTO pos_promotions (tenant_id, promo_code, promo_name, promo_type, discount_value, min_purchase_amount, max_discount_amount, start_date, end_date, is_active, created_at)
+      VALUES (${t}, ${promo_code}, ${promo_name || promo_code}, ${promo_type}, ${discount_value}, ${min_purchase_amount || null}, ${max_discount_amount || null}, ${start_date || null}, ${end_date || null}, true, NOW())
+      RETURNING *
+    `);
+    res.json((r.rows as any[])[0]);
+  } catch (err: any) { res.status(500).json({ message: err.message }); }
+});
+
+router.put("/pos/promotions/:id", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  const { id } = req.params;
+  const { is_active, promo_name, discount_value, min_purchase_amount, max_discount_amount, end_date } = req.body;
+  try {
+    await db.execute(sql`
+      UPDATE pos_promotions SET
+        is_active = COALESCE(${is_active !== undefined ? is_active : null}, is_active),
+        promo_name = COALESCE(${promo_name || null}, promo_name),
+        discount_value = COALESCE(${discount_value || null}, discount_value),
+        min_purchase_amount = COALESCE(${min_purchase_amount || null}, min_purchase_amount),
+        max_discount_amount = COALESCE(${max_discount_amount || null}, max_discount_amount),
+        end_date = COALESCE(${end_date || null}, end_date)
+      WHERE id = ${id} AND tenant_id = ${t}
+    `);
+    res.json({ success: true });
+  } catch (err: any) { res.status(500).json({ message: err.message }); }
+});
+
+router.delete("/pos/promotions/:id", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  const { id } = req.params;
+  try {
+    await db.execute(sql`DELETE FROM pos_promotions WHERE id = ${id} AND tenant_id = ${t}`);
+    res.json({ success: true });
+  } catch (err: any) { res.status(500).json({ message: err.message }); }
+});
+
+// ── Audit Trail (Task 32) ─────────────────────────────────────────────────────
+router.get("/audit-log", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  const { entity_type } = req.query;
+  try {
+    const rows = entity_type
+      ? await db.execute(sql`SELECT * FROM restaurant_audit_log WHERE tenant_id=${t} AND entity_type=${entity_type} ORDER BY created_at DESC LIMIT 200`)
+      : await db.execute(sql`SELECT * FROM restaurant_audit_log WHERE tenant_id=${t} ORDER BY created_at DESC LIMIT 200`);
+    res.json(rows.rows || []);
+  } catch { res.json([]); }
+});
+
+// ── Analytics endpoints ───────────────────────────────────────────────────────
+router.get("/analytics/menu-engineering", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  const { from, to } = req.query;
+  try {
+    const rows = await db.execute(sql`
+      SELECT mi.name, mi.price, mi.category_id,
+        COUNT(ki.id)::int as order_count,
+        COALESCE(SUM(ki.quantity),0)::numeric as total_qty,
+        COALESCE(SUM(ki.quantity * mi.price),0)::numeric as revenue,
+        COALESCE((SELECT SUM(ri.quantity*ri.cost_per_unit) FROM restaurant_recipe_ingredients ri
+          JOIN restaurant_recipes r ON r.id=ri.recipe_id WHERE r.menu_item_id::text=mi.id AND r.tenant_id=${t}),0)::numeric as food_cost
+      FROM restaurant_menu_items mi
+      LEFT JOIN kot_items ki ON ki.menu_item_id::text=mi.id AND ki.tenant_id=${t}
+        AND (${from as string} IS NULL OR ki.created_at::date >= ${from as string || '2000-01-01'}::date)
+        AND (${to as string} IS NULL OR ki.created_at::date <= ${to as string || '2099-01-01'}::date)
+      WHERE mi.tenant_id=${t}
+      GROUP BY mi.id, mi.name, mi.price, mi.category_id
+      ORDER BY total_qty DESC`);
+    res.json(rows.rows || []);
+  } catch { res.json([]); }
+});
+
+router.get("/analytics/peak-hours", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  const { from, to } = req.query;
+  try {
+    const rows = await db.execute(sql`
+      SELECT EXTRACT(HOUR FROM created_at)::int as hour, COUNT(*)::int as order_count,
+        COALESCE(SUM(grand_total),0)::numeric as revenue
+      FROM kot_orders
+      WHERE tenant_id=${t}
+        AND (${from as string} IS NULL OR created_at::date >= ${from as string || '2000-01-01'}::date)
+        AND (${to as string} IS NULL OR created_at::date <= ${to as string || '2099-01-01'}::date)
+      GROUP BY hour ORDER BY hour`);
+    res.json(rows.rows || []);
+  } catch { res.json([]); }
+});
+
+router.get("/analytics/server-performance", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  const { from, to } = req.query;
+  try {
+    const rows = await db.execute(sql`
+      SELECT waiter_name, COUNT(*)::int as orders,
+        COALESCE(SUM(grand_total),0)::numeric as revenue,
+        COALESCE(AVG(grand_total),0)::numeric as avg_order_value
+      FROM kot_orders
+      WHERE tenant_id=${t} AND waiter_name IS NOT NULL AND waiter_name <> ''
+        AND (${from as string} IS NULL OR created_at::date >= ${from as string || '2000-01-01'}::date)
+        AND (${to as string} IS NULL OR created_at::date <= ${to as string || '2099-01-01'}::date)
+      GROUP BY waiter_name ORDER BY revenue DESC LIMIT 20`);
+    res.json(rows.rows || []);
+  } catch { res.json([]); }
+});
+
+router.get("/analytics/customer-ltv", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  try {
+    const rows = await db.execute(sql`
+      SELECT customer_phone, customer_name,
+        COUNT(*)::int as visit_count,
+        COALESCE(SUM(grand_total),0)::numeric as total_spend,
+        COALESCE(AVG(grand_total),0)::numeric as avg_order,
+        MAX(created_at) as last_visit
+      FROM kot_orders
+      WHERE tenant_id=${t} AND customer_phone IS NOT NULL AND customer_phone <> ''
+        AND payment_status='paid'
+      GROUP BY customer_phone, customer_name ORDER BY total_spend DESC LIMIT 50`);
+    res.json(rows.rows || []);
+  } catch { res.json([]); }
+});
+
+router.get("/analytics/predictive-prep", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  try {
+    const rows = await db.execute(sql`
+      SELECT mi.name,
+        COALESCE(AVG(ki.quantity),0)::numeric as avg_daily_qty,
+        COALESCE(MAX(ki.quantity),0)::numeric as peak_qty,
+        COUNT(DISTINCT ki.created_at::date)::int as days_sold
+      FROM kot_items ki
+      JOIN restaurant_menu_items mi ON mi.id::text=ki.menu_item_id::text AND mi.tenant_id=${t}
+      WHERE ki.tenant_id=${t} AND ki.created_at >= NOW()-INTERVAL '30 days'
+      GROUP BY mi.name ORDER BY avg_daily_qty DESC LIMIT 20`);
+    res.json(rows.rows || []);
+  } catch { res.json([]); }
+});
+
+router.get("/analytics/revenue-forecast", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  try {
+    const rows = await db.execute(sql`
+      SELECT TO_CHAR(created_at,'YYYY-MM') as month,
+        COUNT(*)::int as order_count,
+        COALESCE(SUM(grand_total),0)::numeric as revenue
+      FROM kot_orders WHERE tenant_id=${t} AND payment_status='paid'
+      GROUP BY month ORDER BY month DESC LIMIT 12`);
+    res.json(rows.rows || []);
+  } catch { res.json([]); }
+});
+
+// ── Franchise endpoints ───────────────────────────────────────────────────────
+router.get("/franchise/config", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  try {
+    const rows = await db.execute(sql`SELECT * FROM restaurant_franchise_config WHERE tenant_id=${t} LIMIT 1`);
+    res.json(rows.rows[0] || null);
+  } catch { res.json(null); }
+});
+
+router.post("/franchise/config", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  const { brand_name, royalty_pct, setup_fee, support_email, territory_rules, onboarding_doc_url } = req.body;
+  try {
+    await db.execute(sql`
+      INSERT INTO restaurant_franchise_config (tenant_id, brand_name, royalty_pct, setup_fee, support_email, territory_rules, onboarding_doc_url)
+      VALUES (${t},${brand_name},${royalty_pct||0},${setup_fee||0},${support_email||null},${territory_rules||null},${onboarding_doc_url||null})
+      ON CONFLICT (tenant_id) DO UPDATE SET brand_name=${brand_name}, royalty_pct=${royalty_pct||0}, setup_fee=${setup_fee||0},
+        support_email=${support_email||null}, territory_rules=${territory_rules||null}, onboarding_doc_url=${onboarding_doc_url||null}`);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.get("/franchise/outlets", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  try {
+    const rows = await db.execute(sql`SELECT * FROM restaurant_franchise_outlets WHERE franchisor_tenant_id=${t} ORDER BY created_at DESC`);
+    res.json(rows.rows || []);
+  } catch { res.json([]); }
+});
+
+router.get("/franchise/invoices", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  try {
+    const rows = await db.execute(sql`SELECT * FROM restaurant_franchise_invoices WHERE franchisor_tenant_id=${t} ORDER BY created_at DESC LIMIT 100`);
+    res.json(rows.rows || []);
+  } catch { res.json([]); }
+});
+
+router.get("/franchise/applications", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  try {
+    const rows = await db.execute(sql`SELECT * FROM restaurant_franchise_applications WHERE franchisor_tenant_id=${t} ORDER BY created_at DESC`);
+    res.json(rows.rows || []);
+  } catch { res.json([]); }
 });
 
 export default router;

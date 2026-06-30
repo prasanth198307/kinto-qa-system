@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig } from "@/hooks/use-tenant-config";
+import { generateReceiptHTML, printReceipt, printToNetworkPrinter } from "@/lib/print-utils";
 
 const api = (m: string, u: string, b?: any) =>
   fetch(u, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined, credentials: "include" }).then(r => r.json());
@@ -31,6 +33,7 @@ function elapsed(since: string | null): string {
 export default function RestaurantPOSPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
 
   const [selectedOutlet, setSelectedOutlet] = useState<any>(null);
   const [selectedTable, setSelectedTable] = useState<any>(null);
@@ -54,6 +57,9 @@ export default function RestaurantPOSPage() {
   const [splitCard, setSplitCard] = useState(0);
   const [discount, setDiscount] = useState(0);
   const [discountType, setDiscountType] = useState<"flat" | "pct">("flat");
+  const [promoCode, setPromoCode] = useState("");
+  const [promoApplied, setPromoApplied] = useState<{ promo_code: string; promo_name: string; discount_amount: number } | null>(null);
+  const [promoLoading, setPromoLoading] = useState(false);
   const [billData, setBillData] = useState<any>(null);
   const [redeemPoints, setRedeemPoints] = useState(false);
   const [complimentaryReason, setComplimentaryReason] = useState("");
@@ -126,7 +132,8 @@ export default function RestaurantPOSPage() {
     ? Math.round(subtotal * discount / 100 * 100) / 100
     : discount;
   const loyaltyDiscount = redeemPoints && customer?.points ? Math.min(customer.points / 10, subtotal * 0.1) : 0;
-  const grandTotal = Math.max(0, subtotal + gst + serviceCharge - discountAmount - loyaltyDiscount);
+  const promoDiscount = promoApplied?.discount_amount ?? 0;
+  const grandTotal = Math.max(0, subtotal + gst + serviceCharge - discountAmount - loyaltyDiscount - promoDiscount);
   const change = cashAmount - grandTotal;
 
   const displayItems: any[] = debouncedSearch.length > 1
@@ -179,6 +186,23 @@ export default function RestaurantPOSPage() {
     setGcNumber("");
     setGcData(null);
     setGcRedeemAmount(0);
+    setPromoCode("");
+    setPromoApplied(null);
+  };
+
+  const applyPromo = async () => {
+    if (!promoCode.trim()) return;
+    setPromoLoading(true);
+    try {
+      const result = await api("POST", "/api/restaurant/pos/apply-promo", { promo_code: promoCode.trim(), subtotal });
+      if (result?.valid) {
+        setPromoApplied({ promo_code: result.promo_code, promo_name: result.promo_name, discount_amount: result.discount_amount });
+      } else {
+        setPromoApplied(null);
+        alert(result?.message ?? "Invalid promo code");
+      }
+    } catch { alert("Failed to apply promo code"); }
+    finally { setPromoLoading(false); }
   };
 
   const lookupCustomer = async () => {
@@ -287,9 +311,21 @@ export default function RestaurantPOSPage() {
 
   const printBill = useMutation({
     mutationFn: async () => api("POST", `/api/restaurant/kot/orders/${activeKotId}/bill`),
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       setBillData(data);
       setShowPaymentModal(true);
+      // Attempt thermal print — fetch printer config for bill station
+      try {
+        const printerConfig = await fetch("/api/restaurant/printer-config?station=bill", { credentials: "include" }).then(r => r.json());
+        const html = generateReceiptHTML(data, tenantConfig);
+        if (printerConfig?.connection_type === "network" && printerConfig?.ip_address) {
+          await printToNetworkPrinter(printerConfig.ip_address, printerConfig.port ?? 9100, html);
+        } else {
+          printReceipt(html);
+        }
+      } catch {
+        // Print failed silently — payment modal still opens
+      }
     },
     onError: () => toast({ title: "Error", description: "Failed to generate bill", variant: "destructive" }),
   });
@@ -327,6 +363,8 @@ export default function RestaurantPOSPage() {
         loyalty_discount: loyaltyDiscount,
         customer_id: customer?.id,
         redeem_points: redeemPoints,
+        promo_code: promoApplied?.promo_code ?? undefined,
+        promo_discount: promoApplied?.discount_amount ?? undefined,
       };
       if (paymentMode === "cash") paymentPayload.cash_tendered = cashAmount;
       if (paymentMode === "upi") paymentPayload.upi_reference = upiRef;
@@ -688,6 +726,31 @@ export default function RestaurantPOSPage() {
                     <span className="text-sm text-red-500">-{fmt(discountAmount)}</span>
                   )}
                 </div>
+                {/* Promo code */}
+                {promoApplied ? (
+                  <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded px-2 py-1">
+                    <span className="text-sm text-green-700 font-medium">{promoApplied.promo_name} applied: -{fmt(promoApplied.discount_amount)}</span>
+                    <button onClick={() => { setPromoApplied(null); setPromoCode(""); }} className="text-green-600 hover:text-green-800 text-xs ml-2">✕</button>
+                  </div>
+                ) : (
+                  <div className="flex gap-1">
+                    <Input
+                      type="text"
+                      placeholder="Promo code"
+                      value={promoCode}
+                      onChange={e => setPromoCode(e.target.value.toUpperCase())}
+                      onKeyDown={e => e.key === "Enter" && applyPromo()}
+                      className="h-7 flex-1 text-sm"
+                    />
+                    <button
+                      onClick={applyPromo}
+                      disabled={promoLoading || !promoCode.trim()}
+                      className="text-xs border rounded px-2 py-1 bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {promoLoading ? "..." : "Apply"}
+                    </button>
+                  </div>
+                )}
                 <div className="flex justify-between text-base font-bold text-gray-900 pt-1 border-t border-gray-200">
                   <span>Grand Total</span>
                   <span className="text-blue-700">{fmt(grandTotal)}</span>

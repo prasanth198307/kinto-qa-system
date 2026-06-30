@@ -141,9 +141,6 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
   crm: [
     "crm-leads",
     "crm-surveys",
-    "crm-enterprise",
-    "crm/pipeline", "crm/contacts", "crm/accounts", "crm/activities",
-    "crm/email-campaigns", "crm/whatsapp", "crm/reports",
   ],
   hr_payroll: [
     "hr-employees",
@@ -179,89 +176,52 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
   multi_currency: [
     "currency-management",
   ],
-  healthcare: [
-    "healthcare",
-    "healthcare-enterprise", "healthcare-enterprise2",
-    "healthcare/patients", "healthcare/opd", "healthcare/ipd", "healthcare/beds",
-    "healthcare/ot", "healthcare/lab", "healthcare/nursing", "healthcare/insurance",
-    "healthcare/doctors", "healthcare/blood-bank", "healthcare/reports",
-  ],
-  education: [
-    "education",
-    "education-enterprise", "education-enterprise2",
-    "education/students", "education/admissions", "education/classes", "education/attendance",
-    "education/exams", "education/fees", "education/timetable", "education/homework",
-    "education/online-exams", "education/library", "education/transport", "education/hostel",
-    "education/parent-portal", "education/reports",
-  ],
-  logistics_transport: [
-    "logistics",
-    "logistics-enterprise",
-    "logistics/fleet", "logistics/drivers", "logistics/trips", "logistics/gps",
-    "logistics/consignments", "logistics/freight", "logistics/epod", "logistics/fuel",
-    "logistics/documents", "logistics/reports",
-  ],
-  real_estate: [
-    "real-estate",
-    "real-estate-enterprise",
-    "real-estate/projects", "real-estate/crm", "real-estate/bookings", "real-estate/collections",
-    "real-estate/brokers", "real-estate/construction", "real-estate/documents",
-    "real-estate/customer-portal", "real-estate/society", "real-estate/reports",
-  ],
-  pos: [
-    "pos",
-    "retail-enterprise",
-  ],
-  agriculture: [
-    "agriculture", "agriculture-enterprise",
-    "agriculture/farms", "agriculture/crops", "agriculture/inputs", "agriculture/harvest",
-    "agriculture/weather", "agriculture/schemes", "agriculture/fpo", "agriculture/market", "agriculture/reports",
-  ],
   restaurant: [
     "restaurant", "restaurant-enterprise", "restaurant-erp-section",
-    "restaurant/pos", "restaurant/kitchen", "restaurant/tables", "restaurant/menu",
-    "restaurant/orders", "restaurant/delivery", "restaurant/reservations", "restaurant/shifts",
-    "restaurant/customers", "restaurant/inventory", "restaurant/outlets", "restaurant/reports",
-    "restaurant-pos", "restaurant-kitchen", "restaurant-tables", "restaurant-menu",
-    "restaurant-orders", "restaurant-delivery", "restaurant-reservations", "restaurant-shifts",
-    "restaurant-customers", "restaurant-inventory", "restaurant-outlets", "restaurant-reports",
-    "restaurant-aggregators", "restaurant-analytics", "restaurant-staff", "restaurant-steward", "restaurant-kiosk",
+    "restaurant-pos", "restaurant/pos",
+    "restaurant-kitchen", "restaurant/kitchen",
+    "restaurant-tables", "restaurant/tables",
+    "restaurant-menu", "restaurant/menu",
+    "restaurant-orders", "restaurant/orders",
+    "restaurant-delivery", "restaurant/delivery",
+    "restaurant-reservations", "restaurant/reservations",
+    "restaurant-shifts", "restaurant/shifts",
+    "restaurant-customers", "restaurant/customers",
+    "restaurant-inventory", "restaurant/inventory",
+    "restaurant-outlets", "restaurant/outlets",
+    "restaurant-reports", "restaurant/reports",
+    "restaurant-aggregators", "restaurant-analytics",
+    "restaurant-staff", "restaurant-steward", "restaurant-kiosk",
+    "restaurant-franchise", "restaurant-tax-settings", "restaurant-gift-cards",
+    "restaurant-central-kitchen", "restaurant-menu-translations",
+    "restaurant-recipes", "restaurant-campaigns", "restaurant-table-order", "restaurant-cds",
+    "restaurant-payment-terminal",
   ],
   hotel: [
     "hotel", "hotel-enterprise",
-    "hotel/front-desk", "hotel/reservations", "hotel/checkin", "hotel/rooms",
-    "hotel/folio", "hotel/housekeeping", "hotel/rates", "hotel/corporate",
-    "hotel/night-audit", "hotel/reports",
+    "hotel/front-desk", "hotel/reservations", "hotel/checkin",
+    "hotel/rooms", "hotel/folio", "hotel/housekeeping",
+    "hotel/rates", "hotel/corporate", "hotel/night-audit", "hotel/reports",
   ],
-  ngo: [
-    "ngo", "ngo-enterprise",
-    "ngo/donors", "ngo/donations", "ngo/80g", "ngo/projects",
-    "ngo/beneficiaries", "ngo/grants", "ngo/volunteers", "ngo/fcra", "ngo/reports",
+  healthcare: [
+    "healthcare",
   ],
-  pharmacy: [
-    "pharmacy", "pharmacy-enterprise",
-    "pharmacy/billing", "pharmacy/drugs", "pharmacy/stock", "pharmacy/purchases",
-    "pharmacy/schedule-h", "pharmacy/schedule-x", "pharmacy/licenses", "pharmacy/expiry", "pharmacy/reports",
+  education: [
+    "education",
   ],
-  ecommerce: [
-    "ecommerce", "ecommerce-enterprise",
-    "ecommerce/dashboard", "ecommerce/orders", "ecommerce/listings", "ecommerce/shipments",
-    "ecommerce/returns", "ecommerce/settlements", "ecommerce/channels", "ecommerce/reports",
+  logistics_transport: [
+    "logistics",
   ],
-  nidhi: [
-    "nidhi-company",
-    "nidhi/members", "nidhi/deposits", "nidhi/loans", "nidhi/emi",
-    "nidhi/shares", "nidhi/gold-rates", "nidhi/interest-rates", "nidhi/daily-collection",
-    "nidhi/compliance", "nidhi/reports",
+  real_estate: [
+    "real-estate",
   ],
-  masters: [
-    "masters",
-    "masters/hsn-codes", "masters/sac-codes", "masters/tax-config", "masters/states-countries",
-    "masters/bank-master", "masters/branches", "masters/doc-numbering", "masters/email-templates",
-    "masters/sms-templates", "masters/approval-matrix", "masters/feature-flags",
-    "masters/print-templates", "masters/webhooks",
+  pos: [
+    "pos",
   ],
-    gold_erp: [
+  agriculture: [
+    "agriculture",
+  ],
+  gold_erp: [
     "gold-erp",
     // Core
     "gold-erp-overview", "gold-erp-rates", "gold-erp-karigar", "gold-erp-items", "gold-erp-estimates",
@@ -296,7 +256,7 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
 // DB subscription_plans.modules is the authoritative source — these code constants
 // serve as the fallback when a plan slug has no DB record.
 // Keep in sync with the subscription_plans table values.
-const INDUSTRY_MODULES     = ["healthcare", "education", "logistics_transport", "real_estate", "pos", "agriculture", "gold_erp", "restaurant", "hotel", "ngo", "pharmacy", "ecommerce", "masters"];
+const INDUSTRY_MODULES     = ["healthcare", "education", "logistics_transport", "real_estate", "pos", "agriculture", "gold_erp", "restaurant", "hotel"];
 const TRIAL_MODULES        = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "production", "quality_returns", "accounting", "mis", "expenses", "documents", "crm", "whatsapp", "maintenance", "hr_payroll", "recurring_invoices", "warehouses", "projects", "fixed_assets", "multi_currency", ...INDUSTRY_MODULES];
 const BASIC_MODULES        = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "expenses", "documents"];
 const PROFESSIONAL_MODULES = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "production", "quality_returns", "accounting", "mis", "expenses", "documents", "whatsapp", "maintenance", "crm", "api_hub", "recurring_invoices", "warehouses"];
@@ -305,12 +265,85 @@ const ENTERPRISE_MODULES   = ["invoicing", "purchase_orders", "basic_inventory",
 // generic retail POS. Showing both would confuse jewellers. Standard POS is hidden from the sidebar.
 const GOLD_ERP_MODULES     = ["gold_erp", "invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "production", "quality_returns", "accounting", "mis", "expenses", "documents", "whatsapp", "maintenance", "hr_payroll", "crm", "api_hub", "recurring_invoices", "warehouses", "projects", "fixed_assets", "multi_currency"];
 
+// ── Restaurant vertical plans ─────────────────────────────────────────────────
+const RESTAURANT_STARTER_MODULES = [
+  "invoicing", "purchase_orders", "basic_inventory", "expenses", "documents",
+  "restaurant",
+];
+const RESTAURANT_PROFESSIONAL_MODULES = [
+  "invoicing", "purchase_orders", "basic_inventory", "gatepasses", "expenses",
+  "documents", "accounting", "mis", "crm", "production", "warehouses",
+  "api_hub", "whatsapp", "restaurant",
+];
+const RESTAURANT_ENTERPRISE_MODULES = [
+  "invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders",
+  "expenses", "documents", "accounting", "mis", "crm", "production", "warehouses",
+  "api_hub", "whatsapp", "hr_payroll", "projects", "fixed_assets", "multi_currency",
+  "restaurant",
+];
+
+// ── Hotel vertical plans ──────────────────────────────────────────────────────
+const HOTEL_STARTER_MODULES = [
+  "invoicing", "purchase_orders", "basic_inventory", "expenses", "documents",
+  "hotel",
+];
+const HOTEL_PROFESSIONAL_MODULES = [
+  "invoicing", "purchase_orders", "basic_inventory", "expenses", "documents",
+  "accounting", "mis", "crm", "warehouses", "api_hub", "whatsapp", "hotel",
+];
+const HOTEL_ENTERPRISE_MODULES = [
+  "invoicing", "purchase_orders", "basic_inventory", "gatepasses", "expenses",
+  "documents", "accounting", "mis", "crm", "warehouses", "api_hub", "whatsapp",
+  "hr_payroll", "projects", "fixed_assets", "multi_currency", "hotel",
+];
+
+// ── Healthcare vertical plans ─────────────────────────────────────────────────
+const HEALTHCARE_STARTER_MODULES = ["invoicing", "expenses", "documents", "healthcare"];
+const HEALTHCARE_PROFESSIONAL_MODULES = [
+  "invoicing", "purchase_orders", "basic_inventory", "expenses", "documents",
+  "accounting", "mis", "crm", "api_hub", "whatsapp", "healthcare",
+];
+const HEALTHCARE_ENTERPRISE_MODULES = [
+  "invoicing", "purchase_orders", "basic_inventory", "expenses", "documents",
+  "accounting", "mis", "crm", "api_hub", "whatsapp", "hr_payroll",
+  "fixed_assets", "multi_currency", "healthcare",
+];
+
+// ── Pharmacy vertical plans ───────────────────────────────────────────────────
+const PHARMACY_STARTER_MODULES = ["invoicing", "basic_inventory", "expenses", "pharmacy"];
+const PHARMACY_PROFESSIONAL_MODULES = [
+  "invoicing", "purchase_orders", "basic_inventory", "expenses", "documents",
+  "accounting", "mis", "whatsapp", "pharmacy",
+];
+const PHARMACY_ENTERPRISE_MODULES = [
+  "invoicing", "purchase_orders", "basic_inventory", "expenses", "documents",
+  "accounting", "mis", "crm", "whatsapp", "hr_payroll", "pharmacy",
+];
+
+// ── Shared module matrix ───────────────────────────────────────────────────────
+// Each vertical ERP gets only the shared modules it actually needs.
+// Generic plans (trial/basic/professional/enterprise) are for manufacturing/trading.
+// Industry vertical plans bundle the vertical module + relevant shared modules only.
+// The subscription_plans DB table is authoritative — these are fallback defaults.
 export const PLAN_MODULES: Record<string, string[]> = {
   trial:         TRIAL_MODULES,
   basic:         BASIC_MODULES,
   professional:  PROFESSIONAL_MODULES,
   enterprise:    ENTERPRISE_MODULES,
   gold_erp_plan: GOLD_ERP_MODULES,
+
+  restaurant_starter:      RESTAURANT_STARTER_MODULES,
+  restaurant_professional: RESTAURANT_PROFESSIONAL_MODULES,
+  restaurant_enterprise:   RESTAURANT_ENTERPRISE_MODULES,
+  hotel_starter:           HOTEL_STARTER_MODULES,
+  hotel_professional:      HOTEL_PROFESSIONAL_MODULES,
+  hotel_enterprise:        HOTEL_ENTERPRISE_MODULES,
+  healthcare_starter:      HEALTHCARE_STARTER_MODULES,
+  healthcare_professional: HEALTHCARE_PROFESSIONAL_MODULES,
+  healthcare_enterprise:   HEALTHCARE_ENTERPRISE_MODULES,
+  pharmacy_starter:        PHARMACY_STARTER_MODULES,
+  pharmacy_professional:   PHARMACY_PROFESSIONAL_MODULES,
+  pharmacy_enterprise:     PHARMACY_ENTERPRISE_MODULES,
 };
 
 // ── Route prefix → minimum plan ───────────────────────────────────────────────
@@ -453,16 +486,6 @@ const CATALOG_TO_PLAN_MODULE: Record<string, string> = {
   user_management: "basic_inventory",
   roles:           "basic_inventory",
   company_settings:"basic_inventory",
-  restaurant:      "restaurant",
-  hotel:           "hotel",
-  ngo:             "ngo",
-  pharmacy:        "pharmacy",
-  ecommerce:       "ecommerce",
-  retail_pos:      "pos",
-  healthcare:      "healthcare",
-  education:       "education",
-  real_estate:     "real_estate",
-  agriculture:     "agriculture",
 };
 
 // ── Feature summary using DB-sourced module list ──────────────────────────────

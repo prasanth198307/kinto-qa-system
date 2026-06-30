@@ -31,8 +31,9 @@ export default function RestaurantInventoryPage() {
   const [expandedItem, setExpandedItem] = useState<number | null>(null);
 
   // Recipe form
-  const [recipeForm, setRecipeForm] = useState({ menu_item_id: "", ingredient_name: "", quantity: "", unit: "kg", cost: "" });
+  const [recipeForm, setRecipeForm] = useState({ menu_item_id: "", ingredient_name: "", raw_material_id: "", quantity: "", unit: "kg", cost: "" });
   const [editRecipeId, setEditRecipeId] = useState<number | null>(null);
+  const [rmSearch, setRmSearch] = useState("");
 
   // Wastage form
   const [wastageForm, setWastageForm] = useState({ item_name: "", quantity: "", unit: "kg", cost_per_unit: "", reason: "other", waste_date: today, recorded_by: "" });
@@ -78,6 +79,25 @@ export default function RestaurantInventoryPage() {
     refetchInterval: tab === "stock" ? 60000 : false,
   });
 
+  const { data: rawMaterials = [] } = useQuery({
+    queryKey: ["/api/raw-materials"],
+    queryFn: () => api("GET", "/api/raw-materials"),
+  });
+  const filteredRm = (rawMaterials as any[]).filter((rm: any) =>
+    !rmSearch || (rm.name || rm.materialName || "").toLowerCase().includes(rmSearch.toLowerCase())
+  );
+
+  const selectRawMaterial = (rm: any) => {
+    setRecipeForm(f => ({
+      ...f,
+      raw_material_id: String(rm.id),
+      ingredient_name: rm.name || rm.materialName || "",
+      unit: rm.unit || rm.baseUnit || "kg",
+      cost: rm.cost_per_unit || rm.unitCost ? String(rm.cost_per_unit || rm.unitCost) : f.cost,
+    }));
+    setRmSearch("");
+  };
+
   const invalidateRecipes = () => qc.invalidateQueries({ queryKey: ["/api/restaurant/recipes"] });
   const invalidateWastage = () => qc.invalidateQueries({ queryKey: ["/api/restaurant/wastage"] });
 
@@ -106,7 +126,7 @@ export default function RestaurantInventoryPage() {
     onError: () => toast({ title: "Error deducting stock", variant: "destructive" }),
   });
 
-  const resetRecipeForm = () => { setRecipeForm({ menu_item_id: "", ingredient_name: "", quantity: "", unit: "kg", cost: "" }); setEditRecipeId(null); };
+  const resetRecipeForm = () => { setRecipeForm({ menu_item_id: "", ingredient_name: "", raw_material_id: "", quantity: "", unit: "kg", cost: "" }); setEditRecipeId(null); setRmSearch(""); };
   const resetWastageForm = () => { setWastageForm({ item_name: "", quantity: "", unit: "kg", cost_per_unit: "", reason: "other", waste_date: today, recorded_by: "" }); };
 
   // Group recipes by menu_item_id
@@ -155,8 +175,26 @@ export default function RestaurantInventoryPage() {
                     <SelectTrigger><SelectValue placeholder="Select item" /></SelectTrigger>
                     <SelectContent>{menuItems.map((m: any) => <SelectItem key={m.id} value={String(m.id)}>{m.item_name}</SelectItem>)}</SelectContent>
                   </Select></div>
-                <div><label className="text-sm font-medium">Ingredient</label>
-                  <Input value={recipeForm.ingredient_name} onChange={e => setRecipeForm(f => ({ ...f, ingredient_name: e.target.value }))} placeholder="e.g. Flour" /></div>
+                <div className="relative"><label className="text-sm font-medium">Ingredient (Raw Material)</label>
+                  <Input
+                    value={recipeForm.raw_material_id ? recipeForm.ingredient_name : rmSearch}
+                    onChange={e => { setRmSearch(e.target.value); setRecipeForm(f => ({ ...f, raw_material_id: "", ingredient_name: e.target.value })); }}
+                    placeholder="Search raw materials..."
+                  />
+                  {rmSearch && filteredRm.length > 0 && (
+                    <div className="absolute z-20 top-full left-0 right-0 bg-white border rounded shadow max-h-44 overflow-y-auto">
+                      {filteredRm.slice(0, 15).map((rm: any) => (
+                        <div key={rm.id} className="px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm flex justify-between" onClick={() => selectRawMaterial(rm)}>
+                          <span className="font-medium">{rm.name || rm.materialName}</span>
+                          <span className="text-gray-400">{rm.unit || rm.baseUnit}{rm.cost_per_unit ? ` · ₹${rm.cost_per_unit}` : ""}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {recipeForm.raw_material_id && (
+                    <div className="text-xs text-green-600 mt-1">✓ Linked to raw material ID: {recipeForm.raw_material_id} <button className="text-red-400 ml-1" onClick={() => setRecipeForm(f => ({ ...f, raw_material_id: "", ingredient_name: "" }))}>×</button></div>
+                  )}
+                </div>
                 <div><label className="text-sm font-medium">Qty</label>
                   <Input type="number" value={recipeForm.quantity} onChange={e => setRecipeForm(f => ({ ...f, quantity: e.target.value }))} /></div>
                 <div><label className="text-sm font-medium">Unit</label>
@@ -168,7 +206,7 @@ export default function RestaurantInventoryPage() {
                   <Input type="number" value={recipeForm.cost} onChange={e => setRecipeForm(f => ({ ...f, cost: e.target.value }))} /></div>
               </div>
               <div className="flex gap-2 mt-3">
-                <Button onClick={() => recipeMut.mutate({ ...recipeForm, quantity: parseFloat(recipeForm.quantity), cost: parseFloat(recipeForm.cost) })} disabled={!recipeForm.menu_item_id || !recipeForm.ingredient_name || recipeMut.isPending}>
+                <Button onClick={() => recipeMut.mutate({ ...recipeForm, quantity: parseFloat(recipeForm.quantity), cost: parseFloat(recipeForm.cost), raw_material_id: recipeForm.raw_material_id || null })} disabled={!recipeForm.menu_item_id || !recipeForm.ingredient_name || recipeMut.isPending}>
                   {recipeMut.isPending ? "Saving..." : editRecipeId ? "Update" : "Add Ingredient"}
                 </Button>
                 {editRecipeId && <Button variant="outline" onClick={resetRecipeForm}>Cancel</Button>}
@@ -207,7 +245,7 @@ export default function RestaurantInventoryPage() {
                               <TableCell>{fmt(ing.cost)}</TableCell>
                               <TableCell>{fmt((parseFloat(ing.quantity) || 0) * (parseFloat(ing.cost) || 0))}</TableCell>
                               <TableCell>
-                                <Button size="sm" variant="ghost" onClick={() => { setRecipeForm({ menu_item_id: String(ing.menu_item_id), ingredient_name: ing.ingredient_name, quantity: String(ing.quantity), unit: ing.unit, cost: String(ing.cost) }); setEditRecipeId(ing.id); }}>Edit</Button>
+                                <Button size="sm" variant="ghost" onClick={() => { setRecipeForm({ menu_item_id: String(ing.menu_item_id), ingredient_name: ing.ingredient_name, raw_material_id: String(ing.raw_material_id || ""), quantity: String(ing.quantity), unit: ing.unit, cost: String(ing.cost) }); setEditRecipeId(ing.id); setRmSearch(""); }}>Edit</Button>
                                 <Button size="sm" variant="ghost" className="text-red-600" onClick={() => { if (confirm("Remove this ingredient?")) deleteRecipeMut.mutate(ing.id); }}>Del</Button>
                               </TableCell>
                             </TableRow>

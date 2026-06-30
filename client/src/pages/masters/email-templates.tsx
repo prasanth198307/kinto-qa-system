@@ -1,98 +1,100 @@
+// Used by all modules for order confirmations, OTPs, campaigns.
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { Plus, Pencil, X, Check } from "lucide-react";
 
 const api = (m: string, u: string, b?: any) =>
   fetch(u, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined, credentials: "include" }).then(r => r.json());
-const fmt = (n: any) => Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
 
-const TRIGGER_EVENTS = ["invoice-created","payment-received","order-placed","shipment-dispatched","return-initiated","low-stock-alert"];
-const EMPTY = { template_name: "", subject: "", body: "", trigger_event: "" };
+type EmailTemplate = { id: number; name: string; subject: string; body: string; template_type?: string; variables?: string[]; is_active?: boolean };
+const empty: Omit<EmailTemplate, "id"> = { name: "", subject: "", body: "", template_type: "", variables: [], is_active: true };
 
-export default function MastersEmailTemplatesPage() {
-  const qc = useQueryClient();
+export default function EmailTemplatesPage() {
+  const [editing, setEditing] = useState<EmailTemplate | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [form, setForm] = useState<Omit<EmailTemplate, "id">>(empty);
   const { toast } = useToast();
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState(EMPTY);
-  const [preview, setPreview] = useState<any>(null);
+  const qc = useQueryClient();
 
-  const { data: templates = [] } = useQuery({ queryKey: ["/api/masters/email-templates"], queryFn: () => api("GET", "/api/masters/email-templates") });
+  const { data } = useQuery({ queryKey: ["/api/masters/email-templates"], queryFn: () => api("GET", "/api/masters/email-templates") });
+  const rows: EmailTemplate[] = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
 
-  const addMutation = useMutation({
-    mutationFn: (b: any) => api("POST", "/api/masters/email-templates", b),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/masters/email-templates"] }); toast({ title: "Template saved" }); setShowForm(false); setForm(EMPTY); },
+  const save = useMutation({
+    mutationFn: (v: any) => editing ? api("PUT", `/api/masters/email-templates/${editing.id}`, v) : api("POST", "/api/masters/email-templates", v),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/masters/email-templates"] }); setEditing(null); setAdding(false); setForm(empty); toast({ title: "Saved" }); },
+    onError: () => toast({ title: "Error", variant: "destructive" }),
   });
 
-  const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
+  const startEdit = (r: EmailTemplate) => {
+    setEditing(r);
+    setForm({ name: r.name, subject: r.subject, body: r.body, template_type: r.template_type ?? "", variables: r.variables ?? [], is_active: r.is_active ?? true });
+    setAdding(false);
+  };
+  const cancel = () => { setEditing(null); setAdding(false); setForm(empty); };
+
+  const vars: string[] = Array.isArray(form.variables) ? form.variables : [];
 
   return (
     <div className="p-6 space-y-4">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Email Templates</h1>
-        <Button onClick={() => setShowForm(s => !s)}>Add Template</Button>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Email Templates</h1>
+          <p className="text-sm text-muted-foreground mt-1">Used by all modules for order confirmations, OTPs, campaigns.</p>
+        </div>
+        <Button onClick={() => { setAdding(true); setEditing(null); setForm(empty); }}><Plus className="w-4 h-4 mr-2" />Add Template</Button>
       </div>
-      {showForm && (
+
+      {(adding || editing) && (
         <Card>
-          <CardHeader><CardTitle>Add Email Template</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{editing ? "Edit Email Template" : "Add Email Template"}</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
-              <Input placeholder="Template Name" value={form.template_name} onChange={e => set("template_name", e.target.value)} />
-              <Input placeholder="Subject" value={form.subject} onChange={e => set("subject", e.target.value)} />
-              <Select value={form.trigger_event} onValueChange={v => set("trigger_event", v)}>
-                <SelectTrigger><SelectValue placeholder="Trigger Event" /></SelectTrigger>
-                <SelectContent>
-                  {TRIGGER_EVENTS.map(e => <SelectItem key={e} value={e}>{e}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <div><label className="text-sm font-medium">Name *</label><Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} /></div>
+              <div><label className="text-sm font-medium">Type</label><Input value={form.template_type} onChange={e => setForm(p => ({ ...p, template_type: e.target.value }))} placeholder="e.g. order_confirmation" /></div>
+              <div className="col-span-2"><label className="text-sm font-medium">Subject *</label><Input value={form.subject} onChange={e => setForm(p => ({ ...p, subject: e.target.value }))} /></div>
             </div>
-            <textarea
-              className="w-full h-40 p-2 border rounded text-sm"
-              placeholder="Email body (HTML supported)..."
-              value={form.body}
-              onChange={e => set("body", e.target.value)}
-            />
+            <div><label className="text-sm font-medium">Body *</label>
+              <textarea className="flex min-h-32 w-full rounded-md border border-input bg-background px-3 py-2 text-sm mt-1" value={form.body} onChange={e => setForm(p => ({ ...p, body: e.target.value }))} />
+            </div>
+            {vars.length > 0 && (
+              <div><label className="text-sm font-medium">Available Variables</label>
+                <div className="flex flex-wrap gap-1 mt-1">{vars.map(v => <Badge key={v} variant="secondary">{"{{" + v + "}}"}</Badge>)}</div>
+              </div>
+            )}
             <div className="flex gap-2">
-              <Button onClick={() => addMutation.mutate(form)}>Save</Button>
-              <Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
+              <Button onClick={() => save.mutate(form)} disabled={save.isPending}><Check className="w-4 h-4 mr-1" />Save</Button>
+              <Button variant="outline" onClick={cancel}><X className="w-4 h-4 mr-1" />Cancel</Button>
             </div>
           </CardContent>
         </Card>
       )}
-      {preview && (
-        <Card>
-          <CardHeader><CardTitle>Preview: {preview.template_name}</CardTitle></CardHeader>
-          <CardContent>
-            <p className="font-semibold mb-2">Subject: {preview.subject}</p>
-            <div className="border rounded p-3 bg-white text-sm" dangerouslySetInnerHTML={{ __html: preview.body || "" }} />
-            <Button variant="outline" className="mt-2" onClick={() => setPreview(null)}>Close</Button>
-          </CardContent>
-        </Card>
-      )}
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader><TableRow>
-              <TableHead>Template Name</TableHead><TableHead>Subject</TableHead><TableHead>Trigger Event</TableHead><TableHead>Status</TableHead><TableHead></TableHead>
-            </TableRow></TableHeader>
-            <TableBody>
-              {Array.isArray(templates) && templates.map((t: any) => (
-                <TableRow key={t.id}>
-                  <TableCell>{t.template_name}</TableCell><TableCell>{t.subject}</TableCell>
-                  <TableCell>{t.trigger_event}</TableCell>
-                  <TableCell><Badge variant={t.status === "active" ? "default" : "secondary"}>{t.status || "active"}</Badge></TableCell>
-                  <TableCell><Button size="sm" variant="outline" onClick={() => setPreview(t)}>Preview</Button></TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+
+      <div className="grid gap-3">
+        {rows.length === 0 && <p className="text-center text-muted-foreground py-8">No email templates found</p>}
+        {rows.map(r => (
+          <Card key={r.id} className="hover:shadow-sm transition-shadow">
+            <CardContent className="p-4 flex items-start justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-medium">{r.name}</span>
+                  {r.template_type && <Badge variant="outline">{r.template_type}</Badge>}
+                  <Badge variant={r.is_active !== false ? "default" : "secondary"}>{r.is_active !== false ? "Active" : "Inactive"}</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground truncate">Subject: {r.subject}</p>
+                {Array.isArray(r.variables) && r.variables.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-2">{r.variables.map((v: string) => <Badge key={v} variant="secondary" className="text-xs">{"{{" + v + "}}"}</Badge>)}</div>
+                )}
+              </div>
+              <Button size="sm" variant="outline" onClick={() => startEdit(r)}><Pencil className="w-3 h-3 mr-1" />Edit</Button>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 }
