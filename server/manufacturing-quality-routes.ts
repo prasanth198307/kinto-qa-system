@@ -262,8 +262,8 @@ router.get("/costing/variance", auth, async (req: any, res) => {
         pe.rejected_quantity,
         p.product_name,
         p.product_code,
-        p.cost_price AS standard_unit_cost,
-        ROUND(p.cost_price::numeric * pe.produced_quantity::numeric, 2) AS standard_total_cost,
+        p.standard_cost AS standard_unit_cost,
+        ROUND(p.standard_cost::numeric * pe.produced_quantity::numeric, 2) AS standard_total_cost,
         COALESCE((
           SELECT SUM(rmii.quantity_issued::numeric * COALESCE(rm.unit_cost, rm.total_cost, 0)::numeric)
           FROM raw_material_issuance_items rmii
@@ -282,10 +282,10 @@ router.get("/costing/variance", auth, async (req: any, res) => {
             WHERE rmi.product_id = pe.product_id
               AND rmi.issuance_date::date = pe.production_date::date
               AND rmi.tenant_id = ${tenantId}
-          ), 0) - (p.cost_price::numeric * pe.produced_quantity::numeric)
+          ), 0) - (p.standard_cost::numeric * pe.produced_quantity::numeric)
         , 2) AS variance,
         CASE
-          WHEN p.cost_price > 0 AND pe.produced_quantity > 0 THEN
+          WHEN p.standard_cost > 0 AND pe.produced_quantity > 0 THEN
             ROUND((
               COALESCE((
                 SELECT SUM(rmii.quantity_issued::numeric * COALESCE(rm.unit_cost, rm.total_cost, 0)::numeric)
@@ -295,8 +295,8 @@ router.get("/costing/variance", auth, async (req: any, res) => {
                 WHERE rmi.product_id = pe.product_id
                   AND rmi.issuance_date::date = pe.production_date::date
                   AND rmi.tenant_id = ${tenantId}
-              ), 0) - (p.cost_price::numeric * pe.produced_quantity::numeric)
-            ) * 100.0 / NULLIF(p.cost_price::numeric * pe.produced_quantity::numeric, 0), 2)
+              ), 0) - (p.standard_cost::numeric * pe.produced_quantity::numeric)
+            ) * 100.0 / NULLIF(p.standard_cost::numeric * pe.produced_quantity::numeric, 0), 2)
           ELSE NULL
         END AS variance_pct
       FROM production_entries pe
@@ -318,7 +318,7 @@ router.get("/costing/variance", auth, async (req: any, res) => {
       FROM (${sql.raw(`
         SELECT
           pe.produced_quantity,
-          p.cost_price,
+          p.standard_cost,
           COALESCE((
             SELECT SUM(rmii.quantity_issued::numeric * COALESCE(rm.unit_cost, rm.total_cost, 0)::numeric)
             FROM raw_material_issuance_items rmii
@@ -326,14 +326,14 @@ router.get("/costing/variance", auth, async (req: any, res) => {
             LEFT JOIN raw_materials rm ON rm.id = rmii.raw_material_id
             WHERE rmi.product_id = pe.product_id AND rmi.issuance_date::date = pe.production_date::date AND rmi.tenant_id = ${tenantId}
           ), 0) AS actual_rm_cost,
-          ROUND(p.cost_price::numeric * pe.produced_quantity::numeric, 2) AS standard_total_cost,
+          ROUND(p.standard_cost::numeric * pe.produced_quantity::numeric, 2) AS standard_total_cost,
           ROUND(COALESCE((
             SELECT SUM(rmii.quantity_issued::numeric * COALESCE(rm.unit_cost, rm.total_cost, 0)::numeric)
             FROM raw_material_issuance_items rmii
             JOIN raw_material_issuance rmi ON rmi.id = rmii.issuance_id
             LEFT JOIN raw_materials rm ON rm.id = rmii.raw_material_id
             WHERE rmi.product_id = pe.product_id AND rmi.issuance_date::date = pe.production_date::date AND rmi.tenant_id = ${tenantId}
-          ), 0) - (p.cost_price::numeric * pe.produced_quantity::numeric), 2) AS variance
+          ), 0) - (p.standard_cost::numeric * pe.produced_quantity::numeric), 2) AS variance
         FROM production_entries pe JOIN products p ON p.id = pe.product_id
         WHERE pe.tenant_id = ${tenantId}
       `)}) sub

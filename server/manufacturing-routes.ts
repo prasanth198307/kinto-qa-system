@@ -348,7 +348,7 @@ router.post("/production/gl-post/:productionEntryId", requireRole("admin", "mana
     const { manualCostValue } = req.body; // admin can provide cost if auto-calc fails
 
     const peRows = await db.execute(sql`
-      SELECT pe.*, p.product_name, p.cost_price
+      SELECT pe.*, p.product_name, p.standard_cost
       FROM production_entries pe
       LEFT JOIN products p ON p.id = pe.product_id
       WHERE pe.id = ${productionEntryId} AND pe.tenant_id = ${tenantId}

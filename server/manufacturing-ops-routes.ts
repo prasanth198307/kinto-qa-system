@@ -121,7 +121,7 @@ router.get("/job-work", auth, async (req: any, res) => {
     const tenantId = getTenantId(req);
     const { status } = req.query;
     const rows = await db.execute(sql`
-      SELECT jwo.*, v.name AS vendor_display_name
+      SELECT jwo.*, v.vendor_name AS vendor_display_name
       FROM job_work_orders jwo
       LEFT JOIN vendors v ON v.id = jwo.vendor_id
       WHERE jwo.tenant_id = ${tenantId}
