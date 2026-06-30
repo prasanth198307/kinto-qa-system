@@ -68,6 +68,7 @@ import ecommerceExtraRouter from "./ecommerce-extra-routes";
 import financeErpRouter from "./finance-erp-routes";
 import { recurringJournalRouter, processRecurringJournals } from "./recurring-journal-service";
 import { startLoyaltyExpiryScheduler } from "./loyalty-expiry-service";
+import phase7Router from "./phase7-routes";
 import { taxRouter } from "./tax-routes";
 import { seedTenantPermissions, syncAndUnlockByPlan } from "./seed-permissions";
 import { whatsappConversationService } from "./whatsappConversationService";
@@ -2005,6 +2006,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/education', educationExtraRouter);
   app.use('/api/logistics', logisticsExtraRouter);
   app.use('/api/ngo', ngoExtraRouter);
+  app.use('/api', phase7Router);
   app.use('/api/crm', crmExtraRouter);
   app.use('/api/agriculture', agricultureExtraRouter);
   app.use('/api/ecommerce', ecommerceExtraRouter);
