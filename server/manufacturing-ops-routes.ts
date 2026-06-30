@@ -236,92 +236,111 @@ router.get("/eway-bills", auth, async (req: any, res) => {
   } catch (err) { console.error(err); res.status(500).json({ message: "Failed" }); }
 });
 
-// Generate E-Way Bill from gatepass
+// Generate E-Way Bill — accepts direct form fields OR legacy invoiceId
 router.post("/eway-bills/generate", requireRole("admin", "manager"), async (req: any, res) => {
   try {
     const tenantId = getTenantId(req);
-    const { gatpassId, invoiceId, vehicleNumber, transporterName, transporterId,
-            distanceKm, transportMode = "1", vehicleType = "R" } = req.body;
-    if (!invoiceId) return res.status(400).json({ message: "invoiceId required" });
+    const b = req.body;
 
-    // Fetch invoice + company details
-    const invResult = await db.execute(sql`
-      SELECT i.*, c.gstin AS company_gstin, c.name AS company_name,
-             c.address AS company_address, c.pincode AS company_pincode, c.state AS company_state
-      FROM invoices i
-      LEFT JOIN companies c ON c.tenant_id = i.tenant_id
-      WHERE i.id = ${invoiceId} AND i.tenant_id = ${tenantId}
-      LIMIT 1
-    `);
-    if (!invResult.rows.length) return res.status(404).json({ message: "Invoice not found" });
-    const inv = invResult.rows[0] as any;
+    // ── Validate mandatory NIC fields ──────────────────────────────────────────
+    if (!b.docNo) return res.status(400).json({ message: "Document number (docNo) is required" });
+    if (!b.fromGstin) return res.status(400).json({ message: "Consignor GSTIN (fromGstin) is required" });
+    if (!b.fromAddr1 || !b.fromPlace || !b.fromPincode) return res.status(400).json({ message: "Consignor address fields are required" });
+    if (!b.toTrdName || !b.toAddr1 || !b.toPlace || !b.toPincode) return res.status(400).json({ message: "Consignee name and address fields are required" });
+    // URP: if no GSTIN provided, set URP
+    const toGstin = (!b.toGstin || b.toGstin === "URP") ? "URP" : b.toGstin;
 
-    // Check threshold — EWB mandatory above ₹50,000
-    if (Number(inv.total_amount) < 50000) {
-      return res.status(400).json({ message: `Invoice value ₹${inv.total_amount} is below ₹50,000 EWB threshold` });
-    }
+    // Format docDate as DD/MM/YYYY for NIC (NIC expects this format)
+    const docDateFmt = b.docDate
+      ? new Date(b.docDate).toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" })
+      : new Date().toLocaleDateString("en-IN");
 
-    // Check if EWB already exists
-    const existing = await db.execute(sql`
-      SELECT id, ewb_number FROM eway_bills WHERE invoice_id=${invoiceId} AND tenant_id=${tenantId} AND status='generated' LIMIT 1
-    `);
-    if (existing.rows.length) {
-      return res.status(409).json({ message: "E-Way Bill already generated", ewb: existing.rows[0] });
-    }
+    // Compute GST amounts from rates + taxable value (if amounts not provided directly)
+    const taxableValue = Number(b.taxableValue ?? 0);
+    const isInterState = b.fromStateCode !== b.toStateCode;
+    const cgstRate = Number(b.cgstRate ?? 0);
+    const sgstRate = Number(b.sgstRate ?? cgstRate); // SGST = CGST for intrastate
+    const igstRate = Number(b.igstRate ?? (isInterState ? cgstRate * 2 : 0));
 
-    // Build NIC EWB payload
-    const ewbPayload = {
-      supplyType: "O",
-      subSupplyType: "1",
-      docType: "INV",
-      docNo: inv.invoice_number,
-      docDate: inv.invoice_date ? new Date(inv.invoice_date).toLocaleDateString("en-IN") : new Date().toLocaleDateString("en-IN"),
-      fromGstin: inv.company_gstin ?? "",
-      fromTrdName: inv.company_name ?? "",
-      fromAddr1: inv.company_address ?? "",
-      fromPincode: inv.company_pincode ?? "",
-      fromStateCode: inv.company_state ?? "36",
-      toGstin: inv.buyer_gstin ?? "URP",
-      toTrdName: inv.buyer_name ?? "",
-      toAddr1: inv.ship_to_address ?? inv.buyer_address ?? "",
-      toPincode: inv.ship_to_pincode ?? inv.buyer_pincode ?? "",
-      toStateCode: inv.ship_to_state ?? inv.buyer_state ?? "36",
-      totalValue: Number(inv.total_amount),
-      cgstValue: Number(inv.cgst_amount ?? 0),
-      sgstValue: Number(inv.sgst_amount ?? 0),
-      igstValue: Number(inv.igst_amount ?? 0),
-      transMode: transportMode,
-      vehicleType,
-      vehicleNo: vehicleNumber ?? "",
-      transId: transporterId ?? "",
-      transName: transporterName ?? "",
-      transDocNo: "",
-      transDocDate: "",
-      actFromStateCode: inv.company_state ?? "36",
-      actToStateCode: inv.ship_to_state ?? inv.buyer_state ?? "36",
-      distance: distanceKm ?? 0,
+    const cgstValue = isInterState ? 0 : +(taxableValue * cgstRate / 100).toFixed(2);
+    const sgstValue = isInterState ? 0 : +(taxableValue * sgstRate / 100).toFixed(2);
+    const igstValue = isInterState ? +(taxableValue * igstRate / 100).toFixed(2) : 0;
+    const cessValue = +(taxableValue * Number(b.cessRate ?? 0) / 100).toFixed(2);
+    const totalValue = Number(b.totalInvoiceValue ?? (taxableValue + cgstValue + sgstValue + igstValue + cessValue));
+
+    // Build NIC-compliant EWB payload
+    const ewbPayload: Record<string, any> = {
+      supplyType: b.supplyType ?? "O",
+      subSupplyType: b.subSupplyType ?? "1",
+      docType: b.docType ?? "INV",
+      docNo: b.docNo,
+      docDate: docDateFmt,
+      // Consignor (From)
+      fromGstin: b.fromGstin,
+      fromTrdName: b.fromTrdName ?? "",
+      fromAddr1: b.fromAddr1,
+      fromAddr2: b.fromAddr2 ?? "",
+      fromPlace: b.fromPlace,
+      fromPincode: String(b.fromPincode),
+      fromStateCode: String(b.fromStateCode ?? "36"),
+      // Consignee (To)
+      toGstin,
+      toTrdName: b.toTrdName ?? "",
+      toAddr1: b.toAddr1,
+      toAddr2: b.toAddr2 ?? "",
+      toPlace: b.toPlace,
+      toPincode: String(b.toPincode),
+      toStateCode: String(b.toStateCode ?? "36"),
+      // Goods
+      productName: b.productName ?? "",
+      productDesc: b.productName ?? "",
+      hsnCode: b.hsnCode ?? "",
+      quantity: Number(b.quantity ?? 1),
+      qtyUnit: b.qtyUnit ?? "NOS",
+      taxableAmount: taxableValue,
+      sgstRate: isInterState ? 0 : sgstRate,
+      cgstRate: isInterState ? 0 : cgstRate,
+      igstRate: isInterState ? igstRate : 0,
+      cessRate: Number(b.cessRate ?? 0),
+      cessNonAdvolRate: 0,
+      // Values
+      totalValue,
+      cgstValue,
+      sgstValue,
+      igstValue,
+      cessValue,
+      totInvVal: totalValue,
+      // Transport
+      transMode: String(b.transMode ?? "1"),
+      vehicleType: b.vehicleType ?? "R",
+      vehicleNo: b.vehicleNo ?? "",
+      transId: b.transId ?? "",
+      transName: b.transName ?? "",
+      transDocNo: b.transDocNo ?? "",
+      transDocDate: b.transDocDate ?? "",
+      actFromStateCode: String(b.fromStateCode ?? "36"),
+      actToStateCode: String(b.toStateCode ?? "36"),
+      distance: Number(b.distanceKm ?? 0),
     };
 
     // Store EWB record (pending — actual NIC API call requires credentials)
     const ewbRecord = await db.execute(sql`
       INSERT INTO eway_bills
-        (tenant_id, gatepass_id, invoice_id, supply_type, sub_supply_type, doc_type,
-         doc_number, doc_date, from_gstin, from_name, to_gstin, to_name, to_address,
-         to_pincode, to_state_code, total_value, taxable_value, cgst, sgst, igst,
+        (tenant_id, invoice_id, supply_type, sub_supply_type, doc_type,
+         doc_number, doc_date, from_gstin, from_name, from_address, from_pincode, from_state_code,
+         to_gstin, to_name, to_address, to_pincode, to_state_code,
+         total_value, taxable_value, cgst, sgst, igst,
          transport_mode, vehicle_type, vehicle_number, transporter_id, transporter_name,
          distance_km, status, api_response, created_by)
-      VALUES (${tenantId}, ${gatpassId ?? null}, ${invoiceId},
-              'O', '1', 'INV', ${inv.invoice_number},
-              ${inv.invoice_date ? new Date(inv.invoice_date).toISOString().slice(0,10) : new Date().toISOString().slice(0,10)},
-              ${inv.company_gstin ?? ""}, ${inv.company_name ?? ""},
-              ${inv.buyer_gstin ?? "URP"}, ${inv.buyer_name ?? ""},
-              ${inv.ship_to_address ?? inv.buyer_address ?? ""},
-              ${inv.ship_to_pincode ?? inv.buyer_pincode ?? ""},
-              ${inv.ship_to_state ?? inv.buyer_state ?? "36"},
-              ${Number(inv.total_amount)}, ${Number(inv.taxable_amount ?? inv.total_amount ?? 0)},
-              ${Number(inv.cgst_amount ?? 0)}, ${Number(inv.sgst_amount ?? 0)}, ${Number(inv.igst_amount ?? 0)},
-              ${transportMode}, ${vehicleType}, ${vehicleNumber ?? null},
-              ${transporterId ?? null}, ${transporterName ?? null}, ${distanceKm ?? null},
+      VALUES (${tenantId}, ${b.invoiceId ?? null},
+              ${ewbPayload.supplyType}, ${ewbPayload.subSupplyType}, ${ewbPayload.docType},
+              ${b.docNo}, ${b.docDate ? new Date(b.docDate).toISOString().slice(0,10) : new Date().toISOString().slice(0,10)},
+              ${b.fromGstin}, ${b.fromTrdName ?? ""}, ${b.fromAddr1}, ${String(b.fromPincode)}, ${String(b.fromStateCode ?? "36")},
+              ${toGstin}, ${b.toTrdName ?? ""}, ${b.toAddr1}, ${String(b.toPincode)}, ${String(b.toStateCode ?? "36")},
+              ${totalValue}, ${taxableValue},
+              ${cgstValue}, ${sgstValue}, ${igstValue},
+              ${String(b.transMode ?? "1")}, ${b.vehicleType ?? "R"}, ${b.vehicleNo ?? null},
+              ${b.transId ?? null}, ${b.transName ?? null}, ${Number(b.distanceKm ?? 0)},
               'pending', ${JSON.stringify(ewbPayload)}, ${req.user?.id ?? null})
       RETURNING *
     `);
