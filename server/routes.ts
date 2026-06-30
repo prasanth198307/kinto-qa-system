@@ -31178,8 +31178,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
     }
   });
 
-  // ============================================================
-  // ACCOUNTING PERIODS (Phase 3.3)
+  // =====================================================  // ACCOUNTING PERIODS (Phase 3.3)
   // ============================================================
   app.get('/api/finance-erp/periods', async (req: any, res) => {
     try {
@@ -31268,6 +31267,42 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       res.status(500).json({ message: err.message });
     }
   });
+=======
+  // ─── Phase 7F: Nidhi ERP Stubs ────────────────────────────────────────────
+  app.get('/api/nidhi/loan-applications', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json([]); });
+  app.post('/api/nidhi/loan-applications', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json({ id: Date.now(), ...req.body }); });
+  app.put('/api/nidhi/loan-applications/:id', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json({ id: req.params.id, ...req.body }); });
+  app.get('/api/nidhi/pdc-cheques', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json([]); });
+  app.post('/api/nidhi/pdc-cheques', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json({ id: Date.now(), ...req.body }); });
+  app.put('/api/nidhi/pdc-cheques/:id', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json({ id: req.params.id, ...req.body }); });
+  app.get('/api/nidhi/rbi-return-data', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json({ member_count: 342, total_deposits: 4500000, loans_outstanding: 3200000, share_capital: 1000000, reserves: 250000, net_owned_funds: 1250000, fixed_deposits: 900000, recurring_deposits: 600000, savings_deposits: 1000000 }); });
+
+  // ─── Phase 7G: CRM ERP Stubs ──────────────────────────────────────────────
+  app.get('/api/crm/lead-scores', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json([]); });
+  app.post('/api/crm/compute-scores', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json({ ok: true }); });
+  app.get('/api/crm/drip-campaigns', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json([]); });
+  app.post('/api/crm/drip-campaigns', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json({ id: Date.now(), ...req.body }); });
+  app.put('/api/crm/drip-campaigns/:id', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json({ id: req.params.id, ...req.body }); });
+  app.get('/api/crm/customer-360/:id', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json({ id: req.params.id, name: 'Customer', timeline: [], opportunities: [], tags: [] }); });
+
+  // ─── Phase 7H: Logistics ERP Stubs ────────────────────────────────────────
+  app.get('/api/logistics/eway-bills', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json([]); });
+  app.post('/api/logistics/eway-bill/generate', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json({ ewbNo: '23001' + Date.now().toString().slice(-7), validUpto: new Date(Date.now() + 3*24*60*60*1000).toISOString().slice(0,10) }); });
+  app.put('/api/logistics/eway-bills/:id/cancel', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json({ ok: true }); });
+  app.put('/api/logistics/eway-bills/:id/extend', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json({ ok: true }); });
+  app.get('/api/logistics/vehicles/live-positions', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json([]); });
+  app.post('/api/logistics/routes/optimize', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); const stops = (req.body.stops || []).map((s: any, i: number) => ({ ...s, sequence: i+1, arrival: `${9+i}:30 AM` })); res.json({ optimized_stops: stops, total_distance: 38, fuel_estimate: 4.2, total_time: `${stops.length}h 30min` }); });
+  app.post('/api/logistics/trips', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json({ id: Date.now(), ...req.body }); });
+
+  // ─── Phase 7I: Real Estate ERP Stubs ──────────────────────────────────────
+  app.get('/api/real-estate/rera/projects', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json([]); });
+  app.get('/api/real-estate/rera/complaints', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json([]); });
+  app.post('/api/real-estate/rera/quarterly-report', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json({ ok: true }); });
+  app.post('/api/real-estate/rera/complaints', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json({ id: Date.now(), ...req.body }); });
+  app.get('/api/real-estate/demand-letters', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json([]); });
+  app.post('/api/real-estate/demand-letters', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json({ id: Date.now(), ...req.body }); });
+  app.post('/api/real-estate/demand-letters/generate', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json({ generated: true }); });
+  app.get('/api/real-estate/project-pl/:projectId', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json(null); });
 
   const httpServer = createServer(app);
   return httpServer;

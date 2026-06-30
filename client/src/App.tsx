@@ -85,6 +85,7 @@ import PendingPaymentsDashboard from "@/components/PendingPaymentsDashboard";
 import { OperatorAssignedChecklists } from "@/components/OperatorAssignedChecklists";
 import { VerticalNavSidebar, type NavSection } from "@/components/VerticalNavSidebar";
 import { AlertTriangle, Archive, Award, BarChart3, BedDouble, Bell, BookOpen, Box, Briefcase, Building2, Calculator, Calendar, Camera, Car, CheckCircle, CheckCircle2, ClipboardCheck, ClipboardList, Clock, Coins, CreditCard, Crosshair, Factory, FileStack, FileText, FileX, FolderOpen, Gem, Gift, Globe, Heart, History, IndianRupee, Key, Landmark, Layers, LayoutDashboard, ListChecks, Loader2, Lock, LogOut, MessageSquare, Package, PackageX, Pill, Play, Plus, Receipt, RotateCcw, Scale, Scan, Settings, Settings2, Shield, ShoppingBag, ShoppingCart, Star, Tag, Target, Trash2, TrendingUp, Truck, Upload, UserX, Users, UtensilsCrossed, Wallet, Wifi, Wrench, XCircle, Zap , Database, GraduationCap, HeartPulse, Home, Leaf } from "lucide-react";
+import { CheckCircle, Clock, XCircle, AlertTriangle, ClipboardCheck, ClipboardList, Settings, Calendar, Users, FileText, FileX, Wrench, Plus, LogOut, Package, Layers, ShoppingCart, ListChecks, History, LayoutDashboard, Archive, Shield, Factory, Box, CheckCircle2, Building2, Receipt, TrendingUp, Bell, FileStack, Truck, Calculator, IndianRupee, CreditCard, Upload, FolderOpen, Wallet, Car, BookOpen, Scale, BarChart3, Landmark, Tag, Trash2, PackageX, Loader2, Play, UserX, Briefcase, Target, Lock, Key, Gem, Star, MessageSquare, Camera, Crosshair, Coins, Award, RotateCcw, ShoppingBag, Gift, Zap, Globe, Wifi, Settings2, Scan, MapPin, Route } from "lucide-react";
 import CRMLeadsPage from "@/pages/crm-leads";
 import SalesDashboard from "@/components/SalesDashboard";
 import SalesOrdersPage from "@/pages/sales-orders";
@@ -264,8 +265,6 @@ import HotelRatesPage from "@/pages/hotel/rates";
 import HotelCorporatePage from "@/pages/hotel/corporate";
 import HotelNightAuditPage from "@/pages/hotel/night-audit";
 import HotelReportsPage from "@/pages/hotel/reports";
-<<<<<<< HEAD
-=======
 import HotelChannelManagerPage from "@/pages/hotel/channel-manager";
 import HotelRevenueManagementPage from "@/pages/hotel/revenue-management";
 import HotelBanquetPage from "@/pages/hotel/banquet";
@@ -384,6 +383,22 @@ import MastersFeatureFlagsPage from "@/pages/masters/feature-flags";
 import MastersPrintTemplatesPage from "@/pages/masters/print-templates";
 import MastersWebhooksPage from "@/pages/masters/webhooks";
 import RestaurantFeedbackPublicPage from "@/pages/restaurant-feedback-public";
+// Phase 7F — Nidhi
+import NidhiLoanSanctionPage from "@/pages/nidhi/loan-sanction";
+import NidhiPDCTrackingPage from "@/pages/nidhi/pdc-tracking";
+import NidhiRBIReturnsPage from "@/pages/nidhi/rbi-returns";
+// Phase 7G — CRM
+import CRMLeadScoringPage from "@/pages/crm/lead-scoring";
+import CRMDripCampaignsPage from "@/pages/crm/drip-campaigns";
+import CRMCustomer360Page from "@/pages/crm/customer-360";
+// Phase 7H — Logistics
+import LogisticsEWayBillPage from "@/pages/logistics/eway-bill";
+import LogisticsLiveGPSPage from "@/pages/logistics/live-gps";
+import LogisticsRouteOptimizationPage from "@/pages/logistics/route-optimization";
+// Phase 7I — Real Estate
+import RealEstateRERAPage from "@/pages/real-estate/rera";
+import RealEstateDemandLettersPage from "@/pages/real-estate/demand-letters";
+import RealEstateProjectPLPage from "@/pages/real-estate/project-pl";
 import { parseISO } from "date-fns";
 
 type Role = 'admin' | 'operator' | 'reviewer' | 'manager';
@@ -1315,17 +1330,14 @@ function AdminDashboard() {
         { id: "group-summary", label: "Group Summary", icon: Layers, onClick: () => setLocation('/group-summary') },
         { id: "budget-variance", label: "Budget & Variance", icon: Scale, onClick: () => setLocation('/budget-variance') },
         { id: "gstr-reports", label: "GST Returns (GSTR)", icon: FileText, onClick: () => setLocation('/gstr-reports') },
-<<<<<<< HEAD
         { id: "tds-management", label: "TDS Management", icon: Calculator, onClick: () => setLocation('/tds-management') },
         { id: "cost-centres", label: "Cost Centres", icon: Building2, onClick: () => setLocation('/cost-centres') },
         { id: "currency-management", label: "Multi-currency", icon: IndianRupee, onClick: () => setLocation('/currency-management') },
-=======
         { id: "gstr-filing", label: "GSTR Direct Filing", icon: FileText, onClick: () => setLocation('/gstr-filing') },
         { id: "tds-management", label: "TDS Management", icon: Calculator, onClick: () => setLocation('/tds-management') },
         { id: "cost-centres", label: "Cost Centres", icon: Building2, onClick: () => setLocation('/cost-centres') },
         { id: "currency-management", label: "Multi-currency", icon: IndianRupee, onClick: () => setLocation('/currency-management') },
         { id: "multi-company", label: "Multi-Company Consolidation", icon: Layers, onClick: () => setLocation('/multi-company') },
->>>>>>> worktree-agent-aa932a7e90941a150
       ],
     },
     {
@@ -1426,10 +1438,7 @@ function AdminDashboard() {
         { id: "restaurant-recipes", label: "Recipe Costing", icon: UtensilsCrossed, onClick: () => setLocation('/restaurant-recipes') },
         { id: "restaurant-payment-terminal", label: "Payment Terminal", icon: Package, onClick: () => setLocation('/restaurant-payment-terminal') },
         { id: "restaurant-menu-translations", label: "Menu Translations", icon: Package, onClick: () => setLocation('/restaurant-menu-translations') },
-<<<<<<< HEAD
-=======
         { id: "restaurant/ondc-integration", label: "ONDC Integration", icon: Package, onClick: () => setLocation('/restaurant/ondc-integration') },
->>>>>>> worktree-agent-aa932a7e90941a150
       ],
     },
     {
@@ -1446,12 +1455,9 @@ function AdminDashboard() {
         { id: "hotel/corporate", label: "Corporate & Agents", icon: Briefcase, onClick: () => setLocation('/hotel/corporate') },
         { id: "hotel/night-audit", label: "Night Audit", icon: Clock, onClick: () => setLocation('/hotel/night-audit') },
         { id: "hotel/reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/hotel/reports') },
-<<<<<<< HEAD
-=======
         { id: "hotel/channel-manager", label: "Channel Manager", icon: BarChart3, onClick: () => setLocation('/hotel/channel-manager') },
         { id: "hotel/revenue-management", label: "Revenue Management", icon: BarChart3, onClick: () => setLocation('/hotel/revenue-management') },
         { id: "hotel/banquet", label: "Banquet & Events", icon: Calendar, onClick: () => setLocation('/hotel/banquet') },
->>>>>>> worktree-agent-aa932a7e90941a150
       ],
     },
     {
@@ -2776,6 +2782,44 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       ],
     },
     {
+      id: "crm-section",
+      label: "CRM & Leads",
+      items: [
+        { id: "crm-leads", label: "Lead Management", icon: Target, onClick: () => setLocation('/crm/leads') },
+        { id: "crm-surveys", label: "Feedback & Surveys", icon: Star, onClick: () => setLocation('/crm/surveys') },
+        { id: "crm/lead-scoring", label: "Lead Scoring", icon: TrendingUp, onClick: () => setLocation('/crm/lead-scoring') },
+        { id: "crm/drip-campaigns", label: "Drip Campaigns", icon: MessageSquare, onClick: () => setLocation('/crm/drip-campaigns') },
+        { id: "crm/customer-360", label: "Customer 360", icon: Users, onClick: () => setLocation('/crm/customer-360') },
+      ],
+    },
+    {
+      id: "nidhi-erp-section",
+      label: "Nidhi Company ERP",
+      items: [
+        { id: "nidhi/loan-sanction", label: "Loan Sanction", icon: Landmark, onClick: () => setLocation('/nidhi/loan-sanction') },
+        { id: "nidhi/pdc-tracking", label: "PDC Tracking", icon: CreditCard, onClick: () => setLocation('/nidhi/pdc-tracking') },
+        { id: "nidhi/rbi-returns", label: "RBI NDH Returns", icon: FileText, onClick: () => setLocation('/nidhi/rbi-returns') },
+      ],
+    },
+    {
+      id: "logistics-erp-section",
+      label: "Logistics ERP",
+      items: [
+        { id: "logistics/eway-bill", label: "E-Way Bill", icon: FileText, onClick: () => setLocation('/logistics/eway-bill') },
+        { id: "logistics/live-gps", label: "Live GPS Tracking", icon: MapPin, onClick: () => setLocation('/logistics/live-gps') },
+        { id: "logistics/route-optimization", label: "Route Optimization", icon: Route, onClick: () => setLocation('/logistics/route-optimization') },
+      ],
+    },
+    {
+      id: "realestate-erp-section",
+      label: "Real Estate ERP",
+      items: [
+        { id: "real-estate/rera", label: "RERA Compliance", icon: Shield, onClick: () => setLocation('/real-estate/rera') },
+        { id: "real-estate/demand-letters", label: "Demand Letters", icon: FileText, onClick: () => setLocation('/real-estate/demand-letters') },
+        { id: "real-estate/project-pl", label: "Project P&L", icon: TrendingUp, onClick: () => setLocation('/real-estate/project-pl') },
+      ],
+    },
+    {
       id: "hr-section",
       label: "HR & Payroll",
       items: [
@@ -2866,10 +2910,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "restaurant-recipes", label: "Recipe Costing", icon: UtensilsCrossed, onClick: () => setLocation('/restaurant-recipes') },
         { id: "restaurant-payment-terminal", label: "Payment Terminal", icon: Package, onClick: () => setLocation('/restaurant-payment-terminal') },
         { id: "restaurant-menu-translations", label: "Menu Translations", icon: Package, onClick: () => setLocation('/restaurant-menu-translations') },
-<<<<<<< HEAD
-=======
         { id: "restaurant/ondc-integration", label: "ONDC Integration", icon: Package, onClick: () => setLocation('/restaurant/ondc-integration') },
->>>>>>> worktree-agent-aa932a7e90941a150
       ],
     },
     {
@@ -2886,12 +2927,9 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "hotel/corporate", label: "Corporate & Agents", icon: Briefcase, onClick: () => setLocation('/hotel/corporate') },
         { id: "hotel/night-audit", label: "Night Audit", icon: Clock, onClick: () => setLocation('/hotel/night-audit') },
         { id: "hotel/reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/hotel/reports') },
-<<<<<<< HEAD
-=======
         { id: "hotel/channel-manager", label: "Channel Manager", icon: BarChart3, onClick: () => setLocation('/hotel/channel-manager') },
         { id: "hotel/revenue-management", label: "Revenue Management", icon: BarChart3, onClick: () => setLocation('/hotel/revenue-management') },
         { id: "hotel/banquet", label: "Banquet & Events", icon: Calendar, onClick: () => setLocation('/hotel/banquet') },
->>>>>>> worktree-agent-aa932a7e90941a150
       ],
     },
     {
@@ -4720,10 +4758,7 @@ function Router() {
       <ProtectedRoute path="/restaurant-campaigns" component={RestaurantCampaignsWrapper} />
       <ProtectedRoute path="/restaurant-recipes" component={RestaurantRecipesWrapper} />
       <ProtectedRoute path="/restaurant-payment-terminal" component={RestaurantPaymentTerminalWrapper} />
-<<<<<<< HEAD
-=======
       <ProtectedRoute path="/restaurant/ondc-integration" component={() => <OndcIntegrationPage />} />
->>>>>>> worktree-agent-aa932a7e90941a150
       <Route path="/restaurant-table-order/:outletId/:tableId" component={RestaurantTableOrderPage} />
       <Route path="/restaurant-table-order/:outletId" component={RestaurantTableOrderPage} />
       <Route path="/restaurant-cds" component={RestaurantCDSPage} />
@@ -4737,12 +4772,9 @@ function Router() {
       <ProtectedRoute path="/hotel/corporate" component={HotelCorporateWrapper} />
       <ProtectedRoute path="/hotel/night-audit" component={HotelNightAuditWrapper} />
       <ProtectedRoute path="/hotel/reports" component={HotelReportsWrapper} />
-<<<<<<< HEAD
-=======
       <ProtectedRoute path="/hotel/channel-manager" component={() => <HotelChannelManagerPage />} />
       <ProtectedRoute path="/hotel/revenue-management" component={() => <HotelRevenueManagementPage />} />
       <ProtectedRoute path="/hotel/banquet" component={() => <HotelBanquetPage />} />
->>>>>>> worktree-agent-aa932a7e90941a150
       <ProtectedRoute path="/healthcare/patients" component={HealthcarePatientsWrapper} />
       <ProtectedRoute path="/healthcare/opd" component={HealthcareOPDWrapper} />
       <ProtectedRoute path="/healthcare/ipd" component={HealthcareIPDWrapper} />
@@ -4869,6 +4901,22 @@ function Router() {
           <ProtectedRoute path="/healthcare-enterprise2" component={HealthcareEnterprise2Wrapper} />
           <ProtectedRoute path="/education-enterprise2" component={EducationEnterprise2Wrapper} />
       <ProtectedRoute path="/gold-erp" component={GoldErpWrapper} />
+      {/* Phase 7F — Nidhi */}
+      <ProtectedRoute path="/nidhi/loan-sanction" component={() => <NidhiLoanSanctionPage />} />
+      <ProtectedRoute path="/nidhi/pdc-tracking" component={() => <NidhiPDCTrackingPage />} />
+      <ProtectedRoute path="/nidhi/rbi-returns" component={() => <NidhiRBIReturnsPage />} />
+      {/* Phase 7G — CRM */}
+      <ProtectedRoute path="/crm/lead-scoring" component={() => <CRMLeadScoringPage />} />
+      <ProtectedRoute path="/crm/drip-campaigns" component={() => <CRMDripCampaignsPage />} />
+      <ProtectedRoute path="/crm/customer-360" component={() => <CRMCustomer360Page />} />
+      {/* Phase 7H — Logistics */}
+      <ProtectedRoute path="/logistics/eway-bill" component={() => <LogisticsEWayBillPage />} />
+      <ProtectedRoute path="/logistics/live-gps" component={() => <LogisticsLiveGPSPage />} />
+      <ProtectedRoute path="/logistics/route-optimization" component={() => <LogisticsRouteOptimizationPage />} />
+      {/* Phase 7I — Real Estate */}
+      <ProtectedRoute path="/real-estate/rera" component={() => <RealEstateRERAPage />} />
+      <ProtectedRoute path="/real-estate/demand-letters" component={() => <RealEstateDemandLettersPage />} />
+      <ProtectedRoute path="/real-estate/project-pl" component={() => <RealEstateProjectPLPage />} />
       <Route path="/ess" component={EssLogin} />
       <Route path="/ess/portal" component={EssPortal} />
       <ProtectedRoute path="/journal-entry/new" component={ManualJournalEntryPageWrapper} />
