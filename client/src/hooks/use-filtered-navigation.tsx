@@ -138,6 +138,7 @@ const navItemToScreen: Record<string, string> = {
   'projects': 'Projects & Assets',
   'fixed-assets': 'Projects & Assets',
   'currency-management': 'Accounting & Ledger',
+  'tax-engine': 'Finance & Accounts',
   // Generic ERP gap features
   'purchase-requisitions': 'Purchase Orders',
   'goods-receipt-notes': 'Purchase Orders',

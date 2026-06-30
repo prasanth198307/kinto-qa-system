@@ -181,6 +181,7 @@ import TimesheetsPage from "@/pages/timesheets";
 import FixedAssetsPage from "@/pages/fixed-assets";
 import PerformanceAppraisalPage from "@/pages/performance-appraisal";
 import CurrencyManagementPage from "@/pages/currency-management";
+import TaxEnginePage from "@/pages/tax-engine";
 import CostCentresPage from "@/pages/cost-centres";
 import PurchaseRequisitionsPage from "@/pages/purchase-requisitions";
 import ApprovalWorkflowsPage from "@/pages/approval-workflows";
@@ -2341,6 +2342,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "budget-variance", label: "Budget & Variance", icon: Scale, onClick: () => setLocation('/budget-variance') },
         { id: "tds-management", label: "TDS Management", icon: Calculator, onClick: () => setLocation('/tds-management') },
         { id: "currency-management", label: "Multi-currency", icon: IndianRupee, onClick: () => setLocation('/currency-management') },
+        { id: "tax-engine", label: "Multi-Country Tax", icon: Globe, onClick: () => setLocation('/tax-engine') },
         { id: "cost-centres", label: "Cost Centres", icon: Building2, onClick: () => setLocation('/cost-centres') },
         { id: "gstr-reports", label: "GST Returns (GSTR)", icon: FileText, onClick: () => setLocation('/gstr-reports') },
       ],
@@ -4026,6 +4028,7 @@ function Router() {
       <ProtectedRoute path="/projects" component={ProjectManagementWrapper} />
       <ProtectedRoute path="/fixed-assets" component={FixedAssetsWrapper} />
       <ProtectedRoute path="/currency-management" component={CurrencyManagementWrapper} />
+      <ProtectedRoute path="/tax-engine" component={() => <TaxEnginePage />} />
       <ProtectedRoute path="/cost-centres" component={CostCentresWrapper} />
       <ProtectedRoute path="/purchase-requisitions" component={PurchaseRequisitionsWrapper} />
       <ProtectedRoute path="/approval-workflows" component={ApprovalWorkflowsWrapper} />

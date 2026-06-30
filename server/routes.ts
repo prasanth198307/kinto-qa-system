@@ -40,6 +40,7 @@ import agricultureRouter from "./agriculture-routes";
 import goldErpRouter from "./gold-erp-routes";
 import goldErpRouter2 from "./gold-erp-routes2";
 import hrExtraRouter from "./hr-extra-routes";
+import { taxRouter } from "./tax-routes";
 import { seedTenantPermissions, syncAndUnlockByPlan } from "./seed-permissions";
 import { whatsappConversationService } from "./whatsappConversationService";
 import { calculateBOMSuggestions } from "@shared/calculations";
@@ -1911,6 +1912,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/gold-erp', goldErpRouter);
   app.use('/api/gold-erp', goldErpRouter2);
   app.use('/api/hr', hrExtraRouter);
+  app.use('/api/tax', taxRouter);
 
   // Auth routes are handled by setupAuth() in auth.ts
   // /api/register, /api/login, /api/logout, /api/user are automatically set up
