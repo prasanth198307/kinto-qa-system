@@ -84,7 +84,7 @@ import { ManagerChecklistAssignment } from "@/components/ManagerChecklistAssignm
 import PendingPaymentsDashboard from "@/components/PendingPaymentsDashboard";
 import { OperatorAssignedChecklists } from "@/components/OperatorAssignedChecklists";
 import { VerticalNavSidebar, type NavSection } from "@/components/VerticalNavSidebar";
-import { AlertTriangle, Archive, Award, BarChart3, BedDouble, Bell, BookOpen, Box, Briefcase, Building2, Calculator, Calendar, Camera, Car, CheckCircle, CheckCircle2, ClipboardCheck, ClipboardList, Clock, Coins, CreditCard, Crosshair, Factory, FileStack, FileText, FileX, FolderOpen, Gem, Gift, Globe, Heart, History, IndianRupee, Key, Landmark, Layers, LayoutDashboard, ListChecks, Loader2, Lock, LogOut, MessageSquare, Package, PackageX, Pill, Play, Plus, Receipt, RotateCcw, Scale, Scan, Settings, Settings2, Shield, ShoppingBag, ShoppingCart, Star, Tag, Target, Trash2, TrendingUp, Truck, Upload, UserX, Users, UtensilsCrossed, Wallet, Wifi, Wrench, XCircle, Zap , Database, GraduationCap, HeartPulse, Home, Leaf } from "lucide-react";
+import { Activity, AlertTriangle, Archive, Award, BarChart3, BedDouble, Bell, BookOpen, Box, Briefcase, Building2, Calculator, Calendar, Camera, Car, CheckCircle, CheckCircle2, ClipboardCheck, ClipboardList, Clock, Coins, CreditCard, Crosshair, Factory, FileStack, FileText, FileX, FolderOpen, Gem, Gift, Globe, Heart, History, IndianRupee, Key, Landmark, Layers, LayoutDashboard, ListChecks, Loader2, Lock, LogOut, MessageSquare, Package, PackageX, Pill, Play, Plus, Receipt, RotateCcw, Scale, Scan, Settings, Settings2, Shield, ShoppingBag, ShoppingCart, Star, Tag, Target, Trash2, TrendingUp, Truck, Upload, UserX, Users, UtensilsCrossed, Wallet, Wifi, Wrench, XCircle, Zap , Database, GraduationCap, HeartPulse, Home, Leaf } from "lucide-react";
 import { MapPin, Route as RouteIcon } from "lucide-react";
 import CRMLeadsPage from "@/pages/crm-leads";
 import SalesDashboard from "@/components/SalesDashboard";
@@ -425,6 +425,9 @@ import RetailB2BPortalPage from "@/pages/retail/b2b-portal";
 import ManufacturingMRPPage from "@/pages/manufacturing/mrp";
 import ManufacturingWorkOrdersPage from "@/pages/manufacturing/work-orders";
 import ManufacturingQualityPage from "@/pages/manufacturing/quality";
+import ManufacturingJobCardsPage from "@/pages/manufacturing/job-cards";
+import ManufacturingSubContractingPage from "@/pages/manufacturing/sub-contracting";
+import ManufacturingMachineOEEPage from "@/pages/manufacturing/machine-oee";
 import { parseISO } from "date-fns";
 
 type Role = 'admin' | 'operator' | 'reviewer' | 'manager';
@@ -1267,6 +1270,8 @@ function AdminDashboard() {
         { id: "manufacturing/mrp", label: "MRP Engine", icon: Calculator, onClick: () => setLocation('/manufacturing/mrp') },
         { id: "manufacturing/work-orders", label: "Work Orders", icon: ListChecks, onClick: () => setLocation('/manufacturing/work-orders') },
         { id: "manufacturing/quality", label: "Quality Control", icon: CheckCircle, onClick: () => setLocation('/manufacturing/quality') },
+        { id: "manufacturing/job-cards", label: "Shop Floor / Job Cards", icon: ClipboardList, onClick: () => setLocation('/manufacturing/job-cards') },
+        { id: "manufacturing/sub-contracting", label: "Sub-contracting", icon: Package, onClick: () => setLocation('/manufacturing/sub-contracting') },
       ],
       quickActions: [
         { id: "add-product", label: "Add Product", icon: Package, onClick: () => setActiveView("products") },
@@ -1300,6 +1305,7 @@ function AdminDashboard() {
         { id: "gatepasses", label: "Gatepasses", icon: FileText },
         { id: "dispatch-tracking", label: "Dispatch Tracking", icon: Truck },
         { id: "dispatch-masters", label: "Dispatch Masters", icon: Car, onClick: () => setLocation('/dispatch-masters') },
+        { id: "logistics/eway-bill", label: "E-Way Bill", icon: FileText, onClick: () => setLocation('/logistics/eway-bill') },
       ],
       quickActions: [
         { id: "create-gatepass", label: "Create Gatepass", icon: FileText, onClick: () => setActiveView("gatepasses") },
@@ -1375,6 +1381,7 @@ function AdminDashboard() {
       items: [
         { id: "maintenance", label: "PM Schedule", icon: Wrench },
         { id: "pm-history", label: "PM History", icon: History },
+        { id: "manufacturing/machine-oee", label: "Machine OEE", icon: Activity, onClick: () => setLocation('/manufacturing/machine-oee') },
       ],
       quickActions: [
         { id: "schedule-maintenance", label: "Schedule PM", icon: Wrench, onClick: () => setActiveView("maintenance") },
@@ -2741,6 +2748,8 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "manufacturing/mrp", label: "MRP Engine", icon: Calculator, onClick: () => setLocation('/manufacturing/mrp') },
         { id: "manufacturing/work-orders", label: "Work Orders", icon: ListChecks, onClick: () => setLocation('/manufacturing/work-orders') },
         { id: "manufacturing/quality", label: "Quality Control", icon: CheckCircle, onClick: () => setLocation('/manufacturing/quality') },
+        { id: "manufacturing/job-cards", label: "Shop Floor / Job Cards", icon: ClipboardList, onClick: () => setLocation('/manufacturing/job-cards') },
+        { id: "manufacturing/sub-contracting", label: "Sub-contracting", icon: Package, onClick: () => setLocation('/manufacturing/sub-contracting') },
         { id: "warehouses", label: "Warehouses & Stock", icon: Archive, onClick: () => setLocation('/warehouses') },
         { id: "inventory-bulk-import", label: "Bulk Import Products", icon: Upload },
         { id: "inventory-grn-scan", label: "GRN Scan (Barcode)", icon: Scan },
@@ -2771,6 +2780,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "gatepasses", label: "Gatepasses", icon: FileText, onClick: () => setLocation('/?tab=gatepasses') },
         { id: "dispatch-tracking", label: "Dispatch Tracking", icon: Truck, onClick: () => setLocation('/dispatch-tracking') },
         { id: "dispatch-masters", label: "Dispatch Masters", icon: Car, onClick: () => setLocation('/dispatch-masters') },
+        { id: "logistics/eway-bill", label: "E-Way Bill", icon: FileText, onClick: () => setLocation('/logistics/eway-bill') },
       ],
     },
     {
@@ -2834,6 +2844,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       items: [
         { id: "maintenance", label: "PM Schedule", icon: Wrench, onClick: () => setLocation('/?tab=maintenance') },
         { id: "pm-history", label: "PM History", icon: History, onClick: () => setLocation('/?tab=pm-history') },
+        { id: "manufacturing/machine-oee", label: "Machine OEE", icon: Activity, onClick: () => setLocation('/manufacturing/machine-oee') },
       ],
     },
     {
@@ -5017,6 +5028,9 @@ function Router() {
       <ProtectedRoute path="/manufacturing/mrp" component={() => <ManufacturingMRPPage />} />
       <ProtectedRoute path="/manufacturing/work-orders" component={() => <ManufacturingWorkOrdersPage />} />
       <ProtectedRoute path="/manufacturing/quality" component={() => <ManufacturingQualityPage />} />
+      <ProtectedRoute path="/manufacturing/job-cards" component={() => <ManufacturingJobCardsPage />} />
+      <ProtectedRoute path="/manufacturing/sub-contracting" component={() => <ManufacturingSubContractingPage />} />
+      <ProtectedRoute path="/manufacturing/machine-oee" component={() => <ManufacturingMachineOEEPage />} />
       <Route path="/ess" component={EssLogin} />
       <Route path="/ess/portal" component={EssPortal} />
       <ProtectedRoute path="/journal-entry/new" component={ManualJournalEntryPageWrapper} />

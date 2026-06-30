@@ -66,6 +66,9 @@ import crmExtraRouter from "./crm-extra-routes";
 import agricultureExtraRouter from "./agriculture-extra-routes";
 import ecommerceExtraRouter from "./ecommerce-extra-routes";
 import financeErpRouter from "./finance-erp-routes";
+import manufacturingRouter from "./manufacturing-routes";
+import manufacturingQualityRouter from "./manufacturing-quality-routes";
+import manufacturingOpsRouter from "./manufacturing-ops-routes";
 import { recurringJournalRouter, processRecurringJournals } from "./recurring-journal-service";
 import { startLoyaltyExpiryScheduler } from "./loyalty-expiry-service";
 import phase7Router from "./phase7-routes";
@@ -1991,6 +1994,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/nidhi-company', nidhiRouter);
   app.use('/api/finance', financeErpRouter);
   app.use('/api/finance-erp', financeErpRouter);
+  app.use('/api/manufacturing', manufacturingRouter);
+  app.use('/api/manufacturing', manufacturingQualityRouter);
+  app.use('/api/manufacturing', manufacturingOpsRouter);
   app.use('/api/restaurant', restaurantEnterpriseRouter);
   app.use('/api/aggregators', aggregatorRouter);
   app.use('/api/restaurant/tax', restaurantTaxRouter);
@@ -6788,19 +6794,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const { journalForProductionEntry } = await import('./journal-service');
         let costValue = 0;
+
+        // Strategy 1: linked issuance → sum qty_issued × unit_cost from RM master
         if (validatedEntry.issuanceId) {
           const issItemsResult: any[] = (await db.execute(sql`
-            SELECT rmii.quantity_issued, rm.unit_cost
+            SELECT rmii.quantity_issued, COALESCE(rm.unit_cost, rm.total_cost, 0) AS unit_cost
             FROM raw_material_issuance_items rmii
             LEFT JOIN raw_materials rm ON rmii.raw_material_id = rm.id
             WHERE rmii.issuance_id = ${validatedEntry.issuanceId}
           `)).rows;
           for (const item of issItemsResult) {
-            const qty = Number(item.quantity_issued) || 0;
-            const uc = Number(item.unit_cost) || 0;
-            costValue += qty * uc;
+            costValue += (Number(item.quantity_issued) || 0) * (Number(item.unit_cost) || 0);
           }
         }
+
+        // Strategy 2: no issuance linked → find the most recent issuance for this product on same date
+        if (!costValue && validatedEntry.productId) {
+          const linkedIssuance: any[] = (await db.execute(sql`
+            SELECT rmii.quantity_issued, COALESCE(rm.unit_cost, rm.total_cost, 0) AS unit_cost
+            FROM raw_material_issuance_items rmii
+            JOIN raw_material_issuance rmi ON rmi.id = rmii.issuance_id AND rmi.tenant_id = ${tenantId}
+            LEFT JOIN raw_materials rm ON rmii.raw_material_id = rm.id
+            WHERE rmi.product_id = ${validatedEntry.productId}
+              AND rmi.issuance_date::date = ${validatedEntry.productionDate ?? new Date().toISOString().slice(0,10)}::date
+            ORDER BY rmi.created_at DESC
+            LIMIT 20
+          `)).rows;
+          for (const item of linkedIssuance) {
+            costValue += (Number(item.quantity_issued) || 0) * (Number(item.unit_cost) || 0);
+          }
+        }
+
+        // Strategy 3: fallback → product cost_price × produced qty
+        if (!costValue && product?.costPrice && validatedEntry.producedQuantity) {
+          costValue = Number(product.costPrice) * Number(validatedEntry.producedQuantity);
+        }
+
         const productName = product?.productName || 'Unknown Product';
         await journalForProductionEntry(productionEntry, productName, costValue);
       } catch (journalError) {
@@ -31200,8 +31229,8 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
     }
   });
 
-  // =====================================================  // ACCOUNTING PERIODS (Phase 3.3)
-  // =====================================================  app.get('/api/finance-erp/periods', async (req: any, res) => {
+  // ACCOUNTING PERIODS (Phase 3.3)
+  app.get('/api/finance-erp/periods', async (req: any, res) => {
     try {
       const tenantId = req.session?.tenantId ?? req.user?.tenantId;
       const result = await db.execute(sql`
@@ -31325,7 +31354,6 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
   app.post('/api/real-estate/demand-letters/generate', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json({ generated: true }); });
   app.get('/api/real-estate/project-pl/:projectId', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json(null); });
 
-=======
   const httpServer = createServer(app);
   return httpServer;
 }

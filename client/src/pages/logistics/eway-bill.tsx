@@ -13,11 +13,6 @@ import { FileText, Printer, XCircle, RefreshCw } from "lucide-react";
 const api = (method: string, path: string, body?: any) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(r => r.json());
 
-const SAMPLE_EWB = [
-  { id: 1, ewb_no: "230012345678", goods: "Electronic Goods", from: "Mumbai", to: "Delhi", valid_upto: "2026-07-03", status: "Active" },
-  { id: 2, ewb_no: "230012345679", goods: "Textile Products", from: "Surat", to: "Kolkata", valid_upto: "2026-07-01", status: "Extended" },
-  { id: 3, ewb_no: "230012345680", goods: "Auto Parts", from: "Chennai", to: "Bangalore", valid_upto: "2026-06-28", status: "Cancelled" },
-];
 
 const SUPPLY_TYPES = ["Outward", "Inward", "Job Work", "Sub-contracting"];
 const TRANSPORT_MODES = ["Road", "Rail", "Air", "Ship"];
@@ -31,29 +26,33 @@ export default function EWayBillPage() {
   const [generated, setGenerated] = useState<any>(null);
 
   const { data: ewbList = [] } = useQuery<any[]>({
-    queryKey: ["logistics-eway-bills"],
-    queryFn: () => api("GET", "/api/logistics/eway-bills").catch(() => []),
+    queryKey: ["manufacturing-eway-bills"],
+    queryFn: () => api("GET", "/api/manufacturing/eway-bills").catch(() => []),
   });
 
   const generateMutation = useMutation({
-    mutationFn: () => api("POST", "/api/logistics/eway-bill/generate", form),
+    mutationFn: () => api("POST", "/api/manufacturing/eway-bills/generate", {
+      vehicleNumber: form.vehicle_no,
+      transportMode: form.transport_mode === "Road" ? "1" : form.transport_mode === "Rail" ? "2" : form.transport_mode === "Air" ? "3" : "4",
+      distanceKm: form.distance,
+    }),
     onSuccess: (data) => {
-      setGenerated(data || { ewbNo: "230012345681", validUpto: "2026-07-03" });
-      qc.invalidateQueries({ queryKey: ["logistics-eway-bills"] });
+      setGenerated(data?.eway_bill || data);
+      qc.invalidateQueries({ queryKey: ["manufacturing-eway-bills"] });
     },
   });
 
   const cancelMutation = useMutation({
-    mutationFn: (id: number) => api("PUT", `/api/logistics/eway-bills/${id}/cancel`, {}),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["logistics-eway-bills"] }),
+    mutationFn: (id: string) => api("PATCH", `/api/manufacturing/eway-bills/${id}/cancel`, { cancelReason: 4, cancelRemarks: "Cancelled" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["manufacturing-eway-bills"] }),
   });
 
   const extendMutation = useMutation({
-    mutationFn: (id: number) => api("PUT", `/api/logistics/eway-bills/${id}/extend`, {}),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["logistics-eway-bills"] }),
+    mutationFn: (id: string) => api("PUT", `/api/manufacturing/eway-bills/${id}/extend`, {}),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["manufacturing-eway-bills"] }),
   });
 
-  const rows = ewbList.length ? ewbList : SAMPLE_EWB;
+  const rows = ewbList;
   const f = (k: string, v: string) => setForm(prev => ({ ...prev, [k]: v }));
 
   const printEWB = (ewb: any) => {
