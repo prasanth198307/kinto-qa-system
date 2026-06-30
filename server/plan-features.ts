@@ -447,6 +447,58 @@ const EDUCATION_ENTERPRISE_MODULES = [
   "projects", "fixed_assets", "multi_currency", "education",
 ];
 
+// ── Gold ERP vertical plans ───────────────────────────────────────────────────
+const GOLD_STARTER_MODULES = ["invoicing", "basic_inventory", "expenses", "documents", "gold_erp"];
+const GOLD_PROFESSIONAL_MODULES = [
+  "invoicing", "purchase_orders", "basic_inventory", "sales_orders", "gatepasses",
+  "expenses", "documents", "accounting", "mis", "production", "quality_returns", "gold_erp",
+];
+const GOLD_ENTERPRISE_MODULES = [
+  "invoicing", "purchase_orders", "basic_inventory", "sales_orders", "gatepasses",
+  "expenses", "documents", "accounting", "mis", "crm", "api_hub", "whatsapp",
+  "hr_payroll", "production", "quality_returns", "fixed_assets", "multi_currency",
+  "warehouses", "pos", "gold_erp",
+];
+
+// ── Retail / POS vertical plans ───────────────────────────────────────────────
+const POS_STARTER_MODULES = ["invoicing", "basic_inventory", "expenses", "pos"];
+const POS_PROFESSIONAL_MODULES = [
+  "invoicing", "purchase_orders", "basic_inventory", "sales_orders", "gatepasses",
+  "expenses", "accounting", "mis", "crm", "whatsapp", "pos",
+];
+const POS_ENTERPRISE_MODULES = [
+  "invoicing", "purchase_orders", "basic_inventory", "sales_orders", "gatepasses",
+  "expenses", "accounting", "mis", "crm", "api_hub", "whatsapp", "hr_payroll",
+  "fixed_assets", "multi_currency", "warehouses", "quality_returns", "pos",
+];
+
+// ── Manufacturing vertical plans ──────────────────────────────────────────────
+const MANUFACTURING_STARTER_MODULES = [
+  "invoicing", "basic_inventory", "expenses", "documents", "production",
+];
+const MANUFACTURING_PROFESSIONAL_MODULES = [
+  "invoicing", "purchase_orders", "basic_inventory", "sales_orders", "gatepasses",
+  "expenses", "documents", "accounting", "mis", "production", "quality_returns",
+  "serial_lot", "uom",
+];
+const MANUFACTURING_ENTERPRISE_MODULES = [
+  "invoicing", "purchase_orders", "basic_inventory", "sales_orders", "gatepasses",
+  "expenses", "documents", "accounting", "mis", "crm", "api_hub", "whatsapp",
+  "hr_payroll", "production", "quality_returns", "serial_lot", "uom", "warehouses",
+  "stock_transfers", "fixed_assets", "multi_currency", "projects", "timesheets",
+  "purchase_requisitions", "grn", "price_lists", "item_variants", "approvals",
+];
+
+// ── HR & Payroll vertical plans ───────────────────────────────────────────────
+const HR_STARTER_MODULES = ["hr_payroll", "expenses"];
+const HR_PROFESSIONAL_MODULES = [
+  "hr_payroll", "expenses", "documents", "mis", "api_hub",
+];
+const HR_ENTERPRISE_MODULES = [
+  "hr_payroll", "expenses", "documents", "mis", "api_hub", "whatsapp",
+  "accounting", "projects", "timesheets", "appraisals", "approvals",
+];
+
 // ── E-Commerce vertical plans ─────────────────────────────────────────────────
 const ECOMMERCE_STARTER_MODULES = ["invoicing", "basic_inventory", "expenses", "documents", "ecommerce"];
 const ECOMMERCE_PROFESSIONAL_MODULES = [
@@ -508,6 +560,19 @@ export const PLAN_MODULES: Record<string, string[]> = {
   ecommerce_starter:       ECOMMERCE_STARTER_MODULES,
   ecommerce_professional:  ECOMMERCE_PROFESSIONAL_MODULES,
   ecommerce_enterprise:    ECOMMERCE_ENTERPRISE_MODULES,
+
+  gold_starter:            GOLD_STARTER_MODULES,
+  gold_professional:       GOLD_PROFESSIONAL_MODULES,
+  gold_enterprise:         GOLD_ENTERPRISE_MODULES,
+  pos_starter:             POS_STARTER_MODULES,
+  pos_professional:        POS_PROFESSIONAL_MODULES,
+  pos_enterprise:          POS_ENTERPRISE_MODULES,
+  manufacturing_starter:   MANUFACTURING_STARTER_MODULES,
+  manufacturing_professional: MANUFACTURING_PROFESSIONAL_MODULES,
+  manufacturing_enterprise:   MANUFACTURING_ENTERPRISE_MODULES,
+  hr_starter:              HR_STARTER_MODULES,
+  hr_professional:         HR_PROFESSIONAL_MODULES,
+  hr_enterprise:           HR_ENTERPRISE_MODULES,
 };
 
 // ── Route prefix → minimum plan ───────────────────────────────────────────────
