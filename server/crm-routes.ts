@@ -250,4 +250,158 @@ router.post("/survey-responses", requireCRM, async (req: any, res) => {
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 
+// ── Contacts ──────────────────────────────────────────────────────────────────
+
+router.get("/contacts", requireCRM, async (req: any, res) => {
+  try {
+    const tid = getTenantId(req);
+    const { search, account_id } = req.query;
+    let q = `SELECT * FROM crm_contacts WHERE tenant_id=${tid} AND record_status=1`;
+    if (search) q += ` AND (first_name||' '||last_name ILIKE '%${String(search).replace(/'/g,"''")}%' OR email ILIKE '%${String(search).replace(/'/g,"''")}%' OR phone ILIKE '%${String(search).replace(/'/g,"''")}%')`;
+    if (account_id) q += ` AND company='${String(account_id).replace(/'/g,"''")}'`;
+    q += ` ORDER BY created_at DESC LIMIT 500`;
+    const r = await db.execute(sql.raw(q));
+    res.json(r.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/contacts", requireCRM, async (req: any, res) => {
+  try {
+    const tid = getTenantId(req);
+    const { first_name, last_name, email, phone, company, designation, source, tags, notes } = req.body;
+    const r = await db.execute(sql`
+      INSERT INTO crm_contacts (id, tenant_id, first_name, last_name, email, phone, company, designation, source, tags, notes, is_active, record_status)
+      VALUES (${Date.now().toString(36)+Math.random().toString(36).slice(2,5)}, ${tid}, ${first_name}, ${last_name||null}, ${email||null}, ${phone||null}, ${company||null}, ${designation||null}, ${source||null}, ${tags||null}, ${notes||null}, true, 1)
+      RETURNING *`);
+    res.json(r.rows[0]);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.put("/contacts/:id", requireCRM, async (req: any, res) => {
+  try {
+    const tid = getTenantId(req);
+    const { first_name, last_name, email, phone, company, designation, source, tags, notes, is_active } = req.body;
+    await db.execute(sql`UPDATE crm_contacts SET first_name=${first_name}, last_name=${last_name||null}, email=${email||null}, phone=${phone||null}, company=${company||null}, designation=${designation||null}, source=${source||null}, tags=${tags||null}, notes=${notes||null}, is_active=${is_active!==false}, updated_at=NOW() WHERE id=${req.params.id} AND tenant_id=${tid}`);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// ── Accounts ──────────────────────────────────────────────────────────────────
+
+router.get("/accounts", requireCRM, async (req: any, res) => {
+  try {
+    const tid = getTenantId(req);
+    const { search } = req.query;
+    let q = `SELECT a.*, (SELECT COUNT(*) FROM crm_contacts c WHERE c.company=a.company_name AND c.tenant_id=${tid}) as contacts_count FROM crm_accounts a WHERE a.tenant_id=${tid} AND a.record_status=1`;
+    if (search) q += ` AND a.company_name ILIKE '%${String(search).replace(/'/g,"''")}%'`;
+    q += ` ORDER BY a.company_name`;
+    const r = await db.execute(sql.raw(q));
+    res.json(r.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/accounts", requireCRM, async (req: any, res) => {
+  try {
+    const tid = getTenantId(req);
+    const { company_name, industry, website, phone, email, address, gstin, annual_revenue, employee_count, account_type, notes } = req.body;
+    const r = await db.execute(sql`
+      INSERT INTO crm_accounts (id, tenant_id, company_name, industry, website, phone, email, address, gstin, annual_revenue, employee_count, account_type, notes, record_status)
+      VALUES (${Date.now().toString(36)+Math.random().toString(36).slice(2,5)}, ${tid}, ${company_name}, ${industry||null}, ${website||null}, ${phone||null}, ${email||null}, ${address||null}, ${gstin||null}, ${annual_revenue||null}, ${employee_count||null}, ${account_type||'customer'}, ${notes||null}, 1)
+      RETURNING *`);
+    res.json(r.rows[0]);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.put("/accounts/:id", requireCRM, async (req: any, res) => {
+  try {
+    const tid = getTenantId(req);
+    const { company_name, industry, website, phone, email, address, annual_revenue, account_type, notes } = req.body;
+    await db.execute(sql`UPDATE crm_accounts SET company_name=${company_name}, industry=${industry||null}, website=${website||null}, phone=${phone||null}, email=${email||null}, address=${address||null}, annual_revenue=${annual_revenue||null}, account_type=${account_type||'customer'}, notes=${notes||null} WHERE id=${req.params.id} AND tenant_id=${tid}`);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// ── Activities ────────────────────────────────────────────────────────────────
+
+router.get("/activities", requireCRM, async (req: any, res) => {
+  try {
+    const tid = getTenantId(req);
+    const { activity_type, status, from, to, contact_id } = req.query;
+    let q = `SELECT a.*, CONCAT(c.first_name,' ',c.last_name) as contact_name FROM crm_activities a LEFT JOIN crm_contacts c ON c.id=a.contact_id WHERE a.tenant_id=${tid} AND a.record_status=1`;
+    if (activity_type) q += ` AND a.activity_type='${String(activity_type).replace(/'/g,"''")}'`;
+    if (status) q += ` AND a.status='${String(status).replace(/'/g,"''")}'`;
+    if (from) q += ` AND a.scheduled_at >= '${String(from).replace(/'/g,"''")}'`;
+    if (to) q += ` AND a.scheduled_at <= '${String(to).replace(/'/g,"''")}'`;
+    if (contact_id) q += ` AND a.contact_id='${String(contact_id).replace(/'/g,"''")}'`;
+    q += ` ORDER BY a.scheduled_at DESC NULLS LAST LIMIT 500`;
+    const r = await db.execute(sql.raw(q));
+    res.json(r.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/activities", requireCRM, async (req: any, res) => {
+  try {
+    const tid = getTenantId(req);
+    const { activity_type, subject, description, contact_id, account_id, lead_id, scheduled_at, assigned_to } = req.body;
+    const r = await db.execute(sql`
+      INSERT INTO crm_activities (id, tenant_id, activity_type, subject, description, contact_id, account_id, lead_id, scheduled_at, status, assigned_to, record_status)
+      VALUES (${Date.now().toString(36)+Math.random().toString(36).slice(2,5)}, ${tid}, ${activity_type||'call'}, ${subject||null}, ${description||null}, ${contact_id||null}, ${account_id||null}, ${lead_id||null}, ${scheduled_at||null}, 'pending', ${assigned_to||null}, 1)
+      RETURNING *`);
+    res.json(r.rows[0]);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.put("/activities/:id", requireCRM, async (req: any, res) => {
+  try {
+    const tid = getTenantId(req);
+    const { status, outcome, completed_at } = req.body;
+    await db.execute(sql`UPDATE crm_activities SET status=${status||'pending'}, outcome=${outcome||null}, completed_at=${completed_at||null} WHERE id=${req.params.id} AND tenant_id=${tid}`);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// ── Campaigns ─────────────────────────────────────────────────────────────────
+
+router.get("/campaigns", requireCRM, async (req: any, res) => {
+  try {
+    const tid = getTenantId(req);
+    const r = await db.execute(sql`SELECT * FROM crm_campaigns WHERE tenant_id=${tid} AND record_status=1 ORDER BY created_at DESC`);
+    res.json(r.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/campaigns", requireCRM, async (req: any, res) => {
+  try {
+    const tid = getTenantId(req);
+    const { name, subject, template_id, scheduled_at, recipient_type } = req.body;
+    const r = await db.execute(sql`
+      INSERT INTO crm_campaigns (id, tenant_id, name, subject, template_id, scheduled_at, recipient_type, status, record_status)
+      VALUES (${Date.now().toString(36)+Math.random().toString(36).slice(2,5)}, ${tid}, ${name}, ${subject||null}, ${template_id||null}, ${scheduled_at||null}, ${recipient_type||'all'}, 'draft', 1)
+      RETURNING *`);
+    res.json(r.rows[0]);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// ── Reports ───────────────────────────────────────────────────────────────────
+
+router.get("/reports/:type", requireCRM, async (req: any, res) => {
+  try {
+    const tid = getTenantId(req);
+    const { from, to } = req.query;
+    const type = req.params.type;
+    let data: any[] = [];
+    if (type === 'lead-funnel') {
+      const r = await db.execute(sql`SELECT status, COUNT(*) as count, SUM(COALESCE(deal_value,0)) as total_value FROM crm_leads WHERE tenant_id=${tid} AND record_status=1 GROUP BY status ORDER BY count DESC`);
+      data = r.rows as any[];
+    } else if (type === 'activity-summary') {
+      const r = await db.execute(sql`SELECT activity_type, status, COUNT(*) as count FROM crm_activities WHERE tenant_id=${tid} AND record_status=1 GROUP BY activity_type, status ORDER BY count DESC`);
+      data = r.rows as any[];
+    } else if (type === 'account-wise-revenue') {
+      const r = await db.execute(sql`SELECT company, COUNT(*) as lead_count, SUM(COALESCE(deal_value,0)) as total_value FROM crm_leads WHERE tenant_id=${tid} AND record_status=1 AND company IS NOT NULL GROUP BY company ORDER BY total_value DESC LIMIT 50`);
+      data = r.rows as any[];
+    }
+    res.json({ report_type: type, count: data.length, data });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
 export default router;

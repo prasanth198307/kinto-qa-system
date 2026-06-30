@@ -708,4 +708,436 @@ router.get("/online-booking", auth, async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 
+// ── Guests CRUD ───────────────────────────────────────────────────────────────
+
+router.get("/guests", auth, async (req: any, res: any) => {
+  try {
+    const tid = getTenantId(req);
+    const { search } = req.query;
+    let q = `SELECT * FROM hotel_guests WHERE tenant_id=${tid} AND record_status=1`;
+    if (search) q += ` AND (name ILIKE '%${String(search).replace(/'/g,"''")}%' OR phone ILIKE '%${String(search).replace(/'/g,"''")}%' OR email ILIKE '%${String(search).replace(/'/g,"''")}%')`;
+    q += ` ORDER BY created_at DESC`;
+    const r = await db.execute(sql.raw(q));
+    res.json(r.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/guests", auth, async (req: any, res: any) => {
+  try {
+    const tid = getTenantId(req);
+    const id = `G${Date.now().toString(36)}`;
+    const { name, email, phone, id_type, id_number, address, nationality, preferences } = req.body;
+    const r = await db.execute(sql`
+      INSERT INTO hotel_guests (id, tenant_id, name, email, phone, id_type, id_number, address, nationality, preferences, visit_count, total_spend, is_vip, blacklisted, record_status)
+      VALUES (${id}, ${tid}, ${name}, ${email||null}, ${phone||null}, ${id_type||null}, ${id_number||null}, ${address||null}, ${nationality||'Indian'}, ${preferences||null}, 0, 0, 0, 0, 1)
+      RETURNING *`);
+    res.json(r.rows[0]);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.put("/guests/:id", auth, async (req: any, res: any) => {
+  try {
+    const tid = getTenantId(req);
+    const { name, email, phone, id_type, id_number, address, nationality, preferences, is_vip } = req.body;
+    await db.execute(sql`
+      UPDATE hotel_guests SET name=${name}, email=${email||null}, phone=${phone||null}, id_type=${id_type||null}, id_number=${id_number||null},
+      address=${address||null}, nationality=${nationality||null}, preferences=${preferences||null}, is_vip=${is_vip?1:0}, updated_at=NOW()
+      WHERE id=${req.params.id} AND tenant_id=${tid}`);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// ── Rooms CRUD ────────────────────────────────────────────────────────────────
+
+router.get("/rooms", auth, async (req: any, res: any) => {
+  try {
+    const tid = getTenantId(req);
+    const r = await db.execute(sql`
+      SELECT r.*, rt.name as room_type_name, rt.base_price,
+        res.reservation_number, g.name as guest_name
+      FROM hotel_rooms r
+      LEFT JOIN hotel_room_types rt ON rt.id=r.room_type_id
+      LEFT JOIN hotel_reservations res ON res.room_id=r.id AND res.status='checked_in' AND res.tenant_id=${tid}
+      LEFT JOIN hotel_guests g ON g.id=res.guest_id
+      WHERE r.tenant_id=${tid} AND r.record_status=1
+      ORDER BY r.floor, r.room_number`);
+    res.json(r.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/rooms", auth, async (req: any, res: any) => {
+  try {
+    const tid = getTenantId(req);
+    const id = `RM${Date.now().toString(36)}`;
+    const { room_number, room_type_id, floor } = req.body;
+    const r = await db.execute(sql`
+      INSERT INTO hotel_rooms (id, tenant_id, room_number, room_type_id, floor, status, is_active, record_status)
+      VALUES (${id}, ${tid}, ${room_number}, ${room_type_id||null}, ${floor||1}, 'available', 1, 1)
+      RETURNING *`);
+    res.json(r.rows[0]);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.put("/rooms/:id", auth, async (req: any, res: any) => {
+  try {
+    const tid = getTenantId(req);
+    const { room_number, room_type_id, floor, status, is_active } = req.body;
+    await db.execute(sql`
+      UPDATE hotel_rooms SET room_number=${room_number}, room_type_id=${room_type_id||null}, floor=${floor||1},
+      status=${status||'available'}, is_active=${is_active??1}, updated_at=NOW()
+      WHERE id=${req.params.id} AND tenant_id=${tid}`);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// ── Room Types CRUD ───────────────────────────────────────────────────────────
+
+router.get("/room-types", auth, async (req: any, res: any) => {
+  try {
+    const tid = getTenantId(req);
+    const r = await db.execute(sql`SELECT * FROM hotel_room_types WHERE tenant_id=${tid} AND record_status=1 ORDER BY name`);
+    res.json(r.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/room-types", auth, async (req: any, res: any) => {
+  try {
+    const tid = getTenantId(req);
+    const id = `RT${Date.now().toString(36)}`;
+    const { name, description, base_price, max_occupancy, amenities, total_rooms } = req.body;
+    const r = await db.execute(sql`
+      INSERT INTO hotel_room_types (id, tenant_id, name, description, base_price, max_occupancy, amenities, total_rooms, is_active, record_status)
+      VALUES (${id}, ${tid}, ${name}, ${description||null}, ${base_price||0}, ${max_occupancy||2}, ${amenities||null}, ${total_rooms||0}, 1, 1)
+      RETURNING *`);
+    res.json(r.rows[0]);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.put("/room-types/:id", auth, async (req: any, res: any) => {
+  try {
+    const tid = getTenantId(req);
+    const { name, description, base_price, max_occupancy, amenities, total_rooms } = req.body;
+    await db.execute(sql`
+      UPDATE hotel_room_types SET name=${name}, description=${description||null}, base_price=${base_price||0},
+      max_occupancy=${max_occupancy||2}, amenities=${amenities||null}, total_rooms=${total_rooms||0}, updated_at=NOW()
+      WHERE id=${req.params.id} AND tenant_id=${tid}`);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// ── Reservations CRUD ─────────────────────────────────────────────────────────
+
+router.get("/reservations", auth, async (req: any, res: any) => {
+  try {
+    const tid = getTenantId(req);
+    const { status, date, search, corporate_id } = req.query;
+    let q = `SELECT res.*, g.name as guest_name, g.phone as guest_phone, rt.name as room_type_name, r.room_number
+             FROM hotel_reservations res
+             LEFT JOIN hotel_guests g ON g.id=res.guest_id
+             LEFT JOIN hotel_room_types rt ON rt.id=res.room_type_id
+             LEFT JOIN hotel_rooms r ON r.id=res.room_id
+             WHERE res.tenant_id=${tid} AND res.record_status=1`;
+    if (status) q += ` AND res.status='${String(status).replace(/'/g,"''")}'`;
+    if (date) q += ` AND res.check_in_date='${String(date).replace(/'/g,"''")}'`;
+    if (search) q += ` AND (g.name ILIKE '%${String(search).replace(/'/g,"''")}%' OR res.reservation_number ILIKE '%${String(search).replace(/'/g,"''")}%')`;
+    if (corporate_id) q += ` AND res.corporate_account_id='${String(corporate_id).replace(/'/g,"''")}'`;
+    q += ` ORDER BY res.check_in_date DESC LIMIT 200`;
+    const r = await db.execute(sql.raw(q));
+    res.json(r.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/reservations", auth, async (req: any, res: any) => {
+  try {
+    const tid = getTenantId(req);
+    const id = `RES${Date.now().toString(36)}`;
+    const resNum = `RES-${new Date().getFullYear()}-${String(Date.now()).slice(-5)}`;
+    const {
+      guest_id, room_type_id, check_in_date, check_out_date, adults, children,
+      rate_per_night, source, special_requests, notes, advance_paid
+    } = req.body;
+    const nights = Math.max(1, Math.ceil((new Date(check_out_date).getTime() - new Date(check_in_date).getTime()) / 86400000));
+    const total = nights * Number(rate_per_night || 0);
+    const r = await db.execute(sql`
+      INSERT INTO hotel_reservations (id, tenant_id, reservation_number, guest_id, room_type_id, check_in_date, check_out_date,
+        adults, children, status, source, rate_per_night, total_nights, total_amount, advance_paid, balance_amount, special_requests, notes, record_status)
+      VALUES (${id}, ${tid}, ${resNum}, ${guest_id}, ${room_type_id||null}, ${check_in_date}, ${check_out_date},
+        ${adults||1}, ${children||0}, 'confirmed', ${source||'walk_in'}, ${rate_per_night||0}, ${nights}, ${total},
+        ${advance_paid||0}, ${total-(advance_paid||0)}, ${special_requests||null}, ${notes||null}, 1)
+      RETURNING *`);
+    res.json(r.rows[0]);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.put("/reservations/:id", auth, async (req: any, res: any) => {
+  try {
+    const tid = getTenantId(req);
+    const { status, room_id, actual_check_in, actual_check_out, notes, special_requests } = req.body;
+    await db.execute(sql`
+      UPDATE hotel_reservations SET status=${status}, room_id=${room_id||null},
+      actual_check_in=${actual_check_in||null}, actual_check_out=${actual_check_out||null},
+      notes=${notes||null}, special_requests=${special_requests||null}, updated_at=NOW()
+      WHERE id=${req.params.id} AND tenant_id=${tid}`);
+    if (room_id && status === 'checked_in') {
+      await db.execute(sql`UPDATE hotel_rooms SET status='occupied', updated_at=NOW() WHERE id=${room_id} AND tenant_id=${tid}`);
+    }
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.put("/reservations/:id/checkin", auth, async (req: any, res: any) => {
+  try {
+    const tid = getTenantId(req);
+    const { room_id, advance_payment, payment_mode, actual_check_in } = req.body;
+    const res_ = await db.execute(sql`SELECT * FROM hotel_reservations WHERE id=${req.params.id} AND tenant_id=${tid}`);
+    const reservation = res_.rows[0] as any;
+    if (!reservation) return res.status(404).json({ message: "Reservation not found" });
+    await db.execute(sql`
+      UPDATE hotel_reservations SET status='checked_in', room_id=${room_id||null},
+      actual_check_in=${actual_check_in||new Date().toISOString().slice(0,10)},
+      advance_paid=advance_paid+${advance_payment||0},
+      balance_amount=balance_amount-${advance_payment||0}, updated_at=NOW()
+      WHERE id=${req.params.id} AND tenant_id=${tid}`);
+    if (room_id) await db.execute(sql`UPDATE hotel_rooms SET status='occupied', updated_at=NOW() WHERE id=${room_id} AND tenant_id=${tid}`);
+    // Create folio
+    const folioId = `FOL${Date.now().toString(36)}`;
+    const folioNum = `FOL-${Date.now().toString().slice(-6)}`;
+    await db.execute(sql`
+      INSERT INTO hotel_folios (id, tenant_id, reservation_id, folio_number, guest_id, total_charges, total_payments, balance, status, record_status)
+      VALUES (${folioId}, ${tid}, ${req.params.id}, ${folioNum}, ${reservation.guest_id}, ${reservation.total_amount}, ${advance_payment||0}, ${reservation.total_amount-(advance_payment||0)}, 'open', 1)`);
+    res.json({ success: true, folio_id: folioId });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.put("/reservations/:id/checkout", auth, async (req: any, res: any) => {
+  try {
+    const tid = getTenantId(req);
+    const resData = await db.execute(sql`SELECT * FROM hotel_reservations WHERE id=${req.params.id} AND tenant_id=${tid}`);
+    const reservation = resData.rows[0] as any;
+    await db.execute(sql`
+      UPDATE hotel_reservations SET status='checked_out', actual_check_out=NOW(), updated_at=NOW()
+      WHERE id=${req.params.id} AND tenant_id=${tid}`);
+    if (reservation?.room_id) {
+      await db.execute(sql`UPDATE hotel_rooms SET status='dirty', updated_at=NOW() WHERE id=${reservation.room_id} AND tenant_id=${tid}`);
+    }
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// ── Folios ────────────────────────────────────────────────────────────────────
+
+router.get("/folios", auth, async (req: any, res: any) => {
+  try {
+    const tid = getTenantId(req);
+    const { search } = req.query;
+    let q = `SELECT f.*, g.name as guest_name, r.reservation_number
+             FROM hotel_folios f
+             LEFT JOIN hotel_guests g ON g.id=f.guest_id
+             LEFT JOIN hotel_reservations r ON r.id=f.reservation_id
+             WHERE f.tenant_id=${tid} AND f.record_status=1`;
+    if (search) q += ` AND (g.name ILIKE '%${String(search).replace(/'/g,"''")}%' OR f.folio_number ILIKE '%${String(search).replace(/'/g,"''")}%' OR r.reservation_number ILIKE '%${String(search).replace(/'/g,"''")}%')`;
+    q += ` ORDER BY f.created_at DESC LIMIT 100`;
+    const r = await db.execute(sql.raw(q));
+    res.json(r.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.get("/folios/:id", auth, async (req: any, res: any) => {
+  try {
+    const tid = getTenantId(req);
+    const [folio, items, reservation] = await Promise.all([
+      db.execute(sql`SELECT f.*, g.name as guest_name, g.phone as guest_phone FROM hotel_folios f LEFT JOIN hotel_guests g ON g.id=f.guest_id WHERE f.id=${req.params.id} AND f.tenant_id=${tid}`),
+      db.execute(sql`SELECT * FROM hotel_folio_items WHERE folio_id=${req.params.id} AND tenant_id=${tid} AND record_status=1 ORDER BY charge_date, created_at`),
+      db.execute(sql`SELECT r.*, rt.name as room_type_name, rm.room_number FROM hotel_reservations r LEFT JOIN hotel_room_types rt ON rt.id=r.room_type_id LEFT JOIN hotel_rooms rm ON rm.id=r.room_id WHERE r.id=(SELECT reservation_id FROM hotel_folios WHERE id=${req.params.id}) AND r.tenant_id=${tid}`)
+    ]);
+    if (!folio.rows[0]) return res.status(404).json({ message: "Folio not found" });
+    res.json({ ...folio.rows[0], items: items.rows, reservation: reservation.rows[0] });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/folios/:id/charges", auth, async (req: any, res: any) => {
+  try {
+    const tid = getTenantId(req);
+    const { item_type, description, quantity, unit_price, tax_amount, charge_date } = req.body;
+    const amount = Number(quantity || 1) * Number(unit_price || 0);
+    const chargeId = `CHG${Date.now().toString(36)}`;
+    await db.execute(sql`
+      INSERT INTO hotel_folio_items (id, tenant_id, folio_id, item_type, description, quantity, unit_price, amount, tax_amount, charge_date, record_status)
+      VALUES (${chargeId}, ${tid}, ${req.params.id}, ${item_type||'service'}, ${description}, ${quantity||1}, ${unit_price||0}, ${amount}, ${tax_amount||0}, ${charge_date||new Date().toISOString().slice(0,10)}, 1)`);
+    const totalCharge = amount + Number(tax_amount || 0);
+    await db.execute(sql`UPDATE hotel_folios SET total_charges=total_charges+${totalCharge}, balance=balance+${totalCharge}, updated_at=NOW() WHERE id=${req.params.id} AND tenant_id=${tid}`);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/folios/:id/payments", auth, async (req: any, res: any) => {
+  try {
+    const tid = getTenantId(req);
+    const { amount, payment_mode } = req.body;
+    await db.execute(sql`
+      INSERT INTO hotel_folio_items (id, tenant_id, folio_id, item_type, description, quantity, unit_price, amount, tax_amount, charge_date, record_status)
+      VALUES (${`PAY${Date.now().toString(36)}`}, ${tid}, ${req.params.id}, 'payment', ${`Payment - ${payment_mode}`}, 1, ${-Number(amount)}, ${-Number(amount)}, 0, ${new Date().toISOString().slice(0,10)}, 1)`);
+    await db.execute(sql`UPDATE hotel_folios SET total_payments=total_payments+${amount}, balance=balance-${amount}, updated_at=NOW() WHERE id=${req.params.id} AND tenant_id=${tid}`);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.put("/folios/:id/close", auth, async (req: any, res: any) => {
+  try {
+    const tid = getTenantId(req);
+    await db.execute(sql`UPDATE hotel_folios SET status='closed', updated_at=NOW() WHERE id=${req.params.id} AND tenant_id=${tid}`);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// ── Housekeeping ──────────────────────────────────────────────────────────────
+
+router.get("/housekeeping", auth, async (req: any, res: any) => {
+  try {
+    const tid = getTenantId(req);
+    const { date, assigned_to } = req.query;
+    const targetDate = String(date || new Date().toISOString().slice(0,10));
+    let q = `SELECT h.*, r.room_number, r.floor FROM hotel_housekeeping h
+             JOIN hotel_rooms r ON r.id=h.room_id
+             WHERE h.tenant_id=${tid} AND h.record_status=1 AND h.task_date='${targetDate}'`;
+    if (assigned_to) q += ` AND h.assigned_to ILIKE '%${String(assigned_to).replace(/'/g,"''")}%'`;
+    q += ` ORDER BY h.priority DESC, h.created_at`;
+    const r = await db.execute(sql.raw(q));
+    res.json(r.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/housekeeping", auth, async (req: any, res: any) => {
+  try {
+    const tid = getTenantId(req);
+    const id = `HK${Date.now().toString(36)}`;
+    const { room_id, task_type, assigned_to, priority, notes, task_date } = req.body;
+    const r = await db.execute(sql`
+      INSERT INTO hotel_housekeeping (id, tenant_id, room_id, task_type, status, assigned_to, priority, notes, task_date, record_status)
+      VALUES (${id}, ${tid}, ${room_id}, ${task_type||'clean'}, 'pending', ${assigned_to||null}, ${priority||'normal'}, ${notes||null}, ${task_date||new Date().toISOString().slice(0,10)}, 1)
+      RETURNING *`);
+    res.json(r.rows[0]);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.put("/housekeeping/:id", auth, async (req: any, res: any) => {
+  try {
+    const tid = getTenantId(req);
+    const { status, notes } = req.body;
+    await db.execute(sql`
+      UPDATE hotel_housekeeping SET status=${status}, notes=${notes||null},
+      completed_at=${status==='completed'?'NOW()':null}, updated_at=NOW()
+      WHERE id=${req.params.id} AND tenant_id=${tid}`);
+    if (status === 'completed') {
+      const task = await db.execute(sql`SELECT room_id FROM hotel_housekeeping WHERE id=${req.params.id}`);
+      const roomId = (task.rows[0] as any)?.room_id;
+      if (roomId) await db.execute(sql`UPDATE hotel_rooms SET status='available', updated_at=NOW() WHERE id=${roomId} AND tenant_id=${tid}`);
+    }
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// ── Rate Plan Prices (flat GET) ───────────────────────────────────────────────
+
+router.get("/rate-plan-prices/:planId", auth, async (req: any, res: any) => {
+  try {
+    const tid = getTenantId(req);
+    const r = await db.execute(sql`
+      SELECT rpp.*, rt.name as room_type_name FROM hotel_rate_plan_prices rpp
+      LEFT JOIN hotel_room_types rt ON rt.id=rpp.room_type_id
+      WHERE rpp.rate_plan_id=${req.params.planId} AND rpp.tenant_id=${tid}`);
+    res.json(r.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/rate-plan-prices", auth, async (req: any, res: any) => {
+  try {
+    const tid = getTenantId(req);
+    const id = `RPP${Date.now().toString(36)}`;
+    const { rate_plan_id, room_type_id, price_per_night, weekend_price, extra_adult_charge, extra_child_charge, valid_from, valid_to } = req.body;
+    const r = await db.execute(sql`
+      INSERT INTO hotel_rate_plan_prices (id, tenant_id, rate_plan_id, room_type_id, price_per_night, weekend_price, extra_adult_charge, extra_child_charge, valid_from, valid_to)
+      VALUES (${id}, ${tid}, ${rate_plan_id}, ${room_type_id}, ${price_per_night||0}, ${weekend_price||null}, ${extra_adult_charge||0}, ${extra_child_charge||0}, ${valid_from||null}, ${valid_to||null})
+      RETURNING *`);
+    res.json(r.rows[0]);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.put("/rate-plan-prices/:id", auth, async (req: any, res: any) => {
+  try {
+    const tid = getTenantId(req);
+    const { price_per_night, weekend_price, extra_adult_charge, extra_child_charge, valid_from, valid_to } = req.body;
+    await db.execute(sql`
+      UPDATE hotel_rate_plan_prices SET price_per_night=${price_per_night||0}, weekend_price=${weekend_price||null},
+      extra_adult_charge=${extra_adult_charge||0}, extra_child_charge=${extra_child_charge||0},
+      valid_from=${valid_from||null}, valid_to=${valid_to||null}
+      WHERE id=${req.params.id} AND tenant_id=${tid}`);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// ── Reports ───────────────────────────────────────────────────────────────────
+
+router.get("/reports/:type", auth, async (req: any, res: any) => {
+  try {
+    const tid = getTenantId(req);
+    const { from, to } = req.query;
+    const f = String(from || new Date().toISOString().slice(0,10));
+    const t = String(to || new Date().toISOString().slice(0,10));
+    const type = req.params.type;
+    let data: any[] = [];
+
+    if (type === 'occupancy') {
+      const r = await db.execute(sql`
+        SELECT r.status, COUNT(*) as count
+        FROM hotel_rooms r WHERE r.tenant_id=${tid} AND r.record_status=1
+        GROUP BY r.status`);
+      const totals = await db.execute(sql`SELECT COUNT(*) as total FROM hotel_rooms WHERE tenant_id=${tid} AND record_status=1`);
+      const total = Number((totals.rows[0] as any)?.total || 0);
+      const occupied = (r.rows as any[]).find(x => x.status === 'occupied');
+      data = r.rows as any[];
+      return res.json({ report_type: type, from: f, to: t, data, total_rooms: total, occupied: Number(occupied?.count || 0), occupancy_pct: total > 0 ? (Number(occupied?.count || 0) / total * 100).toFixed(1) : '0' });
+    } else if (type === 'revenue') {
+      const r = await db.execute(sql`
+        SELECT DATE(res.actual_check_in) as date, COUNT(*) as checkouts, SUM(res.total_amount) as revenue
+        FROM hotel_reservations res
+        WHERE res.tenant_id=${tid} AND res.status IN ('checked_in','checked_out')
+          AND res.check_in_date BETWEEN ${f} AND ${t}
+        GROUP BY DATE(res.actual_check_in) ORDER BY date`);
+      data = r.rows as any[];
+    } else if (type === 'arrivals-departures') {
+      const r = await db.execute(sql`
+        SELECT res.reservation_number, g.name as guest_name, g.phone, res.check_in_date, res.check_out_date,
+          res.adults, res.children, res.status, rm.room_number, rt.name as room_type
+        FROM hotel_reservations res
+        LEFT JOIN hotel_guests g ON g.id=res.guest_id
+        LEFT JOIN hotel_rooms rm ON rm.id=res.room_id
+        LEFT JOIN hotel_room_types rt ON rt.id=res.room_type_id
+        WHERE res.tenant_id=${tid} AND (res.check_in_date BETWEEN ${f} AND ${t} OR res.check_out_date BETWEEN ${f} AND ${t})
+        ORDER BY res.check_in_date`);
+      data = r.rows as any[];
+    } else if (type === 'source-mix') {
+      const r = await db.execute(sql`
+        SELECT source, COUNT(*) as bookings, SUM(total_amount) as revenue
+        FROM hotel_reservations WHERE tenant_id=${tid} AND check_in_date BETWEEN ${f} AND ${t} AND record_status=1
+        GROUP BY source ORDER BY bookings DESC`);
+      data = r.rows as any[];
+    } else if (type === 'agent-commission') {
+      const r = await db.execute(sql`SELECT * FROM hotel_travel_agents WHERE tenant_id=${tid} AND record_status=1 ORDER BY total_commission DESC`);
+      data = r.rows as any[];
+    } else if (type === 'corporate-billing') {
+      const r = await db.execute(sql`
+        SELECT ca.company_name, ca.contact_person, ca.credit_limit, ca.outstanding_balance,
+          COUNT(res.id) as total_bookings, SUM(res.total_amount) as total_spend
+        FROM hotel_corporate_accounts ca
+        LEFT JOIN hotel_reservations res ON res.corporate_account_id=ca.id AND res.check_in_date BETWEEN ${f} AND ${t}
+        WHERE ca.tenant_id=${tid} AND ca.record_status=1
+        GROUP BY ca.id, ca.company_name, ca.contact_person, ca.credit_limit, ca.outstanding_balance`);
+      data = r.rows as any[];
+    }
+
+    res.json({ report_type: type, from: f, to: t, count: data.length, data });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
 export default router;
