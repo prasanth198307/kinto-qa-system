@@ -78,6 +78,7 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
     "create-gatepass",
     "dispatch-tracking",
     "dispatch-masters",
+    "logistics/eway-bill",
   ],
   sales_orders: [
     "sales-orders",
@@ -98,6 +99,8 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
     "variance-analytics",
     "scrap-management",
     "purchase-returns",
+    "manufacturing/job-cards",
+    "manufacturing/sub-contracting",
   ],
   quality_returns: [
     "sales-returns",
@@ -153,6 +156,7 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
     "schedule-maintenance",
     "spare-parts",
     "spare-parts-stock",
+    "manufacturing/machine-oee",
   ],
   crm: [
     "crm-leads", "crm-surveys", "crm-enterprise",
