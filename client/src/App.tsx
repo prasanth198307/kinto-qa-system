@@ -275,6 +275,9 @@ import HealthcareInsurancePage from "@/pages/healthcare/insurance";
 import HealthcareDoctorsPage from "@/pages/healthcare/doctors";
 import HealthcareBloodBankPage from "@/pages/healthcare/blood-bank";
 import HealthcareReportsPage from "@/pages/healthcare/reports";
+import HealthcareABDMPage from "@/pages/healthcare/abdm";
+import HealthcareEMRPage from "@/pages/healthcare/emr";
+import HealthcareTPAClaimsPage from "@/pages/healthcare/tpa-claims";
 import EducationStudentsPage from "@/pages/education/students";
 import EducationAdmissionsPage from "@/pages/education/admissions";
 import EducationClassesPage from "@/pages/education/classes";
@@ -327,6 +330,8 @@ import NGOGrantsPage from "@/pages/ngo/grants";
 import NGOVolunteersPage from "@/pages/ngo/volunteers";
 import NGOFCRAPage from "@/pages/ngo/fcra";
 import NGOReportsPage from "@/pages/ngo/reports";
+import NGO80GBulkPage from "@/pages/ngo/80g-bulk";
+import NGOCSRPage from "@/pages/ngo/csr";
 import PharmacyBillingPage from "@/pages/pharmacy/billing";
 import PharmacyDrugsPage from "@/pages/pharmacy/drugs";
 import PharmacyStockPage from "@/pages/pharmacy/stock";
@@ -336,6 +341,8 @@ import PharmacyScheduleXPage from "@/pages/pharmacy/schedule-x";
 import PharmacyLicensesPage from "@/pages/pharmacy/licenses";
 import PharmacyExpiryPage from "@/pages/pharmacy/expiry";
 import PharmacyReportsPage from "@/pages/pharmacy/reports";
+import PharmacyNarcoticsRegisterPage from "@/pages/pharmacy/narcotics-register";
+import PharmacyEInvoicePage from "@/pages/pharmacy/e-invoice";
 import CRMPipelinePage from "@/pages/crm/pipeline";
 import CRMContactsPage from "@/pages/crm/contacts";
 import CRMAccountsPage from "@/pages/crm/accounts";
@@ -1442,6 +1449,9 @@ function AdminDashboard() {
         { id: "healthcare/insurance", label: "Insurance & TPA", icon: Shield, onClick: () => setLocation('/healthcare/insurance') },
         { id: "healthcare/doctors", label: "Doctor Management", icon: Users, onClick: () => setLocation('/healthcare/doctors') },
         { id: "healthcare/blood-bank", label: "Blood Bank", icon: Heart, onClick: () => setLocation('/healthcare/blood-bank') },
+        { id: "healthcare/abdm", label: "ABDM / ABHA", icon: Shield, onClick: () => setLocation('/healthcare/abdm') },
+        { id: "healthcare/emr", label: "EMR", icon: FileText, onClick: () => setLocation('/healthcare/emr') },
+        { id: "healthcare/tpa-claims", label: "TPA Claims", icon: IndianRupee, onClick: () => setLocation('/healthcare/tpa-claims') },
         { id: "healthcare/reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/healthcare/reports') },
       ],
     },
@@ -1524,6 +1534,8 @@ function AdminDashboard() {
         { id: "ngo/grants", label: "Grants", icon: Award, onClick: () => setLocation('/ngo/grants') },
         { id: "ngo/volunteers", label: "Volunteers", icon: Users, onClick: () => setLocation('/ngo/volunteers') },
         { id: "ngo/fcra", label: "FCRA Compliance", icon: Shield, onClick: () => setLocation('/ngo/fcra') },
+        { id: "ngo/80g-bulk", label: "80G Bulk Certificates", icon: FileText, onClick: () => setLocation('/ngo/80g-bulk') },
+        { id: "ngo/csr", label: "CSR Module", icon: Target, onClick: () => setLocation('/ngo/csr') },
         { id: "ngo/reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/ngo/reports') },
       ],
     },
@@ -1539,6 +1551,8 @@ function AdminDashboard() {
         { id: "pharmacy/schedule-x", label: "Schedule X Register", icon: ClipboardList, onClick: () => setLocation('/pharmacy/schedule-x') },
         { id: "pharmacy/licenses", label: "Drug Licenses", icon: Shield, onClick: () => setLocation('/pharmacy/licenses') },
         { id: "pharmacy/expiry", label: "Expiry Alerts", icon: Clock, onClick: () => setLocation('/pharmacy/expiry') },
+        { id: "pharmacy/narcotics-register", label: "Narcotics Register", icon: ClipboardList, onClick: () => setLocation('/pharmacy/narcotics-register') },
+        { id: "pharmacy/e-invoice", label: "GST E-Invoice", icon: FileText, onClick: () => setLocation('/pharmacy/e-invoice') },
         { id: "pharmacy/reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/pharmacy/reports') },
       ],
     },
@@ -2872,6 +2886,9 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "healthcare/insurance", label: "Insurance & TPA", icon: Shield, onClick: () => setLocation('/healthcare/insurance') },
         { id: "healthcare/doctors", label: "Doctor Management", icon: Users, onClick: () => setLocation('/healthcare/doctors') },
         { id: "healthcare/blood-bank", label: "Blood Bank", icon: Heart, onClick: () => setLocation('/healthcare/blood-bank') },
+        { id: "healthcare/abdm", label: "ABDM / ABHA", icon: Shield, onClick: () => setLocation('/healthcare/abdm') },
+        { id: "healthcare/emr", label: "EMR", icon: FileText, onClick: () => setLocation('/healthcare/emr') },
+        { id: "healthcare/tpa-claims", label: "TPA Claims", icon: IndianRupee, onClick: () => setLocation('/healthcare/tpa-claims') },
         { id: "healthcare/reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/healthcare/reports') },
       ],
     },
@@ -2954,6 +2971,8 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "ngo/grants", label: "Grants", icon: Award, onClick: () => setLocation('/ngo/grants') },
         { id: "ngo/volunteers", label: "Volunteers", icon: Users, onClick: () => setLocation('/ngo/volunteers') },
         { id: "ngo/fcra", label: "FCRA Compliance", icon: Shield, onClick: () => setLocation('/ngo/fcra') },
+        { id: "ngo/80g-bulk", label: "80G Bulk Certificates", icon: FileText, onClick: () => setLocation('/ngo/80g-bulk') },
+        { id: "ngo/csr", label: "CSR Module", icon: Target, onClick: () => setLocation('/ngo/csr') },
         { id: "ngo/reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/ngo/reports') },
       ],
     },
@@ -2969,6 +2988,8 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "pharmacy/schedule-x", label: "Schedule X Register", icon: ClipboardList, onClick: () => setLocation('/pharmacy/schedule-x') },
         { id: "pharmacy/licenses", label: "Drug Licenses", icon: Shield, onClick: () => setLocation('/pharmacy/licenses') },
         { id: "pharmacy/expiry", label: "Expiry Alerts", icon: Clock, onClick: () => setLocation('/pharmacy/expiry') },
+        { id: "pharmacy/narcotics-register", label: "Narcotics Register", icon: ClipboardList, onClick: () => setLocation('/pharmacy/narcotics-register') },
+        { id: "pharmacy/e-invoice", label: "GST E-Invoice", icon: FileText, onClick: () => setLocation('/pharmacy/e-invoice') },
         { id: "pharmacy/reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/pharmacy/reports') },
       ],
     },
@@ -4705,6 +4726,9 @@ function Router() {
       <ProtectedRoute path="/healthcare/doctors" component={HealthcareDoctorsWrapper} />
       <ProtectedRoute path="/healthcare/blood-bank" component={HealthcareBloodBankWrapper} />
       <ProtectedRoute path="/healthcare/reports" component={HealthcareReportsWrapper} />
+      <ProtectedRoute path="/healthcare/abdm" component={HealthcareABDMWrapper} />
+      <ProtectedRoute path="/healthcare/emr" component={HealthcareEMRWrapper} />
+      <ProtectedRoute path="/healthcare/tpa-claims" component={HealthcareTPAClaimsWrapper} />
       <ProtectedRoute path="/education/students" component={EducationStudentsWrapper} />
       <ProtectedRoute path="/education/admissions" component={EducationAdmissionsWrapper} />
       <ProtectedRoute path="/education/classes" component={EducationClassesWrapper} />
@@ -4757,6 +4781,8 @@ function Router() {
       <ProtectedRoute path="/ngo/volunteers" component={NGOVolunteersWrapper} />
       <ProtectedRoute path="/ngo/fcra" component={NGOFCRAWrapper} />
       <ProtectedRoute path="/ngo/reports" component={NGOReportsWrapper} />
+      <ProtectedRoute path="/ngo/80g-bulk" component={NGO80GBulkWrapper} />
+      <ProtectedRoute path="/ngo/csr" component={NGOCSRWrapper} />
       <ProtectedRoute path="/pharmacy/billing" component={PharmacyBillingWrapper} />
       <ProtectedRoute path="/pharmacy/drugs" component={PharmacyDrugsWrapper} />
       <ProtectedRoute path="/pharmacy/stock" component={PharmacyStockWrapper} />
@@ -4766,6 +4792,8 @@ function Router() {
       <ProtectedRoute path="/pharmacy/licenses" component={PharmacyLicensesWrapper} />
       <ProtectedRoute path="/pharmacy/expiry" component={PharmacyExpiryWrapper} />
       <ProtectedRoute path="/pharmacy/reports" component={PharmacyReportsWrapper} />
+      <ProtectedRoute path="/pharmacy/narcotics-register" component={PharmacyNarcoticsRegisterWrapper} />
+      <ProtectedRoute path="/pharmacy/e-invoice" component={PharmacyEInvoiceWrapper} />
       <ProtectedRoute path="/crm/pipeline" component={CRMPipelineWrapper} />
       <ProtectedRoute path="/crm/contacts" component={CRMContactsWrapper} />
       <ProtectedRoute path="/crm/accounts" component={CRMAccountsWrapper} />
@@ -5453,6 +5481,9 @@ const HealthcareInsuranceWrapper = makeWrapper('Insurance & TPA', 'healthcare/in
 const HealthcareDoctorsWrapper = makeWrapper('Doctor Management', 'healthcare/doctors', HealthcareDoctorsPage);
 const HealthcareBloodBankWrapper = makeWrapper('Blood Bank', 'healthcare/blood-bank', HealthcareBloodBankPage);
 const HealthcareReportsWrapper = makeWrapper('Reports', 'healthcare/reports', HealthcareReportsPage);
+const HealthcareABDMWrapper = makeWrapper('ABDM / ABHA', 'healthcare/abdm', HealthcareABDMPage);
+const HealthcareEMRWrapper = makeWrapper('EMR', 'healthcare/emr', HealthcareEMRPage);
+const HealthcareTPAClaimsWrapper = makeWrapper('TPA Claims', 'healthcare/tpa-claims', HealthcareTPAClaimsPage);
 const EducationStudentsWrapper = makeWrapper('Students', 'education/students', EducationStudentsPage);
 const EducationAdmissionsWrapper = makeWrapper('Admissions', 'education/admissions', EducationAdmissionsPage);
 const EducationClassesWrapper = makeWrapper('Classes & Subjects', 'education/classes', EducationClassesPage);
@@ -5505,6 +5536,8 @@ const NGOGrantsWrapper = makeWrapper('Grants', 'ngo/grants', NGOGrantsPage);
 const NGOVolunteersWrapper = makeWrapper('Volunteers', 'ngo/volunteers', NGOVolunteersPage);
 const NGOFCRAWrapper = makeWrapper('FCRA Compliance', 'ngo/fcra', NGOFCRAPage);
 const NGOReportsWrapper = makeWrapper('Reports', 'ngo/reports', NGOReportsPage);
+const NGO80GBulkWrapper = makeWrapper('80G Bulk Certificates', 'ngo/80g-bulk', NGO80GBulkPage);
+const NGOCSRWrapper = makeWrapper('CSR Module', 'ngo/csr', NGOCSRPage);
 const PharmacyBillingWrapper = makeWrapper('Drug Billing POS', 'pharmacy/billing', PharmacyBillingPage);
 const PharmacyDrugsWrapper = makeWrapper('Drug Master', 'pharmacy/drugs', PharmacyDrugsPage);
 const PharmacyStockWrapper = makeWrapper('Stock Management', 'pharmacy/stock', PharmacyStockPage);
@@ -5514,6 +5547,8 @@ const PharmacyScheduleXWrapper = makeWrapper('Schedule X Register', 'pharmacy/sc
 const PharmacyLicensesWrapper = makeWrapper('Drug Licenses', 'pharmacy/licenses', PharmacyLicensesPage);
 const PharmacyExpiryWrapper = makeWrapper('Expiry Alerts', 'pharmacy/expiry', PharmacyExpiryPage);
 const PharmacyReportsWrapper = makeWrapper('Reports', 'pharmacy/reports', PharmacyReportsPage);
+const PharmacyNarcoticsRegisterWrapper = makeWrapper('Narcotics Register', 'pharmacy/narcotics-register', PharmacyNarcoticsRegisterPage);
+const PharmacyEInvoiceWrapper = makeWrapper('GST E-Invoice', 'pharmacy/e-invoice', PharmacyEInvoicePage);
 const CRMPipelineWrapper = makeWrapper('Pipeline', 'crm/pipeline', CRMPipelinePage);
 const CRMContactsWrapper = makeWrapper('Contacts', 'crm/contacts', CRMContactsPage);
 const CRMAccountsWrapper = makeWrapper('Accounts', 'crm/accounts', CRMAccountsPage);
