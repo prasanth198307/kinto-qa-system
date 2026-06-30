@@ -405,6 +405,12 @@ export const navItemToScreenKey: Record<string, string> = {
   'crm/email-campaigns':                'crm_email_campaigns',
   'crm/whatsapp':                       'crm_whatsapp',
   'crm/reports':                        'crm_reports',
+  // Manufacturing ERP new screens
+  'manufacturing/job-cards':            'manufacturing_job_cards',
+  'manufacturing/sub-contracting':      'manufacturing_sub_contracting',
+  'manufacturing/machine-oee':          'manufacturing_machine_oee',
+  // Logistics
+  'logistics/eway-bill':                'logistics_eway_bill',
   // E-Commerce ERP sub-pages
   'ecommerce/dashboard':                'ecommerce_dashboard',
   'ecommerce/orders':                   'ecommerce_orders',
