@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kinto ERP — 100% Implementation Plan</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f8fafc;color:#1e293b;font-size:14px}
+  .header{background:linear-gradient(135deg,#1e3a5f,#0f172a);color:#fff;padding:36px 48px;position:relative}
+  .header h1{font-size:1.8rem;font-weight:800;margin-bottom:6px}
+  .header p{opacity:.75;font-size:.9rem}
+  .header-pills{display:flex;gap:12px;margin-top:16px;flex-wrap:wrap}
+  .pill{background:rgba(255,255,255,.13);padding:4px 14px;border-radius:20px;font-size:.78rem}
+  .print-btn{position:absolute;top:28px;right:48px;background:#22c55e;color:#fff;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-weight:700;font-size:.85rem}
+  .container{max-width:1280px;margin:0 auto;padding:28px 48px}
+  .section{background:#fff;border-radius:12px;border:1px solid #e2e8f0;margin-bottom:24px;overflow:hidden}
+  .sh{background:#f1f5f9;padding:14px 20px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:10px}
+  .sh h2{font-size:1rem;font-weight:700;color:#0f172a}
+  .sn{background:#1e3a5f;color:#fff;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;flex-shrink:0}
+  .sb{padding:20px 24px}
+  table{width:100%;border-collapse:collapse;font-size:.82rem}
+  th{background:#f8fafc;color:#64748b;font-weight:600;text-align:left;padding:9px 12px;border-bottom:2px solid #e2e8f0;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em}
+  td{padding:9px 12px;border-bottom:1px solid #f1f5f9;vertical-align:top;line-height:1.5}
+  tr:last-child td{border-bottom:none}
+  tr:hover td{background:#fafbfc}
+  .badge{display:inline-flex;align-items:center;padding:2px 9px;border-radius:20px;font-size:.72rem;font-weight:700;white-space:nowrap}
+  .g{background:#dcfce7;color:#15803d}.y{background:#fef9c3;color:#92400e}.r{background:#fee2e2;color:#991b1b}.b{background:#dbeafe;color:#1e40af}.p{background:#f3e8ff;color:#6b21a8}.gray{background:#f1f5f9;color:#475569}
+  .bar-wrap{display:flex;align-items:center;gap:8px}
+  .bar-bg{flex:1;background:#e2e8f0;border-radius:4px;height:7px;overflow:hidden}
+  .bar{height:100%;border-radius:4px}
+  .score{font-weight:700;font-size:.8rem;min-width:34px}
+  h3{font-size:.9rem;font-weight:700;color:#0f172a;margin:16px 0 8px}
+  h3:first-child{margin-top:0}
+  p{font-size:.82rem;line-height:1.6;color:#475569;margin-bottom:8px}
+  ul,ol{padding-left:18px;margin-bottom:8px}
+  li{font-size:.82rem;line-height:1.8;color:#475569}
+  .alert{border-radius:8px;padding:12px 16px;margin-bottom:14px;border-left:4px solid}
+  .ar{background:#fff5f5;border-color:#ef4444}.ay{background:#fffbeb;border-color:#f59e0b}.ag{background:#f0fdf4;border-color:#22c55e}.ab{background:#eff6ff;border-color:#3b82f6}
+  .alert strong{display:block;font-size:.82rem;font-weight:700;margin-bottom:3px}
+  .alert p{font-size:.8rem;margin:0}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+  .card{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px 16px}
+  .card .label{font-size:.7rem;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+  .card .val{font-size:1.6rem;font-weight:800;color:#0f172a}
+  .card .sub{font-size:.75rem;color:#94a3b8;margin-top:2px}
+  .phase-block{border-left:3px solid;padding:12px 16px;margin-bottom:10px;border-radius:0 8px 8px 0}
+  .ph1{border-color:#22c55e;background:#f0fdf4}.ph2{border-color:#3b82f6;background:#eff6ff}.ph3{border-color:#8b5cf6;background:#f5f3ff}.ph4{border-color:#f59e0b;background:#fffbeb}.ph5{border-color:#ef4444;background:#fff5f5}.ph6{border-color:#06b6d4;background:#ecfeff}.ph7{border-color:#ec4899;background:#fdf2f8}.ph8{border-color:#64748b;background:#f1f5f9}
+  .phase-block h4{font-size:.85rem;font-weight:700;margin-bottom:4px}
+  .check{color:#22c55e;margin-right:4px}
+  .cross{color:#ef4444;margin-right:4px}
+  @media print{.print-btn{display:none}body{background:#fff}.section{break-inside:avoid}}
+  .erp-row td:first-child{font-weight:600}
+  .week-badge{background:#e0f2fe;color:#0369a1;padding:2px 8px;border-radius:4px;font-size:.72rem;font-weight:600}
+  .priority-h{color:#dc2626;font-weight:700}
+  .priority-m{color:#d97706;font-weight:700}
+  .priority-l{color:#16a34a;font-weight:700}
+  .tag{display:inline-block;background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;padding:1px 7px;border-radius:4px;font-size:.72rem;margin:1px}
+  .feature-list{columns:2;gap:16px}
+  .feature-list li{font-size:.78rem;line-height:1.9;break-inside:avoid}
+  .check-li::marker{content:"✅ "}
+  .cross-li::marker{content:"❌ "}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🚀 Kinto ERP — Implementation Plan to 100% Global Enterprise</h1>
+  <p>Complete roadmap to close all gaps across all 17 ERP verticals • Phases 1–8 • Prioritized by business impact</p>
+  <div class="header-pills">
+    <span class="pill">📅 Created: 2026-06-30</span>
+    <span class="pill">🎯 17 Verticals to 100%</span>
+    <span class="pill">⏱ Total Estimate: 20–24 weeks</span>
+    <span class="pill">📊 Current: ~65% → Target: 100%</span>
+    <span class="pill">🌍 India + Global Tax</span>
+  </div>
+  <button class="print-btn" onclick="window.print()">⬇ Download PDF</button>
+</div>
+
+<div class="container">
+
+  <!-- KPIs -->
+  <div class="grid3" style="margin-bottom:24px">
+    <div class="card"><div class="label">Phase 1 Quick Wins</div><div class="val">2 wks</div><div class="sub">Finance merge, plans, payroll GL</div></div>
+    <div class="card"><div class="label">Phase 2 GL Integration</div><div class="val">3 wks</div><div class="sub">All 10 verticals → GL</div></div>
+    <div class="card"><div class="label">Phase 3 Finance Complete</div><div class="val">3 wks</div><div class="sub">AP, Bank Recon, Period Close</div></div>
+    <div class="card"><div class="label">Phase 4 E-Commerce</div><div class="val">4 wks</div><div class="sub">Full rebuild from stubs</div></div>
+    <div class="card"><div class="label">Phase 5 Multi-Country Tax</div><div class="val">6 wks</div><div class="sub">ZATCA, EU VAT, US Tax</div></div>
+    <div class="card"><div class="label">Phases 7–8 All ERPs 100%</div><div class="val">12 wks</div><div class="sub">Every vertical feature-complete</div></div>
+  </div>
+
+  <!-- EXECUTION TIMELINE -->
+  <div class="section">
+    <div class="sh"><div class="sn">⏱</div><h2>Execution Timeline — 24 Weeks to 100%</h2></div>
+    <div class="sb">
+      <table>
+        <thead><tr><th>Week(s)</th><th>Phase</th><th>Deliverables</th><th>ERPs Impacted</th></tr></thead>
+        <tbody>
+          <tr><td><span class="week-badge">Wk 1–2</span></td><td><span class="badge g">Phase 1 — Quick Wins</span></td><td>Finance ERP merge + dashboard, 8 vertical subscription plans, Payroll→GL, Recurring journals, Masters stubs fixed</td><td>Finance, HR, All 17</td></tr>
+          <tr><td><span class="week-badge">Wk 2–4</span></td><td><span class="badge b">Phase 2 — GL Integration</span></td><td>Wire journal-service into Hotel, Healthcare, Pharmacy, NGO, Nidhi, Logistics, Real Estate, Agriculture, Education, CRM</td><td>All 10 verticals</td></tr>
+          <tr><td><span class="week-badge">Wk 4–7</span></td><td><span class="badge p">Phase 3 — Finance Complete</span></td><td>AP module (vendor bills, AP aging, payment runs), Bank Reconciliation auto-match, Period-end close/lock, Recurring journals, AR enhancements</td><td>Finance ERP</td></tr>
+          <tr><td><span class="week-badge">Wk 6–8</span></td><td><span class="badge b">Phase 6 — Security</span></td><td>PostgreSQL RLS, Field-level audit trail, Row-level data isolation within roles</td><td>All 17</td></tr>
+          <tr><td><span class="week-badge">Wk 6–10</span></td><td><span class="badge y">Phase 4 — E-Commerce</span></td><td>Full E-Commerce rebuild: Amazon SP-API, Flipkart, Shiprocket, inventory sync, settlements, GL</td><td>E-Commerce</td></tr>
+          <tr><td><span class="week-badge">Wk 8–12</span></td><td><span class="badge p">Phase 7 (Part A) — Vertical Depth</span></td><td>Hotel channel manager, Healthcare ABDM/EMR, Logistics e-way bill+GPS, HR EPFO/ESI, Manufacturing MRP+WO</td><td>Hotel, Healthcare, Logistics, HR, Manufacturing</td></tr>
+          <tr><td><span class="week-badge">Wk 10–16</span></td><td><span class="badge r">Phase 5 — Multi-Country Tax</span></td><td>Parametric tax engine, ZATCA (Saudi/UAE), EU VAT, US Sales Tax, UK VAT</td><td>All 17 (global)</td></tr>
+          <tr><td><span class="week-badge">Wk 12–18</span></td><td><span class="badge p">Phase 7 (Part B) — Vertical Depth</span></td><td>NGO FCRA+80G PDF, Nidhi NDH returns, Real Estate RERA, Agriculture mandi API+IoT, Education NEP+certificates, Gold BIS API, Pharmacy FEFO+narcotics, CRM AI+telephony, Retail omnichannel</td><td>All remaining verticals</td></tr>
+          <tr><td><span class="week-badge">Wk 14–18</span></td><td><span class="badge gray">Cross-cutting</span></td><td>PDF engine, Notification engine (WhatsApp/SMS), Approval workflow engine, MIS Super-Dashboard</td><td>All 17</td></tr>
+          <tr><td><span class="week-badge">Wk 18–24+</span></td><td><span class="badge gray">Phase 8 — AI/ML + Mobile</span></td><td>Lead scoring, demand forecasting, anomaly detection, React Native apps (Restaurant, Logistics, Pharmacy, Nidhi)</td><td>CRM, Inventory, Finance, Restaurant, Logistics</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PHASE 1 -->
+  <div class="section">
+    <div class="sh"><div class="sn">1</div><h2>Phase 1 — Quick Wins (Week 1–2) · Finance Merge + Plans + Payroll GL</h2></div>
+    <div class="sb">
+      <div class="phase-block ph1">
+        <h4>1.1 Finance ERP Merge (finance-erp.tsx → Unified Finance ERP Product)</h4>
+        <ul>
+          <li>Replace 8-line stub with Finance ERP dashboard: AR summary, AP summary, cash position, quick P&L, bank balance</li>
+          <li>Create <code>client/src/pages/finance/</code>: ar.tsx, ap.tsx, gl.tsx, bank-recon.tsx, period-close.tsx, recurring-journals.tsx, reports.tsx</li>
+          <li>Wire <code>server/finance-erp-routes.ts</code> with real routes (was empty)</li>
+          <li>Add "Finance ERP" as standalone subscription plan in plan-features.ts (for CAs, accounting firms)</li>
+        </ul>
+      </div>
+      <div class="phase-block ph1">
+        <h4>1.2 Subscription Plans for 8 Missing Verticals</h4>
+        <p>Add Starter / Professional / Enterprise tiers in <code>server/plan-features.ts</code> for: <strong>NGO, Nidhi Company, CRM, Logistics, Real Estate, Agriculture, Education, E-Commerce</strong></p>
+      </div>
+      <div class="phase-block ph1">
+        <h4>1.3 Payroll → GL Posting</h4>
+        <ul>
+          <li>Add <code>journalForPayroll()</code> to journal-service.ts</li>
+          <li>Call on HR payroll finalize: Dr Salary Expense | Cr Net Pay Payable, Cr PF Payable, Cr ESI Payable, Cr TDS Payable</li>
+        </ul>
+      </div>
+      <div class="phase-block ph1">
+        <h4>1.4 Masters: Fix Stubs</h4>
+        <ul>
+          <li>Build <code>masters/states-countries.tsx</code> (currently 8 lines) — country list, state list, per-country tax regime</li>
+          <li>Build <code>masters/print-templates.tsx</code> (currently 8 lines) — template editor for invoices, receipts, LRs</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 2 -->
+  <div class="section">
+    <div class="sh"><div class="sn">2</div><h2>Phase 2 — GL Integration for All 10 Industry Verticals (Week 2–4)</h2></div>
+    <div class="sb">
+      <div class="alert ar"><strong>⚠️ Critical: 0 of 10 verticals currently post to the GL. P&L is unreliable for all vertical tenants.</strong><p>journal-service.ts has 30+ GL posting functions — just need to call them from each vertical's route files.</p></div>
+      <table>
+        <thead><tr><th>Vertical</th><th>Key Financial Events → GL Entries</th><th>File to Edit</th></tr></thead>
+        <tbody>
+          <tr><td>🏨 Hotel</td><td>Folio charge → Dr Guest Ledger Cr Revenue | Folio payment → Dr Bank Cr Guest Ledger | Night audit room charges auto-post daily</td><td>hotel-enterprise-routes.ts</td></tr>
+          <tr><td>🏥 Healthcare</td><td>OPD bill → Dr Patient Receivable Cr OPD Revenue | IPD discharge → Dr Receivable Cr IPD Revenue | Lab bill | Insurance receipt → Dr Bank Cr Insurance Receivable</td><td>healthcare-routes.ts</td></tr>
+          <tr><td>💊 Pharmacy</td><td>Drug sale → Dr Customer Receivable Cr Drug Sales | Drug purchase GRN → Dr Drug Purchase Cr Vendor Payable</td><td>pharmacy-enterprise-routes.ts</td></tr>
+          <tr><td>🏛️ NGO</td><td>Donation → Dr Bank Cr Donation Income | Grant → Dr Bank Cr Grant Income | Project expense → Dr Project Expense Cr Bank</td><td>ngo-routes.ts</td></tr>
+          <tr><td>🏦 Nidhi</td><td>Deposit received → Dr Bank Cr FD Liability | Loan disbursed → Dr Loan Receivable Cr Bank | EMI → Dr Bank Cr Loan Receivable + Cr Interest Income</td><td>nidhi-routes.ts</td></tr>
+          <tr><td>🚛 Logistics</td><td>Freight bill → Dr Customer Receivable Cr Freight Revenue | Fuel purchase → Dr Fuel Expense Cr Bank</td><td>logistics-routes.ts</td></tr>
+          <tr><td>🏗️ Real Estate</td><td>Booking advance → Dr Bank Cr Advance from Customer | Collection → Dr Receivable Cr Revenue | Construction cost → Dr WIP Cr Vendor Payable</td><td>realestate-routes.ts</td></tr>
+          <tr><td>🌾 Agriculture</td><td>Harvest sale → Dr Receivable Cr Crop Revenue | Input purchase → Dr Input Cost Cr Bank</td><td>agriculture-routes.ts</td></tr>
+          <tr><td>🎓 Education</td><td>Fee collected → Dr Bank Cr Fee Income | Fee demand → Dr Student Receivable Cr Fee Income | Hostel → Dr Receivable Cr Hostel Income</td><td>education-routes.ts</td></tr>
+          <tr><td>📊 CRM</td><td>No direct financial events — bridge: accepted quotation → auto-create invoice in invoicing module</td><td>crm-routes.ts</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PHASE 3 -->
+  <div class="section">
+    <div class="sh"><div class="sn">3</div><h2>Phase 3 — Finance ERP Completion: AP + Bank Recon + Period Close (Week 4–7)</h2></div>
+    <div class="sb">
+      <div class="grid2">
+        <div>
+          <div class="phase-block ph3">
+            <h4>3.1 Accounts Payable (AP) Module</h4>
+            <ul>
+              <li>Vendor Bills CRUD (purchase invoice from vendor)</li>
+              <li>AP Aging report (0–30, 31–60, 61–90, 90+ days overdue)</li>
+              <li>Payment runs: select multiple vendor bills, bulk pay, auto-post journal</li>
+              <li>GL: Dr Expense Cr Vendor Payable on bill; Dr Vendor Payable Cr Bank on payment</li>
+              <li>Vendor outstanding dashboard (mirrors AR aging on payable side)</li>
+            </ul>
+          </div>
+          <div class="phase-block ph3">
+            <h4>3.2 Bank Reconciliation Automation</h4>
+            <ul>
+              <li>Auto-match imported bank statement rows → journal entries by: amount + date (±3 days) + reference</li>
+              <li>Unmatched rows flagged for manual matching</li>
+              <li>BRS report: statement balance vs book balance with itemized differences</li>
+              <li>Support multiple bank accounts</li>
+            </ul>
+          </div>
+        </div>
+        <div>
+          <div class="phase-block ph3">
+            <h4>3.3 Period-End Close / Financial Year Lock</h4>
+            <ul>
+              <li>DB: <code>accounting_periods</code> table (period name, start/end date, status: open/closed)</li>
+              <li>Middleware: reject any posting to closed period → 409 Conflict</li>
+              <li>Year-end rollover: P&L → Retained Earnings, zero revenue/expense accounts</li>
+              <li>Opening balance carry-forward for new financial year</li>
+            </ul>
+          </div>
+          <div class="phase-block ph3">
+            <h4>3.4 Recurring Journal Entries</h4>
+            <ul>
+              <li>Template journal + frequency (daily/weekly/monthly/quarterly/annual)</li>
+              <li>Cron job auto-posts on due date</li>
+              <li>Use cases: monthly rent, depreciation, prepaid expense amortization</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 4 -->
+  <div class="section">
+    <div class="sh"><div class="sn">4</div><h2>Phase 4 — E-Commerce ERP Full Rebuild (Week 6–10)</h2></div>
+    <div class="sb">
+      <div class="alert ar"><strong>All 8 E-Commerce pages are currently 8-line stubs. Backend has only 17 routes. Full rebuild required.</strong></div>
+      <table>
+        <thead><tr><th>Module</th><th>What to Build</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Channels</strong></td><td>Connect Amazon SP-API, Flipkart Seller API, Meesho, Myntra, ONDC. API credential vault. Sync status dashboard.</td></tr>
+          <tr><td><strong>Listings</strong></td><td>Push product catalog to each channel. Channel-specific pricing, title, description. Listing status (active/inactive/error). Bulk push/update.</td></tr>
+          <tr><td><strong>Orders</strong></td><td>Pull orders from all channels every 15 min. Normalize to common order schema. Status management (confirm/pack/ship/cancel). Print packing slip.</td></tr>
+          <tr><td><strong>Shipments</strong></td><td>Shiprocket API: create shipment, auto-assign courier, generate AWB, print label. Bulk ship. Track shipment status. NDR (non-delivery report) management.</td></tr>
+          <tr><td><strong>Inventory Sync</strong></td><td>Real-time stock push to all channels when POS/warehouse updates inventory. Prevent overselling. Low-stock alerts per channel.</td></tr>
+          <tr><td><strong>Returns</strong></td><td>Return requests from each channel. Approval workflow. Quality check on return. Refund trigger to marketplace. Restock or scrap decision.</td></tr>
+          <tr><td><strong>Settlements</strong></td><td>Import channel payment statements. Match against expected settlements (order value − commission − returns). Identify discrepancies. GL: Dr Bank Cr Customer Receivable.</td></tr>
+          <tr><td><strong>Dashboard</strong></td><td>Multi-channel KPIs: orders/revenue/returns/margin by channel. Top products. Bestsellers vs deadstock. Profitability after commissions.</td></tr>
+          <tr><td><strong>Reports</strong></td><td>Channel-wise sales, commission cost, return rate, net profitability. Date range, channel filter, export CSV/PDF.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PHASE 5 -->
+  <div class="section">
+    <div class="sh"><div class="sn">5</div><h2>Phase 5 — Multi-Country Tax Engine (Week 10–16)</h2></div>
+    <div class="sb">
+      <div class="alert ab"><strong>Infrastructure exists (country_code, currency_code, timezone on tenant) — tax engine needs to be parametric, not hardcoded India-GST.</strong></div>
+      <table>
+        <thead><tr><th>Country / Regime</th><th>What to Build</th><th>Effort</th></tr></thead>
+        <tbody>
+          <tr><td>🇸🇦 Saudi Arabia — ZATCA</td><td>Phase 1: QR code on simplified invoices. Phase 2: Fatoora XML generation + ZATCA API clearance. VAT 15%. Arabic invoice format.</td><td>3 weeks</td></tr>
+          <tr><td>🇦🇪 UAE — VAT</td><td>UAE VAT 5%, FTA-compliant tax invoice format, VAT return (9-box format)</td><td>1 week (shares ZATCA engine)</td></tr>
+          <tr><td>🇪🇺 EU — VAT</td><td>Country-specific VAT rates (17–27%). OSS (One-Stop-Shop) annual return. EU VAT invoice mandatory fields.</td><td>3 weeks</td></tr>
+          <tr><td>🇺🇸 USA — Sales Tax</td><td>State-by-state rate table. Nexus detection (ship-to state). Avalara/TaxJar API option for automation.</td><td>2 weeks</td></tr>
+          <tr><td>🇬🇧 UK — VAT</td><td>UK VAT 20%, Making Tax Digital (MTD) API integration, VAT return (Box 1–9)</td><td>1 week</td></tr>
+          <tr><td>🇸🇬 Singapore — GST</td><td>Singapore GST 9%, GST invoice format, quarterly GST F5 return</td><td>1 week</td></tr>
+          <tr><td>Architecture</td><td>Replace hardcoded CGST/SGST/IGST fields with generic <code>tax_line_items[]</code> array. Country-specific tax rules table. Tax engine reads tenant's country → applies rules. All existing India functionality preserved.</td><td>2 weeks (core refactor)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PHASE 6 -->
+  <div class="section">
+    <div class="sh"><div class="sn">6</div><h2>Phase 6 — Security & Compliance Foundation (Week 6–8, parallel)</h2></div>
+    <div class="sb">
+      <div class="grid2">
+        <div>
+          <div class="phase-block ph2">
+            <h4>6.1 PostgreSQL Row-Level Security (RLS)</h4>
+            <ul>
+              <li>Enable RLS on all major tables (invoices, journal_entries, hr_employees, etc.)</li>
+              <li>Policy: <code>USING (tenant_id = current_setting('app.tenant_id')::int)</code></li>
+              <li>Set <code>app.tenant_id</code> at DB connection level in <code>server/db.ts</code></li>
+              <li>Safety net: even if app code has tenantId bug, DB rejects cross-tenant reads</li>
+            </ul>
+          </div>
+          <div class="phase-block ph2">
+            <h4>6.2 Field-Level Audit Trail</h4>
+            <ul>
+              <li>DB trigger on all write operations → <code>audit_log</code> table</li>
+              <li>Captures: table, record_id, field_name, old_value, new_value, changed_by, changed_at, IP</li>
+              <li>Priority tables: journal_entries, invoices, role_permissions, hr_payroll, nidhi_loans</li>
+              <li>UI: Audit log viewer with filter by table/user/date/field</li>
+            </ul>
+          </div>
+        </div>
+        <div>
+          <div class="phase-block ph2">
+            <h4>6.3 Row-Level Data Isolation Within Roles</h4>
+            <ul>
+              <li>New permission field: <code>data_scope</code> (all / own / branch)</li>
+              <li><code>own</code> = records where created_by = current user</li>
+              <li><code>branch</code> = records where branch_id in user's branches</li>
+              <li>Applies to: invoices, customers, sales orders, CRM leads, HR attendance</li>
+            </ul>
+          </div>
+          <div class="phase-block ph2">
+            <h4>6.4 Field-Level Permissions</h4>
+            <ul>
+              <li>Mask sensitive fields per role (e.g., hide salary from manager role in HR screen)</li>
+              <li>Config: field_permissions table (role, screen, field_name, visible: 0/1)</li>
+              <li>Frontend: API returns null for masked fields; UI shows "—"</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 7 — ALL 17 ERPs -->
+  <div class="section">
+    <div class="sh"><div class="sn">7</div><h2>Phase 7 — All 17 ERPs to 100% Feature Complete</h2></div>
+    <div class="sb">
+
+      <table>
+        <thead>
+          <tr><th>ERP</th><th>Current</th><th>What's Needed to Reach 100%</th><th>Weeks</th></tr>
+        </thead>
+        <tbody class="erp-row">
+          <tr>
+            <td>🍽️ Restaurant ERP<br><span class="badge g">85% now</span></td>
+            <td>349 routes, 24 pages</td>
+            <td>
+              <ul class="feature-list">
+                <li class="cross-li">GL posting for every Z-report close (F&B revenue, GST payable)</li>
+                <li class="cross-li">Loyalty points expiry engine (cron, customer notification)</li>
+                <li class="cross-li">ONDC buyer app integration</li>
+                <li class="cross-li">Native waiter mobile app (offline PWA with KOT push)</li>
+                <li class="cross-li">Aggregator settlement reconciliation → GL</li>
+                <li class="cross-li">Yield management (table revenue per hour analysis)</li>
+              </ul>
+            </td>
+            <td>2 wks</td>
+          </tr>
+          <tr>
+            <td>🥇 Gold ERP<br><span class="badge g">90% now</span></td>
+            <td>206 routes, 13 pages</td>
+            <td>
+              <ul class="feature-list">
+                <li class="cross-li">BIS hallmarking portal API (submit for HUID, receive back, link to job card)</li>
+                <li class="cross-li">Live gold rate feed (MCX/IBJA API, auto-update every 15 min)</li>
+                <li class="cross-li">Digital gold module (24K online, mg-level, vault storage)</li>
+                <li class="cross-li">Gold loan against jewellery (LTV-based, interest accrual)</li>
+                <li class="cross-li">SEBI bullion trading compliance reports</li>
+                <li class="cross-li">WhatsApp gold rate broadcast to customers</li>
+              </ul>
+            </td>
+            <td>3 wks</td>
+          </tr>
+          <tr>
+            <td>👥 HR/Payroll<br><span class="badge g">85% now</span></td>
+            <td>147 routes, 16 pages</td>
+            <td>
+              <ul class="feature-list">
+                <li class="cross-li">Payroll → GL: journal entries on payroll finalization</li>
+                <li class="cross-li">EPFO ECR file generation + auto-submit</li>
+                <li class="cross-li">ESI monthly contribution file</li>
+                <li class="cross-li">Form 24Q (TDS on salary) XML for TRACES</li>
+                <li class="cross-li">Statutory compliance calendar (PF, ESI, TDS, PT, LWF due dates)</li>
+                <li class="cross-li">Offer letter & appointment letter e-signing (DocuSign/Leegality)</li>
+                <li class="cross-li">Biometric device integration (ZKTeco/eSSL swipe import)</li>
+                <li class="cross-li">Gratuity calculation (AS-15 actuarial provisioning)</li>
+                <li class="cross-li">Employee self-service mobile app</li>
+              </ul>
+            </td>
+            <td>3 wks</td>
+          </tr>
+          <tr>
+            <td>🏪 Retail/POS<br><span class="badge g">80% now</span></td>
+            <td>91 routes</td>
+            <td>
+              <ul class="feature-list">
+                <li class="cross-li">Omni-channel sync: POS inventory ↔ E-Commerce real-time</li>
+                <li class="cross-li">Loyalty points expiry + cross-outlet redemption</li>
+                <li class="cross-li">B2B portal: wholesale customers order online with credit terms</li>
+                <li class="cross-li">Digital receipts via WhatsApp/email post-sale</li>
+                <li class="cross-li">Shelf-life tracking (FMCG near-expiry alerts at store)</li>
+                <li class="cross-li">Gift card issuance & redemption at POS</li>
+                <li class="cross-li">Multi-currency POS for foreign tourists</li>
+              </ul>
+            </td>
+            <td>2 wks</td>
+          </tr>
+          <tr>
+            <td>💰 Finance ERP<br><span class="badge y">70% now</span></td>
+            <td>~200 routes (in core)</td>
+            <td>
+              <ul class="feature-list">
+                <li class="cross-li">AP module (vendor bills, AP aging, payment runs) — Phase 3</li>
+                <li class="cross-li">Bank Reconciliation auto-match — Phase 3</li>
+                <li class="cross-li">Period-end close / Year-end lock — Phase 3</li>
+                <li class="cross-li">Recurring journal entries — Phase 1</li>
+                <li class="cross-li">GSTR direct filing via GSP API</li>
+                <li class="cross-li">GSTR-2B reconciliation (match ITC with vendor filings)</li>
+                <li class="cross-li">Multi-company consolidation + intercompany transactions</li>
+                <li class="cross-li">Tally XML import (onboarding migration)</li>
+                <li class="cross-li">CA portal access (read-only for auditors)</li>
+                <li class="cross-li">Custom MIS report builder</li>
+              </ul>
+            </td>
+            <td>5 wks</td>
+          </tr>
+          <tr>
+            <td>🏨 Hotel ERP<br><span class="badge y">60% now</span></td>
+            <td>63 routes, 11 pages</td>
+            <td>
+              <ul class="feature-list">
+                <li class="cross-li">Channel Manager (Booking.com, Expedia, Agoda, MakeMyTrip OTA APIs)</li>
+                <li class="cross-li">Revenue management: dynamic pricing by occupancy %</li>
+                <li class="cross-li">Banquet & Events module: hall booking, event billing, F&B packages</li>
+                <li class="cross-li">Spa & Amenities: service booking, billing</li>
+                <li class="cross-li">GL posting for all folio transactions</li>
+                <li class="cross-li">Online booking engine (public-facing white-label)</li>
+                <li class="cross-li">OTA parity pricing monitoring + alerts</li>
+                <li class="cross-li">Restaurant integration from hotel F&B outlets</li>
+              </ul>
+            </td>
+            <td>4 wks</td>
+          </tr>
+          <tr>
+            <td>🏥 Healthcare ERP<br><span class="badge y">60% now</span></td>
+            <td>134 routes, 11 pages</td>
+            <td>
+              <ul class="feature-list">
+                <li class="cross-li">ABDM/ABHA: generate ABHA ID, link to national health registry</li>
+                <li class="cross-li">EMR: SOAP-format clinical notes, diagnosis history, medication history, allergy flags</li>
+                <li class="cross-li">ICD-10 diagnosis coding on bills for insurance</li>
+                <li class="cross-li">Insurance TPA automation: pre-auth, cashless claim submission</li>
+                <li class="cross-li">Radiology/PACS: test order → PACS viewer link, report upload</li>
+                <li class="cross-li">Online appointment scheduling with SMS/WA reminders</li>
+                <li class="cross-li">Discharge summary PDF (diagnosis, medications, follow-up)</li>
+                <li class="cross-li">Drug interaction alerts (clinical decision support)</li>
+                <li class="cross-li">GL posting for all billing events</li>
+              </ul>
+            </td>
+            <td>4 wks</td>
+          </tr>
+          <tr>
+            <td>🏗️ Real Estate ERP<br><span class="badge y">60% now</span></td>
+            <td>66 routes, 10 pages</td>
+            <td>
+              <ul class="feature-list">
+                <li class="cross-li">RERA compliance: project registration, quarterly progress reports, allottee complaints</li>
+                <li class="cross-li">Project-wise MIS P&L (revenue per unit type, cost per phase, margin)</li>
+                <li class="cross-li">Bank construction loan tracking (tranches, interest, drawdown schedule)</li>
+                <li class="cross-li">Payment demand letter PDF generation</li>
+                <li class="cross-li">Subcontractor billing (work orders, milestone billing, retention)</li>
+                <li class="cross-li">Floor plan unit grid (sold/available/booked visualization)</li>
+                <li class="cross-li">Customer portal (public): track construction, download docs, pay online</li>
+                <li class="cross-li">GL posting for bookings, collections, construction costs</li>
+                <li class="cross-li">Society handover workflow</li>
+              </ul>
+            </td>
+            <td>4 wks</td>
+          </tr>
+          <tr>
+            <td>🏛️ NGO ERP<br><span class="badge y">65% now</span></td>
+            <td>56 routes, 9 pages</td>
+            <td>
+              <ul class="feature-list">
+                <li class="cross-li">80G bulk PDF generation (server-side pdfkit) + bulk email to donors</li>
+                <li class="cross-li">FCRA Form FC-4 annual return XML extraction</li>
+                <li class="cross-li">Donor portal (public-facing): giving history, download receipts</li>
+                <li class="cross-li">Fund accounting: restricted vs unrestricted funds, fund-wise P&L</li>
+                <li class="cross-li">Utilization certificates per grant</li>
+                <li class="cross-li">CSR module: corporate CSR donors, Schedule VII reporting</li>
+                <li class="cross-li">Form 10BD online submission (annual donor statement to IT dept)</li>
+                <li class="cross-li">GL posting for donations, grants, project expenses</li>
+              </ul>
+            </td>
+            <td>3 wks</td>
+          </tr>
+          <tr>
+            <td>🏦 Nidhi Company<br><span class="badge y">65% now</span></td>
+            <td>35 routes, 11 pages</td>
+            <td>
+              <ul class="feature-list">
+                <li class="cross-li">RBI NDH-1 (quarterly) and NDH-3 (half-yearly) data extraction</li>
+                <li class="cross-li">Director KYC tracking (DIN, PAN, address proof expiry)</li>
+                <li class="cross-li">Loan sanction workflow: application → committee approval → sanction letter → disbursement</li>
+                <li class="cross-li">Post-dated cheque (PDC) register: tracking, bounce management, re-presentation</li>
+                <li class="cross-li">Mobile collection app (offline: EMI + pigmy daily collection)</li>
+                <li class="cross-li">Statutory audit reports in RBI-prescribed format</li>
+                <li class="cross-li">GL posting for deposits, loans, EMI collections, interest accrual</li>
+                <li class="cross-li">Net Owned Funds ratio auto-alert (must be ≥ 1:20)</li>
+              </ul>
+            </td>
+            <td>3 wks</td>
+          </tr>
+          <tr>
+            <td>💊 Pharmacy ERP<br><span class="badge y">55% now</span></td>
+            <td>34 routes, 10 pages</td>
+            <td>
+              <ul class="feature-list">
+                <li class="cross-li">FEFO/FIFO batch tracking in billing (auto-select earliest expiry batch)</li>
+                <li class="cross-li">Narcotics & psychotropic register (NC-2 form compliance)</li>
+                <li class="cross-li">Prescription management: mandatory Rx link for Sch H/X dispensing</li>
+                <li class="cross-li">Doctor-patient prescription bridge (Healthcare ERP cross-reference)</li>
+                <li class="cross-li">CDSCO compliance reports: batch register, drug license utilization</li>
+                <li class="cross-li">Retail pharmacy POS: barcode scan, quick billing</li>
+                <li class="cross-li">GST e-invoice (IRP) for pharma B2B billing</li>
+                <li class="cross-li">Short expiry auto-return alerts to supplier</li>
+                <li class="cross-li">GL posting for drug sales, drug purchases</li>
+              </ul>
+            </td>
+            <td>3 wks</td>
+          </tr>
+          <tr>
+            <td>📊 CRM ERP<br><span class="badge y">55% now</span></td>
+            <td>41 routes, 8 pages</td>
+            <td>
+              <ul class="feature-list">
+                <li class="cross-li">AI lead scoring (1–100 score based on activity, source, value)</li>
+                <li class="cross-li">Automated drip campaigns (email/WhatsApp sequence by stage + time delay)</li>
+                <li class="cross-li">SLA tracking: follow-up due alerts, escalation after N days</li>
+                <li class="cross-li">Telephony: click-to-call (Exotel/Twilio), auto-log call + recording</li>
+                <li class="cross-li">Customer 360: CRM contact → invoice history + POs + support tickets</li>
+                <li class="cross-li">Quotation → Invoice bridge (accepted quote auto-creates invoice)</li>
+                <li class="cross-li">Territory management: geo assignments to sales reps</li>
+                <li class="cross-li">Revenue forecast: weighted pipeline by stage probability</li>
+                <li class="cross-li">Mobile CRM: field sales rep logs visits from phone</li>
+              </ul>
+            </td>
+            <td>4 wks</td>
+          </tr>
+          <tr>
+            <td>🚛 Logistics ERP<br><span class="badge y">55% now</span></td>
+            <td>74 routes, 10 pages</td>
+            <td>
+              <ul class="feature-list">
+                <li class="cross-li">E-way bill generation from consignment (NIC API)</li>
+                <li class="cross-li">Lorry Receipt (LR) PDF in standard format</li>
+                <li class="cross-li">Route optimization (Google Maps Distance Matrix)</li>
+                <li class="cross-li">Live GPS tracking (Tracksolid/Teltonika device APIs)</li>
+                <li class="cross-li">FASTag toll deduction logging</li>
+                <li class="cross-li">Vehicle maintenance scheduling (KM/date-based)</li>
+                <li class="cross-li">Driver performance: completion rate, fuel efficiency, violations</li>
+                <li class="cross-li">POD digital signature capture on mobile</li>
+                <li class="cross-li">GL posting for freight billing and collections</li>
+              </ul>
+            </td>
+            <td>4 wks</td>
+          </tr>
+          <tr>
+            <td>🎓 Education ERP<br><span class="badge y">75% now</span></td>
+            <td>146 routes, 14 pages</td>
+            <td>
+              <ul class="feature-list">
+                <li class="cross-li">Fee collection → GL posting</li>
+                <li class="cross-li">NEP compliance: outcome-based gradebook, competency mapping</li>
+                <li class="cross-li">Biometric attendance sync (CSV/API from biometric devices)</li>
+                <li class="cross-li">Certificate/TC printing (admit card, marksheet, TC) PDF</li>
+                <li class="cross-li">Teacher payroll bridge → HR module</li>
+                <li class="cross-li">Bus GPS tracking + parent pickup/drop SMS</li>
+                <li class="cross-li">Parent mobile app (attendance, marks, fee, homework, circulars)</li>
+                <li class="cross-li">Online exam auto-grading (MCQ auto-score)</li>
+                <li class="cross-li">Alumni management + network portal</li>
+              </ul>
+            </td>
+            <td>3 wks</td>
+          </tr>
+          <tr>
+            <td>🌾 Agriculture ERP<br><span class="badge y">50% now</span></td>
+            <td>46 routes, 9 pages</td>
+            <td>
+              <ul class="feature-list">
+                <li class="cross-li">Mandi price API (Agmarknet/APMC) — daily commodity price import</li>
+                <li class="cross-li">IoT sensor intake: soil moisture, temperature, humidity webhook</li>
+                <li class="cross-li">PMFBY crop insurance tracking (insured area, premium, claim)</li>
+                <li class="cross-li">PM-KISAN beneficiary tracking (installment confirmations)</li>
+                <li class="cross-li">Supply chain tracing: farm → mandi → buyer (lot-level)</li>
+                <li class="cross-li">Soil health card integration (import test results, fertilizer recommendations)</li>
+                <li class="cross-li">FPO meeting management (quorum, resolutions, dividends)</li>
+                <li class="cross-li">Warehouse receipt system (store harvest, issue receipt)</li>
+                <li class="cross-li">GL posting for harvest sales, input purchases, scheme receipts</li>
+              </ul>
+            </td>
+            <td>4 wks</td>
+          </tr>
+          <tr>
+            <td>🏭 Manufacturing<br><span class="badge y">65% now</span></td>
+            <td>In core routes</td>
+            <td>
+              <ul class="feature-list">
+                <li class="cross-li">MRP engine: sales forecast → RM requirement → auto-generate PRs</li>
+                <li class="cross-li">BOM versioning + ECN (Engineering Change Notice) workflow</li>
+                <li class="cross-li">Work Order management (create from SO, assign to line, track progress)</li>
+                <li class="cross-li">Shop floor control: stage-wise WO tracking, operator assignment, time logging</li>
+                <li class="cross-li">Quality inspection: incoming QC, in-process QC, FG QC, rejection/rework</li>
+                <li class="cross-li">Batch/lot traceability: forward + backward trace</li>
+                <li class="cross-li">Machine downtime + OEE tracking</li>
+                <li class="cross-li">Subcontracting: job work challan, vendor job work invoice</li>
+                <li class="cross-li">Production cost sheet per work order</li>
+              </ul>
+            </td>
+            <td>5 wks</td>
+          </tr>
+          <tr style="background:#fff5f5">
+            <td>🛒 E-Commerce ERP<br><span class="badge r">5% now — STUB</span></td>
+            <td>17 routes, all stubs</td>
+            <td><strong>Full rebuild — see Phase 4 above.</strong> All 8 pages need to be built from scratch with marketplace API integrations.</td>
+            <td>4 wks</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PHASE 8 CROSS-CUTTING -->
+  <div class="section">
+    <div class="sh"><div class="sn">8</div><h2>Phase 8 — Cross-Cutting Infrastructure + AI/ML + Mobile</h2></div>
+    <div class="sb">
+      <div class="grid2">
+        <div>
+          <h3>PDF Generation Engine (all ERPs)</h3>
+          <ul>
+            <li>Server-side PDF (pdfkit/Puppeteer)</li>
+            <li>80G certificates (NGO)</li>
+            <li>Hotel folio & invoice</li>
+            <li>Healthcare IPD discharge bill + summary</li>
+            <li>Education fee receipts, marksheets, TCs, certificates</li>
+            <li>Nidhi member passbook (deposit/loan statement)</li>
+            <li>Lorry Receipt & ePOD (Logistics)</li>
+            <li>Real Estate demand letters, allotment letters</li>
+            <li>Pharmacy drug bills with batch/expiry</li>
+            <li>Gold jewellery valuation certificate</li>
+          </ul>
+
+          <h3 style="margin-top:16px">Notification Engine (all ERPs)</h3>
+          <ul>
+            <li>WhatsApp Business API (Meta)</li>
+            <li>SMS (Twilio/Exotel)</li>
+            <li>Email (SendGrid/SMTP)</li>
+            <li>Push notifications (FCM)</li>
+            <li>Nidhi: EMI due D-3/D-1/D+1, FD maturity alert</li>
+            <li>Education: fee due, exam schedule, attendance alert</li>
+            <li>Healthcare: appointment reminder, lab report ready</li>
+            <li>Hotel: booking confirmation, checkout invoice</li>
+            <li>Logistics: delivery confirmed, POD uploaded</li>
+            <li>Real Estate: demand letter issued, payment receipt</li>
+          </ul>
+        </div>
+        <div>
+          <h3>AI/ML Features</h3>
+          <ul>
+            <li>CRM lead scoring (logistic regression: source, activity, value, days)</li>
+            <li>Inventory demand forecasting (ARIMA/Prophet time-series per SKU)</li>
+            <li>Finance anomaly detection (flag unusual journal entries)</li>
+            <li>Restaurant menu engineering AI (margin + popularity matrix)</li>
+            <li>HR attrition prediction (leave patterns, performance, tenure)</li>
+            <li>Agriculture yield prediction (weather + soil + input history)</li>
+            <li>Real estate price suggestion (location, BHK type, comparable sales)</li>
+          </ul>
+
+          <h3 style="margin-top:16px">Native Mobile Apps (React Native)</h3>
+          <ul>
+            <li>Restaurant waiter app (KOT, table management, offline)</li>
+            <li>Logistics driver app (ePOD, GPS, delivery confirmation)</li>
+            <li>Pharmacy billing app (barcode scan, quick bill)</li>
+            <li>Nidhi collection app (EMI/pigmy, offline sync)</li>
+            <li>HR field attendance (geo-tagged check-in/out)</li>
+            <li>Real Estate site visit app (plot selection, on-site booking)</li>
+            <li>Push notifications for all apps</li>
+          </ul>
+
+          <h3 style="margin-top:16px">MIS Super-Dashboard (CEO/CFO)</h3>
+          <ul>
+            <li>Cross-ERP revenue trend</li>
+            <li>Cash position (all bank accounts)</li>
+            <li>Top customers, overdue receivables</li>
+            <li>Headcount and payroll cost</li>
+            <li>Department-wise P&L (cost centres)</li>
+            <li>Scheduled Monday morning email to owner</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DEFINITION OF DONE -->
+  <div class="section">
+    <div class="sh"><div class="sn">✅</div><h2>Definition of Done — What 100% Looks Like</h2></div>
+    <div class="sb">
+      <div class="grid2">
+        <div>
+          <h3>All 17 ERPs</h3>
+          <ul>
+            <li class="check-li">Every vertical: backend routes > 50, all UI pages > 100 lines with real functionality</li>
+            <li class="check-li">All vertical financial transactions post to the GL via journal-service.ts</li>
+            <li class="check-li">No "Coming soon" or 8-line stub pages anywhere</li>
+            <li class="check-li">All 17 verticals have Starter / Professional / Enterprise subscription tiers</li>
+            <li class="check-li">E-Commerce: all 8 pages functional with ≥ 2 marketplace integrations</li>
+          </ul>
+          <h3 style="margin-top:12px">Finance ERP</h3>
+          <ul>
+            <li class="check-li">AP, AR, GL, Bank Reconciliation, Period Close all functional</li>
+            <li class="check-li">GSTR direct filing via GSP API</li>
+            <li class="check-li">Multi-company consolidation (group P&L)</li>
+            <li class="check-li">Tally XML import for onboarding migration</li>
+            <li class="check-li">Recurring journal entries with auto-posting cron</li>
+          </ul>
+          <h3 style="margin-top:12px">Global Compliance</h3>
+          <ul>
+            <li class="check-li">India: GST, TDS, e-Invoice, GSTR-1/3B ✅ (already done)</li>
+            <li class="check-li">Saudi Arabia / UAE: ZATCA Phase 1 + 2</li>
+            <li class="check-li">EU: VAT + OSS return</li>
+            <li class="check-li">USA: State sales tax with nexus detection</li>
+            <li class="check-li">UK: VAT + Making Tax Digital</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Security & Data</h3>
+          <ul>
+            <li class="check-li">PostgreSQL RLS enabled on all tables as DB-level safety net</li>
+            <li class="check-li">Field-level audit trail: all write operations logged with old → new values</li>
+            <li class="check-li">Row-level data isolation within roles (own/branch/all scope)</li>
+            <li class="check-li">Zero 8-line stub pages in codebase</li>
+          </ul>
+          <h3 style="margin-top:12px">Infrastructure</h3>
+          <ul>
+            <li class="check-li">Server-side PDF engine (all documents across all ERPs)</li>
+            <li class="check-li">Unified notification engine (WhatsApp/SMS/Email/Push) for all ERPs</li>
+            <li class="check-li">Universal approval workflow engine (configurable per document + threshold)</li>
+            <li class="check-li">MIS Super-Dashboard (cross-ERP CEO/CFO view)</li>
+            <li class="check-li">Native mobile apps for field-use ERPs (offline-capable)</li>
+          </ul>
+          <h3 style="margin-top:12px">AI & Intelligence</h3>
+          <ul>
+            <li class="check-li">CRM lead scoring live in production</li>
+            <li class="check-li">Inventory demand forecasting per SKU</li>
+            <li class="check-li">Finance anomaly detection on journal entries</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="alert ag" style="margin-top:16px">
+        <strong>✅ Competitive Position at 100%</strong>
+        <p>No single competitor covers all 17 verticals in one multi-tenant SaaS platform. Tally covers finance only. Zoho covers CRM/HR/basic finance. SAP B1 covers manufacturing/finance but no Gold ERP, no Nidhi, no NGO, no Restaurant at this depth. At 100%, Kinto ERP becomes the only truly comprehensive industry-vertical ERP platform in the Indian and emerging market space — with global tax compliance to serve any country.</p>
+      </div>
+    </div>
+  </div>
+
+  <div style="text-align:center;padding:20px;color:#94a3b8;font-size:.75rem">
+    Kinto ERP Implementation Plan 2026-06-30 • Confidential • Generated by Claude Code
+  </div>
+
+</div>
+</body>
+</html>

@@ -1985,6 +1985,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/pharmacy', pharmacyRouter);
   app.use('/api/nidhi-company', nidhiRouter);
   app.use('/api/finance', financeErpRouter);
+  app.use('/api/finance-erp', financeErpRouter);
   app.use('/api/restaurant', restaurantEnterpriseRouter);
   app.use('/api/aggregators', aggregatorRouter);
   app.use('/api/restaurant/tax', restaurantTaxRouter);

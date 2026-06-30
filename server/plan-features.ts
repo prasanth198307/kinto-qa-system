@@ -320,6 +320,102 @@ const PHARMACY_ENTERPRISE_MODULES = [
   "accounting", "mis", "crm", "whatsapp", "hr_payroll", "pharmacy",
 ];
 
+// ── NGO vertical plans ────────────────────────────────────────────────────────
+const NGO_STARTER_MODULES = ["invoicing", "expenses", "documents", "ngo"];
+const NGO_PROFESSIONAL_MODULES = [
+  "invoicing", "purchase_orders", "basic_inventory", "expenses", "documents",
+  "accounting", "mis", "whatsapp", "ngo",
+];
+const NGO_ENTERPRISE_MODULES = [
+  "invoicing", "purchase_orders", "basic_inventory", "expenses", "documents",
+  "accounting", "mis", "crm", "api_hub", "whatsapp", "hr_payroll",
+  "projects", "fixed_assets", "multi_currency", "ngo",
+];
+
+// ── Nidhi Company vertical plans ─────────────────────────────────────────────
+const NIDHI_STARTER_MODULES = ["invoicing", "expenses", "documents", "nidhi"];
+const NIDHI_PROFESSIONAL_MODULES = [
+  "invoicing", "basic_inventory", "expenses", "documents",
+  "accounting", "mis", "whatsapp", "nidhi",
+];
+const NIDHI_ENTERPRISE_MODULES = [
+  "invoicing", "purchase_orders", "basic_inventory", "expenses", "documents",
+  "accounting", "mis", "api_hub", "whatsapp", "hr_payroll",
+  "fixed_assets", "multi_currency", "nidhi",
+];
+
+// ── CRM vertical plans ────────────────────────────────────────────────────────
+const CRM_STARTER_MODULES = ["invoicing", "expenses", "documents", "crm"];
+const CRM_PROFESSIONAL_MODULES = [
+  "invoicing", "purchase_orders", "basic_inventory", "expenses", "documents",
+  "accounting", "mis", "whatsapp", "crm", "api_hub",
+];
+const CRM_ENTERPRISE_MODULES = [
+  "invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders",
+  "expenses", "documents", "accounting", "mis", "whatsapp", "hr_payroll",
+  "crm", "api_hub", "recurring_invoices", "projects", "multi_currency",
+];
+
+// ── Logistics vertical plans ──────────────────────────────────────────────────
+const LOGISTICS_STARTER_MODULES = ["invoicing", "basic_inventory", "expenses", "documents", "logistics_transport"];
+const LOGISTICS_PROFESSIONAL_MODULES = [
+  "invoicing", "purchase_orders", "basic_inventory", "expenses", "documents",
+  "accounting", "mis", "crm", "whatsapp", "logistics_transport",
+];
+const LOGISTICS_ENTERPRISE_MODULES = [
+  "invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders",
+  "expenses", "documents", "accounting", "mis", "crm", "api_hub", "whatsapp",
+  "hr_payroll", "fixed_assets", "multi_currency", "logistics_transport",
+];
+
+// ── Real Estate vertical plans ────────────────────────────────────────────────
+const REAL_ESTATE_STARTER_MODULES = ["invoicing", "expenses", "documents", "real_estate"];
+const REAL_ESTATE_PROFESSIONAL_MODULES = [
+  "invoicing", "purchase_orders", "basic_inventory", "expenses", "documents",
+  "accounting", "mis", "crm", "whatsapp", "real_estate",
+];
+const REAL_ESTATE_ENTERPRISE_MODULES = [
+  "invoicing", "purchase_orders", "basic_inventory", "gatepasses", "expenses",
+  "documents", "accounting", "mis", "crm", "api_hub", "whatsapp", "hr_payroll",
+  "projects", "fixed_assets", "multi_currency", "real_estate",
+];
+
+// ── Agriculture vertical plans ────────────────────────────────────────────────
+const AGRICULTURE_STARTER_MODULES = ["invoicing", "basic_inventory", "expenses", "documents", "agriculture"];
+const AGRICULTURE_PROFESSIONAL_MODULES = [
+  "invoicing", "purchase_orders", "basic_inventory", "expenses", "documents",
+  "accounting", "mis", "whatsapp", "agriculture",
+];
+const AGRICULTURE_ENTERPRISE_MODULES = [
+  "invoicing", "purchase_orders", "basic_inventory", "gatepasses", "expenses",
+  "documents", "accounting", "mis", "crm", "api_hub", "whatsapp", "hr_payroll",
+  "fixed_assets", "multi_currency", "agriculture",
+];
+
+// ── Education vertical plans ──────────────────────────────────────────────────
+const EDUCATION_STARTER_MODULES = ["invoicing", "expenses", "documents", "education"];
+const EDUCATION_PROFESSIONAL_MODULES = [
+  "invoicing", "purchase_orders", "basic_inventory", "expenses", "documents",
+  "accounting", "mis", "whatsapp", "education",
+];
+const EDUCATION_ENTERPRISE_MODULES = [
+  "invoicing", "purchase_orders", "basic_inventory", "expenses", "documents",
+  "accounting", "mis", "crm", "api_hub", "whatsapp", "hr_payroll",
+  "projects", "fixed_assets", "multi_currency", "education",
+];
+
+// ── E-Commerce vertical plans ─────────────────────────────────────────────────
+const ECOMMERCE_STARTER_MODULES = ["invoicing", "basic_inventory", "expenses", "documents", "ecommerce"];
+const ECOMMERCE_PROFESSIONAL_MODULES = [
+  "invoicing", "purchase_orders", "basic_inventory", "sales_orders", "expenses",
+  "documents", "accounting", "mis", "whatsapp", "api_hub", "ecommerce",
+];
+const ECOMMERCE_ENTERPRISE_MODULES = [
+  "invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders",
+  "expenses", "documents", "accounting", "mis", "crm", "api_hub", "whatsapp",
+  "hr_payroll", "warehouses", "multi_currency", "pos", "ecommerce",
+];
+
 // ── Shared module matrix ───────────────────────────────────────────────────────
 // Each vertical ERP gets only the shared modules it actually needs.
 // Generic plans (trial/basic/professional/enterprise) are for manufacturing/trading.
@@ -344,6 +440,31 @@ export const PLAN_MODULES: Record<string, string[]> = {
   pharmacy_starter:        PHARMACY_STARTER_MODULES,
   pharmacy_professional:   PHARMACY_PROFESSIONAL_MODULES,
   pharmacy_enterprise:     PHARMACY_ENTERPRISE_MODULES,
+
+  ngo_starter:             NGO_STARTER_MODULES,
+  ngo_professional:        NGO_PROFESSIONAL_MODULES,
+  ngo_enterprise:          NGO_ENTERPRISE_MODULES,
+  nidhi_starter:           NIDHI_STARTER_MODULES,
+  nidhi_professional:      NIDHI_PROFESSIONAL_MODULES,
+  nidhi_enterprise:        NIDHI_ENTERPRISE_MODULES,
+  crm_starter:             CRM_STARTER_MODULES,
+  crm_professional:        CRM_PROFESSIONAL_MODULES,
+  crm_enterprise:          CRM_ENTERPRISE_MODULES,
+  logistics_starter:       LOGISTICS_STARTER_MODULES,
+  logistics_professional:  LOGISTICS_PROFESSIONAL_MODULES,
+  logistics_enterprise:    LOGISTICS_ENTERPRISE_MODULES,
+  real_estate_starter:     REAL_ESTATE_STARTER_MODULES,
+  real_estate_professional:REAL_ESTATE_PROFESSIONAL_MODULES,
+  real_estate_enterprise:  REAL_ESTATE_ENTERPRISE_MODULES,
+  agriculture_starter:     AGRICULTURE_STARTER_MODULES,
+  agriculture_professional:AGRICULTURE_PROFESSIONAL_MODULES,
+  agriculture_enterprise:  AGRICULTURE_ENTERPRISE_MODULES,
+  education_starter:       EDUCATION_STARTER_MODULES,
+  education_professional:  EDUCATION_PROFESSIONAL_MODULES,
+  education_enterprise:    EDUCATION_ENTERPRISE_MODULES,
+  ecommerce_starter:       ECOMMERCE_STARTER_MODULES,
+  ecommerce_professional:  ECOMMERCE_PROFESSIONAL_MODULES,
+  ecommerce_enterprise:    ECOMMERCE_ENTERPRISE_MODULES,
 };
 
 // ── Route prefix → minimum plan ───────────────────────────────────────────────

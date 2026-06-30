@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kinto ERP — Enterprise Assessment 2026</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; color: #1e293b; }
+  .header { background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%); color: white; padding: 40px 48px; }
+  .header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 8px; }
+  .header p { opacity: 0.75; font-size: 0.95rem; }
+  .header-meta { display: flex; gap: 32px; margin-top: 20px; }
+  .header-meta span { background: rgba(255,255,255,0.12); padding: 6px 16px; border-radius: 20px; font-size: 0.82rem; }
+  .download-btn { position: absolute; top: 32px; right: 48px; background: #22c55e; color: white; border: none; padding: 10px 22px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.9rem; text-decoration: none; display: inline-block; }
+  .download-btn:hover { background: #16a34a; }
+  .container { max-width: 1280px; margin: 0 auto; padding: 32px 48px; }
+  .section { background: white; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 28px; overflow: hidden; }
+  .section-header { background: #f1f5f9; padding: 18px 24px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 12px; }
+  .section-header h2 { font-size: 1.1rem; font-weight: 700; color: #0f172a; }
+  .section-num { background: #1e3a5f; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; flex-shrink: 0; }
+  .section-body { padding: 24px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+  th { background: #f8fafc; color: #64748b; font-weight: 600; text-align: left; padding: 10px 14px; border-bottom: 2px solid #e2e8f0; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  td { padding: 10px 14px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #f8fafc; }
+  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+  .green { background: #dcfce7; color: #15803d; }
+  .yellow { background: #fef9c3; color: #a16207; }
+  .red { background: #fee2e2; color: #dc2626; }
+  .blue { background: #dbeafe; color: #1d4ed8; }
+  .gray { background: #f1f5f9; color: #475569; }
+  .score-bar { display: flex; align-items: center; gap: 10px; }
+  .bar-track { flex: 1; background: #e2e8f0; border-radius: 4px; height: 8px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 4px; }
+  .score-text { font-weight: 700; font-size: 0.85rem; min-width: 38px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+  .kpi-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 18px 20px; }
+  .kpi-card .label { font-size: 0.78rem; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; }
+  .kpi-card .value { font-size: 1.8rem; font-weight: 800; color: #0f172a; }
+  .kpi-card .sub { font-size: 0.8rem; color: #94a3b8; margin-top: 2px; }
+  .alert { border-radius: 8px; padding: 14px 18px; margin-bottom: 16px; border-left: 4px solid; }
+  .alert-red { background: #fff5f5; border-color: #ef4444; color: #7f1d1d; }
+  .alert-yellow { background: #fffbeb; border-color: #f59e0b; color: #78350f; }
+  .alert-green { background: #f0fdf4; border-color: #22c55e; color: #14532d; }
+  .alert-blue { background: #eff6ff; border-color: #3b82f6; color: #1e3a8a; }
+  .alert strong { display: block; font-size: 0.9rem; margin-bottom: 4px; }
+  .alert p { font-size: 0.84rem; line-height: 1.5; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  h3 { font-size: 1rem; font-weight: 700; color: #0f172a; margin-bottom: 12px; margin-top: 20px; }
+  h3:first-child { margin-top: 0; }
+  p { font-size: 0.875rem; line-height: 1.6; color: #475569; margin-bottom: 10px; }
+  ul { padding-left: 20px; margin-bottom: 10px; }
+  li { font-size: 0.875rem; line-height: 1.7; color: #475569; }
+  .tag { display: inline-block; background: #f1f5f9; color: #475569; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; margin: 2px; }
+  .priority-h { color: #dc2626; font-weight: 700; }
+  .priority-m { color: #d97706; font-weight: 700; }
+  .priority-l { color: #16a34a; font-weight: 700; }
+  .feature-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+  .feature-item { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; font-size: 0.82rem; display: flex; align-items: flex-start; gap: 8px; }
+  .feature-item.done { border-color: #bbf7d0; background: #f0fdf4; }
+  .feature-item.missing { border-color: #fecaca; background: #fff5f5; }
+  .check { color: #22c55e; font-size: 1rem; flex-shrink: 0; }
+  .cross { color: #ef4444; font-size: 1rem; flex-shrink: 0; }
+  @media print { .download-btn { display: none; } body { background: white; } .section { break-inside: avoid; } }
+  .toc { background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 20px 24px; margin-bottom: 28px; }
+  .toc h3 { margin-top: 0; }
+  .toc ol { padding-left: 20px; }
+  .toc li { padding: 4px 0; font-size: 0.875rem; color: #1d4ed8; cursor: pointer; }
+  .toc li:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<div class="header" style="position:relative">
+  <h1>🏢 Kinto ERP — Enterprise Assessment Report</h1>
+  <p>Comprehensive audit of all 17 ERP modules • Architecture • Gaps • Roadmap to 100% Global Competitor</p>
+  <div class="header-meta">
+    <span>📅 Date: 2026-06-30</span>
+    <span>🔍 17 ERP Verticals Assessed</span>
+    <span>📊 Overall Readiness: ~65%</span>
+    <span>🌍 India-first, Global roadmap</span>
+  </div>
+  <a class="download-btn" href="#" onclick="window.print()">⬇ Download / Print PDF</a>
+</div>
+
+<div class="container">
+
+  <!-- TOC -->
+  <div class="toc">
+    <h3>📋 Table of Contents</h3>
+    <ol>
+      <li onclick="document.getElementById('s1').scrollIntoView({behavior:'smooth'})">Finance & Accounting ERP — Merged Assessment (Finance ERP = Finance & Accounts unified)</li>
+      <li onclick="document.getElementById('s2').scrollIntoView({behavior:'smooth'})">All 17 ERP Verticals — Pending to 100% Enterprise</li>
+      <li onclick="document.getElementById('s3').scrollIntoView({behavior:'smooth'})">Shared Modules — How Many, What They Are, How They Work</li>
+      <li onclick="document.getElementById('s4').scrollIntoView({behavior:'smooth'})">Subscription Plans — How Tenants Subscribe & What Loads</li>
+      <li onclick="document.getElementById('s5').scrollIntoView({behavior:'smooth'})">Multi-Country Tenants — How Different Countries Work</li>
+      <li onclick="document.getElementById('s6').scrollIntoView({behavior:'smooth'})">Dynamic Roles & Users Per Plan</li>
+      <li onclick="document.getElementById('s7').scrollIntoView({behavior:'smooth'})">Roadmap to 100% Global Enterprise Competitor</li>
+    </ol>
+  </div>
+
+  <!-- KPI Overview -->
+  <div class="grid-3" style="margin-bottom:28px">
+    <div class="kpi-card">
+      <div class="label">Total ERP Verticals</div>
+      <div class="value">17</div>
+      <div class="sub">5 production-ready • 10 partial • 2 stubs</div>
+    </div>
+    <div class="kpi-card">
+      <div class="label">Total Backend Routes</div>
+      <div class="value">1,800+</div>
+      <div class="sub">Across all ERPs + shared modules</div>
+    </div>
+    <div class="kpi-card">
+      <div class="label">GL Integration</div>
+      <div class="value" style="color:#dc2626">0 / 10</div>
+      <div class="sub">Industry verticals missing GL posting</div>
+    </div>
+    <div class="kpi-card">
+      <div class="label">Shared Module Screens</div>
+      <div class="value">110+</div>
+      <div class="sub">Screen keys across all shared modules</div>
+    </div>
+    <div class="kpi-card">
+      <div class="label">Tax Compliance</div>
+      <div class="value">🇮🇳 Only</div>
+      <div class="sub">GST, TDS, e-Invoice — no global tax</div>
+    </div>
+    <div class="kpi-card">
+      <div class="label">Overall Readiness</div>
+      <div class="value" style="color:#d97706">65%</div>
+      <div class="sub">Toward 100% global enterprise</div>
+    </div>
+  </div>
+
+  <!-- SECTION 1: Finance ERP Merged -->
+  <div class="section" id="s1">
+    <div class="section-header">
+      <div class="section-num">1</div>
+      <h2>Finance & Accounting ERP — Merged Assessment (Finance & Accounts + Finance ERP = One Product)</h2>
+    </div>
+    <div class="section-body">
+
+      <div class="alert alert-blue">
+        <strong>Architecture Decision: Finance & Accounts IS the Finance ERP</strong>
+        <p>The existing <strong>Accounting module</strong> (accessible under Professional/Enterprise plan) is the Finance ERP. The <code>finance-erp.tsx</code> stub and empty <code>finance-erp-routes.ts</code> should be merged INTO the accounting module as a unified "Finance ERP" product. No separate codebase needed — just route the Finance ERP nav to the existing accounting sub-pages and add missing AP/period-close features.</p>
+      </div>
+
+      <div class="two-col">
+        <div>
+          <h3>✅ What Finance ERP Already Has (in Accounting Module)</h3>
+          <div class="feature-grid">
+            <div class="feature-item done"><span class="check">✓</span> Chart of Accounts with sub-types & groups</div>
+            <div class="feature-item done"><span class="check">✓</span> Manual & Auto Journal Entries</div>
+            <div class="feature-item done"><span class="check">✓</span> Trial Balance</div>
+            <div class="feature-item done"><span class="check">✓</span> Profit & Loss Statement</div>
+            <div class="feature-item done"><span class="check">✓</span> Balance Sheet</div>
+            <div class="feature-item done"><span class="check">✓</span> Cash Flow Statement</div>
+            <div class="feature-item done"><span class="check">✓</span> Day Book / Group Summary / Ledger</div>
+            <div class="feature-item done"><span class="check">✓</span> Bank Accounts + Statement Import</div>
+            <div class="feature-item done"><span class="check">✓</span> AR Aging / Outstanding Reports</div>
+            <div class="feature-item done"><span class="check">✓</span> Budget & Variance Analysis</div>
+            <div class="feature-item done"><span class="check">✓</span> TDS Management (Form 26AS, challan)</div>
+            <div class="feature-item done"><span class="check">✓</span> Multi-Currency (Enterprise)</div>
+            <div class="feature-item done"><span class="check">✓</span> Cost Centres</div>
+            <div class="feature-item done"><span class="check">✓</span> Fixed Assets + Depreciation</div>
+            <div class="feature-item done"><span class="check">✓</span> Customer Advances + Invoice application</div>
+            <div class="feature-item done"><span class="check">✓</span> Customer & Vendor Debit/Credit Notes</div>
+            <div class="feature-item done"><span class="check">✓</span> Write-off Management</div>
+            <div class="feature-item done"><span class="check">✓</span> GST Reports (GSTR-1, GSTR-3B)</div>
+            <div class="feature-item done"><span class="check">✓</span> e-Invoice IRP Integration</div>
+            <div class="feature-item done"><span class="check">✓</span> GL Engine (journal-service.ts, 2,300 lines, 30+ functions)</div>
+          </div>
+        </div>
+        <div>
+          <h3>❌ Missing for Tally / QuickBooks / SAP Parity</h3>
+          <div class="feature-grid">
+            <div class="feature-item missing"><span class="cross">✗</span> Accounts Payable (vendor bills, AP workflow)</div>
+            <div class="feature-item missing"><span class="cross">✗</span> AP Aging report</div>
+            <div class="feature-item missing"><span class="cross">✗</span> Payment runs (bulk vendor payments)</div>
+            <div class="feature-item missing"><span class="cross">✗</span> Bank Reconciliation (auto statement matching)</div>
+            <div class="feature-item missing"><span class="cross">✗</span> Recurring Journal Entries</div>
+            <div class="feature-item missing"><span class="cross">✗</span> Period-end close / Year-end lock</div>
+            <div class="feature-item missing"><span class="cross">✗</span> Multi-company consolidation</div>
+            <div class="feature-item missing"><span class="cross">✗</span> Intercompany transactions</div>
+            <div class="feature-item missing"><span class="cross">✗</span> ZATCA / Saudi VAT compliance</div>
+            <div class="feature-item missing"><span class="cross">✗</span> EU VAT / UK VAT / US Sales Tax</div>
+            <div class="feature-item missing"><span class="cross">✗</span> Audit trail (field-level old→new value)</div>
+            <div class="feature-item missing"><span class="cross">✗</span> Finance ERP as standalone subscription plan</div>
+            <div class="feature-item missing"><span class="cross">✗</span> GL posting from ALL industry verticals</div>
+            <div class="feature-item missing"><span class="cross">✗</span> Payroll → GL journal entries</div>
+            <div class="feature-item missing"><span class="cross">✗</span> Direct Tally XML import</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="alert alert-red" style="margin-top:20px">
+        <strong>⚠️ Critical GL Gap: 0 of 10 Industry Verticals Post to the GL</strong>
+        <p>The <code>journal-service.ts</code> GL engine exists and is powerful — but <strong>Hotel, Healthcare, Pharmacy, NGO, Nidhi Company, Logistics, Real Estate, Agriculture, Education, CRM, and E-Commerce</strong> route files do not import or call it. Every transaction in these verticals is financially invisible. The P&L and Balance Sheet are unreliable for vertical tenants. <strong>GL posting must be wired to all vertical route files as Priority 1.</strong></p>
+      </div>
+
+      <h3>Merge Plan: How to Unify Finance ERP + Accounting Module</h3>
+      <table>
+        <tr><th>Step</th><th>Action</th><th>Effort</th></tr>
+        <tr><td>1</td><td>Replace <code>finance-erp.tsx</code> stub with a proper Finance ERP landing dashboard (AR summary, AP summary, Cash position, Quick links to sub-modules)</td><td>2 days</td></tr>
+        <tr><td>2</td><td>Create <code>client/src/pages/finance/</code> sub-pages: ar.tsx, ap.tsx, gl.tsx, bank-reconciliation.tsx, period-close.tsx, reports.tsx</td><td>1 week</td></tr>
+        <tr><td>3</td><td>Build AP module: vendor bills CRUD, AP aging, payment runs, due date alerts</td><td>2 weeks</td></tr>
+        <tr><td>4</td><td>Add Bank Reconciliation auto-match (statement rows ↔ journal entries)</td><td>1 week</td></tr>
+        <tr><td>5</td><td>Add period-close enforcement (lock accounting periods, prevent backdated posting)</td><td>1 week</td></tr>
+        <tr><td>6</td><td>Wire journal-service.ts calls into all 10 vertical ERP route files</td><td>2 weeks</td></tr>
+        <tr><td>7</td><td>Add "Finance ERP" as a standalone subscription plan (for CAs, finance companies)</td><td>3 days</td></tr>
+        <tr><td>8</td><td>Add payroll → GL posting when payroll is finalized</td><td>3 days</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- SECTION 2: 17 ERPs -->
+  <div class="section" id="s2">
+    <div class="section-header">
+      <div class="section-num">2</div>
+      <h2>All 17 ERP Verticals — Pending to 100% Enterprise</h2>
+    </div>
+    <div class="section-body">
+
+      <table>
+        <thead>
+          <tr>
+            <th>ERP Vertical</th>
+            <th>Backend Routes</th>
+            <th>UI Pages</th>
+            <th>GL Posted?</th>
+            <th>Completeness</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>🥇 Gold ERP</strong></td>
+            <td>~206</td>
+            <td>13 files (~6,000 lines)</td>
+            <td><span class="badge green">✓ Yes</span></td>
+            <td>
+              <div class="score-bar">
+                <div class="bar-track"><div class="bar-fill" style="width:90%;background:#22c55e"></div></div>
+                <span class="score-text" style="color:#22c55e">90%</span>
+              </div>
+            </td>
+            <td><span class="badge green">Production Ready</span></td>
+          </tr>
+          <tr>
+            <td><strong>🍽️ Restaurant ERP</strong></td>
+            <td>~349</td>
+            <td>24 files (avg 700+ lines)</td>
+            <td><span class="badge red">✗ No</span></td>
+            <td>
+              <div class="score-bar">
+                <div class="bar-track"><div class="bar-fill" style="width:85%;background:#22c55e"></div></div>
+                <span class="score-text" style="color:#22c55e">85%</span>
+              </div>
+            </td>
+            <td><span class="badge green">Production Ready</span></td>
+          </tr>
+          <tr>
+            <td><strong>👥 HR / Payroll</strong></td>
+            <td>~147</td>
+            <td>16 files (~8,600 lines)</td>
+            <td><span class="badge red">✗ No</span></td>
+            <td>
+              <div class="score-bar">
+                <div class="bar-track"><div class="bar-fill" style="width:85%;background:#22c55e"></div></div>
+                <span class="score-text" style="color:#22c55e">85%</span>
+              </div>
+            </td>
+            <td><span class="badge green">Production Ready</span></td>
+          </tr>
+          <tr>
+            <td><strong>🏪 Retail / POS</strong></td>
+            <td>~91</td>
+            <td>pos.tsx = 2,858 lines</td>
+            <td><span class="badge green">✓ Yes</span></td>
+            <td>
+              <div class="score-bar">
+                <div class="bar-track"><div class="bar-fill" style="width:80%;background:#22c55e"></div></div>
+                <span class="score-text" style="color:#22c55e">80%</span>
+              </div>
+            </td>
+            <td><span class="badge green">Production Ready</span></td>
+          </tr>
+          <tr>
+            <td><strong>💰 Finance ERP</strong> (merged)</td>
+            <td>~200 (in core)</td>
+            <td>Accounting sub-pages (real)</td>
+            <td><span class="badge green">✓ Core only</span></td>
+            <td>
+              <div class="score-bar">
+                <div class="bar-track"><div class="bar-fill" style="width:70%;background:#eab308"></div></div>
+                <span class="score-text" style="color:#d97706">70%</span>
+              </div>
+            </td>
+            <td><span class="badge yellow">Needs AP + Period Close</span></td>
+          </tr>
+          <tr>
+            <td><strong>🎓 Education ERP</strong></td>
+            <td>~146</td>
+            <td>14 files (~1,736 lines)</td>
+            <td><span class="badge red">✗ No</span></td>
+            <td>
+              <div class="score-bar">
+                <div class="bar-track"><div class="bar-fill" style="width:75%;background:#eab308"></div></div>
+                <span class="score-text" style="color:#d97706">75%</span>
+              </div>
+            </td>
+            <td><span class="badge yellow">Good — fee→GL missing</span></td>
+          </tr>
+          <tr>
+            <td><strong>🏭 Manufacturing</strong></td>
+            <td>(in core routes)</td>
+            <td>8 pages</td>
+            <td><span class="badge green">✓ Yes</span></td>
+            <td>
+              <div class="score-bar">
+                <div class="bar-track"><div class="bar-fill" style="width:65%;background:#eab308"></div></div>
+                <span class="score-text" style="color:#d97706">65%</span>
+              </div>
+            </td>
+            <td><span class="badge yellow">No MRP/Work Orders</span></td>
+          </tr>
+          <tr>
+            <td><strong>🏛️ NGO ERP</strong></td>
+            <td>~56</td>
+            <td>9 files (~1,246 lines)</td>
+            <td><span class="badge red">✗ No</span></td>
+            <td>
+              <div class="score-bar">
+                <div class="bar-track"><div class="bar-fill" style="width:65%;background:#eab308"></div></div>
+                <span class="score-text" style="color:#d97706">65%</span>
+              </div>
+            </td>
+            <td><span class="badge yellow">Functional — no GL</span></td>
+          </tr>
+          <tr>
+            <td><strong>🏦 Nidhi Company ERP</strong></td>
+            <td>~35</td>
+            <td>11 files (~1,337 lines)</td>
+            <td><span class="badge red">✗ No</span></td>
+            <td>
+              <div class="score-bar">
+                <div class="bar-track"><div class="bar-fill" style="width:65%;background:#eab308"></div></div>
+                <span class="score-text" style="color:#d97706">65%</span>
+              </div>
+            </td>
+            <td><span class="badge yellow">Functional — no GL</span></td>
+          </tr>
+          <tr>
+            <td><strong>🏨 Hotel ERP</strong></td>
+            <td>~63</td>
+            <td>11 files (~2,048 lines)</td>
+            <td><span class="badge red">✗ No</span></td>
+            <td>
+              <div class="score-bar">
+                <div class="bar-track"><div class="bar-fill" style="width:60%;background:#eab308"></div></div>
+                <span class="score-text" style="color:#d97706">60%</span>
+              </div>
+            </td>
+            <td><span class="badge yellow">No channel mgr / GL</span></td>
+          </tr>
+          <tr>
+            <td><strong>🏥 Healthcare ERP</strong></td>
+            <td>~134</td>
+            <td>11 files (~1,867 lines)</td>
+            <td><span class="badge red">✗ No</span></td>
+            <td>
+              <div class="score-bar">
+                <div class="bar-track"><div class="bar-fill" style="width:60%;background:#eab308"></div></div>
+                <span class="score-text" style="color:#d97706">60%</span>
+              </div>
+            </td>
+            <td><span class="badge yellow">No ABDM / EMR / GL</span></td>
+          </tr>
+          <tr>
+            <td><strong>🏗️ Real Estate ERP</strong></td>
+            <td>~66</td>
+            <td>10 files (~1,559 lines)</td>
+            <td><span class="badge red">✗ No</span></td>
+            <td>
+              <div class="score-bar">
+                <div class="bar-track"><div class="bar-fill" style="width:60%;background:#eab308"></div></div>
+                <span class="score-text" style="color:#d97706">60%</span>
+              </div>
+            </td>
+            <td><span class="badge yellow">No RERA / GL</span></td>
+          </tr>
+          <tr>
+            <td><strong>💊 Pharmacy ERP</strong></td>
+            <td>~34</td>
+            <td>10 files (~1,386 lines)</td>
+            <td><span class="badge red">✗ No</span></td>
+            <td>
+              <div class="score-bar">
+                <div class="bar-track"><div class="bar-fill" style="width:55%;background:#eab308"></div></div>
+                <span class="score-text" style="color:#d97706">55%</span>
+              </div>
+            </td>
+            <td><span class="badge yellow">No FEFO billing / GL</span></td>
+          </tr>
+          <tr>
+            <td><strong>📊 CRM ERP</strong></td>
+            <td>~41</td>
+            <td>8 files (~1,397 lines)</td>
+            <td><span class="badge gray">N/A</span></td>
+            <td>
+              <div class="score-bar">
+                <div class="bar-track"><div class="bar-fill" style="width:55%;background:#eab308"></div></div>
+                <span class="score-text" style="color:#d97706">55%</span>
+              </div>
+            </td>
+            <td><span class="badge yellow">No automation / AI</span></td>
+          </tr>
+          <tr>
+            <td><strong>🚛 Logistics ERP</strong></td>
+            <td>~74</td>
+            <td>10 files (~1,260 lines)</td>
+            <td><span class="badge red">✗ No</span></td>
+            <td>
+              <div class="score-bar">
+                <div class="bar-track"><div class="bar-fill" style="width:55%;background:#eab308"></div></div>
+                <span class="score-text" style="color:#d97706">55%</span>
+              </div>
+            </td>
+            <td><span class="badge yellow">No e-way bill / GPS / GL</span></td>
+          </tr>
+          <tr>
+            <td><strong>🌾 Agriculture ERP</strong></td>
+            <td>~46</td>
+            <td>9 files (~1,237 lines)</td>
+            <td><span class="badge red">✗ No</span></td>
+            <td>
+              <div class="score-bar">
+                <div class="bar-track"><div class="bar-fill" style="width:50%;background:#eab308"></div></div>
+                <span class="score-text" style="color:#d97706">50%</span>
+              </div>
+            </td>
+            <td><span class="badge yellow">No mandi APIs / IoT / GL</span></td>
+          </tr>
+          <tr style="background:#fff5f5">
+            <td><strong>🛒 E-Commerce ERP</strong></td>
+            <td>~17</td>
+            <td>8 stubs (all 8 lines!)</td>
+            <td><span class="badge red">✗ No</span></td>
+            <td>
+              <div class="score-bar">
+                <div class="bar-track"><div class="bar-fill" style="width:5%;background:#ef4444"></div></div>
+                <span class="score-text" style="color:#ef4444">5%</span>
+              </div>
+            </td>
+            <td><span class="badge red">⚠️ Stub Only</span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3 style="margin-top:24px">Key Gaps Per Vertical to Reach 100%</h3>
+      <table>
+        <thead>
+          <tr><th>Vertical</th><th>Top 3 Missing Features</th><th>Priority</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Finance ERP (merged)</td><td>AP workflow, Bank Reconciliation auto-match, Period-close lock</td><td><span class="priority-h">HIGH</span></td></tr>
+          <tr><td>Restaurant</td><td>GL posting for F&B sales, Native waiter mobile app, ONDC integration</td><td><span class="priority-h">HIGH</span></td></tr>
+          <tr><td>Hotel</td><td>Channel Manager (OTA), Revenue management, GL for folio revenue</td><td><span class="priority-h">HIGH</span></td></tr>
+          <tr><td>Healthcare</td><td>ABDM/ABHA integration, EMR/clinical notes, Billing → GL</td><td><span class="priority-h">HIGH</span></td></tr>
+          <tr><td>Pharmacy</td><td>FEFO batch billing, Narcotics register, Drug billing → GL</td><td><span class="priority-h">HIGH</span></td></tr>
+          <tr><td>NGO</td><td>80G bulk PDF + email, FCRA online filing, Donations → GL</td><td><span class="priority-m">MEDIUM</span></td></tr>
+          <tr><td>Nidhi Company</td><td>RBI NDHR filing, Post-dated cheque tracking, Loan interest → GL</td><td><span class="priority-m">MEDIUM</span></td></tr>
+          <tr><td>CRM</td><td>AI lead scoring, Automated follow-up sequences, Telephony integration</td><td><span class="priority-m">MEDIUM</span></td></tr>
+          <tr><td>Logistics</td><td>E-way bill from consignment, Live GPS API, Freight revenue → GL</td><td><span class="priority-h">HIGH</span></td></tr>
+          <tr><td>Real Estate</td><td>RERA compliance module, MIS P&L per project, Collections → GL</td><td><span class="priority-m">MEDIUM</span></td></tr>
+          <tr><td>Agriculture</td><td>Mandi price API integration, PMFBY insurance tracking, Harvest → GL</td><td><span class="priority-m">MEDIUM</span></td></tr>
+          <tr><td>Education</td><td>Fee collection → GL, Biometric attendance sync, NEP compliance reports</td><td><span class="priority-h">HIGH</span></td></tr>
+          <tr><td>HR/Payroll</td><td>Payroll run → GL journal entries, EPFO/ESI e-filing API, Statutory calendar</td><td><span class="priority-h">HIGH</span></td></tr>
+          <tr><td>Manufacturing</td><td>MRP engine, BOM versioning, Work order management</td><td><span class="priority-m">MEDIUM</span></td></tr>
+          <tr><td>Gold ERP</td><td>BIS hallmarking portal API, Live gold rate feed, SEBI bullion reporting</td><td><span class="priority-m">MEDIUM</span></td></tr>
+          <tr><td>Retail/POS</td><td>Omni-channel sync (POS ↔ E-Commerce), Loyalty expiry engine</td><td><span class="priority-m">MEDIUM</span></td></tr>
+          <tr><td><strong>E-Commerce</strong></td><td><strong>Everything — all 8 pages are stubs. Full rebuild needed.</strong></td><td><span class="priority-h">HIGH</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SECTION 3: Shared Modules -->
+  <div class="section" id="s3">
+    <div class="section-header">
+      <div class="section-num">3</div>
+      <h2>Shared Modules — How Many, What They Are, How They Work</h2>
+    </div>
+    <div class="section-body">
+      <div class="alert alert-green">
+        <strong>✅ Architecture: Truly Shared, Not Duplicated</strong>
+        <p>All shared modules use the <strong>same API routes and same DB tables</strong> across all 17 verticals — there is zero per-vertical duplication. A hotel tenant and a restaurant tenant use the same <code>/api/vendors</code>, <code>/api/purchase-orders</code>, <code>/api/invoices</code>, and the same accounting GL, all isolated by <code>tenant_id</code>. Adding a shared feature once gives it to all verticals automatically.</p>
+      </div>
+
+      <table>
+        <thead>
+          <tr><th>Module Key</th><th>What's Inside</th><th>Available On</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>invoicing</strong></td><td>Sales dashboard, Invoices, Payments, Customer advances, Credit notes, GST reports, Recurring invoices</td><td>All plans ≥ Basic</td></tr>
+          <tr><td><strong>purchase_orders</strong></td><td>Purchase orders, Vendors, Vendor types, Vendor debit notes, Purchase requisitions, GRN, Approval workflows</td><td>All plans ≥ Basic</td></tr>
+          <tr><td><strong>basic_inventory</strong></td><td>Products, Raw materials, Finished goods, Categories, UOM, Price lists, Data import</td><td>All plans ≥ Basic</td></tr>
+          <tr><td><strong>gatepasses</strong></td><td>Gatepasses, Dispatch tracking, Dispatch masters</td><td>All plans ≥ Basic</td></tr>
+          <tr><td><strong>sales_orders</strong></td><td>Sales orders, Sales officers</td><td>All plans ≥ Basic</td></tr>
+          <tr><td><strong>expenses</strong></td><td>Expenses, Categories, Monthly expenses, Cash register</td><td>All plans ≥ Basic</td></tr>
+          <tr><td><strong>production</strong></td><td>RM issuance, Production entries, Reconciliations, Scrap, Variance analytics</td><td>Professional+</td></tr>
+          <tr><td><strong>accounting / Finance ERP</strong></td><td>COA, Journal entries, Trial balance, P&L, Balance sheet, Bank transactions, Ledger, Day book, Aging, Cash flow, Budget, TDS, Cost centres, Fixed assets</td><td>Professional+</td></tr>
+          <tr><td><strong>mis</strong></td><td>MIS dashboards: production, inventory, sales, delivery, cash, financial</td><td>Professional+</td></tr>
+          <tr><td><strong>maintenance</strong></td><td>Machines, Spare parts, PM templates, PM execution, PM history</td><td>Professional+</td></tr>
+          <tr><td><strong>whatsapp</strong></td><td>Checklist templates, Assignments, WhatsApp analytics</td><td>Professional+</td></tr>
+          <tr><td><strong>hr_payroll</strong></td><td>Employees, Attendance, Leaves, Payroll, Exit/FnF, Loans, TDS, Recruitment, Appraisals, ESS, HR masters</td><td>Enterprise</td></tr>
+          <tr><td><strong>warehouses</strong></td><td>Warehouses, Stock transfers, Serial/lot register</td><td>Professional+</td></tr>
+          <tr><td><strong>projects</strong></td><td>Projects, Timesheets</td><td>Enterprise</td></tr>
+          <tr><td><strong>multi_currency</strong></td><td>Currency management, Exchange rates</td><td>Enterprise</td></tr>
+          <tr><td><strong>fixed_assets</strong></td><td>Fixed assets register + depreciation schedules</td><td>Enterprise</td></tr>
+          <tr><td><strong>api_hub</strong></td><td>API keys for external integrations</td><td>Professional+</td></tr>
+          <tr><td><strong>crm</strong> (basic)</td><td>CRM leads (2 screens) — basic shared across plans; full CRM ERP is a vertical</td><td>Professional+</td></tr>
+        </tbody>
+      </table>
+
+      <h3 style="margin-top:20px">How Navigation Filtering Works</h3>
+      <p>The hook <code>usePlanFeatures</code> fetches the tenant's <code>allowedNavItems</code> from the server. The <code>use-filtered-navigation.tsx</code> hook (477 lines) filters the sidebar navigation against this list — so a Basic plan tenant never sees the Accounting or HR modules in the menu. Backend plan-middleware enforces the same at the API level, returning 403 for out-of-plan routes.</p>
+
+      <h3>How to Add a New Shared Module</h3>
+      <ol style="padding-left:20px;line-height:2">
+        <li style="font-size:0.875rem">Add the module key to <code>server/plan-features.ts</code> → MODULE_NAV_ITEMS</li>
+        <li style="font-size:0.875rem">Add screen keys to <code>shared/screen-registry.ts</code></li>
+        <li style="font-size:0.875rem">Add nav path → screen key mapping in <code>shared/nav-screen-map.ts</code></li>
+        <li style="font-size:0.875rem">Build the API routes (any prefix) and mount in <code>server/routes.ts</code></li>
+        <li style="font-size:0.875rem">Build the UI pages in <code>client/src/pages/</code></li>
+        <li style="font-size:0.875rem">Add route to <code>client/src/App.tsx</code></li>
+        <li style="font-size:0.875rem">Server auto-patches screen permissions to all admin roles on next restart</li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- SECTION 4: Plans -->
+  <div class="section" id="s4">
+    <div class="section-header">
+      <div class="section-num">4</div>
+      <h2>Subscription Plans — How Tenants Subscribe & What Gets Loaded</h2>
+    </div>
+    <div class="section-body">
+      <div class="two-col">
+        <div>
+          <h3>Plan Matrix</h3>
+          <table>
+            <thead><tr><th>Plan</th><th>Key Modules</th><th>Verticals</th></tr></thead>
+            <tbody>
+              <tr><td><span class="badge blue">Trial (14d)</span></td><td>ALL modules</td><td>ALL verticals</td></tr>
+              <tr><td><span class="badge gray">Basic</span></td><td>Invoicing, POs, Inventory, Expenses</td><td>None</td></tr>
+              <tr><td><span class="badge yellow">Professional</span></td><td>+ Production, Accounting, MIS, Warehouses</td><td>None</td></tr>
+              <tr><td><span class="badge green">Enterprise</span></td><td>+ HR, Fixed Assets, Multi-Currency</td><td>ALL verticals</td></tr>
+              <tr><td><span class="badge green">Gold ERP Plan</span></td><td>Full enterprise</td><td>Gold ERP + all</td></tr>
+              <tr><td><span class="badge blue">Restaurant Starter</span></td><td>Restaurant core</td><td>Restaurant only</td></tr>
+              <tr><td><span class="badge blue">Restaurant Pro</span></td><td>+ Analytics, Campaigns</td><td>Restaurant only</td></tr>
+              <tr><td><span class="badge blue">Restaurant Enterprise</span></td><td>+ Franchise, Multi-outlet</td><td>Restaurant only</td></tr>
+              <tr><td><span class="badge blue">Hotel / Healthcare / Pharmacy</span></td><td>Starter/Pro/Enterprise tiers</td><td>Respective vertical</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <h3>How Enforcement Works</h3>
+          <p><strong>Step 1 — Plan check at login:</strong> Session stores <code>tenantPlan</code> and <code>allowedModules</code>.</p>
+          <p><strong>Step 2 — Backend enforcement:</strong> <code>plan-middleware.ts</code> checks every request's route prefix against <code>ROUTE_PLAN_REQUIREMENTS</code>. If the tenant's plan doesn't include the module → <code>403 Forbidden</code>.</p>
+          <p><strong>Step 3 — Frontend enforcement:</strong> <code>usePlanFeatures</code> hook filters the sidebar navigation. Modules not in the plan are hidden from the UI.</p>
+          <p><strong>Step 4 — Module Marketplace:</strong> Tenants can purchase individual modules without upgrading their base plan via the <code>subscriptions.selected_modules</code> table.</p>
+          <p><strong>Trial bypass:</strong> Trial tenants bypass all plan checks — they see and access everything.</p>
+
+          <div class="alert alert-yellow" style="margin-top:16px">
+            <strong>⚠️ Gap: 8 Verticals Have No Subscription Plans</strong>
+            <p>NGO, Nidhi Company, CRM, Logistics, Real Estate, Agriculture, Education, E-Commerce have no vertical-specific subscription plans. They are only accessible via generic <code>enterprise</code> or <code>trial</code>. Need Starter/Professional/Enterprise tiers for each.</p>
+          </div>
+        </div>
+      </div>
+
+      <h3 style="margin-top:8px">What Gets Loaded for Each Plan</h3>
+      <p>When a tenant with plan <code>professional</code> logs in:</p>
+      <ul>
+        <li>Sidebar shows only: Invoicing, Purchase Orders, Inventory, Production, Accounting, MIS, Warehouses, Expenses — no HR, no verticals</li>
+        <li>API calls to <code>/api/hr</code> return 403</li>
+        <li>Screen permission checks pass only for screens in allowed modules</li>
+        <li>The same React app bundle is served — no separate JS bundle per plan. Plan filtering is runtime logic, not build-time code splitting</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- SECTION 5: Multi-Country -->
+  <div class="section" id="s5">
+    <div class="section-header">
+      <div class="section-num">5</div>
+      <h2>Multi-Country Tenants — How Different Countries Work & Masters</h2>
+    </div>
+    <div class="section-body">
+      <div class="two-col">
+        <div>
+          <h3>Infrastructure Exists</h3>
+          <p>The <code>tenants</code> table stores per-tenant: <code>country_code</code>, <code>currency_code</code>, <code>currency_symbol</code>, <code>timezone</code>, <code>tax_regime</code>, <code>date_format</code>. A <code>countries</code> lookup table exists in the DB used during tenant creation.</p>
+          <p>Multi-currency (Enterprise plan) supports foreign currency invoicing with exchange rates. The <code>currency-management.tsx</code> page is functional.</p>
+
+          <h3>Country Tax Compliance Reality</h3>
+          <table>
+            <thead><tr><th>Country</th><th>Tax Engine</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td>🇮🇳 India</td><td>GST (CGST/SGST/IGST), TDS, e-Invoice IRP, GSTR-1, GSTR-3B, HSN/SAC</td><td><span class="badge green">✅ Full</span></td></tr>
+              <tr><td>🇸🇦 Saudi Arabia</td><td>ZATCA VAT Phase 1 & 2</td><td><span class="badge red">❌ Not built</span></td></tr>
+              <tr><td>🇦🇪 UAE</td><td>UAE VAT + FTA compliance</td><td><span class="badge red">❌ Not built</span></td></tr>
+              <tr><td>🇺🇸 USA</td><td>State-by-state Sales Tax</td><td><span class="badge red">❌ Not built</span></td></tr>
+              <tr><td>🇬🇧 UK</td><td>UK VAT + Making Tax Digital</td><td><span class="badge red">❌ Not built</span></td></tr>
+              <tr><td>🇪🇺 EU (all)</td><td>EU VAT + OSS one-stop-shop</td><td><span class="badge red">❌ Not built</span></td></tr>
+              <tr><td>🇸🇬 Singapore</td><td>GST 9%</td><td><span class="badge red">❌ Not built</span></td></tr>
+              <tr><td>Any other</td><td>Custom tax rates (manual config in masters)</td><td><span class="badge yellow">⚠️ Manual only</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <h3>Masters for Multi-Country</h3>
+          <table>
+            <thead><tr><th>Master</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td>Tax Config (custom tax rates)</td><td><span class="badge green">✅ 106-line page, functional</span></td></tr>
+              <tr><td>States / Countries UI</td><td><span class="badge red">❌ 8-line stub</span></td></tr>
+              <tr><td>HSN / SAC Codes</td><td><span class="badge green">✅ Present</span></td></tr>
+              <tr><td>Currency Management</td><td><span class="badge green">✅ Enterprise plan</span></td></tr>
+              <tr><td>Bank Master</td><td><span class="badge green">✅ Present</span></td></tr>
+              <tr><td>Branches / Cost Centres</td><td><span class="badge green">✅ Present</span></td></tr>
+              <tr><td>Document Numbering</td><td><span class="badge green">✅ Present</span></td></tr>
+              <tr><td>Email / SMS Templates</td><td><span class="badge green">✅ Present</span></td></tr>
+              <tr><td>Approval Matrix</td><td><span class="badge green">✅ Present</span></td></tr>
+              <tr><td>Print Templates</td><td><span class="badge red">❌ 8-line stub</span></td></tr>
+            </tbody>
+          </table>
+
+          <div class="alert alert-yellow" style="margin-top:16px">
+            <strong>⚠️ System is India-Only for Tax Compliance</strong>
+            <p>The infrastructure (country_code field, currency, timezone) exists at tenant level — but the tax engine, country masters UI, and compliance reports are only built for India. Serving Gulf/EU/US customers requires a parametric tax engine rebuild.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 6: Roles & Users -->
+  <div class="section" id="s6">
+    <div class="section-header">
+      <div class="section-num">6</div>
+      <h2>Dynamic Roles & Users Per Plan — How It Works</h2>
+    </div>
+    <div class="section-body">
+      <div class="two-col">
+        <div>
+          <h3>How Roles Are Enforced</h3>
+          <p><strong>Auth:</strong> Passport.js local strategy. Session stores <code>tenantId</code>, <code>tenantPlan</code>, <code>role</code>. Super-admins can impersonate tenants with session-swap (logged).</p>
+          <p><strong>RBAC Schema:</strong> <code>role_permissions</code> table: <code>{ roleId, screenKey, canView, canCreate, canEdit, canDelete, tenantId }</code> — screen-level CRUD control with 110+ screen keys.</p>
+          <p><strong>Two-layer gate:</strong></p>
+          <ol style="padding-left:20px;line-height:2">
+            <li style="font-size:0.875rem"><strong>Plan gate first</strong> — route prefix checked against tenant's plan modules → 403 if not in plan</li>
+            <li style="font-size:0.875rem"><strong>RBAC gate second</strong> — <code>role_permissions</code> checked for the specific screenKey + HTTP method → 403 if no permission</li>
+          </ol>
+          <p><strong>Tenant isolation:</strong> Every DB query scoped by <code>tenant_id</code> from session. One tenant's roles and data never affect another.</p>
+          <p><strong>Tenant admins CAN:</strong> Create custom roles, assign any combination of 110+ screen keys with granular CRUD permissions per screen.</p>
+        </div>
+        <div>
+          <h3>What Works ✅</h3>
+          <ul>
+            <li>Custom roles with screen-level CRUD (view/create/edit/delete per screen)</li>
+            <li>110+ screen keys covering all shared modules + all vertical sub-pages</li>
+            <li>Plan-boundary respected — role permissions only matter within the plan's allowed modules</li>
+            <li>Tenant admin can create unlimited custom roles</li>
+            <li>Super-admin can impersonate any tenant</li>
+            <li>Auto-patching: new screens added to <code>nav-screen-map.ts</code> are auto-granted to admin roles on server restart</li>
+          </ul>
+          <h3 style="margin-top:16px">What's Missing ❌</h3>
+          <table>
+            <thead><tr><th>Gap</th><th>Impact</th></tr></thead>
+            <tbody>
+              <tr><td>No PostgreSQL RLS</td><td>Tenant isolation enforced in app code only — security risk if tenantId is bypassed</td></tr>
+              <tr><td>No row-level isolation within a role</td><td>A sales rep can see all customers, not just their own</td></tr>
+              <tr><td>No field-level permissions</td><td>Can't hide salary column from a manager on HR screen</td></tr>
+              <tr><td>No time-based access restrictions</td><td>Can't block access outside business hours</td></tr>
+              <tr><td>No IP-restriction per role</td><td>Mobile field staff vs office staff indistinguishable</td></tr>
+              <tr><td>No approval-based privilege escalation</td><td>No "request elevated access for 1 day" workflow</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 7: Roadmap -->
+  <div class="section" id="s7">
+    <div class="section-header">
+      <div class="section-num">7</div>
+      <h2>Roadmap to 100% Global Enterprise Competitor</h2>
+    </div>
+    <div class="section-body">
+
+      <div class="alert alert-red">
+        <strong>🔴 Priority 1 — Critical Blockers (Must-Have for Commercial Viability)</strong>
+      </div>
+      <table style="margin-bottom:24px">
+        <thead><tr><th>#</th><th>Item</th><th>Detail</th><th>Effort</th><th>Priority</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td><strong>GL integration for all 10 vertical ERPs</strong></td><td>Wire journal-service.ts into Hotel, Healthcare, Pharmacy, NGO, Nidhi, Logistics, Real Estate, Agriculture, Education, CRM routes</td><td>3 weeks</td><td><span class="priority-h">HIGH</span></td></tr>
+          <tr><td>2</td><td><strong>E-Commerce ERP full rebuild</strong></td><td>All 8 pages are stubs. Need: Amazon SP-API, Flipkart, Shiprocket, inventory sync, order management, returns, settlements</td><td>4 weeks</td><td><span class="priority-h">HIGH</span></td></tr>
+          <tr><td>3</td><td><strong>Finance ERP merge & AP module</strong></td><td>Merge finance-erp.tsx into accounting module. Add Vendor Bills, AP aging, payment runs, Bank Reconciliation auto-match</td><td>3 weeks</td><td><span class="priority-h">HIGH</span></td></tr>
+          <tr><td>4</td><td><strong>Payroll → GL posting</strong></td><td>When payroll is finalized, post salary journal entries to accounting GL via journal-service</td><td>3 days</td><td><span class="priority-h">HIGH</span></td></tr>
+          <tr><td>5</td><td><strong>Period-end close / Financial year lock</strong></td><td>Prevent posting to closed periods; month-end and year-end close workflow</td><td>1 week</td><td><span class="priority-h">HIGH</span></td></tr>
+          <tr><td>6</td><td><strong>Multi-country tax engine</strong></td><td>ZATCA (Saudi/UAE), EU VAT, UK VAT, US Sales Tax — parametric tax engine beyond India GST</td><td>6 weeks</td><td><span class="priority-h">HIGH</span></td></tr>
+          <tr><td>7</td><td><strong>PostgreSQL RLS safety net</strong></td><td>Row-level security in DB as backup to application-level tenant isolation</td><td>1 week</td><td><span class="priority-h">HIGH</span></td></tr>
+          <tr><td>8</td><td><strong>Vertical subscription plans (8 missing)</strong></td><td>NGO, Nidhi, CRM, Logistics, Real Estate, Agriculture, Education, E-Commerce Starter/Pro/Enterprise tiers in plan-features.ts</td><td>3 days</td><td><span class="priority-h">HIGH</span></td></tr>
+        </tbody>
+      </table>
+
+      <div class="alert alert-yellow">
+        <strong>🟡 Priority 2 — High (Enterprise Feature Parity)</strong>
+      </div>
+      <table style="margin-bottom:24px">
+        <thead><tr><th>#</th><th>Item</th><th>Effort</th></tr></thead>
+        <tbody>
+          <tr><td>9</td><td>Bank Reconciliation auto-match (statement rows ↔ journal entries)</td><td>2 weeks</td></tr>
+          <tr><td>10</td><td>States / Countries UI in Masters (currently 8-line stub)</td><td>1 week</td></tr>
+          <tr><td>11</td><td>Healthcare: ABDM/ABHA integration, EMR/clinical notes, ICD-10 coding</td><td>3 weeks</td></tr>
+          <tr><td>12</td><td>Hotel: Channel Manager (OTA connectivity), Online booking engine</td><td>3 weeks</td></tr>
+          <tr><td>13</td><td>Logistics: E-way bill generation from consignments, LR (Lorry Receipt) printing</td><td>1 week</td></tr>
+          <tr><td>14</td><td>HR: EPFO/ESI e-filing API integration, statutory compliance calendar</td><td>2 weeks</td></tr>
+          <tr><td>15</td><td>Education: Fee → GL, biometric attendance sync, certificate printing</td><td>1 week</td></tr>
+          <tr><td>16</td><td>Pharmacy: FEFO batch tracking in billing, narcotics register, GST e-invoice</td><td>1 week</td></tr>
+          <tr><td>17</td><td>Row-level data isolation within roles (sales rep sees own customers only)</td><td>2 weeks</td></tr>
+          <tr><td>18</td><td>Audit trail: field-level old → new value tracking on all write operations</td><td>2 weeks</td></tr>
+          <tr><td>19</td><td>Print Templates master (currently stub)</td><td>1 week</td></tr>
+          <tr><td>20</td><td>Recurring Journal Entries</td><td>3 days</td></tr>
+        </tbody>
+      </table>
+
+      <div class="alert alert-blue">
+        <strong>🔵 Priority 3 — Medium (Competitive Differentiation)</strong>
+      </div>
+      <table>
+        <thead><tr><th>#</th><th>Item</th><th>Effort</th></tr></thead>
+        <tbody>
+          <tr><td>21</td><td>AI/ML: Lead scoring (CRM), demand forecasting (inventory), anomaly detection (Finance)</td><td>4 weeks</td></tr>
+          <tr><td>22</td><td>Native mobile apps (iOS/Android) — current is PWA-only</td><td>12 weeks</td></tr>
+          <tr><td>23</td><td>Multi-company consolidation (group P&L across tenants)</td><td>4 weeks</td></tr>
+          <tr><td>24</td><td>Manufacturing: MRP engine, BOM versioning, Work order management, Shop floor control</td><td>4 weeks</td></tr>
+          <tr><td>25</td><td>Gold: BIS hallmarking portal API, live gold rate feed integration</td><td>2 weeks</td></tr>
+          <tr><td>26</td><td>CRM: Telephony integration (call logging, click-to-call), automated follow-up sequences</td><td>2 weeks</td></tr>
+          <tr><td>27</td><td>Agriculture: Mandi price API, IoT sensor data integration, PMFBY insurance tracking</td><td>3 weeks</td></tr>
+          <tr><td>28</td><td>Real Estate: RERA compliance module, project-wise P&L</td><td>2 weeks</td></tr>
+          <tr><td>29</td><td>Intercompany transactions</td><td>4 weeks</td></tr>
+          <tr><td>30</td><td>NGO: FCRA online filing integration, 80G bulk PDF generation + email</td><td>1 week</td></tr>
+          <tr><td>31</td><td>Nidhi: RBI NDHR filing automation, post-dated cheque tracking</td><td>1 week</td></tr>
+          <tr><td>32</td><td>Logistics: Route optimization engine, live GPS API integration</td><td>3 weeks</td></tr>
+          <tr><td>33</td><td>Field-level permissions (e.g., hide salary column from specific roles)</td><td>2 weeks</td></tr>
+        </tbody>
+      </table>
+
+      <h3 style="margin-top:24px">Overall Scorecard vs Global Competitors</h3>
+      <table>
+        <thead><tr><th>Dimension</th><th>Kinto ERP</th><th>Tally Prime</th><th>Zoho One</th><th>SAP B1</th></tr></thead>
+        <tbody>
+          <tr><td>Multi-tenancy SaaS</td><td><span class="badge green">✅ Strong</span></td><td><span class="badge red">❌</span></td><td><span class="badge green">✅</span></td><td><span class="badge yellow">⚠️ On-premise</span></td></tr>
+          <tr><td>Finance / Accounting</td><td><span class="badge yellow">⚠️ 70%</span></td><td><span class="badge green">✅ 95%</span></td><td><span class="badge green">✅ 90%</span></td><td><span class="badge green">✅ 100%</span></td></tr>
+          <tr><td>India GST / e-Invoice</td><td><span class="badge green">✅ Full</span></td><td><span class="badge green">✅ Full</span></td><td><span class="badge green">✅</span></td><td><span class="badge yellow">⚠️</span></td></tr>
+          <tr><td>Industry Verticals</td><td><span class="badge green">✅ 17 verticals</span></td><td><span class="badge red">❌ Finance only</span></td><td><span class="badge yellow">⚠️ 5-6</span></td><td><span class="badge yellow">⚠️ 3-4</span></td></tr>
+          <tr><td>Restaurant ERP</td><td><span class="badge green">✅ 85%</span></td><td><span class="badge red">❌</span></td><td><span class="badge red">❌</span></td><td><span class="badge red">❌</span></td></tr>
+          <tr><td>Gold ERP</td><td><span class="badge green">✅ 90%</span></td><td><span class="badge yellow">⚠️</span></td><td><span class="badge red">❌</span></td><td><span class="badge red">❌</span></td></tr>
+          <tr><td>HR / Payroll</td><td><span class="badge green">✅ 85%</span></td><td><span class="badge red">❌</span></td><td><span class="badge green">✅ 90%</span></td><td><span class="badge green">✅ 80%</span></td></tr>
+          <tr><td>Multi-country tax</td><td><span class="badge red">❌ India only</span></td><td><span class="badge yellow">⚠️ India focus</span></td><td><span class="badge green">✅ Global</span></td><td><span class="badge green">✅ Global</span></td></tr>
+          <tr><td>Plan-based access control</td><td><span class="badge green">✅ Strong</span></td><td><span class="badge red">❌ License only</span></td><td><span class="badge green">✅</span></td><td><span class="badge yellow">⚠️ Module-based</span></td></tr>
+          <tr><td>RBAC (custom roles)</td><td><span class="badge green">✅ 110+ screens</span></td><td><span class="badge yellow">⚠️ Basic</span></td><td><span class="badge green">✅</span></td><td><span class="badge green">✅</span></td></tr>
+          <tr><td>Native mobile app</td><td><span class="badge yellow">⚠️ PWA only</span></td><td><span class="badge green">✅</span></td><td><span class="badge green">✅</span></td><td><span class="badge green">✅</span></td></tr>
+          <tr><td>GL integration across all modules</td><td><span class="badge red">❌ Core only</span></td><td><span class="badge green">✅</span></td><td><span class="badge green">✅</span></td><td><span class="badge green">✅</span></td></tr>
+          <tr><td>E-Commerce integration</td><td><span class="badge red">❌ Stub</span></td><td><span class="badge red">❌</span></td><td><span class="badge green">✅</span></td><td><span class="badge yellow">⚠️</span></td></tr>
+          <tr><td><strong>Overall</strong></td><td><strong><span class="badge yellow">65%</span></strong></td><td><strong><span class="badge green">Finance: 90%</span></strong></td><td><strong><span class="badge green">80%</span></strong></td><td><strong><span class="badge green">85%</span></strong></td></tr>
+        </tbody>
+      </table>
+
+      <div class="alert alert-green" style="margin-top:20px">
+        <strong>✅ Kinto ERP's Unique Competitive Advantage</strong>
+        <p>No competitor covers all 17 verticals in a single multi-tenant SaaS. Tally has finance but no verticals. Zoho has HR and CRM but no Gold ERP, no Nidhi Company, no Restaurant ERP at this depth. Kinto's breadth of industry coverage — especially Gold ERP (90%), Restaurant ERP (85%), Nidhi Company — is a genuine market differentiator that no global competitor matches. The gap is depth (GL integration, AP, multi-country tax) not breadth.</p>
+      </div>
+    </div>
+  </div>
+
+  <div style="text-align:center;padding:24px;color:#94a3b8;font-size:0.8rem">
+    Generated by Claude Code • Kinto ERP Assessment 2026-06-30 • Confidential
+  </div>
+
+</div>
+</body>
+</html>
