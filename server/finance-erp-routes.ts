@@ -7,6 +7,11 @@ function getTenantId(req: any): number {
   return req.session?.tenantId ?? req.user?.tenantId;
 }
 
+function auth(req: any, res: any, next: any) {
+  if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+  next();
+}
+
 // Finance ERP dashboard summary — AR, AP, Cash, Revenue MTD
 router.get("/summary", async (req, res) => {
   try {
