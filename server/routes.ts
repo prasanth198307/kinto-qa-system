@@ -26,6 +26,7 @@ import { whatsappWebhookRouter } from "./whatsappWebhook";
 import hrRouter from "./hr-routes";
 import essRouter from "./ess-routes";
 import crmRouter from "./crm-routes";
+import apRouter from "./ap-routes";
 import warehouseRouter from "./warehouse-routes";
 import genericRouter from "./generic-routes";
 import projectRouter from "./project-routes";
@@ -2015,6 +2016,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/gold-erp', goldErpRouter2);
   app.use('/api/hr', hrExtraRouter);
   app.use('/api/recurring-journals', recurringJournalRouter);
+  app.use('/api/ap', apRouter);
 
   // Daily recurring journal processor — runs at startup then every 24h
   processRecurringJournals().catch(e => console.error("Recurring journals init:", e));
@@ -26470,6 +26472,148 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
   });
 
   // ============================================================
+  // BANK RECONCILIATION (Phase 3.2)
+  // ============================================================
+  app.get('/api/bank-reconciliation/summary', async (req: any, res) => {
+    try {
+      const tenantId = req.session?.tenantId ?? req.user?.tenantId;
+      const { importId } = req.query;
+      const where = importId
+        ? sql`WHERE tenant_id = ${tenantId} AND import_id = ${importId}`
+        : sql`WHERE tenant_id = ${tenantId}`;
+
+      const r = await db.execute(sql.raw(`
+        SELECT
+          COUNT(*) AS total_lines,
+          COUNT(CASE WHEN status = 'reconciled' THEN 1 END) AS matched,
+          COUNT(CASE WHEN status != 'reconciled' THEN 1 END) AS unmatched,
+          COALESCE(SUM(COALESCE(credit::numeric, 0) - COALESCE(debit::numeric, 0)), 0) AS reconciled_balance
+        FROM bank_transactions
+        WHERE tenant_id = ${tenantId}
+      `));
+      res.json(r.rows[0]);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post('/api/bank-reconciliation/auto-match', async (req: any, res) => {
+    try {
+      const tenantId = req.session?.tenantId ?? req.user?.tenantId;
+      // Get all unmatched bank transactions
+      const txns = await db.execute(sql`
+        SELECT * FROM bank_transactions
+        WHERE tenant_id = ${tenantId} AND status NOT IN ('reconciled', 'posted')
+        LIMIT 500
+      `);
+
+      let matched = 0;
+      let unmatched = 0;
+
+      for (const txn of txns.rows as any[]) {
+        const debit = parseFloat(txn.debit || '0');
+        const credit = parseFloat(txn.credit || '0');
+        const amount = debit > 0 ? debit : credit;
+        if (amount === 0) { unmatched++; continue; }
+
+        const txnDate = txn.txn_date || txn.txnDate || '';
+        // Look for journal entry with matching amount within ±1 rupee and ±3 days
+        const je = await db.execute(sql`
+          SELECT je.id, je.journal_number
+          FROM journal_entries je
+          WHERE je.tenant_id = ${tenantId}
+            AND je.record_status = 1
+            AND ABS(je.total_debit - ${Math.round(amount * 100)}) <= 100
+            AND je.entry_date::date BETWEEN (${txnDate}::date - INTERVAL '3 days') AND (${txnDate}::date + INTERVAL '3 days')
+          LIMIT 1
+        `);
+
+        if (je.rows.length > 0) {
+          const jeRow = je.rows[0] as any;
+          await db.execute(sql`
+            UPDATE bank_transactions SET
+              status = 'reconciled',
+              journal_entry_id = ${jeRow.id},
+              reconciled_with = 'auto',
+              reconciled_details = ${'Auto-matched: ' + jeRow.journal_number}
+            WHERE id = ${txn.id}
+          `);
+          matched++;
+        } else {
+          unmatched++;
+        }
+      }
+
+      res.json({ matched, unmatched });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.put('/api/bank-reconciliation/lines/:id/match', async (req: any, res) => {
+    try {
+      const { journal_entry_id } = req.body;
+      if (!journal_entry_id) return res.status(400).json({ message: 'journal_entry_id required' });
+      const je = await db.execute(sql`SELECT * FROM journal_entries WHERE id = ${journal_entry_id} AND record_status = 1`);
+      if (!je.rows.length) return res.status(404).json({ message: 'Journal entry not found' });
+      const jeRow = je.rows[0] as any;
+      await db.execute(sql`
+        UPDATE bank_transactions SET
+          status = 'reconciled',
+          journal_entry_id = ${journal_entry_id},
+          reconciled_with = 'manual',
+          reconciled_details = ${'Manual match: ' + jeRow.journal_number}
+        WHERE id = ${req.params.id}
+      `);
+      res.json({ message: 'Matched' });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.put('/api/bank-reconciliation/lines/:id/unmatch', async (req: any, res) => {
+    try {
+      await db.execute(sql`
+        UPDATE bank_transactions SET
+          status = 'needs_review',
+          journal_entry_id = NULL,
+          reconciled_with = NULL,
+          reconciled_source_id = NULL,
+          reconciled_details = NULL
+        WHERE id = ${req.params.id}
+      `);
+      res.json({ message: 'Unmatched' });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get('/api/bank-reconciliation/lines', async (req: any, res) => {
+    try {
+      const tenantId = req.session?.tenantId ?? req.user?.tenantId;
+      const { import_id, match_status } = req.query;
+
+      let conds = [`tenant_id = ${tenantId}`];
+      if (import_id) conds.push(`import_id = '${import_id}'`);
+      if (match_status === 'matched') conds.push(`status = 'reconciled'`);
+      else if (match_status === 'unmatched') conds.push(`status NOT IN ('reconciled', 'posted')`);
+      else if (match_status === 'manual') conds.push(`reconciled_with = 'manual'`);
+
+      const result = await db.execute(sql.raw(`
+        SELECT bt.*, je.journal_number AS matched_journal_number
+        FROM bank_transactions bt
+        LEFT JOIN journal_entries je ON je.id = bt.journal_entry_id AND je.record_status = 1
+        WHERE ${conds.join(' AND ')}
+        ORDER BY bt.txn_date DESC
+        LIMIT 200
+      `));
+      res.json(result.rows);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ============================================================
   // LEDGER ACCOUNT VIEW - All transactions for a specific account
   // ============================================================
   app.get('/api/ledger/:accountId', async (req: any, res) => {
@@ -31008,9 +31152,6 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
     if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' });
     const { ip, port, html } = req.body;
     if (!ip || !port) return res.status(400).json({ message: 'ip and port are required' });
-    // For now return success — full ESC/POS encoding is complex and
-    // the window.print() fallback works for most thermal printer setups.
-    // In production: use net.Socket to send ESC/POS bytes to the printer.
     try {
       const net = await import('net');
       const socket = new net.Socket();
@@ -31018,7 +31159,6 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
         const timeout = setTimeout(() => { socket.destroy(); reject(new Error('Printer timeout')); }, 3000);
         socket.connect(Number(port), ip, () => {
           clearTimeout(timeout);
-          // Send a minimal ESC/POS receipt with the bill number extracted from html
           const text = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().substring(0, 500);
           socket.write(Buffer.from('\x1B\x40' + text + '\n\n\n\x1D\x56\x41\x00', 'utf8'));
           socket.end();
@@ -31028,8 +31168,98 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       });
       res.json({ success: true });
     } catch (err: any) {
-      // Non-fatal — client falls back to window.print()
       res.json({ success: false, message: err.message });
+    }
+  });
+
+  // ============================================================
+  // ACCOUNTING PERIODS (Phase 3.3)
+  // ============================================================
+  app.get('/api/finance-erp/periods', async (req: any, res) => {
+    try {
+      const tenantId = req.session?.tenantId ?? req.user?.tenantId;
+      const result = await db.execute(sql`
+        SELECT * FROM accounting_periods WHERE tenant_id = ${tenantId} ORDER BY start_date DESC
+      `);
+      res.json(result.rows);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post('/api/finance-erp/periods', async (req: any, res) => {
+    try {
+      const tenantId = req.session?.tenantId ?? req.user?.tenantId;
+      const { period_type = 'monthly', start_date, end_date, notes } = req.body;
+      if (!start_date || !end_date) return res.status(400).json({ message: 'start_date and end_date required' });
+
+      const s = new Date(start_date);
+      const e = new Date(end_date);
+      let period_name = '';
+      if (period_type === 'yearly') {
+        period_name = `FY ${s.getFullYear()}-${String(e.getFullYear()).slice(-2)}`;
+      } else if (period_type === 'quarterly') {
+        const q = Math.floor(s.getMonth() / 3) + 1;
+        period_name = `Q${q} ${s.getFullYear()}`;
+      } else {
+        period_name = s.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+      }
+
+      const result = await db.execute(sql`
+        INSERT INTO accounting_periods (tenant_id, period_name, period_type, start_date, end_date, notes)
+        VALUES (${tenantId}, ${period_name}, ${period_type}, ${start_date}, ${end_date}, ${notes || null})
+        RETURNING *
+      `);
+      res.status(201).json(result.rows[0]);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post('/api/finance-erp/periods/:id/close', async (req: any, res) => {
+    try {
+      const tenantId = req.session?.tenantId ?? req.user?.tenantId;
+      const user = req.user?.username || req.user?.email || 'system';
+      await db.execute(sql`
+        UPDATE accounting_periods SET status = 'closed', closed_at = NOW(), closed_by = ${user}
+        WHERE id = ${req.params.id} AND tenant_id = ${tenantId} AND status = 'open'
+      `);
+      const r = await db.execute(sql`SELECT * FROM accounting_periods WHERE id = ${req.params.id}`);
+      res.json(r.rows[0]);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post('/api/finance-erp/periods/:id/lock', async (req: any, res) => {
+    try {
+      const tenantId = req.session?.tenantId ?? req.user?.tenantId;
+      const user = req.user?.username || req.user?.email || 'system';
+      await db.execute(sql`
+        UPDATE accounting_periods SET status = 'locked', locked_at = NOW(), locked_by = ${user}
+        WHERE id = ${req.params.id} AND tenant_id = ${tenantId} AND status = 'closed'
+      `);
+      const r = await db.execute(sql`SELECT * FROM accounting_periods WHERE id = ${req.params.id}`);
+      res.json(r.rows[0]);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post('/api/finance-erp/periods/:id/reopen', async (req: any, res) => {
+    try {
+      const tenantId = req.session?.tenantId ?? req.user?.tenantId;
+      if (!req.user?.isSuperAdmin && req.user?.role !== 'admin') {
+        return res.status(403).json({ message: 'Admin only' });
+      }
+      await db.execute(sql`
+        UPDATE accounting_periods SET status = 'open', locked_at = NULL, locked_by = NULL, closed_at = NULL, closed_by = NULL
+        WHERE id = ${req.params.id} AND tenant_id = ${tenantId}
+      `);
+      const r = await db.execute(sql`SELECT * FROM accounting_periods WHERE id = ${req.params.id}`);
+      res.json(r.rows[0]);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
     }
   });
 
