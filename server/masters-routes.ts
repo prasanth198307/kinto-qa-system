@@ -837,4 +837,55 @@ router.post("/webhooks/:id/test", auth, async (req: any, res: any) => {
   res.json({ success: true, message: "Test webhook sent" });
 });
 
+// ── Print Templates — DELETE ──────────────────────────────────────────────────
+router.delete("/print-templates/:id", auth, async (req: any, res: any) => {
+  const tid = getTenantId(req);
+  try {
+    await db.execute(sql`DELETE FROM print_templates WHERE id=${req.params.id} AND tenant_id=${tid} AND is_system=0`);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// ── Country Tax Config ─────────────────────────────────────────────────────────
+router.get("/country-tax-config", auth, async (req: any, res: any) => {
+  const tid = getTenantId(req);
+  try {
+    const r = await db.execute(sql`SELECT * FROM country_tax_config WHERE tenant_id=${String(tid)} ORDER BY country`);
+    res.json(r.rows ?? []);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/country-tax-config", auth, async (req: any, res: any) => {
+  const tid = getTenantId(req);
+  const { country, tax_name, tax_rate, tax_number, invoice_prefix, currency, currency_symbol, date_format } = req.body;
+  try {
+    const r = await db.execute(sql`
+      INSERT INTO country_tax_config
+        (tenant_id, country, tax_name, tax_rate, tax_number, invoice_prefix, currency, currency_symbol, date_format)
+      VALUES (${String(tid)}, ${country}, ${tax_name}, ${tax_rate}, ${tax_number ?? null}, ${invoice_prefix ?? null},
+              ${currency}, ${currency_symbol}, ${date_format ?? 'DD/MM/YYYY'})
+      ON CONFLICT (tenant_id, country) DO UPDATE SET
+        tax_name=${tax_name}, tax_rate=${tax_rate}, tax_number=${tax_number ?? null},
+        invoice_prefix=${invoice_prefix ?? null}, currency=${currency}, currency_symbol=${currency_symbol},
+        date_format=${date_format ?? 'DD/MM/YYYY'}
+      RETURNING *`);
+    res.json(r.rows[0]);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.put("/country-tax-config/:id", auth, async (req: any, res: any) => {
+  const tid = getTenantId(req);
+  const { country, tax_name, tax_rate, tax_number, invoice_prefix, currency, currency_symbol, date_format } = req.body;
+  try {
+    const r = await db.execute(sql`
+      UPDATE country_tax_config SET
+        tax_name=${tax_name}, tax_rate=${tax_rate}, tax_number=${tax_number ?? null},
+        invoice_prefix=${invoice_prefix ?? null}, currency=${currency}, currency_symbol=${currency_symbol},
+        date_format=${date_format ?? 'DD/MM/YYYY'}
+      WHERE id=${req.params.id} AND tenant_id=${String(tid)}
+      RETURNING *`);
+    res.json(r.rows[0]);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
 export default router;
