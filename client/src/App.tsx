@@ -1286,7 +1286,6 @@ function AdminDashboard() {
       id: "accounting-section",
       label: "Finance & Accounts",
       items: [
-        { id: "finance-erp", label: "Finance Dashboard", icon: BarChart3, onClick: () => setLocation('/finance-erp') },
         { id: "chart-of-accounts", label: "Chart of Accounts", icon: BookOpen, onClick: () => setLocation('/chart-of-accounts') },
         { id: "journal-entries", label: "Journal Entries", icon: FileStack, onClick: () => setLocation('/journal-entries') },
         { id: "bank-transactions", label: "Bank & Reconciliation", icon: Landmark, onClick: () => setLocation('/bank-transactions') },
@@ -2714,7 +2713,6 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       id: "accounting-section",
       label: "Finance & Accounts",
       items: [
-        { id: "finance-erp", label: "Finance Dashboard", icon: BarChart3, onClick: () => setLocation('/finance-erp') },
         { id: "chart-of-accounts", label: "Chart of Accounts", icon: BookOpen, onClick: () => setLocation('/chart-of-accounts') },
         { id: "journal-entries", label: "Journal Entries", icon: FileStack, onClick: () => setLocation('/journal-entries') },
         { id: "bank-transactions", label: "Bank & Reconciliation", icon: Landmark, onClick: () => setLocation('/bank-transactions') },

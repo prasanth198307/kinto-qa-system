@@ -88,7 +88,6 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
     "sales-returns",
   ],
   accounting: [
-    "finance-erp",
     "chart-of-accounts",
     "journal-entries",
     "journal-entry-new",

@@ -160,7 +160,6 @@ const navItemToScreen: Record<string, string> = {
   'approval-workflows': 'User Management',
   'audit-log': 'User Management',
   // Finance & Accounts (merged)
-  'finance-erp': 'Finance & Accounts',
   'tds-management': 'Finance & Accounts',
   // Industry Verticals
   'crm-pipeline': 'Industry Verticals',
