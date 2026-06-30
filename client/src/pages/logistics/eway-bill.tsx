@@ -103,7 +103,7 @@ export default function EWayBillPage() {
   });
   const { data: invoiceResults = [] } = useQuery<any[]>({
     queryKey: ["ewb-invoice-search", invoiceSearch],
-    queryFn: () => api("GET", `/api/manufacturing/eway-bills/invoices-search?q=${encodeURIComponent(invoiceSearch)}`).catch(() => []),
+    queryFn: () => api("GET", `/api/manufacturing/eway-bills/invoices-search?q=${encodeURIComponent(invoiceSearch)}`).then(r => Array.isArray(r) ? r : []).catch(() => []),
     enabled: invoicePickerOpen,
   });
 

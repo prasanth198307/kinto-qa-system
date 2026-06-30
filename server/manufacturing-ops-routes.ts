@@ -487,7 +487,7 @@ router.get("/eway-bills/invoices-search", auth, async (req: any, res) => {
       SELECT id, invoice_number, invoice_date, buyer_name, total_amount, eway_bill_number
       FROM invoices
       WHERE tenant_id = ${tenantId}
-        AND record_status != 'deleted'
+        AND record_status != 0
         AND (invoice_number ILIKE ${q} OR buyer_name ILIKE ${q})
         AND total_amount >= 50000
       ORDER BY invoice_date DESC LIMIT 30
