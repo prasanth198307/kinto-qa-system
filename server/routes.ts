@@ -26,11 +26,14 @@ import { whatsappWebhookRouter } from "./whatsappWebhook";
 import hrRouter from "./hr-routes";
 import essRouter from "./ess-routes";
 import crmRouter from "./crm-routes";
+import apRouter from "./ap-routes";
 import warehouseRouter from "./warehouse-routes";
 import genericRouter from "./generic-routes";
 import projectRouter from "./project-routes";
 import assetRouter from "./asset-routes";
 import healthcareRouter from "./healthcare-routes";
+import hotelRouter from "./hotel-routes";
+import restaurantRouter from "./restaurant-routes";
 import educationRouter from "./education-routes";
 import logisticsRouter from "./logistics-routes";
 import realestateRouter from "./realestate-routes";
@@ -40,6 +43,32 @@ import agricultureRouter from "./agriculture-routes";
 import goldErpRouter from "./gold-erp-routes";
 import goldErpRouter2 from "./gold-erp-routes2";
 import hrExtraRouter from "./hr-extra-routes";
+import ecommerceRouter from "./ecommerce-routes";
+import ngoRouter from "./ngo-routes";
+import pharmacyRouter from "./pharmacy-routes";
+import nidhiRouter from "./nidhi-routes";
+import restaurantEnterpriseRouter from "./restaurant-enterprise-routes";
+import aggregatorRouter from "./restaurant-aggregator-routes";
+import restaurantTaxRouter from "./restaurant-tax-routes";
+import restaurantAnalyticsRouter from "./restaurant-analytics-routes";
+import hotelEnterpriseRouter from "./hotel-enterprise-routes";
+import healthcareEnterpriseRouter from "./healthcare-enterprise-routes";
+import educationEnterpriseRouter from "./education-enterprise-routes";
+import realestateEnterpriseRouter from "./realestate-enterprise-routes";
+import mastersRouter from "./masters-routes";
+import retailExtraRouter from "./retail-extra-routes";
+import pharmacyEnterpriseRouter from "./pharmacy-enterprise-routes";
+import healthcareExtraRouter from "./healthcare-extra-routes";
+import educationExtraRouter from "./education-extra-routes";
+import logisticsExtraRouter from "./logistics-extra-routes";
+import ngoExtraRouter from "./ngo-extra-routes";
+import crmExtraRouter from "./crm-extra-routes";
+import agricultureExtraRouter from "./agriculture-extra-routes";
+import ecommerceExtraRouter from "./ecommerce-extra-routes";
+import financeErpRouter from "./finance-erp-routes";
+import { recurringJournalRouter, processRecurringJournals } from "./recurring-journal-service";
+import { startLoyaltyExpiryScheduler } from "./loyalty-expiry-service";
+import { taxRouter } from "./tax-routes";
 import { seedTenantPermissions, syncAndUnlockByPlan } from "./seed-permissions";
 import { whatsappConversationService } from "./whatsappConversationService";
 import { calculateBOMSuggestions } from "@shared/calculations";
@@ -736,6 +765,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Plan enforcement middleware — blocks API access to modules outside the tenant's plan
   app.use(planEnforcementMiddleware);
+
+  // ─── Tenant config endpoint ──────────────────────────────────────────────
+  // Returns currency, timezone, tax_regime, date_format for the current tenant
+  app.get('/api/tenant-config', async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' });
+    const tenantId: number = (req.session as any).tenantId ?? req.user?.tenantId ?? 1;
+    try {
+      const rows = await db.execute(sql`
+        SELECT currency_code, currency_symbol, country_code, timezone, tax_regime, date_format
+        FROM tenants WHERE id = ${tenantId} LIMIT 1
+      `);
+      const row = (rows.rows as any[])[0];
+      res.json({
+        currency_code:   row?.currency_code   ?? 'INR',
+        currency_symbol: row?.currency_symbol ?? '₹',
+        country_code:    row?.country_code    ?? 'IN',
+        timezone:        row?.timezone        ?? 'Asia/Kolkata',
+        tax_regime:      row?.tax_regime      ?? 'GST',
+        date_format:     row?.date_format     ?? 'DD/MM/YYYY',
+      });
+    } catch {
+      res.json({ currency_code: 'INR', currency_symbol: '₹', country_code: 'IN', timezone: 'Asia/Kolkata', tax_regime: 'GST', date_format: 'DD/MM/YYYY' });
+    }
+  });
 
   // ─── Plan features endpoint ───────────────────────────────────────────────
   // Returns the list of modules and nav items allowed for the current tenant's plan
@@ -1626,7 +1679,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const currentUser = req.user as any;
     if (!currentUser?.isSuperAdmin) return res.status(403).json({ message: 'Super-admin only' });
-    const { name, slug, plan, adminUsername, adminPassword, adminEmail, maxUsers, trialDays, industry } = req.body;
+    const { name, slug, plan, adminUsername, adminPassword, adminEmail, maxUsers, trialDays, industry, country_code } = req.body;
     if (!name || !slug || !adminUsername || !adminPassword) {
       return res.status(400).json({ message: 'name, slug, adminUsername, adminPassword are required' });
     }
@@ -1641,13 +1694,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(409).json({ message: `Username "${adminUsername}" is already taken. Please choose a different admin username.` });
       }
 
-      const planSlug = plan ?? 'trial';
+      const VALID_PLAN_SLUGS = ['restaurant', 'hotel', 'healthcare', 'pharmacy', 'retail', 'trial', 'enterprise', 'crm', 'agriculture', 'education', 'logistics', 'ngo', 'real_estate'];
+      const planSlug = plan && VALID_PLAN_SLUGS.includes(plan) ? plan : 'trial';
+      if (plan && !VALID_PLAN_SLUGS.includes(plan)) {
+        console.warn(`[TENANT SETUP] Unknown plan slug "${plan}", defaulting to trial`);
+      }
       const [planRow] = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.slug, planSlug));
       const trialEnd = trialDays ? new Date(Date.now() + parseInt(trialDays) * 24 * 60 * 60 * 1000).toISOString() : null;
 
       // Hash password before transaction (async work outside tx is safer)
       const { hashPassword } = await import('./auth');
       const hashed = await hashPassword(adminPassword);
+
+      // Auto-lookup country details if country_code provided
+      let countryFields: Record<string, string> = {};
+      if (country_code) {
+        try {
+          const cRows = await db.execute(sql`
+            SELECT currency_code, currency_symbol, timezone, tax_regime, date_format
+            FROM countries WHERE country_code = ${country_code} LIMIT 1
+          `);
+          const cr = (cRows.rows as any[])[0];
+          if (cr) {
+            countryFields = {
+              country_code,
+              currency_code:   cr.currency_code   ?? 'INR',
+              currency_symbol: cr.currency_symbol ?? '₹',
+              timezone:        cr.timezone        ?? 'Asia/Kolkata',
+              tax_regime:      cr.tax_regime      ?? 'GST',
+              date_format:     cr.date_format     ?? 'DD/MM/YYYY',
+            };
+          }
+        } catch { /* countries table may not exist — skip gracefully */ }
+      }
 
       // Wrap everything in a transaction so partial failures don't leave orphaned tenants
       const result = await db.transaction(async (tx) => {
@@ -1663,6 +1742,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           ...(industry ? { industry } : {}),
+          ...countryFields,
         } as any).returning();
 
         // Create subscription
@@ -1902,6 +1982,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Industry Vertical routes
   app.use('/api/healthcare', healthcareRouter);
+  app.use('/api/hotel', hotelRouter);
+  app.use('/api/restaurant', restaurantRouter);
+  app.use('/api/ecommerce', ecommerceRouter);
+  app.use('/api/ngo', ngoRouter);
+  app.use('/api/pharmacy', pharmacyRouter);
+  app.use('/api/nidhi-company', nidhiRouter);
+  app.use('/api/finance', financeErpRouter);
+  app.use('/api/finance-erp', financeErpRouter);
+  app.use('/api/restaurant', restaurantEnterpriseRouter);
+  app.use('/api/aggregators', aggregatorRouter);
+  app.use('/api/restaurant/tax', restaurantTaxRouter);
+  app.use('/api/restaurant/analytics', restaurantAnalyticsRouter);
+  app.use('/api/hotel', hotelEnterpriseRouter);
+  app.use('/api/healthcare', healthcareEnterpriseRouter);
+  app.use('/api/education', educationEnterpriseRouter);
+  app.use('/api/real-estate', realestateEnterpriseRouter);
+  app.use('/api/masters', mastersRouter);
+  app.use('/api/pos', retailExtraRouter);
+  app.use('/api/pharmacy', pharmacyEnterpriseRouter);
+  app.use('/api/healthcare', healthcareExtraRouter);
+  app.use('/api/education', educationExtraRouter);
+  app.use('/api/logistics', logisticsExtraRouter);
+  app.use('/api/ngo', ngoExtraRouter);
+  app.use('/api/crm', crmExtraRouter);
+  app.use('/api/agriculture', agricultureExtraRouter);
+  app.use('/api/ecommerce', ecommerceExtraRouter);
   app.use('/api/education', educationRouter);
   app.use('/api/logistics', logisticsRouter);
   app.use('/api/real-estate', realestateRouter);
@@ -1911,6 +2017,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/gold-erp', goldErpRouter);
   app.use('/api/gold-erp', goldErpRouter2);
   app.use('/api/hr', hrExtraRouter);
+  app.use('/api/recurring-journals', recurringJournalRouter);
+  app.use('/api/ap', apRouter);
+  app.use('/api/tax', taxRouter);
+
+  // Daily recurring journal processor — runs at startup then every 24h
+  processRecurringJournals().catch(e => console.error("Recurring journals init:", e));
+  setInterval(() => processRecurringJournals().catch(e => console.error("Recurring journals cron:", e)), 24 * 60 * 60 * 1000);
+
+  // Loyalty points expiry scheduler — runs at startup then every 24h
+  startLoyaltyExpiryScheduler();
 
   // Auth routes are handled by setupAuth() in auth.ts
   // /api/register, /api/login, /api/logout, /api/user are automatically set up
@@ -5093,7 +5209,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/raw-materials', isAuthenticated, async (req: any, res) => {
     try {
       const materials = await storage.getAllRawMaterials();
-      res.json(materials);
+      // Add name/unit aliases so recipe and other pages can use rm.name / rm.unit
+      const mapped = materials.map((m: any) => ({ ...m, name: m.materialName, unit: m.baseUnit, cost_per_unit: m.unitCost }));
+      res.json(mapped);
     } catch (error: any) {
       console.error("Error fetching raw materials:", error);
       console.error("Error stack:", error?.stack);
@@ -18389,6 +18507,15 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       };
       
       const created = await storage.createRole(roleData);
+
+      // Auto-seed plan-appropriate permissions for the new role
+      try {
+        await syncAndUnlockByPlan(tenantId);
+        console.log(`[ROLE SETUP] Synced plan permissions for new role "${name}" in tenant ${tenantId}`);
+      } catch (syncErr: any) {
+        console.error(`[ROLE SETUP] Permission sync failed for new role (non-fatal):`, syncErr.message);
+      }
+
       res.json(created);
     } catch (error: any) {
       if (error?.code === '23505') { // Unique constraint violation
@@ -26351,6 +26478,148 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
   });
 
   // ============================================================
+  // BANK RECONCILIATION (Phase 3.2)
+  // ============================================================
+  app.get('/api/bank-reconciliation/summary', async (req: any, res) => {
+    try {
+      const tenantId = req.session?.tenantId ?? req.user?.tenantId;
+      const { importId } = req.query;
+      const where = importId
+        ? sql`WHERE tenant_id = ${tenantId} AND import_id = ${importId}`
+        : sql`WHERE tenant_id = ${tenantId}`;
+
+      const r = await db.execute(sql.raw(`
+        SELECT
+          COUNT(*) AS total_lines,
+          COUNT(CASE WHEN status = 'reconciled' THEN 1 END) AS matched,
+          COUNT(CASE WHEN status != 'reconciled' THEN 1 END) AS unmatched,
+          COALESCE(SUM(COALESCE(credit::numeric, 0) - COALESCE(debit::numeric, 0)), 0) AS reconciled_balance
+        FROM bank_transactions
+        WHERE tenant_id = ${tenantId}
+      `));
+      res.json(r.rows[0]);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post('/api/bank-reconciliation/auto-match', async (req: any, res) => {
+    try {
+      const tenantId = req.session?.tenantId ?? req.user?.tenantId;
+      // Get all unmatched bank transactions
+      const txns = await db.execute(sql`
+        SELECT * FROM bank_transactions
+        WHERE tenant_id = ${tenantId} AND status NOT IN ('reconciled', 'posted')
+        LIMIT 500
+      `);
+
+      let matched = 0;
+      let unmatched = 0;
+
+      for (const txn of txns.rows as any[]) {
+        const debit = parseFloat(txn.debit || '0');
+        const credit = parseFloat(txn.credit || '0');
+        const amount = debit > 0 ? debit : credit;
+        if (amount === 0) { unmatched++; continue; }
+
+        const txnDate = txn.txn_date || txn.txnDate || '';
+        // Look for journal entry with matching amount within ±1 rupee and ±3 days
+        const je = await db.execute(sql`
+          SELECT je.id, je.journal_number
+          FROM journal_entries je
+          WHERE je.tenant_id = ${tenantId}
+            AND je.record_status = 1
+            AND ABS(je.total_debit - ${Math.round(amount * 100)}) <= 100
+            AND je.entry_date::date BETWEEN (${txnDate}::date - INTERVAL '3 days') AND (${txnDate}::date + INTERVAL '3 days')
+          LIMIT 1
+        `);
+
+        if (je.rows.length > 0) {
+          const jeRow = je.rows[0] as any;
+          await db.execute(sql`
+            UPDATE bank_transactions SET
+              status = 'reconciled',
+              journal_entry_id = ${jeRow.id},
+              reconciled_with = 'auto',
+              reconciled_details = ${'Auto-matched: ' + jeRow.journal_number}
+            WHERE id = ${txn.id}
+          `);
+          matched++;
+        } else {
+          unmatched++;
+        }
+      }
+
+      res.json({ matched, unmatched });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.put('/api/bank-reconciliation/lines/:id/match', async (req: any, res) => {
+    try {
+      const { journal_entry_id } = req.body;
+      if (!journal_entry_id) return res.status(400).json({ message: 'journal_entry_id required' });
+      const je = await db.execute(sql`SELECT * FROM journal_entries WHERE id = ${journal_entry_id} AND record_status = 1`);
+      if (!je.rows.length) return res.status(404).json({ message: 'Journal entry not found' });
+      const jeRow = je.rows[0] as any;
+      await db.execute(sql`
+        UPDATE bank_transactions SET
+          status = 'reconciled',
+          journal_entry_id = ${journal_entry_id},
+          reconciled_with = 'manual',
+          reconciled_details = ${'Manual match: ' + jeRow.journal_number}
+        WHERE id = ${req.params.id}
+      `);
+      res.json({ message: 'Matched' });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.put('/api/bank-reconciliation/lines/:id/unmatch', async (req: any, res) => {
+    try {
+      await db.execute(sql`
+        UPDATE bank_transactions SET
+          status = 'needs_review',
+          journal_entry_id = NULL,
+          reconciled_with = NULL,
+          reconciled_source_id = NULL,
+          reconciled_details = NULL
+        WHERE id = ${req.params.id}
+      `);
+      res.json({ message: 'Unmatched' });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get('/api/bank-reconciliation/lines', async (req: any, res) => {
+    try {
+      const tenantId = req.session?.tenantId ?? req.user?.tenantId;
+      const { import_id, match_status } = req.query;
+
+      let conds = [`tenant_id = ${tenantId}`];
+      if (import_id) conds.push(`import_id = '${import_id}'`);
+      if (match_status === 'matched') conds.push(`status = 'reconciled'`);
+      else if (match_status === 'unmatched') conds.push(`status NOT IN ('reconciled', 'posted')`);
+      else if (match_status === 'manual') conds.push(`reconciled_with = 'manual'`);
+
+      const result = await db.execute(sql.raw(`
+        SELECT bt.*, je.journal_number AS matched_journal_number
+        FROM bank_transactions bt
+        LEFT JOIN journal_entries je ON je.id = bt.journal_entry_id AND je.record_status = 1
+        WHERE ${conds.join(' AND ')}
+        ORDER BY bt.txn_date DESC
+        LIMIT 200
+      `));
+      res.json(result.rows);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ============================================================
   // LEDGER ACCOUNT VIEW - All transactions for a specific account
   // ============================================================
   app.get('/api/ledger/:accountId', async (req: any, res) => {
@@ -30883,6 +31152,122 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
     }
   });
 
+
+  // ─── Thermal print proxy (for network ESC/POS printers) ──────────────────
+  app.post('/api/print/thermal', async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' });
+    const { ip, port, html } = req.body;
+    if (!ip || !port) return res.status(400).json({ message: 'ip and port are required' });
+    try {
+      const net = await import('net');
+      const socket = new net.Socket();
+      await new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => { socket.destroy(); reject(new Error('Printer timeout')); }, 3000);
+        socket.connect(Number(port), ip, () => {
+          clearTimeout(timeout);
+          const text = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().substring(0, 500);
+          socket.write(Buffer.from('\x1B\x40' + text + '\n\n\n\x1D\x56\x41\x00', 'utf8'));
+          socket.end();
+          resolve();
+        });
+        socket.on('error', (err) => { clearTimeout(timeout); reject(err); });
+      });
+      res.json({ success: true });
+    } catch (err: any) {
+      res.json({ success: false, message: err.message });
+    }
+  });
+
+  // ============================================================
+  // ACCOUNTING PERIODS (Phase 3.3)
+  // ============================================================
+  app.get('/api/finance-erp/periods', async (req: any, res) => {
+    try {
+      const tenantId = req.session?.tenantId ?? req.user?.tenantId;
+      const result = await db.execute(sql`
+        SELECT * FROM accounting_periods WHERE tenant_id = ${tenantId} ORDER BY start_date DESC
+      `);
+      res.json(result.rows);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post('/api/finance-erp/periods', async (req: any, res) => {
+    try {
+      const tenantId = req.session?.tenantId ?? req.user?.tenantId;
+      const { period_type = 'monthly', start_date, end_date, notes } = req.body;
+      if (!start_date || !end_date) return res.status(400).json({ message: 'start_date and end_date required' });
+
+      const s = new Date(start_date);
+      const e = new Date(end_date);
+      let period_name = '';
+      if (period_type === 'yearly') {
+        period_name = `FY ${s.getFullYear()}-${String(e.getFullYear()).slice(-2)}`;
+      } else if (period_type === 'quarterly') {
+        const q = Math.floor(s.getMonth() / 3) + 1;
+        period_name = `Q${q} ${s.getFullYear()}`;
+      } else {
+        period_name = s.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+      }
+
+      const result = await db.execute(sql`
+        INSERT INTO accounting_periods (tenant_id, period_name, period_type, start_date, end_date, notes)
+        VALUES (${tenantId}, ${period_name}, ${period_type}, ${start_date}, ${end_date}, ${notes || null})
+        RETURNING *
+      `);
+      res.status(201).json(result.rows[0]);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post('/api/finance-erp/periods/:id/close', async (req: any, res) => {
+    try {
+      const tenantId = req.session?.tenantId ?? req.user?.tenantId;
+      const user = req.user?.username || req.user?.email || 'system';
+      await db.execute(sql`
+        UPDATE accounting_periods SET status = 'closed', closed_at = NOW(), closed_by = ${user}
+        WHERE id = ${req.params.id} AND tenant_id = ${tenantId} AND status = 'open'
+      `);
+      const r = await db.execute(sql`SELECT * FROM accounting_periods WHERE id = ${req.params.id}`);
+      res.json(r.rows[0]);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post('/api/finance-erp/periods/:id/lock', async (req: any, res) => {
+    try {
+      const tenantId = req.session?.tenantId ?? req.user?.tenantId;
+      const user = req.user?.username || req.user?.email || 'system';
+      await db.execute(sql`
+        UPDATE accounting_periods SET status = 'locked', locked_at = NOW(), locked_by = ${user}
+        WHERE id = ${req.params.id} AND tenant_id = ${tenantId} AND status = 'closed'
+      `);
+      const r = await db.execute(sql`SELECT * FROM accounting_periods WHERE id = ${req.params.id}`);
+      res.json(r.rows[0]);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post('/api/finance-erp/periods/:id/reopen', async (req: any, res) => {
+    try {
+      const tenantId = req.session?.tenantId ?? req.user?.tenantId;
+      if (!req.user?.isSuperAdmin && req.user?.role !== 'admin') {
+        return res.status(403).json({ message: 'Admin only' });
+      }
+      await db.execute(sql`
+        UPDATE accounting_periods SET status = 'open', locked_at = NULL, locked_by = NULL, closed_at = NULL, closed_by = NULL
+        WHERE id = ${req.params.id} AND tenant_id = ${tenantId}
+      `);
+      const r = await db.execute(sql`SELECT * FROM accounting_periods WHERE id = ${req.params.id}`);
+      res.json(r.rows[0]);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;
