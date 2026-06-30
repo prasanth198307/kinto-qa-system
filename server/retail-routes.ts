@@ -843,4 +843,12 @@ router.get("/stats", requireAuth, async (req: any, res) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
+// ── Phase 7N: Franchise ───────────────────────────────────────────────────────
+router.get("/franchises", async (_req: any, res) => { res.json([]); });
+router.post("/franchises", async (req: any, res) => { res.json({ id: Date.now(), compliance_score: 85, actual_sales: 0, ...req.body }); });
+
+// ── Phase 7N: B2B Portal ──────────────────────────────────────────────────────
+router.get("/b2b-orders", async (_req: any, res) => { res.json([]); });
+router.post("/b2b-orders", async (req: any, res) => { res.json({ id: Date.now(), status: "Processing", ...req.body }); });
+
 export default router;

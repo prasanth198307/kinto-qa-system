@@ -2030,6 +2030,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Loyalty points expiry scheduler — runs at startup then every 24h
   startLoyaltyExpiryScheduler();
 
+  // ── Phase 7O: Manufacturing stubs ────────────────────────────────────────
+  app.post('/api/manufacturing/mrp/run', async (req: any, res) => {
+    const { demand = [] } = req.body;
+    res.json({ demand, materials: [] });
+  });
+  app.get('/api/manufacturing/work-orders', async (_req: any, res) => { res.json([]); });
+  app.post('/api/manufacturing/work-orders', async (req: any, res) => { res.json({ id: Date.now(), status: "Planned", wo_no: `WO-${Date.now()}`, ...req.body }); });
+  app.put('/api/manufacturing/work-orders/:id', async (req: any, res) => { res.json({ id: req.params.id, ...req.body }); });
+  app.get('/api/manufacturing/quality-inspections', async (_req: any, res) => { res.json([]); });
+  app.post('/api/manufacturing/quality-inspections', async (req: any, res) => { res.json({ id: Date.now(), date: new Date().toISOString().slice(0,10), result: req.body.decision || "Accepted", ...req.body }); });
+
+  // ── Phase 7N: Retail routes (franchise, b2b already in retailRouter mounted at /api/pos) ─
+  // Additional mounting under /api/retail for new pages
+  app.use('/api/retail', retailRouter);
+
   // Auth routes are handled by setupAuth() in auth.ts
   // /api/register, /api/login, /api/logout, /api/user are automatically set up
 
