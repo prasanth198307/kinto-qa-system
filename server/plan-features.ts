@@ -88,6 +88,7 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
     "sales-returns",
   ],
   accounting: [
+    "finance-erp",
     "chart-of-accounts",
     "journal-entries",
     "journal-entry-new",
@@ -139,8 +140,9 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
     "spare-parts-stock",
   ],
   crm: [
-    "crm-leads",
-    "crm-surveys",
+    "crm-leads", "crm-surveys", "crm-enterprise",
+    "crm/pipeline", "crm/contacts", "crm/accounts",
+    "crm/activities", "crm/email-campaigns", "crm/whatsapp", "crm/reports",
   ],
   hr_payroll: [
     "hr-employees",
@@ -204,22 +206,64 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
     "hotel/rates", "hotel/corporate", "hotel/night-audit", "hotel/reports",
   ],
   healthcare: [
-    "healthcare",
+    "healthcare", "healthcare-enterprise", "healthcare-enterprise2",
+    "healthcare/patients", "healthcare/opd", "healthcare/ipd", "healthcare/beds",
+    "healthcare/ot", "healthcare/lab", "healthcare/nursing", "healthcare/insurance",
+    "healthcare/doctors", "healthcare/blood-bank", "healthcare/reports",
+  ],
+  pharmacy: [
+    "pharmacy", "pharmacy-enterprise",
+    "pharmacy/billing", "pharmacy/drugs", "pharmacy/stock", "pharmacy/purchases",
+    "pharmacy/schedule-h", "pharmacy/schedule-x", "pharmacy/licenses",
+    "pharmacy/expiry", "pharmacy/reports",
   ],
   education: [
-    "education",
+    "education", "education-enterprise", "education-enterprise2",
+    "education/students", "education/admissions", "education/classes",
+    "education/attendance", "education/exams", "education/fees",
+    "education/timetable", "education/homework", "education/online-exams",
+    "education/library", "education/transport", "education/hostel",
+    "education/parent-portal", "education/reports",
   ],
   logistics_transport: [
-    "logistics",
+    "logistics", "logistics-enterprise",
+    "logistics/fleet", "logistics/drivers", "logistics/trips", "logistics/gps",
+    "logistics/consignments", "logistics/freight", "logistics/epod",
+    "logistics/fuel", "logistics/documents", "logistics/reports",
   ],
   real_estate: [
-    "real-estate",
+    "real-estate", "real-estate-enterprise",
+    "real-estate/projects", "real-estate/crm", "real-estate/bookings",
+    "real-estate/collections", "real-estate/brokers", "real-estate/construction",
+    "real-estate/documents", "real-estate/customer-portal",
+    "real-estate/society", "real-estate/reports",
   ],
   pos: [
-    "pos",
+    "pos", "retail-enterprise",
   ],
   agriculture: [
-    "agriculture",
+    "agriculture", "agriculture-enterprise",
+    "agriculture/farms", "agriculture/crops", "agriculture/inputs",
+    "agriculture/harvest", "agriculture/weather", "agriculture/schemes",
+    "agriculture/fpo", "agriculture/market", "agriculture/reports",
+  ],
+  ngo: [
+    "ngo", "ngo-enterprise",
+    "ngo/donors", "ngo/donations", "ngo/80g", "ngo/projects",
+    "ngo/beneficiaries", "ngo/grants", "ngo/volunteers",
+    "ngo/fcra", "ngo/reports",
+  ],
+  nidhi: [
+    "nidhi", "nidhi-enterprise",
+    "nidhi/members", "nidhi/deposits", "nidhi/loans", "nidhi/emi",
+    "nidhi/shares", "nidhi/gold-rates", "nidhi/interest-rates",
+    "nidhi/daily-collection", "nidhi/compliance", "nidhi/reports",
+  ],
+  ecommerce: [
+    "ecommerce", "ecommerce-enterprise",
+    "ecommerce/dashboard", "ecommerce/orders", "ecommerce/listings",
+    "ecommerce/shipments", "ecommerce/returns", "ecommerce/settlements",
+    "ecommerce/channels", "ecommerce/reports",
   ],
   gold_erp: [
     "gold-erp",
@@ -256,7 +300,7 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
 // DB subscription_plans.modules is the authoritative source — these code constants
 // serve as the fallback when a plan slug has no DB record.
 // Keep in sync with the subscription_plans table values.
-const INDUSTRY_MODULES     = ["healthcare", "education", "logistics_transport", "real_estate", "pos", "agriculture", "gold_erp", "restaurant", "hotel"];
+const INDUSTRY_MODULES     = ["healthcare", "pharmacy", "education", "logistics_transport", "real_estate", "pos", "agriculture", "gold_erp", "restaurant", "hotel", "ngo", "nidhi", "ecommerce"];
 const TRIAL_MODULES        = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "production", "quality_returns", "accounting", "mis", "expenses", "documents", "crm", "whatsapp", "maintenance", "hr_payroll", "recurring_invoices", "warehouses", "projects", "fixed_assets", "multi_currency", ...INDUSTRY_MODULES];
 const BASIC_MODULES        = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "expenses", "documents"];
 const PROFESSIONAL_MODULES = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "production", "quality_returns", "accounting", "mis", "expenses", "documents", "whatsapp", "maintenance", "crm", "api_hub", "recurring_invoices", "warehouses"];
