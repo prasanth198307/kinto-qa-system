@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
+import { generateEWB, cancelEWB, extendEWB } from "./nic-ewb-client";
 
 const router = Router();
 const getTenantId = (req: any) => req.session?.tenantId ?? req.user?.tenantId;
@@ -325,13 +326,39 @@ router.post("/eway-bills/generate", requireRole("admin", "manager"), async (req:
       RETURNING *
     `);
 
-    // TODO: Call NIC EWB API when credentials available:
-    // POST https://einvapi.nic.in/ewaybillapi/v1.03/ewayapi/GenerateEWB
-    // On success: UPDATE eway_bills SET ewb_number=..., ewb_date=..., ewb_valid_until=..., status='generated'
+    // Call NIC EWB API — if credentials configured, submit live; otherwise return pending record
+    let finalRecord = ewbRecord.rows[0] as any;
+    let nicMessage = "E-Way Bill record saved (pending). Add NIC EWB credentials in Settings → GST to auto-submit.";
+    let nicLive = false;
+
+    try {
+      const nicResult = await generateEWB(tenantId, ewbPayload);
+      // Update DB record with real EWB number and validity
+      const updated = await db.execute(sql`
+        UPDATE eway_bills SET
+          ewb_number = ${nicResult.ewbNo},
+          ewb_date = ${nicResult.ewbDate ? new Date(nicResult.ewbDate).toISOString().slice(0,10) : new Date().toISOString().slice(0,10)},
+          ewb_valid_until = ${nicResult.validUpto ? new Date(nicResult.validUpto).toISOString().slice(0,10) : null},
+          status = 'generated',
+          api_response = ${JSON.stringify(nicResult.rawResponse)},
+          updated_at = NOW()
+        WHERE id = ${(ewbRecord.rows[0] as any).id}
+        RETURNING *
+      `);
+      finalRecord = updated.rows[0];
+      nicMessage = `E-Way Bill generated successfully. EWB No: ${nicResult.ewbNo}`;
+      nicLive = true;
+    } catch (nicErr: any) {
+      // Credentials missing or NIC API error — keep record as pending, tell user why
+      nicMessage = nicErr.message?.includes("not configured")
+        ? "E-Way Bill record saved. Add NIC EWB credentials in Settings → GST to auto-submit to portal."
+        : `NIC API error: ${nicErr.message}. EWB record saved as pending.`;
+    }
 
     res.status(201).json({
-      message: "E-Way Bill record created. Connect NIC EWB API credentials in Settings to auto-generate.",
-      eway_bill: ewbRecord.rows[0],
+      message: nicMessage,
+      eway_bill: finalRecord,
+      live: nicLive,
       nic_payload: ewbPayload,
     });
   } catch (err) { console.error(err); res.status(500).json({ message: "Failed to generate E-Way Bill" }); }
@@ -340,17 +367,33 @@ router.post("/eway-bills/generate", requireRole("admin", "manager"), async (req:
 router.patch("/eway-bills/:id/cancel", requireRole("admin", "manager"), async (req: any, res) => {
   try {
     const tenantId = getTenantId(req);
-    const { cancelReason, cancelRemarks } = req.body;
-    // Valid cancel reasons per NIC: 1=Duplicate, 2=Order Cancelled, 3=Data Entry Mistake, 4=Others
+    const { cancelReason = 4, cancelRemarks = "Cancelled" } = req.body;
+
+    // Fetch EWB to get ewb_number
+    const ewbRow = await db.execute(sql`
+      SELECT * FROM eway_bills WHERE id=${req.params.id} AND tenant_id=${tenantId} LIMIT 1
+    `);
+    if (!ewbRow.rows.length) return res.status(404).json({ message: "E-Way Bill not found" });
+    const ewb = ewbRow.rows[0] as any;
+
+    // If live EWB number exists, cancel on NIC portal first
+    if (ewb.ewb_number && ewb.status === "generated") {
+      try {
+        await cancelEWB(tenantId, ewb.ewb_number, Number(cancelReason), cancelRemarks);
+      } catch (nicErr: any) {
+        // Log NIC error but still mark as cancelled locally
+        console.error("NIC cancel error:", nicErr.message);
+      }
+    }
+
     const result = await db.execute(sql`
-      UPDATE eway_bills SET status='cancelled', cancel_reason=${cancelReason ?? 4},
-        cancel_remarks=${cancelRemarks ?? null}, updated_at=NOW()
-      WHERE id=${req.params.id} AND tenant_id=${tenantId} AND status IN ('pending','generated')
+      UPDATE eway_bills SET status='cancelled', cancel_reason=${cancelReason},
+        cancel_remarks=${cancelRemarks}, updated_at=NOW()
+      WHERE id=${req.params.id} AND tenant_id=${tenantId}
       RETURNING *
     `);
-    if (!result.rows.length) return res.status(404).json({ message: "E-Way Bill not found or already cancelled" });
     res.json(result.rows[0]);
-  } catch (err) { console.error(err); res.status(500).json({ message: "Failed" }); }
+  } catch (err) { console.error(err); res.status(500).json({ message: "Failed to cancel E-Way Bill" }); }
 });
 
 router.get("/eway-bills/summary", auth, async (req: any, res) => {
@@ -369,6 +412,46 @@ router.get("/eway-bills/summary", auth, async (req: any, res) => {
     `);
     res.json(rows.rows[0]);
   } catch (err) { console.error(err); res.status(500).json({ message: "Failed" }); }
+});
+
+// ─── NIC EWB Credentials (Settings → GST) ────────────────────────────────────
+
+router.get("/eway-bills/credentials", requireRole("admin"), async (req: any, res) => {
+  try {
+    const tenantId = getTenantId(req);
+    const rows = await db.execute(sql`
+      SELECT gstin, username, api_mode,
+        CASE WHEN auth_token IS NOT NULL THEN true ELSE false END AS is_connected,
+        token_expiry
+      FROM nic_ewb_credentials WHERE tenant_id = ${tenantId} LIMIT 1
+    `);
+    res.json(rows.rows[0] ?? { configured: false });
+  } catch (err) { console.error(err); res.status(500).json({ message: "Failed" }); }
+});
+
+router.post("/eway-bills/credentials", requireRole("admin"), async (req: any, res) => {
+  try {
+    const tenantId = getTenantId(req);
+    const { gstin, username, password, apiMode = "sandbox" } = req.body;
+    if (!gstin || !username || !password) {
+      return res.status(400).json({ message: "gstin, username and password are required" });
+    }
+    await db.execute(sql`
+      INSERT INTO nic_ewb_credentials (tenant_id, gstin, username, password_enc, api_mode)
+      VALUES (${tenantId}, ${gstin}, ${username}, ${password}, ${apiMode})
+      ON CONFLICT (tenant_id) DO UPDATE SET
+        gstin = ${gstin}, username = ${username}, password_enc = ${password},
+        api_mode = ${apiMode}, auth_token = NULL, token_expiry = NULL, updated_at = NOW()
+    `);
+    // Test auth immediately
+    try {
+      const { getNicToken } = await import("./nic-ewb-client");
+      await getNicToken(tenantId);
+      res.json({ success: true, message: "NIC EWB credentials saved and authenticated successfully." });
+    } catch (authErr: any) {
+      res.json({ success: true, warning: `Credentials saved but auth test failed: ${authErr.message}` });
+    }
+  } catch (err) { console.error(err); res.status(500).json({ message: "Failed to save credentials" }); }
 });
 
 export default router;
