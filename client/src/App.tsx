@@ -264,6 +264,15 @@ import HotelRatesPage from "@/pages/hotel/rates";
 import HotelCorporatePage from "@/pages/hotel/corporate";
 import HotelNightAuditPage from "@/pages/hotel/night-audit";
 import HotelReportsPage from "@/pages/hotel/reports";
+<<<<<<< HEAD
+=======
+import HotelChannelManagerPage from "@/pages/hotel/channel-manager";
+import HotelRevenueManagementPage from "@/pages/hotel/revenue-management";
+import HotelBanquetPage from "@/pages/hotel/banquet";
+import OndcIntegrationPage from "@/pages/restaurant/ondc-integration";
+import MultiCompanyPage from "@/pages/multi-company";
+import GSTRFilingPage from "@/pages/gstr-filing";
+>>>>>>> worktree-agent-aa932a7e90941a150
 import HealthcarePatientsPage from "@/pages/healthcare/patients";
 import HealthcareOPDPage from "@/pages/healthcare/opd";
 import HealthcareIPDPage from "@/pages/healthcare/ipd";
@@ -1306,9 +1315,17 @@ function AdminDashboard() {
         { id: "group-summary", label: "Group Summary", icon: Layers, onClick: () => setLocation('/group-summary') },
         { id: "budget-variance", label: "Budget & Variance", icon: Scale, onClick: () => setLocation('/budget-variance') },
         { id: "gstr-reports", label: "GST Returns (GSTR)", icon: FileText, onClick: () => setLocation('/gstr-reports') },
+<<<<<<< HEAD
         { id: "tds-management", label: "TDS Management", icon: Calculator, onClick: () => setLocation('/tds-management') },
         { id: "cost-centres", label: "Cost Centres", icon: Building2, onClick: () => setLocation('/cost-centres') },
         { id: "currency-management", label: "Multi-currency", icon: IndianRupee, onClick: () => setLocation('/currency-management') },
+=======
+        { id: "gstr-filing", label: "GSTR Direct Filing", icon: FileText, onClick: () => setLocation('/gstr-filing') },
+        { id: "tds-management", label: "TDS Management", icon: Calculator, onClick: () => setLocation('/tds-management') },
+        { id: "cost-centres", label: "Cost Centres", icon: Building2, onClick: () => setLocation('/cost-centres') },
+        { id: "currency-management", label: "Multi-currency", icon: IndianRupee, onClick: () => setLocation('/currency-management') },
+        { id: "multi-company", label: "Multi-Company Consolidation", icon: Layers, onClick: () => setLocation('/multi-company') },
+>>>>>>> worktree-agent-aa932a7e90941a150
       ],
     },
     {
@@ -1409,6 +1426,10 @@ function AdminDashboard() {
         { id: "restaurant-recipes", label: "Recipe Costing", icon: UtensilsCrossed, onClick: () => setLocation('/restaurant-recipes') },
         { id: "restaurant-payment-terminal", label: "Payment Terminal", icon: Package, onClick: () => setLocation('/restaurant-payment-terminal') },
         { id: "restaurant-menu-translations", label: "Menu Translations", icon: Package, onClick: () => setLocation('/restaurant-menu-translations') },
+<<<<<<< HEAD
+=======
+        { id: "restaurant/ondc-integration", label: "ONDC Integration", icon: Package, onClick: () => setLocation('/restaurant/ondc-integration') },
+>>>>>>> worktree-agent-aa932a7e90941a150
       ],
     },
     {
@@ -1425,6 +1446,12 @@ function AdminDashboard() {
         { id: "hotel/corporate", label: "Corporate & Agents", icon: Briefcase, onClick: () => setLocation('/hotel/corporate') },
         { id: "hotel/night-audit", label: "Night Audit", icon: Clock, onClick: () => setLocation('/hotel/night-audit') },
         { id: "hotel/reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/hotel/reports') },
+<<<<<<< HEAD
+=======
+        { id: "hotel/channel-manager", label: "Channel Manager", icon: BarChart3, onClick: () => setLocation('/hotel/channel-manager') },
+        { id: "hotel/revenue-management", label: "Revenue Management", icon: BarChart3, onClick: () => setLocation('/hotel/revenue-management') },
+        { id: "hotel/banquet", label: "Banquet & Events", icon: Calendar, onClick: () => setLocation('/hotel/banquet') },
+>>>>>>> worktree-agent-aa932a7e90941a150
       ],
     },
     {
@@ -2839,6 +2866,10 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "restaurant-recipes", label: "Recipe Costing", icon: UtensilsCrossed, onClick: () => setLocation('/restaurant-recipes') },
         { id: "restaurant-payment-terminal", label: "Payment Terminal", icon: Package, onClick: () => setLocation('/restaurant-payment-terminal') },
         { id: "restaurant-menu-translations", label: "Menu Translations", icon: Package, onClick: () => setLocation('/restaurant-menu-translations') },
+<<<<<<< HEAD
+=======
+        { id: "restaurant/ondc-integration", label: "ONDC Integration", icon: Package, onClick: () => setLocation('/restaurant/ondc-integration') },
+>>>>>>> worktree-agent-aa932a7e90941a150
       ],
     },
     {
@@ -2855,6 +2886,12 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "hotel/corporate", label: "Corporate & Agents", icon: Briefcase, onClick: () => setLocation('/hotel/corporate') },
         { id: "hotel/night-audit", label: "Night Audit", icon: Clock, onClick: () => setLocation('/hotel/night-audit') },
         { id: "hotel/reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/hotel/reports') },
+<<<<<<< HEAD
+=======
+        { id: "hotel/channel-manager", label: "Channel Manager", icon: BarChart3, onClick: () => setLocation('/hotel/channel-manager') },
+        { id: "hotel/revenue-management", label: "Revenue Management", icon: BarChart3, onClick: () => setLocation('/hotel/revenue-management') },
+        { id: "hotel/banquet", label: "Banquet & Events", icon: Calendar, onClick: () => setLocation('/hotel/banquet') },
+>>>>>>> worktree-agent-aa932a7e90941a150
       ],
     },
     {
@@ -4650,6 +4687,8 @@ function Router() {
       <ProtectedRoute path="/goods-receipt-notes" component={GoodsReceiptNotesWrapper} />
       <ProtectedRoute path="/price-lists" component={PriceListsWrapper} />
       <ProtectedRoute path="/gstr-reports" component={GSTRReportsWrapper} />
+      <ProtectedRoute path="/gstr-filing" component={() => <GSTRFilingPage />} />
+      <ProtectedRoute path="/multi-company" component={() => <MultiCompanyPage />} />
       <ProtectedRoute path="/audit-log" component={AuditLogWrapper} />
       <ProtectedRoute path="/security-dashboard" component={SecurityDashboardPage} />
       <ProtectedRoute path="/pos" component={POSWrapper} />
@@ -4681,6 +4720,10 @@ function Router() {
       <ProtectedRoute path="/restaurant-campaigns" component={RestaurantCampaignsWrapper} />
       <ProtectedRoute path="/restaurant-recipes" component={RestaurantRecipesWrapper} />
       <ProtectedRoute path="/restaurant-payment-terminal" component={RestaurantPaymentTerminalWrapper} />
+<<<<<<< HEAD
+=======
+      <ProtectedRoute path="/restaurant/ondc-integration" component={() => <OndcIntegrationPage />} />
+>>>>>>> worktree-agent-aa932a7e90941a150
       <Route path="/restaurant-table-order/:outletId/:tableId" component={RestaurantTableOrderPage} />
       <Route path="/restaurant-table-order/:outletId" component={RestaurantTableOrderPage} />
       <Route path="/restaurant-cds" component={RestaurantCDSPage} />
@@ -4694,6 +4737,12 @@ function Router() {
       <ProtectedRoute path="/hotel/corporate" component={HotelCorporateWrapper} />
       <ProtectedRoute path="/hotel/night-audit" component={HotelNightAuditWrapper} />
       <ProtectedRoute path="/hotel/reports" component={HotelReportsWrapper} />
+<<<<<<< HEAD
+=======
+      <ProtectedRoute path="/hotel/channel-manager" component={() => <HotelChannelManagerPage />} />
+      <ProtectedRoute path="/hotel/revenue-management" component={() => <HotelRevenueManagementPage />} />
+      <ProtectedRoute path="/hotel/banquet" component={() => <HotelBanquetPage />} />
+>>>>>>> worktree-agent-aa932a7e90941a150
       <ProtectedRoute path="/healthcare/patients" component={HealthcarePatientsWrapper} />
       <ProtectedRoute path="/healthcare/opd" component={HealthcareOPDWrapper} />
       <ProtectedRoute path="/healthcare/ipd" component={HealthcareIPDWrapper} />

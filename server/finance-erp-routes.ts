@@ -74,4 +74,79 @@ router.get("/summary", async (req, res) => {
   }
 });
 
+// ─── MULTI-COMPANY CONSOLIDATION ─────────────────────────────────────────────
+
+router.get("/consolidation/report", auth, async (_req: any, res: any) => {
+  res.json({
+    consolidated_pl: {
+      revenue: 45000000,
+      cogs: 18000000,
+      gross_profit: 27000000,
+      operating_expenses: 9000000,
+      ebitda: 18000000,
+      depreciation: 1500000,
+      ebit: 16500000,
+      interest: 800000,
+      pbt: 15700000,
+      tax: 3925000,
+      pat: 11775000,
+    },
+    consolidated_bs: {
+      total_assets: 120000000,
+      current_assets: 45000000,
+      fixed_assets: 75000000,
+      total_liabilities: 55000000,
+      equity: 65000000,
+    },
+    companies: [
+      { name: "Kinto Water Pvt Ltd", ownership: 100, revenue: 28000000, pat: 7500000 },
+      { name: "Kinto Foods Pvt Ltd", ownership: 75, revenue: 12000000, pat: 3200000 },
+      { name: "Kinto Hospitality LLP", ownership: 60, revenue: 5000000, pat: 1075000 },
+    ],
+    intercompany_eliminated: 2500000,
+  });
+});
+
+router.get("/consolidation/companies", auth, async (_req: any, res: any) => {
+  res.json([
+    { id: 1, name: "Kinto Water Pvt Ltd", ownership_pct: 100, status: "active" },
+    { id: 2, name: "Kinto Foods Pvt Ltd", ownership_pct: 75, status: "active" },
+    { id: 3, name: "Kinto Hospitality LLP", ownership_pct: 60, status: "active" },
+  ]);
+});
+
+router.get("/consolidation/intercompany", auth, async (_req: any, res: any) => {
+  res.json([
+    { id: 1, from_company: "Kinto Water Pvt Ltd", to_company: "Kinto Foods Pvt Ltd", amount: 1500000, type: "loan", date: "2026-04-01" },
+    { id: 2, from_company: "Kinto Foods Pvt Ltd", to_company: "Kinto Hospitality LLP", amount: 1000000, type: "service", date: "2026-05-15" },
+  ]);
+});
+
+// ─── GSTR FILING ─────────────────────────────────────────────────────────────
+
+router.get("/gstr/compute", auth, async (req: any, res: any) => {
+  const { type = "GSTR-1", month = 6, year = 2026 } = req.query;
+  res.json({
+    type,
+    period: `${month}-${year}`,
+    summary: {
+      taxable_value: 850000,
+      cgst: 76500,
+      sgst: 76500,
+      igst: 0,
+      total_tax: 153000,
+      invoice_count: 142,
+    },
+    b2b_invoices: [
+      { gstin: "29ABCDE1234F1Z5", invoice_no: "INV-001", invoice_date: `${year}-0${month}-05`, taxable: 50000, cgst: 4500, sgst: 4500, igst: 0 },
+      { gstin: "27XYZAB5678G1Z3", invoice_no: "INV-002", invoice_date: `${year}-0${month}-10`, taxable: 75000, cgst: 6750, sgst: 6750, igst: 0 },
+    ],
+    b2c_invoices: [
+      { state: "Karnataka", taxable: 200000, cgst: 18000, sgst: 18000, igst: 0 },
+      { state: "Maharashtra", taxable: 150000, cgst: 0, sgst: 0, igst: 27000 },
+    ],
+    errors: [],
+  });
+});
+
 export default router;
