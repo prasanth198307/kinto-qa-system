@@ -5001,7 +5001,7 @@ function Router() {
       <ProtectedRoute path="/crm/drip-campaigns" component={() => <CRMDripCampaignsPage />} />
       <ProtectedRoute path="/crm/customer-360" component={() => <CRMCustomer360Page />} />
       {/* Phase 7H — Logistics */}
-      <ProtectedRoute path="/logistics/eway-bill" component={() => <LogisticsEWayBillPage />} />
+      <ProtectedRoute path="/logistics/eway-bill" component={LogisticsEWayBillWrapper} />
       <ProtectedRoute path="/logistics/live-gps" component={() => <LogisticsLiveGPSPage />} />
       <ProtectedRoute path="/logistics/route-optimization" component={() => <LogisticsRouteOptimizationPage />} />
       {/* Phase 7I — Real Estate */}
@@ -5026,11 +5026,11 @@ function Router() {
       <ProtectedRoute path="/retail/b2b-portal" component={() => <RetailB2BPortalPage />} />
       {/* Phase 7O — Manufacturing */}
       <ProtectedRoute path="/manufacturing/mrp" component={() => <ManufacturingMRPPage />} />
-      <ProtectedRoute path="/manufacturing/work-orders" component={() => <ManufacturingWorkOrdersPage />} />
-      <ProtectedRoute path="/manufacturing/quality" component={() => <ManufacturingQualityPage />} />
-      <ProtectedRoute path="/manufacturing/job-cards" component={() => <ManufacturingJobCardsPage />} />
-      <ProtectedRoute path="/manufacturing/sub-contracting" component={() => <ManufacturingSubContractingPage />} />
-      <ProtectedRoute path="/manufacturing/machine-oee" component={() => <ManufacturingMachineOEEPage />} />
+      <ProtectedRoute path="/manufacturing/work-orders" component={ManufacturingWorkOrdersWrapper} />
+      <ProtectedRoute path="/manufacturing/quality" component={ManufacturingQualityWrapper} />
+      <ProtectedRoute path="/manufacturing/job-cards" component={ManufacturingJobCardsWrapper} />
+      <ProtectedRoute path="/manufacturing/sub-contracting" component={ManufacturingSubContractingWrapper} />
+      <ProtectedRoute path="/manufacturing/machine-oee" component={ManufacturingMachineOEEWrapper} />
       <Route path="/ess" component={EssLogin} />
       <Route path="/ess/portal" component={EssPortal} />
       <ProtectedRoute path="/journal-entry/new" component={ManualJournalEntryPageWrapper} />
@@ -5701,6 +5701,12 @@ const LogisticsEPODWrapper = makeWrapper('ePOD', 'logistics/epod', LogisticsEPOD
 const LogisticsFuelWrapper = makeWrapper('Fuel Management', 'logistics/fuel', LogisticsFuelPage);
 const LogisticsDocumentsWrapper = makeWrapper('Vehicle Documents', 'logistics/documents', LogisticsDocumentsPage);
 const LogisticsReportsWrapper = makeWrapper('Reports', 'logistics/reports', LogisticsReportsPage);
+const LogisticsEWayBillWrapper = makeWrapper('E-Way Bill', 'logistics/eway-bill', LogisticsEWayBillPage);
+const ManufacturingJobCardsWrapper = makeWrapper('Shop Floor / Job Cards', 'manufacturing/job-cards', ManufacturingJobCardsPage);
+const ManufacturingSubContractingWrapper = makeWrapper('Sub-contracting', 'manufacturing/sub-contracting', ManufacturingSubContractingPage);
+const ManufacturingMachineOEEWrapper = makeWrapper('Machine OEE', 'manufacturing/machine-oee', ManufacturingMachineOEEPage);
+const ManufacturingWorkOrdersWrapper = makeWrapper('Work Orders', 'manufacturing/work-orders', ManufacturingWorkOrdersPage);
+const ManufacturingQualityWrapper = makeWrapper('Quality Control', 'manufacturing/quality', ManufacturingQualityPage);
 const AgricultureFarmsWrapper = makeWrapper('Farms & Farmers', 'agriculture/farms', AgricultureFarmsPage);
 const AgricultureCropsWrapper = makeWrapper('Crop Management', 'agriculture/crops', AgricultureCropsPage);
 const AgricultureInputsWrapper = makeWrapper('Crop Inputs', 'agriculture/inputs', AgricultureInputsPage);
