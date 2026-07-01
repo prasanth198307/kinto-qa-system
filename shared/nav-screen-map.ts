@@ -409,6 +409,9 @@ export const navItemToScreenKey: Record<string, string> = {
   'manufacturing/job-cards':            'manufacturing_job_cards',
   'manufacturing/sub-contracting':      'manufacturing_sub_contracting',
   'manufacturing/machine-oee':          'manufacturing_machine_oee',
+  'manufacturing/work-orders':          'manufacturing_work_orders',
+  'manufacturing/quality':              'manufacturing_quality',
+  'manufacturing/mrp':                  'manufacturing_mrp',
   // Logistics
   'logistics/eway-bill':                'logistics_eway_bill',
   // E-Commerce ERP sub-pages
