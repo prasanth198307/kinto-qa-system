@@ -424,6 +424,7 @@ import RetailB2BPortalPage from "@/pages/retail/b2b-portal";
 // Phase 7O — Manufacturing ERP
 import ManufacturingMRPPage from "@/pages/manufacturing/mrp";
 import ManufacturingWorkOrdersPage from "@/pages/manufacturing/work-orders";
+import ManufacturingAdvancedPage from "@/pages/ManufacturingAdvancedPage";
 import ManufacturingQualityPage from "@/pages/manufacturing/quality";
 import ManufacturingJobCardsPage from "@/pages/manufacturing/job-cards";
 import ManufacturingSubContractingPage from "@/pages/manufacturing/sub-contracting";
@@ -4537,6 +4538,7 @@ function Router() {
       <ProtectedRoute path="/manufacturing/mrp" component={() => <ManufacturingMRPPage />} />
       <ProtectedRoute path="/manufacturing/work-orders" component={ManufacturingWorkOrdersWrapper} />
       <ProtectedRoute path="/manufacturing/quality" component={ManufacturingQualityWrapper} />
+      <ProtectedRoute path="/manufacturing/advanced" component={ManufacturingAdvancedWrapper} />
       <ProtectedRoute path="/manufacturing/job-cards" component={ManufacturingJobCardsWrapper} />
       <ProtectedRoute path="/manufacturing/sub-contracting" component={ManufacturingSubContractingWrapper} />
       <ProtectedRoute path="/manufacturing/machine-oee" component={ManufacturingMachineOEEWrapper} />
@@ -5216,6 +5218,7 @@ const ManufacturingSubContractingWrapper = makeWrapper('Sub-contracting', 'manuf
 const ManufacturingMachineOEEWrapper = makeWrapper('Machine OEE', 'manufacturing/machine-oee', ManufacturingMachineOEEPage);
 const ManufacturingWorkOrdersWrapper = makeWrapper('Work Orders', 'manufacturing/work-orders', ManufacturingWorkOrdersPage);
 const ManufacturingQualityWrapper = makeWrapper('Quality Control', 'manufacturing/quality', ManufacturingQualityPage);
+const ManufacturingAdvancedWrapper = makeWrapper('BOM / MRP / ECN', 'manufacturing/advanced', ManufacturingAdvancedPage);
 const AgricultureFarmsWrapper = makeWrapper('Farms & Farmers', 'agriculture/farms', AgricultureFarmsPage);
 const AgricultureCropsWrapper = makeWrapper('Crop Management', 'agriculture/crops', AgricultureCropsPage);
 const AgricultureInputsWrapper = makeWrapper('Crop Inputs', 'agriculture/inputs', AgricultureInputsPage);
