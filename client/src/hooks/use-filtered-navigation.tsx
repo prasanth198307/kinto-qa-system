@@ -83,7 +83,7 @@ const navItemToScreen: Record<string, string> = {
   'production-reconciliation-report': 'Create Finished Goods',
   'variance-analytics': 'Create Finished Goods',
   'invoices': 'Purchase Orders',
-  'vendor-history': 'Finance & Accounts',
+  'vendor-history': 'Purchase Orders',
   'pending-payments': 'Purchase Orders',
   'payment-management': 'Purchase Orders',
   'customer-advances': 'Purchase Orders',
