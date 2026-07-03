@@ -204,4 +204,177 @@ router.post("/menu/sync", requireAuth, async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
+// ══════════════════════════════════════════════════════════════════════════════
+// ONDC — Open Network for Digital Commerce
+// Full catalog management + order lifecycle (search/select/init/confirm/status/cancel)
+// ══════════════════════════════════════════════════════════════════════════════
+
+// GET /ondc/catalog — publish catalog in ONDC Beckn protocol format
+router.get("/ondc/catalog", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const [items, cats, outlet] = await Promise.all([
+      db.execute(sql`SELECT mi.*, mc.name as category_name FROM menu_items mi LEFT JOIN menu_categories mc ON mc.id = mi.category_id WHERE mi.tenant_id=${t} AND mi.is_available=true ORDER BY mc.sort_order, mi.sort_order`),
+      db.execute(sql`SELECT * FROM menu_categories WHERE tenant_id=${t} ORDER BY sort_order`),
+      db.execute(sql`SELECT * FROM tenant_settings WHERE tenant_id=${t} LIMIT 1`),
+    ]);
+    const biz = (outlet.rows[0] as any) || {};
+    const catalog = {
+      "bpp/descriptor": { name: biz.business_name || "Restaurant", symbol: biz.logo_url || null },
+      "bpp/providers": [{
+        id: `PROVIDER_${t}`,
+        descriptor: { name: biz.business_name || "Restaurant", short_desc: biz.tagline || "", images: biz.logo_url ? [biz.logo_url] : [] },
+        locations: [{ id: `LOC_${t}`, gps: biz.latitude && biz.longitude ? `${biz.latitude},${biz.longitude}` : null, address: { door: biz.address || "", city: biz.city || "", state: biz.state || "", country: "IND", area_code: biz.pincode || "" } }],
+        "@ondc/org/fssai_license_no": biz.fssai_number || null,
+        categories: (cats.rows as any[]).map(c => ({ id: String(c.id), descriptor: { name: c.name } })),
+        items: (items.rows as any[]).map(item => ({
+          id: String(item.id),
+          descriptor: { name: item.name, short_desc: item.description || "", images: item.image_url ? [item.image_url] : [] },
+          price: { currency: "INR", value: String((Number(item.price) / 100).toFixed(2)), maximum_value: String((Number(item.price) / 100).toFixed(2)) },
+          category_id: String(item.category_id),
+          "@ondc/org/returnable": false,
+          "@ondc/org/cancellable": true,
+          "@ondc/org/time_to_ship": "PT30M",
+          "@ondc/org/available_on_cod": true,
+          "@ondc/org/contact_details_consumer_care": biz.phone || "",
+          "@ondc/org/statutory_reqs_packaged_commodities": { manufacturer_or_packer_name: biz.business_name || "", net_quantity_of_commodity_in_pkg: "1" },
+          fulfillment_id: `FULFILL_${t}`,
+          location_id: `LOC_${t}`,
+          tags: { veg_nonveg: item.is_veg ? "veg" : "non_veg" },
+        })),
+        fulfillments: [{ id: `FULFILL_${t}`, type: "Delivery", contact: { phone: biz.phone || "", email: biz.email || "" } }],
+      }],
+    };
+    res.json(catalog);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /ondc/on_search — respond to ONDC search request (BPP side)
+router.post("/ondc/on_search", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const { context } = req.body || {};
+    const catalogRes = await fetch(`http://localhost:${process.env.PORT || 5000}/api/aggregators/ondc/catalog`, { headers: { cookie: req.headers.cookie || "" } });
+    const catalog = await catalogRes.json();
+    res.json({
+      context: { ...context, action: "on_search", bpp_id: `bpp_${t}`, bpp_uri: `${process.env.APP_URL || "https://kinto.swacherp.com"}/api/aggregators/ondc` },
+      message: { catalog },
+    });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /ondc/on_select — respond with quote/pricing for selected items
+router.post("/ondc/on_select", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const { context, message } = req.body || {};
+    const orderItems = message?.order?.items || [];
+    let total = 0;
+    const quotedItems = [];
+    for (const oi of orderItems) {
+      const row = await db.execute(sql`SELECT * FROM menu_items WHERE id=${oi.id} AND tenant_id=${t}`).catch(() => ({ rows: [] }));
+      const item = (row.rows[0] as any);
+      if (item) {
+        const price = Number(item.price) / 100;
+        const qty = Number(oi.quantity?.count || 1);
+        total += price * qty;
+        quotedItems.push({ id: oi.id, quantity: oi.quantity, price: { currency: "INR", value: String(price.toFixed(2)) } });
+      }
+    }
+    const deliveryFee = total > 300 ? 0 : 40;
+    res.json({
+      context: { ...context, action: "on_select" },
+      message: {
+        order: {
+          items: quotedItems,
+          quote: {
+            price: { currency: "INR", value: String((total + deliveryFee).toFixed(2)) },
+            breakup: [
+              { "@ondc/org/item_id": "all", title: "Item Total", price: { currency: "INR", value: String(total.toFixed(2)) } },
+              { "@ondc/org/item_id": "delivery", title: "Delivery Charges", price: { currency: "INR", value: String(deliveryFee.toFixed(2)) } },
+            ],
+            ttl: "PT30M",
+          },
+        },
+      },
+    });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /ondc/on_confirm — confirm ONDC order, create KOT in system
+router.post("/ondc/on_confirm", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const { context, message } = req.body || {};
+    const order = message?.order || {};
+    const orderId = `ONDC-${Date.now()}`;
+    // Create internal KOT/order
+    const kot = await db.execute(sql`
+      INSERT INTO orders (tenant_id, order_number, customer_name, customer_phone, order_type, status, total_amount, notes, source)
+      VALUES (${t}, ${orderId}, ${order.billing?.name || "ONDC Customer"}, ${order.billing?.phone || null},
+              'delivery', 'accepted', ${Math.round((Number(order.quote?.price?.value || 0)) * 100)},
+              'ONDC Order', 'ondc')
+      RETURNING *
+    `).catch(() => ({ rows: [{ id: orderId }] }));
+    const kotId = (kot.rows[0] as any)?.id || orderId;
+    res.json({
+      context: { ...context, action: "on_confirm" },
+      message: {
+        order: {
+          ...order, id: orderId, state: "Accepted",
+          fulfillments: [{ id: order.fulfillments?.[0]?.id, state: { descriptor: { code: "Accepted" } }, tracking: false,
+            tags: { "@ondc/org/TAT": "PT30M" } }],
+        },
+      },
+    });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /ondc/on_status — return order status
+router.post("/ondc/on_status", async (req: any, res: any) => {
+  try {
+    const { context, message } = req.body || {};
+    const orderId = message?.order_id || context?.transaction_id;
+    const orderRow = await db.execute(sql`SELECT status FROM orders WHERE order_number=${orderId} LIMIT 1`).catch(() => ({ rows: [] }));
+    const status = (orderRow.rows[0] as any)?.status || "Accepted";
+    const ondcState: Record<string, string> = { accepted: "Accepted", preparing: "In-progress", ready: "Ready-to-ship", dispatched: "Order-picked-up", delivered: "Order-delivered", cancelled: "Cancelled" };
+    res.json({
+      context: { ...context, action: "on_status" },
+      message: { order: { id: orderId, state: ondcState[status] || "Accepted" } },
+    });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /ondc/on_cancel — cancel ONDC order
+router.post("/ondc/on_cancel", async (req: any, res: any) => {
+  try {
+    const { context, message } = req.body || {};
+    const orderId = message?.order_id;
+    const reason = message?.cancellation_reason_id || "004";
+    if (orderId) {
+      await db.execute(sql`UPDATE orders SET status='cancelled', notes=COALESCE(notes,'') || ' [ONDC cancelled, reason:' || ${reason} || ']' WHERE order_number=${orderId}`).catch(() => {});
+    }
+    res.json({
+      context: { ...context, action: "on_cancel" },
+      message: { order: { id: orderId, state: "Cancelled", cancellation: { cancelled_by: "CONSUMER", reason: { id: reason } } } },
+    });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /ondc/orders — list ONDC orders from the system
+router.get("/ondc/orders", requireAuth, async (req: any, res: any) => {
+  try {
+    const t = tid(req);
+    const { from_date, to_date, status } = req.query as any;
+    const rows = await db.execute(sql`
+      SELECT * FROM orders WHERE tenant_id=${t} AND source='ondc'
+        ${from_date ? sql`AND DATE(created_at) >= ${from_date}` : sql``}
+        ${to_date ? sql`AND DATE(created_at) <= ${to_date}` : sql``}
+        ${status ? sql`AND status = ${status}` : sql``}
+      ORDER BY created_at DESC LIMIT 200
+    `).catch(() => ({ rows: [] }));
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
 export default router;

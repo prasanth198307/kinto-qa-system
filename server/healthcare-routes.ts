@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { sql } from "drizzle-orm";
 import { db } from "./db";
+import { glHealthcareBill } from "./vertical-gl-service";
 
 const router = Router();
 const requireAuth = (req: any, res: any, next: any) => { if (!req.isAuthenticated?.() && !req.user) return res.status(401).json({ error: "Unauthorized" }); next(); };
@@ -403,6 +404,8 @@ router.post("/patient-bills", requireAuth, async (req: any, res) => {
           VALUES (${bId}, ${it.description}, ${it.quantity||1}, ${it.rate||0}, ${it.amount||0})`);
       }
     }
+    const tenantId = Number(tid(req));
+    glHealthcareBill({ tenantId, billId: bId, billNumber: no, totalAmount: Math.round((total_amount||0)*100), paidAmount: Math.round((paid_amount||0)*100), paymentMode: payment_mode || "cash", date: bill_date || undefined });
     res.json(bill.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });

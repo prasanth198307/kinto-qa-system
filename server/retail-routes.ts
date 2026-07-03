@@ -2,6 +2,7 @@ import { Router } from "express";
 import { sql } from "drizzle-orm";
 import { db } from "./db";
 import crypto from "crypto";
+import { glRetailSale } from "./vertical-gl-service";
 
 const router = Router();
 const requireAuth = (req: any, res: any, next: any) => { if (!req.isAuthenticated?.() && !req.user) return res.status(401).json({ error: "Unauthorized" }); next(); };
@@ -281,6 +282,7 @@ router.post("/transactions", requireAuth, async (req: any, res) => {
       const netPts = pts - (loyaltyPtsRedeemed || 0);
       await db.execute(sql`UPDATE pos_customers SET loyalty_points=GREATEST(0, loyalty_points+${netPts}), outstanding_balance=outstanding_balance-${total} WHERE id=${customer_id}`);
     }
+    glRetailSale({ tenantId: Number(tid(req)), saleId: txnId, invoiceNumber: no, totalAmount: Math.round(total*100), discount: Math.round((discount_amount||0)*100), taxAmount: Math.round((tax_amount||0)*100), paidAmount: Math.round((amount_paid||total)*100), paymentMode: payment_mode || "cash" });
     res.json(txn.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });

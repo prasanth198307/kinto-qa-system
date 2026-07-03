@@ -31350,41 +31350,345 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
     }
   });
 
-  // ─── Phase 7F: Nidhi ERP Stubs ────────────────────────────────────────────
-  app.get('/api/nidhi/loan-applications', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json([]); });
-  app.post('/api/nidhi/loan-applications', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json({ id: Date.now(), ...req.body }); });
-  app.put('/api/nidhi/loan-applications/:id', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json({ id: req.params.id, ...req.body }); });
-  app.get('/api/nidhi/pdc-cheques', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json([]); });
-  app.post('/api/nidhi/pdc-cheques', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json({ id: Date.now(), ...req.body }); });
-  app.put('/api/nidhi/pdc-cheques/:id', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json({ id: req.params.id, ...req.body }); });
-  app.get('/api/nidhi/rbi-return-data', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json({ member_count: 342, total_deposits: 4500000, loans_outstanding: 3200000, share_capital: 1000000, reserves: 250000, net_owned_funds: 1250000, fixed_deposits: 900000, recurring_deposits: 600000, savings_deposits: 1000000 }); });
+  // ─── Phase 7F: Nidhi — Loan Applications + PDC Cheques + RBI Return ────────
+  const nidhiAuth = (req: any, res: any, next: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); next(); };
+  const nidhiTid = (req: any) => req.session?.tenantId ?? req.user?.tenantId ?? 1;
 
-  // ─── Phase 7G: CRM ERP Stubs ──────────────────────────────────────────────
-  app.get('/api/crm/lead-scores', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json([]); });
-  app.post('/api/crm/compute-scores', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json({ ok: true }); });
-  app.get('/api/crm/drip-campaigns', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json([]); });
-  app.post('/api/crm/drip-campaigns', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json({ id: Date.now(), ...req.body }); });
-  app.put('/api/crm/drip-campaigns/:id', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json({ id: req.params.id, ...req.body }); });
-  app.get('/api/crm/customer-360/:id', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json({ id: req.params.id, name: 'Customer', timeline: [], opportunities: [], tags: [] }); });
+  const ensureLoanApps = () => db.execute(sql`CREATE TABLE IF NOT EXISTS nidhi_loan_applications (
+    id SERIAL PRIMARY KEY, tenant_id INTEGER NOT NULL, application_no VARCHAR(50),
+    member_id INTEGER, member_name VARCHAR(200), loan_type VARCHAR(50),
+    applied_amount NUMERIC(15,2), purpose TEXT, collateral TEXT,
+    status VARCHAR(30) DEFAULT 'pending', applied_date DATE, approved_date DATE,
+    approved_amount NUMERIC(15,2), remarks TEXT, created_at TIMESTAMP DEFAULT NOW())`);
+  const ensurePDC = () => db.execute(sql`CREATE TABLE IF NOT EXISTS nidhi_pdc_cheques (
+    id SERIAL PRIMARY KEY, tenant_id INTEGER NOT NULL, loan_id INTEGER,
+    member_id INTEGER, member_name VARCHAR(200), cheque_no VARCHAR(50),
+    bank_name VARCHAR(100), branch VARCHAR(100), amount NUMERIC(15,2),
+    cheque_date DATE, status VARCHAR(30) DEFAULT 'pending',
+    presented_date DATE, clearance_date DATE, remarks TEXT, created_at TIMESTAMP DEFAULT NOW())`);
 
-  // ─── Phase 7H: Logistics ERP Stubs ────────────────────────────────────────
-  app.get('/api/logistics/eway-bills', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json([]); });
-  app.post('/api/logistics/eway-bill/generate', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json({ ewbNo: '23001' + Date.now().toString().slice(-7), validUpto: new Date(Date.now() + 3*24*60*60*1000).toISOString().slice(0,10) }); });
-  app.put('/api/logistics/eway-bills/:id/cancel', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json({ ok: true }); });
-  app.put('/api/logistics/eway-bills/:id/extend', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json({ ok: true }); });
-  app.get('/api/logistics/vehicles/live-positions', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json([]); });
-  app.post('/api/logistics/routes/optimize', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); const stops = (req.body.stops || []).map((s: any, i: number) => ({ ...s, sequence: i+1, arrival: `${9+i}:30 AM` })); res.json({ optimized_stops: stops, total_distance: 38, fuel_estimate: 4.2, total_time: `${stops.length}h 30min` }); });
-  app.post('/api/logistics/trips', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json({ id: Date.now(), ...req.body }); });
+  app.get('/api/nidhi/loan-applications', nidhiAuth, async (req: any, res: any) => {
+    const t = nidhiTid(req);
+    try { await ensureLoanApps(); const r = await db.execute(sql`SELECT * FROM nidhi_loan_applications WHERE tenant_id=${t} ORDER BY created_at DESC`); res.json(r.rows); } catch (e: any) { res.status(500).json({ message: e.message }); }
+  });
+  app.post('/api/nidhi/loan-applications', nidhiAuth, async (req: any, res: any) => {
+    const t = nidhiTid(req);
+    try {
+      await ensureLoanApps();
+      const { member_id, member_name, loan_type, applied_amount, purpose, collateral, applied_date } = req.body;
+      const no = `LA-${Date.now()}`;
+      const r = await db.execute(sql`INSERT INTO nidhi_loan_applications (tenant_id,application_no,member_id,member_name,loan_type,applied_amount,purpose,collateral,applied_date) VALUES (${t},${no},${member_id||null},${member_name||null},${loan_type||'personal'},${applied_amount||0},${purpose||null},${collateral||null},${applied_date||null}) RETURNING *`);
+      res.json(r.rows[0]);
+    } catch (e: any) { res.status(500).json({ message: e.message }); }
+  });
+  app.put('/api/nidhi/loan-applications/:id', nidhiAuth, async (req: any, res: any) => {
+    const t = nidhiTid(req);
+    try {
+      const { status, approved_amount, remarks, approved_date } = req.body;
+      const r = await db.execute(sql`UPDATE nidhi_loan_applications SET status=${status},approved_amount=${approved_amount||null},remarks=${remarks||null},approved_date=${approved_date||null} WHERE id=${req.params.id} AND tenant_id=${t} RETURNING *`);
+      res.json(r.rows[0]);
+    } catch (e: any) { res.status(500).json({ message: e.message }); }
+  });
 
-  // ─── Phase 7I: Real Estate ERP Stubs ──────────────────────────────────────
-  app.get('/api/real-estate/rera/projects', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json([]); });
-  app.get('/api/real-estate/rera/complaints', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json([]); });
-  app.post('/api/real-estate/rera/quarterly-report', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json({ ok: true }); });
-  app.post('/api/real-estate/rera/complaints', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json({ id: Date.now(), ...req.body }); });
-  app.get('/api/real-estate/demand-letters', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json([]); });
-  app.post('/api/real-estate/demand-letters', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json({ id: Date.now(), ...req.body }); });
-  app.post('/api/real-estate/demand-letters/generate', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json({ generated: true }); });
-  app.get('/api/real-estate/project-pl/:projectId', (req: any, res: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); res.json(null); });
+  app.get('/api/nidhi/pdc-cheques', nidhiAuth, async (req: any, res: any) => {
+    const t = nidhiTid(req);
+    try { await ensurePDC(); const r = await db.execute(sql`SELECT * FROM nidhi_pdc_cheques WHERE tenant_id=${t} ORDER BY cheque_date DESC`); res.json(r.rows); } catch (e: any) { res.status(500).json({ message: e.message }); }
+  });
+  app.post('/api/nidhi/pdc-cheques', nidhiAuth, async (req: any, res: any) => {
+    const t = nidhiTid(req);
+    try {
+      await ensurePDC();
+      const { loan_id, member_id, member_name, cheque_no, bank_name, branch, amount, cheque_date } = req.body;
+      const r = await db.execute(sql`INSERT INTO nidhi_pdc_cheques (tenant_id,loan_id,member_id,member_name,cheque_no,bank_name,branch,amount,cheque_date) VALUES (${t},${loan_id||null},${member_id||null},${member_name||null},${cheque_no||null},${bank_name||null},${branch||null},${amount||0},${cheque_date||null}) RETURNING *`);
+      res.json(r.rows[0]);
+    } catch (e: any) { res.status(500).json({ message: e.message }); }
+  });
+  app.put('/api/nidhi/pdc-cheques/:id', nidhiAuth, async (req: any, res: any) => {
+    const t = nidhiTid(req);
+    try {
+      const { status, presented_date, clearance_date, remarks } = req.body;
+      const r = await db.execute(sql`UPDATE nidhi_pdc_cheques SET status=${status},presented_date=${presented_date||null},clearance_date=${clearance_date||null},remarks=${remarks||null} WHERE id=${req.params.id} AND tenant_id=${t} RETURNING *`);
+      res.json(r.rows[0]);
+    } catch (e: any) { res.status(500).json({ message: e.message }); }
+  });
+
+  app.get('/api/nidhi/rbi-return-data', nidhiAuth, async (req: any, res: any) => {
+    const t = nidhiTid(req);
+    try {
+      const [members, deposits, loans, capital] = await Promise.all([
+        db.execute(sql`SELECT COUNT(*) as cnt FROM nidhi_members WHERE tenant_id=${t}`).catch(() => ({ rows: [{ cnt: 0 }] })),
+        db.execute(sql`SELECT COALESCE(SUM(principal_amount),0) as total, SUM(CASE WHEN deposit_type='fd' THEN principal_amount ELSE 0 END) as fd, SUM(CASE WHEN deposit_type='rd' THEN principal_amount ELSE 0 END) as rd, SUM(CASE WHEN deposit_type='savings' THEN principal_amount ELSE 0 END) as savings FROM nidhi_deposits WHERE tenant_id=${t} AND status='active'`).catch(() => ({ rows: [{ total: 0, fd: 0, rd: 0, savings: 0 }] })),
+        db.execute(sql`SELECT COALESCE(SUM(outstanding_principal),0) as total FROM nidhi_loans WHERE tenant_id=${t} AND status='active'`).catch(() => ({ rows: [{ total: 0 }] })),
+        db.execute(sql`SELECT COALESCE(SUM(amount),0) as share_capital FROM nidhi_member_shares WHERE tenant_id=${t}`).catch(() => ({ rows: [{ share_capital: 0 }] })),
+      ]);
+      const dep = deposits.rows[0] as any;
+      res.json({
+        member_count: Number((members.rows[0] as any).cnt || 0),
+        total_deposits: Number(dep.total || 0),
+        fixed_deposits: Number(dep.fd || 0),
+        recurring_deposits: Number(dep.rd || 0),
+        savings_deposits: Number(dep.savings || 0),
+        loans_outstanding: Number((loans.rows[0] as any).total || 0),
+        share_capital: Number((capital.rows[0] as any).share_capital || 0),
+        net_owned_funds: Number((capital.rows[0] as any).share_capital || 0),
+      });
+    } catch (e: any) { res.status(500).json({ message: e.message }); }
+  });
+
+  // ─── Phase 7G: CRM — Lead Scores + Drip Campaigns + Customer 360 ──────────
+  const crmAuth = (req: any, res: any, next: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); next(); };
+  const crmTid = (req: any) => req.session?.tenantId ?? req.user?.tenantId ?? 1;
+
+  app.get('/api/crm/lead-scores', crmAuth, async (req: any, res: any) => {
+    const t = crmTid(req);
+    try {
+      const rows = await db.execute(sql`
+        SELECT c.id, c.first_name, c.last_name, c.email, c.phone, c.lead_status,
+          COALESCE(c.lead_score, 0) + (CASE WHEN c.email IS NOT NULL THEN 10 ELSE 0 END) + (CASE WHEN c.phone IS NOT NULL THEN 10 ELSE 0 END) + (SELECT COUNT(*)*5 FROM crm_activities a WHERE a.contact_id=c.id) + (SELECT COUNT(*)*15 FROM sales_orders so WHERE so.customer_id=c.id) as computed_score
+        FROM contacts c WHERE c.tenant_id=${t} AND c.lead_status IS NOT NULL ORDER BY computed_score DESC LIMIT 100`).catch(() => ({ rows: [] }));
+      res.json(rows.rows);
+    } catch (e: any) { res.status(500).json({ message: e.message }); }
+  });
+  app.post('/api/crm/compute-scores', crmAuth, async (req: any, res: any) => {
+    const t = crmTid(req);
+    try {
+      await db.execute(sql`UPDATE contacts SET lead_score = COALESCE(lead_score,0) + (CASE WHEN email IS NOT NULL THEN 10 ELSE 0 END) + (CASE WHEN phone IS NOT NULL THEN 10 ELSE 0 END) WHERE tenant_id=${t} AND lead_status IS NOT NULL`).catch(() => {});
+      res.json({ ok: true, message: 'Lead scores recomputed' });
+    } catch (e: any) { res.status(500).json({ message: e.message }); }
+  });
+
+  const ensureDrip = () => db.execute(sql`CREATE TABLE IF NOT EXISTS crm_drip_campaigns (
+    id SERIAL PRIMARY KEY, tenant_id INTEGER NOT NULL, name VARCHAR(200), description TEXT,
+    trigger_type VARCHAR(50) DEFAULT 'manual', trigger_condition JSONB, steps JSONB,
+    status VARCHAR(30) DEFAULT 'draft', enrolled_count INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT NOW())`);
+
+  app.get('/api/crm/drip-campaigns', crmAuth, async (req: any, res: any) => {
+    const t = crmTid(req);
+    try { await ensureDrip(); const r = await db.execute(sql`SELECT * FROM crm_drip_campaigns WHERE tenant_id=${t} ORDER BY created_at DESC`); res.json(r.rows); } catch (e: any) { res.status(500).json({ message: e.message }); }
+  });
+  app.post('/api/crm/drip-campaigns', crmAuth, async (req: any, res: any) => {
+    const t = crmTid(req);
+    try {
+      await ensureDrip();
+      const { name, description, trigger_type, trigger_condition, steps } = req.body;
+      const r = await db.execute(sql`INSERT INTO crm_drip_campaigns (tenant_id,name,description,trigger_type,trigger_condition,steps) VALUES (${t},${name},${description||null},${trigger_type||'manual'},${JSON.stringify(trigger_condition||{})}::jsonb,${JSON.stringify(steps||[])}::jsonb) RETURNING *`);
+      res.json(r.rows[0]);
+    } catch (e: any) { res.status(500).json({ message: e.message }); }
+  });
+  app.put('/api/crm/drip-campaigns/:id', crmAuth, async (req: any, res: any) => {
+    const t = crmTid(req);
+    try {
+      const { name, description, status, steps, trigger_type, trigger_condition } = req.body;
+      const r = await db.execute(sql`UPDATE crm_drip_campaigns SET name=${name},description=${description||null},status=${status||'draft'},steps=${JSON.stringify(steps||[])}::jsonb,trigger_type=${trigger_type||'manual'},trigger_condition=${JSON.stringify(trigger_condition||{})}::jsonb WHERE id=${req.params.id} AND tenant_id=${t} RETURNING *`);
+      res.json(r.rows[0]);
+    } catch (e: any) { res.status(500).json({ message: e.message }); }
+  });
+
+  app.get('/api/crm/customer-360/:id', crmAuth, async (req: any, res: any) => {
+    const t = crmTid(req);
+    const cid = req.params.id;
+    try {
+      const [contact, activities, orders, invoices, interactions] = await Promise.all([
+        db.execute(sql`SELECT * FROM contacts WHERE id=${cid} AND tenant_id=${t} LIMIT 1`).catch(() => ({ rows: [] })),
+        db.execute(sql`SELECT * FROM crm_activities WHERE contact_id=${cid} ORDER BY activity_date DESC LIMIT 20`).catch(() => ({ rows: [] })),
+        db.execute(sql`SELECT id, order_number, status, total_amount, created_at FROM sales_orders WHERE customer_id=${cid} AND tenant_id=${t} ORDER BY created_at DESC LIMIT 10`).catch(() => ({ rows: [] })),
+        db.execute(sql`SELECT id, invoice_number, status, total_amount, invoice_date FROM invoices WHERE customer_id=${cid} AND tenant_id=${t} ORDER BY invoice_date DESC LIMIT 10`).catch(() => ({ rows: [] })),
+        db.execute(sql`SELECT * FROM crm_interactions WHERE contact_id=${cid} ORDER BY created_at DESC LIMIT 20`).catch(() => ({ rows: [] })),
+      ]);
+      const c = (contact.rows[0] as any) || { id: cid };
+      res.json({ ...c, timeline: activities.rows, opportunities: orders.rows, invoices: invoices.rows, interactions: interactions.rows, total_orders: orders.rows.length, total_value: orders.rows.reduce((s: number, o: any) => s + Number(o.total_amount || 0), 0) });
+    } catch (e: any) { res.status(500).json({ message: e.message }); }
+  });
+
+  // ─── Phase 7H: Logistics — E-way Bills + Live GPS + Route Optimize ─────────
+  const lgAuth = (req: any, res: any, next: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); next(); };
+  const lgTid = (req: any) => req.session?.tenantId ?? req.user?.tenantId ?? 1;
+
+  const ensureEwb = () => db.execute(sql`CREATE TABLE IF NOT EXISTS logistics_eway_bills (
+    id SERIAL PRIMARY KEY, tenant_id INTEGER NOT NULL, ewb_no VARCHAR(50), invoice_id INTEGER,
+    invoice_number VARCHAR(50), consigner_gstin VARCHAR(20), consignee_gstin VARCHAR(20),
+    from_place VARCHAR(100), to_place VARCHAR(100), distance_km INTEGER,
+    vehicle_no VARCHAR(30), vehicle_type VARCHAR(30), transport_mode VARCHAR(20),
+    supply_type VARCHAR(30), total_value NUMERIC(15,2), cgst NUMERIC(15,2), sgst NUMERIC(15,2), igst NUMERIC(15,2),
+    valid_upto DATE, status VARCHAR(20) DEFAULT 'active', cancel_reason TEXT,
+    generated_at TIMESTAMP DEFAULT NOW())`);
+
+  app.get('/api/logistics/eway-bills', lgAuth, async (req: any, res: any) => {
+    const t = lgTid(req);
+    try { await ensureEwb(); const r = await db.execute(sql`SELECT * FROM logistics_eway_bills WHERE tenant_id=${t} ORDER BY generated_at DESC`); res.json(r.rows); } catch (e: any) { res.status(500).json({ message: e.message }); }
+  });
+  app.post('/api/logistics/eway-bill/generate', lgAuth, async (req: any, res: any) => {
+    const t = lgTid(req);
+    try {
+      await ensureEwb();
+      const { invoice_id, invoice_number, consigner_gstin, consignee_gstin, from_place, to_place, distance_km, vehicle_no, vehicle_type, transport_mode, supply_type, total_value, cgst, sgst, igst } = req.body;
+      const ewbNo = '2300' + Date.now().toString().slice(-8);
+      const validUpto = new Date(Date.now() + (Math.ceil((distance_km||100)/100)) * 24 * 60 * 60 * 1000).toISOString().slice(0,10);
+      const r = await db.execute(sql`INSERT INTO logistics_eway_bills (tenant_id,ewb_no,invoice_id,invoice_number,consigner_gstin,consignee_gstin,from_place,to_place,distance_km,vehicle_no,vehicle_type,transport_mode,supply_type,total_value,cgst,sgst,igst,valid_upto) VALUES (${t},${ewbNo},${invoice_id||null},${invoice_number||null},${consigner_gstin||null},${consignee_gstin||null},${from_place||null},${to_place||null},${distance_km||null},${vehicle_no||null},${vehicle_type||'regular'},${transport_mode||'road'},${supply_type||'outward'},${total_value||0},${cgst||0},${sgst||0},${igst||0},${validUpto}) RETURNING *`);
+      res.json({ ...r.rows[0], ewbNo, validUpto });
+    } catch (e: any) { res.status(500).json({ message: e.message }); }
+  });
+  app.put('/api/logistics/eway-bills/:id/cancel', lgAuth, async (req: any, res: any) => {
+    const t = lgTid(req);
+    try { const r = await db.execute(sql`UPDATE logistics_eway_bills SET status='cancelled', cancel_reason=${req.body.reason||null} WHERE id=${req.params.id} AND tenant_id=${t} RETURNING *`); res.json(r.rows[0]); } catch (e: any) { res.status(500).json({ message: e.message }); }
+  });
+  app.put('/api/logistics/eway-bills/:id/extend', lgAuth, async (req: any, res: any) => {
+    const t = lgTid(req);
+    try {
+      const { new_vehicle_no, reason, extend_days } = req.body;
+      const newValid = new Date(Date.now() + (extend_days||1) * 24*60*60*1000).toISOString().slice(0,10);
+      const r = await db.execute(sql`UPDATE logistics_eway_bills SET valid_upto=${newValid}, vehicle_no=COALESCE(${new_vehicle_no||null},vehicle_no) WHERE id=${req.params.id} AND tenant_id=${t} RETURNING *`);
+      res.json(r.rows[0]);
+    } catch (e: any) { res.status(500).json({ message: e.message }); }
+  });
+  app.get('/api/logistics/vehicles/live-positions', lgAuth, async (req: any, res: any) => {
+    const t = lgTid(req);
+    try {
+      const rows = await db.execute(sql`SELECT v.id, v.vehicle_number, v.vehicle_type, v.driver_name, v.driver_phone, vt.latitude, vt.longitude, vt.speed_kmh, vt.timestamp as last_update, vt.status FROM vehicles v LEFT JOIN LATERAL (SELECT * FROM vehicle_tracking vt2 WHERE vt2.vehicle_id=v.id ORDER BY vt2.timestamp DESC LIMIT 1) vt ON true WHERE v.tenant_id=${t}`).catch(() => ({ rows: [] }));
+      res.json(rows.rows);
+    } catch (e: any) { res.status(500).json({ message: e.message }); }
+  });
+  app.post('/api/logistics/routes/optimize', lgAuth, async (req: any, res: any) => {
+    const { stops = [], vehicle_capacity, depot } = req.body;
+    // Nearest-neighbour TSP heuristic using lat/lng if available
+    const sorted = [...stops];
+    if (sorted.length > 1 && sorted[0].lat) {
+      let cur = depot || sorted[0];
+      const remaining = [...sorted];
+      const ordered = [];
+      while (remaining.length) {
+        let best = -1, bestDist = Infinity;
+        for (let i = 0; i < remaining.length; i++) {
+          const d = Math.hypot((remaining[i].lat||0)-(cur.lat||0), (remaining[i].lng||0)-(cur.lng||0));
+          if (d < bestDist) { bestDist = d; best = i; }
+        }
+        ordered.push(remaining.splice(best, 1)[0]);
+        cur = ordered[ordered.length-1];
+      }
+      const optimizedStops = ordered.map((s, i) => ({ ...s, sequence: i+1, arrival: `${9+i}:${i%2===0?'00':'30'} AM` }));
+      res.json({ optimized_stops: optimizedStops, total_distance: Math.round(ordered.length * 9.5), fuel_estimate: +(ordered.length * 1.05).toFixed(1), total_time: `${Math.ceil(ordered.length*0.75)}h` });
+    } else {
+      const optimizedStops = sorted.map((s, i) => ({ ...s, sequence: i+1, arrival: `${9+i}:30 AM` }));
+      res.json({ optimized_stops: optimizedStops, total_distance: Math.round(stops.length * 9.5), fuel_estimate: +(stops.length * 1.05).toFixed(1), total_time: `${Math.ceil(stops.length*0.75)}h` });
+    }
+  });
+  app.post('/api/logistics/trips', lgAuth, async (req: any, res: any) => {
+    const t = lgTid(req);
+    try {
+      const { vehicle_id, driver_id, route_id, planned_start, planned_end, stops, lr_numbers } = req.body;
+      const r = await db.execute(sql`INSERT INTO trips (tenant_id,vehicle_id,driver_id,route_id,planned_start_date,planned_end_date,stops,lr_numbers,status) VALUES (${t},${vehicle_id||null},${driver_id||null},${route_id||null},${planned_start||null},${planned_end||null},${JSON.stringify(stops||[])}::jsonb,${JSON.stringify(lr_numbers||[])}::jsonb,'planned') RETURNING *`).catch(async () => {
+        await db.execute(sql`CREATE TABLE IF NOT EXISTS trips (id SERIAL PRIMARY KEY, tenant_id INTEGER, vehicle_id INTEGER, driver_id INTEGER, route_id INTEGER, planned_start_date DATE, planned_end_date DATE, stops JSONB, lr_numbers JSONB, status VARCHAR(30) DEFAULT 'planned', created_at TIMESTAMP DEFAULT NOW())`);
+        return db.execute(sql`INSERT INTO trips (tenant_id,vehicle_id,driver_id,route_id,planned_start_date,planned_end_date,stops,lr_numbers,status) VALUES (${t},${vehicle_id||null},${driver_id||null},${route_id||null},${planned_start||null},${planned_end||null},${JSON.stringify(stops||[])}::jsonb,${JSON.stringify(lr_numbers||[])}::jsonb,'planned') RETURNING *`);
+      });
+      res.json(r.rows[0]);
+    } catch (e: any) { res.status(500).json({ message: e.message }); }
+  });
+
+  // ─── Phase 7I: Real Estate — RERA + Demand Letters + Project P&L ───────────
+  const reAuth = (req: any, res: any, next: any) => { if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' }); next(); };
+  const reTid = (req: any) => req.session?.tenantId ?? req.user?.tenantId ?? 1;
+
+  const ensureRera = () => db.execute(sql`CREATE TABLE IF NOT EXISTS rera_projects (
+    id SERIAL PRIMARY KEY, tenant_id INTEGER NOT NULL, rera_no VARCHAR(50), project_name VARCHAR(200),
+    project_type VARCHAR(50), location TEXT, start_date DATE, completion_date DATE,
+    total_units INTEGER, sold_units INTEGER DEFAULT 0, area_sqft NUMERIC(15,2),
+    promoter_name VARCHAR(200), promoter_gstin VARCHAR(20), status VARCHAR(30) DEFAULT 'registered',
+    last_report_date DATE, created_at TIMESTAMP DEFAULT NOW())`);
+  const ensureComplaints = () => db.execute(sql`CREATE TABLE IF NOT EXISTS rera_complaints (
+    id SERIAL PRIMARY KEY, tenant_id INTEGER NOT NULL, project_id INTEGER,
+    complaint_no VARCHAR(50), complainant_name VARCHAR(200), complainant_email VARCHAR(200),
+    subject TEXT, description TEXT, status VARCHAR(30) DEFAULT 'open',
+    filed_date DATE, resolved_date DATE, resolution TEXT, created_at TIMESTAMP DEFAULT NOW())`);
+  const ensureDemand = () => db.execute(sql`CREATE TABLE IF NOT EXISTS real_estate_demand_letters (
+    id SERIAL PRIMARY KEY, tenant_id INTEGER NOT NULL, project_id INTEGER,
+    buyer_id INTEGER, buyer_name VARCHAR(200), buyer_email VARCHAR(200), buyer_phone VARCHAR(20),
+    unit_no VARCHAR(50), demand_type VARCHAR(50), amount NUMERIC(15,2),
+    due_date DATE, milestone VARCHAR(200), status VARCHAR(30) DEFAULT 'pending',
+    sent_date DATE, paid_date DATE, created_at TIMESTAMP DEFAULT NOW())`);
+
+  app.get('/api/real-estate/rera/projects', reAuth, async (req: any, res: any) => {
+    const t = reTid(req);
+    try { await ensureRera(); const r = await db.execute(sql`SELECT * FROM rera_projects WHERE tenant_id=${t} ORDER BY created_at DESC`); res.json(r.rows); } catch (e: any) { res.status(500).json({ message: e.message }); }
+  });
+  app.post('/api/real-estate/rera/projects', reAuth, async (req: any, res: any) => {
+    const t = reTid(req);
+    try {
+      await ensureRera();
+      const { rera_no, project_name, project_type, location, start_date, completion_date, total_units, area_sqft, promoter_name, promoter_gstin } = req.body;
+      const r = await db.execute(sql`INSERT INTO rera_projects (tenant_id,rera_no,project_name,project_type,location,start_date,completion_date,total_units,area_sqft,promoter_name,promoter_gstin) VALUES (${t},${rera_no||null},${project_name},${project_type||'residential'},${location||null},${start_date||null},${completion_date||null},${total_units||0},${area_sqft||null},${promoter_name||null},${promoter_gstin||null}) RETURNING *`);
+      res.json(r.rows[0]);
+    } catch (e: any) { res.status(500).json({ message: e.message }); }
+  });
+  app.get('/api/real-estate/rera/complaints', reAuth, async (req: any, res: any) => {
+    const t = reTid(req);
+    try { await ensureComplaints(); const r = await db.execute(sql`SELECT * FROM rera_complaints WHERE tenant_id=${t} ORDER BY filed_date DESC`); res.json(r.rows); } catch (e: any) { res.status(500).json({ message: e.message }); }
+  });
+  app.post('/api/real-estate/rera/complaints', reAuth, async (req: any, res: any) => {
+    const t = reTid(req);
+    try {
+      await ensureComplaints();
+      const { project_id, complainant_name, complainant_email, subject, description, filed_date } = req.body;
+      const no = `COMP-${Date.now()}`;
+      const r = await db.execute(sql`INSERT INTO rera_complaints (tenant_id,project_id,complaint_no,complainant_name,complainant_email,subject,description,filed_date) VALUES (${t},${project_id||null},${no},${complainant_name||null},${complainant_email||null},${subject||null},${description||null},${filed_date||null}) RETURNING *`);
+      res.json(r.rows[0]);
+    } catch (e: any) { res.status(500).json({ message: e.message }); }
+  });
+  app.post('/api/real-estate/rera/quarterly-report', reAuth, async (req: any, res: any) => {
+    const t = reTid(req);
+    try {
+      const { project_id, quarter, year } = req.body;
+      const proj = await db.execute(sql`SELECT * FROM rera_projects WHERE id=${project_id} AND tenant_id=${t} LIMIT 1`).catch(() => ({ rows: [] }));
+      const p = (proj.rows[0] as any) || {};
+      await db.execute(sql`UPDATE rera_projects SET last_report_date=CURRENT_DATE WHERE id=${project_id} AND tenant_id=${t}`).catch(() => {});
+      res.json({ ok: true, project: p.project_name, quarter: `Q${quarter} ${year}`, rera_no: p.rera_no, total_units: p.total_units, sold_units: p.sold_units, completion_pct: Math.min(100, Math.round(((p.sold_units||0)/(p.total_units||1))*100)) });
+    } catch (e: any) { res.status(500).json({ message: e.message }); }
+  });
+  app.get('/api/real-estate/demand-letters', reAuth, async (req: any, res: any) => {
+    const t = reTid(req);
+    try { await ensureDemand(); const r = await db.execute(sql`SELECT * FROM real_estate_demand_letters WHERE tenant_id=${t} ORDER BY due_date ASC`); res.json(r.rows); } catch (e: any) { res.status(500).json({ message: e.message }); }
+  });
+  app.post('/api/real-estate/demand-letters', reAuth, async (req: any, res: any) => {
+    const t = reTid(req);
+    try {
+      await ensureDemand();
+      const { project_id, buyer_id, buyer_name, buyer_email, buyer_phone, unit_no, demand_type, amount, due_date, milestone } = req.body;
+      const r = await db.execute(sql`INSERT INTO real_estate_demand_letters (tenant_id,project_id,buyer_id,buyer_name,buyer_email,buyer_phone,unit_no,demand_type,amount,due_date,milestone) VALUES (${t},${project_id||null},${buyer_id||null},${buyer_name||null},${buyer_email||null},${buyer_phone||null},${unit_no||null},${demand_type||'installment'},${amount||0},${due_date||null},${milestone||null}) RETURNING *`);
+      res.json(r.rows[0]);
+    } catch (e: any) { res.status(500).json({ message: e.message }); }
+  });
+  app.post('/api/real-estate/demand-letters/generate', reAuth, async (req: any, res: any) => {
+    const t = reTid(req);
+    try {
+      const { project_id, milestones } = req.body;
+      const buyers = await db.execute(sql`SELECT * FROM real_estate_buyers WHERE project_id=${project_id} AND tenant_id=${t}`).catch(() => ({ rows: [] }));
+      let generated = 0;
+      for (const buyer of buyers.rows as any[]) {
+        for (const ms of (milestones || [])) {
+          await db.execute(sql`INSERT INTO real_estate_demand_letters (tenant_id,project_id,buyer_id,buyer_name,buyer_email,buyer_phone,unit_no,demand_type,amount,due_date,milestone) VALUES (${t},${project_id},${buyer.id},${buyer.name||null},${buyer.email||null},${buyer.phone||null},${buyer.unit_no||null},'milestone',${ms.amount||0},${ms.due_date||null},${ms.milestone||null})`).catch(() => {});
+          generated++;
+        }
+      }
+      res.json({ generated, message: `${generated} demand letters generated for ${buyers.rows.length} buyers` });
+    } catch (e: any) { res.status(500).json({ message: e.message }); }
+  });
+  app.get('/api/real-estate/project-pl/:projectId', reAuth, async (req: any, res: any) => {
+    const t = reTid(req);
+    try {
+      const projectId = req.params.projectId;
+      const [proj, revenue, costs, paid] = await Promise.all([
+        db.execute(sql`SELECT * FROM rera_projects WHERE id=${projectId} AND tenant_id=${t} LIMIT 1`).catch(() => ({ rows: [] })),
+        db.execute(sql`SELECT COALESCE(SUM(amount),0) as total FROM real_estate_demand_letters WHERE project_id=${projectId} AND tenant_id=${t} AND status='paid'`).catch(() => ({ rows: [{ total: 0 }] })),
+        db.execute(sql`SELECT COALESCE(SUM(amount),0) as total FROM project_costs WHERE project_id=${projectId} AND tenant_id=${t}`).catch(() => ({ rows: [{ total: 0 }] })),
+        db.execute(sql`SELECT COALESCE(SUM(amount),0) as total FROM real_estate_demand_letters WHERE project_id=${projectId} AND tenant_id=${t}`).catch(() => ({ rows: [{ total: 0 }] })),
+      ]);
+      const p = (proj.rows[0] as any) || {};
+      const totalRevenue = Number((revenue.rows[0] as any).total || 0);
+      const totalCosts = Number((costs.rows[0] as any).total || 0);
+      const totalDemand = Number((paid.rows[0] as any).total || 0);
+      res.json({ project: p, revenue: totalRevenue, costs: totalCosts, gross_profit: totalRevenue - totalCosts, gross_margin_pct: totalRevenue > 0 ? ((totalRevenue-totalCosts)/totalRevenue*100).toFixed(1) : 0, total_demand_raised: totalDemand, collection_efficiency_pct: totalDemand > 0 ? (totalRevenue/totalDemand*100).toFixed(1) : 0 });
+    } catch (e: any) { res.status(500).json({ message: e.message }); }
+  });
 
   const httpServer = createServer(app);
   return httpServer;
