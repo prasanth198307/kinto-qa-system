@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { sql } from "drizzle-orm";
 import { db } from "./db";
+import { glRestaurantPayment } from "./vertical-gl-service";
 
 const router = Router();
 const requireAuth = (req: any, res: any, next: any) => { if (!req.isAuthenticated?.() && !req.user) return res.status(401).json({ error: "Unauthorized" }); next(); };
@@ -752,6 +753,8 @@ router.post("/kot/orders/:id/payment", requireAuth, async (req, res) => {
     if (order?.table_id) {
       await db.execute(sql`UPDATE restaurant_tables SET status='available', current_kot_id=null, occupied_since=null WHERE id=${order.table_id} AND tenant_id=${tid(req)}`);
     }
+    // GL auto-post: Dr Cash/Bank, Cr Food Sales
+    glRestaurantPayment({ tenantId: tid(req), orderId: req.params.id, amount: Math.round((amount || 0) * 100), paymentMode: payment_mode || "cash" });
     res.json(order);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });

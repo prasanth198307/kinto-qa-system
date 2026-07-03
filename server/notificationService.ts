@@ -986,3 +986,215 @@ export class NotificationService {
 }
 
 export const notificationService = new NotificationService();
+
+// ─── Vertical Notification Service ───────────────────────────────────────────
+// Handles EMI due, FD maturity, fee due, appointment reminders,
+// hotel check-in confirmations, restaurant order status, etc.
+
+import { db } from "./db";
+import { sql } from "drizzle-orm";
+import nodemailer from "nodemailer";
+
+function formatPhone(mobile: string): string {
+  let p = (mobile || "").replace(/\D/g, "");
+  if (p.startsWith("0")) p = p.substring(1);
+  if (!p.startsWith("91") && p.length === 10) p = `91${p}`;
+  return p;
+}
+
+function indDate(d: string | Date): string {
+  return new Date(d).toLocaleDateString("en-IN", { dateStyle: "medium", timeZone: "Asia/Kolkata" });
+}
+
+async function sendWA(mobile: string, message: string): Promise<boolean> {
+  try {
+    const phone = formatPhone(mobile);
+    if (!phone) return false;
+    return await whatsappService.sendTextMessage({ to: phone, message });
+  } catch {
+    return false;
+  }
+}
+
+async function sendEmail(to: string, subject: string, html: string): Promise<boolean> {
+  if (!process.env.SENDGRID_API_KEY && !process.env.SMTP_HOST) {
+    console.log(`[EMAIL TEST] To: ${to} | Subject: ${subject}`);
+    return true;
+  }
+  try {
+    if (process.env.SENDGRID_API_KEY) {
+      const sg = await import("@sendgrid/mail");
+      sg.default.setApiKey(process.env.SENDGRID_API_KEY);
+      await sg.default.send({ to, from: process.env.SENDER_EMAIL || "noreply@swacherp.com", subject, html });
+    } else {
+      const transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port: Number(process.env.SMTP_PORT || 587),
+        auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+      });
+      await transporter.sendMail({ from: process.env.SENDER_EMAIL || "noreply@swacherp.com", to, subject, html });
+    }
+    return true;
+  } catch (err) {
+    console.error("[EMAIL ERROR]", err);
+    return false;
+  }
+}
+
+export class VerticalNotificationService {
+  // ── Nidhi: EMI due reminder ─────────────────────────────────────────────────
+  async sendEMIDueReminder(tenantId: number): Promise<number> {
+    let sent = 0;
+    try {
+      const loans = await db.execute(sql`
+        SELECT l.id, l.loan_number, l.next_emi_date, l.emi_amount,
+               m.name as member_name, m.phone as member_phone, m.email as member_email
+        FROM nidhi_loans l
+        JOIN nidhi_members m ON l.member_id = m.id
+        WHERE l.tenant_id = ${tenantId}
+          AND l.status IN ('active', 'disbursed')
+          AND l.next_emi_date IS NOT NULL
+          AND l.next_emi_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '3 days'
+          AND l.emi_reminder_sent IS DISTINCT FROM CURRENT_DATE
+      `);
+      for (const loan of loans.rows as any[]) {
+        const msg = `Dear ${loan.member_name}, your loan EMI of ₹${(loan.emi_amount / 100).toFixed(2)} for Loan #${loan.loan_number} is due on ${indDate(loan.next_emi_date)}. Please ensure timely payment to avoid penalty.`;
+        if (loan.member_phone) await sendWA(loan.member_phone, msg);
+        if (loan.member_email) await sendEmail(loan.member_email, `EMI Due Reminder — Loan #${loan.loan_number}`, `<p>${msg}</p>`);
+        await db.execute(sql`UPDATE nidhi_loans SET emi_reminder_sent = CURRENT_DATE WHERE id = ${loan.id}`).catch(() => {});
+        sent++;
+      }
+    } catch (e) { console.error("[NIDHI EMI REMINDER]", e); }
+    return sent;
+  }
+
+  // ── Nidhi: FD maturity alert ────────────────────────────────────────────────
+  async sendFDMaturityAlert(tenantId: number): Promise<number> {
+    let sent = 0;
+    try {
+      const fds = await db.execute(sql`
+        SELECT d.id, d.deposit_number, d.maturity_date, d.principal_amount, d.interest_rate,
+               m.name as member_name, m.phone as member_phone, m.email as member_email
+        FROM nidhi_deposits d
+        JOIN nidhi_members m ON d.member_id = m.id
+        WHERE d.tenant_id = ${tenantId}
+          AND d.status = 'active'
+          AND d.maturity_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '7 days'
+          AND d.maturity_alert_sent IS DISTINCT FROM CURRENT_DATE
+      `);
+      for (const fd of fds.rows as any[]) {
+        const msg = `Dear ${fd.member_name}, your Fixed Deposit #${fd.deposit_number} (₹${(fd.principal_amount / 100).toFixed(2)} @ ${fd.interest_rate}% p.a.) matures on ${indDate(fd.maturity_date)}. Please contact us to renew or withdraw.`;
+        if (fd.member_phone) await sendWA(fd.member_phone, msg);
+        if (fd.member_email) await sendEmail(fd.member_email, `FD Maturity Alert — ${fd.deposit_number}`, `<p>${msg}</p>`);
+        await db.execute(sql`UPDATE nidhi_deposits SET maturity_alert_sent = CURRENT_DATE WHERE id = ${fd.id}`).catch(() => {});
+        sent++;
+      }
+    } catch (e) { console.error("[NIDHI FD MATURITY]", e); }
+    return sent;
+  }
+
+  // ── Education: fee due reminder ─────────────────────────────────────────────
+  async sendFeeDueReminder(tenantId: number): Promise<number> {
+    let sent = 0;
+    try {
+      const dues = await db.execute(sql`
+        SELECT sfl.student_id, sfl.balance, s.name as student_name,
+               s.parent_name, s.parent_phone, s.parent_email, s.admission_number
+        FROM student_fee_ledger sfl
+        JOIN education_students s ON s.id = sfl.student_id
+        WHERE sfl.tenant_id = ${tenantId}
+          AND sfl.balance > 0
+          AND s.status = 'active'
+          AND (sfl.last_reminder IS NULL OR sfl.last_reminder < CURRENT_DATE - INTERVAL '7 days')
+        ORDER BY sfl.student_id, sfl.created_at DESC
+      `).catch(() => ({ rows: [] }));
+      const seen = new Set<number>();
+      for (const d of dues.rows as any[]) {
+        if (seen.has(d.student_id)) continue;
+        seen.add(d.student_id);
+        const msg = `Dear ${d.parent_name || "Parent"}, fee dues of ₹${(d.balance / 100).toFixed(2)} are pending for ${d.student_name} (Adm: ${d.admission_number}). Please pay at the earliest to avoid late fees.`;
+        if (d.parent_phone) await sendWA(d.parent_phone, msg);
+        if (d.parent_email) await sendEmail(d.parent_email, `Fee Due Reminder — ${d.student_name}`, `<p>${msg}</p>`);
+        await db.execute(sql`UPDATE student_fee_ledger SET last_reminder = CURRENT_DATE WHERE student_id = ${d.student_id} AND tenant_id = ${tenantId}`).catch(() => {});
+        sent++;
+      }
+    } catch (e) { console.error("[EDUCATION FEE DUE]", e); }
+    return sent;
+  }
+
+  // ── Healthcare: appointment reminder ───────────────────────────────────────
+  async sendAppointmentReminder(tenantId: number): Promise<number> {
+    let sent = 0;
+    try {
+      const appts = await db.execute(sql`
+        SELECT a.id, a.appointment_date, a.appointment_time, a.doctor_name,
+               a.patient_name, a.patient_phone, a.patient_email
+        FROM healthcare_appointments a
+        WHERE a.tenant_id = ${tenantId}
+          AND a.status IN ('confirmed', 'scheduled')
+          AND a.appointment_date = CURRENT_DATE + INTERVAL '1 day'
+          AND a.reminder_sent IS DISTINCT FROM true
+      `).catch(() => ({ rows: [] }));
+      for (const appt of appts.rows as any[]) {
+        const msg = `Dear ${appt.patient_name}, your appointment with Dr. ${appt.doctor_name} is scheduled for ${indDate(appt.appointment_date)} at ${appt.appointment_time || ""}. Please arrive 15 minutes early.`;
+        if (appt.patient_phone) await sendWA(appt.patient_phone, msg);
+        if (appt.patient_email) await sendEmail(appt.patient_email, `Appointment Reminder — ${indDate(appt.appointment_date)}`, `<p>${msg}</p>`);
+        await db.execute(sql`UPDATE healthcare_appointments SET reminder_sent = true WHERE id = ${appt.id}`).catch(() => {});
+        sent++;
+      }
+    } catch (e) { console.error("[HEALTHCARE APPOINTMENT]", e); }
+    return sent;
+  }
+
+  // ── Hotel: check-in confirmation ────────────────────────────────────────────
+  async sendCheckinConfirmation(opts: {
+    guestName: string;
+    guestPhone?: string;
+    guestEmail?: string;
+    reservationId: number | string;
+    roomNumber: string;
+    checkInDate: string;
+    checkOutDate: string;
+    nights: number;
+    hotelName: string;
+  }): Promise<void> {
+    const msg = `Dear ${opts.guestName}, your reservation at ${opts.hotelName} is confirmed! Room: ${opts.roomNumber} | Check-in: ${indDate(opts.checkInDate)} | Check-out: ${indDate(opts.checkOutDate)} | Nights: ${opts.nights}. We look forward to welcoming you.`;
+    if (opts.guestPhone) await sendWA(opts.guestPhone, msg);
+    if (opts.guestEmail) await sendEmail(opts.guestEmail, `Reservation Confirmed — ${opts.hotelName}`, `<p>${msg}</p>`);
+  }
+
+  // ── Restaurant: order status update ────────────────────────────────────────
+  async sendOrderStatusUpdate(opts: {
+    customerPhone?: string;
+    customerEmail?: string;
+    customerName: string;
+    orderNumber: string;
+    status: string;
+    estimatedTime?: string;
+  }): Promise<void> {
+    const statusLabel: Record<string, string> = {
+      confirmed: "confirmed and being prepared",
+      ready: "ready for pickup/delivery",
+      out_for_delivery: "out for delivery",
+      delivered: "delivered",
+      cancelled: "cancelled",
+    };
+    const statusText = statusLabel[opts.status] || opts.status;
+    const msg = `Dear ${opts.customerName}, your order #${opts.orderNumber} has been ${statusText}.${opts.estimatedTime ? ` Estimated time: ${opts.estimatedTime}.` : ""}`;
+    if (opts.customerPhone) await sendWA(opts.customerPhone, msg);
+    if (opts.customerEmail) await sendEmail(opts.customerEmail, `Order Update — #${opts.orderNumber}`, `<p>${msg}</p>`);
+  }
+
+  // ── Run all daily background reminders for a tenant ────────────────────────
+  async runDailyReminders(tenantId: number): Promise<{ emi: number; fd: number; fee: number; appt: number }> {
+    const [emi, fd, fee, appt] = await Promise.all([
+      this.sendEMIDueReminder(tenantId),
+      this.sendFDMaturityAlert(tenantId),
+      this.sendFeeDueReminder(tenantId),
+      this.sendAppointmentReminder(tenantId),
+    ]);
+    return { emi, fd, fee, appt };
+  }
+}
+
+export const verticalNotificationService = new VerticalNotificationService();

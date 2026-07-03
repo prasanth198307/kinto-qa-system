@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
+import { glNidhiEMI } from "./vertical-gl-service";
 
 const router = Router();
 
@@ -517,6 +518,9 @@ router.post("/loans/:id/collect-emi", auth, async (req: any, res) => {
 
     const r = await db.execute(sql`INSERT INTO nidhi_loan_transactions (tenant_id, loan_id, member_id, transaction_type, emi_number, principal_component, interest_component, penalty_amount, total_amount, outstanding_after, payment_mode, reference_number, collected_by)
       VALUES (${t}, ${req.params.id}, ${l.member_id}, 'emi', ${newPaid}, ${principal}, ${interest}, ${penalty}, ${total}, ${newOutstanding}, ${payment_mode||'cash'}, ${reference_number||null}, ${collected_by||null}) RETURNING *`);
+
+    // GL auto-post: Dr Cash, Cr Loan Principal + Interest Income
+    glNidhiEMI({ tenantId: t, loanId: req.params.id, transactionId: (r.rows[0] as any).id, principal: Math.round(principal * 100), interest: Math.round(interest * 100), penalty: Math.round(penalty * 100), paymentMode: payment_mode || "cash" });
 
     res.json({ ...r.rows[0], outstanding_after: newOutstanding, loan_status: isLastEmi ? 'closed' : l.status });
   } catch (e: any) { res.status(500).json({ message: e.message }); }

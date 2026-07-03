@@ -429,6 +429,7 @@ import ManufacturingJobCardsPage from "@/pages/manufacturing/job-cards";
 import ManufacturingSubContractingPage from "@/pages/manufacturing/sub-contracting";
 import ManufacturingMachineOEEPage from "@/pages/manufacturing/machine-oee";
 import { parseISO } from "date-fns";
+import NotificationEnginePage from "@/pages/NotificationSettingsPage";
 
 type Role = 'admin' | 'operator' | 'reviewer' | 'manager';
 
@@ -1365,6 +1366,8 @@ function AdminDashboard() {
         return <WhatsAppAnalytics />;
       case 'notification-settings':
         return <NotificationSettings />;
+      case 'notification-engine':
+        return <NotificationEnginePage />;
       case 'api-keys':
         return <ApiKeysPage />;
       case 'customer-outstanding-report':

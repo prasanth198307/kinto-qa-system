@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { sql } from "drizzle-orm";
 import { db } from "./db";
+import { glNGODonation } from "./vertical-gl-service";
 
 const router = Router();
 const requireAuth = (req: any, res: any, next: any) => { if (!req.isAuthenticated?.() && !req.user) return res.status(401).json({ error: "Unauthorized" }); next(); };
@@ -58,11 +59,14 @@ router.post("/donations", requireAuth, async (req: any, res) => {
     const { donor_id, project_id, amount, donation_date, payment_mode, reference_number, purpose, is_80g_eligible, notes } = req.body;
     const no = "DON-" + Date.now();
     const rows = await db.execute(sql`INSERT INTO ngo_donations (tenant_id, donation_number, donor_id, project_id, amount, donation_date, payment_mode, reference_number, purpose, is_80g_eligible, notes) VALUES (${tid(req)}, ${no}, ${donor_id}, ${project_id||null}, ${amount||0}, ${donation_date||null}, ${payment_mode||'cash'}, ${reference_number||null}, ${purpose||null}, ${is_80g_eligible ?? true}, ${notes||null}) RETURNING *`);
+    const donation = rows.rows[0] as any;
     await db.execute(sql`UPDATE ngo_donors SET total_donated=COALESCE(total_donated,0)+${amount||0} WHERE id=${donor_id} AND tenant_id=${tid(req)}`);
     if (project_id) {
       await db.execute(sql`UPDATE ngo_projects SET funds_received=COALESCE(funds_received,0)+${amount||0} WHERE id=${project_id} AND tenant_id=${tid(req)}`);
     }
-    res.json(rows.rows[0]);
+    // GL auto-post: Dr Cash/Bank, Cr Donation Income
+    glNGODonation({ tenantId: tid(req), donationId: donation.id, donationNumber: no, amount: Math.round((amount||0)*100), paymentMode: payment_mode || "cash", date: donation_date || undefined });
+    res.json(donation);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 

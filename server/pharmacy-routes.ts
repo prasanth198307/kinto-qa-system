@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { sql } from "drizzle-orm";
 import { db } from "./db";
+import { glPharmacySale } from "./vertical-gl-service";
 
 const router = Router();
 const requireAuth = (req: any, res: any, next: any) => { if (!req.isAuthenticated?.() && !req.user) return res.status(401).json({ error: "Unauthorized" }); next(); };
@@ -102,7 +103,10 @@ router.post("/sales", requireAuth, async (req: any, res) => {
         }
       }
     }
-    res.json(sale.rows[0]);
+    const saleRow = sale.rows[0] as any;
+    // GL auto-post: Dr Cash/Receivable, Cr Drug Sales
+    glPharmacySale({ tenantId: tid(req), saleId: saleRow.id, billNumber: no, totalAmount: Math.round((total_amount||0)*100), discount: Math.round((discount||0)*100), paidAmount: Math.round((paid_amount||0)*100), paymentMode: payment_mode || "cash", date: sale_date || undefined });
+    res.json(saleRow);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 

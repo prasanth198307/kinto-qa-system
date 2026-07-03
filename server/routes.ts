@@ -81,6 +81,8 @@ import { importCreditNotesFromExcel } from "./creditnote-import";
 import { parseExcelFile, commitImport } from "./cashRegisterImport";
 import { importCashRegisterFromExcel } from "./importCashRegisterFromExcel";
 import archiver from "archiver";
+import { pdfRouter } from "./pdf-service";
+import { verticalNotificationService } from "./notificationService";
 import { processMessage as chatAgentProcess } from "./chatAgent";
 import { insertCashRegisterDaySchema, insertCashRegisterTransactionSchema, insertCashRegisterExpenseItemSchema, insertSalespersonMappingSchema, cashRegisterDays, cashRegisterTransactions, cashRegisterExpenseItems, expenseVouchers, expenseItems, customerAdvances, advanceApplications, insertCustomerAdvanceSchema, insertAdvanceApplicationSchema, journalEntries, journalLines, chartOfAccounts, budgets, budgetItems, tenants, subscriptionPlans, subscriptions, billingEvents, deletionAudit } from "@shared/schema";
 import { sql, and, eq, ne, gte, lte, gt, asc, desc, inArray, isNotNull, isNull, or, ilike, type SQL } from "drizzle-orm";
@@ -30877,6 +30879,43 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
   });
 
   // Dynamic external API router — handles all UI-registered custom APIs
+  app.use('/api/pdf', pdfRouter);
+
+  // ── Vertical Notification API ────────────────────────────────────────────
+  // POST /api/notifications/send — send a one-off vertical notification
+  app.post('/api/notifications/send', async (req: any, res) => {
+    if (!req.isAuthenticated?.() && !req.user) return res.status(401).json({ error: 'Unauthorized' });
+    const { type, payload } = req.body;
+    const tid: number = req.session?.tenantId ?? req.user?.tenantId ?? 1;
+    try {
+      switch (type) {
+        case 'hotel_checkin_confirmation':
+          await verticalNotificationService.sendCheckinConfirmation({ ...payload, tenantId: tid });
+          break;
+        case 'restaurant_order_status':
+          await verticalNotificationService.sendOrderStatusUpdate(payload);
+          break;
+        default:
+          return res.status(400).json({ error: `Unknown notification type: ${type}` });
+      }
+      res.json({ success: true, type });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // POST /api/notifications/run-reminders — manually trigger all daily reminders for tenant
+  app.post('/api/notifications/run-reminders', async (req: any, res) => {
+    if (!req.isAuthenticated?.() && !req.user) return res.status(401).json({ error: 'Unauthorized' });
+    const tid: number = req.session?.tenantId ?? req.user?.tenantId ?? 1;
+    try {
+      const results = await verticalNotificationService.runDailyReminders(tid);
+      res.json({ success: true, sent: results });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.use('/api/external/proxy', externalApiProxy);
   app.use('/api/external', dynamicExternalApiRouter);
 

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { sql } from "drizzle-orm";
 import { db } from "./db";
+import { glEducationFeePayment } from "./vertical-gl-service";
 
 const router = Router();
 const requireAuth = (req: any, res: any, next: any) => { if (!req.isAuthenticated?.() && !req.user) return res.status(401).json({ error: "Unauthorized" }); next(); };
@@ -994,7 +995,10 @@ router.post("/fee-payments", requireAuth, async (req: any, res) => {
               ${netAmount}, ${grossAmt}, ${discountAmt}, ${paid_date}, ${payment_mode||'cash'}, ${for_month||null}, ${notes||null})
       RETURNING *`);
 
-    const payment = rows.rows[0];
+    const payment = rows.rows[0] as any;
+
+    // GL auto-post to Finance module: Dr Cash/Bank, Cr Fee Income
+    glEducationFeePayment({ tenantId: tenantId, paymentId: payment.id, receiptNo: receipt, amount: Math.round(netAmount * 100), paymentMode: payment_mode || "cash", date: paid_date || undefined });
 
     // Auto-post ledger entries
     const prevBal = await db.execute(sql`

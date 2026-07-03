@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { sql } from "drizzle-orm";
 import { db } from "./db";
+import { glHotelCheckout, glHotelFolio } from "./vertical-gl-service";
 
 const router = Router();
 const requireAuth = (req: any, res: any, next: any) => { if (!req.isAuthenticated?.() && !req.user) return res.status(401).json({ error: "Unauthorized" }); next(); };
@@ -186,10 +187,15 @@ router.post("/reservations/:id/checkout", requireAuth, async (req: any, res) => 
     const rows = await db.execute(sql`
       UPDATE hotel_reservations SET status='checked_out', actual_check_out=NOW()
       WHERE id=${req.params.id} AND tenant_id=${tid(req)} RETURNING *`);
-    if (rows.rows[0]?.room_id) {
-      await db.execute(sql`UPDATE hotel_rooms SET status='available' WHERE id=${rows.rows[0].room_id}`);
+    const reservation = rows.rows[0] as any;
+    if (reservation?.room_id) {
+      await db.execute(sql`UPDATE hotel_rooms SET status='available' WHERE id=${reservation.room_id}`);
     }
-    res.json(rows.rows[0]);
+    // GL auto-post: Dr Cash/Receivable, Cr Room Revenue
+    if (reservation) {
+      glHotelCheckout({ tenantId: tid(req), reservationId: req.params.id, totalAmount: Math.round((reservation.total_amount || 0) * 100), paidAmount: Math.round((reservation.paid_amount || reservation.total_amount || 0) * 100), paymentMode: reservation.payment_mode || "cash" });
+    }
+    res.json(reservation);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
@@ -231,7 +237,7 @@ router.post("/folios", requireAuth, async (req: any, res) => {
       VALUES (${tid(req)}, ${no}, ${reservation_id||null}, ${guest_id||null}, ${room_id||null},
               ${total_amount||0}, ${paid_amount||0}, ${bal}, ${payment_mode||null}, ${st}, ${notes||null})
       RETURNING *`);
-    const fId = folio.rows[0].id;
+    const fId = (folio.rows[0] as any).id as number;
     if (items?.length) {
       for (const it of items) {
         await db.execute(sql`
@@ -239,6 +245,8 @@ router.post("/folios", requireAuth, async (req: any, res) => {
           VALUES (${fId}, ${it.description}, ${it.quantity||1}, ${it.rate||0}, ${it.amount||0}, ${it.category||'room'})`);
       }
     }
+    // GL auto-post: Dr Cash/Receivable, Cr Room Revenue
+    glHotelFolio({ tenantId: tid(req), folioId: fId, totalAmount: Math.round((total_amount||0)*100), paidAmount: Math.round((paid_amount||0)*100), paymentMode: payment_mode || "cash" });
     res.json(folio.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
