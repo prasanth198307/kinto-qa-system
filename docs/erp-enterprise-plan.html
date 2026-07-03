@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SwachERP — Enterprise Implementation Plan</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;font-size:9pt;line-height:1.45;color:#1a1a1a;background:#fff}
+@page{size:A4 portrait;margin:12mm 11mm 12mm 11mm}
+@media print{
+  body{font-size:8pt}
+  .no-break{page-break-inside:avoid}
+  .page-break{page-break-before:always}
+  h2,h3{page-break-after:avoid}
+}
+.page-header{border-bottom:2.5px solid #1a56db;padding-bottom:7px;margin-bottom:12px;display:flex;align-items:flex-end;justify-content:space-between}
+.page-header h1{font-size:14pt;font-weight:700;color:#1a56db}
+.page-header .sub{font-size:7.5pt;color:#555}
+.date-line{font-size:7.5pt;color:#888}
+h2{font-size:10.5pt;font-weight:700;color:#fff;background:#1a56db;padding:3px 9px;margin:12px 0 7px;border-radius:3px}
+h3{font-size:9pt;font-weight:700;color:#1a56db;margin:8px 0 4px;border-bottom:1px solid #dde6ff;padding-bottom:2px}
+h4{font-size:8.5pt;font-weight:700;color:#374151;margin:6px 0 3px}
+.summary-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-bottom:10px}
+.stat-box{border:1px solid #d0daf5;border-radius:4px;padding:5px 6px;text-align:center;background:#f0f4ff}
+.stat-num{font-size:13pt;font-weight:700;color:#1a56db}
+.stat-lbl{font-size:7pt;color:#555;margin-top:1px}
+.pbar-row{display:flex;align-items:center;gap:5px;margin-bottom:3px}
+.pbar-label{width:145px;flex-shrink:0;font-size:8pt}
+.pbar-bg{flex:1;height:8px;background:#e8edf5;border-radius:4px;overflow:hidden}
+.pbar-fill{height:100%;border-radius:4px}
+.pbar-pct{width:28px;text-align:right;font-size:7.5pt;color:#444}
+.fill-green{background:#1a9e6e}.fill-amber{background:#e08c00}.fill-red{background:#d03232}
+.badge{display:inline-block;font-size:6.5pt;padding:1px 4px;border-radius:2px;font-weight:600;vertical-align:middle;white-space:nowrap}
+.b-done{background:#d4f0e0;color:#166534}.b-wip{background:#fde9bb;color:#7c5300}
+.b-stub{background:#fde0e0;color:#991b1b}.b-shared{background:#dbeafe;color:#1e40af}
+.b-new{background:#ede9fe;color:#4c1d95}.b-code{background:#f3f4f6;color:#374151}
+.erp-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.erp-card{border:1px solid #d0daf5;border-radius:4px;padding:6px 8px;page-break-inside:avoid}
+.erp-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px}
+.erp-name{font-size:9pt;font-weight:700}
+.erp-pct{font-size:9pt;font-weight:700}
+.pct-green{color:#166534}.pct-amber{color:#7c5300}.pct-red{color:#991b1b}
+.screen-list{font-size:7.5pt;line-height:1.5}
+.done-s{color:#166534}.miss-s{color:#991b1b}.link-s{color:#1e40af;font-style:italic}
+.mini-bar{height:5px;background:#e8edf5;border-radius:3px;overflow:hidden;margin:2px 0 3px}
+.mini-fill{height:100%;border-radius:3px}
+table{width:100%;border-collapse:collapse;font-size:7.5pt;margin-bottom:7px}
+th{background:#eef2ff;color:#1e40af;font-weight:700;padding:3px 5px;text-align:left;border:1px solid #d0daf5}
+td{padding:2.5px 5px;border:1px solid #e2e8f0;vertical-align:top}
+tr:nth-child(even) td{background:#f8faff}
+.code-box{background:#f3f4f6;border:1px solid #d1d5db;border-left:3px solid #1a56db;border-radius:3px;padding:4px 7px;font-family:'Courier New',monospace;font-size:7pt;line-height:1.5;margin:3px 0 6px;white-space:pre-wrap;page-break-inside:avoid}
+.phase-row{display:flex;gap:7px;align-items:flex-start;margin-bottom:5px;page-break-inside:avoid}
+.phase-num{width:20px;height:20px;border-radius:50%;background:#1a56db;color:#fff;font-size:7.5pt;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.phase-body{flex:1}
+.phase-title{font-weight:700;font-size:8.5pt}
+.phase-detail{font-size:7.5pt;color:#444;margin-top:1px}
+.phase-time{font-size:7pt;color:#888;float:right;margin-top:1px}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px}
+.col-box{page-break-inside:avoid}
+.legend{display:flex;gap:10px;font-size:7pt;margin-bottom:7px;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:3px}
+.leg-dot{width:9px;height:9px;border-radius:2px;flex-shrink:0}
+.info-box{background:#f0f4ff;border:1px solid #c3d0f5;border-radius:3px;padding:5px 8px;margin:4px 0;font-size:7.5pt}
+.warn-box{background:#fffbeb;border:1px solid #fcd34d;border-radius:3px;padding:5px 8px;margin:4px 0;font-size:7.5pt}
+.doc-footer{margin-top:12px;border-top:1px solid #d0daf5;padding-top:4px;font-size:6.5pt;color:#999;display:flex;justify-content:space-between}
+.arch-flow{display:flex;align-items:center;gap:4px;font-size:7.5pt;flex-wrap:wrap;margin:4px 0 6px}
+.arch-box{background:#eef2ff;border:1px solid #c3d0f5;border-radius:3px;padding:3px 7px;font-weight:600;color:#1e40af;white-space:nowrap}
+.arch-arr{color:#888;font-size:10pt;line-height:1}
+.arch-box.green{background:#d4f0e0;border-color:#86efac;color:#166534}
+.arch-box.gray{background:#f3f4f6;border-color:#d1d5db;color:#374151}
+.arch-box.amber{background:#fde9bb;border-color:#fcd34d;color:#7c5300}
+.grid-2-narrow{display:grid;grid-template-columns:1.2fr 0.8fr;gap:9px}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════
+     PAGE 1 — OVERVIEW + HOW THE SYSTEM WORKS END-TO-END
+══════════════════════════════════════════════════════════ -->
+<div class="page-header">
+  <div>
+    <h1>SwachERP — Enterprise Implementation Plan</h1>
+    <div class="sub">17 Verticals · Subscription Plans · Modules · Permissions · Global Config · Code Patterns</div>
+  </div>
+  <div class="date-line">July 2026 · Accurate from codebase audit</div>
+</div>
+
+<div class="summary-grid">
+  <div class="stat-box"><div class="stat-num">17</div><div class="stat-lbl">ERP Verticals</div></div>
+  <div class="stat-box"><div class="stat-num">56%</div><div class="stat-lbl">Overall complete</div></div>
+  <div class="stat-box"><div class="stat-num">60+</div><div class="stat-lbl">Module slugs</div></div>
+  <div class="stat-box"><div class="stat-num">300+</div><div class="stat-lbl">Screen keys</div></div>
+  <div class="stat-box"><div class="stat-num">4</div><div class="stat-lbl">Plan tiers</div></div>
+  <div class="stat-box"><div class="stat-num">74</div><div class="stat-lbl">Role types</div></div>
+</div>
+
+<!-- ARCHITECTURE FLOW -->
+<h2>① SYSTEM ARCHITECTURE — How tenant, plan, modules, and permissions flow</h2>
+
+<div class="arch-flow">
+  <div class="arch-box gray">Super Admin<br><small style="font-weight:400">Creates plan</small></div>
+  <div class="arch-arr">→</div>
+  <div class="arch-box">subscription_plans<br><small style="font-weight:400">modules[ ] JSON array</small></div>
+  <div class="arch-arr">→</div>
+  <div class="arch-box gray">Tenant signs up</div>
+  <div class="arch-arr">→</div>
+  <div class="arch-box">subscriptions table<br><small style="font-weight:400">tenant_id + plan_slug</small></div>
+  <div class="arch-arr">→</div>
+  <div class="arch-box green">plan-features.ts<br><small style="font-weight:400">MODULE_NAV_ITEMS lookup</small></div>
+  <div class="arch-arr">→</div>
+  <div class="arch-box green">/api/tenant/features<br><small style="font-weight:400">returns allowedNavItems[ ]</small></div>
+</div>
+<div class="arch-flow">
+  <div class="arch-box green">allowedNavItems[ ]</div>
+  <div class="arch-arr">→</div>
+  <div class="arch-box">usePlanFeatures() hook<br><small style="font-weight:400">client side</small></div>
+  <div class="arch-arr">→</div>
+  <div class="arch-box">useFilteredNavigation()<br><small style="font-weight:400">intersects with role perms</small></div>
+  <div class="arch-arr">→</div>
+  <div class="arch-box green">Sidebar shows only<br><small style="font-weight:400">plan + role allowed items</small></div>
+  <div class="arch-arr">+</div>
+  <div class="arch-box amber">role_permissions table<br><small style="font-weight:400">can_view/create/edit/delete</small></div>
+</div>
+
+<div class="info-box">
+  <strong>Two-layer access control:</strong> Layer 1 = <em>Plan gates</em> — which modules (nav sections) are visible based on subscription.
+  Layer 2 = <em>Role gates</em> — within each visible screen, what CRUD actions can this role perform.
+  Both must pass. A screen hidden by plan cannot be accessed even if role permits it.
+</div>
+
+<!-- SUBSCRIPTION PLANS -->
+<h2>② SUBSCRIPTION PLANS — How they are created and what they unlock</h2>
+
+<div class="two-col">
+<div class="col-box">
+<h3>Plan tiers (trial → basic → professional → enterprise)</h3>
+<table>
+  <tr><th>Plan</th><th>Modules included</th><th>Max users</th><th>Price (monthly)</th></tr>
+  <tr>
+    <td><strong>Trial</strong><br><span class="badge b-stub">14 days</span></td>
+    <td>invoicing, basic_inventory, masters, purchase_orders</td>
+    <td>5</td><td>Free</td>
+  </tr>
+  <tr>
+    <td><strong>Basic</strong></td>
+    <td>+ sales_orders, production, quality_returns, mis, expenses, documents</td>
+    <td>15</td><td>₹2,999/mo</td>
+  </tr>
+  <tr>
+    <td><strong>Professional</strong></td>
+    <td>+ accounting, hr_payroll, crm, whatsapp, maintenance, warehouses, recurring_invoices</td>
+    <td>50</td><td>₹7,999/mo</td>
+  </tr>
+  <tr>
+    <td><strong>Enterprise</strong></td>
+    <td>+ all verticals: restaurant, hotel, healthcare, pharmacy, education, logistics, nidhi, ngo, real_estate, agriculture, ecommerce, gold_erp + multi_currency, fixed_assets, projects</td>
+    <td>Unlimited</td><td>Custom</td>
+  </tr>
+</table>
+
+<h3>How to create a new plan (Super Admin)</h3>
+<ol style="font-size:7.5pt;line-height:1.8;padding-left:14px">
+  <li>Go to <strong>Super Admin → Plans</strong> (super-admin-plans.tsx)</li>
+  <li>Click <em>Create Plan</em> → set name, slug, price_monthly, price_yearly in paise</li>
+  <li>Select modules from MODULE_NAV_ITEMS keys (e.g. <code>restaurant</code>, <code>hr_payroll</code>)</li>
+  <li>Set max_users, trial_days, features[ ] (human-readable bullets)</li>
+  <li>Save → appears on /pricing page for new tenants</li>
+  <li>Existing tenant upgrade: Super Admin → Tenants → change plan_slug</li>
+</ol>
+
+<h3>How modules map to screens (server/plan-features.ts)</h3>
+<div class="code-box">// Each module slug → array of nav-item IDs
+// File: server/plan-features.ts
+export const MODULE_NAV_ITEMS: Record&lt;string, string[]&gt; = {
+  invoicing:    ['overview','invoices','payment-management',...],
+  accounting:   ['chart-of-accounts','journal-entries','trial-balance',
+                 'profit-loss','balance-sheet','bank-reconciliation',...],
+  hr_payroll:   ['hr-employees','hr-attendance','hr-payroll','hr-leaves',...],
+  restaurant:   ['restaurant-pos','restaurant-kitchen','restaurant-tables',
+                 'restaurant-menu','restaurant-orders',...],  // 30+ items
+  hotel:        ['hotel/front-desk','hotel/reservations','hotel/folio',...],
+  nidhi:        ['nidhi/members','nidhi/deposits','nidhi/loans','nidhi/emi',...],
+  // ...60+ module slugs total
+};
+
+// API endpoint builds allowed list:
+// GET /api/tenant/features → plan-features.ts → computePlanFeatures()
+// Reads tenant's subscription → looks up plan.modules[ ]
+// → resolves each module to nav-item IDs → returns flat allowedNavItems[ ]</div>
+</div>
+
+<div class="col-box">
+<h3>Vertical-specific plans (per ERP)</h3>
+<table>
+  <tr><th>ERP Plan</th><th>Modules granted</th></tr>
+  <tr><td>Restaurant Starter</td><td>restaurant, invoicing, basic_inventory, expenses</td></tr>
+  <tr><td>Restaurant Pro</td><td>+ hr_payroll, crm, whatsapp, accounting</td></tr>
+  <tr><td>Hotel Basic</td><td>hotel, invoicing, accounting, hr_payroll</td></tr>
+  <tr><td>Healthcare Basic</td><td>healthcare, pharmacy, invoicing, accounting</td></tr>
+  <tr><td>Nidhi Basic</td><td>nidhi, accounting, crm</td></tr>
+  <tr><td>NGO Basic</td><td>ngo, accounting, crm, documents</td></tr>
+  <tr><td>Education Basic</td><td>education, invoicing, accounting, hr_payroll</td></tr>
+  <tr><td>Gold ERP Basic</td><td>gold_erp, invoicing, accounting, inventory</td></tr>
+  <tr><td>Logistics Basic</td><td>logistics_transport, invoicing, gatepasses</td></tr>
+  <tr><td>Real Estate Basic</td><td>real_estate, accounting, crm, documents</td></tr>
+</table>
+
+<h3>Marketplace add-ons (purchased separately)</h3>
+<table>
+  <tr><th>Add-on</th><th>Module slug</th><th>What it unlocks</th></tr>
+  <tr><td>WhatsApp Marketing</td><td>whatsapp</td><td>Checklists, campaigns, analytics</td></tr>
+  <tr><td>Advanced CRM</td><td>crm</td><td>Pipeline, drip, lead scoring</td></tr>
+  <tr><td>HR + Payroll</td><td>hr_payroll</td><td>Full HR suite, ESS portal</td></tr>
+  <tr><td>Accounting Suite</td><td>accounting</td><td>GL, bank recon, TDS, budget</td></tr>
+  <tr><td>E-Way Bill</td><td>gatepasses</td><td>NIC integration, consignments</td></tr>
+  <tr><td>Maintenance</td><td>maintenance</td><td>PM templates, OEE, spare parts</td></tr>
+  <tr><td>Multi-currency</td><td>multi_currency</td><td>Forex, rate management</td></tr>
+  <tr><td>Fixed Assets</td><td>fixed_assets</td><td>Asset register, depreciation</td></tr>
+</table>
+
+<h3>How plan check works at runtime</h3>
+<div class="code-box">// Client hook — any component can call this
+const { hasModule, canAccessNavItem } = usePlanFeatures();
+
+if (!hasModule('hotel')) return &lt;UpgradePrompt /&gt;;
+if (!canAccessNavItem('hotel/reservations')) return &lt;LockedScreen /&gt;;
+
+// Server middleware — all API routes protected
+// server/tenant-middleware.ts checks subscription status
+// Returns 403 if tenant's plan doesn't include the module</div>
+</div>
+</div>
+
+<!-- GLOBAL MASTERS & CONFIG -->
+<h2>③ GLOBAL MASTERS — Shared config used across all 17 ERPs</h2>
+
+<div class="three-col">
+<div class="col-box">
+<h3>Masters module (masters/ screens)</h3>
+<table>
+  <tr><th>Master</th><th>Used by</th></tr>
+  <tr><td>HSN / SAC codes</td><td>All invoicing ERPs</td></tr>
+  <tr><td>Tax config (GST %)</td><td>All billing screens</td></tr>
+  <tr><td>States &amp; countries</td><td>Address fields everywhere</td></tr>
+  <tr><td>Bank master</td><td>Finance, Nidhi, HR payroll</td></tr>
+  <tr><td>Branches / Cost centres</td><td>Restaurant outlets, Hotel properties, RE projects</td></tr>
+  <tr><td>Doc numbering</td><td>Invoice series, LR no., EWB no.</td></tr>
+  <tr><td>Email templates</td><td>Notifications across all ERPs</td></tr>
+  <tr><td>SMS templates</td><td>All WhatsApp/SMS triggers</td></tr>
+  <tr><td>Approval matrix</td><td>Leave, PO, loan, booking approvals</td></tr>
+  <tr><td>Print templates</td><td>Invoice, gatepass, LR layout</td></tr>
+  <tr><td>Feature flags</td><td>Turn on/off per-tenant features</td></tr>
+  <tr><td>Webhooks</td><td>External system integrations</td></tr>
+</table>
+</div>
+
+<div class="col-box">
+<h3>Global Config (tenant-level)</h3>
+<table>
+  <tr><th>Config</th><th>Where set</th></tr>
+  <tr><td>Company name, logo, GSTIN</td><td>Company Settings / tenant_settings</td></tr>
+  <tr><td>Financial year (April–March)</td><td>Company Settings</td></tr>
+  <tr><td>Base currency</td><td>Currency Management</td></tr>
+  <tr><td>Tax regime (GST/ZATCA/EU VAT)</td><td>Tax Engine → masters/tax-config</td></tr>
+  <tr><td>Invoice prefix / series</td><td>masters/doc-numbering</td></tr>
+  <tr><td>WhatsApp API key (WATI)</td><td>notification-settings</td></tr>
+  <tr><td>Razorpay/payment gateway keys</td><td>tenant_settings (encrypted)</td></tr>
+  <tr><td>NIC EWB credentials</td><td>nic_ewb_credentials table</td></tr>
+  <tr><td>Email SMTP config</td><td>notification-settings</td></tr>
+  <tr><td>Approval chain rules</td><td>masters/approval-matrix</td></tr>
+  <tr><td>Branding (logo, colors)</td><td>tenant_settings → useTenantBranding()</td></tr>
+</table>
+</div>
+
+<div class="col-box">
+<h3>How config flows to all ERPs</h3>
+<div class="code-box">// Every API route reads tenant_id from session:
+// server/tenant-middleware.ts injects req.tenantId
+
+// Config read pattern used in all routes:
+const cfg = await db.query(
+  `SELECT * FROM tenant_settings
+   WHERE tenant_id = $1`, [req.tenantId]
+);
+// Tax config shared:
+const taxRates = await db.query(
+  `SELECT * FROM tax_config
+   WHERE tenant_id = $1
+     AND is_active = true`, [req.tenantId]
+);
+// Doc numbering:
+const nextNum = await getNextDocNumber(
+  'invoice', req.tenantId
+); // auto-increments per tenant</div>
+<div class="info-box" style="margin-top:5px">
+  <strong>Multi-tenant isolation:</strong> Every table has <code>tenant_id</code> column.
+  All queries filter by <code>req.tenantId</code> injected by tenant-middleware.ts.
+  PostgreSQL RLS (pending) will enforce this at DB level as a safety net.
+</div>
+</div>
+</div>
+
+<!-- ROLES & PERMISSIONS -->
+<h2>④ USERS, ROLES &amp; PERMISSIONS — Full system explained</h2>
+
+<div class="two-col">
+<div class="col-box">
+<h3>Role permission tables (DB schema)</h3>
+<div class="code-box">-- shared/schema.ts
+
+-- Roles table (74 role types across all verticals)
+roles (
+  id, tenant_id, name,          -- e.g. "Hotel Manager"
+  vertical,                     -- 'hotel','restaurant','nidhi'...
+  is_system_role BOOLEAN,       -- true = default role, can't delete
+  record_status INTEGER         -- 1=active, 0=deleted
+)
+
+-- Per-screen CRUD permissions per role
+role_permissions (
+  id, tenant_id,
+  role_id       → roles.id,
+  screen_key    VARCHAR,        -- e.g. 'hotel_reservations'
+  can_view      INTEGER,        -- 0 or 1
+  can_create    INTEGER,
+  can_edit      INTEGER,
+  can_delete    INTEGER,
+  record_status INTEGER
+  UNIQUE (role_id, screen_key)
+)
+
+-- Users assigned to one role
+users (
+  id, tenant_id, username, email,
+  role_id       → roles.id,
+  vertical      -- which ERP this user belongs to
+)</div>
+
+<h3>How screen_key maps to nav items</h3>
+<div class="code-box">// shared/nav-screen-map.ts — single source of truth
+// nav-item-id (kebab)  →  screen_key (snake_case)
+export const navItemToScreenKey = {
+  'hotel/reservations':    'hotel_reservations',
+  'nidhi/loans':           'nidhi_loans',
+  'education/fees':        'education_fees',
+  'restaurant-pos':        'restaurant_pos',
+  'chart-of-accounts':     'accounting_coa',
+  // 300+ mappings...
+};
+// HOW TO ADD A NEW SCREEN (2 steps only):
+// 1. Add one line here: 'my-new-page': 'my_screen_key'
+// 2. Server auto-grants to all admin roles on next restart
+// (optional) Add to screen-registry.ts for UI label in Role Mgmt dialog</div>
+</div>
+
+<div class="col-box">
+<h3>74 role types — organised by vertical</h3>
+<table>
+  <tr><th>Vertical</th><th>System roles</th></tr>
+  <tr><td>Platform</td><td>Super Admin, Platform Admin (KINTO)</td></tr>
+  <tr><td>All verticals</td><td>Admin, Manager, Operator, Reviewer, Viewer</td></tr>
+  <tr><td>Restaurant</td><td>Restaurant Manager, Chef, Waiter, Cashier, Delivery Agent, Kitchen Display</td></tr>
+  <tr><td>Hotel</td><td>Hotel Manager, Front Desk, Housekeeping, F&amp;B Manager, Night Auditor</td></tr>
+  <tr><td>Healthcare</td><td>Doctor, Nurse, Lab Technician, Pharmacist, Billing Staff, Ward Manager</td></tr>
+  <tr><td>Pharmacy</td><td>Pharmacist, Pharmacy Manager, Purchase Manager</td></tr>
+  <tr><td>Finance</td><td>Accountant, Finance Manager, Auditor, TDS Manager</td></tr>
+  <tr><td>HR</td><td>HR Manager, Payroll Admin, Recruiter, Employee (ESS)</td></tr>
+  <tr><td>Nidhi</td><td>Branch Manager, Loan Officer, Collection Agent, Teller</td></tr>
+  <tr><td>NGO</td><td>Program Manager, Fundraiser, Volunteer Coordinator, FCRA Officer</td></tr>
+  <tr><td>Logistics</td><td>Fleet Manager, Driver, Dispatcher, Freight Manager</td></tr>
+  <tr><td>Education</td><td>Principal, Teacher, Fee Clerk, Parent (portal only)</td></tr>
+  <tr><td>Gold ERP</td><td>Jeweller, Karigar, Retail Staff, Wholesale Manager, Hallmarking Officer</td></tr>
+  <tr><td>Real Estate</td><td>Project Manager, Sales Agent, Collection Manager, Site Supervisor</td></tr>
+  <tr><td>Agriculture</td><td>Farm Manager, FPO Manager, Input Manager</td></tr>
+  <tr><td>CRM</td><td>Sales Rep, Sales Manager, Marketing Manager</td></tr>
+  <tr><td>E-Commerce</td><td>Catalog Manager, Orders Manager, Logistics Coordinator</td></tr>
+</table>
+
+<h3>How to set permissions for a role (UI flow)</h3>
+<ol style="font-size:7.5pt;line-height:1.8;padding-left:14px">
+  <li>Go to <strong>Users → Role &amp; Permissions</strong> (role-permissions screen)</li>
+  <li>Select role from dropdown (e.g. "Hotel Manager")</li>
+  <li>Grid shows all screens with 4 checkboxes: View / Create / Edit / Delete</li>
+  <li>Check/uncheck → saved to <code>role_permissions</code> table</li>
+  <li>Change takes effect immediately (no cache for permissions)</li>
+</ol>
+</div>
+</div>
+
+<div class="info-box">
+  <strong>Auto-grant on new screen:</strong> When a new screen_key is added to <code>nav-screen-map.ts</code>, the server auto-patches <code>role_permissions</code> on startup —
+  granting <code>can_view=1</code> to all admin roles across all tenants. No SQL migration needed for new screens.
+  Non-admin roles start with <code>can_view=0</code> until an admin explicitly grants access.
+</div>
+
+<div class="doc-footer">
+  <span>SwachERP Enterprise Plan · Page 1 of 5</span>
+  <span>kinto.swacherp.com · July 2026</span>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     PAGE 2 — SHARED MODULE INTEGRATION MAP
+══════════════════════════════════════════════════════════ -->
+<div class="page-break"></div>
+<div class="page-header">
+  <div><h1>Shared Modules — How every ERP links to shared services</h1></div>
+  <div class="date-line">Page 2 of 5 · SwachERP Plan</div>
+</div>
+
+<h2>⑤ SHARED MODULE MATRIX — Which ERP uses which shared module + code link</h2>
+
+<table>
+  <tr>
+    <th style="width:14%">Shared Module</th>
+    <th style="width:10%">File / API</th>
+    <th style="width:8%">Status</th>
+    <th style="width:32%">ERPs using it</th>
+    <th style="width:36%">Code integration pattern</th>
+  </tr>
+  <tr>
+    <td><strong>Finance GL / Journal</strong><br>journal-service.ts</td>
+    <td>/api/finance/journal<br>journal-entries.tsx</td>
+    <td><span class="badge b-wip">partial link</span></td>
+    <td>All 17 ERPs should post here: Restaurant (F&amp;B sales), Hotel (room revenue), Healthcare (billing), Pharmacy, Nidhi (loan interest), NGO (donations), Education (fees), Manufacturing (production), Retail (POS), Logistics (freight)</td>
+    <td><div class="code-box">// In any vertical route file:
+import { journalService } from './journal-service';
+await journalService.post({
+  tenant_id, date, ref_type: 'hotel_folio',
+  ref_id: folioId,
+  entries: [
+    { account: '1100', debit: amount },
+    { account: '4100', credit: amount }
+  ]
+});</div></td>
+  </tr>
+  <tr>
+    <td><strong>CRM Contacts</strong><br>crm-leads.tsx</td>
+    <td>/api/crm/contacts<br>crm-routes.ts</td>
+    <td><span class="badge b-done">done</span></td>
+    <td>Restaurant (customers), Hotel (guests), Healthcare (patients), Nidhi (members), NGO (donors), Real Estate (buyers), Education (parents)</td>
+    <td><div class="code-box">// Dedup on phone/email before creating:
+const existing = await db.query(
+  `SELECT id FROM crm_contacts
+   WHERE phone=$1 AND tenant_id=$2`,
+  [phone, tenant_id]);
+const crm_id = existing?.id
+  ?? await createCrmContact(...);</div></td>
+  </tr>
+  <tr>
+    <td><strong>HR Employees</strong><br>hr-employees.tsx</td>
+    <td>/api/hr/employees<br>hr-routes.ts</td>
+    <td><span class="badge b-done">done</span></td>
+    <td>Restaurant (staff, waiters, chefs), Hotel (housekeeping, front desk), Healthcare (doctors, nurses), Education (teachers), NGO (field workers), Nidhi (agents)</td>
+    <td><div class="code-box">// Vertical staff tables store employee_id FK:
+CREATE TABLE hotel_staff (
+  id SERIAL PRIMARY KEY,
+  employee_id INT REFERENCES hr_employees(id),
+  department VARCHAR, -- housekeeping/fnb/frontdesk
+  tenant_id INT
+);
+// Payroll auto-runs for all active hr_employees</div></td>
+  </tr>
+  <tr>
+    <td><strong>Vendors / Suppliers</strong><br>vendor-history.tsx</td>
+    <td>/api/vendors<br>masters-routes.ts</td>
+    <td><span class="badge b-done">done</span></td>
+    <td>Restaurant (ingredient suppliers), Pharmacy (drug distributors), Hotel (laundry, F&amp;B supplies), Manufacturing (raw material suppliers), Education (stationery, transport vendors)</td>
+    <td><div class="code-box">// All purchase orders reference vendor_id:
+const vendors = useQuery(['/api/vendors']);
+// Vendor master has: GSTIN, bank details,
+// payment terms — reused by all PO screens
+// Purchase orders table: vendor_id FK</div></td>
+  </tr>
+  <tr>
+    <td><strong>Inventory / Warehouse</strong><br>inventory-management.tsx</td>
+    <td>/api/inventory<br>warehouse-routes.ts</td>
+    <td><span class="badge b-wip">partial</span></td>
+    <td>Restaurant (raw ingredients), Pharmacy (drug stock), Healthcare (consumables, medicines), Gold ERP (metal stock, jewellery), Agriculture (inputs: seeds, fertilisers), Education (library books)</td>
+    <td><div class="code-box">// Any ERP adjusts stock via shared API:
+await apiRequest('POST',
+  '/api/inventory/adjust', {
+    item_id, warehouse_id, qty_change,
+    reason: 'pharmacy_sale', ref_id: saleId,
+    tenant_id
+  });
+// Inventory table FK: product_id or drug_id</div></td>
+  </tr>
+  <tr>
+    <td><strong>Tax Engine</strong><br>tax-engine.tsx</td>
+    <td>/api/tax/compute<br>tax-routes.ts</td>
+    <td><span class="badge b-done">85% done</span></td>
+    <td>All 17 ERPs for billing. Regimes: GST India (CGST/SGST/IGST), ZATCA Saudi Arabia (15% VAT), EU VAT (per-country rates), US State Sales Tax. UAE VAT included.</td>
+    <td><div class="code-box">// Any billing screen posts to tax engine:
+const tax = await apiRequest(
+  'POST', '/api/tax/compute', {
+    country: 'India',  // or 'Saudi Arabia'
+    taxableAmount: 10000,
+    hsnCode: '9401',
+    fromState: 'Maharashtra',
+    toState: 'Karnataka'
+  });
+// Returns: cgst, sgst, igst, vat</div></td>
+  </tr>
+  <tr>
+    <td><strong>Approval Workflows</strong><br>approval-workflows.tsx</td>
+    <td>/api/approvals<br>generic-routes.ts</td>
+    <td><span class="badge b-wip">40% done</span></td>
+    <td>Hotel (room booking approval), Nidhi (loan sanction), NGO (grant disbursement), HR (leave, expense claims), Manufacturing (PO above threshold), Real Estate (booking cancellation)</td>
+    <td><div class="code-box">// Trigger approval from any vertical:
+await apiRequest('POST',
+  '/api/approvals/request', {
+    entity_type: 'nidhi_loan',
+    entity_id: loanId,
+    requested_by: userId,
+    amount: loanAmount,
+    approver_role: 'branch_manager'
+  });
+// Approver gets notification → approves/rejects</div></td>
+  </tr>
+  <tr>
+    <td><strong>WhatsApp / SMS Notif.</strong><br>notification-settings.tsx</td>
+    <td>/api/notifications/send<br>generic-routes.ts</td>
+    <td><span class="badge b-wip">30% done</span></td>
+    <td>Nidhi (EMI due, FD maturity), Education (fee due, exam result), Healthcare (appointment reminder), Hotel (check-in confirmation), Restaurant (order status), NGO (donation receipt)</td>
+    <td><div class="code-box">// From any vertical backend:
+import { notifService } from './notif-service';
+await notifService.send({
+  phone: '+919876543210',
+  channel: 'whatsapp', // or 'sms'
+  template: 'emi_due_reminder',
+  vars: { name, amount, due_date }
+});
+// templates stored in masters/sms-templates</div></td>
+  </tr>
+  <tr>
+    <td><strong>PDF Engine</strong><br>(to build)</td>
+    <td>/api/pdf/generate<br>server/pdf-service.ts</td>
+    <td><span class="badge b-new">to build</span></td>
+    <td>NGO (80G certificate), Nidhi (loan sanction letter, passbook), Education (TC, bonafide, marks card), Hotel (folio / guest bill), Logistics (LR, freight note), Healthcare (discharge summary, IPD bill), Real Estate (demand letter)</td>
+    <td><div class="code-box">// Build one service, all ERPs call it:
+// server/pdf-service.ts
+export async function generatePdf(
+  template: string, data: object
+): Promise&lt;Buffer&gt; {
+  const html = renderHandlebars(template, data);
+  return puppeteer.generate(html);
+}
+// Any route: res.send(await generatePdf(
+//   'ngo_80g', { donor, amount, pan }));</div></td>
+  </tr>
+  <tr>
+    <td><strong>MIS / Analytics</strong><br>mis-dashboard.tsx</td>
+    <td>/api/mis/*<br>phase7-routes.ts</td>
+    <td><span class="badge b-wip">65% done</span></td>
+    <td>Cross-ERP owner dashboard. Restaurant (daily sales), Manufacturing (production), Hotel (occupancy), Nidhi (collections), all ERPs feed into unified financial MIS</td>
+    <td><div class="code-box">// All ERP GL postings auto-flow to MIS
+// via materialized view (refresh daily):
+CREATE MATERIALIZED VIEW mis_transactions AS
+  SELECT tenant_id, vertical, date,
+         account_code, amount, type
+  FROM journal_entries
+  WHERE record_status = 1;
+// MIS queries this view — no ERP-specific code needed</div></td>
+  </tr>
+</table>
+
+<div class="doc-footer">
+  <span>SwachERP Enterprise Plan · Page 2 of 5</span>
+  <span>kinto.swacherp.com · July 2026</span>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     PAGE 3 — ERP VERTICALS 1–9 WITH SCREENS
+══════════════════════════════════════════════════════════ -->
+<div class="page-break"></div>
+<div class="page-header">
+  <div><h1>ERP Verticals — Screens, Gaps, Shared Links</h1></div>
+  <div class="date-line">Page 3 of 5 · SwachERP Plan</div>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="leg-dot" style="background:#d4f0e0;border:1px solid #166534"></div>Done &amp; wired</div>
+  <div class="legend-item"><div class="leg-dot" style="background:#fde0e0;border:1px solid #991b1b"></div>Missing / to build</div>
+  <div class="legend-item"><div class="leg-dot" style="background:#dbeafe;border:1px solid #1e40af"></div>Links to shared module</div>
+</div>
+
+<div class="erp-grid">
+
+<div class="erp-card no-break">
+  <div class="erp-card-header"><span class="erp-name">🍽 Restaurant ERP</span><span class="erp-pct pct-green">90% <span class="badge b-done">production</span></span></div>
+  <div class="mini-bar"><div class="mini-fill fill-green" style="width:90%"></div></div>
+  <div class="screen-list">
+    <div class="done-s">✓ POS billing, KOT, Tables, Menu builder, Reservations</div>
+    <div class="done-s">✓ Delivery (in-house), QR self-ordering, CDS second screen</div>
+    <div class="done-s">✓ Aggregators (Swiggy/Zomato webhook), Own online ordering /order/:slug</div>
+    <div class="done-s">✓ Recipe costing, Central kitchen, Franchise management</div>
+    <div class="done-s">✓ WhatsApp campaigns, Gift cards, Kiosk, Steward app</div>
+    <div class="done-s">✓ Payment terminal (Razorpay POS + Pine Labs), Tally XML export</div>
+    <div class="done-s">✓ Analytics, Staff shifts (Z-report), Inventory, Reports</div>
+    <div class="miss-s">✗ GL auto-posting: POS sale → journal_entries (pending)</div>
+    <div class="miss-s">✗ ONDC integration (govt open commerce, zero commission)</div>
+    <div class="miss-s">✗ Loyalty points expiry engine (points decay scheduler)</div>
+    <div class="link-s">→ Staff: hr_employees FK · Suppliers: vendor_id FK · Customers: crm_contacts FK</div>
+    <div class="link-s">→ Sales: post to MIS via journal · Tax: /api/tax/compute (GST)</div>
+  </div>
+</div>
+
+<div class="erp-card no-break">
+  <div class="erp-card-header"><span class="erp-name">🏭 Manufacturing ERP</span><span class="erp-pct pct-green">88% <span class="badge b-done">production</span></span></div>
+  <div class="mini-bar"><div class="mini-fill fill-green" style="width:88%"></div></div>
+  <div class="screen-list">
+    <div class="done-s">✓ Sales Orders, Purchase Orders, GRN, Invoices, Credit/Debit notes</div>
+    <div class="done-s">✓ BOM, Work Orders, MRP, Production entries, Reconciliation</div>
+    <div class="done-s">✓ Job Cards, Sub-contracting, Machine OEE, Quality control</div>
+    <div class="done-s">✓ Finished goods, Scrap mgmt, Spare parts, Raw materials</div>
+    <div class="done-s">✓ E-Way Bill (NIC live: generate/cancel/extend), Gatepasses</div>
+    <div class="done-s">✓ Vendor analytics, Checklists, Machine startup reminders</div>
+    <div class="miss-s">✗ RM→WIP→FG GL journal entries auto-posting</div>
+    <div class="miss-s">✗ Barcode/QR scan on GRN and stock movement</div>
+    <div class="miss-s">✗ Preventive maintenance scheduler integration with OEE</div>
+    <div class="miss-s">✗ Multi-level BOM with phantom sub-assemblies (like SAP PP)</div>
+    <div class="miss-s">✗ BOM version control + ECN (Engineering Change Notice)</div>
+    <div class="miss-s">✗ Capacity planning + finite scheduling (MRP II)</div>
+    <div class="miss-s">✗ Global supply chain: supplier portal, import/export docs, landed cost</div>
+    <div class="miss-s">✗ Subcontractor e-portal with material challan tracking</div>
+    <div class="link-s">→ Vendors: shared vendor master · Inventory: shared warehouse</div>
+    <div class="link-s">→ Workers: hr_employees · Finance: journal-service.ts</div>
+  </div>
+</div>
+
+<div class="erp-card no-break">
+  <div class="erp-card-header"><span class="erp-name">💰 Finance ERP</span><span class="erp-pct pct-green">85% <span class="badge b-done">production</span></span></div>
+  <div class="mini-bar"><div class="mini-fill fill-green" style="width:85%"></div></div>
+  <div class="screen-list">
+    <div class="done-s">✓ Chart of Accounts, Journal Entries, Ledger view, Day book</div>
+    <div class="done-s">✓ Trial Balance, P&amp;L, Balance Sheet, Cash Flow Statement</div>
+    <div class="done-s">✓ GSTR-1/3B reports, GSTR filing UI, E-Invoice IRN (IRP)</div>
+    <div class="done-s">✓ Bank Reconciliation (14 API calls), Bank Transactions</div>
+    <div class="done-s">✓ Accounts Payable (AP aging, vendor bills), TDS management</div>
+    <div class="done-s">✓ Budget &amp; variance, Group summary, Aging report</div>
+    <div class="done-s">✓ Global Tax: GST (India), ZATCA (Saudi), EU VAT, US Tax (85%)</div>
+    <div class="done-s">✓ MIS dashboards: sales, cash, inventory, manufacturing, financial</div>
+    <div class="miss-s">✗ Recurring journal entries (monthly auto-depreciation, rent)</div>
+    <div class="miss-s">✗ Multi-company consolidation + intercompany elimination</div>
+    <div class="miss-s">✗ Multi-subsidiary P&amp;L consolidation (group reporting)</div>
+    <div class="miss-s">✗ IFRS reporting (IAS 16 depreciation, IAS 36 impairment, IFRS 15 revenue recognition)</div>
+    <div class="miss-s">✗ US GAAP / ASC 606 revenue recognition (milestone-based, subscription deferrals)</div>
+    <div class="miss-s">✗ PE/VC investor reporting pack (EBITDA, burn rate, runway, cohort MRR)</div>
+    <div class="miss-s">✗ Multi-currency intercompany transactions + forex revaluation journals</div>
+    <div class="miss-s">✗ GSTR direct API filing to GST portal (no manual upload)</div>
+    <div class="miss-s">✗ ZATCA FATOORA XML portal submission</div>
+    <div class="link-s">→ ALL 17 ERPs post to journal_entries via journal-service.ts</div>
+  </div>
+</div>
+
+<div class="erp-card no-break">
+  <div class="erp-card-header"><span class="erp-name">👥 HR / Payroll ERP</span><span class="erp-pct pct-green">82% <span class="badge b-done">production</span></span></div>
+  <div class="mini-bar"><div class="mini-fill fill-green" style="width:82%"></div></div>
+  <div class="screen-list">
+    <div class="done-s">✓ Employees, Attendance, Leaves, Payroll, Payslips</div>
+    <div class="done-s">✓ TDS declarations, Expense claims, HR Loans</div>
+    <div class="done-s">✓ Recruitment, Onboarding, Exit management</div>
+    <div class="done-s">✓ Letters, Performance appraisal, Support desk</div>
+    <div class="done-s">✓ ESS Portal (employee self-service), Timesheets</div>
+    <div class="done-s">✓ HR Masters, Reports, Compliance calendar (screen)</div>
+    <div class="done-s">✓ EPFO filing screen, Offer letters screen (UI exists)</div>
+    <div class="miss-s">✗ EPFO/ESI e-filing backend (ECR file upload to Shram Suvidha)</div>
+    <div class="miss-s">✗ Payroll → GL journal entry auto-posting</div>
+    <div class="miss-s">✗ Offer letter e-signing (DocuSign / Aadhaar eSign API)</div>
+    <div class="miss-s">✗ Biometric attendance device sync (ZKTeco API)</div>
+    <div class="link-s">→ All 17 ERPs link staff to hr_employees · Payroll posts to Finance GL</div>
+  </div>
+</div>
+
+<div class="erp-card no-break">
+  <div class="erp-card-header"><span class="erp-name">🪙 Gold ERP</span><span class="erp-pct pct-green">75% <span class="badge b-wip">partial</span></span></div>
+  <div class="mini-bar"><div class="mini-fill fill-amber" style="width:75%"></div></div>
+  <div class="screen-list">
+    <div class="done-s">✓ Retail POS (jewellery billing), Catalog, OMS (order management)</div>
+    <div class="done-s">✓ Wholesale &amp; B2B billing, Karigar management, Job work</div>
+    <div class="done-s">✓ Production (making charges, ghat, settlement), Repairs</div>
+    <div class="done-s">✓ Bullion trading, Finance (gold loan accounting)</div>
+    <div class="done-s">✓ Chit fund extension, RFID tagging, E-Commerce gold</div>
+    <div class="done-s">✓ Gap screens (old gold purchase, metal exchange, estimate)</div>
+    <div class="done-s">✓ Hallmarking page (UI), Live rates page (UI)</div>
+    <div class="miss-s">✗ BIS hallmarking portal API (HUID auto-registration)</div>
+    <div class="miss-s">✗ MCX/IBJA live gold rate WebSocket feed</div>
+    <div class="miss-s">✗ SEBI bullion dealer reporting, Digital gold (SGB)</div>
+    <div class="link-s">→ Stock: shared inventory · Finance: GL journal · Staff: HR employees</div>
+  </div>
+</div>
+
+<div class="erp-card no-break">
+  <div class="erp-card-header"><span class="erp-name">🏦 Nidhi Company ERP</span><span class="erp-pct pct-amber">58% <span class="badge b-wip">partial</span></span></div>
+  <div class="mini-bar"><div class="mini-fill fill-amber" style="width:58%"></div></div>
+  <div class="screen-list">
+    <div class="done-s">✓ Members, Shares, Deposits (RD/FD), EMI tracking</div>
+    <div class="done-s">✓ Loans, Loan sanction workflow, PDC management</div>
+    <div class="done-s">✓ Interest rates, Gold rates, Daily collection</div>
+    <div class="done-s">✓ RBI returns screen, Compliance screen, Reports</div>
+    <div class="miss-s">✗ RBI NDH-1/NDH-2/NDH-3 return XML generation</div>
+    <div class="miss-s">✗ Passbook PDF via shared PDF engine</div>
+    <div class="miss-s">✗ Mobile collection app for field agents</div>
+    <div class="miss-s">✗ EMI due WhatsApp reminder (shared notif. engine)</div>
+    <div class="miss-s">✗ Loan interest → GL journal posting</div>
+    <div class="link-s">→ Members: crm_contacts FK · Agents: hr_employees FK · GL: journal-service</div>
+  </div>
+</div>
+
+<div class="erp-card no-break">
+  <div class="erp-card-header"><span class="erp-name">📊 CRM ERP</span><span class="erp-pct pct-amber">62% <span class="badge b-wip">partial</span></span></div>
+  <div class="mini-bar"><div class="mini-fill fill-amber" style="width:62%"></div></div>
+  <div class="screen-list">
+    <div class="done-s">✓ Contacts, Accounts, Activities log, Pipeline (Kanban)</div>
+    <div class="done-s">✓ Email campaigns, WhatsApp campaigns</div>
+    <div class="done-s">✓ Customer 360 view, Lead management, Surveys</div>
+    <div class="done-s">✓ Reports (partial)</div>
+    <div class="miss-s">✗ AI lead scoring (ML model — Python microservice)</div>
+    <div class="miss-s">✗ Drip automation (multi-step scheduled sequences)</div>
+    <div class="miss-s">✗ Telephony CTI (Exotel / Twilio click-to-call)</div>
+    <div class="miss-s">✗ Quotation → Invoice bridge (CRM deal → billing)</div>
+    <div class="link-s">→ IS the shared contacts system: all 17 ERPs link customers here</div>
+  </div>
+</div>
+
+<div class="erp-card no-break">
+  <div class="erp-card-header"><span class="erp-name">🛒 Retail / POS ERP</span><span class="erp-pct pct-amber">65% <span class="badge b-wip">partial</span></span></div>
+  <div class="mini-bar"><div class="mini-fill fill-amber" style="width:65%"></div></div>
+  <div class="screen-list">
+    <div class="done-s">✓ POS billing, Inventory, Purchase orders, Sales returns</div>
+    <div class="done-s">✓ Customer management, B2B portal, Franchise management</div>
+    <div class="miss-s">✗ Barcode scanner integration (USB/Bluetooth)</div>
+    <div class="miss-s">✗ Omni-channel: online + offline stock sync</div>
+    <div class="miss-s">✗ Loyalty points expiry engine</div>
+    <div class="miss-s">✗ Multi-store transfer orders</div>
+    <div class="miss-s">✗ POS → GL journal auto-posting</div>
+    <div class="link-s">→ Products: shared masters · Customers: crm_contacts · GL: journal-service</div>
+  </div>
+</div>
+
+<div class="erp-card no-break">
+  <div class="erp-card-header"><span class="erp-name">🌿 NGO ERP</span><span class="erp-pct pct-amber">50% <span class="badge b-wip">partial</span></span></div>
+  <div class="mini-bar"><div class="mini-fill fill-amber" style="width:50%"></div></div>
+  <div class="screen-list">
+    <div class="done-s">✓ Donors, Donations, Beneficiaries, Projects, Grants</div>
+    <div class="done-s">✓ Volunteers, CSR module, 80G screen, FCRA screen</div>
+    <div class="done-s">✓ Reports page</div>
+    <div class="miss-s">✗ 80G bulk PDF certificate batch generation</div>
+    <div class="miss-s">✗ FCRA FC-4/FC-6 return filing (MHA portal API)</div>
+    <div class="miss-s">✗ Public donor portal with UPI payment link</div>
+    <div class="miss-s">✗ Fund accounting (restricted vs unrestricted funds)</div>
+    <div class="miss-s">✗ Donation → GL journal entry posting</div>
+    <div class="link-s">→ Donors: crm_contacts FK · Volunteers: hr_employees FK · GL: journal-service</div>
+  </div>
+</div>
+
+</div>
+
+<div class="doc-footer">
+  <span>SwachERP Enterprise Plan · Page 3 of 5</span>
+  <span>kinto.swacherp.com · July 2026</span>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     PAGE 4 — ERP VERTICALS 10–17 + GLOBAL CONFIG
+══════════════════════════════════════════════════════════ -->
+<div class="page-break"></div>
+<div class="page-header">
+  <div><h1>ERP Verticals (continued) + Global Config</h1></div>
+  <div class="date-line">Page 4 of 5 · SwachERP Plan</div>
+</div>
+
+<div class="erp-grid">
+
+<div class="erp-card no-break">
+  <div class="erp-card-header"><span class="erp-name">🏨 Hotel ERP</span><span class="erp-pct pct-amber">52% <span class="badge b-wip">partial</span></span></div>
+  <div class="mini-bar"><div class="mini-fill fill-amber" style="width:52%"></div></div>
+  <div class="screen-list">
+    <div class="done-s">✓ Rooms, Front desk, Reservations, Check-in/out</div>
+    <div class="done-s">✓ Folio (guest bill), Housekeeping, Banquet, Corporate accts</div>
+    <div class="done-s">✓ Rates management, Night audit, Revenue management, Reports</div>
+    <div class="miss-s">✗ Channel Manager API (MakeMyTrip, Booking.com, OTAs)</div>
+    <div class="miss-s">✗ Folio PDF via shared PDF engine</div>
+    <div class="miss-s">✗ F&amp;B room charge posting from Restaurant POS</div>
+    <div class="miss-s">✗ Minibar, laundry charges auto-added to folio</div>
+    <div class="miss-s">✗ Spa / wellness module, Housekeeping mobile app</div>
+    <div class="miss-s">✗ Hotel revenue → GL journal auto-posting</div>
+    <div class="link-s">→ Guests: crm_contacts · Staff: hr_employees · Revenue: GL journal</div>
+    <div class="link-s">→ F&amp;B: links to restaurant module (room charge posting)</div>
+  </div>
+</div>
+
+<div class="erp-card no-break">
+  <div class="erp-card-header"><span class="erp-name">🏥 Healthcare ERP</span><span class="erp-pct pct-amber">50% <span class="badge b-wip">partial</span></span></div>
+  <div class="mini-bar"><div class="mini-fill fill-amber" style="width:50%"></div></div>
+  <div class="screen-list">
+    <div class="done-s">✓ Patients, Doctors, OPD, IPD, Beds, Nursing</div>
+    <div class="done-s">✓ EMR (Electronic Medical Records), OT scheduling</div>
+    <div class="done-s">✓ Lab, Blood bank, Insurance, TPA claims</div>
+    <div class="done-s">✓ ABDM/ABHA screen (UI), Reports</div>
+    <div class="miss-s">✗ ABDM/ABHA API (NHA govt health ID linking)</div>
+    <div class="miss-s">✗ ICD-10 diagnosis coding auto-suggest</div>
+    <div class="miss-s">✗ Discharge summary + IPD bill PDF</div>
+    <div class="miss-s">✗ Radiology: PACS/DICOM image viewer</div>
+    <div class="miss-s">✗ Appointment WhatsApp/SMS reminder (shared notif.)</div>
+    <div class="miss-s">✗ Hospital billing → GL journal posting</div>
+    <div class="link-s">→ Doctors/nurses: hr_employees · Pharmacy: shared inventory</div>
+    <div class="link-s">→ Patients: crm_contacts · Billing: GL journal-service</div>
+  </div>
+</div>
+
+<div class="erp-card no-break">
+  <div class="erp-card-header"><span class="erp-name">💊 Pharmacy ERP</span><span class="erp-pct pct-amber">48% <span class="badge b-wip">partial</span></span></div>
+  <div class="mini-bar"><div class="mini-fill fill-amber" style="width:48%"></div></div>
+  <div class="screen-list">
+    <div class="done-s">✓ Drug master, Stock, Billing, Purchases, Expiry tracking</div>
+    <div class="done-s">✓ Narcotics register, Schedule-H, Schedule-X</div>
+    <div class="done-s">✓ E-Invoice, Licenses, Reports</div>
+    <div class="miss-s">✗ FEFO billing logic (First Expiry First Out auto-pick)</div>
+    <div class="miss-s">✗ Prescription management (Rx scan/link to sale)</div>
+    <div class="miss-s">✗ CDSCO drug recall alert API</div>
+    <div class="miss-s">✗ Supplier return (near-expiry batch return to distributor)</div>
+    <div class="miss-s">✗ Pharmacy sales → GL journal posting</div>
+    <div class="link-s">→ Drug stock: shared inventory · Distributors: shared vendors</div>
+    <div class="link-s">→ Patients: crm_contacts (from Healthcare) · GL: journal-service</div>
+  </div>
+</div>
+
+<div class="erp-card no-break">
+  <div class="erp-card-header"><span class="erp-name">🎓 Education ERP</span><span class="erp-pct pct-amber">55% <span class="badge b-wip">partial</span></span></div>
+  <div class="mini-bar"><div class="mini-fill fill-amber" style="width:55%"></div></div>
+  <div class="screen-list">
+    <div class="done-s">✓ Students, Admissions, Classes, Timetable, Homework</div>
+    <div class="done-s">✓ Attendance, Fees, Exams, Online exams, NEP compliance</div>
+    <div class="done-s">✓ Hostel, Library, Transport, Parent portal</div>
+    <div class="done-s">✓ Certificate screen, Reports screen (UI exists)</div>
+    <div class="miss-s">✗ Fee collection → GL journal posting</div>
+    <div class="miss-s">✗ Certificate PDF (TC, Bonafide, Marks card)</div>
+    <div class="miss-s">✗ Biometric attendance sync (ZKTeco)</div>
+    <div class="miss-s">✗ Teacher payroll bridge → HR payroll module</div>
+    <div class="miss-s">✗ Fee due WhatsApp/SMS reminder</div>
+    <div class="link-s">→ Teachers: hr_employees · Students: crm_contacts · Fees: GL journal</div>
+  </div>
+</div>
+
+<div class="erp-card no-break">
+  <div class="erp-card-header"><span class="erp-name">🚛 Logistics ERP</span><span class="erp-pct pct-amber">45% <span class="badge b-wip">partial</span></span></div>
+  <div class="mini-bar"><div class="mini-fill fill-amber" style="width:45%"></div></div>
+  <div class="screen-list">
+    <div class="done-s">✓ E-Way Bill (NIC live — full generate/cancel/extend)</div>
+    <div class="done-s">✓ Consignments, Documents, Drivers, Fleet, Trips</div>
+    <div class="done-s">✓ Freight billing, Fuel management, ePOD</div>
+    <div class="done-s">✓ GPS screen, Route optimization screen (UI exists)</div>
+    <div class="miss-s">✗ Live GPS tracking backend (Traccar / device API)</div>
+    <div class="miss-s">✗ LR (Lorry Receipt) PDF via shared PDF engine</div>
+    <div class="miss-s">✗ FASTag toll API (auto-deduct from trip cost)</div>
+    <div class="miss-s">✗ Route optimization algorithm backend (OSRM)</div>
+    <div class="miss-s">✗ Driver mobile app (trip accept, ePOD capture)</div>
+    <div class="link-s">→ Drivers: hr_employees · Fleet expenses: GL journal · EWB: NIC API</div>
+  </div>
+</div>
+
+<div class="erp-card no-break">
+  <div class="erp-card-header"><span class="erp-name">🏗️ Real Estate ERP</span><span class="erp-pct pct-amber">45% <span class="badge b-wip">partial</span></span></div>
+  <div class="mini-bar"><div class="mini-fill fill-amber" style="width:45%"></div></div>
+  <div class="screen-list">
+    <div class="done-s">✓ Projects, Bookings, Collections, Demand letters</div>
+    <div class="done-s">✓ Brokers, Documents, Construction progress</div>
+    <div class="done-s">✓ Project P&amp;L, RERA screen, Society mgmt, Customer portal</div>
+    <div class="miss-s">✗ RERA portal API (registration, quarterly reports)</div>
+    <div class="miss-s">✗ Bank loan tracking (construction finance drawdowns)</div>
+    <div class="miss-s">✗ Subcontractor billing and work orders</div>
+    <div class="miss-s">✗ Demand letter PDF auto-generation</div>
+    <div class="miss-s">✗ Collections → GL journal posting</div>
+    <div class="link-s">→ Buyers: crm_contacts · Workers: hr_employees · GL: journal-service</div>
+  </div>
+</div>
+
+<div class="erp-card no-break">
+  <div class="erp-card-header"><span class="erp-name">🌾 Agriculture ERP</span><span class="erp-pct pct-red">38% <span class="badge b-stub">partial</span></span></div>
+  <div class="mini-bar"><div class="mini-fill fill-red" style="width:38%"></div></div>
+  <div class="screen-list">
+    <div class="done-s">✓ Farms, Crops, Harvest, Inputs (UI screens exist)</div>
+    <div class="done-s">✓ FPO management, Mandi prices, Market, PMFBY, Schemes, Weather</div>
+    <div class="miss-s">✗ Mandi price live API (Agmarknet / eNAM integration)</div>
+    <div class="miss-s">✗ PMFBY insurance API (Pradhan Mantri Fasal Bima Yojana)</div>
+    <div class="miss-s">✗ IoT sensor integration (soil moisture, temperature)</div>
+    <div class="miss-s">✗ Weather API backend (IMD / OpenWeather)</div>
+    <div class="miss-s">✗ Supply chain traceability (farm-to-fork QR code)</div>
+    <div class="miss-s">✗ FPO procurement billing and GL posting</div>
+    <div class="link-s">→ Farmers: crm_contacts · Inputs: shared inventory · GL: journal-service</div>
+  </div>
+</div>
+
+<div class="erp-card no-break">
+  <div class="erp-card-header"><span class="erp-name">🛍️ E-Commerce ERP</span><span class="erp-pct pct-red">28% <span class="badge b-stub">UI only</span></span></div>
+  <div class="mini-bar"><div class="mini-fill fill-red" style="width:28%"></div></div>
+  <div class="screen-list">
+    <div class="done-s">✓ Dashboard, Orders, Listings, Returns, Settlements (UI shells)</div>
+    <div class="done-s">✓ Shipments, Channels, Reports (UI shells only — 0 API calls)</div>
+    <div class="miss-s">✗ ALL 8 screens need backend routes wired</div>
+    <div class="miss-s">✗ Amazon SP-API, Flipkart Seller API, Meesho API</div>
+    <div class="miss-s">✗ Shiprocket / Delhivery shipping integration</div>
+    <div class="miss-s">✗ Multi-channel inventory sync</div>
+    <div class="miss-s">✗ Marketplace commission accounting → GL</div>
+    <div class="miss-s">✗ RMA (return merchandise authorization) workflow</div>
+    <div class="link-s">→ Products: shared masters catalog · Orders: GL journal · Customers: CRM</div>
+  </div>
+</div>
+
+</div>
+
+<!-- GLOBAL CONFIG SECTION -->
+<h2>⑥ GLOBAL CONFIGURATION — How the platform is configured per tenant</h2>
+
+<div class="three-col">
+<div class="col-box">
+<h3>Company &amp; Financial Setup</h3>
+<table>
+  <tr><th>Setting</th><th>Table / File</th></tr>
+  <tr><td>Company name, logo</td><td>tenant_settings · useTenantBranding()</td></tr>
+  <tr><td>GSTIN, PAN, CIN</td><td>tenant_settings.gstin</td></tr>
+  <tr><td>Financial year start</td><td>tenant_settings.fy_start_month</td></tr>
+  <tr><td>Base currency</td><td>tenant_settings.currency_code</td></tr>
+  <tr><td>Tax regime</td><td>masters/tax-config → tax_config table</td></tr>
+  <tr><td>Invoice numbering</td><td>masters/doc-numbering</td></tr>
+  <tr><td>Multi-branch setup</td><td>masters/branches → cost_centres</td></tr>
+  <tr><td>Approval chains</td><td>masters/approval-matrix</td></tr>
+</table>
+</div>
+
+<div class="col-box">
+<h3>Integrations &amp; API Keys</h3>
+<table>
+  <tr><th>Integration</th><th>Where stored</th></tr>
+  <tr><td>NIC EWB credentials</td><td>nic_ewb_credentials (encrypted)</td></tr>
+  <tr><td>GST portal / IRP</td><td>tenant_settings.einvoice_config</td></tr>
+  <tr><td>Razorpay keys</td><td>tenant_settings (AES encrypted)</td></tr>
+  <tr><td>WhatsApp (WATI) API</td><td>notification_settings table</td></tr>
+  <tr><td>SMTP email config</td><td>notification_settings table</td></tr>
+  <tr><td>Tally server URL</td><td>tenant_settings.tally_config</td></tr>
+  <tr><td>Aggregator webhooks</td><td>restaurant_outlets.aggregator_config</td></tr>
+  <tr><td>Custom API keys</td><td>api_keys table (hashed)</td></tr>
+</table>
+</div>
+
+<div class="col-box">
+<h3>Role-wise screen access (quick ref)</h3>
+<table>
+  <tr><th>Role</th><th>Default access</th></tr>
+  <tr><td>Admin</td><td>All screens: view+create+edit+delete</td></tr>
+  <tr><td>Manager</td><td>All screens: view+create+edit (no delete)</td></tr>
+  <tr><td>Operator</td><td>Operational screens only: view+create</td></tr>
+  <tr><td>Reviewer</td><td>Read-only on all screens</td></tr>
+  <tr><td>Viewer</td><td>Dashboard and reports only</td></tr>
+  <tr><td>Vertical roles</td><td>Only their ERP screens</td></tr>
+  <tr><td>ESS (employee)</td><td>Only own payslip, leaves, ESS portal</td></tr>
+  <tr><td>Super Admin</td><td>All tenants — platform admin only</td></tr>
+</table>
+</div>
+</div>
+
+<div class="doc-footer">
+  <span>SwachERP Enterprise Plan · Page 4 of 5</span>
+  <span>kinto.swacherp.com · July 2026</span>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     PAGE 5 — PHASE PLAN + COMPLETION SCORES
+══════════════════════════════════════════════════════════ -->
+<div class="page-break"></div>
+<div class="page-header">
+  <div><h1>Implementation Phases + Completion Scores</h1></div>
+  <div class="date-line">Page 5 of 5 · SwachERP Plan</div>
+</div>
+
+<h2>⑦ PHASE-WISE PLAN — Prioritised by impact × effort</h2>
+
+<div class="two-col">
+<div class="col-box">
+<h4>Foundation (do first — unlocks all ERPs)</h4>
+<div class="phase-row"><div class="phase-num">1</div><div class="phase-body"><span class="phase-title">PostgreSQL Row Level Security</span><span class="phase-time">2 wks</span><div class="phase-detail">ALTER TABLE … ENABLE ROW LEVEL SECURITY. Policy: tenant_id = current_setting('app.tenant_id'). One migration, fixes multi-tenant data isolation for all 17 ERPs. Enterprise prerequisite.</div></div></div>
+<div class="phase-row"><div class="phase-num">2</div><div class="phase-body"><span class="phase-title">PDF Engine — server/pdf-service.ts</span><span class="phase-time">2 wks</span><div class="phase-detail">Puppeteer + Handlebars. One service, all ERPs call POST /api/pdf/generate with template name + data. Unlocks: 80G certs, passbooks, folios, LRs, fee receipts, IPD bills, demand letters.</div></div></div>
+<div class="phase-row"><div class="phase-num">3</div><div class="phase-body"><span class="phase-title">GL Auto-posting: all verticals → journal-service.ts</span><span class="phase-time">3 wks</span><div class="phase-detail">Import journalService.post() in Restaurant, Hotel, Healthcare, Pharmacy, Nidhi, NGO, Education, Retail, Logistics routes. Finance ERP then shows real cross-ERP consolidated P&amp;L.</div></div></div>
+<div class="phase-row"><div class="phase-num">4</div><div class="phase-body"><span class="phase-title">Notification engine — server/notif-service.ts</span><span class="phase-time">1 wk</span><div class="phase-detail">One WhatsApp/SMS service. Nidhi EMI alerts, Education fee reminders, Healthcare appointment pings, Hotel check-in, Restaurant order status — all call same notifService.send().</div></div></div>
+
+<h4>Finance completeness</h4>
+<div class="phase-row"><div class="phase-num">5</div><div class="phase-body"><span class="phase-title">Recurring journals + GSTR direct filing</span><span class="phase-time">2 wks</span><div class="phase-detail">Monthly depreciation/rent auto-journal. GSTR-1/3B direct API to GST portal. ZATCA FATOORA XML submission. Multi-company consolidation report.</div></div></div>
+
+<h4>HR completeness</h4>
+<div class="phase-row"><div class="phase-num">6</div><div class="phase-body"><span class="phase-title">EPFO/ESI e-filing + Payroll → GL</span><span class="phase-time">2 wks</span><div class="phase-detail">ECR file auto-generation, upload to Shram Suvidha portal. Salary journal entries auto-post to Finance GL on payroll finalization.</div></div></div>
+
+<h4>High-ROI vertical completions</h4>
+<div class="phase-row"><div class="phase-num">7</div><div class="phase-body"><span class="phase-title">Hotel: Channel Manager + Folio PDF</span><span class="phase-time">4 wks</span><div class="phase-detail">OTA sync (MakeMyTrip/Booking.com via channel manager middleware). Folio PDF. F&amp;B room charge posting from restaurant module.</div></div></div>
+<div class="phase-row"><div class="phase-num">8</div><div class="phase-body"><span class="phase-title">Healthcare: ABDM/ABHA + ICD-10 + IPD PDF</span><span class="phase-time">4 wks</span><div class="phase-detail">NHA health ID API. ICD-10 autocomplete on diagnosis. IPD bill PDF. Appointment reminders via shared notification engine.</div></div></div>
+<div class="phase-row"><div class="phase-num">9</div><div class="phase-body"><span class="phase-title">Nidhi: RBI returns + Passbook PDF</span><span class="phase-time">3 wks</span><div class="phase-detail">NDH-1/2/3 XML generation. Passbook PDF via shared PDF service. EMI due WhatsApp reminders. Loan interest → GL.</div></div></div>
+</div>
+
+<div class="col-box">
+<div class="phase-row"><div class="phase-num">10</div><div class="phase-body"><span class="phase-title">NGO: 80G bulk PDF + FCRA filing</span><span class="phase-time">3 wks</span><div class="phase-detail">Batch 80G certificate PDF. FCRA FC-4 return. Public donor portal with UPI payment. Donation → GL.</div></div></div>
+<div class="phase-row"><div class="phase-num">11</div><div class="phase-body"><span class="phase-title">Education: Fee → GL + Certificate PDF</span><span class="phase-time">3 wks</span><div class="phase-detail">Fee → GL journal. TC/Bonafide/Marks card PDF. Teacher payroll bridge to HR. Fee due WhatsApp reminder.</div></div></div>
+<div class="phase-row"><div class="phase-num">12</div><div class="phase-body"><span class="phase-title">Gold ERP: BIS API + Live MCX rates</span><span class="phase-time">2 wks</span><div class="phase-detail">BIS HUID registration API. MCX/IBJA WebSocket live rates. SEBI bullion report generation.</div></div></div>
+<div class="phase-row"><div class="phase-num">13</div><div class="phase-body"><span class="phase-title">Logistics: Live GPS + LR PDF + Route algo</span><span class="phase-time">4 wks</span><div class="phase-detail">Traccar GPS API. LR PDF via shared PDF engine. OSRM route optimization backend. FASTag toll auto-deduction.</div></div></div>
+<div class="phase-row"><div class="phase-num">14</div><div class="phase-body"><span class="phase-title">Real Estate: RERA API + Demand letter PDF</span><span class="phase-time">3 wks</span><div class="phase-detail">RERA portal quarterly report generation. Demand letter PDF. Bank loan drawdown tracking. Collections → GL.</div></div></div>
+<div class="phase-row"><div class="phase-num">15</div><div class="phase-body"><span class="phase-title">Pharmacy: FEFO + Prescription + CDSCO</span><span class="phase-time">3 wks</span><div class="phase-detail">FEFO billing: auto-pick nearest expiry batch. Rx scan link. CDSCO drug recall alert API. Pharmacy → GL.</div></div></div>
+<div class="phase-row"><div class="phase-num">16</div><div class="phase-body"><span class="phase-title">E-Commerce: Full backend + Marketplace APIs</span><span class="phase-time">5 wks</span><div class="phase-detail">Wire all 8 screens. Amazon SP-API, Flipkart, Meesho. Shiprocket/Delhivery. Multi-channel stock sync. Commission → GL.</div></div></div>
+<div class="phase-row"><div class="phase-num">17</div><div class="phase-body"><span class="phase-title">CRM: AI lead scoring + Drip + Telephony</span><span class="phase-time">4 wks</span><div class="phase-detail">ML scoring model (Python). Drip scheduler. Exotel CTI. Quotation → Invoice bridge to billing.</div></div></div>
+<div class="phase-row"><div class="phase-num">18</div><div class="phase-body"><span class="phase-title">Agriculture: Mandi API + IoT + PMFBY</span><span class="phase-time">4 wks</span><div class="phase-detail">Agmarknet/eNAM mandi price API. OpenWeather integration. PMFBY insurance API. Farm-to-fork QR traceability.</div></div></div>
+<div class="phase-row"><div class="phase-num">19</div><div class="phase-body"><span class="phase-title">Mobile Apps (React Native)</span><span class="phase-time">8 wks</span><div class="phase-detail">Restaurant POS (offline-first), Logistics driver ePOD, Pharmacy billing, Nidhi field collection, Hotel housekeeping. Same backend API.</div></div></div>
+<div class="phase-row"><div class="phase-num">20</div><div class="phase-body"><span class="phase-title">AI/ML + Advanced Analytics</span><span class="phase-time">8 wks</span><div class="phase-detail">Demand forecasting (inventory). Lead scoring (CRM). Menu engineering AI (Restaurant). Anomaly detection (Finance GL).</div></div></div>
+
+<div style="margin:12px 0 6px;font-weight:700;font-size:9pt;color:#1a56db;border-top:1.5px solid #1a56db;padding-top:8px;">ENTERPRISE PARITY PHASES — Competing with SAP · Oracle NetSuite · MS Dynamics · Zoho</div>
+
+<div class="phase-row"><div class="phase-num">21</div><div class="phase-body"><span class="phase-title">Multi-Subsidiary Consolidation + IFRS Reporting</span><span class="phase-time">6 wks</span><div class="phase-detail">Multi-company GL consolidation with intercompany elimination. IAS 16 fixed-asset depreciation schedules. IAS 36 impairment testing. IFRS 15 / Ind AS 115 revenue recognition (milestone billing, subscription deferrals, POC %). Multi-currency forex revaluation journals at period-end. Competes with Oracle NetSuite Group Reporting.</div></div></div>
+
+<div class="phase-row"><div class="phase-num">22</div><div class="phase-body"><span class="phase-title">ASC 606 / US GAAP Revenue Recognition Engine</span><span class="phase-time">4 wks</span><div class="phase-detail">Standalone selling price (SSP) allocation across multi-element arrangements. Contract asset / liability tracking. Deferred revenue waterfall. Revenue schedule auto-posting to GL on delivery milestones. Targeted at SaaS, IT services, and export-oriented companies reporting under US GAAP. Competes with NetSuite ARM module.</div></div></div>
+
+<div class="phase-row"><div class="phase-num">23</div><div class="phase-body"><span class="phase-title">PE/VC Investor Reporting Dashboard</span><span class="phase-time">3 wks</span><div class="phase-detail">Board-ready consolidated P&amp;L across all subsidiaries / entities. EBITDA bridge, burn rate tracker, runway calculator, cohort MRR/ARR, LTV:CAC, unit economics. Investor pack PDF export (one-click). Cap table snapshot. Competes with NetSuite SuiteAnalytics and Zoho Analytics investor templates.</div></div></div>
+
+<div class="phase-row"><div class="phase-num">24</div><div class="phase-body"><span class="phase-title">Advanced Manufacturing: Multi-level BOM + MRP II</span><span class="phase-time">6 wks</span><div class="phase-detail">Multi-level BOM with phantom sub-assemblies and configurable BOM (CBOM). BOM versioning with ECN (Engineering Change Notice). Finite capacity scheduling — machine loads, operator shifts. Global supply chain: supplier self-service portal, import/export document set (packing list, bill of lading, COO), landed cost allocation. Competes with SAP PP and Oracle Manufacturing Cloud.</div></div></div>
+
+<div class="phase-row"><div class="phase-num">25</div><div class="phase-body"><span class="phase-title">Analytics Studio + BI Embeddings (vs Power BI / Zoho Analytics)</span><span class="phase-time">6 wks</span><div class="phase-detail">Drag-and-drop report builder on top of SwachERP data. Embedded charts for each ERP module. Cross-ERP KPI canvas (owner / CFO view). Scheduled email delivery of reports. Public dashboard share links for investors. API connector for external BI tools (Power BI, Tableau). Removes dependency on MS Power BI for Dynamics customers.</div></div></div>
+
+<div class="phase-row"><div class="phase-num">26</div><div class="phase-body"><span class="phase-title">Extended App Suite — eSign · Helpdesk · Meetings · Social · Low-code</span><span class="phase-time">10 wks</span><div class="phase-detail">SwachSign: DSC/Aadhaar eSign for invoices, contracts, LOIs (vs Zoho Sign). SwachDesk: customer support ticket system, SLA tracking, CSAT (vs Zoho Desk). SwachMeet: in-app video calls + screen share for B2B demos, board meetings (vs MS Teams). SwachSocial: scheduled social media posting (LinkedIn/Instagram/Facebook) for SMB marketing (vs Zoho Social). SwachForms: low-code form + workflow builder for custom processes (vs Zoho Creator). Brings total module count to 25+ (approaching Zoho One breadth).</div></div></div>
+</div>
+</div>
+
+<!-- FINAL COMPLETION TABLE -->
+<h2>⑧ ACCURATE COMPLETION SCORES (from codebase audit)</h2>
+
+<table>
+  <tr><th>ERP</th><th>Screens</th><th>Backend wired</th><th>External APIs</th><th>Missing (critical)</th><th>Score</th></tr>
+  <tr><td><strong>Restaurant</strong></td><td>32 ✓</td><td>95%</td><td>NIC EWB, Razorpay, Aggregators ✓</td><td>GL posting, ONDC</td><td class="pct-green"><strong>90%</strong></td></tr>
+  <tr><td><strong>Manufacturing</strong></td><td>28 ✓</td><td>90%</td><td>NIC EWB ✓</td><td>GL auto-posting, barcode</td><td class="pct-green"><strong>88%</strong></td></tr>
+  <tr><td><strong>Finance ERP</strong></td><td>27 ✓</td><td>85%</td><td>GST/ZATCA/EU VAT/US Tax ✓</td><td>Recurring journals, GSTR direct</td><td class="pct-green"><strong>85%</strong></td></tr>
+  <tr><td><strong>HR / Payroll</strong></td><td>18 ✓</td><td>85%</td><td>—</td><td>EPFO e-filing, Payroll→GL</td><td class="pct-green"><strong>82%</strong></td></tr>
+  <tr><td><strong>Gold ERP</strong></td><td>15 ✓</td><td>75%</td><td>—</td><td>BIS API, MCX live rates</td><td class="pct-green"><strong>75%</strong></td></tr>
+  <tr><td><strong>Retail / POS</strong></td><td>8 ✓</td><td>65%</td><td>—</td><td>Omnichannel, barcode, GL</td><td class="pct-amber"><strong>65%</strong></td></tr>
+  <tr><td><strong>CRM ERP</strong></td><td>11 ✓</td><td>55%</td><td>—</td><td>AI scoring, drip, telephony</td><td class="pct-amber"><strong>62%</strong></td></tr>
+  <tr><td><strong>Nidhi Company</strong></td><td>14 ✓</td><td>55%</td><td>—</td><td>RBI returns, passbook PDF</td><td class="pct-amber"><strong>58%</strong></td></tr>
+  <tr><td><strong>Education ERP</strong></td><td>16 ✓</td><td>50%</td><td>—</td><td>Fee→GL, certificate PDF</td><td class="pct-amber"><strong>55%</strong></td></tr>
+  <tr><td><strong>Hotel ERP</strong></td><td>14 ✓</td><td>40%</td><td>—</td><td>Channel manager, folio PDF</td><td class="pct-amber"><strong>52%</strong></td></tr>
+  <tr><td><strong>Healthcare ERP</strong></td><td>14 ✓</td><td>40%</td><td>—</td><td>ABDM API, ICD-10, IPD PDF</td><td class="pct-amber"><strong>50%</strong></td></tr>
+  <tr><td><strong>NGO ERP</strong></td><td>11 ✓</td><td>40%</td><td>—</td><td>80G PDF, FCRA filing</td><td class="pct-amber"><strong>50%</strong></td></tr>
+  <tr><td><strong>Pharmacy ERP</strong></td><td>12 ✓</td><td>35%</td><td>—</td><td>FEFO logic, CDSCO API</td><td class="pct-amber"><strong>48%</strong></td></tr>
+  <tr><td><strong>Logistics ERP</strong></td><td>13 ✓</td><td>35%</td><td>NIC EWB ✓</td><td>Live GPS, LR PDF, OSRM</td><td class="pct-amber"><strong>45%</strong></td></tr>
+  <tr><td><strong>Real Estate</strong></td><td>13 ✓</td><td>35%</td><td>—</td><td>RERA API, demand letter PDF</td><td class="pct-amber"><strong>45%</strong></td></tr>
+  <tr><td><strong>Agriculture</strong></td><td>11 ✓</td><td>25%</td><td>—</td><td>Mandi API, IoT, PMFBY</td><td class="pct-red"><strong>38%</strong></td></tr>
+  <tr><td><strong>E-Commerce</strong></td><td>8 ✓ (UI only)</td><td>0%</td><td>—</td><td>Everything — backend not wired</td><td class="pct-red"><strong>28%</strong></td></tr>
+  <tr style="background:#eef2ff;font-weight:700">
+    <td>OVERALL PLATFORM</td><td>300+ screens</td><td>~58% avg</td><td>7 integrations live</td><td>PDF engine, RLS, GL posting, notif.</td><td class="pct-amber"><strong>56%</strong></td>
+  </tr>
+</table>
+
+<div class="info-box">
+  <strong>Why scores changed from earlier estimates:</strong> Previous "70%" counted UI screen files only.
+  Previous "35%" for Gold ERP missed 13 top-level pages (gold-erp-retail.tsx has 36 API calls, gold-erp.tsx has 68).
+  This audit counted: (a) screen files, (b) API calls per file via grep, (c) external integration status.
+  Finance ERP at 85% reflects 27 real screens with bank recon (14 calls), AP (16 calls), GSTR, E-Invoice, budget all wired.
+  Global Tax at 85% reflects actual server/tax-routes.ts with GST + ZATCA + EU VAT + US Tax all implemented.
+</div>
+
+<div class="doc-footer">
+  <span>SwachERP Enterprise Plan · Page 5 of 5</span>
+  <span>kinto.swacherp.com · Internal use only · July 2026</span>
+</div>
+
+</body>
+</html>

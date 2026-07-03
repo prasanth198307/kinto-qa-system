@@ -237,6 +237,7 @@ export default function VendorHistoryDetailPage() {
 
   const handleExportUnpaidExcel = async () => {
     if (!data || !txnData) return;
+    try {
     const ExcelJS = (await import('exceljs')).default;
     const wb = new ExcelJS.Workbook();
     wb.creator = '';
@@ -418,7 +419,13 @@ export default function VendorHistoryDetailPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url;
     a.download = `${data.vendor.vendorName.replace(/[^a-zA-Z0-9]/g, '_')}_Unpaid_${new Date().toISOString().slice(0, 10)}.xlsx`;
-    a.click(); URL.revokeObjectURL(url);
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(url); document.body.removeChild(a); }, 1000);
+    } catch (err: unknown) {
+      console.error('Unpaid Invoices Excel export failed:', err);
+      toast({ title: 'Export failed', description: (err as Error)?.message || 'Unknown error', variant: 'destructive' });
+    }
   };
 
   const formatCurrency = (amount: number) => {
@@ -665,7 +672,7 @@ export default function VendorHistoryDetailPage() {
 
   const handleExportExcel = async () => {
     if (!data) return;
-
+    try {
     const getTypeLabel = (type: string) => {
       switch (type) {
         case 'invoice': return 'Invoice';
@@ -801,7 +808,13 @@ export default function VendorHistoryDetailPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url;
     a.download = `${data.vendor.vendorName.replace(/[^a-zA-Z0-9]/g, '_')}_Ledger_${new Date().toISOString().slice(0, 10)}.xlsx`;
-    a.click(); URL.revokeObjectURL(url);
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(url); document.body.removeChild(a); }, 1000);
+  } catch (err: unknown) {
+    console.error('Ledger Excel export failed:', err);
+    toast({ title: 'Export failed', description: (err as Error)?.message || 'Unknown error', variant: 'destructive' });
+  }
   };
 
   const handlePrintTransactions = () => {
@@ -1112,7 +1125,9 @@ export default function VendorHistoryDetailPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url;
     a.download = `${data.vendor.vendorName.replace(/[^a-zA-Z0-9]/g, '_')}_Invoice_Transactions_${new Date().toISOString().slice(0, 10)}.xlsx`;
-    a.click(); URL.revokeObjectURL(url);
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(url); document.body.removeChild(a); }, 1000);
     } catch (err: any) {
       console.error('Invoice Transactions Excel export failed:', err);
       toast({ title: 'Export failed', description: err?.message || 'Unknown error', variant: 'destructive' });

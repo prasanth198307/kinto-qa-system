@@ -67,7 +67,7 @@ export const SCREEN_REGISTRY: ScreenDefinition[] = [
   { key: 'vendor_types',          label: 'Vendor Types',               allowedActions: ['view', 'create', 'edit', 'delete'], module: 'purchase_orders' },
   { key: 'vendor_debit_notes',    label: 'Vendor Debit Notes',         allowedActions: ['view', 'create', 'edit', 'delete'], module: 'purchase_orders' },
   { key: 'vendor_analytics',      label: 'Vendor Analytics',           allowedActions: ['view'],                            module: 'purchase_orders' },
-  { key: 'vendor_history',        label: 'Vendor History',             allowedActions: ['view'],                            module: 'purchase_orders' },
+  { key: 'vendor_history',        label: 'Vendor History',             allowedActions: ['view'],                            module: 'finance' },
   { key: 'purchase_requisitions', label: 'Purchase Requisitions',      allowedActions: ['view', 'create', 'edit', 'delete'], module: 'purchase_orders' },
   { key: 'goods_receipt_notes',   label: 'Goods Receipt Notes (GRN)',  allowedActions: ['view', 'create', 'edit', 'delete'], module: 'purchase_orders' },
   { key: 'approval_workflows',    label: 'Approval Workflows',         allowedActions: ['view', 'create', 'edit', 'delete'], module: 'purchase_orders' },
