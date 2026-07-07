@@ -141,6 +141,12 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
   documents: [
     "documents",
   ],
+  // ── Extended App Suite — sellable as add-ons or bundled in enterprise plans ──
+  swachsign: ["swachsign"],
+  swachdesk: ["swachdesk", "swachdesk-reports", "swachdesk-section"],
+  swachmeet: ["swachmeet"],
+  swachsocial: ["swachsocial"],
+  swachforms: ["swachforms", "swachforms-builder", "swachforms-section"],
   whatsapp: [
     "checklists",
     "checklist-assignments",
@@ -161,7 +167,10 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
   crm: [
     "crm-leads", "crm-surveys", "crm-enterprise",
     "crm/pipeline", "crm/contacts", "crm/accounts",
-    "crm/activities", "crm/email-campaigns", "crm/whatsapp", "crm/reports",
+    "crm/activities", "crm/leads", "crm/campaigns",
+    "crm/email-campaigns", "crm/whatsapp-campaigns", "crm/whatsapp",
+    "crm/customer360", "crm/quotations", "crm/lead-scoring",
+    "crm/drip-campaigns", "crm/reports",
   ],
   hr_payroll: [
     "hr-employees",
@@ -247,42 +256,46 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
   logistics_transport: [
     "logistics", "logistics-enterprise",
     "logistics/fleet", "logistics/drivers", "logistics/trips", "logistics/gps",
-    "logistics/consignments", "logistics/freight", "logistics/epod",
-    "logistics/fuel", "logistics/documents", "logistics/reports",
+    "logistics/consignments", "logistics/documents", "logistics/freight",
+    "logistics/freight-billing", "logistics/eway-bills", "logistics/epod",
+    "logistics/fuel", "logistics/routes", "logistics/store-transfers",
+    "logistics/reports",
   ],
   real_estate: [
     "real-estate", "real-estate-enterprise",
     "real-estate/projects", "real-estate/crm", "real-estate/bookings",
-    "real-estate/collections", "real-estate/brokers", "real-estate/construction",
-    "real-estate/documents", "real-estate/customer-portal",
-    "real-estate/society", "real-estate/reports",
+    "real-estate/collections", "real-estate/demand-letters", "real-estate/brokers",
+    "real-estate/construction", "real-estate/documents", "real-estate/rera",
+    "real-estate/society", "real-estate/construction-loans",
+    "real-estate/subcontractors", "real-estate/customer-portal", "real-estate/reports",
   ],
   pos: [
     "pos", "retail-enterprise",
   ],
   agriculture: [
     "agriculture", "agriculture-enterprise",
-    "agriculture/farms", "agriculture/crops", "agriculture/inputs",
-    "agriculture/harvest", "agriculture/weather", "agriculture/schemes",
-    "agriculture/fpo", "agriculture/market", "agriculture/reports",
+    "agriculture/farms", "agriculture/crops", "agriculture/harvest",
+    "agriculture/inputs", "agriculture/fpo", "agriculture/mandi",
+    "agriculture/market", "agriculture/weather", "agriculture/traceability",
+    "agriculture/schemes", "agriculture/pmfby", "agriculture/reports",
   ],
   ngo: [
     "ngo", "ngo-enterprise",
-    "ngo/donors", "ngo/donations", "ngo/80g", "ngo/projects",
-    "ngo/beneficiaries", "ngo/grants", "ngo/volunteers",
-    "ngo/fcra", "ngo/reports",
+    "ngo/donors", "ngo/donations", "ngo/projects", "ngo/beneficiaries",
+    "ngo/grants", "ngo/volunteers", "ngo/80g", "ngo/fcra",
+    "ngo/csr", "ngo/reports", "ngo/funds",
   ],
   nidhi: [
     "nidhi", "nidhi-enterprise",
     "nidhi/members", "nidhi/deposits", "nidhi/loans", "nidhi/emi",
-    "nidhi/shares", "nidhi/gold-rates", "nidhi/interest-rates",
+    "nidhi/collection", "nidhi/shares", "nidhi/gold-rates", "nidhi/interest-rates",
     "nidhi/daily-collection", "nidhi/compliance", "nidhi/reports",
   ],
   ecommerce: [
     "ecommerce", "ecommerce-enterprise",
     "ecommerce/dashboard", "ecommerce/orders", "ecommerce/listings",
-    "ecommerce/shipments", "ecommerce/returns", "ecommerce/settlements",
-    "ecommerce/channels", "ecommerce/reports",
+    "ecommerce/returns", "ecommerce/settlements", "ecommerce/shipments",
+    "ecommerce/channels", "ecommerce/inventory-sync", "ecommerce/reports",
   ],
   gold_erp: [
     "gold-erp",
@@ -323,7 +336,8 @@ const INDUSTRY_MODULES     = ["healthcare", "pharmacy", "education", "logistics_
 const TRIAL_MODULES        = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "production", "quality_returns", "accounting", "mis", "expenses", "documents", "crm", "whatsapp", "maintenance", "hr_payroll", "recurring_invoices", "warehouses", "projects", "fixed_assets", "multi_currency", ...INDUSTRY_MODULES];
 const BASIC_MODULES        = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "expenses", "documents"];
 const PROFESSIONAL_MODULES = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "production", "quality_returns", "accounting", "mis", "expenses", "documents", "whatsapp", "maintenance", "crm", "api_hub", "recurring_invoices", "warehouses"];
-const ENTERPRISE_MODULES   = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "production", "quality_returns", "accounting", "mis", "expenses", "documents", "whatsapp", "maintenance", "hr_payroll", "crm", "api_hub", "recurring_invoices", "warehouses", "projects", "fixed_assets", "multi_currency", ...INDUSTRY_MODULES];
+const EXTENDED_SUITE_MODULES = ["swachsign", "swachdesk", "swachmeet", "swachsocial", "swachforms"];
+const ENTERPRISE_MODULES   = ["invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "production", "quality_returns", "accounting", "mis", "expenses", "documents", "whatsapp", "maintenance", "hr_payroll", "crm", "api_hub", "recurring_invoices", "warehouses", "projects", "fixed_assets", "multi_currency", ...INDUSTRY_MODULES, ...EXTENDED_SUITE_MODULES];
 // "pos" intentionally excluded — Gold ERP plan uses Jewellery POS (gold-erp-jewellery-pos) instead of the
 // generic retail POS. Showing both would confuse jewellers. Standard POS is hidden from the sidebar.
 const GOLD_ERP_MODULES     = ["gold_erp", "invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders", "production", "quality_returns", "accounting", "mis", "expenses", "documents", "whatsapp", "maintenance", "hr_payroll", "crm", "api_hub", "recurring_invoices", "warehouses", "projects", "fixed_assets", "multi_currency"];

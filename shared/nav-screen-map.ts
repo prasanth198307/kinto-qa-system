@@ -101,6 +101,12 @@ export const navItemToScreenKey: Record<string, string> = {
   'gst-reports':                        'gst_reports',
   'gstr-reports':                       'gst_reports',
   'bulk-payment-report':                'bulk_payment_report',
+  'finance/recurring-journals':         'finance_recurring_journals',
+  'finance/consolidation':              'finance_consolidation',
+  'finance/ifrs-reporting':             'finance_ifrs_gaap',
+  'finance/zatca-portal':               'finance_zatca',
+  'finance/gstr-filing-new':            'finance_gstr_direct',
+  'finance/investor-pack':              'finance_investor_reporting',
   'payment-writeoff':                   'payment_writeoff',
 
   // ── Gatepasses & Dispatch ─────────────────────────────────────────────────
@@ -182,6 +188,9 @@ export const navItemToScreenKey: Record<string, string> = {
   'hr-onboarding':                      'hr_masters',
   'hr-letters':                         'hr_masters',
   'hr-support-desk':                    'hr_masters',
+  'hr/epfo-filing':                     'hr_epfo_filing',
+  'hr/offer-letters':                   'hr_offer_letters',
+  'hr/biometric':                       'hr_biometric',
   'timesheets':                         'timesheets',
 
   // ── CRM ───────────────────────────────────────────────────────────────────
@@ -200,6 +209,12 @@ export const navItemToScreenKey: Record<string, string> = {
   'logistics':                          'logistics_transport',
   'real-estate':                        'real_estate',
   'pos':                                'pos',
+  'retail/franchise':                   'retail_franchise',
+  'retail/b2b-portal':                  'retail_b2b_portal',
+  'retail/store-transfers':             'retail_store_transfers',
+  'retail/loyalty':                     'retail_loyalty',
+  'retail/omni-channel':                'retail_omni_channel',
+  'retail/pos-hardware':                'retail_pos_hardware',
   'agriculture':                        'agriculture',
 
   // ── Restaurant ERP ────────────────────────────────────────────────────────────
@@ -244,6 +259,8 @@ export const navItemToScreenKey: Record<string, string> = {
   'restaurant-campaigns':               'restaurant_campaigns',
   'restaurant-recipes':                 'restaurant_recipes',
   'restaurant-payment-terminal':        'restaurant_payment_terminal',
+  'restaurant/ondc-integration':        'restaurant_ondc',
+  'restaurant/loyalty-expiry':          'restaurant_loyalty_expiry',
 
   // ── Gold ERP ──────────────────────────────────────────────────────────────
   'gold-erp':                           'gold_erp',
@@ -279,6 +296,10 @@ export const navItemToScreenKey: Record<string, string> = {
   'gold-erp-refining':                  'gold_erp_refining',
   'gold-erp-pos-old-gold':              'gold_erp_pos_old_gold',
   'gold-erp-hallmarking':               'gold_erp_hallmarking',
+  'gold-erp/live-rates':                'gold_erp_live_rates',
+  'gold-erp/hallmarking':               'gold_erp_hallmarking',
+  'gold-erp/sebi-reporting':            'gold_erp_sebi_reporting',
+  'gold-erp/digital-gold':              'gold_erp_digital_gold',
   'gold-erp-bullion':                   'gold_erp_bullion',
   'gold-erp-bullion-rate-cuts':         'gold_erp_bullion_rate_cuts',
   'gold-erp-vault-movement':            'gold_erp_vault_movement',
@@ -319,6 +340,9 @@ export const navItemToScreenKey: Record<string, string> = {
   'healthcare/doctors':                 'healthcare_doctors',
   'healthcare/blood-bank':              'healthcare_blood_bank',
   'healthcare/reports':                 'healthcare_reports',
+  'healthcare/abdm':                    'healthcare_abdm',
+  'healthcare/emr':                     'healthcare_emr',
+  'healthcare/tpa-claims':              'healthcare_tpa_claims',
   // Pharmacy ERP sub-pages
   'pharmacy/billing':                   'pharmacy_billing',
   'pharmacy/drugs':                     'pharmacy_drugs',
@@ -329,6 +353,7 @@ export const navItemToScreenKey: Record<string, string> = {
   'pharmacy/licenses':                  'pharmacy_licenses',
   'pharmacy/expiry':                    'pharmacy_expiry',
   'pharmacy/reports':                   'pharmacy_reports',
+  'pharmacy/prescriptions':             'pharmacy_prescriptions',
   // NGO ERP sub-pages
   'ngo/donors':                         'ngo_donors',
   'ngo/donations':                      'ngo_donations',
@@ -339,6 +364,10 @@ export const navItemToScreenKey: Record<string, string> = {
   'ngo/volunteers':                     'ngo_volunteers',
   'ngo/fcra':                           'ngo_fcra',
   'ngo/reports':                        'ngo_reports',
+  'ngo/80g-bulk':                       'ngo_80g_bulk',
+  'ngo/csr':                            'ngo_csr',
+  'ngo/funds':                          'ngo_funds',
+  'ngo/donor-admin':                    'ngo_donor_admin',
   // Nidhi Company ERP sub-pages
   'nidhi/members':                      'nidhi_members',
   'nidhi/deposits':                     'nidhi_deposits',
@@ -350,6 +379,11 @@ export const navItemToScreenKey: Record<string, string> = {
   'nidhi/daily-collection':             'nidhi_daily_collection',
   'nidhi/compliance':                   'nidhi_compliance',
   'nidhi/reports':                      'nidhi_reports',
+  'nidhi/loan-sanction':               'nidhi_loan_sanction',
+  'nidhi/pdc-tracking':                'nidhi_pdc_tracking',
+  'nidhi/rbi-returns':                 'nidhi_rbi_returns',
+  'nidhi/member-passbook':             'nidhi_member_passbook',
+  'nidhi/mobile-collection':           'nidhi_mobile_collection',
   // Logistics ERP sub-pages
   'logistics/fleet':                    'logistics_fleet',
   'logistics/trips':                    'logistics_trips',
@@ -371,6 +405,8 @@ export const navItemToScreenKey: Record<string, string> = {
   'real-estate/documents':              'real_estate_documents',
   'real-estate/customer-portal':        'real_estate_customer_portal',
   'real-estate/society':                'real_estate_society',
+  'real-estate/bank-loans':             'real_estate_bank_loans',
+  'real-estate/subcontractors':         'real_estate_subcontractors',
   'real-estate/reports':                'real_estate_reports',
   // Agriculture ERP sub-pages
   'agriculture/farms':                  'agriculture_farms',
@@ -405,6 +441,8 @@ export const navItemToScreenKey: Record<string, string> = {
   'crm/email-campaigns':                'crm_email_campaigns',
   'crm/whatsapp':                       'crm_whatsapp',
   'crm/reports':                        'crm_reports',
+  'crm/telephony':                      'crm_telephony',
+  'crm/quotations':                     'crm_quotations',
   // Manufacturing ERP new screens
   'manufacturing/job-cards':            'manufacturing_job_cards',
   'manufacturing/sub-contracting':      'manufacturing_sub_contracting',
@@ -412,6 +450,10 @@ export const navItemToScreenKey: Record<string, string> = {
   'manufacturing/work-orders':          'manufacturing_work_orders',
   'manufacturing/quality':              'manufacturing_quality',
   'manufacturing/mrp':                  'manufacturing_mrp',
+  'manufacturing/barcode-scanner':      'manufacturing_barcode',
+  'manufacturing/preventive-maintenance': 'manufacturing_pm',
+  'manufacturing/bom-versions':         'manufacturing_bom_versions',
+  'manufacturing/supply-chain':         'manufacturing_supply_chain',
   // Logistics
   'logistics/eway-bill':                'logistics_eway_bill',
   // E-Commerce ERP sub-pages
@@ -423,6 +465,16 @@ export const navItemToScreenKey: Record<string, string> = {
   'ecommerce/settlements':              'ecommerce_settlements',
   'ecommerce/channels':                 'ecommerce_channels',
   'ecommerce/reports':                  'ecommerce_reports',
+  // SwachDesk
+  'swachdesk':                          'swachdesk',
+  'swachdesk-reports':                  'swachdesk_reports',
+  // SwachForms
+  'swachforms':                         'swachforms',
+  'swachforms-builder':                 'swachforms_builder',
+  // Extended Suite
+  'swachsign':                          'swachsign',
+  'swachsocial':                        'swachsocial',
+  'swachmeet':                          'swachmeet',
 };
 
 /**

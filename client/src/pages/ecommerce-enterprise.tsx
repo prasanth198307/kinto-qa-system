@@ -19,9 +19,16 @@ export default function EcommerceEnterprisePage() {
   const [reportData, setReportData] = useState<any[]>([]);
   const [from, setFrom] = useState(""); const [to, setTo] = useState("");
 
+  const [syncResult, setSyncResult] = useState<any>(null);
+  const [syncing, setSyncing] = useState(false);
+
   const { data: channels = [] } = useQuery({ queryKey: ['/api/ecommerce/channels'], queryFn: () => api('GET', '/api/ecommerce/channels') });
   const { data: orders = [] } = useQuery({ queryKey: ['/api/ecommerce/orders'], queryFn: () => api('GET', '/api/ecommerce/orders') });
   const { data: shipments = [] } = useQuery({ queryKey: ['/api/ecommerce/shipments'], queryFn: () => api('GET', '/api/ecommerce/shipments') });
+  const { data: inventorySync = [] } = useQuery({ queryKey: ['/api/ecommerce/inventory/sync-status'], queryFn: () => api('GET', '/api/ecommerce/inventory/sync-status') });
+  const { data: mktOrders = [] } = useQuery({ queryKey: ['/api/ecommerce/marketplace/orders'], queryFn: () => api('GET', '/api/ecommerce/marketplace/orders') });
+
+  const syncNow = async () => { setSyncing(true); try { const r = await api('POST', '/api/ecommerce/marketplace/sync'); setSyncResult(r); qc.invalidateQueries({ queryKey: ['/api/ecommerce/marketplace/orders'] }); } catch(e:any) { setSyncResult({error:e.message}); } setSyncing(false); };
   const { data: returns = [] } = useQuery({ queryKey: ['/api/ecommerce/returns'], queryFn: () => api('GET', '/api/ecommerce/returns') });
   const { data: reviews = [] } = useQuery({ queryKey: ['/api/ecommerce/reviews'], queryFn: () => api('GET', '/api/ecommerce/reviews') });
   const { data: adSpend = [] } = useQuery({ queryKey: ['/api/ecommerce/marketing/ad-spend'], queryFn: () => api('GET', '/api/ecommerce/marketing/ad-spend') });
@@ -38,6 +45,7 @@ export default function EcommerceEnterprisePage() {
       <Tabs defaultValue="channels">
         <TabsList className="flex flex-wrap gap-1">
           <TabsTrigger value="channels">Channels</TabsTrigger>
+          <TabsTrigger value="marketplace">Marketplace Sync</TabsTrigger>
           <TabsTrigger value="orders">Orders</TabsTrigger>
           <TabsTrigger value="shipments">Shipments</TabsTrigger>
           <TabsTrigger value="returns">Returns</TabsTrigger>
@@ -76,6 +84,43 @@ export default function EcommerceEnterprisePage() {
           </div>
         </TabsContent>
 
+        <TabsContent value="marketplace">
+          <div className="space-y-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Marketplace Sync</CardTitle>
+                <Button onClick={syncNow} disabled={syncing}>{syncing ? "Syncing..." : "Sync Now"}</Button>
+              </CardHeader>
+              <CardContent>
+                {syncResult && <div className="mb-3 p-3 bg-green-50 border border-green-200 rounded text-sm">
+                  Last sync: Amazon {syncResult.amazon||0} | Flipkart {syncResult.flipkart||0} | Meesho {syncResult.meesho||0} | Total {syncResult.total||0} orders
+                </div>}
+                <div className="grid grid-cols-3 gap-4">
+                  {['amazon','flipkart','meesho'].map(ch => {
+                    const count = (mktOrders as any[]).filter((o:any) => o.channel === ch || (o as any).platform === ch).length;
+                    const colors: Record<string,string> = {amazon:'text-orange-600',flipkart:'text-blue-600',meesho:'text-purple-600'};
+                    return <Card key={ch} className="border">
+                      <CardContent className="pt-4">
+                        <p className={`text-lg font-bold capitalize ${colors[ch]}`}>{ch}</p>
+                        <p className="text-2xl font-bold mt-1">{count}</p>
+                        <p className="text-xs text-muted-foreground">orders (last 30d)</p>
+                      </CardContent>
+                    </Card>;
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader><CardTitle>Inventory Sync Status</CardTitle></CardHeader>
+              <CardContent>
+                <Table><TableHeader><TableRow><TableHead>SKU</TableHead><TableHead>Available Qty</TableHead><TableHead>Reserved</TableHead><TableHead>Last Synced</TableHead></TableRow></TableHeader>
+                <TableBody>{(inventorySync as any[]).map((s:any) => <TableRow key={s.id}><TableCell className="font-mono text-xs">{s.sku}</TableCell><TableCell>{s.available_qty}</TableCell><TableCell>{s.reserved_qty||0}</TableCell><TableCell>{s.last_synced ? new Date(s.last_synced).toLocaleString() : '—'}</TableCell></TableRow>)}</TableBody></Table>
+                {(inventorySync as any[]).length === 0 && <p className="text-center text-gray-400 py-4">No inventory sync data. Push inventory to sync.</p>}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
         <TabsContent value="orders">
           <Card><CardHeader><CardTitle>Multi-Channel Orders</CardTitle></CardHeader>
           <CardContent>
@@ -86,11 +131,11 @@ export default function EcommerceEnterprisePage() {
         </TabsContent>
 
         <TabsContent value="shipments">
-          <Card><CardHeader><CardTitle>Shipments</CardTitle></CardHeader>
+          <Card><CardHeader><CardTitle>Shipments & Tracking</CardTitle></CardHeader>
           <CardContent>
-            <Table><TableHeader><TableRow><TableHead>Order</TableHead><TableHead>Courier</TableHead><TableHead>AWB</TableHead><TableHead>Status</TableHead><TableHead>Tracking</TableHead></TableRow></TableHeader>
-            <TableBody>{(shipments as any[]).map((s:any)=><TableRow key={s.id}><TableCell>{s.order_id?.slice(0,8)}</TableCell><TableCell>{s.courier_name}</TableCell><TableCell className="font-mono text-xs">{s.awb_number}</TableCell><TableCell><Badge variant={s.status==='delivered'?'default':'secondary'}>{s.status}</Badge></TableCell><TableCell>{s.tracking_url?<a href={s.tracking_url} target="_blank" className="text-blue-600 text-xs">Track</a>:'—'}</TableCell></TableRow>)}</TableBody></Table>
-            {(shipments as any[]).length===0&&<p className="text-center text-gray-400 py-8">No shipments yet</p>}
+            <Table><TableHeader><TableRow><TableHead>Order</TableHead><TableHead>Customer</TableHead><TableHead>Provider</TableHead><TableHead>Tracking No</TableHead><TableHead>Status</TableHead><TableHead>Created</TableHead></TableRow></TableHeader>
+            <TableBody>{(shipments as any[]).map((s:any)=><TableRow key={s.id}><TableCell className="font-mono text-xs">{s.order_number||s.order_id}</TableCell><TableCell>{s.customer_name||'—'}</TableCell><TableCell><Badge variant="outline">{s.provider}</Badge></TableCell><TableCell className="font-mono text-xs">{s.tracking_no}</TableCell><TableCell><Badge variant={s.status==='delivered'?'default':s.status==='created'?'secondary':'outline'}>{s.status}</Badge></TableCell><TableCell className="text-xs">{s.created_at ? new Date(s.created_at).toLocaleDateString() : '—'}</TableCell></TableRow>)}</TableBody></Table>
+            {(shipments as any[]).length===0&&<p className="text-center text-gray-400 py-8">No shipments yet. Ship orders from the Orders tab.</p>}
           </CardContent></Card>
         </TabsContent>
 

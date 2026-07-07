@@ -2,6 +2,7 @@ import { Router } from "express";
 import { sql } from "drizzle-orm";
 import { db } from "./db";
 import { glRestaurantPayment } from "./vertical-gl-service";
+import { expireLoyaltyPoints } from "./loyalty-expiry-service";
 
 const router = Router();
 const requireAuth = (req: any, res: any, next: any) => { if (!req.isAuthenticated?.() && !req.user) return res.status(401).json({ error: "Unauthorized" }); next(); };
@@ -3300,6 +3301,49 @@ router.get("/franchise/applications", requireAuth, async (req: any, res: any) =>
     const rows = await db.execute(sql`SELECT * FROM restaurant_franchise_applications WHERE franchisor_tenant_id=${t} ORDER BY created_at DESC`);
     res.json(rows.rows || []);
   } catch { res.json([]); }
+});
+
+// ─── LOYALTY EXPIRY ENGINE ────────────────────────────────────────────────────
+router.get("/loyalty/expiry-stats", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  try {
+    const config = await db.execute(sql`SELECT expiry_days FROM loyalty_config WHERE tenant_id=${t} LIMIT 1`);
+    const expiryDays = Number((config.rows[0] as any)?.expiry_days || 365);
+    const today = new Date().toISOString().split("T")[0];
+    const in7 = new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0];
+    const in30 = new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0];
+
+    const [expired, expiring7, expiring30, active, totalPoints] = await Promise.all([
+      db.execute(sql`SELECT COUNT(*) as cnt, COALESCE(SUM(loyalty_points),0) as pts FROM restaurant_customers WHERE tenant_id=${t} AND expiry_date IS NOT NULL AND expiry_date < ${today} AND loyalty_points > 0`),
+      db.execute(sql`SELECT COUNT(*) as cnt, COALESCE(SUM(loyalty_points),0) as pts FROM restaurant_customers WHERE tenant_id=${t} AND expiry_date BETWEEN ${today} AND ${in7} AND loyalty_points > 0`),
+      db.execute(sql`SELECT COUNT(*) as cnt, COALESCE(SUM(loyalty_points),0) as pts FROM restaurant_customers WHERE tenant_id=${t} AND expiry_date BETWEEN ${today} AND ${in30} AND loyalty_points > 0`),
+      db.execute(sql`SELECT COUNT(*) as cnt FROM restaurant_customers WHERE tenant_id=${t} AND loyalty_points > 0`),
+      db.execute(sql`SELECT COALESCE(SUM(loyalty_points),0) as pts FROM restaurant_customers WHERE tenant_id=${t}`),
+    ]);
+
+    const expiringSoonRows = await db.execute(sql`
+      SELECT id, name, phone, loyalty_points, expiry_date
+      FROM restaurant_customers
+      WHERE tenant_id=${t} AND expiry_date IS NOT NULL AND expiry_date <= ${in30} AND loyalty_points > 0
+      ORDER BY expiry_date ASC LIMIT 50`);
+
+    res.json({
+      expiry_days: expiryDays,
+      already_expired: { customers: Number((expired.rows[0] as any)?.cnt || 0), points: Number((expired.rows[0] as any)?.pts || 0) },
+      expiring_in_7_days: { customers: Number((expiring7.rows[0] as any)?.cnt || 0), points: Number((expiring7.rows[0] as any)?.pts || 0) },
+      expiring_in_30_days: { customers: Number((expiring30.rows[0] as any)?.cnt || 0), points: Number((expiring30.rows[0] as any)?.pts || 0) },
+      active_members: Number((active.rows[0] as any)?.cnt || 0),
+      total_points_outstanding: Number((totalPoints.rows[0] as any)?.pts || 0),
+      expiring_soon: expiringSoonRows.rows,
+    });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.post("/loyalty/expire-now", requireAuth, async (req: any, res: any) => {
+  try {
+    const count = await expireLoyaltyPoints();
+    res.json({ expired_customers: count, message: count > 0 ? `Expired points for ${count} customers` : "No expired points found" });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
 export default router;

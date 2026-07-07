@@ -282,7 +282,7 @@ router.post("/transactions", requireAuth, async (req: any, res) => {
       const netPts = pts - (loyaltyPtsRedeemed || 0);
       await db.execute(sql`UPDATE pos_customers SET loyalty_points=GREATEST(0, loyalty_points+${netPts}), outstanding_balance=outstanding_balance-${total} WHERE id=${customer_id}`);
     }
-    glRetailSale({ tenantId: Number(tid(req)), saleId: txnId, invoiceNumber: no, totalAmount: Math.round(total*100), discount: Math.round((discount_amount||0)*100), taxAmount: Math.round((tax_amount||0)*100), paidAmount: Math.round((amount_paid||total)*100), paymentMode: payment_mode || "cash" });
+    glRetailSale({ tenantId: Number(tid(req)), saleId: Number(txnId), invoiceNumber: no, totalAmount: Math.round(total*100), discount: Math.round((discount_amount||0)*100), taxAmount: Math.round((tax_amount||0)*100), paidAmount: Math.round((amount_paid||total)*100), paymentMode: payment_mode || "cash" });
     res.json(txn.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
@@ -845,12 +845,118 @@ router.get("/stats", requireAuth, async (req: any, res) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// ── Phase 7N: Franchise ───────────────────────────────────────────────────────
-router.get("/franchises", async (_req: any, res) => { res.json([]); });
-router.post("/franchises", async (req: any, res) => { res.json({ id: Date.now(), compliance_score: 85, actual_sales: 0, ...req.body }); });
+// ── Phase 7N: Franchise Management ───────────────────────────────────────────
+router.get("/franchises", async (req: any, res) => {
+  const t = tid(req);
+  try {
+    await db.execute(sql`CREATE TABLE IF NOT EXISTS retail_franchises (
+      id SERIAL PRIMARY KEY, tenant_id INT NOT NULL,
+      franchise_code VARCHAR(50) NOT NULL,
+      franchisee_name VARCHAR(200) NOT NULL,
+      contact_person VARCHAR(200), phone VARCHAR(20), email VARCHAR(200),
+      store_name VARCHAR(200), address TEXT, city VARCHAR(100), state VARCHAR(100), pincode VARCHAR(10),
+      gstin VARCHAR(20), pan VARCHAR(12),
+      agreement_start DATE, agreement_end DATE, royalty_pct NUMERIC(5,2) DEFAULT 5,
+      security_deposit NUMERIC(14,2) DEFAULT 0,
+      target_monthly_sales NUMERIC(14,2) DEFAULT 0,
+      actual_sales NUMERIC(14,2) DEFAULT 0,
+      compliance_score INT DEFAULT 100,
+      status VARCHAR(20) DEFAULT 'active',
+      notes TEXT, created_at TIMESTAMPTZ DEFAULT NOW(), record_status INT DEFAULT 1
+    )`);
+    const rows = await db.execute(sql`SELECT * FROM retail_franchises WHERE tenant_id=${t} AND record_status=1 ORDER BY franchisee_name`);
+    res.json(rows.rows);
+  } catch(e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/franchises", async (req: any, res) => {
+  const t = tid(req);
+  const { franchisee_name, contact_person, phone, email, store_name, address, city, state, pincode, gstin, pan, agreement_start, agreement_end, royalty_pct, security_deposit, target_monthly_sales, notes } = req.body;
+  try {
+    const count = await db.execute(sql`SELECT COUNT(*) as n FROM retail_franchises WHERE tenant_id=${t}`);
+    const code = `FRN-${String(Number((count.rows[0] as any).n)+1).padStart(4,'0')}`;
+    const r = await db.execute(sql`INSERT INTO retail_franchises (tenant_id, franchise_code, franchisee_name, contact_person, phone, email, store_name, address, city, state, pincode, gstin, pan, agreement_start, agreement_end, royalty_pct, security_deposit, target_monthly_sales, notes)
+      VALUES (${t}, ${code}, ${franchisee_name}, ${contact_person||null}, ${phone||null}, ${email||null}, ${store_name||null}, ${address||null}, ${city||null}, ${state||null}, ${pincode||null}, ${gstin||null}, ${pan||null}, ${agreement_start||null}, ${agreement_end||null}, ${royalty_pct||5}, ${security_deposit||0}, ${target_monthly_sales||0}, ${notes||null}) RETURNING *`);
+    res.json(r.rows[0]);
+  } catch(e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.put("/franchises/:id", async (req: any, res) => {
+  const t = tid(req);
+  const { status, compliance_score, actual_sales, royalty_pct, notes } = req.body;
+  try {
+    const r = await db.execute(sql`UPDATE retail_franchises SET status=${status||'active'}, compliance_score=${compliance_score??100}, actual_sales=${actual_sales||0}, royalty_pct=${royalty_pct||5}, notes=${notes||null} WHERE id=${parseInt(req.params.id)} AND tenant_id=${t} RETURNING *`);
+    res.json(r.rows[0]);
+  } catch(e: any) { res.status(500).json({ message: e.message }); }
+});
 
 // ── Phase 7N: B2B Portal ──────────────────────────────────────────────────────
-router.get("/b2b-orders", async (_req: any, res) => { res.json([]); });
-router.post("/b2b-orders", async (req: any, res) => { res.json({ id: Date.now(), status: "Processing", ...req.body }); });
+router.get("/b2b-orders", async (req: any, res) => {
+  const t = tid(req);
+  const { status, customer_id } = req.query;
+  try {
+    await db.execute(sql`CREATE TABLE IF NOT EXISTS retail_b2b_orders (
+      id SERIAL PRIMARY KEY, tenant_id INT NOT NULL,
+      order_no VARCHAR(50) NOT NULL,
+      customer_id INT, customer_name VARCHAR(200), customer_gstin VARCHAR(20),
+      order_date DATE NOT NULL DEFAULT CURRENT_DATE,
+      delivery_date DATE, delivery_address TEXT,
+      subtotal NUMERIC(14,2) DEFAULT 0, tax_amount NUMERIC(14,2) DEFAULT 0,
+      total_amount NUMERIC(14,2) DEFAULT 0,
+      advance_paid NUMERIC(14,2) DEFAULT 0,
+      balance_due NUMERIC(14,2) DEFAULT 0,
+      payment_terms VARCHAR(50) DEFAULT 'net30',
+      status VARCHAR(30) DEFAULT 'pending',
+      invoice_id INT, dispatch_date DATE, tracking_no VARCHAR(100),
+      notes TEXT, created_at TIMESTAMPTZ DEFAULT NOW(), record_status INT DEFAULT 1
+    )`);
+    await db.execute(sql`CREATE TABLE IF NOT EXISTS retail_b2b_order_items (
+      id SERIAL PRIMARY KEY, order_id INT NOT NULL,
+      product_id INT, product_name VARCHAR(300), sku VARCHAR(100),
+      quantity NUMERIC(12,2) DEFAULT 1, unit VARCHAR(30) DEFAULT 'Nos',
+      unit_price NUMERIC(12,2) DEFAULT 0, discount_pct NUMERIC(5,2) DEFAULT 0,
+      tax_rate NUMERIC(5,2) DEFAULT 0, amount NUMERIC(14,2) DEFAULT 0
+    )`);
+    let whereClause = `tenant_id=${t} AND record_status=1`;
+    const rows = await db.execute(
+      status && customer_id
+        ? sql`SELECT * FROM retail_b2b_orders WHERE tenant_id=${t} AND record_status=1 AND status=${status} AND customer_id=${parseInt(customer_id as string)} ORDER BY order_date DESC LIMIT 100`
+        : status
+          ? sql`SELECT * FROM retail_b2b_orders WHERE tenant_id=${t} AND record_status=1 AND status=${status} ORDER BY order_date DESC LIMIT 100`
+          : customer_id
+            ? sql`SELECT * FROM retail_b2b_orders WHERE tenant_id=${t} AND record_status=1 AND customer_id=${parseInt(customer_id as string)} ORDER BY order_date DESC LIMIT 100`
+            : sql`SELECT * FROM retail_b2b_orders WHERE tenant_id=${t} AND record_status=1 ORDER BY order_date DESC LIMIT 100`
+    );
+    res.json(rows.rows);
+  } catch(e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/b2b-orders", async (req: any, res) => {
+  const t = tid(req);
+  const { customer_id, customer_name, customer_gstin, order_date, delivery_date, delivery_address, payment_terms, notes, items } = req.body;
+  try {
+    const count = await db.execute(sql`SELECT COUNT(*) as n FROM retail_b2b_orders WHERE tenant_id=${t}`);
+    const orderNo = `B2B-${new Date().getFullYear()}-${String(Number((count.rows[0] as any).n)+1).padStart(5,'0')}`;
+    const subtotal = (items||[]).reduce((s: number, i: any) => s + Number(i.amount||0), 0);
+    const tax = (items||[]).reduce((s: number, i: any) => s + Number(i.amount||0) * (Number(i.tax_rate||0))/100, 0);
+    const total = subtotal + tax;
+    const r = await db.execute(sql`INSERT INTO retail_b2b_orders (tenant_id, order_no, customer_id, customer_name, customer_gstin, order_date, delivery_date, delivery_address, subtotal, tax_amount, total_amount, balance_due, payment_terms, notes)
+      VALUES (${t}, ${orderNo}, ${customer_id||null}, ${customer_name||null}, ${customer_gstin||null}, ${order_date||new Date().toISOString().slice(0,10)}, ${delivery_date||null}, ${delivery_address||null}, ${subtotal}, ${tax}, ${total}, ${total}, ${payment_terms||'net30'}, ${notes||null}) RETURNING *`);
+    const o = r.rows[0] as any;
+    for (const it of (items||[])) {
+      await db.execute(sql`INSERT INTO retail_b2b_order_items (order_id, product_id, product_name, sku, quantity, unit, unit_price, discount_pct, tax_rate, amount) VALUES (${o.id}, ${it.product_id||null}, ${it.product_name||null}, ${it.sku||null}, ${it.quantity||1}, ${it.unit||'Nos'}, ${it.unit_price||0}, ${it.discount_pct||0}, ${it.tax_rate||0}, ${it.amount||0})`);
+    }
+    res.json(o);
+  } catch(e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.put("/b2b-orders/:id/status", async (req: any, res) => {
+  const t = tid(req);
+  const { status, dispatch_date, tracking_no, invoice_id } = req.body;
+  try {
+    const r = await db.execute(sql`UPDATE retail_b2b_orders SET status=${status}, dispatch_date=${dispatch_date||null}, tracking_no=${tracking_no||null}, invoice_id=${invoice_id||null} WHERE id=${parseInt(req.params.id)} AND tenant_id=${t} RETURNING *`);
+    res.json(r.rows[0]);
+  } catch(e: any) { res.status(500).json({ message: e.message }); }
+});
 
 export default router;

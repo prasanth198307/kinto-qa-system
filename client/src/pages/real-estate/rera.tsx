@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, AlertCircle } from "lucide-react";
+import { Shield, AlertCircle, Download, FileText } from "lucide-react";
 
 const api = (method: string, path: string, body?: any) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(r => r.json());
@@ -30,6 +30,11 @@ export default function RERAPage() {
   const [selectedProject, setSelectedProject] = useState<any>(null);
   const [report, setReport] = useState({ completion_pct: "", funds_utilized: "", units_sold: "" });
   const [complaint, setComplaint] = useState({ complainant: "", unit: "", issue: "" });
+  const [reraYear, setReraYear] = useState(String(new Date().getFullYear()));
+  const [reraQuarter, setReraQuarter] = useState("1");
+  const [reraReportProject, setReraReportProject] = useState<any>(null);
+  const [reraReport, setReraReport] = useState<any>(null);
+  const [reraLoading, setReraLoading] = useState(false);
 
   const { data: projects = [] } = useQuery<any[]>({
     queryKey: ["rera-projects"],
@@ -54,6 +59,15 @@ export default function RERAPage() {
   const projectRows = projects.length ? projects : SAMPLE_PROJECTS;
   const complaintRows = complaints.length ? complaints : SAMPLE_COMPLAINTS;
 
+  const fetchReraReport = async () => {
+    if (!reraReportProject) return;
+    setReraLoading(true);
+    try {
+      const data = await api("GET", `/api/real-estate/rera/quarterly-report/${reraReportProject.id}/${reraYear}/${reraQuarter}`);
+      setReraReport(data);
+    } catch { setReraReport(null); } finally { setReraLoading(false); }
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -65,6 +79,7 @@ export default function RERAPage() {
         <TabsList>
           <TabsTrigger value="projects">Projects</TabsTrigger>
           <TabsTrigger value="complaints">Complaint Register</TabsTrigger>
+          <TabsTrigger value="quarterly-report"><FileText className="w-3 h-3 mr-1" />Quarterly Report</TabsTrigger>
         </TabsList>
 
         <TabsContent value="projects">
@@ -143,6 +158,61 @@ export default function RERAPage() {
                   ))}
                 </TableBody>
               </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="quarterly-report">
+          <Card>
+            <CardHeader><CardTitle>RERA Quarterly Report Generator</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <Label className="text-xs">Project</Label>
+                  <select className="w-full border rounded p-2 text-sm" value={reraReportProject?.id || ""} onChange={e => setReraReportProject(projectRows.find((p: any) => String(p.id) === e.target.value) || null)}>
+                    <option value="">Select project...</option>
+                    {projectRows.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <Label className="text-xs">Year</Label>
+                  <select className="w-full border rounded p-2 text-sm" value={reraYear} onChange={e => setReraYear(e.target.value)}>
+                    {[2024, 2025, 2026, 2027].map(y => <option key={y} value={String(y)}>{y}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <Label className="text-xs">Quarter</Label>
+                  <select className="w-full border rounded p-2 text-sm" value={reraQuarter} onChange={e => setReraQuarter(e.target.value)}>
+                    <option value="1">Q1 (Jan–Mar)</option>
+                    <option value="2">Q2 (Apr–Jun)</option>
+                    <option value="3">Q3 (Jul–Sep)</option>
+                    <option value="4">Q4 (Oct–Dec)</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={fetchReraReport} disabled={!reraReportProject || reraLoading}>
+                  <FileText className="w-4 h-4 mr-1" />{reraLoading ? "Generating..." : "Generate Report"}
+                </Button>
+                {reraReportProject && (
+                  <Button variant="outline" onClick={() => window.open(`/api/real-estate/rera/quarterly-report/${reraReportProject.id}/${reraYear}/${reraQuarter}/xml`, "_blank")}>
+                    <Download className="w-4 h-4 mr-1" />Download XML
+                  </Button>
+                )}
+              </div>
+              {reraReport && (
+                <div className="border rounded p-4 bg-muted/30 space-y-2 text-sm">
+                  <div className="font-bold text-base">{reraReport.form} — {reraReport.project_name}</div>
+                  <div className="text-muted-foreground">{reraReport.period}</div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
+                    <div className="border rounded p-2 text-center"><div className="text-lg font-bold">{reraReport.units?.total}</div><div className="text-xs text-muted-foreground">Total Units</div></div>
+                    <div className="border rounded p-2 text-center"><div className="text-lg font-bold text-green-600">{reraReport.units?.sold}</div><div className="text-xs text-muted-foreground">Sold</div></div>
+                    <div className="border rounded p-2 text-center"><div className="text-lg font-bold text-orange-600">{reraReport.units?.unsold}</div><div className="text-xs text-muted-foreground">Unsold</div></div>
+                    <div className="border rounded p-2 text-center"><div className="text-lg font-bold">{reraReport.construction_progress_pct}%</div><div className="text-xs text-muted-foreground">Construction</div></div>
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-2">Generated: {new Date(reraReport.generated_at).toLocaleString()}</div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

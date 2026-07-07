@@ -3,7 +3,9 @@ import { Switch, Route, useLocation, useSearch, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider, useMutation, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
+import { I18nProvider } from "@/lib/i18n";
 import { ChatAgent } from "@/components/ChatAgent";
+import SwachAIChat from "@/components/SwachAIChat";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import NotFound from "@/pages/not-found";
@@ -87,6 +89,16 @@ import { VerticalNavSidebar, type NavSection } from "@/components/VerticalNavSid
 import { Activity, AlertTriangle, Archive, Award, BarChart3, BedDouble, Bell, BookOpen, Box, Briefcase, Building2, Calculator, Calendar, Camera, Car, CheckCircle, CheckCircle2, ClipboardCheck, ClipboardList, Clock, Coins, CreditCard, Crosshair, Factory, FileStack, FileText, FileX, FolderOpen, Gem, Gift, Globe, Heart, History, IndianRupee, Key, Landmark, Layers, LayoutDashboard, ListChecks, Loader2, Lock, LogOut, MessageSquare, Package, PackageX, Pill, Play, Plus, Receipt, RotateCcw, Scale, Scan, Settings, Settings2, Shield, ShoppingBag, ShoppingCart, Star, Tag, Target, Trash2, TrendingUp, Truck, Upload, UserX, Users, UtensilsCrossed, Wallet, Wifi, Wrench, XCircle, Zap , Database, GraduationCap, HeartPulse, Home, Leaf } from "lucide-react";
 import { MapPin, Route as RouteIcon } from "lucide-react";
 import CRMLeadsPage from "@/pages/crm-leads";
+import SwachDeskPage from "@/pages/swachdesk/index";
+import TicketDetailPage from "@/pages/swachdesk/ticket-detail";
+import SwachDeskReportsPage from "@/pages/swachdesk/reports";
+import KnowledgeBasePage from "@/pages/swachdesk/knowledge-base";
+import RoutingRulesPage from "@/pages/swachdesk/routing-rules";
+import LiveChatPage from "@/pages/swachdesk/live-chat";
+import SwachFormsPage from "@/pages/swachforms/index";
+import SwachFormsBuilderPage from "@/pages/swachforms/builder";
+import SwachFormsSubmissionsPage from "@/pages/swachforms/submissions";
+import SwachFormsPreviewPage from "@/pages/swachforms/preview";
 import SalesDashboard from "@/components/SalesDashboard";
 import SalesOrdersPage from "@/pages/sales-orders";
 import SalesOrderDetailPage from "@/pages/sales-order-detail";
@@ -269,6 +281,7 @@ import HotelChannelManagerPage from "@/pages/hotel/channel-manager";
 import HotelRevenueManagementPage from "@/pages/hotel/revenue-management";
 import HotelBanquetPage from "@/pages/hotel/banquet";
 import OndcIntegrationPage from "@/pages/restaurant/ondc-integration";
+import LoyaltyExpiryPage from "@/pages/restaurant/loyalty-expiry";
 import MultiCompanyPage from "@/pages/multi-company";
 import GSTRFilingPage from "@/pages/gstr-filing";
 import HealthcarePatientsPage from "@/pages/healthcare/patients";
@@ -309,6 +322,8 @@ import RealEstateDocumentsPage from "@/pages/real-estate/documents";
 import RealEstateCustomerPortalPage from "@/pages/real-estate/customer-portal";
 import RealEstateSocietyPage from "@/pages/real-estate/society";
 import RealEstateReportsPage from "@/pages/real-estate/reports";
+import RealEstateBankLoansPage from "@/pages/real-estate/bank-loans";
+import RealEstateSubcontractorsPage from "@/pages/real-estate/subcontractors";
 import LogisticsFleetPage from "@/pages/logistics/fleet";
 import LogisticsDriversPage from "@/pages/logistics/drivers";
 import LogisticsTripsPage from "@/pages/logistics/trips";
@@ -339,6 +354,9 @@ import NGOFCRAPage from "@/pages/ngo/fcra";
 import NGOReportsPage from "@/pages/ngo/reports";
 import NGO80GBulkPage from "@/pages/ngo/80g-bulk";
 import NGOCSRPage from "@/pages/ngo/csr";
+import NGOFundsPage from "@/pages/ngo/funds";
+import DonatePublicPage from "@/pages/donate-public";
+import PublicDashboardPage from "@/pages/analytics/public-dashboard";
 import PharmacyBillingPage from "@/pages/pharmacy/billing";
 import PharmacyDrugsPage from "@/pages/pharmacy/drugs";
 import PharmacyStockPage from "@/pages/pharmacy/stock";
@@ -350,6 +368,7 @@ import PharmacyExpiryPage from "@/pages/pharmacy/expiry";
 import PharmacyReportsPage from "@/pages/pharmacy/reports";
 import PharmacyNarcoticsRegisterPage from "@/pages/pharmacy/narcotics-register";
 import PharmacyEInvoicePage from "@/pages/pharmacy/e-invoice";
+import PharmacyPrescriptionsPage from "@/pages/pharmacy/prescriptions";
 import CRMPipelinePage from "@/pages/crm/pipeline";
 import CRMContactsPage from "@/pages/crm/contacts";
 import CRMAccountsPage from "@/pages/crm/accounts";
@@ -357,6 +376,8 @@ import CRMActivitiesPage from "@/pages/crm/activities";
 import CRMEmailCampaignsPage from "@/pages/crm/email-campaigns";
 import CRMWhatsAppPage from "@/pages/crm/whatsapp";
 import CRMReportsPage from "@/pages/crm/reports";
+import CRMTelephonyPage from "@/pages/crm/telephony";
+import CRMQuotationsPage from "@/pages/crm/quotations";
 import NidhiMembersPage from "@/pages/nidhi/members";
 import NidhiDepositsPage from "@/pages/nidhi/deposits";
 import NidhiLoansPage from "@/pages/nidhi/loans";
@@ -375,6 +396,7 @@ import EcommerceReturnsPage from "@/pages/ecommerce/returns";
 import EcommerceSettlementsPage from "@/pages/ecommerce/settlements";
 import EcommerceChannelsPage from "@/pages/ecommerce/channels";
 import EcommerceReportsPage from "@/pages/ecommerce/reports";
+import EcommerceWarehousesPage from "@/pages/ecommerce/warehouses";
 import MastersHSNCodesPage from "@/pages/masters/hsn-codes";
 import MastersSACCodesPage from "@/pages/masters/sac-codes";
 import MastersTaxConfigPage from "@/pages/masters/tax-config";
@@ -388,6 +410,7 @@ import MastersApprovalMatrixPage from "@/pages/masters/approval-matrix";
 import MastersFeatureFlagsPage from "@/pages/masters/feature-flags";
 import MastersPrintTemplatesPage from "@/pages/masters/print-templates";
 import MastersWebhooksPage from "@/pages/masters/webhooks";
+import IntegrationCredentialsPage from "@/pages/masters/integration-credentials";
 import RestaurantFeedbackPublicPage from "@/pages/restaurant-feedback-public";
 // Phase 7F — Nidhi
 import NidhiLoanSanctionPage from "@/pages/nidhi/loan-sanction";
@@ -414,13 +437,20 @@ import EducationNEPCompliancePage from "@/pages/education/nep-compliance";
 // Phase 7L — Gold ERP
 import GoldLiveRatesPage from "@/pages/gold-erp/live-rates";
 import GoldHallmarkingPage from "@/pages/gold-erp/hallmarking";
+import GoldSEBIReportingPage from "@/pages/gold-erp/sebi-reporting";
+import GoldDigitalGoldPage from "@/pages/gold-erp/digital-gold";
 // Phase 7M — HR ERP
 import HREPFOFilingPage from "@/pages/hr/epfo-filing";
 import HRComplianceCalendarPage from "@/pages/hr/compliance-calendar";
 import HROfferLettersPage from "@/pages/hr/offer-letters";
+import HRBiometricPage from "@/pages/hr/biometric";
 // Phase 7N — Retail ERP
 import RetailFranchisePage from "@/pages/retail/franchise";
 import RetailB2BPortalPage from "@/pages/retail/b2b-portal";
+import RetailStoreTransfersPage from "@/pages/retail/store-transfers";
+import RetailLoyaltyPage from "@/pages/retail/loyalty";
+import RetailOmniChannelPage from "@/pages/retail/omni-channel";
+import RetailPOSHardwarePage from "@/pages/retail/pos-hardware";
 // Phase 7O — Manufacturing ERP
 import ManufacturingMRPPage from "@/pages/manufacturing/mrp";
 import ManufacturingWorkOrdersPage from "@/pages/manufacturing/work-orders";
@@ -429,8 +459,55 @@ import ManufacturingQualityPage from "@/pages/manufacturing/quality";
 import ManufacturingJobCardsPage from "@/pages/manufacturing/job-cards";
 import ManufacturingSubContractingPage from "@/pages/manufacturing/sub-contracting";
 import ManufacturingMachineOEEPage from "@/pages/manufacturing/machine-oee";
+import ManufacturingBarcodeScannerPage from "@/pages/manufacturing/barcode-scanner";
+import ManufacturingPreventiveMaintenancePage from "@/pages/manufacturing/preventive-maintenance";
+import ManufacturingBomVersionsPage from "@/pages/manufacturing/bom-versions";
+import ManufacturingSupplyChainPage from "@/pages/manufacturing/supply-chain";
 import { parseISO } from "date-fns";
 import NotificationEnginePage from "@/pages/NotificationSettingsPage";
+// Phase 7P — Finance, HR, Admin (SwachERP phases 4-6)
+import RecurringJournalsPage from "@/pages/finance/recurring-journals";
+import GSTRFilingNewPage from "@/pages/finance/gstr-filing-new";
+import ConsolidationPage from "@/pages/finance/consolidation";
+import IFRSReportingPage from "@/pages/finance/ifrs-reporting";
+import ZATCAPortalPage from "@/pages/finance/zatca-portal";
+import InvestorPackPage from "@/pages/finance/investor-pack";
+import StatutoryCalendarPage from "@/pages/hr/statutory-calendar";
+import NotificationLogPage from "@/pages/admin/notification-log";
+// SwachSign, SwachSocial, SwachMeet
+import SwachSignIndex from "@/pages/swachsign/index";
+import SwachSignDetail from "@/pages/swachsign/detail";
+import SwachSignSignPage from "@/pages/swachsign/sign-page";
+import SwachSignPlacement from "@/pages/swachsign/placement";
+import SwachSocialIndex from "@/pages/swachsocial/index";
+import SwachSocialComposer from "@/pages/swachsocial/composer";
+import SwachSocialCalendar from "@/pages/swachsocial/calendar";
+import SwachSocialAnalytics from "@/pages/swachsocial/analytics";
+import SwachMeetIndex from "@/pages/swachmeet/index";
+import SwachMeetRoom from "@/pages/swachmeet/room";
+import WebinarRegistration from "@/pages/swachmeet/webinar-registration";
+// IFRS, ASC606, Investor, MRP, Analytics pages
+import IfrsConsolidationPage from "@/pages/ifrs/consolidation-dashboard";
+import Asc606ArrangementsPage from "@/pages/asc606/arrangements";
+import InvestorDashboardPage from "@/pages/investor/dashboard";
+import CapTablePage from "@/pages/investor/cap-table";
+import BomManagerPage from "@/pages/mrp/bom-manager";
+import MrpRunPage from "@/pages/mrp/mrp-run";
+import AnalyticsStudioPage from "@/pages/analytics/studio";
+import DashboardBuilderPage from "@/pages/analytics/dashboard-builder";
+// Phase 7Q — New vertical pages
+import HotelBanquetEventsPage from "@/pages/hotel/banquet-events";
+import HealthcareEMRVisitPage from "@/pages/healthcare/emr-visit";
+import NidhiMemberPassbookPage from "@/pages/nidhi/member-passbook";
+import NidhiMobileCollectionPage from "@/pages/nidhi/mobile-collection";
+import NGODonorAdminPage from "@/pages/ngo/donor-admin";
+// Phase 7R — SwachERP new vertical pages
+import GpsTrackingPage from "@/pages/logistics/gps-tracking";
+import ReraCompliancePage from "@/pages/real-estate/rera-compliance";
+import FefoBillingPage from "@/pages/pharmacy/fefo-billing";
+import MarketplaceConnectPage from "@/pages/ecommerce/marketplace-connect";
+import PipelineBoardPage from "@/pages/crm/pipeline-board";
+import MandiDashboardPage from "@/pages/agriculture/mandi-dashboard";
 
 type Role = 'admin' | 'operator' | 'reviewer' | 'manager';
 
@@ -2107,6 +2184,8 @@ function buildGoldNavSections(setLocation: (path: string) => void): NavSection[]
           items: [
             { id: "gold-erp-live-rates",    label: "Live Gold Rates",     icon: TrendingUp,      onClick: () => setLocation("/gold-erp/live-rates") },
             { id: "gold-erp-hallmarking-page", label: "BIS Hallmarking",  icon: Award,           onClick: () => setLocation("/gold-erp/hallmarking") },
+            { id: "gold-erp-sebi-reporting", label: "SEBI Bullion Report", icon: FileText,        onClick: () => setLocation("/gold-erp/sebi-reporting") },
+            { id: "gold-erp-digital-gold",  label: "Digital Gold",         icon: Coins,           onClick: () => setLocation("/gold-erp/digital-gold") },
             { id: "gold-erp-overview",      label: "Overview",            icon: LayoutDashboard, onClick: () => go("overview") },
             { id: "gold-erp-rates",         label: "Metal Rates",         icon: TrendingUp,      onClick: () => go("rates") },
             { id: "gold-erp-karigar",       label: "Karigar",             icon: Users,           onClick: () => go("karigar") },
@@ -2364,6 +2443,22 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       ],
     },
     {
+      id: "swachdesk-section",
+      label: "SwachDesk (Helpdesk)",
+      items: [
+        { id: "swachdesk", label: "All Tickets", icon: MessageSquare, onClick: () => setLocation('/swachdesk') },
+        { id: "swachdesk-reports", label: "Helpdesk Reports", icon: BarChart3, onClick: () => setLocation('/swachdesk/reports') },
+      ],
+    },
+    {
+      id: "swachforms-section",
+      label: "SwachForms (Form Builder)",
+      items: [
+        { id: "swachforms", label: "My Forms", icon: FileText, onClick: () => setLocation('/swachforms') },
+        { id: "swachforms-builder", label: "Form Builder", icon: Layers, onClick: () => setLocation('/swachforms/builder') },
+      ],
+    },
+    {
       id: "crm-section",
       label: "CRM & Leads",
       items: [
@@ -2452,6 +2547,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "masters/sms-templates", label: "SMS Templates", icon: MessageSquare, onClick: () => setLocation('/masters/sms-templates') },
         { id: "masters/approval-matrix", label: "Approval Matrix", icon: CheckCircle, onClick: () => setLocation('/masters/approval-matrix') },
         { id: "masters/feature-flags", label: "Feature Flags", icon: Zap, onClick: () => setLocation('/masters/feature-flags') },
+        { id: "masters/integration-credentials", label: "Integration Credentials", icon: Zap, onClick: () => setLocation('/masters/integration-credentials') },
         { id: "masters/print-templates", label: "Print Templates", icon: FileText, onClick: () => setLocation('/masters/print-templates') },
         { id: "masters/webhooks", label: "Webhooks", icon: Wifi, onClick: () => setLocation('/masters/webhooks') },
       ],
@@ -2484,6 +2580,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "restaurant-payment-terminal", label: "Payment Terminal", icon: Package, onClick: () => setLocation('/restaurant-payment-terminal') },
         { id: "restaurant-menu-translations", label: "Menu Translations", icon: Package, onClick: () => setLocation('/restaurant-menu-translations') },
         { id: "restaurant/ondc-integration", label: "ONDC Integration", icon: Package, onClick: () => setLocation('/restaurant/ondc-integration') },
+        { id: "restaurant/loyalty-expiry", label: "Loyalty Expiry Engine", icon: Clock, onClick: () => setLocation('/restaurant/loyalty-expiry') },
       ],
     },
     {
@@ -2559,6 +2656,8 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "real-estate/documents", label: "Documents", icon: FolderOpen, onClick: () => setLocation('/real-estate/documents') },
         { id: "real-estate/customer-portal", label: "Customer Portal", icon: Users, onClick: () => setLocation('/real-estate/customer-portal') },
         { id: "real-estate/society", label: "Society", icon: Building2, onClick: () => setLocation('/real-estate/society') },
+        { id: "real-estate/bank-loans", label: "Bank Loans", icon: Landmark, onClick: () => setLocation('/real-estate/bank-loans') },
+        { id: "real-estate/subcontractors", label: "Subcontractors", icon: Wrench, onClick: () => setLocation('/real-estate/subcontractors') },
         { id: "real-estate/reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/real-estate/reports') },
       ],
     },
@@ -2610,6 +2709,8 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "ngo/fcra", label: "FCRA Compliance", icon: Shield, onClick: () => setLocation('/ngo/fcra') },
         { id: "ngo/80g-bulk", label: "80G Bulk Certificates", icon: FileText, onClick: () => setLocation('/ngo/80g-bulk') },
         { id: "ngo/csr", label: "CSR Module", icon: Target, onClick: () => setLocation('/ngo/csr') },
+        { id: "ngo/funds", label: "Fund Accounting", icon: Landmark, onClick: () => setLocation('/ngo/funds') },
+        { id: "ngo/donor-admin", label: "Donor Portal Admin", icon: Heart, onClick: () => setLocation('/ngo/donor-admin') },
         { id: "ngo/reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/ngo/reports') },
       ],
     },
@@ -2627,6 +2728,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "pharmacy/expiry", label: "Expiry Alerts", icon: Clock, onClick: () => setLocation('/pharmacy/expiry') },
         { id: "pharmacy/narcotics-register", label: "Narcotics Register", icon: ClipboardList, onClick: () => setLocation('/pharmacy/narcotics-register') },
         { id: "pharmacy/e-invoice", label: "GST E-Invoice", icon: FileText, onClick: () => setLocation('/pharmacy/e-invoice') },
+        { id: "pharmacy/prescriptions", label: "Prescriptions (Rx)", icon: ClipboardList, onClick: () => setLocation('/pharmacy/prescriptions') },
         { id: "pharmacy/reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/pharmacy/reports') },
       ],
     },
@@ -2659,6 +2761,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "nidhi/daily-collection", label: "Daily Collection", icon: Wallet, onClick: () => setLocation('/nidhi/daily-collection') },
         { id: "nidhi/compliance", label: "Compliance (NDH)", icon: Shield, onClick: () => setLocation('/nidhi/compliance') },
         { id: "nidhi/reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/nidhi/reports') },
+        { id: "nidhi/mobile-collection", label: "Mobile Collection", icon: Wallet, onClick: () => setLocation('/nidhi/mobile-collection') },
       ],
     },
     {
@@ -2672,6 +2775,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "ecommerce/returns", label: "Returns & RTO", icon: RotateCcw, onClick: () => setLocation('/ecommerce/returns') },
         { id: "ecommerce/settlements", label: "Settlements", icon: Wallet, onClick: () => setLocation('/ecommerce/settlements') },
         { id: "ecommerce/channels", label: "Channels", icon: Globe, onClick: () => setLocation('/ecommerce/channels') },
+        { id: "ecommerce/warehouses", label: "Warehouses", icon: Box, onClick: () => setLocation('/ecommerce/warehouses') },
         { id: "ecommerce/reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/ecommerce/reports') },
         { id: "healthcare", label: "Healthcare", icon: Briefcase, onClick: () => setLocation('/healthcare') },
         { id: "education", label: "Education", icon: BookOpen, onClick: () => setLocation('/education') },
@@ -2691,9 +2795,22 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "pos", label: "POS Terminal", icon: ShoppingCart, onClick: () => setLocation('/pos') },
         { id: "retail/franchise", label: "Franchise Management", icon: Building2, onClick: () => setLocation('/retail/franchise') },
         { id: "retail/b2b-portal", label: "B2B Portal", icon: Layers, onClick: () => setLocation('/retail/b2b-portal') },
+        { id: "retail/store-transfers", label: "Store Transfers", icon: Truck, onClick: () => setLocation('/retail/store-transfers') },
+        { id: "retail/loyalty", label: "Loyalty Program", icon: Gift, onClick: () => setLocation('/retail/loyalty') },
+        { id: "retail/omni-channel", label: "Omni-Channel Sync", icon: Globe, onClick: () => setLocation('/retail/omni-channel') },
+        { id: "retail/pos-hardware", label: "POS Hardware", icon: Settings, onClick: () => setLocation('/retail/pos-hardware') },
       ],
     },
     ...buildGoldNavSections(setLocation),
+    {
+      id: "extended-suite-section",
+      label: "Extended Suite",
+      items: [
+        { id: "swachsign", label: "SwachSign (eSigning)", icon: FileText, onClick: () => setLocation('/swachsign') },
+        { id: "swachsocial", label: "SwachSocial (Social Media)", icon: Wifi, onClick: () => setLocation('/swachsocial') },
+        { id: "swachmeet", label: "SwachMeet (Video Meetings)", icon: MessageSquare, onClick: () => setLocation('/swachmeet') },
+      ],
+    },
     {
       id: "api-hub-section",
       label: "API Hub",
@@ -4119,6 +4236,166 @@ function HRTdsDeclarationsWrapper() {
   );
 }
 
+function SwachDeskWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('swachdesk');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="SwachDesk" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
+      <SwachDeskPage />
+    </DashboardShell>
+  );
+}
+
+function TicketDetailWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('swachdesk');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Ticket Detail" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
+      <TicketDetailPage />
+    </DashboardShell>
+  );
+}
+
+function SwachDeskReportsWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('swachdesk');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Helpdesk Reports" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
+      <SwachDeskReportsPage />
+    </DashboardShell>
+  );
+}
+
+function KnowledgeBaseWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('swachdesk');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Knowledge Base" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
+      <KnowledgeBasePage />
+    </DashboardShell>
+  );
+}
+
+function RoutingRulesWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('swachdesk');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Routing Rules" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
+      <RoutingRulesPage />
+    </DashboardShell>
+  );
+}
+
+function LiveChatWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('swachdesk');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Live Chat" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
+      <LiveChatPage />
+    </DashboardShell>
+  );
+}
+
+function SwachFormsWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('swachforms');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="SwachForms" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
+      <SwachFormsPage />
+    </DashboardShell>
+  );
+}
+
+function SwachFormsBuilderWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('swachforms');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Form Builder" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
+      <SwachFormsBuilderPage />
+    </DashboardShell>
+  );
+}
+
+function SwachFormsSubmissionsWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('swachforms');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Form Submissions" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
+      <SwachFormsSubmissionsPage />
+    </DashboardShell>
+  );
+}
+
+function SwachFormsPreviewWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('swachforms');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Form Preview" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0}
+      navSections={resolvedNav} activeView={activeView}
+      onNavigate={(v) => { setActiveView(v); setLocation(v === 'overview' ? '/' : `/?tab=${v}`); }}>
+      <SwachFormsPreviewPage />
+    </DashboardShell>
+  );
+}
+
 function CRMLeadsWrapper() {
   const { logoutMutation } = useAuth();
   const [, setLocation] = useLocation();
@@ -4202,6 +4479,8 @@ function Router() {
       <Route path="/restaurant-kiosk/:outletId" component={RestaurantKioskPage} />
       <Route path="/restaurant-kiosk" component={RestaurantKioskPage} />
       <Route path="/order/:slug" component={RestaurantOnlineOrderPage} />
+      <Route path="/donate/:slug" component={DonatePublicPage} />
+      <Route path="/analytics/public/:token" component={PublicDashboardPage} />
       <ProtectedRoute path="/super-admin/overview" component={() => <SuperAdminOverview />} />
       <ProtectedRoute path="/super-admin/tenants" component={() => <SuperAdminTenants />} />
       <ProtectedRoute path="/super-admin/billing" component={() => <SuperAdminBilling />} />
@@ -4353,6 +4632,7 @@ function Router() {
       <ProtectedRoute path="/restaurant-recipes" component={RestaurantRecipesWrapper} />
       <ProtectedRoute path="/restaurant-payment-terminal" component={RestaurantPaymentTerminalWrapper} />
       <ProtectedRoute path="/restaurant/ondc-integration" component={() => <OndcIntegrationPage />} />
+      <ProtectedRoute path="/restaurant/loyalty-expiry" component={() => <LoyaltyExpiryPage />} />
       <Route path="/restaurant-table-order/:outletId/:tableId" component={RestaurantTableOrderPage} />
       <Route path="/restaurant-table-order/:outletId" component={RestaurantTableOrderPage} />
       <Route path="/restaurant-cds" component={RestaurantCDSPage} />
@@ -4406,6 +4686,8 @@ function Router() {
       <ProtectedRoute path="/real-estate/documents" component={RealEstateDocumentsWrapper} />
       <ProtectedRoute path="/real-estate/customer-portal" component={RealEstateCustomerPortalWrapper} />
       <ProtectedRoute path="/real-estate/society" component={RealEstateSocietyWrapper} />
+      <ProtectedRoute path="/real-estate/bank-loans" component={RealEstateBankLoansWrapper} />
+      <ProtectedRoute path="/real-estate/subcontractors" component={RealEstateSubcontractorsWrapper} />
       <ProtectedRoute path="/real-estate/reports" component={RealEstateReportsWrapper} />
       <ProtectedRoute path="/logistics/fleet" component={LogisticsFleetWrapper} />
       <ProtectedRoute path="/logistics/drivers" component={LogisticsDriversWrapper} />
@@ -4435,6 +4717,7 @@ function Router() {
       <ProtectedRoute path="/ngo/volunteers" component={NGOVolunteersWrapper} />
       <ProtectedRoute path="/ngo/fcra" component={NGOFCRAWrapper} />
       <ProtectedRoute path="/ngo/reports" component={NGOReportsWrapper} />
+      <ProtectedRoute path="/ngo/funds" component={NGOFundsWrapper} />
       <ProtectedRoute path="/ngo/80g-bulk" component={NGO80GBulkWrapper} />
       <ProtectedRoute path="/ngo/csr" component={NGOCSRWrapper} />
       <ProtectedRoute path="/pharmacy/billing" component={PharmacyBillingWrapper} />
@@ -4448,6 +4731,7 @@ function Router() {
       <ProtectedRoute path="/pharmacy/reports" component={PharmacyReportsWrapper} />
       <ProtectedRoute path="/pharmacy/narcotics-register" component={PharmacyNarcoticsRegisterWrapper} />
       <ProtectedRoute path="/pharmacy/e-invoice" component={PharmacyEInvoiceWrapper} />
+      <ProtectedRoute path="/pharmacy/prescriptions" component={PharmacyPrescriptionsWrapper} />
       <ProtectedRoute path="/crm/pipeline" component={CRMPipelineWrapper} />
       <ProtectedRoute path="/crm/contacts" component={CRMContactsWrapper} />
       <ProtectedRoute path="/crm/accounts" component={CRMAccountsWrapper} />
@@ -4455,6 +4739,8 @@ function Router() {
       <ProtectedRoute path="/crm/email-campaigns" component={CRMEmailCampaignsWrapper} />
       <ProtectedRoute path="/crm/whatsapp" component={CRMWhatsAppWrapper} />
       <ProtectedRoute path="/crm/reports" component={CRMReportsWrapper} />
+      <ProtectedRoute path="/crm/telephony" component={CRMTelephonyWrapper} />
+      <ProtectedRoute path="/crm/quotations" component={CRMQuotationsWrapper} />
       <ProtectedRoute path="/nidhi/members" component={NidhiMembersWrapper} />
       <ProtectedRoute path="/nidhi/deposits" component={NidhiDepositsWrapper} />
       <ProtectedRoute path="/nidhi/loans" component={NidhiLoansWrapper} />
@@ -4472,6 +4758,7 @@ function Router() {
       <ProtectedRoute path="/ecommerce/returns" component={EcommerceReturnsWrapper} />
       <ProtectedRoute path="/ecommerce/settlements" component={EcommerceSettlementsWrapper} />
       <ProtectedRoute path="/ecommerce/channels" component={EcommerceChannelsWrapper} />
+      <ProtectedRoute path="/ecommerce/warehouses" component={EcommerceWarehousesWrapper} />
       <ProtectedRoute path="/ecommerce/reports" component={EcommerceReportsWrapper} />
       <ProtectedRoute path="/masters/hsn-codes" component={MastersHSNCodesWrapper} />
       <ProtectedRoute path="/masters/sac-codes" component={MastersSACCodesWrapper} />
@@ -4486,6 +4773,7 @@ function Router() {
       <ProtectedRoute path="/masters/feature-flags" component={MastersFeatureFlagsWrapper} />
       <ProtectedRoute path="/masters/print-templates" component={MastersPrintTemplatesWrapper} />
       <ProtectedRoute path="/masters/webhooks" component={MastersWebhooksWrapper} />
+      <ProtectedRoute path="/masters/integration-credentials" component={IntegrationCredentialsWrapper} />
       <ProtectedRoute path="/restaurant-enterprise" component={RestaurantEnterpriseWrapper} />
       <ProtectedRoute path="/hotel-enterprise" component={HotelEnterpriseWrapper} />
       <ProtectedRoute path="/healthcare-enterprise" component={HealthcareEnterpriseWrapper} />
@@ -4506,6 +4794,7 @@ function Router() {
       <ProtectedRoute path="/nidhi/loan-sanction" component={() => <NidhiLoanSanctionPage />} />
       <ProtectedRoute path="/nidhi/pdc-tracking" component={() => <NidhiPDCTrackingPage />} />
       <ProtectedRoute path="/nidhi/rbi-returns" component={() => <NidhiRBIReturnsPage />} />
+      <ProtectedRoute path="/nidhi/mobile-collection" component={NidhiMobileCollectionWrapper} />
       {/* Phase 7G — CRM */}
       <ProtectedRoute path="/crm/lead-scoring" component={() => <CRMLeadScoringPage />} />
       <ProtectedRoute path="/crm/drip-campaigns" component={() => <CRMDripCampaignsPage />} />
@@ -4527,13 +4816,20 @@ function Router() {
       {/* Phase 7L — Gold ERP */}
       <ProtectedRoute path="/gold-erp/live-rates" component={() => <GoldLiveRatesPage />} />
       <ProtectedRoute path="/gold-erp/hallmarking" component={() => <GoldHallmarkingPage />} />
+      <ProtectedRoute path="/gold-erp/sebi-reporting" component={() => <GoldSEBIReportingPage />} />
+      <ProtectedRoute path="/gold-erp/digital-gold" component={() => <GoldDigitalGoldPage />} />
       {/* Phase 7M — HR */}
       <ProtectedRoute path="/hr/epfo-filing" component={() => <HREPFOFilingPage />} />
       <ProtectedRoute path="/hr/compliance-calendar" component={() => <HRComplianceCalendarPage />} />
       <ProtectedRoute path="/hr/offer-letters" component={() => <HROfferLettersPage />} />
+      <ProtectedRoute path="/hr/biometric" component={() => <HRBiometricPage />} />
       {/* Phase 7N — Retail */}
       <ProtectedRoute path="/retail/franchise" component={() => <RetailFranchisePage />} />
       <ProtectedRoute path="/retail/b2b-portal" component={() => <RetailB2BPortalPage />} />
+      <ProtectedRoute path="/retail/store-transfers" component={RetailStoreTransfersWrapper} />
+      <ProtectedRoute path="/retail/loyalty" component={RetailLoyaltyWrapper} />
+      <ProtectedRoute path="/retail/omni-channel" component={RetailOmniChannelWrapper} />
+      <ProtectedRoute path="/retail/pos-hardware" component={RetailPOSHardwareWrapper} />
       {/* Phase 7O — Manufacturing */}
       <ProtectedRoute path="/manufacturing/mrp" component={() => <ManufacturingMRPPage />} />
       <ProtectedRoute path="/manufacturing/work-orders" component={ManufacturingWorkOrdersWrapper} />
@@ -4542,10 +4838,73 @@ function Router() {
       <ProtectedRoute path="/manufacturing/job-cards" component={ManufacturingJobCardsWrapper} />
       <ProtectedRoute path="/manufacturing/sub-contracting" component={ManufacturingSubContractingWrapper} />
       <ProtectedRoute path="/manufacturing/machine-oee" component={ManufacturingMachineOEEWrapper} />
+      <ProtectedRoute path="/manufacturing/barcode-scanner" component={ManufacturingBarcodeScannerWrapper} />
+      <ProtectedRoute path="/manufacturing/preventive-maintenance" component={ManufacturingPMWrapper} />
+      <ProtectedRoute path="/manufacturing/bom-versions" component={ManufacturingBomVersionsWrapper} />
+      <ProtectedRoute path="/manufacturing/supply-chain" component={ManufacturingSupplyChainWrapper} />
+      {/* Phase 7Q — New vertical pages */}
+      <ProtectedRoute path="/hotel/banquet-events" component={() => <HotelBanquetEventsPage />} />
+      <ProtectedRoute path="/healthcare/emr-visit" component={() => <HealthcareEMRVisitPage />} />
+      <ProtectedRoute path="/nidhi/member-passbook" component={() => <NidhiMemberPassbookPage />} />
+      <ProtectedRoute path="/ngo/donor-admin" component={() => <NGODonorAdminPage />} />
+      {/* Phase 7R — SwachERP new vertical pages */}
+      <ProtectedRoute path="/logistics/gps-tracking" component={() => <GpsTrackingPage />} />
+      <ProtectedRoute path="/real-estate/rera-compliance" component={() => <ReraCompliancePage />} />
+      <ProtectedRoute path="/pharmacy/fefo-billing" component={() => <FefoBillingPage />} />
+      <ProtectedRoute path="/ecommerce/marketplace-connect" component={() => <MarketplaceConnectPage />} />
+      <ProtectedRoute path="/crm/pipeline-board" component={() => <PipelineBoardPage />} />
+      <ProtectedRoute path="/agriculture/mandi-dashboard" component={() => <MandiDashboardPage />} />
+      {/* Phase 7P — SwachERP Phases 4-6 */}
+      <ProtectedRoute path="/finance/recurring-journals" component={() => <RecurringJournalsPage />} />
+      <ProtectedRoute path="/finance/gstr-filing-new" component={() => <GSTRFilingNewPage />} />
+      <ProtectedRoute path="/finance/consolidation" component={() => <ConsolidationPage />} />
+      <ProtectedRoute path="/finance/ifrs-reporting" component={() => <IFRSReportingPage />} />
+      <ProtectedRoute path="/finance/zatca-portal" component={() => <ZATCAPortalPage />} />
+      <ProtectedRoute path="/finance/investor-pack" component={() => <InvestorPackPage />} />
+      <ProtectedRoute path="/hr/statutory-calendar" component={() => <StatutoryCalendarPage />} />
+      <ProtectedRoute path="/admin/notification-log" component={() => <NotificationLogPage />} />
       <Route path="/ess" component={EssLogin} />
       <Route path="/ess/portal" component={EssPortal} />
       <ProtectedRoute path="/journal-entry/new" component={ManualJournalEntryPageWrapper} />
       <ProtectedRoute path="/journal-entry/:id" component={JournalEntryDetailPageWrapper} />
+      {/* SwachDesk */}
+      <ProtectedRoute path="/swachdesk" component={SwachDeskWrapper} />
+      <ProtectedRoute path="/swachdesk/tickets/:id" component={TicketDetailWrapper} />
+      <ProtectedRoute path="/swachdesk/reports" component={SwachDeskReportsWrapper} />
+      <ProtectedRoute path="/swachdesk/kb" component={KnowledgeBaseWrapper} />
+      <ProtectedRoute path="/swachdesk/routing" component={RoutingRulesWrapper} />
+      <ProtectedRoute path="/swachdesk/chat" component={LiveChatWrapper} />
+      {/* SwachForms */}
+      <ProtectedRoute path="/swachforms" component={SwachFormsWrapper} />
+      <ProtectedRoute path="/swachforms/builder/:id" component={SwachFormsBuilderWrapper} />
+      <ProtectedRoute path="/swachforms/builder" component={SwachFormsBuilderWrapper} />
+      <ProtectedRoute path="/swachforms/:id/submissions" component={SwachFormsSubmissionsWrapper} />
+      <ProtectedRoute path="/swachforms/preview/:id" component={SwachFormsPreviewWrapper} />
+      {/* SwachSign */}
+      <ProtectedRoute path="/swachsign" component={() => <SwachSignIndex />} />
+      <ProtectedRoute path="/swachsign/:id/placement" component={() => <SwachSignPlacement />} />
+      <ProtectedRoute path="/swachsign/:id" component={() => <SwachSignDetail />} />
+      {/* SwachSocial */}
+      <ProtectedRoute path="/swachsocial" component={() => <SwachSocialIndex />} />
+      <ProtectedRoute path="/swachsocial/composer" component={() => <SwachSocialComposer />} />
+      <ProtectedRoute path="/swachsocial/calendar" component={() => <SwachSocialCalendar />} />
+      <ProtectedRoute path="/swachsocial/analytics" component={() => <SwachSocialAnalytics />} />
+      {/* SwachMeet */}
+      <ProtectedRoute path="/swachmeet" component={() => <SwachMeetIndex />} />
+      {/* Public signing page */}
+      <Route path="/sign/:token" component={SwachSignSignPage} />
+      {/* IFRS, ASC606, Investor, MRP, Analytics */}
+      <ProtectedRoute path="/ifrs/consolidation" component={() => <IfrsConsolidationPage />} />
+      <ProtectedRoute path="/asc606/arrangements" component={() => <Asc606ArrangementsPage />} />
+      <ProtectedRoute path="/investor/dashboard" component={() => <InvestorDashboardPage />} />
+      <ProtectedRoute path="/investor/cap-table" component={() => <CapTablePage />} />
+      <ProtectedRoute path="/mrp/bom-manager" component={() => <BomManagerPage />} />
+      <ProtectedRoute path="/mrp/mrp-run" component={() => <MrpRunPage />} />
+      <ProtectedRoute path="/analytics/studio" component={() => <AnalyticsStudioPage />} />
+      <ProtectedRoute path="/analytics/dashboard-builder" component={() => <DashboardBuilderPage />} />
+      {/* Public meeting room & webinar registration */}
+      <Route path="/meet/:roomCode" component={SwachMeetRoom} />
+      <Route path="/webinar/:roomCode" component={WebinarRegistration} />
       <Route path="/" component={SmartRoot} />
       <Route component={NotFound} />
     </Switch>
@@ -5062,6 +5421,12 @@ function AuthenticatedChatAgent() {
   return <ChatAgent />;
 }
 
+function AuthenticatedSwachAI() {
+  const { user, isLoading } = useAuth();
+  if (isLoading || !user) return null;
+  return <SwachAIChat />;
+}
+
 
 function EcommerceWrapper() {
   const { logoutMutation } = useAuth();
@@ -5202,6 +5567,8 @@ const RealEstateDocumentsWrapper = makeWrapper('Documents', 'real-estate/documen
 const RealEstateCustomerPortalWrapper = makeWrapper('Customer Portal', 'real-estate/customer-portal', RealEstateCustomerPortalPage);
 const RealEstateSocietyWrapper = makeWrapper('Society', 'real-estate/society', RealEstateSocietyPage);
 const RealEstateReportsWrapper = makeWrapper('Reports', 'real-estate/reports', RealEstateReportsPage);
+const RealEstateBankLoansWrapper = makeWrapper('Bank Loans', 'real-estate/bank-loans', RealEstateBankLoansPage);
+const RealEstateSubcontractorsWrapper = makeWrapper('Subcontractors', 'real-estate/subcontractors', RealEstateSubcontractorsPage);
 const LogisticsFleetWrapper = makeWrapper('Fleet Management', 'logistics/fleet', LogisticsFleetPage);
 const LogisticsDriversWrapper = makeWrapper('Drivers', 'logistics/drivers', LogisticsDriversPage);
 const LogisticsTripsWrapper = makeWrapper('Trip Management', 'logistics/trips', LogisticsTripsPage);
@@ -5219,6 +5586,10 @@ const ManufacturingMachineOEEWrapper = makeWrapper('Machine OEE', 'manufacturing
 const ManufacturingWorkOrdersWrapper = makeWrapper('Work Orders', 'manufacturing/work-orders', ManufacturingWorkOrdersPage);
 const ManufacturingQualityWrapper = makeWrapper('Quality Control', 'manufacturing/quality', ManufacturingQualityPage);
 const ManufacturingAdvancedWrapper = makeWrapper('BOM / MRP / ECN', 'manufacturing/advanced', ManufacturingAdvancedPage);
+const ManufacturingBarcodeScannerWrapper = makeWrapper('Barcode / QR Scanner', 'manufacturing/barcode-scanner', ManufacturingBarcodeScannerPage);
+const ManufacturingPMWrapper = makeWrapper('Preventive Maintenance', 'manufacturing/preventive-maintenance', ManufacturingPreventiveMaintenancePage);
+const ManufacturingBomVersionsWrapper = makeWrapper('BOM Versions + ECN', 'manufacturing/bom-versions', ManufacturingBomVersionsPage);
+const ManufacturingSupplyChainWrapper = makeWrapper('Global Supply Chain', 'manufacturing/supply-chain', ManufacturingSupplyChainPage);
 const AgricultureFarmsWrapper = makeWrapper('Farms & Farmers', 'agriculture/farms', AgricultureFarmsPage);
 const AgricultureCropsWrapper = makeWrapper('Crop Management', 'agriculture/crops', AgricultureCropsPage);
 const AgricultureInputsWrapper = makeWrapper('Crop Inputs', 'agriculture/inputs', AgricultureInputsPage);
@@ -5237,6 +5608,11 @@ const NGOGrantsWrapper = makeWrapper('Grants', 'ngo/grants', NGOGrantsPage);
 const NGOVolunteersWrapper = makeWrapper('Volunteers', 'ngo/volunteers', NGOVolunteersPage);
 const NGOFCRAWrapper = makeWrapper('FCRA Compliance', 'ngo/fcra', NGOFCRAPage);
 const NGOReportsWrapper = makeWrapper('Reports', 'ngo/reports', NGOReportsPage);
+const NGOFundsWrapper = makeWrapper('Fund Accounting', 'ngo/funds', NGOFundsPage);
+const RetailStoreTransfersWrapper = makeWrapper('Store Transfers', 'retail/store-transfers', RetailStoreTransfersPage);
+const RetailLoyaltyWrapper = makeWrapper('Loyalty Program', 'retail/loyalty', RetailLoyaltyPage);
+const RetailOmniChannelWrapper = makeWrapper('Omni-Channel Sync', 'retail/omni-channel', RetailOmniChannelPage);
+const RetailPOSHardwareWrapper = makeWrapper('POS Hardware', 'retail/pos-hardware', RetailPOSHardwarePage);
 const NGO80GBulkWrapper = makeWrapper('80G Bulk Certificates', 'ngo/80g-bulk', NGO80GBulkPage);
 const NGOCSRWrapper = makeWrapper('CSR Module', 'ngo/csr', NGOCSRPage);
 const PharmacyBillingWrapper = makeWrapper('Drug Billing POS', 'pharmacy/billing', PharmacyBillingPage);
@@ -5250,6 +5626,7 @@ const PharmacyExpiryWrapper = makeWrapper('Expiry Alerts', 'pharmacy/expiry', Ph
 const PharmacyReportsWrapper = makeWrapper('Reports', 'pharmacy/reports', PharmacyReportsPage);
 const PharmacyNarcoticsRegisterWrapper = makeWrapper('Narcotics Register', 'pharmacy/narcotics-register', PharmacyNarcoticsRegisterPage);
 const PharmacyEInvoiceWrapper = makeWrapper('GST E-Invoice', 'pharmacy/e-invoice', PharmacyEInvoicePage);
+const PharmacyPrescriptionsWrapper = makeWrapper('Prescriptions', 'pharmacy/prescriptions', PharmacyPrescriptionsPage);
 const CRMPipelineWrapper = makeWrapper('Pipeline', 'crm/pipeline', CRMPipelinePage);
 const CRMContactsWrapper = makeWrapper('Contacts', 'crm/contacts', CRMContactsPage);
 const CRMAccountsWrapper = makeWrapper('Accounts', 'crm/accounts', CRMAccountsPage);
@@ -5257,6 +5634,8 @@ const CRMActivitiesWrapper = makeWrapper('Activities', 'crm/activities', CRMActi
 const CRMEmailCampaignsWrapper = makeWrapper('Email Campaigns', 'crm/email-campaigns', CRMEmailCampaignsPage);
 const CRMWhatsAppWrapper = makeWrapper('WhatsApp CRM', 'crm/whatsapp', CRMWhatsAppPage);
 const CRMReportsWrapper = makeWrapper('Reports', 'crm/reports', CRMReportsPage);
+const CRMTelephonyWrapper = makeWrapper('Telephony CTI', 'crm/telephony', CRMTelephonyPage);
+const CRMQuotationsWrapper = makeWrapper('Quotations', 'crm/quotations', CRMQuotationsPage);
 const NidhiMembersWrapper = makeWrapper('Members', 'nidhi/members', NidhiMembersPage);
 const NidhiDepositsWrapper = makeWrapper('Deposits', 'nidhi/deposits', NidhiDepositsPage);
 const NidhiLoansWrapper = makeWrapper('Loans', 'nidhi/loans', NidhiLoansPage);
@@ -5267,6 +5646,7 @@ const NidhiInterestRatesWrapper = makeWrapper('Interest Rates', 'nidhi/interest-
 const NidhiDailyCollectionWrapper = makeWrapper('Daily Collection', 'nidhi/daily-collection', NidhiDailyCollectionPage);
 const NidhiComplianceWrapper = makeWrapper('Compliance (NDH)', 'nidhi/compliance', NidhiCompliancePage);
 const NidhiReportsWrapper = makeWrapper('Reports', 'nidhi/reports', NidhiReportsPage);
+const NidhiMobileCollectionWrapper = makeWrapper('Mobile Collection', 'nidhi/mobile-collection', NidhiMobileCollectionPage);
 const EcommerceDashboardWrapper = makeWrapper('Dashboard', 'ecommerce/dashboard', EcommerceDashboardPage);
 const EcommerceOrdersWrapper = makeWrapper('Orders', 'ecommerce/orders', EcommerceOrdersPage);
 const EcommerceListingsWrapper = makeWrapper('Listings', 'ecommerce/listings', EcommerceListingsPage);
@@ -5274,6 +5654,7 @@ const EcommerceShipmentsWrapper = makeWrapper('Shipments', 'ecommerce/shipments'
 const EcommerceReturnsWrapper = makeWrapper('Returns & RTO', 'ecommerce/returns', EcommerceReturnsPage);
 const EcommerceSettlementsWrapper = makeWrapper('Settlements', 'ecommerce/settlements', EcommerceSettlementsPage);
 const EcommerceChannelsWrapper = makeWrapper('Channels', 'ecommerce/channels', EcommerceChannelsPage);
+const EcommerceWarehousesWrapper = makeWrapper('Warehouses', 'ecommerce/warehouses', EcommerceWarehousesPage);
 const EcommerceReportsWrapper = makeWrapper('Reports', 'ecommerce/reports', EcommerceReportsPage);
 const MastersHSNCodesWrapper = makeWrapper('HSN Codes', 'masters/hsn-codes', MastersHSNCodesPage);
 const MastersSACCodesWrapper = makeWrapper('SAC Codes', 'masters/sac-codes', MastersSACCodesPage);
@@ -5288,6 +5669,7 @@ const MastersApprovalMatrixWrapper = makeWrapper('Approval Matrix', 'masters/app
 const MastersFeatureFlagsWrapper = makeWrapper('Feature Flags', 'masters/feature-flags', MastersFeatureFlagsPage);
 const MastersPrintTemplatesWrapper = makeWrapper('Print Templates', 'masters/print-templates', MastersPrintTemplatesPage);
 const MastersWebhooksWrapper = makeWrapper('Webhooks', 'masters/webhooks', MastersWebhooksPage);
+const IntegrationCredentialsWrapper = makeWrapper('Integration Credentials', 'masters/integration-credentials', IntegrationCredentialsPage);
 
 function RestaurantEnterpriseWrapper() {
   const { logoutMutation } = useAuth();
@@ -5554,6 +5936,7 @@ function FinanceErpWrapper() {
 
 function App() {
   return (
+    <I18nProvider>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <TooltipProvider>
@@ -5561,9 +5944,11 @@ function App() {
           <Router />
           <Toaster />
           <AuthenticatedChatAgent />
+          <AuthenticatedSwachAI />
         </TooltipProvider>
       </AuthProvider>
     </QueryClientProvider>
+    </I18nProvider>
   );
 }
 

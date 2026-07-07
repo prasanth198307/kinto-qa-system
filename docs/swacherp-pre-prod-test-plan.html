@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SwachERP — Pre-Production UAT Test Plan</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif;font-size:10pt;color:#1f2937;background:#f8fafc;padding:24px;max-width:1200px;margin:0 auto}
+h1{font-size:16pt;color:#111827}
+h2{font-size:12pt;color:#1a56db;margin:28px 0 8px;padding-bottom:4px;border-bottom:2px solid #1a56db}
+h3{font-size:10.5pt;color:#374151;margin:14px 0 6px}
+.sub{color:#6b7280;font-size:9pt;margin-top:2px}
+.progress-bar{position:sticky;top:0;background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:10px 16px;margin:16px 0;display:flex;align-items:center;gap:16px;z-index:10;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.bar{flex:1;height:10px;background:#e5e7eb;border-radius:5px;overflow:hidden}
+.fill{height:100%;background:#16a34a;width:0%;transition:width .3s}
+#pct{font-weight:700;min-width:120px}
+table{width:100%;border-collapse:collapse;margin:6px 0 14px;background:#fff}
+th{background:#1e3a5f;color:#fff;text-align:left;padding:5px 8px;font-size:8.5pt}
+td{border:1px solid #e5e7eb;padding:5px 8px;font-size:9pt;vertical-align:top}
+tr:nth-child(even) td{background:#f9fafb}
+td.chk{width:34px;text-align:center}
+input[type=checkbox]{width:16px;height:16px;cursor:pointer}
+tr.done td{background:#f0fdf4 !important;color:#6b7280}
+.badge{display:inline-block;padding:1px 7px;border-radius:9px;font-size:7.5pt;font-weight:700}
+.b-crit{background:#fee2e2;color:#991b1b}.b-high{background:#fef3c7;color:#92400e}.b-med{background:#e0e7ff;color:#3730a3}
+.note{background:#eff6ff;border-left:3px solid #1a56db;padding:8px 12px;font-size:9pt;margin:8px 0;border-radius:0 6px 6px 0}
+.warn{background:#fef2f2;border-left:3px solid #dc2626;padding:8px 12px;font-size:9pt;margin:8px 0;border-radius:0 6px 6px 0}
+code{background:#f3f4f6;padding:1px 5px;border-radius:3px;font-size:8.5pt;font-family:Menlo,Consolas,monospace}
+.footer{margin-top:32px;padding-top:12px;border-top:1px solid #e5e7eb;color:#6b7280;font-size:8.5pt;display:flex;justify-content:space-between}
+@media print{.progress-bar{position:static}body{background:#fff;padding:0}}
+</style>
+</head>
+<body>
+
+<h1>SwachERP — Pre-Production UAT Test Plan</h1>
+<div class="sub">Go-live gate: every section must be 100% ✓ before production cutover · Covers all 51 subscription plans, 17 ERP verticals, cross-cutting engines, security &amp; performance · July 2026</div>
+
+<div class="progress-bar">
+  <span id="pct">0 / 0 passed</span>
+  <div class="bar"><div class="fill" id="fill"></div></div>
+  <button onclick="if(confirm('Reset all checks?')){localStorage.removeItem('swacherp_uat');location.reload()}" style="font-size:8pt;padding:4px 10px;cursor:pointer">Reset</button>
+</div>
+
+<div class="note"><strong>How to use:</strong> Run each test on the staging environment with a fresh database seeded via <code>db_scripts/</code> (run all migrations in date order, including all <code>2026-07-06_*</code> permission scripts). Tick each row when it passes — progress is saved in your browser. Severity: <span class="badge b-crit">CRITICAL</span> = blocks go-live, <span class="badge b-high">HIGH</span> = fix before launch week, <span class="badge b-med">MED</span> = fix within 30 days post-launch.</div>
+
+<h2>0 · Environment &amp; Deployment Readiness</h2>
+<table>
+<tr><th></th><th>Test</th><th>Steps / Expected result</th><th>Sev</th></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>DB migrations clean</td><td>Run every script in <code>db_scripts/</code> in date order on a fresh PostgreSQL — zero errors; re-run is idempotent (ON CONFLICT DO NOTHING patterns)</td><td><span class="badge b-crit">CRITICAL</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Server boots with schedulers</td><td>Server log shows: loyalty expiry scheduler started, Analytics scheduled-report cron started (every 5 min), no unhandled module-load errors</td><td><span class="badge b-crit">CRITICAL</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Env secrets configured</td><td>SENDGRID_API_KEY, WHATSAPP_API_KEY + PHONE_ID, TWOFACTOR/MSG91, Razorpay, NIC EWB, JITSI_APP_ID, BASE_URL set; AES-256 credential storage verified in Integration Credentials UI</td><td><span class="badge b-crit">CRITICAL</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Production build</td><td><code>npm run build</code> completes; dist/ serves; no console errors on login page</td><td><span class="badge b-crit">CRITICAL</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>pdf-lib &amp; pdfkit present</td><td><code>node -e "require('pdf-lib');require('pdfkit')"</code> succeeds in the prod image (pdf-lib was missing from package.json until 2026-07-06)</td><td><span class="badge b-high">HIGH</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Backups &amp; rollback</td><td>DB backup taken; rollback runbook tested (restore to point-in-time on staging)</td><td><span class="badge b-crit">CRITICAL</span></td></tr>
+</table>
+
+<h2>1 · Subscription Plans &amp; Module Gating (Layer 1) — all 51 plans</h2>
+<div class="note">For each plan: create a tenant on that plan → login as tenant admin → verify sidebar shows ONLY the plan's modules; direct-URL a screen from an excluded module → expect upgrade prompt / 403 from <code>tenant-middleware</code>.</div>
+<table>
+<tr><th></th><th>Plan family</th><th>Verify</th><th>Sev</th></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Generic: trial / basic / professional / enterprise</td><td>Trial shows invoicing+inventory+masters+PO only, 14-day expiry banner works; Enterprise shows all 17 verticals + Extended Suite (swachsign/swachdesk/swachmeet/swachsocial/swachforms) + multi_currency/fixed_assets/projects</td><td><span class="badge b-crit">CRITICAL</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Restaurant starter/pro/enterprise</td><td>Starter: restaurant + billing basics only (no accounting). Pro adds accounting/mis/crm/whatsapp. Enterprise adds hr_payroll/projects/multi_currency</td><td><span class="badge b-crit">CRITICAL</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Hotel starter/pro/enterprise</td><td>Tier deltas match plan-features.ts table in erp-enterprise-plan.html §②</td><td><span class="badge b-high">HIGH</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Healthcare + Pharmacy tiers (6 plans)</td><td>Healthcare starter has NO pharmacy module (separate vertical); pharmacy tiers gate narcotics/FEFO screens correctly</td><td><span class="badge b-high">HIGH</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>NGO + Nidhi tiers (6 plans)</td><td>Nidhi starter: no accounting → GL screens hidden but glNidhi* still posts server-side; NGO enterprise shows funds + donor-admin</td><td><span class="badge b-high">HIGH</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>CRM / Logistics / Real Estate / Agriculture / Education tiers (15 plans)</td><td>Spot-check one tier per vertical against the plan table; nav sections absent for unsubscribed verticals</td><td><span class="badge b-high">HIGH</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>E-Commerce / Gold / POS / Manufacturing / HR tiers (15 plans) + gold_erp_plan</td><td>Gold plans hide generic POS (jewellery POS instead); Manufacturing enterprise shows MRP II/BOM/ECN screens</td><td><span class="badge b-high">HIGH</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Marketplace add-ons</td><td>Add <code>swachdesk</code> slug to a Basic tenant's subscription → SwachDesk section appears without other Extended Suite apps; remove → disappears</td><td><span class="badge b-high">HIGH</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Plan upgrade / downgrade</td><td>Super Admin changes tenant plan_slug → nav updates on next login; downgrade hides modules but preserves data</td><td><span class="badge b-crit">CRITICAL</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Server-side enforcement</td><td>API call to a module outside the plan (e.g. Trial tenant → POST /api/nidhi/members) returns 403, not 200</td><td><span class="badge b-crit">CRITICAL</span></td></tr>
+</table>
+
+<h2>2 · Roles &amp; Permissions (Layer 2)</h2>
+<table>
+<tr><th></th><th>Test</th><th>Expected</th><th>Sev</th></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Role Permissions dialog completeness</td><td>Every screen key in screen-registry.ts (349+) appears grouped by module — including nidhi_* (15), ngo_* (13), retail_* (6), swachsign/swachmeet/swachsocial</td><td><span class="badge b-high">HIGH</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>CRUD enforcement</td><td>Operator (view+create only) cannot see Edit/Delete buttons AND direct PUT/DELETE API calls return 403</td><td><span class="badge b-crit">CRITICAL</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Both layers must pass</td><td>Role grants nidhi_members but plan lacks nidhi module → screen still hidden/blocked</td><td><span class="badge b-crit">CRITICAL</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Retroactive permission SQL</td><td>Existing admin/manager/operator roles have the 2026-07-06 grants (nidhi, ngo, retail, extended suite) without manual re-assignment</td><td><span class="badge b-high">HIGH</span></td></tr>
+</table>
+
+<h2>3 · Multi-Tenancy Isolation &amp; Security</h2>
+<div class="warn"><strong>Zero-tolerance section.</strong> Any cross-tenant data leak blocks go-live. Note: PostgreSQL RLS (Phase 6) is NOT yet implemented — isolation relies on tenant_id predicates in every query, so these tests are the safety net.</div>
+<table>
+<tr><th></th><th>Test</th><th>Expected</th><th>Sev</th></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Cross-tenant read</td><td>Tenant A cannot fetch Tenant B's invoices/members/tickets by ID probing (sequential IDs across ~20 core endpoints)</td><td><span class="badge b-crit">CRITICAL</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Aggregator webhooks tenant-scoped</td><td>Webhook orders land in the correct tenant (regression for the fixed tenant_id=1 bug)</td><td><span class="badge b-crit">CRITICAL</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Public endpoints leak nothing extra</td><td>/donate/:slug, /order/:slug, /api/public/forms, /api/analytics-public/dashboard/:token, /api/nidhi/public/receipt/:token return only intended fields; invalid tokens → 404/410</td><td><span class="badge b-crit">CRITICAL</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>BI API keys tenant-bound</td><td>Tenant A's bi_api_key on OData returns only A's data; revoked (is_active=false) key → 401</td><td><span class="badge b-crit">CRITICAL</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Sensitive data at rest</td><td>Aadhaar stored as last-4 only (Nidhi members, hotel guests); SMTP/API credentials AES-256 encrypted in DB, never in API responses</td><td><span class="badge b-crit">CRITICAL</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Session &amp; auth</td><td>Unauthenticated API → 401; logout invalidates session; password never logged</td><td><span class="badge b-crit">CRITICAL</span></td></tr>
+</table>
+
+<h2>4 · Cross-Cutting Engines</h2>
+<h3>4a · GL auto-posting (all 17 verticals)</h3>
+<table>
+<tr><th></th><th>Vertical trigger</th><th>Expected journal (amounts in paise)</th><th>Sev</th></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Retail POS sale · Restaurant KOT settle · Hotel checkout/folio</td><td>DR Cash · CR Revenue · CR GST; journal_entries row with sourceType set; fire-and-forget (sale succeeds even if GL errors — check server log)</td><td><span class="badge b-crit">CRITICAL</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Nidhi: EMI collect, deposit open, interest accrual run, PDC clear/bounce</td><td>glNidhiEMI/glNidhiDeposit entries; /interest-accrual/run posts DR 1120 / CR 4020 per active loan</td><td><span class="badge b-crit">CRITICAL</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>NGO donation · Education fee · Healthcare OPD/IPD · Pharmacy sale · Logistics freight · Real Estate collection · Agriculture sale · Manufacturing RM→WIP→FG · E-Commerce delivered/settlement/RMA · Gold digital gold · HR payroll finalize</td><td>One test transaction each → balanced journal visible in Journal Entries screen; Trial Balance stays balanced after all tests</td><td><span class="badge b-crit">CRITICAL</span></td></tr>
+</table>
+<h3>4b · PDF engine</h3>
+<table>
+<tr><th></th><th>Test</th><th>Expected</th><th>Sev</th></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Shared engine templates</td><td>POST /api/pdf/generate for each of the 12 templates returns a valid PDF; GET /api/pdf/templates lists them</td><td><span class="badge b-high">HIGH</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Vertical PDFs</td><td>Nidhi passbook, NGO 80G single + bulk batch, hotel folio, IPD bill + discharge summary, LR, fee receipt, salary slip, trade docs (Packing List/BoL/COO/CI), investor pack — all download and open</td><td><span class="badge b-high">HIGH</span></td></tr>
+</table>
+<h3>4c · Notification engine</h3>
+<table>
+<tr><th></th><th>Test</th><th>Expected</th><th>Sev</th></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Template contract</td><td>POST /api/notifications/send-template with each of the 11 templates → {{vars}} interpolated; GET /templates lists all; unknown template → clean 500 message</td><td><span class="badge b-high">HIGH</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Live triggers</td><td>Hotel check-in → welcome WhatsApp; aggregator order status change → customer message; Nidhi EMI reminders; Education fee due; Healthcare appointment — all rows in notif_log with status</td><td><span class="badge b-high">HIGH</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Provider fallback</td><td>With real keys: WhatsApp delivers. Without keys: simulation logged, no crash, notif_log status='sent'</td><td><span class="badge b-med">MED</span></td></tr>
+</table>
+<h3>4d · Localization &amp; RTL</h3>
+<table>
+<tr><th></th><th>Test</th><th>Expected</th><th>Sev</th></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>All 14 languages switch</td><td>LanguageSwitcher lists 14; selection persists across reload (localStorage + tenant_settings.default_locale)</td><td><span class="badge b-high">HIGH</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Nav translation (hi/te/ar)</td><td>Sidebar sections/items render translated on every vertical's pages; acronyms (EMR, HSN, ONDC) stay English; no blank labels</td><td><span class="badge b-high">HIGH</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Arabic RTL layout</td><td>dir=rtl on &lt;html&gt;; sidebar mirrors right; tables right-aligned; amounts/numerals stay LTR-readable; POS + invoice form usable</td><td><span class="badge b-high">HIGH</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Tenant overrides</td><td>PUT /api/i18n/overrides {customer→"Member"} → UI reflects immediately on language reload; empty value deletes override</td><td><span class="badge b-med">MED</span></td></tr>
+</table>
+<h3>4e · Analytics Studio</h3>
+<table>
+<tr><th></th><th>Test</th><th>Expected</th><th>Sev</th></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Drag-drop builder</td><td>Add report to dashboard (add-report endpoint), drag to reorder, remove ✕, Save Layout persists after reload</td><td><span class="badge b-high">HIGH</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Public share link</td><td>Share → URL copied → opens read-only in incognito; Revoke → 404; expiry honored (set share_expires_at in past → 410)</td><td><span class="badge b-high">HIGH</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Scheduled report email</td><td>Create schedule (format=pdf) → send-now → email with PDF attachment arrives (or SIM log); next_send_at advances; notif_log row written</td><td><span class="badge b-high">HIGH</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Power BI OData</td><td>Generate API key → curl OData feed with Bearer header (no cookie) → JSON entity sets; wrong key → 401; Excel/Power BI Web connector loads GLMonthly</td><td><span class="badge b-high">HIGH</span></td></tr>
+</table>
+
+<h2>5 · Vertical ERP Smoke Tests (happy path per vertical)</h2>
+<table>
+<tr><th></th><th>Vertical</th><th>End-to-end flow to run</th><th>Sev</th></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Manufacturing / Core</td><td>PO → GRN (barcode scan) → production work order → RM issue → FG completion → invoice → payment → gatepass → e-way bill</td><td><span class="badge b-crit">CRITICAL</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Restaurant</td><td>Menu item → table KOT → kitchen display → settle (GL) → Z-report → Tally XML; QR self-order + ONDC order status notification</td><td><span class="badge b-crit">CRITICAL</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Hotel</td><td>Reservation → check-in (WhatsApp welcome) → folio charge → checkout (GL) → folio PDF → night audit</td><td><span class="badge b-crit">CRITICAL</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Healthcare + Pharmacy</td><td>Patient reg → OPD appointment (reminder) → EMR visit → lab order → IPD admit → bill PDF (GL); pharmacy FEFO sale + narcotics register</td><td><span class="badge b-crit">CRITICAL</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Nidhi</td><td>Member (Aadhaar last-4) → FD open (GL) → loan application → sanction workflow → disburse → EMI collect (GL) → mobile collection → passbook PDF → NDH-1/2/3 XML → NOF compliance dashboard</td><td><span class="badge b-crit">CRITICAL</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>NGO</td><td>Donor → donation (GL) → 80G PDF → bulk batch → fund txn + utilization certificate → FCRA FC-4 → public /donate/:slug with UPI link → receipt token</td><td><span class="badge b-crit">CRITICAL</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Retail / POS</td><td>Session open → barcode scan sale (GL) → return → loyalty earn/redeem → expiry stats → store transfer dispatch/receive → omni-channel sync → Z-report</td><td><span class="badge b-crit">CRITICAL</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>CRM</td><td>Contact → deal in pipeline (Kanban drag) → activity → quotation → convert to invoice → AI lead score → drip enroll → Exotel click-to-call log</td><td><span class="badge b-high">HIGH</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Logistics</td><td>Consignment → trip → LR PDF → e-way bill (NIC) → GPS view → ePOD → freight bill approve (GL)</td><td><span class="badge b-high">HIGH</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Real Estate</td><td>Project → unit booking → demand letter PDF → collection (GL) → RERA screen → subcontractor payment (GL)</td><td><span class="badge b-high">HIGH</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Education</td><td>Admission → fee collect (GL + receipt PDF) → attendance (biometric sim) → exam → TC certificate → fee-due WhatsApp</td><td><span class="badge b-high">HIGH</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Agriculture</td><td>Farm/farmer → crop → input purchase (GL) → harvest → mandi price feed → produce sale (GL)</td><td><span class="badge b-med">MED</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Gold</td><td>Jewellery item → live rate SSE → hallmarking batch → HUID → sale (jewellery POS) → SEBI XML → digital gold buy/redeem (GL)</td><td><span class="badge b-high">HIGH</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>E-Commerce</td><td>Listing → order → shipment → delivered (GL) → settlement (commission GL) → RMA refund (GL)</td><td><span class="badge b-high">HIGH</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>HR / Payroll</td><td>Employee → attendance → leave approve → payroll run → salary slip PDF → payroll GL → EPFO ECR + ESI challan → biometric device sync</td><td><span class="badge b-crit">CRITICAL</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Finance</td><td>Journal → trial balance → P&amp;L/BS → bank reconciliation → IFRS consolidation + IAS 16 depreciation → ASC 606 arrangement → investor pack PDF → GSTR data</td><td><span class="badge b-crit">CRITICAL</span></td></tr>
+</table>
+
+<h2>6 · Extended App Suite</h2>
+<table>
+<tr><th></th><th>App</th><th>Test</th><th>Sev</th></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>SwachSign</td><td>Upload doc → draw signature → complete → SHA-256 audit trail chain verifies; Aadhaar OTP path reaches gateway (or sim)</td><td><span class="badge b-high">HIGH</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>SwachDesk</td><td>Ticket create → assign → reply → SLA due set → breach flag on overdue → resolve → CSAT → reports; routing rule fires; live chat + KB article</td><td><span class="badge b-high">HIGH</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>SwachMeet</td><td>Create meeting → Jitsi embed loads with JWT → recording start/stop → analytics row</td><td><span class="badge b-med">MED</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>SwachSocial</td><td>Connect account (or sim) → schedule post → cron publishes → engagement sync populates</td><td><span class="badge b-med">MED</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>SwachForms</td><td>Build form (drag fields) → preview → public /api/public/forms submission → appears in submissions → approval hook</td><td><span class="badge b-high">HIGH</span></td></tr>
+</table>
+
+<h2>7 · Integrations (live keys on staging)</h2>
+<table>
+<tr><th></th><th>Integration</th><th>Test</th><th>Sev</th></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Razorpay UPI QR + card terminal / Pine Labs</td><td>POS create-qr → webhook marks paid; card initiate → status poll</td><td><span class="badge b-crit">CRITICAL</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>NIC E-Way Bill</td><td>Generate EWB from invoice ≥ ₹50,000 (paise threshold 5000000) — sandbox credentials</td><td><span class="badge b-crit">CRITICAL</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Meta WhatsApp / 2Factor SMS / SendGrid</td><td>One real message per channel lands on a test number/inbox</td><td><span class="badge b-high">HIGH</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>GST e-invoice / GSTR · ZATCA FATOORA · EU VAT · US Tax</td><td>Tax engine computes per regime; e-invoice payload validates in sandbox</td><td><span class="badge b-high">HIGH</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>GoldAPI.io SSE · Exotel CTI · ZKTeco/ADMS biometric · Jitsi · LinkedIn/FB/IG</td><td>Each connects with staging credentials or degrades gracefully to simulation without crashing</td><td><span class="badge b-med">MED</span></td></tr>
+</table>
+
+<h2>8 · Non-Functional</h2>
+<table>
+<tr><th></th><th>Test</th><th>Expected</th><th>Sev</th></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Load: POS burst</td><td>50 concurrent POS transactions/min for 10 min — p95 &lt; 2s, zero failed GL posts unaccounted in logs</td><td><span class="badge b-high">HIGH</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Lazy table creation race</td><td>Two parallel first-hits on a lazy-table endpoint (e.g. nidhi_loan_applications) — no duplicate-table crash</td><td><span class="badge b-med">MED</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Mobile responsive</td><td>Nidhi mobile-collection, restaurant steward, POS, donor portal usable at 375px width</td><td><span class="badge b-high">HIGH</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Offline POS sync</td><td>Kill network mid-sale → offline queue → /offline/sync replays on reconnect without duplicates</td><td><span class="badge b-high">HIGH</span></td></tr>
+<tr><td class="chk"><input type="checkbox"></td><td>Browser matrix</td><td>Chrome, Edge, Safari, Firefox latest; Android Chrome + iOS Safari for public pages</td><td><span class="badge b-med">MED</span></td></tr>
+</table>
+
+<h2>9 · Sign-off</h2>
+<table>
+<tr><th>Role</th><th>Name</th><th>Result (Pass / Pass w/ conditions / Fail)</th><th>Date</th><th>Signature</th></tr>
+<tr><td>QA Lead</td><td></td><td></td><td></td><td></td></tr>
+<tr><td>Engineering Lead</td><td></td><td></td><td></td><td></td></tr>
+<tr><td>Product Owner</td><td></td><td></td><td></td><td></td></tr>
+<tr><td>Security Reviewer</td><td></td><td></td><td></td><td></td></tr>
+<tr><td>Business Sponsor (Go/No-Go)</td><td></td><td></td><td></td><td></td></tr>
+</table>
+<div class="warn"><strong>Known accepted gaps at go-live</strong> (documented, not blockers): PostgreSQL RLS not enabled (isolation via tenant_id predicates — section 3 must pass); native React Native mobile apps pending (responsive web apps cover field flows); deep page-body translation beyond nav/common terms rolls out incrementally via t() migration + tenant overrides.</div>
+
+<div class="footer">
+  <span>SwachERP Pre-Production UAT Test Plan · v1.0</span>
+  <span>kinto.swacherp.com · July 2026 · Confidential</span>
+</div>
+
+<script>
+(function(){
+  const KEY='swacherp_uat';
+  const boxes=[...document.querySelectorAll('input[type=checkbox]')];
+  const saved=JSON.parse(localStorage.getItem(KEY)||'[]');
+  boxes.forEach((b,i)=>{
+    if(saved[i]) b.checked=true;
+    b.addEventListener('change',update);
+  });
+  function update(){
+    const state=boxes.map(b=>b.checked?1:0);
+    localStorage.setItem(KEY,JSON.stringify(state));
+    const done=state.filter(Boolean).length;
+    document.getElementById('pct').textContent=done+' / '+boxes.length+' passed ('+Math.round(100*done/boxes.length)+'%)';
+    document.getElementById('fill').style.width=(100*done/boxes.length)+'%';
+    boxes.forEach(b=>b.closest('tr').classList.toggle('done',b.checked));
+  }
+  update();
+})();
+</script>
+</body>
+</html>

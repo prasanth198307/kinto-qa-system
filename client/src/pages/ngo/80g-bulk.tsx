@@ -82,9 +82,9 @@ export default function BulkCertificatePage() {
     onError: () => toast({ title: "Email queued (will be sent when server is configured)" }),
   });
 
-  const toggleAll = () => setSelected(prev => prev.length === donors.length ? [] : donors.map(d => d.id));
+  const toggleAll = () => setSelected(prev => prev.length === donors.length ? [] : donors.map((d: any) => d.id));
   const toggle = (id: number) => setSelected(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
-  const totalAmount = donors.filter(d => selected.includes(d.id)).reduce((s, d) => s + d.amount, 0);
+  const totalAmount = donors.filter((d: any) => selected.includes(d.id)).reduce((s: number, d: any) => s + d.amount, 0);
 
   return (
     <div className="p-6 space-y-4">

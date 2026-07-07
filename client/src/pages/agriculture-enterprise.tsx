@@ -24,7 +24,10 @@ export default function AgricultureEnterprisePage() {
   const { data: pmKisan = [] } = useQuery({ queryKey: ['/api/agriculture/schemes/pm-kisan'], queryFn: () => api('GET', '/api/agriculture/schemes/pm-kisan') });
   const { data: pmfby = [] } = useQuery({ queryKey: ['/api/agriculture/schemes/pmfby'], queryFn: () => api('GET', '/api/agriculture/schemes/pmfby') });
   const { data: fpoMembers = [] } = useQuery({ queryKey: ['/api/agriculture/fpo/members'], queryFn: () => api('GET', '/api/agriculture/fpo/members') });
-  const { data: mandiPrices = [] } = useQuery({ queryKey: ['/api/agriculture/mandi/prices'], queryFn: () => api('GET', '/api/agriculture/mandi/prices') });
+  const [mandiSearch, setMandiSearch] = useState("");
+  const { data: mandiResult = { prices: [] } } = useQuery({ queryKey: ['/api/agriculture/mandi/prices', mandiSearch], queryFn: () => api('GET', `/api/agriculture/mandi/prices${mandiSearch?`?commodity=${encodeURIComponent(mandiSearch)}`:''}`) });
+  const mandiPrices = (mandiResult as any).prices || mandiResult || [];
+  const { data: mandiCommodities = [] } = useQuery({ queryKey: ['/api/agriculture/mandi/commodities'], queryFn: () => api('GET', '/api/agriculture/mandi/commodities') });
   const { data: animals = [] } = useQuery({ queryKey: ['/api/agriculture/livestock/animals'], queryFn: () => api('GET', '/api/agriculture/livestock/animals') });
 
   const addMandi = useMutation({ mutationFn: (d: any) => api('POST', '/api/agriculture/mandi/prices', d), onSuccess: () => qc.invalidateQueries({ queryKey: ['/api/agriculture/mandi/prices'] }) });
@@ -102,22 +105,42 @@ export default function AgricultureEnterprisePage() {
         </TabsContent>
 
         <TabsContent value="market">
-          <div className="grid grid-cols-2 gap-4">
-            <Card><CardHeader><CardTitle>Mandi Prices</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              <Table><TableHeader><TableRow><TableHead>Commodity</TableHead><TableHead>Mandi</TableHead><TableHead>Price/Qt</TableHead><TableHead>Date</TableHead></TableRow></TableHeader>
-              <TableBody>{(mandiPrices as any[]).map((p:any,i:number)=><TableRow key={i}><TableCell>{p.commodity}</TableCell><TableCell>{p.mandi_name}</TableCell><TableCell>₹{fmt(p.price_per_qt)}</TableCell><TableCell>{p.date?.slice(0,10)}</TableCell></TableRow>)}</TableBody></Table>
-              {(mandiPrices as any[]).length===0&&<p className="text-sm text-gray-400 text-center py-2">No mandi prices</p>}
-              <div className="space-y-2 pt-2 border-t">
-                <div className="grid grid-cols-2 gap-2">
-                  <Input placeholder="Commodity" value={mandiForm.commodity} onChange={e=>setMandiForm({...mandiForm,commodity:e.target.value})} />
-                  <Input placeholder="Mandi name" value={mandiForm.mandi_name} onChange={e=>setMandiForm({...mandiForm,mandi_name:e.target.value})} />
+          <div className="space-y-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Mandi / Market Prices</CardTitle>
+                <div className="flex gap-2">
+                  <Input placeholder="Search commodity..." value={mandiSearch} onChange={e=>setMandiSearch(e.target.value)} className="w-48" />
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <Input type="number" placeholder="Price/Quintal" value={mandiForm.price_per_qt} onChange={e=>setMandiForm({...mandiForm,price_per_qt:e.target.value})} />
-                  <Input type="date" value={mandiForm.date} onChange={e=>setMandiForm({...mandiForm,date:e.target.value})} />
+              </CardHeader>
+              <CardContent>
+                <div className="mb-3 flex flex-wrap gap-1">
+                  <Button size="sm" variant="outline" onClick={()=>setMandiSearch('')}>All</Button>
+                  {(mandiCommodities as string[]).slice(0,10).map((c:string)=><Button key={c} size="sm" variant={mandiSearch===c?'default':'outline'} onClick={()=>setMandiSearch(c)}>{c}</Button>)}
                 </div>
-                <Button size="sm" onClick={()=>addMandi.mutate({...mandiForm,price_per_qt:Number(mandiForm.price_per_qt)})}>Add Price</Button>
+                <Table>
+                  <TableHeader><TableRow><TableHead>Commodity</TableHead><TableHead>Market</TableHead><TableHead>State</TableHead><TableHead>Min ₹/Qt</TableHead><TableHead>Max ₹/Qt</TableHead><TableHead>Modal ₹/Qt</TableHead><TableHead>Date</TableHead></TableRow></TableHeader>
+                  <TableBody>{(mandiPrices as any[]).map((p:any,i:number)=><TableRow key={i}>
+                    <TableCell className="font-medium">{p.commodity}</TableCell>
+                    <TableCell>{p.market_name||p.mandi_name}</TableCell>
+                    <TableCell>{p.state||'—'}</TableCell>
+                    <TableCell>₹{fmt(p.min_price||p.price_per_qt)}</TableCell>
+                    <TableCell>₹{fmt(p.max_price||p.price_per_qt)}</TableCell>
+                    <TableCell className="font-bold text-green-700">₹{fmt(p.modal_price||p.price_per_qt)}</TableCell>
+                    <TableCell className="text-xs">{(p.arrival_date||p.date)?.slice(0,10)||'—'}</TableCell>
+                  </TableRow>)}</TableBody>
+                </Table>
+                {(mandiPrices as any[]).length===0&&<p className="text-sm text-gray-400 text-center py-4">Loading mandi prices...</p>}
+              </CardContent>
+            </Card>
+            <Card><CardHeader><CardTitle>Add Mandi Price Manually</CardTitle></CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-3 gap-2">
+                <Input placeholder="Commodity" value={mandiForm.commodity} onChange={e=>setMandiForm({...mandiForm,commodity:e.target.value})} />
+                <Input placeholder="Market/Mandi name" value={mandiForm.mandi_name} onChange={e=>setMandiForm({...mandiForm,mandi_name:e.target.value})} />
+                <Input type="number" placeholder="Modal Price/Quintal" value={mandiForm.price_per_qt} onChange={e=>setMandiForm({...mandiForm,price_per_qt:e.target.value})} />
+                <Input type="date" value={mandiForm.date} onChange={e=>setMandiForm({...mandiForm,date:e.target.value})} />
+                <Button onClick={()=>api('POST','/api/agriculture/mandi/prices',{commodity:mandiForm.commodity,market_name:mandiForm.mandi_name,modal_price:Number(mandiForm.price_per_qt),arrival_date:mandiForm.date}).then(()=>qc.invalidateQueries({queryKey:['/api/agriculture/mandi/prices',mandiSearch]}))}>Add Price</Button>
               </div>
             </CardContent></Card>
           </div>

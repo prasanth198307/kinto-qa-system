@@ -1,167 +1,214 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { RefreshCw, Bell } from "lucide-react";
+import { RefreshCw, Bell, TrendingUp, TrendingDown, Wifi, WifiOff } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
-const MOCK_RATES = {
-  gold: { "24K": { per_gram: 7250, per_10g: 72500 }, "22K": { per_gram: 6650, per_10g: 66500 }, "18K": { per_gram: 5440, per_10g: 54400 } },
-  silver: { "999": { per_gram: 88, per_10g: 880 }, "925": { per_gram: 81, per_10g: 810 } },
-  timestamp: new Date().toLocaleTimeString(),
-  yesterday: { "24K": 7180, "22K": 6590, "18K": 5390 },
-  lastWeek: { "24K": 7100, "22K": 6510, "18K": 5330 },
-};
+interface RateData { rate: number; silver: number; platinum: number; updatedAt: string | Date; }
+
+const fmt = (n: number) => `₹${Number(n).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
+
+const PURITIY_FACTOR: Record<string, number> = { "24K": 1, "22K": 22/24, "18K": 18/24, "14K": 14/24 };
 
 export default function LiveGoldRatesPage() {
-  const [rates, setRates] = useState(MOCK_RATES);
-  const [fetching, setFetching] = useState(false);
+  const { toast } = useToast();
+  const [live, setLive] = useState<RateData | null>(null);
+  const [connected, setConnected] = useState(false);
   const [weight, setWeight] = useState("");
   const [purity, setPurity] = useState("22K");
   const [makingPct, setMakingPct] = useState("12");
+  const [gstPct, setGstPct] = useState("3");
   const [alertPrice, setAlertPrice] = useState("");
-  const [alertMsg, setAlertMsg] = useState("");
+  const [alertActive, setAlertActive] = useState(false);
+  const esRef = useRef<EventSource | null>(null);
+  const alertRef = useRef<{ price: number; fired: boolean }>({ price: 0, fired: false });
 
-  const fetchRates = async () => {
-    setFetching(true);
+  const { data: history = [] } = useQuery<any[]>({
+    queryKey: ["gold-rate-history"],
+    queryFn: () => fetch("/api/gold-erp/rates/history").then(r => r.json()).catch(() => []),
+    refetchInterval: 300000,
+  });
+
+  useEffect(() => {
+    const startSSE = () => {
+      if (esRef.current) { esRef.current.close(); }
+      const es = new EventSource("/api/gold-erp/rates/stream");
+      esRef.current = es;
+      es.onopen = () => setConnected(true);
+      es.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          setLive(data);
+          setConnected(true);
+          if (alertRef.current.price > 0 && !alertRef.current.fired) {
+            const rate22k = (data.rate || 0) * (22/24);
+            if (rate22k >= alertRef.current.price) {
+              toast({ title: `Gold Rate Alert!`, description: `22K gold hit ₹${Math.round(rate22k)}/g — your alert at ₹${alertRef.current.price}/g triggered` });
+              alertRef.current.fired = true;
+            }
+          }
+        } catch {}
+      };
+      es.onerror = () => { setConnected(false); es.close(); setTimeout(startSSE, 5000); };
+    };
+    startSSE();
+    return () => { esRef.current?.close(); };
+  }, []);
+
+  const fetchManual = async () => {
     try {
-      const data = await fetch("/api/gold-erp/live-rates").then(r => r.json());
-      if (data?.gold) setRates(data);
-      else setRates({ ...MOCK_RATES, timestamp: new Date().toLocaleTimeString() });
-    } catch {
-      setRates({ ...MOCK_RATES, timestamp: new Date().toLocaleTimeString() });
-    }
-    setFetching(false);
+      const data: any = await fetch("/api/gold-erp/rates/live").then(r => r.json());
+      setLive(data);
+      toast({ title: "Rates refreshed" });
+    } catch { toast({ title: "Failed to fetch rates", variant: "destructive" }); }
   };
 
-  const calcTotal = () => {
-    if (!weight) return null;
-    const ratePerGram = rates.gold[purity as "24K" | "22K" | "18K"]?.per_gram || 0;
+  const rate24k = live?.rate || 7250;
+  const rateSilver999 = live?.silver || 85;
+  const ratePlatinum = live?.platinum || 2800;
+  const updatedAt = live?.updatedAt ? new Date(live.updatedAt).toLocaleTimeString("en-IN") : "—";
+
+  const rateFor = (p: string) => Math.round(rate24k * (PURITIY_FACTOR[p] || 1));
+
+  const calcMaking = () => {
+    if (!weight || !Number(weight)) return null;
+    const ratePerGram = rateFor(purity);
     const baseValue = Number(weight) * ratePerGram;
     const making = baseValue * (Number(makingPct) / 100);
-    return { base: baseValue, making, total: baseValue + making };
+    const subtotal = baseValue + making;
+    const gst = subtotal * (Number(gstPct) / 100);
+    return { base: baseValue, making, subtotal, gst, total: subtotal + gst };
   };
+  const calc = calcMaking();
 
-  const calc = calcTotal();
+  const setAlert = () => {
+    if (!alertPrice) return;
+    alertRef.current = { price: Number(alertPrice), fired: false };
+    setAlertActive(true);
+    toast({ title: `Alert set for ₹${alertPrice}/g on 22K gold`, description: "You'll be notified when the live rate reaches this price." });
+  };
 
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Live Gold & Silver Rates</h1>
-          <p className="text-muted-foreground">MCX-based live metal rates</p>
+          <p className="text-sm text-muted-foreground">MCX / IBJA / GoldAPI.io live feed · SSE real-time stream · IBJA daily fix · Making charges calculator</p>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-sm text-muted-foreground">Last updated: {rates.timestamp}</span>
-          <Button onClick={fetchRates} disabled={fetching}>
-            <RefreshCw className="h-4 w-4 mr-2" />{fetching ? "Refreshing..." : "Refresh Rates"}
-          </Button>
+          <div className="flex items-center gap-1.5">
+            {connected ? <Wifi className="h-4 w-4 text-green-600" /> : <WifiOff className="h-4 w-4 text-red-600" />}
+            <Badge className={`text-xs ${connected ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+              {connected ? "LIVE" : "Connecting..."}
+            </Badge>
+          </div>
+          <span className="text-xs text-muted-foreground">Updated: {updatedAt}</span>
+          <Button size="sm" variant="outline" onClick={fetchManual}><RefreshCw className="h-3 w-3 mr-1" />Refresh</Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        {(["24K", "22K", "18K"] as const).map(p => (
-          <Card key={p} className="border-yellow-200">
-            <CardHeader className="pb-2"><CardTitle className="text-lg">Gold {p}</CardTitle></CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-yellow-600">₹{rates.gold[p].per_gram.toLocaleString()}/g</p>
-              <p className="text-sm text-muted-foreground">₹{rates.gold[p].per_10g.toLocaleString()} / 10g</p>
-              <div className="mt-2 text-xs text-muted-foreground">
-                Yesterday: ₹{rates.yesterday[p]}/g &nbsp;|&nbsp; Last Week: ₹{rates.lastWeek[p]}/g
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+      <div className="grid grid-cols-4 gap-4">
+        {(["24K", "22K", "18K", "14K"] as const).map(p => {
+          const r = rateFor(p);
+          return (
+            <Card key={p} className="border-yellow-200 bg-yellow-50/30">
+              <CardContent className="pt-4">
+                <p className="text-xs text-muted-foreground font-medium">Gold {p}</p>
+                <p className="text-2xl font-bold text-yellow-700">{fmt(r)}/g</p>
+                <p className="text-sm text-muted-foreground">{fmt(r * 10)} / 10g</p>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
-      <Card>
-        <CardHeader><CardTitle>Rate Comparison</CardTitle></CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Purity</TableHead>
-                <TableHead>Today (₹/g)</TableHead>
-                <TableHead>Yesterday</TableHead>
-                <TableHead>Last Week</TableHead>
-                <TableHead>Change</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(["24K", "22K", "18K"] as const).map(p => {
-                const change = rates.gold[p].per_gram - rates.yesterday[p];
-                return (
-                  <TableRow key={p}>
-                    <TableCell>Gold {p}</TableCell>
-                    <TableCell>₹{rates.gold[p].per_gram.toLocaleString()}</TableCell>
-                    <TableCell>₹{rates.yesterday[p].toLocaleString()}</TableCell>
-                    <TableCell>₹{rates.lastWeek[p].toLocaleString()}</TableCell>
-                    <TableCell>
-                      <Badge variant={change >= 0 ? "default" : "destructive"}>
-                        {change >= 0 ? "+" : ""}{change}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-              {(["999", "925"] as const).map(f => (
-                <TableRow key={f}>
-                  <TableCell>Silver {f}</TableCell>
-                  <TableCell>₹{rates.silver[f].per_gram}/g</TableCell>
-                  <TableCell>—</TableCell>
-                  <TableCell>—</TableCell>
-                  <TableCell>—</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-2 gap-4">
+        <Card>
+          <CardContent className="pt-4">
+            <p className="text-xs text-muted-foreground">Silver 999</p>
+            <p className="text-xl font-bold text-gray-600">{fmt(rateSilver999)}/g &nbsp; <span className="text-sm font-normal text-muted-foreground">{fmt(rateSilver999 * 1000)} / kg</span></p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <p className="text-xs text-muted-foreground">Platinum 950</p>
+            <p className="text-xl font-bold text-slate-600">{fmt(ratePlatinum)}/g</p>
+          </CardContent>
+        </Card>
+      </div>
 
       <div className="grid grid-cols-2 gap-6">
         <Card>
-          <CardHeader><CardTitle>Making Charges Calculator</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-sm">Making Charges Calculator</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-sm font-medium mb-1 block">Weight (grams)</label>
-                <Input type="number" value={weight} onChange={e => setWeight(e.target.value)} placeholder="e.g. 10" />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">Making Charges %</label>
-                <Input type="number" value={makingPct} onChange={e => setMakingPct(e.target.value)} />
-              </div>
+              <div><Label>Weight (grams)</Label><Input type="number" value={weight} onChange={e => setWeight(e.target.value)} placeholder="e.g. 10.500" step="0.001" /></div>
+              <div><Label>Making Charges %</Label><Input type="number" value={makingPct} onChange={e => setMakingPct(e.target.value)} step="0.1" /></div>
+              <div><Label>GST %</Label><Input type="number" value={gstPct} onChange={e => setGstPct(e.target.value)} step="0.5" /></div>
             </div>
             <div className="flex gap-2">
-              {(["24K", "22K", "18K"] as const).map(p => (
-                <Button key={p} size="sm" variant={purity === p ? "default" : "outline"} onClick={() => setPurity(p)}>{p}</Button>
+              {["24K", "22K", "18K", "14K"].map(p => (
+                <Button key={p} size="sm" variant={purity === p ? "default" : "outline"} onClick={() => setPurity(p)} className="text-xs">{p}</Button>
               ))}
             </div>
             {calc && (
-              <div className="bg-muted rounded p-3 space-y-1 text-sm">
-                <div className="flex justify-between"><span>Base Value:</span><span>₹{calc.base.toLocaleString()}</span></div>
-                <div className="flex justify-between"><span>Making Charges:</span><span>₹{calc.making.toLocaleString()}</span></div>
-                <div className="flex justify-between font-bold"><span>Total:</span><span>₹{calc.total.toLocaleString()}</span></div>
+              <div className="bg-muted/50 rounded-lg p-3 space-y-1 text-sm border">
+                <div className="flex justify-between"><span className="text-muted-foreground">Gold value ({weight}g × {fmt(rateFor(purity))}):</span><span>{fmt(calc.base)}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Making charges ({makingPct}%):</span><span>{fmt(calc.making)}</span></div>
+                <div className="flex justify-between border-t pt-1"><span>Subtotal:</span><span>{fmt(calc.subtotal)}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">GST ({gstPct}%):</span><span>{fmt(calc.gst)}</span></div>
+                <div className="flex justify-between font-bold text-base border-t pt-1"><span>Total:</span><span className="text-yellow-700">{fmt(calc.total)}</span></div>
               </div>
             )}
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader><CardTitle>Rate Alert</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-sm">Rate Alert</CardTitle></CardHeader>
           <CardContent className="space-y-3">
+            <p className="text-xs text-muted-foreground">Get notified when 22K gold reaches your target price. Alert fires in real-time via the live SSE stream.</p>
             <div>
-              <label className="text-sm font-medium mb-1 block">Alert when 22K gold goes above (₹/g)</label>
-              <Input type="number" value={alertPrice} onChange={e => setAlertPrice(e.target.value)} placeholder="e.g. 7000" />
+              <Label>Alert when 22K gold goes above (₹/g)</Label>
+              <Input type="number" value={alertPrice} onChange={e => { setAlertPrice(e.target.value); setAlertActive(false); alertRef.current.fired = false; }} placeholder="e.g. 7000" />
             </div>
-            <Button onClick={() => alertPrice && setAlertMsg(`Alert set for ₹${alertPrice}/g on 22K gold`)}>
-              <Bell className="h-4 w-4 mr-2" /> Set Alert
+            <Button onClick={setAlert} disabled={!alertPrice} className="w-full">
+              <Bell className="h-4 w-4 mr-2" /> {alertActive ? "Alert Active ✓" : "Set Alert"}
             </Button>
-            {alertMsg && <p className="text-sm text-green-600">{alertMsg}</p>}
+            {alertActive && <p className="text-xs text-green-600">Alert active: notify when 22K ≥ ₹{alertPrice}/g</p>}
+            <div className="bg-blue-50 rounded p-2 text-xs text-blue-700">
+              <p className="font-medium mb-0.5">Live Rate Source</p>
+              <p>Connected to GoldAPI.io (MCX-correlated) via Server-Sent Events. Rate refreshes every 60 seconds from live API when GOLDAPI_KEY is configured; otherwise uses ±0.2% random walk simulation for demo.</p>
+            </div>
           </CardContent>
         </Card>
       </div>
+
+      {Array.isArray(history) && history.length > 0 && (
+        <Card>
+          <CardHeader><CardTitle className="text-sm">Rate History</CardTitle></CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader><TableRow><TableHead>Date / Time</TableHead><TableHead>Metal</TableHead><TableHead>Purity</TableHead><TableHead className="text-right">Rate (₹/g)</TableHead><TableHead>Source</TableHead></TableRow></TableHeader>
+              <TableBody>
+                {history.slice(0, 20).map((h: any, i) => (
+                  <TableRow key={i}>
+                    <TableCell className="text-xs">{h.recorded_at ? new Date(h.recorded_at).toLocaleString("en-IN") : "—"}</TableCell>
+                    <TableCell className="capitalize text-xs">{h.metal}</TableCell>
+                    <TableCell><Badge variant="outline" className="text-xs">{h.purity}</Badge></TableCell>
+                    <TableCell className="text-right font-mono">{fmt(h.rate_per_gram)}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{h.source}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

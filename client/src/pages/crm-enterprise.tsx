@@ -27,7 +27,11 @@ export default function CRMEnterprisePage() {
   const { data: emailTemplates = [] } = useQuery({ queryKey: ['/api/crm/email/templates'], queryFn: () => api('GET', '/api/crm/email/templates') });
   const { data: quotes = [] } = useQuery({ queryKey: ['/api/crm/quotes'], queryFn: () => api('GET', '/api/crm/quotes') });
   const { data: calls = [] } = useQuery({ queryKey: ['/api/crm/calls/today'], queryFn: () => api('GET', '/api/crm/calls/today') });
-  const { data: dripCampaigns = [] } = useQuery({ queryKey: ['/api/crm/drip/campaigns'], queryFn: () => api('GET', '/api/crm/drip/campaigns') });
+  const { data: dripCampaigns = [] } = useQuery({ queryKey: ['/api/crm/drip-campaigns'], queryFn: () => api('GET', '/api/crm/drip-campaigns') });
+  const [dripForm, setDripForm] = useState({ name: '', trigger_event: 'lead_created' });
+  const [runResult, setRunResult] = useState<any>(null);
+  const createDrip = useMutation({ mutationFn: (d: any) => api('POST', '/api/crm/drip-campaigns', d), onSuccess: () => qc.invalidateQueries({ queryKey: ['/api/crm/drip-campaigns'] }) });
+  const runDrip = async () => { const r = await api('POST', '/api/crm/drip-campaigns/run', {}); setRunResult(r); };
 
   const saveSmtp = useMutation({ mutationFn: (d: any) => api('PUT', '/api/crm/email/config', d), onSuccess: () => alert('SMTP config saved!') });
   const createQuote = useMutation({ mutationFn: (d: any) => api('POST', '/api/crm/quotes/create', d), onSuccess: () => qc.invalidateQueries({ queryKey: ['/api/crm/quotes'] }) });
@@ -121,12 +125,39 @@ export default function CRMEnterprisePage() {
         </TabsContent>
 
         <TabsContent value="drip">
-          <Card><CardHeader><CardTitle>Drip Email Campaigns</CardTitle></CardHeader>
-          <CardContent>
-            <Table><TableHeader><TableRow><TableHead>Campaign</TableHead><TableHead>Trigger</TableHead><TableHead>Steps</TableHead><TableHead>Enrolled</TableHead></TableRow></TableHeader>
-            <TableBody>{(dripCampaigns as any[]).map((d:any)=><TableRow key={d.id}><TableCell>{d.name}</TableCell><TableCell>{d.trigger}</TableCell><TableCell>{d.steps_count||0}</TableCell><TableCell>{d.enrolled_count||0}</TableCell></TableRow>)}</TableBody></Table>
-            {(dripCampaigns as any[]).length===0&&<p className="text-center text-gray-400 py-8">No drip campaigns. Create email sequence to nurture leads automatically.</p>}
-          </CardContent></Card>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <Card><CardHeader><CardTitle>Create Drip Campaign</CardTitle></CardHeader>
+              <CardContent className="space-y-3">
+                <div><Label>Campaign Name</Label><Input value={dripForm.name} onChange={e=>setDripForm({...dripForm,name:e.target.value})} placeholder="e.g. New Lead Nurture" /></div>
+                <div><Label>Trigger Event</Label>
+                  <select className="border rounded px-2 py-1 w-full text-sm mt-1" value={dripForm.trigger_event} onChange={e=>setDripForm({...dripForm,trigger_event:e.target.value})}>
+                    <option value="lead_created">Lead Created</option>
+                    <option value="quotation_sent">Quotation Sent</option>
+                    <option value="no_activity_7days">No Activity (7 days)</option>
+                  </select>
+                </div>
+                <Button onClick={()=>createDrip.mutate(dripForm)} disabled={!dripForm.name}>Create Campaign</Button>
+              </CardContent></Card>
+              <Card><CardHeader className="flex flex-row items-center justify-between"><CardTitle>Run Due Steps</CardTitle><Button size="sm" onClick={runDrip}>Run Now</Button></CardHeader>
+              <CardContent>
+                {runResult && <div className="p-3 bg-green-50 rounded text-sm">Processed: {runResult.processed} / {runResult.total_due} due enrollments</div>}
+                <p className="text-xs text-muted-foreground mt-2">Sends pending drip messages for all active enrollments where next_send_at &le; now.</p>
+              </CardContent></Card>
+            </div>
+            <Card><CardHeader><CardTitle>Drip Campaigns</CardTitle></CardHeader>
+            <CardContent>
+              <Table><TableHeader><TableRow><TableHead>Campaign</TableHead><TableHead>Trigger</TableHead><TableHead>Active</TableHead><TableHead>Enrollments</TableHead><TableHead>Created</TableHead></TableRow></TableHeader>
+              <TableBody>{(dripCampaigns as any[]).map((d:any)=><TableRow key={d.id}>
+                <TableCell className="font-medium">{d.name}</TableCell>
+                <TableCell><Badge variant="outline">{d.trigger_event}</Badge></TableCell>
+                <TableCell><Badge variant={d.is_active?'default':'secondary'}>{d.is_active?'Active':'Inactive'}</Badge></TableCell>
+                <TableCell>{d.enrollment_count||0}</TableCell>
+                <TableCell className="text-xs">{d.created_at?.slice(0,10)}</TableCell>
+              </TableRow>)}</TableBody></Table>
+              {(dripCampaigns as any[]).length===0&&<p className="text-center text-gray-400 py-8">No drip campaigns. Create one above to start nurturing leads automatically.</p>}
+            </CardContent></Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="quotes">

@@ -1,7 +1,10 @@
 import { Router } from "express";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
-import { glNidhiEMI } from "./vertical-gl-service";
+import { glNidhiEMI, glNidhiDeposit } from "./vertical-gl-service";
+import { createJournalWithLines } from "./journal-service";
+import { whatsappService } from "./whatsappService";
+import PDFDocument from "pdfkit";
 
 const router = Router();
 
@@ -257,6 +260,8 @@ router.post("/deposits", auth, async (req: any, res) => {
     if (principal > 0) {
       await db.execute(sql`INSERT INTO nidhi_deposit_transactions (tenant_id, deposit_id, member_id, transaction_type, amount, balance_after, payment_mode, narration)
         VALUES (${t}, ${(r.rows[0] as any).id}, ${b.member_id}, 'opening', ${principal}, ${b.deposit_type==='savings'?principal:0}, ${b.payment_mode||'cash'}, 'Account opening')`);
+      // GL: Dr Bank = deposit amount, Cr Member Savings Liability
+      glNidhiDeposit({ tenantId: t, depositId: (r.rows[0] as any).id, amount: Math.round(principal * 100), paymentMode: b.payment_mode || 'cash' }).catch((e: any) => console.error('GL deposit fail', e));
     }
 
     res.json(r.rows[0]);
@@ -762,4 +767,590 @@ router.get("/reports/daily-collection", auth, async (req: any, res) => {
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 
+// ── Passbook PDF ──────────────────────────────────────────────────────────────
+router.get("/members/:id/passbook-pdf", auth, async (req: any, res) => {
+  const t = tid(req);
+  try {
+    const [memberRows, depositRows, loanRows, dtxnRows, ltxnRows] = await Promise.all([
+      db.execute(sql`SELECT * FROM nidhi_members WHERE id=${req.params.id} AND tenant_id=${t}`),
+      db.execute(sql`SELECT * FROM nidhi_deposits WHERE member_id=${req.params.id} AND tenant_id=${t} AND record_status=1`),
+      db.execute(sql`SELECT * FROM nidhi_loans WHERE member_id=${req.params.id} AND tenant_id=${t} AND record_status=1`),
+      db.execute(sql`SELECT dt.*, d.account_number, d.deposit_type FROM nidhi_deposit_transactions dt JOIN nidhi_deposits d ON d.id=dt.deposit_id WHERE dt.tenant_id=${t} AND d.member_id=${req.params.id} ORDER BY dt.created_at DESC LIMIT 20`),
+      db.execute(sql`SELECT lt.*, l.loan_number FROM nidhi_loan_transactions lt JOIN nidhi_loans l ON l.id=lt.loan_id WHERE lt.tenant_id=${t} AND l.member_id=${req.params.id} ORDER BY lt.created_at DESC LIMIT 10`),
+    ]);
+
+    if (!memberRows.rows.length) return res.status(404).json({ message: "Member not found" });
+    const m = memberRows.rows[0] as any;
+    const deposits = depositRows.rows as any[];
+    const loans = loanRows.rows as any[];
+    const fdBalance = deposits.filter(d => d.deposit_type === 'fd').reduce((s, d) => s + Number(d.current_balance || 0), 0);
+    const rdBalance = deposits.filter(d => d.deposit_type === 'rd').reduce((s, d) => s + Number(d.current_balance || 0), 0);
+    const loanOutstanding = loans.reduce((s, l) => s + Number(l.outstanding_principal || 0), 0);
+
+    const doc = new PDFDocument({ margin: 40, size: 'A4' });
+    const buffers: Buffer[] = [];
+    doc.on('data', (b: Buffer) => buffers.push(b));
+    doc.on('end', () => {
+      const pdf = Buffer.concat(buffers);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename=passbook-${req.params.id}.pdf`);
+      res.send(pdf);
+    });
+
+    doc.fontSize(18).font('Helvetica-Bold').text('NIDHI MEMBER PASSBOOK', { align: 'center' });
+    doc.moveDown(0.5);
+    doc.fontSize(12).font('Helvetica').text(`Member No: ${m.member_number}`, { align: 'center' });
+    doc.text(`Name: ${m.name}`, { align: 'center' });
+    doc.text(`Join Date: ${m.membership_date || ''}`, { align: 'center' });
+    doc.moveDown();
+    doc.fontSize(14).font('Helvetica-Bold').text('Account Summary');
+    doc.fontSize(11).font('Helvetica');
+    doc.text(`FD Balance: ₹${fdBalance.toLocaleString('en-IN')}`);
+    doc.text(`RD Balance: ₹${rdBalance.toLocaleString('en-IN')}`);
+    doc.text(`Loan Outstanding: ₹${loanOutstanding.toLocaleString('en-IN')}`);
+    doc.moveDown();
+
+    doc.fontSize(13).font('Helvetica-Bold').text('Recent Deposit Transactions');
+    doc.fontSize(10).font('Helvetica');
+    for (const tx of dtxnRows.rows as any[]) {
+      doc.text(`${String(tx.created_at).slice(0,10)} | ${tx.account_number} | ${tx.transaction_type} | ₹${Number(tx.amount).toLocaleString('en-IN')} | Bal: ₹${Number(tx.balance_after||0).toLocaleString('en-IN')}`);
+    }
+    doc.moveDown();
+    doc.fontSize(13).font('Helvetica-Bold').text('Recent Loan Transactions');
+    doc.fontSize(10).font('Helvetica');
+    for (const tx of ltxnRows.rows as any[]) {
+      doc.text(`${String(tx.created_at).slice(0,10)} | ${tx.loan_number} | EMI #${tx.emi_number||'-'} | ₹${Number(tx.total_amount||0).toLocaleString('en-IN')} | Bal: ₹${Number(tx.outstanding_after||0).toLocaleString('en-IN')}`);
+    }
+    doc.end();
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// ── EMI WhatsApp Reminders ────────────────────────────────────────────────────
+router.post("/emi-reminders/send", auth, async (req: any, res) => {
+  const t = tid(req);
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS nidhi_reminder_log (
+        id SERIAL PRIMARY KEY, tenant_id INTEGER NOT NULL, member_id INTEGER,
+        message TEXT, sent_at TIMESTAMP DEFAULT NOW(), status VARCHAR(30) DEFAULT 'sent'
+      )
+    `);
+
+    const dueLoans = await db.execute(sql`
+      SELECT l.id, l.loan_number, l.emi_amount, l.next_emi_date, l.member_id,
+        m.name, m.phone, m.member_number
+      FROM nidhi_loans l JOIN nidhi_members m ON m.id=l.member_id
+      WHERE l.tenant_id=${t} AND l.record_status=1 AND l.status='active'
+        AND l.next_emi_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '7 days'
+    `);
+
+    let sent = 0;
+    for (const loan of dueLoans.rows as any[]) {
+      if (!loan.phone) continue;
+      const message = `Dear ${loan.name}, your EMI of ₹${Number(loan.emi_amount).toLocaleString('en-IN')} is due on ${loan.next_emi_date}. Please pay at your nearest Nidhi branch. Member No: ${loan.member_number}`;
+      const ok = await whatsappService.sendTextMessage({ to: loan.phone, message }).catch(() => false);
+      await db.execute(sql`INSERT INTO nidhi_reminder_log (tenant_id, member_id, message, status) VALUES (${t}, ${loan.member_id}, ${message}, ${ok ? 'sent' : 'failed'})`);
+      if (ok) sent++;
+    }
+    res.json({ success: true, reminders_sent: sent, total_due: dueLoans.rows.length });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// ── NDH-1 XML Return ──────────────────────────────────────────────────────────
+router.get("/rbi-returns/ndh1/:year", auth, async (req: any, res) => {
+  const t = tid(req);
+  const year = req.params.year;
+  try {
+    const [membersTotal, membersActive, deposits, loans, shares] = await Promise.all([
+      db.execute(sql`SELECT COUNT(*) as total FROM nidhi_members WHERE tenant_id=${t} AND record_status=1`),
+      db.execute(sql`SELECT COUNT(*) as active, SUM(CASE WHEN status='inactive' OR kyc_status='pending' THEN 1 ELSE 0 END) as dormant FROM nidhi_members WHERE tenant_id=${t} AND record_status=1`),
+      db.execute(sql`SELECT COALESCE(SUM(CASE WHEN deposit_type='fd' THEN current_balance ELSE 0 END),0) as fd, COALESCE(SUM(CASE WHEN deposit_type='rd' THEN current_balance ELSE 0 END),0) as rd, COALESCE(SUM(CASE WHEN deposit_type='savings' THEN current_balance ELSE 0 END),0) as savings FROM nidhi_deposits WHERE tenant_id=${t} AND status='active' AND record_status=1`),
+      db.execute(sql`SELECT COALESCE(SUM(outstanding_principal),0) as outstanding, COALESCE(SUM(CASE WHEN status='npa' THEN outstanding_principal ELSE 0 END),0) as npa FROM nidhi_loans WHERE tenant_id=${t} AND record_status=1`),
+      db.execute(sql`SELECT COALESCE(SUM(total_share_amount),0) as nof FROM nidhi_members WHERE tenant_id=${t} AND status='active' AND record_status=1`),
+    ]);
+
+    const ma = membersActive.rows[0] as any;
+    const dep = deposits.rows[0] as any;
+    const lo = loans.rows[0] as any;
+    const sh = shares.rows[0] as any;
+    const total = (membersTotal.rows[0] as any).total;
+
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<NDH1Return year="${year}" tenantId="${t}">
+  <Members total="${total}" active="${ma.active}" dormant="${ma.dormant}"/>
+  <Deposits fd="${dep.fd}" rd="${dep.rd}" savings="${dep.savings}"/>
+  <Loans outstanding="${lo.outstanding}" npa="${lo.npa}"/>
+  <NetOwnedFund amount="${sh.nof}"/>
+</NDH1Return>`;
+
+    res.setHeader('Content-Type', 'application/xml');
+    res.send(xml);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// ── Phase 9: NDH-2 Half-Yearly Return (Deposits) ─────────────────────────────
+
+async function ensureRBISubmissionsTable() {
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS nidhi_rbi_submissions (
+      id SERIAL PRIMARY KEY, tenant_id INT,
+      return_type VARCHAR(10),
+      year INT, period VARCHAR(50),
+      submitted_at TIMESTAMPTZ DEFAULT NOW(),
+      submitted_by VARCHAR(200), srn_number VARCHAR(100),
+      status VARCHAR(30) DEFAULT 'submitted'
+    )
+  `);
+}
+
+router.get("/rbi-returns/ndh2/:year", auth, async (req: any, res: any) => {
+  const t = tid(req);
+  const year = req.params.year;
+  try {
+    const [companyInfo, deposits] = await Promise.all([
+      db.execute(sql`SELECT company_name, registration_number FROM nidhi_company_profile WHERE tenant_id=${t} LIMIT 1`).catch(() => ({ rows: [] })),
+      db.execute(sql`
+        SELECT
+          COUNT(*) as total_members_with_deposits,
+          SUM(CASE WHEN deposit_type='savings' THEN principal_amount ELSE 0 END) as savings_deposits,
+          SUM(CASE WHEN deposit_type='fd' THEN principal_amount ELSE 0 END) as fixed_deposits,
+          SUM(CASE WHEN deposit_type='rd' THEN principal_amount ELSE 0 END) as recurring_deposits,
+          SUM(principal_amount) as total_deposits,
+          AVG(interest_rate) as avg_interest_rate
+        FROM nidhi_deposits WHERE tenant_id=${t} AND status='active'
+          AND EXTRACT(YEAR FROM created_at)=${parseInt(year)}
+      `),
+    ]);
+    const d = deposits.rows[0] as any;
+    const cp = (companyInfo.rows[0] as any) || {};
+    const companyName = cp.company_name || 'Nidhi Company';
+    const regNo = cp.registration_number || '';
+
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<NDH2Return>
+  <ReturnType>NDH-2</ReturnType>
+  <Period>Half-Year ending ${year}-09-30</Period>
+  <NidhiName>${companyName}</NidhiName>
+  <RegistrationNo>${regNo}</RegistrationNo>
+  <Deposits>
+    <SavingsDeposits>${d.savings_deposits||0}</SavingsDeposits>
+    <FixedDeposits>${d.fixed_deposits||0}</FixedDeposits>
+    <RecurringDeposits>${d.recurring_deposits||0}</RecurringDeposits>
+    <TotalDeposits>${d.total_deposits||0}</TotalDeposits>
+    <AverageInterestRate>${parseFloat(d.avg_interest_rate||0).toFixed(2)}</AverageInterestRate>
+    <MembersWithDeposits>${d.total_members_with_deposits||0}</MembersWithDeposits>
+  </Deposits>
+</NDH2Return>`;
+
+    if (req.query.format === 'xml') {
+      res.setHeader('Content-Type', 'application/xml');
+      res.setHeader('Content-Disposition', `attachment; filename=NDH2-${year}.xml`);
+      return res.send(xml);
+    }
+    res.json({ year, return_type: 'NDH-2', data: d, xml });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/rbi-returns/ndh2/:year/submit", auth, async (req: any, res: any) => {
+  const t = tid(req);
+  const year = parseInt(req.params.year);
+  try {
+    await ensureRBISubmissionsTable();
+    const { submitted_by, srn_number } = req.body;
+    const row = await db.execute(sql`
+      INSERT INTO nidhi_rbi_submissions (tenant_id, return_type, year, period, submitted_by, srn_number)
+      VALUES (${t}, 'NDH-2', ${year}, ${'Half-Year ' + year}, ${submitted_by||null}, ${srn_number||null})
+      RETURNING *
+    `);
+    res.json(row.rows[0]);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// ── Phase 9: NDH-3 Half-Yearly Return (Loans) ────────────────────────────────
+
+router.get("/rbi-returns/ndh3/:year", auth, async (req: any, res: any) => {
+  const t = tid(req);
+  const year = req.params.year;
+  try {
+    const [companyInfo, loans] = await Promise.all([
+      db.execute(sql`SELECT company_name, registration_number FROM nidhi_company_profile WHERE tenant_id=${t} LIMIT 1`).catch(() => ({ rows: [] })),
+      db.execute(sql`
+        SELECT
+          COUNT(*) as total_loans,
+          SUM(principal_amount) as total_sanctioned,
+          SUM(outstanding_principal) as total_outstanding,
+          SUM(CASE WHEN status='npa' THEN outstanding_principal ELSE 0 END) as npa_amount,
+          SUM(CASE WHEN status='closed' THEN 1 ELSE 0 END) as closed_loans,
+          AVG(interest_rate) as avg_rate
+        FROM nidhi_loans WHERE tenant_id=${t}
+          AND EXTRACT(YEAR FROM created_at)<=${parseInt(year)}
+      `),
+    ]);
+    const lo = loans.rows[0] as any;
+    const cp = (companyInfo.rows[0] as any) || {};
+    const companyName = cp.company_name || 'Nidhi Company';
+    const regNo = cp.registration_number || '';
+
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<NDH3Return>
+  <ReturnType>NDH-3</ReturnType>
+  <Period>Half-Year ending ${year}-09-30</Period>
+  <NidhiName>${companyName}</NidhiName>
+  <RegistrationNo>${regNo}</RegistrationNo>
+  <Loans>
+    <TotalLoans>${lo.total_loans||0}</TotalLoans>
+    <TotalSanctioned>${lo.total_sanctioned||0}</TotalSanctioned>
+    <TotalOutstanding>${lo.total_outstanding||0}</TotalOutstanding>
+    <NPAAmount>${lo.npa_amount||0}</NPAAmount>
+    <ClosedLoans>${lo.closed_loans||0}</ClosedLoans>
+    <AverageInterestRate>${parseFloat(lo.avg_rate||0).toFixed(2)}</AverageInterestRate>
+  </Loans>
+</NDH3Return>`;
+
+    if (req.query.format === 'xml') {
+      res.setHeader('Content-Type', 'application/xml');
+      res.setHeader('Content-Disposition', `attachment; filename=NDH3-${year}.xml`);
+      return res.send(xml);
+    }
+    res.json({ year, return_type: 'NDH-3', data: lo, xml });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/rbi-returns/ndh3/:year/submit", auth, async (req: any, res: any) => {
+  const t = tid(req);
+  const year = parseInt(req.params.year);
+  try {
+    await ensureRBISubmissionsTable();
+    const { submitted_by, srn_number } = req.body;
+    const row = await db.execute(sql`
+      INSERT INTO nidhi_rbi_submissions (tenant_id, return_type, year, period, submitted_by, srn_number)
+      VALUES (${t}, 'NDH-3', ${year}, ${'Half-Year ' + year}, ${submitted_by||null}, ${srn_number||null})
+      RETURNING *
+    `);
+    res.json(row.rows[0]);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// ── PDC (Post-Dated Cheque) Tracking ─────────────────────────────────────────
+async function ensurePDCTable() {
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS nidhi_pdc (
+      id SERIAL PRIMARY KEY, tenant_id INT, loan_id INT, member_id INT,
+      cheque_no VARCHAR(50), bank_name VARCHAR(200), branch VARCHAR(200),
+      ifsc VARCHAR(11), account_no VARCHAR(30),
+      amount NUMERIC(10,2), cheque_date DATE,
+      emi_month INT, emi_year INT,
+      status VARCHAR(20) DEFAULT 'pending',
+      presented_date DATE, cleared_date DATE,
+      bounce_reason VARCHAR(200), bounce_charges NUMERIC(8,2) DEFAULT 0,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+}
+
+router.get("/pdc", auth, async (req: any, res) => {
+  const t = tid(req);
+  const { status, from, to } = req.query;
+  try {
+    await ensurePDCTable();
+    const rows = await db.execute(sql`
+      SELECT p.*, m.name as member_name, m.member_number, l.loan_number
+      FROM nidhi_pdc p
+      LEFT JOIN nidhi_members m ON m.id=p.member_id
+      LEFT JOIN nidhi_loans l ON l.id=p.loan_id
+      WHERE p.tenant_id=${t}
+      ${status ? sql`AND p.status=${status}` : sql``}
+      ${from ? sql`AND p.cheque_date >= ${from}` : sql``}
+      ${to ? sql`AND p.cheque_date <= ${to}` : sql``}
+      ORDER BY p.cheque_date ASC
+    `);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/pdc", auth, async (req: any, res) => {
+  const t = tid(req);
+  const { loan_id, member_id, cheque_no, bank_name, branch, ifsc, account_no, amount, cheque_date, emi_month, emi_year } = req.body;
+  try {
+    await ensurePDCTable();
+    const row = await db.execute(sql`
+      INSERT INTO nidhi_pdc (tenant_id, loan_id, member_id, cheque_no, bank_name, branch, ifsc, account_no, amount, cheque_date, emi_month, emi_year)
+      VALUES (${t}, ${loan_id || null}, ${member_id || null}, ${cheque_no || null}, ${bank_name || null}, ${branch || null}, ${ifsc || null}, ${account_no || null}, ${amount || 0}, ${cheque_date || null}, ${emi_month || null}, ${emi_year || null})
+      RETURNING *
+    `);
+    res.json(row.rows[0]);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.get("/pdc/due-this-month", auth, async (req: any, res) => {
+  const t = tid(req);
+  try {
+    await ensurePDCTable();
+    const rows = await db.execute(sql`
+      SELECT p.*, m.name as member_name, m.member_number, l.loan_number
+      FROM nidhi_pdc p
+      LEFT JOIN nidhi_members m ON m.id=p.member_id
+      LEFT JOIN nidhi_loans l ON l.id=p.loan_id
+      WHERE p.tenant_id=${t} AND p.status='pending'
+        AND DATE_TRUNC('month', p.cheque_date) = DATE_TRUNC('month', CURRENT_DATE)
+      ORDER BY p.cheque_date ASC
+    `);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/pdc/:id/present", auth, async (req: any, res) => {
+  const t = tid(req);
+  try {
+    await ensurePDCTable();
+    const row = await db.execute(sql`
+      UPDATE nidhi_pdc SET status='presented', presented_date=CURRENT_DATE
+      WHERE id=${req.params.id} AND tenant_id=${t} RETURNING *
+    `);
+    res.json(row.rows[0]);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/pdc/:id/clear", auth, async (req: any, res) => {
+  const t = tid(req);
+  try {
+    await ensurePDCTable();
+    const pdcRow = await db.execute(sql`SELECT * FROM nidhi_pdc WHERE id=${req.params.id} AND tenant_id=${t}`);
+    if (!pdcRow.rows.length) return res.status(404).json({ message: 'PDC not found' });
+    const pdc = pdcRow.rows[0] as any;
+    const row = await db.execute(sql`
+      UPDATE nidhi_pdc SET status='cleared', cleared_date=CURRENT_DATE
+      WHERE id=${req.params.id} AND tenant_id=${t} RETURNING *
+    `);
+    // GL: DR 1002 Bank / CR 2400 Loan Payable
+    const amtPaise = Math.round(parseFloat(pdc.amount || 0) * 100);
+    createJournalWithLines(
+      new Date().toISOString().slice(0, 10),
+      `PDC cleared — Cheque ${pdc.cheque_no || req.params.id}`,
+      [
+        { accountCode: '1002', debit: amtPaise, credit: 0, memo: 'PDC cheque cleared' },
+        { accountCode: '2400', debit: 0, credit: amtPaise, memo: 'Loan principal PDC' },
+      ],
+      { isAutoGenerated: true, sourceType: 'nidhi_pdc', sourceId: String(req.params.id) }
+    ).catch((e: any) => console.error('GL PDC clear:', e));
+    res.json(row.rows[0]);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/pdc/:id/bounce", auth, async (req: any, res) => {
+  const t = tid(req);
+  const { bounce_reason, bounce_charges } = req.body;
+  try {
+    await ensurePDCTable();
+    const row = await db.execute(sql`
+      UPDATE nidhi_pdc SET status='bounced', bounce_reason=${bounce_reason || null}, bounce_charges=${bounce_charges || 0}
+      WHERE id=${req.params.id} AND tenant_id=${t} RETURNING *
+    `);
+    // GL: DR 2100 AP (charges receivable) / CR 1900 PDC Bounce Charges Income
+    const chargesPaise = Math.round(parseFloat(bounce_charges || 0) * 100);
+    if (chargesPaise > 0) {
+      createJournalWithLines(
+        new Date().toISOString().slice(0, 10),
+        `PDC bounce charges — ${req.params.id}`,
+        [
+          { accountCode: '1100', debit: chargesPaise, credit: 0, memo: 'Bounce charges receivable' },
+          { accountCode: '4040', debit: 0, credit: chargesPaise, memo: 'PDC bounce charges income' },
+        ],
+        { isAutoGenerated: true, sourceType: 'nidhi_pdc_bounce', sourceId: String(req.params.id) }
+      ).catch((e: any) => console.error('GL PDC bounce:', e));
+    }
+    res.json(row.rows[0]);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.get("/pdc/stats", auth, async (req: any, res) => {
+  const t = tid(req);
+  try {
+    await ensurePDCTable();
+    const row = await db.execute(sql`
+      SELECT
+        COUNT(*) as total,
+        COUNT(CASE WHEN status='pending' THEN 1 END) as pending,
+        COUNT(CASE WHEN status='presented' THEN 1 END) as presented,
+        COUNT(CASE WHEN status='cleared' THEN 1 END) as cleared,
+        COUNT(CASE WHEN status='bounced' THEN 1 END) as bounced,
+        ROUND(COUNT(CASE WHEN status='bounced' THEN 1 END)::numeric / NULLIF(COUNT(*),0) * 100, 2) as bounce_rate,
+        COALESCE(SUM(bounce_charges),0) as total_bounce_charges
+      FROM nidhi_pdc WHERE tenant_id=${t}
+    `);
+    res.json(row.rows[0]);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// ── Loan Applications (sanction workflow) ────────────────────────────────────
+async function ensureLoanApplicationsTable() {
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS nidhi_loan_applications (
+      id SERIAL PRIMARY KEY, tenant_id INT NOT NULL,
+      application_number VARCHAR(30), member_id INT, member_name VARCHAR(200),
+      amount NUMERIC(12,2), purpose VARCHAR(200), security VARCHAR(100),
+      loan_type VARCHAR(50) DEFAULT 'personal',
+      interest_rate NUMERIC(5,2), tenure_months INT,
+      applied_date DATE DEFAULT CURRENT_DATE,
+      status VARCHAR(30) DEFAULT 'Applied',
+      committee_remarks TEXT, sanctioned_by VARCHAR(200),
+      sanctioned_date DATE, disbursed_date DATE,
+      rejection_reason TEXT,
+      crm_contact_id INT,
+      created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+}
+
+router.get("/loan-applications", auth, async (req: any, res: any) => {
+  const t = tid(req);
+  const { status } = req.query;
+  try {
+    await ensureLoanApplicationsTable();
+    const rows = await db.execute(sql`
+      SELECT la.*, m.member_number, m.phone as member_phone
+      FROM nidhi_loan_applications la
+      LEFT JOIN nidhi_members m ON m.id=la.member_id
+      WHERE la.tenant_id=${t}
+      ${status ? sql`AND la.status=${status}` : sql``}
+      ORDER BY la.created_at DESC LIMIT 200
+    `);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/loan-applications", auth, async (req: any, res: any) => {
+  const t = tid(req);
+  const b = req.body;
+  try {
+    await ensureLoanApplicationsTable();
+    const count = await db.execute(sql`SELECT COUNT(*) as cnt FROM nidhi_loan_applications WHERE tenant_id=${t}`);
+    const appNo = `LA-${String(Number((count.rows[0] as any).cnt) + 1).padStart(5,'0')}`;
+    const row = await db.execute(sql`
+      INSERT INTO nidhi_loan_applications
+        (tenant_id, application_number, member_id, member_name, amount, purpose, security, loan_type, interest_rate, tenure_months, applied_date, status, crm_contact_id)
+      VALUES (${t}, ${appNo}, ${b.member_id||null}, ${b.member||b.member_name||null}, ${b.amount||0}, ${b.purpose||null},
+        ${b.security||null}, ${b.loan_type||'personal'}, ${b.rate||b.interest_rate||null}, ${b.tenure||b.tenure_months||null},
+        ${b.applied_date||new Date().toISOString().slice(0,10)}, 'Applied', ${b.crm_contact_id||null})
+      RETURNING *
+    `);
+    res.json(row.rows[0]);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.put("/loan-applications/:id", auth, async (req: any, res: any) => {
+  const t = tid(req);
+  const b = req.body;
+  try {
+    await ensureLoanApplicationsTable();
+    const now = new Date().toISOString().slice(0,10);
+    const sanctionedDate = b.status === 'Sanctioned' ? now : null;
+    const disbursedDate = b.status === 'Disbursed' ? now : null;
+    const row = await db.execute(sql`
+      UPDATE nidhi_loan_applications SET
+        status=${b.status}, committee_remarks=${b.committee_remarks||null},
+        sanctioned_by=${b.sanctioned_by||null},
+        sanctioned_date=COALESCE(sanctioned_date, ${sanctionedDate}),
+        disbursed_date=COALESCE(disbursed_date, ${disbursedDate}),
+        rejection_reason=${b.rejection_reason||null},
+        updated_at=NOW()
+      WHERE id=${req.params.id} AND tenant_id=${t} RETURNING *
+    `);
+    res.json(row.rows[0]);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// ── Interest Accrual — monthly GL posting ────────────────────────────────────
+router.post("/interest-accrual/run", auth, async (req: any, res: any) => {
+  const t = tid(req);
+  try {
+    const activeLoans = await db.execute(sql`
+      SELECT id, loan_number, outstanding_principal, interest_rate, member_id
+      FROM nidhi_loans WHERE tenant_id=${t} AND status='active' AND record_status=1
+    `);
+    const { createJournalWithLines: jl } = await import("./journal-service");
+    let posted = 0;
+    const today = new Date().toISOString().slice(0,10);
+    for (const loan of activeLoans.rows as any[]) {
+      const monthlyInterest = Math.round(Number(loan.outstanding_principal) * (Number(loan.interest_rate) / 12 / 100) * 100);
+      if (monthlyInterest <= 0) continue;
+      await jl(today, `Monthly interest accrual — Loan ${loan.loan_number}`,
+        [
+          { accountCode: '1120', debit: monthlyInterest, credit: 0, memo: 'Interest receivable' },
+          { accountCode: '4020', debit: 0, credit: monthlyInterest, memo: 'Interest income on loan' },
+        ],
+        { isAutoGenerated: true, sourceType: 'nidhi_interest_accrual', sourceId: String(loan.id), tenantId: t }
+      ).catch((e: any) => console.error('GL nidhi interest accrual:', e));
+      posted++;
+    }
+    res.json({ success: true, loans_processed: activeLoans.rows.length, journals_posted: posted });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// ── Mobile Collection Agent ───────────────────────────────────────────────────
+router.get("/mobile-collection/due", auth, async (req: any, res: any) => {
+  const t = tid(req);
+  const { agent_name, date } = req.query;
+  try {
+    const today = (date as string) || new Date().toISOString().slice(0,10);
+    const rows = await db.execute(sql`
+      SELECT l.id as loan_id, l.loan_number, l.emi_amount, l.outstanding_principal, l.next_emi_date,
+        l.interest_rate, m.id as member_id, m.name as member_name, m.member_number, m.phone, m.address
+      FROM nidhi_loans l JOIN nidhi_members m ON m.id=l.member_id
+      WHERE l.tenant_id=${t} AND l.record_status=1 AND l.status='active'
+        AND l.next_emi_date <= ${today}
+      ORDER BY l.next_emi_date ASC LIMIT 100
+    `);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/mobile-collection/collect", auth, async (req: any, res: any) => {
+  const t = tid(req);
+  const { loan_id, principal_component, interest_component, penalty_amount, payment_mode, collected_by, receipt_number } = req.body;
+  try {
+    const loan = await db.execute(sql`SELECT * FROM nidhi_loans WHERE id=${loan_id} AND tenant_id=${t}`);
+    if (!loan.rows.length) return res.status(404).json({ message: "Loan not found" });
+    const l = loan.rows[0] as any;
+    const principal = Number(principal_component || 0);
+    const interest = Number(interest_component || 0);
+    const penalty = Number(penalty_amount || 0);
+    const total = principal + interest + penalty;
+    const newOutstanding = Math.max(0, Number(l.outstanding_principal) - principal);
+    const newPaid = Number(l.emis_paid) + 1;
+    const isLast = newPaid >= Number(l.total_emis) || newOutstanding <= 1;
+    const nextDate = isLast ? null : new Date(new Date(l.next_emi_date||new Date()).setMonth(new Date(l.next_emi_date||new Date()).getMonth()+1)).toISOString().slice(0,10);
+
+    await db.execute(sql`UPDATE nidhi_loans SET outstanding_principal=${newOutstanding}, emis_paid=${newPaid}, emis_pending=${Math.max(0,Number(l.total_emis)-newPaid)}, last_emi_date=CURRENT_DATE, next_emi_date=${nextDate}, status=${isLast?'closed':l.status}, updated_at=NOW() WHERE id=${loan_id} AND tenant_id=${t}`);
+    const txn = await db.execute(sql`INSERT INTO nidhi_loan_transactions (tenant_id, loan_id, member_id, transaction_type, emi_number, principal_component, interest_component, penalty_amount, total_amount, outstanding_after, payment_mode, reference_number, collected_by)
+      VALUES (${t}, ${loan_id}, ${l.member_id}, 'emi', ${newPaid}, ${principal}, ${interest}, ${penalty}, ${total}, ${newOutstanding}, ${payment_mode||'cash'}, ${receipt_number||null}, ${collected_by||null}) RETURNING *`);
+
+    // GL: Dr Cash / Cr Loan Principal + Interest Income
+    const { glNidhiEMI: gl } = await import("./vertical-gl-service");
+    gl({ tenantId: t, loanId: loan_id, transactionId: (txn.rows[0] as any).id, principal: Math.round(principal*100), interest: Math.round(interest*100), penalty: Math.round(penalty*100), paymentMode: payment_mode||'cash' }).catch((e: any) => console.error('GL mobile collect:', e));
+
+    // Also record in daily_collection table
+    await db.execute(sql`INSERT INTO nidhi_daily_collection (tenant_id, collection_date, agent_name, member_id, loan_id, collection_type, amount, payment_mode, receipt_number) VALUES (${t}, CURRENT_DATE, ${collected_by||null}, ${l.member_id}, ${loan_id}, 'emi', ${total}, ${payment_mode||'cash'}, ${receipt_number||null})`);
+
+    res.json({ success: true, outstanding_after: newOutstanding, loan_status: isLast ? 'closed' : l.status, receipt: txn.rows[0] });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.get("/mobile-collection/summary", auth, async (req: any, res: any) => {
+  const t = tid(req);
+  const { agent_name, date } = req.query;
+  const today = (date as string) || new Date().toISOString().slice(0,10);
+  try {
+    const row = await db.execute(sql`
+      SELECT COUNT(*) as collections, COALESCE(SUM(amount),0) as total_collected,
+        COUNT(DISTINCT member_id) as members_visited
+      FROM nidhi_daily_collection WHERE tenant_id=${t}
+        AND collection_date=${today}
+        ${agent_name ? sql`AND agent_name=${agent_name}` : sql``}
+    `);
+    res.json(row.rows[0]);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
 export default router;
+

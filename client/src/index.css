@@ -729,3 +729,31 @@
     color: #666;
   }
 }
+/* ─── RTL support (Arabic) — html[dir="rtl"] set by I18nProvider ─────────── */
+html[dir="rtl"] body {
+  direction: rtl;
+  text-align: right;
+}
+/* Flip fixed sidebar to the right */
+html[dir="rtl"] .fixed.left-0:not([data-testid="global-header"]) {
+  left: auto;
+  right: 0;
+}
+/* Mirror common margin/padding utilities used for sidebar offset */
+html[dir="rtl"] .ml-64 { margin-left: 0; margin-right: 16rem; }
+html[dir="rtl"] .pl-64 { padding-left: 0; padding-right: 16rem; }
+html[dir="rtl"] .lg\:ml-64 { margin-left: 0; }
+@media (min-width: 1024px) {
+  html[dir="rtl"] .lg\:ml-64 { margin-right: 16rem; }
+}
+/* Tables read right-to-left */
+html[dir="rtl"] table th,
+html[dir="rtl"] table td {
+  text-align: right;
+}
+/* Keep numerals and monetary cells legible */
+html[dir="rtl"] .font-mono,
+html[dir="rtl"] input[type="number"] {
+  direction: ltr;
+  unicode-bidi: embed;
+}

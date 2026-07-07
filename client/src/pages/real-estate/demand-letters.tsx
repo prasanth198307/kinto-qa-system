@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Printer, Send, CheckCircle } from "lucide-react";
+import { Printer, Send, CheckCircle, Download } from "lucide-react";
 
 const api = (method: string, path: string, body?: any) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(r => r.json());
@@ -125,6 +125,7 @@ export default function DemandLettersPage() {
                   <TableCell><Badge variant={STATUS_BADGE[l.status]}>{l.status}</Badge></TableCell>
                   <TableCell>
                     <div className="flex gap-1">
+                      <Button size="sm" variant="ghost" title="Download PDF" onClick={() => window.open(`/api/real-estate/demand-letters/${l.id}/pdf`, "_blank")}><Download className="w-3 h-3" /></Button>
                       <Button size="sm" variant="ghost" onClick={() => printLetter(l)}><Printer className="w-3 h-3" /></Button>
                       <Button size="sm" variant="ghost" onClick={() => alert(`Sent to ${l.buyer}`)}><Send className="w-3 h-3" /></Button>
                     </div>

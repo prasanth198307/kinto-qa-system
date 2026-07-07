@@ -14,6 +14,8 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { useI18n } from "@/lib/i18n";
+import { tNavLabel } from "@/lib/i18n-nav";
 
 export interface QuickAction {
   id: string;
@@ -68,6 +70,8 @@ export function VerticalNavSidebar({
   tenantName,
 }: VerticalNavSidebarProps) {
   const [, navigate] = useLocation();
+  const { locale } = useI18n();
+  const tn = (label?: string) => (label ? tNavLabel(label, locale) : label);
   const safeSections = sections || [];
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -209,7 +213,7 @@ export function VerticalNavSidebar({
         data-active={isActive ? "true" : undefined}
       >
         <Icon className="w-4 h-4 mr-2 flex-shrink-0" />
-        <span className="flex-1 text-sm leading-tight break-words">{item.label}</span>
+        <span className="flex-1 text-sm leading-tight break-words">{tn(item.label)}</span>
       </Button>
     );
   };
@@ -301,7 +305,7 @@ export function VerticalNavSidebar({
                               <ChevronDown className="h-4 w-4 mr-1.5 flex-shrink-0" />
                             )}
                             <span className="text-xs font-semibold uppercase tracking-wide">
-                              {section.label}
+                              {tn(section.label)}
                             </span>
                             {hasActiveItem && isCollapsed && (
                               <span className="ml-auto w-2 h-2 rounded-full bg-primary" />
@@ -331,7 +335,7 @@ export function VerticalNavSidebar({
                                     data-testid={`quick-action-${action.id}`}
                                   >
                                     <ActionIcon className="h-4 w-4 mr-2" />
-                                    {action.label}
+                                    {tn(action.label)}
                                   </DropdownMenuItem>
                                 );
                               })}
@@ -366,7 +370,7 @@ export function VerticalNavSidebar({
                                     ) : (
                                       <ChevronDown className="h-3 w-3 mr-1.5 flex-shrink-0" />
                                     )}
-                                    <span className="text-xs font-medium">{sub.label}</span>
+                                    <span className="text-xs font-medium">{tn(sub.label)}</span>
                                     {subHasActive && subCollapsed && (
                                       <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
                                     )}

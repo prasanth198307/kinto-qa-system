@@ -837,4 +837,84 @@ router.post("/webhooks/:id/test", auth, async (req: any, res: any) => {
   res.json({ success: true, message: "Test webhook sent" });
 });
 
+// ── Integration Credentials (encrypted per tenant) ───────────────────────────
+import { createHash, createCipheriv, createDecipheriv, randomBytes } from "crypto";
+
+const ENC_KEY = process.env.CREDENTIAL_ENCRYPTION_KEY ?? "swacherp-default-32-byte-key-xxx";
+const KEY = createHash("sha256").update(ENC_KEY).digest();
+
+function encrypt(text: string): string {
+  const iv = randomBytes(16);
+  const cipher = createCipheriv("aes-256-cbc", KEY, iv);
+  return iv.toString("hex") + ":" + cipher.update(text, "utf8", "hex") + cipher.final("hex");
+}
+
+function decrypt(enc: string): string {
+  try {
+    const [ivHex, data] = enc.split(":");
+    const decipher = createDecipheriv("aes-256-cbc", KEY, Buffer.from(ivHex, "hex"));
+    return decipher.update(data, "hex", "utf8") + decipher.final("utf8");
+  } catch { return ""; }
+}
+
+async function ensureCredTable() {
+  await db.execute(sql`CREATE TABLE IF NOT EXISTS integration_credentials (
+    id SERIAL PRIMARY KEY,
+    tenant_id INT NOT NULL,
+    cred_key TEXT NOT NULL,
+    cred_value TEXT NOT NULL,
+    updated_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(tenant_id, cred_key)
+  )`);
+}
+
+router.get("/integration-credentials", auth, async (req: any, res: any) => {
+  await ensureCredTable();
+  const tid = getTenantId(req);
+  const rows = await db.execute(sql`SELECT cred_key FROM integration_credentials WHERE tenant_id=${tid}`);
+  // Return only which keys are set (not the values — security)
+  const result: Record<string, boolean> = {};
+  rows.rows.forEach((r: any) => { result[r.cred_key] = true; });
+  res.json(result);
+});
+
+router.get("/integration-credentials/status", auth, async (req: any, res: any) => {
+  await ensureCredTable();
+  const tid = getTenantId(req);
+  const rows = await db.execute(sql`SELECT cred_key FROM integration_credentials WHERE tenant_id=${tid}`);
+  const result: Record<string, boolean> = {};
+  rows.rows.forEach((r: any) => { result[r.cred_key] = true; });
+  res.json(result);
+});
+
+router.put("/integration-credentials", auth, async (req: any, res: any) => {
+  await ensureCredTable();
+  const tid = getTenantId(req);
+  const payload: Record<string, string> = req.body ?? {};
+  for (const [key, value] of Object.entries(payload)) {
+    if (!value) continue;
+    const encrypted = encrypt(value);
+    await db.execute(sql`
+      INSERT INTO integration_credentials (tenant_id, cred_key, cred_value, updated_at)
+      VALUES (${tid}, ${key}, ${encrypted}, NOW())
+      ON CONFLICT (tenant_id, cred_key) DO UPDATE SET cred_value=${encrypted}, updated_at=NOW()
+    `);
+    // Also set in process.env so routes using process.env pick up immediately
+    process.env[key] = value;
+  }
+  res.json({ ok: true, updated: Object.keys(payload).length });
+});
+
+// Helper: resolve a credential — DB first, then env var
+export async function getCredential(tenantId: number, key: string): Promise<string | undefined> {
+  try {
+    await ensureCredTable();
+    const r = await db.execute(sql`
+      SELECT cred_value FROM integration_credentials WHERE tenant_id=${tenantId} AND cred_key=${key} LIMIT 1
+    `);
+    if (r.rows.length) return decrypt(r.rows[0].cred_value as string);
+  } catch {}
+  return process.env[key];
+}
+
 export default router;

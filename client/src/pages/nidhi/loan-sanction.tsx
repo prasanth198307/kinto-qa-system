@@ -22,11 +22,6 @@ const STATUS_BADGE: Record<string, "secondary" | "default" | "destructive" | "ou
   Rejected: "destructive",
 };
 
-const SAMPLE = [
-  { id: 1, member: "Ravi Kumar", amount: 150000, purpose: "Business", security: "Gold", applied_date: "2026-06-01", status: "Applied", rate: 12, tenure: 24 },
-  { id: 2, member: "Priya Sharma", amount: 80000, purpose: "Medical", security: "FD", applied_date: "2026-06-10", status: "Verified", rate: 11, tenure: 12 },
-  { id: 3, member: "Anil Gupta", amount: 200000, purpose: "Education", security: "Property", applied_date: "2026-05-20", status: "Sanctioned", rate: 10, tenure: 36 },
-];
 
 function stageIdx(status: string) {
   return { Applied: 0, Verified: 1, Sanctioned: 3, Disbursed: 4, Rejected: -1 }[status] ?? 0;
@@ -60,15 +55,13 @@ export default function LoanSanctionPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["nidhi-loan-applications"] }),
   });
 
-  const rows = loans.length ? loans : SAMPLE;
-
   const printSanction = (loan: any) => {
     const html = `<html><body style="font-family:Arial;padding:40px">
       <h2 style="text-align:center">SANCTION LETTER</h2>
       <p>Date: ${new Date().toLocaleDateString()}</p>
-      <p>Dear <strong>${loan.member}</strong>,</p>
+      <p>Dear <strong>${loan.member_name}</strong>,</p>
       <p>We are pleased to sanction <strong>₹${Number(loan.amount).toLocaleString()}</strong>
-      for <em>${loan.purpose}</em> at <strong>${loan.rate}% p.a.</strong> for <strong>${loan.tenure} months</strong>.</p>
+      for <em>${loan.purpose}</em> at <strong>${loan.interest_rate}% p.a.</strong> for <strong>${loan.tenure_months} months</strong>.</p>
       <p>Security: ${loan.security}</p>
       <br/><p>Authorised Signatory</p></body></html>`;
     const w = window.open("", "_blank");
@@ -116,12 +109,12 @@ export default function LoanSanctionPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.map((loan: any) => {
+              {loans.map((loan: any) => {
                 const action = nextAction(loan.status);
                 const idx = stageIdx(loan.status);
                 return (
                   <TableRow key={loan.id}>
-                    <TableCell className="font-medium">{loan.member}</TableCell>
+                    <TableCell className="font-medium">{loan.member_name}</TableCell>
                     <TableCell>₹{Number(loan.amount).toLocaleString()}</TableCell>
                     <TableCell>{loan.purpose}</TableCell>
                     <TableCell>{loan.security}</TableCell>

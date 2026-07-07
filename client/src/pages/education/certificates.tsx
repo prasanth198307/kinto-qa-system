@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Printer, Plus } from "lucide-react";
+import { Printer, Plus, Download, Send } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const api = (method: string, path: string, body?: unknown) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(r => r.json());
@@ -20,6 +21,8 @@ export default function CertificatesPage() {
   const [search, setSearch] = useState("");
   const [form, setForm] = useState({ ...EMPTY });
   const [preview, setPreview] = useState<typeof EMPTY | null>(null);
+  const [reminderLoading, setReminderLoading] = useState(false);
+  const { toast } = useToast();
 
   const { data: certs = [] } = useQuery({ queryKey: ["edu-certs", certType], queryFn: () => api("GET", `/api/education/certificates?type=${certType}`) });
 
@@ -103,7 +106,27 @@ export default function CertificatesPage() {
       </div>
 
       <Card>
-        <CardHeader><CardTitle>Issued Certificates — {certType}</CardTitle></CardHeader>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Issued Certificates — {certType}</CardTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={reminderLoading}
+              onClick={async () => {
+                if (!confirm("Send fee due reminders to all parents with pending fees?")) return;
+                setReminderLoading(true);
+                try {
+                  const r = await api("POST", "/api/education/fees/send-reminders");
+                  toast({ title: "Reminders Sent", description: `${r.count ?? 0} WhatsApp reminders sent.` });
+                } catch { toast({ title: "Error", description: "Failed to send reminders", variant: "destructive" }); }
+                finally { setReminderLoading(false); }
+              }}
+            >
+              <Send className="h-4 w-4 mr-1" />{reminderLoading ? "Sending..." : "Send Fee Reminders"}
+            </Button>
+          </div>
+        </CardHeader>
         <CardContent>
           <div className="mb-3">
             <Input placeholder="Search by student name..." value={search} onChange={e => setSearch(e.target.value)} />
@@ -116,6 +139,7 @@ export default function CertificatesPage() {
                 <TableHead>Class</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Date</TableHead>
+                <TableHead>PDF</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -126,10 +150,15 @@ export default function CertificatesPage() {
                   <TableCell>{String(r.class_name)}</TableCell>
                   <TableCell><Badge variant="outline">{String(r.cert_type)}</Badge></TableCell>
                   <TableCell>{String(r.issued_date)}</TableCell>
+                  <TableCell>
+                    <Button size="sm" variant="ghost" onClick={() => window.open(`/api/education/certificates/${r.id}/pdf`, "_blank")}>
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
                 </TableRow>
               )) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">No certificates issued yet</TableCell>
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">No certificates issued yet</TableCell>
                 </TableRow>
               )}
             </TableBody>

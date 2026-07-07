@@ -167,7 +167,22 @@ router.put("/orders/:id/status", requireAuth, async (req: any, res: any) => {
   try {
     const t = tid(req);
     const { status } = req.body;
-    await db.execute(sql`UPDATE aggregator_orders SET status = ${status}, updated_at = NOW() WHERE id = ${req.params.id} AND tenant_id = ${t}`);
+    const upd = await db.execute(sql`UPDATE aggregator_orders SET status = ${status}, updated_at = NOW() WHERE id = ${req.params.id} AND tenant_id = ${t} RETURNING customer_name, customer_phone, platform_order_id, platform`);
+    const ord = upd.rows[0] as any;
+    // Order-status notification via shared notif engine — fire-and-forget
+    if (ord?.customer_phone) {
+      import("./notif-service").then(({ notifSendTemplate }) =>
+        notifSendTemplate({
+          tenantId: Number(t), phone: ord.customer_phone, template: "restaurant_order_status",
+          vars: {
+            name: ord.customer_name || "Customer", order_number: ord.platform_order_id,
+            org: ord.platform, status: String(status).replace(/_/g, " "),
+            extra: status === "out_for_delivery" ? " Your rider is on the way!" : status === "ready" ? " It will be picked up shortly." : "",
+          },
+          entityType: "aggregator_order", entityId: Number(req.params.id),
+        })
+      ).catch(e => console.error("notif order-status", e));
+    }
     res.json({ success: true });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
@@ -357,6 +372,27 @@ router.post("/ondc/on_cancel", async (req: any, res: any) => {
     res.json({
       context: { ...context, action: "on_cancel" },
       message: { order: { id: orderId, state: "Cancelled", cancellation: { cancelled_by: "CONSUMER", reason: { id: reason } } } },
+    });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /ondc/analytics — ONDC vs direct order comparison stats
+router.get("/ondc/analytics", requireAuth, async (req: any, res: any) => {
+  const t = tid(req);
+  try {
+    const [ondc, direct, total] = await Promise.all([
+      db.execute(sql`SELECT COUNT(*) as cnt, COALESCE(SUM(grand_total),0) as rev FROM kot_orders WHERE tenant_id=${t} AND order_type='ondc' AND status='paid'`),
+      db.execute(sql`SELECT COUNT(*) as cnt, COALESCE(SUM(grand_total),0) as rev FROM kot_orders WHERE tenant_id=${t} AND order_type NOT IN ('ondc','swiggy','zomato','ubereats') AND status='paid'`),
+      db.execute(sql`SELECT COUNT(*) as cnt, COALESCE(SUM(grand_total),0) as rev FROM kot_orders WHERE tenant_id=${t} AND status='paid'`),
+    ]);
+    const ondcCnt = Number((ondc.rows[0] as any)?.cnt || 0);
+    const directCnt = Number((direct.rows[0] as any)?.cnt || 0);
+    const totalCnt = Number((total.rows[0] as any)?.cnt || 1);
+    res.json({
+      ondc_orders: ondcCnt, ondc_revenue: Number((ondc.rows[0] as any)?.rev || 0),
+      direct_orders: directCnt, direct_revenue: Number((direct.rows[0] as any)?.rev || 0),
+      total_orders: totalCnt, total_revenue: Number((total.rows[0] as any)?.rev || 0),
+      ondc_pct: Math.round(ondcCnt / totalCnt * 100),
     });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });

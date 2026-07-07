@@ -1637,6 +1637,14 @@ app.use((req, res, next) => {
     console.error('[RECUR INVOICE CRON SETUP ERROR]', err);
   }
 
+  // ─── Analytics scheduled report cron ─────────────────────────────────────
+  try {
+    const { startAnalyticsScheduler } = await import('./analytics-studio-routes');
+    startAnalyticsScheduler();
+  } catch (err) {
+    console.error('[ANALYTICS SCHEDULER SETUP ERROR]', err);
+  }
+
   const port = parseInt(process.env.PORT || "5000", 10);
   server.listen(port, "0.0.0.0", () => {
     log(`🚀 Server running on port ${port}`);

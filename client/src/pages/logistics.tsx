@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Search, Truck, Users, FileText, Fuel, Wrench, Receipt, Pencil, Trash2 } from "lucide-react";
+import { Plus, Search, Truck, Users, FileText, Fuel, Wrench, Receipt, Pencil, Trash2, Download, Map } from "lucide-react";
 
 const fmt = (n: any) => Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
 function F({ label, children }: any) { return <div className="space-y-1"><Label className="text-xs">{label}</Label>{children}</div>; }
@@ -211,7 +211,7 @@ function ConsignmentTab() {
             <td className="px-3 py-2">{l.packages}</td><td className="px-3 py-2">{l.weight_kg||"—"}</td>
             <td className="px-3 py-2">₹{fmt(l.freight_charges)}</td>
             <td className="px-3 py-2"><Badge className={LR_STATUS[l.status]||"bg-blue-100 text-blue-700"}>{l.status||"in_transit"}</Badge></td>
-            <td className="px-3 py-2"><Button size="icon" variant="ghost" onClick={()=>openEdit(l)}><Pencil className="h-3.5 w-3.5"/></Button></td>
+            <td className="px-3 py-2 flex gap-1"><Button size="icon" variant="ghost" onClick={()=>openEdit(l)}><Pencil className="h-3.5 w-3.5"/></Button><Button size="icon" variant="ghost" title="Download LR PDF" onClick={()=>window.open(`/api/logistics/consignment-notes/${l.id}/lr-pdf`,"_blank")}><Download className="h-3.5 w-3.5"/></Button></td>
           </tr>
         ))}{!filtered.length&&<tr><td colSpan={9} className="px-3 py-6 text-center text-muted-foreground">No LRs</td></tr>}</tbody>
       </table></div>
@@ -370,6 +370,37 @@ function MaintenanceTab() {
   );
 }
 
+function FleetMapTab() {
+  const { data: vehicles = [] } = useQuery<any[]>({ queryKey: ["/api/logistics/vehicles/live-map"], refetchInterval: 30000 });
+  const fmtTime = (t: any) => t ? new Date(t).toLocaleString("en-IN") : "No data";
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2"><Map className="h-4 w-4"/><span className="text-sm text-muted-foreground">Live positions (refreshed every 30s). GPS data requires driver app posting positions.</span></div>
+      <div className="rounded-md border overflow-x-auto"><table className="w-full text-sm">
+        <thead className="bg-muted/50"><tr>{["Vehicle No","Type","Driver","Lat","Lon","Speed (km/h)","Engine","Last Update"].map(h=><th key={h} className="px-3 py-2 text-left font-medium">{h}</th>)}</tr></thead>
+        <tbody>
+          {(vehicles as any[]).map((v: any) => (
+            <tr key={v.id} className="border-t hover:bg-muted/30">
+              <td className="px-3 py-2 font-medium">{v.vehicle_no}</td>
+              <td className="px-3 py-2">{v.vehicle_type||"—"}</td>
+              <td className="px-3 py-2">{v.driver_name||"—"}</td>
+              <td className="px-3 py-2 font-mono text-xs">{v.latitude ? Number(v.latitude).toFixed(4) : "—"}</td>
+              <td className="px-3 py-2 font-mono text-xs">{v.longitude ? Number(v.longitude).toFixed(4) : "—"}</td>
+              <td className="px-3 py-2">{v.speed != null ? Number(v.speed).toFixed(1) : "—"}</td>
+              <td className="px-3 py-2"><Badge className={v.engine_status==="on" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}>{v.engine_status||"unknown"}</Badge></td>
+              <td className="px-3 py-2 text-xs text-muted-foreground">{fmtTime(v.recorded_at)}</td>
+            </tr>
+          ))}
+          {!(vehicles as any[]).length && <tr><td colSpan={8} className="px-3 py-6 text-center text-muted-foreground">No vehicles found. Add vehicles and have drivers post GPS positions.</td></tr>}
+        </tbody>
+      </table></div>
+      <div className="text-xs text-muted-foreground p-2 border rounded bg-muted/30">
+        <strong>Driver App GPS Integration:</strong> Drivers can POST location to <code>/api/logistics/vehicles/:id/location</code> with latitude, longitude, speed, heading, engine_status fields. Set <code>TRACCAR_URL</code> + <code>TRACCAR_TOKEN</code> env vars to use Traccar GPS server.
+      </div>
+    </div>
+  );
+}
+
 export default function LogisticsPage() {
   return (
     <div className="p-4 sm:p-6 space-y-6">
@@ -384,6 +415,7 @@ export default function LogisticsPage() {
           <TabsTrigger value="freight"><Receipt className="h-3.5 w-3.5 mr-1"/>Freight Bills</TabsTrigger>
           <TabsTrigger value="fuel"><Fuel className="h-3.5 w-3.5 mr-1"/>Fuel</TabsTrigger>
           <TabsTrigger value="maintenance"><Wrench className="h-3.5 w-3.5 mr-1"/>Maintenance</TabsTrigger>
+          <TabsTrigger value="fleet-map"><Map className="h-3.5 w-3.5 mr-1"/>Fleet Map</TabsTrigger>
         </TabsList>
         <div className="mt-4">
           <TabsContent value="overview"><OverviewTab/></TabsContent>
@@ -394,6 +426,7 @@ export default function LogisticsPage() {
           <TabsContent value="freight"><FreightBillsTab/></TabsContent>
           <TabsContent value="fuel"><FuelTab/></TabsContent>
           <TabsContent value="maintenance"><MaintenanceTab/></TabsContent>
+          <TabsContent value="fleet-map"><FleetMapTab/></TabsContent>
         </div>
       </Tabs>
     </div>

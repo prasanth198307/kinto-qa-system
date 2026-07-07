@@ -4,6 +4,7 @@ import { TopRightHeader } from "@/components/TopRightHeader";
 import { Button } from "@/components/ui/button";
 import { Menu } from "lucide-react";
 import { useTenantBranding } from "@/hooks/use-tenant-branding";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 interface GlobalHeaderProps {
   title?: string;
@@ -82,6 +83,7 @@ export function GlobalHeader({
             {actions}
           </div>
         )}
+        <LanguageSwitcher />
         <TopRightHeader
           notificationCount={notificationCount}
           onLogoutClick={onLogoutClick}

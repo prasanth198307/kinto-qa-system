@@ -45,6 +45,8 @@ import goldErpRouter2 from "./gold-erp-routes2";
 import hrExtraRouter from "./hr-extra-routes";
 import ecommerceRouter from "./ecommerce-routes";
 import ngoRouter from "./ngo-routes";
+import { swachdeskRouter, deskPublicRouter } from "./swachdesk-routes";
+import { swachformsRouter, swachformsPublicRouter } from "./swachforms-routes";
 import pharmacyRouter from "./pharmacy-routes";
 import nidhiRouter from "./nidhi-routes";
 import restaurantEnterpriseRouter from "./restaurant-enterprise-routes";
@@ -65,15 +67,19 @@ import ngoExtraRouter from "./ngo-extra-routes";
 import crmExtraRouter from "./crm-extra-routes";
 import agricultureExtraRouter from "./agriculture-extra-routes";
 import ecommerceExtraRouter from "./ecommerce-extra-routes";
+import ecommerceWarehouseRouter from "./ecommerce-warehouse-routes";
 import financeErpRouter from "./finance-erp-routes";
+import financeAdvancedRouter from "./finance-advanced-routes";
 import manufacturingRouter from "./manufacturing-routes";
 import manufacturingQualityRouter from "./manufacturing-quality-routes";
 import manufacturingOpsRouter from "./manufacturing-ops-routes";
 import manufacturingAdvancedRouter from "./manufacturing-advanced-routes";
+import { mrp2Router } from "./mrp2-routes";
 import { recurringJournalRouter, processRecurringJournals } from "./recurring-journal-service";
 import { startLoyaltyExpiryScheduler } from "./loyalty-expiry-service";
 import phase7Router from "./phase7-routes";
 import { taxRouter } from "./tax-routes";
+import { ifrsRouter } from "./ifrs-consolidation-routes";
 import { seedTenantPermissions, syncAndUnlockByPlan } from "./seed-permissions";
 import { whatsappConversationService } from "./whatsappConversationService";
 import { calculateBOMSuggestions } from "@shared/calculations";
@@ -83,7 +89,16 @@ import { parseExcelFile, commitImport } from "./cashRegisterImport";
 import { importCashRegisterFromExcel } from "./importCashRegisterFromExcel";
 import archiver from "archiver";
 import { pdfRouter } from "./pdf-service";
+import notifRouter from "./notif-service";
 import { verticalNotificationService } from "./notificationService";
+import swachSignRouter, { swachSignPublicRouter } from "./swachsign-routes";
+import swachSocialRouter from "./swachsocial-routes";
+import swachMeetRouter, { swachMeetPublicRouter } from "./swachmeet-routes";
+import swachAIRouter from "./swachai-routes";
+import misSuperRouter from "./mis-super-routes";
+import { asc606Router } from "./asc606-routes";
+import { investorRouter } from "./investor-reporting-routes";
+import { analyticsRouter, analyticsPublicRouter } from "./analytics-studio-routes";
 import { processMessage as chatAgentProcess } from "./chatAgent";
 import { insertCashRegisterDaySchema, insertCashRegisterTransactionSchema, insertCashRegisterExpenseItemSchema, insertSalespersonMappingSchema, cashRegisterDays, cashRegisterTransactions, cashRegisterExpenseItems, expenseVouchers, expenseItems, customerAdvances, advanceApplications, insertCustomerAdvanceSchema, insertAdvanceApplicationSchema, journalEntries, journalLines, chartOfAccounts, budgets, budgetItems, tenants, subscriptionPlans, subscriptions, billingEvents, deletionAudit } from "@shared/schema";
 import { sql, and, eq, ne, gte, lte, gt, asc, desc, inArray, isNotNull, isNull, or, ilike, type SQL } from "drizzle-orm";
@@ -1993,9 +2008,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/restaurant', restaurantRouter);
   app.use('/api/ecommerce', ecommerceRouter);
   app.use('/api/ngo', ngoRouter);
+  app.use('/api/desk', swachdeskRouter);
+  app.use('/api/public', deskPublicRouter);
+  app.use('/api/forms', swachformsRouter);
+  app.use('/api/public/forms', swachformsPublicRouter);
   app.use('/api/pharmacy', pharmacyRouter);
   app.use('/api/nidhi-company', nidhiRouter);
   app.use('/api/finance', financeErpRouter);
+  app.use('/api/finance', financeAdvancedRouter);
   app.use('/api/finance-erp', financeErpRouter);
   app.use('/api/manufacturing', manufacturingRouter);
   app.use('/api/manufacturing', manufacturingQualityRouter);
@@ -2019,6 +2039,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/crm', crmExtraRouter);
   app.use('/api/agriculture', agricultureExtraRouter);
   app.use('/api/ecommerce', ecommerceExtraRouter);
+  app.use('/api/ecommerce', ecommerceWarehouseRouter);
   app.use('/api/education', educationRouter);
   app.use('/api/logistics', logisticsRouter);
   app.use('/api/real-estate', realestateRouter);
@@ -2031,6 +2052,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/recurring-journals', recurringJournalRouter);
   app.use('/api/ap', apRouter);
   app.use('/api/tax', taxRouter);
+  app.use('/api/ifrs', ifrsRouter);
+
+  // MIS Super-Dashboard
+  app.use('/api/mis', misSuperRouter);
+
+  // Public Farm-to-Fork QR scan endpoint (no auth)
+  app.get('/api/public/farm/:batchCode', async (req: any, res: any) => {
+    try {
+      const batch = await db.execute(sql`SELECT * FROM agri_produce_batches WHERE batch_code=${req.params.batchCode}`);
+      if (!batch.rows.length) return res.status(404).json({ message: 'Produce batch not found' });
+      const b = batch.rows[0] as any;
+      res.json({
+        batch_code: b.batch_code, crop: b.crop_name, variety: b.variety,
+        farmer: b.farmer_name, farm_location: b.farm_location,
+        harvest_date: b.harvest_date, quantity_kg: b.quantity_kg,
+        organic: b.organic_certified, pesticide_free: b.pesticide_free,
+        certification: b.certification_no, journey: b.journey || []
+      });
+    } catch (e: any) { res.status(500).json({ message: e.message }); }
+  });
+
+  // SwachSign, SwachSocial, SwachMeet
+  app.use('/api/sign', swachSignRouter);
+  app.use('/api/public', swachSignPublicRouter);
+  app.use('/api/social', swachSocialRouter);
+  app.use('/api/ai', swachAIRouter);
+  app.use('/api/meet', swachMeetRouter);
+  app.use('/api/swachmeet', swachMeetRouter);
+  app.use('/api/public/meet', swachMeetPublicRouter);
 
   // Daily recurring journal processor — runs at startup then every 24h
   processRecurringJournals().catch(e => console.error("Recurring journals init:", e));
@@ -2041,6 +2091,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ── Manufacturing advanced: BOM explosion, MRP II, ECN ────────────────────
   app.use('/api/manufacturing', manufacturingAdvancedRouter);
+
+  // ── Phase 24: MRP II — Multi-level BOM, ECN, Capacity, Supplier Portal ───
+  app.use('/api/mrp', mrp2Router);
+
+  // Public supplier portal (no auth)
+  app.get('/api/public/supplier-portal/:token', async (req, res) => {
+    const { db: _db } = await import('./db');
+    const { sql: _sql } = await import('drizzle-orm');
+    const tok = await _db.execute(_sql`SELECT * FROM mfg_supplier_portal_tokens WHERE token=${req.params.token} AND is_active=true AND expires_at > NOW()`).catch(() => ({ rows: [] }));
+    if (!tok.rows.length) return res.status(404).json({ message: 'Invalid or expired link' });
+    const t = tok.rows[0] as any;
+    const pos = await _db.execute(_sql`SELECT po_no, item_name, quantity, unit, required_date, unit_price FROM purchase_orders po JOIN purchase_order_items poi ON poi.po_id=po.id WHERE po.supplier_id=${t.supplier_id} AND po.status='open' LIMIT 20`).catch(() => ({ rows: [] }));
+    res.json({ supplier_name: t.supplier_name, open_pos: pos.rows });
+  });
+
+  app.post('/api/public/supplier-portal/:token/confirm-delivery', async (req, res) => {
+    const { db: _db } = await import('./db');
+    const { sql: _sql } = await import('drizzle-orm');
+    const tok = await _db.execute(_sql`SELECT * FROM mfg_supplier_portal_tokens WHERE token=${req.params.token} AND is_active=true AND expires_at > NOW()`).catch(() => ({ rows: [] }));
+    if (!tok.rows.length) return res.status(404).json({ message: 'Invalid or expired link' });
+    const { po_item_id, delivery_date, qty_confirmed } = req.body;
+    await _db.execute(_sql`UPDATE purchase_order_items SET delivery_date=${delivery_date ?? null}, qty_confirmed=${qty_confirmed ?? null} WHERE id=${po_item_id}`).catch(() => null);
+    res.json({ success: true });
+  });
 
   // ── Phase 7N: Retail routes (franchise, b2b already in retailRouter mounted at /api/pos) ─
   // Additional mounting under /api/retail for new pages
@@ -30874,6 +30948,65 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
   // Dynamic external API router — handles all UI-registered custom APIs
   app.use('/api/pdf', pdfRouter);
 
+  // ── i18n: persist tenant default locale (en/hi/te/ar) ────────────────────
+  app.put('/api/i18n/locale', async (req: any, res) => {
+    try {
+      if (!req.isAuthenticated?.() && !req.user) return res.status(401).json({ message: 'Unauthorized' });
+      const tenantId = req.session?.tenantId ?? req.user?.tenantId ?? 1;
+      const { locale } = req.body;
+      const SUPPORTED = ['en','hi','te','ta','bn','ar','es','fr','de','pt','zh','ja','ru','id'];
+      if (!SUPPORTED.includes(locale)) return res.status(400).json({ message: 'Invalid locale' });
+      await db.execute(sql`ALTER TABLE tenant_settings ADD COLUMN IF NOT EXISTS default_locale VARCHAR(5) DEFAULT 'en'`);
+      await db.execute(sql`UPDATE tenant_settings SET default_locale = ${locale} WHERE tenant_id = ${tenantId}`);
+      res.json({ success: true, locale });
+    } catch (e: any) { res.status(500).json({ message: e.message }); }
+  });
+  app.get('/api/i18n/locale', async (req: any, res) => {
+    try {
+      const tenantId = req.session?.tenantId ?? req.user?.tenantId ?? 1;
+      await db.execute(sql`ALTER TABLE tenant_settings ADD COLUMN IF NOT EXISTS default_locale VARCHAR(5) DEFAULT 'en'`);
+      const r = await db.execute(sql`SELECT default_locale FROM tenant_settings WHERE tenant_id = ${tenantId} LIMIT 1`);
+      res.json({ locale: (r.rows[0] as any)?.default_locale || 'en' });
+    } catch (e: any) { res.json({ locale: 'en' }); }
+  });
+
+  // ── i18n: tenant-configurable translation overrides (custom terms per locale) ──
+  const ensureI18nOverrides = () => db.execute(sql`CREATE TABLE IF NOT EXISTS i18n_overrides (
+    id SERIAL PRIMARY KEY, tenant_id INT NOT NULL,
+    locale VARCHAR(5) NOT NULL, tkey VARCHAR(100) NOT NULL, tvalue TEXT NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE (tenant_id, locale, tkey)
+  )`);
+  app.get('/api/i18n/overrides', async (req: any, res) => {
+    try {
+      const tenantId = req.session?.tenantId ?? req.user?.tenantId ?? 1;
+      const locale = String(req.query.locale || 'en');
+      await ensureI18nOverrides();
+      const r = await db.execute(sql`SELECT tkey, tvalue FROM i18n_overrides WHERE tenant_id = ${tenantId} AND locale = ${locale}`);
+      const overrides: Record<string, string> = {};
+      for (const row of r.rows as any[]) overrides[row.tkey] = row.tvalue;
+      res.json({ locale, overrides });
+    } catch (e: any) { res.json({ locale: req.query.locale, overrides: {} }); }
+  });
+  app.put('/api/i18n/overrides', async (req: any, res) => {
+    try {
+      if (!req.isAuthenticated?.() && !req.user) return res.status(401).json({ message: 'Unauthorized' });
+      const tenantId = req.session?.tenantId ?? req.user?.tenantId ?? 1;
+      const { locale, overrides } = req.body; // overrides: { key: value }
+      if (!locale || typeof overrides !== 'object') return res.status(400).json({ message: 'locale and overrides required' });
+      await ensureI18nOverrides();
+      for (const [k, v] of Object.entries(overrides)) {
+        if (v === null || v === '') {
+          await db.execute(sql`DELETE FROM i18n_overrides WHERE tenant_id = ${tenantId} AND locale = ${locale} AND tkey = ${k}`);
+        } else {
+          await db.execute(sql`INSERT INTO i18n_overrides (tenant_id, locale, tkey, tvalue) VALUES (${tenantId}, ${locale}, ${k}, ${String(v)})
+            ON CONFLICT (tenant_id, locale, tkey) DO UPDATE SET tvalue = EXCLUDED.tvalue, updated_at = NOW()`);
+        }
+      }
+      res.json({ success: true, count: Object.keys(overrides).length });
+    } catch (e: any) { res.status(500).json({ message: e.message }); }
+  });
+
   // ── Vertical Notification API ────────────────────────────────────────────
   // POST /api/notifications/send — send a one-off vertical notification
   app.post('/api/notifications/send', async (req: any, res) => {
@@ -30909,8 +31042,13 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
     }
   });
 
+  // Centralized notification engine (Phase 4) — /bulk, /log, /stats + overrides /send
+  app.use('/api/notifications', notifRouter);
+
   app.use('/api/external/proxy', externalApiProxy);
   app.use('/api/external', dynamicExternalApiRouter);
+  app.use('/api/asc606', asc606Router);
+  app.use('/api/investor', investorRouter);
 
   // Generic proxy — forwards /api/external/proxy/:module/* to internal routers
 
@@ -31687,6 +31825,24 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       const totalCosts = Number((costs.rows[0] as any).total || 0);
       const totalDemand = Number((paid.rows[0] as any).total || 0);
       res.json({ project: p, revenue: totalRevenue, costs: totalCosts, gross_profit: totalRevenue - totalCosts, gross_margin_pct: totalRevenue > 0 ? ((totalRevenue-totalCosts)/totalRevenue*100).toFixed(1) : 0, total_demand_raised: totalDemand, collection_efficiency_pct: totalDemand > 0 ? (totalRevenue/totalDemand*100).toFixed(1) : 0 });
+    } catch (e: any) { res.status(500).json({ message: e.message }); }
+  });
+
+  // Phase 25 — Analytics Studio + BI Embeddings
+  app.use("/api/analytics", analyticsRouter);
+  app.use("/api/analytics-public", analyticsPublicRouter);
+
+  // Public analytics dashboard (no auth required — token-gated)
+  app.get('/api/public/analytics/:token', async (req: any, res: any) => {
+    try {
+      const { pool: pgPool } = await import('./db');
+      const d = await pgPool.query(
+        `SELECT * FROM bi_dashboards WHERE share_token=$1 AND is_public=true AND (share_expires_at IS NULL OR share_expires_at > NOW())`,
+        [req.params.token]
+      );
+      if (!d.rows.length) return res.status(404).json({ message: 'Dashboard not found or link expired' });
+      const dash = d.rows[0] as any;
+      res.json({ name: dash.name, dashboard_type: dash.dashboard_type, layout: dash.layout });
     } catch (e: any) { res.status(500).json({ message: e.message }); }
   });
 

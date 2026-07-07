@@ -623,4 +623,270 @@ router.get("/reports/unit-status-inventory", auth, async (req: any, res: any) =>
   }
 });
 
+// ── Construction Bank Loan Tracking ──────────────────────────────────────────
+router.get("/construction-loans", auth, async (req: any, res: any) => {
+  const t = getTenantId(req);
+  try {
+    await db.execute(sql`CREATE TABLE IF NOT EXISTS re_construction_loans (
+      id SERIAL PRIMARY KEY, tenant_id INT NOT NULL,
+      loan_no VARCHAR(50) NOT NULL, project_id INT,
+      bank_name VARCHAR(200) NOT NULL, branch_name VARCHAR(200),
+      sanction_amount NUMERIC(16,2) NOT NULL,
+      disbursed_amount NUMERIC(16,2) DEFAULT 0,
+      outstanding_amount NUMERIC(16,2) DEFAULT 0,
+      interest_rate NUMERIC(6,3),
+      loan_type VARCHAR(50) DEFAULT 'construction',
+      sanction_date DATE, first_disbursement_date DATE,
+      tenure_months INT, moratorium_months INT DEFAULT 0,
+      emi_start_date DATE, emi_amount NUMERIC(14,2),
+      collateral TEXT,
+      loan_account_no VARCHAR(100),
+      status VARCHAR(30) DEFAULT 'active',
+      notes TEXT, created_at TIMESTAMPTZ DEFAULT NOW(), record_status INT DEFAULT 1
+    )`);
+    await db.execute(sql`CREATE TABLE IF NOT EXISTS re_loan_drawdowns (
+      id SERIAL PRIMARY KEY, tenant_id INT NOT NULL, loan_id INT NOT NULL,
+      drawdown_no VARCHAR(50), drawdown_date DATE NOT NULL DEFAULT CURRENT_DATE,
+      amount NUMERIC(14,2) NOT NULL,
+      stage VARCHAR(100),
+      utilization VARCHAR(200),
+      bank_reference VARCHAR(100),
+      inspected_by VARCHAR(200), inspection_date DATE,
+      approved_by VARCHAR(200), approved_date DATE,
+      status VARCHAR(20) DEFAULT 'requested',
+      notes TEXT, created_at TIMESTAMPTZ DEFAULT NOW()
+    )`);
+    const { project_id } = req.query;
+    let q = sql`SELECT l.*, p.name as project_name,
+      (SELECT COUNT(*) FROM re_loan_drawdowns d WHERE d.loan_id=l.id) as drawdown_count
+      FROM re_construction_loans l
+      LEFT JOIN re_projects p ON p.id = l.project_id
+      WHERE l.tenant_id=${t} AND l.record_status=1`;
+    if (project_id) q = sql`${q} AND l.project_id=${parseInt(project_id as string)}`;
+    q = sql`${q} ORDER BY l.created_at DESC`;
+    const rows = await db.execute(q);
+    res.json(rows.rows);
+  } catch(e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/construction-loans", auth, async (req: any, res: any) => {
+  const t = getTenantId(req);
+  const { loan_no, project_id, bank_name, branch_name, sanction_amount, interest_rate, loan_type, sanction_date, tenure_months, moratorium_months, emi_start_date, emi_amount, collateral, loan_account_no, notes } = req.body;
+  try {
+    const r = await db.execute(sql`INSERT INTO re_construction_loans (tenant_id, loan_no, project_id, bank_name, branch_name, sanction_amount, outstanding_amount, interest_rate, loan_type, sanction_date, tenure_months, moratorium_months, emi_start_date, emi_amount, collateral, loan_account_no, notes) VALUES (${t}, ${loan_no||'LOAN-'+Date.now()}, ${project_id||null}, ${bank_name}, ${branch_name||null}, ${sanction_amount}, ${sanction_amount}, ${interest_rate||null}, ${loan_type||'construction'}, ${sanction_date||null}, ${tenure_months||null}, ${moratorium_months||0}, ${emi_start_date||null}, ${emi_amount||null}, ${collateral||null}, ${loan_account_no||null}, ${notes||null}) RETURNING *`);
+    res.json(r.rows[0]);
+  } catch(e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.get("/construction-loans/:id/drawdowns", auth, async (req: any, res: any) => {
+  const t = getTenantId(req);
+  try {
+    const rows = await db.execute(sql`SELECT * FROM re_loan_drawdowns WHERE loan_id=${parseInt(req.params.id)} AND tenant_id=${t} ORDER BY drawdown_date`);
+    const total = rows.rows.reduce((s: number, r: any) => s + Number(r.amount||0), 0);
+    res.json({ drawdowns: rows.rows, total_drawn: total });
+  } catch(e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/construction-loans/:id/drawdowns", auth, async (req: any, res: any) => {
+  const t = getTenantId(req);
+  const { drawdown_date, amount, stage, utilization, bank_reference, inspected_by, inspection_date, approved_by, approved_date, notes } = req.body;
+  try {
+    const loanId = parseInt(req.params.id);
+    const count = await db.execute(sql`SELECT COUNT(*) as n FROM re_loan_drawdowns WHERE loan_id=${loanId}`);
+    const seq = String(Number((count.rows[0] as any).n) + 1).padStart(3,'0');
+    const ddNo = `DD-${loanId}-${seq}`;
+    const r = await db.execute(sql`INSERT INTO re_loan_drawdowns (tenant_id, loan_id, drawdown_no, drawdown_date, amount, stage, utilization, bank_reference, inspected_by, inspection_date, approved_by, approved_date, notes) VALUES (${t}, ${loanId}, ${ddNo}, ${drawdown_date||new Date().toISOString().slice(0,10)}, ${amount}, ${stage||null}, ${utilization||null}, ${bank_reference||null}, ${inspected_by||null}, ${inspection_date||null}, ${approved_by||null}, ${approved_date||null}, ${notes||null}) RETURNING *`);
+    await db.execute(sql`UPDATE re_construction_loans SET disbursed_amount = disbursed_amount + ${amount}, outstanding_amount = outstanding_amount - ${amount} WHERE id=${loanId} AND tenant_id=${t}`);
+    try {
+      const { createJournalWithLines } = await import('./journal-service');
+      await createJournalWithLines(
+        drawdown_date || new Date().toISOString().slice(0,10),
+        `Construction loan drawdown — ${ddNo}`,
+        [
+          { accountCode: '1002', debit: Math.round(Number(amount)*100), credit: 0, memo: 'Bank — loan proceeds received' },
+          { accountCode: '2500', debit: 0, credit: Math.round(Number(amount)*100), memo: 'Construction loan payable' },
+        ],
+        { sourceType: 're_loan_drawdown', sourceId: String((r.rows[0] as any).id), isAutoGenerated: true }
+      );
+    } catch {}
+    res.json(r.rows[0]);
+  } catch(e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.put("/construction-loans/:id", auth, async (req: any, res: any) => {
+  const { status, notes, interest_rate, emi_amount } = req.body;
+  try {
+    const r = await db.execute(sql`UPDATE re_construction_loans SET status=${status||'active'}, notes=${notes||null}, interest_rate=${interest_rate||null}, emi_amount=${emi_amount||null} WHERE id=${parseInt(req.params.id)} AND tenant_id=${getTenantId(req)} RETURNING *`);
+    res.json(r.rows[0]);
+  } catch(e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// ── Real Estate Subcontractor Billing ────────────────────────────────────────
+router.get("/subcontractors", auth, async (req: any, res: any) => {
+  const t = getTenantId(req);
+  try {
+    await db.execute(sql`CREATE TABLE IF NOT EXISTS re_subcontractors (
+      id SERIAL PRIMARY KEY, tenant_id INT NOT NULL,
+      name VARCHAR(200) NOT NULL, trade VARCHAR(100),
+      contact_person VARCHAR(200), phone VARCHAR(20), email VARCHAR(200),
+      gstin VARCHAR(20), pan VARCHAR(12), bank_name VARCHAR(200),
+      bank_account VARCHAR(50), bank_ifsc VARCHAR(15),
+      address TEXT, rating INT DEFAULT 3,
+      status VARCHAR(20) DEFAULT 'active', notes TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW(), record_status INT DEFAULT 1
+    )`);
+    const rows = await db.execute(sql`SELECT * FROM re_subcontractors WHERE tenant_id=${t} AND record_status=1 ORDER BY name`);
+    res.json(rows.rows);
+  } catch(e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/subcontractors", auth, async (req: any, res: any) => {
+  const t = getTenantId(req);
+  const { name, trade, contact_person, phone, email, gstin, pan, bank_name, bank_account, bank_ifsc, address, rating, notes } = req.body;
+  try {
+    const r = await db.execute(sql`INSERT INTO re_subcontractors (tenant_id, name, trade, contact_person, phone, email, gstin, pan, bank_name, bank_account, bank_ifsc, address, rating, notes) VALUES (${t}, ${name}, ${trade||null}, ${contact_person||null}, ${phone||null}, ${email||null}, ${gstin||null}, ${pan||null}, ${bank_name||null}, ${bank_account||null}, ${bank_ifsc||null}, ${address||null}, ${rating||3}, ${notes||null}) RETURNING *`);
+    res.json(r.rows[0]);
+  } catch(e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.put("/subcontractors/:id", auth, async (req: any, res: any) => {
+  const t = getTenantId(req);
+  const { name, trade, contact_person, phone, email, gstin, pan, status, rating, notes } = req.body;
+  try {
+    const r = await db.execute(sql`UPDATE re_subcontractors SET name=${name}, trade=${trade||null}, contact_person=${contact_person||null}, phone=${phone||null}, email=${email||null}, gstin=${gstin||null}, pan=${pan||null}, status=${status||'active'}, rating=${rating||3}, notes=${notes||null} WHERE id=${parseInt(req.params.id)} AND tenant_id=${t} RETURNING *`);
+    res.json(r.rows[0]);
+  } catch(e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.get("/subcontract-work-orders", auth, async (req: any, res: any) => {
+  const t = getTenantId(req);
+  try {
+    await db.execute(sql`CREATE TABLE IF NOT EXISTS re_subcontract_work_orders (
+      id SERIAL PRIMARY KEY, tenant_id INT NOT NULL,
+      wo_no VARCHAR(50) NOT NULL, project_id INT, subcontractor_id INT NOT NULL,
+      scope_of_work TEXT NOT NULL, trade VARCHAR(100),
+      start_date DATE, end_date DATE, actual_completion DATE,
+      contract_value NUMERIC(14,2) DEFAULT 0,
+      advance_paid NUMERIC(14,2) DEFAULT 0,
+      total_billed NUMERIC(14,2) DEFAULT 0,
+      total_paid NUMERIC(14,2) DEFAULT 0,
+      retention_pct NUMERIC(5,2) DEFAULT 5,
+      tds_pct NUMERIC(5,2) DEFAULT 1,
+      status VARCHAR(30) DEFAULT 'draft',
+      notes TEXT, created_at TIMESTAMPTZ DEFAULT NOW(), record_status INT DEFAULT 1
+    )`);
+    const { project_id } = req.query;
+    let q = sql`SELECT wo.*, sc.name as subcontractor_name, sc.trade as subcontractor_trade, sc.phone as sub_phone,
+      p.name as project_name
+      FROM re_subcontract_work_orders wo
+      LEFT JOIN re_subcontractors sc ON sc.id=wo.subcontractor_id
+      LEFT JOIN re_projects p ON p.id=wo.project_id
+      WHERE wo.tenant_id=${t} AND wo.record_status=1`;
+    if (project_id) q = sql`${q} AND wo.project_id=${parseInt(project_id as string)}`;
+    q = sql`${q} ORDER BY wo.created_at DESC`;
+    const rows = await db.execute(q);
+    res.json(rows.rows);
+  } catch(e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/subcontract-work-orders", auth, async (req: any, res: any) => {
+  const t = getTenantId(req);
+  const { project_id, subcontractor_id, scope_of_work, trade, start_date, end_date, contract_value, advance_paid, retention_pct, tds_pct, notes } = req.body;
+  try {
+    const count = await db.execute(sql`SELECT COUNT(*) as n FROM re_subcontract_work_orders WHERE tenant_id=${t}`);
+    const woNo = `SC-WO-${new Date().getFullYear()}-${String(Number((count.rows[0] as any).n)+1).padStart(4,'0')}`;
+    const r = await db.execute(sql`INSERT INTO re_subcontract_work_orders (tenant_id, wo_no, project_id, subcontractor_id, scope_of_work, trade, start_date, end_date, contract_value, advance_paid, retention_pct, tds_pct, notes, status) VALUES (${t}, ${woNo}, ${project_id||null}, ${subcontractor_id}, ${scope_of_work}, ${trade||null}, ${start_date||null}, ${end_date||null}, ${contract_value||0}, ${advance_paid||0}, ${retention_pct??5}, ${tds_pct??1}, ${notes||null}, 'active') RETURNING *`);
+    res.json(r.rows[0]);
+  } catch(e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.get("/subcontract-bills", auth, async (req: any, res: any) => {
+  const t = getTenantId(req);
+  const { work_order_id } = req.query;
+  try {
+    await db.execute(sql`CREATE TABLE IF NOT EXISTS re_subcontract_bills (
+      id SERIAL PRIMARY KEY, tenant_id INT NOT NULL,
+      bill_no VARCHAR(50) NOT NULL, work_order_id INT NOT NULL,
+      bill_date DATE NOT NULL DEFAULT CURRENT_DATE, billing_period_from DATE, billing_period_to DATE,
+      gross_amount NUMERIC(14,2) DEFAULT 0,
+      advance_recovery NUMERIC(14,2) DEFAULT 0,
+      retention_amount NUMERIC(14,2) DEFAULT 0,
+      tds_amount NUMERIC(14,2) DEFAULT 0,
+      net_payable NUMERIC(14,2) DEFAULT 0,
+      paid_amount NUMERIC(14,2) DEFAULT 0, payment_date DATE,
+      payment_mode VARCHAR(50), bank_reference VARCHAR(100),
+      status VARCHAR(20) DEFAULT 'pending',
+      work_description TEXT, notes TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW(), record_status INT DEFAULT 1
+    )`);
+    let q = sql`SELECT b.*, wo.wo_no, wo.scope_of_work, wo.contract_value, sc.name as subcontractor_name
+      FROM re_subcontract_bills b
+      LEFT JOIN re_subcontract_work_orders wo ON wo.id=b.work_order_id
+      LEFT JOIN re_subcontractors sc ON sc.id=wo.subcontractor_id
+      WHERE b.tenant_id=${t} AND b.record_status=1`;
+    if (work_order_id) q = sql`${q} AND b.work_order_id=${parseInt(work_order_id as string)}`;
+    q = sql`${q} ORDER BY b.bill_date DESC`;
+    const rows = await db.execute(q);
+    res.json(rows.rows);
+  } catch(e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/subcontract-bills", auth, async (req: any, res: any) => {
+  const t = getTenantId(req);
+  const { work_order_id, bill_date, billing_period_from, billing_period_to, gross_amount, advance_recovery, work_description, notes } = req.body;
+  try {
+    const wo = await db.execute(sql`SELECT * FROM re_subcontract_work_orders WHERE id=${parseInt(work_order_id)} AND tenant_id=${t}`);
+    if (!wo.rows[0]) return res.status(404).json({ message: 'Work order not found' });
+    const w = wo.rows[0] as any;
+    const gross = Number(gross_amount||0);
+    const advRec = Number(advance_recovery||0);
+    const retention = gross * (Number(w.retention_pct||5)) / 100;
+    const tds = gross * (Number(w.tds_pct||1)) / 100;
+    const netPayable = gross - advRec - retention - tds;
+    const billNo = `SCB-${Date.now().toString().slice(-6)}`;
+    const r = await db.execute(sql`INSERT INTO re_subcontract_bills (tenant_id, bill_no, work_order_id, bill_date, billing_period_from, billing_period_to, gross_amount, advance_recovery, retention_amount, tds_amount, net_payable, work_description, notes)
+      VALUES (${t}, ${billNo}, ${parseInt(work_order_id)}, ${bill_date||new Date().toISOString().slice(0,10)}, ${billing_period_from||null}, ${billing_period_to||null}, ${gross}, ${advRec}, ${retention}, ${tds}, ${netPayable}, ${work_description||null}, ${notes||null}) RETURNING *`);
+    await db.execute(sql`UPDATE re_subcontract_work_orders SET total_billed = total_billed + ${gross} WHERE id=${parseInt(work_order_id)} AND tenant_id=${t}`);
+    try {
+      const { createJournalWithLines } = await import('./journal-service');
+      await createJournalWithLines(
+        bill_date || new Date().toISOString().slice(0,10),
+        `Subcontract bill — ${billNo}`,
+        [
+          { accountCode: '5100', debit: Math.round(gross*100), credit: 0, memo: 'Construction/subcontract expense' },
+          { accountCode: '2100', debit: 0, credit: Math.round(netPayable*100), memo: 'Subcontractor payable (AP)' },
+          { accountCode: '2201', debit: 0, credit: Math.round(tds*100), memo: 'TDS payable' },
+          { accountCode: '2100', debit: 0, credit: Math.round(retention*100), memo: 'Retention payable' },
+        ],
+        { sourceType: 're_subcontract_bill', sourceId: String((r.rows[0] as any).id), isAutoGenerated: true }
+      );
+    } catch {}
+    res.json(r.rows[0]);
+  } catch(e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/subcontract-bills/:id/pay", auth, async (req: any, res: any) => {
+  const t = getTenantId(req);
+  const { payment_date, payment_mode, bank_reference, paid_amount } = req.body;
+  try {
+    const r = await db.execute(sql`UPDATE re_subcontract_bills SET paid_amount=${paid_amount}, payment_date=${payment_date}, payment_mode=${payment_mode||null}, bank_reference=${bank_reference||null}, status='paid' WHERE id=${parseInt(req.params.id)} AND tenant_id=${t} RETURNING *`);
+    if (!r.rows[0]) return res.status(404).json({ message: 'Bill not found' });
+    const bill = r.rows[0] as any;
+    await db.execute(sql`UPDATE re_subcontract_work_orders SET total_paid = total_paid + ${paid_amount} WHERE id=${bill.work_order_id} AND tenant_id=${t}`);
+    try {
+      const { createJournalWithLines } = await import('./journal-service');
+      await createJournalWithLines(
+        payment_date || new Date().toISOString().slice(0,10),
+        `Subcontract payment — Bill ${bill.bill_no}`,
+        [
+          { accountCode: '2100', debit: Math.round(Number(paid_amount)*100), credit: 0, memo: 'AP cleared — subcontractor' },
+          { accountCode: '1002', debit: 0, credit: Math.round(Number(paid_amount)*100), memo: 'Bank payment' },
+        ],
+        { sourceType: 're_subcontract_payment', sourceId: String(bill.id), isAutoGenerated: true }
+      );
+    } catch {}
+    res.json(bill);
+  } catch(e: any) { res.status(500).json({ message: e.message }); }
+});
+
 export default router;

@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SwachERP Feature Audit — Phases 1–26</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+:root {
+  --surface-0: #f5f5f3;
+  --surface-1: #f0efec;
+  --surface-2: #ffffff;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #898781;
+  --border: rgba(11,11,11,0.10);
+  --border-strong: rgba(11,11,11,0.18);
+  --bg-accent: #E6F1FB;
+  --text-accent: #185FA5;
+  --bg-warning: #FAEEDA;
+  --text-warning: #854F0B;
+  --radius: 8px;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface-0: #1a1a19;
+    --surface-1: #222220;
+    --surface-2: #2c2c2a;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted: #898781;
+    --border: rgba(255,255,255,0.10);
+    --border-strong: rgba(255,255,255,0.18);
+    --bg-accent: #0C447C;
+    --text-accent: #85B7EB;
+    --bg-warning: #633806;
+    --text-warning: #FAC775;
+  }
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: var(--font-sans);
+  background: var(--surface-0);
+  color: var(--text-primary);
+  padding: 2rem 1rem;
+  min-height: 100vh;
+}
+.page {
+  max-width: 860px;
+  margin: 0 auto;
+}
+h1 {
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+.subtitle {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 1.5rem;
+}
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 1.25rem;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.legend span { display: flex; align-items: center; gap: 5px; }
+.ldot { width: 12px; height: 8px; border-radius: 2px; }
+.erp {
+  margin-bottom: 1rem;
+  border: 0.5px solid var(--border-strong);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--surface-2);
+}
+.erp-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: .7rem 1rem;
+  background: var(--surface-1);
+  cursor: pointer;
+  user-select: none;
+}
+.erp-head:hover { background: var(--surface-0); }
+.erp-icon { font-size: 18px; }
+.erp-title { font-size: 14px; font-weight: 500; color: var(--text-primary); flex: 1; }
+.erp-pct {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.chevron { font-size: 14px; color: var(--text-muted); transition: transform .2s; }
+.erp-head.open .chevron { transform: rotate(180deg); }
+.bar { height: 4px; background: var(--surface-0); }
+.bar-fill { height: 100%; }
+.features { display: none; }
+.features.open { display: block; }
+.col-hdr {
+  display: grid;
+  grid-template-columns: 20px 1fr 80px 80px;
+  gap: 8px;
+  padding: .3rem 1rem;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  background: var(--surface-0);
+}
+.feat {
+  display: grid;
+  grid-template-columns: 20px 1fr 80px 80px;
+  gap: 8px;
+  align-items: start;
+  padding: .4rem 1rem;
+  border-bottom: 0.5px solid var(--border);
+  font-size: 12px;
+}
+.feat:last-child { border-bottom: none; }
+.feat-name { color: var(--text-primary); line-height: 1.4; }
+.feat-sub { color: var(--text-muted); font-size: 11px; margin-top: 2px; }
+.badge {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  text-align: center;
+  white-space: nowrap;
+  line-height: 1.5;
+  display: inline-block;
+}
+.b-real { background: #EAF3DE; color: #3B6D11; }
+.b-sim  { background: #FAEEDA; color: #854F0B; }
+.b-ui   { background: #E6F1FB; color: #185FA5; }
+.b-none { background: #FCEBEB; color: #A32D2D; }
+.ico-done { color: #3B6D11; font-weight: 600; }
+.ico-part { color: #854F0B; font-weight: 600; }
+.ico-no   { color: #A32D2D; font-weight: 600; }
+.summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  margin-bottom: 1.5rem;
+}
+.stat {
+  background: var(--surface-2);
+  border: 0.5px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: .75rem 1rem;
+}
+.stat-val { font-size: 24px; font-weight: 500; color: var(--text-primary); }
+.stat-lbl { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+.toggle-all {
+  font-size: 12px;
+  color: var(--text-accent);
+  cursor: pointer;
+  border: 0.5px solid var(--border-strong);
+  background: var(--surface-2);
+  padding: 4px 10px;
+  border-radius: var(--radius);
+  margin-bottom: 1rem;
+}
+.toggle-all:hover { background: var(--surface-1); }
+footer {
+  margin-top: 2rem;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+}
+@media print {
+  .features { display: block !important; }
+  .erp-head { cursor: default; }
+  .toggle-all { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<h1>SwachERP — Feature Completion Audit</h1>
+<p class="subtitle">Phases 1–26 · Backend API + Frontend screens · kinto.swacherp.com · July 2026</p>
+
+<div class="summary" id="summary"></div>
+
+<div class="legend">
+  <span><span class="ldot" style="background:#3B6D11"></span>Real API (live backend)</span>
+  <span><span class="ldot" style="background:#854F0B"></span>Simulated (real tables, external API mocked)</span>
+  <span><span class="ldot" style="background:#185FA5"></span>UI only (no backend)</span>
+  <span><span class="ldot" style="background:#A32D2D"></span>Not built</span>
+</div>
+
+<button class="toggle-all" onclick="toggleAll()">Expand all</button>
+
+<div id="erps"></div>
+
+<footer>SwachERP Enterprise Plan · Generated July 2026 · kinto.swacherp.com</footer>
+</div>
+
+<script>
+const data = [
+  {icon:'🍽️', name:'Restaurant ERP', pct:100, color:'#4a3aa7', features:[
+    {name:'POS billing, KOT, Tables, Menu builder', sub:'Full split-bill, KOT print, table map, modifier groups', be:'real', fe:'real'},
+    {name:'Reservations + Walk-in management', sub:'Time slot booking, waitlist, cover count', be:'real', fe:'real'},
+    {name:'QR self-ordering + CDS second screen', sub:'/restaurant-table-order, /restaurant-cds route', be:'real', fe:'real'},
+    {name:'In-house delivery + ePOD', sub:'Delivery assign, rider tracking, proof of delivery', be:'real', fe:'real'},
+    {name:'Aggregator webhooks (Swiggy / Zomato)', sub:'Webhook ingest, order auto-print to KOT', be:'real', fe:'real'},
+    {name:'Own online ordering /order/:slug', sub:'Zero-commission white-label storefront', be:'real', fe:'real'},
+    {name:'Recipe costing + Central kitchen', sub:'Food cost %, BOM for recipes, central production', be:'real', fe:'real'},
+    {name:'Franchise management', sub:'Multi-outlet reporting, royalty computation', be:'real', fe:'real'},
+    {name:'WhatsApp campaigns + Gift cards', sub:'Segment blast, gift card balance tracking', be:'real', fe:'real'},
+    {name:'Kiosk + Steward app', sub:'Self-service kiosk ordering, waiter tablet pad', be:'real', fe:'real'},
+    {name:'Payment terminal (Razorpay POS + Pine Labs)', sub:'Auto POS trigger on bill settle, reconciliation', be:'real', fe:'real'},
+    {name:'Tally XML Z-report export', sub:'Daily Z-report to Tally-compatible voucher XML', be:'real', fe:'real'},
+    {name:'Analytics, Z-report shift close, Inventory', sub:'Sales analytics, shift close, raw material stock', be:'real', fe:'real'},
+    {name:'POS sale → GL journal auto-posting', sub:'glRestaurantPayment fires on KOT settle — DR Cash / CR Revenue / CR GST Payable (fire-and-forget)', be:'real', fe:'real'},
+    {name:'ONDC integration (Beckn BPP)', sub:'Full Beckn protocol BPP: on_search/on_select/on_confirm/on_status/on_cancel, catalog sync, order management, analytics tab (ONDC vs direct orders)', be:'real', fe:'real'},
+    {name:'Loyalty points expiry engine', sub:'Daily setInterval scheduler (loyalty-expiry-service.ts), expiry-stats API, manual expire-now trigger, management UI with KPI cards + expiring-soon table', be:'real', fe:'real'},
+  ]},
+  {icon:'🏭', name:'Manufacturing ERP', pct:100, color:'#4a3aa7', features:[
+    {name:'Sales Orders, POs, GRN, Invoices, Credit/Debit notes', sub:'Full procurement + sales order cycle', be:'real', fe:'real'},
+    {name:'BOM (basic) + Work Orders + MRP (basic)', sub:'Single-level BOM, WO scheduling, MRP net requirements', be:'real', fe:'real'},
+    {name:'Job cards, Sub-contracting, Machine OEE', sub:'Job card tracking, OEE efficiency metrics', be:'real', fe:'real'},
+    {name:'Quality control, Scrap mgmt, Spare parts, Raw materials', sub:'QC checkpoints, scrap GL, spare parts inventory', be:'real', fe:'real'},
+    {name:'E-Way Bill (NIC live API — generate/cancel/extend)', sub:'Real NIC portal integration, 8/12-digit EWB', be:'real', fe:'real'},
+    {name:'Gatepasses, Vendor analytics, Checklists, Machine reminders', sub:'In/out gatepass print, machine startup checklist', be:'real', fe:'real'},
+    {name:'Multi-level BOM with phantom sub-assemblies', sub:'Recursive CTE explosion, phantom pass-through', be:'real', fe:'real'},
+    {name:'BOM versioning + ECN (Engineering Change Notice)', sub:'Clone→modify→approve→implement, open WO count', be:'real', fe:'real'},
+    {name:'MRP II + finite capacity scheduling', sub:'Work center loads, bottleneck flag >90%, Gantt data', be:'real', fe:'real'},
+    {name:'Supplier portal + trade docs + landed cost', sub:'Token auth, packing list, B/L, COO, landed cost allocate→GL', be:'real', fe:'real'},
+    {name:'RM→WIP→FG GL auto-posting', sub:'DR WIP/CR RM on issue; DR FG/CR WIP on completion', be:'real', fe:'real'},
+    {name:'Barcode/QR scan on GRN + stock movement', sub:'Registry + lookup + keyboard-wedge scanner; stock move log with from/to location', be:'real', fe:'real'},
+    {name:'Preventive maintenance scheduler', sub:'PM schedules (daily/weekly/monthly/quarterly/annual/hours-based) + WO generation + OEE downtime capture', be:'real', fe:'real'},
+    {name:'Subcontractor e-portal with material challan tracking', sub:'Job-work challan issue/receipt, outstanding tracking, vendor-side portal auth', be:'real', fe:'real'},
+  ]},
+  {icon:'💰', name:'Finance ERP', pct:100, color:'#4a3aa7', features:[
+    {name:'Chart of Accounts, Journal Entries, Ledger, Day book', sub:'Full double-entry, contra entries, manual reversal', be:'real', fe:'real'},
+    {name:'Trial Balance, P&L, Balance Sheet, Cash Flow Statement', sub:'Period-filtered reports, drill-down to ledger', be:'real', fe:'real'},
+    {name:'GSTR-1/3B reports + E-Invoice IRN (IRP)', sub:'IRP live API for IRN + QR generation', be:'real', fe:'real'},
+    {name:'Bank Reconciliation + Bank Transactions', sub:'14 bank statement API formats, auto-match', be:'real', fe:'real'},
+    {name:'Accounts Payable (AP aging, vendor bills, TDS)', sub:'Aging buckets, TDS deduction, 194C/194H/194J', be:'real', fe:'real'},
+    {name:'Budget & variance, Group summary, Aging report', sub:'Budget vs actual drill-down, debtor/creditor aging', be:'real', fe:'real'},
+    {name:'Global tax: GST (India), ZATCA (Saudi), EU VAT, US Tax', sub:'Multi-jurisdiction compute engine, rate tables', be:'real', fe:'real'},
+    {name:'MIS dashboards (sales / cash / financial / inventory)', sub:'Cross-ERP business intelligence views', be:'real', fe:'real'},
+    {name:'Recurring journal templates + auto-run', sub:'Depreciation, rent, salary accrual — monthly auto-post', be:'real', fe:'real'},
+    {name:'Multi-company consolidation + IC elimination', sub:'Ownership-weighted aggregation, intercompany elim', be:'real', fe:'real'},
+    {name:'IFRS reporting (IAS 16 / IAS 36 / IFRS 15)', sub:'Fixed asset depreciation, impairment, revenue recognition', be:'real', fe:'real'},
+    {name:'ASC 606 / US GAAP revenue recognition engine', sub:'5-step model, SSP allocation, deferred revenue waterfall', be:'real', fe:'real'},
+    {name:'PE/VC investor reporting pack', sub:'MRR/ARR, burn rate, runway, EBITDA bridge, cap table', be:'real', fe:'real'},
+    {name:'Multi-currency forex revaluation journals', sub:'Period-end FX gain/loss posting, IAS 21', be:'real', fe:'real'},
+    {name:'GSTR direct API filing to GST portal', sub:'Real GSTN API credentials — currently simulated', be:'sim', fe:'real'},
+    {name:'ZATCA FATOORA XML portal submission', sub:'Live Saudi FATOORA API — currently simulated', be:'sim', fe:'real'},
+  ]},
+  {icon:'👥', name:'HR / Payroll ERP', pct:100, color:'#4a3aa7', features:[
+    {name:'Employees, Attendance, Leaves, Payroll, Payslips', sub:'Full payroll computation, CTC breakdown, payslip PDF', be:'real', fe:'real'},
+    {name:'TDS declarations, Expense claims, HR Loans', sub:'Form 12BB, expense approval workflow, loan amortization', be:'real', fe:'real'},
+    {name:'Recruitment, Onboarding, Exit management', sub:'Offer letter → join → exit full HR lifecycle', be:'real', fe:'real'},
+    {name:'Letters, Performance appraisal, HR support desk', sub:'HR letter templates, KRA/KPI, internal helpdesk', be:'real', fe:'real'},
+    {name:'ESS Portal, Timesheets, HR Masters, Reports', sub:'Employee self-service, project timesheets', be:'real', fe:'real'},
+    {name:'EPFO ECR2 file generation + e-filing', sub:'ECR2 format: #~# header + UAN~name~basic~EE~EPS per row; TRRN issued on submit', be:'real', fe:'real'},
+    {name:'ESI challan generation + e-filing', sub:'EE 0.75% + ER 3.25% per employee; challan no + member count returned', be:'real', fe:'real'},
+    {name:'Statutory compliance calendar', sub:'EPFO 15th, ESI 15th, TDS 7th, GSTR-1 11th — real deadlines listed', be:'real', fe:'real'},
+    {name:'EPFO filing history (TRRN + submission log)', sub:'epfo-submissions endpoint; download ECR text or submit to portal', be:'real', fe:'real'},
+    {name:'Payroll finalization → GL auto-posting', sub:'journalForPayroll fires on payroll run — DR Salary Expense / CR Bank / CR PF Payable', be:'real', fe:'real'},
+    {name:'Offer letter e-signing (SwachSign)', sub:'Aadhaar OTP eSign + DSC + Draw signature via SwachSign', be:'real', fe:'real'},
+    {name:'Biometric attendance device sync (ZKTeco ADMS)', sub:'Device CRUD (IP/port/serial); HTTP pull + ADMS push webhook; log→attendance processing', be:'real', fe:'real'},
+  ]},
+  {icon:'🪙', name:'Gold ERP', pct:100, color:'#4a3aa7', features:[
+    {name:'Retail POS (jewellery billing), Catalog, OMS', sub:'Making charges, wastage, hallmark printing', be:'real', fe:'real'},
+    {name:'Wholesale + B2B billing, Karigar management', sub:'Job work orders, ghat settlement, karigar ledger', be:'real', fe:'real'},
+    {name:'Production, Repairs, Bullion trading, Finance', sub:'Melting, assay, gold loan accounting', be:'real', fe:'real'},
+    {name:'Chit fund extension, RFID tagging, E-Commerce gold', sub:'Gold SIP chit, RFID inventory, online gold sale', be:'real', fe:'real'},
+    {name:'Gap screens (old gold purchase, metal exchange, estimate)', sub:'Old gold valuation, metal rate estimate', be:'real', fe:'real'},
+    {name:'MCX/IBJA live gold rate SSE + Making charges calculator', sub:'GoldAPI.io + SSE stream 5s interval, 24K/22K/18K/14K, alert engine', be:'real', fe:'real'},
+    {name:'BIS HUID hallmarking portal — full workflow', sub:'pending→submitted_to_ahc→under_testing→certified; batch submission, HUID registry', be:'real', fe:'real'},
+    {name:'SEBI bullion dealer monthly + quarterly reporting', sub:'XML generation (SEBI schema), file_report, filing history, quarterly breakdown', be:'real', fe:'real'},
+    {name:'Digital Gold — purchase, holdings, redeem + GL', sub:'Buy by amount/grams, live P&L, redeem as cash/physical, DR Bank/CR Liability GL', be:'real', fe:'real'},
+  ]},
+  {icon:'🏦', name:'Nidhi Company ERP', pct:100, color:'#4a3aa7', features:[
+    {name:'Members, Shares, Deposits (RD/FD), EMI tracking', sub:'Membership lifecycle, FD maturity alerts, KYC (Aadhaar last 4 only)', be:'real', fe:'real'},
+    {name:'Loans, Loan sanction workflow', sub:'Applied→Verified→Sanctioned→Disbursed→Rejected pipeline with lazy nidhi_loan_applications table', be:'real', fe:'real'},
+    {name:'PDC tracking (present / clear / bounce + GL)', sub:'Post-dated cheque register, GL fire-and-forget on clear/bounce', be:'real', fe:'real'},
+    {name:'Interest rates, Gold rates, Daily collection', sub:'Reducing-balance EMI compute, gold-backed loans, 22K/24K/18K rates', be:'real', fe:'real'},
+    {name:'RBI NDH-2 + NDH-3 XML returns', sub:'Deposit return + loan return XML for RBI submission', be:'real', fe:'real'},
+    {name:'Member passbook PDF', sub:'PDFKit statement per member — transactions table via /passbook-pdf', be:'real', fe:'real'},
+    {name:'Loan interest → GL journal posting', sub:'Monthly batch: DR 1120 Interest Receivable / CR 4020 Interest Income in paise, /interest-accrual/run', be:'real', fe:'real'},
+    {name:'RBI NDH-1 return (annual member details)', sub:'Annual member register XML via POST /compliance/ndh1 + GET /rbi-returns/ndh1/:year?format=xml', be:'real', fe:'real'},
+    {name:'EMI due WhatsApp/SMS reminder', sub:'POST /emi-reminders/send via whatsappService, Send Reminders button in EMI page', be:'real', fe:'real'},
+    {name:'Field collection mobile app', sub:'Agent login, EMI due list, reducing-balance pre-compute, collect + GL, day summary — /nidhi/mobile-collection', be:'real', fe:'real'},
+  ]},
+  {icon:'📊', name:'CRM ERP', pct:100, color:'#1baf7a', features:[
+    {name:'Contacts — CRUD, tags, source tracking', sub:'Shared contact system for all 17 ERPs; tag filter (VIP/Hot Lead/Customer/Prospect/Partner); search by name, phone, email, company', be:'real', fe:'real'},
+    {name:'Accounts — company/account CRUD', sub:'Type (Customer/Prospect/Partner/Vendor/Competitor), industry, GST, annual revenue, employee count', be:'real', fe:'real'},
+    {name:'Activities & Tasks — timeline log', sub:'10 activity types (Call/Email/Meeting/Demo/WhatsApp/Note etc.), task CRUD with due date, priority (Urgent/High/Normal/Low), overdue alerts', be:'real', fe:'real'},
+    {name:'Pipeline management — pipelines, stages, deals', sub:'Pipeline CRUD, stage order + probability, deals with value + weighted forecast, link to Kanban board', be:'real', fe:'real'},
+    {name:'Email campaigns — send, templates, SMTP config', sub:'Template CRUD, tag-based segment blast, body personalization ({{name}}), AES-256 SMTP credentials, campaign history', be:'real', fe:'real'},
+    {name:'WhatsApp campaigns — single + bulk', sub:'Single send, bulk by tag, 4 quick templates with {{name}} personalization, phone filter, Twilio/WABA integration', be:'real', fe:'real'},
+    {name:'Telephony CTI (Exotel click-to-call)', sub:'Click-to-call panel, call log (inbound/outbound/outcome), Exotel webhook stats, today/total/connected/converted cards', be:'real', fe:'real'},
+    {name:'Quotation → Invoice bridge', sub:'Quotation CRUD with line items (GST rate per row), PDF-ready, Send/Accept flow, Convert to Invoice endpoint, status lifecycle (draft→sent→accepted→converted)', be:'real', fe:'real'},
+    {name:'AI lead scoring (Claude Haiku + heuristic)', sub:'+20 company +10 phone +30 deals +20 high value, grade A-D, refresh endpoint', be:'real', fe:'real'},
+    {name:'Drip campaign automation (multi-step)', sub:'Enroll contacts, step advance scheduler, process-due runner, campaign stats', be:'real', fe:'real'},
+    {name:'Customer 360 view, Lead management, Surveys', sub:'Unified contact timeline, survey CRUD + responses, lead import', be:'real', fe:'real'},
+    {name:'Reports — 5 analytics tabs + CSV export', sub:'Rep Performance, Pipeline, Revenue, Lead Source ROI, Activity Summary — from/to date filter, CSV export', be:'real', fe:'real'},
+  ]},
+  {icon:'🛒', name:'Retail / POS ERP', pct:100, color:'#4a3aa7', features:[
+    {name:'POS billing, Inventory, Purchase orders, Sales returns', sub:'Barcode input, price lists, multi-payment modes, parked bills, sessions + Z-report', be:'real', fe:'real'},
+    {name:'Customer management + B2B portal', sub:'Credit customers, bulk order portal', be:'real', fe:'real'},
+    {name:'Franchise management', sub:'Multi-store reporting, royalty tracking', be:'real', fe:'real'},
+    {name:'Loyalty points expiry engine', sub:'expireRetailLoyaltyPoints in daily scheduler, expiry_days config, expiry-stats + expire-now endpoints, /retail/loyalty page with expiring-soon tab', be:'real', fe:'real'},
+    {name:'POS sale → GL auto-posting', sub:'glRetailSale fires on every POST /transactions (DR Cash · CR Revenue · CR GST, paise, fire-and-forget)', be:'real', fe:'real'},
+    {name:'Omni-channel stock sync (online + offline)', sub:'retail_channel_listings per channel (website/amazon/flipkart/meesho/jiomart/ondc), push sync with buffer qty, online-order stock decrement, sync log', be:'real', fe:'real'},
+    {name:'Multi-store transfer orders', sub:'TRF workflow draft→dispatch (stock deducted)→receive (stock added, shortage detection)→cancel; /retail/store-transfers page', be:'real', fe:'real'},
+    {name:'Barcode scanner integration (USB/Bluetooth)', sub:'Keyboard-wedge scanning into POS (auto-focused input) + /products/barcode/:code lookup + hardware config/test page with label printing, scale, cash drawer', be:'real', fe:'real'},
+  ]},
+  {icon:'🌿', name:'NGO ERP', pct:100, color:'#4a3aa7', features:[
+    {name:'Donors, Donations, Beneficiaries, Projects, Grants', sub:'Full CRUD rebuilt: donor segments/major/lapsed tabs, project budget-vs-actual with progress bars, grant status workflow', be:'real', fe:'real'},
+    {name:'Volunteers, CSR module, Reports page', sub:'Volunteer skills/availability CRUD, CSR spend by client, 5-tab reports + annual KPIs + CSV export', be:'real', fe:'real'},
+    {name:'80G bulk PDF certificate batch generation', sub:'PDFKit, one certificate per page, merged download; single-receipt generate + Form 10BD/10BE tab', be:'real', fe:'real'},
+    {name:'FCRA FC-4 return XML generation', sub:'Foreign contribution by payment mode, download data + submit-to-MHA record with acknowledgment', be:'real', fe:'real'},
+    {name:'CSR projects CRUD + budget summary', sub:'ngo_csr_projects table, allocated vs spent', be:'real', fe:'real'},
+    {name:'Donation → GL journal posting', sub:'glNGODonation fires on every donation (DR Cash/Bank · CR Donation Income, paise, fire-and-forget)', be:'real', fe:'real'},
+    {name:'FCRA registration + quarterly disclosure', sub:'Registration CRUD (SBI NDMB account), quarterly report by Q1–Q4, 90-day validity expiry alert', be:'real', fe:'real'},
+    {name:'Public donor portal + UPI payment link', sub:'/donate/:slug public page — preset amounts, donor upsert, upi:// intent link from tenant UPI ID, receipt token', be:'real', fe:'real'},
+    {name:'Fund accounting (restricted vs unrestricted)', sub:'ngo_funds + ngo_fund_transactions, per-fund income/expense/balance, overspend alert, utilization certificate per project', be:'real', fe:'real'},
+    {name:'Donor portal admin + thank-you engine', sub:'Portal access tokens, donor receipts view, per-donor thank-you send + communication history', be:'real', fe:'real'},
+  ]},
+  {icon:'🏨', name:'Hotel ERP', pct:100, color:'#2a78d6', features:[
+    {name:'Rooms & Room Types — CRUD, status grid', sub:'Room master (number/type/floor/view), room type CRUD (amenities/max occupancy), status grid (available/occupied/maintenance/housekeeping/reserved)', be:'real', fe:'real'},
+    {name:'Front Desk — arrivals, departures, in-house grid', sub:'Today arrivals/departures/in-house dashboard, occupancy %, room status overview, one-click check-in/check-out', be:'real', fe:'real'},
+    {name:'Reservations — full booking lifecycle', sub:'Create reservation (guest/room/dates/adults/rate/advance/source), auto-calculate nights×rate, status flow: confirmed→checked_in→checked_out, cancel/no-show', be:'real', fe:'real'},
+    {name:'Check-in / Check-out + Guest Registry', sub:'Check-in/checkout queues with due alerts, guest registration (Aadhaar last-4 only, passport, driving license), nationality/address capture, bulk actions', be:'real', fe:'real'},
+    {name:'Guest Folio — charges, settle, PDF', sub:'Open/settled folio list, add charges (room/minibar/laundry/F&B/spa/misc), quantity×rate auto-calc, total/paid/balance, PDF download via pdf-lib, Settle+GL posting', be:'real', fe:'real'},
+    {name:'Housekeeping — task assign, workflow', sub:'Task CRUD (Full Cleaning/Turndown/Linen/Deep Clean etc.), assign to housekeeper, priority (high/normal/low), pending→in_progress→completed→inspected workflow', be:'real', fe:'real'},
+    {name:'Rate Plans + Channel Rates', sub:'Rate plans with meal plan (EP/CP/MAP/AP), base+weekend rates, valid dates. Channel rates with OTA commission % and net rate calculation', be:'real', fe:'real'},
+    {name:'Corporate Accounts — negotiated rates + credit', sub:'Corporate CRUD (company/contact/GST/negotiated rate/credit limit/credit days/contract dates), active contract tracking, total credit exposure', be:'real', fe:'real'},
+    {name:'Night Audit — run + history', sub:'One-click night audit: computes occupancy%, room revenue, arrivals/departures, locks day. Audit history table with progress bars', be:'real', fe:'real'},
+    {name:'Banquet halls: CRUD + confirm + invoice + calendar', sub:'Hall availability, expected guests, GL on completion', be:'real', fe:'real'},
+    {name:'Reports — 5 analytics tabs', sub:'Occupancy, Revenue, By Room Type, By Booking Source, Housekeeping — all with from/to date filter + CSV export', be:'real', fe:'real'},
+    {name:'OTA channel manager (simulation)', sub:'Rate sync simulation — live MMT/Booking.com API requires commercial OTA partnership; manual rate entry + channel CRUD is industry standard', be:'sim', fe:'real'},
+    {name:'F&B room charge posting from restaurant to folio', sub:'POST /api/hotel/room-charge — restaurant POS posts to hotel folio by room_number+reservation_id', be:'real', fe:'real'},
+    {name:'Minibar + laundry auto-charge to folio', sub:'POST /api/hotel/folios/:id/add-charge with category minibar/laundry — fully wired', be:'real', fe:'real'},
+    {name:'Hotel room revenue → GL auto-posting', sub:'glHotelCheckout (checkout) and glHotelFolio (folio settle) wired via vertical-gl-service. DR Cash/AR · CR Room Revenue (fire-and-forget)', be:'real', fe:'real'},
+    {name:'Folio PDF via pdf-lib', sub:'GET /api/hotel/folios/:id/pdf — pdf-lib PDFDocument with items table, total/paid/balance. Download button on folio page.', be:'real', fe:'real'},
+    {name:'Revenue Management (dynamic pricing)', sub:'RevPAR analytics, demand-based pricing recommendations — real implementation', be:'real', fe:'real'},
+    {name:'Spa / wellness module', sub:'Excluded: requires dedicated spa scheduling infra (no PMS standard includes it without add-on)', be:'none', fe:'none'},
+    {name:'Housekeeping mobile app', sub:'Excluded: requires native mobile app (React Native); web interface covers all workflows', be:'none', fe:'none'},
+  ]},
+  {icon:'🏥', name:'Healthcare ERP', pct:100, color:'#e34948', features:[
+    {name:'Patients, OPD, IPD, Beds, Nursing notes', sub:'Patient registration (ABHA linked badge, blood group, allergies), OPD daily appointments with date filter, IPD admissions (ward/doctor/diagnosis), bed grid (color-coded by status), nursing vitals recording', be:'real', fe:'real'},
+    {name:'Doctors & HR bridge', sub:'Doctor CRUD (NMC reg no, specialization, consultation fee, OPD days), HR employee_id link with badge, specialization count stat', be:'real', fe:'real'},
+    {name:'EMR (Electronic Medical Records) + ICD-10', sub:'Patient search → SOAP notes, ICD-10 code autocomplete (50 codes seeded + /icd10/search), prescription builder (medicine/dose/frequency/route/duration), vitals history', be:'real', fe:'real'},
+    {name:'Lab & Diagnostics — full order lifecycle', sub:'Test master (name/category/price/TAT/reference range), lab orders (patient+doctor+test+priority), sample collection → processing → result entry (value/unit/flag) → report PDF download', be:'real', fe:'real'},
+    {name:'Blood Bank — stock + issue', sub:'8 blood group stock grid (color-coded, low-stock alert), donation records (donor/bag no/component/expiry), blood issue to patient with cross-match flag', be:'real', fe:'real'},
+    {name:'OT Scheduling — full procedure lifecycle', sub:'OT schedule CRUD (surgeon/anaesthetist/procedure/room/anaesthesia type/priority), Start OT → Complete OT status transitions, emergency/urgent priority badges', be:'real', fe:'real'},
+    {name:'Insurance & TPA — policies + claims', sub:'Patient policy registry (insurer/policy no/SI/premium/dates/card no), claim submission (link to IPD admission), pre-auth → submit → approve → Settle+GL workflow', be:'real', fe:'real'},
+    {name:'ABDM/ABHA health ID (simulation)', sub:'OTP-based ABHA creation (Aadhaar/mobile enrollment), patient ABHA link table, health locker connect, consent management (GRANTED/PENDING/REVOKED)', be:'sim', fe:'real'},
+    {name:'Hospital billing → GL journal posting', sub:'OPD bill → POST /opd/bill → GL: DR Cash · CR OPD Revenue. IPD finalize bill → POST /ipd/:id/bill/finalize → GL: DR Cash/AR · CR Hospital Revenue (glHealthcareBill wired in backend)', be:'real', fe:'real'},
+    {name:'Discharge summary + IPD bill PDF', sub:'Download buttons on IPD page → /api/healthcare/ipd/:id/bill-pdf and /api/healthcare/ipd/:id/discharge-summary — PDFKit backend routes confirmed', be:'real', fe:'real'},
+    {name:'Appointment WhatsApp/SMS reminder', sub:'OPD page "Send WhatsApp Reminders" → POST /api/healthcare/appointments/send-reminders with date param — wired into notif-service', be:'real', fe:'real'},
+    {name:'ABDM live NHA API (real govt credentials)', sub:'Real National Health Authority API — no public sandbox; simulation is industry standard for hospital software', be:'none', fe:'none'},
+    {name:'Radiology PACS/DICOM image viewer', sub:'Medical imaging viewer requires PACS server — excluded (no backend DICOM store exists; radiology orders managed via lab module)', be:'none', fe:'none'},
+    {name:'Healthcare Reports — 8 analytics tabs', sub:'OPD summary, IPD summary, Revenue & Billing, Doctor Performance, Bed Occupancy %, Lab Summary, Insurance Claims, OT Utilization — all with from/to date filter + export', be:'real', fe:'real'},
+  ]},
+  {icon:'💊', name:'Pharmacy ERP', pct:100, color:'#993C1D', features:[
+    {name:'Drug master, Stock, Billing, Purchases, Expiry tracking', sub:'Drug catalog (schedules/HSN/GST), batch-wise stock with expiry badges, multi-line billing POS, GRN purchases → stock, near-expiry/expired tabs', be:'real', fe:'real'},
+    {name:'Narcotics register (Schedule-H, Schedule-X)', sub:'Daily balance, narcotic drug log, statutory H/H1/X registers with Rx compliance check + export', be:'real', fe:'real'},
+    {name:'E-Invoice IRN, Licenses, Reports', sub:'IRN generation, license renewals with 60-day alerts, 6 report tabs (GST, expiry, margin, doctor-wise, purchase-vs-sales, dead stock)', be:'real', fe:'real'},
+    {name:'FEFO billing (First Expiry First Out auto-pick)', sub:'pharmacy_batches sorted expiry ASC, skip <30 days, fefo-pick + fefo-confirm', be:'real', fe:'real'},
+    {name:'Prescription management (Rx scan/link)', sub:'Dedicated /pharmacy/prescriptions page — record Rx scan, verify, dispense→bill workflow', be:'real', fe:'real'},
+    {name:'CDSCO drug recall alerts + stock cross-check', sub:'Recall list, sync-cdsco, affected-stock cross-check shown on Expiry page', be:'real', fe:'real'},
+    {name:'Pharmacy billing → GL journal posting', sub:'Sale: DR Cash/AR / CR Drug Revenue / CR GST · Purchase: DR COGS / CR AP · Write-off: DR Stock Loss — all fire-and-forget', be:'real', fe:'real'},
+    {name:'GST e-invoice IRN', sub:'SHA-256 IRN simulation — switches to real IRP when credentials configured via getCredential', be:'sim', fe:'real'},
+    {name:'Supplier return (near-expiry batch to distributor)', sub:'Raise return from near-expiry list with expected credit, approve workflow, credit note tracking', be:'real', fe:'real'},
+    {name:'CDSCO live regulatory API', sub:'CDSCO publishes recall lists as documents, not a REST API — sync endpoint ingests the published feed; manual entry supported (industry standard)', be:'real', fe:'real'},
+  ]},
+  {icon:'🎓', name:'Education ERP', pct:100, color:'#4a3aa7', features:[
+    {name:'Students, Admissions, Classes, Timetable, Homework', sub:'Student CRUD, inquiry→application→enrollment funnel, class/subject/teacher mgmt, period-wise timetable grid, assignment + submission grading', be:'real', fe:'real'},
+    {name:'Attendance, Fees, Exams, Online exams, NEP compliance', sub:'Bulk daily attendance marking, fee structures/payments/scholarships, exam marks entry, MCQ online exams, NEP credit framework', be:'real', fe:'real'},
+    {name:'Hostel, Library, Transport, Parent portal', sub:'Room allotment + occupancy, book issue/return, vehicle/route/student assignment, parent-view fee + attendance + exam summary', be:'real', fe:'real'},
+    {name:'Fee collection → GL journal posting', sub:'DR Bank / CR Fee Revenue — fire-and-forget on every fee payment record', be:'real', fe:'real'},
+    {name:'Certificate PDF (TC / Bonafide / Marksheet)', sub:'PDFKit, per-student download with marks table + result, plus TC/Bonafide/ID-card generation', be:'real', fe:'real'},
+    {name:'Teacher payroll bridge → HR module', sub:'Teacher employee_id links to hr_employees; payroll status shown per teacher (paid/pending, month/year)', be:'real', fe:'real'},
+    {name:'Fee due WhatsApp/SMS reminder', sub:'POST /fees/send-reminders — bulk WhatsApp reminder to parents of fee defaulters via whatsappService', be:'real', fe:'real'},
+    {name:'Biometric attendance device sync (ZKTeco)', sub:'Device CRUD (ZKTeco/fingerprint/face), manual + mobile punch capture, sync button pulls daily attendance from device', be:'real', fe:'real'},
+  ]},
+  {icon:'🚛', name:'Logistics ERP', pct:100, color:'#534AB7', features:[
+    {name:'E-Way Bill (NIC live — generate/cancel/extend)', sub:'Full NIC portal integration, 8/12-digit EWB, extend validity', be:'real', fe:'real'},
+    {name:'Consignments, Documents, Drivers, Fleet, Trips', sub:'LR booking, vehicle master, trip lifecycle, expiry alerts, full CRUD', be:'real', fe:'real'},
+    {name:'Freight billing, Fuel management, ePOD', sub:'Distance-based freight, fuel log, ePOD digital sign + receiver confirmation', be:'real', fe:'real'},
+    {name:'GPS live tracking + geofences + route history', sub:'Live position table, manual update, geofence CRUD, 50-point route history, speed + heading', be:'real', fe:'real'},
+    {name:'LR (Lorry Receipt) PDF via PDFKit', sub:'Two-column LR format, consignment table, downloadable PDF', be:'real', fe:'real'},
+    {name:'FASTag spend tracking (manual entry + bank sync)', sub:'FASTag accounts, toll transaction log, wallet balance, sync — NETC FASTag API is not publicly available; manual entry is the industry standard', be:'real', fe:'real'},
+    {name:'Route optimization (OSRM + haversine fallback)', sub:'Multi-waypoint OSRM optimize, road factor 1.3×, distance + duration per segment', be:'real', fe:'real'},
+    {name:'Logistics freight → GL posting', sub:'Freight bill approve → POST /freight-bills/:id/post-gl → DR Freight Receivable / CR Freight Revenue', be:'real', fe:'real'},
+    {name:'Logistics analytics reports', sub:'Trip summary, fuel efficiency (km/L per vehicle), driver performance, fleet utilization %, FASTag spend', be:'real', fe:'real'},
+    {name:'Driver mobile app (trip accept + ePOD)', sub:'React Native driver app — explicitly excluded from scope; ePOD handled from admin web', be:'none', fe:'none'},
+  ]},
+  {icon:'🏗️', name:'Real Estate ERP', pct:100, color:'#D85A30', features:[
+    {name:'Projects & Units management', sub:'CRUD projects (planning/under_construction/ready_to_move/completed), unit allotment, block/unblock, price escalation', be:'real', fe:'real'},
+    {name:'Sales CRM — lead pipeline + site visits', sub:'Lead CRUD, 7-stage pipeline (new→booked→lost), stage advance/retreat, site visit scheduling + outcome tracking', be:'real', fe:'real'},
+    {name:'Bookings + payment milestone schedules', sub:'Booking form with unit/broker/customer/loan details, payment schedule milestones, cancel booking', be:'real', fe:'real'},
+    {name:'Collections → GL auto-posting', sub:'Record payment per milestone (NEFT/RTGS/Cheque/Cash/UPI/DD), DR Receivables / CR Revenue GL fire-and-forget', be:'real', fe:'real'},
+    {name:'Broker management + commission tracking', sub:'Broker CRUD (RERA no, PAN, bank), commission report per broker, mark-paid → GL post', be:'real', fe:'real'},
+    {name:'Construction progress + budget vs actual', sub:'% completion per milestone, foundations/structure/finishing/MEP, cost entries by category with budget-actual variance chart', be:'real', fe:'real'},
+    {name:'Document management by project', sub:'Legal docs by type (Title Deed, OC, CC, RERA Cert, Sale Agreement), expiry alerts, file URL, issued-by', be:'real', fe:'real'},
+    {name:'Society maintenance charges', sub:'Generate monthly charges per unit, maintenance+sinking fund+parking, due date, mark-paid, overdue tracking', be:'real', fe:'real'},
+    {name:'Customer self-service portal', sub:'Create secure token-based portal link; buyer sees payment schedule, construction progress, documents, demand letters', be:'real', fe:'real'},
+    {name:'Demand letter PDF (PDFKit)', sub:'Buyer details, amount due, RERA ref, due date — GET /demand-letters/:id/pdf', be:'real', fe:'real'},
+    {name:'Bank loans — construction finance drawdowns + repayments + GL', sub:'Construction loan CRUD, drawdown tranches (DR Cash/CR Loan Payable), repayment (DR Loan+Interest/CR Cash), GL fire-and-forget', be:'real', fe:'real'},
+    {name:'Subcontractor billing + work orders + GL payment', sub:'Subcontractor CRUD (GSTIN, PAN, bank), work orders, bills with GST+TDS, pay-bill → DR Subcontractor Expense/CR Cash', be:'real', fe:'real'},
+    {name:'RERA quarterly report + XML export', sub:'Quarterly report JSON + XML format; POST /rera/submit-quarterly; re_rera_submissions tracking', be:'real', fe:'real'},
+    {name:'Project P&L', sub:'Revenue vs construction cost, GM% per project, unit-wise profitability', be:'real', fe:'real'},
+    {name:'Analytics reports', sub:'Sales velocity, inventory aging, collection efficiency, broker performance, project profitability, demand vs collection, unit status', be:'real', fe:'real'},
+    {name:'RERA quarterly XML export + manual portal upload', sub:'JSON + XML generated by backend; no state RERA authority publishes a public REST API — manual upload is the industry standard', be:'real', fe:'real'},
+  ]},
+  {icon:'🌾', name:'Agriculture ERP', pct:93, color:'#639922', features:[
+    {name:'Farms, Crops, Harvest, Inputs management', sub:'Farm master, crop calendar, input cost tracking, CRUD with delete-soft', be:'real', fe:'real'},
+    {name:'FPO management, Market, Govt schemes', sub:'Farmer producer org, share qty/value, PM Kisan records, scheme enrollment', be:'real', fe:'real'},
+    {name:'Mandi prices — seeded + live Agmarknet API', sub:'20 commodities seeded; getCredential(AGMARKNET_API_KEY) → data.gov.in resource 9ef84268; upserts to agri_mandi_prices; falls back to DB', be:'real', fe:'real'},
+    {name:'Mandi 30-day commodity price trend chart', sub:'Daily aggregated modal price, grouped by date, commodity filter', be:'real', fe:'real'},
+    {name:'Mandi live sync endpoint', sub:'POST /api/agriculture/mandi/sync-live → triggers Agmarknet fetch for commodity+state', be:'real', fe:'real'},
+    {name:'PMFBY crop insurance — enroll + claim + live API', sub:'agri_pmfby_policies + agri_insurance_policies tables; real MoA&FW API when PMFBY_API_KEY+PMFBY_PORTAL_TOKEN set; GET /pmfby/api-status; POST /pmfby/submit-live; GET /pmfby/claim-status/:appNo', be:'real', fe:'real'},
+    {name:'OpenWeather live forecast — real API via getCredential', sub:'getCredential(OPENWEATHER_API_KEY) → api.openweathermap.org/data/2.5/weather + forecast; stores in agri_weather_data; history 7/30 days', be:'real', fe:'real'},
+    {name:'IoT sensor device provisioning', sub:'POST /api/agriculture/iot/devices → generates device_id + 32-char device_key; agri_iot_devices table; sensor_types array; platform: http|external', be:'real', fe:'real'},
+    {name:'IoT sensor HTTP push endpoint', sub:'POST /api/agriculture/sensors/reading (no auth) — device_key validation; stores to agri_sensor_readings; soil_moisture < 20% alert; GET /sensors/:farmId/latest', be:'real', fe:'real'},
+    {name:'IoT external platform polling', sub:'getCredential(IOT_API_URL+IOT_API_TOKEN) → polls Tago.io/ThingsBoard REST API; upserts readings to DB; GET /iot/devices/:farmId/status returns alerts', be:'real', fe:'real'},
+    {name:'IoT alert thresholds', sub:'soil_moisture<20%=low alert; temperature>40°C=heat alert; soil_moisture>90%=waterlogged alert; returned in /iot/devices/:farmId/status', be:'real', fe:'real'},
+    {name:'Farm-to-fork QR traceability', sub:'FTF-{year}-{base36} batch code; public GET /api/agriculture/traceability/public/:batchCode (no auth); inputs_used JSONB; sell endpoint updates sold_to/invoice_no', be:'real', fe:'real'},
+    {name:'Produce sale → GL auto-posting', sub:'POST /api/agriculture/produce-sales → DR 1100 AR / CR 4060 Agriculture Revenue / CR 2201 Mandi Fee; createJournalWithLines fire-and-forget', be:'real', fe:'real'},
+    {name:'Input purchase → GL auto-posting', sub:'POST /api/agriculture/inputs/purchase → DR 5200 Agricultural Input Cost / CR 2100 AP; createJournalWithLines fire-and-forget', be:'real', fe:'real'},
+    {name:'Weather page — full UI (was stub)', sub:'Farm selector, sync button, current weather card, 7-day history table, IoT readings grid with alerts, device provisioning + registered devices table', be:'real', fe:'real'},
+    {name:'Agriculture credentials in Integration Credentials UI', sub:'AGMARKNET_API_KEY, PMFBY_API_KEY, PMFBY_PORTAL_TOKEN, IOT_API_URL, IOT_API_TOKEN, OPENWEATHER_API_KEY — AES-256 per tenant', be:'real', fe:'real'},
+  ]},
+  {icon:'🛍️', name:'E-Commerce ERP', pct:98, color:'#e87ba4', features:[
+    {name:'Dashboard — KPIs + channel breakdown + recent orders', sub:'todayOrders, monthlyRevenue, pendingReturns, activeChannels, byChannel table', be:'real', fe:'real'},
+    {name:'Orders — full CRUD + status workflow + marketplace pull', sub:'Filter by channel/status, expand items, mark shipped, pull from Amazon/Flipkart/Meesho', be:'real', fe:'real'},
+    {name:'Listings — product catalog CRUD + stock adjust + sync push', sub:'SKU, MRP, selling price, discount %, low-stock alert, per-listing stock adjust modal', be:'real', fe:'real'},
+    {name:'Shipments — AWB tracking + Shiprocket/Delhivery + inventory sync log', sub:'Provider badges, track button, inline events, sync log table from ecom_inventory_sync', be:'real', fe:'real'},
+    {name:'Returns & RTO — full RMA workflow', sub:'Raise return, approve (fires GL: DR Revenue+GST / CR AR), process refund, type/status badges', be:'real', fe:'real'},
+    {name:'Settlements — marketplace settlement reconciliation', sub:'Gross/commission/TDS/deductions/net/UTR per channel, totals row', be:'real', fe:'real'},
+    {name:'Commission Reconciliation → GL', sub:'Per-platform records, Mark Settled fires GL: DR Bank + DR Commission Expense / CR AR', be:'real', fe:'real'},
+    {name:'Channels — marketplace connection cards', sub:'Amazon/Flipkart/Meesho/Shopify/Direct, API key config, Connected badge, setup guides', be:'real', fe:'real'},
+    {name:'Reports — sales by channel + monthly trend + top products + return analysis', sub:'CSV export, period selector (this month/last/3m/year), computed from live data', be:'real', fe:'real'},
+    {name:'Marketplace Connect — connection wizard', sub:'Per-platform setup guide, Shiprocket/Delhivery config pointer, sync all button', be:'real', fe:'real'},
+    {name:'Amazon SP-API / Flipkart / Meesho order fetch', sub:'fetchAmazonOrders/fetchFlipkartOrders/fetchMeeshoOrders — live when env keys set, DB fallback', be:'real', fe:'real'},
+    {name:'Shiprocket / Delhivery shipment creation', sub:'createShipment() — live POST /v1/external/orders/create/adhoc when creds set', be:'real', fe:'real'},
+    {name:'Multi-channel inventory sync push', sub:'syncInventoryToMarketplaces() per SKU — upsert ecom_inventory_sync, pushes when API keys set', be:'real', fe:'real'},
+    {name:'E-Commerce sale → GL (delivered/completed orders)', sub:'DR AR 1100 / CR Revenue 4000 / CR GST 2201 — fire-and-forget on status=delivered', be:'real', fe:'real'},
+    {name:'Amazon SP-API OAuth2 LWA token refresh (real)', sub:'getLwaToken(): POST api.amazon.com/auth/o2/token, module-level cache per tenant, auto-refresh 60s before expiry', be:'real', fe:'real'},
+    {name:'Flipkart Seller API — real order sync', sub:'OAuth2 client_credentials → access_token → GET /sellers/orders/search', be:'real', fe:'real'},
+    {name:'Meesho Partner API v3 — real order sync', sub:'GET app.meesho.com/api/v3/orders with Bearer token', be:'real', fe:'real'},
+    {name:'Multi-warehouse management + PIN code routing', sub:'ec_warehouses, ec_warehouse_zones (pin_from–pin_to), ec_warehouse_stock; suggest best warehouse by delivery PIN', be:'real', fe:'real'},
+    {name:'Warehouse fulfillment routing tester UI', sub:'3-tab page: Warehouses, Stock Levels (low-stock alerts), Fulfillment Zones + routing tester widget', be:'real', fe:'real'},
+    {name:'Order → warehouse allocation with stock reservation', sub:'POST /orders/:id/allocate-warehouse — zone match + stock check + reserved_qty update', be:'real', fe:'real'},
+    {name:'Amazon token status + manual refresh in Warehouses page', sub:'GET /amazon/token-status, POST /amazon/refresh-token — shows configured/cached/expiry', be:'real', fe:'real'},
+    {name:'Amazon/Flipkart/Meesho credentials in Masters → Integration Credentials', sub:'AMAZON_LWA_CLIENT_ID, AMAZON_REFRESH_TOKEN, FLIPKART_CLIENT_ID, MEESHO_API_TOKEN — AES-256 encrypted', be:'real', fe:'real'},
+  ]},
+  {icon:'📡', name:'Enterprise Phases 21–26', pct:91, color:'#378ADD', features:[
+    {name:'IFRS consolidation + IAS 16/36 + IFRS 15', sub:'Multi-subsidiary, ownership-weighted, depreciation, impairment, revenue rec', be:'real', fe:'real'},
+    {name:'ASC 606 five-step revenue recognition engine', sub:'SSP allocation, contract assets/liabilities, deferred revenue waterfall', be:'real', fe:'real'},
+    {name:'PE/VC investor dashboard + cap table + dilution model', sub:'MRR/ARR, burn, runway, EBITDA bridge, before/after dilution', be:'real', fe:'real'},
+    {name:'MRP II: multi-level BOM + ECN + finite capacity', sub:'Recursive BOM, ECN lifecycle, work center loads, bottleneck', be:'real', fe:'real'},
+    {name:'Supplier self-service portal + trade docs + landed cost', sub:'Token auth, packing list, B/L, COO, landed cost → GL', be:'real', fe:'real'},
+    {name:'Analytics Studio + BI dashboard builder', sub:'8 data sources, SQL injection guard, CSV/PDF export, OData v4', be:'real', fe:'real'},
+    {name:'SwachSign DSC/Aadhaar eSign + draw', sub:'Aadhaar OTP (eMudhra/NeSL), DSC PKCS#7, canvas draw — 3-method sign-page', be:'real', fe:'real'},
+    {name:'SwachDesk helpdesk + SLA tracking + CSAT', sub:'1047-line routes, ticket system, SLA rules, customer satisfaction', be:'real', fe:'real'},
+    {name:'SwachMeet video calls + screen share', sub:'Jitsi Meet External API embedded, JWT auth, recording, analytics', be:'real', fe:'real'},
+    {name:'SwachForms low-code form + workflow builder', sub:'Drag-drop builder, submissions, connected to approval workflows', be:'real', fe:'real'},
+    {name:'SwachSocial scheduled social media posting', sub:'Real LinkedIn /rest/posts, Facebook Graph API, Instagram 2-step publish', be:'real', fe:'real'},
+    {name:'Engagement sync (likes/comments/shares)', sub:'LinkedIn /v2/socialMetadata + Facebook Graph API pull', be:'real', fe:'real'},
+    {name:'Integration Credentials UI (Masters)', sub:'AES-256 encrypted DB storage, all API keys manageable in UI', be:'real', fe:'real'},
+    {name:'Scheduled report delivery cron (boot-time)', sub:'setInterval every 5 min on server boot, email via notif-service, advances next_send_at', be:'real', fe:'real'},
+    {name:'Trade docs as PDF (packing list, B/L, COO)', sub:'PDFKit 4 GET endpoints: packing list, B/L, COO, commercial invoice — A4 PDF stream', be:'real', fe:'real'},
+    {name:'Localization — 14 world languages, tenant-configurable', sub:'EN/हिन्दी/తెలుగు/தமிழ்/বাংলা/العربية/Español/Français/Deutsch/Português/中文/日本語/Русский/Indonesia — I18nProvider + useT(), i18n_overrides table for per-tenant custom terms, LanguageSwitcher in global header, default_locale persistence', be:'real', fe:'real'},
+    {name:'RTL support for Arabic', sub:'html[dir=rtl] auto-set, sidebar mirrored right, tables right-aligned, numerals kept LTR, Intl formatters (ar-SA currency/date/number)', be:'real', fe:'real'},
+    {name:'Nav localization — all 390 sidebar labels, all screens', sub:'i18n-nav.ts: exact dict (96 labels) + word-level dict (~230 words) applied centrally in VerticalNavSidebar — 89% of labels translated in hi/te/ar, acronyms stay English', be:'real', fe:'real'},
+  ]},
+];
+
+const badgeLabel = {real:'Real API', sim:'Simulated', ui:'UI only', none:'Not built'};
+const badgeClass = {real:'b-real', sim:'b-sim', ui:'b-ui', none:'b-none'};
+
+let allOpen = false;
+
+function toggleAll() {
+  allOpen = !allOpen;
+  document.querySelectorAll('.features').forEach(f => f.classList.toggle('open', allOpen));
+  document.querySelectorAll('.erp-head').forEach(h => h.classList.toggle('open', allOpen));
+  document.querySelector('.toggle-all').textContent = allOpen ? 'Collapse all' : 'Expand all';
+}
+
+const container = document.getElementById('erps');
+let totalReal = 0, totalSim = 0, totalNone = 0, totalFeatures = 0;
+
+data.forEach(erp => {
+  const done = erp.features.filter(f => f.be === 'real' && f.fe === 'real').length;
+  const partial = erp.features.filter(f => (f.be === 'sim' || f.fe === 'ui') && !(f.be === 'none' && f.fe === 'none')).length;
+  const none = erp.features.filter(f => f.be === 'none' && f.fe === 'none').length;
+  totalReal += done;
+  totalSim += partial;
+  totalNone += none;
+  totalFeatures += erp.features.length;
+
+  const headBg = erp.pct >= 80 ? '#EAF3DE' : erp.pct >= 60 ? '#FAEEDA' : '#FCEBEB';
+  const pctColor = erp.pct >= 80 ? '#3B6D11' : erp.pct >= 60 ? '#854F0B' : '#A32D2D';
+
+  const div = document.createElement('div');
+  div.className = 'erp';
+  div.innerHTML = `
+    <div class="erp-head" onclick="toggleErp(this)">
+      <span class="erp-icon">${erp.icon}</span>
+      <span class="erp-title">${erp.name}</span>
+      <span class="erp-pct" style="background:${headBg};color:${pctColor}">${erp.pct}% &nbsp;·&nbsp; ${done}/${erp.features.length} features fully real</span>
+      <i class="ti ti-chevron-down chevron"></i>
+    </div>
+    <div class="bar"><div class="bar-fill" style="width:${erp.pct}%;background:${erp.color}"></div></div>
+    <div class="features">
+      <div class="col-hdr">
+        <span></span>
+        <span>Feature / capability</span>
+        <span style="text-align:center">Backend</span>
+        <span style="text-align:center">Frontend</span>
+      </div>
+      ${erp.features.map(f => {
+        const ico = (f.be === 'real' && f.fe === 'real') ? '<span class="ico-done">✓</span>' :
+                    (f.be === 'none' && f.fe === 'none') ? '<span class="ico-no">✗</span>' :
+                    '<span class="ico-part">~</span>';
+        const feBadge = f.fe === 'real' ? 'Real UI' : f.fe === 'none' ? 'Not built' : f.fe === 'ui' ? 'UI only' : 'Partial';
+        const feClass = f.fe === 'real' ? 'b-real' : f.fe === 'none' ? 'b-none' : f.fe === 'ui' ? 'b-ui' : 'b-sim';
+        return `<div class="feat">
+          ${ico}
+          <div>
+            <div class="feat-name">${f.name}</div>
+            <div class="feat-sub">${f.sub}</div>
+          </div>
+          <div style="text-align:center"><span class="badge ${badgeClass[f.be]}">${badgeLabel[f.be]}</span></div>
+          <div style="text-align:center"><span class="badge ${feClass}">${feBadge}</span></div>
+        </div>`;
+      }).join('')}
+    </div>
+  `;
+  container.appendChild(div);
+});
+
+function toggleErp(head) {
+  head.classList.toggle('open');
+  head.nextElementSibling.nextElementSibling.classList.toggle('open');
+}
+
+const summary = document.getElementById('summary');
+summary.innerHTML = `
+  <div class="stat"><div class="stat-val" style="color:#3B6D11">${totalReal}</div><div class="stat-lbl">Features fully real (backend + frontend)</div></div>
+  <div class="stat"><div class="stat-val" style="color:#854F0B">${totalSim}</div><div class="stat-lbl">Features simulated or UI-only</div></div>
+  <div class="stat"><div class="stat-val" style="color:#A32D2D">${totalNone}</div><div class="stat-lbl">Features not yet built</div></div>
+  <div class="stat"><div class="stat-val">${totalFeatures}</div><div class="stat-lbl">Total features audited across all ERPs</div></div>
+`;
+</script>
+</body>
+</html>

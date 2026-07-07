@@ -13,6 +13,10 @@ function auth(req: any, res: any, next: any) {
   next();
 }
 
+// Aliases used by the store-transfers block
+const requireAuth = auth;
+const tid = getTenantId;
+
 // ─── HARDWARE SIMULATION / CONFIG ───────────────────────────────────────────
 
 router.get("/hardware/config", auth, async (req: any, res: any) => {
@@ -288,13 +292,15 @@ router.get("/loyalty/config", auth, async (req: any, res: any) => {
 router.put("/loyalty/config", auth, async (req: any, res: any) => {
   try {
     const tid = getTenantId(req);
-    const { points_per_50_rupees, redemption_value_per_point } = req.body;
+    const { points_per_50_rupees, redemption_value_per_point, expiry_days } = req.body;
+    await db.execute(sql`ALTER TABLE loyalty_config ADD COLUMN IF NOT EXISTS expiry_days INT DEFAULT 365`);
     const r = await db.execute(sql`
-      INSERT INTO loyalty_config (tenant_id, points_per_50_rupees, redemption_value_per_point, updated_at)
-      VALUES (${tid}, ${points_per_50_rupees}, ${redemption_value_per_point}, NOW())
+      INSERT INTO loyalty_config (tenant_id, points_per_50_rupees, redemption_value_per_point, expiry_days, updated_at)
+      VALUES (${tid}, ${points_per_50_rupees}, ${redemption_value_per_point}, ${expiry_days ?? 365}, NOW())
       ON CONFLICT (tenant_id) DO UPDATE SET
         points_per_50_rupees = EXCLUDED.points_per_50_rupees,
         redemption_value_per_point = EXCLUDED.redemption_value_per_point,
+        expiry_days = EXCLUDED.expiry_days,
         updated_at = NOW()
       RETURNING *
     `);
@@ -302,6 +308,156 @@ router.put("/loyalty/config", auth, async (req: any, res: any) => {
   } catch (e: any) {
     res.status(500).json({ message: e.message });
   }
+});
+
+// ─── LOYALTY EXPIRY ENGINE ───────────────────────────────────────────────────
+
+router.get("/loyalty/expiry-stats", auth, async (req: any, res: any) => {
+  try {
+    const tid = getTenantId(req);
+    await db.execute(sql`ALTER TABLE loyalty_config ADD COLUMN IF NOT EXISTS expiry_days INT DEFAULT 365`);
+    const cfg = await db.execute(sql`SELECT COALESCE(expiry_days, 365) AS expiry_days FROM loyalty_config WHERE tenant_id = ${tid} LIMIT 1`);
+    const expiryDays = Number((cfg.rows[0] as any)?.expiry_days ?? 365);
+    const stats = await db.execute(sql`
+      SELECT
+        COUNT(*) FILTER (WHERE points_balance > 0) AS active_members,
+        COALESCE(SUM(points_balance), 0) AS total_points_outstanding,
+        COUNT(*) FILTER (WHERE points_balance > 0 AND updated_at < NOW() - (${expiryDays} || ' days')::interval) AS already_expired,
+        COUNT(*) FILTER (WHERE points_balance > 0 AND updated_at < NOW() - ((${expiryDays} - 7) || ' days')::interval AND updated_at >= NOW() - (${expiryDays} || ' days')::interval) AS expiring_7d,
+        COUNT(*) FILTER (WHERE points_balance > 0 AND updated_at < NOW() - ((${expiryDays} - 30) || ' days')::interval AND updated_at >= NOW() - (${expiryDays} || ' days')::interval) AS expiring_30d
+      FROM loyalty_customers WHERE tenant_id = ${tid}
+    `);
+    const expiring = await db.execute(sql`
+      SELECT id, name, phone, points_balance, updated_at,
+        (updated_at + (${expiryDays} || ' days')::interval)::date AS expiry_date
+      FROM loyalty_customers
+      WHERE tenant_id = ${tid} AND points_balance > 0
+        AND updated_at < NOW() - ((${expiryDays} - 30) || ' days')::interval
+      ORDER BY updated_at ASC LIMIT 50
+    `);
+    res.json({ expiry_days: expiryDays, ...stats.rows[0], expiring_soon: expiring.rows });
+  } catch (e: any) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+router.post("/loyalty/expire-now", auth, async (req: any, res: any) => {
+  try {
+    const { expireRetailLoyaltyPoints } = await import("./loyalty-expiry-service");
+    const count = await expireRetailLoyaltyPoints();
+    res.json({ success: true, customers_expired: count });
+  } catch (e: any) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// ─── OMNI-CHANNEL STOCK SYNC ─────────────────────────────────────────────────
+
+async function ensureChannelTables() {
+  await db.execute(sql`CREATE TABLE IF NOT EXISTS retail_channel_listings (
+    id SERIAL PRIMARY KEY, tenant_id INT NOT NULL,
+    product_id INT NOT NULL, channel VARCHAR(50) NOT NULL,
+    channel_sku VARCHAR(100), channel_price NUMERIC(12,2),
+    online_stock NUMERIC(12,2) DEFAULT 0,
+    buffer_qty NUMERIC(12,2) DEFAULT 0,
+    is_active INT DEFAULT 1,
+    last_synced_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE (tenant_id, product_id, channel)
+  )`);
+  await db.execute(sql`CREATE TABLE IF NOT EXISTS retail_channel_sync_log (
+    id SERIAL PRIMARY KEY, tenant_id INT NOT NULL,
+    channel VARCHAR(50), products_synced INT DEFAULT 0,
+    direction VARCHAR(20) DEFAULT 'push',
+    status VARCHAR(20) DEFAULT 'success', detail TEXT,
+    synced_at TIMESTAMPTZ DEFAULT NOW()
+  )`);
+}
+
+router.get("/omni-channel/listings", auth, async (req: any, res: any) => {
+  try {
+    const tid = getTenantId(req);
+    await ensureChannelTables();
+    const rows = await db.execute(sql`
+      SELECT cl.*, p.name AS product_name, p.sku,
+        COALESCE((SELECT SUM(qty_on_hand) FROM inventory_items ii WHERE ii.product_id = cl.product_id AND ii.tenant_id = ${tid}), 0) AS store_stock
+      FROM retail_channel_listings cl
+      LEFT JOIN products p ON p.id = cl.product_id
+      WHERE cl.tenant_id = ${tid} AND cl.is_active = 1
+      ORDER BY cl.channel, p.name
+    `);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/omni-channel/listings", auth, async (req: any, res: any) => {
+  try {
+    const tid = getTenantId(req);
+    await ensureChannelTables();
+    const { product_id, channel, channel_sku, channel_price, buffer_qty } = req.body;
+    const r = await db.execute(sql`
+      INSERT INTO retail_channel_listings (tenant_id, product_id, channel, channel_sku, channel_price, buffer_qty)
+      VALUES (${tid}, ${product_id}, ${channel}, ${channel_sku || null}, ${channel_price || 0}, ${buffer_qty || 0})
+      ON CONFLICT (tenant_id, product_id, channel) DO UPDATE SET
+        channel_sku = EXCLUDED.channel_sku, channel_price = EXCLUDED.channel_price,
+        buffer_qty = EXCLUDED.buffer_qty, is_active = 1
+      RETURNING *
+    `);
+    res.json(r.rows[0]);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.delete("/omni-channel/listings/:id", auth, async (req: any, res: any) => {
+  try {
+    const tid = getTenantId(req);
+    await db.execute(sql`UPDATE retail_channel_listings SET is_active = 0 WHERE id = ${parseInt(req.params.id)} AND tenant_id = ${tid}`);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// Push current store stock (minus buffer) to every active channel listing
+router.post("/omni-channel/sync", auth, async (req: any, res: any) => {
+  try {
+    const tid = getTenantId(req);
+    await ensureChannelTables();
+    const r = await db.execute(sql`
+      UPDATE retail_channel_listings cl
+      SET online_stock = GREATEST(0, COALESCE((SELECT SUM(qty_on_hand) FROM inventory_items ii WHERE ii.product_id = cl.product_id AND ii.tenant_id = ${tid}), 0) - cl.buffer_qty),
+          last_synced_at = NOW()
+      WHERE cl.tenant_id = ${tid} AND cl.is_active = 1
+      RETURNING cl.channel
+    `);
+    const byChannel: Record<string, number> = {};
+    for (const row of r.rows as any[]) byChannel[row.channel] = (byChannel[row.channel] || 0) + 1;
+    for (const [channel, count] of Object.entries(byChannel)) {
+      await db.execute(sql`INSERT INTO retail_channel_sync_log (tenant_id, channel, products_synced, direction, status) VALUES (${tid}, ${channel}, ${count}, 'push', 'success')`);
+    }
+    res.json({ success: true, products_synced: (r.rows as any[]).length, channels: byChannel });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+// Online channel order webhook — decrement store stock so offline POS sees it
+router.post("/omni-channel/order", auth, async (req: any, res: any) => {
+  try {
+    const tid = getTenantId(req);
+    await ensureChannelTables();
+    const { channel, items } = req.body; // items: [{ product_id, qty }]
+    for (const it of (items || [])) {
+      await db.execute(sql`UPDATE inventory_items SET qty_on_hand = GREATEST(0, qty_on_hand - ${it.qty}) WHERE product_id = ${it.product_id} AND tenant_id = ${tid}`);
+      await db.execute(sql`UPDATE retail_channel_listings SET online_stock = GREATEST(0, online_stock - ${it.qty}) WHERE product_id = ${it.product_id} AND tenant_id = ${tid} AND channel = ${channel}`);
+    }
+    await db.execute(sql`INSERT INTO retail_channel_sync_log (tenant_id, channel, products_synced, direction, status, detail) VALUES (${tid}, ${channel}, ${(items || []).length}, 'pull', 'success', 'online order stock decrement')`);
+    res.json({ success: true, items_decremented: (items || []).length });
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.get("/omni-channel/sync-log", auth, async (req: any, res: any) => {
+  try {
+    const tid = getTenantId(req);
+    await ensureChannelTables();
+    const rows = await db.execute(sql`SELECT * FROM retail_channel_sync_log WHERE tenant_id = ${tid} ORDER BY synced_at DESC LIMIT 50`);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 
 // ─── EXPIRY & BATCH ──────────────────────────────────────────────────────────
@@ -912,6 +1068,127 @@ router.get("/offline/pending-sync-count", auth, async (req: any, res: any) => {
   } catch (e: any) {
     res.status(500).json({ message: e.message });
   }
+});
+
+// ── Multi-Store Transfer Orders ──────────────────────────────────────────────
+router.get("/store-transfers", requireAuth, async (req: any, res) => {
+  const t = tid(req);
+  const { status, from_store, to_store } = req.query;
+  try {
+    await db.execute(sql`CREATE TABLE IF NOT EXISTS retail_store_transfers (
+      id SERIAL PRIMARY KEY, tenant_id INT NOT NULL,
+      transfer_no VARCHAR(50) NOT NULL,
+      from_store_id INT NOT NULL, to_store_id INT NOT NULL,
+      from_store_name VARCHAR(200), to_store_name VARCHAR(200),
+      transfer_date DATE NOT NULL DEFAULT CURRENT_DATE,
+      expected_arrival DATE,
+      status VARCHAR(30) DEFAULT 'draft',
+      total_items INT DEFAULT 0, total_qty NUMERIC(12,2) DEFAULT 0,
+      total_value NUMERIC(14,2) DEFAULT 0,
+      dispatched_by INT, received_by INT,
+      dispatch_notes TEXT, receiving_notes TEXT,
+      created_by INT, created_at TIMESTAMPTZ DEFAULT NOW(), record_status INT DEFAULT 1
+    )`);
+    await db.execute(sql`CREATE TABLE IF NOT EXISTS retail_store_transfer_items (
+      id SERIAL PRIMARY KEY, transfer_id INT NOT NULL,
+      product_id INT NOT NULL, product_name VARCHAR(300), sku VARCHAR(100),
+      requested_qty NUMERIC(12,2) DEFAULT 0,
+      dispatched_qty NUMERIC(12,2) DEFAULT 0,
+      received_qty NUMERIC(12,2) DEFAULT 0,
+      unit VARCHAR(30) DEFAULT 'Nos',
+      unit_cost NUMERIC(12,2) DEFAULT 0, total_cost NUMERIC(14,2) DEFAULT 0,
+      batch_no VARCHAR(50), expiry_date DATE,
+      status VARCHAR(20) DEFAULT 'pending'
+    )`);
+    let q = sql`SELECT st.*,
+      (SELECT COUNT(*) FROM retail_store_transfer_items i WHERE i.transfer_id=st.id) as line_count
+      FROM retail_store_transfers st WHERE st.tenant_id=${t} AND st.record_status=1`;
+    if (status) q = sql`${q} AND st.status=${status}`;
+    if (from_store) q = sql`${q} AND st.from_store_id=${parseInt(from_store as string)}`;
+    if (to_store) q = sql`${q} AND st.to_store_id=${parseInt(to_store as string)}`;
+    q = sql`${q} ORDER BY st.transfer_date DESC, st.created_at DESC LIMIT 100`;
+    const rows = await db.execute(q);
+    res.json(rows.rows);
+  } catch(e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/store-transfers", requireAuth, async (req: any, res) => {
+  const t = tid(req);
+  const { from_store_id, from_store_name, to_store_id, to_store_name, transfer_date, expected_arrival, dispatch_notes, items } = req.body;
+  try {
+    const count = await db.execute(sql`SELECT COUNT(*) as n FROM retail_store_transfers WHERE tenant_id=${t}`);
+    const seq = String(Number((count.rows[0] as any).n)+1).padStart(5,'0');
+    const trNo = `TRF-${new Date().getFullYear()}-${seq}`;
+    const totalQty = (items||[]).reduce((s: number, i: any) => s + Number(i.requested_qty||0), 0);
+    const totalVal = (items||[]).reduce((s: number, i: any) => s + (Number(i.requested_qty||0)*Number(i.unit_cost||0)), 0);
+    const r = await db.execute(sql`INSERT INTO retail_store_transfers (tenant_id, transfer_no, from_store_id, from_store_name, to_store_id, to_store_name, transfer_date, expected_arrival, total_items, total_qty, total_value, dispatch_notes, created_by)
+      VALUES (${t}, ${trNo}, ${from_store_id}, ${from_store_name||null}, ${to_store_id}, ${to_store_name||null}, ${transfer_date||new Date().toISOString().slice(0,10)}, ${expected_arrival||null}, ${(items||[]).length}, ${totalQty}, ${totalVal}, ${dispatch_notes||null}, ${req.user?.id||null}) RETURNING *`);
+    const tr = r.rows[0] as any;
+    for (const it of (items||[])) {
+      await db.execute(sql`INSERT INTO retail_store_transfer_items (transfer_id, product_id, product_name, sku, requested_qty, unit, unit_cost, total_cost, batch_no, expiry_date) VALUES (${tr.id}, ${it.product_id}, ${it.product_name||null}, ${it.sku||null}, ${it.requested_qty||0}, ${it.unit||'Nos'}, ${it.unit_cost||0}, ${(it.requested_qty||0)*(it.unit_cost||0)}, ${it.batch_no||null}, ${it.expiry_date||null})`);
+    }
+    res.json(tr);
+  } catch(e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.get("/store-transfers/:id/items", requireAuth, async (req: any, res) => {
+  try {
+    const rows = await db.execute(sql`SELECT i.*, p.name as product_name_resolved, p.sku as product_sku FROM retail_store_transfer_items i LEFT JOIN products p ON p.id=i.product_id WHERE i.transfer_id=${parseInt(req.params.id)} ORDER BY i.id`);
+    res.json(rows.rows);
+  } catch(e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/store-transfers/:id/dispatch", requireAuth, async (req: any, res) => {
+  const t = tid(req);
+  const { dispatched_items, dispatched_by, dispatch_notes } = req.body;
+  try {
+    const trId = parseInt(req.params.id);
+    for (const it of (dispatched_items||[])) {
+      await db.execute(sql`UPDATE retail_store_transfer_items SET dispatched_qty=${it.dispatched_qty}, status='dispatched' WHERE id=${it.transfer_item_id} AND transfer_id=${trId}`);
+      await db.execute(sql`UPDATE inventory_items SET qty_on_hand = qty_on_hand - ${it.dispatched_qty} WHERE product_id=(SELECT product_id FROM retail_store_transfer_items WHERE id=${it.transfer_item_id}) AND warehouse_id=(SELECT from_store_id FROM retail_store_transfers WHERE id=${trId}) AND tenant_id=${t}`);
+    }
+    await db.execute(sql`UPDATE retail_store_transfers SET status='in_transit', dispatched_by=${dispatched_by||null}, dispatch_notes=${dispatch_notes||null} WHERE id=${trId} AND tenant_id=${t}`);
+    res.json({ success: true, status: 'in_transit' });
+  } catch(e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.post("/store-transfers/:id/receive", requireAuth, async (req: any, res) => {
+  const t = tid(req);
+  const { received_items, received_by, receiving_notes } = req.body;
+  try {
+    const trId = parseInt(req.params.id);
+    let hasShortage = false;
+    for (const it of (received_items||[])) {
+      const prev = await db.execute(sql`SELECT dispatched_qty FROM retail_store_transfer_items WHERE id=${it.transfer_item_id}`);
+      const disp = Number((prev.rows[0] as any)?.dispatched_qty || 0);
+      const rcvd = Number(it.received_qty || 0);
+      const itemStatus = rcvd < disp ? 'shortage' : 'received';
+      if (itemStatus === 'shortage') hasShortage = true;
+      await db.execute(sql`UPDATE retail_store_transfer_items SET received_qty=${rcvd}, status=${itemStatus} WHERE id=${it.transfer_item_id} AND transfer_id=${trId}`);
+      if (rcvd > 0) {
+        const pi = await db.execute(sql`SELECT product_id FROM retail_store_transfer_items WHERE id=${it.transfer_item_id}`);
+        const productId = (pi.rows[0] as any)?.product_id;
+        const toStore = await db.execute(sql`SELECT to_store_id FROM retail_store_transfers WHERE id=${trId}`);
+        const toStoreId = (toStore.rows[0] as any)?.to_store_id;
+        if (productId && toStoreId) {
+          await db.execute(sql`INSERT INTO inventory_items (tenant_id, product_id, warehouse_id, qty_on_hand) VALUES (${t}, ${productId}, ${toStoreId}, ${rcvd}) ON CONFLICT (product_id, warehouse_id) DO UPDATE SET qty_on_hand = inventory_items.qty_on_hand + ${rcvd} WHERE inventory_items.tenant_id=${t}`);
+        }
+      }
+    }
+    const finalStatus = hasShortage ? 'partially_received' : 'received';
+    await db.execute(sql`UPDATE retail_store_transfers SET status=${finalStatus}, received_by=${received_by||null}, receiving_notes=${receiving_notes||null} WHERE id=${trId} AND tenant_id=${t}`);
+    res.json({ success: true, status: finalStatus, has_shortage: hasShortage });
+  } catch(e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.put("/store-transfers/:id/cancel", requireAuth, async (req: any, res) => {
+  const t = tid(req);
+  try {
+    const tr = await db.execute(sql`SELECT status FROM retail_store_transfers WHERE id=${parseInt(req.params.id)} AND tenant_id=${t}`);
+    if ((tr.rows[0] as any)?.status === 'received') return res.status(400).json({ message: 'Cannot cancel received transfer' });
+    await db.execute(sql`UPDATE retail_store_transfers SET status='cancelled' WHERE id=${parseInt(req.params.id)} AND tenant_id=${t}`);
+    res.json({ success: true });
+  } catch(e: any) { res.status(500).json({ message: e.message }); }
 });
 
 export default router;

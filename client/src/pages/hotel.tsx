@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Search, BedDouble, Users, Calendar, Receipt, Sparkles, Pencil, Trash2, LogIn, LogOut, X } from "lucide-react";
+import { Plus, Search, BedDouble, Users, Calendar, Receipt, Sparkles, Pencil, Trash2, LogIn, LogOut, X, FileText, RefreshCw } from "lucide-react";
 
 const fmt = (n: any) => Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
 
@@ -476,7 +476,7 @@ function FoliosTab() {
       <div className="rounded-md border overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-muted text-muted-foreground">
-            <tr>{["Folio No", "Guest", "Room", "Total", "Paid", "Balance", "Status"].map(h => <th key={h} className="text-left px-3 py-2 font-medium">{h}</th>)}</tr>
+            <tr>{["Folio No", "Guest", "Room", "Total", "Paid", "Balance", "Status", "PDF"].map(h => <th key={h} className="text-left px-3 py-2 font-medium">{h}</th>)}</tr>
           </thead>
           <tbody>
             {filtered.map(f => (
@@ -488,9 +488,14 @@ function FoliosTab() {
                 <td className="px-3 py-2">₹{fmt(f.paid_amount)}</td>
                 <td className="px-3 py-2">₹{fmt(f.balance_amount)}</td>
                 <td className="px-3 py-2"><Badge className={STATUS_COLORS[f.status] || ""}>{f.status}</Badge></td>
+                <td className="px-3 py-2">
+                  <Button size="sm" variant="ghost" onClick={() => window.open(`/api/hotel/enterprise/folios/${f.id}/pdf`, "_blank")} title="Download Folio PDF">
+                    <FileText className="h-4 w-4" />
+                  </Button>
+                </td>
               </tr>
             ))}
-            {filtered.length === 0 && <tr><td colSpan={7} className="px-3 py-4 text-center text-muted-foreground">No folios found</td></tr>}
+            {filtered.length === 0 && <tr><td colSpan={8} className="px-3 py-4 text-center text-muted-foreground">No folios found</td></tr>}
           </tbody>
         </table>
       </div>
@@ -727,6 +732,77 @@ function GuestsTab() {
   );
 }
 
+// ── Channel Manager Tab ───────────────────────────────────────────────────────
+function ChannelManagerTab() {
+  const { toast } = useToast();
+  const [syncing, setSyncing] = useState(false);
+  const { data: rates = [], refetch } = useQuery<any[]>({ queryKey: ["/api/hotel/enterprise/channels/rates"] });
+
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const r = await apiRequest("POST", "/api/hotel/enterprise/channels/sync");
+      toast({ title: "Sync Complete", description: `${(r as any).synced ?? 0} rates synced from ${(r as any).source ?? ""}` });
+      refetch();
+    } catch (e: any) {
+      toast({ title: "Sync Failed", description: e.message, variant: "destructive" });
+    } finally { setSyncing(false); }
+  };
+
+  const channels = [...new Set(rates.map((r: any) => r.channel))];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">OTA Channel Rates</h2>
+        <Button onClick={handleSync} disabled={syncing} size="sm">
+          <RefreshCw className={`h-4 w-4 mr-1 ${syncing ? "animate-spin" : ""}`} />
+          {syncing ? "Syncing..." : "Sync Rates"}
+        </Button>
+      </div>
+
+      {channels.length === 0 ? (
+        <Card>
+          <CardContent className="py-8 text-center text-muted-foreground">
+            No channel rates found. Click "Sync Rates" to fetch.
+          </CardContent>
+        </Card>
+      ) : (
+        channels.map(channel => (
+          <Card key={channel}>
+            <CardHeader><CardTitle className="text-base">{channel}</CardTitle></CardHeader>
+            <CardContent>
+              <div className="rounded-md border overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted text-muted-foreground">
+                    <tr>
+                      {["Room Type", "Date", "Rate", "Available Rooms", "Last Synced"].map(h =>
+                        <th key={h} className="text-left px-3 py-2 font-medium">{h}</th>)}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rates.filter((r: any) => r.channel === channel).map((r: any, i: number) => (
+                      <tr key={i} className="border-t hover:bg-muted/30">
+                        <td className="px-3 py-2">{r.room_type_name || r.room_type_id || "—"}</td>
+                        <td className="px-3 py-2">{r.rate_date ? new Date(r.rate_date).toLocaleDateString("en-IN") : "—"}</td>
+                        <td className="px-3 py-2">₹{Number(r.rate_amount || 0).toLocaleString()}</td>
+                        <td className="px-3 py-2">{r.available_rooms}</td>
+                        <td className="px-3 py-2 text-xs text-muted-foreground">
+                          {r.last_synced ? new Date(r.last_synced).toLocaleString("en-IN") : "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        ))
+      )}
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function HotelPage() {
   return (
@@ -750,6 +826,7 @@ export default function HotelPage() {
           <TabsTrigger value="checkinout">Check-in/out</TabsTrigger>
           <TabsTrigger value="folios">Folios</TabsTrigger>
           <TabsTrigger value="housekeeping">Housekeeping</TabsTrigger>
+          <TabsTrigger value="channels">Channel Manager</TabsTrigger>
         </TabsList>
         <TabsContent value="overview"><OverviewTab /></TabsContent>
         <TabsContent value="rooms"><RoomsTab /></TabsContent>
@@ -758,6 +835,7 @@ export default function HotelPage() {
         <TabsContent value="checkinout"><CheckInOutTab /></TabsContent>
         <TabsContent value="folios"><FoliosTab /></TabsContent>
         <TabsContent value="housekeeping"><HousekeepingTab /></TabsContent>
+        <TabsContent value="channels"><ChannelManagerTab /></TabsContent>
       </Tabs>
     </div>
   );
