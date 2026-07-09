@@ -1,8 +1,19 @@
 import { db } from "./db";
 import { sql } from "drizzle-orm";
 
+async function tableExists(tableName: string): Promise<boolean> {
+  const result = await db.execute(sql`
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = ${tableName}
+    LIMIT 1
+  `);
+  return result.rows.length > 0;
+}
+
 export async function expireLoyaltyPoints(): Promise<number> {
   try {
+    if (!(await tableExists("restaurant_customers"))) return 0;
+
     const today = new Date().toISOString().split("T")[0];
 
     const expired = await db.execute(sql`
@@ -33,10 +44,10 @@ export async function expireLoyaltyPoints(): Promise<number> {
   }
 }
 
-// Retail POS loyalty: points expire when a customer's last activity (updated_at)
-// is older than loyalty_config.expiry_days (0 = never expire)
 export async function expireRetailLoyaltyPoints(): Promise<number> {
   try {
+    if (!(await tableExists("loyalty_config"))) return 0;
+
     await db.execute(sql`ALTER TABLE loyalty_config ADD COLUMN IF NOT EXISTS expiry_days INT DEFAULT 365`);
     const expired = await db.execute(sql`
       UPDATE loyalty_customers lc
