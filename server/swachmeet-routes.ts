@@ -660,5 +660,400 @@ meetPublicRouter.post("/:roomCode/register", async (req: any, res) => {
   res.status(201).json({ registration: result.rows[0], message: "Registration successful!" });
 });
 
+// ============================================================
+// EXTENDED TABLES (Teams-level features)
+// ============================================================
+async function ensureExtendedTables() {
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS meet_channels (
+      id SERIAL PRIMARY KEY,
+      tenant_id INT NOT NULL,
+      name VARCHAR(200) NOT NULL,
+      description TEXT,
+      channel_type VARCHAR(30) DEFAULT 'public',
+      created_by INT,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS meet_channel_messages (
+      id SERIAL PRIMARY KEY,
+      channel_id INT NOT NULL,
+      tenant_id INT NOT NULL,
+      user_id INT,
+      sender_name VARCHAR(200),
+      message TEXT NOT NULL,
+      attachments JSONB DEFAULT '[]',
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS meet_agendas (
+      id SERIAL PRIMARY KEY,
+      room_id INT NOT NULL,
+      tenant_id INT NOT NULL,
+      title VARCHAR(300) NOT NULL,
+      description TEXT,
+      duration_mins INT DEFAULT 5,
+      presenter VARCHAR(200),
+      sort_order INT DEFAULT 0,
+      done BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS meet_polls (
+      id SERIAL PRIMARY KEY,
+      room_id INT NOT NULL,
+      tenant_id INT NOT NULL,
+      question TEXT NOT NULL,
+      options JSONB NOT NULL DEFAULT '[]',
+      is_anonymous BOOLEAN DEFAULT TRUE,
+      is_open BOOLEAN DEFAULT TRUE,
+      created_by INT,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS meet_poll_votes (
+      id SERIAL PRIMARY KEY,
+      poll_id INT NOT NULL,
+      tenant_id INT NOT NULL,
+      voter_name VARCHAR(200),
+      option_index INT NOT NULL,
+      voted_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS meet_notes (
+      id SERIAL PRIMARY KEY,
+      room_id INT NOT NULL,
+      tenant_id INT NOT NULL,
+      note_type VARCHAR(30) DEFAULT 'note',
+      content TEXT NOT NULL,
+      author_name VARCHAR(200),
+      is_action_item BOOLEAN DEFAULT FALSE,
+      assigned_to VARCHAR(200),
+      due_date DATE,
+      done BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS meet_summaries (
+      id SERIAL PRIMARY KEY,
+      room_id INT NOT NULL,
+      tenant_id INT NOT NULL,
+      summary TEXT,
+      key_points JSONB DEFAULT '[]',
+      action_items JSONB DEFAULT '[]',
+      decisions JSONB DEFAULT '[]',
+      generated_at TIMESTAMPTZ DEFAULT NOW(),
+      is_ai BOOLEAN DEFAULT FALSE
+    )
+  `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS meet_templates (
+      id SERIAL PRIMARY KEY,
+      tenant_id INT NOT NULL,
+      name VARCHAR(200) NOT NULL,
+      description TEXT,
+      room_type VARCHAR(30) DEFAULT 'meeting',
+      max_participants INT DEFAULT 10,
+      agenda_template JSONB DEFAULT '[]',
+      is_default BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+}
+let extTablesReady = false;
+async function ensureExtOnce() {
+  if (extTablesReady) return;
+  await ensureExtendedTables();
+  extTablesReady = true;
+}
+
+// ---- CHANNELS ----
+router.get("/channels", requireAuth, async (req: any, res) => {
+  await ensureExtOnce();
+  const rows = await db.execute(sql`
+    SELECT c.*,
+      (SELECT COUNT(*) FROM meet_channel_messages m WHERE m.channel_id = c.id) AS message_count,
+      (SELECT MAX(m.created_at) FROM meet_channel_messages m WHERE m.channel_id = c.id) AS last_active
+    FROM meet_channels c WHERE c.tenant_id = ${tid(req)} ORDER BY c.created_at DESC
+  `);
+  res.json(rows.rows);
+});
+
+router.post("/channels", requireAuth, async (req: any, res) => {
+  await ensureExtOnce();
+  const { name, description, channel_type } = req.body;
+  if (!name) return res.status(400).json({ message: "Name required" });
+  const result = await db.execute(sql`
+    INSERT INTO meet_channels (tenant_id, name, description, channel_type, created_by)
+    VALUES (${tid(req)}, ${name}, ${description || null}, ${channel_type || "public"}, ${req.user?.id || null})
+    RETURNING *
+  `);
+  res.status(201).json(result.rows[0]);
+});
+
+router.delete("/channels/:id", requireAuth, async (req: any, res) => {
+  await ensureExtOnce();
+  await db.execute(sql`DELETE FROM meet_channels WHERE id = ${req.params.id} AND tenant_id = ${tid(req)}`);
+  res.json({ message: "Deleted" });
+});
+
+router.get("/channels/:id/messages", requireAuth, async (req: any, res) => {
+  await ensureExtOnce();
+  const limit = parseInt((req.query.limit as string) || "50");
+  const rows = await db.execute(sql`
+    SELECT * FROM meet_channel_messages WHERE channel_id = ${req.params.id} AND tenant_id = ${tid(req)}
+    ORDER BY created_at DESC LIMIT ${limit}
+  `);
+  res.json((rows.rows as any[]).reverse());
+});
+
+router.post("/channels/:id/messages", requireAuth, async (req: any, res) => {
+  await ensureExtOnce();
+  const { message } = req.body;
+  if (!message?.trim()) return res.status(400).json({ message: "Message required" });
+  const result = await db.execute(sql`
+    INSERT INTO meet_channel_messages (channel_id, tenant_id, user_id, sender_name, message)
+    VALUES (${req.params.id}, ${tid(req)}, ${req.user?.id || null}, ${(req.user as any)?.name || (req.user as any)?.username || "User"}, ${message.trim()})
+    RETURNING *
+  `);
+  res.status(201).json(result.rows[0]);
+});
+
+// ---- AGENDA ----
+router.get("/rooms/:id/agenda", requireAuth, async (req: any, res) => {
+  await ensureExtOnce();
+  const rows = await db.execute(sql`SELECT * FROM meet_agendas WHERE room_id = ${req.params.id} AND tenant_id = ${tid(req)} ORDER BY sort_order, id`);
+  res.json(rows.rows);
+});
+
+router.post("/rooms/:id/agenda", requireAuth, async (req: any, res) => {
+  await ensureExtOnce();
+  const { title, description, duration_mins, presenter, sort_order } = req.body;
+  const result = await db.execute(sql`
+    INSERT INTO meet_agendas (room_id, tenant_id, title, description, duration_mins, presenter, sort_order)
+    VALUES (${req.params.id}, ${tid(req)}, ${title}, ${description || null}, ${duration_mins || 5}, ${presenter || null}, ${sort_order || 0})
+    RETURNING *
+  `);
+  res.status(201).json(result.rows[0]);
+});
+
+router.put("/rooms/:id/agenda/:agendaId", requireAuth, async (req: any, res) => {
+  await ensureExtOnce();
+  const { title, description, duration_mins, presenter, done, sort_order } = req.body;
+  await db.execute(sql`
+    UPDATE meet_agendas SET title = COALESCE(${title || null}, title), description = COALESCE(${description || null}, description),
+      duration_mins = COALESCE(${duration_mins || null}, duration_mins), presenter = COALESCE(${presenter || null}, presenter),
+      done = COALESCE(${done ?? null}, done), sort_order = COALESCE(${sort_order ?? null}, sort_order)
+    WHERE id = ${req.params.agendaId} AND room_id = ${req.params.id} AND tenant_id = ${tid(req)}
+  `);
+  res.json({ message: "Updated" });
+});
+
+router.delete("/rooms/:id/agenda/:agendaId", requireAuth, async (req: any, res) => {
+  await ensureExtOnce();
+  await db.execute(sql`DELETE FROM meet_agendas WHERE id = ${req.params.agendaId} AND room_id = ${req.params.id} AND tenant_id = ${tid(req)}`);
+  res.json({ message: "Deleted" });
+});
+
+// ---- POLLS ----
+router.get("/rooms/:id/polls", requireAuth, async (req: any, res) => {
+  await ensureExtOnce();
+  const rows = await db.execute(sql`SELECT * FROM meet_polls WHERE room_id = ${req.params.id} AND tenant_id = ${tid(req)} ORDER BY created_at`);
+  res.json(rows.rows);
+});
+
+router.post("/rooms/:id/polls", requireAuth, async (req: any, res) => {
+  await ensureExtOnce();
+  const { question, options, is_anonymous } = req.body;
+  if (!question || !Array.isArray(options) || options.length < 2) return res.status(400).json({ message: "Question and at least 2 options required" });
+  const result = await db.execute(sql`
+    INSERT INTO meet_polls (room_id, tenant_id, question, options, is_anonymous, created_by)
+    VALUES (${req.params.id}, ${tid(req)}, ${question}, ${JSON.stringify(options)}, ${is_anonymous ?? true}, ${req.user?.id || null})
+    RETURNING *
+  `);
+  res.status(201).json(result.rows[0]);
+});
+
+router.post("/rooms/:id/polls/:pollId/vote", requireAuth, async (req: any, res) => {
+  await ensureExtOnce();
+  const { option_index, voter_name } = req.body;
+  await db.execute(sql`
+    INSERT INTO meet_poll_votes (poll_id, tenant_id, voter_name, option_index)
+    VALUES (${req.params.pollId}, ${tid(req)}, ${voter_name || (req.user as any)?.name || "Anonymous"}, ${option_index})
+  `);
+  const votes = await db.execute(sql`SELECT option_index, COUNT(*) as count FROM meet_poll_votes WHERE poll_id = ${req.params.pollId} GROUP BY option_index ORDER BY option_index`);
+  res.json({ message: "Voted", results: votes.rows });
+});
+
+router.get("/rooms/:id/polls/:pollId/results", requireAuth, async (req: any, res) => {
+  await ensureExtOnce();
+  const poll = await db.execute(sql`SELECT * FROM meet_polls WHERE id = ${req.params.pollId}`);
+  const votes = await db.execute(sql`SELECT option_index, COUNT(*) as count FROM meet_poll_votes WHERE poll_id = ${req.params.pollId} GROUP BY option_index ORDER BY option_index`);
+  const total = (votes.rows as any[]).reduce((s, r) => s + parseInt(r.count), 0);
+  res.json({ poll: poll.rows[0], votes: votes.rows, total_votes: total });
+});
+
+router.put("/rooms/:id/polls/:pollId/close", requireAuth, async (req: any, res) => {
+  await ensureExtOnce();
+  await db.execute(sql`UPDATE meet_polls SET is_open = FALSE WHERE id = ${req.params.pollId} AND room_id = ${req.params.id} AND tenant_id = ${tid(req)}`);
+  res.json({ message: "Poll closed" });
+});
+
+// ---- NOTES ----
+router.get("/rooms/:id/notes", requireAuth, async (req: any, res) => {
+  await ensureExtOnce();
+  const rows = await db.execute(sql`SELECT * FROM meet_notes WHERE room_id = ${req.params.id} AND tenant_id = ${tid(req)} ORDER BY created_at`);
+  res.json(rows.rows);
+});
+
+router.post("/rooms/:id/notes", requireAuth, async (req: any, res) => {
+  await ensureExtOnce();
+  const { content, note_type, is_action_item, assigned_to, due_date } = req.body;
+  if (!content?.trim()) return res.status(400).json({ message: "Content required" });
+  const result = await db.execute(sql`
+    INSERT INTO meet_notes (room_id, tenant_id, content, note_type, is_action_item, assigned_to, due_date, author_name)
+    VALUES (${req.params.id}, ${tid(req)}, ${content.trim()}, ${note_type || "note"}, ${is_action_item ?? false}, ${assigned_to || null}, ${due_date || null}, ${(req.user as any)?.name || (req.user as any)?.username || "User"})
+    RETURNING *
+  `);
+  res.status(201).json(result.rows[0]);
+});
+
+router.put("/rooms/:id/notes/:noteId", requireAuth, async (req: any, res) => {
+  await ensureExtOnce();
+  const { done, content } = req.body;
+  await db.execute(sql`
+    UPDATE meet_notes SET done = COALESCE(${done ?? null}, done), content = COALESCE(${content || null}, content)
+    WHERE id = ${req.params.noteId} AND room_id = ${req.params.id} AND tenant_id = ${tid(req)}
+  `);
+  res.json({ message: "Updated" });
+});
+
+router.delete("/rooms/:id/notes/:noteId", requireAuth, async (req: any, res) => {
+  await ensureExtOnce();
+  await db.execute(sql`DELETE FROM meet_notes WHERE id = ${req.params.noteId} AND room_id = ${req.params.id} AND tenant_id = ${tid(req)}`);
+  res.json({ message: "Deleted" });
+});
+
+// ---- SUMMARY ----
+router.get("/rooms/:id/summary", requireAuth, async (req: any, res) => {
+  await ensureExtOnce();
+  const rows = await db.execute(sql`SELECT * FROM meet_summaries WHERE room_id = ${req.params.id} AND tenant_id = ${tid(req)} ORDER BY generated_at DESC LIMIT 1`);
+  if (!rows.rows.length) return res.json(null);
+  res.json(rows.rows[0]);
+});
+
+router.post("/rooms/:id/summary/generate", requireAuth, async (req: any, res) => {
+  await ensureExtOnce();
+  const tenantId = tid(req);
+  const roomRes = await db.execute(sql`SELECT * FROM meet_rooms WHERE id = ${req.params.id} AND tenant_id = ${tenantId}`);
+  if (!roomRes.rows.length) return res.status(404).json({ message: "Room not found" });
+  const room = roomRes.rows[0] as any;
+  const notesRes = await db.execute(sql`SELECT * FROM meet_notes WHERE room_id = ${req.params.id} AND tenant_id = ${tenantId} ORDER BY created_at`);
+  const agendaRes = await db.execute(sql`SELECT * FROM meet_agendas WHERE room_id = ${req.params.id} AND tenant_id = ${tenantId} ORDER BY sort_order`);
+  const notes = notesRes.rows as any[];
+  const agenda = agendaRes.rows as any[];
+
+  const actionItems = notes.filter((n: any) => n.is_action_item).map((n: any) => n.content);
+  const decisions = notes.filter((n: any) => n.note_type === "decision").map((n: any) => n.content);
+  const keyPoints = notes.filter((n: any) => !n.is_action_item && n.note_type !== "decision").map((n: any) => n.content);
+
+  const coveredAgenda = agenda.filter((a: any) => a.done);
+  let summary = `Meeting "${room.title}" (${room.room_no}) ran for ${room.duration_mins || 0} minutes.`;
+  if (coveredAgenda.length) summary += ` Covered ${coveredAgenda.length} of ${agenda.length} agenda items.`;
+  if (actionItems.length) summary += ` ${actionItems.length} action item(s) captured.`;
+  if (decisions.length) summary += ` ${decisions.length} decision(s) recorded.`;
+
+  const result = await db.execute(sql`
+    INSERT INTO meet_summaries (room_id, tenant_id, summary, key_points, action_items, decisions, is_ai)
+    VALUES (${req.params.id}, ${tenantId}, ${summary}, ${JSON.stringify(keyPoints)}, ${JSON.stringify(actionItems)}, ${JSON.stringify(decisions)}, FALSE)
+    RETURNING *
+  `);
+  res.json(result.rows[0]);
+});
+
+// ---- TEMPLATES ----
+router.get("/templates", requireAuth, async (req: any, res) => {
+  await ensureExtOnce();
+  const rows = await db.execute(sql`SELECT * FROM meet_templates WHERE tenant_id = ${tid(req)} OR is_default = TRUE ORDER BY is_default DESC, name`);
+  res.json(rows.rows);
+});
+
+router.post("/templates", requireAuth, async (req: any, res) => {
+  await ensureExtOnce();
+  const { name, description, room_type, max_participants, agenda_template } = req.body;
+  const result = await db.execute(sql`
+    INSERT INTO meet_templates (tenant_id, name, description, room_type, max_participants, agenda_template)
+    VALUES (${tid(req)}, ${name}, ${description || null}, ${room_type || "meeting"}, ${max_participants || 10}, ${JSON.stringify(agenda_template || [])})
+    RETURNING *
+  `);
+  res.status(201).json(result.rows[0]);
+});
+
+// ---- RECURRING ----
+router.get("/rooms/:id/recurring", requireAuth, async (req: any, res) => {
+  const roomRes = await db.execute(sql`SELECT recurrence, recurrence_until FROM meet_rooms WHERE id = ${req.params.id} AND tenant_id = ${tid(req)}`);
+  res.json(roomRes.rows[0] || {});
+});
+
+router.put("/rooms/:id/recurring", requireAuth, async (req: any, res) => {
+  const { recurrence, recurrence_until } = req.body;
+  try {
+    await db.execute(sql`ALTER TABLE meet_rooms ADD COLUMN IF NOT EXISTS recurrence VARCHAR(20)`);
+    await db.execute(sql`ALTER TABLE meet_rooms ADD COLUMN IF NOT EXISTS recurrence_until DATE`);
+  } catch {}
+  await db.execute(sql`
+    UPDATE meet_rooms SET recurrence = ${recurrence || null}, recurrence_until = ${recurrence_until || null}
+    WHERE id = ${req.params.id} AND tenant_id = ${tid(req)}
+  `);
+  res.json({ message: "Updated" });
+});
+
+// ---- CALENDAR FEED ----
+router.get("/calendar.ics", requireAuth, async (req: any, res) => {
+  await ensureTablesOnce();
+  const rows = await db.execute(sql`
+    SELECT * FROM meet_rooms WHERE tenant_id = ${tid(req)} AND scheduled_at IS NOT NULL
+    AND status IN ('scheduled','live') ORDER BY scheduled_at
+  `);
+  const rooms = rows.rows as any[];
+  const esc = (s: string) => (s || "").replace(/[,;\\]/g, (c) => "\\" + c).replace(/\n/g, "\\n");
+  const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+  let cal = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//SwachMeet//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH"];
+  for (const r of rooms) {
+    const start = new Date(r.scheduled_at);
+    const end = new Date(start.getTime() + (r.duration_mins || 60) * 60000);
+    cal.push("BEGIN:VEVENT", `UID:swachmeet-${r.id}@swacherp`, `DTSTART:${fmt(start)}`, `DTEND:${fmt(end)}`,
+      `SUMMARY:${esc(r.title)}`, `DESCRIPTION:${esc(r.description || "")}`,
+      r.meeting_url ? `URL:${r.meeting_url}` : "", "END:VEVENT");
+  }
+  cal.push("END:VCALENDAR");
+  res.setHeader("Content-Type", "text/calendar; charset=utf-8");
+  res.setHeader("Content-Disposition", "attachment; filename=swachmeet.ics");
+  res.send(cal.filter(Boolean).join("\r\n"));
+});
+
+// ---- WAITING ROOM ----
+router.post("/rooms/:id/admit/:participantId", requireAuth, async (req: any, res) => {
+  await ensureTablesOnce();
+  await db.execute(sql`UPDATE meet_participants SET role = 'admitted' WHERE id = ${req.params.participantId} AND room_id = ${req.params.id}`);
+  res.json({ message: "Admitted" });
+});
+
+router.post("/rooms/:id/kick/:participantId", requireAuth, async (req: any, res) => {
+  await ensureTablesOnce();
+  await db.execute(sql`UPDATE meet_participants SET left_at = NOW(), role = 'removed' WHERE id = ${req.params.participantId} AND room_id = ${req.params.id}`);
+  res.json({ message: "Removed" });
+});
+
+router.post("/rooms/:id/mute-all", requireAuth, async (req: any, res) => {
+  res.json({ message: "Mute all command sent (handled by Jitsi)" });
+});
+
 export default router;
 export { meetPublicRouter as swachMeetPublicRouter };

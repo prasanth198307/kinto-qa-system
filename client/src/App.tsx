@@ -369,7 +369,7 @@ import PharmacyReportsPage from "@/pages/pharmacy/reports";
 import PharmacyNarcoticsRegisterPage from "@/pages/pharmacy/narcotics-register";
 import PharmacyEInvoicePage from "@/pages/pharmacy/e-invoice";
 import PharmacyPrescriptionsPage from "@/pages/pharmacy/prescriptions";
-import CRMPipelinePage from "@/pages/crm/pipeline";
+import CRMPipelineSubPage from "@/pages/crm/pipeline";
 import CRMContactsPage from "@/pages/crm/contacts";
 import CRMAccountsPage from "@/pages/crm/accounts";
 import CRMActivitiesPage from "@/pages/crm/activities";
@@ -5627,7 +5627,7 @@ const PharmacyReportsWrapper = makeWrapper('Reports', 'pharmacy/reports', Pharma
 const PharmacyNarcoticsRegisterWrapper = makeWrapper('Narcotics Register', 'pharmacy/narcotics-register', PharmacyNarcoticsRegisterPage);
 const PharmacyEInvoiceWrapper = makeWrapper('GST E-Invoice', 'pharmacy/e-invoice', PharmacyEInvoicePage);
 const PharmacyPrescriptionsWrapper = makeWrapper('Prescriptions', 'pharmacy/prescriptions', PharmacyPrescriptionsPage);
-const CRMPipelineWrapper = makeWrapper('Pipeline', 'crm/pipeline', CRMPipelinePage);
+const CRMPipelineWrapper = makeWrapper('Pipeline', 'crm/pipeline', CRMPipelineSubPage);
 const CRMContactsWrapper = makeWrapper('Contacts', 'crm/contacts', CRMContactsPage);
 const CRMAccountsWrapper = makeWrapper('Accounts', 'crm/accounts', CRMAccountsPage);
 const CRMActivitiesWrapper = makeWrapper('Activities', 'crm/activities', CRMActivitiesPage);
