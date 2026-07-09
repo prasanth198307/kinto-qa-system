@@ -2,8 +2,9 @@ import { Router } from "express";
 import { sql } from "drizzle-orm";
 import { db } from "./db";
 import { glHealthcareBill } from "./vertical-gl-service";
-// eslint-disable-next-line -eslint/no-require-imports
-const PDFDocument = require("pdfkit");
+import { createRequire } from "module";
+const _require = createRequire(import.meta.url);
+const PDFDocument = _require("pdfkit");
 import { whatsappService } from "./whatsappService";
 import { randomUUID } from "crypto";
 

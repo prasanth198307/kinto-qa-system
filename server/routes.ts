@@ -1,4 +1,5 @@
 import type { Express, Request, Response, NextFunction } from "express";
+import axios from "axios";
 import { forgotPasswordRateLimiter, resetPasswordRateLimiter } from "./security-middleware";
 import dynamicExternalApiRouter from './external-api-router';
 import externalApiProxy from './external-api-proxy';
@@ -4855,7 +4856,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Try to verify using free GST API
       try {
-        const axios = require('axios');
         const response = await axios.get(
           `https://sheet.gstincheck.co.in/check/free/${gstin.toUpperCase()}`,
           { timeout: 10000 }
@@ -4929,7 +4929,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Call the GST verification
-      const axios = require('axios');
       try {
         const response = await axios.get(
           `https://sheet.gstincheck.co.in/check/free/${vendor.gstNumber.toUpperCase()}`,
@@ -4986,8 +4985,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Bulk verify GST for all unverified vendors
   app.post('/api/vendors/bulk-verify-gst', requireRole('admin'), async (req: any, res) => {
     try {
-      const axios = require('axios');
-      
       // Get all vendors with GST numbers that haven't been verified
       const allVendors = await storage.getAllVendors();
       const unverifiedVendors = allVendors.filter(v => 
@@ -22427,9 +22424,6 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       archive.pipe(res);
       
       // Add each document to the archive
-      const fs = require('fs');
-      const path = require('path');
-      
       for (const doc of docsToDownload) {
         if (doc.documentPath) {
           // Extract the file path from the URL/path

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { sql } from "drizzle-orm";
+import { randomBytes } from "crypto";
 import { db } from "./db";
 import { glRestaurantPayment } from "./vertical-gl-service";
 import { expireLoyaltyPoints } from "./loyalty-expiry-service";
@@ -1261,7 +1262,7 @@ router.post("/qr-session/create", requireAuth, async (req: any, res) => {
     const { table_id } = req.body;
     const table = await db.execute(sql`SELECT * FROM restaurant_tables WHERE id=${table_id} AND tenant_id=${tid(req)}`);
     if (!table.rows[0]) return res.status(404).json({ error: 'Table not found' });
-    const token = require('crypto').randomBytes(24).toString('hex');
+    const token = randomBytes(24).toString('hex');
     const expires = new Date(Date.now() + 2 * 60 * 60 * 1000); // 2 hours
     await db.execute(sql`
       INSERT INTO qr_order_sessions (tenant_id, table_id, table_number, session_token, expires_at)

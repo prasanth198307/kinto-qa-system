@@ -161,7 +161,7 @@ app.get("/sw.js", (_req, res) => {
   res.setHeader("Pragma", "no-cache");
   res.setHeader("Expires", "0");
   res.setHeader("Content-Type", "application/javascript; charset=UTF-8");
-  if (require("fs").existsSync(swPath)) {
+  if (fs.existsSync(swPath)) {
     res.sendFile(swPath);
   } else {
     res.status(404).end();

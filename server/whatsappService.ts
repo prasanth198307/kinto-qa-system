@@ -1,4 +1,6 @@
 import axios from 'axios';
+import fs from 'fs';
+import path from 'path';
 import { collokiFlowService } from './collokiFlowService';
 
 const WHATSAPP_API_VERSION = process.env.WHATSAPP_API_VERSION || 'v18.0';
@@ -227,8 +229,6 @@ export class WhatsAppService {
       });
 
       // Step 3: Save to local file system
-      const fs = require('fs');
-      const path = require('path');
       const saveDir = path.join(process.cwd(), 'attached_assets', 'checklist_photos');
       const savePath = path.join(saveDir, fileName);
 

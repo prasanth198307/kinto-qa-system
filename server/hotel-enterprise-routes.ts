@@ -1,8 +1,9 @@
 import { Router } from "express";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
-// eslint-disable-next-line -eslint/no-require-imports
-const PDFDocument = require("pdfkit");
+import { createRequire } from "module";
+const _require = createRequire(import.meta.url);
+const PDFDocument = _require("pdfkit");
 import { syncChannelRates, getChannelInventory } from "./hotel-channel-service";
 import { createJournalWithLines } from "./journal-service";
 
