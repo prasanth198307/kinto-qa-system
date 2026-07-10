@@ -2479,15 +2479,6 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       ],
     },
     {
-      id: "realestate-erp-section",
-      label: "Real Estate ERP",
-      items: [
-        { id: "real-estate/rera", label: "RERA Compliance", icon: Shield, onClick: () => setLocation('/real-estate/rera') },
-        { id: "real-estate/demand-letters", label: "Demand Letters", icon: FileText, onClick: () => setLocation('/real-estate/demand-letters') },
-        { id: "real-estate/project-pl", label: "Project P&L", icon: TrendingUp, onClick: () => setLocation('/real-estate/project-pl') },
-      ],
-    },
-    {
       id: "hr-section",
       label: "HR & Payroll",
       items: [
@@ -2658,6 +2649,9 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "real-estate/society", label: "Society", icon: Building2, onClick: () => setLocation('/real-estate/society') },
         { id: "real-estate/bank-loans", label: "Bank Loans", icon: Landmark, onClick: () => setLocation('/real-estate/bank-loans') },
         { id: "real-estate/subcontractors", label: "Subcontractors", icon: Wrench, onClick: () => setLocation('/real-estate/subcontractors') },
+        { id: "real-estate/rera", label: "RERA Compliance", icon: Shield, onClick: () => setLocation('/real-estate/rera') },
+        { id: "real-estate/demand-letters", label: "Demand Letters", icon: FileText, onClick: () => setLocation('/real-estate/demand-letters') },
+        { id: "real-estate/project-pl", label: "Project P&L", icon: TrendingUp, onClick: () => setLocation('/real-estate/project-pl') },
         { id: "real-estate/reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/real-estate/reports') },
       ],
     },

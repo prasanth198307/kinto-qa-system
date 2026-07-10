@@ -268,6 +268,7 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
     "real-estate/construction", "real-estate/documents", "real-estate/rera",
     "real-estate/society", "real-estate/construction-loans",
     "real-estate/subcontractors", "real-estate/customer-portal", "real-estate/reports",
+    "real-estate/bank-loans", "real-estate/project-pl",
   ],
   pos: [
     "pos", "retail-enterprise",
