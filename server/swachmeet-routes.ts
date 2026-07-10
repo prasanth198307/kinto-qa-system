@@ -3,6 +3,23 @@ import { db } from "./db";
 import { sql } from "drizzle-orm";
 import crypto from "crypto";
 import { createHmac } from "crypto";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+
+const meetFileStorage = multer.diskStorage({
+  destination: (req: any, _file, cb) => {
+    const tenantId = tid(req);
+    const dir = path.join(process.cwd(), "uploads", "tenants", String(tenantId), "meet-files");
+    fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename: (_req, file, cb) => {
+    const unique = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    cb(null, unique + path.extname(file.originalname));
+  },
+});
+const meetFileUpload = multer({ storage: meetFileStorage, limits: { fileSize: 25 * 1024 * 1024 } });
 
 const router = Router();
 
@@ -1053,6 +1070,44 @@ router.post("/rooms/:id/kick/:participantId", requireAuth, async (req: any, res)
 
 router.post("/rooms/:id/mute-all", requireAuth, async (req: any, res) => {
   res.json({ message: "Mute all command sent (handled by Jitsi)" });
+});
+
+// ---- FILE SHARING ----
+router.get("/rooms/:id/files", requireAuth, async (req: any, res) => {
+  await ensureTablesOnce();
+  const rows = await db.execute(sql`
+    SELECT id, uploader_name, file_name, file_url, file_size, mime_type, created_at
+    FROM meet_files WHERE room_id = ${req.params.id} AND tenant_id = ${tid(req)}
+    ORDER BY created_at DESC
+  `);
+  res.json(rows.rows);
+});
+
+router.post("/rooms/:id/files", requireAuth, meetFileUpload.single("file"), async (req: any, res) => {
+  await ensureTablesOnce();
+  if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+  const tenantId = tid(req);
+  const fileUrl = `/uploads/tenants/${tenantId}/meet-files/${req.file.filename}`;
+  await db.execute(sql`
+    INSERT INTO meet_files (room_id, tenant_id, uploaded_by, uploader_name, file_name, file_url, file_size, mime_type)
+    VALUES (${req.params.id}, ${tenantId}, ${req.user?.id || null}, ${req.user?.username || "Host"},
+            ${req.file.originalname}, ${fileUrl}, ${req.file.size}, ${req.file.mimetype})
+  `);
+  res.json({ message: "Uploaded", file_url: fileUrl, file_name: req.file.originalname, file_size: req.file.size });
+});
+
+router.delete("/rooms/:id/files/:fileId", requireAuth, async (req: any, res) => {
+  await ensureTablesOnce();
+  const row = await db.execute(sql`
+    SELECT file_url FROM meet_files WHERE id = ${req.params.fileId} AND tenant_id = ${tid(req)}
+  `);
+  const f = row.rows[0] as any;
+  if (f?.file_url) {
+    const abs = path.join(process.cwd(), f.file_url);
+    fs.promises.unlink(abs).catch(() => {});
+  }
+  await db.execute(sql`DELETE FROM meet_files WHERE id = ${req.params.fileId} AND tenant_id = ${tid(req)}`);
+  res.json({ message: "Deleted" });
 });
 
 export default router;

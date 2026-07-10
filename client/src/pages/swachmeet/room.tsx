@@ -11,12 +11,12 @@ import {
   MessageSquare, Users, FileText, BarChart2, Send, Mic, MicOff, Video,
   VideoOff, PhoneOff, Monitor, MoreVertical, Plus, CheckCircle, Circle,
   Sparkles, ChevronRight, ChevronLeft, ListTodo, Clock, Hash, X, Loader2,
-  Copy, Check
+  Copy, Check, Paperclip, Download, Trash2
 } from "lucide-react";
 
 declare global { interface Window { JitsiMeetExternalAPI: any; } }
 
-type SidePanel = "chat" | "participants" | "notes" | "polls" | "agenda";
+type SidePanel = "chat" | "participants" | "notes" | "polls" | "agenda" | "files";
 
 export default function SwachMeetRoom() {
   const params = useParams<{ roomId?: string; roomCode?: string }>();
@@ -38,6 +38,8 @@ export default function SwachMeetRoom() {
   const [pollOptions, setPollOptions] = useState(["", ""]);
   const [newAgendaTitle, setNewAgendaTitle] = useState("");
   const [copied, setCopied] = useState(false);
+  const [fileUploading, setFileUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   // Internal room DB id (for API calls)
@@ -91,6 +93,56 @@ export default function SwachMeetRoom() {
     mutationFn: ({ id, done }: any) => apiRequest("PUT", `/api/meet/rooms/${roomDbId}/agenda/${id}`, { done }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/meet/rooms", roomDbId, "agenda"] }),
   });
+
+  // Files
+  const { data: meetFiles = [], refetch: refetchFiles } = useQuery<any[]>({
+    queryKey: ["/api/meet/rooms", roomDbId, "files"],
+    queryFn: () => fetch(`/api/meet/rooms/${roomDbId}/files`).then(r => r.json()),
+    enabled: !!roomDbId && sidePanel === "files",
+  });
+  const deleteFileMut = useMutation({
+    mutationFn: (fileId: number) => apiRequest("DELETE", `/api/meet/rooms/${roomDbId}/files/${fileId}`),
+    onSuccess: () => refetchFiles(),
+  });
+
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !roomDbId) return;
+    setFileUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch(`/api/meet/rooms/${roomDbId}/files`, { method: "POST", body: fd, credentials: "include" });
+      if (!res.ok) throw new Error("Upload failed");
+      toast({ title: "File shared successfully!" });
+      refetchFiles();
+    } catch {
+      toast({ title: "Upload failed", variant: "destructive" });
+    } finally {
+      setFileUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  function fmtFileSize(bytes: number) {
+    if (!bytes) return "";
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  function fileTypeLabel(mime: string) {
+    if (!mime) return "FILE";
+    if (mime.startsWith("image/")) return "IMG";
+    if (mime === "application/pdf") return "PDF";
+    if (mime.includes("spreadsheet") || mime.includes("excel")) return "XLS";
+    if (mime.includes("presentation") || mime.includes("powerpoint")) return "PPT";
+    if (mime.includes("word") || mime.includes("document")) return "DOC";
+    if (mime.includes("zip") || mime.includes("rar") || mime.includes("tar")) return "ZIP";
+    if (mime.startsWith("video/")) return "VID";
+    if (mime.startsWith("audio/")) return "AUD";
+    return "FILE";
+  }
 
   // Summary generate
   const summaryMut = useMutation({
@@ -182,6 +234,7 @@ export default function SwachMeetRoom() {
     { id: "agenda", label: "Agenda", icon: ListTodo },
     { id: "notes", label: "Notes", icon: FileText },
     { id: "polls", label: "Polls", icon: BarChart2 },
+    { id: "files", label: "Files", icon: Paperclip },
   ];
 
   return (
@@ -392,6 +445,48 @@ export default function SwachMeetRoom() {
                 </div>
                 <p style={{ color: "#6b7280", fontSize: 11, marginBottom: 8 }}>{participants} other participant{participants !== 1 ? "s" : ""} in this call</p>
                 <p style={{ color: "#4b5563", fontSize: 11, textAlign: "center", paddingTop: 12 }}>Participant names are managed by Jitsi.</p>
+              </div>
+            )}
+
+            {/* FILES PANEL */}
+            {sidePanel === "files" && (
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+                <div style={{ flex: 1, overflowY: "auto", padding: "10px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
+                  {(meetFiles as any[]).length === 0 && (
+                    <div style={{ textAlign: "center", paddingTop: 32 }}>
+                      <Paperclip style={{ width: 28, height: 28, color: "#4b5563", margin: "0 auto 8px" }} />
+                      <p style={{ color: "#6b7280", fontSize: 12 }}>No files shared yet.</p>
+                      <p style={{ color: "#4b5563", fontSize: 11, marginTop: 4 }}>Upload documents, images, or any file up to 25 MB.</p>
+                    </div>
+                  )}
+                  {(meetFiles as any[]).map((f: any) => (
+                    <div key={f.id} style={{ padding: "8px 10px", background: "#374151", borderRadius: 6, display: "flex", alignItems: "flex-start", gap: 8 }}>
+                      <span style={{ fontSize: 9, fontWeight: 700, color: "#60a5fa", background: "#1e3a5f", borderRadius: 3, padding: "2px 4px", flexShrink: 0, letterSpacing: "0.03em" }}>{fileTypeLabel(f.mime_type)}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: 12, color: "#f3f4f6", fontWeight: 600, wordBreak: "break-word", marginBottom: 2 }}>{f.file_name}</p>
+                        <p style={{ fontSize: 10, color: "#6b7280" }}>{f.uploader_name} · {fmtFileSize(f.file_size)}</p>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
+                        <a href={f.file_url} download={f.file_name} target="_blank" rel="noreferrer"
+                          style={{ background: "none", border: "none", cursor: "pointer", color: "#60a5fa", display: "flex", alignItems: "center" }}>
+                          <Download style={{ width: 13, height: 13 }} />
+                        </a>
+                        <button onClick={() => deleteFileMut.mutate(f.id)}
+                          style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280" }}>
+                          <Trash2 style={{ width: 13, height: 13 }} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ padding: "10px 12px", borderTop: "1px solid #374151" }}>
+                  <input ref={fileInputRef} type="file" onChange={handleFileUpload} style={{ display: "none" }} />
+                  <button disabled={fileUploading || !roomDbId} onClick={() => fileInputRef.current?.click()}
+                    style={{ width: "100%", padding: "7px 0", background: fileUploading ? "#374151" : "#1d4ed8", border: "none", borderRadius: 6, color: "#fff", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, opacity: roomDbId ? 1 : 0.5 }}>
+                    {fileUploading ? <><Loader2 style={{ width: 13, height: 13 }} /> Uploading…</> : <><Paperclip style={{ width: 13, height: 13 }} /> Share a File</>}
+                  </button>
+                  <p style={{ fontSize: 10, color: "#4b5563", textAlign: "center", marginTop: 4 }}>Max 25 MB · All file types supported</p>
+                </div>
               </div>
             )}
 
