@@ -108,7 +108,7 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
   // Permissions policy — restrict dangerous browser features
   res.setHeader(
     "Permissions-Policy",
-    "camera=(), microphone=(), geolocation=(), payment=()"
+    "camera=(self \"https://meet.jit.si\"), microphone=(self \"https://meet.jit.si\"), display-capture=(self \"https://meet.jit.si\"), geolocation=(), payment=()"
   );
   // XSS protection (legacy browsers)
   res.setHeader("X-XSS-Protection", "1; mode=block");

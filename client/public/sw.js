@@ -47,9 +47,11 @@ self.addEventListener('fetch', (event) => {
   if (isAsset(url.pathname)) {
     event.respondWith(
       fetch(request).then(response => {
-        if (response.ok && response.status === 200) {
-          const clone = response.clone();
-          caches.open(CACHE_VERSION).then(cache => cache.put(request, clone));
+        if (response.ok && response.status === 200 && !response.bodyUsed) {
+          try {
+            const clone = response.clone();
+            caches.open(CACHE_VERSION).then(cache => cache.put(request, clone));
+          } catch {}
         }
         return response;
       }).catch(() => caches.match(request))
@@ -63,9 +65,11 @@ self.addEventListener('fetch', (event) => {
     if (shouldCache) {
       event.respondWith(
         fetch(request).then(response => {
-          if (response.ok) {
-            const clone = response.clone();
-            caches.open(API_CACHE_NAME).then(cache => cache.put(request, clone));
+          if (response.ok && !response.bodyUsed) {
+            try {
+              const clone = response.clone();
+              caches.open(API_CACHE_NAME).then(cache => cache.put(request, clone));
+            } catch {}
           }
           return response;
         }).catch(() => caches.match(request, { cacheName: API_CACHE_NAME }))
