@@ -1,3 +1,7 @@
+-- SUPERSEDED: This script uses a 'role' column that does not exist in production (prod uses role_id).
+-- All permissions from this file were re-granted correctly by 2026-07-09_corrected_screen_permissions.sql.
+-- Do NOT run this script on a fresh database without running the corrected script after it.
+
 -- 2026-07-05: Grant Pharmacy ERP screen permissions to existing roles
 -- Pharmacy sub-screens were missing from screen-registry.ts (now added) —
 -- this retroactively seeds role_permissions for all existing tenants (idempotent).
