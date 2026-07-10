@@ -103,7 +103,7 @@ function ArrangementDrawer({ arrangement, onClose }: { arrangement: any; onClose
 
   const { data: detail } = useQuery({
     queryKey: ["/api/asc606/arrangements", arrangement.id],
-    queryFn: () => fetch(`/api/asc606/arrangements/${arrangement.id}`).then(r => r.json()),
+    queryFn: () => fetch(`/api/asc606/arrangements/${arrangement.id}`).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
 
   const allocateMutation = useMutation({
@@ -197,9 +197,9 @@ export default function ASC606Arrangements() {
   const [showNew, setShowNew] = useState(false);
   const [selected, setSelected] = useState<any>(null);
 
-  const { data: dashboard } = useQuery({ queryKey: ["/api/asc606/dashboard"], queryFn: () => fetch("/api/asc606/dashboard").then(r => r.json()) });
-  const { data: arrangements } = useQuery({ queryKey: ["/api/asc606/arrangements"], queryFn: () => fetch("/api/asc606/arrangements").then(r => r.json()) });
-  const { data: waterfall } = useQuery({ queryKey: ["/api/asc606/deferred-revenue/waterfall"], queryFn: () => fetch("/api/asc606/deferred-revenue/waterfall?months=12").then(r => r.json()) });
+  const { data: dashboard } = useQuery({ queryKey: ["/api/asc606/dashboard"], queryFn: () => fetch("/api/asc606/dashboard").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
+  const { data: arrangements } = useQuery({ queryKey: ["/api/asc606/arrangements"], queryFn: () => fetch("/api/asc606/arrangements").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
+  const { data: waterfall } = useQuery({ queryKey: ["/api/asc606/deferred-revenue/waterfall"], queryFn: () => fetch("/api/asc606/deferred-revenue/waterfall?months=12").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
 
   const postScheduleMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/asc606/post-schedule", {}),

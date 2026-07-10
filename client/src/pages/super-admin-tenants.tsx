@@ -266,7 +266,7 @@ export default function SuperAdminTenants() {
 
   const reseedGroceryMutation = useMutation({
     mutationFn: (tenantId: number) =>
-      apiRequest("POST", `/api/admin/tenants/${tenantId}/seed-grocery`, {}).then(r => r.json()),
+      apiRequest("POST", `/api/admin/tenants/${tenantId}/seed-grocery`, {}).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: () => {
       toast({ title: "Grocery settings re-applied", description: "Section labels and roles refreshed for this tenant." });
     },

@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, X, Check } from "lucide-react";
 
 const api = (m: string, u: string, b?: any) =>
-  fetch(u, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined, credentials: "include" }).then(r => r.json());
+  fetch(u, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined, credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 type Bank = { id: number; name: string; ifsc_prefix?: string; account_number?: string; branch_name?: string; is_active?: boolean };
 const empty: Omit<Bank, "id"> = { name: "", ifsc_prefix: "", account_number: "", branch_name: "", is_active: true };

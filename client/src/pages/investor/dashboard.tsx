@@ -15,11 +15,11 @@ export default function InvestorDashboardPage() {
   const { toast } = useToast();
   const { data: metrics, refetch } = useQuery({
     queryKey: ["/api/investor/metrics"],
-    queryFn: () => fetch("/api/investor/metrics?limit=1").then(r => r.json()),
+    queryFn: () => fetch("/api/investor/metrics?limit=1").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
   const { data: runway } = useQuery({
     queryKey: ["/api/investor/runway"],
-    queryFn: () => fetch("/api/investor/runway").then(r => r.json()),
+    queryFn: () => fetch("/api/investor/runway").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
 
   const calcMutation = useMutation({

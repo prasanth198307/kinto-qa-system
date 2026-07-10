@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Building2, Plus, X } from "lucide-react";
 
 const api = (method: string, path: string, body?: any) =>
-  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(r => r.json());
+  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const EMPTY = { company_name: "", contact_person: "", phone: "", email: "", gst_no: "", address: "", negotiated_rate: "", credit_limit: "", credit_days: "30", contract_from: "", contract_to: "" };
 

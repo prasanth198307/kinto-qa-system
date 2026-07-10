@@ -57,19 +57,19 @@ export default function HRLeavesPage() {
       const url = statusFilter !== "all"
         ? `/api/hr/leave-applications?status=${statusFilter}`
         : "/api/hr/leave-applications";
-      return fetch(url, { credentials: "include" }).then(r => r.json());
+      return fetch(url, { credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
     },
   });
 
   const { data: calendarData = [] } = useQuery({
     queryKey: ["/api/hr/leave-calendar", calMonth, calYear],
-    queryFn: () => fetch(`/api/hr/leave-calendar?month=${calMonth}&year=${calYear}`, { credentials: "include" }).then(r => r.json()),
+    queryFn: () => fetch(`/api/hr/leave-calendar?month=${calMonth}&year=${calYear}`, { credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
 
   const { data: balances = [] } = useQuery({
     queryKey: ["/api/hr/leave-balances", applyForm.employeeId, currentYear],
     queryFn: () => applyForm.employeeId
-      ? fetch(`/api/hr/leave-balances?employeeId=${applyForm.employeeId}&year=${currentYear}`, { credentials: "include" }).then(r => r.json())
+      ? fetch(`/api/hr/leave-balances?employeeId=${applyForm.employeeId}&year=${currentYear}`, { credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); })
       : Promise.resolve([]),
     enabled: !!applyForm.employeeId,
   });
@@ -362,7 +362,7 @@ function LeaveBalancesTab({ employees, leaveTypes, currentYear, onCarryForward }
   const { data: balances = [] } = useQuery({
     queryKey: ["/api/hr/leave-balances", selectedEmp, currentYear],
     queryFn: () => selectedEmp
-      ? fetch(`/api/hr/leave-balances?employeeId=${selectedEmp}&year=${currentYear}`, { credentials: "include" }).then(r => r.json())
+      ? fetch(`/api/hr/leave-balances?employeeId=${selectedEmp}&year=${currentYear}`, { credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); })
       : Promise.resolve([]),
     enabled: !!selectedEmp,
   });

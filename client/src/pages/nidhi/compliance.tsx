@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { CheckCircle, AlertTriangle, Shield } from "lucide-react";
 
-const get = (p: string) => fetch(p).then(r => r.json());
+const get = (p: string) => fetch(p).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const fmt = (n: any) => `₹${Number(n || 0).toLocaleString("en-IN")}`;
 const FY = new Date().getFullYear();
@@ -21,7 +21,7 @@ export default function NidhiCompliancePage() {
   const { data: reports = [] } = useQuery<any[]>({ queryKey: ["nidhi-compliance-reports"], queryFn: () => get("/api/nidhi/compliance/reports") });
 
   const ndh1Mut = useMutation({
-    mutationFn: () => fetch("/api/nidhi/compliance/ndh1", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ financial_year: `${FY}-${FY+1}`, period_from: `${FY}-04-01`, period_to: `${FY+1}-03-31` }) }).then(r => r.json()),
+    mutationFn: () => fetch("/api/nidhi/compliance/ndh1", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ financial_year: `${FY}-${FY+1}`, period_from: `${FY}-04-01`, period_to: `${FY+1}-03-31` }) }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["nidhi-compliance-reports"] }); toast({ title: "NDH-1 generated" }); },
   });
 

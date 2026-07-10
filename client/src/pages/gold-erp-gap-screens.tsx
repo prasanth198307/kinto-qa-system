@@ -79,7 +79,7 @@ export function KarigarAttendanceSection() {
 
   const { data: attendance = [] } = useQuery<any[]>({
     queryKey: ["/api/gold-erp/karigar-attendance", filterDate],
-    queryFn: () => fetch(`/api/gold-erp/karigar-attendance?date=${filterDate}`, { credentials: "include" }).then(r => r.json()),
+    queryFn: () => fetch(`/api/gold-erp/karigar-attendance?date=${filterDate}`, { credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
   const { data: karigars = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/karigars"] });
 
@@ -440,7 +440,7 @@ export function ChitCollectionRegisterSection() {
   const { data: members = [] } = useQuery<any[]>({
     queryKey: ["/api/gold-erp/chit-schemes", selectedScheme, "members"],
     queryFn: () => selectedScheme
-      ? fetch(`/api/gold-erp/chit-schemes/${selectedScheme}/members`, { credentials: "include" }).then(r => r.json())
+      ? fetch(`/api/gold-erp/chit-schemes/${selectedScheme}/members`, { credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); })
       : Promise.resolve([]),
     enabled: !!selectedScheme,
   });
@@ -449,7 +449,7 @@ export function ChitCollectionRegisterSection() {
   const { data: installments = [] } = useQuery<any[]>({
     queryKey: ["/api/gold-erp/chit-installments", selectedScheme],
     queryFn: () => selectedScheme
-      ? fetch(`/api/gold-erp/chit-installments?scheme_id=${selectedScheme}`, { credentials: "include" }).then(r => r.json())
+      ? fetch(`/api/gold-erp/chit-installments?scheme_id=${selectedScheme}`, { credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); })
       : Promise.resolve([]),
     enabled: !!selectedScheme,
   });

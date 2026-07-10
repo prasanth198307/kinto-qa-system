@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { TrendingUp, TrendingDown, DollarSign, Target } from "lucide-react";
 
-const api = (path: string) => fetch(path).then(r => r.json());
+const api = (path: string) => fetch(path).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const PROJECTS = [
   { id: "1", name: "Green Valley Phase 1" },

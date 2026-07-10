@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { MessageCircle, Send, Users } from "lucide-react";
 
 const api = (method: string, path: string, body?: any) =>
-  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(r => r.json());
+  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const TAGS = ["VIP", "Hot Lead", "Cold", "Follow-up", "Customer", "Prospect", "Partner"];
 const TEMPLATES = [

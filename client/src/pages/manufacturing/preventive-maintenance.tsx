@@ -14,7 +14,7 @@ import { Plus, Play, CheckCircle, AlertTriangle, Clock, Loader2, Wrench } from "
 import { useToast } from "@/hooks/use-toast";
 
 const api = (method: string, path: string, body?: any) =>
-  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(r => r.json());
+  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const URGENCY_COLOR: Record<string, string> = {
   overdue: "bg-red-100 text-red-700",
@@ -35,9 +35,9 @@ export default function PreventiveMaintenancePage() {
   const [sForm, setSForm] = useState({ machine_name: "", task_name: "", frequency: "monthly", frequency_value: "1", next_due_date: "", estimated_hours: "2", priority: "medium", checklist: "" });
   const [cForm, setCForm] = useState({ technician_notes: "", downtime_minutes: "0" });
 
-  const { data: schedules = [] } = useQuery<any[]>({ queryKey: ["pm-schedules"], queryFn: () => fetch("/api/manufacturing/pm/schedules").then(r => r.json()) });
-  const { data: workOrders = [] } = useQuery<any[]>({ queryKey: ["pm-work-orders"], queryFn: () => fetch("/api/manufacturing/pm/work-orders").then(r => r.json()) });
-  const { data: oeeDash } = useQuery({ queryKey: ["oee-dash"], queryFn: () => fetch("/api/manufacturing/oee/dashboard").then(r => r.json()) });
+  const { data: schedules = [] } = useQuery<any[]>({ queryKey: ["pm-schedules"], queryFn: () => fetch("/api/manufacturing/pm/schedules").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
+  const { data: workOrders = [] } = useQuery<any[]>({ queryKey: ["pm-work-orders"], queryFn: () => fetch("/api/manufacturing/pm/work-orders").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
+  const { data: oeeDash } = useQuery({ queryKey: ["oee-dash"], queryFn: () => fetch("/api/manufacturing/oee/dashboard").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
 
   const overdue = (schedules as any[]).filter((s: any) => s.urgency === "overdue").length;
   const dueSoon = (schedules as any[]).filter((s: any) => s.urgency === "due_soon").length;

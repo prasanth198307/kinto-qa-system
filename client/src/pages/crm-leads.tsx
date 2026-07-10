@@ -148,9 +148,9 @@ export default function CRMLeadsPage() {
   const saveMutation = useMutation({
     mutationFn: async (data: any) => {
       if (editing) {
-        return apiRequest("PUT", `/api/crm/leads/${editing.id}`, data).then(r => r.json());
+        return apiRequest("PUT", `/api/crm/leads/${editing.id}`, data).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
       }
-      return apiRequest("POST", "/api/crm/leads", data).then(r => r.json());
+      return apiRequest("POST", "/api/crm/leads", data).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/crm/leads"] });
@@ -163,7 +163,7 @@ export default function CRMLeadsPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => apiRequest("DELETE", `/api/crm/leads/${id}`).then(r => r.json()),
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/crm/leads/${id}`).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/crm/leads"] });
       toast({ title: "Lead deleted" });
@@ -177,7 +177,7 @@ export default function CRMLeadsPage() {
       assignedTo: lead.assigned_to || null, notes: lead.notes,
       nextFollowUp: lead.next_follow_up ? lead.next_follow_up.split("T")[0] : null,
       status,
-    }).then(r => r.json()),
+    }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/crm/leads"] }),
   });
 

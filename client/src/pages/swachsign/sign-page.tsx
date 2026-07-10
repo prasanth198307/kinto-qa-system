@@ -37,7 +37,7 @@ export default function SignPage() {
 
   const { data, isLoading, error } = useQuery({
     queryKey: [`/api/public/sign/${token}`],
-    queryFn: () => fetch(`/api/public/sign/${token}`).then(r => r.json()),
+    queryFn: () => fetch(`/api/public/sign/${token}`).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
 
   useEffect(() => {

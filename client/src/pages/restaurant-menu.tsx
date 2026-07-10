@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 
 const api = (m: string, u: string, b?: any) =>
-  fetch(u, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined, credentials: "include" }).then(r => r.json());
+  fetch(u, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined, credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 const fmt = (n: any) => "₹" + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
 
 const FOOD_ICONS: Record<string, string> = { veg: "🟢", "non-veg": "🔴", egg: "🟡" };
@@ -55,7 +55,7 @@ function TranslationsPanel({ menuItems }: { menuItems: any[] }) {
   const loadTranslations = async (item: any) => {
     setSelectedItem(item);
     try {
-      const data = await fetch(`/api/restaurant/menu-items/${item.id}/translations`).then(r => r.json());
+      const data = await fetch(`/api/restaurant/menu-items/${item.id}/translations`).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
       setTranslations(data?.translations || {});
     } catch {
       setTranslations({});
@@ -86,7 +86,7 @@ function TranslationsPanel({ menuItems }: { menuItems: any[] }) {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ target_language: lang }),
-      }).then(r => r.json());
+      }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
       if (result.translation) {
         setTranslations(prev => ({ ...prev, [lang]: result.translation }));
         toast({ title: `Auto-translated to ${SUPPORTED_LANGUAGES.find(l => l.code === lang)?.name}!` });

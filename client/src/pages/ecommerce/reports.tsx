@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 
-const api = (path: string) => fetch(path).then(r => r.json());
+const api = (path: string) => fetch(path).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const PERIODS = [
   { label: "This Month", value: "this_month" },

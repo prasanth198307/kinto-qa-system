@@ -10,7 +10,7 @@ import { useTenantConfig } from "@/hooks/use-tenant-config";
 import { generateReceiptHTML, printReceipt, printToNetworkPrinter } from "@/lib/print-utils";
 
 const api = (m: string, u: string, b?: any) =>
-  fetch(u, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined, credentials: "include" }).then(r => r.json());
+  fetch(u, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined, credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 const fmt = (n: any) => "₹" + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
 
 type CartItem = {
@@ -316,7 +316,7 @@ export default function RestaurantPOSPage() {
       setShowPaymentModal(true);
       // Attempt thermal print — fetch printer config for bill station
       try {
-        const printerConfig = await fetch("/api/restaurant/printer-config?station=bill", { credentials: "include" }).then(r => r.json());
+        const printerConfig = await fetch("/api/restaurant/printer-config?station=bill", { credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
         const html = generateReceiptHTML(data, tenantConfig);
         if (printerConfig?.connection_type === "network" && printerConfig?.ip_address) {
           await printToNetworkPrinter(printerConfig.ip_address, printerConfig.port ?? 9100, html);

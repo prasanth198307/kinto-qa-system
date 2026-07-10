@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Shield } from "lucide-react";
 
 const api = (method: string, path: string, body?: any) =>
-  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined, credentials: "include" }).then(r => r.json());
+  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined, credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const BLANK = { enrollment_type: "aadhaar", aadhaar_number: "", mobile: "", name: "", dob: "", gender: "M", otp: "" };
 const STATUS_COLOR: Record<string, string> = { GRANTED: "bg-green-100 text-green-800", PENDING: "bg-yellow-100 text-yellow-800", REVOKED: "bg-red-100 text-red-800" };

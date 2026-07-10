@@ -13,7 +13,7 @@ import { Plus, Coins, ArrowDownLeft, TrendingUp, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const api = (method: string, path: string, body?: any) =>
-  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(r => r.json());
+  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const fmt = (n: number) => `₹${Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
 const fmtG = (n: number) => `${Number(n || 0).toFixed(4)}g`;
@@ -27,8 +27,8 @@ export default function DigitalGoldPage() {
   const [buyForm, setBuyForm] = useState({ customer_name: "", customer_id: "", grams: "", purchase_amount: "", purchase_rate: "6850" });
   const [redeemForm, setRedeemForm] = useState({ redeem_type: "cash", redeem_amount: "" });
 
-  const { data: holdings = [], isLoading } = useQuery<any[]>({ queryKey: ["digital-gold-holdings"], queryFn: () => fetch("/api/gold-erp/digital-gold/holdings").then(r => r.json()) });
-  const { data: liveRate } = useQuery<any>({ queryKey: ["gold-live-rate"], queryFn: () => fetch("/api/gold-erp/rates/live").then(r => r.json()).catch(() => ({ rate: 6850 })), refetchInterval: 60000 });
+  const { data: holdings = [], isLoading } = useQuery<any[]>({ queryKey: ["digital-gold-holdings"], queryFn: () => fetch("/api/gold-erp/digital-gold/holdings").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
+  const { data: liveRate } = useQuery<any>({ queryKey: ["gold-live-rate"], queryFn: () => fetch("/api/gold-erp/rates/live").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }).catch(() => ({ rate: 6850 })), refetchInterval: 60000 });
 
   const rate24k = liveRate?.rate || 6850;
   const rate22k = Math.round(rate24k * 22/24);

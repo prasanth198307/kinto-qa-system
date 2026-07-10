@@ -13,7 +13,7 @@ import { Plus, Ship, FileText, DollarSign, Loader2, ExternalLink } from "lucide-
 import { useToast } from "@/hooks/use-toast";
 
 const api = (method: string, path: string, body?: any) =>
-  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(r => r.json());
+  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const fmt = (n: number) => `₹${(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
 
@@ -38,11 +38,11 @@ export default function SupplyChainPage() {
   const [lForm, setLForm] = useState({ shipment_id: "", po_reference: "", freight_amount: "", insurance_amount: "", customs_duty: "", port_charges: "", cha_charges: "", other_charges: "", allocation_method: "value" });
   const [dForm, setDForm] = useState({ doc_type: "bill_of_lading", doc_no: "", doc_date: "", issuer: "" });
 
-  const { data: shipments = [] } = useQuery<any[]>({ queryKey: ["shipments"], queryFn: () => fetch("/api/manufacturing/supply-chain/shipments").then(r => r.json()) });
-  const { data: landedCosts = [] } = useQuery<any[]>({ queryKey: ["landed-costs"], queryFn: () => fetch("/api/manufacturing/supply-chain/landed-costs").then(r => r.json()) });
+  const { data: shipments = [] } = useQuery<any[]>({ queryKey: ["shipments"], queryFn: () => fetch("/api/manufacturing/supply-chain/shipments").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
+  const { data: landedCosts = [] } = useQuery<any[]>({ queryKey: ["landed-costs"], queryFn: () => fetch("/api/manufacturing/supply-chain/landed-costs").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
   const { data: importDocs = [] } = useQuery<any[]>({
     queryKey: ["import-docs", selectedShipment],
-    queryFn: () => selectedShipment ? fetch(`/api/manufacturing/supply-chain/import-docs/${selectedShipment}`).then(r => r.json()) : Promise.resolve([]),
+    queryFn: () => selectedShipment ? fetch(`/api/manufacturing/supply-chain/import-docs/${selectedShipment}`).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) : Promise.resolve([]),
     enabled: !!selectedShipment,
   });
 

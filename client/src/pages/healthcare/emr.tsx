@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Search, Plus, Trash2, FileText } from "lucide-react";
 
 const api = (method: string, path: string, body?: any) =>
-  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined, credentials: "include" }).then(r => r.json());
+  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined, credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const ICD10_CODES = [
   { code: "A09", desc: "Diarrhoea and gastroenteritis" },

@@ -31,17 +31,17 @@ export default function SwachSocialIndex() {
 
   const { data: accounts = [] } = useQuery({
     queryKey: ["/api/social/accounts"],
-    queryFn: () => fetch("/api/social/accounts").then(r => r.json()),
+    queryFn: () => fetch("/api/social/accounts").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
 
   const { data: posts = [], isLoading } = useQuery({
     queryKey: ["/api/social/posts"],
-    queryFn: () => fetch("/api/social/posts").then(r => r.json()),
+    queryFn: () => fetch("/api/social/posts").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
 
   const { data: analyticsSummary } = useQuery({
     queryKey: ["/api/social/analytics/summary"],
-    queryFn: () => fetch("/api/social/analytics/summary").then(r => r.json()),
+    queryFn: () => fetch("/api/social/analytics/summary").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
 
   const connectMut = useMutation({

@@ -77,11 +77,11 @@ function BOMDetail({ bom, onClose }: { bom: Record<string, unknown>; onClose: ()
 
   const { data: exploded } = useQuery({
     queryKey: ["/api/mrp/bom", bom.id, "explode"],
-    queryFn: () => fetch(`/api/mrp/bom/${bom.id}/explode`).then(r => r.json()),
+    queryFn: () => fetch(`/api/mrp/bom/${bom.id}/explode`).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
 
   const costMutation = useMutation({
-    mutationFn: () => fetch(`/api/mrp/bom/${bom.id}/cost-rollup`).then(r => r.json()),
+    mutationFn: () => fetch(`/api/mrp/bom/${bom.id}/cost-rollup`).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: (d: unknown) => setCostRollup(d as Record<string, unknown>),
     onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
@@ -139,7 +139,7 @@ function BOMDetail({ bom, onClose }: { bom: Record<string, unknown>; onClose: ()
 export default function BomManagerPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [selected, setSelected] = useState<Record<string, unknown> | null>(null);
-  const { data: boms } = useQuery({ queryKey: ["/api/mrp/bom"], queryFn: () => fetch("/api/mrp/bom").then(r => r.json()) });
+  const { data: boms } = useQuery({ queryKey: ["/api/mrp/bom"], queryFn: () => fetch("/api/mrp/bom").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
   const arr: Record<string, unknown>[] = Array.isArray(boms) ? boms : [];
 
   return (

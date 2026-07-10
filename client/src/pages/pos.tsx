@@ -647,7 +647,7 @@ function UpiQrDialog({
       credentials: "include",
       body: JSON.stringify({ amount, session_id: sessionId, description: `Bill ₹${amount}` }),
     })
-      .then(r => r.json())
+      .then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); })
       .then(data => {
         if (data.error) { setQrState("failed"); setErrorMsg(data.error); return; }
         setQrId(data.qr_id);
@@ -850,7 +850,7 @@ function CardTerminalDialog({ open, amount, sessionId, counterName, onClose, onP
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ amount, session_id: sessionId, terminal_id: t.id }),
     })
-      .then(r => r.json())
+      .then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); })
       .then(data => {
         if (data.error) { setState("failed"); setErrorMsg(data.error); return; }
         // Pine Labs / Ingenico return instant result
@@ -876,7 +876,7 @@ function CardTerminalDialog({ open, amount, sessionId, counterName, onClose, onP
     setState("loading"); setTerminal(null); setChargeId(null); setErrorMsg(""); setCardRef("");
     if (!counterName) { setState("no_terminal"); return; }
     fetch(`/api/pos/terminals/by-counter/${encodeURIComponent(counterName)}`, { credentials: "include" })
-      .then(r => r.json())
+      .then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); })
       .then(data => {
         if (data?.id) {
           setTerminal(data);

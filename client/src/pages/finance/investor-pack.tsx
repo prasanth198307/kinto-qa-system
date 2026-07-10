@@ -10,7 +10,7 @@ import { RefreshCw, Download, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const api = (method: string, path: string, body?: any) =>
-  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(r => r.json());
+  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const fmt = (n: number, currency = true) => currency
   ? `₹${(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 0 })}`
@@ -33,42 +33,42 @@ export default function InvestorPackPage() {
 
   const { data: summary, refetch: refetchSummary } = useQuery({
     queryKey: ["investor-summary"],
-    queryFn: () => fetch("/api/finance-erp/investor/summary").then(r => r.json()),
+    queryFn: () => fetch("/api/finance-erp/investor/summary").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
 
   const { data: ebitda } = useQuery({
     queryKey: ["investor-ebitda"],
-    queryFn: () => fetch("/api/finance-erp/investor/ebitda").then(r => r.json()),
+    queryFn: () => fetch("/api/finance-erp/investor/ebitda").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
 
   const { data: burnData } = useQuery({
     queryKey: ["investor-burn"],
-    queryFn: () => fetch("/api/finance-erp/investor/burn-rate").then(r => r.json()),
+    queryFn: () => fetch("/api/finance-erp/investor/burn-rate").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
 
   const { data: mrrData } = useQuery({
     queryKey: ["investor-mrr"],
-    queryFn: () => fetch("/api/finance-erp/investor/mrr-arr").then(r => r.json()),
+    queryFn: () => fetch("/api/finance-erp/investor/mrr-arr").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
 
   const { data: ltvData } = useQuery({
     queryKey: ["investor-ltv"],
-    queryFn: () => fetch("/api/finance-erp/investor/ltv-cac").then(r => r.json()),
+    queryFn: () => fetch("/api/finance-erp/investor/ltv-cac").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
 
   const { data: cohortData } = useQuery({
     queryKey: ["investor-cohort", cohortMonths],
-    queryFn: () => fetch(`/api/finance-erp/investor/cohort?months=${cohortMonths}`).then(r => r.json()),
+    queryFn: () => fetch(`/api/finance-erp/investor/cohort?months=${cohortMonths}`).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
 
   const { data: metrics } = useQuery({
     queryKey: ["investor-metrics"],
-    queryFn: () => fetch("/api/investor/metrics?limit=1").then(r => r.json()),
+    queryFn: () => fetch("/api/investor/metrics?limit=1").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
 
   const { data: runway } = useQuery({
     queryKey: ["investor-runway"],
-    queryFn: () => fetch("/api/investor/runway").then(r => r.json()),
+    queryFn: () => fetch("/api/investor/runway").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
 
   const calcMetrics = useMutation({

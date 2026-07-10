@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { BarChart3, Download } from "lucide-react";
 
 const api = (method: string, path: string) =>
-  fetch(path, { method, headers: { "Content-Type": "application/json" } }).then(r => r.json());
+  fetch(path, { method, headers: { "Content-Type": "application/json" } }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const TABS = [
   { key: "occupancy", label: "Occupancy" },

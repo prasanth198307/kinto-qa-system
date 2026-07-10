@@ -28,12 +28,12 @@ export default function CRMSurveysPage() {
   const { data: surveys = [] } = useQuery<any[]>({ queryKey: ["/api/crm/surveys"] });
   const { data: detailQuestions = [] } = useQuery<any[]>({
     queryKey: ["/api/crm/survey-questions", showDetails?.id],
-    queryFn: () => showDetails ? fetch(`/api/crm/survey-questions?survey_id=${showDetails.id}`).then(r => r.json()) : Promise.resolve([]),
+    queryFn: () => showDetails ? fetch(`/api/crm/survey-questions?survey_id=${showDetails.id}`).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) : Promise.resolve([]),
     enabled: !!showDetails,
   });
   const { data: responses = [] } = useQuery<any[]>({
     queryKey: ["/api/crm/survey-responses", showDetails?.id],
-    queryFn: () => showDetails ? fetch(`/api/crm/survey-responses?survey_id=${showDetails.id}`).then(r => r.json()) : Promise.resolve([]),
+    queryFn: () => showDetails ? fetch(`/api/crm/survey-responses?survey_id=${showDetails.id}`).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) : Promise.resolve([]),
     enabled: !!showDetails,
   });
 

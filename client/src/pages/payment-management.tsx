@@ -367,7 +367,7 @@ export default function PaymentManagement() {
       const params = new URLSearchParams({ page: String(bulkPage), limit: String(BULK_PAGE_SIZE) });
       if (bulkSearch.trim()) params.set('search', bulkSearch.trim());
       if (bulkVendorId) params.set('vendorId', bulkVendorId);
-      return fetch(`/api/invoice-payments/bulk-allocations?${params}`, { credentials: 'include' }).then(r => r.json());
+      return fetch(`/api/invoice-payments/bulk-allocations?${params}`, { credentials: 'include' }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
     },
   });
 

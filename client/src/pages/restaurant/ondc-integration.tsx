@@ -13,7 +13,7 @@ import { RefreshCw, CheckCircle, Package, Loader2, ExternalLink } from "lucide-r
 import { useToast } from "@/hooks/use-toast";
 
 const api = (method: string, path: string, body?: any) =>
-  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(r => r.json());
+  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const STATUS_COLOR: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-700", accepted: "bg-blue-100 text-blue-700",
@@ -25,7 +25,7 @@ const STATUS_COLOR: Record<string, string> = {
 function SetupTab() {
   const { toast } = useToast();
   const qc = useQueryClient();
-  const { data: configs = [] } = useQuery<any[]>({ queryKey: ["aggregator-configs"], queryFn: () => fetch("/api/aggregators/config").then(r => r.json()) });
+  const { data: configs = [] } = useQuery<any[]>({ queryKey: ["aggregator-configs"], queryFn: () => fetch("/api/aggregators/config").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
   const ondcConfig = (configs as any[]).find((c: any) => c.platform === "ondc") || {};
   const [form, setForm] = useState({ subscriber_id: "", signing_public_key: "", bap_endpoint: "", registry_url: "https://preprod.registry.ondc.org/ondc", is_enabled: false });
 
@@ -88,7 +88,7 @@ function SetupTab() {
 
 function CatalogSyncTab() {
   const { toast } = useToast();
-  const { data: catalog, isLoading, refetch } = useQuery<any>({ queryKey: ["ondc-catalog"], queryFn: () => fetch("/api/aggregators/ondc/catalog").then(r => r.json()), enabled: false });
+  const { data: catalog, isLoading, refetch } = useQuery<any>({ queryKey: ["ondc-catalog"], queryFn: () => fetch("/api/aggregators/ondc/catalog").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }), enabled: false });
   const items = catalog?.message?.catalog?.["bpp/providers"]?.[0]?.items || [];
 
   return (
@@ -131,10 +131,10 @@ function CatalogSyncTab() {
 function OrderManagementTab() {
   const { toast } = useToast();
   const qc = useQueryClient();
-  const { data: orders = [], isLoading, refetch } = useQuery<any[]>({ queryKey: ["ondc-orders"], queryFn: () => fetch("/api/aggregators/ondc/orders").then(r => r.json()).catch(() => []) });
+  const { data: orders = [], isLoading, refetch } = useQuery<any[]>({ queryKey: ["ondc-orders"], queryFn: () => fetch("/api/aggregators/ondc/orders").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }).catch(() => []) });
 
   const updateStatus = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: string }) => fetch(`/api/aggregators/orders/${id}/status`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) }).then(r => r.json()),
+    mutationFn: ({ id, status }: { id: string; status: string }) => fetch(`/api/aggregators/orders/${id}/status`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: () => { toast({ title: "Order status updated" }); qc.invalidateQueries({ queryKey: ["ondc-orders"] }); },
   });
 
@@ -179,7 +179,7 @@ function OrderManagementTab() {
 }
 
 function AnalyticsTab() {
-  const { data: stats, isLoading } = useQuery<any>({ queryKey: ["ondc-analytics"], queryFn: () => fetch("/api/aggregators/ondc/analytics").then(r => r.json()).catch(() => ({})) });
+  const { data: stats, isLoading } = useQuery<any>({ queryKey: ["ondc-analytics"], queryFn: () => fetch("/api/aggregators/ondc/analytics").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }).catch(() => ({})) });
   const ondcPct = stats?.ondc_pct || 0;
   const directPct = stats?.total_orders > 0 ? Math.round((stats?.direct_orders / stats?.total_orders) * 100) : 0;
 

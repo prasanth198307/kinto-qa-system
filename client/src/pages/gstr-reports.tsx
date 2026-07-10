@@ -23,13 +23,13 @@ export default function GSTRReportsPage() {
 
   const { data: gstr1Data, isLoading: gstr1Loading } = useQuery<any>({
     queryKey: ["/api/generic/gstr-1", month, year],
-    queryFn: () => fetch(`/api/generic/gstr-1?month=${month}&year=${year}`, { credentials: "include" }).then(r => r.json()),
+    queryFn: () => fetch(`/api/generic/gstr-1?month=${month}&year=${year}`, { credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     staleTime: 60 * 1000,
   });
 
   const { data: gstr3bData, isLoading: gstr3bLoading } = useQuery<any>({
     queryKey: ["/api/generic/gstr-3b", month, year],
-    queryFn: () => fetch(`/api/generic/gstr-3b?month=${month}&year=${year}`, { credentials: "include" }).then(r => r.json()),
+    queryFn: () => fetch(`/api/generic/gstr-3b?month=${month}&year=${year}`, { credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     staleTime: 60 * 1000,
   });
 

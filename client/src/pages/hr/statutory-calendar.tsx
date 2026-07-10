@@ -11,7 +11,7 @@ import { useLocation } from "wouter";
 import { Calendar, AlertTriangle, CheckCircle, Clock } from "lucide-react";
 
 const api = (method: string, path: string, body?: unknown) =>
-  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(r => r.json());
+  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const YEARS = ["2024","2025","2026"];

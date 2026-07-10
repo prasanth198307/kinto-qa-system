@@ -54,7 +54,7 @@ function SubsidiariesTab() {
   const { toast } = useToast();
   const [showAdd, setShowAdd] = useState(false);
   const [consolidated, setConsolidated] = useState<Record<string, unknown>[]>([]);
-  const { data: subs } = useQuery({ queryKey: ["/api/ifrs/subsidiaries"], queryFn: () => fetch("/api/ifrs/subsidiaries").then(r => r.json()) });
+  const { data: subs } = useQuery({ queryKey: ["/api/ifrs/subsidiaries"], queryFn: () => fetch("/api/ifrs/subsidiaries").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
   const consolidateMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/ifrs/consolidate", {}),
     onSuccess: (d: unknown) => { setConsolidated(Array.isArray(d) ? d : []); toast({ title: "Consolidated" }); },
@@ -111,7 +111,7 @@ function SubsidiariesTab() {
 
 function FixedAssetsTab() {
   const { toast } = useToast();
-  const { data: assets } = useQuery({ queryKey: ["/api/ifrs/assets"], queryFn: () => fetch("/api/ifrs/assets").then(r => r.json()) });
+  const { data: assets } = useQuery({ queryKey: ["/api/ifrs/assets"], queryFn: () => fetch("/api/ifrs/assets").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
   const depMutation = useMutation({
     mutationFn: (id: number) => apiRequest("POST", `/api/ifrs/assets/${id}/depreciate`, {}),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/ifrs/assets"] }); toast({ title: "Depreciation calculated" }); },
@@ -147,7 +147,7 @@ function FixedAssetsTab() {
 function PeriodCloseTab() {
   const { toast } = useToast();
   const [period, setPeriod] = useState("");
-  const { data: steps } = useQuery({ queryKey: ["/api/ifrs/period-close"], queryFn: () => fetch("/api/ifrs/period-close").then(r => r.json()) });
+  const { data: steps } = useQuery({ queryKey: ["/api/ifrs/period-close"], queryFn: () => fetch("/api/ifrs/period-close").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
   const runMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/ifrs/period-close/run", { period }),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/ifrs/period-close"] }); toast({ title: "Period close run" }); },

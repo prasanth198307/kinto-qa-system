@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
-const api = (u: string) => fetch(u, { credentials: "include" }).then(r => r.json());
+const api = (u: string) => fetch(u, { credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 const fmt = (n: any) => n != null ? `₹${Number(n).toLocaleString("en-IN")}` : "—";
 
 type ReportKey = "sales_velocity" | "inventory_aging" | "collection_efficiency" | "broker_performance" | "project_profitability" | "demand_vs_collection" | "unit_status_inventory";

@@ -40,7 +40,7 @@ export default function AuditLogPage() {
       const params = new URLSearchParams();
       if (entityType !== "all") params.append("entity_type", entityType);
       if (action !== "all") params.append("action", action);
-      return fetch(`/api/generic/audit-log?${params}`, { credentials: "include" }).then(r => r.json());
+      return fetch(`/api/generic/audit-log?${params}`, { credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
     },
   });
 

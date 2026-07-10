@@ -28,7 +28,7 @@ function StatusBadge({ status }: { status: string }) {
 function GenerateIRNDialog({ invoiceId, invoiceNumber, open, onClose }: any) {
   const { toast } = useToast();
   const mutation = useMutation({
-    mutationFn: () => apiRequest('POST', `/api/einvoice/generate/${invoiceId}`).then(r => r.json()),
+    mutationFn: () => apiRequest('POST', `/api/einvoice/generate/${invoiceId}`).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: (data) => {
       if (data.success) {
         toast({ title: 'IRN Generated!', description: `IRN: ${data.irn}` });
@@ -78,7 +78,7 @@ function CancelIRNDialog({ invoiceId, invoiceNumber, irn, open, onClose }: any) 
   const [remarks, setRemarks] = useState('');
 
   const mutation = useMutation({
-    mutationFn: () => apiRequest('POST', `/api/einvoice/cancel/${invoiceId}`, { reason, remarks }).then(r => r.json()),
+    mutationFn: () => apiRequest('POST', `/api/einvoice/cancel/${invoiceId}`, { reason, remarks }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: (data) => {
       if (data.success) {
         toast({ title: 'IRN Cancelled' });
@@ -132,7 +132,7 @@ function EWayBillDialog({ invoiceId, invoiceNumber, open, onClose }: any) {
   const [form, setForm] = useState({ transMode: '1', transId: '', transName: '', vehNo: '', vehType: 'R' });
 
   const mutation = useMutation({
-    mutationFn: () => apiRequest('POST', `/api/einvoice/eway-bill/${invoiceId}`, form).then(r => r.json()),
+    mutationFn: () => apiRequest('POST', `/api/einvoice/eway-bill/${invoiceId}`, form).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: (data) => {
       if (data.success) {
         toast({ title: 'e-Way Bill Generated!', description: `EWB No: ${data.ewayBillNo}` });

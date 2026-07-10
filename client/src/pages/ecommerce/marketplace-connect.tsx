@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 
 const api = (path: string, opts?: RequestInit) =>
-  fetch(path, { headers: { "Content-Type": "application/json" }, ...opts }).then(r => r.json());
+  fetch(path, { headers: { "Content-Type": "application/json" }, ...opts }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const MARKETPLACES = [
   {

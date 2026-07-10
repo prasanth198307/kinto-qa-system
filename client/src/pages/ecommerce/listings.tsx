@@ -29,13 +29,13 @@ export default function ListingsPage() {
   const [stockModal, setStockModal] = useState<Listing | null>(null);
   const [newQty, setNewQty] = useState("");
 
-  const { data: listings = [], isLoading } = useQuery<Listing[]>({ queryKey: ["/api/ecommerce/listings"], queryFn: () => apiRequest("GET", "/api/ecommerce/listings").then(r => r.json()) });
-  const { data: channels = [] } = useQuery<Channel[]>({ queryKey: ["/api/ecommerce/channels"], queryFn: () => apiRequest("GET", "/api/ecommerce/channels").then(r => r.json()) });
+  const { data: listings = [], isLoading } = useQuery<Listing[]>({ queryKey: ["/api/ecommerce/listings"], queryFn: () => apiRequest("GET", "/api/ecommerce/listings").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
+  const { data: channels = [] } = useQuery<Channel[]>({ queryKey: ["/api/ecommerce/channels"], queryFn: () => apiRequest("GET", "/api/ecommerce/channels").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
 
   const saveMutation = useMutation({
     mutationFn: (data: Record<string, unknown>) => editItem
-      ? apiRequest("PUT", `/api/ecommerce/listings/${editItem.id}`, data).then(r => r.json())
-      : apiRequest("POST", "/api/ecommerce/listings", data).then(r => r.json()),
+      ? apiRequest("PUT", `/api/ecommerce/listings/${editItem.id}`, data).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); })
+      : apiRequest("POST", "/api/ecommerce/listings", data).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/ecommerce/listings"] }); setModalOpen(false); toast({ title: editItem ? "Listing updated" : "Listing created" }); },
     onError: () => toast({ title: "Error saving listing", variant: "destructive" }),
   });
@@ -47,19 +47,19 @@ export default function ListingsPage() {
   });
 
   const toggleMutation = useMutation({
-    mutationFn: (l: Listing) => apiRequest("PUT", `/api/ecommerce/listings/${l.id}`, { is_active: !l.is_active }).then(r => r.json()),
+    mutationFn: (l: Listing) => apiRequest("PUT", `/api/ecommerce/listings/${l.id}`, { is_active: !l.is_active }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/ecommerce/listings"] }),
     onError: () => toast({ title: "Toggle failed", variant: "destructive" }),
   });
 
   const syncAllMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/ecommerce/inventory/sync-push").then(r => r.json()),
+    mutationFn: () => apiRequest("POST", "/api/ecommerce/inventory/sync-push").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: () => toast({ title: "Stock synced to all marketplaces" }),
     onError: () => toast({ title: "Sync failed", variant: "destructive" }),
   });
 
   const stockSyncMutation = useMutation({
-    mutationFn: (l: Listing) => apiRequest("POST", "/api/ecommerce/inventory-sync", { channel_id: l.channel_id, listing_id: l.id, sku: l.sku, qty_before: l.stock_qty, qty_after: Number(newQty), sync_type: "manual" }).then(r => r.json()),
+    mutationFn: (l: Listing) => apiRequest("POST", "/api/ecommerce/inventory-sync", { channel_id: l.channel_id, listing_id: l.id, sku: l.sku, qty_before: l.stock_qty, qty_after: Number(newQty), sync_type: "manual" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/ecommerce/listings"] }); setStockModal(null); setNewQty(""); toast({ title: "Stock updated" }); },
     onError: () => toast({ title: "Stock update failed", variant: "destructive" }),
   });

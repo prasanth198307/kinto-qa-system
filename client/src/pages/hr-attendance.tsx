@@ -40,7 +40,7 @@ function OTRegisterTab({ month, year, employees }: { month: number; year: number
 
   const { data: otEntries = [], refetch } = useQuery<any[]>({
     queryKey: ["/api/hr/attendance/ot", month, year],
-    queryFn: () => fetch(`/api/hr/attendance/ot?month=${month}&year=${year}`, { credentials: "include" }).then(r => r.json()),
+    queryFn: () => fetch(`/api/hr/attendance/ot?month=${month}&year=${year}`, { credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
 
   // When arrear mode is toggled on, auto-set date to last day of current month
@@ -384,14 +384,14 @@ export default function HRAttendancePage() {
 
   const { data: attendance = [] } = useQuery({
     queryKey: ["/api/hr/attendance", month, year],
-    queryFn: () => fetch(`/api/hr/attendance?month=${month}&year=${year}`, { credentials: "include" }).then(r => r.json()),
+    queryFn: () => fetch(`/api/hr/attendance?month=${month}&year=${year}`, { credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
 
   const { data: employees = [] } = useQuery<any[]>({ queryKey: ["/api/hr/employees"] });
 
   const { data: summary = [] } = useQuery({
     queryKey: ["/api/hr/attendance/summary", month, year],
-    queryFn: () => fetch(`/api/hr/attendance/summary?month=${month}&year=${year}`, { credentials: "include" }).then(r => r.json()),
+    queryFn: () => fetch(`/api/hr/attendance/summary?month=${month}&year=${year}`, { credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
 
   const daysInMonth = new Date(year, month, 0).getDate();
@@ -399,7 +399,7 @@ export default function HRAttendancePage() {
 
   const { data: leaveTypes = [] } = useQuery<any[]>({
     queryKey: ["/api/hr/leave-types"],
-    queryFn: () => fetch("/api/hr/leave-types", { credentials: "include" }).then(r => r.json()),
+    queryFn: () => fetch("/api/hr/leave-types", { credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
 
   // attMap: empId -> day -> status

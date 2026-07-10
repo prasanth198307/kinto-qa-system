@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MapPin, Gauge, Wifi, Plus, Trash2, Navigation } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-const api = (path: string) => fetch(path).then(r => r.json());
+const api = (path: string) => fetch(path).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const SAMPLE_VEHICLES = [
   { id: 1, vehicle_no: "MH12AB1234", status: "Moving", location: "Bandra, Mumbai", speed: 65 },
@@ -55,7 +55,7 @@ export default function GPSTrackingPage() {
   const displayTrips = (trips as any[]).length ? trips : SAMPLE_TRIPS;
 
   const simulateMutation = useMutation({
-    mutationFn: (vehicleId: number) => fetch(`/api/logistics/gps/simulate/${vehicleId}`, { method: "POST" }).then(r => r.json()),
+    mutationFn: (vehicleId: number) => fetch(`/api/logistics/gps/simulate/${vehicleId}`, { method: "POST" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: () => {
       toast({ title: "GPS Simulated", description: "Position updated successfully" });
       qc.invalidateQueries({ queryKey: ["gps-track", selectedVehicleId] });
@@ -70,7 +70,7 @@ export default function GPSTrackingPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ waypoints: wps }),
-      }).then(r => r.json()),
+      }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: (data) => setRouteResult(data),
     onError: () => {
       setRouteResult({ distance_km: 842, duration_hrs: 14.5, estimated_fuel_l: 95, estimated_toll: 1200, ordered_waypoints: waypoints.map(w => w.label) });

@@ -623,7 +623,7 @@ function ProductionSection() {
   const { data: designs = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/designs"] });
   const { data: stages = [] } = useQuery<any[]>({
     queryKey: ["/api/gold-erp/production-orders", selectedOrder?.id, "stages"],
-    queryFn: () => selectedOrder ? fetch(`/api/gold-erp/production-orders/${selectedOrder.id}/stages`).then(r => r.json()) : Promise.resolve([]),
+    queryFn: () => selectedOrder ? fetch(`/api/gold-erp/production-orders/${selectedOrder.id}/stages`).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) : Promise.resolve([]),
     enabled: !!selectedOrder,
   });
 
@@ -1175,7 +1175,7 @@ function ChitSchemesSection() {
   const { data: schemes = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/chit-schemes"] });
   const { data: members = [] } = useQuery<any[]>({
     queryKey: ["/api/gold-erp/chit-schemes", selectedScheme?.id, "members"],
-    queryFn: () => selectedScheme ? fetch(`/api/gold-erp/chit-schemes/${selectedScheme.id}/members`).then(r => r.json()) : Promise.resolve([]),
+    queryFn: () => selectedScheme ? fetch(`/api/gold-erp/chit-schemes/${selectedScheme.id}/members`).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) : Promise.resolve([]),
     enabled: !!selectedScheme,
   });
 

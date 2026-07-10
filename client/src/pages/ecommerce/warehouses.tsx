@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { MapPin, Search, Plus, Edit2, Trash2, AlertTriangle, RefreshCw, CheckCircle } from "lucide-react";
 
 const api = (m: string, u: string, b?: any) =>
-  fetch(u, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined, credentials: "include" }).then(r => r.json());
+  fetch(u, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined, credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const TABS = ["Warehouses", "Stock Levels", "Fulfillment Zones"];
 

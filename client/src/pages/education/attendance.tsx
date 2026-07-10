@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RefreshCw, Plus, X } from "lucide-react";
 
 const api = (method: string, path: string, body?: any) =>
-  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(r => r.json());
+  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const STATUS_COLORS: Record<string, string> = { present: "bg-green-500 text-white border-green-500", absent: "bg-red-500 text-white border-red-500", late: "bg-yellow-500 text-white border-yellow-500", leave: "bg-gray-400 text-white border-gray-400" };
 

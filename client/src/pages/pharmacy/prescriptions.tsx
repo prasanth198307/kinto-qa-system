@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { FileText, Plus, X, CheckCircle, Pill } from "lucide-react";
 
 const api = (method: string, path: string, body?: any) =>
-  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(r => r.json());
+  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const STATUS_COLORS: Record<string, string> = { pending: "bg-yellow-100 text-yellow-800", verified: "bg-blue-100 text-blue-800", dispensed: "bg-green-100 text-green-800" };
 const EMPTY = { patient_name: "", patient_phone: "", doctor_name: "", doctor_reg_no: "", prescription_date: new Date().toISOString().slice(0, 10), rx_image_url: "", notes: "" };

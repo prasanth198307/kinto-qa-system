@@ -51,7 +51,7 @@ export function OMSOrdersSection() {
   const { data: orders = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/oms-orders"] });
   const { data: timeline = [] } = useQuery<any[]>({
     queryKey: ["/api/gold-erp/oms-orders", selectedOrder?.id, "timeline"],
-    queryFn: () => selectedOrder ? fetch(`/api/gold-erp/oms-orders/${selectedOrder.id}/timeline`).then(r => r.json()) : Promise.resolve([]),
+    queryFn: () => selectedOrder ? fetch(`/api/gold-erp/oms-orders/${selectedOrder.id}/timeline`).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) : Promise.resolve([]),
     enabled: !!selectedOrder,
   });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));

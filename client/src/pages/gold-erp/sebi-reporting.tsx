@@ -11,7 +11,7 @@ import { Download, Send, FileText, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const api = (method: string, path: string, body?: any) =>
-  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(r => r.json());
+  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const fmt = (n: number) => `₹${Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 const fmtG = (n: number) => `${Number(n || 0).toFixed(3)}g`;
@@ -30,12 +30,12 @@ export default function SEBIReportingPage() {
   const [reportData, setReportData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
-  const { data: filingHistory = [] } = useQuery<any[]>({ queryKey: ["sebi-reports"], queryFn: () => fetch("/api/gold-erp/sebi/reports").then(r => r.json()) });
+  const { data: filingHistory = [] } = useQuery<any[]>({ queryKey: ["sebi-reports"], queryFn: () => fetch("/api/gold-erp/sebi/reports").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
 
   const fetchReport = async () => {
     setLoading(true);
     try {
-      const data = await fetch(`/api/gold-erp/sebi/report?month=${month}&year=${year}`).then(r => r.json());
+      const data = await fetch(`/api/gold-erp/sebi/report?month=${month}&year=${year}`).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
       setReportData(data);
     } catch { toast({ title: "Failed to fetch report", variant: "destructive" }); }
     setLoading(false);
@@ -54,7 +54,7 @@ export default function SEBIReportingPage() {
 
   const quarterlyData = useQuery({
     queryKey: ["sebi-quarterly", year, quarter],
-    queryFn: () => fetch(`/api/gold-erp/sebi/quarterly-report?year=${year}&quarter=${quarter}`).then(r => r.json()).catch(() => null),
+    queryFn: () => fetch(`/api/gold-erp/sebi/quarterly-report?year=${year}&quarter=${quarter}`).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }).catch(() => null),
     enabled: false,
   });
 

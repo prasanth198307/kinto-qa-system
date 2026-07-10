@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 
 const api = (m: string, u: string, b?: any) =>
-  fetch(u, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined, credentials: "include" }).then(r => r.json());
+  fetch(u, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined, credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 const fmt = (n: any) => "₹" + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
 
 const TIER_STYLES: Record<string, string> = {
@@ -40,7 +40,7 @@ function GiftCardsTab() {
 
   const { data: giftCards = [], refetch } = useQuery({
     queryKey: ["/api/restaurant/gift-cards"],
-    queryFn: () => fetch("/api/restaurant/gift-cards").then(r => r.json()),
+    queryFn: () => fetch("/api/restaurant/gift-cards").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
   const cards: any[] = Array.isArray(giftCards) ? giftCards : (giftCards as any)?.data || [];
 
@@ -49,7 +49,7 @@ function GiftCardsTab() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...form, initial_balance: Number(form.initial_balance) }),
-    }).then(r => r.json()),
+    }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: (d: any) => {
       if (d.error) { toast({ title: d.error, variant: "destructive" } as any); return; }
       toast({ title: `Gift Card created! #${d.card_number || form.card_number}` });
@@ -62,7 +62,7 @@ function GiftCardsTab() {
     if (!searchCard.trim()) return;
     setLookupLoading(true);
     try {
-      const data = await fetch(`/api/restaurant/gift-cards/${searchCard.trim()}/balance`).then(r => r.json());
+      const data = await fetch(`/api/restaurant/gift-cards/${searchCard.trim()}/balance`).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
       setFoundCard(data?.error ? null : data);
       if (data?.error) toast({ title: data.error, variant: "destructive" } as any);
     } catch { toast({ title: "Lookup failed", variant: "destructive" } as any); }
@@ -74,7 +74,7 @@ function GiftCardsTab() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ amount: Number(redeemAmount) }),
-    }).then(r => r.json()),
+    }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: (d: any) => {
       if (d.error) { toast({ title: d.error, variant: "destructive" } as any); return; }
       toast({ title: `Redeemed Rs.${redeemAmount}! New balance: Rs.${d.remaining_balance}` });

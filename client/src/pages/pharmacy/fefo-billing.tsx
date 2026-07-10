@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { AlertTriangle, CheckCircle, Search, Pill } from "lucide-react";
 
-const api = (path: string) => fetch(path).then(r => r.json());
+const api = (path: string) => fetch(path).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 interface BillItem { product_id: number; drug_name: string; batch_no: string; expiry: string; qty: number; mrp: number; }
 interface PickedBatch { batch_no: string; expiry_date: string; qty: number; mrp: number; }
@@ -62,7 +62,7 @@ export default function FEFOBillingPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ product_id, quantity }),
-      }).then(r => r.json()),
+      }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: (data, vars) => {
       const batches = Array.isArray(data?.batches) ? data.batches : [
         { batch_no: "BX2024A", expiry_date: "2026-09-15", qty: vars.quantity, mrp: 12.50 },
@@ -83,7 +83,7 @@ export default function FEFOBillingPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ items: billItems }),
-      }).then(r => r.json()),
+      }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: () => {
       toast({ title: "Bill confirmed successfully" });
       setBillItems([]);
@@ -108,7 +108,7 @@ export default function FEFOBillingPage() {
 
   const generateIRNMutation = useMutation({
     mutationFn: (saleId: number) =>
-      fetch(`/api/pharmacy/einvoice/generate/${saleId}`, { method: "POST" }).then(r => r.json()),
+      fetch(`/api/pharmacy/einvoice/generate/${saleId}`, { method: "POST" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: (data) => {
       toast({ title: "IRN Generated", description: `IRN: ${data.irn || "Generated"}` });
       refetchIRN();

@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Download, BarChart3 } from "lucide-react";
 
-const get = (p: string) => fetch(p).then(r => r.json());
+const get = (p: string) => fetch(p).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 const fmt = (n: any) => `₹${Number(n || 0).toLocaleString("en-IN")}`;
 
 export default function NGOReportsPage() {

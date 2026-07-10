@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 const api = (m: string, u: string, b?: any) =>
-  fetch(u, { method: m, headers: b ? { "Content-Type": "application/json" } : {}, body: b ? JSON.stringify(b) : undefined }).then(r => r.json());
+  fetch(u, { method: m, headers: b ? { "Content-Type": "application/json" } : {}, body: b ? JSON.stringify(b) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +19,7 @@ interface CartItem { item: MenuItem; qty: number; notes: string; }
 function RecentKOTs({ tableId }: { tableId: number }) {
   const { data: orders = [] } = useQuery({
     queryKey: ["/api/restaurant/kot/orders", tableId],
-    queryFn: () => fetch(`/api/restaurant/kot/orders?table_id=${tableId}`).then(r => r.json()),
+    queryFn: () => fetch(`/api/restaurant/kot/orders?table_id=${tableId}`).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     enabled: !!tableId,
     refetchInterval: 30000,
   });

@@ -26,12 +26,12 @@ export default function SwachSocialCalendar() {
 
   const { data: calendar = {} } = useQuery({
     queryKey: ["/api/social/calendar"],
-    queryFn: () => fetch("/api/social/calendar").then(r => r.json()),
+    queryFn: () => fetch("/api/social/calendar").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
 
   const { data: scheduledPosts = [] } = useQuery({
     queryKey: ["/api/social/posts", "scheduled"],
-    queryFn: () => fetch("/api/social/posts?status=scheduled").then(r => r.json()),
+    queryFn: () => fetch("/api/social/posts?status=scheduled").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
 
   const processMut = useMutation({

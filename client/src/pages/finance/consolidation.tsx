@@ -13,7 +13,7 @@ import { Plus, Play, Download, Trash2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const api = (method: string, path: string, body?: any) =>
-  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(r => r.json());
+  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const fmt = (n: number) => `₹${(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 0 })}`;
 
@@ -28,10 +28,10 @@ export default function ConsolidationPage() {
   const [consolData, setConsolData] = useState<any>(null);
   const [consolidating, setConsolidating] = useState(false);
 
-  const { data: group = [] } = useQuery<any[]>({ queryKey: ["company-group"], queryFn: () => fetch("/api/finance/company-group").then(r => r.json()) });
-  const { data: pnl } = useQuery({ queryKey: ["consolidation-pnl", period.year], queryFn: () => fetch(`/api/finance/consolidation/pnl?year=${period.year}`).then(r => r.json()) });
-  const { data: bs } = useQuery({ queryKey: ["consolidation-bs"], queryFn: () => fetch("/api/finance/consolidation/balance-sheet").then(r => r.json()) });
-  const { data: eliminations = [] } = useQuery<any[]>({ queryKey: ["eliminations", period], queryFn: () => fetch(`/api/ifrs/eliminations?period_month=${period.month}&period_year=${period.year}`).then(r => r.json()) });
+  const { data: group = [] } = useQuery<any[]>({ queryKey: ["company-group"], queryFn: () => fetch("/api/finance/company-group").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
+  const { data: pnl } = useQuery({ queryKey: ["consolidation-pnl", period.year], queryFn: () => fetch(`/api/finance/consolidation/pnl?year=${period.year}`).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
+  const { data: bs } = useQuery({ queryKey: ["consolidation-bs"], queryFn: () => fetch("/api/finance/consolidation/balance-sheet").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
+  const { data: eliminations = [] } = useQuery<any[]>({ queryKey: ["eliminations", period], queryFn: () => fetch(`/api/ifrs/eliminations?period_month=${period.month}&period_year=${period.year}`).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
 
   const addCompany = useMutation({
     mutationFn: (d: any) => api("POST", "/api/finance/company-group", d),

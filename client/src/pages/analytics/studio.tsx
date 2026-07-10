@@ -53,7 +53,7 @@ function ReportsTab() {
   const { toast } = useToast();
   const [showNew, setShowNew] = useState(false);
   const [reportResult, setReportResult] = useState<{ id: number; rows: Record<string, unknown>[] } | null>(null);
-  const { data: reports } = useQuery({ queryKey: ["/api/analytics/reports"], queryFn: () => fetch("/api/analytics/reports").then(r => r.json()) });
+  const { data: reports } = useQuery({ queryKey: ["/api/analytics/reports"], queryFn: () => fetch("/api/analytics/reports").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
 
   const runMutation = useMutation({
     mutationFn: (id: number) => apiRequest("POST", `/api/analytics/reports/${id}/run`, {}),
@@ -121,7 +121,7 @@ function ReportsTab() {
 }
 
 function KPICanvasTab() {
-  const { data: canvas } = useQuery({ queryKey: ["/api/analytics/kpi/canvas"], queryFn: () => fetch("/api/analytics/kpi/canvas").then(r => r.json()) });
+  const { data: canvas } = useQuery({ queryKey: ["/api/analytics/kpi/canvas"], queryFn: () => fetch("/api/analytics/kpi/canvas").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
   const arr: Record<string, unknown>[] = Array.isArray(canvas) ? canvas : [];
   return (
     <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">

@@ -291,7 +291,7 @@ function HolidaysTab() {
   const [year, setYear] = useState(new Date().getFullYear());
   const [form, setForm] = useState({ year: new Date().getFullYear(), date: "", name: "", type: "festival", isPaid: true });
 
-  const { data = [] } = useQuery({ queryKey: ["/api/hr/holidays", year], queryFn: () => fetch(`/api/hr/holidays?year=${year}`, { credentials: "include" }).then(r => r.json()) });
+  const { data = [] } = useQuery({ queryKey: ["/api/hr/holidays", year], queryFn: () => fetch(`/api/hr/holidays?year=${year}`, { credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
   const save = useMutation({
     mutationFn: (d: any) => apiRequest(editing ? "PUT" : "POST", editing ? `/api/hr/holidays/${editing.id}` : "/api/hr/holidays", d),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/hr/holidays", year] }); setOpen(false); toast({ title: "Saved" }); },

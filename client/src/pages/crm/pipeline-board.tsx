@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useToast } from "@/hooks/use-toast";
 import { Plus, TrendingUp, IndianRupee } from "lucide-react";
 
-const api = (path: string) => fetch(path).then(r => r.json());
+const api = (path: string) => fetch(path).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const STAGES = ["lead", "qualified", "proposal", "negotiation", "won", "lost"] as const;
 type Stage = typeof STAGES[number];
@@ -74,7 +74,7 @@ export default function PipelineBoardPage() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ stage }),
-      }).then(r => r.json()),
+      }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: () => {
       toast({ title: "Deal moved" });
       qc.invalidateQueries({ queryKey: ["crm-deals"] });
@@ -88,7 +88,7 @@ export default function PipelineBoardPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
-      }).then(r => r.json()),
+      }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: () => {
       toast({ title: "Deal created" });
       setShowNewDeal(false);

@@ -31,24 +31,24 @@ export default function SettlementsPage() {
   const [cForm, setCForm] = useState({ ...emptyC });
   const [summaryYear, setSummaryYear] = useState(String(new Date().getFullYear()));
 
-  const { data: settlements = [] } = useQuery<Settlement[]>({ queryKey: ["ecom-settlements"], queryFn: () => fetch(`${API}/settlements`).then(r => r.json()) });
-  const { data: commissions = [] } = useQuery<Commission[]>({ queryKey: ["ecom-commissions"], queryFn: () => fetch(`${API}/commissions`).then(r => r.json()) });
-  const { data: summary = [] } = useQuery<Summary[]>({ queryKey: ["ecom-comm-summary", summaryYear], queryFn: () => fetch(`${API}/commissions/summary?year=${summaryYear}`).then(r => r.json()) });
+  const { data: settlements = [] } = useQuery<Settlement[]>({ queryKey: ["ecom-settlements"], queryFn: () => fetch(`${API}/settlements`).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
+  const { data: commissions = [] } = useQuery<Commission[]>({ queryKey: ["ecom-commissions"], queryFn: () => fetch(`${API}/commissions`).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
+  const { data: summary = [] } = useQuery<Summary[]>({ queryKey: ["ecom-comm-summary", summaryYear], queryFn: () => fetch(`${API}/commissions/summary?year=${summaryYear}`).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
 
   const invalidateAll = () => { qc.invalidateQueries({ queryKey: ["ecom-settlements"] }); qc.invalidateQueries({ queryKey: ["ecom-commissions"] }); qc.invalidateQueries({ queryKey: ["ecom-comm-summary"] }); };
 
   const addSettlement = useMutation({
-    mutationFn: (body: object) => fetch(`${API}/settlements`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(r => r.json()),
+    mutationFn: (body: object) => fetch(`${API}/settlements`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: () => { invalidateAll(); setSModal(false); toast({ title: "Settlement added" }); },
   });
 
   const addCommission = useMutation({
-    mutationFn: (body: object) => fetch(`${API}/commissions`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(r => r.json()),
+    mutationFn: (body: object) => fetch(`${API}/commissions`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: () => { invalidateAll(); setCModal(false); toast({ title: "Commission record added" }); },
   });
 
   const settleCommission = useMutation({
-    mutationFn: (id: number) => fetch(`${API}/commissions/${id}/settle`, { method: "PUT" }).then(r => r.json()),
+    mutationFn: (id: number) => fetch(`${API}/commissions/${id}/settle`, { method: "PUT" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: () => { invalidateAll(); toast({ title: "GL Posted ✓ — commission marked settled" }); },
   });
 

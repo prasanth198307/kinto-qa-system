@@ -35,7 +35,7 @@ export function ECatalogSection() {
   const { data: catalogs = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/catalogs"] });
   const { data: shares = [] } = useQuery<any[]>({
     queryKey: ["/api/gold-erp/catalogs", selectedCatalog?.id, "shares"],
-    queryFn: () => selectedCatalog ? fetch(`/api/gold-erp/catalogs/${selectedCatalog.id}/shares`).then(r => r.json()) : Promise.resolve([]),
+    queryFn: () => selectedCatalog ? fetch(`/api/gold-erp/catalogs/${selectedCatalog.id}/shares`).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) : Promise.resolve([]),
     enabled: !!selectedCatalog,
   });
   const { data: enquiries = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/catalog-enquiries"] });
@@ -55,7 +55,7 @@ export function ECatalogSection() {
   });
 
   const shareMut = useMutation({
-    mutationFn: (d: any) => fetch(`/api/gold-erp/catalogs/${selectedCatalog.id}/share`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(d) }).then(r => r.json()),
+    mutationFn: (d: any) => fetch(`/api/gold-erp/catalogs/${selectedCatalog.id}/share`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(d) }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/gold-erp/catalogs", selectedCatalog?.id, "shares"] });
       setShowShareForm(false); setShareForm({ expires_hours: 72 });

@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Pill, Plus, X, Search } from "lucide-react";
 
 const api = (method: string, path: string, body?: any) =>
-  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(r => r.json());
+  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const SCHEDULES = ["OTC", "H", "H1", "X", "G"];
 const SCHEDULE_COLORS: Record<string, string> = { OTC: "bg-green-100 text-green-800", H: "bg-yellow-100 text-yellow-800", H1: "bg-orange-100 text-orange-800", X: "bg-red-100 text-red-800", G: "bg-purple-100 text-purple-800" };

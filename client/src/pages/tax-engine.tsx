@@ -34,13 +34,13 @@ function RegimeBadge({ regime }: { regime: string }) {
 // Tab 1: Tax Settings
 function SettingsTab() {
   const { toast } = useToast();
-  const { data } = useQuery({ queryKey: ['/api/tax/settings'], queryFn: () => apiRequest('GET', '/api/tax/settings').then(r => r.json()) });
+  const { data } = useQuery({ queryKey: ['/api/tax/settings'], queryFn: () => apiRequest('GET', '/api/tax/settings').then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
   const s = data?.settings;
   const [form, setForm] = useState({ country: s?.country ?? 'India', default_state: s?.default_state ?? '',
     seller_state: s?.seller_state ?? '', vat_number: s?.vat_number ?? '', tax_regime: s?.tax_regime ?? 'GST',
     eu_vat_number: s?.eu_vat_number ?? '', zatca_enabled: s?.zatca_enabled ?? false, us_state: s?.us_state ?? '' });
 
-  const mut = useMutation({ mutationFn: (body: any) => apiRequest('PUT', '/api/tax/settings', body).then(r => r.json()),
+  const mut = useMutation({ mutationFn: (body: any) => apiRequest('PUT', '/api/tax/settings', body).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['/api/tax/settings'] }); toast({ title: 'Settings saved' }); },
     onError: () => toast({ title: 'Save failed', variant: 'destructive' }) });
 
@@ -177,8 +177,8 @@ function CalculatorTab() {
 
 // Tab 3: Rate Reference
 function RatesTab() {
-  const { data: euData } = useQuery({ queryKey: ['/api/tax/eu-rates'], queryFn: () => apiRequest('GET', '/api/tax/eu-rates').then(r => r.json()) });
-  const { data: usData } = useQuery({ queryKey: ['/api/tax/us-rates'], queryFn: () => apiRequest('GET', '/api/tax/us-rates').then(r => r.json()) });
+  const { data: euData } = useQuery({ queryKey: ['/api/tax/eu-rates'], queryFn: () => apiRequest('GET', '/api/tax/eu-rates').then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
+  const { data: usData } = useQuery({ queryKey: ['/api/tax/us-rates'], queryFn: () => apiRequest('GET', '/api/tax/us-rates').then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
 
   const rateColor = (r: number) => r < 10 ? 'text-green-700' : r <= 18 ? 'text-yellow-700' : 'text-red-700';
 

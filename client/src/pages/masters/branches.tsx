@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, X, Check } from "lucide-react";
 
 const api = (m: string, u: string, b?: any) =>
-  fetch(u, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined, credentials: "include" }).then(r => r.json());
+  fetch(u, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined, credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 type Branch = { id: number; branch_code: string; branch_name: string; address?: string; city?: string; state?: string; pincode?: string; phone?: string; email?: string; gstin?: string; is_head_office?: boolean; is_active?: boolean };
 const empty: Omit<Branch, "id"> = { branch_code: "", branch_name: "", address: "", city: "", state: "", pincode: "", phone: "", email: "", gstin: "", is_head_office: false, is_active: true };

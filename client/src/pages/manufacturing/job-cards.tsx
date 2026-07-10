@@ -11,7 +11,7 @@ import { PlayCircle, CheckCircle2, Plus, ClipboardList, Clock } from "lucide-rea
 import { useToast } from "@/hooks/use-toast";
 
 const api = (method: string, path: string, body?: unknown) =>
-  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(r => r.json());
+  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const STATUS_COLOR: Record<string, string> = {
   open: "bg-gray-100 text-gray-700",

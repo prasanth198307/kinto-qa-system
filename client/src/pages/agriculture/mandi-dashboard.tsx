@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/use-toast";
 import { RefreshCw, Thermometer, Droplets, Wind, CloudRain, TrendingUp } from "lucide-react";
 
-const api = (path: string) => fetch(path).then(r => r.json());
+const api = (path: string) => fetch(path).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const SAMPLE_PRICES = [
   { commodity: "Wheat", mandi: "Azadpur", state: "Delhi", modal_price: 2150, min: 2050, max: 2250, date: "2026-07-03" },
@@ -60,7 +60,7 @@ export default function MandiDashboardPage() {
   });
 
   const syncMandiMutation = useMutation({
-    mutationFn: () => fetch("/api/agriculture/mandi/sync", { method: "POST" }).then(r => r.json()),
+    mutationFn: () => fetch("/api/agriculture/mandi/sync", { method: "POST" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: (data) => {
       toast({ title: "Mandi prices synced", description: `${data?.inserted_count ?? "Latest"} records inserted` });
       qc.invalidateQueries({ queryKey: ["mandi-prices"] });
@@ -69,7 +69,7 @@ export default function MandiDashboardPage() {
   });
 
   const syncWeatherMutation = useMutation({
-    mutationFn: () => fetch("/api/agriculture/weather/sync", { method: "POST" }).then(r => r.json()),
+    mutationFn: () => fetch("/api/agriculture/weather/sync", { method: "POST" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: () => {
       toast({ title: "Weather synced" });
       qc.invalidateQueries({ queryKey: ["farm-weather", 1] });

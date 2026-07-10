@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { CheckCircle, FileText } from "lucide-react";
 
-const api = (path: string) => fetch(path).then(r => r.json());
+const api = (path: string) => fetch(path).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const SAMPLE_PROJECTS = [
   { id: 1, name: "Greenwood Heights" },
@@ -78,7 +78,7 @@ export default function RERACompliancePage() {
   };
 
   const submitMutation = useMutation({
-    mutationFn: () => fetch(`/api/real-estate/rera/report/${projectId}/submit`, { method: "POST" }).then(r => r.json()),
+    mutationFn: () => fetch(`/api/real-estate/rera/report/${projectId}/submit`, { method: "POST" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: (data) => {
       setAckNumber(data.ack_number || `RERA-ACK-${Date.now()}`);
       toast({ title: "Submitted to RERA", description: `ACK: ${data.ack_number || "Generated"}` });
@@ -106,7 +106,7 @@ export default function RERACompliancePage() {
   });
 
   const approveBillMutation = useMutation({
-    mutationFn: (id: number) => fetch(`/api/real-estate/subcontractor-bills/${id}/approve`, { method: "POST" }).then(r => r.json()),
+    mutationFn: (id: number) => fetch(`/api/real-estate/subcontractor-bills/${id}/approve`, { method: "POST" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: () => { toast({ title: "Bill approved" }); refetchBills(); },
     onError: () => toast({ title: "Approve failed", variant: "destructive" }),
   });

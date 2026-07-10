@@ -48,14 +48,14 @@ export default function BankReconciliation() {
     queryKey: ["/api/bank-reconciliation/lines", filter],
     queryFn: () => {
       const params = filter !== "all" ? `?match_status=${filter}` : "";
-      return fetch(`/api/bank-reconciliation/lines${params}`, { credentials: "include" }).then(r => r.json());
+      return fetch(`/api/bank-reconciliation/lines${params}`, { credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
     },
   });
 
   const { data: journals = [] } = useQuery<any[]>({
     queryKey: ["/api/journal-entries", journalSearch],
     queryFn: () =>
-      fetch(`/api/journal-entries?search=${encodeURIComponent(journalSearch)}&limit=20`, { credentials: "include" }).then(r => r.json()),
+      fetch(`/api/journal-entries?search=${encodeURIComponent(journalSearch)}&limit=20`, { credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     enabled: matchOpen !== null,
   });
 

@@ -14,7 +14,7 @@ import { Plus, CheckCircle, Layers, GitBranch, AlertTriangle, Loader2 } from "lu
 import { useToast } from "@/hooks/use-toast";
 
 const api = (method: string, path: string, body?: any) =>
-  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(r => r.json());
+  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const fmt = (n: number) => `₹${(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
 
@@ -30,11 +30,11 @@ export default function BomVersionsPage() {
   const [ecnForm, setEcnForm] = useState({ product_id: "", description: "", reason: "", priority: "medium" });
   const [verForm, setVerForm] = useState({ product_id: "", version_no: "", effective_from: "", change_description: "", change_reason: "" });
 
-  const { data: products = [] } = useQuery<any[]>({ queryKey: ["products-list"], queryFn: () => fetch("/api/products").then(r => r.json()) });
-  const { data: ecns = [] } = useQuery<any[]>({ queryKey: ["mfg-ecn"], queryFn: () => fetch("/api/mrp/ecn").then(r => r.json()) });
+  const { data: products = [] } = useQuery<any[]>({ queryKey: ["products-list"], queryFn: () => fetch("/api/products").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
+  const { data: ecns = [] } = useQuery<any[]>({ queryKey: ["mfg-ecn"], queryFn: () => fetch("/api/mrp/ecn").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
   const { data: versions = [] } = useQuery<any[]>({
     queryKey: ["bom-versions", selectedProduct],
-    queryFn: () => selectedProduct ? fetch(`/api/mrp/bom/${selectedProduct}/versions`).then(r => r.json()) : Promise.resolve([]),
+    queryFn: () => selectedProduct ? fetch(`/api/mrp/bom/${selectedProduct}/versions`).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) : Promise.resolve([]),
     enabled: !!selectedProduct,
   });
 
@@ -67,7 +67,7 @@ export default function BomVersionsPage() {
     if (!selectedProduct) return;
     setExploding(true);
     try {
-      const data = await fetch(`/api/mrp/bom/${selectedProduct}/explode?qty=${explodeQty}`).then(r => r.json());
+      const data = await fetch(`/api/mrp/bom/${selectedProduct}/explode?qty=${explodeQty}`).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
       setExplodeResult(Array.isArray(data) ? data : data.items || []);
       toast({ title: `BOM exploded: ${Array.isArray(data) ? data.length : data.items?.length || 0} components` });
     } catch { toast({ title: "BOM explosion failed", variant: "destructive" }); }

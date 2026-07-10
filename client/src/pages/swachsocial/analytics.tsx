@@ -22,18 +22,18 @@ export default function SwachSocialAnalytics() {
 
   const { data: analyticsData } = useQuery({
     queryKey: ["/api/social/analytics-summary"],
-    queryFn: () => fetch("/api/social/analytics-summary").then(r => r.json()),
+    queryFn: () => fetch("/api/social/analytics-summary").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
 
   const { data: connectStatus } = useQuery({
     queryKey: ["/api/social/connect-status"],
-    queryFn: () => fetch("/api/social/connect-status").then(r => r.json()),
+    queryFn: () => fetch("/api/social/connect-status").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     staleTime: 60000,
   });
 
   const { data: posts = [] } = useQuery({
     queryKey: ["/api/social/posts"],
-    queryFn: () => fetch("/api/social/posts").then(r => r.json()),
+    queryFn: () => fetch("/api/social/posts").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
 
   const syncMut = useMutation({

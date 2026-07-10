@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 
 const api = (m: string, u: string, b?: any) =>
-  fetch(u, { method: m, headers: { "Content-Type": "application/json" }, credentials: "include", body: b ? JSON.stringify(b) : undefined }).then(r => r.json());
+  fetch(u, { method: m, headers: { "Content-Type": "application/json" }, credentials: "include", body: b ? JSON.stringify(b) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const DOC_TYPES = ["Sale Agreement", "Title Deed", "Encumbrance Certificate", "NOC", "RERA Certificate", "Possession Letter", "OC Certificate", "CC Certificate", "Building Plan", "Power of Attorney", "Loan Agreement", "Others"];
 

@@ -13,7 +13,7 @@ import { Send, Settings, Loader2, Download, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const api = (method: string, path: string, body?: any) =>
-  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(r => r.json());
+  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const STATUS_COLOR: Record<string, string> = {
   cleared: "bg-green-100 text-green-700",
@@ -34,13 +34,13 @@ export default function ZATCAPortalPage() {
 
   const { data: existingConfig } = useQuery({
     queryKey: ["zatca-config"],
-    queryFn: () => fetch("/api/finance-erp/zatca/config").then(r => r.json()),
+    queryFn: () => fetch("/api/finance-erp/zatca/config").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: (d: any) => { if (d && Object.keys(d).length) setConfig(c => ({ ...c, ...d })); },
   } as any);
 
   const { data: filings = [] } = useQuery<any[]>({
     queryKey: ["zatca-filings"],
-    queryFn: () => fetch("/api/finance-erp/zatca/filings").then(r => r.json()),
+    queryFn: () => fetch("/api/finance-erp/zatca/filings").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
 
   const saveConfig = useMutation({

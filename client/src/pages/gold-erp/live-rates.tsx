@@ -30,7 +30,7 @@ export default function LiveGoldRatesPage() {
 
   const { data: history = [] } = useQuery<any[]>({
     queryKey: ["gold-rate-history"],
-    queryFn: () => fetch("/api/gold-erp/rates/history").then(r => r.json()).catch(() => []),
+    queryFn: () => fetch("/api/gold-erp/rates/history").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }).catch(() => []),
     refetchInterval: 300000,
   });
 
@@ -62,7 +62,7 @@ export default function LiveGoldRatesPage() {
 
   const fetchManual = async () => {
     try {
-      const data: any = await fetch("/api/gold-erp/rates/live").then(r => r.json());
+      const data: any = await fetch("/api/gold-erp/rates/live").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
       setLive(data);
       toast({ title: "Rates refreshed" });
     } catch { toast({ title: "Failed to fetch rates", variant: "destructive" }); }

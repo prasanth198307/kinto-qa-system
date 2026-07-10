@@ -29,7 +29,7 @@ export default function MandiPricesPage() {
   const fetchPrices = async () => {
     setFetching(true);
     try {
-      const data = await fetch(`/api/agriculture/mandi-prices?commodity=${commodity}&state=${state}`).then(r => r.json());
+      const data = await fetch(`/api/agriculture/mandi-prices?commodity=${commodity}&state=${state}`).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
       if (Array.isArray(data) && data.length) setPrices(data);
       else setPrices(MOCK_PRICES);
     } catch {

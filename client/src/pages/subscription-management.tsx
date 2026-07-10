@@ -142,7 +142,7 @@ function ChangePlanTab({ currentPlanSlug }: { currentPlanSlug: string | null }) 
 
   const requestMutation = useMutation({
     mutationFn: (slug: string) =>
-      apiRequest("POST", "/api/billing/request-upgrade", { plan: slug }).then(r => r.json()),
+      apiRequest("POST", "/api/billing/request-upgrade", { plan: slug }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: (data: any, slug: string) => {
       setRequestedPlan(slug);
       setPendingSlug(null);
@@ -1022,7 +1022,7 @@ export default function SubscriptionManagement() {
 
   const saveMutation = useMutation({
     mutationFn: (selectedModules: string[]) =>
-      apiRequest("POST", "/api/billing/selected-modules", { selectedModules }).then(r => r.json()),
+      apiRequest("POST", "/api/billing/selected-modules", { selectedModules }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/billing/selected-modules"] });
       queryClient.invalidateQueries({ queryKey: ["/api/billing/history"] });

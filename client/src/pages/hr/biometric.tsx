@@ -12,7 +12,7 @@ import { Cpu, RefreshCw, Trash2, Plus, Loader2, Wifi, WifiOff, Activity } from "
 import { useToast } from "@/hooks/use-toast";
 
 const api = (method: string, path: string, body?: any) =>
-  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(r => r.json());
+  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const STATUS_COLOR: Record<string, string> = {
   active: "bg-green-100 text-green-700",
@@ -35,13 +35,13 @@ export default function BiometricPage() {
 
   const { data: devices = [] } = useQuery<any[]>({
     queryKey: ["biometric-devices"],
-    queryFn: () => fetch("/api/hr/biometric/devices").then(r => r.json()),
+    queryFn: () => fetch("/api/hr/biometric/devices").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     refetchInterval: 30000,
   });
 
   const { data: logs = [], isLoading: loadingLogs } = useQuery<any[]>({
     queryKey: ["biometric-logs"],
-    queryFn: () => fetch("/api/hr/biometric/logs").then(r => r.json()),
+    queryFn: () => fetch("/api/hr/biometric/logs").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     refetchInterval: 15000,
   });
 

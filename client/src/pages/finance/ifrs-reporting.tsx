@@ -13,7 +13,7 @@ import { Plus, Play, RefreshCw, Loader2, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const api = (method: string, path: string, body?: any) =>
-  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(r => r.json());
+  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const fmt = (n: number) => `₹${(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
 
@@ -27,13 +27,13 @@ export default function IFRSReportingPage() {
   const [assetForm, setAssetForm] = useState({ asset_name: "", asset_code: "", asset_class: "PPE", acquisition_date: "", acquisition_cost: "", useful_life_months: "60", residual_value: "0", depreciation_method: "straight_line" });
   const [contractForm, setContractForm] = useState({ contract_no: "", customer_name: "", contract_date: "", total_contract_value: "", standard: "IFRS15" });
 
-  const { data: assets = [] } = useQuery<any[]>({ queryKey: ["ifrs-assets"], queryFn: () => fetch("/api/ifrs/fixed-assets").then(r => r.json()) });
-  const { data: schedule } = useQuery({ queryKey: ["ifrs-schedule"], queryFn: () => fetch("/api/ifrs/fixed-assets/schedule").then(r => r.json()) });
-  const { data: contracts = [] } = useQuery<any[]>({ queryKey: ["ifrs-contracts"], queryFn: () => fetch("/api/ifrs/revenue-contracts").then(r => r.json()) });
-  const { data: contractSummary } = useQuery({ queryKey: ["ifrs-contract-summary"], queryFn: () => fetch("/api/ifrs/revenue-contracts/summary").then(r => r.json()) });
-  const { data: deferred } = useQuery({ queryKey: ["ifrs-deferred"], queryFn: () => fetch("/api/ifrs/revenue-contracts/deferred-waterfall").then(r => r.json()) });
-  const { data: forexRates = [] } = useQuery<any[]>({ queryKey: ["forex-rates"], queryFn: () => fetch("/api/ifrs/forex/rates").then(r => r.json()) });
-  const { data: periodClose = [] } = useQuery<any[]>({ queryKey: ["period-close", period.year], queryFn: () => fetch(`/api/ifrs/period-close?year=${period.year}`).then(r => r.json()) });
+  const { data: assets = [] } = useQuery<any[]>({ queryKey: ["ifrs-assets"], queryFn: () => fetch("/api/ifrs/fixed-assets").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
+  const { data: schedule } = useQuery({ queryKey: ["ifrs-schedule"], queryFn: () => fetch("/api/ifrs/fixed-assets/schedule").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
+  const { data: contracts = [] } = useQuery<any[]>({ queryKey: ["ifrs-contracts"], queryFn: () => fetch("/api/ifrs/revenue-contracts").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
+  const { data: contractSummary } = useQuery({ queryKey: ["ifrs-contract-summary"], queryFn: () => fetch("/api/ifrs/revenue-contracts/summary").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
+  const { data: deferred } = useQuery({ queryKey: ["ifrs-deferred"], queryFn: () => fetch("/api/ifrs/revenue-contracts/deferred-waterfall").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
+  const { data: forexRates = [] } = useQuery<any[]>({ queryKey: ["forex-rates"], queryFn: () => fetch("/api/ifrs/forex/rates").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
+  const { data: periodClose = [] } = useQuery<any[]>({ queryKey: ["period-close", period.year], queryFn: () => fetch(`/api/ifrs/period-close?year=${period.year}`).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
 
   const addAsset = useMutation({
     mutationFn: (d: any) => api("POST", "/api/ifrs/fixed-assets", { ...d, acquisition_cost: Number(d.acquisition_cost), useful_life_months: Number(d.useful_life_months), residual_value: Number(d.residual_value) }),

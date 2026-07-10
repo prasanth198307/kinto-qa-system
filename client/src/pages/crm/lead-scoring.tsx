@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Zap } from "lucide-react";
 
 const api = (method: string, path: string, body?: any) =>
-  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(r => r.json());
+  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const WEIGHTS = [
   { key: "engagement", label: "Engagement", weight: 30, color: "#6366f1" },

@@ -26,18 +26,18 @@ export default function ReturnsPage() {
   const [filterType, setFilterType] = useState("");
   const [search, setSearch] = useState("");
 
-  const { data: returns = [] } = useQuery<Return[]>({ queryKey: ["ecom-returns"], queryFn: () => fetch(`${API}/returns`).then(r => r.json()) });
-  const { data: orders = [] } = useQuery<Order[]>({ queryKey: ["ecom-orders"], queryFn: () => fetch(`${API}/orders`).then(r => r.json()) });
+  const { data: returns = [] } = useQuery<Return[]>({ queryKey: ["ecom-returns"], queryFn: () => fetch(`${API}/returns`).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
+  const { data: orders = [] } = useQuery<Order[]>({ queryKey: ["ecom-orders"], queryFn: () => fetch(`${API}/orders`).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["ecom-returns"] });
 
   const createMut = useMutation({
-    mutationFn: (body: object) => fetch(`${API}/returns`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(r => r.json()),
+    mutationFn: (body: object) => fetch(`${API}/returns`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: () => { invalidate(); setModal(false); toast({ title: "Return raised" }); },
   });
 
   const updateMut = useMutation({
-    mutationFn: ({ id, body }: { id: number; body: object }) => fetch(`${API}/returns/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(r => r.json()),
+    mutationFn: ({ id, body }: { id: number; body: object }) => fetch(`${API}/returns/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: (_, vars: any) => { invalidate(); setEditing(null); const msg = (vars.body as any).status === "approved" ? "Approved — GL posted ✓" : "Updated"; toast({ title: msg }); },
   });
 

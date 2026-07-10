@@ -14,7 +14,7 @@ import { Plus, FileText, Send, CheckCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const api = (method: string, path: string, body?: unknown) =>
-  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(r => r.json());
+  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const PURITIES = ["999 (24K)", "958 (23K)", "916 (22K)", "875 (21K)", "750 (18K)", "585 (14K)"];
 const ARTICLE_TYPES = ["ring", "necklace", "bangle", "chain", "earring", "pendant", "bracelet", "anklet", "brooch", "coin"];
@@ -45,10 +45,10 @@ export default function HallmarkingPage() {
 
   const { data: items = [], isLoading } = useQuery<any[]>({
     queryKey: ["hallmarking-items", statusFilter],
-    queryFn: () => fetch(`/api/gold-erp/hallmarking${statusFilter !== "all" ? `?status=${statusFilter}` : ""}`).then(r => r.json()),
+    queryFn: () => fetch(`/api/gold-erp/hallmarking${statusFilter !== "all" ? `?status=${statusFilter}` : ""}`).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
-  const { data: certified = [] } = useQuery<any[]>({ queryKey: ["huid-certified"], queryFn: () => fetch("/api/gold-erp/hallmarking/certified").then(r => r.json()) });
-  const { data: batches = [] } = useQuery<any[]>({ queryKey: ["hallmarking-batches"], queryFn: () => fetch("/api/gold-erp/hallmarking/batches").then(r => r.json()).catch(() => []) });
+  const { data: certified = [] } = useQuery<any[]>({ queryKey: ["huid-certified"], queryFn: () => fetch("/api/gold-erp/hallmarking/certified").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
+  const { data: batches = [] } = useQuery<any[]>({ queryKey: ["hallmarking-batches"], queryFn: () => fetch("/api/gold-erp/hallmarking/batches").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }).catch(() => []) });
 
   const addMut = useMutation({
     mutationFn: (b: typeof form) => api("POST", "/api/gold-erp/hallmarking", { ...b, gross_weight: Number(b.gross_weight), net_weight: Number(b.net_weight) }),

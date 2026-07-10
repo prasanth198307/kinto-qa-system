@@ -102,7 +102,7 @@ function DilutionModelDialog({ open, onClose }: { open: boolean; onClose: () => 
 export default function CapTablePage() {
   const [showAdd, setShowAdd] = useState(false);
   const [showDilution, setShowDilution] = useState(false);
-  const { data: capTable } = useQuery({ queryKey: ["/api/investor/cap-table"], queryFn: () => fetch("/api/investor/cap-table").then(r => r.json()) });
+  const { data: capTable } = useQuery({ queryKey: ["/api/investor/cap-table"], queryFn: () => fetch("/api/investor/cap-table").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
   const arr: Record<string, unknown>[] = Array.isArray(capTable) ? capTable : [];
   const totals = arr.reduce((acc: { shares: number; investment_amount: number }, r) => ({
     shares: acc.shares + ((r.shares as number) || 0),

@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Download, Mail, FileText, Eye } from "lucide-react";
 
 const api = (method: string, path: string, body?: any) =>
-  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined, credentials: "include" }).then(r => r.json());
+  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined, credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const FINANCIAL_YEARS = ["2025-26", "2024-25", "2023-24", "2022-23"];
 

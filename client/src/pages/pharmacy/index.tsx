@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Pill, Package, Receipt, ShoppingCart, AlertTriangle, ShieldAlert, FileText, BarChart2, Undo2, ScanLine } from "lucide-react";
 
-const api = (path: string) => fetch(path).then(r => r.json());
+const api = (path: string) => fetch(path).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const MODULES = [
   { path: "/pharmacy/billing", label: "Billing (POS)", icon: Receipt, desc: "Sales with GST + GL auto-post" },

@@ -88,7 +88,7 @@ export default function SwachFormsBuilderPage() {
 
   useEffect(() => {
     if (id) {
-      fetch(`/api/forms/${id}/notifications`).then(r => r.json()).then(setNotifConfig).catch(() => {});
+      fetch(`/api/forms/${id}/notifications`).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }).then(setNotifConfig).catch(() => {});
     }
   }, [id]);
 

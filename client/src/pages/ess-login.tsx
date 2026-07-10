@@ -28,7 +28,7 @@ export default function EssLogin() {
       `/api/public/tenant-branding?origin=${encodeURIComponent(currentOrigin)}&_=${Date.now()}`,
       { cache: "no-store" }
     )
-      .then(r => r.json())
+      .then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); })
       .then(data => {
         if (!data) return;
         if (data.logoUrl) setBrandLogoUrl(data.logoUrl);

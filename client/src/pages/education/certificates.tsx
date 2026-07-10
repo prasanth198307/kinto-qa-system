@@ -10,7 +10,7 @@ import { Printer, Plus, Download, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const api = (method: string, path: string, body?: unknown) =>
-  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(r => r.json());
+  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const CERT_TYPES = ["TC", "Bonafide", "Character", "Migration", "Mark Sheet"];
 const EMPTY = { student_name: "", student_id: "", cert_type: "Bonafide", reason: "", class_name: "", admission_no: "" };

@@ -45,16 +45,16 @@ export default function EcommerceDashboard() {
 
   const { data: stats, isLoading: statsLoading } = useQuery<Stats>({
     queryKey: ["ecommerce-stats"],
-    queryFn: () => fetch("/api/ecommerce/stats").then(r => r.json()),
+    queryFn: () => fetch("/api/ecommerce/stats").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
 
   const { data: ordersData } = useQuery<{ orders: Order[] }>({
     queryKey: ["ecommerce-orders-top"],
-    queryFn: () => fetch("/api/ecommerce/orders").then(r => r.json()),
+    queryFn: () => fetch("/api/ecommerce/orders").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
 
   const syncMarketplace = useMutation({
-    mutationFn: () => fetch("/api/ecommerce/marketplace/sync", { method: "POST" }).then(r => r.json()),
+    mutationFn: () => fetch("/api/ecommerce/marketplace/sync", { method: "POST" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: (data) => toast({
       title: "Marketplace Sync Complete",
       description: `Synced ${data.total ?? 0} orders — Amazon: ${data.amazon ?? 0}, Flipkart: ${data.flipkart ?? 0}, Meesho: ${data.meesho ?? 0}`,
@@ -63,7 +63,7 @@ export default function EcommerceDashboard() {
   });
 
   const pushInventory = useMutation({
-    mutationFn: () => fetch("/api/ecommerce/inventory/sync-push", { method: "POST" }).then(r => r.json()),
+    mutationFn: () => fetch("/api/ecommerce/inventory/sync-push", { method: "POST" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: () => toast({ title: "Inventory Pushed", description: "Inventory synced to all channels." }),
     onError: () => toast({ title: "Push Failed", variant: "destructive" }),
   });

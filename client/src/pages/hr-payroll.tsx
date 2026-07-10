@@ -63,7 +63,7 @@ export default function HRPayrollPage() {
 
   const { data: psSettings } = useQuery<any>({
     queryKey: ["/api/hr/payslip-settings"],
-    queryFn: () => fetch("/api/hr/payslip-settings", { credentials: "include" }).then(r => r.json()),
+    queryFn: () => fetch("/api/hr/payslip-settings", { credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: (d: any) => {
       if (d) setSettingsForm({
         signatoryName: d.signatory_name || "",
@@ -78,7 +78,7 @@ export default function HRPayrollPage() {
   const { data: payslips = [], isLoading: psLoading } = useQuery({
     queryKey: ["/api/hr/payroll-runs", viewRun?.id, "payslips"],
     queryFn: () => viewRun
-      ? fetch(`/api/hr/payroll-runs/${viewRun.id}/payslips`, { credentials: "include" }).then(r => r.json())
+      ? fetch(`/api/hr/payroll-runs/${viewRun.id}/payslips`, { credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); })
       : Promise.resolve([]),
     enabled: !!viewRun,
   });
@@ -90,7 +90,7 @@ export default function HRPayrollPage() {
   });
 
   const processRun = useMutation({
-    mutationFn: (id: number) => apiRequest("POST", `/api/hr/payroll-runs/${id}/process`, {}).then(r => r.json()),
+    mutationFn: (id: number) => apiRequest("POST", `/api/hr/payroll-runs/${id}/process`, {}).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/hr/payroll-runs"] });
       if (viewRun) queryClient.invalidateQueries({ queryKey: ["/api/hr/payroll-runs", viewRun.id, "payslips"] });
@@ -120,13 +120,13 @@ export default function HRPayrollPage() {
   });
 
   const sendWhatsApp = useMutation({
-    mutationFn: (id: number) => apiRequest("POST", `/api/hr/payroll-runs/${id}/send-whatsapp`, {}).then(r => r.json()),
+    mutationFn: (id: number) => apiRequest("POST", `/api/hr/payroll-runs/${id}/send-whatsapp`, {}).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: (data: any) => { setSendOpen(false); toast({ title: `WhatsApp: ${data.sent} sent, ${data.skipped} skipped` }); },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const sendEmail = useMutation({
-    mutationFn: (id: number) => apiRequest("POST", `/api/hr/payroll-runs/${id}/send-email`, {}).then(r => r.json()),
+    mutationFn: (id: number) => apiRequest("POST", `/api/hr/payroll-runs/${id}/send-email`, {}).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: (data: any) => { setSendOpen(false); toast({ title: `Email: ${data.sent} sent, ${data.skipped} skipped` }); },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });

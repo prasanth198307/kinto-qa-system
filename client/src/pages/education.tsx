@@ -490,7 +490,7 @@ function TimetableTab() {
   const { data: teachers = [] } = useQuery<any[]>({ queryKey: ["/api/education/teachers"] });
   const { data: timetable = [] } = useQuery<any[]>({
     queryKey: ["/api/education/timetable", selectedClass],
-    queryFn: () => fetch(`/api/education/timetable${selectedClass?`?class_id=${selectedClass}`:""}`, { credentials: "include" }).then(r => r.json()),
+    queryFn: () => fetch(`/api/education/timetable${selectedClass?`?class_id=${selectedClass}`:""}`, { credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     enabled: !!selectedClass,
   });
   const savePeriodMut = useMutation({ mutationFn: (d: any) => apiRequest("POST", "/api/education/timetable-periods", d), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/education/timetable-periods"] }); setShowPeriodForm(false); toast({ title: "Period saved" }); } });
@@ -733,7 +733,7 @@ function AssessmentsTab() {
   const { data: students = [] } = useQuery<any[]>({ queryKey: ["/api/education/students"] });
   const { data: marks = [] } = useQuery<any[]>({
     queryKey: ["/api/education/exam-marks", selectedExam?.id],
-    queryFn: () => fetch(`/api/education/exam-marks/${selectedExam.id}`, { credentials: "include" }).then(r => r.json()),
+    queryFn: () => fetch(`/api/education/exam-marks/${selectedExam.id}`, { credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     enabled: !!selectedExam,
   });
   useEffect(() => {

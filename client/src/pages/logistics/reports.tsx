@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BarChart2, Truck, Fuel, Users, Activity } from "lucide-react";
 
-const api = (path: string) => fetch(path).then(r => r.json());
+const api = (path: string) => fetch(path).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const TABS = ["trip_summary", "fuel_efficiency", "driver_performance", "fleet_utilization", "fastag_spend"] as const;
 type Tab = typeof TABS[number];

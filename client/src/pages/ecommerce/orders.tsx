@@ -37,7 +37,7 @@ function ShipModal({ order, onClose }: { order: Order; onClose: () => void }) {
     mutationFn: () => fetch(`/api/ecommerce/orders/${order.id}/status`, {
       method: "PUT", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: "shipped", tracking_number: tracking, courier }),
-    }).then(r => r.json()),
+    }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["ecommerce-orders"] }); toast({ title: "Order marked shipped" }); onClose(); },
     onError: () => toast({ title: "Update failed", variant: "destructive" }),
   });
@@ -46,7 +46,7 @@ function ShipModal({ order, onClose }: { order: Order; onClose: () => void }) {
     mutationFn: () => fetch(`/api/ecommerce/orders/${order.id}/ship`, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ provider }),
-    }).then(r => r.json()),
+    }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: (d) => { toast({ title: "Shipment created", description: d.tracking_number ?? "" }); updateStatus.mutate(); },
     onError: () => toast({ title: "Shipment failed", variant: "destructive" }),
   });
@@ -95,7 +95,7 @@ export default function EcommerceOrders() {
 
   const { data: channelsData } = useQuery<any[]>({
     queryKey: ["ecommerce-channels"],
-    queryFn: () => fetch("/api/ecommerce/channels").then(r => r.json()),
+    queryFn: () => fetch("/api/ecommerce/channels").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
 
   const params = new URLSearchParams();
@@ -104,17 +104,17 @@ export default function EcommerceOrders() {
 
   const { data: ordersData, isLoading } = useQuery<{ orders: Order[] } | Order[]>({
     queryKey: ["ecommerce-orders", channelId, status],
-    queryFn: () => fetch(`/api/ecommerce/orders?${params}`).then(r => r.json()),
+    queryFn: () => fetch(`/api/ecommerce/orders?${params}`).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
 
   const { data: itemsData } = useQuery<any[]>({
     queryKey: ["ecommerce-order-items", expanded],
-    queryFn: () => fetch(`/api/ecommerce/orders/${expanded}/items`).then(r => r.json()),
+    queryFn: () => fetch(`/api/ecommerce/orders/${expanded}/items`).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     enabled: expanded !== null,
   });
 
   const pullMarketplace = useMutation({
-    mutationFn: () => fetch("/api/ecommerce/marketplace/orders?channel=all").then(r => r.json()),
+    mutationFn: () => fetch("/api/ecommerce/marketplace/orders?channel=all").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: () => toast({ title: "Pulled marketplace orders" }),
     onError: () => toast({ title: "Pull failed", variant: "destructive" }),
   });

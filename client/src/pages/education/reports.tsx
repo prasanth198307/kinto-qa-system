@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart2, Users, DollarSign, GraduationCap, TrendingUp } from "lucide-react";
 
-const api = (path: string) => fetch(path).then(r => r.json());
+const api = (path: string) => fetch(path).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const TABS = ["admission_funnel", "attendance_summary", "fee_collection", "exam_results", "class_performance", "teacher_performance"] as const;
 type Tab = typeof TABS[number];

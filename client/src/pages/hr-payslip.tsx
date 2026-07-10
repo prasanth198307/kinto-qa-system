@@ -12,20 +12,20 @@ export default function HRPayslipPage() {
 
   const { data: ps, isLoading, error } = useQuery({
     queryKey: ["/api/hr/payslips", params.id],
-    queryFn: () => fetch(`/api/hr/payslips/${params.id}`, { credentials: "include" }).then(r => r.json()),
+    queryFn: () => fetch(`/api/hr/payslips/${params.id}`, { credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
 
   const { data: company } = useQuery<any>({ queryKey: ["/api/tenant/info"] });
   const { data: psSettings } = useQuery<any>({
     queryKey: ["/api/hr/payslip-settings"],
-    queryFn: () => fetch("/api/hr/payslip-settings", { credentials: "include" }).then(r => r.json()),
+    queryFn: () => fetch("/api/hr/payslip-settings", { credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
 
   const { data: leaveBalances = [] } = useQuery<any[]>({
     queryKey: ["/api/hr/leave-balances", ps?.employee_id, ps?.year],
     queryFn: () =>
       fetch(`/api/hr/leave-balances?employeeId=${ps.employee_id}&year=${ps.year}`, { credentials: "include" })
-        .then(r => r.json()),
+        .then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     enabled: !!ps?.employee_id && !!ps?.year,
   });
 

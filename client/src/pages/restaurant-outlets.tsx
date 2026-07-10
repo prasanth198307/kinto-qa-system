@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 
 const api = (m: string, u: string, b?: any) =>
-  fetch(u, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined, credentials: "include" }).then(r => r.json());
+  fetch(u, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined, credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 const fmt = (n: any) => "₹" + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
 
 const OUTLET_TYPE_COLORS: Record<string, string> = {
@@ -52,7 +52,7 @@ function TaxCurrencyTab() {
 
   useEffect(() => {
     fetch("/api/restaurant/tax/countries")
-      .then(r => r.json())
+      .then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); })
       .then(data => setConfigs(Array.isArray(data) ? data : []))
       .catch(() => setConfigs(COUNTRY_PRESETS as any[]));
   }, []);
@@ -81,7 +81,7 @@ function TaxCurrencyTab() {
         body: JSON.stringify(form),
       });
       toast({ title: `${selectedCountry} tax config saved!` });
-      const updated = await fetch("/api/restaurant/tax/countries").then(r => r.json());
+      const updated = await fetch("/api/restaurant/tax/countries").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
       setConfigs(Array.isArray(updated) ? updated : []);
     } catch { toast({ title: "Save failed", variant: "destructive" } as any); }
     setSaving(false);
@@ -95,7 +95,7 @@ function TaxCurrencyTab() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ amount: 1000, country: selectedCountry }),
-      }).then(r => r.json());
+      }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
       toast({ title: `Tax Calculation: ${result.currency_symbol}1000 + ${result.tax_name} ${result.tax_rate}% = ${result.currency_symbol}${result.total}` });
     } catch { toast({ title: "Calculation failed", variant: "destructive" } as any); }
     setLoading(false);
@@ -219,12 +219,12 @@ function FranchiseTab() {
 
   const { data: summary } = useQuery({
     queryKey: ["/api/restaurant/franchise/summary"],
-    queryFn: () => fetch("/api/restaurant/franchise/summary").then(r => r.json()),
+    queryFn: () => fetch("/api/restaurant/franchise/summary").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
 
   const { data: royaltyConfig } = useQuery({
     queryKey: ["/api/restaurant/franchise/royalty-config"],
-    queryFn: () => fetch("/api/restaurant/franchise/royalty-config").then(r => r.json()),
+    queryFn: () => fetch("/api/restaurant/franchise/royalty-config").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: (data: any) => setConfig(data),
   });
 

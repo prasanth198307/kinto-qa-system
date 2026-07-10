@@ -16,7 +16,7 @@ export default function WebinarRegistration() {
 
   const { data: room, isLoading } = useQuery({
     queryKey: ["/api/public/meet", roomCode],
-    queryFn: () => fetch(`/api/public/meet/${roomCode}`).then(r => r.json()),
+    queryFn: () => fetch(`/api/public/meet/${roomCode}`).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     enabled: !!roomCode,
   });
 
@@ -26,7 +26,7 @@ export default function WebinarRegistration() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
-      }).then(r => r.json()),
+      }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: (data: any) => {
       if (data.registration) {
         setRegistered(true);

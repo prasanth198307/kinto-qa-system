@@ -12,7 +12,7 @@ import { Plus, AlertTriangle, TrendingUp, Activity } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const api = (method: string, path: string, body?: unknown) =>
-  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(r => r.json());
+  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const oeeColor = (oee: number) => oee >= 0.85 ? "text-green-600" : oee >= 0.65 ? "text-yellow-600" : "text-red-600";
 const oeeLabel = (oee: number) => oee >= 0.85 ? "World Class" : oee >= 0.65 ? "Typical" : "Needs Attention";

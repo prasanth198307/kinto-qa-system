@@ -171,7 +171,7 @@ function FnFDialog({ employees, existing, open, onClose }: { employees: any[]; e
   });
 
   const calcMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/hr/fnf/calculate", { employeeId: empId, settlementDate }).then(r => r.json()),
+    mutationFn: () => apiRequest("POST", "/api/hr/fnf/calculate", { employeeId: empId, settlementDate }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: (data: any) => {
       setCalc(data);
       setOverrides(p => ({ ...p, noticeServedDays: data.noticeServedDays }));

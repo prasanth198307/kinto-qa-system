@@ -40,7 +40,7 @@ function AddReportToDashboardDialog({ dashboardId, open, onClose }: { dashboardI
   const { toast } = useToast();
   const [reportId, setReportId] = useState("");
   const [pos, setPos] = useState({ x: "0", y: "0", w: "4", h: "3" });
-  const { data: reports } = useQuery({ queryKey: ["/api/analytics/reports"], queryFn: () => fetch("/api/analytics/reports").then(r => r.json()) });
+  const { data: reports } = useQuery({ queryKey: ["/api/analytics/reports"], queryFn: () => fetch("/api/analytics/reports").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
   const arr: Record<string, unknown>[] = Array.isArray(reports) ? reports : [];
   const mutation = useMutation({
     mutationFn: (d: unknown) => apiRequest("POST", `/api/analytics/dashboards/${dashboardId}/add-report`, d),
@@ -82,11 +82,11 @@ function DashboardDetail({ dashboard, onClose }: { dashboard: Record<string, unk
   // Live layout state for drag-and-drop reordering
   const { data: dashDetail } = useQuery({
     queryKey: ["/api/analytics/dashboards", dashId],
-    queryFn: () => fetch(`/api/analytics/dashboards/${dashId}`).then(r => r.json()),
+    queryFn: () => fetch(`/api/analytics/dashboards/${dashId}`).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
   const { data: widgetData } = useQuery({
     queryKey: ["/api/analytics/dashboards", dashId, "data"],
-    queryFn: () => fetch(`/api/analytics/dashboards/${dashId}/data`).then(r => r.json()),
+    queryFn: () => fetch(`/api/analytics/dashboards/${dashId}/data`).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
   const [layout, setLayout] = useState<any[] | null>(null);
   const serverLayout: any[] = Array.isArray((dashDetail as any)?.layout) ? (dashDetail as any).layout : [];
@@ -186,7 +186,7 @@ function DashboardDetail({ dashboard, onClose }: { dashboard: Record<string, unk
 export default function DashboardBuilderPage() {
   const [showNew, setShowNew] = useState(false);
   const [selected, setSelected] = useState<Record<string, unknown> | null>(null);
-  const { data: dashboards } = useQuery({ queryKey: ["/api/analytics/dashboards"], queryFn: () => fetch("/api/analytics/dashboards").then(r => r.json()) });
+  const { data: dashboards } = useQuery({ queryKey: ["/api/analytics/dashboards"], queryFn: () => fetch("/api/analytics/dashboards").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
   const arr: Record<string, unknown>[] = Array.isArray(dashboards) ? dashboards : [];
 
   return (

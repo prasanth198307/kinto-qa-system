@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 
 const api = (method: string, path: string, body?: any) =>
-  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(r => r.json());
+  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 export default function LoyaltyExpiryPage() {
   const { toast } = useToast();
@@ -20,13 +20,13 @@ export default function LoyaltyExpiryPage() {
 
   const { data: stats, isLoading, refetch } = useQuery<any>({
     queryKey: ["loyalty-expiry-stats"],
-    queryFn: () => fetch("/api/restaurant/loyalty/expiry-stats").then(r => r.json()),
+    queryFn: () => fetch("/api/restaurant/loyalty/expiry-stats").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     refetchInterval: 60000,
   });
 
   const { data: config } = useQuery<any>({
     queryKey: ["loyalty-config"],
-    queryFn: () => fetch("/api/restaurant/loyalty/config").then(r => r.json()),
+    queryFn: () => fetch("/api/restaurant/loyalty/config").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: (d: any) => { if (d?.expiry_days) setExpiryDays(String(d.expiry_days)); },
   } as any);
 

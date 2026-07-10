@@ -6,7 +6,7 @@ import { BedDouble, CalendarCheck, CalendarX, TrendingUp, ArrowRight } from "luc
 import { useLocation } from "wouter";
 
 const api = (method: string, path: string, body?: any) =>
-  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(r => r.json());
+  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const STATUS_COLOR: Record<string, string> = {
   confirmed: "bg-blue-100 text-blue-800",

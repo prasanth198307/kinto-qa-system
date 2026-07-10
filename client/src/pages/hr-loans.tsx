@@ -44,24 +44,24 @@ export default function HRLoansPage() {
 
   const { data: loans = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/hr/loans"],
-    queryFn: () => fetch("/api/hr/loans", { credentials: "include" }).then(r => r.json()),
+    queryFn: () => fetch("/api/hr/loans", { credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
 
   const { data: employees = [] } = useQuery<any[]>({
     queryKey: ["/api/hr/employees"],
-    queryFn: () => fetch("/api/hr/employees?status=active", { credentials: "include" }).then(r => r.json()),
+    queryFn: () => fetch("/api/hr/employees?status=active", { credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
 
   const { data: ledger = [] } = useQuery<any[]>({
     queryKey: ["/api/hr/loans", expandedId, "ledger"],
     queryFn: () => expandedId
-      ? fetch(`/api/hr/loans/${expandedId}/ledger`, { credentials: "include" }).then(r => r.json())
+      ? fetch(`/api/hr/loans/${expandedId}/ledger`, { credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); })
       : Promise.resolve([]),
     enabled: !!expandedId,
   });
 
   const createLoan = useMutation({
-    mutationFn: (d: any) => apiRequest("POST", "/api/hr/loans", d).then(r => r.json()),
+    mutationFn: (d: any) => apiRequest("POST", "/api/hr/loans", d).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/hr/loans"] });
       setCreateOpen(false);

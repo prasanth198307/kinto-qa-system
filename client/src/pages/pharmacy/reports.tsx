@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BarChart2, DollarSign, AlertTriangle, Stethoscope, TrendingUp, Archive } from "lucide-react";
 
-const api = (path: string) => fetch(path).then(r => r.json());
+const api = (path: string) => fetch(path).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const TABS = ["gst", "expiry", "margin", "doctor-wise", "purchase-vs-sales", "dead-stock"] as const;
 type Tab = typeof TABS[number];

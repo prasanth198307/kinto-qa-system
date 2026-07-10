@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Gauge, User, AlertTriangle, Clock } from "lucide-react";
 
-const api = (path: string) => fetch(path).then(r => r.json());
+const api = (path: string) => fetch(path).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const SAMPLE_VEHICLES = [
   { vehicle_no: "MH12AB1234", driver: "Ramesh K", lat: 19.076, lng: 72.877, speed: 65, status: "Moving", location: "Bandra, Mumbai", trip: "MUM→DEL", last_update: "2 min ago" },

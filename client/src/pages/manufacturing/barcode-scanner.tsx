@@ -13,7 +13,7 @@ import { ScanLine, Search, Plus, Package, ArrowRight, Loader2 } from "lucide-rea
 import { useToast } from "@/hooks/use-toast";
 
 const api = (method: string, path: string, body?: any) =>
-  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(r => r.json());
+  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const MOVE_TYPES = ["grn_receive", "issue_to_production", "stock_transfer", "dispatch", "stock_adjustment"];
 const MOVE_COLOR: Record<string, string> = {
@@ -35,14 +35,14 @@ export default function BarcodeScannerPage() {
   const [registerOpen, setRegisterOpen] = useState(false);
   const [regForm, setRegForm] = useState({ barcode: "", item_type: "raw_material", item_id: "", item_name: "" });
 
-  const { data: movements = [] } = useQuery<any[]>({ queryKey: ["barcode-movements"], queryFn: () => fetch("/api/manufacturing/barcode/movements").then(r => r.json()) });
-  const { data: registry = [] } = useQuery<any[]>({ queryKey: ["barcode-registry"], queryFn: () => fetch("/api/manufacturing/barcode/registry").then(r => r.json()) });
+  const { data: movements = [] } = useQuery<any[]>({ queryKey: ["barcode-movements"], queryFn: () => fetch("/api/manufacturing/barcode/movements").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
+  const { data: registry = [] } = useQuery<any[]>({ queryKey: ["barcode-registry"], queryFn: () => fetch("/api/manufacturing/barcode/registry").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
 
   const lookup = async (code?: string) => {
     const c = code || scanCode;
     if (!c) return;
     setLooking(true);
-    const data = await fetch(`/api/manufacturing/barcode/lookup?code=${encodeURIComponent(c)}`).then(r => r.json());
+    const data = await fetch(`/api/manufacturing/barcode/lookup?code=${encodeURIComponent(c)}`).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
     setLookupResult(data);
     if (data.found) toast({ title: `Found: ${data.item?.item_name || data.item?.barcode_match}` });
     else toast({ title: "Barcode not found", variant: "destructive" });

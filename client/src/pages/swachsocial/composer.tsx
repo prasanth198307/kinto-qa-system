@@ -20,7 +20,7 @@ function useHashtagSuggestions(content: string) {
   const firstWord = content.trim().split(/\s+/)[0]?.replace(/[^a-zA-Z]/g, "") || "";
   const { data } = useQuery({
     queryKey: ["/api/social/hashtag/suggestions", firstWord],
-    queryFn: () => fetch(`/api/social/hashtag/suggestions?topic=${encodeURIComponent(firstWord)}`).then(r => r.json()),
+    queryFn: () => fetch(`/api/social/hashtag/suggestions?topic=${encodeURIComponent(firstWord)}`).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     enabled: firstWord.length >= 3,
     staleTime: 60000,
   });
@@ -42,7 +42,7 @@ export default function SwachSocialComposer() {
 
   const { data: connectStatus } = useQuery({
     queryKey: ["/api/social/connect-status"],
-    queryFn: () => fetch("/api/social/connect-status").then(r => r.json()),
+    queryFn: () => fetch("/api/social/connect-status").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     staleTime: 60000,
   });
   const cs = connectStatus as any || {};

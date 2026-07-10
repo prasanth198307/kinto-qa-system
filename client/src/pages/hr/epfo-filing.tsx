@@ -10,7 +10,7 @@ import { Download, Send, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const apiPost = (path: string, body: any) =>
-  fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(r => r.json());
+  fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const CUR_YEAR = new Date().getFullYear();
@@ -38,7 +38,7 @@ export default function EPFOFilingPage() {
 
   const { data: submissions = [], isLoading: loadingSubs } = useQuery<any[]>({
     queryKey: ["epfo-submissions"],
-    queryFn: () => fetch("/api/hr/payroll/epfo-submissions").then(r => r.json()),
+    queryFn: () => fetch("/api/hr/payroll/epfo-submissions").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
 
   const epfoSubmit = useMutation({

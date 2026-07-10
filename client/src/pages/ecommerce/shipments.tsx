@@ -42,7 +42,7 @@ function StatusBadge({ status }: { status: string }) {
 function TrackRow({ shipmentId }: { shipmentId: number }) {
   const { data, isLoading } = useQuery<TrackingDetail>({
     queryKey: ["/api/ecommerce/shipments", shipmentId, "track"],
-    queryFn: () => apiRequest("GET", `/api/ecommerce/shipments/${shipmentId}/track`).then(r => r.json()),
+    queryFn: () => apiRequest("GET", `/api/ecommerce/shipments/${shipmentId}/track`).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
   if (isLoading) return <div style={{ padding: "12px 24px", color: "#9ca3af", fontSize: "13px" }}>Loading tracking info...</div>;
   const events = data?.tracking_events ?? [];
@@ -74,12 +74,12 @@ export default function ShipmentsPage() {
 
   const { data: shipments = [], isLoading } = useQuery<Shipment[]>({
     queryKey: ["/api/ecommerce/shipments"],
-    queryFn: () => apiRequest("GET", "/api/ecommerce/shipments").then(r => r.json()),
+    queryFn: () => apiRequest("GET", "/api/ecommerce/shipments").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
 
   const { data: syncStatus = [] } = useQuery<SyncStatus>({
     queryKey: ["/api/ecommerce/inventory/sync-status"],
-    queryFn: () => apiRequest("GET", "/api/ecommerce/inventory/sync-status").then(r => r.json()),
+    queryFn: () => apiRequest("GET", "/api/ecommerce/inventory/sync-status").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
 
   function toggleTrack(id: number) { setExpandedId(p => p === id ? null : id); }

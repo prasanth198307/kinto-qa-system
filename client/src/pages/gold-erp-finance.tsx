@@ -42,7 +42,7 @@ export function MetalFinanceSection() {
   const { data: journals = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/metal-journals"] });
   const { data: lines = [] } = useQuery<any[]>({
     queryKey: ["/api/gold-erp/metal-journals", selectedJournal?.id, "lines"],
-    queryFn: () => selectedJournal ? fetch(`/api/gold-erp/metal-journals/${selectedJournal.id}/lines`).then(r => r.json()) : Promise.resolve([]),
+    queryFn: () => selectedJournal ? fetch(`/api/gold-erp/metal-journals/${selectedJournal.id}/lines`).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) : Promise.resolve([]),
     enabled: !!selectedJournal,
   });
   const { data: consolidations = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/stock-consolidation"] });

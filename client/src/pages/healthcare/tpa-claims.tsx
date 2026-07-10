@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, CheckCircle, IndianRupee } from "lucide-react";
 
 const api = (method: string, path: string, body?: any) =>
-  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined, credentials: "include" }).then(r => r.json());
+  fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined, credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const TPA_LIST = ["Star Health", "HDFC Ergo", "Niva Bupa", "United India", "New India Assurance", "ICICI Lombard", "Bajaj Allianz", "Oriental Insurance"];
 

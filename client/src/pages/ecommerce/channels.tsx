@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 
 const api = (path: string, opts?: RequestInit) =>
-  fetch(path, { headers: { "Content-Type": "application/json" }, ...opts }).then(r => r.json());
+  fetch(path, { headers: { "Content-Type": "application/json" }, ...opts }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const PLATFORM_META: Record<string, { emoji: string; label: string; help: Record<string, string> }> = {
   amazon:     { emoji: "📦", label: "Amazon",     help: { api_key: "SP-API Access Key from Seller Central", api_secret: "SP-API Secret Key", seller_id: "Seller ID (AXXXXX format)" } },
