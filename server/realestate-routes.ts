@@ -119,7 +119,7 @@ router.post("/bookings", requireAuth, async (req: any, res) => {
     const { unit_id, customer_name, customer_phone, customer_email, customer_address, booking_date, total_amount, booking_amount, loan_amount, bank_name, broker_id, broker_commission, agreement_date, possession_date, notes } = req.body;
     const no = "BKG-" + Date.now();
     const rows = await db.execute(sql`
-      INSERT INTO re_bookings (tenant_id, unit_id, booking_no, customer_name, customer_phone, customer_email, customer_address, booking_date, total_amount, booking_amount, loan_amount, bank_name, broker_id, broker_commission, agreement_date, possession_date, notes)
+      INSERT INTO re_bookings (tenant_id, unit_id, booking_no, customer_name, customer_phone, customer_email, customer_address, booking_date, total_consideration, booking_amount, loan_amount, bank_name, broker_id, broker_commission, agreement_date, possession_date, notes)
       VALUES (${tid(req)}, ${unit_id}, ${no}, ${customer_name}, ${customer_phone||null},
               ${customer_email||null}, ${customer_address||null}, ${booking_date},
               ${total_amount||0}, ${booking_amount||0}, ${loan_amount||0}, ${bank_name||null},
@@ -136,7 +136,7 @@ router.put("/bookings/:id", requireAuth, async (req: any, res) => {
     const rows = await db.execute(sql`
       UPDATE re_bookings SET customer_name=${customer_name}, customer_phone=${customer_phone||null},
         customer_email=${customer_email||null}, customer_address=${customer_address||null},
-        booking_date=${booking_date}, total_amount=${total_amount||0},
+        booking_date=${booking_date}, total_consideration=${total_amount||0},
         booking_amount=${booking_amount||0}, loan_amount=${loan_amount||0},
         bank_name=${bank_name||null}, broker_id=${broker_id||null},
         broker_commission=${broker_commission||0}, agreement_date=${agreement_date||null},
@@ -246,7 +246,7 @@ router.post("/construction-progress", requireAuth, async (req: any, res) => {
   try {
     const { project_id, project_name, progress_date, stage, percentage_complete, description, recorded_by } = req.body;
     const rows = await db.execute(sql`
-      INSERT INTO re_construction_progress (tenant_id, project_id, project_name, progress_date, stage, percentage_complete, description, recorded_by)
+      INSERT INTO re_construction_progress (tenant_id, project_id, project_name, progress_date, stage, completion_pct, description, recorded_by)
       VALUES (${tid(req)}, ${project_id||null}, ${project_name||null}, ${progress_date},
               ${stage}, ${percentage_complete||0}, ${description||null}, ${recorded_by||null})
       RETURNING *`);
@@ -307,7 +307,7 @@ router.get("/stats", requireAuth, async (req: any, res) => {
       db.execute(sql`SELECT COUNT(*) as count FROM re_projects WHERE tenant_id=${tid(req)} AND status!='cancelled'`),
       db.execute(sql`SELECT COUNT(*) as count, COUNT(*) FILTER (WHERE status='available') as available FROM re_units WHERE tenant_id=${tid(req)}`),
       db.execute(sql`SELECT COUNT(*) as count FROM re_bookings WHERE tenant_id=${tid(req)} AND status='booked'`),
-      db.execute(sql`SELECT COALESCE(SUM(total_amount),0) as total FROM re_bookings WHERE tenant_id=${tid(req)}`),
+      db.execute(sql`SELECT COALESCE(SUM(total_consideration),0) as total FROM re_bookings WHERE tenant_id=${tid(req)}`),
     ]);
     res.json({
       totalProjects: Number(projects.rows[0]?.count||0),
@@ -392,11 +392,11 @@ router.get("/rera/quarterly-report/:projectId/:year/:quarter", requireAuth, asyn
     const [proj, units, progress] = await Promise.all([
       db.execute(sql`SELECT * FROM re_projects WHERE id=${projectId} AND tenant_id=${tenantId} LIMIT 1`),
       db.execute(sql`SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE status IN ('booked','sold')) as sold, COUNT(*) FILTER (WHERE status='available') as unsold FROM re_units WHERE project_id=${projectId} AND tenant_id=${tenantId}`),
-      db.execute(sql`SELECT percentage_complete FROM re_construction_progress WHERE project_id=${projectId} AND tenant_id=${tenantId} ORDER BY progress_date DESC LIMIT 1`),
+      db.execute(sql`SELECT completion_pct FROM re_construction_progress WHERE project_id=${projectId} AND tenant_id=${tenantId} ORDER BY id DESC LIMIT 1`),
     ]);
     if (!proj.rows.length) return res.status(404).json({ error: "Project not found" });
     const pd = proj.rows[0] as any, ud = units.rows[0] as any;
-    res.json({ form: "RERA-Form-1", project_id: projectId, project_name: pd.name, rera_registration: pd.rera_registration || "—", year: yr, quarter: q, period: `Q${q} ${yr} (${qStart} to ${qEnd})`, units: { total: Number(ud?.total || 0), sold: Number(ud?.sold || 0), unsold: Number(ud?.unsold || 0) }, construction_progress_pct: Number((progress.rows[0] as any)?.percentage_complete || 0), complaints: { total: 0, resolved: 0, pending: 0 }, generated_at: new Date().toISOString() });
+    res.json({ form: "RERA-Form-1", project_id: projectId, project_name: pd.name, rera_registration: pd.rera_registration || "—", year: yr, quarter: q, period: `Q${q} ${yr} (${qStart} to ${qEnd})`, units: { total: Number(ud?.total || 0), sold: Number(ud?.sold || 0), unsold: Number(ud?.unsold || 0) }, construction_progress_pct: Number((progress.rows[0] as any)?.completion_pct || 0), complaints: { total: 0, resolved: 0, pending: 0 }, generated_at: new Date().toISOString() });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
@@ -411,11 +411,11 @@ router.get("/rera/quarterly-report/:projectId/:year/:quarter/xml", requireAuth, 
     const [proj, units, progress] = await Promise.all([
       db.execute(sql`SELECT * FROM re_projects WHERE id=${projectId} AND tenant_id=${tenantId} LIMIT 1`),
       db.execute(sql`SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE status IN ('booked','sold')) as sold FROM re_units WHERE project_id=${projectId} AND tenant_id=${tenantId}`),
-      db.execute(sql`SELECT percentage_complete FROM re_construction_progress WHERE project_id=${projectId} AND tenant_id=${tenantId} ORDER BY progress_date DESC LIMIT 1`),
+      db.execute(sql`SELECT completion_pct FROM re_construction_progress WHERE project_id=${projectId} AND tenant_id=${tenantId} ORDER BY id DESC LIMIT 1`),
     ]);
     if (!proj.rows.length) return res.status(404).json({ error: "Project not found" });
     const pd = proj.rows[0] as any, ud = units.rows[0] as any;
-    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<RERAQuarterlyReport>\n  <FormNo>Form-1</FormNo>\n  <ProjectName>${pd.name}</ProjectName>\n  <RERARegistration>${pd.rera_registration || ""}</RERARegistration>\n  <ReportingPeriod><Year>${yr}</Year><Quarter>${q}</Quarter><StartDate>${qStart}</StartDate><EndDate>${qEnd}</EndDate></ReportingPeriod>\n  <Units><Total>${ud?.total || 0}</Total><Sold>${ud?.sold || 0}</Sold><Unsold>${Number(ud?.total || 0) - Number(ud?.sold || 0)}</Unsold></Units>\n  <ConstructionProgress><PercentageComplete>${Number((progress.rows[0] as any)?.percentage_complete || 0)}</PercentageComplete></ConstructionProgress>\n  <GeneratedAt>${new Date().toISOString()}</GeneratedAt>\n</RERAQuarterlyReport>`;
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<RERAQuarterlyReport>\n  <FormNo>Form-1</FormNo>\n  <ProjectName>${pd.name}</ProjectName>\n  <RERARegistration>${pd.rera_registration || ""}</RERARegistration>\n  <ReportingPeriod><Year>${yr}</Year><Quarter>${q}</Quarter><StartDate>${qStart}</StartDate><EndDate>${qEnd}</EndDate></ReportingPeriod>\n  <Units><Total>${ud?.total || 0}</Total><Sold>${ud?.sold || 0}</Sold><Unsold>${Number(ud?.total || 0) - Number(ud?.sold || 0)}</Unsold></Units>\n  <ConstructionProgress><PercentageComplete>${Number((progress.rows[0] as any)?.completion_pct || 0)}</PercentageComplete></ConstructionProgress>\n  <GeneratedAt>${new Date().toISOString()}</GeneratedAt>\n</RERAQuarterlyReport>`;
     res.setHeader("Content-Type", "application/xml");
     res.setHeader("Content-Disposition", `attachment; filename=RERA-Q${q}-${yr}-P${projectId}.xml`);
     res.send(xml);
@@ -440,7 +440,7 @@ router.get("/projects/:id/pnl", requireAuth, async (req: any, res) => {
     const { id } = req.params;
     const [projRow, bkRows] = await Promise.all([
       db.execute(sql`SELECT * FROM re_projects WHERE id=${id} AND tenant_id=${tenantId} LIMIT 1`),
-      db.execute(sql`SELECT COALESCE(SUM(total_amount),0) as total_booked, COUNT(*) as bookings FROM re_bookings WHERE tenant_id=${tenantId} AND unit_id IN (SELECT id FROM re_units WHERE project_id=${id})`),
+      db.execute(sql`SELECT COALESCE(SUM(total_consideration),0) as total_booked, COUNT(*) as bookings FROM re_bookings WHERE tenant_id=${tenantId} AND unit_id IN (SELECT id FROM re_units WHERE project_id=${id})`),
     ]);
     if (!projRow.rows.length) return res.status(404).json({ error: "Project not found" });
     const proj = projRow.rows[0] as any, bk = bkRows.rows[0] as any;
