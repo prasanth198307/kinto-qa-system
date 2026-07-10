@@ -118,9 +118,12 @@ async function ensureTables() {
   `);
 }
 
-let tablesReady = false;
-async function ensureTablesOnce() {
-  if (!tablesReady) { await ensureTables(); tablesReady = true; }
+let _signTablesPromise: Promise<void> | null = null;
+function ensureTablesOnce(): Promise<void> {
+  if (!_signTablesPromise) {
+    _signTablesPromise = ensureTables().catch(e => { _signTablesPromise = null; throw e; });
+  }
+  return _signTablesPromise;
 }
 
 async function nextDocNo(tenantId: number): Promise<string> {

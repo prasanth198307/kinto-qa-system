@@ -54,6 +54,14 @@ async function ensureTables() {
   `);
 }
 
+let _deskTablesPromise: Promise<void> | null = null;
+function ensureTablesOnce(): Promise<void> {
+  if (!_deskTablesPromise) {
+    _deskTablesPromise = ensureTables().catch(e => { _deskTablesPromise = null; throw e; });
+  }
+  return _deskTablesPromise;
+}
+
 async function seedSLAPolicies(tenantId: number) {
   const existing = await db.execute(sql`SELECT id FROM desk_sla_policies WHERE tenant_id=${tenantId} LIMIT 1`);
   if (existing.rows.length > 0) return;
@@ -79,7 +87,7 @@ async function getNextTicketNo(tenantId: number): Promise<string> {
 // GET tickets
 swachdeskRouter.get('/tickets', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const tenantId = tid(req);
     const { status, priority, agent, from, to, search } = req.query;
     let conditions = [`t.tenant_id = ${tenantId}`, `t.record_status = 1`];
@@ -105,7 +113,7 @@ swachdeskRouter.get('/tickets', requireAuth, async (req: any, res) => {
 // POST create ticket
 swachdeskRouter.post('/tickets', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const tenantId = tid(req);
     await seedSLAPolicies(tenantId);
     const { subject, description, customer_name, customer_email, customer_phone, priority = 'medium', category, channel = 'portal', source_ref, assigned_agent_id } = req.body;
@@ -130,7 +138,7 @@ swachdeskRouter.post('/tickets', requireAuth, async (req: any, res) => {
 // GET ticket by id
 swachdeskRouter.get('/tickets/:id', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const tenantId = tid(req);
     const { id } = req.params;
     const tRow = await db.execute(sql`SELECT t.*, a.name as agent_name FROM desk_tickets t LEFT JOIN desk_agents a ON a.id=t.assigned_agent_id WHERE t.id=${parseInt(id)} AND t.tenant_id=${tenantId}`);
@@ -146,7 +154,7 @@ swachdeskRouter.get('/tickets/:id', requireAuth, async (req: any, res) => {
 // PUT update ticket
 swachdeskRouter.put('/tickets/:id', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const tenantId = tid(req);
     const { id } = req.params;
     const { status, priority, assigned_agent_id, category, tags, assigned_team } = req.body;
@@ -174,7 +182,7 @@ swachdeskRouter.put('/tickets/:id', requireAuth, async (req: any, res) => {
 // POST reply/comment
 swachdeskRouter.post('/tickets/:id/reply', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const tenantId = tid(req);
     const { id } = req.params;
     const { content, is_internal = false, author_name, author_type = 'agent' } = req.body;
@@ -193,7 +201,7 @@ swachdeskRouter.post('/tickets/:id/reply', requireAuth, async (req: any, res) =>
 // POST resolve
 swachdeskRouter.post('/tickets/:id/resolve', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const tenantId = tid(req);
     const { id } = req.params;
     const result = await db.execute(sql`
@@ -207,7 +215,7 @@ swachdeskRouter.post('/tickets/:id/resolve', requireAuth, async (req: any, res) 
 // POST close
 swachdeskRouter.post('/tickets/:id/close', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const tenantId = tid(req);
     const { id } = req.params;
     const result = await db.execute(sql`
@@ -221,7 +229,7 @@ swachdeskRouter.post('/tickets/:id/close', requireAuth, async (req: any, res) =>
 // POST reopen
 swachdeskRouter.post('/tickets/:id/reopen', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const tenantId = tid(req);
     const { id } = req.params;
     const result = await db.execute(sql`
@@ -235,7 +243,7 @@ swachdeskRouter.post('/tickets/:id/reopen', requireAuth, async (req: any, res) =
 // POST csat
 swachdeskRouter.post('/tickets/:id/csat', async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const { id } = req.params;
     const { score, comment } = req.body;
     if (!score || score < 1 || score > 5) return res.status(400).json({ message: 'Score must be 1-5' });
@@ -250,7 +258,7 @@ swachdeskRouter.post('/tickets/:id/csat', async (req: any, res) => {
 // SLA Policies
 swachdeskRouter.get('/sla-policies', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const tenantId = tid(req);
     const rows = await db.execute(sql`SELECT * FROM desk_sla_policies WHERE tenant_id=${tenantId} ORDER BY first_response_hours ASC`);
     res.json(rows.rows);
@@ -259,7 +267,7 @@ swachdeskRouter.get('/sla-policies', requireAuth, async (req: any, res) => {
 
 swachdeskRouter.post('/sla-policies', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const tenantId = tid(req);
     const { name, priority, first_response_hours, resolution_hours, business_hours_only = true, escalate_after_hours, escalate_to_agent_id, is_default = false } = req.body;
     const result = await db.execute(sql`
@@ -273,7 +281,7 @@ swachdeskRouter.post('/sla-policies', requireAuth, async (req: any, res) => {
 
 swachdeskRouter.put('/sla-policies/:id', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const tenantId = tid(req);
     const { id } = req.params;
     const { name, priority, first_response_hours, resolution_hours, business_hours_only, is_default } = req.body;
@@ -293,7 +301,7 @@ swachdeskRouter.put('/sla-policies/:id', requireAuth, async (req: any, res) => {
 // Agents
 swachdeskRouter.get('/agents', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const tenantId = tid(req);
     const rows = await db.execute(sql`SELECT * FROM desk_agents WHERE tenant_id=${tenantId} AND is_active=TRUE ORDER BY name`);
     res.json(rows.rows);
@@ -302,7 +310,7 @@ swachdeskRouter.get('/agents', requireAuth, async (req: any, res) => {
 
 swachdeskRouter.post('/agents', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const tenantId = tid(req);
     const { name, email, team, max_tickets = 20, user_id } = req.body;
     const result = await db.execute(sql`
@@ -316,7 +324,7 @@ swachdeskRouter.post('/agents', requireAuth, async (req: any, res) => {
 
 swachdeskRouter.put('/agents/:id/assign-ticket', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const tenantId = tid(req);
     const { id } = req.params;
     const { ticket_id } = req.body;
@@ -331,7 +339,7 @@ swachdeskRouter.put('/agents/:id/assign-ticket', requireAuth, async (req: any, r
 // Canned responses
 swachdeskRouter.get('/canned-responses', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const tenantId = tid(req);
     const { q } = req.query;
     let query = `SELECT * FROM desk_canned_responses WHERE tenant_id=${tenantId} AND record_status=1`;
@@ -344,7 +352,7 @@ swachdeskRouter.get('/canned-responses', requireAuth, async (req: any, res) => {
 
 swachdeskRouter.post('/canned-responses', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const tenantId = tid(req);
     const { title, content, category, shortcut } = req.body;
     const result = await db.execute(sql`
@@ -358,7 +366,7 @@ swachdeskRouter.post('/canned-responses', requireAuth, async (req: any, res) => 
 
 swachdeskRouter.put('/canned-responses/:id', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const tenantId = tid(req);
     const { id } = req.params;
     const { title, content, category, shortcut } = req.body;
@@ -374,7 +382,7 @@ swachdeskRouter.put('/canned-responses/:id', requireAuth, async (req: any, res) 
 
 swachdeskRouter.delete('/canned-responses/:id', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const tenantId = tid(req);
     const { id } = req.params;
     await db.execute(sql`UPDATE desk_canned_responses SET record_status=0 WHERE id=${parseInt(id)} AND tenant_id=${tenantId}`);
@@ -385,7 +393,7 @@ swachdeskRouter.delete('/canned-responses/:id', requireAuth, async (req: any, re
 // Reports
 swachdeskRouter.get('/reports/overview', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const tenantId = tid(req);
     const rows = await db.execute(sql`
       SELECT
@@ -406,7 +414,7 @@ swachdeskRouter.get('/reports/overview', requireAuth, async (req: any, res) => {
 
 swachdeskRouter.get('/reports/sla', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const tenantId = tid(req);
     const rows = await db.execute(sql`
       SELECT priority,
@@ -424,7 +432,7 @@ swachdeskRouter.get('/reports/sla', requireAuth, async (req: any, res) => {
 
 swachdeskRouter.get('/reports/agent-performance', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const tenantId = tid(req);
     const rows = await db.execute(sql`
       SELECT a.name as agent_name, a.team,
@@ -442,7 +450,7 @@ swachdeskRouter.get('/reports/agent-performance', requireAuth, async (req: any, 
 
 swachdeskRouter.get('/reports/csat', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const tenantId = tid(req);
     const rows = await db.execute(sql`
       SELECT
@@ -467,7 +475,7 @@ swachdeskRouter.get('/reports/csat', requireAuth, async (req: any, res) => {
 // Webhooks
 swachdeskRouter.post('/webhook/email', async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const { from, subject, body, tenant_id = 1 } = req.body;
     const ticketNo = await getNextTicketNo(tenant_id);
     await seedSLAPolicies(tenant_id);
@@ -482,7 +490,7 @@ swachdeskRouter.post('/webhook/email', async (req: any, res) => {
 
 swachdeskRouter.post('/webhook/whatsapp', async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const { phone, message, tenant_id = 1 } = req.body;
     // Check if open ticket exists for this phone
     const existing = await db.execute(sql`SELECT id FROM desk_tickets WHERE tenant_id=${tenant_id} AND customer_phone=${phone} AND status NOT IN ('resolved','closed') ORDER BY created_at DESC LIMIT 1`);
@@ -904,7 +912,7 @@ swachdeskRouter.post('/routing-rules/test', requireAuth, async (req: any, res) =
 
 swachdeskRouter.post('/tickets/:id/auto-tag', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const t = tid(req);
     const ticket = await db.execute(sql`SELECT subject, description, tags FROM desk_tickets WHERE id=${parseInt(req.params.id)} AND tenant_id=${t}`);
     if (!ticket.rows.length) return res.status(404).json({ message: 'Not found' });
@@ -997,7 +1005,7 @@ swachdeskRouter.post('/chat/:sessionId/reply', requireAuth, async (req: any, res
 
 swachdeskRouter.post('/chat/:sessionId/escalate', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     await ensureExtendedTables();
     const t = tid(req);
     const sess = await db.execute(sql`SELECT * FROM desk_chat_sessions WHERE session_id=${req.params.sessionId}`);

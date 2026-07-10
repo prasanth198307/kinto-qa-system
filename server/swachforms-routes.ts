@@ -54,6 +54,14 @@ async function getNextSubmissionNo(tenantId: number, formId: number): Promise<st
   return `SUB-${year}-${String(cnt).padStart(5, '0')}`;
 }
 
+let _formsTablesPromise: Promise<void> | null = null;
+function ensureTablesOnce(): Promise<void> {
+  if (!_formsTablesPromise) {
+    _formsTablesPromise = ensureTables().catch(e => { _formsTablesPromise = null; throw e; });
+  }
+  return _formsTablesPromise;
+}
+
 async function generateSlug(name: string, tenantId: number): Promise<string> {
   let base = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   let slug = base;
@@ -152,7 +160,7 @@ async function sendFormNotifications(form: any, submission: any, formData: Recor
 // Forms CRUD
 swachformsRouter.get('/', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const tenantId = tid(req);
     const rows = await db.execute(sql`SELECT id, name, slug, description, status, submission_count, created_at, updated_at FROM sf_forms WHERE tenant_id=${tenantId} AND status != 'deleted' ORDER BY updated_at DESC`);
     res.json(rows.rows);
@@ -161,7 +169,7 @@ swachformsRouter.get('/', requireAuth, async (req: any, res) => {
 
 swachformsRouter.post('/', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const tenantId = tid(req);
     const { name, schema = [], settings = {}, description } = req.body;
     const slug = await generateSlug(name, tenantId);
@@ -177,7 +185,7 @@ swachformsRouter.post('/', requireAuth, async (req: any, res) => {
 
 swachformsRouter.get('/workflows', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const tenantId = tid(req);
     const rows = await db.execute(sql`SELECT * FROM sf_workflows WHERE tenant_id=${tenantId} ORDER BY created_at DESC`);
     res.json(rows.rows);
@@ -186,7 +194,7 @@ swachformsRouter.get('/workflows', requireAuth, async (req: any, res) => {
 
 swachformsRouter.post('/workflows', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const tenantId = tid(req);
     const { name, trigger_type = 'form_submission', steps = [] } = req.body;
     const result = await db.execute(sql`
@@ -200,7 +208,7 @@ swachformsRouter.post('/workflows', requireAuth, async (req: any, res) => {
 
 swachformsRouter.put('/workflows/:id', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const tenantId = tid(req);
     const { id } = req.params;
     const { name, steps, is_active } = req.body;
@@ -217,7 +225,7 @@ swachformsRouter.put('/workflows/:id', requireAuth, async (req: any, res) => {
 
 swachformsRouter.post('/workflows/:id/run', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const tenantId = tid(req);
     const { id } = req.params;
     const { submission_id } = req.body;
@@ -228,7 +236,7 @@ swachformsRouter.post('/workflows/:id/run', requireAuth, async (req: any, res) =
 
 swachformsRouter.get('/analytics/:id', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const tenantId = tid(req);
     const { id } = req.params;
     const stats = await db.execute(sql`
@@ -252,7 +260,7 @@ swachformsRouter.get('/analytics/:id', requireAuth, async (req: any, res) => {
 
 swachformsRouter.get('/:id', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const tenantId = tid(req);
     const { id } = req.params;
     const row = await db.execute(sql`SELECT * FROM sf_forms WHERE id=${parseInt(id)} AND tenant_id=${tenantId}`);
@@ -263,7 +271,7 @@ swachformsRouter.get('/:id', requireAuth, async (req: any, res) => {
 
 swachformsRouter.put('/:id', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const tenantId = tid(req);
     const { id } = req.params;
     const { name, schema, settings, description, workflow_id } = req.body;
@@ -283,7 +291,7 @@ swachformsRouter.put('/:id', requireAuth, async (req: any, res) => {
 
 swachformsRouter.delete('/:id', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const tenantId = tid(req);
     const { id } = req.params;
     await db.execute(sql`UPDATE sf_forms SET status='closed', updated_at=NOW() WHERE id=${parseInt(id)} AND tenant_id=${tenantId}`);
@@ -293,7 +301,7 @@ swachformsRouter.delete('/:id', requireAuth, async (req: any, res) => {
 
 swachformsRouter.post('/:id/publish', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const tenantId = tid(req);
     const { id } = req.params;
     const result = await db.execute(sql`UPDATE sf_forms SET status='published', updated_at=NOW() WHERE id=${parseInt(id)} AND tenant_id=${tenantId} RETURNING *`);
@@ -303,7 +311,7 @@ swachformsRouter.post('/:id/publish', requireAuth, async (req: any, res) => {
 
 swachformsRouter.post('/:id/duplicate', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const tenantId = tid(req);
     const { id } = req.params;
     const orig = await db.execute(sql`SELECT * FROM sf_forms WHERE id=${parseInt(id)} AND tenant_id=${tenantId}`);
@@ -322,7 +330,7 @@ swachformsRouter.post('/:id/duplicate', requireAuth, async (req: any, res) => {
 // Validate conditional logic
 swachformsRouter.post('/:id/validate-conditions', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const tenantId = tid(req);
     const { id } = req.params;
     const { field_id, conditions } = req.body;
@@ -346,7 +354,7 @@ swachformsRouter.post('/:id/validate-conditions', requireAuth, async (req: any, 
 // Notification config routes
 swachformsRouter.get('/:id/notifications', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const tenantId = tid(req);
     const { id } = req.params;
     const row = await db.execute(sql`SELECT notification_config FROM sf_forms WHERE id=${parseInt(id)} AND tenant_id=${tenantId}`);
@@ -357,7 +365,7 @@ swachformsRouter.get('/:id/notifications', requireAuth, async (req: any, res) =>
 
 swachformsRouter.put('/:id/notifications', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const tenantId = tid(req);
     const { id } = req.params;
     const config = req.body;
@@ -371,7 +379,7 @@ swachformsRouter.put('/:id/notifications', requireAuth, async (req: any, res) =>
 
 swachformsRouter.post('/:id/notifications/test', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const tenantId = tid(req);
     const { id } = req.params;
     const row = await db.execute(sql`SELECT * FROM sf_forms WHERE id=${parseInt(id)} AND tenant_id=${tenantId}`);
@@ -390,7 +398,7 @@ swachformsRouter.post('/:id/notifications/test', requireAuth, async (req: any, r
 // Submissions
 swachformsRouter.get('/:id/submissions', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const tenantId = tid(req);
     const { id } = req.params;
     const { status } = req.query;
@@ -404,7 +412,7 @@ swachformsRouter.get('/:id/submissions', requireAuth, async (req: any, res) => {
 
 swachformsRouter.get('/:id/submissions/export', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const tenantId = tid(req);
     const { id } = req.params;
     const rows = await db.execute(sql`SELECT * FROM sf_form_submissions WHERE tenant_id=${tenantId} AND form_id=${parseInt(id)} ORDER BY created_at DESC`);
@@ -425,7 +433,7 @@ swachformsRouter.get('/:id/submissions/export', requireAuth, async (req: any, re
 
 swachformsRouter.get('/:id/submissions/:subId', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const tenantId = tid(req);
     const { id, subId } = req.params;
     const row = await db.execute(sql`SELECT * FROM sf_form_submissions WHERE id=${parseInt(subId)} AND form_id=${parseInt(id)} AND tenant_id=${tenantId}`);
@@ -436,7 +444,7 @@ swachformsRouter.get('/:id/submissions/:subId', requireAuth, async (req: any, re
 
 swachformsRouter.put('/:id/submissions/:subId', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const tenantId = tid(req);
     const { id, subId } = req.params;
     const { status, reviewer_notes } = req.body;
@@ -456,7 +464,7 @@ swachformsRouter.put('/:id/submissions/:subId', requireAuth, async (req: any, re
 // Resend notification for a specific submission
 swachformsRouter.post('/submissions/:subId/resend-notification', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const tenantId = tid(req);
     const { subId } = req.params;
     const subRow = await db.execute(sql`SELECT * FROM sf_form_submissions WHERE id=${parseInt(subId)} AND tenant_id=${tenantId}`);
@@ -473,7 +481,7 @@ swachformsRouter.post('/submissions/:subId/resend-notification', requireAuth, as
 // Embed snippet endpoint (authenticated)
 swachformsRouter.get('/:id/embed-snippet', requireAuth, async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const t = tid(req);
     const baseUrl = process.env.BASE_URL || 'https://app.swacherp.com';
     const form = await db.execute(sql`SELECT slug FROM sf_forms WHERE id=${parseInt(req.params.id)} AND tenant_id=${t}`);
@@ -491,7 +499,7 @@ swachformsRouter.get('/:id/embed-snippet', requireAuth, async (req: any, res) =>
 // Public routes
 swachformsPublicRouter.get('/:slug', async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const { slug } = req.params;
     const tenantId = req.headers['x-tenant-id'] ? parseInt(req.headers['x-tenant-id'] as string) : 1;
     const row = await db.execute(sql`SELECT id, name, slug, description, schema, settings FROM sf_forms WHERE slug=${slug} AND tenant_id=${tenantId} AND status='published'`);
@@ -502,7 +510,7 @@ swachformsPublicRouter.get('/:slug', async (req: any, res) => {
 
 swachformsPublicRouter.post('/:slug', async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const { slug } = req.params;
     const tenantId = req.headers['x-tenant-id'] ? parseInt(req.headers['x-tenant-id'] as string) : 1;
     const formRow = await db.execute(sql`SELECT * FROM sf_forms WHERE slug=${slug} AND tenant_id=${tenantId} AND status='published'`);
@@ -669,7 +677,7 @@ swachformsPublicRouter.get('/sdk.js', (_req: any, res: any) => {
 // Embed HTML
 swachformsPublicRouter.get('/embed/:slug', async (req: any, res) => {
   try {
-    await ensureTables();
+    await ensureTablesOnce();
     const { slug } = req.params;
     const tenantId = parseInt(req.query.tid as string) || 1;
     // prefill params: everything except tid

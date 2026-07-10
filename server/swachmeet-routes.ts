@@ -29,9 +29,8 @@ const requireAuth = (req: any, res: any, next: any) => {
   next();
 };
 
-let tablesReady = false;
-async function ensureTablesOnce() {
-  if (tablesReady) return;
+let _meetTablesPromise: Promise<void> | null = null;
+async function _ensureMeetTables() {
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS meet_rooms (
       id SERIAL PRIMARY KEY,
@@ -123,7 +122,12 @@ async function ensureTablesOnce() {
       registered_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
-  tablesReady = true;
+}
+function ensureTablesOnce(): Promise<void> {
+  if (!_meetTablesPromise) {
+    _meetTablesPromise = _ensureMeetTables().catch(e => { _meetTablesPromise = null; throw e; });
+  }
+  return _meetTablesPromise;
 }
 
 async function nextRoomNo(tenantId: number): Promise<string> {
