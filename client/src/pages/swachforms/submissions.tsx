@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/api-fetch";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useLocation } from "wouter";
@@ -30,7 +31,7 @@ export default function SwachFormsSubmissionsPage() {
 
   const { data: form } = useQuery<any>({
     queryKey: [`/api/forms/${id}`],
-    queryFn: async () => (await fetch(`/api/forms/${id}`)).json(),
+    queryFn: async () => apiFetch(`/api/forms/${id}`),
   });
 
   const { data: submissions = [], isLoading } = useQuery<any[]>({

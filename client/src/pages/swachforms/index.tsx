@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/api-fetch";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
@@ -32,7 +33,7 @@ export default function SwachFormsPage() {
 
   const { data: forms = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/forms"],
-    queryFn: async () => (await fetch("/api/forms")).json(),
+    queryFn: () => apiFetch("/api/forms"),
   });
 
   const createMutation = useMutation({

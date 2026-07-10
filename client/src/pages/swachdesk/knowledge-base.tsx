@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/api-fetch";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
@@ -33,7 +34,7 @@ export default function KnowledgeBasePage() {
 
   const { data: categories = [] } = useQuery<any[]>({
     queryKey: ["/api/desk/kb/categories"],
-    queryFn: async () => (await fetch("/api/desk/kb/categories")).json(),
+    queryFn: async () => apiFetch("/api/desk/kb/categories"),
   });
 
   const { data: articles = [], isLoading: articlesLoading } = useQuery<any[]>({
@@ -42,14 +43,14 @@ export default function KnowledgeBasePage() {
       const p = new URLSearchParams();
       if (selectedCatId) p.set("category_id", String(selectedCatId));
       if (search) p.set("search", search);
-      return (await fetch(`/api/desk/kb/articles?${p}`)).json();
+      return apiFetch(`/api/desk/kb/articles?${p}`);
     },
   });
 
   const { data: stats } = useQuery<any>({
     queryKey: ["/api/desk/kb/stats"],
     queryFn: async () => {
-      const all = await (await fetch("/api/desk/kb/articles")).json();
+      const all = await apiFetch("/api/desk/kb/articles");
       if (!Array.isArray(all)) return { total: 0, published: 0, drafts: 0, views: 0 };
       return {
         total: all.length,

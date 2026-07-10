@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/api-fetch";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useLocation } from "wouter";
@@ -46,8 +47,8 @@ export default function SwachSignDetail() {
 
   useEffect(() => {
     if (!docId) return;
-    fetch(`/api/sign/documents/${docId}/blockchain`).then(r => r.json()).then(setBlockchain).catch(() => {});
-    fetch(`/api/sign/documents/${docId}/audit-trail-hash`).then(r => r.json()).then(setAuditChain).catch(() => {});
+    apiFetch(`/api/sign/documents/${docId}/blockchain`).then(setBlockchain).catch(() => {});
+    apiFetch(`/api/sign/documents/${docId}/audit-trail-hash`).then(setAuditChain).catch(() => {});
   }, [docId]);
 
   const initiateAadhaar = async () => {
@@ -74,7 +75,7 @@ export default function SwachSignDetail() {
 
   const { data, isLoading } = useQuery({
     queryKey: [`/api/sign/documents/${id}`],
-    queryFn: () => fetch(`/api/sign/documents/${id}`).then(r => r.json()),
+    queryFn: () => apiFetch(`/api/sign/documents/${id}`),
   });
 
   const sendMut = useMutation({

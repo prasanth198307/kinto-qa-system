@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/api-fetch";
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
@@ -51,14 +52,14 @@ export default function SwachMeetIndex() {
   });
   const [chanForm, setChanForm] = useState({ name: "", description: "", channel_type: "public" });
 
-  const { data: rooms = [] } = useQuery<any[]>({ queryKey: ["/api/meet/rooms"], queryFn: () => fetch("/api/meet/rooms").then(r => r.json()) });
-  const { data: stats } = useQuery<any>({ queryKey: ["/api/meet/stats"], queryFn: () => fetch("/api/meet/stats").then(r => r.json()) });
-  const { data: channels = [] } = useQuery<any[]>({ queryKey: ["/api/meet/channels"], queryFn: () => fetch("/api/meet/channels").then(r => r.json()), enabled: tab === "channels" || tab === "home" });
-  const { data: analytics } = useQuery<any>({ queryKey: ["/api/swachmeet/analytics"], queryFn: () => fetch("/api/swachmeet/analytics?days=30").then(r => r.json()), enabled: tab === "analytics" });
-  const { data: templates = [] } = useQuery<any[]>({ queryKey: ["/api/meet/templates"], queryFn: () => fetch("/api/meet/templates").then(r => r.json()), enabled: schedOpen });
+  const { data: rooms = [] } = useQuery<any[]>({ queryKey: ["/api/meet/rooms"], queryFn: () => apiFetch("/api/meet/rooms") });
+  const { data: stats } = useQuery<any>({ queryKey: ["/api/meet/stats"], queryFn: () => apiFetch("/api/meet/stats") });
+  const { data: channels = [] } = useQuery<any[]>({ queryKey: ["/api/meet/channels"], queryFn: () => apiFetch("/api/meet/channels"), enabled: tab === "channels" || tab === "home" });
+  const { data: analytics } = useQuery<any>({ queryKey: ["/api/swachmeet/analytics"], queryFn: () => apiFetch("/api/swachmeet/analytics?days=30"), enabled: tab === "analytics" });
+  const { data: templates = [] } = useQuery<any[]>({ queryKey: ["/api/meet/templates"], queryFn: () => apiFetch("/api/meet/templates"), enabled: schedOpen });
   const { data: chanMessages = [] } = useQuery<any[]>({
     queryKey: ["/api/meet/channels", selectedChannel?.id, "messages"],
-    queryFn: () => fetch(`/api/meet/channels/${selectedChannel.id}/messages`).then(r => r.json()),
+    queryFn: () => apiFetch(`/api/meet/channels/${selectedChannel.id}/messages`),
     enabled: !!selectedChannel,
     refetchInterval: selectedChannel ? 4000 : false,
   });
@@ -532,7 +533,7 @@ function RecordingsTab({ rooms }: { rooms: any[] }) {
 
   const { data: recordings = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/meet/rooms", selectedRoomId, "recordings"],
-    queryFn: () => fetch(`/api/meet/rooms/${selectedRoomId}/recordings`).then(r => r.json()),
+    queryFn: () => apiFetch(`/api/meet/rooms/${selectedRoomId}/recordings`),
     enabled: !!selectedRoomId,
   });
 

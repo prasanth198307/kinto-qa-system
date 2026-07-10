@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/api-fetch";
 import { useState, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useLocation } from "wouter";
@@ -186,7 +187,7 @@ export default function PlacementPage() {
 
   const { data: placementData, isLoading: loadingPlacement } = useQuery({
     queryKey: [`/api/sign/documents/${id}/placement-data`],
-    queryFn: () => fetch(`/api/sign/documents/${id}/placement-data`).then(r => r.json()),
+    queryFn: () => apiFetch(`/api/sign/documents/${id}/placement-data`),
     onSuccess: (data: { signatories: Signatory[] }) => {
       const initial: Record<number, SignField[]> = {};
       data.signatories.forEach((s: Signatory) => {
@@ -199,7 +200,7 @@ export default function PlacementPage() {
 
   const { data: pagesData, isLoading: loadingPages } = useQuery({
     queryKey: [`/api/sign/documents/${id}/pages`],
-    queryFn: () => fetch(`/api/sign/documents/${id}/pages`).then(r => r.json()),
+    queryFn: () => apiFetch(`/api/sign/documents/${id}/pages`),
   });
 
   const saveMut = useMutation({

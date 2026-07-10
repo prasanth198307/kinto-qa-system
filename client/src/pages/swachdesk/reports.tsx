@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/api-fetch";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -8,22 +9,22 @@ export default function SwachDeskReportsPage() {
 
   const { data: sla = [] } = useQuery<any[]>({
     queryKey: ["/api/desk/reports/sla"],
-    queryFn: async () => (await fetch("/api/desk/reports/sla")).json(),
+    queryFn: async () => apiFetch("/api/desk/reports/sla"),
   });
 
   const { data: agents = [] } = useQuery<any[]>({
     queryKey: ["/api/desk/reports/agent-performance"],
-    queryFn: async () => (await fetch("/api/desk/reports/agent-performance")).json(),
+    queryFn: async () => apiFetch("/api/desk/reports/agent-performance"),
   });
 
   const { data: csat } = useQuery<any>({
     queryKey: ["/api/desk/reports/csat"],
-    queryFn: async () => (await fetch("/api/desk/reports/csat")).json(),
+    queryFn: async () => apiFetch("/api/desk/reports/csat"),
   });
 
   const { data: overview } = useQuery<any>({
     queryKey: ["/api/desk/reports/overview"],
-    queryFn: async () => (await fetch("/api/desk/reports/overview")).json(),
+    queryFn: async () => apiFetch("/api/desk/reports/overview"),
   });
 
   const totalSla = sla.reduce((a: number, r: any) => a + parseInt(r.total || 0), 0);

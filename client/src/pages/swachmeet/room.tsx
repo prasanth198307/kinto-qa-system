@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/api-fetch";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -48,13 +49,13 @@ export default function SwachMeetRoom() {
   // Fetch room info by room_code
   const { data: roomInfo } = useQuery<any>({
     queryKey: ["/api/public/meet", roomId],
-    queryFn: () => fetch(`/api/public/meet/${roomId}`).then(r => r.json()).catch(() => null),
+    queryFn: () => apiFetch(`/api/public/meet/${roomId}`).catch(() => null),
   });
 
   useEffect(() => { if (roomInfo?.id) setRoomDbId(roomInfo.id); }, [roomInfo]);
 
   // Notes
-  const { data: notes = [] } = useQuery<any[]>({ queryKey: ["/api/meet/rooms", roomDbId, "notes"], queryFn: () => fetch(`/api/meet/rooms/${roomDbId}/notes`).then(r => r.json()), enabled: !!roomDbId && sidePanel === "notes" });
+  const { data: notes = [] } = useQuery<any[]>({ queryKey: ["/api/meet/rooms", roomDbId, "notes"], queryFn: () => apiFetch(`/api/meet/rooms/${roomDbId}/notes`), enabled: !!roomDbId && sidePanel === "notes" });
   const addNoteMut = useMutation({
     mutationFn: (body: any) => apiRequest("POST", `/api/meet/rooms/${roomDbId}/notes`, body),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/meet/rooms", roomDbId, "notes"] }); setNoteContent(""); },
@@ -69,7 +70,7 @@ export default function SwachMeetRoom() {
   });
 
   // Polls
-  const { data: polls = [] } = useQuery<any[]>({ queryKey: ["/api/meet/rooms", roomDbId, "polls"], queryFn: () => fetch(`/api/meet/rooms/${roomDbId}/polls`).then(r => r.json()), enabled: !!roomDbId && sidePanel === "polls" });
+  const { data: polls = [] } = useQuery<any[]>({ queryKey: ["/api/meet/rooms", roomDbId, "polls"], queryFn: () => apiFetch(`/api/meet/rooms/${roomDbId}/polls`), enabled: !!roomDbId && sidePanel === "polls" });
   const addPollMut = useMutation({
     mutationFn: (body: any) => apiRequest("POST", `/api/meet/rooms/${roomDbId}/polls`, body),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/meet/rooms", roomDbId, "polls"] }); setPollQuestion(""); setPollOptions(["", ""]); },
@@ -84,7 +85,7 @@ export default function SwachMeetRoom() {
   });
 
   // Agenda
-  const { data: agenda = [] } = useQuery<any[]>({ queryKey: ["/api/meet/rooms", roomDbId, "agenda"], queryFn: () => fetch(`/api/meet/rooms/${roomDbId}/agenda`).then(r => r.json()), enabled: !!roomDbId && sidePanel === "agenda" });
+  const { data: agenda = [] } = useQuery<any[]>({ queryKey: ["/api/meet/rooms", roomDbId, "agenda"], queryFn: () => apiFetch(`/api/meet/rooms/${roomDbId}/agenda`), enabled: !!roomDbId && sidePanel === "agenda" });
   const addAgendaMut = useMutation({
     mutationFn: (body: any) => apiRequest("POST", `/api/meet/rooms/${roomDbId}/agenda`, body),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/meet/rooms", roomDbId, "agenda"] }); setNewAgendaTitle(""); },
@@ -97,7 +98,7 @@ export default function SwachMeetRoom() {
   // Files
   const { data: meetFiles = [], refetch: refetchFiles } = useQuery<any[]>({
     queryKey: ["/api/meet/rooms", roomDbId, "files"],
-    queryFn: () => fetch(`/api/meet/rooms/${roomDbId}/files`).then(r => r.json()),
+    queryFn: () => apiFetch(`/api/meet/rooms/${roomDbId}/files`),
     enabled: !!roomDbId && sidePanel === "files",
   });
   const deleteFileMut = useMutation({

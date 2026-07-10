@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/api-fetch";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
@@ -50,12 +51,12 @@ export default function SwachSignIndex() {
 
   const { data: docs = [], isLoading } = useQuery({
     queryKey: ["/api/sign/documents"],
-    queryFn: () => fetch("/api/sign/documents").then(r => r.json()),
+    queryFn: () => apiFetch("/api/sign/documents"),
   });
 
   const { data: templates = [], isLoading: tmplLoading } = useQuery({
     queryKey: ["/api/sign/templates"],
-    queryFn: () => fetch("/api/sign/templates").then(r => r.json()),
+    queryFn: () => apiFetch("/api/sign/templates"),
   });
 
   const createMut = useMutation({

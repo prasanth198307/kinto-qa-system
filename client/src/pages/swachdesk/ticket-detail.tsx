@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/api-fetch";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useLocation } from "wouter";
@@ -48,12 +49,12 @@ export default function TicketDetailPage() {
 
   const { data: ticket, isLoading } = useQuery<any>({
     queryKey: [`/api/desk/tickets/${id}`],
-    queryFn: async () => (await fetch(`/api/desk/tickets/${id}`)).json(),
+    queryFn: async () => apiFetch(`/api/desk/tickets/${id}`),
   });
 
   const { data: cannedResponses = [] } = useQuery<any[]>({
     queryKey: ["/api/desk/canned-responses"],
-    queryFn: async () => (await fetch("/api/desk/canned-responses")).json(),
+    queryFn: async () => apiFetch("/api/desk/canned-responses"),
   });
 
   const replyMutation = useMutation({

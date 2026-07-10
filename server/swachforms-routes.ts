@@ -6,7 +6,7 @@ import { whatsappService } from "./whatsappService";
 export const swachformsRouter = Router();
 export const swachformsPublicRouter = Router();
 
-const tid = (req: any): number => req.session?.tenantId ?? req.user?.tenantId ?? req.headers['x-tenant-id'] ? parseInt(req.headers['x-tenant-id'] as string) : 1;
+const tid = (req: any): number => Number(req.session?.tenantId ?? req.user?.tenantId ?? 1);
 const requireAuth = (req: any, res: any, next: any) => {
   if (!req.isAuthenticated?.() && !req.user) return res.status(401).json({ message: "Unauthorized" });
   next();

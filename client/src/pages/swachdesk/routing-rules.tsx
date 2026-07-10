@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/api-fetch";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
@@ -95,7 +96,7 @@ export default function RoutingRulesPage() {
 
   const { data: rules = [] } = useQuery<any[]>({
     queryKey: ["/api/desk/routing-rules"],
-    queryFn: async () => (await fetch("/api/desk/routing-rules")).json(),
+    queryFn: async () => apiFetch("/api/desk/routing-rules"),
   });
 
   const saveMutation = useMutation({

@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/api-fetch";
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
@@ -36,7 +37,7 @@ export default function LiveChatPage() {
 
   const { data: sessions = [] } = useQuery<any[]>({
     queryKey: ["/api/desk/chat/sessions"],
-    queryFn: async () => (await fetch("/api/desk/chat/sessions")).json(),
+    queryFn: async () => apiFetch("/api/desk/chat/sessions"),
     refetchInterval: 5000,
   });
 
@@ -44,7 +45,7 @@ export default function LiveChatPage() {
     queryKey: ["/api/desk/chat/messages", selectedSession],
     queryFn: async () => {
       if (!selectedSession) return [];
-      return (await fetch(`/api/desk/chat/${selectedSession}/messages`)).json();
+      return apiFetch(`/api/desk/chat/${selectedSession}/messages`);
     },
     enabled: !!selectedSession,
     refetchInterval: 3000,

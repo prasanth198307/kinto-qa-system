@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/api-fetch";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
@@ -61,7 +62,7 @@ export default function SwachDeskPage() {
 
   const { data: overview } = useQuery<any>({
     queryKey: ["/api/desk/reports/overview"],
-    queryFn: async () => (await fetch("/api/desk/reports/overview")).json(),
+    queryFn: async () => apiFetch("/api/desk/reports/overview"),
   });
 
   const createMutation = useMutation({
@@ -81,12 +82,12 @@ export default function SwachDeskPage() {
 
   const { data: kbStats } = useQuery<any[]>({
     queryKey: ["/api/desk/kb/articles/count"],
-    queryFn: async () => (await fetch("/api/desk/kb/articles")).json(),
+    queryFn: async () => apiFetch("/api/desk/kb/articles"),
   });
 
   const { data: chatSessions } = useQuery<any[]>({
     queryKey: ["/api/desk/chat/sessions/count"],
-    queryFn: async () => (await fetch("/api/desk/chat/sessions")).json(),
+    queryFn: async () => apiFetch("/api/desk/chat/sessions"),
   });
 
   const kbCount = Array.isArray(kbStats) ? kbStats.filter((a: any) => a.status === "published").length : 0;
@@ -94,7 +95,7 @@ export default function SwachDeskPage() {
 
   const { data: sentimentReport } = useQuery<any>({
     queryKey: ["/api/ai/tickets/sentiment-report"],
-    queryFn: async () => (await fetch("/api/ai/tickets/sentiment-report")).json(),
+    queryFn: async () => apiFetch("/api/ai/tickets/sentiment-report"),
     retry: false,
   });
 
