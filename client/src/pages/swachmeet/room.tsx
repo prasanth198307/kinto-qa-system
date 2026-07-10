@@ -284,7 +284,7 @@ export default function SwachMeetRoom() {
         {/* Jitsi Container */}
         <div ref={containerRef} style={{ flex: 1, position: "relative", background: "#111827" }}>
           {jitsiStatus === "loading" && (
-            <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "#9ca3af", gap: 12 }}>
+            <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "#9ca3af", gap: 12, pointerEvents: "none" }}>
               <Loader2 style={{ width: 28, height: 28, animation: "spin 1s linear infinite" }} />
               <span style={{ fontSize: 14 }}>Connecting to meeting…</span>
             </div>
