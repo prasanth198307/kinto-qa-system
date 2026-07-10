@@ -188,7 +188,7 @@ export default function SwachMeetRoom() {
           startWithVideoMuted: false,
           enableWelcomePage: false,
           disableDeepLinking: true,
-          prejoinPageEnabled: false,
+          prejoinPageEnabled: true,
           toolbarButtons: ["microphone", "camera", "closedcaptions", "desktop", "fullscreen",
             "fodeviceselection", "hangup", "chat", "raisehand", "recording",
             "settings", "videoquality", "tileview", "participants-pane", "whiteboard"],
@@ -203,6 +203,13 @@ export default function SwachMeetRoom() {
         },
       });
       jitsiRef.current = api;
+      // Ensure the iframe Jitsi creates has full device permissions
+      setTimeout(() => {
+        const iframe = containerRef.current?.querySelector("iframe");
+        if (iframe) {
+          iframe.allow = "camera; microphone; fullscreen; display-capture; autoplay; clipboard-write; speaker-selection; screen-wake-lock";
+        }
+      }, 500);
       api.addEventListeners({
         videoConferenceJoined: () => { setJitsiStatus("connected"); },
         videoConferenceLeft: () => setJitsiStatus("ended"),
