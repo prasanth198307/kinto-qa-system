@@ -48,7 +48,7 @@ export default function SwachMeetIndex() {
 
   const [form, setForm] = useState({
     title: "", scheduled_at: "", room_type: "meeting", max_participants: 10,
-    password: "", description: "", template_id: ""
+    password: "", description: "", template_id: "", invite_emails: ""
   });
   const [chanForm, setChanForm] = useState({ name: "", description: "", channel_type: "public" });
 
@@ -57,6 +57,7 @@ export default function SwachMeetIndex() {
   const { data: channels = [] } = useQuery<any[]>({ queryKey: ["/api/meet/channels"], queryFn: () => apiFetch("/api/meet/channels"), enabled: tab === "channels" || tab === "home" });
   const { data: analytics } = useQuery<any>({ queryKey: ["/api/swachmeet/analytics"], queryFn: () => apiFetch("/api/swachmeet/analytics?days=30"), enabled: tab === "analytics" });
   const { data: templates = [] } = useQuery<any[]>({ queryKey: ["/api/meet/templates"], queryFn: () => apiFetch("/api/meet/templates"), enabled: schedOpen });
+  const { data: tenantUsers = [] } = useQuery<any[]>({ queryKey: ["/api/users"], queryFn: () => apiFetch("/api/users"), enabled: schedOpen });
   const { data: chanMessages = [] } = useQuery<any[]>({
     queryKey: ["/api/meet/channels", selectedChannel?.id, "messages"],
     queryFn: () => apiFetch(`/api/meet/channels/${selectedChannel.id}/messages`),
@@ -67,12 +68,18 @@ export default function SwachMeetIndex() {
   useEffect(() => { if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight; }, [chanMessages]);
 
   const createMut = useMutation({
-    mutationFn: (body: any) => apiRequest("POST", "/api/meet/rooms", body),
+    mutationFn: (body: any) => {
+      const emailList = body.invite_emails
+        ? body.invite_emails.split(/[\s,;]+/).map((e: string) => e.trim()).filter(Boolean)
+        : [];
+      return apiRequest("POST", "/api/meet/rooms", { ...body, invite_emails: emailList });
+    },
     onSuccess: async (res) => {
       const room = await res.json();
       qc.invalidateQueries({ queryKey: ["/api/meet/rooms"] });
       setSchedOpen(false);
-      toast({ title: "Meeting created", description: room.room_no });
+      setForm({ title: "", scheduled_at: "", room_type: "meeting", max_participants: 10, password: "", description: "", template_id: "", invite_emails: "" });
+      toast({ title: "Meeting scheduled", description: room.invite_emails?.length ? `Invites sent to ${room.invite_emails?.length} people` : room.room_no });
     },
     onError: () => toast({ title: "Error", variant: "destructive" }),
   });
@@ -457,6 +464,32 @@ export default function SwachMeetIndex() {
             </div>
             <div><Label>Password (optional)</Label><Input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="Leave blank for open access" /></div>
             <div><Label>Description</Label><Textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="What's this meeting about?" rows={2} /></div>
+            <div>
+              <Label>Invite Participants</Label>
+              {(tenantUsers as any[]).length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-1 mb-2">
+                  {(tenantUsers as any[]).filter((u: any) => u.email).map((u: any) => {
+                    const already = form.invite_emails.includes(u.email);
+                    return (
+                      <button key={u.id} type="button"
+                        onClick={() => setForm(f => ({
+                          ...f,
+                          invite_emails: already
+                            ? f.invite_emails.split(/[\s,;]+/).filter(e => e.trim() !== u.email).join(", ")
+                            : [f.invite_emails, u.email].filter(Boolean).join(", ")
+                        }))}
+                        className={`text-xs px-2 py-1 rounded-full border transition-colors ${already ? "bg-blue-600 text-white border-blue-600" : "border-border text-muted-foreground hover:border-blue-400 hover:text-blue-600"}`}>
+                        {u.name || u.email}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              <Textarea value={form.invite_emails} onChange={e => setForm(f => ({ ...f, invite_emails: e.target.value }))}
+                placeholder="email1@example.com, email2@example.com" rows={2}
+                data-testid="input-invite-emails" />
+              <p className="text-xs text-muted-foreground mt-1">Comma-separated emails — system users and external guests both receive email invites</p>
+            </div>
             <Button className="w-full" onClick={() => createMut.mutate(form)} disabled={createMut.isPending} data-testid="button-create-meeting">
               {createMut.isPending ? "Creating…" : form.room_type === "webinar" ? "Create Webinar" : "Schedule Meeting"}
             </Button>

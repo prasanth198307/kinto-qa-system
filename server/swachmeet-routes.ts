@@ -3,6 +3,24 @@ import { db } from "./db";
 import { sql } from "drizzle-orm";
 import crypto from "crypto";
 import { createHmac } from "crypto";
+import nodemailer from "nodemailer";
+
+async function sendMeetEmail(to: string, subject: string, html: string): Promise<void> {
+  try {
+    if (process.env.SMTP_HOST) {
+      const t = nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port: Number(process.env.SMTP_PORT || 587),
+        auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+      });
+      await t.sendMail({ from: process.env.SENDER_EMAIL || "noreply@swacherp.com", to, subject, html });
+    } else {
+      console.log(`[SwachMeet Email] To: ${to} | Subject: ${subject}`);
+    }
+  } catch (e: any) {
+    console.error("[SwachMeet Email] failed:", e.message);
+  }
+}
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -184,7 +202,7 @@ router.get("/rooms", requireAuth, async (req: any, res) => {
 router.post("/rooms", requireAuth, async (req: any, res) => {
   await ensureTablesOnce();
   const tenantId = tid(req);
-  const { title, description, room_type, scheduled_at, max_participants, password } = req.body;
+  const { title, description, room_type, scheduled_at, max_participants, password, invite_emails } = req.body;
   const roomNo = await nextRoomNo(tenantId);
   const roomCode = crypto.randomBytes(6).toString("hex");
   const baseUrl = process.env.APP_URL || "http://localhost:5000";
@@ -199,7 +217,40 @@ router.post("/rooms", requireAuth, async (req: any, res) => {
     VALUES (${tenantId}, ${roomNo}, ${title || roomNo}, ${description || null}, ${room_type || "meeting"}, ${req.user?.id || null}, ${req.user?.name || null}, ${scheduled_at || null}, ${maxPart}, ${roomCode}, ${password || null}, ${dailyRoomName}, ${meetingUrl})
     RETURNING *
   `);
-  res.status(201).json(result.rows[0]);
+  const room = result.rows[0] as any;
+
+  // Auto-invite if emails provided at creation time
+  if (Array.isArray(invite_emails) && invite_emails.length) {
+    const dateStr = scheduled_at ? new Date(scheduled_at).toLocaleString("en-IN") : "Starting now";
+    const joinUrl = meetingUrl;
+    for (const email of invite_emails) {
+      await sendMeetEmail(
+        email,
+        `Meeting Invite: ${title || roomNo}`,
+        `<div style="font-family:sans-serif;max-width:520px;margin:auto">
+          <h2 style="color:#1d4ed8">📅 You're invited to a meeting</h2>
+          <p><strong>${title || roomNo}</strong></p>
+          <p>Hosted by <strong>${req.user?.name || "SwachERP"}</strong><br>
+          🗓 ${dateStr}<br>
+          👥 Max ${maxPart} participants</p>
+          ${description ? `<p style="color:#555">${description}</p>` : ""}
+          <a href="${joinUrl}" style="display:inline-block;margin-top:12px;padding:10px 22px;background:#1d4ed8;color:#fff;border-radius:6px;text-decoration:none;font-weight:bold">Join Meeting</a>
+          <p style="margin-top:20px;font-size:12px;color:#888">Or copy link: ${joinUrl}</p>
+        </div>`
+      );
+      const userRow = await db.execute(sql`SELECT id, name FROM users WHERE email = ${email} AND tenant_id = ${tenantId} LIMIT 1`);
+      if (userRow.rows.length) {
+        const u = userRow.rows[0] as any;
+        await db.execute(sql`
+          INSERT INTO meet_participants (room_id, tenant_id, user_id, name, email, role)
+          VALUES (${room.id}, ${tenantId}, ${u.id}, ${u.name}, ${email}, 'participant')
+          ON CONFLICT DO NOTHING
+        `);
+      }
+    }
+  }
+
+  res.status(201).json(room);
 });
 
 // GET /api/meet/rooms/:id
@@ -257,11 +308,38 @@ router.post("/rooms/:id/invite", requireAuth, async (req: any, res) => {
   const room = roomRes.rows[0] as any;
   const { emails } = req.body;
   if (!emails || !Array.isArray(emails)) return res.status(400).json({ message: "emails array required" });
-  const dateStr = room.scheduled_at ? new Date(room.scheduled_at).toLocaleString() : "TBD";
+  const dateStr = room.scheduled_at ? new Date(room.scheduled_at).toLocaleString("en-IN") : "Starting now";
+  const joinUrl = room.meeting_url || `${process.env.APP_URL || "https://kinto.swacherp.com"}/meet/${room.room_code}`;
+  const hostName = room.host_name || "SwachERP";
+
   for (const email of emails) {
-    console.log(`[SwachMeet] Invite to ${email}: "${room.title}" on ${dateStr}. Join: ${room.meeting_url}`);
+    // Send email invite
+    await sendMeetEmail(
+      email,
+      `Meeting Invite: ${room.title}`,
+      `<div style="font-family:sans-serif;max-width:520px;margin:auto">
+        <h2 style="color:#1d4ed8">📅 You're invited to a meeting</h2>
+        <p><strong>${room.title}</strong></p>
+        <p>Hosted by <strong>${hostName}</strong><br>
+        🗓 ${dateStr}<br>
+        👥 Max ${room.max_participants} participants</p>
+        ${room.description ? `<p style="color:#555">${room.description}</p>` : ""}
+        <a href="${joinUrl}" style="display:inline-block;margin-top:12px;padding:10px 22px;background:#1d4ed8;color:#fff;border-radius:6px;text-decoration:none;font-weight:bold">Join Meeting</a>
+        <p style="margin-top:20px;font-size:12px;color:#888">Or copy link: ${joinUrl}</p>
+      </div>`
+    );
+    // If the email belongs to a tenant user, insert as a participant so it shows up for them
+    const userRow = await db.execute(sql`SELECT id, name FROM users WHERE email = ${email} AND tenant_id = ${tid(req)} LIMIT 1`);
+    if (userRow.rows.length) {
+      const u = userRow.rows[0] as any;
+      await db.execute(sql`
+        INSERT INTO meet_participants (room_id, tenant_id, user_id, name, email, role)
+        VALUES (${room.id}, ${tid(req)}, ${u.id}, ${u.name}, ${email}, 'participant')
+        ON CONFLICT DO NOTHING
+      `);
+    }
   }
-  res.json({ message: `Invited ${emails.length} participants` });
+  res.json({ message: `Invited ${emails.length} participant(s)`, join_url: joinUrl });
 });
 
 // GET /api/meet/rooms/:id/participants
