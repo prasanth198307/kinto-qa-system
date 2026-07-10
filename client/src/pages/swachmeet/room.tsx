@@ -190,6 +190,7 @@ export default function SwachMeetRoom() {
           enableWelcomePage: false,
           disableDeepLinking: true,
           prejoinPageEnabled: true,
+          lobbyModeEnabled: false,
           toolbarButtons: ["microphone", "camera", "closedcaptions", "desktop", "fullscreen",
             "fodeviceselection", "hangup", "chat", "raisehand", "recording",
             "settings", "videoquality", "tileview", "participants-pane", "whiteboard"],

@@ -112,6 +112,16 @@ export default function SwachMeetIndex() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/meet/rooms"] }),
   });
 
+  const instantMeetMut = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/meet/rooms", { title: "Instant Meeting", room_type: "meeting", max_participants: 10 }),
+    onSuccess: async (res) => {
+      const room = await res.json();
+      qc.invalidateQueries({ queryKey: ["/api/meet/rooms"] });
+      navigate(`/meet/${room.room_code || room.id}`);
+    },
+    onError: () => toast({ title: "Failed to start meeting", variant: "destructive" }),
+  });
+
   function copyJitsiLink(room: any) {
     const link = `https://meet.jit.si/SwachERP-${room.room_code || room.id}`;
     navigator.clipboard.writeText(link);
@@ -168,7 +178,7 @@ export default function SwachMeetIndex() {
         </div>
 
         <div className="p-3 border-t space-y-2">
-          <Button size="sm" className="w-full" onClick={() => navigate(`/meet/${generateRoomId()}`)}>
+          <Button size="sm" className="w-full" onClick={() => instantMeetMut.mutate()}>
             <Zap className="w-3.5 h-3.5 mr-1.5" /> Instant Meeting
           </Button>
           <Button size="sm" variant="outline" className="w-full" onClick={() => setSchedOpen(true)}>
@@ -242,7 +252,7 @@ export default function SwachMeetIndex() {
               <h2 className="font-semibold text-sm mb-3">Quick Actions</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {[
-                  { label: "Start Instant Meeting", icon: Video, color: "bg-blue-50 dark:bg-blue-900/20 text-blue-700", action: () => navigate(`/meet/${generateRoomId()}`) },
+                  { label: "Start Instant Meeting", icon: Video, color: "bg-blue-50 dark:bg-blue-900/20 text-blue-700", action: () => instantMeetMut.mutate() },
                   { label: "Schedule Meeting", icon: Calendar, color: "bg-green-50 dark:bg-green-900/20 text-green-700", action: () => setSchedOpen(true) },
                   { label: "Create Channel", icon: Hash, color: "bg-purple-50 dark:bg-purple-900/20 text-purple-700", action: () => setChanOpen(true) },
                   { label: "Start Webinar", icon: Globe, color: "bg-orange-50 dark:bg-orange-900/20 text-orange-700", action: () => { setForm(f => ({ ...f, room_type: "webinar" })); setSchedOpen(true); } },
@@ -262,7 +272,7 @@ export default function SwachMeetIndex() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h1 className="text-lg font-bold">Meetings</h1>
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={() => navigate(`/meet/${generateRoomId()}`)}><Zap className="w-3.5 h-3.5 mr-1.5" />Instant</Button>
+                <Button size="sm" variant="outline" onClick={() => instantMeetMut.mutate()}><Zap className="w-3.5 h-3.5 mr-1.5" />Instant</Button>
                 <Button size="sm" onClick={() => setSchedOpen(true)}><Plus className="w-3.5 h-3.5 mr-1.5" />Schedule</Button>
               </div>
             </div>
@@ -312,7 +322,7 @@ export default function SwachMeetIndex() {
                     {selectedChannel.description && <span className="text-xs text-muted-foreground hidden sm:block">· {selectedChannel.description}</span>}
                   </div>
                   <div className="flex items-center gap-1">
-                    <Button size="sm" variant="outline" onClick={() => navigate(`/meet/${generateRoomId()}`)}><Video className="w-3.5 h-3.5 mr-1" />Meet Now</Button>
+                    <Button size="sm" variant="outline" onClick={() => instantMeetMut.mutate()}><Video className="w-3.5 h-3.5 mr-1" />Meet Now</Button>
                     <Button size="icon" variant="ghost" onClick={() => deleteChanMut.mutate(selectedChannel.id)} data-testid="button-delete-channel"><Trash2 className="w-3.5 h-3.5 text-muted-foreground" /></Button>
                   </div>
                 </div>
