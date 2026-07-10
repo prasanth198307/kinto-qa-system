@@ -328,6 +328,9 @@ export const navItemToScreenKey: Record<string, string> = {
   'hotel/corporate':                    'hotel_corporate',
   'hotel/night-audit':                  'hotel_night_audit',
   'hotel/reports':                      'hotel_reports',
+  'hotel/banquet':                      'hotel_banquet',
+  'hotel/channel-manager':              'hotel_channel_manager',
+  'hotel/revenue-management':           'hotel_revenue_management',
   // Healthcare ERP sub-pages
   'healthcare/patients':                'healthcare_patients',
   'healthcare/opd':                     'healthcare_opd',
@@ -354,6 +357,8 @@ export const navItemToScreenKey: Record<string, string> = {
   'pharmacy/expiry':                    'pharmacy_expiry',
   'pharmacy/reports':                   'pharmacy_reports',
   'pharmacy/prescriptions':             'pharmacy_prescriptions',
+  'pharmacy/e-invoice':                 'pharmacy_e_invoice',
+  'pharmacy/narcotics-register':        'pharmacy_narcotics_register',
   // NGO ERP sub-pages
   'ngo/donors':                         'ngo_donors',
   'ngo/donations':                      'ngo_donations',
@@ -395,6 +400,8 @@ export const navItemToScreenKey: Record<string, string> = {
   'logistics/gps':                      'logistics_gps',
   'logistics/documents':                'logistics_documents',
   'logistics/reports':                  'logistics_reports',
+  'logistics/live-gps':                 'logistics_live_gps',
+  'logistics/route-optimization':       'logistics_route_optimization',
   // Real Estate ERP sub-pages
   'real-estate/projects':               'real_estate_projects',
   'real-estate/bookings':               'real_estate_bookings',
@@ -408,6 +415,9 @@ export const navItemToScreenKey: Record<string, string> = {
   'real-estate/bank-loans':             'real_estate_bank_loans',
   'real-estate/subcontractors':         'real_estate_subcontractors',
   'real-estate/reports':                'real_estate_reports',
+  'real-estate/rera':                   'real_estate_rera',
+  'real-estate/demand-letters':         'real_estate_demand_letters',
+  'real-estate/project-pl':            'real_estate_project_pl',
   // Agriculture ERP sub-pages
   'agriculture/farms':                  'agriculture_farms',
   'agriculture/crops':                  'agriculture_crops',
@@ -418,6 +428,8 @@ export const navItemToScreenKey: Record<string, string> = {
   'agriculture/fpo':                    'agriculture_fpo',
   'agriculture/schemes':                'agriculture_schemes',
   'agriculture/reports':                'agriculture_reports',
+  'agriculture/mandi-prices':           'agriculture_mandi_prices',
+  'agriculture/pmfby':                  'agriculture_pmfby',
   // Education ERP sub-pages
   'education/students':                 'education_students',
   'education/admissions':               'education_admissions',
@@ -433,6 +445,8 @@ export const navItemToScreenKey: Record<string, string> = {
   'education/online-exams':             'education_online_exams',
   'education/parent-portal':            'education_parent_portal',
   'education/reports':                  'education_reports',
+  'education/certificates':             'education_certificates',
+  'education/nep-compliance':           'education_nep_compliance',
   // CRM ERP sub-pages
   'crm/pipeline':                       'crm_pipeline',
   'crm/contacts':                       'crm_contacts',
@@ -443,6 +457,9 @@ export const navItemToScreenKey: Record<string, string> = {
   'crm/reports':                        'crm_reports',
   'crm/telephony':                      'crm_telephony',
   'crm/quotations':                     'crm_quotations',
+  'crm/customer-360':                   'crm_customer_360',
+  'crm/drip-campaigns':                 'crm_drip_campaigns',
+  'crm/lead-scoring':                   'crm_lead_scoring',
   // Manufacturing ERP new screens
   'manufacturing/job-cards':            'manufacturing_job_cards',
   'manufacturing/sub-contracting':      'manufacturing_sub_contracting',
@@ -465,6 +482,22 @@ export const navItemToScreenKey: Record<string, string> = {
   'ecommerce/settlements':              'ecommerce_settlements',
   'ecommerce/channels':                 'ecommerce_channels',
   'ecommerce/reports':                  'ecommerce_reports',
+  'ecommerce/warehouses':               'ecommerce_warehouses',
+  // Masters / Admin sub-pages
+  'masters/tax-config':                 'masters_tax_config',
+  'masters/hsn-codes':                  'masters_hsn_codes',
+  'masters/sac-codes':                  'masters_sac_codes',
+  'masters/branches':                   'masters_branches',
+  'masters/bank-master':                'masters_bank_master',
+  'masters/doc-numbering':              'masters_doc_numbering',
+  'masters/email-templates':            'masters_email_templates',
+  'masters/sms-templates':              'masters_sms_templates',
+  'masters/webhooks':                   'masters_webhooks',
+  'masters/integration-credentials':    'masters_integration_credentials',
+  'masters/feature-flags':              'masters_feature_flags',
+  'masters/approval-matrix':            'masters_approval_matrix',
+  'masters/print-templates':            'masters_print_templates',
+  'masters/states-countries':           'masters_states_countries',
   // SwachDesk
   'swachdesk':                          'swachdesk',
   'swachdesk-reports':                  'swachdesk_reports',
