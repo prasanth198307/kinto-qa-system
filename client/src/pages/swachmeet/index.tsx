@@ -12,12 +12,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import {
-  Video, Plus, Users, Clock, Play, CheckCircle, Calendar, Zap, Mic,
-  Film, ExternalLink, Download, UserCheck, Sparkles, ChevronDown, ChevronUp,
-  BarChart2, Copy, Hash, MessageSquare, Settings, Star, Trash2, Edit3,
-  Send, ArrowRight, Globe, Lock, RefreshCw, MoreVertical, Bell, X,
-  FileText, ListTodo, ClipboardList, Repeat, Layout, ChevronRight, Search,
-  Phone, Shield, Wifi, AlignLeft, AlertCircle
+  Video, Plus, Users, Clock, Play, CheckCircle, Calendar, Zap,
+  Film, Download, Sparkles, ChevronDown, ChevronUp,
+  BarChart2, Copy, Hash, Trash2,
+  Send, Globe, Lock, RefreshCw, X,
+  ListTodo, Layout
 } from "lucide-react";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -370,7 +369,7 @@ export default function SwachMeetIndex() {
                       </div>
                       <div className="flex gap-2">
                         <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/meet/register/${r.room_code}`); toast({ title: "Registration link copied!" }); }}>
-                          <Link className="w-3.5 h-3.5 mr-1" />Registration Link
+                          <Copy className="w-3.5 h-3.5 mr-1" />Registration Link
                         </Button>
                         {r.status !== "ended" && <Button size="sm" onClick={() => navigate(`/meet/${r.room_code || r.id}`)}><Play className="w-3.5 h-3.5 mr-1" />Start</Button>}
                       </div>
@@ -681,5 +680,3 @@ function CalendarTab({ rooms, onNavigate }: { rooms: any[]; onNavigate: (path: s
   );
 }
 
-// re-export aliases for nav
-const Link: any = ({ href, children, ...p }: any) => <a href={href} {...p}>{children}</a>;
