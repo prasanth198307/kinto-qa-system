@@ -118,12 +118,12 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
       "Content-Security-Policy",
       [
         "default-src 'self'",
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com https://micassets.micnxt.com",
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com https://micassets.micnxt.com https://meet.jit.si",
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://micassets.micnxt.com",
         "font-src 'self' data: https://fonts.gstatic.com",
         "img-src 'self' data: blob: https:",
-        "connect-src 'self' https://api.razorpay.com https://collokiflow.micapps.com wss:",
-        "frame-src https://api.razorpay.com https://collokiflow.micapps.com",
+        "connect-src 'self' https://api.razorpay.com https://collokiflow.micapps.com wss: https://meet.jit.si",
+        "frame-src https://api.razorpay.com https://collokiflow.micapps.com https://meet.jit.si",
       ].join("; ")
     );
   }

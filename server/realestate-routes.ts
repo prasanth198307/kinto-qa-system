@@ -16,7 +16,7 @@ router.get("/projects", requireAuth, async (req: any, res) => {
         (SELECT COUNT(*) FROM re_units u WHERE u.project_id=p.id) as total_units_count,
         (SELECT COUNT(*) FROM re_units u WHERE u.project_id=p.id AND u.status='available') as available_units,
         (SELECT COUNT(*) FROM re_units u WHERE u.project_id=p.id AND u.status IN ('booked','sold')) as booked_units,
-        (SELECT COALESCE(MAX(percentage_complete),0) FROM re_construction_progress cp WHERE cp.project_id=p.id) as latest_progress
+        (SELECT COALESCE(MAX(completion_pct),0) FROM re_construction_progress cp WHERE cp.project_id=p.id::text) as latest_progress
       FROM re_projects p WHERE p.tenant_id=${tid(req)} ORDER BY p.created_at DESC`);
     res.json(rows.rows);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
