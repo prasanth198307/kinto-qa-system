@@ -214,7 +214,7 @@ router.post("/rooms", requireAuth, async (req: any, res) => {
 
   const result = await db.execute(sql`
     INSERT INTO meet_rooms (tenant_id, room_no, title, description, room_type, host_user_id, host_name, scheduled_at, max_participants, room_code, password, daily_room_name, meeting_url)
-    VALUES (${tenantId}, ${roomNo}, ${title || roomNo}, ${description || null}, ${room_type || "meeting"}, ${req.user?.id || null}, ${req.user?.name || null}, ${scheduled_at || null}, ${maxPart}, ${roomCode}, ${password || null}, ${dailyRoomName}, ${meetingUrl})
+    VALUES (${tenantId}, ${roomNo}, ${title || roomNo}, ${description || null}, ${room_type || "meeting"}, ${Number.isInteger(Number(req.user?.id)) ? Number(req.user?.id) : null}, ${req.user?.name || null}, ${scheduled_at || null}, ${maxPart}, ${roomCode}, ${password || null}, ${dailyRoomName}, ${meetingUrl})
     RETURNING *
   `);
   const room = result.rows[0] as any;
@@ -356,7 +356,7 @@ router.post("/rooms/:id/join", requireAuth, async (req: any, res) => {
   const { name, email, role } = req.body;
   const result = await db.execute(sql`
     INSERT INTO meet_participants (room_id, tenant_id, user_id, name, email, joined_at, role)
-    VALUES (${req.params.id}, ${tenantId}, ${req.user?.id || null}, ${name || req.user?.name || "Guest"}, ${email || req.user?.email || null}, NOW(), ${role || "participant"})
+    VALUES (${req.params.id}, ${tenantId}, ${Number.isInteger(Number(req.user?.id)) ? Number(req.user?.id) : null}, ${name || req.user?.name || "Guest"}, ${email || req.user?.email || null}, NOW(), ${role || "participant"})
     RETURNING *
   `);
   res.status(201).json(result.rows[0]);
