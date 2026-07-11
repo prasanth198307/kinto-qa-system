@@ -1330,7 +1330,7 @@ router.post("/jibri/finalize", async (req: any, res) => {
     `);
     await db.execute(sql`
       INSERT INTO swachmeet_recordings (tenant_id, room_name, file_path, file_name, duration_seconds, status, created_at)
-      VALUES (${tenantId || "0"}, ${room_name || ""}, ${file_path}, ${file_name}, ${duration_seconds || 0}, 'completed', NOW())
+      VALUES (${parseInt(tenantId || "0")}, ${room_name || ""}, ${file_path}, ${file_name}, ${duration_seconds || 0}, 'completed', NOW())
     `);
     res.json({ message: "Recording saved" });
   } catch (e: any) {
