@@ -33,6 +33,8 @@ import {
   Database, Link2, Cpu, Lock, Key, Code2, Webhook,
   HeartPulse, GraduationCap, MapPin, Home, ShoppingBag, Leaf,
   Warehouse, FolderKanban, PiggyBank, GitBranch, ClipboardCheck,
+  Sparkles, FormInput, Video, Headphones, Hotel, Pill, TreePine,
+  Coins, Building, Landmark,
 } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -89,6 +91,14 @@ const NAV_PRODUCTS = [
       { icon: GitBranch,      label: "Approval Workflows",  desc: "Amount-based rules, multi-level approvals" },
       { icon: ClipboardCheck, label: "Audit Trail",         desc: "Full change log across all entities" },
       { icon: Webhook,        label: "Custom Integrations", desc: "Register your own endpoints alongside built-ins" },
+    ],
+  },
+  {
+    group: "AI Products",
+    items: [
+      { icon: Sparkles,       label: "SwachForms",          desc: "AI form builder — describe it, AI builds it in seconds" },
+      { icon: Video,          label: "SwachMeet",           desc: "Built-in video conferencing for teams and clients" },
+      { icon: HeadphonesIcon, label: "SwachDesk",           desc: "Helpdesk ticketing with SLA tracking and escalations" },
     ],
   },
 ];
@@ -154,6 +164,14 @@ const MODULES = [
   { icon: Home,             label: "Real Estate",              desc: "Projects, units, bookings, payment schedule" },
   { icon: ShoppingBag,      label: "Retail / POS",             desc: "Live billing terminal, sessions, sales history" },
   { icon: Leaf,             label: "Agriculture",              desc: "Farms, crop cycles, procurement, commodity prices" },
+  { icon: Hotel,            label: "Hotel ERP",                desc: "Rooms, bookings, F&B, folios, channel manager" },
+  { icon: Pill,             label: "Pharmacy",                 desc: "FEFO billing, narcotics register, prescription mgmt" },
+  { icon: TreePine,         label: "NGO",                      desc: "80G certificates, FCRA filing, donor portal" },
+  { icon: Landmark,         label: "Nidhi Company",            desc: "RBI NDH returns, loans, FD/RD, PDC tracking" },
+  // AI Products
+  { icon: Sparkles,         label: "SwachForms",               desc: "AI form builder — describe it, AI generates fields" },
+  { icon: Video,            label: "SwachMeet",                desc: "Built-in video conferencing for teams & clients" },
+  { icon: HeadphonesIcon,   label: "SwachDesk",                desc: "Helpdesk ticketing with SLA tracking & escalations" },
 ];
 
 const STRENGTHS = [
@@ -259,7 +277,7 @@ function ProductsDropdown() {
             ))}
           </div>
           <div className="border-t bg-muted/30 px-5 py-3 flex items-center justify-between">
-            <p className="text-xs text-muted-foreground">30+ integrated modules — one database, zero sync issues</p>
+            <p className="text-xs text-muted-foreground">17 industry verticals · 60+ plans · AI-powered · WhatsApp native</p>
             <a href="/features" onClick={() => setOpen(false)} className="text-xs text-primary font-medium hover:underline flex items-center gap-1">
               View all modules <ChevronRight className="w-3 h-3" />
             </a>
@@ -518,15 +536,15 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
             <div>
               <div className="inline-flex items-center gap-2 bg-primary/10 text-primary text-xs font-semibold px-3 py-1.5 rounded-full mb-6">
-                <Zap className="w-3.5 h-3.5" />
-                Built for Indian Businesses
+                <Sparkles className="w-3.5 h-3.5" />
+                AI-Powered · Built for Indian Businesses
               </div>
               <h1 className="text-4xl sm:text-5xl font-bold tracking-tight leading-[1.15] mb-5">
                 One platform.<br />
-                <span className="text-primary">Every department.</span>
+                <span className="text-primary">17 industries.</span>
               </h1>
               <p className="text-muted-foreground text-lg leading-relaxed mb-8 max-w-lg">
-                Production, GST invoicing, accounting, HR & payroll, CRM, and WhatsApp checklists — all connected in one cloud platform. No spreadsheets. No switching between software.
+                Restaurant, Hotel, Healthcare, Manufacturing, Retail, NGO, Nidhi, Logistics and more — all in one GST-compliant cloud ERP with AI-powered forms, video conferencing, and WhatsApp integration built in.
               </p>
               <div className="flex flex-wrap gap-3 mb-8">
                 <Button size="lg" onClick={() => setLocation("/register-company")} data-testid="hero-start-trial-btn" className="gap-2 text-base">
@@ -556,9 +574,9 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center divide-x divide-border">
             {[
-              { value: "30+", label: "Integrated modules" },
-              { value: "GST", label: "Compliant invoicing" },
-              { value: "100%", label: "Cloud & mobile ready" },
+              { value: "17", label: "Industry verticals" },
+              { value: "60+", label: "Subscription plans" },
+              { value: "AI", label: "Powered forms & CRM" },
               { value: "WhatsApp", label: "Native integration" },
             ].map((s, i) => (
               <div key={s.label} className={i > 0 ? "pl-6" : ""}>
@@ -735,7 +753,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-2xl md:text-3xl font-bold mb-3">Every module your business needs</h2>
-            <p className="text-muted-foreground max-w-xl mx-auto text-sm">30+ integrated modules. One login. One database. No integrations to maintain.</p>
+            <p className="text-muted-foreground max-w-xl mx-auto text-sm">30+ integrated modules across 17 industries. One login. One database. AI-powered. No integrations to maintain.</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
             {MODULES.map(m => (
@@ -747,6 +765,69 @@ export default function LandingPage() {
                   <p className="font-semibold text-sm leading-snug">{m.label}</p>
                   <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{m.desc}</p>
                 </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── AI PRODUCTS ─────────────────────────────────────────────────── */}
+      <section className="py-16 border-t bg-gradient-to-br from-violet-50/60 via-background to-background dark:from-violet-950/20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <div className="inline-flex items-center gap-2 bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 text-xs font-semibold px-3 py-1.5 rounded-full mb-4">
+              <Sparkles className="w-3.5 h-3.5" />
+              Included with every plan
+            </div>
+            <h2 className="text-2xl md:text-3xl font-bold mb-3">Beyond ERP — AI-powered platform tools</h2>
+            <p className="text-muted-foreground max-w-xl mx-auto text-sm">Every SwachERP subscription includes SwachForms, SwachMeet, and SwachDesk — no separate licensing.</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[
+              {
+                icon: Sparkles,
+                color: "bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-300",
+                title: "SwachForms",
+                badge: "AI-Powered",
+                badgeColor: "bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300",
+                desc: "Describe any form in plain English — AI generates all fields instantly. Build patient intake, feedback, inspection, onboarding, or admission forms in seconds.",
+                points: ["8 industry-specific templates", "Conditional logic & multi-step forms", "Public link + QR code sharing", "Submission dashboard with analytics"],
+              },
+              {
+                icon: Video,
+                color: "bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300",
+                title: "SwachMeet",
+                badge: "Built-in",
+                badgeColor: "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300",
+                desc: "No Zoom subscription needed. Host client meetings, staff reviews, and remote training sessions directly inside SwachERP — no extra app to download.",
+                points: ["HD video & audio conferencing", "Screen sharing & recording", "Works from any browser", "Integrated with your tenant account"],
+              },
+              {
+                icon: HeadphonesIcon,
+                color: "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-300",
+                title: "SwachDesk",
+                badge: "Helpdesk",
+                badgeColor: "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300",
+                desc: "Built-in helpdesk with SLA tracking, priority escalations, and agent assignment. Manage customer complaints, internal IT tickets, and vendor issues in one place.",
+                points: ["SLA timers & breach alerts", "Multi-priority ticket queues", "Agent assignment & escalation", "Full ticket history & audit trail"],
+              },
+            ].map(p => (
+              <div key={p.title} className="bg-background border rounded-2xl p-6 hover-elevate">
+                <div className="flex items-start justify-between mb-4">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${p.color}`}>
+                    <p.icon className="w-5 h-5" />
+                  </div>
+                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${p.badgeColor}`}>{p.badge}</span>
+                </div>
+                <h3 className="font-bold text-lg mb-2">{p.title}</h3>
+                <p className="text-muted-foreground text-sm leading-relaxed mb-4">{p.desc}</p>
+                <ul className="space-y-1.5">
+                  {p.points.map(pt => (
+                    <li key={pt} className="flex items-start gap-2 text-xs text-muted-foreground">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />{pt}
+                    </li>
+                  ))}
+                </ul>
               </div>
             ))}
           </div>
@@ -1028,7 +1109,7 @@ export default function LandingPage() {
               <div className="mb-3">
                 <img src="/swacherp-logo.png" alt="SwachERP" className="h-12 w-auto" />
               </div>
-              <p className="text-xs text-muted-foreground leading-relaxed">Cloud ERP for Indian businesses — GST-compliant, 30+ modules, WhatsApp-connected, and HR-ready.</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">Cloud ERP for Indian businesses — 17 verticals, AI-powered, GST-compliant, WhatsApp-connected, and HR-ready.</p>
             </div>
             <div>
               <p className="font-semibold text-xs uppercase tracking-wide mb-4">Products</p>
