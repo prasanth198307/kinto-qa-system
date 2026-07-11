@@ -39,11 +39,10 @@ export class CollokiFlowService {
 
   constructor() {
     const key = process.env.COLLOKI_FLOW_API_KEY;
-    if (!key) {
-      throw new Error('COLLOKI_FLOW_API_KEY not configured');
+    this.apiKey = key ?? '';
+    if (key) {
+      console.log('✅ Colloki Flow AI service initialized');
     }
-    this.apiKey = key;
-    console.log('✅ Colloki Flow AI service initialized');
   }
 
   /**
