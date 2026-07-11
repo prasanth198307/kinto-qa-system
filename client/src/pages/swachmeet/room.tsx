@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Users, FileText, BarChart2, Send, Mic, MicOff, Video,
+  FileText, BarChart2, Send, Mic, MicOff, Video,
   VideoOff, PhoneOff, Monitor, MoreVertical, Plus, CheckCircle, Circle,
   Sparkles, ChevronRight, ChevronLeft, ListTodo, Clock, Hash, X, Loader2,
   Copy, Check, Paperclip, Download, Trash2
@@ -18,7 +18,7 @@ import {
 
 declare global { interface Window { JitsiMeetExternalAPI: any; } }
 
-type SidePanel = "participants" | "notes" | "polls" | "agenda" | "files";
+type SidePanel = "notes" | "polls" | "agenda" | "files";
 
 export default function SwachMeetRoom() {
   const params = useParams<{ roomId?: string; roomCode?: string }>();
@@ -290,7 +290,6 @@ export default function SwachMeetRoom() {
 
   const panelWidth = sidePanel ? "w-80" : "w-0";
   const PANELS: { id: SidePanel; label: string; icon: any }[] = [
-    { id: "participants", label: "Participants", icon: Users },
     { id: "agenda", label: "Agenda", icon: ListTodo },
     { id: "notes", label: "Notes", icon: FileText },
     { id: "polls", label: "Polls", icon: BarChart2 },
@@ -547,22 +546,6 @@ export default function SwachMeetRoom() {
                     </button>
                   </div>
                 )}
-              </div>
-            )}
-
-            {/* PARTICIPANTS PANEL */}
-            {sidePanel === "participants" && (
-              <div style={{ flex: 1, overflowY: "auto", padding: "10px 12px" }}>
-                <div style={{ padding: "10px 12px", background: "#374151", borderRadius: 8, marginBottom: 8 }}>
-                  <p style={{ color: "#9ca3af", fontSize: 11 }}>You</p>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
-                    <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#3b82f6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: "#fff", fontWeight: 600 }}>H</div>
-                    <span style={{ color: "#f3f4f6", fontSize: 13 }}>Host (You)</span>
-                    <span style={{ marginLeft: "auto", fontSize: 10, color: "#4ade80", background: "#14532d", padding: "1px 6px", borderRadius: 10 }}>Host</span>
-                  </div>
-                </div>
-                <p style={{ color: "#6b7280", fontSize: 11, marginBottom: 8 }}>{participants} other participant{participants !== 1 ? "s" : ""} in this call</p>
-                <p style={{ color: "#4b5563", fontSize: 11, textAlign: "center", paddingTop: 12 }}>Participant names are managed by Jitsi.</p>
               </div>
             )}
 
