@@ -245,10 +245,10 @@ swachformsRouter.post('/', requireAuth, async (req: any, res) => {
     const tenantId = tid(req);
     const { name, schema = [], settings = {}, description } = req.body;
     const slug = await generateSlug(name, tenantId);
-    const userId = req.user?.id;
+    const userId = parseInt(req.user?.id) || null;
     const result = await db.execute(sql`
       INSERT INTO sf_forms (tenant_id, name, slug, description, schema, settings, created_by)
-      VALUES (${tenantId}, ${name}, ${slug}, ${description ?? null}, ${JSON.stringify(schema)}, ${JSON.stringify(settings)}, ${userId ?? null})
+      VALUES (${tenantId}, ${name}, ${slug}, ${description ?? null}, ${JSON.stringify(schema)}, ${JSON.stringify(settings)}, ${userId})
       RETURNING *
     `);
     res.json(result.rows[0]);
