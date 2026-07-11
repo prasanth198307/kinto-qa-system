@@ -250,9 +250,12 @@ export default function SwachMeetRoom() {
     iframe.style.height = "100%";
     iframe.style.border = "none";
     iframe.allow = "camera; microphone; fullscreen; display-capture; autoplay; clipboard-write; clipboard-read; speaker-selection; screen-wake-lock; keyboard-map";
-    // Cross-origin iframe focus fix: clicking inside the Jitsi area must give the iframe keyboard focus
     iframe.setAttribute("tabindex", "0");
-    containerRef.current.addEventListener("mousedown", () => { iframe.focus(); }, true);
+    // Only focus the iframe when clicking the container background (not when clicking inside the iframe itself)
+    // Clicking inside iframe: e.target === iframe; clicking container bg: e.target === containerRef.current
+    containerRef.current.addEventListener("mousedown", (e) => {
+      if ((e.target as HTMLElement) !== iframe) iframe.focus();
+    }, true);
     iframe.id = "jitsiConferenceFrame0";
     containerRef.current.appendChild(iframe);
     jitsiRef.current = iframe;
