@@ -33,7 +33,7 @@ export default function SwachMeetRoom() {
   const [permState, setPermState] = useState<"checking" | "granted" | "denied" | "requesting">("checking");
   const [participants, setParticipants] = useState(0);
   const [recording, setRecording] = useState(false);
-  const [sidePanel, setSidePanel] = useState<SidePanel | null>("chat");
+  const [sidePanel, setSidePanel] = useState<SidePanel | null>(null);
   const [timer, setTimer] = useState(0);
   const [chatMsg, setChatMsg] = useState("");
   const [noteContent, setNoteContent] = useState("");
