@@ -33,6 +33,36 @@ export default defineConfig({
       include: [/node_modules/],
       transformMixedEsModules: true,
     },
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom') || id.includes('node_modules/wouter')) {
+            return 'react-core';
+          }
+          if (id.includes('node_modules/@tanstack')) {
+            return 'tanstack';
+          }
+          if (id.includes('node_modules/lucide-react')) {
+            return 'lucide';
+          }
+          if (id.includes('node_modules/recharts') || id.includes('node_modules/d3-')) {
+            return 'charts';
+          }
+          if (id.includes('node_modules/date-fns') || id.includes('node_modules/@internationalized')) {
+            return 'date-utils';
+          }
+          if (id.includes('node_modules/xlsx') || id.includes('node_modules/jszip')) {
+            return 'office';
+          }
+          if (id.includes('node_modules/@radix-ui')) {
+            return 'radix';
+          }
+          if (id.includes('node_modules/')) {
+            return 'vendor';
+          }
+        },
+      },
+    },
   },
   optimizeDeps: {
     include: ['xlsx'],
