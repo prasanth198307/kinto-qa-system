@@ -485,6 +485,7 @@ import SwachSocialCalendar from "@/pages/swachsocial/calendar";
 import SwachSocialAnalytics from "@/pages/swachsocial/analytics";
 import SwachMeetIndex from "@/pages/swachmeet/index";
 import SwachMeetRoom from "@/pages/swachmeet/room";
+import SwachMeetRecordings from "@/pages/swachmeet/recordings";
 import WebinarRegistration from "@/pages/swachmeet/webinar-registration";
 // IFRS, ASC606, Investor, MRP, Analytics pages
 import IfrsConsolidationPage from "@/pages/ifrs/consolidation-dashboard";
@@ -4885,6 +4886,7 @@ function Router() {
       <ProtectedRoute path="/swachsocial/analytics" component={() => <SwachSocialAnalytics />} />
       {/* SwachMeet */}
       <ProtectedRoute path="/swachmeet" component={() => <SwachMeetIndex />} />
+      <ProtectedRoute path="/swachmeet/recordings" component={() => <SwachMeetRecordings />} />
       {/* Public signing page */}
       <Route path="/sign/:token" component={SwachSignSignPage} />
       {/* IFRS, ASC606, Investor, MRP, Analytics */}

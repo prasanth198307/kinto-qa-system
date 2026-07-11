@@ -567,6 +567,22 @@ function MeetingCard({ room, onJoin, onCopy, onCancel, isPast = false }: { room:
 }
 
 function RecordingsTab({ rooms }: { rooms: any[] }) {
+  const [, navigate] = useLocation();
+  return (
+    <div className="p-6 space-y-5">
+      <h1 className="text-lg font-bold">Recordings</h1>
+      <Card>
+        <CardContent className="pt-8 pb-8 text-center space-y-4">
+          <Film className="w-12 h-12 mx-auto text-purple-500" />
+          <p className="text-muted-foreground">View and manage all Jibri recordings, download MP4 files, and generate AI transcripts.</p>
+          <Button onClick={() => navigate("/swachmeet/recordings")}><Film className="w-4 h-4 mr-2" /> Open Recordings</Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function RecordingsTabOld({ rooms }: { rooms: any[] }) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null);

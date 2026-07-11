@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import crypto from "crypto";
 import { createHmac } from "crypto";
 import nodemailer from "nodemailer";
+import FormData from "form-data";
 
 async function sendMeetEmail(to: string, subject: string, html: string): Promise<void> {
   try {
@@ -678,6 +679,119 @@ router.post("/rooms/:roomId/recording/stop", requireAuth, async (req: any, res) 
   res.json({ recording: result.rows[0], status: "stopped", duration_seconds: durationSeconds });
 });
 
+// ---- JIBRI FINALIZE WEBHOOK ----
+// Called by /srv/recordings/finalize.sh after Jibri saves a recording
+// POST /api/swachmeet/jibri/finalize  (no auth — internal only, validated by secret)
+router.post("/jibri/finalize", async (req: any, res) => {
+  const { room_name, file_path, duration_seconds, tenant_id, secret } = req.body;
+  if (secret !== (process.env.JIBRI_FINALIZE_SECRET || "swacherp-jibri-secret")) {
+    return res.status(403).json({ error: "Forbidden" });
+  }
+  try {
+    // room_name is like "SwachERP-<roomCode>"
+    const roomCode = room_name?.replace("SwachERP-", "") || room_name;
+    const room = await db.execute(sql`SELECT id, tenant_id FROM meet_rooms WHERE room_code = ${roomCode} ORDER BY created_at DESC LIMIT 1`);
+    const roomId = (room.rows[0] as any)?.id;
+    const tenantId = tenant_id || (room.rows[0] as any)?.tenant_id || 1;
+    const fileName = path.basename(file_path || "");
+    await db.execute(sql`
+      INSERT INTO swachmeet_recordings (tenant_id, room_id, status, file_path, file_name, duration_seconds, started_at, stopped_at)
+      VALUES (${tenantId}, ${roomId || null}, 'completed', ${file_path}, ${fileName}, ${duration_seconds || 0}, NOW() - INTERVAL '${duration_seconds || 0} seconds', NOW())
+      ON CONFLICT DO NOTHING
+    `);
+    console.log(`[Jibri] Recording saved: ${file_path}`);
+    res.json({ ok: true });
+  } catch (e: any) {
+    console.error("[Jibri finalize]", e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/swachmeet/recordings — list all recordings for tenant
+router.get("/recordings", requireAuth, async (req: any, res) => {
+  await ensureTablesOnce();
+  const tenantId = tid(req);
+  const result = await db.execute(sql`
+    SELECT r.*, m.title as meeting_title, m.room_code
+    FROM swachmeet_recordings r
+    LEFT JOIN meet_rooms m ON m.id = r.room_id
+    WHERE r.tenant_id = ${tenantId}
+    ORDER BY r.stopped_at DESC NULLS LAST
+    LIMIT 50
+  `);
+  res.json(result.rows);
+});
+
+// GET /api/swachmeet/recordings/:id/download — serve the recording file
+router.get("/recordings/:id/download", requireAuth, async (req: any, res) => {
+  await ensureTablesOnce();
+  const tenantId = tid(req);
+  const rec = await db.execute(sql`SELECT * FROM swachmeet_recordings WHERE id = ${req.params.id} AND tenant_id = ${tenantId}`);
+  const row = rec.rows[0] as any;
+  if (!row) return res.status(404).json({ error: "Not found" });
+  const filePath = row.file_path;
+  if (!filePath || !fs.existsSync(filePath)) return res.status(404).json({ error: "File not found on server" });
+  res.download(filePath, row.file_name || path.basename(filePath));
+});
+
+// POST /api/swachmeet/recordings/:id/transcribe — AI transcript via OpenAI Whisper
+router.post("/recordings/:id/transcribe", requireAuth, async (req: any, res) => {
+  await ensureTablesOnce();
+  const tenantId = tid(req);
+  const rec = await db.execute(sql`SELECT * FROM swachmeet_recordings WHERE id = ${req.params.id} AND tenant_id = ${tenantId}`);
+  const row = rec.rows[0] as any;
+  if (!row) return res.status(404).json({ error: "Not found" });
+
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return res.status(400).json({ error: "OPENAI_API_KEY not configured on server" });
+
+  const filePath = row.file_path;
+  if (!filePath || !fs.existsSync(filePath)) return res.status(404).json({ error: "Recording file not found" });
+
+  try {
+    await db.execute(sql`UPDATE swachmeet_recordings SET transcript_status = 'processing' WHERE id = ${req.params.id}`);
+    res.json({ status: "processing", message: "Transcription started" });
+
+    // Run transcription async
+    (async () => {
+      try {
+        const FormData = (await import("form-data")).default;
+        const form = new FormData();
+        form.append("file", fs.createReadStream(filePath), { filename: path.basename(filePath) });
+        form.append("model", "whisper-1");
+        form.append("response_format", "verbose_json");
+
+        const whisperRes = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${apiKey}`, ...form.getHeaders() },
+          body: form as any,
+        });
+        const data = await whisperRes.json() as any;
+        const transcript = data.text || "";
+        await db.execute(sql`
+          UPDATE swachmeet_recordings SET transcript = ${transcript}, transcript_status = 'done' WHERE id = ${req.params.id}
+        `);
+        console.log(`[Whisper] Transcript done for recording ${req.params.id}`);
+      } catch (e: any) {
+        console.error("[Whisper]", e.message);
+        await db.execute(sql`UPDATE swachmeet_recordings SET transcript_status = 'error' WHERE id = ${req.params.id}`);
+      }
+    })();
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/swachmeet/recordings/:id/transcript — get transcript text
+router.get("/recordings/:id/transcript", requireAuth, async (req: any, res) => {
+  await ensureTablesOnce();
+  const tenantId = tid(req);
+  const rec = await db.execute(sql`SELECT transcript, transcript_status, file_name FROM swachmeet_recordings WHERE id = ${req.params.id} AND tenant_id = ${tenantId}`);
+  const row = rec.rows[0] as any;
+  if (!row) return res.status(404).json({ error: "Not found" });
+  res.json({ transcript: row.transcript, status: row.transcript_status, file_name: row.file_name });
+});
+
 // ---- ANALYTICS ----
 // GET /api/swachmeet/analytics?days=30
 router.get("/analytics", requireAuth, async (req: any, res) => {
@@ -1190,6 +1304,107 @@ router.delete("/rooms/:id/files/:fileId", requireAuth, async (req: any, res) => 
   }
   await db.execute(sql`DELETE FROM meet_files WHERE id = ${req.params.fileId} AND tenant_id = ${tid(req)}`);
   res.json({ message: "Deleted" });
+});
+
+// ---- JIBRI FINALIZE WEBHOOK (no auth — validated by secret) ----
+router.post("/jibri/finalize", async (req: any, res) => {
+  const { room_name, file_path, duration_seconds, secret } = req.body;
+  const expectedSecret = process.env.JIBRI_FINALIZE_SECRET || "swacherp-jibri-secret";
+  if (secret !== expectedSecret) return res.status(403).json({ message: "Forbidden" });
+  if (!file_path) return res.status(400).json({ message: "file_path required" });
+
+  const file_name = path.basename(file_path);
+  // Extract tenant from room name if encoded as "tenantId-roomName"
+  let tenantId: string | null = null;
+  const roomMatch = room_name?.match(/^(\d+)-/);
+  if (roomMatch) tenantId = roomMatch[1];
+
+  try {
+    await ensureTablesOnce();
+    await db.execute(sql`
+      ALTER TABLE swachmeet_recordings
+        ADD COLUMN IF NOT EXISTS file_path TEXT,
+        ADD COLUMN IF NOT EXISTS file_name TEXT,
+        ADD COLUMN IF NOT EXISTS transcript TEXT,
+        ADD COLUMN IF NOT EXISTS transcript_status TEXT DEFAULT 'none'
+    `);
+    await db.execute(sql`
+      INSERT INTO swachmeet_recordings (tenant_id, room_name, file_path, file_name, duration_seconds, status, created_at)
+      VALUES (${tenantId || "0"}, ${room_name || ""}, ${file_path}, ${file_name}, ${duration_seconds || 0}, 'completed', NOW())
+    `);
+    res.json({ message: "Recording saved" });
+  } catch (e: any) {
+    console.error("[Jibri finalize]", e.message);
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// ---- RECORDINGS LIST ----
+router.get("/recordings", requireAuth, async (req: any, res) => {
+  await ensureTablesOnce();
+  try {
+    await db.execute(sql`ALTER TABLE swachmeet_recordings ADD COLUMN IF NOT EXISTS file_path TEXT`);
+    await db.execute(sql`ALTER TABLE swachmeet_recordings ADD COLUMN IF NOT EXISTS file_name TEXT`);
+    await db.execute(sql`ALTER TABLE swachmeet_recordings ADD COLUMN IF NOT EXISTS transcript TEXT`);
+    await db.execute(sql`ALTER TABLE swachmeet_recordings ADD COLUMN IF NOT EXISTS transcript_status TEXT DEFAULT 'none'`);
+  } catch {}
+  const rows = await db.execute(sql`
+    SELECT r.*, m.title as meeting_title
+    FROM swachmeet_recordings r
+    LEFT JOIN meet_rooms m ON m.jitsi_room = r.room_name
+    WHERE r.tenant_id = ${tid(req)}
+    ORDER BY r.created_at DESC
+  `);
+  res.json(rows.rows);
+});
+
+// ---- RECORDING DOWNLOAD ----
+router.get("/recordings/:id/download", requireAuth, async (req: any, res) => {
+  const row = await db.execute(sql`SELECT * FROM swachmeet_recordings WHERE id = ${req.params.id} AND tenant_id = ${tid(req)}`);
+  const rec = row.rows[0] as any;
+  if (!rec || !rec.file_path) return res.status(404).json({ message: "Not found" });
+  if (!fs.existsSync(rec.file_path)) return res.status(404).json({ message: "File not found on disk" });
+  res.download(rec.file_path, rec.file_name || "recording.mp4");
+});
+
+// ---- AI TRANSCRIBE ----
+router.post("/recordings/:id/transcribe", requireAuth, async (req: any, res) => {
+  const row = await db.execute(sql`SELECT * FROM swachmeet_recordings WHERE id = ${req.params.id} AND tenant_id = ${tid(req)}`);
+  const rec = row.rows[0] as any;
+  if (!rec || !rec.file_path) return res.status(404).json({ message: "Not found" });
+  if (!process.env.OPENAI_API_KEY) return res.status(503).json({ message: "OPENAI_API_KEY not configured" });
+
+  await db.execute(sql`UPDATE swachmeet_recordings SET transcript_status = 'processing' WHERE id = ${req.params.id}`);
+  res.json({ message: "Transcription started", status: "processing" });
+
+  // Async — do not await
+  (async () => {
+    try {
+      const form = new FormData();
+      form.append("file", fs.createReadStream(rec.file_path), { filename: rec.file_name || "recording.mp4" });
+      form.append("model", "whisper-1");
+      const fetch = (await import("node-fetch")).default;
+      const whisperRes = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}`, ...form.getHeaders() },
+        body: form,
+      });
+      const data = await whisperRes.json() as any;
+      const transcript = data.text || "";
+      await db.execute(sql`UPDATE swachmeet_recordings SET transcript = ${transcript}, transcript_status = 'done' WHERE id = ${req.params.id}`);
+    } catch (e: any) {
+      console.error("[Whisper]", e.message);
+      await db.execute(sql`UPDATE swachmeet_recordings SET transcript_status = 'error' WHERE id = ${req.params.id}`);
+    }
+  })();
+});
+
+// ---- GET TRANSCRIPT ----
+router.get("/recordings/:id/transcript", requireAuth, async (req: any, res) => {
+  const row = await db.execute(sql`SELECT id, transcript, transcript_status FROM swachmeet_recordings WHERE id = ${req.params.id} AND tenant_id = ${tid(req)}`);
+  const rec = row.rows[0] as any;
+  if (!rec) return res.status(404).json({ message: "Not found" });
+  res.json({ transcript: rec.transcript, status: rec.transcript_status || "none" });
 });
 
 export default router;
