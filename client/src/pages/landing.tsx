@@ -127,51 +127,77 @@ const NAV_SOLUTIONS_BY_INDUSTRY = [
   { label: "Service Businesses",          desc: "Projects, timesheets, billing" },
 ];
 
-const MODULES = [
-  // Core operations
-  { icon: Factory,          label: "Production & BOM",        desc: "Manufacturing orders, BOM, variance tracking" },
-  { icon: Package,          label: "Inventory Control",        desc: "Multi-warehouse, FIFO, serial/lot tracking" },
-  { icon: Warehouse,        label: "Warehouses & Transfers",   desc: "Multi-location stock with transfer orders" },
-  { icon: ShoppingCart,     label: "Purchase Orders",          desc: "Requisitions, GRN, three-way matching" },
-  { icon: FileText,         label: "GST Invoicing",            desc: "Tax, proforma, credit notes, GSTR-1/3B" },
-  { icon: Truck,            label: "Dispatch & Gatepasses",    desc: "Invoice-first dispatch, digital signatures" },
-  { icon: ClipboardList,    label: "Quality Control",          desc: "Three-stage return workflow, traceability" },
-  { icon: Wrench,           label: "Maintenance",              desc: "Machine schedules, checklists, spare parts" },
-  // Finance
-  { icon: Receipt,          label: "Accounting",               desc: "Double-entry COA, P&L and Balance Sheet" },
-  { icon: BarChart3,        label: "MIS Analytics",            desc: "Executive KPIs, sales & production dashboards" },
-  { icon: IndianRupee,      label: "Expenses & Cost Centres",  desc: "Cash register, vouchers, departmental tracking" },
-  { icon: PiggyBank,        label: "Fixed Assets",             desc: "Asset register, straight-line depreciation" },
-  { icon: Globe,            label: "Multi-currency",           desc: "Exchange rates & foreign currency invoicing" },
-  { icon: FileText,         label: "Recurring Invoices",       desc: "Auto-generate invoices on a schedule" },
-  // People
-  { icon: UserCheck,        label: "HR & Payroll",             desc: "Attendance, leaves, payroll, TDS, Form 16" },
-  { icon: MonitorSmartphone,label: "ESS Portal",               desc: "Payslips, leaves, expense claims & appraisals" },
-  { icon: Target,           label: "CRM",                      desc: "Lead pipeline, follow-ups & conversions" },
-  { icon: MessageCircle,    label: "WhatsApp",                 desc: "Machine startup & checklists on WhatsApp" },
-  // Projects
-  { icon: FolderKanban,     label: "Project Management",       desc: "BOQ, billing milestones, timesheets, P&L" },
-  // Procurement
-  { icon: GitBranch,        label: "Approval Workflows",       desc: "Amount-based rules, multi-level approvals" },
-  // Platform
-  { icon: Layers,           label: "Documents",                desc: "Versioned documents with expiry alerts" },
-  { icon: ClipboardCheck,   label: "Audit Trail",              desc: "Full change log across all entities" },
-  { icon: Key,              label: "API Hub",                  desc: "Scoped keys, live tester, call logs & analytics" },
-  // Industry verticals
-  { icon: HeartPulse,       label: "Healthcare",               desc: "Patients, OPD/IPD appointments, ward billing" },
-  { icon: GraduationCap,    label: "Education",                desc: "Students, classes, fee collection & receipts" },
-  { icon: Truck,            label: "Logistics & Transport",    desc: "Fleet, trips, Lorry Receipts (LR)" },
-  { icon: Home,             label: "Real Estate",              desc: "Projects, units, bookings, payment schedule" },
-  { icon: ShoppingBag,      label: "Retail / POS",             desc: "Live billing terminal, sessions, sales history" },
-  { icon: Leaf,             label: "Agriculture",              desc: "Farms, crop cycles, procurement, commodity prices" },
-  { icon: Hotel,            label: "Hotel ERP",                desc: "Rooms, bookings, F&B, folios, channel manager" },
-  { icon: Pill,             label: "Pharmacy",                 desc: "FEFO billing, narcotics register, prescription mgmt" },
-  { icon: TreePine,         label: "NGO",                      desc: "80G certificates, FCRA filing, donor portal" },
-  { icon: Landmark,         label: "Nidhi Company",            desc: "RBI NDH returns, loans, FD/RD, PDC tracking" },
-  // AI Products
-  { icon: Sparkles,         label: "SwachForms",               desc: "AI form builder — describe it, AI generates fields" },
-  { icon: Video,            label: "SwachMeet",                desc: "Built-in video conferencing for teams & clients" },
-  { icon: HeadphonesIcon,   label: "SwachDesk",                desc: "Helpdesk ticketing with SLA tracking & escalations" },
+const MODULE_GROUPS = [
+  {
+    label: "Operations", color: "blue",
+    header: "bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300",
+    icon: "bg-blue-100 dark:bg-blue-900/60 text-blue-600 dark:text-blue-300",
+    items: [
+      { icon: Factory,       label: "Production & BOM",      desc: "Manufacturing orders, BOM, variance tracking" },
+      { icon: Package,       label: "Inventory Control",      desc: "Multi-warehouse, FIFO, serial/lot tracking" },
+      { icon: Warehouse,     label: "Warehouses & Transfers", desc: "Multi-location stock with transfer orders" },
+      { icon: ShoppingCart,  label: "Purchase Orders",        desc: "Requisitions, GRN, three-way matching" },
+      { icon: Truck,         label: "Dispatch & Gatepasses",  desc: "Invoice-first dispatch, digital signatures" },
+      { icon: ClipboardList, label: "Quality Control",        desc: "Three-stage return workflow, traceability" },
+      { icon: Wrench,        label: "Maintenance",            desc: "Machine schedules, checklists, spare parts" },
+      { icon: FolderKanban,  label: "Project Management",     desc: "BOQ, billing milestones, timesheets, P&L" },
+    ],
+  },
+  {
+    label: "Finance", color: "emerald",
+    header: "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300",
+    icon: "bg-emerald-100 dark:bg-emerald-900/60 text-emerald-600 dark:text-emerald-300",
+    items: [
+      { icon: FileText,     label: "GST Invoicing",           desc: "Tax, proforma, credit notes, GSTR-1/3B" },
+      { icon: Receipt,      label: "Accounting",              desc: "Double-entry COA, P&L and Balance Sheet" },
+      { icon: BarChart3,    label: "MIS Analytics",           desc: "Executive KPIs, sales & production dashboards" },
+      { icon: IndianRupee,  label: "Expenses & Cost Centres", desc: "Cash register, vouchers, departmental tracking" },
+      { icon: PiggyBank,    label: "Fixed Assets",            desc: "Asset register, straight-line depreciation" },
+      { icon: Globe,        label: "Multi-currency",          desc: "Exchange rates & foreign currency invoicing" },
+    ],
+  },
+  {
+    label: "People & CRM", color: "orange",
+    header: "bg-orange-50 dark:bg-orange-950/40 border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-300",
+    icon: "bg-orange-100 dark:bg-orange-900/60 text-orange-600 dark:text-orange-300",
+    items: [
+      { icon: UserCheck,         label: "HR & Payroll",   desc: "Attendance, leaves, payroll, TDS, Form 16" },
+      { icon: MonitorSmartphone, label: "ESS Portal",     desc: "Payslips, leaves, expense claims & appraisals" },
+      { icon: Target,            label: "CRM",            desc: "Lead pipeline, follow-ups & conversions" },
+      { icon: MessageCircle,     label: "WhatsApp",       desc: "Machine startup & checklists on WhatsApp" },
+      { icon: GitBranch,         label: "Approval Workflows", desc: "Amount-based rules, multi-level approvals" },
+      { icon: Layers,            label: "Documents",      desc: "Versioned documents with expiry alerts" },
+      { icon: ClipboardCheck,    label: "Audit Trail",    desc: "Full change log across all entities" },
+      { icon: Key,               label: "API Hub",        desc: "Scoped keys, live tester, call logs & analytics" },
+    ],
+  },
+  {
+    label: "Industry Verticals", color: "violet",
+    header: "bg-violet-50 dark:bg-violet-950/40 border-violet-200 dark:border-violet-800 text-violet-700 dark:text-violet-300",
+    icon: "bg-violet-100 dark:bg-violet-900/60 text-violet-600 dark:text-violet-300",
+    items: [
+      { icon: HeartPulse,   label: "Healthcare",        desc: "Patients, OPD/IPD appointments, ward billing" },
+      { icon: Hotel,        label: "Hotel ERP",         desc: "Rooms, bookings, F&B, folios, channel manager" },
+      { icon: ShoppingBag,  label: "Restaurant & POS",  desc: "KOT, table orders, billing, loyalty, Z-report" },
+      { icon: Pill,         label: "Pharmacy",          desc: "FEFO billing, narcotics register, prescriptions" },
+      { icon: GraduationCap,label: "Education",         desc: "Students, classes, fee collection & receipts" },
+      { icon: Truck,        label: "Logistics",         desc: "Fleet, trips, Lorry Receipts (LR), e-way bill" },
+      { icon: Home,         label: "Real Estate",       desc: "Projects, units, bookings, payment schedule" },
+      { icon: Leaf,         label: "Agriculture",       desc: "Farms, crop cycles, procurement, mandi prices" },
+      { icon: TreePine,     label: "NGO",               desc: "80G certificates, FCRA filing, donor portal" },
+      { icon: Landmark,     label: "Nidhi Company",     desc: "RBI NDH returns, loans, FD/RD, PDC tracking" },
+    ],
+  },
+  {
+    label: "AI Products", color: "purple",
+    header: "bg-purple-50 dark:bg-purple-950/40 border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300",
+    icon: "bg-purple-100 dark:bg-purple-900/60 text-purple-600 dark:text-purple-300",
+    items: [
+      { icon: Sparkles,       label: "SwachForms",  desc: "AI form builder — describe it, AI generates fields instantly" },
+      { icon: Video,          label: "SwachMeet",   desc: "Built-in video conferencing, no Zoom needed" },
+      { icon: HeadphonesIcon, label: "SwachDesk",  desc: "Helpdesk ticketing with SLA tracking & escalations" },
+    ],
+  },
 ];
 
 const STRENGTHS = [
@@ -589,34 +615,38 @@ export default function LandingPage() {
       </section>
 
       {/* ── STRENGTHS ───────────────────────────────────────────────────── */}
-      <section className="py-20">
+      <section className="py-20 bg-gray-950 dark:bg-gray-950">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-14">
-            <h2 className="text-2xl md:text-3xl font-bold mb-3">What makes SwachERP genuinely different</h2>
-            <p className="text-muted-foreground max-w-xl mx-auto text-sm">
-              Not just a feature list — these are real capabilities that no other Indian ERP offers in a single product across this many industries.
+            <h2 className="text-2xl md:text-3xl font-bold mb-3 text-white">What makes SwachERP genuinely different</h2>
+            <p className="text-gray-400 max-w-xl mx-auto text-sm">
+              Not just a feature list — real capabilities no other Indian ERP offers in a single product across this many industries.
             </p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {STRENGTHS.map(s => (
-              <div key={s.title} className={`rounded-2xl border p-6 ${s.color}`}>
-                <div className="flex items-start gap-4 mb-4">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${s.iconColor}`}>
-                    <s.icon className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{s.tag}</span>
-                    <h3 className="font-bold text-base leading-snug mt-0.5">{s.title}</h3>
-                  </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-gray-800 rounded-2xl overflow-hidden border border-gray-800">
+            {STRENGTHS.map((s, i) => (
+              <div key={s.title} className="bg-gray-950 p-8 relative overflow-hidden group hover:bg-gray-900 transition-colors duration-200">
+                {/* Big number watermark */}
+                <div className="absolute -right-2 -top-4 text-[120px] font-black text-gray-900 leading-none select-none group-hover:text-gray-800 transition-colors">
+                  {String(i + 1).padStart(2, '0')}
                 </div>
-                <p className="text-sm text-muted-foreground leading-relaxed mb-4">{s.desc}</p>
-                <ul className="space-y-2">
-                  {s.points.map(p => (
-                    <li key={p} className="flex items-start gap-2 text-sm">
-                      <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />{p}
-                    </li>
-                  ))}
-                </ul>
+                <div className="relative">
+                  <div className="flex items-center gap-3 mb-5">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${s.iconColor}`}>
+                      <s.icon className="w-5 h-5" />
+                    </div>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500 border border-gray-700 px-2.5 py-1 rounded-full">{s.tag}</span>
+                  </div>
+                  <h3 className="font-bold text-lg text-white leading-snug mb-3">{s.title}</h3>
+                  <p className="text-sm text-gray-400 leading-relaxed mb-5">{s.desc}</p>
+                  <ul className="space-y-2.5">
+                    {s.points.map(p => (
+                      <li key={p} className="flex items-start gap-2.5 text-sm text-gray-300">
+                        <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />{p}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
             ))}
           </div>
@@ -755,15 +785,24 @@ export default function LandingPage() {
             <h2 className="text-2xl md:text-3xl font-bold mb-3">Every module your business needs</h2>
             <p className="text-muted-foreground max-w-xl mx-auto text-sm">30+ integrated modules across 17 industries. One login. One database. AI-powered. No integrations to maintain.</p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
-            {MODULES.map(m => (
-              <div key={m.label} className="flex items-start gap-3 p-4 rounded-xl border bg-background hover-elevate">
-                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                  <m.icon className="w-4 h-4 text-primary" />
+          <div className="space-y-8">
+            {MODULE_GROUPS.map(group => (
+              <div key={group.label}>
+                <div className={`inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-full border mb-4 ${group.header}`}>
+                  {group.label} <span className="opacity-60">({group.items.length})</span>
                 </div>
-                <div>
-                  <p className="font-semibold text-sm leading-snug">{m.label}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{m.desc}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                  {group.items.map(m => (
+                    <div key={m.label} className="flex items-start gap-3 p-4 rounded-xl border bg-background hover-elevate">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${group.icon}`}>
+                        <m.icon className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-sm leading-snug">{m.label}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{m.desc}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             ))}
