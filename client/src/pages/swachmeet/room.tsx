@@ -162,6 +162,14 @@ export default function SwachMeetRoom() {
 
   const fmtTimer = (s: number) => `${String(Math.floor(s / 3600)).padStart(2, "0")}:${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
+  // End meeting in DB and navigate home
+  const endMeeting = useCallback(() => {
+    if (roomDbId) {
+      apiRequest("POST", `/api/meet/rooms/${roomDbId}/end`, {}).catch(() => {});
+    }
+    navigate("/meet");
+  }, [roomDbId, navigate]);
+
   // Listen for Jitsi postMessage events (readyToClose = user hung up)
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -170,12 +178,12 @@ export default function SwachMeetRoom() {
       const name = data?.name ?? data?.event ?? data;
       if (name === "readyToClose" || name === "hangup") {
         setJitsiStatus("ended");
-        navigate("/meet");
+        endMeeting();
       }
     };
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [navigate]);
+  }, [endMeeting]);
 
   // Jitsi init via plain iframe with config in URL hash
   useEffect(() => {
@@ -213,7 +221,7 @@ export default function SwachMeetRoom() {
       if (!loaded) { loaded = true; setJitsiStatus("connected"); return; }
       // Second load = Jitsi navigated to welcome page after hangup
       setJitsiStatus("ended");
-      navigate("/meet");
+      endMeeting();
     };
     iframe.addEventListener("load", onLoad);
 
@@ -221,7 +229,7 @@ export default function SwachMeetRoom() {
       iframe.removeEventListener("load", onLoad);
       try { containerRef.current?.removeChild(iframe); } catch {}
     };
-  }, [roomId, navigate]);
+  }, [roomId, endMeeting]);
 
   async function toggleRecording() {
     const action = recording ? "stop" : "start";
