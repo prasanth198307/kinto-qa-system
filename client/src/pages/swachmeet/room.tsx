@@ -235,7 +235,7 @@ export default function SwachMeetRoom() {
       "config.enableClosePage=false",
       "config.disableDeepLinking=true",
       "config.requireDisplayName=false",
-      "config.toolbarButtons=[\"microphone\",\"camera\",\"closedcaptions\",\"desktop\",\"fullscreen\",\"fodeviceselection\",\"hangup\",\"chat\",\"raisehand\",\"settings\",\"videoquality\",\"tileview\",\"participants-pane\"]",
+      "config.toolbarButtons=[\"microphone\",\"camera\",\"closedcaptions\",\"desktop\",\"fullscreen\",\"fodeviceselection\",\"hangup\",\"chat\",\"raisehand\",\"recording\",\"settings\",\"videoquality\",\"tileview\",\"participants-pane\"]",
       "config.desktopSharingChromeExtId=null",
       "config.desktopSharingChromeDisabled=false",
       "config.desktopSharingSources=[\"screen\",\"window\",\"tab\"]",
