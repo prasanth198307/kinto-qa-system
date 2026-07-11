@@ -30,6 +30,7 @@ export default function SwachMeetRoom() {
   const qc = useQueryClient();
 
   const [jitsiStatus, setJitsiStatus] = useState<"loading" | "connected" | "ended">("loading");
+  const [permState, setPermState] = useState<"checking" | "granted" | "denied" | "requesting">("checking");
   const [participants, setParticipants] = useState(0);
   const [recording, setRecording] = useState(false);
   const [sidePanel, setSidePanel] = useState<SidePanel | null>("chat");
@@ -162,6 +163,42 @@ export default function SwachMeetRoom() {
 
   const fmtTimer = (s: number) => `${String(Math.floor(s / 3600)).padStart(2, "0")}:${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
+  // Check camera/mic permissions on mount; auto-request if already granted before
+  useEffect(() => {
+    async function checkPerms() {
+      try {
+        const [cam, mic] = await Promise.all([
+          navigator.permissions.query({ name: "camera" as PermissionName }),
+          navigator.permissions.query({ name: "microphone" as PermissionName }),
+        ]);
+        if (cam.state === "granted" && mic.state === "granted") {
+          setPermState("granted");
+        } else if (cam.state === "denied" || mic.state === "denied") {
+          setPermState("denied");
+        } else {
+          // "prompt" state — show the allow screen
+          setPermState("requesting");
+        }
+      } catch {
+        // Browser doesn't support permissions API — proceed directly
+        setPermState("granted");
+      }
+    }
+    checkPerms();
+  }, []);
+
+  async function requestPerms() {
+    setPermState("requesting");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      // Stop tracks immediately — Jitsi will open its own stream
+      stream.getTracks().forEach(t => t.stop());
+      setPermState("granted");
+    } catch {
+      setPermState("denied");
+    }
+  }
+
   // End meeting in DB and navigate home
   const endMeeting = useCallback(() => {
     if (roomDbId) {
@@ -187,7 +224,7 @@ export default function SwachMeetRoom() {
 
   // Jitsi init via plain iframe with config in URL hash
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!containerRef.current || permState !== "granted") return;
     const config = [
       "config.prejoinPageEnabled=false",
       "config.prejoinConfig.enabled=false",
@@ -229,7 +266,7 @@ export default function SwachMeetRoom() {
       iframe.removeEventListener("load", onLoad);
       try { containerRef.current?.removeChild(iframe); } catch {}
     };
-  }, [roomId, endMeeting]);
+  }, [roomId, endMeeting, permState]);
 
   async function toggleRecording() {
     const action = recording ? "stop" : "start";
@@ -253,6 +290,64 @@ export default function SwachMeetRoom() {
     { id: "polls", label: "Polls", icon: BarChart2 },
     { id: "files", label: "Files", icon: Paperclip },
   ];
+
+  // Permission request screen — shown before Jitsi loads
+  if (permState === "checking") {
+    return (
+      <div style={{ display: "flex", height: "100vh", alignItems: "center", justifyContent: "center", background: "#111827" }}>
+        <Loader2 style={{ width: 32, height: 32, color: "#60a5fa", animation: "spin 1s linear infinite" }} />
+      </div>
+    );
+  }
+
+  if (permState === "requesting") {
+    return (
+      <div style={{ display: "flex", height: "100vh", alignItems: "center", justifyContent: "center", background: "#111827" }}>
+        <div style={{ background: "#1f2937", borderRadius: 16, padding: 40, maxWidth: 400, textAlign: "center", color: "#fff" }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>🎥</div>
+          <h2 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 700 }}>Camera & Microphone Access</h2>
+          <p style={{ color: "#9ca3af", margin: "0 0 24px", lineHeight: 1.6 }}>
+            SwachMeet needs access to your camera and microphone to start the video call. Click below and then click <strong>Allow</strong> in the browser prompt.
+          </p>
+          <button
+            onClick={requestPerms}
+            style={{ background: "#2563eb", color: "#fff", border: "none", borderRadius: 8, padding: "12px 32px", fontSize: 15, fontWeight: 600, cursor: "pointer", width: "100%" }}
+          >
+            Allow Camera & Microphone
+          </button>
+          <p style={{ color: "#6b7280", fontSize: 12, marginTop: 12 }}>
+            You can still join without camera/mic — others won't see or hear you.
+          </p>
+          <button
+            onClick={() => setPermState("granted")}
+            style={{ background: "transparent", color: "#6b7280", border: "none", fontSize: 12, cursor: "pointer", marginTop: 4, textDecoration: "underline" }}
+          >
+            Skip for now
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (permState === "denied") {
+    return (
+      <div style={{ display: "flex", height: "100vh", alignItems: "center", justifyContent: "center", background: "#111827" }}>
+        <div style={{ background: "#1f2937", borderRadius: 16, padding: 40, maxWidth: 400, textAlign: "center", color: "#fff" }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>🚫</div>
+          <h2 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 700 }}>Permission Blocked</h2>
+          <p style={{ color: "#9ca3af", margin: "0 0 24px", lineHeight: 1.6 }}>
+            Camera/microphone access was blocked. To fix: click the <strong>lock icon</strong> in your browser address bar → set Camera and Microphone to <strong>Allow</strong> → refresh the page.
+          </p>
+          <button
+            onClick={() => setPermState("granted")}
+            style={{ background: "#374151", color: "#d1d5db", border: "none", borderRadius: 8, padding: "12px 32px", fontSize: 14, cursor: "pointer", width: "100%" }}
+          >
+            Join Anyway (no camera/mic)
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: "#111827" }}>
