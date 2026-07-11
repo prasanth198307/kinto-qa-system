@@ -5411,13 +5411,17 @@ function RestaurantWrapper() {
 
 function AuthenticatedChatAgent() {
   const { user, isLoading } = useAuth();
+  const [location] = useLocation();
   if (isLoading || !user) return null;
+  if (location.startsWith("/meet/")) return null;
   return <ChatAgent />;
 }
 
 function AuthenticatedSwachAI() {
   const { user, isLoading } = useAuth();
+  const [location] = useLocation();
   if (isLoading || !user) return null;
+  if (location.startsWith("/meet/")) return null;
   return <SwachAIChat />;
 }
 
