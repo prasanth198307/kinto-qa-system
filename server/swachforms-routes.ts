@@ -157,6 +157,78 @@ async function sendFormNotifications(form: any, submission: any, formData: Recor
   }
 }
 
+// AI Form Generation
+swachformsRouter.post('/ai-generate', requireAuth, async (req: any, res) => {
+  try {
+    const { prompt, vertical } = req.body;
+    if (!prompt) return res.status(400).json({ error: 'prompt required' });
+
+    const systemPrompt = `You are a form builder AI for SwachERP, a business ERP used by ${vertical || 'various businesses'} in India.
+Generate a JSON array of form fields based on the user's description.
+Each field must have: id (unique string like "f_abc123"), type, label, placeholder, required (boolean), options (array, only for select/multiselect/radio).
+Valid types: text, email, phone, number, date, textarea, select, multiselect, checkbox, radio, file, signature, heading, divider.
+Return ONLY a valid JSON array, no markdown, no explanation. Maximum 15 fields. Make labels professional and industry-appropriate.`;
+
+    if (!process.env.ANTHROPIC_API_KEY) {
+      // Fallback demo fields
+      const demo = [
+        { id: 'f_name', type: 'text', label: 'Full Name', placeholder: 'Enter your full name', required: true, options: [] },
+        { id: 'f_email', type: 'email', label: 'Email Address', placeholder: 'your@email.com', required: true, options: [] },
+        { id: 'f_phone', type: 'phone', label: 'Phone Number', placeholder: '+91 98765 43210', required: true, options: [] },
+        { id: 'f_msg', type: 'textarea', label: 'Message', placeholder: 'Type your message here...', required: false, options: [] },
+      ];
+      return res.json({ fields: demo, model: 'demo' });
+    }
+
+    const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 2000,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+
+    const data = await aiRes.json() as any;
+    const text = data.content?.[0]?.text || '[]';
+    let fields;
+    try { fields = JSON.parse(text); } catch { fields = []; }
+    res.json({ fields, model: 'claude-haiku' });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// AI Improve Fields
+swachformsRouter.post('/ai-improve', requireAuth, async (req: any, res) => {
+  try {
+    const { fields, instruction } = req.body;
+    if (!fields || !instruction) return res.status(400).json({ error: 'fields and instruction required' });
+
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return res.json({ fields, message: 'Configure ANTHROPIC_API_KEY for AI improvements' });
+    }
+
+    const prompt = `Here are the current form fields as JSON:\n${JSON.stringify(fields, null, 2)}\n\nInstruction: ${instruction}\n\nReturn ONLY the improved JSON array of fields, no explanation.`;
+
+    const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 2000,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+
+    const data = await aiRes.json() as any;
+    const text = data.content?.[0]?.text || '[]';
+    let improved;
+    try { improved = JSON.parse(text); } catch { improved = fields; }
+    res.json({ fields: improved });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
 // Forms CRUD
 swachformsRouter.get('/', requireAuth, async (req: any, res) => {
   try {

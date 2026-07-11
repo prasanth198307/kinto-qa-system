@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Save, Globe, Eye, EyeOff, Trash2, GripVertical, Plus, Code, CreditCard } from "lucide-react";
+import { ArrowLeft, Save, Globe, Eye, EyeOff, Trash2, GripVertical, Plus, Code, CreditCard, Sparkles, Wand2, Zap } from "lucide-react";
 
 const FIELD_TYPES = [
   { type: "text", label: "Text" },
@@ -85,6 +85,9 @@ export default function SwachFormsBuilderPage() {
   const [notifConfig, setNotifConfig] = useState<any>({});
   const [notifSaved, setNotifSaved] = useState(false);
   const [showNotifPanel, setShowNotifPanel] = useState(false);
+  const [showAIPanel, setShowAIPanel] = useState(false);
+  const [aiInstruction, setAiInstruction] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -187,6 +190,29 @@ export default function SwachFormsBuilderPage() {
     dragIdx.current = null; dragOverIdx.current = null;
   };
 
+  const runAIImprove = async (instruction: string) => {
+    if (!fields.length) { toast({ title: "Add some fields first", variant: "destructive" }); return; }
+    setAiLoading(true);
+    try {
+      const r = await fetch("/api/forms/ai-improve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fields, instruction }),
+      });
+      const data = await r.json();
+      if (data.fields?.length) {
+        setFields(data.fields);
+        setSelectedField(null);
+        toast({ title: "✨ AI improved your form!" });
+      }
+    } catch (e: any) {
+      toast({ title: "AI error", description: e.message, variant: "destructive" });
+    } finally {
+      setAiLoading(false);
+      setAiInstruction("");
+    }
+  };
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text).then(() => toast({ title: "Copied to clipboard" }));
   };
@@ -204,6 +230,10 @@ export default function SwachFormsBuilderPage() {
         <div className="flex-1" />
         <Button variant="ghost" size="sm" onClick={() => setPreview(p => !p)}>
           {preview ? <EyeOff className="w-4 h-4 mr-1" /> : <Eye className="w-4 h-4 mr-1" />}{preview ? "Edit" : "Preview"}
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => { setShowAIPanel(p => !p); setShowNotifPanel(false); }}
+          className={showAIPanel ? "border-violet-400 text-violet-700 bg-violet-50" : ""}>
+          <Sparkles className="w-4 h-4 mr-1 text-violet-500" /> AI Assist
         </Button>
         <Button variant="outline" size="sm" onClick={() => setShowNotifPanel(p => !p)}>
           📱 Notifications
@@ -403,6 +433,48 @@ export default function SwachFormsBuilderPage() {
                   )}
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* AI Assist panel */}
+        {!preview && showAIPanel && (
+          <div className="w-72 border-l overflow-y-auto shrink-0 bg-gradient-to-b from-violet-50 to-white">
+            <div style={{ padding: 16, borderBottom: '1px solid #ede9fe', fontWeight: 600, fontSize: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'linear-gradient(135deg, #7c3aed, #6d28d9)', color: '#fff' }}>
+              <span className="flex items-center gap-2"><Sparkles className="w-4 h-4" /> AI Assist</span>
+              <button onClick={() => setShowAIPanel(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#e9d5ff' }}>×</button>
+            </div>
+            <div style={{ padding: 16 }}>
+              <p style={{ fontSize: 12, color: '#6d28d9', marginBottom: 12, fontWeight: 500 }}>Tell AI what to improve:</p>
+              <textarea
+                value={aiInstruction}
+                onChange={e => setAiInstruction(e.target.value)}
+                placeholder='e.g. "Make all labels more professional" or "Add missing fields for a hospital form"'
+                rows={3}
+                style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid #ddd6fe', fontSize: 12, resize: 'vertical', outline: 'none', marginBottom: 10 }}
+              />
+              <button
+                onClick={() => runAIImprove(aiInstruction)}
+                disabled={aiLoading || !aiInstruction.trim()}
+                style={{ width: '100%', padding: '9px', background: aiLoading ? '#a78bfa' : '#7c3aed', color: '#fff', border: 'none', borderRadius: 8, cursor: aiLoading ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 16 }}
+              >
+                {aiLoading ? <><Zap style={{ width: 14, height: 14 }} /> Improving...</> : <><Wand2 style={{ width: 14, height: 14 }} /> Improve with AI</>}
+              </button>
+              <div style={{ borderTop: '1px solid #ede9fe', paddingTop: 12 }}>
+                <p style={{ fontSize: 11, color: '#7c3aed', fontWeight: 600, marginBottom: 8 }}>Quick actions</p>
+                {[
+                  { label: "✨ Improve all labels", action: "Make all field labels more professional and clear" },
+                  { label: "➕ Add missing fields", action: "Add any important fields that are missing for this type of form" },
+                  { label: "📋 Add validation hints", action: "Add helpful placeholder text to all fields" },
+                  { label: "🔀 Reorder logically", action: "Reorder fields in the most logical flow for a user filling this form" },
+                  { label: "✅ Mark required fields", action: "Set the most important fields as required" },
+                ].map(({ label, action }) => (
+                  <button key={label} onClick={() => runAIImprove(action)} disabled={aiLoading}
+                    style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 10px', marginBottom: 6, background: '#f5f3ff', border: '1px solid #ede9fe', borderRadius: 7, fontSize: 12, cursor: 'pointer', color: '#5b21b6', fontWeight: 500 }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}
