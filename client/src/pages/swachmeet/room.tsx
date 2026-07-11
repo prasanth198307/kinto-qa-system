@@ -1,6 +1,6 @@
 import { apiFetch } from "@/lib/api-fetch";
 import { useEffect, useRef, useState, useCallback } from "react";
-import { useParams } from "wouter";
+import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ type SidePanel = "chat" | "participants" | "notes" | "polls" | "agenda" | "files
 export default function SwachMeetRoom() {
   const params = useParams<{ roomId?: string; roomCode?: string }>();
   const roomId = params.roomId || params.roomCode || "default";
+  const [, navigate] = useLocation();
   const jitsiRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -161,68 +162,66 @@ export default function SwachMeetRoom() {
 
   const fmtTimer = (s: number) => `${String(Math.floor(s / 3600)).padStart(2, "0")}:${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
-  // Jitsi init
+  // Listen for Jitsi postMessage events (readyToClose = user hung up)
   useEffect(() => {
-    const script = document.createElement("script");
-    script.src = "https://meet.jit.si/external_api.js";
-    script.async = true;
-    script.onload = () => initJitsi();
-    document.head.appendChild(script);
-    return () => {
-      try { document.head.removeChild(script); } catch {}
-      if (jitsiRef.current) { try { jitsiRef.current.dispose(); } catch {} }
+    const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== "https://jitsi.swacherp.com") return;
+      const data = event.data;
+      const name = data?.name ?? data?.event ?? data;
+      if (name === "readyToClose" || name === "hangup") {
+        setJitsiStatus("ended");
+        navigate("/meet");
+      }
     };
-  }, [roomId]);
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [navigate]);
 
-  async function initJitsi() {
-    try {
-      const res = await apiRequest("POST", `/api/swachmeet/rooms/${roomId}/token`, { user: { name: "SwachERP User", email: "user@swacherp.com" } });
-      const data = await res.json();
-      if (!containerRef.current || !window.JitsiMeetExternalAPI) return;
-      const api = new window.JitsiMeetExternalAPI(data.jitsiDomain || "meet.jit.si", {
-        roomName: `SwachERP-${roomId}`,
-        jwt: data.token,
-        width: "100%", height: "100%",
-        parentNode: containerRef.current,
-        configOverwrite: {
-          startWithAudioMuted: false,
-          startWithVideoMuted: false,
-          enableWelcomePage: false,
-          disableDeepLinking: true,
-          prejoinPageEnabled: true,
-          lobbyModeEnabled: false,
-          toolbarButtons: ["microphone", "camera", "closedcaptions", "desktop", "fullscreen",
-            "fodeviceselection", "hangup", "chat", "raisehand", "recording",
-            "settings", "videoquality", "tileview", "participants-pane", "whiteboard"],
-        },
-        interfaceConfigOverwrite: {
-          SHOW_JITSI_WATERMARK: false,
-          SHOW_BRAND_WATERMARK: false,
-          HIDE_INVITE_MORE_HEADER: true,
-          BRAND_WATERMARK_LINK: "",
-          DEFAULT_BACKGROUND: "#111827",
-          TOOLBAR_ALWAYS_VISIBLE: false,
-        },
-      });
-      jitsiRef.current = api;
-      // Set allow attribute synchronously before iframe navigation completes
-      try {
-        const iframe = api.getIFrame();
-        if (iframe) {
-          iframe.allow = "camera; microphone; fullscreen; display-capture; autoplay; clipboard-write; speaker-selection; screen-wake-lock";
-        }
-      } catch {}
-      api.addEventListeners({
-        videoConferenceJoined: () => { setJitsiStatus("connected"); },
-        videoConferenceLeft: () => setJitsiStatus("ended"),
-        participantJoined: () => setParticipants(p => p + 1),
-        participantLeft: () => setParticipants(p => Math.max(0, p - 1)),
-        recordingStatusChanged: (e: any) => setRecording(e.on),
-      });
-    } catch (err) {
-      console.error("Jitsi init error:", err);
-    }
-  }
+  // Jitsi init via plain iframe with config in URL hash
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const config = [
+      "config.prejoinPageEnabled=false",
+      "config.prejoinConfig.enabled=false",
+      "config.lobbyModeEnabled=false",
+      "config.startWithAudioMuted=false",
+      "config.startWithVideoMuted=false",
+      "config.enableWelcomePage=false",
+      "config.enableClosePage=false",
+      "config.disableDeepLinking=true",
+      "config.requireDisplayName=false",
+      "config.toolbarButtons=[\"microphone\",\"camera\",\"closedcaptions\",\"desktop\",\"fullscreen\",\"fodeviceselection\",\"hangup\",\"chat\",\"raisehand\",\"settings\",\"videoquality\",\"tileview\",\"participants-pane\"]",
+      "interfaceConfig.SHOW_JITSI_WATERMARK=false",
+      "interfaceConfig.SHOW_BRAND_WATERMARK=false",
+      "interfaceConfig.HIDE_INVITE_MORE_HEADER=true",
+    ].join("&");
+    const roomName = `SwachERP-${roomId}`;
+    const src = `https://jitsi.swacherp.com/${roomName}#${config}`;
+
+    const iframe = document.createElement("iframe");
+    iframe.src = src;
+    iframe.style.width = "100%";
+    iframe.style.height = "100%";
+    iframe.style.border = "none";
+    iframe.allow = "camera; microphone; fullscreen; display-capture; autoplay; clipboard-write; speaker-selection; screen-wake-lock";
+    iframe.id = "jitsiConferenceFrame0";
+    containerRef.current.appendChild(iframe);
+    jitsiRef.current = iframe;
+
+    let loaded = false;
+    const onLoad = () => {
+      if (!loaded) { loaded = true; setJitsiStatus("connected"); return; }
+      // Second load = Jitsi navigated to welcome page after hangup
+      setJitsiStatus("ended");
+      navigate("/meet");
+    };
+    iframe.addEventListener("load", onLoad);
+
+    return () => {
+      iframe.removeEventListener("load", onLoad);
+      try { containerRef.current?.removeChild(iframe); } catch {}
+    };
+  }, [roomId, navigate]);
 
   async function toggleRecording() {
     const action = recording ? "stop" : "start";
@@ -514,7 +513,7 @@ export default function SwachMeetRoom() {
                       "Screen share starting now.",
                     ].map(msg => (
                       <button key={msg} style={{ display: "block", width: "100%", textAlign: "left", padding: "5px 8px", background: "#4b5563", border: "none", borderRadius: 4, color: "#d1d5db", fontSize: 11, cursor: "pointer", marginBottom: 4 }}
-                        onClick={() => { if (jitsiRef.current) { try { jitsiRef.current.executeCommand("sendChatMessage", msg); } catch {} } }}>
+                        onClick={() => { /* chat is handled inside Jitsi iframe */ }}>
                         {msg}
                       </button>
                     ))}
