@@ -249,7 +249,10 @@ export default function SwachMeetRoom() {
     iframe.style.width = "100%";
     iframe.style.height = "100%";
     iframe.style.border = "none";
-    iframe.allow = "camera; microphone; fullscreen; display-capture; autoplay; clipboard-write; speaker-selection; screen-wake-lock";
+    iframe.allow = "camera; microphone; fullscreen; display-capture; autoplay; clipboard-write; clipboard-read; speaker-selection; screen-wake-lock; keyboard-map";
+    // Cross-origin iframe focus fix: clicking inside the Jitsi area must give the iframe keyboard focus
+    iframe.setAttribute("tabindex", "0");
+    containerRef.current.addEventListener("mousedown", () => { iframe.focus(); }, true);
     iframe.id = "jitsiConferenceFrame0";
     containerRef.current.appendChild(iframe);
     jitsiRef.current = iframe;
