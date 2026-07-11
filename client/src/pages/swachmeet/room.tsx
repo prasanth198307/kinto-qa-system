@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import {
-  MessageSquare, Users, FileText, BarChart2, Send, Mic, MicOff, Video,
+  Users, FileText, BarChart2, Send, Mic, MicOff, Video,
   VideoOff, PhoneOff, Monitor, MoreVertical, Plus, CheckCircle, Circle,
   Sparkles, ChevronRight, ChevronLeft, ListTodo, Clock, Hash, X, Loader2,
   Copy, Check, Paperclip, Download, Trash2
@@ -18,7 +18,7 @@ import {
 
 declare global { interface Window { JitsiMeetExternalAPI: any; } }
 
-type SidePanel = "chat" | "participants" | "notes" | "polls" | "agenda" | "files";
+type SidePanel = "participants" | "notes" | "polls" | "agenda" | "files";
 
 export default function SwachMeetRoom() {
   const params = useParams<{ roomId?: string; roomCode?: string }>();
@@ -35,7 +35,7 @@ export default function SwachMeetRoom() {
   const [recording, setRecording] = useState(false);
   const [sidePanel, setSidePanel] = useState<SidePanel | null>(null);
   const [timer, setTimer] = useState(0);
-  const [chatMsg, setChatMsg] = useState("");
+
   const [noteContent, setNoteContent] = useState("");
   const [noteIsAction, setNoteIsAction] = useState(false);
   const [pollQuestion, setPollQuestion] = useState("");
@@ -44,8 +44,6 @@ export default function SwachMeetRoom() {
   const [copied, setCopied] = useState(false);
   const [fileUploading, setFileUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const chatEndRef = useRef<HTMLDivElement>(null);
-
   // Internal room DB id (for API calls)
   const [roomDbId, setRoomDbId] = useState<number | null>(null);
 
@@ -286,7 +284,6 @@ export default function SwachMeetRoom() {
 
   const panelWidth = sidePanel ? "w-80" : "w-0";
   const PANELS: { id: SidePanel; label: string; icon: any }[] = [
-    { id: "chat", label: "Chat", icon: MessageSquare },
     { id: "participants", label: "Participants", icon: Users },
     { id: "agenda", label: "Agenda", icon: ListTodo },
     { id: "notes", label: "Notes", icon: FileText },
@@ -605,28 +602,6 @@ export default function SwachMeetRoom() {
               </div>
             )}
 
-            {/* CHAT PANEL */}
-            {sidePanel === "chat" && (
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-                <div style={{ flex: 1, overflowY: "auto", padding: "10px 12px" }}>
-                  <p style={{ color: "#6b7280", fontSize: 11, textAlign: "center" }}>In-meeting chat is powered by Jitsi. Use the chat button in the video toolbar for live chat.</p>
-                  <div style={{ marginTop: 12, padding: "12px", background: "#374151", borderRadius: 8 }}>
-                    <p style={{ color: "#9ca3af", fontSize: 11, marginBottom: 4 }}>Quick actions:</p>
-                    {[
-                      "Starting now, please join.",
-                      "Can everyone hear me?",
-                      "Please mute if not speaking.",
-                      "Screen share starting now.",
-                    ].map(msg => (
-                      <button key={msg} style={{ display: "block", width: "100%", textAlign: "left", padding: "5px 8px", background: "#4b5563", border: "none", borderRadius: 4, color: "#d1d5db", fontSize: 11, cursor: "pointer", marginBottom: 4 }}
-                        onClick={() => { /* chat is handled inside Jitsi iframe */ }}>
-                        {msg}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         )}
       </div>
