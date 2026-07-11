@@ -204,7 +204,7 @@ export default function SwachMeetRoom() {
     if (roomDbId) {
       apiRequest("POST", `/api/meet/rooms/${roomDbId}/end`, {}).catch(() => {});
     }
-    navigate("/meet");
+    navigate("/swachmeet");
   }, [roomDbId, navigate]);
 
   // Listen for Jitsi postMessage events (readyToClose = user hung up)
