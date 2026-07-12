@@ -289,6 +289,7 @@ export function setupAuth(app: Express) {
         gstNumber,
         address,
         country = "India",
+        industry,
       } = req.body;
 
       if (!companyName || !slug || !adminName || !email || !password) {
@@ -324,6 +325,7 @@ export function setupAuth(app: Express) {
           country: country || "India",
           gstNumber: gstNumber || null,
           address: address || null,
+          industry: industry || null,
         })
         .returning();
 

@@ -18,7 +18,7 @@ import { Switch } from "@/components/ui/switch";
 import {
   Building2, Users, Package, CheckCircle2, Clock, XCircle,
   Loader2, Save, Palette, CreditCard, Download, Bell, FileJson, AlertCircle,
-  Upload, ImageIcon, X, Tags, Sliders, Trash2, Plus,
+  Upload, ImageIcon, X, Tags, Sliders, Trash2, Plus, Globe,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -39,8 +39,21 @@ interface TenantInfo {
   contactName: string | null;
   contactPhone: string | null;
   gstNumber: string | null;
+  fssaiNumber: string | null;
   address: string | null;
   industry: string | null;
+  website: string | null;
+  city: string | null;
+  state: string | null;
+  pincode: string | null;
+  registrationNumber: string | null;
+  country: string | null;
+  currency: string | null;
+  timezone: string | null;
+  dateFormat: string | null;
+  fiscalYearStart: number | null;
+  taxRegime: string | null;
+  defaultLocale: string | null;
   createdAt: string;
   userCount: number;
   planName?: string;
@@ -109,16 +122,112 @@ const INDUSTRIES = [
   "Hospitality", "IT & Software", "Other",
 ];
 
+const COUNTRIES = [
+  { code: "IN", name: "India", flag: "🇮🇳" },
+  { code: "AE", name: "United Arab Emirates", flag: "🇦🇪" },
+  { code: "SA", name: "Saudi Arabia", flag: "🇸🇦" },
+  { code: "US", name: "United States", flag: "🇺🇸" },
+  { code: "GB", name: "United Kingdom", flag: "🇬🇧" },
+  { code: "AU", name: "Australia", flag: "🇦🇺" },
+  { code: "SG", name: "Singapore", flag: "🇸🇬" },
+  { code: "MY", name: "Malaysia", flag: "🇲🇾" },
+  { code: "NG", name: "Nigeria", flag: "🇳🇬" },
+  { code: "KE", name: "Kenya", flag: "🇰🇪" },
+  { code: "ZA", name: "South Africa", flag: "🇿🇦" },
+  { code: "DE", name: "Germany", flag: "🇩🇪" },
+  { code: "FR", name: "France", flag: "🇫🇷" },
+  { code: "CA", name: "Canada", flag: "🇨🇦" },
+  { code: "NZ", name: "New Zealand", flag: "🇳🇿" },
+  { code: "BD", name: "Bangladesh", flag: "🇧🇩" },
+  { code: "LK", name: "Sri Lanka", flag: "🇱🇰" },
+  { code: "NP", name: "Nepal", flag: "🇳🇵" },
+  { code: "QA", name: "Qatar", flag: "🇶🇦" },
+  { code: "KW", name: "Kuwait", flag: "🇰🇼" },
+  { code: "BH", name: "Bahrain", flag: "🇧🇭" },
+  { code: "OM", name: "Oman", flag: "🇴🇲" },
+  { code: "PH", name: "Philippines", flag: "🇵🇭" },
+  { code: "ID", name: "Indonesia", flag: "🇮🇩" },
+  { code: "TZ", name: "Tanzania", flag: "🇹🇿" },
+  { code: "UG", name: "Uganda", flag: "🇺🇬" },
+  { code: "GH", name: "Ghana", flag: "🇬🇭" },
+];
+
+const CURRENCIES = [
+  { code: "INR", symbol: "₹", name: "Indian Rupee" },
+  { code: "USD", symbol: "$", name: "US Dollar" },
+  { code: "AED", symbol: "د.إ", name: "UAE Dirham" },
+  { code: "SAR", symbol: "﷼", name: "Saudi Riyal" },
+  { code: "GBP", symbol: "£", name: "British Pound" },
+  { code: "EUR", symbol: "€", name: "Euro" },
+  { code: "SGD", symbol: "S$", name: "Singapore Dollar" },
+  { code: "MYR", symbol: "RM", name: "Malaysian Ringgit" },
+  { code: "AUD", symbol: "A$", name: "Australian Dollar" },
+  { code: "CAD", symbol: "C$", name: "Canadian Dollar" },
+  { code: "ZAR", symbol: "R", name: "South African Rand" },
+  { code: "NGN", symbol: "₦", name: "Nigerian Naira" },
+  { code: "KES", symbol: "KSh", name: "Kenyan Shilling" },
+  { code: "QAR", symbol: "QR", name: "Qatari Riyal" },
+  { code: "KWD", symbol: "KD", name: "Kuwaiti Dinar" },
+  { code: "BHD", symbol: "BD", name: "Bahraini Dinar" },
+  { code: "OMR", symbol: "RO", name: "Omani Rial" },
+  { code: "BDT", symbol: "৳", name: "Bangladeshi Taka" },
+  { code: "LKR", symbol: "Rs", name: "Sri Lankan Rupee" },
+  { code: "NPR", symbol: "Rs", name: "Nepali Rupee" },
+  { code: "PHP", symbol: "₱", name: "Philippine Peso" },
+  { code: "IDR", symbol: "Rp", name: "Indonesian Rupiah" },
+];
+
+const TIMEZONES = [
+  { value: "Asia/Kolkata",       label: "IST (Asia/Kolkata) — India +5:30" },
+  { value: "Asia/Dubai",         label: "GST (Asia/Dubai) — UAE +4:00" },
+  { value: "Asia/Riyadh",        label: "AST (Asia/Riyadh) — Saudi Arabia +3:00" },
+  { value: "Asia/Singapore",     label: "SGT (Asia/Singapore) — Singapore +8:00" },
+  { value: "Asia/Kuala_Lumpur",  label: "MYT (Asia/Kuala_Lumpur) — Malaysia +8:00" },
+  { value: "Asia/Dhaka",         label: "BST (Asia/Dhaka) — Bangladesh +6:00" },
+  { value: "Asia/Colombo",       label: "SLST (Asia/Colombo) — Sri Lanka +5:30" },
+  { value: "Asia/Kathmandu",     label: "NPT (Asia/Kathmandu) — Nepal +5:45" },
+  { value: "Asia/Manila",        label: "PHT (Asia/Manila) — Philippines +8:00" },
+  { value: "Asia/Jakarta",       label: "WIB (Asia/Jakarta) — Indonesia +7:00" },
+  { value: "America/New_York",   label: "EST (America/New_York) — US East -5:00" },
+  { value: "America/Chicago",    label: "CST (America/Chicago) — US Central -6:00" },
+  { value: "America/Denver",     label: "MST (America/Denver) — US Mountain -7:00" },
+  { value: "America/Los_Angeles",label: "PST (America/Los_Angeles) — US West -8:00" },
+  { value: "America/Toronto",    label: "EST (America/Toronto) — Canada East -5:00" },
+  { value: "America/Vancouver",  label: "PST (America/Vancouver) — Canada West -8:00" },
+  { value: "Europe/London",      label: "GMT (Europe/London) — UK +0:00" },
+  { value: "Europe/Berlin",      label: "CET (Europe/Berlin) — Germany +1:00" },
+  { value: "Europe/Paris",       label: "CET (Europe/Paris) — France +1:00" },
+  { value: "Australia/Sydney",   label: "AEDT (Australia/Sydney) — Australia East +11:00" },
+  { value: "Australia/Perth",    label: "AWST (Australia/Perth) — Australia West +8:00" },
+  { value: "Pacific/Auckland",   label: "NZDT (Pacific/Auckland) — New Zealand +13:00" },
+  { value: "Africa/Nairobi",     label: "EAT (Africa/Nairobi) — Kenya +3:00" },
+  { value: "Africa/Lagos",       label: "WAT (Africa/Lagos) — Nigeria +1:00" },
+  { value: "Africa/Johannesburg",label: "SAST (Africa/Johannesburg) — South Africa +2:00" },
+  { value: "UTC",                label: "UTC — Universal Time" },
+];
+
 const settingsSchema = z.object({
-  billingEmail: z.string().email("Invalid email").or(z.literal("")),
-  contactName:  z.string().max(255).optional(),
-  contactPhone: z.string().max(20).optional(),
-  gstNumber:    z.string().max(20).optional(),
-  fssaiNumber:  z.string().max(20).optional(),
-  address:      z.string().optional(),
-  industry:     z.string().optional(),
-  logoUrl:      z.string().optional(),
-  primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a hex color e.g. #2563eb").or(z.literal("")).optional(),
+  billingEmail:       z.string().email("Invalid email").or(z.literal("")),
+  contactName:        z.string().max(255).optional(),
+  contactPhone:       z.string().max(20).optional(),
+  gstNumber:          z.string().max(20).optional(),
+  fssaiNumber:        z.string().max(20).optional(),
+  address:            z.string().optional(),
+  industry:           z.string().optional(),
+  website:            z.string().max(255).optional(),
+  city:               z.string().max(100).optional(),
+  state:              z.string().max(100).optional(),
+  pincode:            z.string().max(20).optional(),
+  registrationNumber: z.string().max(100).optional(),
+  country:            z.string().max(50).optional(),
+  logoUrl:            z.string().optional(),
+  primaryColor:       z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a hex color e.g. #2563eb").or(z.literal("")).optional(),
+  currency:           z.string().max(10).optional(),
+  timezone:           z.string().max(50).optional(),
+  dateFormat:         z.string().max(20).optional(),
+  fiscalYearStart:    z.number().min(1).max(12).optional(),
+  taxRegime:          z.string().max(20).optional(),
+  defaultLocale:      z.string().max(10).optional(),
 });
 
 const notifSchema = z.object({
@@ -158,15 +267,27 @@ export default function TenantSettings() {
   const form = useForm<SettingsForm>({
     resolver: zodResolver(settingsSchema),
     values: {
-      billingEmail: tenantInfo?.billingEmail ?? "",
-      contactName:  tenantInfo?.contactName ?? "",
-      contactPhone: tenantInfo?.contactPhone ?? "",
-      gstNumber:    tenantInfo?.gstNumber ?? "",
-      fssaiNumber:  (tenantInfo as any)?.fssaiNumber ?? "",
-      address:      tenantInfo?.address ?? "",
-      industry:     tenantInfo?.industry ?? "",
-      logoUrl:      tenantInfo?.logoUrl ?? "",
-      primaryColor: tenantInfo?.primaryColor ?? "#1a56db",
+      billingEmail:       tenantInfo?.billingEmail ?? "",
+      contactName:        tenantInfo?.contactName ?? "",
+      contactPhone:       tenantInfo?.contactPhone ?? "",
+      gstNumber:          tenantInfo?.gstNumber ?? "",
+      fssaiNumber:        tenantInfo?.fssaiNumber ?? "",
+      address:            tenantInfo?.address ?? "",
+      industry:           tenantInfo?.industry ?? "",
+      website:            tenantInfo?.website ?? "",
+      city:               tenantInfo?.city ?? "",
+      state:              tenantInfo?.state ?? "",
+      pincode:            tenantInfo?.pincode ?? "",
+      registrationNumber: tenantInfo?.registrationNumber ?? "",
+      country:            tenantInfo?.country ?? "India",
+      logoUrl:            tenantInfo?.logoUrl ?? "",
+      primaryColor:       tenantInfo?.primaryColor ?? "#1a56db",
+      currency:           tenantInfo?.currency ?? "INR",
+      timezone:           tenantInfo?.timezone ?? "Asia/Kolkata",
+      dateFormat:         tenantInfo?.dateFormat ?? "DD/MM/YYYY",
+      fiscalYearStart:    tenantInfo?.fiscalYearStart ?? 4,
+      taxRegime:          tenantInfo?.taxRegime ?? "gst",
+      defaultLocale:      tenantInfo?.defaultLocale ?? "en",
     },
   });
 
@@ -308,6 +429,9 @@ export default function TenantSettings() {
           <TabsTrigger value="custom-fields" data-testid="tab-settings-custom-fields">
             <Sliders className="h-3.5 w-3.5 mr-1.5" />Custom Fields
           </TabsTrigger>
+          <TabsTrigger value="localization" data-testid="tab-settings-localization">
+            <Globe className="h-3.5 w-3.5 mr-1.5" />Localization
+          </TabsTrigger>
         </TabsList>
 
         {/* ── Overview ── */}
@@ -418,10 +542,30 @@ export default function TenantSettings() {
                         <FormMessage />
                       </FormItem>
                     )} />
-                    <FormField control={form.control} name="gstNumber" render={({ field }) => (
+                    <FormField control={form.control} name="gstNumber" render={({ field }) => {
+                      const country = form.watch("country") ?? "India";
+                      const taxLabel = country === "United Arab Emirates" || country === "Saudi Arabia" || country === "Qatar" || country === "Kuwait" || country === "Bahrain" || country === "Oman" ? "VAT / TRN Number"
+                        : country === "United States" ? "EIN / Tax ID"
+                        : country === "United Kingdom" ? "VAT Number"
+                        : country === "Australia" ? "ABN / Tax File Number"
+                        : country === "Singapore" ? "GST / UEN Number"
+                        : "GST Number";
+                      const taxPlaceholder = country === "United Arab Emirates" ? "100123456700003"
+                        : country === "United States" ? "12-3456789"
+                        : country === "United Kingdom" ? "GB123456789"
+                        : "27AABCA1234B1Z5";
+                      return (
+                        <FormItem>
+                          <FormLabel>{taxLabel}</FormLabel>
+                          <FormControl><Input placeholder={taxPlaceholder} {...field} data-testid="input-gst-number" /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      );
+                    }} />
+                    <FormField control={form.control} name="registrationNumber" render={({ field }) => (
                       <FormItem>
-                        <FormLabel>GST Number</FormLabel>
-                        <FormControl><Input placeholder="27AABCA1234B1Z5" {...field} data-testid="input-gst-number" /></FormControl>
+                        <FormLabel>Company Registration No. <span className="text-muted-foreground text-xs">(CIN / CR / Corp No.)</span></FormLabel>
+                        <FormControl><Input placeholder="U12345KA2023PTC123456" {...field} data-testid="input-registration-number" /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
@@ -432,15 +576,46 @@ export default function TenantSettings() {
                         <FormMessage />
                       </FormItem>
                     )} />
+                    <FormField control={form.control} name="website" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Website</FormLabel>
+                        <FormControl><Input placeholder="https://www.yourcompany.com" {...field} data-testid="input-website" /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
                   </div>
 
                   <FormField control={form.control} name="address" render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Company Address</FormLabel>
-                      <FormControl><Textarea placeholder="Full registered address..." rows={2} {...field} data-testid="input-address" /></FormControl>
+                      <FormLabel>Street Address</FormLabel>
+                      <FormControl><Textarea placeholder="Street / Building / Area..." rows={2} {...field} data-testid="input-address" /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <FormField control={form.control} name="city" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>City</FormLabel>
+                        <FormControl><Input placeholder="Mumbai" {...field} data-testid="input-city" /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="state" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>State / Province</FormLabel>
+                        <FormControl><Input placeholder="Maharashtra" {...field} data-testid="input-state" /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="pincode" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>PIN / ZIP Code</FormLabel>
+                        <FormControl><Input placeholder="400001" {...field} data-testid="input-pincode" /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                  </div>
 
                   <FormField control={form.control} name="industry" render={({ field }) => (
                     <FormItem>
@@ -845,6 +1020,171 @@ export default function TenantSettings() {
         {/* ── Custom Fields ── */}
         <TabsContent value="custom-fields" className="mt-4">
           <CustomFieldsTab />
+        </TabsContent>
+
+        {/* ── Localization ── */}
+        <TabsContent value="localization" className="mt-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2"><Globe className="h-4 w-4" /> Localization & Regional Settings</CardTitle>
+              <CardDescription>Configure currency, timezone, date format, fiscal year, and tax regime for global operations</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit((d) => updateMutation.mutate(d))} className="space-y-6">
+
+                  {/* Country & Currency */}
+                  <div>
+                    <h3 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">Country & Currency</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <FormField control={form.control} name="country" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Country</FormLabel>
+                          <Select value={field.value ?? "India"} onValueChange={field.onChange}>
+                            <FormControl><SelectTrigger data-testid="select-country"><SelectValue placeholder="Select country" /></SelectTrigger></FormControl>
+                            <SelectContent className="max-h-60">
+                              {COUNTRIES.map(c => <SelectItem key={c.code} value={c.name}>{c.flag} {c.name}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name="currency" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Currency</FormLabel>
+                          <Select value={field.value ?? "INR"} onValueChange={field.onChange}>
+                            <FormControl><SelectTrigger data-testid="select-currency"><SelectValue placeholder="Select currency" /></SelectTrigger></FormControl>
+                            <SelectContent className="max-h-60">
+                              {CURRENCIES.map(c => <SelectItem key={c.code} value={c.code}>{c.symbol} {c.code} — {c.name}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* Date & Time */}
+                  <div>
+                    <h3 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">Date & Time</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <FormField control={form.control} name="timezone" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Timezone</FormLabel>
+                          <Select value={field.value ?? "Asia/Kolkata"} onValueChange={field.onChange}>
+                            <FormControl><SelectTrigger data-testid="select-timezone"><SelectValue placeholder="Select timezone" /></SelectTrigger></FormControl>
+                            <SelectContent className="max-h-60">
+                              {TIMEZONES.map(tz => <SelectItem key={tz.value} value={tz.value}>{tz.label}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name="dateFormat" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Date Format</FormLabel>
+                          <Select value={field.value ?? "DD/MM/YYYY"} onValueChange={field.onChange}>
+                            <FormControl><SelectTrigger data-testid="select-date-format"><SelectValue placeholder="Select format" /></SelectTrigger></FormControl>
+                            <SelectContent>
+                              <SelectItem value="DD/MM/YYYY">DD/MM/YYYY — India, UK, Australia</SelectItem>
+                              <SelectItem value="MM/DD/YYYY">MM/DD/YYYY — USA</SelectItem>
+                              <SelectItem value="YYYY-MM-DD">YYYY-MM-DD — ISO / International</SelectItem>
+                              <SelectItem value="DD-MM-YYYY">DD-MM-YYYY — India alternate</SelectItem>
+                              <SelectItem value="DD.MM.YYYY">DD.MM.YYYY — Germany, Russia</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* Fiscal Year & Tax */}
+                  <div>
+                    <h3 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">Fiscal Year & Tax Regime</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <FormField control={form.control} name="fiscalYearStart" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Fiscal Year Starts</FormLabel>
+                          <Select value={String(field.value ?? 4)} onValueChange={v => field.onChange(Number(v))}>
+                            <FormControl><SelectTrigger data-testid="select-fiscal-year"><SelectValue placeholder="Select month" /></SelectTrigger></FormControl>
+                            <SelectContent>
+                              <SelectItem value="1">January — US, EU, China</SelectItem>
+                              <SelectItem value="4">April — India (standard)</SelectItem>
+                              <SelectItem value="7">July — Australia, New Zealand</SelectItem>
+                              <SelectItem value="10">October — Some Middle East</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormDescription className="text-xs">Financial year end = month before start</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name="taxRegime" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Tax Regime</FormLabel>
+                          <Select value={field.value ?? "gst"} onValueChange={field.onChange}>
+                            <FormControl><SelectTrigger data-testid="select-tax-regime"><SelectValue placeholder="Select tax regime" /></SelectTrigger></FormControl>
+                            <SelectContent>
+                              <SelectItem value="gst">GST — India (CGST/SGST/IGST)</SelectItem>
+                              <SelectItem value="vat">VAT — UAE, EU, UK, Gulf</SelectItem>
+                              <SelectItem value="zatca">ZATCA — Saudi Arabia (Fatoora)</SelectItem>
+                              <SelectItem value="sales_tax">Sales Tax — USA (state-level)</SelectItem>
+                              <SelectItem value="none">No Tax / Tax Exempt</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormDescription className="text-xs">Controls which tax fields appear on invoices</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* Language */}
+                  <div>
+                    <h3 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">Default Language</h3>
+                    <FormField control={form.control} name="defaultLocale" render={({ field }) => (
+                      <FormItem className="max-w-xs">
+                        <FormLabel>Interface Language</FormLabel>
+                        <Select value={field.value ?? "en"} onValueChange={field.onChange}>
+                          <FormControl><SelectTrigger data-testid="select-locale"><SelectValue placeholder="Select language" /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            <SelectItem value="en">English</SelectItem>
+                            <SelectItem value="hi">हिंदी — Hindi</SelectItem>
+                            <SelectItem value="ar">العربية — Arabic</SelectItem>
+                            <SelectItem value="fr">Français — French</SelectItem>
+                            <SelectItem value="de">Deutsch — German</SelectItem>
+                            <SelectItem value="es">Español — Spanish</SelectItem>
+                            <SelectItem value="pt">Português — Portuguese</SelectItem>
+                            <SelectItem value="ta">தமிழ் — Tamil</SelectItem>
+                            <SelectItem value="te">తెలుగు — Telugu</SelectItem>
+                            <SelectItem value="mr">मराठी — Marathi</SelectItem>
+                            <SelectItem value="kn">ಕನ್ನಡ — Kannada</SelectItem>
+                            <SelectItem value="gu">ગુજરાતી — Gujarati</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormDescription className="text-xs">Fine-tune translations in <strong>Language Settings</strong></FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                  </div>
+
+                  <div className="flex justify-end pt-2">
+                    <Button type="submit" disabled={updateMutation.isPending} data-testid="button-save-localization">
+                      {updateMutation.isPending
+                        ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</>
+                        : <><Save className="mr-2 h-4 w-4" />Save Localization Settings</>}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
         </TabsContent>
 
       </Tabs>

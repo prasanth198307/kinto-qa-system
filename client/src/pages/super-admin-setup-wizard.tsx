@@ -10,11 +10,32 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import SuperAdminLayout from "./super-admin-layout";
 import {
   CheckCircle2, ChevronRight, Store, Building2, Users, Package,
   ArrowLeft, Loader2, Eye, EyeOff, AlertCircle, Sparkles, ShieldCheck,
 } from "lucide-react";
+
+const INDUSTRIES = [
+  { value: "restaurant",    label: "🍽️  Restaurant / F&B" },
+  { value: "hotel",         label: "🏨  Hotel / Hospitality" },
+  { value: "healthcare",    label: "🏥  Healthcare / Clinic" },
+  { value: "pharmacy",      label: "💊  Pharmacy / Medical Store" },
+  { value: "manufacturing", label: "🏭  Manufacturing / Production" },
+  { value: "retail",        label: "🛒  Retail / POS" },
+  { value: "logistics",     label: "🚚  Logistics & Transport" },
+  { value: "real_estate",   label: "🏗️  Real Estate / Construction" },
+  { value: "education",     label: "🎓  Education / School / College" },
+  { value: "agriculture",   label: "🌾  Agriculture / Agri-business" },
+  { value: "ngo",           label: "🤝  NGO / Non-Profit" },
+  { value: "nidhi",         label: "🏦  Nidhi Company / Microfinance" },
+  { value: "trading",       label: "📦  Trading / Distribution" },
+  { value: "technology",    label: "💻  Technology / IT Services" },
+  { value: "finance",       label: "💰  Finance / NBFC" },
+  { value: "ecommerce",     label: "🛍️  E-Commerce" },
+  { value: "general",       label: "🏢  General / Other" },
+];
 
 // ── Grocery module presets ─────────────────────────────────────────────────────
 const ALL_MODULES: { key: string; label: string; desc: string; preset: boolean }[] = [
@@ -186,7 +207,7 @@ export default function SuperAdminSetupWizard() {
   });
 
   const [tenantForm, setTenantForm] = useState<TenantForm>({
-    companyName: "", slug: "", industry: "Retail", maxUsers: "10", trialDays: "30",
+    companyName: "", slug: "", industry: "retail", maxUsers: "10", trialDays: "30",
   });
 
   const [userForm, setUserForm] = useState<UserForm>({
@@ -398,7 +419,16 @@ export default function SuperAdminSetupWizard() {
                   </div>
                   <div className="space-y-1.5">
                     <Label>Industry</Label>
-                    <Input value={tenantForm.industry} onChange={e => setTenantForm(p => ({ ...p, industry: e.target.value }))} placeholder="Retail" />
+                    <Select value={tenantForm.industry} onValueChange={v => setTenantForm(p => ({ ...p, industry: v }))}>
+                      <SelectTrigger data-testid="select-setup-industry">
+                        <SelectValue placeholder="Select industry…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {INDUSTRIES.map(ind => (
+                          <SelectItem key={ind.value} value={ind.value}>{ind.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-1.5">
                     <Label>Max Users</Label>
@@ -673,7 +703,7 @@ export default function SuperAdminSetupWizard() {
               </Button>
               <Button variant="outline" onClick={() => {
                 setStep(1);
-                setTenantForm({ companyName: "", slug: "", industry: "Retail", maxUsers: "10", trialDays: "30" });
+                setTenantForm({ companyName: "", slug: "", industry: "retail", maxUsers: "10", trialDays: "30" });
                 setUserForm({ adminUsername: "", adminEmail: "", adminPassword: "" });
                 setSeedResult(null);
                 setCreatedTenantId(null);

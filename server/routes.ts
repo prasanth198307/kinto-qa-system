@@ -693,7 +693,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Strategy 1: exact match / wildcard match against cors_origins
       const result = await pool.query(
-        `SELECT name, slug, logo_url FROM tenants
+        `SELECT name, slug, logo_url, primary_color, industry FROM tenants
          WHERE status <> 'deleted'
            AND cors_origins IS NOT NULL
            AND array_length(cors_origins, 1) > 0
@@ -707,7 +707,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
       if (result.rows.length) {
         const row = result.rows[0];
-        return res.json({ name: row.name, slug: row.slug, logoUrl: row.logo_url ?? null });
+        return res.json({ name: row.name, slug: row.slug, logoUrl: row.logo_url ?? null, primaryColor: row.primary_color ?? null, industry: row.industry ?? null });
       }
 
       // Strategy 2: auto-detect from *.swacherp.com subdomain pattern
@@ -716,12 +716,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (swacherpMatch) {
         const subdomainSlug = swacherpMatch[1];
         const slugResult = await pool.query(
-          `SELECT name, slug, logo_url FROM tenants WHERE slug = $1 AND status <> 'deleted' LIMIT 1`,
+          `SELECT name, slug, logo_url, primary_color, industry FROM tenants WHERE slug = $1 AND status <> 'deleted' LIMIT 1`,
           [subdomainSlug]
         );
         if (slugResult.rows.length) {
           const row = slugResult.rows[0];
-          return res.json({ name: row.name, slug: row.slug, logoUrl: row.logo_url ?? null });
+          return res.json({ name: row.name, slug: row.slug, logoUrl: row.logo_url ?? null, primaryColor: row.primary_color ?? null, industry: row.industry ?? null });
         }
       }
 
@@ -989,7 +989,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (req.user?.role?.toLowerCase() !== 'admin' && !req.user?.isSuperAdmin) return res.status(403).json({ message: 'Admin only' });
 
     const tenantId: number = (req.session as any).tenantId ?? req.user?.tenantId ?? 1;
-    const { billingEmail, contactName, contactPhone, gstNumber, fssaiNumber, address, logoUrl, primaryColor, industry } = req.body;
+    const { billingEmail, contactName, contactPhone, gstNumber, fssaiNumber, address, logoUrl, primaryColor,
+            industry, website, city, state, pincode, registrationNumber, country,
+            currency, timezone, dateFormat, fiscalYearStart, taxRegime, defaultLocale } = req.body;
 
     try {
       const updates: Record<string, any> = { updatedAt: new Date().toISOString() };
@@ -1002,6 +1004,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (logoUrl !== undefined) updates.logoUrl = logoUrl;
       if (primaryColor !== undefined) updates.primaryColor = primaryColor;
       if (industry !== undefined) updates.industry = industry;
+      if (website !== undefined) updates.website = website;
+      if (city !== undefined) updates.city = city;
+      if (state !== undefined) updates.state = state;
+      if (pincode !== undefined) updates.pincode = pincode;
+      if (registrationNumber !== undefined) updates.registrationNumber = registrationNumber;
+      if (country !== undefined) updates.country = country;
+      if (currency !== undefined) updates.currency = currency;
+      if (timezone !== undefined) updates.timezone = timezone;
+      if (dateFormat !== undefined) updates.dateFormat = dateFormat;
+      if (fiscalYearStart !== undefined) updates.fiscalYearStart = Number(fiscalYearStart);
+      if (taxRegime !== undefined) updates.taxRegime = taxRegime;
+      if (defaultLocale !== undefined) updates.defaultLocale = defaultLocale;
 
       const [updated] = await db.update(tenants).set(updates).where(eq(tenants.id, tenantId)).returning();
       res.json(updated);
@@ -28674,6 +28688,81 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
     } catch (err: any) {
       console.error('List demo requests error:', err);
       return res.status(500).json({ message: 'Failed to fetch demo requests.' });
+    }
+  });
+
+  app.patch('/api/admin/demo-requests/:id/status', async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.user?.isSuperAdmin) return res.status(403).json({ message: 'Super-admin only' });
+    const { id } = req.params;
+    const { status, notes } = req.body;
+    const allowed = ['new', 'contacted', 'closed', 'converted'];
+    if (!allowed.includes(status)) return res.status(400).json({ message: 'Invalid status' });
+    try {
+      const result = await pool.query(
+        `UPDATE demo_requests SET status = $1, notes = COALESCE($2, notes), updated_at = NOW() WHERE id = $3 RETURNING *`,
+        [status, notes ?? null, id]
+      );
+      if (result.rowCount === 0) return res.status(404).json({ message: 'Not found' });
+      return res.json(result.rows[0]);
+    } catch (err: any) {
+      console.error('Update demo request status error:', err);
+      return res.status(500).json({ message: 'Failed to update status.' });
+    }
+  });
+
+  // ─── Super Admin Announcements ───────────────────────────────────────────────
+  app.get('/api/admin/announcements', async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.user?.isSuperAdmin) return res.status(403).json({ message: 'Super-admin only' });
+    try {
+      // Ensure table exists
+      await pool.query(`CREATE TABLE IF NOT EXISTS public.super_announcements (id SERIAL PRIMARY KEY, title TEXT NOT NULL, body TEXT NOT NULL, audience TEXT NOT NULL DEFAULT 'all', sent_count INTEGER NOT NULL DEFAULT 0, sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`);
+      const result = await pool.query('SELECT * FROM super_announcements ORDER BY sent_at DESC');
+      return res.json(result.rows);
+    } catch (err: any) {
+      console.error('List announcements error:', err);
+      return res.status(500).json({ message: 'Failed to fetch announcements.' });
+    }
+  });
+
+  app.post('/api/admin/announcements', async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.user?.isSuperAdmin) return res.status(403).json({ message: 'Super-admin only' });
+    const { title, body, audience = 'all' } = req.body;
+    if (!title || !body) return res.status(400).json({ message: 'title and body required' });
+    try {
+      await pool.query(`CREATE TABLE IF NOT EXISTS public.super_announcements (id SERIAL PRIMARY KEY, title TEXT NOT NULL, body TEXT NOT NULL, audience TEXT NOT NULL DEFAULT 'all', sent_count INTEGER NOT NULL DEFAULT 0, sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`);
+      // Count recipients
+      const audienceMap: Record<string, string> = {
+        all: "SELECT COUNT(*) FROM tenants WHERE is_deleted IS NOT TRUE",
+        trial: "SELECT COUNT(*) FROM tenants WHERE status = 'trial' AND is_deleted IS NOT TRUE",
+        active: "SELECT COUNT(*) FROM tenants WHERE status = 'active' AND is_deleted IS NOT TRUE",
+        suspended: "SELECT COUNT(*) FROM tenants WHERE status = 'suspended' AND is_deleted IS NOT TRUE",
+        expiring_7d: "SELECT COUNT(*) FROM tenants WHERE status = 'trial' AND trial_ends_at BETWEEN NOW() AND NOW() + INTERVAL '7 days' AND is_deleted IS NOT TRUE",
+      };
+      const countSql = audienceMap[audience] ?? audienceMap.all;
+      const countResult = await pool.query(countSql);
+      const sentCount = parseInt(countResult.rows[0].count, 10);
+      const result = await pool.query(
+        'INSERT INTO super_announcements (title, body, audience, sent_count) VALUES ($1, $2, $3, $4) RETURNING *',
+        [title, body, audience, sentCount]
+      );
+      return res.json(result.rows[0]);
+    } catch (err: any) {
+      console.error('Send announcement error:', err);
+      return res.status(500).json({ message: 'Failed to send announcement.' });
+    }
+  });
+
+  app.delete('/api/admin/announcements/:id', async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.user?.isSuperAdmin) return res.status(403).json({ message: 'Super-admin only' });
+    try {
+      await pool.query('DELETE FROM super_announcements WHERE id = $1', [req.params.id]);
+      return res.json({ success: true });
+    } catch (err: any) {
+      return res.status(500).json({ message: 'Failed to delete.' });
     }
   });
 

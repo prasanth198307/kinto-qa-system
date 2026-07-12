@@ -25,6 +25,8 @@ export default function AuthPage() {
   const [sessionExpired, setSessionExpired] = useState(false);
   const [tenantLogoUrl, setTenantLogoUrl] = useState<string | null>(null);
   const [tenantDisplayName, setTenantDisplayName] = useState<string | null>(null);
+  const [tenantPrimaryColor, setTenantPrimaryColor] = useState<string | null>(null);
+  const [tenantIndustry, setTenantIndustry] = useState<string | null>(null);
   // true when slug was auto-detected from a custom domain OR passed via ?tenant=
   // When true we hide the Company ID field — but the user can click "Change" to override
   const [slugAutoDetected, setSlugAutoDetected] = useState(!!prefilledSlug);
@@ -44,6 +46,8 @@ export default function AuthPage() {
         if (!data) return;
         if (data.logoUrl) setTenantLogoUrl(data.logoUrl);
         if (data.name) setTenantDisplayName(data.name);
+        if (data.primaryColor) setTenantPrimaryColor(data.primaryColor);
+        if (data.industry) setTenantIndustry(data.industry);
         // Only auto-fill slug if the user hasn't already typed one themselves.
         // This prevents the branding detection from silently overriding a slug
         // that the user typed (or that came from a ?tenant= URL param).
@@ -283,74 +287,116 @@ export default function AuthPage() {
         </div>
       </div>
 
-      {/* Right side — Hero */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary to-blue-700 flex-col items-center justify-center p-12 text-white">
-        <div className="w-full max-w-lg">
+      {/* Right side — Hero: tenant branding when on whitelisted URL, else SwachERP default */}
+      {tenantLogoUrl ? (
+        // ── Tenant-branded panel ──────────────────────────────────────────────
+        <div
+          className="hidden lg:flex lg:w-1/2 flex-col items-center justify-center p-12 text-white"
+          style={{ background: tenantPrimaryColor
+            ? `linear-gradient(135deg, ${tenantPrimaryColor}cc 0%, ${tenantPrimaryColor} 100%)`
+            : "linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)" }}
+        >
+          <div className="w-full max-w-lg">
+            {/* Tenant logo */}
+            <div className="flex flex-col items-start mb-10">
+              <img
+                src={tenantLogoUrl}
+                alt={tenantDisplayName ?? "Company Logo"}
+                className="h-16 w-auto object-contain mb-3 drop-shadow-lg"
+                style={{ maxWidth: 220 }}
+              />
+              {tenantIndustry && (
+                <span className="text-xs font-medium opacity-70 uppercase tracking-widest">{tenantIndustry}</span>
+              )}
+            </div>
 
-          {/* Logo — original brand colours on the blue panel */}
-          <div className="flex flex-col items-start mb-10">
-            <img src="/swacherp-logo.png" alt="SwachERP" className="h-14 w-auto object-contain mb-1" />
-            <span className="text-xs text-blue-200 font-medium">Cleaner Business. Better Future.</span>
+            {/* Welcome message */}
+            <h2 className="text-4xl font-extrabold leading-tight mb-3">
+              Welcome to<br />{tenantDisplayName ?? "Your Portal"}.
+            </h2>
+            <p className="text-sm mb-10 leading-relaxed opacity-80">
+              Sign in to access your company's ERP dashboard — operations, finance,
+              HR, and more in one place.
+            </p>
+
+            {/* Feature highlights */}
+            <div className="flex flex-wrap gap-2 mb-10">
+              {[
+                "Operations Dashboard",
+                "Finance & Accounting",
+                "HR & Payroll",
+                "Inventory & Stock",
+                "Purchase Orders",
+                "Reports & Analytics",
+                "Approvals",
+                "WhatsApp Alerts",
+              ].map((feat) => (
+                <span
+                  key={feat}
+                  className="inline-flex items-center gap-1.5 bg-white/15 border border-white/25 rounded-full px-3 py-1 text-xs font-medium text-white"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-white/60 shrink-0" />
+                  {feat}
+                </span>
+              ))}
+            </div>
+
+            {/* Powered-by footer */}
+            <div className="flex items-center gap-3 pt-6 border-t border-white/20">
+              <img src="/swacherp-logo.png" alt="SwachERP" className="h-6 w-auto object-contain opacity-70" />
+              <span className="text-xs opacity-60">Powered by SwachERP</span>
+            </div>
           </div>
-
-          {/* Headline */}
-          <h2 className="text-4xl font-extrabold leading-tight mb-3">
-            One platform.<br />Every operation.
-          </h2>
-          <p className="text-blue-100 text-sm mb-8 leading-relaxed">
-            Built for Indian businesses — GST-ready, WhatsApp-connected,<br />30+ modules from operations to industry verticals.
-          </p>
-
-          {/* Module chips */}
-          <div className="flex flex-wrap gap-2 mb-10">
-            {[
-              "Production Planning",
-              "Inventory & Stock",
-              "Purchase Orders",
-              "GST Invoicing",
-              "Dispatch & Gatepasses",
-              "Quality Assurance",
-              "Approval Workflows",
-              "Double-Entry Accounting",
-              "HR & Payroll",
-              "Employee Self-Service",
-              "Project Management",
-              "Fixed Assets",
-              "CRM",
-              "WhatsApp Integration",
-              "Healthcare",
-              "Education",
-              "Logistics",
-              "Real Estate",
-              "Retail / POS",
-              "Agriculture",
-            ].map((mod) => (
-              <span
-                key={mod}
-                className="inline-flex items-center gap-1.5 bg-white/15 border border-white/20 rounded-full px-3 py-1 text-xs font-medium text-white"
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-300 shrink-0" />
-                {mod}
-              </span>
-            ))}
-          </div>
-
-          {/* Stat strip */}
-          <div className="flex items-center gap-8 pt-6 border-t border-white/20">
-            {[
-              { value: "30+", label: "Modules" },
-              { value: "GST", label: "Compliant" },
-              { value: "100%", label: "Web-based" },
-            ].map((stat) => (
-              <div key={stat.label}>
-                <div className="text-2xl font-bold">{stat.value}</div>
-                <div className="text-xs text-blue-200 mt-0.5">{stat.label}</div>
-              </div>
-            ))}
-          </div>
-
         </div>
-      </div>
+      ) : (
+        // ── Default SwachERP panel ────────────────────────────────────────────
+        <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary to-blue-700 flex-col items-center justify-center p-12 text-white">
+          <div className="w-full max-w-lg">
+
+            <div className="flex flex-col items-start mb-10">
+              <img src="/swacherp-logo.png" alt="SwachERP" className="h-14 w-auto object-contain mb-1" />
+              <span className="text-xs text-blue-200 font-medium">Cleaner Business. Better Future.</span>
+            </div>
+
+            <h2 className="text-4xl font-extrabold leading-tight mb-3">
+              One platform.<br />Every operation.
+            </h2>
+            <p className="text-blue-100 text-sm mb-8 leading-relaxed">
+              Built for global businesses — GST/VAT/ZATCA-ready, WhatsApp-connected,<br />30+ modules across 17 industry verticals.
+            </p>
+
+            <div className="flex flex-wrap gap-2 mb-10">
+              {[
+                "Production Planning", "Inventory & Stock", "Purchase Orders",
+                "GST Invoicing", "Dispatch & Gatepasses", "Quality Assurance",
+                "Approval Workflows", "Double-Entry Accounting", "HR & Payroll",
+                "Employee Self-Service", "Project Management", "Fixed Assets",
+                "CRM", "WhatsApp Integration", "Healthcare", "Education",
+                "Logistics", "Real Estate", "Retail / POS", "Agriculture",
+              ].map((mod) => (
+                <span key={mod} className="inline-flex items-center gap-1.5 bg-white/15 border border-white/20 rounded-full px-3 py-1 text-xs font-medium text-white">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-300 shrink-0" />
+                  {mod}
+                </span>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-8 pt-6 border-t border-white/20">
+              {[
+                { value: "17", label: "Industries" },
+                { value: "GST+VAT", label: "Multi-Tax" },
+                { value: "100%", label: "Web-based" },
+              ].map((stat) => (
+                <div key={stat.label}>
+                  <div className="text-2xl font-bold">{stat.value}</div>
+                  <div className="text-xs text-blue-200 mt-0.5">{stat.label}</div>
+                </div>
+              ))}
+            </div>
+
+          </div>
+        </div>
+      )}
     </div>
   );
 }

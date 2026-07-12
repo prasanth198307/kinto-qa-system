@@ -101,6 +101,10 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
     "purchase-returns",
     "manufacturing/job-cards",
     "manufacturing/sub-contracting",
+    "manufacturing/machine-oee",
+    "manufacturing/mrp",
+    "manufacturing/work-orders",
+    "manufacturing/quality",
   ],
   quality_returns: [
     "sales-returns",
@@ -169,8 +173,8 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
     "crm/pipeline", "crm/contacts", "crm/accounts",
     "crm/activities", "crm/leads", "crm/campaigns",
     "crm/email-campaigns", "crm/whatsapp-campaigns", "crm/whatsapp",
-    "crm/customer360", "crm/quotations", "crm/lead-scoring",
-    "crm/drip-campaigns", "crm/reports",
+    "crm/customer360", "crm/customer-360", "crm/quotations", "crm/lead-scoring",
+    "crm/drip-campaigns", "crm/telephony", "crm/reports",
   ],
   hr_payroll: [
     "hr-employees",
@@ -226,24 +230,28 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
     "restaurant-central-kitchen", "restaurant-menu-translations",
     "restaurant-recipes", "restaurant-campaigns", "restaurant-table-order", "restaurant-cds",
     "restaurant-payment-terminal",
+    "restaurant/ondc-integration", "restaurant/loyalty-expiry",
   ],
   hotel: [
     "hotel", "hotel-enterprise",
     "hotel/front-desk", "hotel/reservations", "hotel/checkin",
     "hotel/rooms", "hotel/folio", "hotel/housekeeping",
     "hotel/rates", "hotel/corporate", "hotel/night-audit", "hotel/reports",
+    "hotel/channel-manager", "hotel/revenue-management", "hotel/banquet",
   ],
   healthcare: [
     "healthcare", "healthcare-enterprise", "healthcare-enterprise2",
     "healthcare/patients", "healthcare/opd", "healthcare/ipd", "healthcare/beds",
     "healthcare/ot", "healthcare/lab", "healthcare/nursing", "healthcare/insurance",
     "healthcare/doctors", "healthcare/blood-bank", "healthcare/reports",
+    "healthcare/abdm", "healthcare/emr", "healthcare/tpa-claims",
   ],
   pharmacy: [
     "pharmacy", "pharmacy-enterprise",
     "pharmacy/billing", "pharmacy/drugs", "pharmacy/stock", "pharmacy/purchases",
     "pharmacy/schedule-h", "pharmacy/schedule-x", "pharmacy/licenses",
     "pharmacy/expiry", "pharmacy/reports",
+    "pharmacy/prescriptions", "pharmacy/narcotics-register", "pharmacy/e-invoice",
   ],
   education: [
     "education", "education-enterprise", "education-enterprise2",
@@ -252,14 +260,15 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
     "education/timetable", "education/homework", "education/online-exams",
     "education/library", "education/transport", "education/hostel",
     "education/parent-portal", "education/reports",
+    "education/nep-compliance", "education/certificates",
   ],
   logistics_transport: [
     "logistics", "logistics-enterprise",
     "logistics/fleet", "logistics/drivers", "logistics/trips", "logistics/gps",
     "logistics/consignments", "logistics/documents", "logistics/freight",
-    "logistics/freight-billing", "logistics/eway-bills", "logistics/epod",
-    "logistics/fuel", "logistics/routes", "logistics/store-transfers",
-    "logistics/reports",
+    "logistics/freight-billing", "logistics/eway-bills", "logistics/eway-bill",
+    "logistics/epod", "logistics/fuel", "logistics/routes", "logistics/store-transfers",
+    "logistics/reports", "logistics/live-gps", "logistics/route-optimization",
   ],
   real_estate: [
     "real-estate", "real-estate-enterprise",
@@ -272,31 +281,34 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
   ],
   pos: [
     "pos", "retail-enterprise",
+    "retail/omni-channel", "retail/loyalty", "retail/franchise",
+    "retail/b2b-portal", "retail/pos-hardware", "retail/store-transfers",
   ],
   agriculture: [
     "agriculture", "agriculture-enterprise",
     "agriculture/farms", "agriculture/crops", "agriculture/harvest",
-    "agriculture/inputs", "agriculture/fpo", "agriculture/mandi",
+    "agriculture/inputs", "agriculture/fpo", "agriculture/mandi", "agriculture/mandi-prices",
     "agriculture/market", "agriculture/weather", "agriculture/traceability",
     "agriculture/schemes", "agriculture/pmfby", "agriculture/reports",
   ],
   ngo: [
     "ngo", "ngo-enterprise",
     "ngo/donors", "ngo/donations", "ngo/projects", "ngo/beneficiaries",
-    "ngo/grants", "ngo/volunteers", "ngo/80g", "ngo/fcra",
-    "ngo/csr", "ngo/reports", "ngo/funds",
+    "ngo/grants", "ngo/volunteers", "ngo/80g", "ngo/80g-bulk", "ngo/fcra",
+    "ngo/csr", "ngo/reports", "ngo/funds", "ngo/donor-admin",
   ],
   nidhi: [
     "nidhi", "nidhi-enterprise",
     "nidhi/members", "nidhi/deposits", "nidhi/loans", "nidhi/emi",
     "nidhi/collection", "nidhi/shares", "nidhi/gold-rates", "nidhi/interest-rates",
-    "nidhi/daily-collection", "nidhi/compliance", "nidhi/reports",
+    "nidhi/daily-collection", "nidhi/mobile-collection", "nidhi/compliance", "nidhi/reports",
+    "nidhi/loan-sanction", "nidhi/pdc-tracking", "nidhi/rbi-returns",
   ],
   ecommerce: [
     "ecommerce", "ecommerce-enterprise",
     "ecommerce/dashboard", "ecommerce/orders", "ecommerce/listings",
     "ecommerce/returns", "ecommerce/settlements", "ecommerce/shipments",
-    "ecommerce/channels", "ecommerce/inventory-sync", "ecommerce/reports",
+    "ecommerce/channels", "ecommerce/inventory-sync", "ecommerce/warehouses", "ecommerce/reports",
   ],
   gold_erp: [
     "gold-erp",
@@ -325,6 +337,10 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
     "gold-erp-ecatalog", "gold-erp-oms-orders", "gold-erp-oms-notify", "gold-erp-ecommerce",
     // RFID, Finance, Integrations
     "gold-erp-rfid", "gold-erp-metal-finance", "gold-erp-integrations-config",
+    // Additional screens
+    "gold-erp-live-rates", "gold-erp-hallmarking-page", "gold-erp-sebi-reporting", "gold-erp-digital-gold",
+    "gold-erp-karigar-attendance", "gold-erp-chit-collection-register", "gold-erp-vault-movement",
+    "gold-erp-bullion-rate-cuts",
   ],
 };
 
@@ -750,6 +766,8 @@ const CATALOG_TO_PLAN_MODULE: Record<string, string> = {
   user_management: "basic_inventory",
   roles:           "basic_inventory",
   company_settings:"basic_inventory",
+  retail_pos:      "pos",
+  gold:            "gold_erp",
 };
 
 // ── Feature summary using DB-sourced module list ──────────────────────────────

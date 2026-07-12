@@ -28,6 +28,7 @@ const SuperAdminPlans = lazy(() => import("@/pages/super-admin-plans"));
 const SuperAdminOverview = lazy(() => import("@/pages/super-admin-overview"));
 const SuperAdminBilling = lazy(() => import("@/pages/super-admin-billing"));
 const SuperAdminDemoRequests = lazy(() => import("@/pages/super-admin-demo-requests"));
+const SuperAdminAnnouncements = lazy(() => import("@/pages/super-admin-announcements"));
 const SuperAdminBackups = lazy(() => import("@/pages/super-admin-backups"));
 const SuperAdminModuleCatalog = lazy(() => import("@/pages/super-admin-module-catalog"));
 const SuperAdminSettings = lazy(() => import("@/pages/super-admin-settings"));
@@ -509,6 +510,7 @@ const FefoBillingPage = lazy(() => import("@/pages/pharmacy/fefo-billing"));
 const MarketplaceConnectPage = lazy(() => import("@/pages/ecommerce/marketplace-connect"));
 const PipelineBoardPage = lazy(() => import("@/pages/crm/pipeline-board"));
 const MandiDashboardPage = lazy(() => import("@/pages/agriculture/mandi-dashboard"));
+const LanguageSettingsPage = lazy(() => import("@/pages/language-settings"));
 
 type Role = 'admin' | 'operator' | 'reviewer' | 'manager';
 
@@ -2821,6 +2823,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "data-import", label: "Data Import", icon: Upload, onClick: () => setLocation('/?tab=data-import') },
         { id: "admin-tools", label: "Admin Tools", icon: Wrench, onClick: () => setLocation('/admin-tools') },
         { id: "company-settings", label: "Company Settings", icon: Building2, onClick: () => setLocation('/company-settings') },
+        { id: "language-settings", label: "Language Settings", icon: Globe, onClick: () => setLocation('/language-settings') },
         { id: "price-lists", label: "Price Lists", icon: Tag, onClick: () => setLocation('/price-lists') },
         { id: "approval-workflows", label: "Approval Workflows", icon: CheckCircle, onClick: () => setLocation('/approval-workflows') },
         { id: "audit-log", label: "Audit Log", icon: Shield, onClick: () => setLocation('/audit-log') },
@@ -3271,6 +3274,22 @@ function TenantSettingsPageWrapper() {
   return (
     <DashboardShell title="Company Settings" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={resolvedNav} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); setLocation(`/${viewId}`); }}>
       <TenantSettings />
+    </DashboardShell>
+  );
+}
+
+function LanguageSettingsPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('language-settings');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell title="Language Settings" onLogoutClick={() => logoutMutation.mutate()} notificationCount={0} navSections={resolvedNav} activeView={activeView} onNavigate={(viewId) => { setActiveView(viewId); setLocation(`/${viewId}`); }}>
+      <Suspense fallback={<div className="p-8 text-center">Loading...</div>}>
+        <LanguageSettingsPage />
+      </Suspense>
     </DashboardShell>
   );
 }
@@ -4490,6 +4509,7 @@ function Router() {
       <ProtectedRoute path="/super-admin/billing" component={() => <SuperAdminBilling />} />
       <ProtectedRoute path="/super-admin/plans" component={() => <SuperAdminPlans />} />
       <ProtectedRoute path="/super-admin/demo-requests" component={() => <SuperAdminDemoRequests />} />
+      <ProtectedRoute path="/super-admin/announcements" component={() => <SuperAdminAnnouncements />} />
       <ProtectedRoute path="/super-admin/backups" component={() => <SuperAdminBackups />} />
       <ProtectedRoute path="/super-admin/module-catalog" component={() => <SuperAdminModuleCatalog />} />
       <ProtectedRoute path="/super-admin/settings" component={() => <SuperAdminSettings />} />
@@ -4568,6 +4588,7 @@ function Router() {
       <ProtectedRoute path="/budget-variance" component={BudgetVariancePageWrapper} />
       <ProtectedRoute path="/admin-tools" component={AdminToolsPageWrapper} />
       <ProtectedRoute path="/company-settings" component={TenantSettingsPageWrapper} />
+      <ProtectedRoute path="/language-settings" component={LanguageSettingsPageWrapper} />
       <ProtectedRoute path="/hr/employees" component={HREmployeesWrapper} />
       <ProtectedRoute path="/hr/attendance" component={HRAttendanceWrapper} />
       <ProtectedRoute path="/hr/leaves" component={HRLeavesWrapper} />

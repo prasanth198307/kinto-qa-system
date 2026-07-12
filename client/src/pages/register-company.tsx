@@ -35,9 +35,23 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 const INDUSTRIES = [
-  "Manufacturing", "Services", "Trading / Distribution", "Healthcare",
-  "Education", "Logistics & Transport", "Real Estate", "Retail / POS",
-  "Agriculture / Agri-business", "Construction", "Technology / IT", "Other",
+  { value: "restaurant",    label: "🍽️  Restaurant / F&B" },
+  { value: "hotel",         label: "🏨  Hotel / Hospitality" },
+  { value: "healthcare",    label: "🏥  Healthcare / Clinic" },
+  { value: "pharmacy",      label: "💊  Pharmacy / Medical Store" },
+  { value: "manufacturing", label: "🏭  Manufacturing / Production" },
+  { value: "retail",        label: "🛒  Retail / POS" },
+  { value: "logistics",     label: "🚚  Logistics & Transport" },
+  { value: "real_estate",   label: "🏗️  Real Estate / Construction" },
+  { value: "education",     label: "🎓  Education / School / College" },
+  { value: "agriculture",   label: "🌾  Agriculture / Agri-business" },
+  { value: "ngo",           label: "🤝  NGO / Non-Profit" },
+  { value: "nidhi",         label: "🏦  Nidhi Company / Microfinance" },
+  { value: "trading",       label: "📦  Trading / Distribution" },
+  { value: "technology",    label: "💻  Technology / IT Services" },
+  { value: "finance",       label: "💰  Finance / NBFC" },
+  { value: "ecommerce",     label: "🛍️  E-Commerce" },
+  { value: "general",       label: "🏢  General / Other" },
 ];
 
 const PRESET_COLORS = [
@@ -74,7 +88,7 @@ export default function RegisterCompanyPage() {
   const taxProfile = getCountryProfile(country);
 
   const [form, setForm] = useState({
-    companyName: "", slug: "", gstNumber: "", address: "",
+    companyName: "", slug: "", gstNumber: "", address: "", industry: "",
     adminName: "", email: "", password: "", confirmPassword: "", phone: "",
   });
 
@@ -121,7 +135,6 @@ export default function RegisterCompanyPage() {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [primaryColor, setPrimaryColor] = useState("#1a56db");
-  const [industry, setIndustry] = useState("");
   const [customDomain, setCustomDomain] = useState("");
   const [savingBranding, setSavingBranding] = useState(false);
 
@@ -165,6 +178,10 @@ export default function RegisterCompanyPage() {
   const handleCompanyStep = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.companyName.trim() || !form.slug.trim()) return;
+    if (!form.industry) {
+      toast({ title: "Please select your industry", description: "This helps us tailor your ERP dashboard.", variant: "destructive" });
+      return;
+    }
     if (!/^[a-z0-9-]{3,50}$/.test(form.slug)) {
       toast({ title: "Invalid company ID", description: "Use 3–50 chars: lowercase letters, numbers, hyphens only.", variant: "destructive" });
       return;
@@ -193,6 +210,7 @@ export default function RegisterCompanyPage() {
         adminName: form.adminName, email: form.email, password: form.password,
         phone: form.phone || undefined, gstNumber: form.gstNumber || undefined,
         address: form.address || undefined, country,
+        industry: form.industry || undefined,
       });
       const data = await result.json();
       setRegisteredData({ name: data.tenant.name, slug: data.tenant.slug, username: data.username });
@@ -272,12 +290,9 @@ export default function RegisterCompanyPage() {
           fd.append("logo", logoFile);
           await fetch("/api/tenant/upload-logo", { method: "POST", body: fd });
         }
-        // Save settings (color, industry)
-        if (primaryColor !== "#1a56db" || industry || customDomain) {
-          await apiRequest("PATCH", "/api/tenant/settings", {
-            ...(primaryColor !== "#1a56db" ? { primaryColor } : {}),
-            ...(industry ? { industry } : {}),
-          });
+        // Save brand color (industry already saved at registration)
+        if (primaryColor !== "#1a56db") {
+          await apiRequest("PATCH", "/api/tenant/settings", { primaryColor });
         }
         // Save custom domain as additional CORS origin
         if (customDomain.trim()) {
@@ -461,6 +476,22 @@ export default function RegisterCompanyPage() {
                         ))}
                       </SelectContent>
                     </Select>
+                  </div>
+
+                  {/* Industry / ERP vertical */}
+                  <div className="space-y-2">
+                    <Label htmlFor="industry">Industry / ERP Type</Label>
+                    <Select value={form.industry} onValueChange={v => setForm(prev => ({ ...prev, industry: v }))}>
+                      <SelectTrigger id="industry" data-testid="select-industry">
+                        <SelectValue placeholder="Select your industry…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {INDUSTRIES.map(ind => (
+                          <SelectItem key={ind.value} value={ind.value}>{ind.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">Tailors your dashboard, modules, and tax settings.</p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
@@ -761,20 +792,16 @@ export default function RegisterCompanyPage() {
                     </div>
                   </div>
 
-                  {/* Industry */}
-                  <div className="space-y-2">
-                    <Label>Industry <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                    <Select value={industry} onValueChange={setIndustry}>
-                      <SelectTrigger data-testid="select-industry">
-                        <SelectValue placeholder="Select your industry…" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {INDUSTRIES.map(ind => (
-                          <SelectItem key={ind} value={ind}>{ind}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {/* Industry — read-only, set in Step 1 */}
+                  {form.industry && (
+                    <div className="space-y-1.5">
+                      <Label>Industry</Label>
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-md border bg-muted/40 text-sm">
+                        {INDUSTRIES.find(i => i.value === form.industry)?.label ?? form.industry}
+                        <span className="ml-auto text-xs text-muted-foreground">Set in step 1</span>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Custom domain */}
                   <div className="space-y-2">
@@ -865,7 +892,7 @@ export default function RegisterCompanyPage() {
                 }
                 <div>
                   <p className="text-sm font-semibold">{form.companyName || "Your Company"}</p>
-                  <p className="text-xs opacity-60">{industry || "Industry not set"}</p>
+                  <p className="text-xs opacity-60">{INDUSTRIES.find(i => i.value === form.industry)?.label ?? "Industry not set"}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2 text-xs opacity-70">

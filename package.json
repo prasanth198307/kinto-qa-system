@@ -136,6 +136,8 @@
     "vite": "^7.2.1"
   },
   "optionalDependencies": {
+    "@esbuild/darwin-arm64": "^0.28.1",
+    "@rollup/rollup-darwin-arm64": "^4.62.2",
     "bufferutil": "^4.0.8"
   }
 }
