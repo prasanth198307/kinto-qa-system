@@ -119,12 +119,17 @@ const NAV_SOLUTIONS_BY_INDUSTRY = [
   { label: "Fabrication Shops",           desc: "Job cards, material issue, costing" },
   { label: "Pharmaceuticals",             desc: "Lot tracking, QC, compliance" },
   { label: "Healthcare & Clinics",        desc: "OPD/IPD, wards, patient billing" },
+  { label: "Hotel & Hospitality",         desc: "Rooms, F&B, folios, channel manager" },
+  { label: "Restaurant & POS",           desc: "KOT, table orders, loyalty, Z-report" },
+  { label: "Pharmacy",                   desc: "FEFO billing, narcotics, prescriptions" },
   { label: "Schools & Colleges",          desc: "Fees, attendance, timetable" },
   { label: "Logistics & Transport",       desc: "Fleet, trips, lorry receipts (LR)" },
   { label: "Real Estate / Builders",      desc: "Units, bookings, payment schedules" },
   { label: "Retail & Distribution",       desc: "POS terminal, stock, sales history" },
   { label: "Agriculture & Agri-processing", desc: "Farms, crop cycles, procurement" },
-  { label: "Service Businesses",          desc: "Projects, timesheets, billing" },
+  { label: "NGO / Trusts",               desc: "80G, FCRA filing, donor portal" },
+  { label: "Nidhi Company",              desc: "NDH returns, loans, FD/RD, PDC" },
+  { label: "Gold & Jewellery",           desc: "Making charges, karat, purity tracking" },
 ];
 
 const MODULE_GROUPS = [
@@ -775,6 +780,78 @@ export default function LandingPage() {
             </div>
           </div>
 
+        </div>
+      </section>
+
+      {/* ── NEW VERTICALS SHOWCASE ──────────────────────────────────────── */}
+      <section className="py-16 border-t bg-gradient-to-br from-orange-50/50 via-background to-background dark:from-orange-950/20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <div className="inline-flex items-center gap-2 bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 text-xs font-semibold px-3 py-1.5 rounded-full mb-4">
+              <Building2 className="w-3.5 h-3.5" />
+              17 Industry Verticals
+            </div>
+            <h2 className="text-2xl md:text-3xl font-bold mb-3">Specialised ERP for every business type</h2>
+            <p className="text-muted-foreground max-w-xl mx-auto text-sm">From Hotel rooms to Nidhi loans to NGO donor portals — each vertical has purpose-built workflows, not generic modules renamed.</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              {
+                icon: Hotel,
+                color: "bg-sky-100 dark:bg-sky-900/40 text-sky-600",
+                title: "Hotel ERP",
+                badge: "New",
+                badgeColor: "bg-sky-100 text-sky-700 dark:bg-sky-900/60 dark:text-sky-300",
+                points: ["PMS + front office", "F&B POS with room posting", "Banquet & conference rooms", "OTA channel sync"],
+              },
+              {
+                icon: Pill,
+                color: "bg-lime-100 dark:bg-lime-900/40 text-lime-700",
+                title: "Pharmacy ERP",
+                badge: "New",
+                badgeColor: "bg-lime-100 text-lime-700 dark:bg-lime-900/60 dark:text-lime-300",
+                points: ["FEFO billing engine", "Narcotics register", "Prescription tracking", "Expiry & return alerts"],
+              },
+              {
+                icon: TreePine,
+                color: "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600",
+                title: "NGO / Trust ERP",
+                badge: "New",
+                badgeColor: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300",
+                points: ["Bulk 80G certificates", "FCRA fund accounting", "Donor portal", "CSR compliance reports"],
+              },
+              {
+                icon: Landmark,
+                color: "bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700",
+                title: "Nidhi Company ERP",
+                badge: "New",
+                badgeColor: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/60 dark:text-yellow-300",
+                points: ["FD / RD management", "Loan & EMI workflows", "PDC cheque tracking", "RBI NDH returns"],
+              },
+            ].map(v => (
+              <div key={v.title} className="bg-background border rounded-2xl p-5 hover-elevate">
+                <div className="flex items-start justify-between mb-3">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${v.color}`}>
+                    <v.icon className="w-5 h-5" />
+                  </div>
+                  <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ${v.badgeColor}`}>{v.badge}</span>
+                </div>
+                <h3 className="font-bold text-sm mb-2.5">{v.title}</h3>
+                <ul className="space-y-1.5">
+                  {v.points.map(p => (
+                    <li key={p} className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <CheckCircle2 className="w-3 h-3 text-primary shrink-0" />{p}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+          <div className="text-center mt-8">
+            <Button variant="outline" onClick={() => setLocation("/solutions")} className="gap-2">
+              View all 17 industry verticals <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
       </section>
 

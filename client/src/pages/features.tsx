@@ -8,6 +8,7 @@ import {
   GraduationCap, ShoppingBag, Leaf, Zap,
   UserCheck, Building2, Settings, Key, Webhook, MonitorSmartphone,
   Target, Home, Globe, Layers, LayoutDashboard,
+  Hotel, Pill, TreePine, Landmark, Coins, Sparkles, Video, Headphones,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -396,6 +397,126 @@ const GROUPS = [
         ],
         how: "Register farm → start crop cycle → record harvest → procure from farmers → sell → invoice raised.",
       },
+      {
+        id: "hotel",
+        icon: Hotel,
+        name: "Hotel ERP",
+        tagline: "Rooms, bookings, F&B, folios, channel manager",
+        description:
+          "A full-stack hotel management system covering front office, housekeeping, F&B, banquets, and finance — all in one platform. Integrates with OTA channels and generates GST-compliant folios.",
+        features: [
+          "Room inventory with real-time availability calendar",
+          "Check-in / check-out with folio management",
+          "F&B POS with KOT and room charge posting",
+          "Banquet & conference room bookings",
+          "OTA channel sync and direct booking engine",
+        ],
+        how: "Guest books → check-in → charges posted to folio → check-out → GST invoice → payment settled.",
+      },
+      {
+        id: "pharmacy",
+        icon: Pill,
+        name: "Pharmacy ERP",
+        tagline: "FEFO billing, narcotics register, prescriptions",
+        description:
+          "Pharmacy-specific billing engine with FEFO (First Expiry First Out) stock depletion, narcotics register maintenance, prescription tracking, and GST-compliant invoicing with drug schedules.",
+        features: [
+          "FEFO-based stock depletion to minimise expiry losses",
+          "Narcotics and Schedule H / H1 drug register",
+          "Prescription linkage on every sales bill",
+          "Supplier return and expiry claim management",
+          "GST-compliant pharmacy billing with HSN codes",
+        ],
+        how: "Receive drug stock → FEFO assigned → pharmacist bills prescription → narcotics logged → invoice raised.",
+      },
+      {
+        id: "ngo",
+        icon: TreePine,
+        name: "NGO / Trust ERP",
+        tagline: "80G certificates, FCRA filing, donor portal",
+        description:
+          "Purpose-built for non-profits. Manage donor registrations, issue 80G certificates in bulk, track FCRA-regulated foreign contributions, and maintain fund-wise accounting for CSR and grants.",
+        features: [
+          "Donor registration and contribution tracking",
+          "80G certificate bulk PDF generation & e-mail dispatch",
+          "FCRA fund accounting and online filing support",
+          "Project-wise fund utilisation reports",
+          "CSR compliance module for corporate donors",
+        ],
+        how: "Register donor → record donation → generate 80G PDF → mail to donor → fund utilisation report for board.",
+      },
+      {
+        id: "nidhi",
+        icon: Landmark,
+        name: "Nidhi Company ERP",
+        tagline: "RBI NDH returns, loans, FD/RD, PDC tracking",
+        description:
+          "Regulatory-compliant ERP for Nidhi companies. Manage member savings, fixed deposits, recurring deposits, loan disbursements, EMI collections, PDC tracking, and RBI NDH return filing.",
+        features: [
+          "Member master with KYC and shareholding",
+          "FD / RD management with auto-maturity alerts",
+          "Loan sanction workflow with repayment schedule",
+          "PDC (post-dated cheque) tracking and bounce alerts",
+          "RBI NDH quarterly return generation",
+        ],
+        how: "Member joins → opens FD/RD → applies for loan → EMI collected → PDC tracked → RBI return filed.",
+      },
+    ],
+  },
+  {
+    id: "ai-products",
+    label: "AI Products",
+    headline: "AI-powered platform tools — beyond ERP",
+    sub: "SwachForms, SwachMeet, and SwachDesk are included with every subscription — no separate licence.",
+    modules: [
+      {
+        id: "swachforms",
+        icon: Sparkles,
+        name: "SwachForms",
+        tagline: "AI form builder — describe it, AI builds it instantly",
+        description:
+          "Describe any form in plain English and SwachForms generates all fields, validations, and layout in seconds. Build patient intake, feedback, inspection, admission, or compliance forms — no coding needed. Share via public link or QR code.",
+        features: [
+          "AI-powered field generation from plain English description",
+          "8 industry-specific templates out of the box",
+          "Conditional logic and multi-step form flows",
+          "Public link + QR code sharing for instant distribution",
+          "Submission dashboard with analytics and CSV export",
+        ],
+        how: "Describe form → AI generates → customise if needed → share link/QR → responses arrive in dashboard.",
+      },
+      {
+        id: "swachmeet",
+        icon: Video,
+        name: "SwachMeet",
+        tagline: "Built-in video conferencing — no Zoom needed",
+        description:
+          "Host client meetings, staff reviews, vendor negotiations, and remote training sessions directly inside SwachERP. No separate Zoom or Teams subscription — works in the browser, no app download required.",
+        features: [
+          "HD video and audio conferencing in-browser",
+          "Screen sharing for demos and presentations",
+          "Session recording and playback",
+          "Works from any device — laptop, tablet, or phone",
+          "Integrated with SwachERP contacts and calendar",
+        ],
+        how: "Create meeting → share invite link → participant joins browser → screen-share and record → meeting ends.",
+      },
+      {
+        id: "swachdesk",
+        icon: Headphones,
+        name: "SwachDesk",
+        tagline: "Helpdesk ticketing with SLA tracking & escalations",
+        description:
+          "Built-in helpdesk for managing customer complaints, internal IT tickets, and vendor issues. Set SLA timers, assign agents, define escalation paths, and maintain a full ticket history with audit trail.",
+        features: [
+          "SLA timers with breach alerts and escalation rules",
+          "Multi-priority ticket queues (Critical, High, Medium, Low)",
+          "Agent assignment and workload balancing",
+          "Full ticket history with every comment and attachment",
+          "Customer satisfaction (CSAT) rating on ticket close",
+        ],
+        how: "Ticket raised → SLA timer starts → agent assigned → resolved → CSAT sent → audit trail logged.",
+      },
     ],
   },
   {
@@ -474,11 +595,12 @@ const GROUPS = [
 
 // ─── Category colour map ──────────────────────────────────────────────────────
 const CAT_COLOR: Record<string, { pill: string; icon: string }> = {
-  operations: { pill: "bg-blue-100 text-blue-700",    icon: "text-blue-600 bg-blue-50"    },
-  finance:    { pill: "bg-emerald-100 text-emerald-700", icon: "text-emerald-600 bg-emerald-50" },
-  people:     { pill: "bg-violet-100 text-violet-700", icon: "text-violet-600 bg-violet-50" },
-  verticals:  { pill: "bg-orange-100 text-orange-700", icon: "text-orange-600 bg-orange-50" },
-  platform:   { pill: "bg-rose-100 text-rose-700",    icon: "text-rose-600 bg-rose-50"    },
+  operations:   { pill: "bg-blue-100 text-blue-700",    icon: "text-blue-600 bg-blue-50"    },
+  finance:      { pill: "bg-emerald-100 text-emerald-700", icon: "text-emerald-600 bg-emerald-50" },
+  people:       { pill: "bg-violet-100 text-violet-700", icon: "text-violet-600 bg-violet-50" },
+  verticals:    { pill: "bg-orange-100 text-orange-700", icon: "text-orange-600 bg-orange-50" },
+  "ai-products":{ pill: "bg-purple-100 text-purple-700", icon: "text-purple-600 bg-purple-50" },
+  platform:     { pill: "bg-rose-100 text-rose-700",    icon: "text-rose-600 bg-rose-50"    },
 };
 
 // ─── Module card ──────────────────────────────────────────────────────────────

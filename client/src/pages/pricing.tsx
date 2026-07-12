@@ -9,6 +9,7 @@ import {
   HeartPulse, GraduationCap, Truck, Home, ShoppingBag, Leaf, Key, GitBranch,
   ClipboardCheck, Wrench, FolderKanban, BarChart3, PiggyBank, ShoppingCart,
   ClipboardList, MonitorSmartphone, ChevronLeft,
+  Hotel, Pill, TreePine, Landmark, Coins, Sparkles, Video, Headphones,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -69,11 +70,25 @@ const MODULE_GROUPS = [
     color: "bg-teal-50 dark:bg-teal-950/20 border-teal-200 dark:border-teal-800",
     modules: [
       { icon: HeartPulse,     name: "Healthcare",             desc: "Patients, OPD/IPD, wards, appointments",            price: 999 },
+      { icon: Hotel,          name: "Hotel ERP",              desc: "Rooms, folios, F&B POS, channel manager",           price: 1499, popular: true },
       { icon: GraduationCap,  name: "Education ERP",          desc: "Students, fees, timetable, assessments",            price: 999 },
       { icon: Truck,          name: "Logistics & Fleet",      desc: "Vehicles, trips, LR / consignment notes",           price: 799 },
       { icon: Home,           name: "Real Estate",            desc: "Projects, units, bookings, payment schedules",      price: 799 },
       { icon: ShoppingBag,    name: "Retail / POS",           desc: "POS terminal, sessions, sales history",             price: 699 },
       { icon: Leaf,           name: "Agriculture",            desc: "Farms, crop cycles, procurement, prices",           price: 699 },
+      { icon: Pill,           name: "Pharmacy ERP",           desc: "FEFO billing, narcotics register, prescriptions",   price: 899 },
+      { icon: TreePine,       name: "NGO / Trust ERP",        desc: "80G certificates, FCRA fund accounting, donors",    price: 799 },
+      { icon: Landmark,       name: "Nidhi Company ERP",      desc: "FD/RD, loans, EMI collection, NDH returns",        price: 999 },
+      { icon: Coins,          name: "Gold & Jewellery ERP",   desc: "Making charges, karat tracking, BIS hallmarking",   price: 899 },
+    ],
+  },
+  {
+    category: "AI Products",
+    color: "bg-purple-50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800",
+    modules: [
+      { icon: Sparkles,       name: "SwachForms",             desc: "AI form builder — describe it, AI builds it instantly", price: 399, popular: true },
+      { icon: Video,          name: "SwachMeet",              desc: "Built-in video conferencing — no Zoom needed",       price: 299 },
+      { icon: Headphones,     name: "SwachDesk",              desc: "Helpdesk with SLA timers, escalation & CSAT",        price: 499 },
     ],
   },
 ];
