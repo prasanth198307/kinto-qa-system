@@ -46,7 +46,7 @@ const PRESET_COLORS = [
 // ─── Right-panel content per step ────────────────────────────────────────────
 type PanelConfig = { icon: React.FC<any>; heading: string; sub: string; bullets: string[] };
 const RIGHT_PANEL: Record<Step, PanelConfig> = {
-  company:  { icon: Building2,    heading: "14-Day Free Trial",   sub: "Full access to everything. No credit card required.", bullets: ["Set up in minutes", "GST-ready from day one", "Invite your team instantly", "Cancel anytime — no lock-in"] },
+  company:  { icon: Building2,    heading: "14-Day Free Trial",   sub: "Full access to everything. No credit card required.", bullets: ["Set up in minutes", "Multi-tax ready from day one", "Invite your team instantly", "Cancel anytime — no lock-in"] },
   admin:    { icon: User,         heading: "You're almost there", sub: "Create your admin account to complete setup.",         bullets: ["You'll be the account owner", "Add more users after sign-in", "Role-based access control built in"] },
   modules:  { icon: Package,      heading: "Build your ERP",      sub: "Pick only what your business needs.",                  bullets: ["Core modules always free", "Each paid module billed monthly", "Add or remove any time", "14-day trial — nothing charged yet"] },
   branding: { icon: Palette,      heading: "Make it yours",       sub: "Add your logo and brand colours (optional).",          bullets: ["Logo appears on invoices & ESS portal", "Brand colour applied across the app", "Industry helps tailor your dashboard", "Custom domain CORS set automatically"] },
@@ -444,7 +444,7 @@ export default function RegisterCompanyPage() {
 
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-2">
-                      <Label htmlFor="gst-number">GST Number <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                      <Label htmlFor="gst-number">Tax Number / GST <span className="text-muted-foreground text-xs">(optional)</span></Label>
                       <Input id="gst-number" data-testid="input-gst-number" placeholder="22AAAAA0000A1Z5"
                         value={form.gstNumber} onChange={update("gstNumber")} />
                     </div>
