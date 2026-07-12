@@ -456,6 +456,47 @@ function DashboardPreview() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// FAQ
+// ─────────────────────────────────────────────────────────────────────────────
+
+const FAQS = [
+  { q: "Is SwachERP only for India?", a: "No. SwachERP supports multi-country tax rules — GST (India), VAT (UAE/UK/EU), ZATCA (Saudi Arabia), and US Sales Tax. The platform is designed for global operations with multi-currency and multi-company support." },
+  { q: "How long does it take to go live?", a: "Most businesses go live within 1–5 days. You can import masters (products, customers, employees) from Excel, and our onboarding team assists with migrating from Tally, Zoho, or any spreadsheet at no extra cost." },
+  { q: "Do I need to buy all modules?", a: "No. You only pay for the modules your business actually uses. Start with the free core (Dashboard, Users, Roles, Company Settings) and add modules as you grow. You can toggle modules on or off any time." },
+  { q: "Can I migrate from Tally or Zoho?", a: "Yes. We provide Excel import templates for all masters and opening balances. Our team helps you migrate existing data so you don't start from scratch." },
+  { q: "Is my data secure?", a: "Your data is stored on dedicated servers with daily backups, TLS encryption in transit, and AES-256 encryption at rest. Each company's data is fully isolated — no shared tables." },
+  { q: "Does SwachERP work on mobile?", a: "Yes. The web app is fully responsive and works on any mobile browser. Native Android and iOS apps are in development. The Restaurant POS steward app already works on tablets." },
+  { q: "What is SwachForms?", a: "SwachForms is an AI-powered form builder included with every subscription. Describe a form in plain English — patient intake, feedback, inspection, admission — and AI generates all fields instantly. Share via public link or QR code." },
+  { q: "Can multiple companies share one account?", a: "Yes. SwachERP supports multi-company setups with fully isolated data per entity. Group companies, holding structures, and sister units can all be managed from one login." },
+  { q: "What support is included?", a: "All plans include email support and access to documentation. Professional and Enterprise plans include priority support with SLA-backed response times and a dedicated onboarding manager." },
+  { q: "Is there a free trial?", a: "Yes — 14 days, full access, no credit card required. You can explore all modules and set up your real data before deciding to subscribe." },
+];
+
+function FaqSection() {
+  const [open, setOpen] = useState<number | null>(null);
+  return (
+    <div className="space-y-2">
+      {FAQS.map((faq, i) => (
+        <div key={i} className="border rounded-xl overflow-hidden">
+          <button
+            onClick={() => setOpen(open === i ? null : i)}
+            className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-muted/30 transition-colors"
+          >
+            <span className="font-medium text-sm">{faq.q}</span>
+            <ChevronDown className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform duration-200 ${open === i ? "rotate-180" : ""}`} />
+          </button>
+          {open === i && (
+            <div className="px-5 pb-4 text-sm text-muted-foreground leading-relaxed border-t pt-3">
+              {faq.a}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // PAGE
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -615,6 +656,79 @@ export default function LandingPage() {
                 <div className="text-xs text-muted-foreground mt-0.5">{s.label}</div>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── LOGO WALL ───────────────────────────────────────────────────── */}
+      <section className="border-b py-10 bg-background">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <p className="text-center text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-8">Trusted by businesses across manufacturing, hospitality, healthcare & more</p>
+          <div className="flex flex-wrap justify-center items-center gap-x-10 gap-y-5 opacity-60">
+            {[
+              "Precision Parts Co.", "Alpha Industries", "Bharat Engineering",
+              "MedCare Hospitals", "GreenField Hotels", "AgroVision Farms",
+              "NextGen Logistics", "EduFirst Schools", "RetailMax Chain",
+              "BuildRight Developers", "PharmaPlus Stores", "Unity NGO Trust",
+            ].map(name => (
+              <span key={name} className="text-sm font-semibold text-muted-foreground tracking-tight whitespace-nowrap">{name}</span>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── HOW IT WORKS ────────────────────────────────────────────────── */}
+      <section className="py-16 border-b bg-muted/20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-2xl md:text-3xl font-bold mb-3">Up and running in 3 steps</h2>
+            <p className="text-muted-foreground text-sm max-w-lg mx-auto">No implementation consultant needed. Most teams go live within a week.</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
+            {/* connector line desktop */}
+            <div className="hidden md:block absolute top-8 left-1/3 right-1/3 h-0.5 bg-border" />
+            {[
+              {
+                step: "01",
+                icon: Building2,
+                title: "Register your company",
+                desc: "Sign up with your company name and industry. SwachERP auto-configures the right modules, tax settings, and chart of accounts for your business type.",
+                time: "5 minutes",
+              },
+              {
+                step: "02",
+                icon: Settings,
+                title: "Configure & import masters",
+                desc: "Import your products, customers, vendors, and employees via Excel. Our onboarding team helps you migrate from Tally, Zoho, or any spreadsheet.",
+                time: "1–3 days",
+              },
+              {
+                step: "03",
+                icon: TrendingUp,
+                title: "Go live & grow",
+                desc: "Your team starts raising invoices, managing inventory, running payroll, and tracking leads — all from one screen. Real-time dashboards update instantly.",
+                time: "Day 1 onwards",
+              },
+            ].map((s, i) => {
+              const Icon = s.icon;
+              return (
+                <div key={s.step} className="relative flex flex-col items-center text-center">
+                  <div className="w-16 h-16 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center mb-5 shadow-lg relative z-10">
+                    <Icon className="w-7 h-7" />
+                  </div>
+                  <span className="absolute top-0 right-1/4 text-[10px] font-black text-muted-foreground/20 text-7xl leading-none select-none">{s.step}</span>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-2">{s.time}</p>
+                  <h3 className="font-bold text-base mb-2">{s.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{s.desc}</p>
+                </div>
+              );
+            })}
+          </div>
+          <div className="text-center mt-10">
+            <Button size="lg" onClick={() => setLocation("/register-company")} className="gap-2">
+              Start your free trial now <ArrowRight className="w-4 h-4" />
+            </Button>
+            <p className="text-xs text-muted-foreground mt-2">No credit card · No setup fee · Cancel anytime</p>
           </div>
         </div>
       </section>
@@ -1102,6 +1216,62 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── COMPARISON TABLE ────────────────────────────────────────────── */}
+      <section className="py-16 border-t bg-muted/10">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <h2 className="text-2xl md:text-3xl font-bold mb-3">How SwachERP compares</h2>
+            <p className="text-muted-foreground text-sm max-w-xl mx-auto">Thinking of Tally, Zoho, or Odoo? Here's an honest comparison of what each platform actually covers.</p>
+          </div>
+          <div className="overflow-x-auto rounded-2xl border">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/40">
+                  <th className="text-left px-4 py-3 font-semibold text-sm">Feature</th>
+                  <th className="px-4 py-3 font-bold text-primary text-sm">SwachERP</th>
+                  <th className="px-4 py-3 font-semibold text-muted-foreground text-sm">Tally Prime</th>
+                  <th className="px-4 py-3 font-semibold text-muted-foreground text-sm">Zoho One</th>
+                  <th className="px-4 py-3 font-semibold text-muted-foreground text-sm">Odoo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  ["17 Industry Verticals (Hotel, NGO, Nidhi…)", true, false, false, "partial"],
+                  ["AI-powered form builder (SwachForms)", true, false, false, false],
+                  ["WhatsApp machine checklists & alerts", true, false, false, false],
+                  ["Built-in video conferencing (SwachMeet)", true, false, false, false],
+                  ["Restaurant POS with KOT & table mgmt", true, false, false, "partial"],
+                  ["Hotel PMS with folios & channel sync", true, false, false, "partial"],
+                  ["NGO 80G certificates & FCRA accounting", true, false, false, false],
+                  ["Nidhi Company RBI NDH returns", true, false, false, false],
+                  ["Multi-country tax (GST/VAT/ZATCA/US)", true, false, "partial", true],
+                  ["Full HR & Payroll (no add-on needed)", true, false, "partial", "partial"],
+                  ["Cloud-native (no desktop install)", true, false, true, true],
+                  ["Open REST API with live tester", true, false, true, true],
+                  ["14-day free trial", true, false, true, true],
+                ].map(([feature, sw, tally, zoho, odoo], i) => {
+                  const cell = (val: boolean | string) => {
+                    if (val === true) return <span className="text-emerald-600 font-bold">✓</span>;
+                    if (val === false) return <span className="text-muted-foreground/40">—</span>;
+                    return <span className="text-amber-500 text-xs font-medium">Partial</span>;
+                  };
+                  return (
+                    <tr key={i} className={`border-b last:border-0 ${i % 2 === 0 ? "" : "bg-muted/20"}`}>
+                      <td className="px-4 py-3 text-sm">{feature}</td>
+                      <td className="px-4 py-3 text-center bg-primary/5">{cell(sw)}</td>
+                      <td className="px-4 py-3 text-center">{cell(tally)}</td>
+                      <td className="px-4 py-3 text-center">{cell(zoho)}</td>
+                      <td className="px-4 py-3 text-center">{cell(odoo)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-center text-xs text-muted-foreground mt-4">Based on publicly available feature documentation. Last updated July 2025.</p>
+        </div>
+      </section>
+
       {/* ── PRICING ─────────────────────────────────────────────────────── */}
       <section id="pricing" className="py-16 border-t bg-muted/20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -1201,6 +1371,17 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── FAQ ─────────────────────────────────────────────────────────── */}
+      <section className="py-16 border-t">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-10">
+            <h2 className="text-2xl md:text-3xl font-bold mb-2">Frequently asked questions</h2>
+            <p className="text-muted-foreground text-sm">Can't find what you're looking for? <a href="mailto:info@microgridtechsol.com" className="text-primary underline underline-offset-2">Email us</a>.</p>
+          </div>
+          <FaqSection />
+        </div>
+      </section>
+
       {/* ── FINAL CTA ───────────────────────────────────────────────────── */}
       <section className="py-20 border-t bg-primary/5">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 text-center">
@@ -1213,6 +1394,27 @@ export default function LandingPage() {
             <Button size="lg" variant="outline" onClick={handleDemoLogin} disabled={demoLoading} data-testid="footer-demo-btn" className="gap-2">
               {demoLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />} Try Live Demo
             </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* ── SECURITY TRUST BAR ──────────────────────────────────────────── */}
+      <section className="border-t py-8 bg-muted/30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-wrap justify-center items-center gap-x-10 gap-y-4">
+            {[
+              { icon: Lock,    label: "TLS + AES-256 Encryption" },
+              { icon: Shield,  label: "Daily Automated Backups" },
+              { icon: Database,label: "Isolated Tenant Data" },
+              { icon: Globe,   label: "99.9% Uptime SLA" },
+              { icon: Key,     label: "Scoped API Access Control" },
+              { icon: Cpu,     label: "AI-Powered & Cloud-Native" },
+            ].map(b => (
+              <div key={b.label} className="flex items-center gap-2 text-xs text-muted-foreground">
+                <b.icon className="w-4 h-4 text-primary/70" />
+                <span className="font-medium">{b.label}</span>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -1288,6 +1490,18 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+
+      {/* ── FLOATING WHATSAPP BUTTON ────────────────────────────────────── */}
+      <a
+        href="https://wa.me/919999999999?text=Hi%2C%20I%20want%20to%20know%20more%20about%20SwachERP"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-24 right-5 z-50 w-13 h-13 bg-green-500 hover:bg-green-600 text-white rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-110"
+        title="Chat on WhatsApp"
+        style={{ width: 52, height: 52 }}
+      >
+        <MessageCircle className="w-6 h-6 fill-white stroke-none" />
+      </a>
 
       {/* Colloki AI chat widget — fixed bottom-right */}
       <colloki-chat
