@@ -294,7 +294,7 @@ export default function SolutionsPage() {
                 <span className="text-primary">SwachERP speaks your language.</span>
               </h1>
               <p className="text-muted-foreground text-base leading-relaxed">
-                Whether you manufacture auto parts, run a hospital, manage a school, or operate a logistics fleet — SwachERP has purpose-built modules for your workflows, with GST compliance built in.
+                Whether you manufacture auto parts, run a hospital, manage a school, or operate a logistics fleet — SwachERP has purpose-built modules for your workflows, with multi-country tax compliance built in.
               </p>
             </div>
             <div className="flex flex-wrap gap-3 lg:flex-col lg:items-end">

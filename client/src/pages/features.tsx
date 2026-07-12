@@ -147,7 +147,7 @@ const GROUPS = [
         name: "GST Invoicing",
         tagline: "Tax, proforma, credit notes, GSTR reports",
         description:
-          "Generate GST-compliant tax invoices, proforma invoices, credit notes, and debit notes in seconds. CGST, SGST, IGST, and TDS computed automatically. Export GSTR-1 and GSTR-3B directly in the government's JSON format.",
+          "Generate tax-compliant invoices, proforma invoices, credit notes, and debit notes in seconds. Supports GST (CGST/SGST/IGST), VAT, ZATCA, EU VAT, and US Sales Tax — computed automatically by country. Export statutory reports in the required format.",
         features: [
           "Tax invoice, proforma, credit note & debit note",
           "Auto CGST / SGST / IGST / TDS computation",
@@ -698,7 +698,7 @@ export default function FeaturesPage() {
                 <span className="text-primary">one unified platform.</span>
               </h1>
               <p className="text-muted-foreground text-base leading-relaxed">
-                SwachERP covers production, finance, HR, CRM, and industry-specific workflows in a single GST-compliant cloud ERP. No integrations, no sync issues, no data silos.
+                SwachERP covers production, finance, HR, CRM, and industry-specific workflows in a single multi-tax cloud ERP. No integrations, no sync issues, no data silos.
               </p>
             </div>
             <div className="flex flex-wrap gap-3 lg:flex-col lg:items-end">

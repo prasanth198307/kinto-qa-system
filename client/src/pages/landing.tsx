@@ -210,19 +210,19 @@ const STRENGTHS = [
     icon: MessageCircle,
     color: "bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800",
     iconColor: "bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400",
-    tag: "India's first",
+    tag: "World first",
     title: "WhatsApp-powered machine operations",
-    desc: "Operators receive machine startup checklists directly on WhatsApp — no new app, no training. Responses are AI-interpreted and logged in real time. Supervisors get instant alerts for any failed check. Nothing like this exists in any other Indian ERP.",
+    desc: "Operators receive machine startup checklists directly on WhatsApp — no new app, no training. Responses are AI-interpreted and logged in real time. Supervisors get instant alerts for any failed check. Nothing like this exists in any other ERP globally.",
     points: ["Daily machine startup & shutdown checklists", "AI interprets free-text responses from operators", "Real-time supervisor alerts for failed or missed checks", "Full audit trail — who responded, what time, what machine"],
   },
   {
     icon: FileText,
     color: "bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800",
     iconColor: "bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400",
-    tag: "Built for India",
-    title: "GST compliance built in from day one",
-    desc: "Not retrofitted — GST was designed into every transaction. Invoices, credit notes, debit notes, and advance receipts all carry GSTIN, HSN codes, and tax breakdowns. Export GST reports and reconcile GSTR-1 without any extra tool.",
-    points: ["GSTIN-compliant tax invoices & e-receipts", "Credit notes, debit notes, advance receipts", "HSN / SAC code support with auto-populated rates", "GSTR-1 & GSTR-3B export-ready reports"],
+    tag: "Multi-tax",
+    title: "Tax compliance built in from day one",
+    desc: "Not retrofitted — tax was designed into every transaction. Invoices, credit notes, debit notes, and advance receipts carry the right tax for your country — GST, VAT, ZATCA, or US Sales Tax. Export statutory reports without any extra tool.",
+    points: ["GST / VAT / ZATCA-compliant tax invoices", "Credit notes, debit notes, advance receipts", "HSN / SAC / HS code support with auto-populated rates", "Tax report export for audit and filing"],
   },
   {
     icon: Database,
@@ -568,14 +568,14 @@ export default function LandingPage() {
             <div>
               <div className="inline-flex items-center gap-2 bg-primary/10 text-primary text-xs font-semibold px-3 py-1.5 rounded-full mb-6">
                 <Sparkles className="w-3.5 h-3.5" />
-                AI-Powered · Built for Indian Businesses
+                AI-Powered · Built for Growing Businesses
               </div>
               <h1 className="text-4xl sm:text-5xl font-bold tracking-tight leading-[1.15] mb-5">
                 One platform.<br />
                 <span className="text-primary">17 industries.</span>
               </h1>
               <p className="text-muted-foreground text-lg leading-relaxed mb-8 max-w-lg">
-                Restaurant, Hotel, Healthcare, Manufacturing, Retail, NGO, Nidhi, Logistics and more — all in one GST-compliant cloud ERP with AI-powered forms, video conferencing, and WhatsApp integration built in.
+                Restaurant, Hotel, Healthcare, Manufacturing, Retail, NGO, Nidhi, Logistics and more — all in one multi-tax cloud ERP with AI-powered forms, video conferencing, and WhatsApp integration built in.
               </p>
               <div className="flex flex-wrap gap-3 mb-8">
                 <Button size="lg" onClick={() => setLocation("/register-company")} data-testid="hero-start-trial-btn" className="gap-2 text-base">
@@ -625,7 +625,7 @@ export default function LandingPage() {
           <div className="text-center mb-14">
             <h2 className="text-2xl md:text-3xl font-bold mb-3 text-white">What makes SwachERP genuinely different</h2>
             <p className="text-gray-400 max-w-xl mx-auto text-sm">
-              Not just a feature list — real capabilities no other Indian ERP offers in a single product across this many industries.
+              Not just a feature list — real capabilities no other ERP offers in a single product across this many industries, anywhere in the world.
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-gray-800 rounded-2xl overflow-hidden border border-gray-800">
@@ -1072,17 +1072,17 @@ export default function LandingPage() {
       <section id="solutions" className="py-16 border-t">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-2xl md:text-3xl font-bold mb-3">Why Indian businesses choose SwachERP</h2>
-            <p className="text-muted-foreground max-w-xl mx-auto text-sm">Designed from scratch for how Indian businesses actually work — GST-native, multi-industry, and built on one unified database.</p>
+            <h2 className="text-2xl md:text-3xl font-bold mb-3">Why businesses worldwide choose SwachERP</h2>
+            <p className="text-muted-foreground max-w-xl mx-auto text-sm">Designed from scratch for how modern businesses work — multi-tax, multi-industry, multi-country, and built on one unified database.</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {[
-              { icon: Globe,          title: "GST-ready from day one",       desc: "GSTIN-compliant invoices, e-way bills, credit notes and debit notes. GSTR export-ready reports instantly." },
+              { icon: Globe,          title: "Multi-tax from day one",       desc: "GST, VAT, ZATCA, EU VAT, and US Sales Tax built into every transaction — invoices, credit notes, and debit notes." },
               { icon: Smartphone,     title: "WhatsApp-first operations",    desc: "Operators receive machine checklists on WhatsApp. AI interprets responses. No new app download needed." },
               { icon: TrendingUp,     title: "Real-time MIS dashboards",     desc: "Executive KPIs, production efficiency, inventory turnover, and cash flow — all visible without Excel." },
               { icon: Shield,         title: "Granular role-based access",   desc: "Screen-level permissions for every user. Sensitive financial data visible only to the right people." },
-              { icon: Building2,      title: "Multi-company ready",          desc: "Fully isolated data per company — ideal for group companies, holding structures, and sister units." },
-              { icon: Award,          title: "Full statutory compliance",    desc: "PF, ESI, TDS, Form 16, and labour law compliance built-in. No third-party payroll tool needed." },
+              { icon: Building2,      title: "Multi-company & multi-currency", desc: "Fully isolated data per company with foreign currency support — ideal for group companies and global operations." },
+              { icon: Award,          title: "Full payroll compliance",      desc: "Configurable payroll for any country — deductions, statutory contributions, payslips, and year-end reports built in." },
               { icon: HeadphonesIcon, title: "Guided onboarding",           desc: "We help you migrate masters, configure salary structures, and train your team. Not just a login link." },
               { icon: Link2,          title: "No integration overhead",      desc: "Production, accounts, HR, and CRM share one database. No Zapier. No CSV exports. No double-entry." },
               { icon: BookOpen,       title: "Employee Self-Service portal", desc: "Staff view payslips, apply for leave, check attendance, and submit tax declarations on their own." },
@@ -1178,8 +1178,8 @@ export default function LandingPage() {
       <section id="testimonials" className="py-16 border-t">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
-            <h2 className="text-2xl md:text-3xl font-bold mb-2">Trusted by Indian businesses</h2>
-            <p className="text-muted-foreground text-sm">Real feedback from operations, finance, and HR teams across industries</p>
+            <h2 className="text-2xl md:text-3xl font-bold mb-2">Trusted by businesses worldwide</h2>
+            <p className="text-muted-foreground text-sm">Real feedback from operations, finance, and HR teams across industries and countries</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {TESTIMONIALS.map(t => (
@@ -1225,7 +1225,7 @@ export default function LandingPage() {
               <div className="mb-3">
                 <img src="/swacherp-logo.png" alt="SwachERP" className="h-12 w-auto" />
               </div>
-              <p className="text-xs text-muted-foreground leading-relaxed">Cloud ERP for Indian businesses — 17 verticals, AI-powered, GST-compliant, WhatsApp-connected, and HR-ready.</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">Cloud ERP for growing businesses — 17 verticals, AI-powered, multi-tax, WhatsApp-connected, and HR-ready.</p>
             </div>
             <div>
               <p className="font-semibold text-xs uppercase tracking-wide mb-4">Products</p>
