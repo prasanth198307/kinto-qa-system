@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Plus, ChevronDown, ChevronRight } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Plus, ChevronDown, ChevronRight, Search, X } from "lucide-react";
 import { type LucideIcon } from "lucide-react";
 import {
   DropdownMenu,
@@ -74,6 +75,34 @@ export function VerticalNavSidebar({
   const tn = (label?: string) => (label ? tNavLabel(label, locale) : label);
   const safeSections = sections || [];
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Filter sections/items by search query
+  const displaySections = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return safeSections;
+    return safeSections
+      .map(section => {
+        const sectionMatch = (section.label ?? "").toLowerCase().includes(q);
+        const filteredItems = section.items.filter(item =>
+          item.label.toLowerCase().includes(q) || item.id.toLowerCase().includes(q)
+        );
+        const filteredSubSections = (section.subSections ?? [])
+          .map(sub => ({
+            ...sub,
+            items: sub.items.filter(item =>
+              item.label.toLowerCase().includes(q) || item.id.toLowerCase().includes(q)
+            ),
+          }))
+          .filter(sub => sub.items.length > 0);
+        if (sectionMatch) return { ...section, subSections: section.subSections };
+        if (filteredItems.length > 0 || filteredSubSections.length > 0)
+          return { ...section, items: filteredItems, subSections: filteredSubSections };
+        return null;
+      })
+      .filter(Boolean) as NavSection[];
+  }, [searchQuery, safeSections]);
 
   // Lock body scroll when mobile menu is open (Android + iOS)
   useEffect(() => {
@@ -262,6 +291,30 @@ export function VerticalNavSidebar({
           )}
         </div>
 
+        {/* Search box */}
+        <div className="flex-shrink-0 px-3 py-2 border-b border-border">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+            <Input
+              ref={searchRef}
+              placeholder="Search screens…"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="h-8 pl-8 pr-7 text-sm"
+              data-testid="sidebar-search"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label="Clear search"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+
         {/* Nav content */}
         <div className="flex-1 min-h-0 px-3 pb-4 overflow-y-auto overflow-x-hidden scrollbar-visible"
           ref={scrollContainerRef}
@@ -280,9 +333,15 @@ export function VerticalNavSidebar({
             else if (e.key === 'ArrowUp') { e.preventDefault(); container.scrollBy({ top: -60, behavior: 'smooth' }); }
           }}
         >
+          {searchQuery && displaySections.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
+              <Search className="h-8 w-8 opacity-20 mb-2" />
+              <p className="text-sm">No screens found for "{searchQuery}"</p>
+            </div>
+          )}
           <div className="space-y-1 pt-2">
-            {safeSections.map((section, index) => {
-              const isCollapsed = collapsedSections[section.id] ?? false;
+            {displaySections.map((section, index) => {
+              const isCollapsed = searchQuery ? false : (collapsedSections[section.id] ?? false);
               const hasActiveItem = sectionHasActive(section);
 
               return (
@@ -392,7 +451,7 @@ export function VerticalNavSidebar({
                       {section.items.map((item) => renderNavItem(item))}
                     </div>
                   )}
-                  {index < sections.length - 1 && (
+                  {index < displaySections.length - 1 && (
                     <div className="border-t border-border my-2" />
                   )}
                 </div>
