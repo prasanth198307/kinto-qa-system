@@ -281,13 +281,21 @@ export default function DispatchTracking({ showHeader = true }: DispatchTracking
         </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Invoices</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold" data-testid="stat-total-invoices">{invoiceStats.total}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Draft / Pending</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-muted-foreground" data-testid="stat-draft">{invoiceStats.draft}</div>
           </CardContent>
         </Card>
         <Card>
