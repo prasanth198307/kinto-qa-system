@@ -772,9 +772,9 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── FEATURE DEEP-DIVES ──────────────────────────────────────────── */}
+      {/* ── FEATURE SPOTLIGHTS ──────────────────────────────────────────── */}
       <section className="py-16 border-t">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
 
           {/* 1 — Operations */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
@@ -856,44 +856,6 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* 3 — HR */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
-            <div>
-              <span className="text-xs font-bold text-primary uppercase tracking-wider">HR & Compliance</span>
-              <h2 className="text-2xl md:text-3xl font-bold mt-2 mb-4 leading-snug">Full HR & payroll — not a bolt-on</h2>
-              <p className="text-muted-foreground mb-6 leading-relaxed">Complete employee lifecycle built into the platform — not a separate product. Attendance, leaves, salary structures, PF/ESI, TDS, payslips, Form 16, and the Employee Self-Service portal are all included.</p>
-              <ul className="space-y-3">
-                {["Configurable salary structures with arrears handling","Automated PF, ESI, and TDS deduction every month","Form 16 generation and e-distribution to employees","Employee Self-Service portal for leaves, payslips & tax"].map(f => (
-                  <li key={f} className="flex items-start gap-2.5 text-sm"><CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />{f}</li>
-                ))}
-              </ul>
-            </div>
-            <div className="rounded-2xl border bg-muted/30 p-6">
-              <div className="flex items-center gap-3 mb-5 pb-4 border-b">
-                <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <IndianRupee className="w-4 h-4 text-primary" />
-                </div>
-                <div>
-                  <p className="font-semibold text-sm">Payslip — April 2025</p>
-                  <p className="text-xs text-muted-foreground">Ravi Kumar · EMP-042</p>
-                </div>
-              </div>
-              {[
-                { label: "Basic Salary",       value: "₹25,000", type: "earn" },
-                { label: "HRA",                value: "₹10,000", type: "earn" },
-                { label: "Special Allowance",  value: "₹5,000",  type: "earn" },
-                { label: "PF Deduction",       value: "−₹3,000", type: "ded"  },
-                { label: "TDS",                value: "−₹1,200", type: "ded"  },
-                { label: "Net Pay",            value: "₹35,800", type: "net"  },
-              ].map(r => (
-                <div key={r.label} className={`flex justify-between text-sm py-2.5 border-b last:border-0 ${r.type === "net" ? "font-semibold" : ""}`}>
-                  <span className={r.type === "ded" ? "text-red-500" : "text-muted-foreground"}>{r.label}</span>
-                  <span className={r.type === "net" ? "text-primary font-bold" : r.type === "ded" ? "text-red-500" : "font-medium"}>{r.value}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
         </div>
       </section>
 
@@ -969,33 +931,21 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── ALL MODULES ─────────────────────────────────────────────────── */}
-      <section id="modules" className="py-16 border-t bg-muted/20">
+      {/* ── MODULE TEASER ────────────────────────────────────────────────── */}
+      <section id="modules" className="py-14 border-t bg-muted/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-2xl md:text-3xl font-bold mb-3">Every module your business needs</h2>
-            <p className="text-muted-foreground max-w-xl mx-auto text-sm">30+ integrated modules across 17 industries. One login. One database. AI-powered. No integrations to maintain.</p>
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 mb-8">
+            <div>
+              <h2 className="text-2xl md:text-3xl font-bold mb-1">30+ modules. One platform.</h2>
+              <p className="text-muted-foreground text-sm">Operations · Finance · HR · CRM · 17 industry verticals · AI products</p>
+            </div>
+            <Button variant="outline" onClick={() => setLocation("/features")} className="gap-2 shrink-0">
+              Browse all modules <ChevronRight className="w-4 h-4" />
+            </Button>
           </div>
-          <div className="space-y-8">
-            {MODULE_GROUPS.map(group => (
-              <div key={group.label}>
-                <div className={`inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-full border mb-4 ${group.header}`}>
-                  {group.label} <span className="opacity-60">({group.items.length})</span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                  {group.items.map(m => (
-                    <div key={m.label} className="flex items-start gap-3 p-4 rounded-xl border bg-background hover-elevate">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${group.icon}`}>
-                        <m.icon className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-sm leading-snug">{m.label}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{m.desc}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+          <div className="flex flex-wrap gap-2">
+            {MODULE_GROUPS.flatMap(g => g.items).map(m => (
+              <span key={m.label} className="text-xs font-medium bg-background border rounded-full px-3 py-1.5 text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors cursor-default">{m.label}</span>
             ))}
           </div>
         </div>
@@ -1064,157 +1014,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── API HUB SHOWCASE ────────────────────────────────────────────── */}
-      <section className="py-20 border-t overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            {/* Left: copy */}
-            <div>
-              <div className="inline-flex items-center gap-2 bg-primary/10 text-primary text-xs font-semibold px-3 py-1.5 rounded-full mb-4">
-                <Key className="w-3.5 h-3.5" />
-                Professional & Enterprise
-              </div>
-              <h2 className="text-2xl md:text-3xl font-bold mb-4 leading-snug">
-                Build on SwachERP with a<br className="hidden md:block" /> full REST API platform
-              </h2>
-              <p className="text-muted-foreground text-sm leading-relaxed mb-6">
-                Every module in SwachERP — invoicing, inventory, production, HR — exposes clean REST APIs. Create scoped keys per integration, test endpoints live without leaving the browser, and track every call with full request logs and usage analytics.
-              </p>
-              <ul className="space-y-3 mb-8">
-                {[
-                  { icon: Key,      text: "Scoped API keys — limit each key to exactly the modules it needs" },
-                  { icon: Code2,    text: "Live \"Try It\" tester — fill params and fire real requests in-browser" },
-                  { icon: BarChart3,text: "Usage analytics — calls per day, top endpoints, error rates" },
-                  { icon: Webhook,  text: "Register custom endpoints — tag your own APIs alongside built-ins" },
-                ].map(pt => (
-                  <li key={pt.text} className="flex items-start gap-3 text-sm">
-                    <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                      <pt.icon className="w-3.5 h-3.5 text-primary" />
-                    </div>
-                    <span className="text-muted-foreground leading-snug">{pt.text}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Right: code mockup */}
-            <div className="rounded-2xl border bg-zinc-950 overflow-hidden shadow-xl">
-              {/* window chrome */}
-              <div className="flex items-center gap-1.5 px-4 py-3 border-b border-zinc-800">
-                <span className="w-3 h-3 rounded-full bg-red-500/80" />
-                <span className="w-3 h-3 rounded-full bg-yellow-500/80" />
-                <span className="w-3 h-3 rounded-full bg-green-500/80" />
-                <span className="ml-3 text-xs text-zinc-500 font-mono">SwachERP API Hub — Try It</span>
-              </div>
-              <div className="p-5 font-mono text-xs space-y-4">
-                {/* Auth header */}
-                <div>
-                  <p className="text-zinc-500 mb-1">// Authentication</p>
-                  <p className="text-zinc-300">
-                    <span className="text-purple-400">Authorization</span>
-                    <span className="text-zinc-400">: Bearer </span>
-                    <span className="text-green-400">swacherp_sk_••••••••6f3a</span>
-                  </p>
-                </div>
-                {/* Request 1 */}
-                <div className="rounded-lg bg-zinc-900 border border-zinc-800 p-3 space-y-1.5">
-                  <div className="flex items-center gap-2">
-                    <span className="bg-blue-500/20 text-blue-400 text-xs font-bold px-1.5 py-0.5 rounded">GET</span>
-                    <span className="text-zinc-300">/api/invoices</span>
-                    <span className="text-zinc-600 ml-auto">Invoicing</span>
-                  </div>
-                  <p className="text-zinc-500">?status=<span className="text-amber-400">paid</span>&amp;from=<span className="text-amber-400">2025-01-01</span></p>
-                  <div className="flex items-center gap-2 pt-1 border-t border-zinc-800">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />
-                    <span className="text-green-400">200 OK</span>
-                    <span className="text-zinc-600 ml-auto">124ms · 48 records</span>
-                  </div>
-                </div>
-                {/* Request 2 */}
-                <div className="rounded-lg bg-zinc-900 border border-zinc-800 p-3 space-y-1.5">
-                  <div className="flex items-center gap-2">
-                    <span className="bg-green-500/20 text-green-400 text-xs font-bold px-1.5 py-0.5 rounded">POST</span>
-                    <span className="text-zinc-300">/api/invoices</span>
-                    <span className="text-zinc-600 ml-auto">Invoicing</span>
-                  </div>
-                  <p className="text-zinc-500">body: <span className="text-amber-400">&#123; "party": "Acme Ltd", … &#125;</span></p>
-                  <div className="flex items-center gap-2 pt-1 border-t border-zinc-800">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />
-                    <span className="text-green-400">201 Created</span>
-                    <span className="text-zinc-600 ml-auto">89ms · INV-0412</span>
-                  </div>
-                </div>
-                {/* Request 3 */}
-                <div className="rounded-lg bg-zinc-900 border border-zinc-800 p-3 space-y-1.5">
-                  <div className="flex items-center gap-2">
-                    <span className="bg-blue-500/20 text-blue-400 text-xs font-bold px-1.5 py-0.5 rounded">GET</span>
-                    <span className="text-zinc-300">/api/inventory/items</span>
-                    <span className="text-zinc-600 ml-auto">Inventory</span>
-                  </div>
-                  <p className="text-zinc-500">?sku=<span className="text-amber-400">RM-001</span>&amp;warehouse=<span className="text-amber-400">Main</span></p>
-                  <div className="flex items-center gap-2 pt-1 border-t border-zinc-800">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />
-                    <span className="text-green-400">200 OK</span>
-                    <span className="text-zinc-600 ml-auto">67ms · qty: 1,240</span>
-                  </div>
-                </div>
-              </div>
-              {/* footer stats */}
-              <div className="flex items-center gap-6 px-5 py-3 border-t border-zinc-800 bg-zinc-900/50">
-                <div className="text-center">
-                  <p className="text-xs font-bold text-zinc-200">2,847</p>
-                  <p className="text-zinc-600" style={{ fontSize: '10px' }}>calls today</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-xs font-bold text-green-400">99.8%</p>
-                  <p className="text-zinc-600" style={{ fontSize: '10px' }}>success rate</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-xs font-bold text-zinc-200">94ms</p>
-                  <p className="text-zinc-600" style={{ fontSize: '10px' }}>avg latency</p>
-                </div>
-                <div className="ml-auto">
-                  <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded-full font-medium">Live</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── WHY SWACHERP ───────────────────────────────────────────────────── */}
-      <section id="solutions" className="py-16 border-t">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-2xl md:text-3xl font-bold mb-3">Why businesses worldwide choose SwachERP</h2>
-            <p className="text-muted-foreground max-w-xl mx-auto text-sm">Designed from scratch for how modern businesses work — multi-tax, multi-industry, multi-country, and built on one unified database.</p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[
-              { icon: Globe,          title: "Multi-tax from day one",       desc: "GST, VAT, ZATCA, EU VAT, and US Sales Tax built into every transaction — invoices, credit notes, and debit notes." },
-              { icon: Smartphone,     title: "WhatsApp-first operations",    desc: "Operators receive machine checklists on WhatsApp. AI interprets responses. No new app download needed." },
-              { icon: TrendingUp,     title: "Real-time MIS dashboards",     desc: "Executive KPIs, production efficiency, inventory turnover, and cash flow — all visible without Excel." },
-              { icon: Shield,         title: "Granular role-based access",   desc: "Screen-level permissions for every user. Sensitive financial data visible only to the right people." },
-              { icon: Building2,      title: "Multi-company & multi-currency", desc: "Fully isolated data per company with foreign currency support — ideal for group companies and global operations." },
-              { icon: Award,          title: "Full payroll compliance",      desc: "Configurable payroll for any country — deductions, statutory contributions, payslips, and year-end reports built in." },
-              { icon: HeadphonesIcon, title: "Guided onboarding",           desc: "We help you migrate masters, configure salary structures, and train your team. Not just a login link." },
-              { icon: Link2,          title: "No integration overhead",      desc: "Production, accounts, HR, and CRM share one database. No Zapier. No CSV exports. No double-entry." },
-              { icon: BookOpen,       title: "Employee Self-Service portal", desc: "Staff view payslips, apply for leave, check attendance, and submit tax declarations on their own." },
-              { icon: Key,            title: "Open API platform",            desc: "Every module exposes secure REST APIs. Create scoped keys, test endpoints live, and track every call — built right into the platform." },
-            ].map(item => (
-              <div key={item.title} className="flex items-start gap-4">
-                <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                  <item.icon className="w-4 h-4 text-primary" />
-                </div>
-                <div>
-                  <p className="font-semibold text-sm">{item.title}</p>
-                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{item.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* ── COMPARISON TABLE ────────────────────────────────────────────── */}
       <section className="py-16 border-t bg-muted/10">
