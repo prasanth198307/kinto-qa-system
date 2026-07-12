@@ -112,23 +112,7 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
   );
   // XSS protection (legacy browsers)
   res.setHeader("X-XSS-Protection", "1; mode=block");
-  // Content Security Policy — only on HTML responses (not JS/CSS assets)
-  // Applying CSP to asset files causes Safari to block Vite's dynamic chunk imports
-  const isHtml = !req.path.startsWith("/api/") && !req.path.match(/\.(js|css|png|jpg|svg|ico|woff2?|ttf|map)$/);
-  if (isHtml) {
-    res.setHeader(
-      "Content-Security-Policy",
-      [
-        "default-src 'self'",
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com https://micassets.micnxt.com https://meet.jit.si https://jitsi.swacherp.com",
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://micassets.micnxt.com",
-        "font-src 'self' data: https://fonts.gstatic.com",
-        "img-src 'self' data: blob: https:",
-        "connect-src 'self' https://api.razorpay.com https://collokiflow.micapps.com wss: https://meet.jit.si wss://jitsi.swacherp.com https://jitsi.swacherp.com",
-        "frame-src https://api.razorpay.com https://collokiflow.micapps.com https://meet.jit.si https://jitsi.swacherp.com",
-      ].join("; ")
-    );
-  }
+  // CSP disabled — was causing Safari to block same-origin JS/CSS assets
   next();
 }
 
