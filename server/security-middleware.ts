@@ -112,8 +112,10 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
   );
   // XSS protection (legacy browsers)
   res.setHeader("X-XSS-Protection", "1; mode=block");
-  // Content Security Policy — allow same-origin + Razorpay + Colloki chat widget
-  if (!req.path.startsWith("/api/")) {
+  // Content Security Policy — only on HTML responses (not JS/CSS assets)
+  // Applying CSP to asset files causes Safari to block Vite's dynamic chunk imports
+  const isHtml = !req.path.startsWith("/api/") && !req.path.match(/\.(js|css|png|jpg|svg|ico|woff2?|ttf|map)$/);
+  if (isHtml) {
     res.setHeader(
       "Content-Security-Policy",
       [
