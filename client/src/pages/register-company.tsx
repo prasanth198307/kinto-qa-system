@@ -445,7 +445,7 @@ export default function RegisterCompanyPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-2">
                       <Label htmlFor="gst-number">Tax Number / GST <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                      <Input id="gst-number" data-testid="input-gst-number" placeholder="22AAAAA0000A1Z5"
+                      <Input id="gst-number" data-testid="input-gst-number" placeholder="e.g. 22AAAAA0000A1Z5 / AE123456789 / GB123456789"
                         value={form.gstNumber} onChange={update("gstNumber")} />
                     </div>
                     <div className="space-y-2">
@@ -499,7 +499,7 @@ export default function RegisterCompanyPage() {
                     <Label htmlFor="admin-phone">Phone <span className="text-muted-foreground text-xs">(optional)</span></Label>
                     <div className="relative">
                       <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input id="admin-phone" data-testid="input-admin-phone" type="tel" placeholder="+91 98765 43210"
+                      <Input id="admin-phone" data-testid="input-admin-phone" type="tel" placeholder="+1 555 000 0000"
                         className="pl-10" value={form.phone} onChange={update("phone")} />
                     </div>
                   </div>
