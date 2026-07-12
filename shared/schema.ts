@@ -43,6 +43,7 @@ export const tenants = pgTable("tenants", {
   billingEmail: varchar("billing_email"),
   contactName: varchar("contact_name", { length: 255 }),
   contactPhone: varchar("contact_phone", { length: 20 }),
+  country: varchar("country", { length: 50 }).default("India"),
   gstNumber: varchar("gst_number", { length: 20 }),
   fssaiNumber: varchar("fssai_number", { length: 20 }),
   address: text("address"),

@@ -288,6 +288,7 @@ export function setupAuth(app: Express) {
         phone,
         gstNumber,
         address,
+        country = "India",
       } = req.body;
 
       if (!companyName || !slug || !adminName || !email || !password) {
@@ -320,6 +321,7 @@ export function setupAuth(app: Express) {
           billingEmail: email,
           contactName: adminName.trim(),
           contactPhone: phone || null,
+          country: country || "India",
           gstNumber: gstNumber || null,
           address: address || null,
         })
@@ -327,6 +329,30 @@ export function setupAuth(app: Express) {
 
       // Seed default roles + Chart of Accounts for the new tenant
       const { adminRoleId } = await seedNewTenant(newTenant.id);
+
+      // Seed country_tax_config based on selected country
+      const TAX_SEEDS: Record<string, { taxName: string; taxRate: number; currency: string; currencySymbol: string; dateFormat: string; taxNumberLabel: string; taxNumberPlaceholder: string; phoneCode: string }> = {
+        "India":          { taxName: "GST",          taxRate: 18,  currency: "INR", currencySymbol: "₹",    dateFormat: "DD/MM/YYYY", taxNumberLabel: "GSTIN",                        taxNumberPlaceholder: "22AAAAA0000A1Z5",   phoneCode: "+91"  },
+        "UAE":            { taxName: "VAT",           taxRate: 5,   currency: "AED", currencySymbol: "د.إ",  dateFormat: "DD/MM/YYYY", taxNumberLabel: "TRN",                          taxNumberPlaceholder: "100123456700003",   phoneCode: "+971" },
+        "Saudi Arabia":   { taxName: "VAT (ZATCA)",   taxRate: 15,  currency: "SAR", currencySymbol: "ر.س",  dateFormat: "DD/MM/YYYY", taxNumberLabel: "VAT Registration Number",      taxNumberPlaceholder: "310122393500003",   phoneCode: "+966" },
+        "United Kingdom": { taxName: "VAT",           taxRate: 20,  currency: "GBP", currencySymbol: "£",    dateFormat: "DD/MM/YYYY", taxNumberLabel: "VAT Registration Number",      taxNumberPlaceholder: "GB123456789",       phoneCode: "+44"  },
+        "European Union": { taxName: "VAT",           taxRate: 20,  currency: "EUR", currencySymbol: "€",    dateFormat: "DD/MM/YYYY", taxNumberLabel: "VAT Number",                   taxNumberPlaceholder: "DE123456789",       phoneCode: "+49"  },
+        "United States":  { taxName: "Sales Tax",     taxRate: 0,   currency: "USD", currencySymbol: "$",    dateFormat: "MM/DD/YYYY", taxNumberLabel: "EIN / Sales Tax ID",           taxNumberPlaceholder: "12-3456789",        phoneCode: "+1"   },
+        "Australia":      { taxName: "GST",           taxRate: 10,  currency: "AUD", currencySymbol: "A$",   dateFormat: "DD/MM/YYYY", taxNumberLabel: "ABN",                          taxNumberPlaceholder: "51 824 753 556",    phoneCode: "+61"  },
+        "Singapore":      { taxName: "GST",           taxRate: 9,   currency: "SGD", currencySymbol: "S$",   dateFormat: "DD/MM/YYYY", taxNumberLabel: "GST Registration Number",      taxNumberPlaceholder: "M90123456A",        phoneCode: "+65"  },
+      };
+      const seed = TAX_SEEDS[country] ?? { taxName: "Tax", taxRate: 0, currency: "USD", currencySymbol: "$", dateFormat: "DD/MM/YYYY", taxNumberLabel: "Tax Number", taxNumberPlaceholder: "", phoneCode: "+1" };
+      await db.execute(sql`
+        INSERT INTO country_tax_config (
+          tenant_id, country, tax_name, tax_rate, tax_number, currency, currency_symbol,
+          date_format, tax_number_label, tax_number_placeholder, phone_country_code, is_active
+        ) VALUES (
+          ${String(newTenant.id)}, ${country}, ${seed.taxName}, ${seed.taxRate},
+          ${gstNumber || null}, ${seed.currency}, ${seed.currencySymbol},
+          ${seed.dateFormat}, ${seed.taxNumberLabel}, ${seed.taxNumberPlaceholder},
+          ${seed.phoneCode}, 1
+        ) ON CONFLICT (tenant_id, country) DO NOTHING
+      `);
 
       // Create first admin user for this tenant
       const hashedPw = await hashPassword(password);

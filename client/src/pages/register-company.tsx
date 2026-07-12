@@ -12,6 +12,7 @@ import {
   CheckCircle2, XCircle, AlertCircle, Package, Palette, Upload, ImageIcon, ChevronRight,
 } from "lucide-react";
 import { KintoLogo } from "@/components/branding/KintoLogo";
+import { COUNTRY_TAX_PROFILES, getCountryProfile } from "@shared/country-tax-config";
 import { apiRequest } from "@/lib/queryClient";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -68,6 +69,9 @@ export default function RegisterCompanyPage() {
   const [slugStatus, setSlugStatus] = useState<SlugStatus>("idle");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
+
+  const [country, setCountry] = useState("India");
+  const taxProfile = getCountryProfile(country);
 
   const [form, setForm] = useState({
     companyName: "", slug: "", gstNumber: "", address: "",
@@ -188,7 +192,7 @@ export default function RegisterCompanyPage() {
         companyName: form.companyName, slug: form.slug,
         adminName: form.adminName, email: form.email, password: form.password,
         phone: form.phone || undefined, gstNumber: form.gstNumber || undefined,
-        address: form.address || undefined,
+        address: form.address || undefined, country,
       });
       const data = await result.json();
       setRegisteredData({ name: data.tenant.name, slug: data.tenant.slug, username: data.username });
@@ -442,11 +446,37 @@ export default function RegisterCompanyPage() {
                     {(slugStatus === "idle" || slugStatus === "checking") && <p className="text-xs text-muted-foreground">Lowercase letters, numbers, hyphens only. 3–50 characters.</p>}
                   </div>
 
+                  {/* Country selector */}
+                  <div className="space-y-2">
+                    <Label htmlFor="country">Country</Label>
+                    <Select value={country} onValueChange={setCountry}>
+                      <SelectTrigger id="country" data-testid="select-country">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {COUNTRY_TAX_PROFILES.map(p => (
+                          <SelectItem key={p.country} value={p.country}>
+                            {p.flag} {p.country} — {p.taxName} ({p.currency})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-2">
-                      <Label htmlFor="gst-number">Tax Number / GST <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                      <Input id="gst-number" data-testid="input-gst-number" placeholder="e.g. 22AAAAA0000A1Z5 / AE123456789 / GB123456789"
+                      <Label htmlFor="gst-number">
+                        {taxProfile.taxNumberLabel}{" "}
+                        <span className="text-muted-foreground text-xs">(optional)</span>
+                      </Label>
+                      <Input id="gst-number" data-testid="input-gst-number"
+                        placeholder={taxProfile.taxNumberPlaceholder}
                         value={form.gstNumber} onChange={update("gstNumber")} />
+                      {taxProfile.taxName && (
+                        <p className="text-xs text-muted-foreground">
+                          {taxProfile.taxName} @ {taxProfile.taxRate}% · {taxProfile.currency} ({taxProfile.currencySymbol})
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="company-address">Address <span className="text-muted-foreground text-xs">(optional)</span></Label>
@@ -499,7 +529,7 @@ export default function RegisterCompanyPage() {
                     <Label htmlFor="admin-phone">Phone <span className="text-muted-foreground text-xs">(optional)</span></Label>
                     <div className="relative">
                       <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input id="admin-phone" data-testid="input-admin-phone" type="tel" placeholder="+1 555 000 0000"
+                      <Input id="admin-phone" data-testid="input-admin-phone" type="tel" placeholder={`${taxProfile.phoneCode} ...`}
                         className="pl-10" value={form.phone} onChange={update("phone")} />
                     </div>
                   </div>
