@@ -100,7 +100,6 @@ const navItemToScreen: Record<string, string> = {
   'manufacturing/preventive-maintenance': 'Maintenance Plans',
   'manufacturing/bom-versions': 'Production',
   'manufacturing/supply-chain': 'Production',
-  'logistics/eway-bill': 'Purchase Orders',
   'gatepasses': 'Purchase Orders',
   'dispatch-tracking': 'Purchase Orders',
   'dispatch-masters': 'Purchase Orders',
