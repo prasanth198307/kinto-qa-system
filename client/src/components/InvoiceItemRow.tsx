@@ -48,7 +48,6 @@ export default function InvoiceItemRow({
   remove,
   toast,
 }: InvoiceItemRowProps) {
-  const tenantConfig = useTenantConfig();
 
   return (
     <tr className="border-b last:border-b-0 hover:bg-muted/30 transition-colors">

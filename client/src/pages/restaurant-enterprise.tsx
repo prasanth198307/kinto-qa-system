@@ -38,8 +38,6 @@ function KpiCard({ label, value, sub, urgent }: { label: string; value: string |
 
 function KotStatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
     pending: "bg-yellow-100 text-yellow-800",
     cooking: "bg-blue-100 text-blue-800",
     ready: "bg-green-100 text-green-800",

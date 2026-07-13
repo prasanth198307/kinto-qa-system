@@ -164,8 +164,6 @@ function KPICard({
 
 function AlertItem({ alert }: { alert: Alert }) {
   const severityColors = {
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
     high: 'bg-destructive/10 text-destructive border-destructive/20',
     medium: 'bg-amber-500/10 text-amber-600 border-amber-500/20',
     low: 'bg-blue-500/10 text-blue-600 border-blue-500/20'
@@ -231,6 +229,8 @@ function PriorityCard({ level, title, description }: { level: PriorityLevel; tit
 const barColors = ['bg-blue-500', 'bg-green-500', 'bg-amber-500', 'bg-violet-500', 'bg-pink-500'];
 
 export default function MISDashboard() {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const formatCurrency = (paise: number): string => fmtCur(paise / 100, tenantConfig);
   const formatCurrencyCompact = (paise: number): string => {
     const val = paise / 100;

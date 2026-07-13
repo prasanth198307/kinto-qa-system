@@ -23,8 +23,6 @@ const US_STATES = ["CA","TX","NY","FL","IL","PA","OH","GA","NC","MI"];
 
 function RegimeBadge({ regime }: { regime: string }) {
   const colors: Record<string, string> = {
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
     GST: 'bg-blue-100 text-blue-800',
     ZATCA: 'bg-green-100 text-green-800',
     VAT: 'bg-purple-100 text-purple-800',

@@ -49,8 +49,6 @@ function FieldRow({ label, children }: { label: string; children: React.ReactNod
 
 function SBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
     present: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
     absent: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
     "half-day": "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300",

@@ -42,8 +42,6 @@ const INDIAN_STATES = [
 // ── Employee Form (multi-tab add/edit) ────────────────────────────────────────
 function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, onSave, onCancel }: any) {
   const [form, setForm] = useState(editing ? {
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
     empCode: editing.emp_code || "",
     firstName: editing.first_name || "",
     lastName: editing.last_name || "",

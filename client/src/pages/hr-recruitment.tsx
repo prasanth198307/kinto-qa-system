@@ -37,8 +37,6 @@ const getStage = (v: string) => STAGES.find(s => s.value === v) || STAGES[0];
 function JobOpeningForm({ editing, depts, onSave, onCancel }: any) {
   const { toast } = useToast();
   const [form, setForm] = useState({
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
     title: editing?.title || "",
     departmentId: editing?.department_id ? String(editing.department_id) : "__none__",
     positions: editing?.positions || "1",

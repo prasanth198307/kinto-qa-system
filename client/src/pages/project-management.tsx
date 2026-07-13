@@ -20,8 +20,6 @@ const STATUS_COLORS: Record<string, string> = { active: "default", completed: "s
 function ProjectForm({ project, employees, onSave, onCancel }: any) {
   const { toast } = useToast();
   const [form, setForm] = useState({
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
     name: project?.name || "", code: project?.code || "", clientName: project?.client_name || "",
     clientGstin: project?.client_gstin || "", startDate: project?.start_date?.split("T")[0] || "",
     endDate: project?.end_date?.split("T")[0] || "", contractValue: project?.contract_value || "",

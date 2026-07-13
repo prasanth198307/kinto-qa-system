@@ -22,8 +22,6 @@ const FREQUENCIES = [
 function RecurringForm({ schedule, onSave, onCancel }: any) {
   const { toast } = useToast();
   const [form, setForm] = useState({
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
     customerName: schedule?.customer_name || "", customerGstin: schedule?.customer_gstin || "",
     billingAddress: schedule?.billing_address || "", frequency: schedule?.frequency || "monthly",
     nextDue: schedule?.next_due?.split("T")[0] || new Date().toISOString().split("T")[0],
