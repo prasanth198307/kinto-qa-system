@@ -191,6 +191,7 @@ function CartScreen({
   onPlaceOrder: (name: string, phone: string) => void;
   onBack: () => void;
 }) {
+  const { currency_symbol: sym } = useTenantConfig();
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [notes, setNotes] = useState<Record<number, string>>({});

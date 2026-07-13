@@ -229,6 +229,8 @@ export default function CashFlowStatementPage() {
     if (!data) return;
 
     const fmtRupees = (paise: number) => {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
       const val = Number(paise) || 0;
       return val === 0 ? 0 : Number((val / 100).toFixed(2));
     };

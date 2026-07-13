@@ -193,6 +193,7 @@ function StepIndicator({ current }: { current: Step }) {
 }
 
 export default function SuperAdminSetupWizard() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [step, setStep] = useState<Step>(1);

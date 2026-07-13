@@ -54,6 +54,7 @@ interface PaginatedResponse {
 }
 
 export default function CancelledInvoices({ showHeader = true }: CancelledInvoicesProps = {}) {
+  const { currency_symbol: sym } = useTenantConfig();
   const [, navigate] = useLocation();
   const [page, setPage] = useState(1);
   const [pageSize] = useState(20);

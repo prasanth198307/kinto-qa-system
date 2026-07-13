@@ -48,9 +48,10 @@ function StockStatus({ current, reorder, agingBucket }: { current: number; reord
 }
 
 export default function MISInventory() {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const formatINR = (paise: number) => fmtCur(paise / 100, tenantConfig);
   const formatINRRupees = (rupees: number) => fmtCur(rupees, tenantConfig);
-  const sym = tenantConfig.currency_symbol ?? sym;
   const [isExporting, setIsExporting] = useState(false);
   const { data, isLoading } = useQuery<InventoryData>({ queryKey: ['/api/mis/inventory-analytics'] });
 
@@ -63,6 +64,8 @@ export default function MISInventory() {
   const isCritical = totalValue < 500000;
 
   const handleExportExcel = async () => {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
     if (!data) return;
     setIsExporting(true);
     try {

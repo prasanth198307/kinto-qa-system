@@ -779,6 +779,7 @@ function ProductsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSea
   };
 
   const getUomName = (uomId: string | null) => {
+  const { currency_symbol: sym } = useTenantConfig();
     if (!uomId) return '-';
     const uom = uoms.find(u => u.id === uomId);
     return uom ? uom.name : '-';
@@ -1347,6 +1348,7 @@ function ProductDialog({
   };
 
   const handleSubmit = async (data: ProductFormData) => {
+  const { currency_symbol: sym } = useTenantConfig();
     // Pass the complete form data (including bomItems) to parent's onSubmit
     // Include the selected configuration ID for BOM items
     const submitData = {
@@ -5057,6 +5059,7 @@ function RecordScrapDialog({
   const productName = product?.productName || 'Unknown Product';
 
   const handleSubmit = (values: z.infer<typeof scrapFormSchema>) => {
+  const { currency_symbol: sym } = useTenantConfig();
     onSubmit({
       productId: item.productId,
       productName,

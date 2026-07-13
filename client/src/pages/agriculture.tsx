@@ -22,6 +22,7 @@ function SC({ title, value, icon: Icon, color }: any) {
 const CROP_STATUS: Record<string, string> = { sown: "bg-blue-100 text-blue-700", growing: "bg-green-100 text-green-700", harvested: "bg-orange-100 text-orange-700", failed: "bg-red-100 text-red-700" };
 
 function OverviewTab() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { data: stats } = useQuery<any>({ queryKey: ["/api/agriculture/stats"] });
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -148,6 +149,7 @@ function CropCyclesTab() {
   const delInput = useMutation({ mutationFn: (id: any) => apiRequest("DELETE", `/api/agriculture/crop-inputs/${id}`), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/agriculture/crop-inputs", showInputs?.id] }) });
   const openNew = () => { setEditing(null); setForm({ status: "sown", area_unit: "acre" }); setShowForm(true); };
   const openEdit = (c: any) => { setEditing(c); setForm({ ...c, sowing_date: c.sowing_date?.split("T")[0], expected_harvest_date: c.expected_harvest_date?.split("T")[0], actual_harvest_date: c.actual_harvest_date?.split("T")[0] }); setShowForm(true); };
+  const { currency_symbol: sym } = useTenantConfig();
   const filtered = (cycles as any[]).filter(c => c.crop_name?.toLowerCase().includes(search.toLowerCase()) || c.farm_name?.toLowerCase().includes(search.toLowerCase()) || c.farmer_name?.toLowerCase().includes(search.toLowerCase()));
   const totalCost = (c: any) => (Number(c.fertilizer_cost||0)+Number(c.labor_cost||0)+Number(c.other_cost||0));
   return (
@@ -227,6 +229,7 @@ function HarvestTab() {
   const delMut = useMutation({ mutationFn: (id: any) => apiRequest("DELETE", `/api/agriculture/harvest-records/${id}`), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/agriculture/harvest-records"] }) });
   const openNew = () => { setEditing(null); setForm({ harvest_date: new Date().toISOString().split("T")[0], unit: "kg" }); setShowForm(true); };
   const openEdit = (h: any) => { setEditing(h); setForm({ ...h, harvest_date: h.harvest_date?.split("T")[0] }); setShowForm(true); };
+  const { currency_symbol: sym } = useTenantConfig();
   return (
     <div className="space-y-4">
       <div className="flex justify-end"><Button onClick={openNew}><Plus className="h-4 w-4 mr-1"/>Record Harvest</Button></div>
@@ -270,6 +273,7 @@ function ProcurementTab() {
   const saveMut = useMutation({ mutationFn: (d: any) => editing ? apiRequest("PUT", `/api/agriculture/procurement/${editing.id}`, d) : apiRequest("POST", "/api/agriculture/procurement", d), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/agriculture/procurement"] }); setShowForm(false); toast({ title: "Saved" }); } });
   const openNew = () => { setEditing(null); setForm({ procurement_date: new Date().toISOString().split("T")[0] }); setShowForm(true); };
   const openEdit = (p: any) => { setEditing(p); setForm({ ...p, procurement_date: p.procurement_date?.split("T")[0] }); setShowForm(true); };
+  const { currency_symbol: sym } = useTenantConfig();
   const filtered = (procs as any[]).filter(p => p.farmer_name?.toLowerCase().includes(search.toLowerCase()) || p.commodity?.toLowerCase().includes(search.toLowerCase()) || p.procurement_no?.includes(search));
   return (
     <div className="space-y-4">
@@ -320,6 +324,7 @@ function CommodityPricesTab() {
   const saveMut = useMutation({ mutationFn: (d: any) => apiRequest("POST", "/api/agriculture/commodity-prices", d), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/agriculture/commodity-prices"] }); setShowForm(false); toast({ title: "Saved" }); } });
   const delMut = useMutation({ mutationFn: (id: any) => apiRequest("DELETE", `/api/agriculture/commodity-prices/${id}`), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/agriculture/commodity-prices"] }) });
   const openNew = () => { setForm({ price_date: new Date().toISOString().split("T")[0] }); setShowForm(true); };
+  const { currency_symbol: sym } = useTenantConfig();
   return (
     <div className="space-y-4">
       <div className="flex justify-end"><Button onClick={openNew}><Plus className="h-4 w-4 mr-1"/>Add Price</Button></div>

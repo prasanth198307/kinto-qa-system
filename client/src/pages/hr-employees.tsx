@@ -41,6 +41,7 @@ const INDIAN_STATES = [
 
 // ── Employee Form (multi-tab add/edit) ────────────────────────────────────────
 function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, onSave, onCancel }: any) {
+  const { currency_symbol: sym } = useTenantConfig();
   const [form, setForm] = useState(editing ? {
     empCode: editing.emp_code || "",
     firstName: editing.first_name || "",
@@ -857,6 +858,7 @@ function DocumentsPanel({ emp }: { emp: any }) {
 
 // ── Salary Revision Panel ─────────────────────────────────────────────────────
 function SalaryRevisionPanel({ emp }: { emp: any }) {
+  const { currency_symbol: sym } = useTenantConfig();
   const { toast } = useToast();
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({
@@ -1067,6 +1069,7 @@ function SalaryRevisionPanel({ emp }: { emp: any }) {
 
 // ── Employee Detail View ──────────────────────────────────────────────────────
 function EmployeeDetail({ emp, onBack, onEdit }: any) {
+  const { currency_symbol: sym } = useTenantConfig();
   const [tab, setTab] = useState("overview");
   const { toast } = useToast();
   const photoInputRef = useRef<HTMLInputElement>(null);

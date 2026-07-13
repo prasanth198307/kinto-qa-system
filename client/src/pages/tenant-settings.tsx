@@ -247,6 +247,7 @@ type SettingsForm = z.infer<typeof settingsSchema>;
 type NotifForm = z.infer<typeof notifSchema>;
 
 export default function TenantSettings() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { toast } = useToast();
   const [colorPreview, setColorPreview] = useState<string>("");
   const [exportLoading, setExportLoading] = useState(false);

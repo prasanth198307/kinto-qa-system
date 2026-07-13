@@ -118,6 +118,7 @@ function NewEventDialog({ open, onClose, halls }: { open: boolean; onClose: () =
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const f = (k: string) => (form as Record<string, string>)[k];
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
+  const { currency_symbol: sym } = useTenantConfig();
 
   const total = [form.base_amount, form.decoration_amount, form.catering_amount, form.av_amount]
     .reduce((s, v) => s + (Number(v) || 0), 0);
@@ -203,6 +204,7 @@ function NewEventDialog({ open, onClose, halls }: { open: boolean; onClose: () =
 }
 
 export default function BanquetEventsPage() {
+  const { currency_symbol: sym } = useTenantConfig();
   const [statusFilter, setStatusFilter] = useState("all");
   const [showNew, setShowNew] = useState(false);
 

@@ -14,7 +14,6 @@ import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-co
 
 const api = (m: string, p: string, b?: any) =>
   fetch(p, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined }).then((r) => r.json());
-const fmt = (n: any) => `${sym}${Number(n || 0).toLocaleString("en-IN")}`;
 const today = new Date().toISOString().slice(0, 10);
 
 const TYPE_META: Record<string, { icon: any; label: string; cls: string }> = {
@@ -24,6 +23,7 @@ const TYPE_META: Record<string, { icon: any; label: string; cls: string }> = {
 };
 
 export default function NGOFundsPage() {
+  const fmt = (n: any) => `${sym}${Number(n || 0).toLocaleString("en-IN")}`;
   const qc = useQueryClient();
   const tenantConfig = useTenantConfig();
   const sym = tenantConfig.currency_symbol;

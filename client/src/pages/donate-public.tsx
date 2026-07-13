@@ -15,10 +15,10 @@ const api = (m: string, p: string, b?: any) =>
     return d;
   });
 
-const fmt = (n: any) => `${sym}${Number(n || 0).toLocaleString("en-IN")}`;
 const PRESETS = [500, 1000, 2500, 5000];
 
 export default function DonatePublicPage() {
+  const fmt = (n: any) => `${sym}${Number(n || 0).toLocaleString("en-IN")}`;
   const [, params] = useRoute("/donate/:slug");
   const slug = params?.slug || "";
   const tenantConfig = useTenantConfig();

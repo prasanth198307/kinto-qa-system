@@ -21,6 +21,7 @@ function SC({ title, value, icon: Icon, color }: any) {
 }
 
 function OverviewTab() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { data: stats } = useQuery<any>({ queryKey: ["/api/real-estate/stats"] });
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -100,6 +101,7 @@ function UnitsTab() {
   const delMut = useMutation({ mutationFn: (id: any) => apiRequest("DELETE", `/api/real-estate/units/${id}`), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/real-estate/units"] }) });
   const openNew = () => { setEditing(null); setForm({ status: "available" }); setShowForm(true); };
   const openEdit = (u: any) => { setEditing(u); setForm({ ...u }); setShowForm(true); };
+  const { currency_symbol: sym } = useTenantConfig();
   const filtered = (units as any[]).filter(u => (!filterProject || String(u.project_id) === filterProject) && (u.unit_no?.toLowerCase().includes(search.toLowerCase()) || u.project_name?.toLowerCase().includes(search.toLowerCase())));
   const STATUS_C: Record<string, string> = { available: "bg-green-100 text-green-700", booked: "bg-orange-100 text-orange-700", sold: "bg-red-100 text-red-700", reserved: "bg-blue-100 text-blue-700" };
   return (
@@ -155,6 +157,7 @@ function BookingsTab() {
   const updateSchedule = useMutation({ mutationFn: ({ id, ...d }: any) => apiRequest("PUT", `/api/real-estate/payment-schedules/${id}`, d), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/real-estate/payment-schedules", showPayments?.id] }) });
   const openNew = () => { setEditing(null); setForm({ booking_date: new Date().toISOString().split("T")[0], status: "booked" }); setShowForm(true); };
   const openEdit = (b: any) => { setEditing(b); setForm({ ...b, booking_date: b.booking_date?.split("T")[0], agreement_date: b.agreement_date?.split("T")[0], possession_date: b.possession_date?.split("T")[0] }); setShowForm(true); };
+  const { currency_symbol: sym } = useTenantConfig();
   const filtered = (bookings as any[]).filter(b => b.customer_name?.toLowerCase().includes(search.toLowerCase()) || b.booking_no?.includes(search));
   const availableUnits = (units as any[]).filter(u => u.status === "available" || (editing && String(u.id) === String(editing.unit_id)));
   return (
@@ -291,6 +294,7 @@ function DemandLettersTab() {
   const openNew = () => { setEditing(null); setForm({ demand_date: new Date().toISOString().split("T")[0], status: "pending" }); setShowForm(true); };
   const openEdit = (l: any) => { setEditing(l); setForm({ ...l, demand_date: l.demand_date?.split("T")[0], due_date: l.due_date?.split("T")[0] }); setShowForm(true); };
   const onBooking = (id: string) => { const realId = id === "__none__" ? "" : id; const b = (bookings as any[]).find(b => String(b.id) === realId); setForm((f: any) => ({ ...f, booking_id: realId, customer_name: b?.customer_name || f.customer_name, unit_number: b?.unit_no || f.unit_number })); };
+  const { currency_symbol: sym } = useTenantConfig();
   const STATUS_C: Record<string, string> = { pending: "bg-orange-100 text-orange-700", paid: "bg-green-100 text-green-700", overdue: "bg-red-100 text-red-700", partial: "bg-blue-100 text-blue-700" };
   return (
     <div className="space-y-4">

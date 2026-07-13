@@ -14,11 +14,11 @@ import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-co
 
 const api = (m: string, p: string, b?: any) =>
   fetch(p, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined }).then((r) => r.json());
-const fmt = (n: any) => `${sym}${Number(n || 0).toLocaleString("en-IN")}`;
 const YEAR = new Date().getFullYear();
 const FC_BLANK = { donor_name: "", country: "", currency: "USD", amount: "", inr_amount: "", receipt_date: new Date().toISOString().slice(0, 10) };
 
 export default function NGOFCRAPage() {
+  const fmt = (n: any) => `${sym}${Number(n || 0).toLocaleString("en-IN")}`;
   const qc = useQueryClient();
   const tenantConfig = useTenantConfig();
   const sym = tenantConfig.currency_symbol;

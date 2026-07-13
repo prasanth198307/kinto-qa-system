@@ -37,6 +37,7 @@ function DashboardTab() {
 }
 
 function CRMTab() {
+  const { currency_symbol: sym } = useTenantConfig();
   const qc = useQueryClient();
   const { data: pipeline = {} } = useQuery({ queryKey: ["/api/real-estate/leads/pipeline"], queryFn: () => apiRequest("GET", "/api/real-estate/leads/pipeline") });
   const [showAdd, setShowAdd] = useState(false);
@@ -105,6 +106,7 @@ function SiteVisitsTab() {
 }
 
 function BookingsTab() {
+  const { currency_symbol: sym } = useTenantConfig();
   const qc = useQueryClient();
   const { data: bookings = [] } = useQuery({ queryKey: ["/api/real-estate/bookings"], queryFn: () => apiRequest("GET", "/api/real-estate/bookings") });
   const [showAdd, setShowAdd] = useState(false);
@@ -135,6 +137,7 @@ function BookingsTab() {
 }
 
 function CollectionsTab() {
+  const { currency_symbol: sym } = useTenantConfig();
   const qc = useQueryClient();
   const { data: dues = [] } = useQuery({ queryKey: ["/api/real-estate/collections/dues"], queryFn: () => apiRequest("GET", "/api/real-estate/collections/dues") });
   const pay = useMutation({ mutationFn: ({ id, amount }: any) => apiRequest("POST", `/api/real-estate/bookings/${id}/payment`, { amount }), onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/real-estate/collections/dues"] }) });
@@ -147,6 +150,7 @@ function CollectionsTab() {
 }
 
 function ConstructionTab() {
+  const { currency_symbol: sym } = useTenantConfig();
   const qc = useQueryClient();
   const { data: projects = [] } = useQuery({ queryKey: ["/api/real-estate/projects"], queryFn: () => apiRequest("GET", "/api/real-estate/projects") });
   const [project, setProject] = useState("");
@@ -174,6 +178,7 @@ function ConstructionTab() {
 }
 
 function BrokersTab() {
+  const { currency_symbol: sym } = useTenantConfig();
   const qc = useQueryClient();
   const { data: brokers = [] } = useQuery({ queryKey: ["/api/real-estate/brokers"], queryFn: () => apiRequest("GET", "/api/real-estate/brokers") });
   const markPaid = useMutation({ mutationFn: (id: any) => apiRequest("POST", `/api/real-estate/brokers/${id}/mark-commission-paid`, {}), onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/real-estate/brokers"] }) });
@@ -185,6 +190,7 @@ function BrokersTab() {
 }
 
 function SocietyTab() {
+  const { currency_symbol: sym } = useTenantConfig();
   const qc = useQueryClient();
   const [month, setMonth] = useState("");
   const { data: charges = [] } = useQuery({ queryKey: ["/api/real-estate/society/charges", month], queryFn: () => apiRequest("GET", `/api/real-estate/society/charges?month=${month}`) });

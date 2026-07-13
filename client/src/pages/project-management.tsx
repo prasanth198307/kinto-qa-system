@@ -18,6 +18,7 @@ const STATUS_COLORS: Record<string, string> = { active: "default", completed: "s
 
 // ─── Project Form ──────────────────────────────────────────────────────────────
 function ProjectForm({ project, employees, onSave, onCancel }: any) {
+  const { currency_symbol: sym } = useTenantConfig();
   const { toast } = useToast();
   const [form, setForm] = useState({
     name: project?.name || "", code: project?.code || "", clientName: project?.client_name || "",
@@ -102,6 +103,7 @@ function ProjectForm({ project, employees, onSave, onCancel }: any) {
 
 // ─── Project Detail View ───────────────────────────────────────────────────────
 function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () => void }) {
+  const { currency_symbol: sym } = useTenantConfig();
   const { toast } = useToast();
   const [boqDialogOpen, setBoqDialogOpen] = useState(false);
   const [milestoneDialogOpen, setMilestoneDialogOpen] = useState(false);
@@ -358,6 +360,7 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
 
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 export default function ProjectManagementPage() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<any>(null);

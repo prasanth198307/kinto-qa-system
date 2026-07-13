@@ -16,9 +16,9 @@ import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-co
 const api = (method: string, path: string, body?: any) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
-const fmt = (n: number) => `${sym}${(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 0 })}`;
 
 export default function ConsolidationPage() {
+  const fmt = (n: number) => `${sym}${(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 0 })}`;
   const tenantConfig = useTenantConfig();
   const sym = tenantConfig.currency_symbol;
   const { toast } = useToast();

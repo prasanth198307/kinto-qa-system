@@ -85,6 +85,7 @@ function IdleState() {
 }
 
 function ActiveBillState({ bill }: { bill: any }) {
+  const { currency_symbol: sym } = useTenantConfig();
   const items: any[] = bill.items || [];
   const subtotal = items.reduce((s: number, i: any) => s + Number(i.price || 0) * Number(i.quantity || 1), 0);
   const gst = bill.gst ?? subtotal * 0.05;

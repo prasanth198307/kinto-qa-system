@@ -312,6 +312,7 @@ export default function CustomerAdvancesPage() {
   };
 
   const formatCurrency = (amountInPaise: number) => {
+  const { currency_symbol: sym } = useTenantConfig();
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',

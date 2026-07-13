@@ -11,7 +11,7 @@ import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-co
 
 const api = (m: string, u: string, b?: any) =>
   fetch(u, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined, credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
-const fmt = (n: any) => sym + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
+
 
 const STATUS_COLORS: Record<string, string> = {
   confirmed: "bg-blue-100 text-blue-800",
@@ -25,6 +25,8 @@ const STATUS_COLORS: Record<string, string> = {
 const today = new Date().toISOString().split("T")[0];
 
 export default function RestaurantReservationsPage() {
+  const { currency_symbol: sym } = useTenantConfig();
+  const fmt = (n: any) => sym + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
   const { toast } = useToast();
   const qc = useQueryClient();
 

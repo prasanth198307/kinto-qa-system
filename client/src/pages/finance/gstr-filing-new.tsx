@@ -46,10 +46,10 @@ interface GSTR3BSummary {
 function fmt(n: number) { return `${sym}${(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}` ; }
 
 export default function GSTRFilingNewPage() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { toast } = useToast();
   const qc = useQueryClient();
   const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [month, setMonth] = useState("6");
   const [year, setYear] = useState("2026");
   const [ackDialog, setAckDialog] = useState<{ open: boolean; id: number | null }>({ open: false, id: null });

@@ -11,7 +11,6 @@ import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-co
 
 const api = (m: string, u: string, b?: any) =>
   fetch(u, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined, credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
-const fmt = (n: any) => sym + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
 
 const FOOD_ICONS: Record<string, string> = { veg: "🟢", "non-veg": "🔴", egg: "🟡" };
 const GST_LABELS: Record<string, string> = { food: "Food (5%)", restaurant: "Restaurant (12%)", bar: "Bar (18%)" };
@@ -261,6 +260,7 @@ function TranslationsPanel({ menuItems }: { menuItems: any[] }) {
 }
 
 export default function RestaurantMenuPage() {
+  const fmt = (n: any) => sym + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
   const [tab, setTab] = useState<"items" | "categories" | "modifiers">("items");
   const { toast } = useToast();
   const qc = useQueryClient();

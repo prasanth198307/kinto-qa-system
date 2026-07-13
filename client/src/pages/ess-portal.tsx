@@ -21,18 +21,14 @@ import {
   IndianRupee, Printer, CheckCircle2, XCircle, ChevronRight,
   Home, Lock, AlertCircle, Download, Info, Receipt, Plus, Trash2
 } from "lucide-react";
-
 const MONTH_NAMES = ["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const fmt = (n: any) => Number(n || 0).toLocaleString("en-IN");
-const fmtRs = (n: any) => `${sym}${fmt(n)}`;
 const FISCAL_YEARS = ["2025-26", "2024-25", "2023-24"];
-
 async function essFetch(path: string, opts?: RequestInit) {
   const r = await fetch(`/api/ess${path}`, { credentials: "include", ...opts });
   if (!r.ok) throw new Error((await r.json()).message || "Request failed");
   return r.json();
 }
-
 // ── Payslip Detail ─────────────────────────────────────────────────────────────
 function PayslipDetail({ payslipId, onClose }: { payslipId: number; onClose: () => void }) {
   const { data: ps, isLoading, isError } = useQuery({
@@ -48,7 +44,6 @@ function PayslipDetail({ payslipId, onClose }: { payslipId: number; onClose: () 
     queryFn: () => essFetch("/leaves"),
   });
   const { toast } = useToast();
-
   const openPrintWindow = (forPrint = false) => {
     if (!ps) return;
     const leaveBalances: any[] = leavesData?.balances || [];
@@ -60,7 +55,6 @@ function PayslipDetail({ payslipId, onClose }: { payslipId: number; onClose: () 
     w.focus();
     if (forPrint) setTimeout(() => w.print(), 500);
   };
-
   if (isLoading) return <div className="p-8 text-center text-muted-foreground">Loading payslip...</div>;
   if (isError || !ps) return (
     <div className="p-8 text-center text-muted-foreground">
@@ -69,11 +63,9 @@ function PayslipDetail({ payslipId, onClose }: { payslipId: number; onClose: () 
       <Button size="sm" variant="outline" className="mt-3" onClick={onClose}>Close</Button>
     </div>
   );
-
   const components = ps.components ? (typeof ps.components === "string" ? JSON.parse(ps.components) : ps.components) : [];
   const earnings = components.filter((c: any) => c.type === "earning");
   const deductions = components.filter((c: any) => c.type === "deduction");
-
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-start flex-wrap gap-2">
@@ -91,7 +83,6 @@ function PayslipDetail({ payslipId, onClose }: { payslipId: number; onClose: () 
           <Button size="sm" variant="ghost" onClick={onClose}>Close</Button>
         </div>
       </div>
-
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
         {[
           ["Employee", `${ps.first_name} ${ps.last_name}`], ["Emp Code", ps.emp_code],
@@ -102,7 +93,6 @@ function PayslipDetail({ payslipId, onClose }: { payslipId: number; onClose: () 
           <div key={l}><span className="text-muted-foreground">{l}: </span><span className="font-medium">{v}</span></div>
         ))}
       </div>
-
       <div className="rounded-md border overflow-x-auto">
         <div className="grid grid-cols-2 divide-x min-w-[420px]">
           <div>
@@ -132,7 +122,6 @@ function PayslipDetail({ payslipId, onClose }: { payslipId: number; onClose: () 
           <span>Net Pay</span><span>{fmtRs(ps.net_salary)}</span>
         </div>
       </div>
-
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-sm">
         {[["Days Worked", ps.days_worked], ["LOP Days", ps.lop_days], ["OT Hours", ps.ot_hours]].map(([l, v]) => (
           <div key={l} className="p-2 rounded-md bg-muted/50 text-center">
@@ -144,21 +133,17 @@ function PayslipDetail({ payslipId, onClose }: { payslipId: number; onClose: () 
     </div>
   );
 }
-
 // ── Leave Application Form ────────────────────────────────────────────────────
 function ApplyLeaveForm({ leaveTypes, leaveBalances, leavesError, onSave, onCancel }: any) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [form, setForm] = useState({ leaveTypeId: "", fromDate: "", toDate: "", reason: "" });
   const [balanceWarning, setBalanceWarning] = useState("");
-
   const days = form.fromDate && form.toDate
     ? Math.max(0, Math.ceil((new Date(form.toDate).getTime() - new Date(form.fromDate).getTime()) / 86400000) + 1)
     : 0;
-
   const lopType = leaveTypes.find((lt: any) => lt.code === "LOP");
   const selectedType = leaveTypes.find((lt: any) => String(lt.id) === form.leaveTypeId);
-
   // When leave type or days change, validate balance for SL/CL
   const handleLeaveTypeChange = (v: string) => {
     setBalanceWarning("");
@@ -175,7 +160,6 @@ function ApplyLeaveForm({ leaveTypes, leaveBalances, leavesError, onSave, onCanc
     }
     setForm(p => ({ ...p, leaveTypeId: v }));
   };
-
   // Re-validate when days change
   const checkBalanceForDays = (d: number) => {
     if (!selectedType || !["SL", "CL"].includes(selectedType.code)) { setBalanceWarning(""); return; }
@@ -187,16 +171,13 @@ function ApplyLeaveForm({ leaveTypes, leaveBalances, leavesError, onSave, onCanc
       setBalanceWarning("");
     }
   };
-
   const mutation = useMutation({
     mutationFn: () => essFetch("/leaves", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["ess-leaves"] }); toast({ title: "Leave application submitted" }); onSave(); },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
-
   const balanceMap: Record<string, number> = {};
   (leaveBalances || []).forEach((b: any) => { balanceMap[b.leave_type_id] = Number(b.balance ?? 0); });
-
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -274,7 +255,6 @@ function ApplyLeaveForm({ leaveTypes, leaveBalances, leavesError, onSave, onCanc
     </div>
   );
 }
-
 // ── TDS Declaration Form ──────────────────────────────────────────────────────
 function EssDeclarationTab({ employee }: { employee: any }) {
   const { toast } = useToast();
@@ -282,14 +262,11 @@ function EssDeclarationTab({ employee }: { employee: any }) {
   const tenantConfig = useTenantConfig();
   const sym = tenantConfig.currency_symbol;
   const [fy, setFy] = useState(FISCAL_YEARS[0]);
-
   const { data: decl } = useQuery({
     queryKey: ["ess-declaration", fy],
     queryFn: () => essFetch(`/declaration?fiscalYear=${fy}`),
   });
-
   const [form, setForm] = useState<any>({});
-
   useEffect(() => {
     if (decl) {
       setForm({
@@ -307,19 +284,15 @@ function EssDeclarationTab({ employee }: { employee: any }) {
       setForm({ regime: employee?.tax_regime || "new", licPremium:"0",ppf:"0",elss:"0",nsc:"0",homeLoanPrincipal:"0",fdTaxSaving:"0",other80c:"0",sec80dSelf:"0",sec80dParents:"0",parentsSeniorCitizen:false,rentPerMonth:"0",cityType:"non_metro",homeLoanInterest:"0",eduLoanInterest:"0",nps80ccd:"0",sec80g:"0",sec80tta:"0",otherDeductions:"0",notes:"" });
     }
   }, [decl, employee]);
-
   const saveMutation = useMutation({
     mutationFn: () => essFetch("/declaration", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, fiscalYear: fy }) }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["ess-declaration"] }); toast({ title: "Declaration saved successfully" }); },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
-
   const total80c = Math.min(150000, ["licPremium","ppf","elss","nsc","homeLoanPrincipal","fdTaxSaving","other80c"].reduce((s, k) => s + Number(form[k]||0), 0));
   const f = (k: string) => (e: any) => setForm((p: any) => ({ ...p, [k]: e.target.value }));
   const s = (k: string) => (v: any) => setForm((p: any) => ({ ...p, [k]: v }));
-
   const numCls = "h-9 text-right";
-
   return (
     <div className="space-y-4">
       {/* ── Declaration status banner ── */}
@@ -354,7 +327,6 @@ function EssDeclarationTab({ employee }: { employee: any }) {
           <p className="text-sm text-blue-800 dark:text-blue-200">Declaration submitted — pending HR review for {fy}</p>
         </div>
       )}
-
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h3 className="font-medium">Investment Declaration</h3>
@@ -368,7 +340,6 @@ function EssDeclarationTab({ employee }: { employee: any }) {
           {!decl && <Badge variant="outline">Not submitted</Badge>}
         </div>
       </div>
-
       {/* ── Tax Regime selector (always visible, controls what's shown below) ── */}
       <div className="flex items-center justify-between flex-wrap gap-3 p-3 rounded-md bg-muted/40 border">
         <div className="space-y-0.5">
@@ -380,7 +351,6 @@ function EssDeclarationTab({ employee }: { employee: any }) {
           <SelectContent><SelectItem value="new">New Regime (Default)</SelectItem><SelectItem value="old">Old Regime</SelectItem></SelectContent>
         </Select>
       </div>
-
       {/* ── New Regime notice — no deductions available ── */}
       {(form.regime||"new") === "new" ? (
         <div className="flex items-start gap-3 p-4 rounded-md bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800">
@@ -400,7 +370,6 @@ function EssDeclarationTab({ employee }: { employee: any }) {
             <TabsTrigger value="hra">HRA</TabsTrigger>
             <TabsTrigger value="other">Other</TabsTrigger>
           </TabsList>
-
           <TabsContent value="80c" className="mt-4 space-y-3">
             <div className="flex justify-between text-sm p-2 rounded-md bg-muted/50">
               <span>Total 80C Declared: {fmtRs(["licPremium","ppf","elss","nsc","homeLoanPrincipal","fdTaxSaving","other80c"].reduce((s, k) => s + Number(form[k]||0), 0))}</span>
@@ -412,7 +381,6 @@ function EssDeclarationTab({ employee }: { employee: any }) {
               ))}
             </div>
           </TabsContent>
-
           <TabsContent value="80d" className="mt-4 space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5"><Label>Self & Family Premium (max ${sym}25,000)</Label><Input className={numCls} type="number" min="0" value={form.sec80dSelf||"0"} onChange={f("sec80dSelf")} /></div>
@@ -423,7 +391,6 @@ function EssDeclarationTab({ employee }: { employee: any }) {
               <Label htmlFor="seniorCitizen" className="text-sm">Parents are Senior Citizens (higher limit ${sym}50,000)</Label>
             </div>
           </TabsContent>
-
           <TabsContent value="hra" className="mt-4 space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5"><Label>Monthly Rent Paid (${sym})</Label><Input className={numCls} type="number" min="0" value={form.rentPerMonth||"0"} onChange={f("rentPerMonth")} /></div>
@@ -436,7 +403,6 @@ function EssDeclarationTab({ employee }: { employee: any }) {
               </div>
             </div>
           </TabsContent>
-
           <TabsContent value="other" className="mt-4 space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {[["homeLoanInterest","Home Loan Interest (Sec 24, max ${sym}2L)"],["eduLoanInterest","Education Loan Interest (80E)"],["nps80ccd","NPS (80CCD 1B, max ${sym}50K)"],["sec80g","Donations (80G)"],["sec80tta","Savings Interest (80TTA, max ${sym}10K)"],["otherDeductions","Other Deductions"]].map(([k,l]) => (
@@ -446,7 +412,6 @@ function EssDeclarationTab({ employee }: { employee: any }) {
           </TabsContent>
         </Tabs>
       )}
-
       <div className="flex justify-end">
         <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
           {saveMutation.isPending ? "Saving..." : "Save Declaration"}
@@ -455,19 +420,17 @@ function EssDeclarationTab({ employee }: { employee: any }) {
     </div>
   );
 }
-
 // ── ESS Expense Claims Tab ────────────────────────────────────────────────────
 function EssExpensesTab({ employee }: { employee: any }) {
+  const { currency_symbol: sym } = useTenantConfig();
   const { toast } = useToast();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ title: "", category: "", amount: "", expense_date: new Date().toISOString().split("T")[0], notes: "" });
-
   const { data: claims = [], isLoading } = useQuery<any[]>({
     queryKey: ["ess-expense-claims"],
     queryFn: () => essFetch("/expense-claims"),
   });
-
   const submitMutation = useMutation({
     mutationFn: () => essFetch("/expense-claims", {
       method: "POST",
@@ -482,9 +445,7 @@ function EssExpensesTab({ employee }: { employee: any }) {
     },
     onError: () => toast({ title: "Failed to submit", variant: "destructive" }),
   });
-
   const STATUS_COLOR: Record<string, any> = { draft: "secondary", submitted: "default", approved: "default", rejected: "destructive", paid: "default" };
-
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -493,7 +454,6 @@ function EssExpensesTab({ employee }: { employee: any }) {
           <Plus className="h-3.5 w-3.5 mr-1" /> New Claim
         </Button>
       </div>
-
       {isLoading ? (
         <div className="p-8 text-center text-muted-foreground">Loading...</div>
       ) : (claims as any[]).length === 0 ? (
@@ -522,7 +482,6 @@ function EssExpensesTab({ employee }: { employee: any }) {
           ))}
         </div>
       )}
-
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md max-h-[90dvh] overflow-y-auto">
           <DialogHeader><DialogTitle>Submit Expense Claim</DialogTitle></DialogHeader>
@@ -570,12 +529,10 @@ function EssExpensesTab({ employee }: { employee: any }) {
     </div>
   );
 }
-
 // ── Change Password Dialog ────────────────────────────────────────────────────
 function ChangePasswordDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { toast } = useToast();
   const [form, setForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
-
   const mutation = useMutation({
     mutationFn: () => {
       if (form.newPassword !== form.confirmPassword) throw new Error("New passwords don't match");
@@ -584,7 +541,6 @@ function ChangePasswordDialog({ open, onClose }: { open: boolean; onClose: () =>
     onSuccess: () => { toast({ title: "Password changed successfully" }); onClose(); setForm({ currentPassword: "", newPassword: "", confirmPassword: "" }); },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
-
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-sm">
@@ -607,9 +563,10 @@ function ChangePasswordDialog({ open, onClose }: { open: boolean; onClose: () =>
     </Dialog>
   );
 }
-
 // ── Main ESS Portal ───────────────────────────────────────────────────────────
 export default function EssPortal() {
+  const { currency_symbol: sym } = useTenantConfig();
+  const fmtRs = (n: any) => `${sym}${fmt(n)}`;
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const qc = useQueryClient();

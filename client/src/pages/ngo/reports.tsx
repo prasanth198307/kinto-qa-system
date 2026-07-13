@@ -5,12 +5,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Download, BarChart3 } from "lucide-react";
 import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
-let sym = "₹"; // overridden per-component via useTenantConfig
-
 const get = (p: string) => fetch(p).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
-const fmt = (n: any) => `${sym}${Number(n || 0).toLocaleString("en-IN")}`;
 
 export default function NGOReportsPage() {
+  const { currency_symbol: sym } = useTenantConfig();
+  const fmt = (n: any) => `${sym}${Number(n || 0).toLocaleString("en-IN")}`;
   const { data: summary80g } = useQuery<any>({ queryKey: ["ngo-rpt-80g"], queryFn: () => get("/api/ngo/reports/80g-summary") });
   const { data: donorWise = [] } = useQuery<any[]>({ queryKey: ["ngo-rpt-donor"], queryFn: () => get("/api/ngo/reports/donor-wise") });
   const { data: budgetActual = [] } = useQuery<any[]>({ queryKey: ["ngo-rpt-budget"], queryFn: () => get("/api/ngo/reports/project-budget-actual") });

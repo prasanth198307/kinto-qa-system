@@ -44,6 +44,7 @@ function getAvailableFYs(): string[] {
 }
 
 function getFYDates(fy: string): { start: string; end: string } {
+  const { currency_symbol: sym } = useTenantConfig();
   const y = parseInt(fy);
   return { start: `${y}-04-01`, end: `${y + 1}-03-31` };
 }
@@ -434,6 +435,8 @@ function TreeRows({ nodes, depth, expandedNodes, toggleNode, onAccountClick }: {
   toggleNode: (id: string) => void;
   onAccountClick: (node: TreeNode) => void;
 }) {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   return (
     <>
       {nodes.map(node => {
@@ -501,6 +504,8 @@ function TreeRows({ nodes, depth, expandedNodes, toggleNode, onAccountClick }: {
 }
 
 function VerticalView({ revenueTree, expenseTree, totalRevenue, totalExpenses, netProfit, isProfit, expandedNodes, toggleNode, onAccountClick }: ViewProps) {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   return (
     <Card>
       <div className="overflow-x-auto">
@@ -558,6 +563,8 @@ function VerticalView({ revenueTree, expenseTree, totalRevenue, totalExpenses, n
 }
 
 function TallyView({ revenueTree, expenseTree, totalRevenue, totalExpenses, netProfit, isProfit, expandedNodes, toggleNode, onAccountClick }: ViewProps) {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-3" data-testid="table-profit-loss-tally">
       <Card>

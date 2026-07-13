@@ -37,14 +37,11 @@ interface BackfillResult {
   [key: string]: { processed: number; skipped: number; errors: number };
 }
 
-function formatPaise(paise: number): string {
-  return `${sym}${(paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
 export default function AdminToolsPage() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { toast } = useToast();
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
+  const formatPaise = (paise: number): string =>
+    `${sym}${(paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   const [fixResult, setFixResult] = useState<FixResult | null>(null);
   const [paymentFixResult, setPaymentFixResult] = useState<PaymentFixResult | null>(null);

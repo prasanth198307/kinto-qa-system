@@ -62,6 +62,7 @@ function OccupancyForecast({ forecast }: { forecast: Array<{ date: string; occup
 }
 
 export default function RevenueManagementPage() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { toast } = useToast();
   const { data: forecastData } = useQuery({
     queryKey: ["hotel-revenue-forecast"],

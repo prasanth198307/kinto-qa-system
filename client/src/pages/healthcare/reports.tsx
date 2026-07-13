@@ -35,6 +35,7 @@ function StatCard({ label, value, sub }: { label: string; value: string | number
 }
 
 function ReportTable({ data, columns }: { data: any[]; columns: { key: string; label: string; fmt?: (v: any) => string }[] }) {
+  const { currency_symbol: sym } = useTenantConfig();
   if (!data || data.length === 0) return <p className="text-center text-gray-400 py-8">No data for the selected period.</p>;
   return (
     <table className="w-full text-sm border-collapse">

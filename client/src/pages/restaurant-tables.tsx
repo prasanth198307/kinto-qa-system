@@ -11,7 +11,7 @@ import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-co
 
 const api = (m: string, u: string, b?: any) =>
   fetch(u, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined, credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
-const fmt = (n: any) => sym + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
+
 
 type RestaurantTable = {
   id: number;
@@ -55,6 +55,8 @@ const emptyTable = (): Partial<RestaurantTable> => ({
 });
 
 export default function RestaurantTablesPage() {
+  const { currency_symbol: sym } = useTenantConfig();
+  const fmt = (n: any) => sym + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
   const [tab, setTab] = useState<"tables" | "floorplan">("tables");
   const { toast } = useToast();
   const qc = useQueryClient();

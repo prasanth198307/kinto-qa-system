@@ -111,6 +111,7 @@ function InventoryGrid() {
 }
 
 function RateManagement({ rates, setRates }: { rates: typeof INITIAL_RATES; setRates: React.Dispatch<React.SetStateAction<typeof INITIAL_RATES>> }) {
+  const { currency_symbol: sym } = useTenantConfig();
   return (
     <Card>
       <CardHeader><CardTitle>Rate Management</CardTitle></CardHeader>

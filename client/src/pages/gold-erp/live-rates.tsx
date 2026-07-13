@@ -12,11 +12,11 @@ import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-co
 
 interface RateData { rate: number; silver: number; platinum: number; updatedAt: string | Date; }
 
-const fmt = (n: number) => `${sym}${Number(n).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 
 const PURITIY_FACTOR: Record<string, number> = { "24K": 1, "22K": 22/24, "18K": 18/24, "14K": 14/24 };
 
 export default function LiveGoldRatesPage() {
+  const fmt = (n: number) => `${sym}${Number(n).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
   const { toast } = useToast();
   const [live, setLive] = useState<RateData | null>(null);
   const tenantConfig = useTenantConfig();

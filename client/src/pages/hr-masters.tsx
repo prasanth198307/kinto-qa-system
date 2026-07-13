@@ -471,6 +471,7 @@ function SalaryStructuresTab() {
     });
   }
   function handleSave() {
+  const { currency_symbol: sym } = useTenantConfig();
     const compsPayload = earningComponents
       .filter((c: any) => selectedComps[c.id])
       .map((c: any) => ({
@@ -579,6 +580,8 @@ function PTSlabsTab() {
   });
   function openAdd() { setEditing(null); setForm({ state: "", income_from: "0", income_to: "", pt_amount: "0" }); setOpen(true); }
   function openEdit(r: any) { setEditing(r); setForm({ state: r.state, income_from: String(r.income_from), income_to: r.income_to != null ? String(r.income_to) : "", pt_amount: String(r.pt_amount) }); setOpen(true); }
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
 
   const byState: Record<string, any[]> = {};
   (slabs as any[]).forEach((s: any) => { if (!byState[s.state]) byState[s.state] = []; byState[s.state].push(s); });
@@ -705,6 +708,7 @@ function StatutoryRatesTab() {
   };
 
   const set = (key: string, val: any) => setForm((p: any) => ({ ...p, [key]: val }));
+  const { currency_symbol: sym } = useTenantConfig();
 
   const rateRow = (label: string, key: string, suffix: string, hint: string, disabled: boolean) => (
     <div className="grid grid-cols-1 sm:grid-cols-3 items-center gap-4">

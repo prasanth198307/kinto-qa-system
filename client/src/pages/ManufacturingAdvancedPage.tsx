@@ -429,6 +429,7 @@ function CostRollupTab() {
   };
 
   const updateStandard = async () => {
+  const { currency_symbol: sym } = useTenantConfig();
     if (!productId) return;
     setUpdating(true);
     try {
@@ -533,6 +534,7 @@ function CostRollupTab() {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function ManufacturingAdvancedPage() {
+  const { currency_symbol: sym } = useTenantConfig();
   return (
     <div className="p-6 space-y-6 max-w-6xl">
       <div>

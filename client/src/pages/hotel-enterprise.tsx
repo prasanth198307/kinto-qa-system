@@ -65,6 +65,7 @@ function RatePlansTab() {
 }
 
 function PackagesTab() {
+  const { currency_symbol: sym } = useTenantConfig();
   const qc = useQueryClient();
   const { data: pkgs = [] } = useQuery({ queryKey: ["/api/hotel/packages"], queryFn: () => apiRequest("GET", "/api/hotel/packages") });
   const [f, setF] = useState({ package_name: "", room_type_id: "", rate_plan_id: "", package_price: "", valid_from: "", valid_to: "" });
@@ -88,6 +89,7 @@ function PackagesTab() {
 }
 
 function NightAuditTab() {
+  const { currency_symbol: sym } = useTenantConfig();
   const qc = useQueryClient();
   const { data: history = [] } = useQuery({ queryKey: ["/api/hotel/night-audit/history"], queryFn: () => apiRequest("GET", "/api/hotel/night-audit/history") });
   const run = useMutation({ mutationFn: () => apiRequest("POST", "/api/hotel/night-audit/run", {}), onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/hotel/night-audit/history"] }) });
@@ -102,6 +104,7 @@ function NightAuditTab() {
 }
 
 function CorporateTab() {
+  const { currency_symbol: sym } = useTenantConfig();
   const qc = useQueryClient();
   const { data: corps = [] } = useQuery({ queryKey: ["/api/hotel/corporate-accounts"], queryFn: () => apiRequest("GET", "/api/hotel/corporate-accounts") });
   const { data: agents = [] } = useQuery({ queryKey: ["/api/hotel/travel-agents"], queryFn: () => apiRequest("GET", "/api/hotel/travel-agents") });
@@ -150,6 +153,7 @@ function LostFoundTab() {
 }
 
 function OnlineBookingsTab() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { data: bookings = [] } = useQuery({ queryKey: ["/api/hotel/online-booking"], queryFn: () => apiRequest("GET", "/api/hotel/online-booking") });
   const qc = useQueryClient();
   const confirm = useMutation({ mutationFn: (id: any) => apiRequest("POST", "/api/hotel/online-booking/confirm", { booking_id: id }), onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/hotel/online-booking"] }) });

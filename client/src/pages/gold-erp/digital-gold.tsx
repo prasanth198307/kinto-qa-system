@@ -16,10 +16,10 @@ import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-co
 const api = (method: string, path: string, body?: any) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
-const fmt = (n: number) => `${sym}${Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
 const fmtG = (n: number) => `${Number(n || 0).toFixed(4)}g`;
 
 export default function DigitalGoldPage() {
+  const fmt = (n: number) => `${sym}${Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
   const { toast } = useToast();
   const qc = useQueryClient();
   const tenantConfig = useTenantConfig();

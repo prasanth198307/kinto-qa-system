@@ -16,9 +16,9 @@ import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-co
 const api = (method: string, path: string, body?: any) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
-const fmt = (n: number) => `${sym}${(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
 
 export default function IFRSReportingPage() {
+  const fmt = (n: number) => `${sym}${(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
   const tenantConfig = useTenantConfig();
   const sym = tenantConfig.currency_symbol;
   const { toast } = useToast();
@@ -303,6 +303,7 @@ export default function IFRSReportingPage() {
 }
 
 function ImpairDialog({ assetId, onClose, onSubmit, pending }: { assetId: number; onClose: () => void; onSubmit: (id: number, val: string) => void; pending: boolean }) {
+  const { currency_symbol: sym } = useTenantConfig();
   const [val, setVal] = useState("");
   return (
     <Dialog open onOpenChange={onClose}>

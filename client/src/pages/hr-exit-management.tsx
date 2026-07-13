@@ -19,7 +19,6 @@ import {
   Calendar, FileText, TrendingDown, Users, DoorOpen,
   Calculator, Printer, IndianRupee
 } from "lucide-react";
-
 const EXIT_TYPES = [
   { value: "resignation", label: "Resignation" },
   { value: "termination", label: "Termination" },
@@ -28,10 +27,7 @@ const EXIT_TYPES = [
   { value: "end_of_contract", label: "End of Contract" },
   { value: "other", label: "Other" },
 ];
-
 const fmt = (n: any) => Number(n || 0).toLocaleString("en-IN");
-const fmtRs = (n: any) => `${sym}${fmt(n)}`;
-
 // ── Process Exit Dialog ───────────────────────────────────────────────────────
 function ProcessExitDialog({ emp, open, onClose }: { emp: any; open: boolean; onClose: () => void }) {
   const { toast } = useToast();
@@ -42,10 +38,8 @@ function ProcessExitDialog({ emp, open, onClose }: { emp: any; open: boolean; on
     exitReason: emp?.exit_reason || "",
     status: emp?.status || "on_notice",
   });
-
   const f = (key: string) => (e: any) => setForm(p => ({ ...p, [key]: e.target.value }));
   const s = (key: string) => (v: string) => setForm(p => ({ ...p, [key]: v }));
-
   const saveMutation = useMutation({
     mutationFn: (payload: any) => apiRequest("PUT", `/api/hr/employees/${emp.id}`, {
       ...emp,
@@ -66,7 +60,6 @@ function ProcessExitDialog({ emp, open, onClose }: { emp: any; open: boolean; on
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
-
   const handleSave = () => {
     if (!form.exitType) {
       toast({ title: "Please select exit type", variant: "destructive" });
@@ -80,16 +73,13 @@ function ProcessExitDialog({ emp, open, onClose }: { emp: any; open: boolean; on
       status: form.status,
     });
   };
-
   if (!emp) return null;
-
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Process Exit — {emp.first_name} {emp.last_name}</DialogTitle>
         </DialogHeader>
-
         <div className="flex items-center gap-3 p-3 rounded-md bg-muted/50">
           <Avatar className="h-9 w-9">
             <AvatarImage src={emp.photo_path ? `/${emp.photo_path}` : undefined} />
@@ -101,7 +91,6 @@ function ProcessExitDialog({ emp, open, onClose }: { emp: any; open: boolean; on
             <p className="text-xs text-muted-foreground">Joined: {emp.join_date}</p>
           </div>
         </div>
-
         <div className="space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
@@ -113,7 +102,6 @@ function ProcessExitDialog({ emp, open, onClose }: { emp: any; open: boolean; on
               <Input className="h-9" type="date" value={form.exitDate} onChange={f("exitDate")} />
             </div>
           </div>
-
           <div className="space-y-1.5">
             <Label>Exit Type <span className="text-destructive">*</span></Label>
             <Select value={form.exitType} onValueChange={s("exitType")}>
@@ -123,14 +111,11 @@ function ProcessExitDialog({ emp, open, onClose }: { emp: any; open: boolean; on
               </SelectContent>
             </Select>
           </div>
-
           <div className="space-y-1.5">
             <Label>Exit Reason / Remarks</Label>
             <Textarea value={form.exitReason} onChange={f("exitReason")} placeholder="Reason for leaving, any notes..." className="min-h-[80px]" />
           </div>
-
           <Separator />
-
           <div className="space-y-1.5">
             <Label>Update Employee Status</Label>
             <Select value={form.status} onValueChange={s("status")}>
@@ -144,7 +129,6 @@ function ProcessExitDialog({ emp, open, onClose }: { emp: any; open: boolean; on
             <p className="text-xs text-muted-foreground">Set to "Inactive" once the employee has left.</p>
           </div>
         </div>
-
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button onClick={handleSave} disabled={saveMutation.isPending} data-testid="btn-save-exit">
@@ -155,7 +139,6 @@ function ProcessExitDialog({ emp, open, onClose }: { emp: any; open: boolean; on
     </Dialog>
   );
 }
-
 // ── F&F Settlement Dialog ──────────────────────────────────────────────────────
 function FnFDialog({ employees, existing, open, onClose }: { employees: any[]; existing?: any; open: boolean; onClose: () => void }) {
   const { toast } = useToast();
@@ -172,7 +155,6 @@ function FnFDialog({ employees, existing, open, onClose }: { employees: any[]; e
     tdsOnSettlement: existing?.tds_on_settlement || 0,
     notes: existing?.notes || "",
   });
-
   const calcMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/hr/fnf/calculate", { employeeId: empId, settlementDate }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: (data: any) => {
@@ -181,7 +163,6 @@ function FnFDialog({ employees, existing, open, onClose }: { employees: any[]; e
     },
     onError: (e: any) => toast({ title: "Calculation failed", description: e.message, variant: "destructive" }),
   });
-
   const saveMutation = useMutation({
     mutationFn: (status: string) => {
       if (!calc) return Promise.reject(new Error("No calculation"));
@@ -208,20 +189,16 @@ function FnFDialog({ employees, existing, open, onClose }: { employees: any[]; e
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
-
   const o = (k: string) => (e: any) => setOverrides((p: any) => ({ ...p, [k]: e.target.value }));
-
   const noticeRecovery = calc ? Math.max(0, (Number(calc.noticePeriodDays) - Number(overrides.noticeServedDays)) * (Number(calc.pendingSalary) / 26)) : 0;
   const gross = calc ? Number(calc.pendingSalary) + Number(calc.elEncashmentAmount) + Number(calc.gratuityAmount) + Number(overrides.bonusArrears) + Number(overrides.otherAdditions) : 0;
   const netSettlement = gross - noticeRecovery - Number(overrides.otherDeductions) - Number(overrides.tdsOnSettlement);
-
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Full & Final Settlement</DialogTitle>
         </DialogHeader>
-
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           <div className="space-y-1.5 col-span-2">
             <Label>Employee</Label>
@@ -239,11 +216,9 @@ function FnFDialog({ employees, existing, open, onClose }: { employees: any[]; e
             <Input className="h-9" type="date" value={settlementDate} onChange={e => setSettlementDate(e.target.value)} />
           </div>
         </div>
-
         <Button variant="outline" onClick={() => calcMutation.mutate()} disabled={!empId || calcMutation.isPending}>
           <Calculator className="h-4 w-4 mr-1.5" />{calcMutation.isPending ? "Calculating..." : "Auto-Calculate"}
         </Button>
-
         {calc && (
           <div className="space-y-4">
             <div className="p-3 rounded-md bg-muted/50 text-sm space-y-1">
@@ -251,7 +226,6 @@ function FnFDialog({ employees, existing, open, onClose }: { employees: any[]; e
               <p><span className="text-muted-foreground">Days in Last Month: </span><span className="font-medium">{calc.pendingSalaryDays} days</span></p>
               {calc.yearsServed >= 5 && <p className="text-green-700 dark:text-green-400">Gratuity eligible (5+ years)</p>}
             </div>
-
             <div className="rounded-md border overflow-hidden">
               <table className="w-full text-sm">
                 <thead className="bg-muted/50"><tr>
@@ -323,12 +297,10 @@ function FnFDialog({ employees, existing, open, onClose }: { employees: any[]; e
                 </tbody>
               </table>
             </div>
-
             <div className="space-y-1.5">
               <Label>Notes</Label>
               <Textarea value={overrides.notes} onChange={o("notes")} placeholder="Any remarks..." className="min-h-[60px]" />
             </div>
-
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={onClose}>Cancel</Button>
               <Button variant="outline" onClick={() => saveMutation.mutate("draft")} disabled={saveMutation.isPending}>Save as Draft</Button>
@@ -338,7 +310,6 @@ function FnFDialog({ employees, existing, open, onClose }: { employees: any[]; e
             </div>
           </div>
         )}
-
         {!calc && (
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={onClose}>Cancel</Button>
@@ -348,12 +319,10 @@ function FnFDialog({ employees, existing, open, onClose }: { employees: any[]; e
     </Dialog>
   );
 }
-
 // ── Employee Row ──────────────────────────────────────────────────────────────
 function ExitEmployeeRow({ emp, onProcess, onFnF }: { emp: any; onProcess: () => void; onFnF: () => void }) {
   const today = new Date();
   const daysToExit = emp.exit_date ? Math.ceil((new Date(emp.exit_date).getTime() - today.getTime()) / 86400000) : null;
-
   return (
     <tr className="border-t" data-testid={`row-exit-${emp.id}`}>
       <td className="px-3 py-3">
@@ -400,9 +369,10 @@ function ExitEmployeeRow({ emp, onProcess, onFnF }: { emp: any; onProcess: () =>
     </tr>
   );
 }
-
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function HrExitManagement() {
+  const { currency_symbol: sym } = useTenantConfig();
+  const fmtRs = (n: any) => `${sym}${fmt(n)}`;
   const [search, setSearch] = useState("");
   const [processing, setProcessing] = useState<any>(null);
   const [fnfEmp, setFnfEmp] = useState<any>(null);

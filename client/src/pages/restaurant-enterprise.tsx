@@ -12,7 +12,7 @@ const apiGet = async (url: string) => {
   return r.json();
 };
 const fmt = (n: any) => Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
-const fmtShort = (n: any) => {
+const fmtShort = (sym: string, n: any) => {
   const v = Number(n || 0);
   if (v >= 100000) return `${sym}${(v / 100000).toFixed(1)}L`;
   if (v >= 1000) return `${sym}${(v / 1000).toFixed(1)}K`;
@@ -113,6 +113,7 @@ function TableGrid({ tables, onNavigate }: { tables: any[]; onNavigate: (path: s
 }
 
 function PaymentModeDonut({ modes }: { modes: any[] }) {
+  const { currency_symbol: sym } = useTenantConfig();
   const total = modes.reduce((s, m) => s + Number(m.amount || 0), 0);
   const colors = ["#6366f1", "#22c55e", "#f59e0b", "#ec4899", "#06b6d4"];
   const modeLabels: Record<string, string> = { cash: "Cash", card: "Card", upi: "UPI", aggregator: "Aggregator", credit: "Credit" };
@@ -144,6 +145,7 @@ function PaymentModeDonut({ modes }: { modes: any[] }) {
 }
 
 function TopItems({ items }: { items: any[] }) {
+  const { currency_symbol: sym } = useTenantConfig();
   return (
     <Card>
       <CardHeader className="pb-2"><CardTitle className="text-sm">Top Selling Items (Today)</CardTitle></CardHeader>
@@ -197,6 +199,7 @@ function AggregatorOrders({ agg, onNavigate }: { agg: any; onNavigate: (path: st
 }
 
 function WeeklyChart({ weekly }: { weekly: any[] }) {
+  const { currency_symbol: sym } = useTenantConfig();
   const max = Math.max(...weekly.map((d: any) => Number(d.revenue || 0)), 1);
   const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   const data = weekly.length === 7 ? weekly : days.map((d, i) => ({ day: d, revenue: weekly[i]?.revenue || 0 }));
@@ -210,7 +213,7 @@ function WeeklyChart({ weekly }: { weekly: any[] }) {
             const isToday = i === new Date().getDay() - 1;
             return (
               <div key={i} className="flex flex-col items-center flex-1 gap-1">
-                <span className="text-xs text-gray-500">{fmtShort(d.revenue)}</span>
+                <span className="text-xs text-gray-500">{fmtShort(sym, d.revenue)}</span>
                 <div
                   className={`w-full rounded-t transition-all ${isToday ? "bg-indigo-500" : "bg-indigo-200"}`}
                   style={{ height: `${h}px` }}
@@ -292,6 +295,7 @@ function StaffOnDuty({ staff }: { staff: any[] }) {
 }
 
 function RecentActivity({ customers }: { customers: any[] }) {
+  const { currency_symbol: sym } = useTenantConfig();
   return (
     <Card>
       <CardHeader className="pb-2"><CardTitle className="text-sm">Recent Customer Activity</CardTitle></CardHeader>
@@ -315,6 +319,7 @@ function RecentActivity({ customers }: { customers: any[] }) {
 }
 
 export default function RestaurantEnterprisePage() {
+  const { currency_symbol: sym } = useTenantConfig();
   const [, navigate] = useLocation();
 
   const { data: summary = {} } = useQuery({
@@ -407,7 +412,7 @@ export default function RestaurantEnterprisePage() {
       <div className="grid grid-cols-5 gap-3">
         <KpiCard
           label="Today's Revenue"
-          value={fmtShort(todayRev)}
+          value={fmtShort(sym, todayRev)}
           sub={yestRev ? `${revChange >= 0 ? "+" : ""}${revChange.toFixed(1)}% vs yesterday` : undefined}
         />
         <KpiCard

@@ -4,7 +4,6 @@ import { ShoppingCart, IndianRupee, RotateCcw, Store, RefreshCw, Upload } from "
 import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const fmt = (n: number) => new Intl.NumberFormat("en-IN").format(n);
-const fmtCur = (n: number) => sym + fmt(n);
 
 type Stats = {
   todayOrders: number;
@@ -42,6 +41,8 @@ const card = (label: string, value: string | number, Icon: React.ElementType, co
 );
 
 export default function EcommerceDashboard() {
+  const { currency_symbol: sym } = useTenantConfig();
+  const fmtCur = (n: number) => sym + fmt(n);
   const { toast } = useToast();
 
   const { data: stats, isLoading: statsLoading } = useQuery<Stats>({

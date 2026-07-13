@@ -138,6 +138,7 @@ function MenuMatrix({ items, avgQty, avgRevenue }: { items: any[]; avgQty: numbe
 }
 
 export default function RestaurantAnalyticsPage() {
+  const { currency_symbol: sym } = useTenantConfig();
   const [tab, setTab] = useState<"overview" | "menu" | "heatmap" | "staff" | "customers" | "forecast">("overview");
   const [from, setFrom] = useState(() => new Date(Date.now() - 30 * 86400000).toISOString().split("T")[0]);
   const [to, setTo] = useState(() => new Date().toISOString().split("T")[0]);

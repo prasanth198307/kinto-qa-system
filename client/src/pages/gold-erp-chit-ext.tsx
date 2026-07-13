@@ -14,6 +14,7 @@ import { Plus, Phone, MessageSquare, AlertTriangle, CheckCircle, Gift } from "lu
 import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const fmt = (n: any, d = 2) => Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: d });
+  const { currency_symbol: sym } = useTenantConfig();
 const fmtAmt = (n: any) => `${sym}${fmt(n)}`;
 const fmtWt = (n: any) => `${fmt(n, 3)} g`;
 const today = () => new Date().toISOString().slice(0, 10);

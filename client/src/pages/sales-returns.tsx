@@ -1347,6 +1347,8 @@ function ScrapInventorySection() {
   });
 
   const getStatusBadge = (status: string) => {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
     switch (status) {
       case 'approved':
         return <Badge className="bg-green-500/10 text-green-600">Approved</Badge>;

@@ -605,6 +605,7 @@ function EditSalesOrderDialog({ salesOrder, open, onClose }: EditDialogProps) {
 }
 
 export default function SalesOrderDetail({ showHeader = true }: { showHeader?: boolean }) {
+  const { currency_symbol: sym } = useTenantConfig();
   const { id } = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -655,6 +656,7 @@ export default function SalesOrderDetail({ showHeader = true }: { showHeader?: b
   const hasLinkedInvoices = !isLoadingInvoices && invoices.length > 0;
 
   const content = (() => {
+  const { currency_symbol: sym } = useTenantConfig();
     if (isLoadingSO) {
       return (
         <div className="p-4 sm:p-6 max-w-7xl mx-auto w-full space-y-4">

@@ -359,6 +359,8 @@ function VendorRow({
   details?: AgingInvoice[] | AgingOrder[];
   activeTab: "receivable" | "payable";
 }) {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const fmtAmt = (paise: number | null | undefined) => formatAmount(paise, tenantConfig.default_locale);
   return (
     <>

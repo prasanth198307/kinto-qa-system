@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ChevronDown, ChevronUp, RefreshCw, Truck } from "lucide-react";
 import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
-const fmt = (n: number) => sym + new Intl.NumberFormat("en-IN").format(n);
+
 
 type Order = {
   id: number; order_number: string; channel_name: string; platform: string;
@@ -87,6 +87,8 @@ function ShipModal({ order, onClose }: { order: Order; onClose: () => void }) {
 }
 
 export default function EcommerceOrders() {
+  const { currency_symbol: sym } = useTenantConfig();
+  const fmt = (n: number) => sym + new Intl.NumberFormat("en-IN").format(n);
   const { toast } = useToast();
   const [channelId, setChannelId] = useState("");
   const [status, setStatus] = useState("");

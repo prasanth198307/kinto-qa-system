@@ -15,7 +15,6 @@ import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-co
 
 const fmt = (n: any, d = 2) => Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: d });
 const fmtWt = (n: any) => `${fmt(n, 3)} g`;
-const fmtAmt = (n: any) => `${sym}${fmt(n)}`;
 const today = () => new Date().toISOString().slice(0, 10);
 
 function FL({ label, children }: any) {
@@ -35,6 +34,8 @@ function SBadge({ status }: { status: string }) {
 
 // ── Bullion Bookings ──────────────────────────────────────────────────────────
 export function BullionBookingsSection() {
+  const { currency_symbol: sym } = useTenantConfig();
+  const fmtAmt = (n: any) => `${sym}${fmt(n)}`;
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
@@ -160,6 +161,8 @@ export function BullionBookingsSection() {
 
 // ── Vault Audit ───────────────────────────────────────────────────────────────
 export function VaultAuditSection() {
+  const { currency_symbol: sym } = useTenantConfig();
+  const fmtAmt = (n: any) => `${sym}${fmt(n)}`;
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);

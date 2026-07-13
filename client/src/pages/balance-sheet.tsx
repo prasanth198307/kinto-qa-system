@@ -44,6 +44,7 @@ function getAvailableFYs(): string[] {
 }
 
 function getFYDates(fy: string): { start: string; end: string } {
+  const { currency_symbol: sym } = useTenantConfig();
   const y = parseInt(fy);
   return { start: `${y}-04-01`, end: `${y + 1}-03-31` };
 }
@@ -490,6 +491,8 @@ function BSTreeRows({ nodes, depth, expandedNodes, toggleNode, onAccountClick }:
   toggleNode: (id: string) => void;
   onAccountClick: (node: TreeNode) => void;
 }) {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   return (
     <>
       {nodes.map(node => {

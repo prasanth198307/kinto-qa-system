@@ -138,6 +138,8 @@ export default function CustomerOutstandingReport() {
   };
 
   const filtered = (data?.customers ?? []).filter((c) => {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
     const q = search.toLowerCase();
     if (!q) return true;
     return (

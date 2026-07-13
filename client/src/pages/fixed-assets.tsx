@@ -98,6 +98,8 @@ function AssetForm({ asset, onSave, onCancel }: any) {
 }
 
 function AssetDetail({ assetId, onBack }: { assetId: number; onBack: () => void }) {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { toast } = useToast();
   const { data, isLoading } = useQuery<any>({ queryKey: ["/api/assets/fixed-assets", assetId] });
 
@@ -164,6 +166,8 @@ function AssetDetail({ assetId, onBack }: { assetId: number; onBack: () => void 
 }
 
 export default function FixedAssetsPage() {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingAsset, setEditingAsset] = useState<any>(null);

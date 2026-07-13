@@ -90,6 +90,7 @@ function SetupTab() {
 }
 
 function CatalogSyncTab() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { toast } = useToast();
   const { data: catalog, isLoading, refetch } = useQuery<any>({ queryKey: ["ondc-catalog"], queryFn: () => fetch("/api/aggregators/ondc/catalog").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }), enabled: false });
   const items = catalog?.message?.catalog?.["bpp/providers"]?.[0]?.items || [];
@@ -132,6 +133,7 @@ function CatalogSyncTab() {
 }
 
 function OrderManagementTab() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { toast } = useToast();
   const qc = useQueryClient();
   const { data: orders = [], isLoading, refetch } = useQuery<any[]>({ queryKey: ["ondc-orders"], queryFn: () => fetch("/api/aggregators/ondc/orders").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }).catch(() => []) });
@@ -182,6 +184,7 @@ function OrderManagementTab() {
 }
 
 function AnalyticsTab() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { data: stats, isLoading } = useQuery<any>({ queryKey: ["ondc-analytics"], queryFn: () => fetch("/api/aggregators/ondc/analytics").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }).catch(() => ({})) });
   const ondcPct = stats?.ondc_pct || 0;
   const directPct = stats?.total_orders > 0 ? Math.round((stats?.direct_orders / stats?.total_orders) * 100) : 0;

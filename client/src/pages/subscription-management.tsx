@@ -103,6 +103,7 @@ function formatDate(d: string | null) {
 }
 
 function formatRupees(paise: number) {
+  const { currency_symbol: sym } = useTenantConfig();
   if (paise === 0) return "${sym}0";
   return `${sym}${paise.toLocaleString("en-IN")}`;
 }
@@ -398,6 +399,7 @@ function MarketplaceTab({
   })();
 
   const handleSave = async () => {
+  const { currency_symbol: sym } = useTenantConfig();
     setSaving(true);
     try {
       await onSave(Array.from(draft));
@@ -586,6 +588,7 @@ function ManageModulesTab({
   };
 
   const handleSave = async () => {
+  const { currency_symbol: sym } = useTenantConfig();
     setSaving(true);
     try {
       await onSave(Array.from(selected));
@@ -761,6 +764,7 @@ function ManageModulesTab({
 // ─── Auto-Deduct Tab ──────────────────────────────────────────────────────────
 
 function AutoDeductTab({ data }: { data: ModuleData }) {
+  const { currency_symbol: sym } = useTenantConfig();
   const nextBilling = data.currentPeriodEnd
     ? format(parseISO(data.currentPeriodEnd), "MMM d, yyyy")
     : "—";
@@ -912,6 +916,7 @@ function AutoDeductTab({ data }: { data: ModuleData }) {
 // ─── Overview Tab (unchanged) ─────────────────────────────────────────────────
 
 function OverviewTab({ data }: { data: ModuleData }) {
+  const { currency_symbol: sym } = useTenantConfig();
   const freeSet = new Set(data.freeModules);
   const activeCount = (data.selectedModules.filter(s => !freeSet.has(s))).length;
 

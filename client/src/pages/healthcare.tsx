@@ -53,6 +53,7 @@ function FieldRow({ label, children }: any) {
 
 // ── Overview ──────────────────────────────────────────────────────────────────
 function OverviewTab() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { data: stats } = useQuery<any>({ queryKey: ["/api/healthcare/stats"] });
   return (
     <div className="space-y-6">
@@ -186,6 +187,7 @@ function DoctorsTab() {
 
   const openNew = () => { setEditing(null); setForm({}); setShowForm(true); };
   const openEdit = (d: any) => { setEditing(d); setForm({ ...d }); setShowForm(true); };
+  const { currency_symbol: sym } = useTenantConfig();
 
   return (
     <div className="space-y-4">
@@ -268,6 +270,7 @@ function OPDTab() {
   const filtered = appointments.filter(a => a.patient_name?.toLowerCase().includes(search.toLowerCase()) || a.doctor_name?.toLowerCase().includes(search.toLowerCase()));
 
   const onDoctorChange = (doctorId: string) => {
+  const { currency_symbol: sym } = useTenantConfig();
     const doc = doctors.find((d: any) => String(d.id) === doctorId);
     setForm({ ...form, doctor_id: doctorId, doctor_name: doc?.name || "", specialization: doc?.specialty || "", consultation_fee: doc?.consultation_fee || 0 });
   };
@@ -379,6 +382,7 @@ function IPDTab() {
   const openEdit = (a: any) => { setEditing(a); setForm({ ...a, admission_date: a.admission_date?.split("T")[0], discharge_date: a.discharge_date?.split("T")[0] }); setShowForm(true); };
 
   const onDoctorChange = (id: string) => {
+  const { currency_symbol: sym } = useTenantConfig();
     const doc = doctors.find((d: any) => String(d.id) === id);
     setForm({ ...form, doctor_id: id, doctor_name: doc?.name || "" });
   };
@@ -486,6 +490,7 @@ function LabTab() {
 
   const openNew = () => { setEditing(null); setForm({ ordered_date: new Date().toISOString().split("T")[0], status: "pending" }); setShowForm(true); };
   const openEdit = (t: any) => { setEditing(t); setForm({ ...t, ordered_date: t.ordered_date?.split("T")[0], result_date: t.result_date?.split("T")[0] }); setShowForm(true); };
+  const { currency_symbol: sym } = useTenantConfig();
   const filtered = tests.filter(t => t.test_name?.toLowerCase().includes(search.toLowerCase()) || t.patient_name?.toLowerCase().includes(search.toLowerCase()));
 
   return (
@@ -590,6 +595,7 @@ function PharmacyTab() {
 
   const openNew = () => { setEditing(null); setForm({}); setShowForm(true); };
   const openEdit = (m: any) => { setEditing(m); setForm({ ...m, expiry_date: m.expiry_date?.split("T")[0] }); setShowForm(true); };
+  const { currency_symbol: sym } = useTenantConfig();
   const filtered = medicines.filter(m => m.name?.toLowerCase().includes(search.toLowerCase()) || m.category?.toLowerCase().includes(search.toLowerCase()));
   const lowStock = medicines.filter((m: any) => Number(m.stock_qty) <= Number(m.reorder_level));
 
@@ -713,6 +719,7 @@ function BillingTab() {
   };
 
   const onPatientChange = (id: string) => {
+  const { currency_symbol: sym } = useTenantConfig();
     const p = patients.find((pt: any) => String(pt.id) === id);
     setForm({ ...form, patient_id: id, patient_name: p?.name || "" });
   };
@@ -844,6 +851,7 @@ function WardsTab() {
 
   const openNew = () => { setEditing(null); setForm({}); setShowForm(true); };
   const openEdit = (w: any) => { setEditing(w); setForm({ ...w }); setShowForm(true); };
+  const { currency_symbol: sym } = useTenantConfig();
 
   return (
     <div className="space-y-4">

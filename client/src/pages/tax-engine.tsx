@@ -114,6 +114,7 @@ function SettingsTab() {
 
 // Tab 2: Tax Calculator
 function CalculatorTab() {
+  const { currency_symbol: sym } = useTenantConfig();
   const [params, setParams] = useState({ country: 'India', state: '', sellerState: '', taxableAmount: 10000, taxRate: '', isB2B: false, customerVatNumber: '' });
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);

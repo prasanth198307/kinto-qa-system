@@ -11,7 +11,6 @@ import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-co
 const api = (m: string, u: string, b?: any) =>
   fetch(u, { method: m, headers: { "Content-Type": "application/json" }, credentials: "include", body: b ? JSON.stringify(b) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
-const fmt = (n: any) => n != null ? `${sym}${Number(n).toLocaleString("en-IN")}` : "—";
 
 const STAGES = ["new", "contacted", "site_visit_scheduled", "site_visit_done", "negotiation", "booked", "lost"];
 const STAGE_COLOR: Record<string, [string, string]> = {
@@ -21,6 +20,7 @@ const STAGE_COLOR: Record<string, [string, string]> = {
 };
 
 export default function CrmPage() {
+  const fmt = (n: any) => n != null ? `${sym}${Number(n).toLocaleString("en-IN")}` : "—";
   const { toast } = useToast();
   const qc = useQueryClient();
   const tenantConfig = useTenantConfig();

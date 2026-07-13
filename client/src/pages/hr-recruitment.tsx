@@ -35,6 +35,7 @@ const getStage = (v: string) => STAGES.find(s => s.value === v) || STAGES[0];
 
 // ── Job Opening Form ────────────────────────────────────────────────────────────
 function JobOpeningForm({ editing, depts, onSave, onCancel }: any) {
+  const { currency_symbol: sym } = useTenantConfig();
   const { toast } = useToast();
   const [form, setForm] = useState({
     title: editing?.title || "",
@@ -151,6 +152,7 @@ function JobOpeningForm({ editing, depts, onSave, onCancel }: any) {
 
 // ── Application Form ────────────────────────────────────────────────────────────
 function ApplicationForm({ openings, editing, preOpeningId, onSave, onCancel }: any) {
+  const { currency_symbol: sym } = useTenantConfig();
   const { toast } = useToast();
   const [form, setForm] = useState({
     openingId: editing?.opening_id ? String(editing.opening_id) : (preOpeningId ? String(preOpeningId) : ""),
@@ -267,6 +269,7 @@ function ApplicationForm({ openings, editing, preOpeningId, onSave, onCancel }: 
 
 // ── Main Page ──────────────────────────────────────────────────────────────────
 export default function HrRecruitment() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { toast } = useToast();
   const [tab, setTab] = useState("openings");
   const [search, setSearch] = useState("");

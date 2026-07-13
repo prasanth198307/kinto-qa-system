@@ -147,6 +147,8 @@ export function CounterBookingsSection() {
 
 // ── Customer Approvals ────────────────────────────────────────────────────────
 export function CustomerApprovalsSection() {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { toast } = useToast();
   const fmtAmt = (n: any) => fmtCur(n, tenantConfig);
   const [showForm, setShowForm] = useState(false);
@@ -237,6 +239,8 @@ export function CustomerApprovalsSection() {
 
 // ── Buy-back ──────────────────────────────────────────────────────────────────
 export function BuybackSection() {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { toast } = useToast();
   const fmtAmt = (n: any) => fmtCur(n, tenantConfig);
   const [showForm, setShowForm] = useState(false);
@@ -427,6 +431,8 @@ export function PhysicalAuditSection() {
 
 // ── Loyalty & Rewards ─────────────────────────────────────────────────────────
 export function LoyaltySection() {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { toast } = useToast();
   const fmtAmt = (n: any) => fmtCur(n, tenantConfig);
   const [tab, setTab] = useState<"members" | "programs">("members");
@@ -547,6 +553,8 @@ export function LoyaltySection() {
 
 // ── Promotions ────────────────────────────────────────────────────────────────
 export function PromotionsSection() {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { toast } = useToast();
   const fmtAmt = (n: any) => fmtCur(n, tenantConfig);
   const [showForm, setShowForm] = useState(false);
@@ -713,6 +721,8 @@ export function RefiningSection() {
 
 // ── POS Old Gold ───────────────────────────────────────────────────────────────
 export function PosOldGoldSection() {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { toast } = useToast();
   const fmtAmt = (n: any) => fmtCur(n, tenantConfig);
   const [showForm, setShowForm] = useState(false);

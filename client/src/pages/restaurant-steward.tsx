@@ -66,6 +66,7 @@ function RecentKOTs({ tableId }: { tableId: number }) {
 }
 
 export default function RestaurantStewardPage() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { toast } = useToast();
   const { isOnline, pendingCount, syncPending } = useOffline();
 

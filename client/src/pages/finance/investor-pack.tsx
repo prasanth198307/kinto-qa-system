@@ -28,9 +28,9 @@ const KPI = ({ label, value, sub, color }: { label: string; value: string; sub?:
 );
 
 export default function InvestorPackPage() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { toast } = useToast();
   const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
 
   const [cohortMonths, setCohortMonths] = useState("6");
   const [calculating, setCalculating] = useState(false);

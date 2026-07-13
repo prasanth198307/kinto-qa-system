@@ -36,6 +36,7 @@ import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-co
 
 const fmt = (n: any, d = 2) => Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: d });
 const fmtWt = (n: any) => `${fmt(n, 3)} g`;
+  const { currency_symbol: sym } = useTenantConfig();
 const fmtAmt = (n: any) => `${sym}${fmt(n)}`;
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -242,6 +243,7 @@ function MetalRatesSection() {
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
   const metalChange = (v: string) => { const def = PURITIES[v]?.[0]; set("metal", v); if (def) { set("purity_name", def.name); set("purity_percent", def.pct); } };
   const purityChange = (v: string) => { const p = PURITIES[form.metal]?.find((x: any) => x.name === v); set("purity_name", v); if (p) set("purity_percent", p.pct); };
+  const { currency_symbol: sym } = useTenantConfig();
 
   return (
     <>
@@ -514,6 +516,7 @@ function EstimatesSection() {
   }, [form.metal_type, form.purity_name, (ratesData as any[]).length]);
 
   const calcTotal = () => {
+  const { currency_symbol: sym } = useTenantConfig();
     const wt = Number(form.weight_gm || 0);
     const rate = Number(form.rate_per_gram || 0);
     const metalVal = wt * rate;
@@ -843,6 +846,7 @@ function BullionSection() {
   });
 
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
+  const { currency_symbol: sym } = useTenantConfig();
 
   return (
     <>
@@ -943,6 +947,7 @@ function RepairsSection() {
   });
 
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
+  const { currency_symbol: sym } = useTenantConfig();
   const filtered = (repairs as any[]).filter((r: any) => r.customer_name?.toLowerCase().includes(search.toLowerCase()) || r.repair_no?.includes(search));
 
   return (
@@ -1478,6 +1483,7 @@ function MetalLedgerSection() {
   });
 
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
+  const { currency_symbol: sym } = useTenantConfig();
   const filteredBalances = balances.filter((b: any) => b.customer_name?.toLowerCase().includes(searchCust.toLowerCase()));
   const filteredTxns = txns.filter((t: any) => t.customer_name?.toLowerCase().includes(searchCust.toLowerCase()));
   const PURITIES_FLAT = Object.values(PURITIES).flat().map(p => p.name);

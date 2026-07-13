@@ -41,10 +41,12 @@ const SAMPLE_PL: Record<string, any> = {
   },
 };
 
-function fmt(n: number) { return sym + (n / 100000).toFixed(1) + "L"; }
-function fmtC(n: number) { return sym + (n / 10000000).toFixed(2) + "Cr"; }
+
 
 export default function ProjectPLPage() {
+  const { currency_symbol: sym } = useTenantConfig();
+  const fmt = (n: number) => sym + (n / 100000).toFixed(1) + "L";
+  const fmtC = (n: number) => sym + (n / 10000000).toFixed(2) + "Cr";
   const [projectId, setProjectId] = useState("1");
 
   const { data } = useQuery({

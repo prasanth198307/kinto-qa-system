@@ -134,6 +134,7 @@ function nextMonth(ym: string) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 function fmtCurrency(paise: number) {
+  const { currency_symbol: sym } = useTenantConfig();
   return `${sym}${(paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 function deriveStatus(totalPaise: number, paidPaise: number): 'pending' | 'partial' | 'paid' {

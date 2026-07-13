@@ -13,11 +13,11 @@ import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-co
 
 const get = (p: string) => fetch(p).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 const post = (p: string, b: any) => fetch(p, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b) }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
-const fmt = (n: any) => `${sym}${Number(n || 0).toLocaleString("en-IN")}`;
 const today = new Date().toISOString().slice(0, 10);
 const monthStart = `${today.slice(0, 7)}-01`;
 
 export default function NidhiReportsPage() {
+  const fmt = (n: any) => `${sym}${Number(n || 0).toLocaleString("en-IN")}`;
   const { toast } = useToast();
   const tenantConfig = useTenantConfig();
   const sym = tenantConfig.currency_symbol;

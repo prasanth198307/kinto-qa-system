@@ -40,6 +40,7 @@ function SC({ title, value, icon: Icon, color }: any) {
 
 // ── Currency input with ${sym} prefix ──────────────────────────────────────────────
 function CurrencyInput({ value, onChange, placeholder = "0.00", ...props }: any) {
+  const { currency_symbol: sym } = useTenantConfig();
   return (
     <div className="relative">
       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-medium">${sym}</span>
@@ -115,6 +116,7 @@ function SplitPaymentPanel({ total, splits, onSplitsChange }: {
   const update = (i: number, field: keyof SplitRow, v: string) =>
     onSplitsChange(splits.map((r, idx) => idx === i ? { ...r, [field]: v } : r));
   const autoFill = (i: number) => {
+  const { currency_symbol: sym } = useTenantConfig();
     const others = splits.reduce((s, r, idx) => idx !== i ? s + (Number(r.amount) || 0) : s, 0);
     update(i, "amount", Math.max(0, +(total - others).toFixed(2)).toString());
   };
@@ -186,6 +188,7 @@ function MrpOverrideDialog({ open, itemName, mrpRupees, currentPrice, onConfirm,
   const [priceError, setPriceError] = useState("");
 
   const handleClose = () => {
+  const { currency_symbol: sym } = useTenantConfig();
     setNewPrice(safeDefault);
     setPriceError("");
     onClose();
@@ -245,6 +248,7 @@ function MrpOverrideDialog({ open, itemName, mrpRupees, currentPrice, onConfirm,
 
 // ── Last session summary mini-card ────────────────────────────────────────────
 function LastSessionCard({ session }: { session: any }) {
+  const { currency_symbol: sym } = useTenantConfig();
   if (!session) return null;
   const duration = session.closed_at
     ? Math.round((new Date(session.closed_at).getTime() - new Date(session.opened_at).getTime()) / 60000)
@@ -382,6 +386,7 @@ function OpenSessionDialog({
   }
 
   function handleNext() {
+  const { currency_symbol: sym } = useTenantConfig();
     if (step === "balance") {
       // Check if same counter had a recent session → handover step
       if (lastSession && lastSession.counter_name === counterName) {
@@ -626,6 +631,7 @@ function UpiQrDialog({
   onClose: () => void;
   onPaid: (razorpayPaymentId: string | null) => void;
 }) {
+  const { currency_symbol: sym } = useTenantConfig();
   const { toast } = useToast();
   const [qrState, setQrState] = useState<QrState>("generating");
   const [qrId, setQrId] = useState<string | null>(null);
@@ -702,6 +708,7 @@ function UpiQrDialog({
 
   // Cleanup on close
   const handleClose = () => {
+  const { currency_symbol: sym } = useTenantConfig();
     clearInterval(pollRef.current!);
     clearInterval(timerRef.current!);
     setQrState("generating");
@@ -813,6 +820,7 @@ function UpiQrDialog({
 
 // ── Overview Tab ──────────────────────────────────────────────────────────────
 function OverviewTab() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { data: stats } = useQuery<any>({ queryKey: ["/api/pos/stats"] });
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -897,6 +905,7 @@ function CardTerminalDialog({ open, amount, sessionId, counterName, onClose, onP
   const handleClose = () => { clearInterval(pollRef.current); onClose(); };
 
   const handleManualConfirm = () => {
+  const { currency_symbol: sym } = useTenantConfig();
     setState("paid");
     setTimeout(() => onPaid(terminal?.id || null, cardRef || null), 800);
   };
@@ -1015,6 +1024,7 @@ function CardTerminalDialog({ open, amount, sessionId, counterName, onClose, onP
 function WeightEntryDialog({ open, product, onConfirm, onClose }: {
   open: boolean; product: any | null; onConfirm: (weight: number) => void; onClose: () => void;
 }) {
+  const { currency_symbol: sym } = useTenantConfig();
   const [weight, setWeight] = useState("");
   const unitPrice = Number(product?.selling_price || product?.price || 0);
   const amount = (Number(weight) || 0) * unitPrice;
@@ -1065,6 +1075,7 @@ function EodReportDialog({ open, onClose }: { open: boolean; onClose: () => void
   });
 
   const handlePrint = () => {
+  const { currency_symbol: sym } = useTenantConfig();
     const el = document.getElementById("eod-report-content");
     if (!el) return;
     const w = window.open("", "_blank", "width=420,height=700");
@@ -1169,6 +1180,7 @@ function PrintReceiptDialog({ open, txn, saleItems, session, onClose }: {
   const { data: company } = useQuery<any>({ queryKey: ["/api/settings/company"] });
 
   const handlePrint = () => {
+  const { currency_symbol: sym } = useTenantConfig();
     const el = document.getElementById("thermal-receipt-content");
     if (!el) return;
     const w = window.open("", "_blank", "width=420,height=700");
@@ -1438,6 +1450,7 @@ function TerminalSettingsTab() {
 
 // ── Credit Limit Warning ───────────────────────────────────────────────────────
 function CreditLimitWarning({ customer, billTotal }: { customer: any; billTotal: number }) {
+  const { currency_symbol: sym } = useTenantConfig();
   if (!customer) return null;
   const cl = Number(customer.credit_limit || 0);
   const outstanding = Number(customer.outstanding_balance || 0);
@@ -1649,6 +1662,7 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
   };
 
   const completeSale = () => {
+  const { currency_symbol: sym } = useTenantConfig();
     if (!cartItems.length) { toast({ title: "Cart is empty", variant: "destructive" }); return; }
     // Credit limit check
     if (selectedCustomer) {
@@ -2238,6 +2252,7 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
 
 // ── Sales History ─────────────────────────────────────────────────────────────
 function SalesHistoryTab() {
+  const { currency_symbol: sym } = useTenantConfig();
   const [activeTab, setActiveTab] = useState<"txns" | "cashier" | "hourly" | "daily">("txns");
   const [search, setSearch] = useState("");
   const [reportDate, setReportDate] = useState(new Date().toISOString().split("T")[0]);
@@ -2492,6 +2507,7 @@ function SalesHistoryTab() {
 
 // ── Customers Tab ─────────────────────────────────────────────────────────────
 function CustomersTab() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { toast } = useToast();
   const [search, setSearch] = useState(""); const [showForm, setShowForm] = useState(false); const [editing, setEditing] = useState<any>(null); const [form, setForm] = useState<any>({});
   const { data: customers = [] } = useQuery<any[]>({ queryKey: ["/api/pos/customers"] });
@@ -2744,6 +2760,7 @@ function ReturnsTab() {
 
 // ── Promotions Tab ────────────────────────────────────────────────────────────
 function PromotionsTab() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false); const [editing, setEditing] = useState<any>(null); const [form, setForm] = useState<any>({});
   const { data: promos = [] } = useQuery<any[]>({ queryKey: ["/api/pos/promotions"] });
@@ -2794,6 +2811,7 @@ function PromotionsTab() {
 
 // ── Sessions Tab ──────────────────────────────────────────────────────────────
 function SessionsTab() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { data: sessions = [] } = useQuery<any[]>({ queryKey: ["/api/pos/sessions"] });
   return (
     <div className="rounded-md border overflow-x-auto">

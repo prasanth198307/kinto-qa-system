@@ -40,6 +40,7 @@ interface DispatchTrackingProps {
 }
 
 export default function DispatchTracking({ showHeader = true }: DispatchTrackingProps = {}) {
+  const { currency_symbol: sym } = useTenantConfig();
   const { hasPermission } = usePermissions();
   const canCreateGatepass = hasPermission('gatepasses', 'create');
   const canEditGatepass = hasPermission('gatepasses', 'edit');

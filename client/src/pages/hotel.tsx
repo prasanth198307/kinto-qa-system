@@ -112,6 +112,7 @@ function RoomsTab() {
 
   const filtered = rooms.filter(r => r.room_number?.toLowerCase().includes(search.toLowerCase()) || r.room_type_name?.toLowerCase().includes(search.toLowerCase()));
   const openForm = (r?: any) => { setEditing(r || null); setForm(r ? { ...r } : { status: "available" }); setShowForm(true); };
+  const { currency_symbol: sym } = useTenantConfig();
 
   return (
     <div className="space-y-4">
@@ -199,6 +200,7 @@ function RoomTypesSection() {
   });
 
   const openForm = (rt?: any) => { setEditing(rt || null); setForm(rt ? { ...rt } : {}); setShowForm(true); };
+  const { currency_symbol: sym } = useTenantConfig();
 
   return (
     <div>
@@ -289,6 +291,7 @@ function ReservationsTab() {
   );
 
   const openForm = (r?: any) => { setEditing(r || null); setForm(r ? { ...r } : { adults: 1, children: 0 }); setShowForm(true); };
+  const { currency_symbol: sym } = useTenantConfig();
 
   return (
     <div className="space-y-4">
@@ -375,6 +378,7 @@ function ReservationsTab() {
 
 // ── Check-in/out Tab ──────────────────────────────────────────────────────────
 function CheckInOutTab() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { data: reservations = [] } = useQuery<any[]>({ queryKey: ["/api/hotel/reservations"] });
   const { toast } = useToast();
 
@@ -463,6 +467,7 @@ function FoliosTab() {
   const addItem = () => setForm((p: any) => ({ ...p, items: [...(p.items || []), { description: "", quantity: 1, rate: 0, amount: 0, category: "room" }] }));
   const removeItem = (i: number) => setForm((p: any) => ({ ...p, items: p.items.filter((_: any, idx: number) => idx !== i) }));
   const updateItem = (i: number, field: string, val: any) => setForm((p: any) => {
+  const { currency_symbol: sym } = useTenantConfig();
     const items = [...p.items];
     items[i] = { ...items[i], [field]: val };
     if (field === "quantity" || field === "rate") items[i].amount = (Number(items[i].quantity) || 0) * (Number(items[i].rate) || 0);
@@ -742,6 +747,7 @@ function ChannelManagerTab() {
   const { data: rates = [], refetch } = useQuery<any[]>({ queryKey: ["/api/hotel/enterprise/channels/rates"] });
 
   const handleSync = async () => {
+  const { currency_symbol: sym } = useTenantConfig();
     setSyncing(true);
     try {
       const r = await apiRequest("POST", "/api/hotel/enterprise/channels/sync");

@@ -48,6 +48,7 @@ function OPDTab() {
 }
 
 function IPDTab() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { data: admissions = [] } = useQuery({ queryKey: ["/api/healthcare/ipd/admissions"], queryFn: () => apiRequest("GET", "/api/healthcare/ipd/admissions") });
   const [selected, setSelected] = useState<any>(null);
   const [chargeForm, setChargeForm] = useState({ charge_type: "", description: "", quantity: "1", unit_price: "" });
@@ -162,6 +163,7 @@ function LabTab() {
 }
 
 function InsuranceTab() {
+  const { currency_symbol: sym } = useTenantConfig();
   const [pf, setPf] = useState({ patient_id: "", insurance_company: "", policy_number: "", sum_insured: "", valid_to: "" });
   const { data: claims = [] } = useQuery({ queryKey: ["/api/healthcare/tpa/claims"], queryFn: () => apiRequest("GET", "/api/healthcare/tpa/claims") });
   const qc = useQueryClient();

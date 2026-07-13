@@ -26,6 +26,7 @@ const SAMPLE_TRIPS = [
 interface Waypoint { label: string; lat: string; lng: string; }
 
 export default function GPSTrackingPage() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { toast } = useToast();
   const qc = useQueryClient();
   const [selectedVehicleId, setSelectedVehicleId] = useState<number | null>(null);
@@ -268,6 +269,7 @@ export default function GPSTrackingPage() {
 }
 
 function EWBExpiring() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { data: ewbs = [] } = useQuery<any[]>({
     queryKey: ["ewb-expiring-today"],
     queryFn: () => api("/api/logistics/eway-bills?expiring_today=1").catch(() => []),

@@ -50,10 +50,10 @@ const CERT_TEMPLATE = (donor: typeof MOCK_DONORS[0], fy: string) => `
 </div>`;
 
 export default function BulkCertificatePage() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { toast } = useToast();
   const [fy, setFy] = useState("2025-26");
   const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [fromDate, setFromDate] = useState("2025-04-01");
   const [toDate, setToDate] = useState("2026-03-31");
   const [selected, setSelected] = useState<number[]>([]);

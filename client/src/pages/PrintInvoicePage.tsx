@@ -146,6 +146,7 @@ export default function PrintInvoicePage() {
   };
   const printLocale = LOCALE_MAP[tenantConfig.country_code] ?? "en-US";
   const formatCurrency = (amountInPaise: number): string => {
+  const { currency_symbol: sym } = useTenantConfig();
     const amount = amountInPaise / 100;
     try {
       return new Intl.NumberFormat(printLocale, {

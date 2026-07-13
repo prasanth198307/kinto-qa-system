@@ -14,7 +14,6 @@ import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-co
 
 const api = (m: string, u: string, b?: any) =>
   fetch(u, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined, credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
-const fmt = (n: any) => sym + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
 
 const DENOMS = [1000, 500, 200, 100, 50, 20, 10, 5, 2, 1];
 
@@ -156,6 +155,7 @@ function ZReportActions({ shift, onDone }: { shift: any; onDone: () => void }) {
 }
 
 export default function RestaurantShiftsPage() {
+  const fmt = (n: any) => sym + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
   const { toast } = useToast();
   const qc = useQueryClient();
   const tenantConfig = useTenantConfig();

@@ -8,11 +8,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
-
 const api = (m: string, u: string, b?: any) =>
   fetch(u, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined, credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
-const fmt = (n: any) => sym + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
-
+  const { currency_symbol: sym } = useTenantConfig();
 const OUTLET_TYPE_COLORS: Record<string, string> = {
   dine_in: "bg-blue-100 text-blue-800",
   cloud_kitchen: "bg-purple-100 text-purple-800",
@@ -26,12 +24,9 @@ const TERMINAL_TYPE_COLORS: Record<string, string> = {
   kiosk: "bg-purple-100 text-purple-800",
   self_order: "bg-orange-100 text-orange-800",
 };
-
 const emptyOutlet = { outlet_code: "", outlet_name: "", outlet_type: "dine_in", address: "", city: "", gstin: "", phone: "", manager_name: "", service_charge_pct: "0", is_service_charge_enabled: false, is_active: true };
 const emptyTerminal = { terminal_name: "", terminal_code: "", outlet_id: "", terminal_type: "pos", printer_ip: "", printer_port: "9100", printer_type: "thermal", is_active: true };
 const emptyPrinter = { printer_name: "", printer_type: "thermal", connection_type: "network", ip_address: "", port: "9100", paper_size: "80mm", stations: [] as string[], print_types: [] as string[], is_active: true };
-
-
 const COUNTRY_PRESETS = [
   { country: "India", tax_name: "GST", tax_rate: 5, currency: "INR", currency_symbol: sym, flag: "🇮🇳" },
   { country: "UAE", tax_name: "VAT", tax_rate: 5, currency: "AED", currency_symbol: "د.إ", flag: "🇦🇪" },
@@ -42,7 +37,6 @@ const COUNTRY_PRESETS = [
   { country: "Bahrain", tax_name: "VAT", tax_rate: 10, currency: "BHD", currency_symbol: "BD", flag: "🇧🇭" },
   { country: "Qatar", tax_name: "VAT", tax_rate: 5, currency: "QAR", currency_symbol: "QR", flag: "🇶🇦" },
 ];
-
 function TaxCurrencyTab() {
   const { toast } = useToast();
   const [configs, setConfigs] = useState<any[]>([]);
@@ -50,14 +44,12 @@ function TaxCurrencyTab() {
   const [form, setForm] = useState({ tax_number: "", tax_rate: "", invoice_prefix: "", currency: "", currency_symbol: "" });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-
   useEffect(() => {
     fetch("/api/restaurant/tax/countries")
       .then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); })
       .then(data => setConfigs(Array.isArray(data) ? data : []))
       .catch(() => setConfigs(COUNTRY_PRESETS as any[]));
   }, []);
-
   const loadCountry = (country: string) => {
     setSelectedCountry(country);
     const existing = configs.find(c => c.country === country);
@@ -71,7 +63,6 @@ function TaxCurrencyTab() {
       currency_symbol: data.currency_symbol || "",
     });
   };
-
   const save = async () => {
     if (!selectedCountry) return;
     setSaving(true);
@@ -87,7 +78,6 @@ function TaxCurrencyTab() {
     } catch { toast({ title: "Save failed", variant: "destructive" } as any); }
     setSaving(false);
   };
-
   const testCalc = async () => {
     if (!selectedCountry) return;
     setLoading(true);
@@ -101,7 +91,6 @@ function TaxCurrencyTab() {
     } catch { toast({ title: "Calculation failed", variant: "destructive" } as any); }
     setLoading(false);
   };
-
   return (
     <div className="space-y-5">
       <div className="grid lg:grid-cols-3 gap-5">
@@ -127,7 +116,6 @@ function TaxCurrencyTab() {
             );
           })}
         </div>
-
         <div className="lg:col-span-2">
           {!selectedCountry ? (
             <div className="flex items-center justify-center h-64 text-gray-400 bg-gray-50 rounded-2xl">
@@ -178,7 +166,6 @@ function TaxCurrencyTab() {
                         <Input placeholder="e.g. INV, UAE-INV, SA-INV" value={form.invoice_prefix} onChange={e => setForm(f => ({ ...f, invoice_prefix: e.target.value }))} />
                       </div>
                     </div>
-
                     {selectedCountry === "Saudi Arabia" && (
                       <div className="p-4 bg-green-50 rounded-xl border border-green-200">
                         <div className="font-semibold text-green-800 mb-1">🇸🇦 ZATCA Phase 2 Compliance</div>
@@ -186,14 +173,12 @@ function TaxCurrencyTab() {
                         <button className="mt-2 text-xs text-green-600 border border-green-300 px-3 py-1 rounded-lg hover:bg-green-100" onClick={() => window.open("/api/restaurant/tax/zatca/generate", "_blank")}>Test ZATCA QR Generation</button>
                       </div>
                     )}
-
                     {selectedCountry === "UAE" && (
                       <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
                         <div className="font-semibold text-blue-800 mb-1">🇦🇪 UAE FTA Compliance</div>
                         <p className="text-xs text-blue-700">SwachERP generates UAE FTA-compliant VAT invoices with English and Arabic fields as required. Use the VAT Return Report under Analytics to file quarterly returns.</p>
                       </div>
                     )}
-
                     <div className="flex gap-3">
                       <button onClick={testCalc} disabled={loading} className="px-4 py-2 border rounded-lg text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50">
                         {loading ? "Testing..." : "Test Calculation"}
@@ -212,28 +197,23 @@ function TaxCurrencyTab() {
     </div>
   );
 }
-
 function FranchiseTab() {
   const { toast } = useToast();
   const [config, setConfig] = useState<any>(null);
   const tenantConfig = useTenantConfig();
   const sym = tenantConfig.currency_symbol;
   const [saving, setSaving] = useState(false);
-
   const { data: summary } = useQuery({
     queryKey: ["/api/restaurant/franchise/summary"],
     queryFn: () => fetch("/api/restaurant/franchise/summary").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
   });
-
   const { data: royaltyConfig } = useQuery({
     queryKey: ["/api/restaurant/franchise/royalty-config"],
     queryFn: () => fetch("/api/restaurant/franchise/royalty-config").then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }),
     onSuccess: (data: any) => setConfig(data),
   });
-
   const cfg = config || royaltyConfig || { royalty_pct: 5, marketing_fee_pct: 2, min_royalty: 5000, payment_cycle: "monthly" };
   const summaryData = (summary as any) || { total_outlets: 0, total_revenue: 0, total_royalty: 0, outlets: [] };
-
   const save = async () => {
     setSaving(true);
     try {
@@ -246,7 +226,6 @@ function FranchiseTab() {
     } catch { toast({ title: "Save failed", variant: "destructive" } as any); }
     setSaving(false);
   };
-
   return (
     <div className="space-y-5">
       <div className="grid md:grid-cols-3 gap-4">
@@ -263,7 +242,6 @@ function FranchiseTab() {
           </Card>
         ))}
       </div>
-
       <div className="grid md:grid-cols-2 gap-5">
         <Card className="border-0 shadow-sm">
           <CardHeader><CardTitle className="text-base">Royalty Configuration</CardTitle></CardHeader>
@@ -306,7 +284,6 @@ function FranchiseTab() {
             </button>
           </CardContent>
         </Card>
-
         <Card className="border-0 shadow-sm">
           <CardHeader><CardTitle className="text-base">Franchise Outlet Performance</CardTitle></CardHeader>
           <CardContent>
@@ -340,8 +317,9 @@ function FranchiseTab() {
     </div>
   );
 }
-
 export default function RestaurantOutletsPage() {
+  const { currency_symbol: sym } = useTenantConfig();
+  const fmt = (n: any) => sym + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
   const { toast } = useToast();
   const qc = useQueryClient();
 

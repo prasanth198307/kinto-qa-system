@@ -110,6 +110,7 @@ function ClaimForm({ employees, onSave, onCancel }: any) {
 }
 
 function ClaimCard({ claim, items, onAction }: any) {
+  const { currency_symbol: sym } = useTenantConfig();
   const [expanded, setExpanded] = useState(false);
   const claimItems = items.filter((i: any) => i.claim_id === claim.id);
   return (
@@ -170,6 +171,7 @@ function ClaimCard({ claim, items, onAction }: any) {
 }
 
 export default function HRExpenseClaimsPage() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("all");

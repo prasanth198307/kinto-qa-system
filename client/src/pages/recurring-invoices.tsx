@@ -20,6 +20,7 @@ const FREQUENCIES = [
 ];
 
 function RecurringForm({ schedule, onSave, onCancel }: any) {
+  const { currency_symbol: sym } = useTenantConfig();
   const { toast } = useToast();
   const [form, setForm] = useState({
     customerName: schedule?.customer_name || "", customerGstin: schedule?.customer_gstin || "",
@@ -87,6 +88,7 @@ function RecurringForm({ schedule, onSave, onCancel }: any) {
 }
 
 export default function RecurringInvoicesPage() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editSchedule, setEditSchedule] = useState<any>(null);

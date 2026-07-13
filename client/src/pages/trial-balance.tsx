@@ -51,6 +51,7 @@ function getFYLabel(startYear: string): string {
 }
 
 function getAvailableFYs(): string[] {
+  const { currency_symbol: sym } = useTenantConfig();
   const current = parseInt(getCurrentFY());
   return Array.from({ length: 4 }, (_, i) => String(current - i));
 }
@@ -568,6 +569,8 @@ function TBTreeRow({
   onToggle: (id: string) => void;
   onAccountClick: (node: { id: string; nodeType?: string }) => void;
 }) {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const isGroup = node.nodeType === 'group';
   const isExpanded = expandedNodes.has(node.id);
   const hasChildren = isGroup && node.children.length > 0;

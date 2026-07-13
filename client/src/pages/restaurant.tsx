@@ -128,6 +128,7 @@ function POSKOTTab() {
   const total = cart.reduce((s, c) => s + c.amount, 0);
 
   const placeOrder = () => {
+  const { currency_symbol: sym } = useTenantConfig();
     if (cart.length === 0) return toast({ title: "Cart empty", variant: "destructive" });
     createKot.mutate({ table_id: selectedTable?.id || null, order_type: orderType, waiter_name: waiter, items: cart });
   };
@@ -318,6 +319,7 @@ function TablesTab() {
 
 // ── Menu Tab ──────────────────────────────────────────────────────────────────
 function MenuTab() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { toast } = useToast();
   const [showItemForm, setShowItemForm] = useState(false);
   const [showCatForm, setShowCatForm] = useState(false);
@@ -558,6 +560,7 @@ function DeliveryTab() {
   });
 
   const openForm = (o?: any) => { setEditing(o || null); setForm(o ? { ...o } : { platform: "direct" }); setShowForm(true); };
+  const { currency_symbol: sym } = useTenantConfig();
 
   return (
     <div className="space-y-4">
@@ -645,6 +648,7 @@ function DeliveryTab() {
 
 // ── Reports Tab ───────────────────────────────────────────────────────────────
 function ReportsTab() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { data: kots = [] } = useQuery<any[]>({ queryKey: ["/api/restaurant/kot-orders"] });
   const { data: deliveries = [] } = useQuery<any[]>({ queryKey: ["/api/restaurant/delivery-orders"] });
   const { data: sessions = [] } = useQuery<any[]>({ queryKey: ["/api/restaurant/sessions"] });

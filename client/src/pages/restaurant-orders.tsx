@@ -251,6 +251,7 @@ function AddItemsPanel({
   };
 
   const handleAddToKOT = async () => {
+  const { currency_symbol: sym } = useTenantConfig();
     if (selected.length === 0) return;
     setLoading(true);
     try {
@@ -357,6 +358,7 @@ function OrderDetailPanel({
   }, [order.id]);
 
   const updateItemKitchenStatus = async (itemId: number, status: string) => {
+  const { currency_symbol: sym } = useTenantConfig();
     await api("PUT", `/api/restaurant/kot/orders/${order.id}/items/${itemId}/status`, {
       kitchen_status: status,
     });
@@ -606,6 +608,7 @@ export default function RestaurantOrdersPage() {
   };
 
   const toggleRow = (orderId: number) => {
+  const { currency_symbol: sym } = useTenantConfig();
     setSelectedOrderId(prev => (prev === orderId ? null : orderId));
   };
 

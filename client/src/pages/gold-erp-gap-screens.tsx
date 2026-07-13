@@ -24,7 +24,6 @@ import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-co
 // ── Shared helpers ─────────────────────────────────────────────────────────────
 const today = () => new Date().toISOString().slice(0, 10);
 const fmtWt = (n: any) => n ? `${Number(n).toFixed(3)} g` : "—";
-const fmtAmt = (n: any) => n ? `${sym}${Number(n).toLocaleString("en-IN", { maximumFractionDigits: 2 })}` : "—";
 
 function SH({ title, sub, action }: { title: string; sub?: string; action?: React.ReactNode }) {
   return (
@@ -71,6 +70,8 @@ function SBadge({ status }: { status: string }) {
 // 1. KARIGAR ATTENDANCE
 // ═══════════════════════════════════════════════════════════════════════════════
 export function KarigarAttendanceSection() {
+  const { currency_symbol: sym } = useTenantConfig();
+  const fmtAmt = (n: any) => n ? `${sym}${Number(n).toLocaleString("en-IN", { maximumFractionDigits: 2 })}` : "—";
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
@@ -249,6 +250,8 @@ export function KarigarAttendanceSection() {
 // 2. BULLION RATE CUTS
 // ═══════════════════════════════════════════════════════════════════════════════
 export function BullionRateCutsSection() {
+  const { currency_symbol: sym } = useTenantConfig();
+  const fmtAmt = (n: any) => n ? `${sym}${Number(n).toLocaleString("en-IN", { maximumFractionDigits: 2 })}` : "—";
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
@@ -429,6 +432,8 @@ export function BullionRateCutsSection() {
 // 3. CHIT COLLECTION REGISTER
 // ═══════════════════════════════════════════════════════════════════════════════
 export function ChitCollectionRegisterSection() {
+  const { currency_symbol: sym } = useTenantConfig();
+  const fmtAmt = (n: any) => n ? `${sym}${Number(n).toLocaleString("en-IN", { maximumFractionDigits: 2 })}` : "—";
   const { toast } = useToast();
   const [selectedScheme, setSelectedScheme] = useState<string>("");
   const [showPayDialog, setShowPayDialog] = useState(false);
@@ -605,6 +610,8 @@ export function ChitCollectionRegisterSection() {
 // 4. WHOLESALE B2B ORDER BOOKING
 // ═══════════════════════════════════════════════════════════════════════════════
 export function WholesaleB2BOrdersSection() {
+  const { currency_symbol: sym } = useTenantConfig();
+  const fmtAmt = (n: any) => n ? `${sym}${Number(n).toLocaleString("en-IN", { maximumFractionDigits: 2 })}` : "—";
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
@@ -765,6 +772,8 @@ export function WholesaleB2BOrdersSection() {
 // 5. JEWELLERY POS
 // ═══════════════════════════════════════════════════════════════════════════════
 export function JewelleryPOSSection() {
+  const { currency_symbol: sym } = useTenantConfig();
+  const fmtAmt = (n: any) => n ? `${sym}${Number(n).toLocaleString("en-IN", { maximumFractionDigits: 2 })}` : "—";
   const { toast } = useToast();
   const [mode, setMode] = useState<"list" | "new">("list");
   const [form, setForm] = useState<any>({
@@ -983,6 +992,8 @@ export function JewelleryPOSSection() {
 // 6. BULLION VAULT MOVEMENT DASHBOARD
 // ═══════════════════════════════════════════════════════════════════════════════
 export function BullionVaultMovementSection() {
+  const { currency_symbol: sym } = useTenantConfig();
+  const fmtAmt = (n: any) => n ? `${sym}${Number(n).toLocaleString("en-IN", { maximumFractionDigits: 2 })}` : "—";
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<any>({ movement_date: today(), movement_type: "in", metal_type: "gold", status: "pending" });

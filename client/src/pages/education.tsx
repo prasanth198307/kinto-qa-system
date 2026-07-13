@@ -36,6 +36,7 @@ const STATUSES = ["present","absent","late","leave"];
 
 // ── Overview ──────────────────────────────────────────────────────────────────
 function OverviewTab() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { data: stats } = useQuery<any>({ queryKey: ["/api/education/stats"] });
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -139,6 +140,7 @@ function StaffTab() {
   const delMut = useMutation({ mutationFn: (id: any) => apiRequest("DELETE", `/api/education/teachers/${id}`), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/education/teachers"] }) });
   const openNew = () => { setEditing(null); setForm({ status: "active" }); setShowForm(true); };
   const openEdit = (t: any) => { setEditing(t); setForm({ ...t }); setShowForm(true); };
+  const { currency_symbol: sym } = useTenantConfig();
   return (
     <div className="space-y-4">
       <div className="flex justify-end"><Button onClick={openNew}><Plus className="h-4 w-4 mr-1" />Add Staff</Button></div>
@@ -598,6 +600,7 @@ function TransportTab() {
   const delSt = useMutation({ mutationFn: (id: any) => apiRequest("DELETE", `/api/education/student-transport/${id}`), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/education/student-transport"] }) });
   const openNew = () => { setEditing(null); setForm({}); setShowForm(true); };
   const openEdit = (item: any) => { setEditing(item); setForm({ ...item }); setShowForm(true); };
+  const { currency_symbol: sym } = useTenantConfig();
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
@@ -824,6 +827,7 @@ function AssessmentsTab() {
 
 // ── Library ───────────────────────────────────────────────────────────────────
 function LibraryTab() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { toast } = useToast();
   const [subTab, setSubTab] = useState<"books"|"issues">("books");
   const [showBook, setShowBook] = useState(false);
@@ -903,6 +907,7 @@ function LibraryTab() {
 
 // ── Advanced Fee Engine ───────────────────────────────────────────────────────
 function FeesTab() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { toast } = useToast();
   const [subTab, setSubTab] = useState<"payments"|"structures"|"components"|"scholarships"|"discounts"|"ledger">("payments");
 

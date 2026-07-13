@@ -16,7 +16,6 @@ import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-co
 const api = (method: string, path: string, body?: any) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
-const fmt = (n: number) => `${sym}${(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
 
 const STATUS_COLOR: Record<string, string> = {
   booked: "bg-gray-100 text-gray-700",
@@ -29,6 +28,7 @@ const TRANSPORT_ICON: Record<string, string> = { sea: "🚢", air: "✈️", roa
 const DOC_TYPES = ["bill_of_lading", "commercial_invoice", "packing_list", "coo", "insurance_cert", "be_number", "iec_certificate", "msds"];
 
 export default function SupplyChainPage() {
+  const fmt = (n: number) => `${sym}${(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
   const { toast } = useToast();
   const qc = useQueryClient();
   const tenantConfig = useTenantConfig();

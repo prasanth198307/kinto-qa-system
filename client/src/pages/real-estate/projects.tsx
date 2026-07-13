@@ -11,7 +11,6 @@ import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-co
 const api = (m: string, u: string, b?: any) =>
   fetch(u, { method: m, headers: { "Content-Type": "application/json" }, credentials: "include", body: b ? JSON.stringify(b) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
-const fmt = (n: any) => n != null ? `${sym}${Number(n).toLocaleString("en-IN")}` : "—";
 
 const STATUS_COLOR: Record<string, [string, string]> = {
   planning: ["#dbeafe", "#1e40af"], under_construction: ["#fef9c3", "#713f12"],
@@ -19,6 +18,7 @@ const STATUS_COLOR: Record<string, [string, string]> = {
 };
 
 export default function ProjectsPage() {
+  const fmt = (n: any) => n != null ? `${sym}${Number(n).toLocaleString("en-IN")}` : "—";
   const { toast } = useToast();
   const qc = useQueryClient();
   const tenantConfig = useTenantConfig();

@@ -33,6 +33,7 @@ const SCHEDULES = ["OTC", "H", "H1", "X", "G", "J"];
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 function DashboardTab() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { data: stats } = useQuery<any>({ queryKey: ["/api/pharmacy/stats"] });
   const { data: expiry = [] } = useQuery<any[]>({ queryKey: ["/api/pharmacy/stock/expiry-alerts"] });
   return (
@@ -52,7 +53,6 @@ function DashboardTab() {
               {expiry.slice(0, 20).map((s: any) => {
                 const days = Math.ceil((new Date(s.expiry_date).getTime() - Date.now()) / 86400000);
   const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
                 return (
                   <div key={s.id} className="flex items-center justify-between text-sm border rounded px-3 py-2">
                     <div><p className="font-medium">{s.drug_name}</p><p className="text-xs text-muted-foreground">Batch: {s.batch_number || "—"} · Qty: {s.qty_available}</p></div>
@@ -96,6 +96,7 @@ function BillingTab() {
   const total = cart.reduce((s, it) => s + Number(it.amount || 0), 0);
 
   const submit = () => {
+  const { currency_symbol: sym } = useTenantConfig();
     createSale.mutate({ ...patientForm, total_amount: total, paid_amount: total, items: cart });
   };
 
@@ -198,6 +199,7 @@ function DrugMasterTab() {
 
   const filtered = drugs.filter((d: any) => d.name?.toLowerCase().includes(search.toLowerCase()) || d.generic_name?.toLowerCase().includes(search.toLowerCase()));
   const openForm = (d?: any) => { setEditing(d || null); setForm(d ? { ...d } : { schedule: 'OTC', form: 'tablet', gst_rate: 12, unit: 'strip', reorder_level: 10 }); setShowForm(true); };
+  const { currency_symbol: sym } = useTenantConfig();
 
   return (
     <div className="space-y-4">
@@ -267,6 +269,7 @@ function StockTab() {
 
   const today = new Date();
   const getExpiryColor = (d: string) => {
+  const { currency_symbol: sym } = useTenantConfig();
     if (!d) return "";
     const days = Math.ceil((new Date(d).getTime() - today.getTime()) / 86400000);
     if (days <= 0) return "text-red-600 font-bold";
@@ -335,6 +338,7 @@ function PurchasesTab() {
   const addItem = () => setForm((p: any) => ({ ...p, items: [...(p.items || []), { drug_id: "", quantity: 1, purchase_price: 0, mrp: 0, amount: 0 }] }));
   const updItem = (i: number, f: string, v: any) => setForm((p: any) => { const items = [...p.items]; items[i] = { ...items[i], [f]: v }; if (f === 'quantity' || f === 'purchase_price') items[i].amount = Number(items[i].quantity || 0) * Number(items[i].purchase_price || 0); return { ...p, items, total_amount: items.reduce((s: number, it: any) => s + Number(it.amount || 0), 0) }; });
   const remItem = (i: number) => setForm((p: any) => ({ ...p, items: p.items.filter((_: any, idx: number) => idx !== i) }));
+  const { currency_symbol: sym } = useTenantConfig();
 
   return (
     <div className="space-y-4">

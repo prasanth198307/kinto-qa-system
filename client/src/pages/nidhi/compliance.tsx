@@ -10,10 +10,10 @@ import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-co
 
 const get = (p: string) => fetch(p).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
-const fmt = (n: any) => `${sym}${Number(n || 0).toLocaleString("en-IN")}`;
 const FY = new Date().getFullYear();
 
 export default function NidhiCompliancePage() {
+  const fmt = (n: any) => `${sym}${Number(n || 0).toLocaleString("en-IN")}`;
   const qc = useQueryClient();
   const tenantConfig = useTenantConfig();
   const sym = tenantConfig.currency_symbol;

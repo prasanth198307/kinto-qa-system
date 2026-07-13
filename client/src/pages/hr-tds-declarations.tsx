@@ -15,11 +15,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Textarea } from "@/components/ui/textarea";
 import { FileText, Plus, Printer, Search, IndianRupee, Shield, AlertCircle, Download, CheckCircle, XCircle, Clock } from "lucide-react";
 import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
-
 const FISCAL_YEARS = ["2024-25", "2023-24", "2025-26"];
 const fmt = (n: any) => Number(n || 0).toLocaleString("en-IN");
-const fmtRs = (n: any) => `${sym}${fmt(n)}`;
-
 function calcHraExemption(basic: number, rentPM: number, cityType: string) {
   if (!rentPM) return 0;
   const rentAnnual = rentPM * 12;
@@ -27,7 +24,6 @@ function calcHraExemption(basic: number, rentPM: number, cityType: string) {
   const excess = Math.max(0, rentAnnual - basic * 12 * 0.1);
   return Math.min(hraReceived, excess, rentAnnual);
 }
-
 function calcTax(income: number, regime: string) {
   if (income <= 0) return 0;
   if (regime === "new") {
@@ -56,7 +52,6 @@ function calcTax(income: number, regime: string) {
     return Math.round(tax + cess);
   }
 }
-
 // ── TDS Declaration Form ───────────────────────────────────────────────────────
 function DeclarationForm({ employees, employee, fiscalYear, existing, onSave, onCancel }: any) {
   const { toast } = useToast();
@@ -87,7 +82,6 @@ function DeclarationForm({ employees, employee, fiscalYear, existing, onSave, on
     otherDeductions: existing?.other_deductions || "0",
     notes: existing?.notes || "",
   });
-
   const total80c = Math.min(150000,
     Number(form.licPremium) + Number(form.ppf) + Number(form.elss) + Number(form.nsc) +
     Number(form.homeLoanPrincipal) + Number(form.fdTaxSaving) + Number(form.other80c)
@@ -103,18 +97,14 @@ function DeclarationForm({ employees, employee, fiscalYear, existing, onSave, on
   const taxableIncome = Math.max(0, annualGross - totalDeductions);
   const annualTax = calcTax(taxableIncome, form.regime);
   const monthlyTDS = Math.round(annualTax / 12);
-
   const f = (k: string) => (e: any) => setForm(p => ({ ...p, [k]: e.target.value }));
   const s = (k: string) => (v: any) => setForm(p => ({ ...p, [k]: v }));
-
   const saveMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/hr/tds-declarations", { ...form, employeeId: form.employeeId }),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/hr/tds-declarations"] }); toast({ title: "Declaration saved" }); onSave(); },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
-
   const numCls = "h-9 text-right";
-
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
@@ -143,7 +133,6 @@ function DeclarationForm({ employees, employee, fiscalYear, existing, onSave, on
           </Select>
         </div>
       </div>
-
       {/* Regime notice banner */}
       {form.regime === "new" && (
         <div className="flex items-start gap-2.5 rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 px-3 py-2.5 text-sm">
@@ -154,7 +143,6 @@ function DeclarationForm({ employees, employee, fiscalYear, existing, onSave, on
           </div>
         </div>
       )}
-
       <Tabs defaultValue="80c">
         <TabsList className="flex-wrap h-auto gap-1">
           <TabsTrigger value="80c" className="relative">
@@ -171,7 +159,6 @@ function DeclarationForm({ employees, employee, fiscalYear, existing, onSave, on
           </TabsTrigger>
           <TabsTrigger value="summary">Tax Summary</TabsTrigger>
         </TabsList>
-
         <TabsContent value="80c" className="space-y-3 mt-4">
           {form.regime === "new" ? (
             <div className="rounded-md bg-muted/50 border border-dashed p-6 text-center text-sm text-muted-foreground">
@@ -191,7 +178,6 @@ function DeclarationForm({ employees, employee, fiscalYear, existing, onSave, on
             </>
           )}
         </TabsContent>
-
         <TabsContent value="80d" className="space-y-3 mt-4">
           {form.regime === "new" ? (
             <div className="rounded-md bg-muted/50 border border-dashed p-6 text-center text-sm text-muted-foreground">
@@ -217,7 +203,6 @@ function DeclarationForm({ employees, employee, fiscalYear, existing, onSave, on
             </>
           )}
         </TabsContent>
-
         <TabsContent value="hra" className="space-y-3 mt-4">
           {form.regime === "new" ? (
             <div className="rounded-md bg-muted/50 border border-dashed p-6 text-center text-sm text-muted-foreground">
@@ -251,7 +236,6 @@ function DeclarationForm({ employees, employee, fiscalYear, existing, onSave, on
             </>
           )}
         </TabsContent>
-
         <TabsContent value="other" className="space-y-3 mt-4">
           {form.regime === "new" ? (
             <div className="rounded-md bg-muted/50 border border-dashed p-6 text-center text-sm text-muted-foreground">
@@ -275,7 +259,6 @@ function DeclarationForm({ employees, employee, fiscalYear, existing, onSave, on
             </div>
           )}
         </TabsContent>
-
         <TabsContent value="summary" className="mt-4">
           <Card><CardContent className="pt-4 space-y-2">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Estimated Tax Computation ({form.fiscalYear})</p>
@@ -309,7 +292,6 @@ function DeclarationForm({ employees, employee, fiscalYear, existing, onSave, on
           <p className="text-xs text-muted-foreground mt-2">* This is an estimate based on declared investments. Actual TDS may vary based on payroll processing.</p>
         </TabsContent>
       </Tabs>
-
       <div className="flex gap-2 justify-end pt-2">
         <Button variant="outline" onClick={onCancel}>Cancel</Button>
         <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || !form.employeeId}>
@@ -319,7 +301,6 @@ function DeclarationForm({ employees, employee, fiscalYear, existing, onSave, on
     </div>
   );
 }
-
 // ── Form 16 View ───────────────────────────────────────────────────────────────
 function Form16View({ employeeId, fiscalYear }: { employeeId: number; fiscalYear: string }) {
   const { data, isLoading } = useQuery<any>({
@@ -330,10 +311,8 @@ function Form16View({ employeeId, fiscalYear }: { employeeId: number; fiscalYear
     },
     enabled: !!employeeId && !!fiscalYear,
   });
-
   if (isLoading) return <div className="text-center py-8 text-muted-foreground">Loading Form 16 data...</div>;
   if (!data?.employee) return <div className="text-center py-8 text-muted-foreground">No data found</div>;
-
   const emp = data.employee;
   const payslips = data.payslips || [];
   const totalGross = payslips.reduce((s: number, p: any) => s + Number(p.gross_salary || 0), 0);
@@ -342,10 +321,8 @@ function Form16View({ employeeId, fiscalYear }: { employeeId: number; fiscalYear
   const totalTDS = payslips.reduce((s: number, p: any) => s + Number(p.tds || 0), 0);
   const decl = data.declaration;
   const stdDed = emp.tax_regime === "old" ? 50000 : 75000;
-
   const MONTHS_ORDER = [4,5,6,7,8,9,10,11,12,1,2,3];
   const MONTH_NAMES = ["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-
   return (
     <div className="space-y-4 print:p-4" id="form16-print">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -364,7 +341,6 @@ function Form16View({ employeeId, fiscalYear }: { employeeId: number; fiscalYear
           </Button>
         </div>
       </div>
-
       <Card><CardContent className="pt-4">
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Employee Details</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-1.5 text-sm">
@@ -373,7 +349,6 @@ function Form16View({ employeeId, fiscalYear }: { employeeId: number; fiscalYear
           ))}
         </div>
       </CardContent></Card>
-
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Card><CardContent className="pt-4">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Part A — TDS Summary</p>
@@ -397,7 +372,6 @@ function Form16View({ employeeId, fiscalYear }: { employeeId: number; fiscalYear
             </tr></tfoot>
           </table>
         </CardContent></Card>
-
         <Card><CardContent className="pt-4">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Part B — Income Computation</p>
           <div className="space-y-1.5 text-sm">
@@ -432,9 +406,10 @@ function Form16View({ employeeId, fiscalYear }: { employeeId: number; fiscalYear
     </div>
   );
 }
-
 // ── Main Page ──────────────────────────────────────────────────────────────────
 export default function HrTdsDeclarations() {
+  const { currency_symbol: sym } = useTenantConfig();
+  const fmtRs = (n: any) => `${sym}${fmt(n)}`;
   const { toast } = useToast();
   const [tab, setTab] = useState("declarations");
   const [fiscalYear, setFiscalYear] = useState("2024-25");

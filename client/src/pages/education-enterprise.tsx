@@ -119,6 +119,7 @@ function AcademicsTab() {
 }
 
 function FeesTab() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { data: fees = [] } = useQuery({ queryKey: ["/api/education/fees"], queryFn: () => apiRequest("GET", "/api/education/fees") });
   const { data: summary = {} } = useQuery({ queryKey: ["/api/education/fees/summary"], queryFn: () => apiRequest("GET", "/api/education/fees/summary") });
   return (
@@ -134,6 +135,7 @@ function FeesTab() {
 }
 
 function HostelTab() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { data: rooms = [] } = useQuery({ queryKey: ["/api/education/hostel/rooms"], queryFn: () => apiRequest("GET", "/api/education/hostel/rooms") });
   const { data: allotments = [] } = useQuery({ queryKey: ["/api/education/hostel/allotments"], queryFn: () => apiRequest("GET", "/api/education/hostel/allotments") });
   return (
