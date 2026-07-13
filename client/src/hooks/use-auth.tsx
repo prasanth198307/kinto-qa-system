@@ -7,6 +7,7 @@ import {
 import { insertUserSchema, User as SelectUser, InsertUser } from "@shared/schema";
 import { getQueryFn, apiRequest, queryClient, markRecentLogin } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useI18n } from "@/lib/i18n";
 
 type AuthContextType = {
   user: SelectUser | null;
@@ -22,6 +23,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
+  const { syncTenantLocale } = useI18n();
   const {
     data: user,
     error,
@@ -60,6 +62,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Invalidate plan features and permissions so they refetch with the new session
       queryClient.invalidateQueries({ queryKey: ["/api/tenant/features"] });
       queryClient.invalidateQueries({ queryKey: ["/api/my-permissions"] });
+      // Apply tenant's default locale (e.g. Arabic/RTL for GCC tenants)
+      syncTenantLocale();
     },
     onError: (error: Error) => {
       toast({

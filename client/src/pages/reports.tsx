@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useTenantConfig } from "@/hooks/use-tenant-config";
 import VendorReport from "@/components/VendorReport";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -872,6 +873,7 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
   const { logoutMutation } = useAuth();
   const { canAccessScreen } = usePermissions();
   const { hasModule } = usePlanFeatures();
+  const tenantConfig = useTenantConfig();
   
   // Check individual report tab permissions - database driven
   // If user has "reports" permission, they can see all tabs
@@ -2481,7 +2483,7 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
                     <Button
                       onClick={async () => {
                         try {
-                          await exportExpenseReportAsExcel(expenseReportData);
+                          await exportExpenseReportAsExcel(expenseReportData, tenantConfig);
                           toast({
                             title: "Export Complete",
                             description: "Excel file downloaded successfully",
@@ -2670,7 +2672,7 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
                     <Button
                       onClick={async () => {
                         try {
-                          await exportCashRegisterReportAsExcel(cashRegisterReportData);
+                          await exportCashRegisterReportAsExcel(cashRegisterReportData, tenantConfig);
                           toast({
                             title: "Export Complete",
                             description: "Excel file downloaded successfully",

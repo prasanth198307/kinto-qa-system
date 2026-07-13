@@ -337,6 +337,7 @@ interface I18nContextValue {
   locale: Locale;
   dir: "ltr" | "rtl";
   setLocale: (l: Locale) => void;
+  syncTenantLocale: () => void;
   t: (key: string) => string;
   formatCurrency: (n: number | string, currency?: string) => string;
   formatDate: (d: string | Date) => string;
@@ -344,7 +345,7 @@ interface I18nContextValue {
 }
 
 const I18nContext = createContext<I18nContextValue>({
-  locale: "en", dir: "ltr", setLocale: () => {}, t: (k) => k,
+  locale: "en", dir: "ltr", setLocale: () => {}, syncTenantLocale: () => {}, t: (k) => k,
   formatCurrency: (n) => String(n), formatDate: (d) => String(d), formatNumber: (n) => String(n),
 });
 
@@ -366,6 +367,23 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     const saved = localStorage.getItem(STORAGE_KEY) as Locale | null;
     return saved && DICTIONARIES[saved] ? saved : "en";
   });
+  const [tenantCurrency, setTenantCurrency] = useState<string>("INR");
+
+  // On first load with no saved preference, auto-apply the tenant's default locale
+  // so GCC tenants (default_locale: "ar") get RTL automatically without manual switching.
+  useEffect(() => {
+    fetch("/api/tenant-config", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((cfg: any) => {
+        if (cfg?.currency_code) setTenantCurrency(cfg.currency_code);
+        if (localStorage.getItem(STORAGE_KEY)) return; // user already chose a locale — respect it
+        const tenantLocale = cfg?.default_locale as Locale | undefined;
+        if (tenantLocale && DICTIONARIES[tenantLocale] && tenantLocale !== "en") {
+          setLocaleState(tenantLocale);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Tenant-configurable translation overrides (custom terms per tenant/locale)
   const [overrides, setOverrides] = useState<Record<string, string>>({});
@@ -387,11 +405,26 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     }).catch(() => {});
   };
 
+  // Called after login to apply tenant's default locale/currency if user hasn't chosen one
+  const syncTenantLocale = () => {
+    fetch("/api/tenant-config", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((cfg: any) => {
+        if (cfg?.currency_code) setTenantCurrency(cfg.currency_code);
+        if (localStorage.getItem(STORAGE_KEY)) return;
+        const tenantLocale = cfg?.default_locale as Locale | undefined;
+        if (tenantLocale && DICTIONARIES[tenantLocale] && tenantLocale !== "en") {
+          setLocaleState(tenantLocale);
+        }
+      })
+      .catch(() => {});
+  };
+
   // Lookup order: tenant override → locale dictionary → English → raw key
   const t = (key: string) => overrides[key] ?? DICTIONARIES[locale][key] ?? en[key] ?? key;
   const dir = LOCALES.find((l) => l.code === locale)!.dir;
 
-  const formatCurrency = (n: number | string, currency = "INR") =>
+  const formatCurrency = (n: number | string, currency = tenantCurrency) =>
     new Intl.NumberFormat(INTL_LOCALE[locale], { style: "currency", currency, maximumFractionDigits: 2 }).format(Number(n || 0));
   const formatDate = (d: string | Date) =>
     new Intl.DateTimeFormat(INTL_LOCALE[locale], { dateStyle: "medium" }).format(typeof d === "string" ? new Date(d) : d);
@@ -399,7 +432,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     new Intl.NumberFormat(INTL_LOCALE[locale]).format(Number(n || 0));
 
   return (
-    <I18nContext.Provider value={{ locale, dir, setLocale, t, formatCurrency, formatDate, formatNumber }}>
+    <I18nContext.Provider value={{ locale, dir, setLocale, syncTenantLocale, t, formatCurrency, formatDate, formatNumber }}>
       {children}
     </I18nContext.Provider>
   );

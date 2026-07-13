@@ -78,7 +78,6 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
     "create-gatepass",
     "dispatch-tracking",
     "dispatch-masters",
-    "logistics/eway-bill",
   ],
   sales_orders: [
     "sales-orders",

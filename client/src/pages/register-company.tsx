@@ -88,7 +88,7 @@ export default function RegisterCompanyPage() {
   const taxProfile = getCountryProfile(country);
 
   const [form, setForm] = useState({
-    companyName: "", slug: "", gstNumber: "", address: "", industry: "",
+    companyName: "", slug: "", gstNumber: "", city: "", state: "", pincode: "", industry: "",
     adminName: "", email: "", password: "", confirmPassword: "", phone: "",
   });
 
@@ -209,7 +209,8 @@ export default function RegisterCompanyPage() {
         companyName: form.companyName, slug: form.slug,
         adminName: form.adminName, email: form.email, password: form.password,
         phone: form.phone || undefined, gstNumber: form.gstNumber || undefined,
-        address: form.address || undefined, country,
+        city: form.city || undefined, state: form.state || undefined,
+        pincode: form.pincode || undefined, country,
         industry: form.industry || undefined,
       });
       const data = await result.json();
@@ -510,9 +511,21 @@ export default function RegisterCompanyPage() {
                       )}
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="company-address">Address <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                      <Input id="company-address" data-testid="input-company-address" placeholder="City, State"
-                        value={form.address} onChange={update("address")} />
+                      <Label htmlFor="company-city">City <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                      <Input id="company-city" data-testid="input-company-city" placeholder="City"
+                        value={form.city} onChange={update("city")} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="company-state">State / Province <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                      <Input id="company-state" data-testid="input-company-state" placeholder="State"
+                        value={form.state} onChange={update("state")} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="company-pincode">PIN / ZIP Code <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                      <Input id="company-pincode" data-testid="input-company-pincode" placeholder="PIN / ZIP"
+                        value={form.pincode} onChange={update("pincode")} />
                     </div>
                   </div>
 

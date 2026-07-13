@@ -1,5 +1,6 @@
 import { format } from 'date-fns';
 import { downloadXLSX } from '@/lib/download-utils';
+import { type TenantConfig, formatCurrency as fmtCur } from '@/hooks/use-tenant-config';
 
 export interface ExpenseReportVoucher {
   id: string;
@@ -89,7 +90,8 @@ export interface CashRegisterReportData {
   };
 }
 
-function formatCurrency(paiseAmount: number): string {
+function formatCurrency(paiseAmount: number, config?: TenantConfig): string {
+  if (config) return fmtCur(paiseAmount / 100, config);
   return (paiseAmount / 100).toFixed(2);
 }
 
@@ -147,7 +149,7 @@ export async function fetchCashRegisterReport(
   return response.json();
 }
 
-export async function exportExpenseReportAsExcel(data: ExpenseReportData): Promise<void> {
+export async function exportExpenseReportAsExcel(data: ExpenseReportData, config?: TenantConfig): Promise<void> {
   const XLSX = await import('xlsx');
   const workbook = XLSX.utils.book_new();
   
@@ -155,11 +157,12 @@ export async function exportExpenseReportAsExcel(data: ExpenseReportData): Promi
     ? `${formatDate(data.dateRange.startDate)} to ${formatDate(data.dateRange.endDate)}`
     : 'All Time';
   
+  const taxLabel = config?.tax_regime ?? 'Tax';
   const summaryData = [
     { 'Metric': 'Report Period', 'Value': period },
     { 'Metric': 'Total Vouchers', 'Value': data.summary.totalVouchers },
-    { 'Metric': 'Total Amount (₹)', 'Value': formatCurrency(data.summary.totalAmount) },
-    { 'Metric': 'Total GST (₹)', 'Value': formatCurrency(data.summary.totalGST) },
+    { 'Metric': 'Total Amount', 'Value': formatCurrency(data.summary.totalAmount, config) },
+    { 'Metric': `Total ${taxLabel}`, 'Value': formatCurrency(data.summary.totalGST, config) },
     { 'Metric': '', 'Value': '' },
     { 'Metric': 'By Status', 'Value': '' },
     { 'Metric': '  Draft', 'Value': data.summary.byStatus.draft || 0 },
@@ -168,14 +171,14 @@ export async function exportExpenseReportAsExcel(data: ExpenseReportData): Promi
     { 'Metric': '  Rejected', 'Value': data.summary.byStatus.rejected || 0 },
     { 'Metric': '  Paid', 'Value': data.summary.byStatus.paid || 0 },
   ];
-  
+
   Object.entries(data.summary.byPaymentMode).forEach(([mode, amount]) => {
-    summaryData.push({ 'Metric': `Payment: ${mode}`, 'Value': `₹${formatCurrency(amount)}` });
+    summaryData.push({ 'Metric': `Payment: ${mode}`, 'Value': formatCurrency(amount as number, config) });
   });
-  
+
   const summarySheet = XLSX.utils.json_to_sheet(summaryData);
   XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
-  
+
   const voucherData = data.vouchers.map(v => ({
     'Voucher No': v.voucherNumber,
     'Date': formatDate(v.voucherDate),
@@ -183,16 +186,16 @@ export async function exportExpenseReportAsExcel(data: ExpenseReportData): Promi
     'Payee Type': v.payeeType,
     'Payment Mode': v.paymentMode,
     'Purpose': v.purpose || '',
-    'Subtotal (₹)': formatCurrency(v.subtotal),
-    'GST (₹)': formatCurrency(v.gstAmount),
-    'Total (₹)': formatCurrency(v.totalAmount),
+    'Subtotal': formatCurrency(v.subtotal, config),
+    [taxLabel]: formatCurrency(v.gstAmount, config),
+    'Total': formatCurrency(v.totalAmount, config),
     'Status': v.status,
     'Items Count': v.items?.length || 0,
   }));
-  
+
   const vouchersSheet = XLSX.utils.json_to_sheet(voucherData);
   XLSX.utils.book_append_sheet(workbook, vouchersSheet, 'Vouchers');
-  
+
   const allItems: any[] = [];
   data.vouchers.forEach(v => {
     (v.items || []).forEach(item => {
@@ -202,10 +205,10 @@ export async function exportExpenseReportAsExcel(data: ExpenseReportData): Promi
         'Payee': v.payeeName,
         'Description': item.description,
         'Quantity': item.quantity,
-        'Unit Price (₹)': formatCurrency(item.unitPrice),
-        'Amount (₹)': formatCurrency(item.amount),
-        'GST Rate (%)': item.gstRate || '0',
-        'GST Amount (₹)': formatCurrency(item.gstAmount),
+        'Unit Price': formatCurrency(item.unitPrice, config),
+        'Amount': formatCurrency(item.amount, config),
+        [`${taxLabel} Rate (%)`]: item.gstRate || '0',
+        [`${taxLabel} Amount`]: formatCurrency(item.gstAmount, config),
       });
     });
   });
@@ -219,26 +222,26 @@ export async function exportExpenseReportAsExcel(data: ExpenseReportData): Promi
   await downloadXLSX(workbook, filename);
 }
 
-export async function exportCashRegisterReportAsExcel(data: CashRegisterReportData): Promise<void> {
+export async function exportCashRegisterReportAsExcel(data: CashRegisterReportData, config?: TenantConfig): Promise<void> {
   const XLSX = await import('xlsx');
   const workbook = XLSX.utils.book_new();
-  
+
   const period = data.dateRange.startDate && data.dateRange.endDate
     ? `${formatDate(data.dateRange.startDate)} to ${formatDate(data.dateRange.endDate)}`
     : 'All Time';
-  
+
   const summaryData = [
     { 'Metric': 'Report Period', 'Value': period },
     { 'Metric': 'Total Days', 'Value': data.summary.totalDays },
-    { 'Metric': 'Starting Balance (₹)', 'Value': formatCurrency(data.summary.startingBalance) },
-    { 'Metric': 'Ending Balance (₹)', 'Value': formatCurrency(data.summary.endingBalance) },
+    { 'Metric': 'Starting Balance', 'Value': formatCurrency(data.summary.startingBalance, config) },
+    { 'Metric': 'Ending Balance', 'Value': formatCurrency(data.summary.endingBalance, config) },
     { 'Metric': '', 'Value': '' },
     { 'Metric': 'Cash Flow Summary', 'Value': '' },
-    { 'Metric': '  Total Cash Received (₹)', 'Value': formatCurrency(data.summary.totalCashReceived) },
-    { 'Metric': '  Total Deposits (₹)', 'Value': formatCurrency(data.summary.totalDeposits) },
-    { 'Metric': '  Total Expenses (₹)', 'Value': formatCurrency(data.summary.totalExpenses) },
-    { 'Metric': '  Total Transfers (₹)', 'Value': formatCurrency(data.summary.totalTransfers) },
-    { 'Metric': '  Total Variance (₹)', 'Value': formatCurrency(data.summary.totalVariance) },
+    { 'Metric': '  Total Cash Received', 'Value': formatCurrency(data.summary.totalCashReceived, config) },
+    { 'Metric': '  Total Deposits', 'Value': formatCurrency(data.summary.totalDeposits, config) },
+    { 'Metric': '  Total Expenses', 'Value': formatCurrency(data.summary.totalExpenses, config) },
+    { 'Metric': '  Total Transfers', 'Value': formatCurrency(data.summary.totalTransfers, config) },
+    { 'Metric': '  Total Variance', 'Value': formatCurrency(data.summary.totalVariance, config) },
     { 'Metric': '', 'Value': '' },
     { 'Metric': 'Days with Discrepancy', 'Value': data.summary.daysWithDiscrepancy },
     { 'Metric': '', 'Value': '' },
@@ -247,35 +250,35 @@ export async function exportCashRegisterReportAsExcel(data: CashRegisterReportDa
     { 'Metric': '  Reconciled', 'Value': data.summary.byStatus.reconciled || 0 },
     { 'Metric': '  Locked', 'Value': data.summary.byStatus.locked || 0 },
   ];
-  
+
   Object.entries(data.summary.bySalesperson).forEach(([name, stats]) => {
     summaryData.push({ 'Metric': '', 'Value': '' });
     summaryData.push({ 'Metric': `Salesperson: ${name}`, 'Value': '' });
     summaryData.push({ 'Metric': '  Days', 'Value': stats.days });
-    summaryData.push({ 'Metric': '  Cash Received (₹)', 'Value': formatCurrency(stats.cashReceived) });
-    summaryData.push({ 'Metric': '  Expenses (₹)', 'Value': formatCurrency(stats.expenses) });
+    summaryData.push({ 'Metric': '  Cash Received', 'Value': formatCurrency(stats.cashReceived, config) });
+    summaryData.push({ 'Metric': '  Expenses', 'Value': formatCurrency(stats.expenses, config) });
   });
-  
+
   const summarySheet = XLSX.utils.json_to_sheet(summaryData);
   XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
-  
+
   const dailyData = data.days.map(d => ({
     'Date': formatDate(d.registerDate),
     'Salesperson': d.salespersonName,
-    'Opening (₹)': formatCurrency(d.openingBalance),
-    'Cash Received (₹)': formatCurrency(d.totalCashReceived),
-    'Deposits (₹)': formatCurrency(d.totalDeposits),
-    'Expenses (₹)': formatCurrency(d.totalExpenses),
-    'Transfers (₹)': formatCurrency(d.totalTransfers),
-    'Closing (₹)': formatCurrency(d.closingBalance),
-    'Variance (₹)': formatCurrency(d.variance),
+    'Opening': formatCurrency(d.openingBalance, config),
+    'Cash Received': formatCurrency(d.totalCashReceived, config),
+    'Deposits': formatCurrency(d.totalDeposits, config),
+    'Expenses': formatCurrency(d.totalExpenses, config),
+    'Transfers': formatCurrency(d.totalTransfers, config),
+    'Closing': formatCurrency(d.closingBalance, config),
+    'Variance': formatCurrency(d.variance, config),
     'Status': d.status,
     'Discrepancy': d.hasDiscrepancy === 1 ? 'Yes' : 'No',
   }));
-  
+
   const dailySheet = XLSX.utils.json_to_sheet(dailyData);
   XLSX.utils.book_append_sheet(workbook, dailySheet, 'Daily Summary');
-  
+
   const allTransactions: any[] = [];
   data.days.forEach(day => {
     (day.transactions || []).forEach(tx => {
@@ -283,7 +286,7 @@ export async function exportCashRegisterReportAsExcel(data: CashRegisterReportDa
         'Date': formatDate(day.registerDate),
         'Salesperson': day.salespersonName,
         'Type': tx.transactionType,
-        'Amount (₹)': formatCurrency(tx.amount),
+        'Amount': formatCurrency(tx.amount, config),
         'Reference': tx.reference || '',
         'Description': tx.description || '',
         'Transfer To': tx.transferTo || '',

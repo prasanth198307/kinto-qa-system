@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import { amountToWords } from "@/lib/number-to-words";
 import { useToast } from "@/hooks/use-toast";
 import QRCode from "qrcode";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 interface PrintableInvoiceProps {
   invoice: Invoice;
@@ -13,6 +14,7 @@ interface PrintableInvoiceProps {
 
 export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
   const { toast } = useToast();
+  const tenantConfig = useTenantConfig();
 
   const { data: items = [] } = useQuery<InvoiceItem[]>({
     queryKey: ['/api/invoice-items', invoice.id],
@@ -85,7 +87,7 @@ export default function PrintableInvoice({ invoice }: PrintableInvoiceProps) {
   };
 
   const formatCurrency = (amountInPaise: number): string => {
-    return `₹${(amountInPaise / 100).toFixed(2)}`;
+    return fmtCur(amountInPaise / 100, tenantConfig);
   };
 
   const formatRate = (rateInBasisPoints: number): string => {

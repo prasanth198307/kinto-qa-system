@@ -2473,15 +2473,6 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       ],
     },
     {
-      id: "nidhi-erp-section",
-      label: "Nidhi Company ERP",
-      items: [
-        { id: "nidhi/loan-sanction", label: "Loan Sanction", icon: Landmark, onClick: () => setLocation('/nidhi/loan-sanction') },
-        { id: "nidhi/pdc-tracking", label: "PDC Tracking", icon: CreditCard, onClick: () => setLocation('/nidhi/pdc-tracking') },
-        { id: "nidhi/rbi-returns", label: "RBI NDH Returns", icon: FileText, onClick: () => setLocation('/nidhi/rbi-returns') },
-      ],
-    },
-    {
       id: "hr-section",
       label: "HR & Payroll",
       items: [
@@ -2607,7 +2598,6 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "healthcare/ot", label: "OT Scheduling", icon: Clock, onClick: () => setLocation('/healthcare/ot') },
         { id: "healthcare/lab", label: "Lab & Diagnostics", icon: ClipboardList, onClick: () => setLocation('/healthcare/lab') },
         { id: "healthcare/nursing", label: "Nursing & Vitals", icon: HeartPulse, onClick: () => setLocation('/healthcare/nursing') },
-        { id: "pharmacy/billing", label: "Pharmacy Link", icon: Pill, onClick: () => setLocation('/pharmacy/billing') },
         { id: "healthcare/insurance", label: "Insurance & TPA", icon: Shield, onClick: () => setLocation('/healthcare/insurance') },
         { id: "healthcare/doctors", label: "Doctor Management", icon: Users, onClick: () => setLocation('/healthcare/doctors') },
         { id: "healthcare/blood-bank", label: "Blood Bank", icon: Heart, onClick: () => setLocation('/healthcare/blood-bank') },
@@ -2757,6 +2747,9 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
         { id: "nidhi/interest-rates", label: "Interest Rates", icon: TrendingUp, onClick: () => setLocation('/nidhi/interest-rates') },
         { id: "nidhi/daily-collection", label: "Daily Collection", icon: Wallet, onClick: () => setLocation('/nidhi/daily-collection') },
         { id: "nidhi/compliance", label: "Compliance (NDH)", icon: Shield, onClick: () => setLocation('/nidhi/compliance') },
+        { id: "nidhi/loan-sanction", label: "Loan Sanction", icon: Landmark, onClick: () => setLocation('/nidhi/loan-sanction') },
+        { id: "nidhi/pdc-tracking", label: "PDC Tracking", icon: CreditCard, onClick: () => setLocation('/nidhi/pdc-tracking') },
+        { id: "nidhi/rbi-returns", label: "RBI NDH Returns", icon: FileText, onClick: () => setLocation('/nidhi/rbi-returns') },
         { id: "nidhi/reports", label: "Reports", icon: BarChart3, onClick: () => setLocation('/nidhi/reports') },
         { id: "nidhi/mobile-collection", label: "Mobile Collection", icon: Wallet, onClick: () => setLocation('/nidhi/mobile-collection') },
       ],

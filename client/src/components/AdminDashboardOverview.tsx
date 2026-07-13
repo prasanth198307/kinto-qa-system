@@ -23,8 +23,12 @@ export default function AdminDashboardOverview({ onNavigateToTab }: AdminDashboa
   const { data: planFeatures } = useQuery<PlanFeatures>({
     queryKey: ['/api/tenant/features'],
   });
+  const { data: localeData } = useQuery<{ tax_regime: string }>({
+    queryKey: ['/api/tenant-config'],
+  });
 
   const modules: string[] = planFeatures?.modules ?? [];
+  const taxName: string = localeData?.tax_regime ?? 'Tax';
   const hasModule = (mod: string) => modules.includes(mod);
 
   const hasMaintenance = hasModule('maintenance');
@@ -359,7 +363,7 @@ export default function AdminDashboardOverview({ onNavigateToTab }: AdminDashboa
     ...(hasInvoicing ? [
       {
         title: "Create Invoice",
-        description: "Generate a new GST invoice",
+        description: `Generate a new ${taxName} invoice`,
         icon: FileText,
         action: "invoices",
         color: "text-teal-600",

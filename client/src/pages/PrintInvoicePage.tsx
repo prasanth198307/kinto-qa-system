@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "wouter";
+import { useTenantConfig } from "@/hooks/use-tenant-config";
 import { type InvoiceItem, type Product, type TermsConditions } from "@shared/schema";
 import { format } from "date-fns";
 import { amountToWords } from "@/lib/number-to-words";
@@ -53,6 +54,7 @@ interface PrintInvoice {
 export default function PrintInvoicePage() {
   const params = useParams<{ id: string }>();
   const invoiceId = params.id || null;
+  const tenantConfig = useTenantConfig();
   const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
   const [isReady, setIsReady] = useState(false);
 
@@ -138,9 +140,24 @@ export default function PrintInvoicePage() {
     return uom?.name || 'Pcs';
   };
 
-  const formatCurrency = (amountInPaise: number): string => {
-    return `₹${(amountInPaise / 100).toFixed(2)}`;
+  const LOCALE_MAP: Record<string, string> = {
+    IN: "en-IN", US: "en-US", AE: "ar-AE", SA: "ar-SA",
+    GB: "en-GB", EU: "de-DE", AU: "en-AU", SG: "en-SG",
   };
+  const printLocale = LOCALE_MAP[tenantConfig.country_code] ?? "en-US";
+  const formatCurrency = (amountInPaise: number): string => {
+    const amount = amountInPaise / 100;
+    try {
+      return new Intl.NumberFormat(printLocale, {
+        style: "currency", currency: tenantConfig.currency_code,
+        minimumFractionDigits: 2, maximumFractionDigits: 2,
+      }).format(amount);
+    } catch {
+      return `${tenantConfig.currency_symbol}${amount.toFixed(2)}`;
+    }
+  };
+  const taxLabel = tenantConfig.tax_regime ?? "Tax";
+  const currSym = tenantConfig.currency_symbol ?? "₹";
 
   const formatRate = (rateInBasisPoints: number): string => {
     return `${(rateInBasisPoints / 100).toFixed(2)}%`;
@@ -354,11 +371,11 @@ export default function PrintInvoicePage() {
             <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', background: '#f0f0f0' }}>HSN/SAC</th>
             <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', background: '#f0f0f0' }}>Qty</th>
             <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', background: '#f0f0f0' }}>Unit</th>
-            <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', background: '#f0f0f0' }}>Price/Unit (₹)</th>
+            <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', background: '#f0f0f0' }}>Price/Unit ({currSym})</th>
             <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', background: '#f0f0f0' }}>Discount</th>
             <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', background: '#f0f0f0' }}>GST%</th>
-            <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', background: '#f0f0f0' }}>GST (₹)</th>
-            <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', background: '#f0f0f0' }}>Amount (₹)</th>
+            <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', background: '#f0f0f0' }}>{taxLabel} ({currSym})</th>
+            <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', background: '#f0f0f0' }}>Amount ({currSym})</th>
           </tr>
         </thead>
         <tbody>
@@ -397,7 +414,7 @@ export default function PrintInvoicePage() {
         <thead>
           <tr>
             <th rowSpan={2} style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', background: '#f0f0f0' }}>HSN/SAC</th>
-            <th rowSpan={2} style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', background: '#f0f0f0' }}>Taxable amount (₹)</th>
+            <th rowSpan={2} style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', background: '#f0f0f0' }}>Taxable amount ({currSym})</th>
             {isIntrastate ? (
               <>
                 <th colSpan={2} style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', background: '#f0f0f0' }}>CGST</th>
@@ -406,20 +423,20 @@ export default function PrintInvoicePage() {
             ) : (
               <th colSpan={2} style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', background: '#f0f0f0' }}>IGST</th>
             )}
-            <th rowSpan={2} style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', background: '#f0f0f0' }}>Total Tax (₹)</th>
+            <th rowSpan={2} style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', background: '#f0f0f0' }}>Total Tax ({currSym})</th>
           </tr>
           <tr>
             {isIntrastate ? (
               <>
                 <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', background: '#f0f0f0' }}>Rate (%)</th>
-                <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', background: '#f0f0f0' }}>Amt (₹)</th>
+                <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', background: '#f0f0f0' }}>Amt ({currSym})</th>
                 <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', background: '#f0f0f0' }}>Rate (%)</th>
-                <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', background: '#f0f0f0' }}>Amt (₹)</th>
+                <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', background: '#f0f0f0' }}>Amt ({currSym})</th>
               </>
             ) : (
               <>
                 <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', background: '#f0f0f0' }}>Rate (%)</th>
-                <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', background: '#f0f0f0' }}>Amt (₹)</th>
+                <th style={{ border: '1px solid #333', padding: '4px 6px', fontSize: '10px', background: '#f0f0f0' }}>Amt ({currSym})</th>
               </>
             )}
           </tr>

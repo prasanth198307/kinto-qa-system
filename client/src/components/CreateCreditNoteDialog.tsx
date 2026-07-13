@@ -36,6 +36,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FileText, History } from "lucide-react";
 import type { InvoiceItem } from "@shared/schema";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 interface EffectiveItem {
   id: string;
@@ -101,6 +102,7 @@ export function CreateCreditNoteDialog({
 }: CreateCreditNoteDialogProps) {
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const tenantConfig = useTenantConfig();
 
   // Fetch effective items with remaining quantities
   const { data: effectiveData, isLoading: isLoadingEffective } = useQuery<EffectiveItemsResponse>({
@@ -158,7 +160,7 @@ export function CreateCreditNoteDialog({
   };
 
   const formatCurrency = (amountInPaise: number) => {
-    return `₹${(amountInPaise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return fmtCur(amountInPaise / 100, tenantConfig);
   };
 
   const handleSubmit = async (data: CreditNoteForm) => {

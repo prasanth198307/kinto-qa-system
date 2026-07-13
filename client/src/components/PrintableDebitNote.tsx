@@ -4,6 +4,7 @@ import { Printer } from "lucide-react";
 import { format } from "date-fns";
 import { amountToWords } from "@/lib/number-to-words";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 interface DebitNoteItem {
   id: string;
@@ -60,6 +61,7 @@ const REASON_LABELS: Record<string, string> = {
 
 export default function PrintableDebitNote({ debitNote }: PrintableDebitNoteProps) {
   const { toast } = useToast();
+  const tenantConfig = useTenantConfig();
 
   // Fetch full debit note with items
   const { data: fullNote, isLoading } = useQuery<VendorDebitNote & { items: DebitNoteItem[] }>({
@@ -77,7 +79,7 @@ export default function PrintableDebitNote({ debitNote }: PrintableDebitNoteProp
   });
 
   const formatCurrency = (amountInPaise: number): string => {
-    return `₹${(amountInPaise / 100).toFixed(2)}`;
+    return fmtCur(amountInPaise / 100, tenantConfig);
   };
 
   const formatRate = (rateInBasisPoints: number): string => {

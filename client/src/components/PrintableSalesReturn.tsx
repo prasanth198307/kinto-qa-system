@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Printer } from "lucide-react";
 import { format } from "date-fns";
 import type { SalesReturn, SalesReturnItem, Product, Invoice } from "@shared/schema";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 interface PrintableSalesReturnProps {
   salesReturn: SalesReturn & {
@@ -12,6 +13,7 @@ interface PrintableSalesReturnProps {
 }
 
 export default function PrintableSalesReturn({ salesReturn }: PrintableSalesReturnProps) {
+  const tenantConfig = useTenantConfig();
   const { data: items = [], isLoading: itemsLoading } = useQuery<SalesReturnItem[]>({
     queryKey: ['/api/sales-return-items', salesReturn.id],
     queryFn: async () => {
@@ -46,7 +48,7 @@ export default function PrintableSalesReturn({ salesReturn }: PrintableSalesRetu
   };
 
   const formatCurrency = (amountInPaise: number): string => {
-    return `₹${(amountInPaise / 100).toFixed(2)}`;
+    return fmtCur(amountInPaise / 100, tenantConfig);
   };
 
   const getReasonLabel = (reason: string): string => {

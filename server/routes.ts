@@ -790,26 +790,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use(planEnforcementMiddleware);
 
   // ─── Tenant config endpoint ──────────────────────────────────────────────
-  // Returns currency, timezone, tax_regime, date_format for the current tenant
+  // Returns currency, timezone, tax_regime, date_format for the current tenant.
+  // Joins country_tax_config to get currency_symbol (not stored on tenants row).
   app.get('/api/tenant-config', async (req: any, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: 'Unauthorized' });
     const tenantId: number = (req.session as any).tenantId ?? req.user?.tenantId ?? 1;
+    // Map country name → ISO 2-letter code for client-side Intl formatting
+    const COUNTRY_CODE_MAP: Record<string, string> = {
+      'India': 'IN', 'United States': 'US', 'UAE': 'AE', 'Saudi Arabia': 'SA',
+      'United Kingdom': 'GB', 'European Union': 'EU', 'Australia': 'AU',
+      'Singapore': 'SG', 'Canada': 'CA', 'Germany': 'DE', 'France': 'FR',
+    };
     try {
+      // Join country_tax_config to also get tax_rate and verify currency_symbol
       const rows = await db.execute(sql`
-        SELECT currency_code, currency_symbol, country_code, timezone, tax_regime, date_format
-        FROM tenants WHERE id = ${tenantId} LIMIT 1
+        SELECT t.currency, t.currency_code, t.currency_symbol, t.timezone, t.tax_regime,
+               t.date_format, t.country, t.default_locale,
+               ctc.tax_rate
+        FROM tenants t
+        LEFT JOIN country_tax_config ctc
+          ON ctc.tenant_id = t.id::text AND ctc.country = t.country AND ctc.is_active = 1
+        WHERE t.id = ${tenantId} LIMIT 1
       `);
       const row = (rows.rows as any[])[0];
+      const currency = row?.currency_code ?? row?.currency ?? 'INR';
+      const country  = row?.country  ?? 'India';
+      const TAX_SLUG_LABELS: Record<string, string> = { gst: 'GST', vat: 'VAT', sales_tax: 'Sales Tax', none: 'Tax' };
+      const rawRegime = row?.tax_regime ?? 'gst';
+      const taxRegimeLabel = TAX_SLUG_LABELS[rawRegime] ?? rawRegime;
       res.json({
-        currency_code:   row?.currency_code   ?? 'INR',
-        currency_symbol: row?.currency_symbol ?? '₹',
-        country_code:    row?.country_code    ?? 'IN',
-        timezone:        row?.timezone        ?? 'Asia/Kolkata',
-        tax_regime:      row?.tax_regime      ?? 'GST',
-        date_format:     row?.date_format     ?? 'DD/MM/YYYY',
+        currency_code:    currency,
+        currency_symbol:  row?.currency_symbol ?? '₹',
+        country_code:     COUNTRY_CODE_MAP[country] ?? 'IN',
+        timezone:         row?.timezone      ?? 'Asia/Kolkata',
+        tax_regime:       taxRegimeLabel,
+        tax_regime_slug:  rawRegime,
+        tax_rate:         Number(row?.tax_rate ?? 18),
+        date_format:      row?.date_format   ?? 'DD/MM/YYYY',
+        default_locale:   row?.default_locale ?? 'en',
+        country,
       });
     } catch {
-      res.json({ currency_code: 'INR', currency_symbol: '₹', country_code: 'IN', timezone: 'Asia/Kolkata', tax_regime: 'GST', date_format: 'DD/MM/YYYY' });
+      res.json({ currency_code: 'INR', currency_symbol: '₹', country_code: 'IN', timezone: 'Asia/Kolkata', tax_regime: 'GST', tax_rate: 18, date_format: 'DD/MM/YYYY', default_locale: 'en', country: 'India' });
     }
   });
 
@@ -927,6 +949,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         fssaiNumber: tenants.fssaiNumber,
         address: tenants.address,
         createdAt: tenants.createdAt,
+        country: tenants.country,
+        currency: tenants.currency,
+        timezone: tenants.timezone,
+        dateFormat: tenants.dateFormat,
+        taxRegime: tenants.taxRegime,
+        defaultLocale: tenants.defaultLocale,
+        industry: tenants.industry,
+        website: tenants.website,
+        city: tenants.city,
+        state: tenants.state,
+        pincode: tenants.pincode,
+        registrationNumber: tenants.registrationNumber,
       }).from(tenants).where(eq(tenants.id, tenantId));
 
       if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
@@ -962,6 +996,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         name: tenants.name,
         slug: tenants.slug,
         plan: tenants.plan,
+        country: tenants.country,
+        currency: tenants.currency,
+        timezone: tenants.timezone,
+        dateFormat: tenants.dateFormat,
+        taxRegime: tenants.taxRegime,
+        defaultLocale: tenants.defaultLocale,
+        industry: tenants.industry,
+        website: tenants.website,
+        city: tenants.city,
+        state: tenants.state,
+        pincode: tenants.pincode,
+        registrationNumber: tenants.registrationNumber,
         status: tenants.status,
         trialEndsAt: tenants.trialEndsAt,
         maxUsers: tenants.maxUsers,
