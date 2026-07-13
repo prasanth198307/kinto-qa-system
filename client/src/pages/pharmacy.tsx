@@ -72,8 +72,6 @@ function DashboardTab() {
 function BillingTab() {
   const { toast } = useToast();
   const [cart, setCart] = useState<any[]>([]);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [patientForm, setPatientForm] = useState<any>({ patient_name: "Cash", payment_mode: "cash", sale_date: new Date().toISOString().slice(0, 10) });
   const [drugSearch, setDrugSearch] = useState("");
   const [selectedStock, setSelectedStock] = useState<any>(null);
@@ -185,8 +183,6 @@ function BillingTab() {
 function DrugMasterTab() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({});
@@ -258,8 +254,6 @@ function DrugMasterTab() {
 function StockTab() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [form, setForm] = useState<any>({});
 
   const { data: stock = [] } = useQuery<any[]>({ queryKey: ["/api/pharmacy/stock"] });
@@ -327,8 +321,6 @@ function StockTab() {
 function PurchasesTab() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [form, setForm] = useState<any>({ items: [] });
 
   const { data: purchases = [] } = useQuery<any[]>({ queryKey: ["/api/pharmacy/purchases"] });

@@ -69,8 +69,6 @@ export default function RevenueManagementPage() {
   });
 
   const forecast: Array<{ date: string; occupancy: number; adr: number }> = (forecastData as any)?.forecast ?? Array.from({ length: 30 }, (_, i) => ({
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
     date: new Date(Date.now() + i * 86400000).toISOString().split("T")[0],
     occupancy: Math.floor(Math.random() * 40) + 55,
     adr: Math.floor(Math.random() * 2000) + 3000,

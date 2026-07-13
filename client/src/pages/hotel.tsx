@@ -87,8 +87,6 @@ function OverviewTab() {
 
 // ── Rooms Tab ─────────────────────────────────────────────────────────────────
 function RoomsTab() {
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -179,8 +177,6 @@ function RoomsTab() {
 }
 
 function RoomTypesSection() {
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
@@ -256,8 +252,6 @@ function RoomTypesSection() {
 
 // ── Reservations Tab ──────────────────────────────────────────────────────────
 function ReservationsTab() {
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -381,8 +375,6 @@ function ReservationsTab() {
 
 // ── Check-in/out Tab ──────────────────────────────────────────────────────────
 function CheckInOutTab() {
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const { data: reservations = [] } = useQuery<any[]>({ queryKey: ["/api/hotel/reservations"] });
   const { toast } = useToast();
 
@@ -450,8 +442,6 @@ function CheckInOutTab() {
 function FoliosTab() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<any>({ items: [] });
   const [editing, setEditing] = useState<any>(null);
@@ -662,8 +652,6 @@ function HousekeepingTab() {
 function GuestsTab() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({});
@@ -751,8 +739,6 @@ function GuestsTab() {
 function ChannelManagerTab() {
   const { toast } = useToast();
   const [syncing, setSyncing] = useState(false);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const { data: rates = [], refetch } = useQuery<any[]>({ queryKey: ["/api/hotel/enterprise/channels/rates"] });
 
   const handleSync = async () => {

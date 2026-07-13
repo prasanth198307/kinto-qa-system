@@ -231,8 +231,6 @@ function PriorityCard({ level, title, description }: { level: PriorityLevel; tit
 const barColors = ['bg-blue-500', 'bg-green-500', 'bg-amber-500', 'bg-violet-500', 'bg-pink-500'];
 
 export default function MISDashboard() {
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol ?? sym;
   const formatCurrency = (paise: number): string => fmtCur(paise / 100, tenantConfig);
   const formatCurrencyCompact = (paise: number): string => {
     const val = paise / 100;

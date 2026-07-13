@@ -106,8 +106,6 @@ function ProjectForm({ project, employees, onSave, onCancel }: any) {
 function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () => void }) {
   const { toast } = useToast();
   const [boqDialogOpen, setBoqDialogOpen] = useState(false);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [milestoneDialogOpen, setMilestoneDialogOpen] = useState(false);
   const [tsDialogOpen, setTsDialogOpen] = useState(false);
   const [boqForm, setBoqForm] = useState({ description: "", uom: "", quantity: "", rate: "" });
@@ -364,8 +362,6 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
 export default function ProjectManagementPage() {
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [editingProject, setEditingProject] = useState<any>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [statusFilter, setStatusFilter] = useState("all");

@@ -196,8 +196,6 @@ export default function SuperAdminSetupWizard() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [step, setStep] = useState<Step>(1);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [showPass, setShowPass] = useState(false);
   const [seedResult, setSeedResult] = useState<any>(null);
   const [createdTenantId, setCreatedTenantId] = useState<number | null>(null);

@@ -44,8 +44,6 @@ function DigitalClock() {
 
 function IdleState() {
   const [promoIdx, setPromoIdx] = useState(0);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -88,8 +86,6 @@ function IdleState() {
 
 function ActiveBillState({ bill }: { bill: any }) {
   const items: any[] = bill.items || [];
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const subtotal = items.reduce((s: number, i: any) => s + Number(i.price || 0) * Number(i.quantity || 1), 0);
   const gst = bill.gst ?? subtotal * 0.05;
   const serviceCharge = Number(bill.service_charge || 0);

@@ -759,8 +759,6 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
 function DocumentsPanel({ emp }: { emp: any }) {
   const { toast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [docType, setDocType] = useState("Offer Letter");
   const [docNotes, setDocNotes] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -863,8 +861,6 @@ function DocumentsPanel({ emp }: { emp: any }) {
 function SalaryRevisionPanel({ emp }: { emp: any }) {
   const { toast } = useToast();
   const [showAdd, setShowAdd] = useState(false);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [form, setForm] = useState({
     effectiveDate: "", newBasic: "", newCtc: "", revisionType: "increment", reason: "", approvedBy: ""
   });
@@ -1074,8 +1070,6 @@ function SalaryRevisionPanel({ emp }: { emp: any }) {
 // ── Employee Detail View ──────────────────────────────────────────────────────
 function EmployeeDetail({ emp, onBack, onEdit }: any) {
   const [tab, setTab] = useState("overview");
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const { toast } = useToast();
   const photoInputRef = useRef<HTMLInputElement>(null);
 

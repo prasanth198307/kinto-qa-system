@@ -192,8 +192,6 @@ function CartScreen({
   onBack: () => void;
 }) {
   const [customerName, setCustomerName] = useState("");
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [customerPhone, setCustomerPhone] = useState("");
   const [notes, setNotes] = useState<Record<number, string>>({});
 

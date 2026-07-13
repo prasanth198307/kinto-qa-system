@@ -47,8 +47,6 @@ function StatusTimeline({ current }: { current: string }) {
 export function OMSOrdersSection() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [showTimeline, setShowTimeline] = useState(false);
   const [search, setSearch] = useState("");

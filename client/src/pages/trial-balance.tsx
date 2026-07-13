@@ -568,7 +568,6 @@ function TBTreeRow({
   onToggle: (id: string) => void;
   onAccountClick: (node: { id: string; nodeType?: string }) => void;
 }) {
-  const tenantConfig = useTenantConfig();
   const isGroup = node.nodeType === 'group';
   const isExpanded = expandedNodes.has(node.id);
   const hasChildren = isGroup && node.children.length > 0;

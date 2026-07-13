@@ -148,8 +148,6 @@ export function CounterBookingsSection() {
 // ── Customer Approvals ────────────────────────────────────────────────────────
 export function CustomerApprovalsSection() {
   const { toast } = useToast();
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const fmtAmt = (n: any) => fmtCur(n, tenantConfig);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
@@ -240,8 +238,6 @@ export function CustomerApprovalsSection() {
 // ── Buy-back ──────────────────────────────────────────────────────────────────
 export function BuybackSection() {
   const { toast } = useToast();
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const fmtAmt = (n: any) => fmtCur(n, tenantConfig);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
@@ -432,8 +428,6 @@ export function PhysicalAuditSection() {
 // ── Loyalty & Rewards ─────────────────────────────────────────────────────────
 export function LoyaltySection() {
   const { toast } = useToast();
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const fmtAmt = (n: any) => fmtCur(n, tenantConfig);
   const [tab, setTab] = useState<"members" | "programs">("members");
   const [showMemberForm, setShowMemberForm] = useState(false);
@@ -554,8 +548,6 @@ export function LoyaltySection() {
 // ── Promotions ────────────────────────────────────────────────────────────────
 export function PromotionsSection() {
   const { toast } = useToast();
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const fmtAmt = (n: any) => fmtCur(n, tenantConfig);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<any>({ promo_type: "discount_pct", discount_pct: 0 });
@@ -722,8 +714,6 @@ export function RefiningSection() {
 // ── POS Old Gold ───────────────────────────────────────────────────────────────
 export function PosOldGoldSection() {
   const { toast } = useToast();
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const fmtAmt = (n: any) => fmtCur(n, tenantConfig);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<any>({ metal_type: "gold", buyback_rate_pct: 95 });

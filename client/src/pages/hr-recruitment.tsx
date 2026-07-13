@@ -155,8 +155,6 @@ function JobOpeningForm({ editing, depts, onSave, onCancel }: any) {
 function ApplicationForm({ openings, editing, preOpeningId, onSave, onCancel }: any) {
   const { toast } = useToast();
   const [form, setForm] = useState({
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
     openingId: editing?.opening_id ? String(editing.opening_id) : (preOpeningId ? String(preOpeningId) : ""),
     candidateName: editing?.candidate_name || "",
     phone: editing?.phone || "",
@@ -273,8 +271,6 @@ function ApplicationForm({ openings, editing, preOpeningId, onSave, onCancel }: 
 export default function HrRecruitment() {
   const { toast } = useToast();
   const [tab, setTab] = useState("openings");
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState("all");
   const [openingFilter, setOpeningFilter] = useState("all");

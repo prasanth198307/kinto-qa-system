@@ -91,8 +91,6 @@ function RecurringForm({ schedule, onSave, onCancel }: any) {
 export default function RecurringInvoicesPage() {
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [editSchedule, setEditSchedule] = useState<any>(null);
 
   const { data: schedules = [], isLoading } = useQuery<any[]>({ queryKey: ["/api/assets/recurring-invoices"] });

@@ -129,8 +129,6 @@ function StudentsTab() {
 function StaffTab() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({});
   const { data: teachers = [] } = useQuery<any[]>({ queryKey: ["/api/education/teachers"] });
@@ -485,8 +483,6 @@ function AttendanceTab() {
 function TimetableTab() {
   const { toast } = useToast();
   const [selectedClass, setSelectedClass] = useState("");
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [showPeriodForm, setShowPeriodForm] = useState(false);
   const [showEntryForm, setShowEntryForm] = useState(false);
   const [periodForm, setPeriodForm] = useState<any>({});
@@ -587,8 +583,6 @@ function TimetableTab() {
 function TransportTab() {
   const { toast } = useToast();
   const [subTab, setSubTab] = useState<"vehicles"|"routes"|"students">("vehicles");
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({});
@@ -679,8 +673,6 @@ function TransportTab() {
 function AnnouncementsTab() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({});
   const { data: announcements = [] } = useQuery<any[]>({ queryKey: ["/api/education/announcements"] });
@@ -734,8 +726,6 @@ function AnnouncementsTab() {
 function AssessmentsTab() {
   const { toast } = useToast();
   const [selectedExam, setSelectedExam] = useState<any>(null);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [showExamForm, setShowExamForm] = useState(false);
   const [editingExam, setEditingExam] = useState<any>(null);
   const [examForm, setExamForm] = useState<any>({});
@@ -836,8 +826,6 @@ function AssessmentsTab() {
 function LibraryTab() {
   const { toast } = useToast();
   const [subTab, setSubTab] = useState<"books"|"issues">("books");
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [showBook, setShowBook] = useState(false);
   const [showIssue, setShowIssue] = useState(false);
   const [editingBook, setEditingBook] = useState<any>(null);
@@ -917,8 +905,6 @@ function LibraryTab() {
 function FeesTab() {
   const { toast } = useToast();
   const [subTab, setSubTab] = useState<"payments"|"structures"|"components"|"scholarships"|"discounts"|"ledger">("payments");
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
 
   // ── data ──
   const { data: structures = [] } = useQuery<any[]>({ queryKey: ["/api/education/fee-structures"] });

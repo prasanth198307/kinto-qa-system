@@ -70,8 +70,6 @@ function AdmissionsTab() {
 
 function StudentsTab() {
   const [cls, setCls] = useState(""); const [sec, setSec] = useState("");
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const { data: students = [] } = useQuery({ queryKey: ["/api/education/students", cls, sec], queryFn: () => apiRequest("GET", `/api/education/students?class=${cls}&section=${sec}`) });
   return (
     <div className="space-y-3">
@@ -85,8 +83,6 @@ function StudentsTab() {
 
 function AcademicsTab() {
   const qc = useQueryClient();
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const { data: assignments = [] } = useQuery({ queryKey: ["/api/education/assignments"], queryFn: () => apiRequest("GET", "/api/education/assignments") });
   const { data: exams = [] } = useQuery({ queryKey: ["/api/education/online-exams"], queryFn: () => apiRequest("GET", "/api/education/online-exams") });
   const { data: circulars = [] } = useQuery({ queryKey: ["/api/education/circulars"], queryFn: () => apiRequest("GET", "/api/education/circulars") });
@@ -154,8 +150,6 @@ function HostelTab() {
 
 function AlumniTab() {
   const qc = useQueryClient();
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const { data: alumni = [] } = useQuery({ queryKey: ["/api/education/alumni"], queryFn: () => apiRequest("GET", "/api/education/alumni") });
   const [f, setF] = useState({ name: "", batch_year: "", last_class: "", current_occupation: "", company: "", phone: "", email: "" });
   const add = useMutation({ mutationFn: (d: any) => apiRequest("POST", "/api/education/alumni", d), onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/education/alumni"] }) });

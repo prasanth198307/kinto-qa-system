@@ -121,7 +121,6 @@ function InvoiceRows({ invoices }: { invoices: Invoice[] }) {
 }
 
 export default function CustomerOutstandingReport() {
-  const tenantConfig = useTenantConfig();
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 

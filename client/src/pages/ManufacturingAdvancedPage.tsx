@@ -412,8 +412,6 @@ function ECNTab() {
 function CostRollupTab() {
   const { toast } = useToast();
   const [productId, setProductId] = useState("");
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [qty, setQty] = useState("1");
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);

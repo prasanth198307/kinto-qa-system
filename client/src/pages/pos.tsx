@@ -65,14 +65,6 @@ function DenominationInput({ value, onChange }: { value: DenomMap; onChange: (v:
   const total = DENOMINATIONS.reduce((s, d) => s + d * (value[d] || 0), 0);
   const tenantConfig = useTenantConfig();
   const sym = tenantConfig.currency_symbol;
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   return (
     <div className="space-y-1.5">
       <div className="grid gap-1">
@@ -112,8 +104,6 @@ function SplitPaymentPanel({ total, splits, onSplitsChange }: {
   total: number; splits: SplitRow[]; onSplitsChange: (s: SplitRow[]) => void;
 }) {
   const splitTotal = splits.reduce((s, r) => s + (Number(r.amount) || 0), 0);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const remaining = +(total - splitTotal).toFixed(2);
   const changeGiven = splitTotal > total + 0.01 ? +(splitTotal - total).toFixed(2) : 0;
 
@@ -192,8 +182,6 @@ function MrpOverrideDialog({ open, itemName, mrpRupees, currentPrice, onConfirm,
   const { toast } = useToast();
   // Pre-fill with MRP if current price is above MRP, otherwise keep current price
   const safeDefault = mrpRupees > 0 && currentPrice > mrpRupees ? String(mrpRupees) : String(currentPrice || "");
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [newPrice, setNewPrice] = useState(safeDefault);
   const [priceError, setPriceError] = useState("");
 
@@ -259,8 +247,6 @@ function MrpOverrideDialog({ open, itemName, mrpRupees, currentPrice, onConfirm,
 function LastSessionCard({ session }: { session: any }) {
   if (!session) return null;
   const duration = session.closed_at
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
     ? Math.round((new Date(session.closed_at).getTime() - new Date(session.opened_at).getTime()) / 60000)
     : null;
   return (
@@ -311,8 +297,6 @@ function OpenSessionDialog({
 }) {
   const { toast } = useToast();
   const [step, setStep] = useState<OpenStep>("balance");
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [counterName, setCounterName] = useState("Counter 1");
   const [cashDenom, setCashDenom] = useState<DenomMap>({});
   const [upiFloat, setUpiFloat] = useState("");
@@ -644,8 +628,6 @@ function UpiQrDialog({
 }) {
   const { toast } = useToast();
   const [qrState, setQrState] = useState<QrState>("generating");
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [qrId, setQrId] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(300);
@@ -858,8 +840,6 @@ function CardTerminalDialog({ open, amount, sessionId, counterName, onClose, onP
   onClose: () => void; onPaid: (terminalId: string | null, cardRef: string | null) => void;
 }) {
   const [state, setState] = useState<CardState>("loading");
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [terminal, setTerminal] = useState<any>(null);
   const [chargeId, setChargeId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
@@ -1036,8 +1016,6 @@ function WeightEntryDialog({ open, product, onConfirm, onClose }: {
   open: boolean; product: any | null; onConfirm: (weight: number) => void; onClose: () => void;
 }) {
   const [weight, setWeight] = useState("");
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const unitPrice = Number(product?.selling_price || product?.price || 0);
   const amount = (Number(weight) || 0) * unitPrice;
   return (
@@ -1076,8 +1054,6 @@ function WeightEntryDialog({ open, product, onConfirm, onClose }: {
 function EodReportDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { data: company } = useQuery<any>({ queryKey: ["/api/settings/company"] });
   const [reportDate, setReportDate] = useState(new Date().toISOString().split("T")[0]);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const { data: report, isLoading, refetch } = useQuery<any>({
     queryKey: ["/api/pos/reports/eod", reportDate],
     queryFn: async () => {
@@ -1193,8 +1169,6 @@ function PrintReceiptDialog({ open, txn, saleItems, session, onClose }: {
   const { data: company } = useQuery<any>({ queryKey: ["/api/settings/company"] });
 
   const handlePrint = () => {
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
     const el = document.getElementById("thermal-receipt-content");
     if (!el) return;
     const w = window.open("", "_blank", "width=420,height=700");
@@ -1312,8 +1286,6 @@ function PrintReceiptDialog({ open, txn, saleItems, session, onClose }: {
 function TerminalSettingsTab() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({ terminal_type: "manual", port: 80 });
 
@@ -1468,8 +1440,6 @@ function TerminalSettingsTab() {
 function CreditLimitWarning({ customer, billTotal }: { customer: any; billTotal: number }) {
   if (!customer) return null;
   const cl = Number(customer.credit_limit || 0);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const outstanding = Number(customer.outstanding_balance || 0);
   if (cl <= 0) return null;
   if (outstanding + billTotal > cl) {
@@ -1498,8 +1468,6 @@ function CreditLimitWarning({ customer, billTotal }: { customer: any; billTotal:
 function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
   const { toast } = useToast();
   const [cartItems, setCartItems] = useState<any[]>([]);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [productSearch, setProductSearch] = useState("");
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
   const [splits, setSplits] = useState<SplitRow[]>([{ mode: "cash", amount: "" }]);
@@ -2271,8 +2239,6 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
 // ── Sales History ─────────────────────────────────────────────────────────────
 function SalesHistoryTab() {
   const [activeTab, setActiveTab] = useState<"txns" | "cashier" | "hourly" | "daily">("txns");
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [search, setSearch] = useState("");
   const [reportDate, setReportDate] = useState(new Date().toISOString().split("T")[0]);
   const { data: txns = [] } = useQuery<any[]>({ queryKey: ["/api/pos/transactions"] });
@@ -2528,8 +2494,6 @@ function SalesHistoryTab() {
 function CustomersTab() {
   const { toast } = useToast();
   const [search, setSearch] = useState(""); const [showForm, setShowForm] = useState(false); const [editing, setEditing] = useState<any>(null); const [form, setForm] = useState<any>({});
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const { data: customers = [] } = useQuery<any[]>({ queryKey: ["/api/pos/customers"] });
   const saveMut = useMutation({ mutationFn: (d: any) => editing ? apiRequest("PUT", `/api/pos/customers/${editing.id}`, d) : apiRequest("POST", "/api/pos/customers", d), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/pos/customers"] }); setShowForm(false); toast({ title: "Saved" }); } });
   const delMut = useMutation({ mutationFn: (id: any) => apiRequest("DELETE", `/api/pos/customers/${id}`), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/pos/customers"] }) });
@@ -2578,8 +2542,6 @@ function CustomersTab() {
 function ReturnsTab() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [txnNoInput, setTxnNoInput] = useState("");
   const [lookupTxn, setLookupTxn] = useState<any>(null);
   const [lookupLoading, setLookupLoading] = useState(false);
@@ -2784,8 +2746,6 @@ function ReturnsTab() {
 function PromotionsTab() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false); const [editing, setEditing] = useState<any>(null); const [form, setForm] = useState<any>({});
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const { data: promos = [] } = useQuery<any[]>({ queryKey: ["/api/pos/promotions"] });
   const saveMut = useMutation({ mutationFn: (d: any) => editing ? apiRequest("PUT", `/api/pos/promotions/${editing.id}`, d) : apiRequest("POST", "/api/pos/promotions", d), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/pos/promotions"] }); setShowForm(false); toast({ title: "Saved" }); } });
   const delMut = useMutation({ mutationFn: (id: any) => apiRequest("DELETE", `/api/pos/promotions/${id}`), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/pos/promotions"] }) });
@@ -2865,8 +2825,6 @@ function SessionsTab() {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function POSPage() {
   const [activeTab, setActiveTab] = useState("overview");
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
 
   return (
     <div className="p-4 sm:p-6 space-y-6">

@@ -75,8 +75,6 @@ function SBadge({ status }: { status: string }) {
 export function KarigarAttendanceSection() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [editing, setEditing] = useState<any>(null);
   const [filterDate, setFilterDate] = useState(today());
   const [form, setForm] = useState<any>({ attend_date: today(), present: 1, work_type: "production" });
@@ -255,8 +253,6 @@ export function KarigarAttendanceSection() {
 export function BullionRateCutsSection() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({ cut_date: today(), metal_type: "gold", party_type: "dealer", gst_pct: 3, payment_mode: "bank", status: "draft" });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
@@ -437,8 +433,6 @@ export function BullionRateCutsSection() {
 export function ChitCollectionRegisterSection() {
   const { toast } = useToast();
   const [selectedScheme, setSelectedScheme] = useState<string>("");
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [showPayDialog, setShowPayDialog] = useState(false);
   const [payTarget, setPayTarget] = useState<any>(null);
   const [payForm, setPayForm] = useState<any>({ payment_mode: "cash", paid_date: today() });
@@ -615,8 +609,6 @@ export function ChitCollectionRegisterSection() {
 export function WholesaleB2BOrdersSection() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({ order_date: today(), metal_type: "gold", status: "draft", gst_pct: 3 });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
@@ -777,8 +769,6 @@ export function WholesaleB2BOrdersSection() {
 export function JewelleryPOSSection() {
   const { toast } = useToast();
   const [mode, setMode] = useState<"list" | "new">("list");
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [form, setForm] = useState<any>({
     bill_date: today(), cgst_pct: 1.5, sgst_pct: 1.5,
     items_json: [], gold_rate: "", purity_name: "22K",

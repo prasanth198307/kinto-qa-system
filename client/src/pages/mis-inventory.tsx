@@ -29,8 +29,6 @@ function KpiBadge({ label, color }: { label: string; color: 'gray' | 'red' | 'or
 function StockHealthBar({ current, reorder }: { current: number; reorder: number | null }) {
   if (!reorder || reorder === 0) return <div className="text-xs text-muted-foreground">—</div>;
   const pct = Math.min((current / reorder) * 100, 100);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const color = pct <= 25 ? 'bg-red-500' : pct <= 50 ? 'bg-amber-500' : 'bg-green-500';
   return (
     <div className="flex items-center gap-2">
@@ -50,7 +48,6 @@ function StockStatus({ current, reorder, agingBucket }: { current: number; reord
 }
 
 export default function MISInventory() {
-  const tenantConfig = useTenantConfig();
   const formatINR = (paise: number) => fmtCur(paise / 100, tenantConfig);
   const formatINRRupees = (rupees: number) => fmtCur(rupees, tenantConfig);
   const sym = tenantConfig.currency_symbol ?? sym;

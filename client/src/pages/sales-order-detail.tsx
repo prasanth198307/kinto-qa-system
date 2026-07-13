@@ -610,8 +610,6 @@ export default function SalesOrderDetail({ showHeader = true }: { showHeader?: b
   const { toast } = useToast();
   const { logoutMutation } = useAuth();
   const [cancellationReason, setCancellationReason] = useState("");
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [isEditOpen, setIsEditOpen] = useState(false);
 
   const { data: salesOrder, isLoading: isLoadingSO } = useQuery<any>({

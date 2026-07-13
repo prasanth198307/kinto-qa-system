@@ -88,8 +88,6 @@ function OverviewTab() {
 function POSKOTTab() {
   const { toast } = useToast();
   const [selectedTable, setSelectedTable] = useState<any>(null);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [cart, setCart] = useState<any[]>([]);
   const [waiter, setWaiter] = useState("");
   const [orderType, setOrderType] = useState("dine_in");
@@ -251,8 +249,6 @@ function POSKOTTab() {
 function TablesTab() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({});
 
@@ -324,8 +320,6 @@ function TablesTab() {
 function MenuTab() {
   const { toast } = useToast();
   const [showItemForm, setShowItemForm] = useState(false);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [showCatForm, setShowCatForm] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [editingCat, setEditingCat] = useState<any>(null);
@@ -542,8 +536,6 @@ function KOTItems({ kotId }: { kotId: number }) {
 function DeliveryTab() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({});
 
@@ -658,8 +650,6 @@ function ReportsTab() {
   const { data: sessions = [] } = useQuery<any[]>({ queryKey: ["/api/restaurant/sessions"] });
   const { toast } = useToast();
   const [showSessionForm, setShowSessionForm] = useState(false);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [form, setForm] = useState<any>({});
 
   const openSession = useMutation({

@@ -179,8 +179,6 @@ export function ChitDefaultersSection() {
 export function ChitRedemptionsSection() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [form, setForm] = useState<any>({ redemption_type: "gold", redemption_date: today() });
   const { data: redemptions = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/chit-redemptions"] });
   const { data: allMembers = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/chit-members"] });

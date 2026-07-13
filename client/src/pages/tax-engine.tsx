@@ -39,8 +39,6 @@ function SettingsTab() {
   const { toast } = useToast();
   const { data } = useQuery({ queryKey: ['/api/tax/settings'], queryFn: () => apiRequest('GET', '/api/tax/settings').then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
   const s = data?.settings;
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [form, setForm] = useState({ country: s?.country ?? 'India', default_state: s?.default_state ?? '',
     seller_state: s?.seller_state ?? '', vat_number: s?.vat_number ?? '', tax_regime: s?.tax_regime ?? 'GST',
     eu_vat_number: s?.eu_vat_number ?? '', zatca_enabled: s?.zatca_enabled ?? false, us_state: s?.us_state ?? '' });
@@ -119,8 +117,6 @@ function SettingsTab() {
 // Tab 2: Tax Calculator
 function CalculatorTab() {
   const [params, setParams] = useState({ country: 'India', state: '', sellerState: '', taxableAmount: 10000, taxRate: '', isB2B: false, customerVatNumber: '' });
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();

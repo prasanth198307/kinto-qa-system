@@ -94,8 +94,6 @@ function ProjectsTab() {
 function UnitsTab() {
   const { toast } = useToast();
   const [search, setSearch] = useState(""); const [filterProject, setFilterProject] = useState(""); const [showForm, setShowForm] = useState(false); const [editing, setEditing] = useState<any>(null); const [form, setForm] = useState<any>({});
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const { data: units = [] } = useQuery<any[]>({ queryKey: ["/api/real-estate/units"] });
   const { data: projects = [] } = useQuery<any[]>({ queryKey: ["/api/real-estate/projects"] });
   const saveMut = useMutation({ mutationFn: (d: any) => editing ? apiRequest("PUT", `/api/real-estate/units/${editing.id}`, d) : apiRequest("POST", "/api/real-estate/units", d), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/real-estate/units"] }); setShowForm(false); toast({ title: "Saved" }); } });
@@ -148,8 +146,6 @@ function UnitsTab() {
 function BookingsTab() {
   const { toast } = useToast();
   const [search, setSearch] = useState(""); const [showForm, setShowForm] = useState(false); const [editing, setEditing] = useState<any>(null); const [form, setForm] = useState<any>({}); const [showPayments, setShowPayments] = useState<any>(null); const [payForm, setPayForm] = useState<any>({}); const [partialId, setPartialId] = useState<any>(null); const [partialAmt, setPartialAmt] = useState("");
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const { data: bookings = [] } = useQuery<any[]>({ queryKey: ["/api/real-estate/bookings"] });
   const { data: units = [] } = useQuery<any[]>({ queryKey: ["/api/real-estate/units"] });
   const { data: brokers = [] } = useQuery<any[]>({ queryKey: ["/api/real-estate/brokers"] });
@@ -247,8 +243,6 @@ function BookingsTab() {
 function BrokersTab() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false); const [editing, setEditing] = useState<any>(null); const [form, setForm] = useState<any>({});
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const { data: brokers = [] } = useQuery<any[]>({ queryKey: ["/api/real-estate/brokers"] });
   const saveMut = useMutation({ mutationFn: (d: any) => editing ? apiRequest("PUT", `/api/real-estate/brokers/${editing.id}`, d) : apiRequest("POST", "/api/real-estate/brokers", d), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/real-estate/brokers"] }); setShowForm(false); toast({ title: "Saved" }); } });
   const delMut = useMutation({ mutationFn: (id: any) => apiRequest("DELETE", `/api/real-estate/brokers/${id}`), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/real-estate/brokers"] }) });
@@ -289,8 +283,6 @@ function BrokersTab() {
 function DemandLettersTab() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false); const [editing, setEditing] = useState<any>(null); const [form, setForm] = useState<any>({});
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const { data: letters = [] } = useQuery<any[]>({ queryKey: ["/api/real-estate/demand-letters"] });
   const { data: bookings = [] } = useQuery<any[]>({ queryKey: ["/api/real-estate/bookings"] });
   const saveMut = useMutation({ mutationFn: (d: any) => editing ? apiRequest("PUT", `/api/real-estate/demand-letters/${editing.id}`, d) : apiRequest("POST", "/api/real-estate/demand-letters", d), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/real-estate/demand-letters"] }); setShowForm(false); toast({ title: "Saved" }); } });

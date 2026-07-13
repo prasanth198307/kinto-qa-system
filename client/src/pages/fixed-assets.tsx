@@ -99,7 +99,6 @@ function AssetForm({ asset, onSave, onCancel }: any) {
 
 function AssetDetail({ assetId, onBack }: { assetId: number; onBack: () => void }) {
   const { toast } = useToast();
-  const tenantConfig = useTenantConfig();
   const { data, isLoading } = useQuery<any>({ queryKey: ["/api/assets/fixed-assets", assetId] });
 
   const postMutation = useMutation({
@@ -166,7 +165,6 @@ function AssetDetail({ assetId, onBack }: { assetId: number; onBack: () => void 
 
 export default function FixedAssetsPage() {
   const { toast } = useToast();
-  const tenantConfig = useTenantConfig();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingAsset, setEditingAsset] = useState<any>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);

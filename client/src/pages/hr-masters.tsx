@@ -429,8 +429,6 @@ function SalaryComponentsTab() {
 // ── Salary Structures Tab ─────────────────────────────────────────────────────
 function SalaryStructuresTab() {
   const { toast } = useToast();
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [structName, setStructName] = useState("");
@@ -565,8 +563,6 @@ function SalaryStructuresTab() {
 // ── PT Slabs Tab ──────────────────────────────────────────────────────────────
 function PTSlabsTab() {
   const { toast } = useToast();
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState({ state: "", income_from: "0", income_to: "", pt_amount: "0" });
@@ -667,8 +663,6 @@ function PTSlabsTab() {
 // ── Statutory Rates Tab (PF / ESI / PT) ───────────────────────────────────────
 function StatutoryRatesTab() {
   const { toast } = useToast();
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const { data: s, isLoading } = useQuery<any>({ queryKey: ["/api/hr/statutory-settings"] });
   const [form, setForm] = useState<any>(null);
 

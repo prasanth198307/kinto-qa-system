@@ -114,8 +114,6 @@ function CalendarView({ events }: { events: BanquetEvent[] }) {
 
 function NewEventDialog({ open, onClose, halls }: { open: boolean; onClose: () => void; halls: string[] }) {
   const qc = useQueryClient();
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const { toast } = useToast();
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const f = (k: string) => (form as Record<string, string>)[k];
@@ -206,8 +204,6 @@ function NewEventDialog({ open, onClose, halls }: { open: boolean; onClose: () =
 
 export default function BanquetEventsPage() {
   const [statusFilter, setStatusFilter] = useState("all");
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [showNew, setShowNew] = useState(false);
 
   const { data: halls = [] } = useQuery<string[]>({

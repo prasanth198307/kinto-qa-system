@@ -370,8 +370,6 @@ function MarketplaceTab({
   onSave: (slugs: string[]) => void;
 }) {
   const freeSet = new Set(data.freeModules);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const planSet = new Set(data.planModules ?? []);
   const [draft, setDraft] = useState<Set<string>>(new Set(data.selectedModules));
   const [saving, setSaving] = useState(false);
@@ -559,8 +557,6 @@ function ManageModulesTab({
   onSave: (slugs: string[]) => void;
 }) {
   const freeSet = new Set(data.freeModules);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [selected, setSelected] = useState<Set<string>>(new Set(data.selectedModules));
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
   const [depWarn, setDepWarn] = useState<string | null>(null);
@@ -766,8 +762,6 @@ function ManageModulesTab({
 
 function AutoDeductTab({ data }: { data: ModuleData }) {
   const nextBilling = data.currentPeriodEnd
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
     ? format(parseISO(data.currentPeriodEnd), "MMM d, yyyy")
     : "—";
   const monthlyAmount = data.monthlyAmount;
@@ -919,8 +913,6 @@ function AutoDeductTab({ data }: { data: ModuleData }) {
 
 function OverviewTab({ data }: { data: ModuleData }) {
   const freeSet = new Set(data.freeModules);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const activeCount = (data.selectedModules.filter(s => !freeSet.has(s))).length;
 
   return (

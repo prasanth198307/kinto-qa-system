@@ -39,8 +39,6 @@ function SBadge({ status }: { status: string }) {
 export function BullionBookingsSection() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({ party_type: "supplier", metal_type: "gold", form_type: "bar", payment_terms: "advance", delivery_type: "physical" });
   const { data: bookings = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/bullion-bookings"] });

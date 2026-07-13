@@ -218,8 +218,6 @@ function OverviewSection() {
 function MetalRatesSection() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [form, setForm] = useState<any>({ metal: "gold", purity_name: "22K (916)", purity_percent: 91.6, source: "IBJA", rate_date: today() });
   const { data: rates = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/metal-rates"] });
 
@@ -311,8 +309,6 @@ function MetalRatesSection() {
 function KarigarSection() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({ metal_type: "gold", status: "active" });
@@ -389,8 +385,6 @@ function KarigarSection() {
 function ItemMasterSection() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({ metal_type: "gold", purity_name: "22K (916)", making_charge_type: "percent", stock_qty: 1 });
@@ -494,8 +488,6 @@ function ItemMasterSection() {
 function EstimatesSection() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [form, setForm] = useState<any>({ metal_type: "gold", purity_name: "22K (916)", gst_pct: 3, making_charge_type: "percent" });
   const { data: estimates = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/estimates"] });
   const { data: ratesData = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/metal-rates/today"] });
@@ -627,8 +619,6 @@ function EstimatesSection() {
 function ProductionSection() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [form, setForm] = useState<any>({ metal_type: "gold", purity_name: "22K (916)", qty: 1 });
   const { data: orders = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/production-orders"] });
@@ -748,8 +738,6 @@ function ProductionSection() {
 function JobworkSection() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({ metal_type: "gold", order_date: today() });
   const { data: orders = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/jobwork-orders"] });
@@ -844,8 +832,6 @@ function JobworkSection() {
 function BullionSection() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [form, setForm] = useState<any>({ txn_type: "purchase", metal_type: "gold", purity_name: "22K (916)", txn_date: today() });
   const { data: stock = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/bullion-stock"] });
   const { data: transactions = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/bullion-transactions"] });
@@ -940,8 +926,6 @@ function BullionSection() {
 function RepairsSection() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({ metal_type: "gold", issue_date: today() });
@@ -1096,8 +1080,6 @@ function RepairsSection() {
 function HallmarkingSection() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [form, setForm] = useState<any>({ metal_type: "gold", purity_name: "22K (916)", hallmark_date: today() });
   const { data: records = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/hallmarking"] });
 
@@ -1185,8 +1167,6 @@ function HallmarkingSection() {
 function ChitSchemesSection() {
   const { toast } = useToast();
   const [showSchemeForm, setShowSchemeForm] = useState(false);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [selectedScheme, setSelectedScheme] = useState<any>(null);
   const [showMemberForm, setShowMemberForm] = useState(false);
   const [showPayForm, setShowPayForm] = useState(false);
@@ -1479,8 +1459,6 @@ function AnalyticsSection() {
 function MetalLedgerSection() {
   const { toast } = useToast();
   const [view, setView] = useState<"balances" | "transactions">("balances");
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [showForm, setShowForm] = useState(false);
   const [searchCust, setSearchCust] = useState("");
   const [form, setForm] = useState<any>({ metal_type: "gold", purity_name: "22K (916)", transaction_type: "inward", txn_date: today() });

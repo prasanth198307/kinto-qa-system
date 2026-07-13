@@ -43,8 +43,6 @@ function FrontDeskTab() {
 
 function RatePlansTab() {
   const qc = useQueryClient();
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const { data: plans = [] } = useQuery({ queryKey: ["/api/hotel/rate-plans"], queryFn: () => apiRequest("GET", "/api/hotel/rate-plans") });
   const [f, setF] = useState({ plan_name: "", plan_code: "", plan_type: "standard", meal_plan: "ro", is_refundable: true });
   const add = useMutation({ mutationFn: (d: any) => apiRequest("POST", "/api/hotel/rate-plans", d), onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/hotel/rate-plans"] }) });
@@ -68,8 +66,6 @@ function RatePlansTab() {
 
 function PackagesTab() {
   const qc = useQueryClient();
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const { data: pkgs = [] } = useQuery({ queryKey: ["/api/hotel/packages"], queryFn: () => apiRequest("GET", "/api/hotel/packages") });
   const [f, setF] = useState({ package_name: "", room_type_id: "", rate_plan_id: "", package_price: "", valid_from: "", valid_to: "" });
   const add = useMutation({ mutationFn: (d: any) => apiRequest("POST", "/api/hotel/packages", d), onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/hotel/packages"] }) });
@@ -93,8 +89,6 @@ function PackagesTab() {
 
 function NightAuditTab() {
   const qc = useQueryClient();
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const { data: history = [] } = useQuery({ queryKey: ["/api/hotel/night-audit/history"], queryFn: () => apiRequest("GET", "/api/hotel/night-audit/history") });
   const run = useMutation({ mutationFn: () => apiRequest("POST", "/api/hotel/night-audit/run", {}), onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/hotel/night-audit/history"] }) });
   return (
@@ -109,8 +103,6 @@ function NightAuditTab() {
 
 function CorporateTab() {
   const qc = useQueryClient();
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const { data: corps = [] } = useQuery({ queryKey: ["/api/hotel/corporate-accounts"], queryFn: () => apiRequest("GET", "/api/hotel/corporate-accounts") });
   const { data: agents = [] } = useQuery({ queryKey: ["/api/hotel/travel-agents"], queryFn: () => apiRequest("GET", "/api/hotel/travel-agents") });
   const [cf, setCf] = useState({ company_name: "", gstin: "", credit_limit: "", credit_days: "" });
@@ -134,8 +126,6 @@ function CorporateTab() {
 
 function LostFoundTab() {
   const qc = useQueryClient();
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const { data: items = [] } = useQuery({ queryKey: ["/api/hotel/lost-found"], queryFn: () => apiRequest("GET", "/api/hotel/lost-found") });
   const [f, setF] = useState({ item_description: "", found_location: "", found_by: "", room_number: "", guest_name: "" });
   const add = useMutation({ mutationFn: (d: any) => apiRequest("POST", "/api/hotel/lost-found", d), onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/hotel/lost-found"] }) });
@@ -162,8 +152,6 @@ function LostFoundTab() {
 function OnlineBookingsTab() {
   const { data: bookings = [] } = useQuery({ queryKey: ["/api/hotel/online-booking"], queryFn: () => apiRequest("GET", "/api/hotel/online-booking") });
   const qc = useQueryClient();
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const confirm = useMutation({ mutationFn: (id: any) => apiRequest("POST", "/api/hotel/online-booking/confirm", { booking_id: id }), onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/hotel/online-booking"] }) });
   const statusColor: Record<string, any> = { confirmed: "default", pending: "secondary", cancelled: "destructive" };
   return (

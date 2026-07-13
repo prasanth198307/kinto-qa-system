@@ -434,7 +434,6 @@ function TreeRows({ nodes, depth, expandedNodes, toggleNode, onAccountClick }: {
   toggleNode: (id: string) => void;
   onAccountClick: (node: TreeNode) => void;
 }) {
-  const tenantConfig = useTenantConfig();
   return (
     <>
       {nodes.map(node => {

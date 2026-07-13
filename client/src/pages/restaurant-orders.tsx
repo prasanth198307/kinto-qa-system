@@ -204,8 +204,6 @@ function AddItemsPanel({
 }) {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [results, setResults] = useState<any[]>([]);
   const [selected, setSelected] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -339,8 +337,6 @@ function OrderDetailPanel({
 }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [detail, setDetail] = useState<KotOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [showAddItems, setShowAddItems] = useState(false);
@@ -546,8 +542,6 @@ function OrderDetailPanel({
 export default function RestaurantOrdersPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
 
   const [date, setDate] = useState(todayDate());
   const [statusFilter, setStatusFilter] = useState("all");

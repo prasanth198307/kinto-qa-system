@@ -111,8 +111,6 @@ function ClaimForm({ employees, onSave, onCancel }: any) {
 
 function ClaimCard({ claim, items, onAction }: any) {
   const [expanded, setExpanded] = useState(false);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const claimItems = items.filter((i: any) => i.claim_id === claim.id);
   return (
     <Card className="overflow-hidden">
@@ -174,8 +172,6 @@ function ClaimCard({ claim, items, onAction }: any) {
 export default function HRExpenseClaimsPage() {
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [activeTab, setActiveTab] = useState("all");
   const [selected, setSelected] = useState<Set<number>>(new Set());
 

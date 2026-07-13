@@ -5017,8 +5017,6 @@ function RecordScrapDialog({
   onSubmit: (data: any) => void;
   isLoading: boolean;
 }) {
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const scrapFormSchema = z.object({
     quantity: z.number().int().min(1, "Must be at least 1"),
     scrapDate: z.string().min(1, "Date is required"),

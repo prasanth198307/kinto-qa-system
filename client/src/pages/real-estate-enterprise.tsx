@@ -38,8 +38,6 @@ function DashboardTab() {
 
 function CRMTab() {
   const qc = useQueryClient();
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const { data: pipeline = {} } = useQuery({ queryKey: ["/api/real-estate/leads/pipeline"], queryFn: () => apiRequest("GET", "/api/real-estate/leads/pipeline") });
   const [showAdd, setShowAdd] = useState(false);
   const [f, setF] = useState({ name: "", phone: "", email: "", source: "", interested_in: "", budget_min: "", budget_max: "", configuration: "" });
@@ -84,8 +82,6 @@ function CRMTab() {
 
 function SiteVisitsTab() {
   const qc = useQueryClient();
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const { data: visits = [] } = useQuery({ queryKey: ["/api/real-estate/site-visits"], queryFn: () => apiRequest("GET", "/api/real-estate/site-visits") });
   const [f, setF] = useState({ lead_id: "", visit_date: "", visit_time: "", sales_person: "" });
   const add = useMutation({ mutationFn: (d: any) => apiRequest("POST", "/api/real-estate/site-visits", d), onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/real-estate/site-visits"] }) });
@@ -110,8 +106,6 @@ function SiteVisitsTab() {
 
 function BookingsTab() {
   const qc = useQueryClient();
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const { data: bookings = [] } = useQuery({ queryKey: ["/api/real-estate/bookings"], queryFn: () => apiRequest("GET", "/api/real-estate/bookings") });
   const [showAdd, setShowAdd] = useState(false);
   const [f, setF] = useState({ lead_id: "", unit_id: "", total_amount: "", broker_id: "", loan_bank: "", loan_amount: "" });
@@ -142,8 +136,6 @@ function BookingsTab() {
 
 function CollectionsTab() {
   const qc = useQueryClient();
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const { data: dues = [] } = useQuery({ queryKey: ["/api/real-estate/collections/dues"], queryFn: () => apiRequest("GET", "/api/real-estate/collections/dues") });
   const pay = useMutation({ mutationFn: ({ id, amount }: any) => apiRequest("POST", `/api/real-estate/bookings/${id}/payment`, { amount }), onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/real-estate/collections/dues"] }) });
   const [payAmt, setPayAmt] = useState<Record<string, string>>({});
@@ -156,8 +148,6 @@ function CollectionsTab() {
 
 function ConstructionTab() {
   const qc = useQueryClient();
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const { data: projects = [] } = useQuery({ queryKey: ["/api/real-estate/projects"], queryFn: () => apiRequest("GET", "/api/real-estate/projects") });
   const [project, setProject] = useState("");
   const { data: costs = [] } = useQuery({ queryKey: ["/api/real-estate/construction-costs", project], queryFn: () => apiRequest("GET", `/api/real-estate/construction-costs?project_id=${project}`), enabled: !!project });
@@ -185,8 +175,6 @@ function ConstructionTab() {
 
 function BrokersTab() {
   const qc = useQueryClient();
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const { data: brokers = [] } = useQuery({ queryKey: ["/api/real-estate/brokers"], queryFn: () => apiRequest("GET", "/api/real-estate/brokers") });
   const markPaid = useMutation({ mutationFn: (id: any) => apiRequest("POST", `/api/real-estate/brokers/${id}/mark-commission-paid`, {}), onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/real-estate/brokers"] }) });
   return (
@@ -198,8 +186,6 @@ function BrokersTab() {
 
 function SocietyTab() {
   const qc = useQueryClient();
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [month, setMonth] = useState("");
   const { data: charges = [] } = useQuery({ queryKey: ["/api/real-estate/society/charges", month], queryFn: () => apiRequest("GET", `/api/real-estate/society/charges?month=${month}`) });
   const generate = useMutation({ mutationFn: () => apiRequest("POST", "/api/real-estate/society/charges/generate", { month }), onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/real-estate/society/charges"] }) });

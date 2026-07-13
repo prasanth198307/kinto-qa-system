@@ -87,8 +87,6 @@ function ConfigModal({ platform, cfg, onClose }: { platform: typeof PLATFORMS[0]
 export default function RestaurantAggregatorsPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [tab, setTab] = useState<"platforms" | "orders" | "commission" | "sync">("platforms");
   const [configModal, setConfigModal] = useState<typeof PLATFORMS[0] | null>(null);
   const [filterPlatform, setFilterPlatform] = useState("all");

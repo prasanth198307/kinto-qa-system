@@ -446,8 +446,6 @@ function MenuItemCard({
   onUpdateQty: (id: number, delta: number) => void;
 }) {
   const cartItem = cart.find((c) => c.id === item.id);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const vegEmoji = item.is_veg === 1 ? "🟢" : item.is_veg === 0 ? "🔴" : "";
   const foodEmojis = ["🍕", "🍔", "🌮", "🍜", "🍛", "🥘", "🍱", "🥗", "🍗", "🍖"];
   const emoji = foodEmojis[item.id % foodEmojis.length];

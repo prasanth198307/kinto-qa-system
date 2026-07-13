@@ -56,8 +56,6 @@ function elapsed(t: string) {
 
 function LiveKotFeed({ kots }: { kots: any[] }) {
   const live = kots.filter((k: any) => k.status !== "paid").slice(0, 10);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   return (
     <Card className="h-full">
       <CardHeader className="pb-2">
@@ -83,8 +81,6 @@ function LiveKotFeed({ kots }: { kots: any[] }) {
 
 function TableGrid({ tables, onNavigate }: { tables: any[]; onNavigate: (path: string) => void }) {
   const colorClass = (s: string) => {
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
     if (s === "available") return "bg-green-100 border-green-400 text-green-800";
     if (s === "bill_pending" || s === "bill-pending") return "bg-red-100 border-red-400 text-red-700";
     return "bg-amber-100 border-amber-400 text-amber-800";
@@ -120,8 +116,6 @@ function TableGrid({ tables, onNavigate }: { tables: any[]; onNavigate: (path: s
 
 function PaymentModeDonut({ modes }: { modes: any[] }) {
   const total = modes.reduce((s, m) => s + Number(m.amount || 0), 0);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const colors = ["#6366f1", "#22c55e", "#f59e0b", "#ec4899", "#06b6d4"];
   const modeLabels: Record<string, string> = { cash: "Cash", card: "Card", upi: "UPI", aggregator: "Aggregator", credit: "Credit" };
   return (
@@ -174,8 +168,6 @@ function TopItems({ items }: { items: any[] }) {
 
 function AggregatorOrders({ agg, onNavigate }: { agg: any; onNavigate: (path: string) => void }) {
   const platforms = [
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
     { key: "swiggy", label: "Swiggy", color: "bg-orange-500" },
     { key: "zomato", label: "Zomato", color: "bg-red-500" },
     { key: "uber", label: "Uber Eats", color: "bg-black" },
@@ -208,8 +200,6 @@ function AggregatorOrders({ agg, onNavigate }: { agg: any; onNavigate: (path: st
 
 function WeeklyChart({ weekly }: { weekly: any[] }) {
   const max = Math.max(...weekly.map((d: any) => Number(d.revenue || 0)), 1);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   const data = weekly.length === 7 ? weekly : days.map((d, i) => ({ day: d, revenue: weekly[i]?.revenue || 0 }));
   return (
@@ -241,8 +231,6 @@ function WeeklyChart({ weekly }: { weekly: any[] }) {
 
 function QuickActions({ onNavigate }: { onNavigate: (path: string) => void }) {
   const actions = [
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
     { label: "New KOT", path: "/restaurant-pos", icon: "🧾", color: "bg-indigo-50 hover:bg-indigo-100 border-indigo-200" },
     { label: "Kitchen View", path: "/restaurant-kitchen", icon: "👨‍🍳", color: "bg-orange-50 hover:bg-orange-100 border-orange-200" },
     { label: "Table Map", path: "/restaurant-tables", icon: "🗺️", color: "bg-green-50 hover:bg-green-100 border-green-200" },
@@ -273,8 +261,6 @@ function QuickActions({ onNavigate }: { onNavigate: (path: string) => void }) {
 
 function StaffOnDuty({ staff }: { staff: any[] }) {
   const roleBadge: Record<string, string> = {
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
     cashier: "bg-blue-100 text-blue-700",
     waiter: "bg-green-100 text-green-700",
     chef: "bg-orange-100 text-orange-700",
@@ -394,8 +380,6 @@ export default function RestaurantEnterprisePage() {
   });
 
   const todayRev = Number(summary.today_revenue || 0);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const yestRev = Number(summary.yesterday_revenue || 0);
   const revChange = pct(todayRev, yestRev);
   const todayOrders = Number(summary.order_count || 0);

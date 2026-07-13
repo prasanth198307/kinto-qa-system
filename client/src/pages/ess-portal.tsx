@@ -460,8 +460,6 @@ function EssDeclarationTab({ employee }: { employee: any }) {
 function EssExpensesTab({ employee }: { employee: any }) {
   const { toast } = useToast();
   const qc = useQueryClient();
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ title: "", category: "", amount: "", expense_date: new Date().toISOString().split("T")[0], notes: "" });
 

@@ -187,7 +187,6 @@ function SectionBlock({
 }
 
 export default function CashFlowStatementPage() {
-  const tenantConfig = useTenantConfig();
   const { toast } = useToast();
   const [selectedFY, setSelectedFY] = useState(getCurrentFY());
   const [dateMode, setDateMode] = useState<"fy" | "custom">("fy");

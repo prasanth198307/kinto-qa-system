@@ -50,8 +50,6 @@ function SBadge({ status }: { status: string }) {
 export function WholesaleJobworkSection() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({ making_charges_type: "per_gram", customer_gold_purity: "22K" });
   const { data: jobs = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/wholesale-jobwork"] });
@@ -176,8 +174,6 @@ export function WholesaleJobworkSection() {
 export function HallmarkingBatchesSection() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({ testing_method: "xrf", date_sent: today() });
   const { data: batches = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/hallmarking-batches"] });

@@ -66,16 +66,6 @@ function InventoryGrid() {
   const [grid, setGrid] = useState<Record<string, Record<string, number>>>(() => {
   const tenantConfig = useTenantConfig();
   const sym = tenantConfig.currency_symbol;
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
     const g: Record<string, Record<string, number>> = {};
     ROOM_TYPES.forEach(rt => {
       g[rt] = {};
@@ -163,18 +153,6 @@ function RateManagement({ rates, setRates }: { rates: typeof INITIAL_RATES; setR
 export default function ChannelManagerPage() {
   const { toast } = useToast();
   const [channels, setChannels] = useState(INITIAL_CHANNELS);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [rates, setRates] = useState(INITIAL_RATES);
 
   const pushMutation = useMutation({

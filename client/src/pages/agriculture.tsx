@@ -39,8 +39,6 @@ function FarmsTab() {
   const [search, setSearch] = useState(""); const [showForm, setShowForm] = useState(false); const [editing, setEditing] = useState<any>(null); const [form, setForm] = useState<any>({});
   const tenantConfig = useTenantConfig();
   const sym = tenantConfig.currency_symbol;
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const { data: farms = [] } = useQuery<any[]>({ queryKey: ["/api/agriculture/farms"] });
   const saveMut = useMutation({ mutationFn: (d: any) => editing ? apiRequest("PUT", `/api/agriculture/farms/${editing.id}`, d) : apiRequest("POST", "/api/agriculture/farms", d), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/agriculture/farms"] }); setShowForm(false); toast({ title: "Saved" }); } });
   const delMut = useMutation({ mutationFn: (id: any) => apiRequest("DELETE", `/api/agriculture/farms/${id}`), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/agriculture/farms"] }) });
@@ -91,8 +89,6 @@ function FarmsTab() {
 function FarmersTab() {
   const { toast } = useToast();
   const [search, setSearch] = useState(""); const [showForm, setShowForm] = useState(false); const [editing, setEditing] = useState<any>(null); const [form, setForm] = useState<any>({});
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const { data: farmers = [] } = useQuery<any[]>({ queryKey: ["/api/agriculture/farmers"] });
   const saveMut = useMutation({ mutationFn: (d: any) => editing ? apiRequest("PUT", `/api/agriculture/farmers/${editing.id}`, d) : apiRequest("POST", "/api/agriculture/farmers", d), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/agriculture/farmers"] }); setShowForm(false); toast({ title: "Saved" }); } });
   const delMut = useMutation({ mutationFn: (id: any) => apiRequest("DELETE", `/api/agriculture/farmers/${id}`), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/agriculture/farmers"] }) });
@@ -143,8 +139,6 @@ function FarmersTab() {
 function CropCyclesTab() {
   const { toast } = useToast();
   const [search, setSearch] = useState(""); const [showForm, setShowForm] = useState(false); const [editing, setEditing] = useState<any>(null); const [form, setForm] = useState<any>({}); const [showInputs, setShowInputs] = useState<any>(null); const [inputForm, setInputForm] = useState<any>({});
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const { data: cycles = [] } = useQuery<any[]>({ queryKey: ["/api/agriculture/crop-cycles"] });
   const { data: farms = [] } = useQuery<any[]>({ queryKey: ["/api/agriculture/farms"] });
   const { data: farmers = [] } = useQuery<any[]>({ queryKey: ["/api/agriculture/farmers"] });
@@ -227,8 +221,6 @@ function CropCyclesTab() {
 function HarvestTab() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false); const [editing, setEditing] = useState<any>(null); const [form, setForm] = useState<any>({});
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const { data: harvests = [] } = useQuery<any[]>({ queryKey: ["/api/agriculture/harvest-records"] });
   const { data: cycles = [] } = useQuery<any[]>({ queryKey: ["/api/agriculture/crop-cycles"] });
   const saveMut = useMutation({ mutationFn: (d: any) => editing ? apiRequest("PUT", `/api/agriculture/harvest-records/${editing.id}`, d) : apiRequest("POST", "/api/agriculture/harvest-records", d), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/agriculture/harvest-records"] }); setShowForm(false); toast({ title: "Saved" }); } });
@@ -274,8 +266,6 @@ function HarvestTab() {
 function ProcurementTab() {
   const { toast } = useToast();
   const [search, setSearch] = useState(""); const [showForm, setShowForm] = useState(false); const [editing, setEditing] = useState<any>(null); const [form, setForm] = useState<any>({});
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const { data: procs = [] } = useQuery<any[]>({ queryKey: ["/api/agriculture/procurement"] });
   const saveMut = useMutation({ mutationFn: (d: any) => editing ? apiRequest("PUT", `/api/agriculture/procurement/${editing.id}`, d) : apiRequest("POST", "/api/agriculture/procurement", d), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/agriculture/procurement"] }); setShowForm(false); toast({ title: "Saved" }); } });
   const openNew = () => { setEditing(null); setForm({ procurement_date: new Date().toISOString().split("T")[0] }); setShowForm(true); };
@@ -326,8 +316,6 @@ function ProcurementTab() {
 function CommodityPricesTab() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false); const [form, setForm] = useState<any>({});
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const { data: prices = [] } = useQuery<any[]>({ queryKey: ["/api/agriculture/commodity-prices"] });
   const saveMut = useMutation({ mutationFn: (d: any) => apiRequest("POST", "/api/agriculture/commodity-prices", d), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/agriculture/commodity-prices"] }); setShowForm(false); toast({ title: "Saved" }); } });
   const delMut = useMutation({ mutationFn: (id: any) => apiRequest("DELETE", `/api/agriculture/commodity-prices/${id}`), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/agriculture/commodity-prices"] }) });

@@ -304,8 +304,6 @@ export default function IFRSReportingPage() {
 
 function ImpairDialog({ assetId, onClose, onSubmit, pending }: { assetId: number; onClose: () => void; onSubmit: (id: number, val: string) => void; pending: boolean }) {
   const [val, setVal] = useState("");
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent>

@@ -71,8 +71,6 @@ export default function RestaurantStewardPage() {
 
   // State
   const [selectedTable, setSelectedTable] = useState<Table | null>(null);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [cartOpen, setCartOpen] = useState(false);

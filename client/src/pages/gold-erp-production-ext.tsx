@@ -662,8 +662,6 @@ export function CAMSection() {
 export function GhatSection() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [form, setForm] = useState<any>({ stage_name: "Casting", weigh_date: today() });
   const { data: entries = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/ghat-entries"] });
   const { data: orders = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/production-orders"] });
@@ -740,8 +738,6 @@ export function GhatSection() {
 export function SettlementSection() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [form, setForm] = useState<any>({ allowable_wastage_pct: 3, settlement_date: today() });
   const { data: settlements = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/settlements"] });
   const { data: orders = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/production-orders"] });

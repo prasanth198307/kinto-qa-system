@@ -50,8 +50,6 @@ function OPDTab() {
 function IPDTab() {
   const { data: admissions = [] } = useQuery({ queryKey: ["/api/healthcare/ipd/admissions"], queryFn: () => apiRequest("GET", "/api/healthcare/ipd/admissions") });
   const [selected, setSelected] = useState<any>(null);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [chargeForm, setChargeForm] = useState({ charge_type: "", description: "", quantity: "1", unit_price: "" });
   const [showDialog, setShowDialog] = useState(false);
   const qc = useQueryClient();
@@ -81,8 +79,6 @@ function IPDTab() {
 function BedsTab() {
   const { data: beds = [] } = useQuery({ queryKey: ["/api/healthcare/beds"], queryFn: () => apiRequest("GET", "/api/healthcare/beds") });
   const [ward, setWard] = useState("all");
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const qc = useQueryClient();
   const release = useMutation({ mutationFn: (id: any) => apiRequest("POST", `/api/healthcare/beds/${id}/release`, {}), onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/healthcare/beds"] }) });
   const wards = [...new Set(beds.map((b: any) => b.ward_name))];
@@ -108,8 +104,6 @@ function BedsTab() {
 function OTTab() {
   const { data: schedule = [] } = useQuery({ queryKey: ["/api/healthcare/ot/schedule"], queryFn: () => apiRequest("GET", "/api/healthcare/ot/schedule") });
   const [f, setF] = useState({ patient_id: "", surgery_name: "", surgeon_id: "", scheduled_date: "", scheduled_time: "", estimated_duration_mins: "", anesthesia_type: "" });
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const qc = useQueryClient();
   const book = useMutation({ mutationFn: (d: any) => apiRequest("POST", "/api/healthcare/ot/schedule", d), onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/healthcare/ot/schedule"] }) });
   const statusColor: Record<string, any> = { scheduled: "secondary", in_progress: "default", completed: "outline" };
@@ -137,8 +131,6 @@ function OTTab() {
 function LabTab() {
   const { data: pending = [] } = useQuery({ queryKey: ["/api/healthcare/lab/orders/pending"], queryFn: () => apiRequest("GET", "/api/healthcare/lab/orders/pending") });
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const [rf, setRf] = useState({ result_value: "", normal_range: "", is_critical: false });
   const qc = useQueryClient();
   const enter = useMutation({ mutationFn: ({ orderId, d }: any) => apiRequest("POST", `/api/healthcare/lab/orders/${orderId}/results`, d), onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/healthcare/lab/orders/pending"] }); setSelectedOrder(null); } });
@@ -171,8 +163,6 @@ function LabTab() {
 
 function InsuranceTab() {
   const [pf, setPf] = useState({ patient_id: "", insurance_company: "", policy_number: "", sum_insured: "", valid_to: "" });
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const { data: claims = [] } = useQuery({ queryKey: ["/api/healthcare/tpa/claims"], queryFn: () => apiRequest("GET", "/api/healthcare/tpa/claims") });
   const qc = useQueryClient();
   const addPolicy = useMutation({ mutationFn: (d: any) => apiRequest("POST", "/api/healthcare/insurance/policy", d), onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/healthcare/tpa/claims"] }) });
