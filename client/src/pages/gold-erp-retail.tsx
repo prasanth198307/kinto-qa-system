@@ -612,8 +612,8 @@ export function PromotionsSection() {
               </FL>
               <FL label="Applicable Categories"><Input value={form.applicable_categories || "all"} onChange={e => set("applicable_categories", e.target.value)} placeholder="all / ring / necklace" /></FL>
               <FL label="Discount %"><Input type="number" value={form.discount_pct || 0} onChange={e => set("discount_pct", e.target.value)} /></FL>
-              <FL label="Flat Discount (₹)"><Input type="number" value={form.discount_value || 0} onChange={e => set("discount_value", e.target.value)} /></FL>
-              <FL label="Min Purchase (₹)"><Input type="number" value={form.min_purchase_value || ""} onChange={e => set("min_purchase_value", e.target.value)} /></FL>
+              <FL label={`Flat Discount (${sym})`}><Input type="number" value={form.discount_value || 0} onChange={e => set("discount_value", e.target.value)} /></FL>
+              <FL label={`Min Purchase (${sym})`}><Input type="number" value={form.min_purchase_value || ""} onChange={e => set("min_purchase_value", e.target.value)} /></FL>
               <FL label="Valid From"><Input type="date" value={form.valid_from || ""} onChange={e => set("valid_from", e.target.value)} /></FL>
               <FL label="Valid To"><Input type="date" value={form.valid_to || ""} onChange={e => set("valid_to", e.target.value)} /></FL>
             </div>
@@ -722,6 +722,9 @@ export function RefiningSection() {
 // ── POS Old Gold ───────────────────────────────────────────────────────────────
 export function PosOldGoldSection() {
   const { toast } = useToast();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
+  const fmtAmt = (n: any) => fmtCur(n, tenantConfig);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<any>({ metal_type: "gold", buyback_rate_pct: 95 });
   const { data: records = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/pos-old-gold"] });
@@ -775,7 +778,7 @@ export function PosOldGoldSection() {
               <FL label="Purity %"><Input type="number" value={form.purity_tested_pct || ""} onChange={e => set("purity_tested_pct", e.target.value)} /></FL>
               <FL label="Gross Weight (g)"><Input type="number" value={form.gross_weight_gm || ""} onChange={e => set("gross_weight_gm", e.target.value)} /></FL>
               <FL label="Stone Weight (g)"><Input type="number" value={form.stone_weight_gm || 0} onChange={e => set("stone_weight_gm", e.target.value)} /></FL>
-              <FL label="Today Rate (₹/g)"><Input type="number" value={form.today_rate || ""} onChange={e => set("today_rate", e.target.value)} /></FL>
+              <FL label={`Today Rate (${sym}/g)`}><Input type="number" value={form.today_rate || ""} onChange={e => set("today_rate", e.target.value)} /></FL>
               <FL label="Buyback Rate %"><Input type="number" value={form.buyback_rate_pct || 95} onChange={e => set("buyback_rate_pct", e.target.value)} /></FL>
             </div>
             {form.gross_weight_gm && form.today_rate && (

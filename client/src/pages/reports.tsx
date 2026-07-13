@@ -2217,7 +2217,7 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
                           </TableCell>
                           <TableCell>{po.supplier || '-'}</TableCell>
                           <TableCell className="font-semibold">
-                            {po.estimatedCost ? `₹${(po.estimatedCost / 100).toFixed(2)}` : '-'}
+                            {po.estimatedCost ? formatCurrency(po.estimatedCost) : '-'}
                           </TableCell>
                           <TableCell>
                             <PrintablePurchaseOrder po={po} />
@@ -2553,13 +2553,13 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
                   <Card>
                     <CardContent className="pt-4">
                       <div className="text-sm text-muted-foreground">Total Amount</div>
-                      <div className="text-2xl font-bold">₹{(expenseReportData.summary.totalAmount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
+                      <div className="text-2xl font-bold">{formatCurrency(expenseReportData.summary.totalAmount)}</div>
                     </CardContent>
                   </Card>
                   <Card>
                     <CardContent className="pt-4">
                       <div className="text-sm text-muted-foreground">Total GST</div>
-                      <div className="text-2xl font-bold">₹{(expenseReportData.summary.totalGST / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
+                      <div className="text-2xl font-bold">{formatCurrency(expenseReportData.summary.totalGST)}</div>
                     </CardContent>
                   </Card>
                   <Card>
@@ -2581,7 +2581,7 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
                         <TableHead>Date</TableHead>
                         <TableHead>Payee</TableHead>
                         <TableHead>Payment Mode</TableHead>
-                        <TableHead className="text-right">Amount (₹)</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Items</TableHead>
                       </TableRow>
@@ -2593,7 +2593,7 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
                           <TableCell>{safeFormat(voucher.voucherDate, 'MMM dd, yyyy')}</TableCell>
                           <TableCell>{voucher.payeeName}</TableCell>
                           <TableCell>{voucher.paymentMode}</TableCell>
-                          <TableCell className="text-right">{(voucher.totalAmount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(voucher.totalAmount)}</TableCell>
                           <TableCell>
                             <span className={`text-xs px-2 py-1 rounded ${
                               voucher.status === 'approved' ? 'bg-green-100 text-green-800' :
@@ -2736,25 +2736,25 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
                   <Card>
                     <CardContent className="pt-4">
                       <div className="text-sm text-muted-foreground">Starting Balance</div>
-                      <div className="text-xl font-bold">₹{(cashRegisterReportData.summary.startingBalance / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
+                      <div className="text-xl font-bold">{formatCurrency(cashRegisterReportData.summary.startingBalance)}</div>
                     </CardContent>
                   </Card>
                   <Card>
                     <CardContent className="pt-4">
                       <div className="text-sm text-muted-foreground">Cash Received</div>
-                      <div className="text-xl font-bold text-green-600">₹{(cashRegisterReportData.summary.totalCashReceived / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
+                      <div className="text-xl font-bold text-green-600">{formatCurrency(cashRegisterReportData.summary.totalCashReceived)}</div>
                     </CardContent>
                   </Card>
                   <Card>
                     <CardContent className="pt-4">
                       <div className="text-sm text-muted-foreground">Total Expenses</div>
-                      <div className="text-xl font-bold text-red-600">₹{(cashRegisterReportData.summary.totalExpenses / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
+                      <div className="text-xl font-bold text-red-600">{formatCurrency(cashRegisterReportData.summary.totalExpenses)}</div>
                     </CardContent>
                   </Card>
                   <Card>
                     <CardContent className="pt-4">
                       <div className="text-sm text-muted-foreground">Total Transfers</div>
-                      <div className="text-xl font-bold text-blue-600">₹{(cashRegisterReportData.summary.totalTransfers / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
+                      <div className="text-xl font-bold text-blue-600">{formatCurrency(cashRegisterReportData.summary.totalTransfers)}</div>
                     </CardContent>
                   </Card>
                   <Card>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -70,6 +71,7 @@ const inspectSchema = z.object({
 
 export default function SalesReturnsPage() {
   const { toast } = useToast();
+  const tenantConfig = useTenantConfig();
   const [, navigate] = useLocation();
   const { hasPermission } = usePermissions();
   const canCreate = hasPermission('sales_returns', 'create');
@@ -1424,7 +1426,7 @@ function ScrapInventorySection() {
                 <TableCell>{scrap.quantity}</TableCell>
                 <TableCell className="capitalize">{scrap.damageReason?.replace('_', ' ') || '-'}</TableCell>
                 <TableCell className="text-red-600 font-medium">
-                  ₹{((scrap.lossAmount || 0) / 100).toFixed(2)}
+                  {fmtCur((scrap.lossAmount || 0) / 100, tenantConfig)}
                 </TableCell>
                 <TableCell>{getStatusBadge(scrap.approvalStatus)}</TableCell>
                 <TableCell>

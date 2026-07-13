@@ -603,9 +603,9 @@ function PTSlabsTab() {
             <table className="w-full text-sm">
               <thead className="bg-muted/50">
                 <tr>
-                  <th className="px-3 py-2 text-left font-medium text-muted-foreground">Income From (₹/month)</th>
-                  <th className="px-3 py-2 text-left font-medium text-muted-foreground">Income To (₹/month)</th>
-                  <th className="px-3 py-2 text-left font-medium text-muted-foreground">PT Amount (₹/month)</th>
+                  <th className="px-3 py-2 text-left font-medium text-muted-foreground">Income From ({sym}/month)</th>
+                  <th className="px-3 py-2 text-left font-medium text-muted-foreground">Income To ({sym}/month)</th>
+                  <th className="px-3 py-2 text-left font-medium text-muted-foreground">PT Amount ({sym}/month)</th>
                   <th className="px-3 py-2 w-20"></th>
                 </tr>
               </thead>
@@ -614,7 +614,7 @@ function PTSlabsTab() {
                   <tr key={r.id} className="border-t">
                     <td className="px-3 py-2">{Number(r.income_from).toLocaleString("en-IN")}</td>
                     <td className="px-3 py-2">{r.income_to != null ? Number(r.income_to).toLocaleString("en-IN") : "& above"}</td>
-                    <td className="px-3 py-2 font-medium">₹{Number(r.pt_amount).toLocaleString("en-IN")}</td>
+                    <td className="px-3 py-2 font-medium">{fmtCur(Number(r.pt_amount), tenantConfig)}</td>
                     <td className="px-3 py-2">
                       <div className="flex gap-1">
                         <Button size="icon" variant="ghost" onClick={() => openEdit(r)}><Pencil className="h-3.5 w-3.5" /></Button>
@@ -640,16 +640,16 @@ function PTSlabsTab() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <Label>Monthly Income From (₹)</Label>
+                <Label>Monthly Income From ({sym})</Label>
                 <Input type="number" value={form.income_from} onChange={e => setForm(f => ({ ...f, income_from: e.target.value }))} data-testid="input-pt-from" />
               </div>
               <div>
-                <Label>Monthly Income To (₹)</Label>
+                <Label>Monthly Income To ({sym})</Label>
                 <Input type="number" value={form.income_to} onChange={e => setForm(f => ({ ...f, income_to: e.target.value }))} placeholder="Leave blank for 'and above'" data-testid="input-pt-to" />
               </div>
             </div>
             <div>
-              <Label>PT Amount per Month (₹)</Label>
+              <Label>PT Amount per Month ({sym})</Label>
               <Input type="number" value={form.pt_amount} onChange={e => setForm(f => ({ ...f, pt_amount: e.target.value }))} data-testid="input-pt-amount" />
             </div>
             <Button className="w-full" disabled={!form.state || save.isPending}
@@ -667,6 +667,8 @@ function PTSlabsTab() {
 // ── Statutory Rates Tab (PF / ESI / PT) ───────────────────────────────────────
 function StatutoryRatesTab() {
   const { toast } = useToast();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { data: s, isLoading } = useQuery<any>({ queryKey: ["/api/hr/statutory-settings"] });
   const [form, setForm] = useState<any>(null);
 
@@ -755,7 +757,7 @@ function StatutoryRatesTab() {
           <div className="space-y-3 pl-2">
             {rateRow("Employee Contribution", "pfEmployeeRate", "%", "Standard: 12%", false)}
             {rateRow("Employer Contribution", "pfEmployerRate", "%", "Standard: 12%", false)}
-            {rateRow("Basic Salary Ceiling", "pfCeilingBasic", "₹", "Standard: ₹15,000", false)}
+            {rateRow("Basic Salary Ceiling", "pfCeilingBasic", sym, `Standard: ${sym}15,000`, false)}
           </div>
         )}
         {!f.pfEnabled && (
@@ -765,12 +767,12 @@ function StatutoryRatesTab() {
 
       {/* ESI */}
       <div className="border-t pt-5">
-        {sectionHeader("Employee State Insurance (ESI)", "Applied only if gross salary ≤ ceiling; otherwise ₹0", "esiEnabled", "ESI")}
+        {sectionHeader("Employee State Insurance (ESI)", `Applied only if gross salary ≤ ceiling; otherwise ${sym}0`, "esiEnabled", "ESI")}
         {f.esiEnabled && (
           <div className="space-y-3 pl-2">
             {rateRow("Employee Contribution", "esiEmployeeRate", "%", "Standard: 0.75%", false)}
             {rateRow("Employer Contribution", "esiEmployerRate", "%", "Standard: 3.25%", false)}
-            {rateRow("Gross Salary Ceiling", "esiGrossCeiling", "₹", "Standard: ₹21,000", false)}
+            {rateRow("Gross Salary Ceiling", "esiGrossCeiling", sym, `Standard: ${sym}21,000`, false)}
           </div>
         )}
         {!f.esiEnabled && (

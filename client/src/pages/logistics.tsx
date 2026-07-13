@@ -177,9 +177,9 @@ function TripsTab() {
             <F label="Return Date"><Input type="date" value={form.return_date||""} onChange={e=>setForm({...form,return_date:e.target.value})}/></F>
             <F label="Goods"><Input value={form.goods_description||""} onChange={e=>setForm({...form,goods_description:e.target.value})}/></F>
             <F label="Weight (tons)"><Input type="number" value={form.weight_tons||""} onChange={e=>setForm({...form,weight_tons:e.target.value})}/></F>
-            <F label="Freight Amount (₹)"><Input type="number" value={form.freight_amount||""} onChange={e=>setForm({...form,freight_amount:e.target.value})}/></F>
-            <F label="Advance Paid (₹)"><Input type="number" value={form.advance_paid||""} onChange={e=>setForm({...form,advance_paid:e.target.value})}/></F>
-            <F label="Expenses (₹)"><Input type="number" value={form.expenses||""} onChange={e=>setForm({...form,expenses:e.target.value})}/></F>
+            <F label={`Freight Amount (${sym})`}><Input type="number" value={form.freight_amount||""} onChange={e=>setForm({...form,freight_amount:e.target.value})}/></F>
+            <F label={`Advance Paid (${sym})`}><Input type="number" value={form.advance_paid||""} onChange={e=>setForm({...form,advance_paid:e.target.value})}/></F>
+            <F label={`Expenses (${sym})`}><Input type="number" value={form.expenses||""} onChange={e=>setForm({...form,expenses:e.target.value})}/></F>
             <F label="Distance (km)"><Input type="number" value={form.distance_km||""} onChange={e=>setForm({...form,distance_km:e.target.value})}/></F>
             <F label="Status"><Select value={form.status||"planned"} onValueChange={v=>setForm({...form,status:v})}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{["planned","in_progress","completed","cancelled"].map(s=><SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select></F>
             <div className="col-span-2"><F label="Notes"><Textarea rows={2} value={form.notes||""} onChange={e=>setForm({...form,notes:e.target.value})}/></F></div>
@@ -193,6 +193,7 @@ function TripsTab() {
 
 function ConsignmentTab() {
   const { toast } = useToast();
+  const { currency_symbol: sym } = useTenantConfig();
   const [search, setSearch] = useState(""); const [showForm, setShowForm] = useState(false); const [editing, setEditing] = useState<any>(null); const [form, setForm] = useState<any>({});
   const { data: lrs = [] } = useQuery<any[]>({ queryKey: ["/api/logistics/consignment-notes"] });
   const { data: trips = [] } = useQuery<any[]>({ queryKey: ["/api/logistics/trips"] });
@@ -213,7 +214,7 @@ function ConsignmentTab() {
             <td className="px-3 py-2 font-mono text-xs">{l.lr_no}</td><td className="px-3 py-2">{l.trip_no||"—"}</td>
             <td className="px-3 py-2 font-medium">{l.consignor_name}</td><td className="px-3 py-2 font-medium">{l.consignee_name}</td>
             <td className="px-3 py-2">{l.packages}</td><td className="px-3 py-2">{l.weight_kg||"—"}</td>
-            <td className="px-3 py-2">₹{fmt(l.freight_charges)}</td>
+            <td className="px-3 py-2">{sym}{fmt(l.freight_charges)}</td>
             <td className="px-3 py-2"><Badge className={LR_STATUS[l.status]||"bg-blue-100 text-blue-700"}>{l.status||"in_transit"}</Badge></td>
             <td className="px-3 py-2 flex gap-1"><Button size="icon" variant="ghost" onClick={()=>openEdit(l)}><Pencil className="h-3.5 w-3.5"/></Button><Button size="icon" variant="ghost" title="Download LR PDF" onClick={()=>window.open(`/api/logistics/consignment-notes/${l.id}/lr-pdf`,"_blank")}><Download className="h-3.5 w-3.5"/></Button></td>
           </tr>
@@ -229,8 +230,8 @@ function ConsignmentTab() {
             <F label="Consignee Phone"><Input value={form.consignee_phone||""} onChange={e=>setForm({...form,consignee_phone:e.target.value})}/></F>
             <F label="Packages"><Input type="number" value={form.packages||1} onChange={e=>setForm({...form,packages:e.target.value})}/></F>
             <F label="Weight (kg)"><Input type="number" value={form.weight_kg||""} onChange={e=>setForm({...form,weight_kg:e.target.value})}/></F>
-            <F label="Freight Charges (₹)"><Input type="number" value={form.freight_charges||""} onChange={e=>setForm({...form,freight_charges:e.target.value})}/></F>
-            <F label="Loading Charges (₹)"><Input type="number" value={form.loading_charges||""} onChange={e=>setForm({...form,loading_charges:e.target.value})}/></F>
+            <F label={`Freight Charges (${sym})`}><Input type="number" value={form.freight_charges||""} onChange={e=>setForm({...form,freight_charges:e.target.value})}/></F>
+            <F label={`Loading Charges (${sym})`}><Input type="number" value={form.loading_charges||""} onChange={e=>setForm({...form,loading_charges:e.target.value})}/></F>
             <F label="Status"><Select value={form.status||"in_transit"} onValueChange={v=>setForm({...form,status:v})}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{["in_transit","delivered","returned"].map(s=><SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select></F>
             <div className="col-span-2"><F label="Goods Description"><Input value={form.goods_description||""} onChange={e=>setForm({...form,goods_description:e.target.value})}/></F></div>
           </div>
@@ -243,6 +244,7 @@ function ConsignmentTab() {
 
 function FreightBillsTab() {
   const { toast } = useToast();
+  const { currency_symbol: sym } = useTenantConfig();
   const [showForm, setShowForm] = useState(false); const [editing, setEditing] = useState<any>(null); const [form, setForm] = useState<any>({});
   const { data: bills = [] } = useQuery<any[]>({ queryKey: ["/api/logistics/freight-bills"] });
   const { data: trips = [] } = useQuery<any[]>({ queryKey: ["/api/logistics/trips"] });
@@ -259,8 +261,8 @@ function FreightBillsTab() {
           <tr key={b.id} className="border-t hover:bg-muted/30">
             <td className="px-3 py-2 font-mono text-xs">{b.bill_number}</td><td className="px-3 py-2">{b.customer_name||"—"}</td>
             <td className="px-3 py-2">{b.from_location||"—"}</td><td className="px-3 py-2">{b.to_location||"—"}</td>
-            <td className="px-3 py-2">{b.bill_date?.split("T")[0]||"—"}</td><td className="px-3 py-2">₹{fmt(b.freight_amount)}</td>
-            <td className="px-3 py-2 font-medium">₹{fmt(b.total_amount)}</td><td className="px-3 py-2">₹{fmt(b.paid_amount)}</td>
+            <td className="px-3 py-2">{b.bill_date?.split("T")[0]||"—"}</td><td className="px-3 py-2">{sym}{fmt(b.freight_amount)}</td>
+            <td className="px-3 py-2 font-medium">{sym}{fmt(b.total_amount)}</td><td className="px-3 py-2">{sym}{fmt(b.paid_amount)}</td>
             <td className="px-3 py-2"><Badge className={b.status==="paid"?"bg-green-100 text-green-700":b.status==="partial"?"bg-orange-100 text-orange-700":"bg-red-100 text-red-700"}>{b.status}</Badge></td>
             <td className="px-3 py-2"><div className="flex gap-1"><Button size="icon" variant="ghost" onClick={()=>openEdit(b)}><Pencil className="h-3.5 w-3.5"/></Button><Button size="icon" variant="ghost" onClick={()=>delMut.mutate(b.id)}><Trash2 className="h-3.5 w-3.5"/></Button></div></td>
           </tr>
@@ -275,10 +277,10 @@ function FreightBillsTab() {
             <F label="To Location"><Input value={form.to_location||""} onChange={e=>setForm({...form,to_location:e.target.value})}/></F>
             <F label="Bill Date"><Input type="date" value={form.bill_date||""} onChange={e=>setForm({...form,bill_date:e.target.value})}/></F>
             <F label="Weight"><Input type="number" value={form.weight||""} onChange={e=>setForm({...form,weight:e.target.value})}/></F>
-            <F label="Freight Amount (₹)"><Input type="number" value={form.freight_amount||""} onChange={e=>setForm({...form,freight_amount:e.target.value})}/></F>
-            <F label="Loading Charges (₹)"><Input type="number" value={form.loading_charges||""} onChange={e=>setForm({...form,loading_charges:e.target.value})}/></F>
-            <F label="Unloading Charges (₹)"><Input type="number" value={form.unloading_charges||""} onChange={e=>setForm({...form,unloading_charges:e.target.value})}/></F>
-            <F label="Paid Amount (₹)"><Input type="number" value={form.paid_amount||""} onChange={e=>setForm({...form,paid_amount:e.target.value})}/></F>
+            <F label={`Freight Amount (${sym})`}><Input type="number" value={form.freight_amount||""} onChange={e=>setForm({...form,freight_amount:e.target.value})}/></F>
+            <F label={`Loading Charges (${sym})`}><Input type="number" value={form.loading_charges||""} onChange={e=>setForm({...form,loading_charges:e.target.value})}/></F>
+            <F label={`Unloading Charges (${sym})`}><Input type="number" value={form.unloading_charges||""} onChange={e=>setForm({...form,unloading_charges:e.target.value})}/></F>
+            <F label={`Paid Amount (${sym})`}><Input type="number" value={form.paid_amount||""} onChange={e=>setForm({...form,paid_amount:e.target.value})}/></F>
           </div>
           <div className="flex justify-end gap-2 pt-2"><Button variant="outline" onClick={()=>setShowForm(false)}>Cancel</Button><Button onClick={()=>saveMut.mutate(form)} disabled={saveMut.isPending}>Save</Button></div>
         </DialogContent>
@@ -289,6 +291,7 @@ function FreightBillsTab() {
 
 function FuelTab() {
   const { toast } = useToast();
+  const { currency_symbol: sym } = useTenantConfig();
   const [showForm, setShowForm] = useState(false); const [form, setForm] = useState<any>({});
   const { data: records = [] } = useQuery<any[]>({ queryKey: ["/api/logistics/fuel-records"] });
   const { data: vehicles = [] } = useQuery<any[]>({ queryKey: ["/api/logistics/vehicles"] });

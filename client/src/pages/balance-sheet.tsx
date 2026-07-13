@@ -348,7 +348,7 @@ export default function BalanceSheetPage() {
           <CardContent className="p-4">
             <div className="text-xs text-muted-foreground uppercase tracking-wide">Total Assets</div>
             <div className="text-lg font-semibold mt-1 font-mono tabular-nums" data-testid="text-total-assets">
-              {"\u20B9"}{formatAmount(totalAssets)}
+              {formatAmount(totalAssets, tenantConfig)}
             </div>
           </CardContent>
         </Card>
@@ -356,7 +356,7 @@ export default function BalanceSheetPage() {
           <CardContent className="p-4">
             <div className="text-xs text-muted-foreground uppercase tracking-wide">Total Liabilities</div>
             <div className="text-lg font-semibold mt-1 font-mono tabular-nums" data-testid="text-total-liabilities">
-              {"\u20B9"}{formatAmount(totalLiabilities)}
+              {formatAmount(totalLiabilities, tenantConfig)}
             </div>
           </CardContent>
         </Card>
@@ -367,7 +367,7 @@ export default function BalanceSheetPage() {
               <Scale className="w-3.5 h-3.5 text-muted-foreground" />
             </div>
             <div className="text-lg font-semibold mt-1 font-mono tabular-nums" data-testid="text-total-equity">
-              {"\u20B9"}{formatAmount(totalEquity + netProfitLoss)}
+              {formatAmount(totalEquity + netProfitLoss, tenantConfig)}
             </div>
           </CardContent>
         </Card>
@@ -376,7 +376,7 @@ export default function BalanceSheetPage() {
       {!isBalanced && (
         <Card className="border-destructive no-print">
           <CardContent className="p-3 text-sm text-destructive">
-            Balance Sheet does not balance. Difference: {"\u20B9"}{formatAmount(Math.abs(totalAssets - totalLiabilitiesAndEquity))}
+            Balance Sheet does not balance. Difference: {formatAmount(Math.abs(totalAssets - totalLiabilitiesAndEquity), tenantConfig)}
           </CardContent>
         </Card>
       )}
@@ -490,6 +490,7 @@ function BSTreeRows({ nodes, depth, expandedNodes, toggleNode, onAccountClick }:
   toggleNode: (id: string) => void;
   onAccountClick: (node: TreeNode) => void;
 }) {
+  const tenantConfig = useTenantConfig();
   return (
     <>
       {nodes.map(node => {
@@ -532,7 +533,7 @@ function BSTreeRows({ nodes, depth, expandedNodes, toggleNode, onAccountClick }:
                   )}
                 </div>
                 <div className={`font-mono tabular-nums whitespace-nowrap text-right ${isGroup ? 'font-medium' : ''}`}>
-                  {formatAmount(node.closingBalance)}
+                  {formatAmount(node.closingBalance, tenantConfig)}
                 </div>
               </div>
               {isGroup && isExpanded && hasChildren && (

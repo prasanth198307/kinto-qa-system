@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTenantConfig } from "@/hooks/use-tenant-config";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,8 @@ const api = async (m: string, u: string, b?: any) => { const r = await fetch(u, 
 const fmt = (n: any) => Number(n||0).toLocaleString('en-IN', {maximumFractionDigits:2});
 
 export default function NGOEnterprisePage() {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const qc = useQueryClient();
   const [fcra, setFcra] = useState({ registration_no: "", validity_date: "", account_no: "" });
   const [fcontrib, setFcontrib] = useState({ donor_name: "", country: "", currency: "USD", amount: "", inr_amount: "", receipt_date: "" });
@@ -58,7 +61,7 @@ export default function NGOEnterprisePage() {
               <Button size="sm" variant="outline" onClick={()=>api('GET','/api/ngo/form-10bd/data').then(r=>alert(`Form 10BD: ${r.total_donations||0} donations`))}>Form 10BD Data</Button>
             </div>
             <Table><TableHeader><TableRow><TableHead>Receipt#</TableHead><TableHead>Donor</TableHead><TableHead>Amount</TableHead><TableHead>Date</TableHead><TableHead>Action</TableHead></TableRow></TableHeader>
-            <TableBody>{(receipts as any[]).map((r:any)=><TableRow key={r.id}><TableCell>{r.receipt_number}</TableCell><TableCell>{r.donor_name}</TableCell><TableCell>₹{fmt(r.amount)}</TableCell><TableCell>{r.donation_date?.slice(0,10)}</TableCell><TableCell><Button size="sm" variant="outline">PDF</Button></TableCell></TableRow>)}</TableBody></Table>
+            <TableBody>{(receipts as any[]).map((r:any)=><TableRow key={r.id}><TableCell>{r.receipt_number}</TableCell><TableCell>{r.donor_name}</TableCell><TableCell>{sym}{fmt(r.amount)}</TableCell><TableCell>{r.donation_date?.slice(0,10)}</TableCell><TableCell><Button size="sm" variant="outline">PDF</Button></TableCell></TableRow>)}</TableBody></Table>
             {(receipts as any[]).length===0&&<p className="text-center text-gray-400 py-8">No 80G receipts. Generate from donation records.</p>}
           </CardContent></Card>
         </TabsContent>
@@ -90,7 +93,7 @@ export default function NGOEnterprisePage() {
           <Card className="mt-4"><CardHeader><CardTitle>Foreign Contributions</CardTitle></CardHeader>
           <CardContent>
             <Table><TableHeader><TableRow><TableHead>Donor</TableHead><TableHead>Country</TableHead><TableHead>Currency</TableHead><TableHead>Amount</TableHead><TableHead>INR</TableHead><TableHead>Date</TableHead></TableRow></TableHeader>
-            <TableBody>{(fcontribs as any[]).map((f:any)=><TableRow key={f.id}><TableCell>{f.donor_name}</TableCell><TableCell>{f.country}</TableCell><TableCell>{f.currency}</TableCell><TableCell>{fmt(f.amount)}</TableCell><TableCell>₹{fmt(f.inr_amount)}</TableCell><TableCell>{f.receipt_date?.slice(0,10)}</TableCell></TableRow>)}</TableBody></Table>
+            <TableBody>{(fcontribs as any[]).map((f:any)=><TableRow key={f.id}><TableCell>{f.donor_name}</TableCell><TableCell>{f.country}</TableCell><TableCell>{f.currency}</TableCell><TableCell>{fmt(f.amount)}</TableCell><TableCell>{sym}{fmt(f.inr_amount)}</TableCell><TableCell>{f.receipt_date?.slice(0,10)}</TableCell></TableRow>)}</TableBody></Table>
           </CardContent></Card>
         </TabsContent>
 
@@ -99,14 +102,14 @@ export default function NGOEnterprisePage() {
             <Card><CardHeader><CardTitle>Create Donation Link</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               <div><Label>Donor Name</Label><Input value={donationForm.donor_name} onChange={e=>setDonationForm({...donationForm,donor_name:e.target.value})} /></div>
-              <div><Label>Amount (₹)</Label><Input type="number" value={donationForm.amount} onChange={e=>setDonationForm({...donationForm,amount:e.target.value})} /></div>
+              <div><Label>Amount ({sym})</Label><Input type="number" value={donationForm.amount} onChange={e=>setDonationForm({...donationForm,amount:e.target.value})} /></div>
               <div><Label>Purpose</Label><Input value={donationForm.purpose} onChange={e=>setDonationForm({...donationForm,purpose:e.target.value})} /></div>
               <Button onClick={()=>api('POST','/api/ngo/donations/online/create',{...donationForm,amount:Number(donationForm.amount)}).then(r=>alert(`Payment link: ${r.payment_url||'Created! (Razorpay key needed)'}`))} >Generate Link</Button>
             </CardContent></Card>
             <Card><CardHeader><CardTitle>Online Donations</CardTitle></CardHeader>
             <CardContent>
               <Table><TableHeader><TableRow><TableHead>Donor</TableHead><TableHead>Amount</TableHead><TableHead>Purpose</TableHead><TableHead>Date</TableHead></TableRow></TableHeader>
-              <TableBody>{(onlineDons as any[]).map((d:any)=><TableRow key={d.id}><TableCell>{d.donor_name}</TableCell><TableCell>₹{fmt(d.amount)}</TableCell><TableCell>{d.purpose}</TableCell><TableCell>{d.created_at?.slice(0,10)}</TableCell></TableRow>)}</TableBody></Table>
+              <TableBody>{(onlineDons as any[]).map((d:any)=><TableRow key={d.id}><TableCell>{d.donor_name}</TableCell><TableCell>{sym}{fmt(d.amount)}</TableCell><TableCell>{d.purpose}</TableCell><TableCell>{d.created_at?.slice(0,10)}</TableCell></TableRow>)}</TableBody></Table>
               {(onlineDons as any[]).length===0&&<p className="text-sm text-gray-400 text-center py-4">No online donations yet</p>}
             </CardContent></Card>
           </div>
@@ -135,7 +138,7 @@ export default function NGOEnterprisePage() {
               {(funds as any[]).map((f:any)=><div key={f.id} className="p-3 border rounded">
                 <div className="flex justify-between"><span className="font-medium">{f.name}</span><Badge>{f.type}</Badge></div>
                 <div className="text-sm text-gray-500 mt-1">{f.purpose}</div>
-                <div className="flex gap-4 mt-2 text-sm"><span className="text-green-600">Income: ₹{fmt(f.income)}</span><span className="text-red-600">Expense: ₹{fmt(f.expenditure)}</span><span className="font-medium">Balance: ₹{fmt((f.income||0)-(f.expenditure||0))}</span></div>
+                <div className="flex gap-4 mt-2 text-sm"><span className="text-green-600">Income: {sym}{fmt(f.income)}</span><span className="text-red-600">Expense: {sym}{fmt(f.expenditure)}</span><span className="font-medium">Balance: {sym}{fmt((f.income||0)-(f.expenditure||0))}</span></div>
               </div>)}
               <div className="space-y-2 pt-2 border-t">
                 <Input placeholder="Fund name" value={fundForm.name} onChange={e=>setFundForm({...fundForm,name:e.target.value})} />
