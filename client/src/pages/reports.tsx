@@ -3652,7 +3652,7 @@ function ScrapReportContent() {
                         <TableRow key={reason}>
                           <TableCell className="capitalize">{reason.replace(/_/g, ' ')}</TableCell>
                           <TableCell className="text-right">{data.count}</TableCell>
-                          <TableCell className="text-right text-red-600">₹{(data.lossAmount / 100).toFixed(2)}</TableCell>
+                          <TableCell className="text-right text-red-600">{formatCurrency(data.lossAmount)}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -3683,7 +3683,7 @@ function ScrapReportContent() {
                           <TableCell>{data.productName}</TableCell>
                           <TableCell className="text-right">{data.count}</TableCell>
                           <TableCell className="text-right">{data.quantity}</TableCell>
-                          <TableCell className="text-right text-red-600">₹{(data.lossAmount / 100).toFixed(2)}</TableCell>
+                          <TableCell className="text-right text-red-600">{formatCurrency(data.lossAmount)}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -3725,7 +3725,7 @@ function ScrapReportContent() {
                             {r.approvalStatus}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right text-red-600">₹{((r.lossAmount || 0) / 100).toFixed(2)}</TableCell>
+                        <TableCell className="text-right text-red-600">{formatCurrency(r.lossAmount || 0)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -3786,7 +3786,7 @@ function SalesReturnsReportContent() {
       ['Total Returns:', reportData.summary.totalReturns],
       ['Total Items:', reportData.summary.totalItems],
       ['Total Quantity:', reportData.summary.totalQuantityReturned],
-      ['Total Credit Amount:', `₹${(reportData.summary.totalCreditAmount / 100).toFixed(2)}`],
+      ['Total Credit Amount:', formatCurrency(reportData.summary.totalCreditAmount)],
       [''],
       ['Disposition Breakdown'],
       ['Disposition', 'Count', 'Quantity'],
@@ -3801,7 +3801,7 @@ function SalesReturnsReportContent() {
     excelData.push(['Product', 'Quantity', 'Credit Amount']);
     
     Object.entries(reportData.summary.byProduct).forEach(([_, data]) => {
-      excelData.push([data.productName, data.quantity, `₹${(data.creditAmount / 100).toFixed(2)}`]);
+      excelData.push([data.productName, data.quantity, formatCurrency(data.creditAmount)]);
     });
     
     excelData.push(['']);
@@ -3816,7 +3816,7 @@ function SalesReturnsReportContent() {
         r.customerName,
         r.status,
         r.items?.length || 0,
-        `₹${(totalCredit / 100).toFixed(2)}`,
+        formatCurrency(totalCredit),
       ]);
     });
     
@@ -3871,7 +3871,7 @@ function SalesReturnsReportContent() {
               <div class="summary-label">Total Quantity</div>
             </div>
             <div class="summary-item">
-              <div class="summary-value">₹${(reportData.summary.totalCreditAmount / 100).toFixed(2)}</div>
+              <div class="summary-value">${formatCurrency(reportData.summary.totalCreditAmount)}</div>
               <div class="summary-label">Total Credit</div>
             </div>
           </div>
@@ -3892,7 +3892,7 @@ function SalesReturnsReportContent() {
         <table>
           <tr><th>Product</th><th class="text-right">Quantity</th><th class="text-right">Credit Amount</th></tr>
           ${Object.entries(reportData.summary.byProduct).map(([_, data]) => 
-            `<tr><td>${data.productName}</td><td class="text-right">${data.quantity}</td><td class="text-right">₹${(data.creditAmount / 100).toFixed(2)}</td></tr>`
+            `<tr><td>${data.productName}</td><td class="text-right">${data.quantity}</td><td class="text-right">${formatCurrency(data.creditAmount)}</td></tr>`
           ).join('')}
         </table>
         
@@ -3974,7 +3974,7 @@ function SalesReturnsReportContent() {
               </Card>
               <Card>
                 <CardContent className="pt-4">
-                  <div className="text-2xl font-bold">₹{(reportData.summary.totalCreditAmount / 100).toFixed(2)}</div>
+                  <div className="text-2xl font-bold">{formatCurrency(reportData.summary.totalCreditAmount)}</div>
                   <div className="text-sm text-muted-foreground">Total Credit</div>
                 </CardContent>
               </Card>
@@ -4033,7 +4033,7 @@ function SalesReturnsReportContent() {
                         <TableRow key={id}>
                           <TableCell>{data.productName}</TableCell>
                           <TableCell className="text-right">{data.quantity}</TableCell>
-                          <TableCell className="text-right">₹{(data.creditAmount / 100).toFixed(2)}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(data.creditAmount)}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -4073,7 +4073,7 @@ function SalesReturnsReportContent() {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right">{r.items?.length || 0}</TableCell>
-                          <TableCell className="text-right">₹{(totalCredit / 100).toFixed(2)}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(totalCredit)}</TableCell>
                         </TableRow>
                       );
                     })}
@@ -4524,7 +4524,7 @@ function DailyProductionReportContent() {
             </div>
             <div className="bg-muted p-3 rounded-md">
               <p className="text-xs text-muted-foreground">Total Produced</p>
-              <p className="text-xl font-bold">{filteredGrandTotal.toLocaleString('en-IN')}</p>
+              <p className="text-xl font-bold">{filteredGrandTotal.toLocaleString()}</p>
             </div>
             <div className="bg-muted p-3 rounded-md">
               <p className="text-xs text-muted-foreground">Active Days</p>
@@ -4599,7 +4599,7 @@ function DailyProductionReportContent() {
                           <TableCell key={allDates[i]} className="text-right text-sm px-2 py-2">
                             {val ? (
                               <span className={`font-medium tabular-nums ${isPeak ? 'text-green-600 dark:text-green-400 font-bold' : ''}`}>
-                                {val.toLocaleString('en-IN')}
+                                {val.toLocaleString()}
                               </span>
                             ) : (
                               <span className="text-muted-foreground text-xs">—</span>
@@ -4608,7 +4608,7 @@ function DailyProductionReportContent() {
                         );
                       })}
                       <TableCell className="text-right font-bold text-sm tabular-nums">
-                        {product.total.toLocaleString('en-IN')}
+                        {product.total.toLocaleString()}
                       </TableCell>
                     </TableRow>
                   );
@@ -4619,14 +4619,14 @@ function DailyProductionReportContent() {
                   {filteredColTotals.map((tot, i) => (
                     <TableCell key={allDates[i]} className="text-right px-2 py-2">
                       {tot ? (
-                        <span className="text-sm font-bold tabular-nums">{tot.toLocaleString('en-IN')}</span>
+                        <span className="text-sm font-bold tabular-nums">{tot.toLocaleString()}</span>
                       ) : (
                         <span className="text-muted-foreground text-xs font-normal">—</span>
                       )}
                     </TableCell>
                   ))}
                   <TableCell className="text-right font-bold text-sm text-primary tabular-nums">
-                    {filteredGrandTotal.toLocaleString('en-IN')}
+                    {filteredGrandTotal.toLocaleString()}
                   </TableCell>
                 </TableRow>
               </TableBody>
@@ -4786,7 +4786,7 @@ function MonthlyProductionReportContent() {
             </div>
             <div className="bg-muted p-3 rounded-md">
               <p className="text-xs text-muted-foreground">Total Produced</p>
-              <p className="text-xl font-bold">{filteredGrandTotal.toLocaleString('en-IN')}</p>
+              <p className="text-xl font-bold">{filteredGrandTotal.toLocaleString()}</p>
             </div>
             <div className="bg-muted p-3 rounded-md">
               <p className="text-xs text-muted-foreground">Active Months</p>
@@ -4861,7 +4861,7 @@ function MonthlyProductionReportContent() {
                           <TableCell key={months[i]} className="text-right text-sm px-2 py-2">
                             {val ? (
                               <span className={`font-medium tabular-nums ${isPeak ? 'text-green-600 dark:text-green-400 font-bold' : ''}`}>
-                                {val.toLocaleString('en-IN')}
+                                {val.toLocaleString()}
                               </span>
                             ) : (
                               <span className="text-muted-foreground text-xs">—</span>
@@ -4870,7 +4870,7 @@ function MonthlyProductionReportContent() {
                         );
                       })}
                       <TableCell className="text-right font-bold text-sm tabular-nums">
-                        {product.total.toLocaleString('en-IN')}
+                        {product.total.toLocaleString()}
                       </TableCell>
                     </TableRow>
                   );
@@ -4884,7 +4884,7 @@ function MonthlyProductionReportContent() {
                     <TableCell key={months[i]} className="text-right px-2 py-2">
                       {tot ? (
                         <span className="text-sm font-bold tabular-nums">
-                          {tot.toLocaleString('en-IN')}
+                          {tot.toLocaleString()}
                         </span>
                       ) : (
                         <span className="text-muted-foreground text-xs font-normal">—</span>
@@ -4892,7 +4892,7 @@ function MonthlyProductionReportContent() {
                     </TableCell>
                   ))}
                   <TableCell className="text-right font-bold text-sm text-primary tabular-nums">
-                    {filteredGrandTotal.toLocaleString('en-IN')}
+                    {filteredGrandTotal.toLocaleString()}
                   </TableCell>
                 </TableRow>
               </TableBody>

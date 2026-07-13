@@ -9,12 +9,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 import { apiRequest } from "@/lib/queryClient";
 import { Plus, Check, DollarSign } from "lucide-react";
 
-function fmtINR(n: number | string) {
+function fmtINR(n: number | string, config: ReturnType<typeof useTenantConfig>, tenantConfig) {
   const num = Number(n) || 0;
-  return "₹" + num.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return fmtCur(num, config);
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -30,6 +31,7 @@ interface BillItem { description: string; quantity: number; unit_price: number; 
 interface Bill { id: number; bill_number: string; vendor_name: string; bill_date: string; due_date: string; total_amount: string; paid_amount: string; status: string; }
 
 export default function AccountsPayable() {
+  const tenantConfig = useTenantConfig();
   const { toast } = useToast();
   const qc = useQueryClient();
 
@@ -132,9 +134,9 @@ export default function AccountsPayable() {
                       <TableCell>{b.vendor_name}</TableCell>
                       <TableCell>{b.bill_date}</TableCell>
                       <TableCell>{b.due_date}</TableCell>
-                      <TableCell>{fmtINR(b.total_amount)}</TableCell>
-                      <TableCell>{fmtINR(b.paid_amount)}</TableCell>
-                      <TableCell>{fmtINR(Number(b.total_amount) - Number(b.paid_amount))}</TableCell>
+                      <TableCell>{fmtINR(b.total_amount, tenantConfig)}</TableCell>
+                      <TableCell>{fmtINR(b.paid_amount, tenantConfig)}</TableCell>
+                      <TableCell>{fmtINR(Number(b.total_amount, tenantConfig) - Number(b.paid_amount))}</TableCell>
                       <TableCell><Badge className={STATUS_COLORS[b.status] || ""}>{b.status}</Badge></TableCell>
                       <TableCell className="space-x-1">
                         {b.status === "draft" && (
@@ -166,7 +168,7 @@ export default function AccountsPayable() {
               <Card key={b.key} className={`border ${b.color}`}>
                 <CardContent className="pt-4">
                   <div className="text-xs font-medium text-gray-500">{b.label}</div>
-                  <div className="text-lg font-bold mt-1">{fmtINR(aging?.summary?.[b.key] || 0)}</div>
+                  <div className="text-lg font-bold mt-1">{fmtINR(aging?.summary?.[b.key] || 0, tenantConfig)}</div>
                 </CardContent>
               </Card>
             ))}
@@ -185,12 +187,12 @@ export default function AccountsPayable() {
                   {(aging?.vendors || []).map((v: any, i: number) => (
                     <TableRow key={i}>
                       <TableCell>{v.vendor_name}</TableCell>
-                      <TableCell>{fmtINR(v.current_amount)}</TableCell>
-                      <TableCell>{fmtINR(v.days_1_30)}</TableCell>
-                      <TableCell>{fmtINR(v.days_31_60)}</TableCell>
-                      <TableCell>{fmtINR(v.days_61_90)}</TableCell>
-                      <TableCell className="text-red-600">{fmtINR(v.days_90_plus)}</TableCell>
-                      <TableCell className="font-semibold">{fmtINR(v.total_outstanding)}</TableCell>
+                      <TableCell>{fmtINR(v.current_amount, tenantConfig)}</TableCell>
+                      <TableCell>{fmtINR(v.days_1_30, tenantConfig)}</TableCell>
+                      <TableCell>{fmtINR(v.days_31_60, tenantConfig)}</TableCell>
+                      <TableCell>{fmtINR(v.days_61_90, tenantConfig)}</TableCell>
+                      <TableCell className="text-red-600">{fmtINR(v.days_90_plus, tenantConfig)}</TableCell>
+                      <TableCell className="font-semibold">{fmtINR(v.total_outstanding, tenantConfig)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -220,7 +222,7 @@ export default function AccountsPayable() {
                       <TableCell className="font-mono text-sm">{r.run_number}</TableCell>
                       <TableCell>{r.run_date}</TableCell>
                       <TableCell>{r.payment_mode}</TableCell>
-                      <TableCell>{fmtINR(r.total_amount)}</TableCell>
+                      <TableCell>{fmtINR(r.total_amount, tenantConfig)}</TableCell>
                       <TableCell><Badge className={r.status === "processed" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}>{r.status}</Badge></TableCell>
                       <TableCell>
                         {r.status === "draft" && (
@@ -298,7 +300,7 @@ export default function AccountsPayable() {
                       <TableCell><input type="checkbox" checked={selectedBills.has(b.id)} onChange={e => { const s = new Set(selectedBills); e.target.checked ? s.add(b.id) : s.delete(b.id); setSelectedBills(s); }} /></TableCell>
                       <TableCell>{b.bill_number}</TableCell>
                       <TableCell>{b.vendor_name}</TableCell>
-                      <TableCell>{fmtINR(Number(b.total_amount) - Number(b.paid_amount))}</TableCell>
+                      <TableCell>{fmtINR(Number(b.total_amount, tenantConfig) - Number(b.paid_amount))}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

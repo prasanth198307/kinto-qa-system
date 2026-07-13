@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 import { Calendar, Download, Search, Check, ChevronsUpDown, BookOpen } from "lucide-react";
 import { downloadXLSX } from "@/lib/download-utils";
 import { groupAccountsByParent } from "@/lib/account-hierarchy";
@@ -63,11 +64,10 @@ function getFYLabel(startYear: string): string {
   return `FY ${y}-${String(y + 1).slice(2)}`;
 }
 
-function formatAmount(paise: number | null | undefined): string {
+function formatAmount(paise: number | null | undefined, config: ReturnType<typeof useTenantConfig>): string {
   const val = Number(paise) || 0;
   if (val === 0) return "-";
-  const abs = Math.abs(val);
-  const formatted = (abs / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 });
+  const formatted = fmtCur(Math.abs(val) / 100, config);
   return val < 0 ? `(${formatted})` : formatted;
 }
 
@@ -84,6 +84,7 @@ function formatDate(dateStr: string): string {
 }
 
 export default function LedgerViewPage() {
+  const tenantConfig = useTenantConfig();
   const { toast } = useToast();
   const searchString = useSearch();
   const urlParams = useMemo(() => new URLSearchParams(searchString), [searchString]);
@@ -332,7 +333,7 @@ export default function LedgerViewPage() {
               <CardContent className="p-3">
                 <div className="text-xs text-muted-foreground uppercase tracking-wide">Opening Balance</div>
                 <div className="text-sm font-semibold font-mono tabular-nums mt-0.5" data-testid="text-opening-balance">
-                  {formatAmount(ledgerData.openingBalance)}
+                  {formatAmount(ledgerData.openingBalance, tenantConfig)}
                 </div>
               </CardContent>
             </Card>
@@ -340,7 +341,7 @@ export default function LedgerViewPage() {
               <CardContent className="p-3">
                 <div className="text-xs text-muted-foreground uppercase tracking-wide">Period Debit</div>
                 <div className="text-sm font-semibold font-mono tabular-nums mt-0.5" data-testid="text-period-debit">
-                  {formatAmount(ledgerData.periodDebit)}
+                  {formatAmount(ledgerData.periodDebit, tenantConfig)}
                 </div>
               </CardContent>
             </Card>
@@ -348,7 +349,7 @@ export default function LedgerViewPage() {
               <CardContent className="p-3">
                 <div className="text-xs text-muted-foreground uppercase tracking-wide">Period Credit</div>
                 <div className="text-sm font-semibold font-mono tabular-nums mt-0.5" data-testid="text-period-credit">
-                  {formatAmount(ledgerData.periodCredit)}
+                  {formatAmount(ledgerData.periodCredit, tenantConfig)}
                 </div>
               </CardContent>
             </Card>
@@ -356,7 +357,7 @@ export default function LedgerViewPage() {
               <CardContent className="p-3">
                 <div className="text-xs text-muted-foreground uppercase tracking-wide">Closing Balance</div>
                 <div className="text-sm font-semibold font-mono tabular-nums mt-0.5" data-testid="text-closing-balance">
-                  {formatAmount(ledgerData.closingBalance)}
+                  {formatAmount(ledgerData.closingBalance, tenantConfig)}
                 </div>
               </CardContent>
             </Card>
@@ -382,7 +383,7 @@ export default function LedgerViewPage() {
                     </td>
                     <td className="text-right px-4 py-2" colSpan={2}></td>
                     <td className="text-right px-4 py-2 font-mono tabular-nums font-medium whitespace-nowrap" data-testid="value-opening-balance">
-                      {formatAmount(ledgerData.openingBalance)}
+                      {formatAmount(ledgerData.openingBalance, tenantConfig)}
                     </td>
                   </tr>
                   {ledgerData.transactions.map((txn, idx) => (
@@ -405,13 +406,13 @@ export default function LedgerViewPage() {
                         )}
                       </td>
                       <td className="text-right px-4 py-2 font-mono tabular-nums whitespace-nowrap" data-testid={`debit-${txn.lineId || idx}`}>
-                        {formatAmount(txn.debit)}
+                        {formatAmount(txn.debit, tenantConfig)}
                       </td>
                       <td className="text-right px-4 py-2 font-mono tabular-nums whitespace-nowrap" data-testid={`credit-${txn.lineId || idx}`}>
-                        {formatAmount(txn.credit)}
+                        {formatAmount(txn.credit, tenantConfig)}
                       </td>
                       <td className="text-right px-4 py-2 font-mono tabular-nums font-medium whitespace-nowrap" data-testid={`balance-${txn.lineId || idx}`}>
-                        {formatAmount(txn.balance)}
+                        {formatAmount(txn.balance, tenantConfig)}
                       </td>
                     </tr>
                   ))}
@@ -422,13 +423,13 @@ export default function LedgerViewPage() {
                       <span className="text-xs font-semibold uppercase tracking-wide">Closing Balance</span>
                     </td>
                     <td className="text-right px-4 py-3 font-mono tabular-nums whitespace-nowrap" data-testid="total-debit">
-                      {formatAmount(ledgerData.periodDebit)}
+                      {formatAmount(ledgerData.periodDebit, tenantConfig)}
                     </td>
                     <td className="text-right px-4 py-3 font-mono tabular-nums whitespace-nowrap" data-testid="total-credit">
-                      {formatAmount(ledgerData.periodCredit)}
+                      {formatAmount(ledgerData.periodCredit, tenantConfig)}
                     </td>
                     <td className="text-right px-4 py-3 font-mono tabular-nums whitespace-nowrap" data-testid="value-closing-balance">
-                      {formatAmount(ledgerData.closingBalance)}
+                      {formatAmount(ledgerData.closingBalance, tenantConfig)}
                     </td>
                   </tr>
                 </tfoot>

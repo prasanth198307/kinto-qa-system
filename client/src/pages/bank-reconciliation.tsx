@@ -9,12 +9,13 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 import { apiRequest } from "@/lib/queryClient";
 import { RefreshCw, Link, Unlink } from "lucide-react";
 
-function fmtINR(n: number | string) {
+function fmtINR(n: number | string, config: ReturnType<typeof useTenantConfig>, tenantConfig) {
   const num = Number(n) || 0;
-  return "₹" + num.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return fmtCur(num, config);
 }
 
 type MatchFilter = "all" | "unmatched" | "matched" | "manual";
@@ -33,6 +34,7 @@ interface BankLine {
 }
 
 export default function BankReconciliation() {
+  const tenantConfig = useTenantConfig();
   const { toast } = useToast();
   const qc = useQueryClient();
   const [filter, setFilter] = useState<MatchFilter>("all");
@@ -117,7 +119,7 @@ export default function BankReconciliation() {
           { label: "Total Lines", value: summary?.total_lines || 0, cls: "" },
           { label: "Matched", value: summary?.matched || 0, cls: "text-green-600" },
           { label: "Unmatched", value: summary?.unmatched || 0, cls: "text-red-600" },
-          { label: "Reconciled Balance", value: fmtINR(summary?.reconciled_balance || 0), cls: "text-blue-600" },
+          { label: "Reconciled Balance", value: fmtINR(summary?.reconciled_balance || 0, tenantConfig), cls: "text-blue-600" },
         ].map(s => (
           <Card key={s.label}>
             <CardContent className="pt-4">
@@ -165,9 +167,9 @@ export default function BankReconciliation() {
                 <TableRow key={line.id} className={rowColor(line)}>
                   <TableCell className="text-sm">{line.txn_date}</TableCell>
                   <TableCell className="text-sm max-w-xs truncate" title={line.description}>{line.description}</TableCell>
-                  <TableCell className="text-right text-sm">{Number(line.debit) > 0 ? fmtINR(line.debit) : ""}</TableCell>
-                  <TableCell className="text-right text-sm">{Number(line.credit) > 0 ? fmtINR(line.credit) : ""}</TableCell>
-                  <TableCell className="text-right text-sm">{fmtINR(line.balance)}</TableCell>
+                  <TableCell className="text-right text-sm">{Number(line.debit) > 0 ? fmtINR(line.debit, tenantConfig) : ""}</TableCell>
+                  <TableCell className="text-right text-sm">{Number(line.credit) > 0 ? fmtINR(line.credit, tenantConfig) : ""}</TableCell>
+                  <TableCell className="text-right text-sm">{fmtINR(line.balance, tenantConfig)}</TableCell>
                   <TableCell>{statusBadge(line)}</TableCell>
                   <TableCell className="text-sm text-blue-600">{line.matched_journal_number || "—"}</TableCell>
                   <TableCell className="space-x-1">

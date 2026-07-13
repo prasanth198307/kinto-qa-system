@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Search, Plus, Eye, BookOpen, ArrowUpDown, RefreshCw, Download, ArrowLeft } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -71,8 +72,8 @@ const SOURCE_COLORS: Record<string, string> = {
   manual: "bg-stone-100 text-stone-800 dark:bg-stone-900 dark:text-stone-200",
 };
 
-function formatAmount(paise: number): string {
-  return `₹${(paise / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
+function formatAmount(paise: number, config: ReturnType<typeof useTenantConfig>): string {
+  return fmtCur(paise / 100, config);
 }
 
 function formatDate(dateStr: string): string {
@@ -84,6 +85,7 @@ function formatDate(dateStr: string): string {
 }
 
 export default function JournalEntriesPage() {
+  const tenantConfig = useTenantConfig();
   const [, setLocation] = useLocation();
   const searchString = useSearch();
 
@@ -569,13 +571,13 @@ export default function JournalEntriesPage() {
                       <td className="px-3 py-2">{formatDate(dateFrom)}</td>
                       <td className="px-3 py-2" colSpan={3}>Opening Balance</td>
                       <td className="text-right px-3 py-2 font-mono tabular-nums">
-                        {openingBalance > 0 ? formatAmount(openingBalance) : ""}
+                        {openingBalance > 0 ? formatAmount(openingBalance, tenantConfig) : ""}
                       </td>
                       <td className="text-right px-3 py-2 font-mono tabular-nums">
-                        {openingBalance < 0 ? formatAmount(Math.abs(openingBalance)) : ""}
+                        {openingBalance < 0 ? formatAmount(Math.abs(openingBalance), tenantConfig) : ""}
                       </td>
                       <td className="text-right px-3 py-2 font-mono tabular-nums whitespace-nowrap">
-                        {formatAmount(Math.abs(openingBalance))} {openingBalance >= 0 ? "Dr" : "Cr"}
+                        {formatAmount(Math.abs(openingBalance), tenantConfig)} {openingBalance >= 0 ? "Dr" : "Cr"}
                       </td>
                     </tr>
                   )}
@@ -605,13 +607,13 @@ export default function JournalEntriesPage() {
                           <code className="text-xs font-mono">{entry.journalNumber}</code>
                         </td>
                         <td className="text-right px-3 py-2 font-mono tabular-nums">
-                          {entry.accountDebit > 0 ? formatAmount(entry.accountDebit) : ""}
+                          {entry.accountDebit > 0 ? formatAmount(entry.accountDebit, tenantConfig) : ""}
                         </td>
                         <td className="text-right px-3 py-2 font-mono tabular-nums">
-                          {entry.accountCredit > 0 ? formatAmount(entry.accountCredit) : ""}
+                          {entry.accountCredit > 0 ? formatAmount(entry.accountCredit, tenantConfig) : ""}
                         </td>
                         <td className="text-right px-3 py-2 font-mono tabular-nums whitespace-nowrap">
-                          {formatAmount(Math.abs(entry.runningBalance))} {entry.runningBalance >= 0 ? "Dr" : "Cr"}
+                          {formatAmount(Math.abs(entry.runningBalance), tenantConfig)} {entry.runningBalance >= 0 ? "Dr" : "Cr"}
                         </td>
                       </tr>
                     ))
@@ -619,13 +621,13 @@ export default function JournalEntriesPage() {
                   <tr className="border-t-2 bg-muted/30 font-semibold" data-testid="row-closing-balance">
                     <td className="px-3 py-2" colSpan={4}>Closing Balance</td>
                     <td className="text-right px-3 py-2 font-mono tabular-nums">
-                      {closingBalance > 0 ? formatAmount(closingBalance) : ""}
+                      {closingBalance > 0 ? formatAmount(closingBalance, tenantConfig) : ""}
                     </td>
                     <td className="text-right px-3 py-2 font-mono tabular-nums">
-                      {closingBalance < 0 ? formatAmount(Math.abs(closingBalance)) : ""}
+                      {closingBalance < 0 ? formatAmount(Math.abs(closingBalance), tenantConfig) : ""}
                     </td>
                     <td className="text-right px-3 py-2 font-mono tabular-nums whitespace-nowrap">
-                      {formatAmount(Math.abs(closingBalance))} {closingBalance >= 0 ? "Dr" : "Cr"}
+                      {formatAmount(Math.abs(closingBalance), tenantConfig)} {closingBalance >= 0 ? "Dr" : "Cr"}
                     </td>
                   </tr>
                 </tbody>
@@ -677,8 +679,8 @@ export default function JournalEntriesPage() {
                           {SOURCE_LABELS[entry.sourceType || "manual"] || entry.sourceType || "Manual"}
                         </Badge>
                       </div>
-                      <div className="text-sm font-mono text-right tabular-nums">{formatAmount(entry.totalDebit)}</div>
-                      <div className="text-sm font-mono text-right tabular-nums">{formatAmount(entry.totalCredit)}</div>
+                      <div className="text-sm font-mono text-right tabular-nums">{formatAmount(entry.totalDebit, tenantConfig)}</div>
+                      <div className="text-sm font-mono text-right tabular-nums">{formatAmount(entry.totalCredit, tenantConfig)}</div>
                       <div className="flex justify-end">
                         <Button size="icon" variant="ghost" data-testid={`button-view-${entry.id}`}>
                           <Eye className="w-3.5 h-3.5" />

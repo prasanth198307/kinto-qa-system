@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ChevronDown, ChevronRight, Calendar, Download, Search, FileStack } from "lucide-react";
 import { downloadXLSX } from "@/lib/download-utils";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 import { queryClient } from "@/lib/queryClient";
 
 interface JournalLine {
@@ -44,11 +45,10 @@ interface DayBookResponse {
   sourceTypes: string[];
 }
 
-function formatAmount(paise: number | null | undefined): string {
+function formatAmount(paise: number | null | undefined, config: ReturnType<typeof useTenantConfig>): string {
   const val = Number(paise) || 0;
   if (val === 0) return "-";
-  const abs = Math.abs(val);
-  const formatted = (abs / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 });
+  const formatted = fmtCur(Math.abs(val) / 100, config);
   return val < 0 ? `(${formatted})` : formatted;
 }
 
@@ -78,6 +78,7 @@ function getTodayStr(): string {
 }
 
 export default function DayBookPage() {
+  const tenantConfig = useTenantConfig();
   const { toast } = useToast();
   const today = getTodayStr();
 
@@ -264,7 +265,7 @@ export default function DayBookPage() {
           <CardContent className="p-3">
             <div className="text-xs text-muted-foreground uppercase tracking-wide">Total Debit</div>
             <div className="text-lg font-semibold mt-0.5 font-mono tabular-nums" data-testid="text-total-debit">
-              {formatAmount(summaryDebit)}
+              {formatAmount(summaryDebit, tenantConfig)}
             </div>
           </CardContent>
         </Card>
@@ -272,7 +273,7 @@ export default function DayBookPage() {
           <CardContent className="p-3">
             <div className="text-xs text-muted-foreground uppercase tracking-wide">Total Credit</div>
             <div className="text-lg font-semibold mt-0.5 font-mono tabular-nums" data-testid="text-total-credit">
-              {formatAmount(summaryCredit)}
+              {formatAmount(summaryCredit, tenantConfig)}
             </div>
           </CardContent>
         </Card>
@@ -327,10 +328,10 @@ export default function DayBookPage() {
                   </div>
                   <div className="text-right shrink-0">
                     <div className="text-sm font-mono tabular-nums" data-testid={`text-debit-${entry.id}`}>
-                      {formatAmount(entry.totalDebit)}
+                      {formatAmount(entry.totalDebit, tenantConfig)}
                     </div>
                     <div className="text-sm font-mono tabular-nums text-muted-foreground" data-testid={`text-credit-${entry.id}`}>
-                      {formatAmount(entry.totalCredit)}
+                      {formatAmount(entry.totalCredit, tenantConfig)}
                     </div>
                   </div>
                 </div>
@@ -360,10 +361,10 @@ export default function DayBookPage() {
                               </td>
                               <td className="px-3 py-2 text-muted-foreground">{line.partyName || "-"}</td>
                               <td className="px-3 py-2 text-right font-mono tabular-nums">
-                                {formatAmount(line.debit)}
+                                {formatAmount(line.debit, tenantConfig)}
                               </td>
                               <td className="px-3 py-2 text-right font-mono tabular-nums">
-                                {formatAmount(line.credit)}
+                                {formatAmount(line.credit, tenantConfig)}
                               </td>
                               <td className="px-3 py-2 text-muted-foreground text-xs">{line.memo || "-"}</td>
                             </tr>
