@@ -11,10 +11,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Heart, Search, Send } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (m: string, p: string, b?: any) =>
   fetch(p, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined }).then((r) => r.json());
-const fmt = (n: any) => `₹${Number(n || 0).toLocaleString("en-IN")}`;
+const fmt = (n: any) => `${sym}${Number(n || 0).toLocaleString("en-IN")}`;
 const BLANK = { name: "", phone: "", email: "", address: "", pan_number: "", donor_type: "individual", notes: "" };
 
 export default function NGODonorsPage() {

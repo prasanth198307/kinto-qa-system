@@ -19,11 +19,12 @@ import {
   Truck, Shield, Receipt, Users,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 // ── Shared helpers ─────────────────────────────────────────────────────────────
 const today = () => new Date().toISOString().slice(0, 10);
 const fmtWt = (n: any) => n ? `${Number(n).toFixed(3)} g` : "—";
-const fmtAmt = (n: any) => n ? `₹${Number(n).toLocaleString("en-IN", { maximumFractionDigits: 2 })}` : "—";
+const fmtAmt = (n: any) => n ? `${sym}${Number(n).toLocaleString("en-IN", { maximumFractionDigits: 2 })}` : "—";
 
 function SH({ title, sub, action }: { title: string; sub?: string; action?: React.ReactNode }) {
   return (
@@ -48,6 +49,8 @@ function FieldRow({ label, children }: { label: string; children: React.ReactNod
 
 function SBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
     present: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
     absent: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
     "half-day": "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300",
@@ -72,6 +75,8 @@ function SBadge({ status }: { status: string }) {
 export function KarigarAttendanceSection() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [editing, setEditing] = useState<any>(null);
   const [filterDate, setFilterDate] = useState(today());
   const [form, setForm] = useState<any>({ attend_date: today(), present: 1, work_type: "production" });
@@ -223,10 +228,10 @@ export function KarigarAttendanceSection() {
                   </SelectContent>
                 </Select>
               </FieldRow>
-              <FieldRow label="Daily Wages (₹)">
+              <FieldRow label="Daily Wages ">
                 <Input data-testid="input-attend-wages" type="number" value={form.daily_wages || ""} onChange={e => set("daily_wages", e.target.value)} placeholder="0" />
               </FieldRow>
-              <FieldRow label="Advance Given (₹)">
+              <FieldRow label="Advance Given ">
                 <Input data-testid="input-attend-advance" type="number" value={form.advance_given || ""} onChange={e => set("advance_given", e.target.value)} placeholder="0" />
               </FieldRow>
             </div>
@@ -250,6 +255,8 @@ export function KarigarAttendanceSection() {
 export function BullionRateCutsSection() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({ cut_date: today(), metal_type: "gold", party_type: "dealer", gst_pct: 3, payment_mode: "bank", status: "draft" });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
@@ -369,7 +376,7 @@ export function BullionRateCutsSection() {
               <FieldRow label="Weight (g)">
                 <Input data-testid="input-ratecut-weight" type="number" value={form.weight_gm || ""} onChange={e => set("weight_gm", e.target.value)} placeholder="0.000" />
               </FieldRow>
-              <FieldRow label="Spot Rate (₹/g)">
+              <FieldRow label="Spot Rate (${sym}/g)">
                 <Input data-testid="input-ratecut-spot" type="number" value={form.spot_rate || ""} onChange={e => set("spot_rate", e.target.value)} placeholder="MCX/IBJA rate" />
               </FieldRow>
               <FieldRow label="Rate Cut %">
@@ -430,6 +437,8 @@ export function BullionRateCutsSection() {
 export function ChitCollectionRegisterSection() {
   const { toast } = useToast();
   const [selectedScheme, setSelectedScheme] = useState<string>("");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [showPayDialog, setShowPayDialog] = useState(false);
   const [payTarget, setPayTarget] = useState<any>(null);
   const [payForm, setPayForm] = useState<any>({ payment_mode: "cash", paid_date: today() });
@@ -533,7 +542,7 @@ export function ChitCollectionRegisterSection() {
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead className="bg-muted/20">
-                    <tr>{["Inst #", "Amount (₹)", "Amount (g)", "Paid Date", "Mode", "Receipt", "Status"].map(h => (
+                    <tr>{["Inst #", "Amount ", "Amount (g)", "Paid Date", "Mode", "Receipt", "Status"].map(h => (
                       <th key={h} className="px-3 py-1.5 text-left font-medium">{h}</th>
                     ))}</tr>
                   </thead>
@@ -563,7 +572,7 @@ export function ChitCollectionRegisterSection() {
           {payTarget && (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">Member: {payTarget.member_name} · Instalment #{(payTarget.installments_paid || 0) + 1}</p>
-              <FieldRow label="Amount (₹)">
+              <FieldRow label="Amount ">
                 <Input type="number" value={payForm.amount_inr || ""} onChange={e => setPayForm((p: any) => ({ ...p, amount_inr: e.target.value }))} />
               </FieldRow>
               <FieldRow label="Amount in Gold (g)">
@@ -606,6 +615,8 @@ export function ChitCollectionRegisterSection() {
 export function WholesaleB2BOrdersSection() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({ order_date: today(), metal_type: "gold", status: "draft", gst_pct: 3 });
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
@@ -716,22 +727,22 @@ export function WholesaleB2BOrdersSection() {
               <FieldRow label="Total Weight (g)">
                 <Input type="number" value={form.total_weight_gm || ""} onChange={e => set("total_weight_gm", e.target.value)} />
               </FieldRow>
-              <FieldRow label="Gold Rate Used (₹/g)">
+              <FieldRow label="Gold Rate Used (${sym}/g)">
                 <Input type="number" value={form.gold_rate_used || ""} onChange={e => set("gold_rate_used", e.target.value)} />
               </FieldRow>
-              <FieldRow label="Making Total (₹)">
+              <FieldRow label="Making Total ">
                 <Input type="number" value={form.making_total || ""} onChange={e => set("making_total", e.target.value)} />
               </FieldRow>
-              <FieldRow label="Stone Total (₹)">
+              <FieldRow label="Stone Total ">
                 <Input type="number" value={form.stone_total || ""} onChange={e => set("stone_total", e.target.value)} />
               </FieldRow>
-              <FieldRow label="Discount Amount (₹)">
+              <FieldRow label="Discount Amount ">
                 <Input type="number" value={form.discount_amt || ""} onChange={e => set("discount_amt", e.target.value)} />
               </FieldRow>
               <FieldRow label="GST %">
                 <Input type="number" value={form.gst_pct || 3} onChange={e => set("gst_pct", e.target.value)} />
               </FieldRow>
-              <FieldRow label="Advance Paid (₹)">
+              <FieldRow label="Advance Paid ">
                 <Input type="number" value={form.advance_paid || ""} onChange={e => set("advance_paid", e.target.value)} />
               </FieldRow>
               <FieldRow label="Status">
@@ -766,6 +777,8 @@ export function WholesaleB2BOrdersSection() {
 export function JewelleryPOSSection() {
   const { toast } = useToast();
   const [mode, setMode] = useState<"list" | "new">("list");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [form, setForm] = useState<any>({
     bill_date: today(), cgst_pct: 1.5, sgst_pct: 1.5,
     items_json: [], gold_rate: "", purity_name: "22K",
@@ -840,8 +853,8 @@ export function JewelleryPOSSection() {
           <FieldRow label="Date"><Input type="date" value={form.bill_date || today()} onChange={e => setForm((p: any) => ({ ...p, bill_date: e.target.value }))} /></FieldRow>
           <FieldRow label="Customer"><Input data-testid="input-pos-customer" value={form.customer_name || ""} onChange={e => setForm((p: any) => ({ ...p, customer_name: e.target.value }))} /></FieldRow>
           <FieldRow label="Phone"><Input value={form.customer_phone || ""} onChange={e => setForm((p: any) => ({ ...p, customer_phone: e.target.value }))} /></FieldRow>
-          <FieldRow label="Gold Rate (₹/g)" >
-            <Input data-testid="input-pos-rate" type="number" value={form.gold_rate || latestRate} onChange={e => setForm((p: any) => ({ ...p, gold_rate: e.target.value }))} placeholder={`Auto: ₹${latestRate}/g`} />
+          <FieldRow label="Gold Rate (${sym}/g)" >
+            <Input data-testid="input-pos-rate" type="number" value={form.gold_rate || latestRate} onChange={e => setForm((p: any) => ({ ...p, gold_rate: e.target.value }))} placeholder={`Auto: ${sym}${latestRate}/g`} />
           </FieldRow>
           <FieldRow label="Purity">
             <Select value={form.purity_name || "22K"} onValueChange={v => setForm((p: any) => ({ ...p, purity_name: v }))}>
@@ -876,7 +889,7 @@ export function JewelleryPOSSection() {
                 <Input className="mt-1" type="number" value={it.making_charge} onChange={e => updateItem(idx, "making_charge", e.target.value)} />
               </div>
               <div className="flex flex-col">
-                <Label className="text-xs">Stone Val (₹)</Label>
+                <Label className="text-xs">Stone Val (${sym})</Label>
                 <div className="flex gap-1 mt-1">
                   <Input type="number" value={it.stone_value} onChange={e => updateItem(idx, "stone_value", e.target.value)} />
                   <Button size="icon" variant="ghost" onClick={() => removeItem(idx)} className="shrink-0"><AlertTriangle className="h-4 w-4 text-red-500" /></Button>
@@ -895,7 +908,7 @@ export function JewelleryPOSSection() {
               <FieldRow label="Old Gold Wt (g)">
                 <Input type="number" value={form.exchange_gold_wt || ""} onChange={e => setForm((p: any) => ({ ...p, exchange_gold_wt: e.target.value }))} />
               </FieldRow>
-              <FieldRow label="Exchange Rate (₹/g)">
+              <FieldRow label="Exchange Rate (${sym}/g)">
                 <Input type="number" value={form.exchange_rate || ""} onChange={e => setForm((p: any) => ({ ...p, exchange_rate: e.target.value }))} />
               </FieldRow>
             </div>
@@ -919,10 +932,10 @@ export function JewelleryPOSSection() {
         <div className="rounded-lg border p-3 space-y-2">
           <h3 className="text-sm font-medium mb-2">Payment Received</h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <FieldRow label="Cash (₹)"><Input type="number" value={form.paid_cash || ""} onChange={e => setForm((p: any) => ({ ...p, paid_cash: e.target.value }))} /></FieldRow>
-            <FieldRow label="Card (₹)"><Input type="number" value={form.paid_card || ""} onChange={e => setForm((p: any) => ({ ...p, paid_card: e.target.value }))} /></FieldRow>
-            <FieldRow label="UPI (₹)"><Input type="number" value={form.paid_upi || ""} onChange={e => setForm((p: any) => ({ ...p, paid_upi: e.target.value }))} /></FieldRow>
-            <FieldRow label="Advance Used (₹)"><Input type="number" value={form.advance_used || ""} onChange={e => setForm((p: any) => ({ ...p, advance_used: e.target.value }))} /></FieldRow>
+            <FieldRow label="Cash "><Input type="number" value={form.paid_cash || ""} onChange={e => setForm((p: any) => ({ ...p, paid_cash: e.target.value }))} /></FieldRow>
+            <FieldRow label="Card "><Input type="number" value={form.paid_card || ""} onChange={e => setForm((p: any) => ({ ...p, paid_card: e.target.value }))} /></FieldRow>
+            <FieldRow label="UPI "><Input type="number" value={form.paid_upi || ""} onChange={e => setForm((p: any) => ({ ...p, paid_upi: e.target.value }))} /></FieldRow>
+            <FieldRow label="Advance Used "><Input type="number" value={form.advance_used || ""} onChange={e => setForm((p: any) => ({ ...p, advance_used: e.target.value }))} /></FieldRow>
           </div>
           <div className="flex justify-between font-semibold text-sm pt-1">
             <span>Balance Due</span>
@@ -962,7 +975,7 @@ export function JewelleryPOSSection() {
                 <td className="px-3 py-2 text-xs">{b.bill_date}</td>
                 <td className="px-3 py-2">{b.customer_name || "Walk-in"}</td>
                 <td className="px-3 py-2">{b.purity_name || "—"}</td>
-                <td className="px-3 py-2">{b.gold_rate ? `₹${Number(b.gold_rate).toLocaleString()}/g` : "—"}</td>
+                <td className="px-3 py-2">{b.gold_rate ? `${sym}${Number(b.gold_rate).toLocaleString()}/g` : "—"}</td>
                 <td className="px-3 py-2 font-semibold">{fmtAmt(b.grand_total)}</td>
                 <td className="px-3 py-2"><SBadge status={b.status || "draft"} /></td>
                 <td className="px-3 py-2">

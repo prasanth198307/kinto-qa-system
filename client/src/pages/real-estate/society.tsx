@@ -6,16 +6,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (m: string, u: string, b?: any) =>
   fetch(u, { method: m, headers: { "Content-Type": "application/json" }, credentials: "include", body: b ? JSON.stringify(b) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
-const fmt = (n: any) => n != null ? `₹${Number(n).toLocaleString("en-IN")}` : "—";
+const fmt = (n: any) => n != null ? `${sym}${Number(n).toLocaleString("en-IN")}` : "—";
 const thisMonth = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`; };
 
 export default function SocietyPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [selectedProject, setSelectedProject] = useState<string>("");
   const [month, setMonth] = useState(thisMonth());
   const [genForm, setGenForm] = useState<any>({});
@@ -80,7 +83,7 @@ export default function SocietyPage() {
           <CardHeader style={{ paddingBottom: 8 }}><CardTitle style={{ fontSize: 14 }}>Generate Monthly Charges for {month}</CardTitle></CardHeader>
           <CardContent>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-              {[{ key: "maintenance_amount", label: "Maintenance Charge ₹ per unit", type: "number" }, { key: "sinking_fund", label: "Sinking Fund ₹ per unit", type: "number" }, { key: "parking_charge", label: "Parking Charge ₹", type: "number" }, { key: "due_date", label: "Due Date", type: "date" }, { key: "late_fee_per_day", label: "Late Fee ₹ / day", type: "number" }].map(f => (
+              {[{ key: "maintenance_amount", label: "Maintenance Charge ₹ per unit", type: "number" }, { key: "sinking_fund", label: "Sinking Fund ₹ per unit", type: "number" }, { key: "parking_charge", label: "Parking Charge ${sym}", type: "number" }, { key: "due_date", label: "Due Date", type: "date" }, { key: "late_fee_per_day", label: "Late Fee ${sym} / day", type: "number" }].map(f => (
                 <div key={f.key}>
                   <Label style={{ fontSize: 11 }}>{f.label}</Label>
                   <Input type={f.type || "text"} value={genForm[f.key] ?? ""} onChange={e => setGenForm((p: any) => ({ ...p, [f.key]: e.target.value }))} style={{ fontSize: 12, marginTop: 2 }} />

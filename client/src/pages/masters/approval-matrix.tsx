@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, X, Check } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (m: string, u: string, b?: any) =>
   fetch(u, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined, credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -16,6 +17,8 @@ const empty: Omit<ApprovalRule, "id"> = { doc_type: "", level: 1, approver_role:
 
 export default function ApprovalMatrixPage() {
   const [editing, setEditing] = useState<ApprovalRule | null>(null);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState<Omit<ApprovalRule, "id">>(empty);
   const { toast } = useToast();
@@ -91,8 +94,8 @@ export default function ApprovalMatrixPage() {
                   <tr key={r.id} className="border-b hover:bg-muted/30">
                     <td className="p-3">L{r.level}</td>
                     <td className="p-3">{r.approver_role}</td>
-                    <td className="p-3">{r.min_amount != null ? `₹${r.min_amount}` : "-"}</td>
-                    <td className="p-3">{r.max_amount ? `₹${r.max_amount}` : "No limit"}</td>
+                    <td className="p-3">{r.min_amount != null ? `${sym}${r.min_amount}` : "-"}</td>
+                    <td className="p-3">{r.max_amount ? `${sym}${r.max_amount}` : "No limit"}</td>
                     <td className="p-3"><Badge variant={r.is_active !== false ? "default" : "secondary"}>{r.is_active !== false ? "Active" : "Inactive"}</Badge></td>
                     <td className="p-3 flex gap-1">
                       <Button size="sm" variant="ghost" onClick={() => startEdit(r)}><Pencil className="w-3 h-3" /></Button>

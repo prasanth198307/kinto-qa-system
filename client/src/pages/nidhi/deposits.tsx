@@ -11,17 +11,20 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Plus } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (m: string, p: string, b?: any) =>
   fetch(p, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined }).then((r) => r.json());
 
-const fmt = (n: any) => `₹${Number(n || 0).toLocaleString("en-IN")}`;
+const fmt = (n: any) => `${sym}${Number(n || 0).toLocaleString("en-IN")}`;
 const TYPES = ["savings", "fd", "rd", "mis", "pigmy"];
 const STATUS_BADGE: Record<string, any> = { active: "default", closed: "secondary", premature_closed: "destructive" };
 const BLANK = { member_id: "", deposit_type: "savings", principal_amount: "", interest_rate: "", tenure_months: "", opening_date: new Date().toISOString().slice(0, 10), interest_payout: "on_maturity", monthly_installment: "", payment_mode: "cash", nominee_name: "" };
 
 export default function NidhiDepositsPage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<any>(BLANK);

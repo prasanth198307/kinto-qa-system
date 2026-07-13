@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Search, UtensilsCrossed, Table2, ChefHat, Truck, BarChart3, Pencil, Trash2, Check, X, Clock } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const fmt = (n: any) => Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
 
@@ -57,13 +58,15 @@ function FieldRow({ label, children }: any) {
 function OverviewTab() {
   const { data: stats } = useQuery<any>({ queryKey: ["/api/restaurant/stats"] });
   const occupancy = stats?.totalTables ? Math.round((stats.occupiedTables / stats.totalTables) * 100) : 0;
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <StatCard title="Tables" value={`${stats?.occupiedTables ?? 0}/${stats?.totalTables ?? 0}`} icon={Table2} color="bg-blue-100 text-blue-600" />
         <StatCard title="Pending KOTs" value={stats?.pendingKots ?? 0} icon={ChefHat} color="bg-orange-100 text-orange-600" />
         <StatCard title="Active Deliveries" value={stats?.activeDeliveries ?? 0} icon={Truck} color="bg-purple-100 text-purple-600" />
-        <StatCard title="Today's Revenue" value={`₹${fmt(stats?.todayRevenue)}`} icon={BarChart3} color="bg-green-100 text-green-600" />
+        <StatCard title="Today's Revenue" value={`${sym}${fmt(stats?.todayRevenue)}`} icon={BarChart3} color="bg-green-100 text-green-600" />
       </div>
       <Card>
         <CardHeader><CardTitle className="text-base">Table Occupancy</CardTitle></CardHeader>
@@ -85,6 +88,8 @@ function OverviewTab() {
 function POSKOTTab() {
   const { toast } = useToast();
   const [selectedTable, setSelectedTable] = useState<any>(null);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [cart, setCart] = useState<any[]>([]);
   const [waiter, setWaiter] = useState("");
   const [orderType, setOrderType] = useState("dine_in");
@@ -152,7 +157,7 @@ function POSKOTTab() {
                   <Badge className={`text-xs ${item.food_type === 'veg' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{item.food_type === 'veg' ? '🟢' : '🔴'}</Badge>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">{item.category_name}</p>
-                <p className="font-bold mt-1">₹{fmt(item.price)}</p>
+                <p className="font-bold mt-1">{sym}{fmt(item.price)}</p>
               </CardContent>
             </Card>
           ))}
@@ -214,10 +219,10 @@ function POSKOTTab() {
                 <div key={c.menu_item_id} className="flex items-center justify-between px-2 py-1.5">
                   <div>
                     <p className="text-sm font-medium">{c.name}</p>
-                    <p className="text-xs text-muted-foreground">×{c.quantity} @ ₹{fmt(c.rate)}</p>
+                    <p className="text-xs text-muted-foreground">×{c.quantity} @ {sym}{fmt(c.rate)}</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold">₹{fmt(c.amount)}</span>
+                    <span className="text-sm font-bold">{sym}{fmt(c.amount)}</span>
                     <Button size="sm" variant="ghost" className="text-red-600 h-6 w-6 p-0" onClick={() => removeFromCart(c.menu_item_id)}><X className="h-3 w-3" /></Button>
                   </div>
                 </div>
@@ -226,7 +231,7 @@ function POSKOTTab() {
 
             <div className="flex items-center justify-between font-bold">
               <span>Total</span>
-              <span>₹{fmt(total)}</span>
+              <span>{sym}{fmt(total)}</span>
             </div>
 
             <Button className="w-full" onClick={placeOrder} disabled={cart.length === 0 || createKot.isPending}>
@@ -246,6 +251,8 @@ function POSKOTTab() {
 function TablesTab() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({});
 
@@ -317,6 +324,8 @@ function TablesTab() {
 function MenuTab() {
   const { toast } = useToast();
   const [showItemForm, setShowItemForm] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [showCatForm, setShowCatForm] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [editingCat, setEditingCat] = useState<any>(null);
@@ -393,8 +402,8 @@ function MenuTab() {
                   <td className="px-3 py-2 font-medium">{item.name}</td>
                   <td className="px-3 py-2">{item.category_name || "—"}</td>
                   <td className="px-3 py-2"><Badge className={item.food_type === 'veg' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}>{item.food_type}</Badge></td>
-                  <td className="px-3 py-2">₹{fmt(item.price)}</td>
-                  <td className="px-3 py-2">₹{fmt(item.cost_price)}</td>
+                  <td className="px-3 py-2">{sym}{fmt(item.price)}</td>
+                  <td className="px-3 py-2">{sym}{fmt(item.cost_price)}</td>
                   <td className="px-3 py-2">{item.prep_time_minutes}</td>
                   <td className="px-3 py-2">{item.is_available ? <Check className="h-4 w-4 text-green-600" /> : <X className="h-4 w-4 text-red-600" />}</td>
                   <td className="px-3 py-2">
@@ -471,6 +480,8 @@ function KitchenDisplayTab() {
   const { data: kots = [] } = useQuery<any[]>({ queryKey: ["/api/restaurant/kot-orders"] }, { refetchInterval: 15000 });
 
   const updateKot = useMutation({
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
     mutationFn: ({ id, status }: any) => apiRequest("PUT", `/api/restaurant/kot-orders/${id}`, { status }),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/restaurant/kot-orders"] }); queryClient.invalidateQueries({ queryKey: ["/api/restaurant/stats"] }); toast({ title: "Updated" }); },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
@@ -533,6 +544,8 @@ function KOTItems({ kotId }: { kotId: number }) {
 function DeliveryTab() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({});
 
@@ -577,7 +590,7 @@ function DeliveryTab() {
               <p className="text-xs text-muted-foreground truncate">{o.delivery_address}</p>
               <div className="flex items-center justify-between mt-2">
                 <Badge variant="outline">{o.platform}</Badge>
-                <span className="font-bold text-sm">₹{fmt(o.total_amount)}</span>
+                <span className="font-bold text-sm">{sym}{fmt(o.total_amount)}</span>
               </div>
               <div className="flex gap-1 mt-3">
                 {statusNext[o.status] && (
@@ -603,7 +616,7 @@ function DeliveryTab() {
                 <td className="px-3 py-2 font-mono text-xs">{o.order_number}</td>
                 <td className="px-3 py-2">{o.customer_name}</td>
                 <td className="px-3 py-2">{o.platform}</td>
-                <td className="px-3 py-2">₹{fmt(o.total_amount)}</td>
+                <td className="px-3 py-2">{sym}{fmt(o.total_amount)}</td>
                 <td className="px-3 py-2"><Badge className={STATUS_COLORS[o.status] || ""}>{o.status}</Badge></td>
               </tr>
             ))}
@@ -647,6 +660,8 @@ function ReportsTab() {
   const { data: sessions = [] } = useQuery<any[]>({ queryKey: ["/api/restaurant/sessions"] });
   const { toast } = useToast();
   const [showSessionForm, setShowSessionForm] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [form, setForm] = useState<any>({});
 
   const openSession = useMutation({
@@ -682,7 +697,7 @@ function ReportsTab() {
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Today's KOTs</p><p className="text-2xl font-bold">{todayKots.length}</p></CardContent></Card>
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Served Today</p><p className="text-2xl font-bold">{todayKots.filter((k: any) => k.status === 'served').length}</p></CardContent></Card>
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Deliveries Today</p><p className="text-2xl font-bold">{deliveredToday.length}</p></CardContent></Card>
-        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Delivery Revenue</p><p className="text-2xl font-bold">₹{fmt(deliveryRevenue)}</p></CardContent></Card>
+        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Delivery Revenue</p><p className="text-2xl font-bold">{sym}{fmt(deliveryRevenue)}</p></CardContent></Card>
       </div>
 
       <div>
@@ -700,8 +715,8 @@ function ReportsTab() {
                 <tr key={s.id} className="border-t hover:bg-muted/30">
                   <td className="px-3 py-2">{s.session_name}</td>
                   <td className="px-3 py-2">{s.opened_by || "—"}</td>
-                  <td className="px-3 py-2">₹{fmt(s.opening_cash)}</td>
-                  <td className="px-3 py-2">₹{fmt(s.total_sales)}</td>
+                  <td className="px-3 py-2">{sym}{fmt(s.opening_cash)}</td>
+                  <td className="px-3 py-2">{sym}{fmt(s.total_sales)}</td>
                   <td className="px-3 py-2"><Badge className={s.status === 'open' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}>{s.status}</Badge></td>
                   <td className="px-3 py-2">
                     {s.status === 'open' && <Button size="sm" variant="outline" onClick={() => closeSession.mutate({ id: s.id, closing_cash: 0 })}>Close</Button>}

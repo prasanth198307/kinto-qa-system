@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Download, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string, body?: unknown) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -42,7 +43,7 @@ interface GSTR3BSummary {
   igst: number;
 }
 
-function fmt(n: number) { return `₹${(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}` ; }
+function fmt(n: number) { return `${sym}${(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}` ; }
 
 export default function GSTRFilingNewPage() {
   const { toast } = useToast();

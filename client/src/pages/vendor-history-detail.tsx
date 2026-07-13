@@ -336,13 +336,13 @@ export default function VendorHistoryDetailPage() {
         dr.outlineLevel = 1;           // ← collapsible group
         dr.hidden = true;              // ← starts collapsed; click [+] in Excel to expand
         dr.eachCell(c => { c.font = { size: 9, color: { argb: DGREY } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } }; c.alignment = { vertical: 'middle', indent: 1 }; });
-        [4,5].forEach(i => { dr.getCell(i).numFmt = '₹#,##0.00'; dr.getCell(i).alignment = { vertical: 'middle', horizontal: 'right' }; });
-        dr.getCell(6).numFmt = '₹#,##0.00'; dr.getCell(6).alignment = { vertical: 'middle', horizontal: 'right' }; dr.getCell(6).font = { bold: true, size: 9, color: { argb: ORANGE } };
+        [4,5].forEach(i => { dr.getCell(i).numFmt = '${sym}#,##0.00'; dr.getCell(i).alignment = { vertical: 'middle', horizontal: 'right' }; });
+        dr.getCell(6).numFmt = '${sym}#,##0.00'; dr.getCell(6).alignment = { vertical: 'middle', horizontal: 'right' }; dr.getCell(6).font = { bold: true, size: 9, color: { argb: ORANGE } };
       });
     });
     const gr1 = ws1.addRow(['', '', '', '', 'TOTAL OUTSTANDING', grandOutstanding / 100]); gr1.height = 22;
     gr1.eachCell(c => { c.font = { bold: true, size: 11, color: { argb: WHITE } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } }; c.alignment = { vertical: 'middle', indent: 1 }; });
-    gr1.getCell(6).numFmt = '₹#,##0.00'; gr1.getCell(6).alignment = { vertical: 'middle', horizontal: 'right' };
+    gr1.getCell(6).numFmt = '${sym}#,##0.00'; gr1.getCell(6).alignment = { vertical: 'middle', horizontal: 'right' };
 
     // Sheet 2 – Payments by Date (cash + advance, with outline grouping)
     const ws2 = wb.addWorksheet('Payments by Date');
@@ -365,7 +365,7 @@ export default function VendorHistoryDetailPage() {
       const dr2 = ws2.addRow([new Date(dateKey + 'T00:00:00').toLocaleDateString('en-IN'), `${grp.entries.length} payment${grp.entries.length !== 1 ? 's' : ''}`, '', '', grp.total / 100]);
       dr2.height = 18; ws2.mergeCells(dr2.number, 2, dr2.number, 4);
       dr2.eachCell(c => { c.font = { bold: true, size: 10, color: { argb: GREEN } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: LGREEN } }; c.alignment = { vertical: 'middle', indent: 1 }; });
-      dr2.getCell(5).numFmt = '₹#,##0.00'; dr2.getCell(5).alignment = { vertical: 'middle', horizontal: 'right' };
+      dr2.getCell(5).numFmt = '${sym}#,##0.00'; dr2.getCell(5).alignment = { vertical: 'middle', horizontal: 'right' };
       // Entry rows — level 1 (collapsible under the date)
       grp.entries.forEach(e => {
         const sr = ws2.addRow(['', e.invoice, `${e.method}${e.ref ? ' / ' + e.ref : ''}`, '', e.amount / 100]);
@@ -373,12 +373,12 @@ export default function VendorHistoryDetailPage() {
         sr.outlineLevel = 1;           // ← collapsible group
         sr.hidden = true;              // ← starts collapsed
         sr.eachCell(c => { c.font = { size: 9, color: { argb: DGREY } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } }; c.alignment = { vertical: 'middle', indent: 1 }; });
-        sr.getCell(5).numFmt = '₹#,##0.00'; sr.getCell(5).alignment = { vertical: 'middle', horizontal: 'right' };
+        sr.getCell(5).numFmt = '${sym}#,##0.00'; sr.getCell(5).alignment = { vertical: 'middle', horizontal: 'right' };
       });
     });
     const gr2 = ws2.addRow(['', '', '', 'TOTAL CASH PAYMENTS', grandPaid / 100]); gr2.height = 22;
     gr2.eachCell(c => { c.font = { bold: true, size: 11, color: { argb: WHITE } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } }; c.alignment = { vertical: 'middle', indent: 1 }; });
-    gr2.getCell(5).numFmt = '₹#,##0.00'; gr2.getCell(5).alignment = { vertical: 'middle', horizontal: 'right' };
+    gr2.getCell(5).numFmt = '${sym}#,##0.00'; gr2.getCell(5).alignment = { vertical: 'middle', horizontal: 'right' };
 
     // Sheet 3 – Debit Note Adjustments by Date (with outline grouping)
     const ws3 = wb.addWorksheet('DN Adjustments');
@@ -401,7 +401,7 @@ export default function VendorHistoryDetailPage() {
       const dr3 = ws3.addRow([new Date(dateKey + 'T00:00:00').toLocaleDateString('en-IN'), `${grp.entries.length} adjustment${grp.entries.length !== 1 ? 's' : ''}`, '', '', grp.total / 100]);
       dr3.height = 18; ws3.mergeCells(dr3.number, 2, dr3.number, 4);
       dr3.eachCell(c => { c.font = { bold: true, size: 10, color: { argb: PURPLE } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: LPURPLE } }; c.alignment = { vertical: 'middle', indent: 1 }; });
-      dr3.getCell(5).numFmt = '₹#,##0.00'; dr3.getCell(5).alignment = { vertical: 'middle', horizontal: 'right' };
+      dr3.getCell(5).numFmt = '${sym}#,##0.00'; dr3.getCell(5).alignment = { vertical: 'middle', horizontal: 'right' };
       // Entry rows — level 1 (collapsible under the date)
       grp.entries.forEach(e => {
         const er = ws3.addRow(['', e.invoice, e.noteNumber || '—', e.reason || '—', e.amount / 100]);
@@ -409,12 +409,12 @@ export default function VendorHistoryDetailPage() {
         er.outlineLevel = 1;           // ← collapsible group
         er.hidden = true;              // ← starts collapsed
         er.eachCell(c => { c.font = { size: 9, color: { argb: DGREY } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } }; c.alignment = { vertical: 'middle', indent: 1 }; });
-        er.getCell(5).numFmt = '₹#,##0.00'; er.getCell(5).alignment = { vertical: 'middle', horizontal: 'right' };
+        er.getCell(5).numFmt = '${sym}#,##0.00'; er.getCell(5).alignment = { vertical: 'middle', horizontal: 'right' };
       });
     });
     const gr3 = ws3.addRow(['', '', '', 'TOTAL DN ADJUSTMENTS', grandDnAdj / 100]); gr3.height = 22;
     gr3.eachCell(c => { c.font = { bold: true, size: 11, color: { argb: WHITE } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } }; c.alignment = { vertical: 'middle', indent: 1 }; });
-    gr3.getCell(5).numFmt = '₹#,##0.00'; gr3.getCell(5).alignment = { vertical: 'middle', horizontal: 'right' };
+    gr3.getCell(5).numFmt = '${sym}#,##0.00'; gr3.getCell(5).alignment = { vertical: 'middle', horizontal: 'right' };
 
     const buffer = await wb.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -753,7 +753,7 @@ export default function VendorHistoryDetailPage() {
     ws.addRow([]); merge(ws.rowCount);
 
     // Column header row
-    const hdr = ws.addRow(['Date', 'Type', 'Reference', 'Description', 'Debit (₹)', 'Credit (₹)', 'Balance (₹)']);
+    const hdr = ws.addRow(['Date', 'Type', 'Reference', 'Description', 'Debit ', 'Credit ', 'Balance ']);
     hdr.height = 20;
     hdr.eachCell(c => {
       c.font = { bold: true, size: 10, color: { argb: WHITE } };
@@ -787,7 +787,7 @@ export default function VendorHistoryDetailPage() {
           dr.getCell(i).alignment = { vertical: 'middle', horizontal: 'right' };
         }
       });
-      dr.getCell(7).numFmt = '₹#,##0.00;[Red]-₹#,##0.00';
+      dr.getCell(7).numFmt = '₹#,##0.00;[Red]-${sym}#,##0.00';
       dr.getCell(7).alignment = { vertical: 'middle', horizontal: 'right' };
       dr.getCell(7).font = { size: 9, bold: true, color: { argb: entry.balance > 0 ? 'FFEA580C' : entry.balance < 0 ? 'FF16A34A' : DGREY } };
     });
@@ -796,7 +796,7 @@ export default function VendorHistoryDetailPage() {
     const gr = ws.addRow(['', '', '', 'CLOSING BALANCE', null, null, data.summary.currentBalance / 100]);
     gr.height = 22;
     gr.eachCell(c => { c.font = { bold: true, size: 11, color: { argb: WHITE } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } }; c.alignment = { vertical: 'middle', indent: 1 }; });
-    gr.getCell(7).numFmt = '₹#,##0.00;[Red]-₹#,##0.00';
+    gr.getCell(7).numFmt = '${sym}#,##0.00;[Red]-${sym}#,##0.00';
     gr.getCell(7).alignment = { vertical: 'middle', horizontal: 'right' };
 
     const buffer = await wb.xlsx.writeBuffer();
@@ -1033,7 +1033,7 @@ export default function VendorHistoryDetailPage() {
     addHeaderBlock(wsTx, 8, 'INVOICE TRANSACTIONS');
 
     // Column header row
-    const hdr = wsTx.addRow(['Invoice #', 'Date', 'Buyer / Customer', 'Details', 'Total (₹)', 'Settled (₹)', 'Outstanding (₹)', 'Status']);
+    const hdr = wsTx.addRow(['Invoice #', 'Date', 'Buyer / Customer', 'Details', 'Total ', 'Settled ', 'Outstanding ', 'Status']);
     hdr.height = 20;
     hdr.eachCell(c => {
       c.font = { bold: true, size: 10, color: { argb: WHITE } };
@@ -1070,7 +1070,7 @@ export default function VendorHistoryDetailPage() {
         c.alignment = { vertical: 'middle', indent: 1 };
       });
       [5, 6, 7].forEach(i => {
-        ir.getCell(i).numFmt = '₹#,##0.00';
+        ir.getCell(i).numFmt = '${sym}#,##0.00';
         ir.getCell(i).alignment = { vertical: 'middle', horizontal: 'right' };
       });
       ir.getCell(8).alignment = { vertical: 'middle', horizontal: 'center' };
@@ -1102,7 +1102,7 @@ export default function VendorHistoryDetailPage() {
             c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: WHITE } };
             c.alignment = { vertical: 'middle', indent: 2 };
           });
-          dr.getCell(7).numFmt = '₹#,##0.00;[Red]-₹#,##0.00';
+          dr.getCell(7).numFmt = '${sym}#,##0.00;[Red]-${sym}#,##0.00';
           dr.getCell(7).alignment = { vertical: 'middle', horizontal: 'right' };
           dr.getCell(7).font = { size: 9, bold: true, color: { argb: isAddition ? ORANGE : DGREY } };
         });
@@ -1114,7 +1114,7 @@ export default function VendorHistoryDetailPage() {
     const gr = wsTx.addRow(['', '', '', `${filteredTxnInvoices.length} invoices`, txnData.summary.totalInvoiceAmount / 100, totalSettled / 100, txnData.summary.totalOutstanding / 100, '']);
     gr.height = 22;
     gr.eachCell(c => { c.font = { bold: true, size: 11, color: { argb: WHITE } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } }; c.alignment = { vertical: 'middle', indent: 1 }; });
-    [5, 6, 7].forEach(i => { gr.getCell(i).numFmt = '₹#,##0.00'; gr.getCell(i).alignment = { vertical: 'middle', horizontal: 'right' }; });
+    [5, 6, 7].forEach(i => { gr.getCell(i).numFmt = '${sym}#,##0.00'; gr.getCell(i).alignment = { vertical: 'middle', horizontal: 'right' }; });
 
     const buffer = await wb.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });

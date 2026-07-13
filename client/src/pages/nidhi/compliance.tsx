@@ -6,10 +6,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { CheckCircle, AlertTriangle, Shield } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const get = (p: string) => fetch(p).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
-const fmt = (n: any) => `₹${Number(n || 0).toLocaleString("en-IN")}`;
+const fmt = (n: any) => `${sym}${Number(n || 0).toLocaleString("en-IN")}`;
 const FY = new Date().getFullYear();
 
 export default function NidhiCompliancePage() {

@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Plus, CheckCircle, XCircle, Clock, Settings } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 interface ApprovalRule {
   id: number;
@@ -42,6 +43,8 @@ const STATUS_BADGE: Record<string, any> = {
 export default function ApprovalWorkflowsPage() {
   const { toast } = useToast();
   const [ruleOpen, setRuleOpen] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [ruleForm, setRuleForm] = useState({ entity_type: "purchase_order", min_amount: 0, max_amount: "", approver_role: "" });
 
   const { data: rules = [], isLoading: rulesLoading } = useQuery<ApprovalRule[]>({
@@ -123,7 +126,7 @@ export default function ApprovalWorkflowsPage() {
                       <TableRow key={req.id} data-testid={`row-approval-${req.id}`}>
                         <TableCell className="capitalize">{req.entity_type.replace(/_/g, " ")}</TableCell>
                         <TableCell className="font-mono text-sm">{req.entity_id}</TableCell>
-                        <TableCell>₹{Number(req.amount || 0).toLocaleString("en-IN")}</TableCell>
+                        <TableCell>{sym}{Number(req.amount || 0).toLocaleString("en-IN")}</TableCell>
                         <TableCell>{req.requested_by}</TableCell>
                         <TableCell>{new Date(req.created_at).toLocaleDateString()}</TableCell>
                         <TableCell className="text-right">
@@ -172,8 +175,8 @@ export default function ApprovalWorkflowsPage() {
                     {rules.map(rule => (
                       <TableRow key={rule.id} data-testid={`row-rule-${rule.id}`}>
                         <TableCell className="capitalize">{rule.entity_type.replace(/_/g, " ")}</TableCell>
-                        <TableCell>₹{Number(rule.min_amount).toLocaleString("en-IN")}</TableCell>
-                        <TableCell>{rule.max_amount ? `₹${Number(rule.max_amount).toLocaleString("en-IN")}` : "No limit"}</TableCell>
+                        <TableCell>{sym}{Number(rule.min_amount).toLocaleString("en-IN")}</TableCell>
+                        <TableCell>{rule.max_amount ? `${sym}${Number(rule.max_amount).toLocaleString("en-IN")}` : "No limit"}</TableCell>
                         <TableCell>{rule.approver_role}</TableCell>
                         <TableCell>
                           <Badge variant={rule.is_active ? "default" : "secondary"}>{rule.is_active ? "Active" : "Inactive"}</Badge>
@@ -208,7 +211,7 @@ export default function ApprovalWorkflowsPage() {
                       <TableRow key={req.id} data-testid={`row-history-${req.id}`}>
                         <TableCell className="capitalize">{req.entity_type.replace(/_/g, " ")}</TableCell>
                         <TableCell className="font-mono text-sm">{req.entity_id}</TableCell>
-                        <TableCell>₹{Number(req.amount || 0).toLocaleString("en-IN")}</TableCell>
+                        <TableCell>{sym}{Number(req.amount || 0).toLocaleString("en-IN")}</TableCell>
                         <TableCell><Badge variant={STATUS_BADGE[req.status]}>{req.status}</Badge></TableCell>
                         <TableCell>{new Date(req.created_at).toLocaleDateString()}</TableCell>
                       </TableRow>

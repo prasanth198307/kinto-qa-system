@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const API = "/api/ecommerce";
 
@@ -24,6 +25,8 @@ const emptyC = { platform: "amazon", period_month: "1", period_year: String(new 
 export default function SettlementsPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [tab, setTab] = useState<"settlements"|"commissions">("settlements");
   const [sModal, setSModal] = useState(false);
   const [cModal, setCModal] = useState(false);
@@ -88,11 +91,11 @@ export default function SettlementsPage() {
                   <td style={td}><b>{s.settlement_number}</b></td>
                   <td style={td}>{s.channel_name}</td>
                   <td style={td}>{s.period_from} – {s.period_to}</td>
-                  <td style={td}>₹{Number(s.gross_amount).toLocaleString("en-IN")}</td>
-                  <td style={td}>₹{Number(s.commission).toLocaleString("en-IN")}</td>
-                  <td style={td}>₹{Number(s.tds).toLocaleString("en-IN")}</td>
-                  <td style={td}>₹{Number(s.other_deductions).toLocaleString("en-IN")}</td>
-                  <td style={{ ...td, fontWeight: 600, color: "#16a34a" }}>₹{Number(s.net_amount).toLocaleString("en-IN")}</td>
+                  <td style={td}>{sym}{Number(s.gross_amount).toLocaleString("en-IN")}</td>
+                  <td style={td}>{sym}{Number(s.commission).toLocaleString("en-IN")}</td>
+                  <td style={td}>{sym}{Number(s.tds).toLocaleString("en-IN")}</td>
+                  <td style={td}>{sym}{Number(s.other_deductions).toLocaleString("en-IN")}</td>
+                  <td style={{ ...td, fontWeight: 600, color: "#16a34a" }}>{sym}{Number(s.net_amount).toLocaleString("en-IN")}</td>
                   <td style={td}>{s.utr_number}</td>
                   <td style={td}>{new Date(s.settlement_date).toLocaleDateString("en-IN")}</td>
                 </tr>
@@ -101,11 +104,11 @@ export default function SettlementsPage() {
               {settlements.length > 0 && (
                 <tr style={{ background: "#f0fdf4", fontWeight: 700 }}>
                   <td style={td} colSpan={3}>TOTALS</td>
-                  <td style={td}>₹{sTotal("gross_amount").toLocaleString("en-IN")}</td>
-                  <td style={td}>₹{sTotal("commission").toLocaleString("en-IN")}</td>
-                  <td style={td}>₹{sTotal("tds").toLocaleString("en-IN")}</td>
-                  <td style={td}>₹{sTotal("other_deductions").toLocaleString("en-IN")}</td>
-                  <td style={{ ...td, color: "#16a34a" }}>₹{sTotal("net_amount").toLocaleString("en-IN")}</td>
+                  <td style={td}>{sym}{sTotal("gross_amount").toLocaleString("en-IN")}</td>
+                  <td style={td}>{sym}{sTotal("commission").toLocaleString("en-IN")}</td>
+                  <td style={td}>{sym}{sTotal("tds").toLocaleString("en-IN")}</td>
+                  <td style={td}>{sym}{sTotal("other_deductions").toLocaleString("en-IN")}</td>
+                  <td style={{ ...td, color: "#16a34a" }}>{sym}{sTotal("net_amount").toLocaleString("en-IN")}</td>
                   <td style={td} colSpan={2} />
                 </tr>
               )}
@@ -127,11 +130,11 @@ export default function SettlementsPage() {
               <div key={s.platform} style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, padding: "14px 18px" }}>
                 <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8, textTransform: "capitalize" }}>{s.platform}</div>
                 <div style={{ fontSize: 12, color: "#6b7280" }}>Gross Sales</div>
-                <div style={{ fontWeight: 600, marginBottom: 4 }}>₹{Number(s.total_gross_sales).toLocaleString("en-IN")}</div>
+                <div style={{ fontWeight: 600, marginBottom: 4 }}>{sym}{Number(s.total_gross_sales).toLocaleString("en-IN")}</div>
                 <div style={{ fontSize: 12, color: "#6b7280" }}>Commission</div>
-                <div style={{ fontWeight: 600, marginBottom: 4, color: "#ef4444" }}>₹{Number(s.total_commission).toLocaleString("en-IN")}</div>
+                <div style={{ fontWeight: 600, marginBottom: 4, color: "#ef4444" }}>{sym}{Number(s.total_commission).toLocaleString("en-IN")}</div>
                 <div style={{ fontSize: 12, color: "#6b7280" }}>Net Settlement</div>
-                <div style={{ fontWeight: 600, color: "#16a34a" }}>₹{Number(s.total_net_settlement).toLocaleString("en-IN")}</div>
+                <div style={{ fontWeight: 600, color: "#16a34a" }}>{sym}{Number(s.total_net_settlement).toLocaleString("en-IN")}</div>
               </div>
             ))}
           </div>
@@ -145,10 +148,10 @@ export default function SettlementsPage() {
                   <tr key={c.id}>
                     <td style={{ ...td, textTransform: "capitalize", fontWeight: 600 }}>{c.platform}</td>
                     <td style={td}>{MONTHS[c.period_month - 1]} {c.period_year}</td>
-                    <td style={td}>₹{Number(c.gross_sales).toLocaleString("en-IN")}</td>
+                    <td style={td}>{sym}{Number(c.gross_sales).toLocaleString("en-IN")}</td>
                     <td style={td}>{c.commission_rate}%</td>
-                    <td style={td}>₹{Number(c.commission_amount).toLocaleString("en-IN")}</td>
-                    <td style={{ ...td, fontWeight: 600, color: "#16a34a" }}>₹{Number(c.net_settlement).toLocaleString("en-IN")}</td>
+                    <td style={td}>{sym}{Number(c.commission_amount).toLocaleString("en-IN")}</td>
+                    <td style={{ ...td, fontWeight: 600, color: "#16a34a" }}>{sym}{Number(c.net_settlement).toLocaleString("en-IN")}</td>
                     <td style={td}><Badge label={c.status} color={c.status === "settled" ? "#22c55e" : "#f59e0b"} /></td>
                     <td style={td}>
                       {c.status !== "settled" && (

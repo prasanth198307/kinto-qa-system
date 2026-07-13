@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (m: string, u: string, b?: any) =>
   fetch(u, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined, credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -22,6 +23,8 @@ const ROLE_COLORS: Record<string, string> = {
 export default function RestaurantStaffPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [, navigate] = useLocation();
   const [tab, setTab] = useState<"employees" | "schedule" | "attendance" | "performance">("employees");
   const [search, setSearch] = useState("");
@@ -164,7 +167,7 @@ export default function RestaurantStaffPage() {
           <CardContent>
             {attendance.length === 0 ? <p className="text-center py-8 text-gray-400">No attendance data.</p> : (
               <table className="w-full text-sm"><thead><tr className="bg-gray-50 border-b"><th className="text-left px-4 py-2">Employee</th><th className="text-left px-4 py-2">Role</th><th className="text-right px-4 py-2">Days</th><th className="text-right px-4 py-2">Hours</th><th className="text-right px-4 py-2">Tips</th></tr></thead>
-              <tbody className="divide-y">{attendance.map((a: any, i: number) => <tr key={i}><td className="px-4 py-2">{a.name}</td><td className="px-4 py-2"><Badge className={ROLE_COLORS[a.role] || "bg-gray-100 text-gray-700"}>{a.role || "—"}</Badge></td><td className="px-4 py-2 text-right">{a.days_present}</td><td className="px-4 py-2 text-right">{Number(a.hours_worked||0).toFixed(1)}h</td><td className="px-4 py-2 text-right">₹{Number(a.tips_earned||0).toLocaleString()}</td></tr>)}</tbody></table>
+              <tbody className="divide-y">{attendance.map((a: any, i: number) => <tr key={i}><td className="px-4 py-2">{a.name}</td><td className="px-4 py-2"><Badge className={ROLE_COLORS[a.role] || "bg-gray-100 text-gray-700"}>{a.role || "—"}</Badge></td><td className="px-4 py-2 text-right">{a.days_present}</td><td className="px-4 py-2 text-right">{Number(a.hours_worked||0).toFixed(1)}h</td><td className="px-4 py-2 text-right">{sym}{Number(a.tips_earned||0).toLocaleString()}</td></tr>)}</tbody></table>
             )}
           </CardContent>
         </Card>
@@ -176,7 +179,7 @@ export default function RestaurantStaffPage() {
           <CardContent>
             {performance.length === 0 ? <p className="text-center py-8 text-gray-400">No performance data today.</p> : (
               <table className="w-full text-sm"><thead><tr className="bg-gray-50 border-b"><th className="text-left px-4 py-2">Staff</th><th className="text-right px-4 py-2">Orders</th><th className="text-right px-4 py-2">Revenue</th><th className="text-right px-4 py-2">Avg Bill</th><th className="text-right px-4 py-2">Tips</th></tr></thead>
-              <tbody className="divide-y">{performance.map((p: any, i: number) => <tr key={i}><td className="px-4 py-2">{p.waiter_name}</td><td className="px-4 py-2 text-right">{p.orders_served}</td><td className="px-4 py-2 text-right">₹{Number(p.revenue_generated||0).toLocaleString()}</td><td className="px-4 py-2 text-right">₹{Number(p.avg_bill_value||0).toFixed(0)}</td><td className="px-4 py-2 text-right">₹{Number(p.tips_earned||0).toLocaleString()}</td></tr>)}</tbody></table>
+              <tbody className="divide-y">{performance.map((p: any, i: number) => <tr key={i}><td className="px-4 py-2">{p.waiter_name}</td><td className="px-4 py-2 text-right">{p.orders_served}</td><td className="px-4 py-2 text-right">{sym}{Number(p.revenue_generated||0).toLocaleString()}</td><td className="px-4 py-2 text-right">{sym}{Number(p.avg_bill_value||0).toFixed(0)}</td><td className="px-4 py-2 text-right">{sym}{Number(p.tips_earned||0).toLocaleString()}</td></tr>)}</tbody></table>
             )}
           </CardContent>
         </Card>

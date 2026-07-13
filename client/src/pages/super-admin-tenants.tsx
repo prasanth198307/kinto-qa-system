@@ -34,6 +34,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { format } from "date-fns";
 import SuperAdminLayout from "./super-admin-layout";
 import { ModuleMarketplaceDialog } from "@/components/module-marketplace-dialog";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 type Tenant = {
   id: number;
@@ -105,6 +106,8 @@ export default function SuperAdminTenants() {
   const { logoutMutation } = useAuth();
   const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [editTenant, setEditTenant]     = useState<Tenant | null>(null);
   const [editForm, setEditForm]         = useState({ status: "", plan: "", maxUsers: "" });
   const [deleteTenant, setDeleteTenant] = useState<Tenant | null>(null);
@@ -127,7 +130,7 @@ export default function SuperAdminTenants() {
   });
 
   const SEEDED_COUNTRIES = [
-    { code: "IN", name: "India", currency: "INR", symbol: "₹", tz: "Asia/Kolkata" },
+    { code: "IN", name: "India", currency: "INR", symbol: sym, tz: "Asia/Kolkata" },
     { code: "AE", name: "UAE", currency: "AED", symbol: "د.إ", tz: "Asia/Dubai" },
     { code: "US", name: "United States", currency: "USD", symbol: "$", tz: "America/New_York" },
     { code: "GB", name: "United Kingdom", currency: "GBP", symbol: "£", tz: "Europe/London" },

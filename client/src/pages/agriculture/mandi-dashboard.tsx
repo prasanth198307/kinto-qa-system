@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { RefreshCw, Thermometer, Droplets, Wind, CloudRain, TrendingUp } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (path: string) => fetch(path).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
@@ -39,6 +40,8 @@ const SAMPLE_TREND = Array.from({ length: 10 }, (_, i) => ({
 export default function MandiDashboardPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [filterCommodity, setFilterCommodity] = useState("all");
   const [filterState, setFilterState] = useState("all");
   const [selectedCommodity, setSelectedCommodity] = useState("Wheat");
@@ -128,7 +131,7 @@ export default function MandiDashboardPage() {
                 <TableHead>Commodity</TableHead>
                 <TableHead>Mandi</TableHead>
                 <TableHead>State</TableHead>
-                <TableHead>Modal Price (₹/q)</TableHead>
+                <TableHead>Modal Price (${sym}/q)</TableHead>
                 <TableHead>Min</TableHead>
                 <TableHead>Max</TableHead>
                 <TableHead>Date</TableHead>
@@ -140,9 +143,9 @@ export default function MandiDashboardPage() {
                   <TableCell className="font-medium">{p.commodity}</TableCell>
                   <TableCell>{p.mandi}</TableCell>
                   <TableCell>{p.state}</TableCell>
-                  <TableCell className="font-semibold text-green-700">₹{Number(p.modal_price).toLocaleString("en-IN")}</TableCell>
-                  <TableCell className="text-muted-foreground">₹{Number(p.min).toLocaleString("en-IN")}</TableCell>
-                  <TableCell className="text-muted-foreground">₹{Number(p.max).toLocaleString("en-IN")}</TableCell>
+                  <TableCell className="font-semibold text-green-700">{sym}{Number(p.modal_price).toLocaleString("en-IN")}</TableCell>
+                  <TableCell className="text-muted-foreground">{sym}{Number(p.min).toLocaleString("en-IN")}</TableCell>
+                  <TableCell className="text-muted-foreground">{sym}{Number(p.max).toLocaleString("en-IN")}</TableCell>
                   <TableCell>{p.date}</TableCell>
                 </TableRow>
               ))}
@@ -169,14 +172,14 @@ export default function MandiDashboardPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Date</TableHead>
-                <TableHead>Modal Price (₹/quintal)</TableHead>
+                <TableHead>Modal Price (${sym}/quintal)</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {displayTrend.slice(0, 15).map((t: any, i: number) => (
                 <TableRow key={i}>
                   <TableCell>{t.date}</TableCell>
-                  <TableCell className="font-medium">₹{Number(t.modal_price).toLocaleString("en-IN")}</TableCell>
+                  <TableCell className="font-medium">{sym}{Number(t.modal_price).toLocaleString("en-IN")}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

@@ -4,6 +4,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 // Public page — no auth, mobile-optimised
 const apiGet = async (url: string) => {
@@ -68,6 +69,8 @@ function MenuScreen({
   onViewCart: () => void;
 }) {
   const [activeCategory, setActiveCategory] = useState<string>("all");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
 
   const { data: menuItems = [], isLoading } = useQuery({
     queryKey: ["/api/pos/menu-items", outletId],
@@ -130,7 +133,7 @@ function MenuScreen({
                 <div className="p-2">
                   <div className="text-sm font-semibold text-gray-900 leading-tight mb-0.5 truncate">{item.name}</div>
                   <div className="flex items-center justify-between mt-1">
-                    <span className="text-sm font-bold text-indigo-700">₹{fmt(item.price)}</span>
+                    <span className="text-sm font-bold text-indigo-700">{sym}{fmt(item.price)}</span>
                     {item.is_veg !== undefined && (
                       <span className={`w-3 h-3 rounded-sm border-2 ${item.is_veg ? "border-green-500" : "border-red-500"} inline-block`} />
                     )}
@@ -165,7 +168,7 @@ function MenuScreen({
           >
             <span className="bg-white text-indigo-600 rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">{cartCount}</span>
             <span>View Cart</span>
-            <span>₹{fmt(cartTotal)}</span>
+            <span>{sym}{fmt(cartTotal)}</span>
           </button>
         </div>
       )}
@@ -189,6 +192,8 @@ function CartScreen({
   onBack: () => void;
 }) {
   const [customerName, setCustomerName] = useState("");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [customerPhone, setCustomerPhone] = useState("");
   const [notes, setNotes] = useState<Record<number, string>>({});
 
@@ -213,14 +218,14 @@ function CartScreen({
               <span className="text-2xl">{item.emoji}</span>
               <div className="flex-1">
                 <div className="font-semibold text-sm">{item.name}</div>
-                <div className="text-xs text-gray-500">₹{fmt(item.price)} each</div>
+                <div className="text-xs text-gray-500">{sym}{fmt(item.price)} each</div>
               </div>
               <div className="flex items-center gap-2 bg-indigo-50 rounded-lg px-2 py-1">
                 <button onClick={() => onUpdateItem(item.id, -1)} className="text-indigo-600 font-bold text-base w-5 h-5 flex items-center justify-center">−</button>
                 <span className="text-indigo-700 font-bold text-sm w-4 text-center">{item.qty}</span>
                 <button onClick={() => onUpdateItem(item.id, 1)} className="text-indigo-600 font-bold text-base w-5 h-5 flex items-center justify-center">+</button>
               </div>
-              <span className="text-sm font-bold text-gray-700 w-16 text-right">₹{fmt(item.qty * item.price)}</span>
+              <span className="text-sm font-bold text-gray-700 w-16 text-right">{sym}{fmt(item.qty * item.price)}</span>
             </div>
             <Input
               placeholder="Special instructions (optional)"
@@ -233,9 +238,9 @@ function CartScreen({
 
         {/* Bill summary */}
         <div className="bg-white rounded-xl shadow-sm p-3 space-y-1 text-sm">
-          <div className="flex justify-between text-gray-600"><span>Subtotal</span><span>₹{fmt(subtotal)}</span></div>
-          <div className="flex justify-between text-gray-600"><span>GST (5%)</span><span>₹{fmt(gst)}</span></div>
-          <div className="border-t pt-1 flex justify-between font-bold text-base"><span>Total</span><span>₹{fmt(total)}</span></div>
+          <div className="flex justify-between text-gray-600"><span>Subtotal</span><span>{sym}{fmt(subtotal)}</span></div>
+          <div className="flex justify-between text-gray-600"><span>GST (5%)</span><span>{sym}{fmt(gst)}</span></div>
+          <div className="border-t pt-1 flex justify-between font-bold text-base"><span>Total</span><span>{sym}{fmt(total)}</span></div>
         </div>
 
         {/* Customer info */}
@@ -252,7 +257,7 @@ function CartScreen({
           onClick={() => onPlaceOrder(customerName, customerPhone)}
           className="w-full bg-green-600 text-white rounded-xl py-3 font-bold text-lg hover:bg-green-700 transition-colors"
         >
-          Place Order — ₹{fmt(total)}
+          Place Order — {sym}{fmt(total)}
         </button>
       </div>
     </div>

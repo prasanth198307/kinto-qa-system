@@ -24,6 +24,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { differenceInDays } from "date-fns";
 import SubscriptionManagement from "./subscription-management";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 interface TenantInfo {
   id: number;
@@ -153,7 +154,7 @@ const COUNTRIES = [
 ];
 
 const CURRENCIES = [
-  { code: "INR", symbol: "₹", name: "Indian Rupee" },
+  { code: "INR", symbol: sym, name: "Indian Rupee" },
   { code: "USD", symbol: "$", name: "US Dollar" },
   { code: "AED", symbol: "د.إ", name: "UAE Dirham" },
   { code: "SAR", symbol: "﷼", name: "Saudi Riyal" },

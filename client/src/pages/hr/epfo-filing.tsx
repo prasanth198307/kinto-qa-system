@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Download, Send, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const apiPost = (path: string, body: any) =>
   fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -33,6 +34,8 @@ const STATUS_COLOR: Record<string, string> = {
 export default function EPFOFilingPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [month, setMonth] = useState(String(new Date().getMonth() + 1));
   const [year, setYear] = useState(String(CUR_YEAR));
 
@@ -57,7 +60,7 @@ export default function EPFOFilingPage() {
     mutationFn: () => apiPost("/api/hr/payroll/esi-submit", { month: Number(month), year: Number(year) }),
     onSuccess: (data: any) => {
       if (data.challan_no) {
-        toast({ title: `ESI Challan — ${data.challan_no}`, description: `Members: ${data.member_count} · Total ESI: ₹${(data.total_esi / 100).toFixed(2)}` });
+        toast({ title: `ESI Challan — ${data.challan_no}`, description: `Members: ${data.member_count} · Total ESI: ${sym}${(data.total_esi / 100).toFixed(2)}` });
         qc.invalidateQueries({ queryKey: ["epfo-submissions"] });
       } else {
         toast({ title: "Error", description: data.message || "ESI submission failed", variant: "destructive" });
@@ -178,15 +181,15 @@ export default function EPFOFilingPage() {
                   <p className="font-semibold text-green-800">Challan No: {esiSubmit.data.challan_no}</p>
                   <div className="grid grid-cols-3 gap-2 mt-2 text-sm">
                     <div><span className="text-muted-foreground">Members:</span> {esiSubmit.data.member_count}</div>
-                    <div><span className="text-muted-foreground">Employee ESI:</span> ₹{((esiSubmit.data.employee_esi||0)/100).toFixed(2)}</div>
-                    <div><span className="text-muted-foreground">Employer ESI:</span> ₹{((esiSubmit.data.employer_esi||0)/100).toFixed(2)}</div>
-                    <div className="col-span-3 font-semibold text-green-700">Total ESI: ₹{((esiSubmit.data.total_esi||0)/100).toFixed(2)}</div>
+                    <div><span className="text-muted-foreground">Employee ESI:</span> {sym}{((esiSubmit.data.employee_esi||0)/100).toFixed(2)}</div>
+                    <div><span className="text-muted-foreground">Employer ESI:</span> {sym}{((esiSubmit.data.employer_esi||0)/100).toFixed(2)}</div>
+                    <div className="col-span-3 font-semibold text-green-700">Total ESI: {sym}{((esiSubmit.data.total_esi||0)/100).toFixed(2)}</div>
                   </div>
                 </div>
               )}
               <p className="text-sm text-muted-foreground">
                 ESI contributions are computed from gross wages. Employee contribution: 0.75%, Employer: 3.25%.
-                Wage ceiling: ₹21,000/month. Challan is generated as CSV for upload to ESIC portal.
+                Wage ceiling: ${sym}21,000/month. Challan is generated as CSV for upload to ESIC portal.
               </p>
               <div className="mt-3 p-3 bg-blue-50 rounded text-sm text-blue-800">
                 <strong>ESIC Portal:</strong> Upload challan at{" "}
@@ -204,7 +207,7 @@ export default function EPFOFilingPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Monthly Salary Range</TableHead>
-                    <TableHead>PT Amount (₹/month)</TableHead>
+                    <TableHead>PT Amount (${sym}/month)</TableHead>
                     <TableHead>Annual PT</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -212,8 +215,8 @@ export default function EPFOFilingPage() {
                   {PT_SLABS.map((s, i) => (
                     <TableRow key={i}>
                       <TableCell>{s.range}</TableCell>
-                      <TableCell>{s.tax === 0 ? "Nil" : `₹${s.tax}`}</TableCell>
-                      <TableCell>{s.tax === 0 ? "Nil" : `₹${s.tax * 12}`}</TableCell>
+                      <TableCell>{s.tax === 0 ? "Nil" : `${sym}${s.tax}`}</TableCell>
+                      <TableCell>{s.tax === 0 ? "Nil" : `${sym}${s.tax * 12}`}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

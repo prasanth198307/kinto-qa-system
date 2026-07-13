@@ -9,10 +9,11 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Truck, Trash2 } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (m: string, p: string, b?: any) =>
   fetch(p, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined }).then((r) => r.json());
-const fmt = (n: any) => `₹${Number(n || 0).toLocaleString("en-IN")}`;
+const fmt = (n: any) => `${sym}${Number(n || 0).toLocaleString("en-IN")}`;
 const STATUS_BADGE: Record<string, "secondary" | "default" | "destructive" | "outline"> = {
   draft: "secondary", in_transit: "default", received: "outline", partially_received: "destructive", cancelled: "destructive",
 };

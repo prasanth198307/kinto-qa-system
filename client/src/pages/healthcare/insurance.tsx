@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Shield, Plus, X, CheckCircle } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string, body?: any) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -36,6 +37,8 @@ const EMPTY_CLAIM = { policy_id: "", admission_id: "", claim_amount: "", diagnos
 
 export default function InsurancePage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [showPolicyForm, setShowPolicyForm] = useState(false);
   const [showClaimForm, setShowClaimForm] = useState(false);
   const [policyForm, setPolicyForm] = useState({ ...EMPTY_POLICY });
@@ -86,7 +89,7 @@ export default function InsurancePage() {
         <Card><CardContent className="pt-4"><p className="text-xs text-gray-500">Active Policies</p><p className="text-2xl font-bold text-green-600">{activePolicies}</p></CardContent></Card>
         <Card><CardContent className="pt-4"><p className="text-xs text-gray-500">Total Policies</p><p className="text-2xl font-bold">{policiesArr.length}</p></CardContent></Card>
         <Card><CardContent className="pt-4"><p className="text-xs text-gray-500">Pending Claims</p><p className="text-2xl font-bold text-yellow-600">{pendingClaims}</p></CardContent></Card>
-        <Card><CardContent className="pt-4"><p className="text-xs text-gray-500">Approved Claims (₹)</p><p className="text-2xl font-bold text-blue-600">₹{(totalApproved / 100).toLocaleString("en-IN")}</p></CardContent></Card>
+        <Card><CardContent className="pt-4"><p className="text-xs text-gray-500">Approved Claims (${sym})</p><p className="text-2xl font-bold text-blue-600">{sym}{(totalApproved / 100).toLocaleString("en-IN")}</p></CardContent></Card>
       </div>
 
       <Tabs defaultValue="policies">
@@ -139,8 +142,8 @@ export default function InsurancePage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div><Label>Sum Insured (₹)</Label><Input type="number" value={policyForm.sum_insured} onChange={e => pf("sum_insured", e.target.value)} /></div>
-                <div><Label>Annual Premium (₹)</Label><Input type="number" value={policyForm.premium} onChange={e => pf("premium", e.target.value)} /></div>
+                <div><Label>Sum Insured (${sym})</Label><Input type="number" value={policyForm.sum_insured} onChange={e => pf("sum_insured", e.target.value)} /></div>
+                <div><Label>Annual Premium (${sym})</Label><Input type="number" value={policyForm.premium} onChange={e => pf("premium", e.target.value)} /></div>
                 <div><Label>Start Date</Label><Input type="date" value={policyForm.start_date} onChange={e => pf("start_date", e.target.value)} /></div>
                 <div><Label>End Date</Label><Input type="date" value={policyForm.end_date} onChange={e => pf("end_date", e.target.value)} /></div>
                 <div><Label>Card / Member No.</Label><Input value={policyForm.card_no} onChange={e => pf("card_no", e.target.value)} /></div>
@@ -160,7 +163,7 @@ export default function InsurancePage() {
                     <p className="font-semibold">{p.patient_name ?? `Patient #${p.patient_id}`}</p>
                     <p className="text-sm text-gray-600">{p.insurer} · {p.policy_type}</p>
                     <p className="text-xs text-gray-500">Policy: {p.policy_no} · Card: {p.card_no || "—"}</p>
-                    <p className="text-xs text-gray-500">SI: ₹{((p.sum_insured ?? 0) / 100).toLocaleString("en-IN")} · Valid: {p.start_date?.slice(0, 10)} to {p.end_date?.slice(0, 10)}</p>
+                    <p className="text-xs text-gray-500">SI: {sym}{((p.sum_insured ?? 0) / 100).toLocaleString("en-IN")} · Valid: {p.start_date?.slice(0, 10)} to {p.end_date?.slice(0, 10)}</p>
                   </div>
                   <Badge className={STATUS_COLOR[p.status ?? "active"]}>{p.status ?? "active"}</Badge>
                 </CardContent>
@@ -218,8 +221,8 @@ export default function InsurancePage() {
                   <div>
                     <p className="font-semibold">{c.patient_name ?? c.patient}</p>
                     <p className="text-sm text-gray-600">{c.insurer ?? c.tpa_name} · Policy: {c.policy_no}</p>
-                    <p className="text-xs text-gray-500">Claim: ₹{((c.claim_amount ?? c.amount ?? 0) / 100).toLocaleString("en-IN")} · {c.diagnosis}</p>
-                    {c.approved_amount != null && <p className="text-xs text-green-600">Approved: ₹{((c.approved_amount) / 100).toLocaleString("en-IN")}</p>}
+                    <p className="text-xs text-gray-500">Claim: {sym}{((c.claim_amount ?? c.amount ?? 0) / 100).toLocaleString("en-IN")} · {c.diagnosis}</p>
+                    {c.approved_amount != null && <p className="text-xs text-green-600">Approved: {sym}{((c.approved_amount) / 100).toLocaleString("en-IN")}</p>}
                   </div>
                   <div className="flex flex-col items-end gap-2">
                     <Badge className={CLAIM_STATUS[c.status] ?? "bg-gray-100"}>{c.status}</Badge>

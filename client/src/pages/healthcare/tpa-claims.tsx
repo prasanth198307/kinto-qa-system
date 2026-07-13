@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, CheckCircle, IndianRupee } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string, body?: any) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined, credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -38,6 +39,8 @@ const MOCK_CLAIMS = [
 export default function TPAClaimsPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [showDialog, setShowDialog] = useState(false);
   const [form, setForm] = useState({ ...BLANK_CLAIM });
   const [claims, setClaims] = useState(MOCK_CLAIMS);
@@ -82,7 +85,7 @@ export default function TPAClaimsPage() {
     setClaims(prev => prev.map(c => c.id === id ? { ...c, status: "Settled" } : c));
   };
 
-  const fmt = (n: number | null) => n != null ? `₹${n.toLocaleString("en-IN")}` : "—";
+  const fmt = (n: number | null) => n != null ? `${sym}${n.toLocaleString("en-IN")}` : "—";
 
   return (
     <div className="p-6 space-y-4">

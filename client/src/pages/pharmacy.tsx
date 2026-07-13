@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Search, Pill, Package, ShoppingCart, FileText, Shield, AlertCircle, Pencil, Trash2, X, TrendingUp } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const fmt = (n: any) => Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
 
@@ -38,8 +39,8 @@ function DashboardTab() {
     <div className="space-y-6">
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
         <StatCard title="Total Drugs" value={stats?.totalDrugs ?? 0} icon={Pill} color="bg-blue-100 text-blue-600" />
-        <StatCard title="Today's Sales" value={`₹${fmt(stats?.todaySalesAmount)} (${stats?.todaySalesCount ?? 0})`} icon={TrendingUp} color="bg-green-100 text-green-600" />
-        <StatCard title="Stock Value" value={`₹${fmt(stats?.stockValue)}`} icon={Package} color="bg-purple-100 text-purple-600" />
+        <StatCard title="Today's Sales" value={`${sym}${fmt(stats?.todaySalesAmount)} (${stats?.todaySalesCount ?? 0})`} icon={TrendingUp} color="bg-green-100 text-green-600" />
+        <StatCard title="Stock Value" value={`${sym}${fmt(stats?.stockValue)}`} icon={Package} color="bg-purple-100 text-purple-600" />
         <StatCard title="Expiring in 30 Days" value={stats?.expiringIn30 ?? 0} icon={AlertCircle} color="bg-red-100 text-red-600" alert={stats?.expiringIn30 > 0} />
         <StatCard title="Expiring in 60 Days" value={stats?.expiringIn60 ?? 0} icon={AlertCircle} color="bg-orange-100 text-orange-600" alert={stats?.expiringIn60 > 0} />
       </div>
@@ -50,6 +51,8 @@ function DashboardTab() {
             <div className="space-y-2">
               {expiry.slice(0, 20).map((s: any) => {
                 const days = Math.ceil((new Date(s.expiry_date).getTime() - Date.now()) / 86400000);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
                 return (
                   <div key={s.id} className="flex items-center justify-between text-sm border rounded px-3 py-2">
                     <div><p className="font-medium">{s.drug_name}</p><p className="text-xs text-muted-foreground">Batch: {s.batch_number || "—"} · Qty: {s.qty_available}</p></div>
@@ -69,6 +72,8 @@ function DashboardTab() {
 function BillingTab() {
   const { toast } = useToast();
   const [cart, setCart] = useState<any[]>([]);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [patientForm, setPatientForm] = useState<any>({ patient_name: "Cash", payment_mode: "cash", sale_date: new Date().toISOString().slice(0, 10) });
   const [drugSearch, setDrugSearch] = useState("");
   const [selectedStock, setSelectedStock] = useState<any>(null);
@@ -121,7 +126,7 @@ function BillingTab() {
                   return (
                     <div key={d.id} className="p-2">
                       <div className="flex items-center justify-between">
-                        <div><p className="text-sm font-medium">{d.name} <Badge variant="outline" className="text-xs ml-1">{d.schedule}</Badge></p><p className="text-xs text-muted-foreground">{d.generic_name} · {d.strength} · MRP: ₹{d.mrp}</p></div>
+                        <div><p className="text-sm font-medium">{d.name} <Badge variant="outline" className="text-xs ml-1">{d.schedule}</Badge></p><p className="text-xs text-muted-foreground">{d.generic_name} · {d.strength} · MRP: {sym}{d.mrp}</p></div>
                       </div>
                       {dStock.length > 0 ? (
                         <div className="flex gap-1 mt-1 flex-wrap">
@@ -144,15 +149,15 @@ function BillingTab() {
             {cart.length === 0 && <p className="text-muted-foreground text-sm text-center py-4">No items</p>}
             {cart.map((it, i) => (
               <div key={i} className="flex items-center gap-2 mb-2 text-sm">
-                <div className="flex-1 min-w-0"><p className="font-medium truncate">{it.drug_name} {it.schedule !== 'OTC' && <Badge className="text-xs bg-red-100 text-red-700 ml-1">{it.schedule}</Badge>}</p><p className="text-xs text-muted-foreground">Batch: {it.batch_number || "—"} · ₹{it.rate}/unit</p></div>
+                <div className="flex-1 min-w-0"><p className="font-medium truncate">{it.drug_name} {it.schedule !== 'OTC' && <Badge className="text-xs bg-red-100 text-red-700 ml-1">{it.schedule}</Badge>}</p><p className="text-xs text-muted-foreground">Batch: {it.batch_number || "—"} · {sym}{it.rate}/unit</p></div>
                 <Input type="number" value={it.quantity} onChange={e => updateCartQty(i, Number(e.target.value))} className="w-16 h-7 text-sm" min={1} />
-                <span className="w-20 text-right font-medium">₹{fmt(it.amount)}</span>
+                <span className="w-20 text-right font-medium">{sym}{fmt(it.amount)}</span>
                 <Button size="sm" variant="ghost" className="text-red-600 h-6 w-6 p-0" onClick={() => removeFromCart(i)}><X className="h-3 w-3" /></Button>
               </div>
             ))}
             {cart.length > 0 && (
               <div className="border-t pt-3 mt-3">
-                <div className="flex justify-between font-bold text-lg"><span>Total</span><span>₹{fmt(total)}</span></div>
+                <div className="flex justify-between font-bold text-lg"><span>Total</span><span>{sym}{fmt(total)}</span></div>
                 <Button className="w-full mt-3" onClick={submit} disabled={createSale.isPending || cart.length === 0}>Create Bill</Button>
               </div>
             )}
@@ -165,7 +170,7 @@ function BillingTab() {
               {sales.slice(0, 8).map((s: any) => (
                 <div key={s.id} className="flex items-center justify-between text-sm border rounded px-2 py-1.5">
                   <div><p className="font-medium">{s.bill_number}</p><p className="text-xs text-muted-foreground">{s.patient_name}</p></div>
-                  <span className="font-bold text-green-600">₹{fmt(s.total_amount)}</span>
+                  <span className="font-bold text-green-600">{sym}{fmt(s.total_amount)}</span>
                 </div>
               ))}
             </div>
@@ -180,6 +185,8 @@ function BillingTab() {
 function DrugMasterTab() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({});
@@ -212,7 +219,7 @@ function DrugMasterTab() {
                 <td className="px-3 py-2">{d.generic_name || "—"}</td>
                 <td className="px-3 py-2"><Badge className={d.schedule === 'H' || d.schedule === 'X' ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-700"}>{d.schedule}</Badge></td>
                 <td className="px-3 py-2">{d.form} {d.strength}</td>
-                <td className="px-3 py-2">₹{fmt(d.mrp)}</td>
+                <td className="px-3 py-2">{sym}{fmt(d.mrp)}</td>
                 <td className="px-3 py-2">{d.gst_rate}%</td>
                 <td className="px-3 py-2">{d.reorder_level}</td>
                 <td className="px-3 py-2"><div className="flex gap-1"><Button size="sm" variant="ghost" onClick={() => openForm(d)}><Pencil className="h-3 w-3" /></Button><Button size="sm" variant="ghost" className="text-red-600" onClick={() => del.mutate(d.id)}><Trash2 className="h-3 w-3" /></Button></div></td>
@@ -251,6 +258,8 @@ function DrugMasterTab() {
 function StockTab() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [form, setForm] = useState<any>({});
 
   const { data: stock = [] } = useQuery<any[]>({ queryKey: ["/api/pharmacy/stock"] });
@@ -286,8 +295,8 @@ function StockTab() {
                 <td className={`px-3 py-2 ${getExpiryColor(s.expiry_date)}`}>{s.expiry_date ? new Date(s.expiry_date).toLocaleDateString("en-IN") : "—"}</td>
                 <td className="px-3 py-2 font-bold">{s.qty_available}</td>
                 <td className="px-3 py-2">{s.qty_received}</td>
-                <td className="px-3 py-2">₹{fmt(s.mrp)}</td>
-                <td className="px-3 py-2">₹{fmt(s.purchase_price)}</td>
+                <td className="px-3 py-2">{sym}{fmt(s.mrp)}</td>
+                <td className="px-3 py-2">{sym}{fmt(s.purchase_price)}</td>
               </tr>
             ))}
             {stock.length === 0 && <tr><td colSpan={7} className="px-3 py-4 text-center text-muted-foreground">No stock</td></tr>}
@@ -318,6 +327,8 @@ function StockTab() {
 function PurchasesTab() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [form, setForm] = useState<any>({ items: [] });
 
   const { data: purchases = [] } = useQuery<any[]>({ queryKey: ["/api/pharmacy/purchases"] });
@@ -346,8 +357,8 @@ function PurchasesTab() {
                 <td className="px-3 py-2">{p.supplier_name}</td>
                 <td className="px-3 py-2">{p.invoice_number || "—"}</td>
                 <td className="px-3 py-2">{p.purchase_date ? new Date(p.purchase_date).toLocaleDateString("en-IN") : "—"}</td>
-                <td className="px-3 py-2">₹{fmt(p.total_amount)}</td>
-                <td className="px-3 py-2 font-bold">₹{fmt(p.net_amount)}</td>
+                <td className="px-3 py-2">{sym}{fmt(p.total_amount)}</td>
+                <td className="px-3 py-2 font-bold">{sym}{fmt(p.net_amount)}</td>
                 <td className="px-3 py-2"><Badge variant="outline">{p.payment_mode}</Badge></td>
               </tr>
             ))}
@@ -373,13 +384,13 @@ function PurchasesTab() {
                 <div className="col-span-2"><Select value={it.drug_id?.toString() || ""} onValueChange={v => updItem(i, 'drug_id', v)}><SelectTrigger className="text-xs"><SelectValue placeholder="Drug" /></SelectTrigger><SelectContent>{drugs.map((d: any) => <SelectItem key={d.id} value={d.id.toString()}>{d.name}</SelectItem>)}</SelectContent></Select></div>
                 <Input placeholder="Batch" value={it.batch_number || ""} onChange={e => updItem(i, 'batch_number', e.target.value)} className="text-xs" />
                 <Input placeholder="Qty" type="number" value={it.quantity || ""} onChange={e => updItem(i, 'quantity', e.target.value)} className="text-xs" />
-                <Input placeholder="Purchase₹" type="number" value={it.purchase_price || ""} onChange={e => updItem(i, 'purchase_price', e.target.value)} className="text-xs" />
+                <Input placeholder="Purchase${sym}" type="number" value={it.purchase_price || ""} onChange={e => updItem(i, 'purchase_price', e.target.value)} className="text-xs" />
                 <Button size="sm" variant="ghost" className="text-red-600" onClick={() => remItem(i)}><X className="h-3 w-3" /></Button>
               </div>
             ))}
           </div>
           <div className="flex items-center justify-between pt-2 border-t">
-            <span className="font-semibold">Total: ₹{fmt(form.total_amount)}</span>
+            <span className="font-semibold">Total: {sym}{fmt(form.total_amount)}</span>
             <div className="flex gap-2"><Button onClick={() => save.mutate({ ...form, net_amount: form.total_amount })} disabled={!form.supplier_name || !form.items?.length}>Create</Button><Button variant="outline" onClick={() => setShowForm(false)}><X className="h-4 w-4" /></Button></div>
           </div>
         </DialogContent>

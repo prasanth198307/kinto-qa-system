@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Heart, CheckCircle, Smartphone } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (m: string, p: string, b?: any) =>
   fetch(p, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined }).then(async (r) => {
@@ -14,12 +15,14 @@ const api = (m: string, p: string, b?: any) =>
     return d;
   });
 
-const fmt = (n: any) => `₹${Number(n || 0).toLocaleString("en-IN")}`;
+const fmt = (n: any) => `${sym}${Number(n || 0).toLocaleString("en-IN")}`;
 const PRESETS = [500, 1000, 2500, 5000];
 
 export default function DonatePublicPage() {
   const [, params] = useRoute("/donate/:slug");
   const slug = params?.slug || "";
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [form, setForm] = useState({ donor_name: "", donor_email: "", donor_phone: "", amount: "", purpose: "" });
   const [done, setDone] = useState<any>(null);
 
@@ -77,10 +80,10 @@ export default function DonatePublicPage() {
           </div>
 
           <div>
-            <Label className="text-xs">Amount (₹)</Label>
+            <Label className="text-xs">Amount (${sym})</Label>
             <div className="grid grid-cols-4 gap-2 my-2">
               {PRESETS.map(a => (
-                <Button key={a} type="button" variant={form.amount === String(a) ? "default" : "outline"} size="sm" onClick={() => setForm(p => ({ ...p, amount: String(a) }))}>₹{a}</Button>
+                <Button key={a} type="button" variant={form.amount === String(a) ? "default" : "outline"} size="sm" onClick={() => setForm(p => ({ ...p, amount: String(a) }))}>{sym}{a}</Button>
               ))}
             </div>
             <Input type="number" value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))} placeholder="Custom amount" />

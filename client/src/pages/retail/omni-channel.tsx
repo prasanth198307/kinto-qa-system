@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, RefreshCw, Globe, Trash2 } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (m: string, p: string, b?: any) =>
   fetch(p, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined }).then((r) => r.json());
@@ -19,6 +20,8 @@ const BLANK = { product_id: "", channel: "website", channel_sku: "", channel_pri
 
 export default function RetailOmniChannelPage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<any>(BLANK);
@@ -84,7 +87,7 @@ export default function RetailOmniChannelPage() {
                       <TableCell className="font-medium">{l.product_name || `#${l.product_id}`}</TableCell>
                       <TableCell><Badge variant="outline" className="uppercase text-xs">{l.channel}</Badge></TableCell>
                       <TableCell className="font-mono text-sm">{l.channel_sku || "—"}</TableCell>
-                      <TableCell>₹{Number(l.channel_price)}</TableCell>
+                      <TableCell>{sym}{Number(l.channel_price)}</TableCell>
                       <TableCell>{Number(l.store_stock)}</TableCell>
                       <TableCell>{Number(l.buffer_qty)}</TableCell>
                       <TableCell className="font-semibold">{Number(l.online_stock)}</TableCell>

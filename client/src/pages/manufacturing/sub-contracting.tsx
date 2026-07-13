@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Send, PackageCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string, body?: unknown) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -24,6 +25,8 @@ const STATUS_COLOR: Record<string, string> = {
 
 export default function SubContractingPage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [challanOpen, setChallanOpen] = useState<string | null>(null);
@@ -108,7 +111,7 @@ export default function SubContractingPage() {
                     <TableCell>{jw.product_name || "—"}</TableCell>
                     <TableCell>{jw.planned_qty}</TableCell>
                     <TableCell>{jw.received_qty ?? 0}</TableCell>
-                    <TableCell>{jw.total_value ? `₹${Number(jw.total_value).toLocaleString("en-IN")}` : "—"}</TableCell>
+                    <TableCell>{jw.total_value ? `${sym}${Number(jw.total_value).toLocaleString("en-IN")}` : "—"}</TableCell>
                     <TableCell>{jw.planned_return_date ? new Date(jw.planned_return_date).toLocaleDateString("en-IN") : "—"}</TableCell>
                     <TableCell><Badge className={STATUS_COLOR[jw.status] || ""}>{jw.status.replace(/_/g, " ")}</Badge></TableCell>
                     <TableCell>

@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const apiRequest = async (method: string, url: string, body?: any) => {
   const r = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined, credentials: "include" });
@@ -18,10 +19,12 @@ const fmt = (n: any) => Number(n || 0).toLocaleString("en-IN", { maximumFraction
 function FrontDeskTab() {
   const { data: kpi = {} } = useQuery({ queryKey: ["/api/hotel/kpi"], queryFn: () => apiRequest("GET", "/api/hotel/kpi") });
   const cards = [
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
     { label: "Rooms Occupied", value: kpi.rooms_occupied || 0 },
     { label: "Occupancy %", value: `${fmt(kpi.occupancy_pct)}%` },
-    { label: "ADR", value: `₹${fmt(kpi.adr)}` },
-    { label: "RevPAR", value: `₹${fmt(kpi.revpar)}` },
+    { label: "ADR", value: `${sym}${fmt(kpi.adr)}` },
+    { label: "RevPAR", value: `${sym}${fmt(kpi.revpar)}` },
   ];
   return (
     <div className="space-y-4">
@@ -40,6 +43,8 @@ function FrontDeskTab() {
 
 function RatePlansTab() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { data: plans = [] } = useQuery({ queryKey: ["/api/hotel/rate-plans"], queryFn: () => apiRequest("GET", "/api/hotel/rate-plans") });
   const [f, setF] = useState({ plan_name: "", plan_code: "", plan_type: "standard", meal_plan: "ro", is_refundable: true });
   const add = useMutation({ mutationFn: (d: any) => apiRequest("POST", "/api/hotel/rate-plans", d), onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/hotel/rate-plans"] }) });
@@ -63,6 +68,8 @@ function RatePlansTab() {
 
 function PackagesTab() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { data: pkgs = [] } = useQuery({ queryKey: ["/api/hotel/packages"], queryFn: () => apiRequest("GET", "/api/hotel/packages") });
   const [f, setF] = useState({ package_name: "", room_type_id: "", rate_plan_id: "", package_price: "", valid_from: "", valid_to: "" });
   const add = useMutation({ mutationFn: (d: any) => apiRequest("POST", "/api/hotel/packages", d), onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/hotel/packages"] }) });
@@ -78,7 +85,7 @@ function PackagesTab() {
         </CardContent>
       </Card>
       <Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Price</TableHead><TableHead>Valid From</TableHead><TableHead>Valid To</TableHead></TableRow></TableHeader>
-        <TableBody>{pkgs.map((p: any) => <TableRow key={p.id}><TableCell>{p.package_name}</TableCell><TableCell>₹{fmt(p.package_price)}</TableCell><TableCell>{p.valid_from}</TableCell><TableCell>{p.valid_to}</TableCell></TableRow>)}</TableBody>
+        <TableBody>{pkgs.map((p: any) => <TableRow key={p.id}><TableCell>{p.package_name}</TableCell><TableCell>{sym}{fmt(p.package_price)}</TableCell><TableCell>{p.valid_from}</TableCell><TableCell>{p.valid_to}</TableCell></TableRow>)}</TableBody>
       </Table>
     </div>
   );
@@ -86,13 +93,15 @@ function PackagesTab() {
 
 function NightAuditTab() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { data: history = [] } = useQuery({ queryKey: ["/api/hotel/night-audit/history"], queryFn: () => apiRequest("GET", "/api/hotel/night-audit/history") });
   const run = useMutation({ mutationFn: () => apiRequest("POST", "/api/hotel/night-audit/run", {}), onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/hotel/night-audit/history"] }) });
   return (
     <div className="space-y-4">
       <Button onClick={() => run.mutate()} disabled={run.isPending}>{run.isPending ? "Running..." : "Run Night Audit"}</Button>
       <Table><TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Rooms</TableHead><TableHead>Occ%</TableHead><TableHead>Revenue</TableHead><TableHead>ADR</TableHead><TableHead>RevPAR</TableHead></TableRow></TableHeader>
-        <TableBody>{history.map((h: any) => <TableRow key={h.id}><TableCell>{h.audit_date}</TableCell><TableCell>{h.rooms_occupied}</TableCell><TableCell>{fmt(h.occupancy_pct)}%</TableCell><TableCell>₹{fmt(h.room_revenue)}</TableCell><TableCell>₹{fmt(h.adr)}</TableCell><TableCell>₹{fmt(h.revpar)}</TableCell></TableRow>)}</TableBody>
+        <TableBody>{history.map((h: any) => <TableRow key={h.id}><TableCell>{h.audit_date}</TableCell><TableCell>{h.rooms_occupied}</TableCell><TableCell>{fmt(h.occupancy_pct)}%</TableCell><TableCell>{sym}{fmt(h.room_revenue)}</TableCell><TableCell>{sym}{fmt(h.adr)}</TableCell><TableCell>{sym}{fmt(h.revpar)}</TableCell></TableRow>)}</TableBody>
       </Table>
     </div>
   );
@@ -100,6 +109,8 @@ function NightAuditTab() {
 
 function CorporateTab() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { data: corps = [] } = useQuery({ queryKey: ["/api/hotel/corporate-accounts"], queryFn: () => apiRequest("GET", "/api/hotel/corporate-accounts") });
   const { data: agents = [] } = useQuery({ queryKey: ["/api/hotel/travel-agents"], queryFn: () => apiRequest("GET", "/api/hotel/travel-agents") });
   const [cf, setCf] = useState({ company_name: "", gstin: "", credit_limit: "", credit_days: "" });
@@ -111,7 +122,7 @@ function CorporateTab() {
       <TabsList><TabsTrigger value="corporate">Corporate</TabsTrigger><TabsTrigger value="agents">Travel Agents</TabsTrigger></TabsList>
       <TabsContent value="corporate" className="space-y-3">
         <div className="flex gap-2"><Input placeholder="Company" value={cf.company_name} onChange={e => setCf({ ...cf, company_name: e.target.value })} /><Input placeholder="GSTIN" value={cf.gstin} onChange={e => setCf({ ...cf, gstin: e.target.value })} /><Input placeholder="Credit Limit" value={cf.credit_limit} onChange={e => setCf({ ...cf, credit_limit: e.target.value })} /><Button onClick={() => addCorp.mutate(cf)}>Add</Button></div>
-        <Table><TableHeader><TableRow><TableHead>Company</TableHead><TableHead>GSTIN</TableHead><TableHead>Credit Limit</TableHead></TableRow></TableHeader><TableBody>{corps.map((c: any) => <TableRow key={c.id}><TableCell>{c.company_name}</TableCell><TableCell>{c.gstin}</TableCell><TableCell>₹{fmt(c.credit_limit)}</TableCell></TableRow>)}</TableBody></Table>
+        <Table><TableHeader><TableRow><TableHead>Company</TableHead><TableHead>GSTIN</TableHead><TableHead>Credit Limit</TableHead></TableRow></TableHeader><TableBody>{corps.map((c: any) => <TableRow key={c.id}><TableCell>{c.company_name}</TableCell><TableCell>{c.gstin}</TableCell><TableCell>{sym}{fmt(c.credit_limit)}</TableCell></TableRow>)}</TableBody></Table>
       </TabsContent>
       <TabsContent value="agents" className="space-y-3">
         <div className="flex gap-2"><Input placeholder="Agent Name" value={af.agent_name} onChange={e => setAf({ ...af, agent_name: e.target.value })} /><Input placeholder="Code" value={af.agent_code} onChange={e => setAf({ ...af, agent_code: e.target.value })} /><Input placeholder="Commission%" value={af.commission_pct} onChange={e => setAf({ ...af, commission_pct: e.target.value })} /><Button onClick={() => addAgent.mutate(af)}>Add</Button></div>
@@ -123,6 +134,8 @@ function CorporateTab() {
 
 function LostFoundTab() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { data: items = [] } = useQuery({ queryKey: ["/api/hotel/lost-found"], queryFn: () => apiRequest("GET", "/api/hotel/lost-found") });
   const [f, setF] = useState({ item_description: "", found_location: "", found_by: "", room_number: "", guest_name: "" });
   const add = useMutation({ mutationFn: (d: any) => apiRequest("POST", "/api/hotel/lost-found", d), onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/hotel/lost-found"] }) });
@@ -149,11 +162,13 @@ function LostFoundTab() {
 function OnlineBookingsTab() {
   const { data: bookings = [] } = useQuery({ queryKey: ["/api/hotel/online-booking"], queryFn: () => apiRequest("GET", "/api/hotel/online-booking") });
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const confirm = useMutation({ mutationFn: (id: any) => apiRequest("POST", "/api/hotel/online-booking/confirm", { booking_id: id }), onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/hotel/online-booking"] }) });
   const statusColor: Record<string, any> = { confirmed: "default", pending: "secondary", cancelled: "destructive" };
   return (
     <Table><TableHeader><TableRow><TableHead>Guest</TableHead><TableHead>Check In</TableHead><TableHead>Check Out</TableHead><TableHead>Room Type</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead><TableHead></TableHead></TableRow></TableHeader>
-      <TableBody>{bookings.map((b: any) => <TableRow key={b.id}><TableCell>{b.guest_name}</TableCell><TableCell>{b.check_in_date}</TableCell><TableCell>{b.check_out_date}</TableCell><TableCell>{b.room_type}</TableCell><TableCell>₹{fmt(b.total_amount)}</TableCell><TableCell><Badge variant={statusColor[b.status] || "secondary"}>{b.status}</Badge></TableCell><TableCell>{b.status === "pending" && <Button size="sm" onClick={() => confirm.mutate(b.id)}>Confirm</Button>}</TableCell></TableRow>)}</TableBody>
+      <TableBody>{bookings.map((b: any) => <TableRow key={b.id}><TableCell>{b.guest_name}</TableCell><TableCell>{b.check_in_date}</TableCell><TableCell>{b.check_out_date}</TableCell><TableCell>{b.room_type}</TableCell><TableCell>{sym}{fmt(b.total_amount)}</TableCell><TableCell><Badge variant={statusColor[b.status] || "secondary"}>{b.status}</Badge></TableCell><TableCell>{b.status === "pending" && <Button size="sm" onClick={() => confirm.mutate(b.id)}>Confirm</Button>}</TableCell></TableRow>)}</TableBody>
     </Table>
   );
 }

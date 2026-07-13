@@ -11,10 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Shield, CheckCircle, AlertTriangle } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const fmt = (n: any, d = 2) => Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: d });
 const fmtWt = (n: any) => `${fmt(n, 3)} g`;
-const fmtAmt = (n: any) => `₹${fmt(n)}`;
+const fmtAmt = (n: any) => `${sym}${fmt(n)}`;
 const today = () => new Date().toISOString().slice(0, 10);
 
 function FL({ label, children }: any) {
@@ -25,6 +26,8 @@ function SH({ title, action }: any) {
 }
 function SBadge({ status }: { status: string }) {
   const cls: Record<string, string> = {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
     booked: "bg-blue-100 text-blue-700", delivered: "bg-green-100 text-green-700",
     cancelled: "bg-red-100 text-red-700", in_progress: "bg-yellow-100 text-yellow-700",
     completed: "bg-green-100 text-green-700",
@@ -36,6 +39,8 @@ function SBadge({ status }: { status: string }) {
 export function BullionBookingsSection() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({ party_type: "supplier", metal_type: "gold", form_type: "bar", payment_terms: "advance", delivery_type: "physical" });
   const { data: bookings = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/bullion-bookings"] });
@@ -113,7 +118,7 @@ export function BullionBookingsSection() {
                 </FL>
                 <FL label="Fineness"><Input value={form.fineness || ""} onChange={e => set("fineness", e.target.value)} placeholder="999.9 / 995" /></FL>
                 <FL label="Weight (g)"><Input data-testid="input-booking-weight" type="number" value={form.weight_gm || ""} onChange={e => set("weight_gm", e.target.value)} /></FL>
-                <FL label="Rate/g (₹)"><Input data-testid="input-booking-rate" type="number" value={form.rate_per_gram || ""} onChange={e => set("rate_per_gram", e.target.value)} /></FL>
+                <FL label="Rate/g (${sym})"><Input data-testid="input-booking-rate" type="number" value={form.rate_per_gram || ""} onChange={e => set("rate_per_gram", e.target.value)} /></FL>
                 <FL label="Payment Terms">
                   <Select value={form.payment_terms || "advance"} onValueChange={v => set("payment_terms", v)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>

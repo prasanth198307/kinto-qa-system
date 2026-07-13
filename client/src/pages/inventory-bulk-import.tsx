@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import {
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
   FileSpreadsheet, Upload, CheckCircle2, AlertTriangle, Download,
   RotateCcw, ChevronRight, X, FileCheck, Info, Package, ShoppingCart, Layers,
 } from "lucide-react";
@@ -34,7 +35,7 @@ const MODE_CONFIG: Record<Mode, {
       { col: "Description",             req: false, note: "Optional detailed description or specification." },
       { col: "Category",                req: false, note: "Group (e.g. Steel, Chemicals, Packaging)." },
       { col: "UOM",                     req: true,  note: "Unit: KG / LTR / PCS / MTR / NOS." },
-      { col: "Unit Cost (₹)",           req: false, note: "Purchase cost per unit from supplier." },
+      { col: "Unit Cost ",           req: false, note: "Purchase cost per unit from supplier." },
       { col: "Reorder Level (qty)",     req: false, note: "Trigger low-stock alert at this qty." },
       { col: "Max Stock Level (qty)",   req: false, note: "Maximum qty to keep in store." },
       { col: "Opening Stock (qty)",     req: false, note: "Current qty on hand as of today." },
@@ -55,15 +56,15 @@ const MODE_CONFIG: Record<Mode, {
       { col: "Category",                    req: false, note: "Product family or category." },
       { col: "HSN Code",                    req: true,  note: "6-digit HSN for GST invoicing / dispatch." },
       { col: "GST %",                       req: true,  note: "0 / 5 / 12 / 18 / 28." },
-      { col: "Standard Cost (₹)",           req: false, note: "Cost of production per unit." },
-      { col: "Selling Price (₹)",           req: true,  note: "Default dispatch / selling price." },
+      { col: "Standard Cost ",           req: false, note: "Cost of production per unit." },
+      { col: "Selling Price ",           req: true,  note: "Default dispatch / selling price." },
       { col: "UOM",                         req: true,  note: "PCS / KG / BOX / SET." },
       { col: "Item Type (goods/service)",   req: false, note: "Usually goods. Use service for job-work." },
       { col: "Reorder Level",               req: false, note: "Min FG stock before re-triggering production." },
       { col: "— POS section (if sold at retail counter) —", req: false, note: "Leave the next 3 columns blank if this product is never sold at a counter." },
       { col: "Sell at Retail Counter (Y/N)", req: false, note: "Y = this finished good is also scanned at POS. Activates barcode + MRP fields for this row only." },
       { col: "Barcode/EAN",                 req: false, note: "13-digit EAN or internal barcode. Required if Sell at Retail Counter = Y." },
-      { col: "MRP (₹)",                     req: false, note: "Max retail price. Required if Sell at Retail Counter = Y. Selling Price must be ≤ MRP." },
+      { col: "MRP ",                     req: false, note: "Max retail price. Required if Sell at Retail Counter = Y. Selling Price must be ≤ MRP." },
     ],
   },
   "retail": {
@@ -79,9 +80,9 @@ const MODE_CONFIG: Record<Mode, {
       { col: "Category",                   req: false, note: "Aisle / shelf category (e.g. Staples, Beverages)." },
       { col: "HSN Code",                   req: true,  note: "6-digit HSN for GST billing." },
       { col: "GST %",                      req: true,  note: "0 / 5 / 12 / 18." },
-      { col: "MRP (₹)",                    req: true,  note: "Max retail price printed on packet. Selling price must be ≤ MRP." },
-      { col: "Purchase Rate (₹)",          req: false, note: "Cost price from distributor / supplier." },
-      { col: "Selling Price (₹)",          req: true,  note: "Default POS counter billing price." },
+      { col: "MRP ",                    req: true,  note: "Max retail price printed on packet. Selling price must be ≤ MRP." },
+      { col: "Purchase Rate ",          req: false, note: "Cost price from distributor / supplier." },
+      { col: "Selling Price ",          req: true,  note: "Default POS counter billing price." },
       { col: "UOM",                        req: true,  note: "PCS / KG / LTR / PKT." },
       { col: "Sold By (unit/weight)",      req: false, note: "unit = fixed price per piece; weight = per kg via weighing scale." },
       { col: "Reorder Level",              req: false, note: "Low-stock alert threshold quantity." },
@@ -126,6 +127,8 @@ function StepBar({ step }: { step: Step }) {
 export default function InventoryBulkImportPage() {
   const { toast } = useToast();
   const [step, setStep] = useState<Step>(0);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [mode, setMode] = useState<Mode>("retail");
   const [preview, setPreview] = useState<PreviewResult | null>(null);
   const [importing, setImporting] = useState(false);
@@ -206,7 +209,7 @@ export default function InventoryBulkImportPage() {
       const vals: Record<string, any> = {
         "Material Code": r.material_code || "—", "Material Name": r.material_name,
         "Category": r.category || "—", "UOM": r.base_unit,
-        "Unit Cost": r.unit_cost ? `₹${r.unit_cost}` : "—",
+        "Unit Cost": r.unit_cost ? `${sym}${r.unit_cost}` : "—",
         "Reorder Lvl": r.reorder_level || "—", "Opening Stock": r.opening_stock || "—",
         "Supplier": r.supplier || "—",
       };
@@ -218,12 +221,12 @@ export default function InventoryBulkImportPage() {
         "Product Name": r.product_name,
         "HSN": r.hsn_code,
         "GST%": `${r.gst_percent}%`,
-        "Selling ₹": `₹${r.base_price}`,
+        "Selling ${sym}": `${sym}${r.base_price}`,
         "Sell@POS": r.pos_enabled
           ? <span className="text-green-600 font-medium">Yes</span>
           : <span className="text-muted-foreground">No</span>,
         "Barcode": r.barcode || "—",
-        "MRP": r.mrp ? `₹${(r.mrp / 100).toFixed(2)}` : "—",
+        "MRP": r.mrp ? `${sym}${(r.mrp / 100).toFixed(2)}` : "—",
       };
       return <td key={i} className="px-3 py-2">{vals[col] ?? "—"}</td>;
     }
@@ -235,8 +238,8 @@ export default function InventoryBulkImportPage() {
       "HSN": r.hsn_code,
       "Brand": r.brand || "—",
       "Opening Stock": r.opening_stock ? `${r.opening_stock} ${r.unit_label || ""}`.trim() : "—",
-      "GST%": `${r.gst_percent}%`, "MRP": `₹${(r.mrp / 100).toFixed(2)}`,
-      "Selling ₹": `₹${r.base_price}`, "UOM": r.unit_label,
+      "GST%": `${r.gst_percent}%`, "MRP": `${sym}${(r.mrp / 100).toFixed(2)}`,
+      "Selling ${sym}": `${sym}${r.base_price}`, "UOM": r.unit_label,
     };
     return <td key={i} className="px-3 py-2">{vals[col] ?? "—"}</td>;
   };

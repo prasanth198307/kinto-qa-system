@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2, RefreshCw, PlayCircle, Pencil } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const FREQUENCIES = [
   { value: "weekly", label: "Weekly" },
@@ -21,6 +22,8 @@ const FREQUENCIES = [
 function RecurringForm({ schedule, onSave, onCancel }: any) {
   const { toast } = useToast();
   const [form, setForm] = useState({
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
     customerName: schedule?.customer_name || "", customerGstin: schedule?.customer_gstin || "",
     billingAddress: schedule?.billing_address || "", frequency: schedule?.frequency || "monthly",
     nextDue: schedule?.next_due?.split("T")[0] || new Date().toISOString().split("T")[0],
@@ -55,7 +58,7 @@ function RecurringForm({ schedule, onSave, onCancel }: any) {
             <SelectContent>{FREQUENCIES.map(f => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}</SelectContent>
           </Select>
         </div>
-        <div><Label>Amount (₹ excl. GST) <span className="text-destructive">*</span></Label><Input type="number" value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))} /></div>
+        <div><Label>Amount (${sym} excl. GST) <span className="text-destructive">*</span></Label><Input type="number" value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))} /></div>
         <div><Label>Next Due Date <span className="text-destructive">*</span></Label><Input type="date" value={form.nextDue} onChange={e => setForm(p => ({ ...p, nextDue: e.target.value }))} /></div>
         <div><Label>End Date (optional)</Label><Input type="date" value={form.endDate} onChange={e => setForm(p => ({ ...p, endDate: e.target.value }))} /></div>
         <div><Label>Description / Service</Label><Input value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} placeholder="e.g. Annual Maintenance Contract" /></div>
@@ -88,6 +91,8 @@ function RecurringForm({ schedule, onSave, onCancel }: any) {
 export default function RecurringInvoicesPage() {
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [editSchedule, setEditSchedule] = useState<any>(null);
 
   const { data: schedules = [], isLoading } = useQuery<any[]>({ queryKey: ["/api/assets/recurring-invoices"] });
@@ -135,7 +140,7 @@ export default function RecurringInvoicesPage() {
         {[
           { label: "Active Schedules", value: schedules.filter((s: any) => s.is_active).length },
           { label: "Due / Overdue", value: dueTodayOrOverdue.length },
-          { label: "Monthly Value", value: `₹${schedules.filter((s: any) => s.is_active && s.frequency === "monthly").reduce((s2: number, s: any) => s2 + Number(s.amount), 0).toLocaleString("en-IN")}` },
+          { label: "Monthly Value", value: `${sym}${schedules.filter((s: any) => s.is_active && s.frequency === "monthly").reduce((s2: number, s: any) => s2 + Number(s.amount), 0).toLocaleString("en-IN")}` },
           { label: "Total Schedules", value: schedules.length },
         ].map(s => (
           <Card key={s.label}><CardContent className="p-3"><p className="text-xs text-muted-foreground">{s.label}</p><p className="text-xl font-bold">{s.value}</p></CardContent></Card>
@@ -166,7 +171,7 @@ export default function RecurringInvoicesPage() {
                       </p>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold">₹{Number(s.amount).toLocaleString("en-IN")}</span>
+                      <span className="font-semibold">{sym}{Number(s.amount).toLocaleString("en-IN")}</span>
                       {s.is_active && (
                         <Button size="sm" variant="outline" onClick={() => generateMutation.mutate(s.id)} disabled={generateMutation.isPending} data-testid={`button-generate-${s.id}`}>
                           <PlayCircle className="w-4 h-4 mr-1" />Generate

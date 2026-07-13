@@ -11,9 +11,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Settings, Users, ShoppingCart, Tag, TrendingUp, Pencil, Save } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const fmt = (n: any, d = 2) => Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: d });
-const fmtAmt = (n: any) => `₹${fmt(n)}`;
+const fmtAmt = (n: any) => `${sym}${fmt(n)}`;
 const today = () => new Date().toISOString().slice(0, 10);
 
 function FL({ label, children }: any) {
@@ -228,9 +229,9 @@ export function ECommerceSection() {
             </FL>
             <div className="grid grid-cols-2 gap-3">
               <FL label="Discount %"><Input type="number" value={couponForm.discount_pct || 0} onChange={e => setCouponForm((p: any) => ({ ...p, discount_pct: e.target.value }))} /></FL>
-              <FL label="Flat Discount (₹)"><Input type="number" value={couponForm.discount_value || 0} onChange={e => setCouponForm((p: any) => ({ ...p, discount_value: e.target.value }))} /></FL>
-              <FL label="Min Order (₹)"><Input type="number" value={couponForm.min_order_value || ""} onChange={e => setCouponForm((p: any) => ({ ...p, min_order_value: e.target.value }))} /></FL>
-              <FL label="Max Discount (₹)"><Input type="number" value={couponForm.max_discount || ""} onChange={e => setCouponForm((p: any) => ({ ...p, max_discount: e.target.value }))} /></FL>
+              <FL label="Flat Discount "><Input type="number" value={couponForm.discount_value || 0} onChange={e => setCouponForm((p: any) => ({ ...p, discount_value: e.target.value }))} /></FL>
+              <FL label="Min Order "><Input type="number" value={couponForm.min_order_value || ""} onChange={e => setCouponForm((p: any) => ({ ...p, min_order_value: e.target.value }))} /></FL>
+              <FL label="Max Discount "><Input type="number" value={couponForm.max_discount || ""} onChange={e => setCouponForm((p: any) => ({ ...p, max_discount: e.target.value }))} /></FL>
               <FL label="Usage Limit"><Input type="number" value={couponForm.usage_limit || ""} onChange={e => setCouponForm((p: any) => ({ ...p, usage_limit: e.target.value }))} /></FL>
               <FL label="Valid From"><Input type="date" value={couponForm.valid_from || ""} onChange={e => setCouponForm((p: any) => ({ ...p, valid_from: e.target.value }))} /></FL>
               <FL label="Valid To"><Input type="date" value={couponForm.valid_to || ""} onChange={e => setCouponForm((p: any) => ({ ...p, valid_to: e.target.value }))} /></FL>

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const apiRequest = async (method: string, url: string, body?: any) => {
   const r = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined, credentials: "include" });
@@ -19,7 +20,9 @@ const LEAD_STAGES = ["New", "Contacted", "Site Visit", "Negotiation", "Booking",
 
 function DashboardTab() {
   const { data: kpi = {} } = useQuery({ queryKey: ["/api/real-estate/reports/unit-status-inventory"], queryFn: () => apiRequest("GET", "/api/real-estate/reports/unit-status-inventory") });
-  const cards = [["Total Units", kpi.total_units], ["Sold", kpi.sold], ["Booked", kpi.booked], ["Available", kpi.available], ["Revenue", `₹${fmt(kpi.revenue_collected)}`]];
+  const cards = [["Total Units", kpi.total_units], ["Sold", kpi.sold], ["Booked", kpi.booked], ["Available", kpi.available], ["Revenue", `${sym}${fmt(kpi.revenue_collected)}`]];
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const funnel = [["Leads", kpi.leads], ["Site Visits", kpi.site_visits], ["Negotiations", kpi.negotiations], ["Bookings", kpi.bookings], ["Possessed", kpi.possessed]];
   return (
     <div className="space-y-4">
@@ -35,6 +38,8 @@ function DashboardTab() {
 
 function CRMTab() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { data: pipeline = {} } = useQuery({ queryKey: ["/api/real-estate/leads/pipeline"], queryFn: () => apiRequest("GET", "/api/real-estate/leads/pipeline") });
   const [showAdd, setShowAdd] = useState(false);
   const [f, setF] = useState({ name: "", phone: "", email: "", source: "", interested_in: "", budget_min: "", budget_max: "", configuration: "" });
@@ -51,7 +56,7 @@ function CRMTab() {
               <div className="text-xs font-semibold text-gray-600 mb-2">{stage} ({leads.length})</div>
               {leads.map((l: any) => (
                 <div key={l.id} className="bg-white border rounded p-2 mb-2 text-xs">
-                  <div className="font-medium">{l.name}</div><div>{l.phone}</div><div>₹{fmt(l.budget_min)}-{fmt(l.budget_max)}</div>
+                  <div className="font-medium">{l.name}</div><div>{l.phone}</div><div>{sym}{fmt(l.budget_min)}-{fmt(l.budget_max)}</div>
                   <div className="flex gap-1 mt-1 flex-wrap">{LEAD_STAGES.filter(s => s !== stage).slice(0,2).map(s => <button key={s} className="text-blue-600 underline text-xs" onClick={() => move.mutate({ id: l.id, stage: s })}>→{s}</button>)}</div>
                 </div>
               ))}
@@ -79,6 +84,8 @@ function CRMTab() {
 
 function SiteVisitsTab() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { data: visits = [] } = useQuery({ queryKey: ["/api/real-estate/site-visits"], queryFn: () => apiRequest("GET", "/api/real-estate/site-visits") });
   const [f, setF] = useState({ lead_id: "", visit_date: "", visit_time: "", sales_person: "" });
   const add = useMutation({ mutationFn: (d: any) => apiRequest("POST", "/api/real-estate/site-visits", d), onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/real-estate/site-visits"] }) });
@@ -103,6 +110,8 @@ function SiteVisitsTab() {
 
 function BookingsTab() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { data: bookings = [] } = useQuery({ queryKey: ["/api/real-estate/bookings"], queryFn: () => apiRequest("GET", "/api/real-estate/bookings") });
   const [showAdd, setShowAdd] = useState(false);
   const [f, setF] = useState({ lead_id: "", unit_id: "", total_amount: "", broker_id: "", loan_bank: "", loan_amount: "" });
@@ -112,7 +121,7 @@ function BookingsTab() {
     <div className="space-y-3">
       <Button onClick={() => setShowAdd(true)}>+ New Booking</Button>
       <Table><TableHeader><TableRow><TableHead>Unit</TableHead><TableHead>Customer</TableHead><TableHead>Total</TableHead><TableHead>Paid</TableHead><TableHead>Outstanding</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
-        <TableBody>{bookings.map((b: any) => <TableRow key={b.id}><TableCell>{b.unit_number}</TableCell><TableCell>{b.customer_name}</TableCell><TableCell>₹{fmt(b.total_cost)}</TableCell><TableCell>₹{fmt(b.paid)}</TableCell><TableCell>₹{fmt(b.outstanding)}</TableCell><TableCell><Badge variant={statusColor[b.status] || "secondary"}>{b.status}</Badge></TableCell></TableRow>)}</TableBody>
+        <TableBody>{bookings.map((b: any) => <TableRow key={b.id}><TableCell>{b.unit_number}</TableCell><TableCell>{b.customer_name}</TableCell><TableCell>{sym}{fmt(b.total_cost)}</TableCell><TableCell>{sym}{fmt(b.paid)}</TableCell><TableCell>{sym}{fmt(b.outstanding)}</TableCell><TableCell><Badge variant={statusColor[b.status] || "secondary"}>{b.status}</Badge></TableCell></TableRow>)}</TableBody>
       </Table>
       <Dialog open={showAdd} onOpenChange={setShowAdd}>
         <DialogContent><DialogHeader><DialogTitle>New Booking</DialogTitle></DialogHeader>
@@ -133,18 +142,22 @@ function BookingsTab() {
 
 function CollectionsTab() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { data: dues = [] } = useQuery({ queryKey: ["/api/real-estate/collections/dues"], queryFn: () => apiRequest("GET", "/api/real-estate/collections/dues") });
   const pay = useMutation({ mutationFn: ({ id, amount }: any) => apiRequest("POST", `/api/real-estate/bookings/${id}/payment`, { amount }), onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/real-estate/collections/dues"] }) });
   const [payAmt, setPayAmt] = useState<Record<string, string>>({});
   return (
     <Table><TableHeader><TableRow><TableHead>Customer</TableHead><TableHead>Unit</TableHead><TableHead>Demand</TableHead><TableHead>Paid</TableHead><TableHead>Due Date</TableHead><TableHead></TableHead></TableRow></TableHeader>
-      <TableBody>{dues.map((d: any) => <TableRow key={d.id}><TableCell>{d.customer_name}</TableCell><TableCell>{d.unit_number}</TableCell><TableCell>₹{fmt(d.demand_amount)}</TableCell><TableCell>₹{fmt(d.paid_amount)}</TableCell><TableCell>{d.due_date} {d.is_overdue && <Badge variant="destructive" className="text-xs ml-1">Overdue</Badge>}</TableCell><TableCell className="flex gap-1"><Input className="w-24 h-7 text-xs" placeholder="Amount" value={payAmt[d.id] || ""} onChange={e => setPayAmt({ ...payAmt, [d.id]: e.target.value })} /><Button size="sm" className="h-7" onClick={() => pay.mutate({ id: d.booking_id, amount: payAmt[d.id] })}>Pay</Button></TableCell></TableRow>)}</TableBody>
+      <TableBody>{dues.map((d: any) => <TableRow key={d.id}><TableCell>{d.customer_name}</TableCell><TableCell>{d.unit_number}</TableCell><TableCell>{sym}{fmt(d.demand_amount)}</TableCell><TableCell>{sym}{fmt(d.paid_amount)}</TableCell><TableCell>{d.due_date} {d.is_overdue && <Badge variant="destructive" className="text-xs ml-1">Overdue</Badge>}</TableCell><TableCell className="flex gap-1"><Input className="w-24 h-7 text-xs" placeholder="Amount" value={payAmt[d.id] || ""} onChange={e => setPayAmt({ ...payAmt, [d.id]: e.target.value })} /><Button size="sm" className="h-7" onClick={() => pay.mutate({ id: d.booking_id, amount: payAmt[d.id] })}>Pay</Button></TableCell></TableRow>)}</TableBody>
     </Table>
   );
 }
 
 function ConstructionTab() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { data: projects = [] } = useQuery({ queryKey: ["/api/real-estate/projects"], queryFn: () => apiRequest("GET", "/api/real-estate/projects") });
   const [project, setProject] = useState("");
   const { data: costs = [] } = useQuery({ queryKey: ["/api/real-estate/construction-costs", project], queryFn: () => apiRequest("GET", `/api/real-estate/construction-costs?project_id=${project}`), enabled: !!project });
@@ -164,7 +177,7 @@ function ConstructionTab() {
         </CardContent>
       </Card>
       <Table><TableHeader><TableRow><TableHead>Category</TableHead><TableHead>Description</TableHead><TableHead>Contractor</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
-        <TableBody>{costs.map((c: any) => <TableRow key={c.id}><TableCell>{c.cost_category}</TableCell><TableCell>{c.description}</TableCell><TableCell>{c.contractor_name}</TableCell><TableCell>₹{fmt(c.amount)}</TableCell><TableCell><Badge>{c.payment_status}</Badge></TableCell></TableRow>)}</TableBody>
+        <TableBody>{costs.map((c: any) => <TableRow key={c.id}><TableCell>{c.cost_category}</TableCell><TableCell>{c.description}</TableCell><TableCell>{c.contractor_name}</TableCell><TableCell>{sym}{fmt(c.amount)}</TableCell><TableCell><Badge>{c.payment_status}</Badge></TableCell></TableRow>)}</TableBody>
       </Table>
     </div>
   );
@@ -172,17 +185,21 @@ function ConstructionTab() {
 
 function BrokersTab() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { data: brokers = [] } = useQuery({ queryKey: ["/api/real-estate/brokers"], queryFn: () => apiRequest("GET", "/api/real-estate/brokers") });
   const markPaid = useMutation({ mutationFn: (id: any) => apiRequest("POST", `/api/real-estate/brokers/${id}/mark-commission-paid`, {}), onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/real-estate/brokers"] }) });
   return (
     <Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Code</TableHead><TableHead>Commission%</TableHead><TableHead>Bookings</TableHead><TableHead>Commission Due</TableHead><TableHead></TableHead></TableRow></TableHeader>
-      <TableBody>{brokers.map((b: any) => <TableRow key={b.id}><TableCell>{b.broker_name}</TableCell><TableCell>{b.broker_code}</TableCell><TableCell>{b.commission_pct}%</TableCell><TableCell>{b.total_bookings}</TableCell><TableCell>₹{fmt(b.commission_payable)}</TableCell><TableCell><Button size="sm" onClick={() => markPaid.mutate(b.id)}>Mark Paid</Button></TableCell></TableRow>)}</TableBody>
+      <TableBody>{brokers.map((b: any) => <TableRow key={b.id}><TableCell>{b.broker_name}</TableCell><TableCell>{b.broker_code}</TableCell><TableCell>{b.commission_pct}%</TableCell><TableCell>{b.total_bookings}</TableCell><TableCell>{sym}{fmt(b.commission_payable)}</TableCell><TableCell><Button size="sm" onClick={() => markPaid.mutate(b.id)}>Mark Paid</Button></TableCell></TableRow>)}</TableBody>
     </Table>
   );
 }
 
 function SocietyTab() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [month, setMonth] = useState("");
   const { data: charges = [] } = useQuery({ queryKey: ["/api/real-estate/society/charges", month], queryFn: () => apiRequest("GET", `/api/real-estate/society/charges?month=${month}`) });
   const generate = useMutation({ mutationFn: () => apiRequest("POST", "/api/real-estate/society/charges/generate", { month }), onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/real-estate/society/charges"] }) });
@@ -191,7 +208,7 @@ function SocietyTab() {
     <div className="space-y-4">
       <div className="flex gap-2 items-center"><Input type="month" value={month} onChange={e => setMonth(e.target.value)} className="w-40" /><Button onClick={() => generate.mutate()}>Generate Charges</Button></div>
       <Table><TableHeader><TableRow><TableHead>Unit</TableHead><TableHead>Maintenance</TableHead><TableHead>Sinking</TableHead><TableHead>Water</TableHead><TableHead>Total</TableHead><TableHead>Status</TableHead><TableHead></TableHead></TableRow></TableHeader>
-        <TableBody>{charges.map((c: any) => <TableRow key={c.id}><TableCell>{c.unit_number}</TableCell><TableCell>₹{fmt(c.maintenance_charge)}</TableCell><TableCell>₹{fmt(c.sinking_fund)}</TableCell><TableCell>₹{fmt(c.water_charge)}</TableCell><TableCell>₹{fmt(c.total)}</TableCell><TableCell><Badge variant={c.status === "paid" ? "default" : "secondary"}>{c.status}</Badge></TableCell><TableCell>{c.status !== "paid" && <Button size="sm" onClick={() => markPaid.mutate(c.id)}>Mark Paid</Button>}</TableCell></TableRow>)}</TableBody>
+        <TableBody>{charges.map((c: any) => <TableRow key={c.id}><TableCell>{c.unit_number}</TableCell><TableCell>{sym}{fmt(c.maintenance_charge)}</TableCell><TableCell>{sym}{fmt(c.sinking_fund)}</TableCell><TableCell>{sym}{fmt(c.water_charge)}</TableCell><TableCell>{sym}{fmt(c.total)}</TableCell><TableCell><Badge variant={c.status === "paid" ? "default" : "secondary"}>{c.status}</Badge></TableCell><TableCell>{c.status !== "paid" && <Button size="sm" onClick={() => markPaid.mutate(c.id)}>Mark Paid</Button>}</TableCell></TableRow>)}</TableBody>
       </Table>
     </div>
   );

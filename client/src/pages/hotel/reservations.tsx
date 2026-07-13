@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CalendarDays, Plus, X, Search } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string, body?: any) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -25,6 +26,8 @@ const EMPTY = { guest_id: "", room_id: "", check_in_date: "", check_out_date: ""
 
 export default function HotelReservationsPage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ ...EMPTY });
   const [search, setSearch] = useState("");
@@ -108,9 +111,9 @@ export default function HotelReservationsPage() {
             <div><Label>Check-out</Label><Input type="date" value={form.check_out_date} onChange={e => { const u = { ...form, check_out_date: e.target.value }; setForm({ ...u, total_amount: calcTotal(u) }); }} /></div>
             <div><Label>Adults</Label><Input type="number" value={form.adults} onChange={e => f("adults", e.target.value)} /></div>
             <div><Label>Children</Label><Input type="number" value={form.children} onChange={e => f("children", e.target.value)} /></div>
-            <div><Label>Rate/Night (₹)</Label><Input type="number" value={form.rate_per_night} onChange={e => { const u = { ...form, rate_per_night: e.target.value }; setForm({ ...u, total_amount: calcTotal(u) }); }} /></div>
-            <div><Label>Total Amount (₹)</Label><Input type="number" value={form.total_amount} onChange={e => f("total_amount", e.target.value)} /></div>
-            <div><Label>Advance Paid (₹)</Label><Input type="number" value={form.advance_paid} onChange={e => f("advance_paid", e.target.value)} /></div>
+            <div><Label>Rate/Night (${sym})</Label><Input type="number" value={form.rate_per_night} onChange={e => { const u = { ...form, rate_per_night: e.target.value }; setForm({ ...u, total_amount: calcTotal(u) }); }} /></div>
+            <div><Label>Total Amount (${sym})</Label><Input type="number" value={form.total_amount} onChange={e => f("total_amount", e.target.value)} /></div>
+            <div><Label>Advance Paid (${sym})</Label><Input type="number" value={form.advance_paid} onChange={e => f("advance_paid", e.target.value)} /></div>
             <div><Label>Payment Mode</Label>
               <Select value={form.payment_mode} onValueChange={v => f("payment_mode", v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -139,7 +142,7 @@ export default function HotelReservationsPage() {
               <div>
                 <p className="font-semibold">{r.guest_name ?? `Guest #${r.guest_id}`}</p>
                 <p className="text-sm text-gray-600">Room {r.room_number ?? r.room_id} · {r.check_in_date?.slice(0, 10)} → {r.check_out_date?.slice(0, 10)}</p>
-                <p className="text-xs text-gray-500">{r.adults ?? 1} adults · ₹{Number(r.rate_per_night ?? 0).toLocaleString("en-IN")}/night · Total ₹{Number(r.total_amount ?? 0).toLocaleString("en-IN")} · {r.source}</p>
+                <p className="text-xs text-gray-500">{r.adults ?? 1} adults · {sym}{Number(r.rate_per_night ?? 0).toLocaleString("en-IN")}/night · Total {sym}{Number(r.total_amount ?? 0).toLocaleString("en-IN")} · {r.source}</p>
               </div>
               <div className="flex flex-col items-end gap-2">
                 <Badge className={STATUS_COLOR[r.status] ?? "bg-gray-100"}>{r.status?.replace("_", " ")}</Badge>

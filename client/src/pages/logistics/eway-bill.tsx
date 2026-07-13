@@ -13,6 +13,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FileText, Printer, XCircle, Settings, CheckCircle2, AlertTriangle, Search, Zap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string, body?: any) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -84,6 +85,8 @@ const emptyForm = {
 
 export default function EWayBillPage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { toast } = useToast();
   const [form, setForm] = useState({ ...emptyForm });
   const [credForm, setCredForm] = useState({ gstin: "", username: "", password: "", apiMode: "sandbox" });
@@ -253,7 +256,7 @@ export default function EWayBillPage() {
       <h3>Transport</h3>
       <p><b>Vehicle:</b> ${ewb.vehicle_number ?? "—"} | <b>Distance:</b> ${ewb.distance_km ?? "—"} km</p>
       <h3>Value</h3>
-      <p><b>Total Invoice Value:</b> ₹${Number(ewb.total_value ?? 0).toLocaleString("en-IN")}</p>
+      <p><b>Total Invoice Value:</b> ${sym}${Number(ewb.total_value ?? 0).toLocaleString("en-IN")}</p>
     </body></html>`);
     w.print();
   };
@@ -270,7 +273,7 @@ export default function EWayBillPage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold">E-Way Bill Generator</h1>
-          <p className="text-sm text-muted-foreground">NIC GST Portal Integration — Mandatory above ₹50,000</p>
+          <p className="text-sm text-muted-foreground">NIC GST Portal Integration — Mandatory above ${sym}50,000</p>
         </div>
         <Dialog open={credOpen} onOpenChange={setCredOpen}>
           <DialogTrigger asChild>
@@ -356,7 +359,7 @@ export default function EWayBillPage() {
                                 <span className="text-muted-foreground ml-2 text-xs">{inv.buyer_name}</span>
                               </div>
                               <div className="text-right shrink-0">
-                                <div className="font-medium">₹{(Number(inv.total_amount) / 100).toLocaleString("en-IN")}</div>
+                                <div className="font-medium">{sym}{(Number(inv.total_amount) / 100).toLocaleString("en-IN")}</div>
                                 <div className="text-xs text-muted-foreground">{inv.invoice_date ? new Date(inv.invoice_date).toLocaleDateString("en-IN") : ""}</div>
                               </div>
                             </button>
@@ -485,8 +488,8 @@ export default function EWayBillPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div><Label>Taxable Value (₹) <span className="text-red-500">*</span></Label><Input type="number" value={form.taxableValue} onChange={e => f("taxableValue", e.target.value)} placeholder="Pre-tax amount" /></div>
-                <div><Label>Total Invoice Value (₹) <span className="text-red-500">*</span></Label><Input type="number" value={form.totalInvoiceValue} onChange={e => f("totalInvoiceValue", e.target.value)} placeholder="With GST" /></div>
+                <div><Label>Taxable Value (${sym}) <span className="text-red-500">*</span></Label><Input type="number" value={form.taxableValue} onChange={e => f("taxableValue", e.target.value)} placeholder="Pre-tax amount" /></div>
+                <div><Label>Total Invoice Value (${sym}) <span className="text-red-500">*</span></Label><Input type="number" value={form.totalInvoiceValue} onChange={e => f("totalInvoiceValue", e.target.value)} placeholder="With GST" /></div>
 
                 {isInterState ? (
                   <div>
@@ -600,7 +603,7 @@ export default function EWayBillPage() {
                       <TableCell className="text-xs">{ewb.doc_number ?? "—"}</TableCell>
                       <TableCell className="text-xs">{ewb.from_gstin ?? "—"}</TableCell>
                       <TableCell className="text-xs font-mono">{ewb.to_gstin === "URP" ? <Badge variant="outline">URP</Badge> : ewb.to_gstin ?? "—"}</TableCell>
-                      <TableCell>{ewb.total_value ? `₹${Number(ewb.total_value).toLocaleString("en-IN")}` : "—"}</TableCell>
+                      <TableCell>{ewb.total_value ? `${sym}${Number(ewb.total_value).toLocaleString("en-IN")}` : "—"}</TableCell>
                       <TableCell className="text-xs">{ewb.ewb_valid_until ? new Date(ewb.ewb_valid_until).toLocaleDateString("en-IN") : "—"}</TableCell>
                       <TableCell><Badge variant={ewb.status === "cancelled" ? "destructive" : ewb.status === "generated" ? "default" : "secondary"}>{ewb.status}</Badge></TableCell>
                       <TableCell>

@@ -10,12 +10,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Gift, Clock, AlertTriangle } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (m: string, p: string, b?: any) =>
   fetch(p, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined }).then((r) => r.json());
 
 export default function RetailLoyaltyPage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ name: "", phone: "", email: "" });
@@ -90,7 +93,7 @@ export default function RetailLoyaltyPage() {
                     <TableCell className="font-medium">{c.name}</TableCell>
                     <TableCell className="text-sm">{c.phone}</TableCell>
                     <TableCell className="font-semibold">{Number(c.points_balance)}</TableCell>
-                    <TableCell className="text-sm">₹{(Number(c.points_balance) * Number(cfg.redemption_value_per_point || 0.5)).toFixed(0)}</TableCell>
+                    <TableCell className="text-sm">{sym}{(Number(c.points_balance) * Number(cfg.redemption_value_per_point || 0.5)).toFixed(0)}</TableCell>
                     <TableCell className="text-sm">{c.updated_at ? String(c.updated_at).slice(0, 10) : "—"}</TableCell>
                     <TableCell>
                       <div className="flex gap-1">

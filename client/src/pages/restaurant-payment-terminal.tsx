@@ -14,6 +14,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 interface TerminalConfig {
   razorpay_key_id?: string;
@@ -263,7 +264,7 @@ export default function RestaurantPaymentTerminalPage() {
                   {logs.map((log) => (
                     <tr key={log.id} className="border-b last:border-0">
                       <td className="py-2 pr-3 capitalize font-medium">{log.terminal_type}</td>
-                      <td className="py-2 pr-3">₹{Number(log.amount).toFixed(2)}</td>
+                      <td className="py-2 pr-3">{sym}{Number(log.amount).toFixed(2)}</td>
                       <td className="py-2 pr-3 font-mono text-xs text-gray-500 max-w-[120px] truncate">{log.reference_id}</td>
                       <td className="py-2 pr-3">
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusBadge(log.status)}`}>

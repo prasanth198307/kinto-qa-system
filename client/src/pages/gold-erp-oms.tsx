@@ -11,9 +11,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, CheckCircle, Bell, MessageSquare, Search } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const fmt = (n: any, d = 2) => Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: d });
-const fmtAmt = (n: any) => `₹${fmt(n)}`;
+const fmtAmt = (n: any) => `${sym}${fmt(n)}`;
 const today = () => new Date().toISOString().slice(0, 10);
 
 function FL({ label, children }: any) {
@@ -27,6 +28,8 @@ const STATUS_STEPS = ["booked", "design_approved", "in_production", "qc", "ready
 
 function StatusTimeline({ current }: { current: string }) {
   const idx = STATUS_STEPS.indexOf(current);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   return (
     <div className="flex items-center gap-1 mt-2">
       {STATUS_STEPS.map((s, i) => (
@@ -44,6 +47,8 @@ function StatusTimeline({ current }: { current: string }) {
 export function OMSOrdersSection() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [showTimeline, setShowTimeline] = useState(false);
   const [search, setSearch] = useState("");
@@ -142,8 +147,8 @@ export function OMSOrdersSection() {
               </FL>
               <FL label="Purity"><Input value={form.purity_name || ""} onChange={e => set("purity_name", e.target.value)} placeholder="22K (916)" /></FL>
               <FL label="Approx Weight (g)"><Input type="number" value={form.approx_weight_gm || ""} onChange={e => set("approx_weight_gm", e.target.value)} /></FL>
-              <FL label="Making Charges Quoted (₹)"><Input type="number" value={form.making_charges_quoted || ""} onChange={e => set("making_charges_quoted", e.target.value)} /></FL>
-              <FL label="Advance Paid (₹)"><Input type="number" value={form.advance_paid || ""} onChange={e => set("advance_paid", e.target.value)} /></FL>
+              <FL label="Making Charges Quoted "><Input type="number" value={form.making_charges_quoted || ""} onChange={e => set("making_charges_quoted", e.target.value)} /></FL>
+              <FL label="Advance Paid "><Input type="number" value={form.advance_paid || ""} onChange={e => set("advance_paid", e.target.value)} /></FL>
               <FL label="Advance Mode">
                 <Select value={form.advance_mode || "cash"} onValueChange={v => set("advance_mode", v)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>

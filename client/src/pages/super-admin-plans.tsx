@@ -24,6 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import SuperAdminLayout from "./super-admin-layout";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface SubscriptionPlan {
@@ -102,6 +103,8 @@ export default function SuperAdminPlans() {
   const [, setLocation] = useLocation();
 
   const [editPlan, setEditPlan] = useState<(Partial<SubscriptionPlan> & { priceMonthlyRupees: string; priceYearlyRupees: string; perUserPriceRupees: string }) | null>(null);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [isCreating, setIsCreating] = useState(false);
   const [newFeatureText, setNewFeatureText] = useState("");
 
@@ -292,17 +295,17 @@ export default function SuperAdminPlans() {
 
                 <div className="mt-2 space-y-0.5">
                   <p className="text-lg font-bold">
-                    {plan.priceMonthly === 0 ? "Free" : `₹${(plan.priceMonthly / 100).toLocaleString("en-IN")}/mo`}
+                    {plan.priceMonthly === 0 ? "Free" : `${sym}${(plan.priceMonthly / 100).toLocaleString("en-IN")}/mo`}
                   </p>
                   {plan.priceYearly > 0 && (
                     <p className="text-xs text-muted-foreground">
-                      ₹{(plan.priceYearly / 100).toLocaleString("en-IN")}/yr
+                      {sym}{(plan.priceYearly / 100).toLocaleString("en-IN")}/yr
                     </p>
                   )}
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Users className="h-3 w-3" />
                     {plan.baseUsers > 0 ? (
-                      <span>{plan.baseUsers} users incl. · +₹{(plan.perUserPrice / 100)}/extra · max {plan.maxUsers}</span>
+                      <span>{plan.baseUsers} users incl. · +{sym}{(plan.perUserPrice / 100)}/extra · max {plan.maxUsers}</span>
                     ) : (
                       <span>Up to {plan.maxUsers} users</span>
                     )}
@@ -410,7 +413,7 @@ export default function SuperAdminPlans() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {/* Monthly */}
                   <div className="space-y-1">
-                    <Label htmlFor="price-monthly">Monthly Price (₹)</Label>
+                    <Label htmlFor="price-monthly">Monthly Price (${sym})</Label>
                     <Input id="price-monthly" type="number" min="0" value={editPlan.priceMonthlyRupees ?? "0"}
                       onChange={(e) => setEditPlan((p) => p ? { ...p, priceMonthlyRupees: e.target.value } : p)}
                       placeholder="999" data-testid="input-price-monthly" />
@@ -419,7 +422,7 @@ export default function SuperAdminPlans() {
                   {/* Yearly with quick-fill helpers */}
                   <div className="space-y-1">
                     <div className="flex items-center justify-between gap-2">
-                      <Label htmlFor="price-yearly">Yearly Price (₹)</Label>
+                      <Label htmlFor="price-yearly">Yearly Price (${sym})</Label>
                       <div className="flex items-center gap-1">
                         {/* 11+1 = pay 11 months, get 12 */}
                         <Button type="button" size="sm" variant="outline" className="h-6 text-xs px-2 py-0"
@@ -459,7 +462,7 @@ export default function SuperAdminPlans() {
                         const freeMonths = ((monthly * 12 - yearly) / monthly).toFixed(1);
                         return (
                           <p className="text-xs text-green-600 dark:text-green-400 font-medium">
-                            {saving}% off · saves ₹{Math.round(monthly * 12 - yearly).toLocaleString()} · ~{freeMonths} months free
+                            {saving}% off · saves {sym}{Math.round(monthly * 12 - yearly).toLocaleString()} · ~{freeMonths} months free
                           </p>
                         );
                       }
@@ -475,7 +478,7 @@ export default function SuperAdminPlans() {
                       data-testid="input-base-users" />
                   </div>
                   <div className="space-y-1">
-                    <Label htmlFor="per-user-price">Extra User Price (₹/month)</Label>
+                    <Label htmlFor="per-user-price">Extra User Price (${sym}/month)</Label>
                     <Input id="per-user-price" type="number" min="0" value={editPlan.perUserPriceRupees ?? "0"}
                       onChange={(e) => setEditPlan((p) => p ? { ...p, perUserPriceRupees: e.target.value } : p)}
                       data-testid="input-per-user-price" />

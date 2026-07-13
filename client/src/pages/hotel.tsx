@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Search, BedDouble, Users, Calendar, Receipt, Sparkles, Pencil, Trash2, LogIn, LogOut, X, FileText, RefreshCw } from "lucide-react";
+import { useTenantConfig } from "@/hooks/use-tenant-config";
 
 const fmt = (n: any) => Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
 
@@ -56,6 +57,8 @@ function FieldRow({ label, children }: any) {
 
 // ── Overview ──────────────────────────────────────────────────────────────────
 function OverviewTab() {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { data: stats } = useQuery<any>({ queryKey: ["/api/hotel/stats"] });
   const occupancy = stats?.totalRooms ? Math.round(((stats.totalRooms - stats.availableRooms) / stats.totalRooms) * 100) : 0;
   return (
@@ -64,7 +67,7 @@ function OverviewTab() {
         <StatCard title="Total Rooms" value={stats?.totalRooms ?? 0} icon={BedDouble} color="bg-blue-100 text-blue-600" />
         <StatCard title="Available" value={stats?.availableRooms ?? 0} icon={BedDouble} color="bg-green-100 text-green-600" />
         <StatCard title="Checked In" value={stats?.checkedIn ?? 0} icon={Users} color="bg-orange-100 text-orange-600" />
-        <StatCard title="Monthly Revenue" value={`₹${fmt(stats?.monthlyRevenue)}`} icon={Receipt} color="bg-purple-100 text-purple-600" />
+        <StatCard title="Monthly Revenue" value={`${sym}${fmt(stats?.monthlyRevenue)}`} icon={Receipt} color="bg-purple-100 text-purple-600" />
       </div>
       <Card>
         <CardHeader><CardTitle className="text-base">Occupancy Rate</CardTitle></CardHeader>
@@ -84,6 +87,8 @@ function OverviewTab() {
 
 // ── Rooms Tab ─────────────────────────────────────────────────────────────────
 function RoomsTab() {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -127,7 +132,7 @@ function RoomsTab() {
               </div>
               <p className="text-sm text-muted-foreground">{r.room_type_name || "—"}</p>
               <p className="text-xs text-muted-foreground">Floor: {r.floor || "—"}</p>
-              <p className="text-sm font-medium mt-1">₹{fmt(r.base_price)}/night</p>
+              <p className="text-sm font-medium mt-1">{sym}{fmt(r.base_price)}/night</p>
               <div className="flex gap-1 mt-3">
                 <Button size="sm" variant="outline" className="flex-1" onClick={() => openForm(r)}><Pencil className="h-3 w-3" /></Button>
                 <Button size="sm" variant="outline" className="flex-1 text-red-600" onClick={() => deleteMutation.mutate(r.id)}><Trash2 className="h-3 w-3" /></Button>
@@ -174,6 +179,8 @@ function RoomsTab() {
 }
 
 function RoomTypesSection() {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
@@ -212,7 +219,7 @@ function RoomTypesSection() {
             {roomTypes.map((rt: any) => (
               <tr key={rt.id} className="border-t hover:bg-muted/30">
                 <td className="px-3 py-2 font-medium">{rt.name}</td>
-                <td className="px-3 py-2">₹{fmt(rt.base_price)}</td>
+                <td className="px-3 py-2">{sym}{fmt(rt.base_price)}</td>
                 <td className="px-3 py-2">{rt.max_occupancy}</td>
                 <td className="px-3 py-2 max-w-[200px] truncate">{rt.amenities || "—"}</td>
                 <td className="px-3 py-2">
@@ -249,6 +256,8 @@ function RoomTypesSection() {
 
 // ── Reservations Tab ──────────────────────────────────────────────────────────
 function ReservationsTab() {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -307,7 +316,7 @@ function ReservationsTab() {
                 <td className="px-3 py-2">{r.room_number} <span className="text-xs text-muted-foreground">{r.room_type_name}</span></td>
                 <td className="px-3 py-2">{r.check_in_date}</td>
                 <td className="px-3 py-2">{r.check_out_date}</td>
-                <td className="px-3 py-2">₹{fmt(r.total_amount)}</td>
+                <td className="px-3 py-2">{sym}{fmt(r.total_amount)}</td>
                 <td className="px-3 py-2"><Badge className={STATUS_COLORS[r.status] || ""}>{r.status}</Badge></td>
                 <td className="px-3 py-2">
                   <div className="flex gap-1">
@@ -339,7 +348,7 @@ function ReservationsTab() {
               <FieldRow label="Room *">
                 <Select value={form.room_id?.toString() || ""} onValueChange={v => setForm((p: any) => ({ ...p, room_id: v }))}>
                   <SelectTrigger><SelectValue placeholder="Select room" /></SelectTrigger>
-                  <SelectContent>{rooms.filter((r: any) => r.status === 'available' || r.id.toString() === form.room_id?.toString()).map((r: any) => <SelectItem key={r.id} value={r.id.toString()}>{r.room_number} — {r.room_type_name} (₹{fmt(r.base_price)}/night)</SelectItem>)}</SelectContent>
+                  <SelectContent>{rooms.filter((r: any) => r.status === 'available' || r.id.toString() === form.room_id?.toString()).map((r: any) => <SelectItem key={r.id} value={r.id.toString()}>{r.room_number} — {r.room_type_name} ({sym}{fmt(r.base_price)}/night)</SelectItem>)}</SelectContent>
                 </Select>
               </FieldRow>
             </div>
@@ -372,6 +381,8 @@ function ReservationsTab() {
 
 // ── Check-in/out Tab ──────────────────────────────────────────────────────────
 function CheckInOutTab() {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { data: reservations = [] } = useQuery<any[]>({ queryKey: ["/api/hotel/reservations"] });
   const { toast } = useToast();
 
@@ -421,7 +432,7 @@ function CheckInOutTab() {
                   <div>
                     <p className="font-medium">{r.guest_name}</p>
                     <p className="text-xs text-muted-foreground">Room {r.room_number} · Due out: {r.check_out_date}</p>
-                    <p className="text-xs text-muted-foreground">₹{fmt(r.total_amount)} total</p>
+                    <p className="text-xs text-muted-foreground">{sym}{fmt(r.total_amount)} total</p>
                   </div>
                   <Button size="sm" variant="outline" onClick={() => checkoutMutation.mutate(r.id)}><LogOut className="h-3 w-3 mr-1" />Check Out</Button>
                 </div>
@@ -439,6 +450,8 @@ function CheckInOutTab() {
 function FoliosTab() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<any>({ items: [] });
   const [editing, setEditing] = useState<any>(null);
@@ -484,9 +497,9 @@ function FoliosTab() {
                 <td className="px-3 py-2 font-mono text-xs">{f.folio_number}</td>
                 <td className="px-3 py-2">{f.guest_name || "—"}</td>
                 <td className="px-3 py-2">{f.room_number || "—"}</td>
-                <td className="px-3 py-2">₹{fmt(f.total_amount)}</td>
-                <td className="px-3 py-2">₹{fmt(f.paid_amount)}</td>
-                <td className="px-3 py-2">₹{fmt(f.balance_amount)}</td>
+                <td className="px-3 py-2">{sym}{fmt(f.total_amount)}</td>
+                <td className="px-3 py-2">{sym}{fmt(f.paid_amount)}</td>
+                <td className="px-3 py-2">{sym}{fmt(f.balance_amount)}</td>
                 <td className="px-3 py-2"><Badge className={STATUS_COLORS[f.status] || ""}>{f.status}</Badge></td>
                 <td className="px-3 py-2">
                   <Button size="sm" variant="ghost" onClick={() => window.open(`/api/hotel/enterprise/folios/${f.id}/pdf`, "_blank")} title="Download Folio PDF">
@@ -649,6 +662,8 @@ function HousekeepingTab() {
 function GuestsTab() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({});
@@ -736,6 +751,8 @@ function GuestsTab() {
 function ChannelManagerTab() {
   const { toast } = useToast();
   const [syncing, setSyncing] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { data: rates = [], refetch } = useQuery<any[]>({ queryKey: ["/api/hotel/enterprise/channels/rates"] });
 
   const handleSync = async () => {
@@ -785,7 +802,7 @@ function ChannelManagerTab() {
                       <tr key={i} className="border-t hover:bg-muted/30">
                         <td className="px-3 py-2">{r.room_type_name || r.room_type_id || "—"}</td>
                         <td className="px-3 py-2">{r.rate_date ? new Date(r.rate_date).toLocaleDateString("en-IN") : "—"}</td>
-                        <td className="px-3 py-2">₹{Number(r.rate_amount || 0).toLocaleString()}</td>
+                        <td className="px-3 py-2">{sym}{Number(r.rate_amount || 0).toLocaleString()}</td>
                         <td className="px-3 py-2">{r.available_rooms}</td>
                         <td className="px-3 py-2 text-xs text-muted-foreground">
                           {r.last_synced ? new Date(r.last_synced).toLocaleString("en-IN") : "—"}

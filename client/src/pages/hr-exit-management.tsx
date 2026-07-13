@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import {
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
   UserX, Clock, CheckCircle2, Search, AlertCircle,
   Calendar, FileText, TrendingDown, Users, DoorOpen,
   Calculator, Printer, IndianRupee
@@ -29,7 +30,7 @@ const EXIT_TYPES = [
 ];
 
 const fmt = (n: any) => Number(n || 0).toLocaleString("en-IN");
-const fmtRs = (n: any) => `₹${fmt(n)}`;
+const fmtRs = (n: any) => `${sym}${fmt(n)}`;
 
 // ── Process Exit Dialog ───────────────────────────────────────────────────────
 function ProcessExitDialog({ emp, open, onClose }: { emp: any; open: boolean; onClose: () => void }) {
@@ -159,6 +160,8 @@ function ProcessExitDialog({ emp, open, onClose }: { emp: any; open: boolean; on
 function FnFDialog({ employees, existing, open, onClose }: { employees: any[]; existing?: any; open: boolean; onClose: () => void }) {
   const { toast } = useToast();
   const [empId, setEmpId] = useState(existing?.employee_id ? String(existing.employee_id) : "");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [settlementDate, setSettlementDate] = useState(existing?.settlement_date || new Date().toISOString().slice(0, 10));
   const [calc, setCalc] = useState<any>(existing || null);
   const [overrides, setOverrides] = useState<any>({
@@ -253,7 +256,7 @@ function FnFDialog({ employees, existing, open, onClose }: { employees: any[]; e
               <table className="w-full text-sm">
                 <thead className="bg-muted/50"><tr>
                   <th className="px-3 py-2 text-left font-medium text-muted-foreground">Component</th>
-                  <th className="px-3 py-2 text-right font-medium text-muted-foreground">Amount (₹)</th>
+                  <th className="px-3 py-2 text-right font-medium text-muted-foreground">Amount (${sym})</th>
                 </tr></thead>
                 <tbody>
                   <tr className="border-t bg-green-50 dark:bg-green-950/20">

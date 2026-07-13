@@ -14,6 +14,7 @@ import {
 import { format, parseISO } from "date-fns";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -103,7 +104,7 @@ function formatDate(d: string | null) {
 
 function formatRupees(paise: number) {
   if (paise === 0) return "₹0";
-  return `₹${paise.toLocaleString("en-IN")}`;
+  return `${sym}${paise.toLocaleString("en-IN")}`;
 }
 
 // Group catalog by category preserving order
@@ -134,6 +135,8 @@ const PLAN_COLORS: Record<string, { gradient: string; badge: string; badgeText: 
 function ChangePlanTab({ currentPlanSlug }: { currentPlanSlug: string | null }) {
   const { toast } = useToast();
   const [requestedPlan, setRequestedPlan] = useState<string | null>(null);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [pendingSlug, setPendingSlug] = useState<string | null>(null);
 
   const { data: plans = [], isLoading } = useQuery<SubscriptionPlan[]>({
@@ -233,7 +236,7 @@ function ChangePlanTab({ currentPlanSlug }: { currentPlanSlug: string | null }) 
                 </div>
                 <div className="text-right flex-shrink-0">
                   <span className="text-2xl font-bold text-foreground">
-                    ₹{priceInRupees > 0 ? priceInRupees.toLocaleString("en-IN") : "0"}
+                    {sym}{priceInRupees > 0 ? priceInRupees.toLocaleString("en-IN") : "0"}
                   </span>
                   <span className="text-xs text-muted-foreground">/mo</span>
                 </div>
@@ -351,7 +354,7 @@ function ChangePlanTab({ currentPlanSlug }: { currentPlanSlug: string | null }) 
         <Package className="h-4 w-4 flex-shrink-0 mt-0.5 text-blue-600" />
         <div className="text-sm text-blue-800 leading-relaxed">
           <strong>Don&apos;t need a full plan upgrade?</strong>{" "}
-          You can also pick individual modules from the <strong>Module Marketplace</strong> tab and pay only for what you use — starting at ₹249/module/month.
+          You can also pick individual modules from the <strong>Module Marketplace</strong> tab and pay only for what you use — starting at ${sym}249/module/month.
         </div>
       </div>
     </div>
@@ -367,6 +370,8 @@ function MarketplaceTab({
   onSave: (slugs: string[]) => void;
 }) {
   const freeSet = new Set(data.freeModules);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const planSet = new Set(data.planModules ?? []);
   const [draft, setDraft] = useState<Set<string>>(new Set(data.selectedModules));
   const [saving, setSaving] = useState(false);
@@ -454,7 +459,7 @@ function MarketplaceTab({
                           ) : isInPlan ? (
                             <span className="text-xs font-bold text-blue-600">Plan</span>
                           ) : (
-                            <span className="text-sm font-bold text-foreground">₹{mod.priceMonthly}<span className="text-xs font-normal text-muted-foreground">/mo</span></span>
+                            <span className="text-sm font-bold text-foreground">{sym}{mod.priceMonthly}<span className="text-xs font-normal text-muted-foreground">/mo</span></span>
                           )}
                           <div className={`h-5 w-5 rounded-full flex items-center justify-center flex-shrink-0 ${
                             isFree ? "bg-emerald-500" : isInPlan ? "bg-blue-500" : isOn ? "bg-primary" : "border-2 border-muted-foreground/30"
@@ -479,7 +484,7 @@ function MarketplaceTab({
             <div className="bg-primary px-4 py-3 rounded-t-lg">
               <div className="text-primary-foreground/80 text-xs mb-0.5">Monthly total</div>
               <div className="text-primary-foreground text-2xl font-bold">
-                ₹{draftTotal.toLocaleString("en-IN")}
+                {sym}{draftTotal.toLocaleString("en-IN")}
                 <span className="text-sm font-normal opacity-70">/mo</span>
               </div>
               <div className="text-primary-foreground/70 text-xs mt-0.5">
@@ -505,7 +510,7 @@ function MarketplaceTab({
                     <div key={m.slug} className="flex items-center justify-between text-xs">
                       <span className="text-foreground truncate pr-2">{m.name}</span>
                       <div className="flex items-center gap-1 flex-shrink-0">
-                        <span className="font-semibold">₹{m.priceMonthly}</span>
+                        <span className="font-semibold">{sym}{m.priceMonthly}</span>
                         <button
                           onClick={() => toggle(m.slug)}
                           className="text-muted-foreground hover:text-destructive transition-colors"
@@ -536,7 +541,7 @@ function MarketplaceTab({
           <Card>
             <CardContent className="p-3">
               <p className="text-xs font-medium text-foreground mb-1">Per-user add-on</p>
-              <p className="text-xs text-muted-foreground">Base price includes 5 users. Each additional user is <strong>₹150/month</strong>.</p>
+              <p className="text-xs text-muted-foreground">Base price includes 5 users. Each additional user is <strong>${sym}150/month</strong>.</p>
             </CardContent>
           </Card>
         </div>
@@ -554,6 +559,8 @@ function ManageModulesTab({
   onSave: (slugs: string[]) => void;
 }) {
   const freeSet = new Set(data.freeModules);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [selected, setSelected] = useState<Set<string>>(new Set(data.selectedModules));
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
   const [depWarn, setDepWarn] = useState<string | null>(null);
@@ -646,7 +653,7 @@ function ManageModulesTab({
                       {isNew && <Badge variant="secondary" className="text-xs text-blue-700 bg-blue-50 border border-blue-200">Added</Badge>}
                     </div>
                   </div>
-                  <span className={`text-sm font-semibold ${isRemoved ? "text-muted-foreground" : "text-foreground"}`}>₹{mod.priceMonthly}/mo</span>
+                  <span className={`text-sm font-semibold ${isRemoved ? "text-muted-foreground" : "text-foreground"}`}>{sym}{mod.priceMonthly}/mo</span>
                   {isRemoved ? (
                     <Button size="sm" variant="outline" onClick={() => doAdd(mod.slug)} data-testid={`undo-remove-${mod.slug}`}>Undo</Button>
                   ) : (
@@ -668,7 +675,7 @@ function ManageModulesTab({
               <div key={mod.slug} className="flex items-center gap-3 bg-card border border-border rounded-xl px-3 py-3">
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium text-foreground">{mod.name}</div>
-                  <div className="text-xs text-muted-foreground">₹{mod.priceMonthly}/mo</div>
+                  <div className="text-xs text-muted-foreground">{sym}{mod.priceMonthly}/mo</div>
                 </div>
                 <Button size="sm" variant="outline" onClick={() => doAdd(mod.slug)} data-testid={`add-${mod.slug}`}>
                   <Plus className="h-3 w-3 mr-1" /> Add
@@ -684,14 +691,14 @@ function ManageModulesTab({
         <CardContent className="pt-4 space-y-3">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Current month</span>
-            <span className="font-semibold">₹{data.monthlyAmount > 0 ? data.monthlyAmount.toLocaleString("en-IN") : currentTotal.toLocaleString("en-IN")}</span>
+            <span className="font-semibold">{sym}{data.monthlyAmount > 0 ? data.monthlyAmount.toLocaleString("en-IN") : currentTotal.toLocaleString("en-IN")}</span>
           </div>
           {hasChanges && (
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">From {nextBillingDate}</span>
               <span className={`font-semibold ${nextTotal < currentTotal ? "text-emerald-600" : "text-foreground"}`}>
-                ₹{nextTotal.toLocaleString("en-IN")}
-                {nextTotal < currentTotal && <span className="text-xs font-normal ml-1 text-emerald-600">(saves ₹{(currentTotal - nextTotal).toLocaleString("en-IN")}/mo)</span>}
+                {sym}{nextTotal.toLocaleString("en-IN")}
+                {nextTotal < currentTotal && <span className="text-xs font-normal ml-1 text-emerald-600">(saves {sym}{(currentTotal - nextTotal).toLocaleString("en-IN")}/mo)</span>}
               </span>
             </div>
           )}
@@ -759,6 +766,8 @@ function ManageModulesTab({
 
 function AutoDeductTab({ data }: { data: ModuleData }) {
   const nextBilling = data.currentPeriodEnd
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
     ? format(parseISO(data.currentPeriodEnd), "MMM d, yyyy")
     : "—";
   const monthlyAmount = data.monthlyAmount;
@@ -810,7 +819,7 @@ function AutoDeductTab({ data }: { data: ModuleData }) {
             <div>
               <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Next auto-deduct</p>
               <p className="text-3xl font-bold text-foreground">
-                ₹{monthlyAmount > 0 ? monthlyAmount.toLocaleString("en-IN") : "—"}
+                {sym}{monthlyAmount > 0 ? monthlyAmount.toLocaleString("en-IN") : "—"}
                 <span className="text-base font-normal text-muted-foreground">/mo</span>
               </p>
               <p className="text-sm text-muted-foreground mt-1">Scheduled for <strong>{nextBilling}</strong> at midnight IST</p>
@@ -910,6 +919,8 @@ function AutoDeductTab({ data }: { data: ModuleData }) {
 
 function OverviewTab({ data }: { data: ModuleData }) {
   const freeSet = new Set(data.freeModules);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const activeCount = (data.selectedModules.filter(s => !freeSet.has(s))).length;
 
   return (
@@ -927,7 +938,7 @@ function OverviewTab({ data }: { data: ModuleData }) {
         <Card>
           <CardContent className="pt-4">
             <p className="text-xs text-muted-foreground mb-1">Monthly Cost</p>
-            <p className="text-xl font-bold">₹{data.monthlyAmount > 0 ? data.monthlyAmount.toLocaleString("en-IN") : "0"}</p>
+            <p className="text-xl font-bold">{sym}{data.monthlyAmount > 0 ? data.monthlyAmount.toLocaleString("en-IN") : "0"}</p>
           </CardContent>
         </Card>
         <Card>
@@ -956,7 +967,7 @@ function OverviewTab({ data }: { data: ModuleData }) {
                 <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                 <span>{mod.name}</span>
                 {mod.free && <span className="text-xs text-emerald-600 font-medium">(free)</span>}
-                {!mod.free && <span className="ml-auto text-xs text-muted-foreground">₹{mod.priceMonthly}/mo</span>}
+                {!mod.free && <span className="ml-auto text-xs text-muted-foreground">{sym}{mod.priceMonthly}/mo</span>}
               </div>
             ))}
           </div>

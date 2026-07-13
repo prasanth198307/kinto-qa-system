@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 interface MenuItem { id: number; item_name: string; price: number; category_id: number; description?: string; is_available: boolean; }
 interface Category { id: number; category_name: string; }
@@ -9,6 +10,8 @@ const IDLE_RESET_MS = 180000; // 3 minutes
 
 export default function RestaurantKioskPage() {
   const outletId = window.location.pathname.split("/").pop() || "1";
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [screen, setScreen] = useState<"welcome" | "menu" | "checkout" | "success">("welcome");
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -148,12 +151,12 @@ export default function RestaurantKioskPage() {
             <div className="bg-gray-100 rounded-xl h-48 flex items-center justify-center text-5xl">
               📱
             </div>
-            <p className="text-2xl font-black text-green-600 mt-2">₹{grand.toFixed(2)}</p>
+            <p className="text-2xl font-black text-green-600 mt-2">{sym}{grand.toFixed(2)}</p>
           </div>
         )}
         {paymentMethod === "cash" && (
           <div className="bg-white/20 rounded-2xl p-5 mb-6">
-            <p className="text-lg">Please pay <span className="font-black text-3xl">₹{grand.toFixed(2)}</span> at the counter</p>
+            <p className="text-lg">Please pay <span className="font-black text-3xl">{sym}{grand.toFixed(2)}</span> at the counter</p>
           </div>
         )}
         <p className="text-green-200 text-sm">Screen resets in 30 seconds...</p>
@@ -172,7 +175,7 @@ export default function RestaurantKioskPage() {
             onClick={() => setScreen("checkout")}
             className="bg-white text-red-600 font-bold px-6 py-2 rounded-full text-lg relative"
           >
-            🛒 Cart ({cart.reduce((s, c) => s + c.qty, 0)}) · ₹{grand.toFixed(2)}
+            🛒 Cart ({cart.reduce((s, c) => s + c.qty, 0)}) · {sym}{grand.toFixed(2)}
           </button>
         )}
       </div>
@@ -218,7 +221,7 @@ export default function RestaurantKioskPage() {
                     <div className="h-32 bg-gradient-to-br from-orange-50 to-amber-50 flex items-center justify-center text-5xl">🍽️</div>
                     <div className="p-3">
                       <div className="font-bold text-gray-800 text-sm line-clamp-2 leading-tight">{item.item_name}</div>
-                      <div className="text-red-600 font-black text-xl mt-1">₹{item.price}</div>
+                      <div className="text-red-600 font-black text-xl mt-1">{sym}{item.price}</div>
                       {item.description && <div className="text-gray-400 text-xs mt-0.5 line-clamp-1">{item.description}</div>}
                     </div>
                     {cartItem && (
@@ -239,7 +242,7 @@ export default function RestaurantKioskPage() {
         <div className="bg-red-600 text-white px-6 py-4 flex items-center justify-between">
           <div>
             <div className="text-sm text-red-200">{cart.reduce((s, c) => s + c.qty, 0)} items in cart</div>
-            <div className="text-2xl font-black">₹{grand.toFixed(2)} <span className="text-sm font-normal text-red-200">(incl. GST)</span></div>
+            <div className="text-2xl font-black">{sym}{grand.toFixed(2)} <span className="text-sm font-normal text-red-200">(incl. GST)</span></div>
           </div>
           <button onClick={() => setScreen("checkout")} className="bg-white text-red-600 font-black text-xl px-8 py-3 rounded-full">
             Proceed →
@@ -260,20 +263,20 @@ export default function RestaurantKioskPage() {
               <div key={item.id} className="flex items-center justify-between py-3 border-b">
                 <div>
                   <div className="font-semibold">{item.item_name}</div>
-                  <div className="text-gray-500 text-sm">₹{item.price} × {qty}</div>
+                  <div className="text-gray-500 text-sm">{sym}{item.price} × {qty}</div>
                 </div>
                 <div className="flex items-center gap-3">
                   <button onClick={() => updateQty(item.id, -1)} className="w-10 h-10 bg-gray-100 rounded-full text-xl font-bold">−</button>
                   <span className="text-xl font-bold w-8 text-center">{qty}</span>
                   <button onClick={() => updateQty(item.id, 1)} className="w-10 h-10 bg-red-100 text-red-600 rounded-full text-xl font-bold">+</button>
-                  <div className="font-bold text-right w-20">₹{(item.price * qty).toFixed(2)}</div>
+                  <div className="font-bold text-right w-20">{sym}{(item.price * qty).toFixed(2)}</div>
                 </div>
               </div>
             ))}
             <div className="mt-4 space-y-2 bg-gray-50 rounded-xl p-4">
-              <div className="flex justify-between"><span className="text-gray-600">Subtotal</span><span>₹{subtotal.toFixed(2)}</span></div>
-              <div className="flex justify-between"><span className="text-gray-600">GST (5%)</span><span>₹{gst.toFixed(2)}</span></div>
-              <div className="flex justify-between font-black text-xl border-t pt-2"><span>Total</span><span className="text-red-600">₹{grand.toFixed(2)}</span></div>
+              <div className="flex justify-between"><span className="text-gray-600">Subtotal</span><span>{sym}{subtotal.toFixed(2)}</span></div>
+              <div className="flex justify-between"><span className="text-gray-600">GST (5%)</span><span>{sym}{gst.toFixed(2)}</span></div>
+              <div className="flex justify-between font-black text-xl border-t pt-2"><span>Total</span><span className="text-red-600">{sym}{grand.toFixed(2)}</span></div>
             </div>
             <div className="mt-6">
               <h3 className="font-bold text-lg mb-3">Payment Method</h3>
@@ -295,7 +298,7 @@ export default function RestaurantKioskPage() {
               disabled={placeOrder.isPending}
               className="w-full bg-red-600 text-white font-black text-2xl py-5 rounded-2xl disabled:opacity-50 active:scale-95 transition-transform"
             >
-              {placeOrder.isPending ? "Placing Order..." : `Place Order · ₹${grand.toFixed(2)}`}
+              {placeOrder.isPending ? "Placing Order..." : `Place Order · ${sym}${grand.toFixed(2)}`}
             </button>
           </div>
         </div>
@@ -370,7 +373,7 @@ export default function RestaurantKioskPage() {
                       />
                       <span className="font-medium">{mod.name}</span>
                     </div>
-                    {mod.extra_price > 0 && <span className="text-sm text-gray-500">+₹{mod.extra_price}</span>}
+                    {mod.extra_price > 0 && <span className="text-sm text-gray-500">+{sym}{mod.extra_price}</span>}
                   </label>
                 ))}
               </div>
@@ -399,7 +402,7 @@ export default function RestaurantKioskPage() {
           <div>
             <div className="text-xs text-gray-500">{cart.reduce((s, c) => s + c.qty, 0)} items</div>
             <div className="font-black text-lg text-red-600">
-              ₹{cart.reduce((s, c) => s + c.item.price * c.qty, 0).toFixed(2)}
+              {sym}{cart.reduce((s, c) => s + c.item.price * c.qty, 0).toFixed(2)}
             </div>
           </div>
           <button

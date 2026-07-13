@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Printer, Download, Users, CalendarDays, IndianRupee, TrendingUp, FileBarChart2 } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const MONTHS = [
   { value: "1", label: "January" }, { value: "2", label: "February" }, { value: "3", label: "March" },
@@ -20,7 +21,7 @@ const currentYear = new Date().getFullYear();
 const YEARS = Array.from({ length: 5 }, (_, i) => String(currentYear - i));
 const currentMonth = String(new Date().getMonth() + 1);
 
-const fmt = (n: any) => n ? `₹${Number(n).toLocaleString("en-IN")}` : "—";
+const fmt = (n: any) => n ? `${sym}${Number(n).toLocaleString("en-IN")}` : "—";
 
 // ── Employee Directory ────────────────────────────────────────────────────────
 function EmployeeDirectoryReport() {

@@ -6,16 +6,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (m: string, u: string, b?: any) =>
   fetch(u, { method: m, headers: { "Content-Type": "application/json" }, credentials: "include", body: b ? JSON.stringify(b) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
-const fmt = (n: any) => n != null ? `₹${Number(n).toLocaleString("en-IN")}` : "—";
+const fmt = (n: any) => n != null ? `${sym}${Number(n).toLocaleString("en-IN")}` : "—";
 const fmtDate = (d: any) => d ? new Date(d).toLocaleDateString("en-IN") : "—";
 
 export default function SubcontractorsPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [tab, setTab] = useState<"vendors" | "work_orders" | "bills">("vendors");
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<any>({});
@@ -134,7 +137,7 @@ export default function SubcontractorsPage() {
                   {workOrders.map((w: any) => <option key={w.id} value={w.id}>{w.work_order_no} — {w.work_description?.slice(0, 40)}</option>)}
                 </select>
               </div>
-              {[{ key: "bill_no", label: "Bill / Invoice No" }, { key: "bill_date", label: "Bill Date", type: "date" }, { key: "bill_amount", label: "Bill Amount ₹", type: "number" }, { key: "gst_amount", label: "GST Amount ₹", type: "number" }, { key: "tds_amount", label: "TDS Amount ₹", type: "number" }, { key: "milestone", label: "Milestone (e.g. Slab 1 Complete)" }, { key: "due_date", label: "Due Date", type: "date" }].map(f => (
+              {[{ key: "bill_no", label: "Bill / Invoice No" }, { key: "bill_date", label: "Bill Date", type: "date" }, { key: "bill_amount", label: "Bill Amount ₹", type: "number" }, { key: "gst_amount", label: "GST Amount ${sym}", type: "number" }, { key: "tds_amount", label: "TDS Amount ${sym}", type: "number" }, { key: "milestone", label: "Milestone (e.g. Slab 1 Complete)" }, { key: "due_date", label: "Due Date", type: "date" }].map(f => (
                 <div key={f.key}>
                   <Label style={{ fontSize: 11 }}>{f.label}</Label>
                   <Input type={f.type || "text"} value={form[f.key] ?? ""} onChange={e => setForm((p: any) => ({ ...p, [f.key]: e.target.value }))} style={{ fontSize: 12, marginTop: 2 }} />

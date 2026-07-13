@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 // Public full-screen Customer Display Screen — no auth required
 const apiGet = async (url: string) => {
@@ -21,6 +22,8 @@ const PROMO_MESSAGES = [
 
 function DigitalClock() {
   const [time, setTime] = useState(new Date());
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   useEffect(() => {
     const id = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(id);
@@ -41,6 +44,8 @@ function DigitalClock() {
 
 function IdleState() {
   const [promoIdx, setPromoIdx] = useState(0);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -83,6 +88,8 @@ function IdleState() {
 
 function ActiveBillState({ bill }: { bill: any }) {
   const items: any[] = bill.items || [];
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const subtotal = items.reduce((s: number, i: any) => s + Number(i.price || 0) * Number(i.quantity || 1), 0);
   const gst = bill.gst ?? subtotal * 0.05;
   const serviceCharge = Number(bill.service_charge || 0);
@@ -128,9 +135,9 @@ function ActiveBillState({ bill }: { bill: any }) {
           >
             <div className="col-span-6 font-medium text-white">{item.name}</div>
             <div className="col-span-2 text-center text-gray-300">×{item.quantity || 1}</div>
-            <div className="col-span-2 text-right text-gray-300">₹{fmt(item.price)}</div>
+            <div className="col-span-2 text-right text-gray-300">{sym}{fmt(item.price)}</div>
             <div className="col-span-2 text-right text-white font-semibold">
-              ₹{fmt(Number(item.price || 0) * Number(item.quantity || 1))}
+              {sym}{fmt(Number(item.price || 0) * Number(item.quantity || 1))}
             </div>
           </div>
         ))}
@@ -140,27 +147,27 @@ function ActiveBillState({ bill }: { bill: any }) {
       <div className="bg-gray-800 px-8 py-4 space-y-2 border-t border-gray-700">
         <div className="flex justify-between text-gray-300 text-lg">
           <span>Subtotal</span>
-          <span>₹{fmt(subtotal)}</span>
+          <span>{sym}{fmt(subtotal)}</span>
         </div>
         <div className="flex justify-between text-gray-300 text-lg">
           <span>GST (5%)</span>
-          <span>₹{fmt(gst)}</span>
+          <span>{sym}{fmt(gst)}</span>
         </div>
         {serviceCharge > 0 && (
           <div className="flex justify-between text-gray-300 text-lg">
             <span>Service Charge</span>
-            <span>₹{fmt(serviceCharge)}</span>
+            <span>{sym}{fmt(serviceCharge)}</span>
           </div>
         )}
         {discount > 0 && (
           <div className="flex justify-between text-green-400 text-lg">
             <span>Discount</span>
-            <span>−₹{fmt(discount)}</span>
+            <span>−{sym}{fmt(discount)}</span>
           </div>
         )}
         <div className="flex justify-between text-white font-black text-3xl pt-2 border-t border-gray-600">
           <span>TOTAL</span>
-          <span className="text-indigo-300">₹{fmt(total)}</span>
+          <span className="text-indigo-300">{sym}{fmt(total)}</span>
         </div>
 
         {/* Payment mode */}

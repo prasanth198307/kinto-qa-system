@@ -16,6 +16,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import {
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
   FileText, Calendar, Clock, Shield, User, LogOut,
   IndianRupee, Printer, CheckCircle2, XCircle, ChevronRight,
   Home, Lock, AlertCircle, Download, Info, Receipt, Plus, Trash2
@@ -23,7 +24,7 @@ import {
 
 const MONTH_NAMES = ["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const fmt = (n: any) => Number(n || 0).toLocaleString("en-IN");
-const fmtRs = (n: any) => `₹${fmt(n)}`;
+const fmtRs = (n: any) => `${sym}${fmt(n)}`;
 const FISCAL_YEARS = ["2025-26", "2024-25", "2023-24"];
 
 async function essFetch(path: string, opts?: RequestInit) {
@@ -278,6 +279,8 @@ function ApplyLeaveForm({ leaveTypes, leaveBalances, leavesError, onSave, onCanc
 function EssDeclarationTab({ employee }: { employee: any }) {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [fy, setFy] = useState(FISCAL_YEARS[0]);
 
   const { data: decl } = useQuery({
@@ -385,7 +388,7 @@ function EssDeclarationTab({ employee }: { employee: any }) {
           <div className="space-y-1">
             <p className="text-sm font-medium text-blue-800 dark:text-blue-200">No investment declarations required under New Regime</p>
             <p className="text-xs text-blue-700 dark:text-blue-300">Deductions under Section 80C, 80D, HRA, Home Loan Interest, etc. are <strong>not available</strong> in the New Tax Regime.</p>
-            <p className="text-xs text-blue-700 dark:text-blue-300">A standard deduction of <strong>₹75,000</strong> is automatically applied. Your TDS will be computed using the new slab rates.</p>
+            <p className="text-xs text-blue-700 dark:text-blue-300">A standard deduction of <strong>{sym}75,000</strong> is automatically applied. Your TDS will be computed using the new slab rates.</p>
             <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">To claim investment deductions, switch to <strong>Old Regime</strong> above.</p>
           </div>
         </div>
@@ -436,7 +439,7 @@ function EssDeclarationTab({ employee }: { employee: any }) {
 
           <TabsContent value="other" className="mt-4 space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {[["homeLoanInterest","Home Loan Interest (Sec 24, max ₹2L)"],["eduLoanInterest","Education Loan Interest (80E)"],["nps80ccd","NPS (80CCD 1B, max ₹50K)"],["sec80g","Donations (80G)"],["sec80tta","Savings Interest (80TTA, max ₹10K)"],["otherDeductions","Other Deductions"]].map(([k,l]) => (
+              {[["homeLoanInterest","Home Loan Interest (Sec 24, max ${sym}2L)"],["eduLoanInterest","Education Loan Interest (80E)"],["nps80ccd","NPS (80CCD 1B, max ${sym}50K)"],["sec80g","Donations (80G)"],["sec80tta","Savings Interest (80TTA, max ${sym}10K)"],["otherDeductions","Other Deductions"]].map(([k,l]) => (
                 <div key={k} className="space-y-1.5"><Label className="text-sm">{l}</Label><Input className={numCls} type="number" min="0" value={form[k]||"0"} onChange={f(k)} /></div>
               ))}
             </div>
@@ -457,6 +460,8 @@ function EssDeclarationTab({ employee }: { employee: any }) {
 function EssExpensesTab({ employee }: { employee: any }) {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ title: "", category: "", amount: "", expense_date: new Date().toISOString().split("T")[0], notes: "" });
 
@@ -509,7 +514,7 @@ function EssExpensesTab({ employee }: { employee: any }) {
                     <p className="text-xs text-muted-foreground">{claim.category} · {claim.expense_date ? new Date(claim.expense_date).toLocaleDateString() : "—"}</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold text-sm">₹{Number(claim.amount || 0).toLocaleString("en-IN")}</span>
+                    <span className="font-semibold text-sm">{sym}{Number(claim.amount || 0).toLocaleString("en-IN")}</span>
                     <Badge variant={STATUS_COLOR[claim.status] || "secondary"}>{claim.status}</Badge>
                   </div>
                 </div>
@@ -543,7 +548,7 @@ function EssExpensesTab({ employee }: { employee: any }) {
                 </select>
               </div>
               <div className="space-y-1.5">
-                <Label>Amount (₹)</Label>
+                <Label>Amount (${sym})</Label>
                 <input className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm" type="number" min={0} data-testid="input-amount" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} placeholder="0.00" />
               </div>
             </div>

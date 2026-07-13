@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BarChart3, Download, TrendingUp, Users, DollarSign, Activity } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" } }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -27,6 +28,8 @@ const COL_MAP: Record<string, string[]> = {
 
 export default function CRMReportsPage() {
   const [tab, setTab] = useState("pipeline");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [from, setFrom] = useState(() => { const d = new Date(); d.setMonth(0); d.setDate(1); return d.toISOString().slice(0, 10); });
   const [to, setTo] = useState(() => new Date().toISOString().slice(0, 10));
 
@@ -41,10 +44,10 @@ export default function CRMReportsPage() {
   const cols = COL_MAP[tab] ?? [];
 
   const statCards: Record<string, Record<string, any>> = {
-    "rep-performance": { "Total Reps": summary.total_reps ?? rows.length, "Total Won": summary.total_won ?? "—", "Total Revenue": summary.total_revenue ? `₹${Number(summary.total_revenue).toLocaleString("en-IN")}` : "—" },
-    "pipeline": { "Total Deals": summary.total_deals ?? rows.reduce((s: number, r: any) => s + Number(r.deals || 0), 0), "Pipeline Value": `₹${Number(summary.total_value ?? rows.reduce((s: number, r: any) => s + Number(r.value || 0), 0)).toLocaleString("en-IN")}`, "Weighted": `₹${Number(summary.weighted_value ?? rows.reduce((s: number, r: any) => s + Number(r.weighted_value || 0), 0)).toLocaleString("en-IN")}` },
-    "revenue": { "Total Revenue": `₹${Number(summary.total_revenue ?? 0).toLocaleString("en-IN")}`, "Deals Won": summary.total_won ?? "—", "Avg Deal Size": summary.avg_deal_size ? `₹${Number(summary.avg_deal_size).toLocaleString("en-IN")}` : "—" },
-    "lead-source-roi": { "Top Source": summary.top_source ?? "—", "Overall Conversion": summary.overall_conversion ? `${summary.overall_conversion}%` : "—", "Total Revenue": summary.total_revenue ? `₹${Number(summary.total_revenue).toLocaleString("en-IN")}` : "—" },
+    "rep-performance": { "Total Reps": summary.total_reps ?? rows.length, "Total Won": summary.total_won ?? "—", "Total Revenue": summary.total_revenue ? `${sym}${Number(summary.total_revenue).toLocaleString("en-IN")}` : "—" },
+    "pipeline": { "Total Deals": summary.total_deals ?? rows.reduce((s: number, r: any) => s + Number(r.deals || 0), 0), "Pipeline Value": `${sym}${Number(summary.total_value ?? rows.reduce((s: number, r: any) => s + Number(r.value || 0), 0)).toLocaleString("en-IN")}`, "Weighted": `${sym}${Number(summary.weighted_value ?? rows.reduce((s: number, r: any) => s + Number(r.weighted_value || 0), 0)).toLocaleString("en-IN")}` },
+    "revenue": { "Total Revenue": `${sym}${Number(summary.total_revenue ?? 0).toLocaleString("en-IN")}`, "Deals Won": summary.total_won ?? "—", "Avg Deal Size": summary.avg_deal_size ? `${sym}${Number(summary.avg_deal_size).toLocaleString("en-IN")}` : "—" },
+    "lead-source-roi": { "Top Source": summary.top_source ?? "—", "Overall Conversion": summary.overall_conversion ? `${summary.overall_conversion}%` : "—", "Total Revenue": summary.total_revenue ? `${sym}${Number(summary.total_revenue).toLocaleString("en-IN")}` : "—" },
     "activity-summary": { "Total Activities": summary.total_activities ?? rows.reduce((s: number, r: any) => s + Number(r.count || 0), 0), "Contacts Reached": summary.contacts_reached ?? "—" },
   };
 
@@ -96,7 +99,7 @@ export default function CRMReportsPage() {
                     {cols.map(c => (
                       <td key={c} className="p-2">
                         {typeof row[c] === "number" && (c.includes("revenue") || c.includes("value") || c.includes("size"))
-                          ? `₹${Number(row[c]).toLocaleString("en-IN")}`
+                          ? `${sym}${Number(row[c]).toLocaleString("en-IN")}`
                           : c.includes("rate") || c.includes("roi") ? `${row[c] ?? 0}%`
                           : row[c] ?? "—"}
                       </td>

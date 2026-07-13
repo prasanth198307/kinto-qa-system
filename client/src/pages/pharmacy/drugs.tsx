@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pill, Plus, X, Search } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string, body?: any) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -17,6 +18,8 @@ const EMPTY = { name: "", generic_name: "", manufacturer: "", schedule: "OTC", h
 
 export default function DrugsPage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
@@ -100,7 +103,7 @@ export default function DrugsPage() {
                 <td className="p-2"><Badge className={SCHEDULE_COLORS[d.schedule] ?? "bg-gray-100"}>{d.schedule ?? "OTC"}</Badge></td>
                 <td className="p-2">{d.hsn_code}</td>
                 <td className="p-2">{d.gst_rate}%</td>
-                <td className="p-2">₹{d.mrp}</td>
+                <td className="p-2">{sym}{d.mrp}</td>
                 <td className="p-2">{d.pack_size}</td>
                 <td className="p-2"><div className="flex gap-1">
                   <Button size="sm" variant="outline" onClick={() => openEdit(d)}>Edit</Button>

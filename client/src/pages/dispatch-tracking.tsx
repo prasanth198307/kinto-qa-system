@@ -21,6 +21,7 @@ import { usePermissions } from "@/hooks/use-permissions";
 import { DataTablePagination } from "@/components/DataTablePagination";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const statusConfig = {
   // Invoice statuses
@@ -389,7 +390,7 @@ export default function DispatchTracking({ showHeader = true }: DispatchTracking
                         <tr key={invoice.id} className="border-b hover-elevate" data-testid={`row-invoice-${invoice.id}`}>
                           <td className="p-3 font-medium">{invoice.invoiceNumber}</td>
                           <td className="p-3">{invoice.buyerName}</td>
-                          <td className="p-3">₹{(invoice.totalAmount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                          <td className="p-3">{sym}{(invoice.totalAmount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                           <td className="p-3">{format(new Date(invoice.invoiceDate), 'dd MMM yyyy')}</td>
                           <td className="p-3">{getStatusBadge(invoice.status)}</td>
                           <td className="p-3">

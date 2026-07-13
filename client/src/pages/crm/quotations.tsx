@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FileText, Plus, X, Send, ArrowRight } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string, body?: any) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -17,6 +18,8 @@ const EMPTY_LINE = { description: "", qty: "1", unit_price: "", gst_rate: "18" }
 
 export default function CRMQuotationsPage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [showForm, setShowForm] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [form, setForm] = useState({ ...EMPTY_FORM });
@@ -124,7 +127,7 @@ export default function CRMQuotationsPage() {
                             <SelectContent>{GST_RATES.map(r => <SelectItem key={r} value={r.toString()}>{r}%</SelectItem>)}</SelectContent>
                           </Select>
                         </td>
-                        <td className="p-2 text-right text-xs">₹{t.total.toFixed(2)}</td>
+                        <td className="p-2 text-right text-xs">{sym}{t.total.toFixed(2)}</td>
                         <td className="p-1"><Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-400" onClick={() => removeLine(i)}><X className="w-3 h-3" /></Button></td>
                       </tr>
                     );
@@ -132,9 +135,9 @@ export default function CRMQuotationsPage() {
                 </tbody>
               </table>
               <div className="flex justify-end mt-2 text-sm space-x-4">
-                <span>Subtotal: ₹{grandTotal.base.toFixed(2)}</span>
-                <span>GST: ₹{grandTotal.gst.toFixed(2)}</span>
-                <span className="font-bold">Total: ₹{grandTotal.total.toFixed(2)}</span>
+                <span>Subtotal: {sym}{grandTotal.base.toFixed(2)}</span>
+                <span>GST: {sym}{grandTotal.gst.toFixed(2)}</span>
+                <span className="font-bold">Total: {sym}{grandTotal.total.toFixed(2)}</span>
               </div>
             </div>
 
@@ -155,7 +158,7 @@ export default function CRMQuotationsPage() {
                   <div>
                     <p className="font-medium text-sm">#{q.id} · {q.title || "Quotation"}</p>
                     <p className="text-xs text-gray-500">{q.contact_name}</p>
-                    <p className="text-xs text-gray-400">₹{Number(q.total_amount || 0).toLocaleString("en-IN")}</p>
+                    <p className="text-xs text-gray-400">{sym}{Number(q.total_amount || 0).toLocaleString("en-IN")}</p>
                   </div>
                   <Badge className={STATUS_COLOR[q.status] ?? "bg-gray-100"}>{q.status}</Badge>
                 </div>
@@ -184,7 +187,7 @@ export default function CRMQuotationsPage() {
                   <div><span className="text-gray-500">Contact: </span>{selectedQuote.contact_name}</div>
                   <div><span className="text-gray-500">Valid Till: </span>{selectedQuote.valid_till?.slice(0, 10)}</div>
                   <div><span className="text-gray-500">Status: </span><Badge className={STATUS_COLOR[selectedQuote.status]}>{selectedQuote.status}</Badge></div>
-                  <div><span className="text-gray-500">Total: </span><strong>₹{Number(selectedQuote.total_amount || 0).toLocaleString("en-IN")}</strong></div>
+                  <div><span className="text-gray-500">Total: </span><strong>{sym}{Number(selectedQuote.total_amount || 0).toLocaleString("en-IN")}</strong></div>
                   {selectedQuote.notes && <div className="col-span-2"><span className="text-gray-500">Notes: </span>{selectedQuote.notes}</div>}
                 </div>
                 <table className="w-full text-sm border-collapse">
@@ -194,9 +197,9 @@ export default function CRMQuotationsPage() {
                       <tr key={i} className="border-b">
                         <td className="p-2">{item.description}</td>
                         <td className="p-2 text-center">{item.qty}</td>
-                        <td className="p-2 text-right">₹{Number(item.unit_price).toLocaleString("en-IN")}</td>
+                        <td className="p-2 text-right">{sym}{Number(item.unit_price).toLocaleString("en-IN")}</td>
                         <td className="p-2 text-center">{item.gst_rate}%</td>
-                        <td className="p-2 text-right">₹{(Number(item.qty) * Number(item.unit_price) * (1 + Number(item.gst_rate) / 100)).toLocaleString("en-IN")}</td>
+                        <td className="p-2 text-right">{sym}{(Number(item.qty) * Number(item.unit_price) * (1 + Number(item.gst_rate) / 100)).toLocaleString("en-IN")}</td>
                       </tr>
                     ))}
                   </tbody>

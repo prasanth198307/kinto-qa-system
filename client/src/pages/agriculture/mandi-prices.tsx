@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { RefreshCw, Bell } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const COMMODITIES = ["Wheat", "Rice", "Maize", "Cotton", "Soybean", "Onion", "Potato", "Tomato"];
 const STATES = ["MP", "UP", "Punjab", "Haryana", "Maharashtra", "Rajasthan", "Gujarat"];
@@ -20,6 +21,8 @@ const MOCK_PRICES = [
 
 export default function MandiPricesPage() {
   const [commodity, setCommodity] = useState("Wheat");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [state, setState] = useState("MP");
   const [alertPrice, setAlertPrice] = useState("");
   const [alertMsg, setAlertMsg] = useState("");
@@ -40,7 +43,7 @@ export default function MandiPricesPage() {
 
   const setAlert = () => {
     if (!alertPrice) return;
-    setAlertMsg(`Alert set: Notify if ${commodity} modal price drops below ₹${alertPrice}/quintal`);
+    setAlertMsg(`Alert set: Notify if ${commodity} modal price drops below ${sym}${alertPrice}/quintal`);
   };
 
   const maxModal = Math.max(...prices.map(p => p.modal));
@@ -93,9 +96,9 @@ export default function MandiPricesPage() {
                 <TableRow key={i}>
                   <TableCell>{p.date}</TableCell>
                   <TableCell>{p.mandi}</TableCell>
-                  <TableCell>₹{p.min.toLocaleString()}</TableCell>
-                  <TableCell>₹{p.max.toLocaleString()}</TableCell>
-                  <TableCell><Badge variant="outline">₹{p.modal.toLocaleString()}</Badge></TableCell>
+                  <TableCell>{sym}{p.min.toLocaleString()}</TableCell>
+                  <TableCell>{sym}{p.max.toLocaleString()}</TableCell>
+                  <TableCell><Badge variant="outline">{sym}{p.modal.toLocaleString()}</Badge></TableCell>
                 </TableRow>
               ))}
             </TableBody>

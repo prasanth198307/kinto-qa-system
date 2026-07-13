@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CalendarClock, Plus, X, MessageCircle, Receipt } from "lucide-react";
+import { useTenantConfig } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string, body?: any) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -14,6 +15,8 @@ const api = (method: string, path: string, body?: any) =>
 const STATUS_COLORS: Record<string, string> = { scheduled: "bg-blue-100 text-blue-800", completed: "bg-green-100 text-green-800", cancelled: "bg-red-100 text-red-800", no_show: "bg-gray-100 text-gray-600" };
 
 export default function OpdPage() {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const qc = useQueryClient();
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [showForm, setShowForm] = useState(false);
@@ -101,7 +104,7 @@ export default function OpdPage() {
             </CardContent>
             {billing?.id === a.id && (
               <CardContent className="border-t pt-3 flex gap-2 items-end">
-                <div><Label className="text-xs">Consultation Amount (₹)</Label><Input type="number" value={billAmount} onChange={e => setBillAmount(e.target.value)} className="w-36" /></div>
+                <div><Label className="text-xs">{`Consultation Amount (${sym})`}</Label><Input type="number" value={billAmount} onChange={e => setBillAmount(e.target.value)} className="w-36" /></div>
                 <Button size="sm" onClick={() => createBill.mutate({ appointment_id: a.id, patient_id: a.patient_id, doctor_id: a.doctor_id, amount: parseFloat(billAmount) })}>Generate Bill & Post GL</Button>
                 <Button size="sm" variant="ghost" onClick={() => setBilling(null)}><X className="w-3 h-3" /></Button>
                 <p className="text-xs text-gray-400">GL: DR Cash · CR OPD Revenue</p>

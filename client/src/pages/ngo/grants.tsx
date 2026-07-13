@@ -10,10 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Award } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (m: string, p: string, b?: any) =>
   fetch(p, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined }).then((r) => r.json());
-const fmt = (n: any) => `₹${Number(n || 0).toLocaleString("en-IN")}`;
+const fmt = (n: any) => `${sym}${Number(n || 0).toLocaleString("en-IN")}`;
 const BLANK = { grantor_name: "", grant_type: "government", project_id: "", applied_amount: "", approved_amount: "", application_date: "", approval_date: "", status: "applied", notes: "" };
 const STATUS_BADGE: Record<string, "secondary" | "default" | "destructive" | "outline"> = {
   applied: "secondary", approved: "default", disbursed: "outline", rejected: "destructive", closed: "outline",
@@ -21,6 +22,8 @@ const STATUS_BADGE: Record<string, "secondary" | "default" | "destructive" | "ou
 
 export default function NGOGrantsPage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);

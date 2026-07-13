@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tag, Plus, X } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string, body?: any) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -22,6 +23,8 @@ const EMPTY_CHANNEL = { channel_name: "", room_type_id: "", base_rate: "", commi
 
 export default function HotelRatesPage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [tab, setTab] = useState<"plans" | "channels">("plans");
   const [showPlanForm, setShowPlanForm] = useState(false);
   const [showChannelForm, setShowChannelForm] = useState(false);
@@ -77,8 +80,8 @@ export default function HotelRatesPage() {
                     <SelectContent>{MEAL_PLANS.map(m => <SelectItem key={m.code} value={m.code}>{m.label}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
-                <div><Label>Base Rate (₹/night)</Label><Input type="number" value={planForm.base_rate} onChange={e => pf("base_rate", e.target.value)} /></div>
-                <div><Label>Weekend Rate (₹/night)</Label><Input type="number" value={planForm.weekend_rate} onChange={e => pf("weekend_rate", e.target.value)} /></div>
+                <div><Label>Base Rate (${sym}/night)</Label><Input type="number" value={planForm.base_rate} onChange={e => pf("base_rate", e.target.value)} /></div>
+                <div><Label>Weekend Rate (${sym}/night)</Label><Input type="number" value={planForm.weekend_rate} onChange={e => pf("weekend_rate", e.target.value)} /></div>
                 <div><Label>Valid From</Label><Input type="date" value={planForm.valid_from} onChange={e => pf("valid_from", e.target.value)} /></div>
                 <div><Label>Valid To</Label><Input type="date" value={planForm.valid_to} onChange={e => pf("valid_to", e.target.value)} /></div>
                 <div className="col-span-3"><Label>Description</Label><Input value={planForm.description} onChange={e => pf("description", e.target.value)} /></div>
@@ -97,7 +100,7 @@ export default function HotelRatesPage() {
                   <div>
                     <p className="font-semibold">{p.name}</p>
                     <p className="text-sm text-gray-600">{MEAL_PLANS.find(m => m.code === p.meal_plan)?.label ?? p.meal_plan}</p>
-                    <p className="text-sm font-medium mt-1">Base: ₹{Number(p.base_rate ?? 0).toLocaleString("en-IN")}/night · Weekend: ₹{Number(p.weekend_rate ?? 0).toLocaleString("en-IN")}/night</p>
+                    <p className="text-sm font-medium mt-1">Base: {sym}{Number(p.base_rate ?? 0).toLocaleString("en-IN")}/night · Weekend: {sym}{Number(p.weekend_rate ?? 0).toLocaleString("en-IN")}/night</p>
                     {p.valid_from && <p className="text-xs text-gray-400">{p.valid_from?.slice(0, 10)} → {p.valid_to?.slice(0, 10)}</p>}
                   </div>
                   <div className="flex gap-1">
@@ -133,7 +136,7 @@ export default function HotelRatesPage() {
                     <SelectContent>{typesArr.map((t: any) => <SelectItem key={t.id} value={t.id.toString()}>{t.name}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
-                <div><Label>Rate (₹/night)</Label><Input type="number" value={channelForm.base_rate} onChange={e => chf("base_rate", e.target.value)} /></div>
+                <div><Label>Rate (${sym}/night)</Label><Input type="number" value={channelForm.base_rate} onChange={e => chf("base_rate", e.target.value)} /></div>
                 <div><Label>Commission (%)</Label><Input type="number" value={channelForm.commission_pct} onChange={e => chf("commission_pct", e.target.value)} /></div>
                 <div><Label>Valid From</Label><Input type="date" value={channelForm.valid_from} onChange={e => chf("valid_from", e.target.value)} /></div>
                 <div><Label>Valid To</Label><Input type="date" value={channelForm.valid_to} onChange={e => chf("valid_to", e.target.value)} /></div>
@@ -152,9 +155,9 @@ export default function HotelRatesPage() {
                 <tr key={c.id} className="border-b">
                   <td className="p-2 font-medium">{c.channel_name}</td>
                   <td className="p-2">{c.room_type_name ?? `Type ${c.room_type_id}`}</td>
-                  <td className="p-2">₹{Number(c.base_rate ?? 0).toLocaleString("en-IN")}</td>
+                  <td className="p-2">{sym}{Number(c.base_rate ?? 0).toLocaleString("en-IN")}</td>
                   <td className="p-2">{c.commission_pct}%</td>
-                  <td className="p-2 font-medium text-green-700">₹{Math.round(Number(c.base_rate ?? 0) * (1 - (c.commission_pct ?? 0) / 100)).toLocaleString("en-IN")}</td>
+                  <td className="p-2 font-medium text-green-700">{sym}{Math.round(Number(c.base_rate ?? 0) * (1 - (c.commission_pct ?? 0) / 100)).toLocaleString("en-IN")}</td>
                   <td className="p-2 text-xs text-gray-500">{c.valid_from?.slice(0, 10)} → {c.valid_to?.slice(0, 10)}</td>
                   <td className="p-2"><Button size="sm" variant="ghost" className="text-red-500" onClick={() => deleteChannel.mutate(c.id)}>Del</Button></td>
                 </tr>

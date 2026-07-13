@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Plus, CreditCard, ChevronDown, ChevronRight, Wallet } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const MONTHS = ["", "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December"];
@@ -26,6 +27,8 @@ const STATUS_COLORS: Record<string, any> = {
 export default function HRLoansPage() {
   const { toast } = useToast();
   const [createOpen, setCreateOpen] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [filterEmp, setFilterEmp] = useState("");
 
@@ -106,7 +109,7 @@ export default function HRLoansPage() {
         <Card>
           <CardContent className="p-4">
             <p className="text-xs text-muted-foreground">Total Outstanding</p>
-            <p className="text-2xl font-bold">₹{fmt(totalOutstanding)}</p>
+            <p className="text-2xl font-bold">{sym}{fmt(totalOutstanding)}</p>
           </CardContent>
         </Card>
         <Card>
@@ -173,17 +176,17 @@ export default function HRLoansPage() {
                   <div className="flex items-center gap-4 text-sm">
                     <div className="text-center">
                       <p className="text-xs text-muted-foreground">Sanctioned</p>
-                      <p className="font-semibold">₹{fmt(loan.sanctioned_amount)}</p>
+                      <p className="font-semibold">{sym}{fmt(loan.sanctioned_amount)}</p>
                     </div>
                     <div className="text-center">
                       <p className="text-xs text-muted-foreground">Outstanding</p>
                       <p className={`font-semibold ${Number(loan.outstanding) > 0 ? "text-red-600" : "text-green-600"}`}>
-                        ₹{fmt(loan.outstanding)}
+                        {sym}{fmt(loan.outstanding)}
                       </p>
                     </div>
                     <div className="text-center">
                       <p className="text-xs text-muted-foreground">Monthly EMI</p>
-                      <p className="font-semibold">₹{fmt(loan.emi)}</p>
+                      <p className="font-semibold">{sym}{fmt(loan.emi)}</p>
                     </div>
                     <div className="flex gap-1.5">
                       <Button size="sm" variant="ghost" onClick={() => setExpandedId(expandedId === loan.id ? null : loan.id)}>
@@ -235,8 +238,8 @@ export default function HRLoansPage() {
                           {(ledger as any[]).map((row: any) => (
                             <tr key={row.id} className="border-t">
                               <td className="py-1">{MONTHS[row.month]} {row.year}</td>
-                              <td className="py-1 text-right">₹{fmt(row.deducted_amount)}</td>
-                              <td className="py-1 text-right">₹{fmt(row.balance_after)}</td>
+                              <td className="py-1 text-right">{sym}{fmt(row.deducted_amount)}</td>
+                              <td className="py-1 text-right">{sym}{fmt(row.balance_after)}</td>
                               <td className="py-1 pl-4 text-muted-foreground">{row.notes}</td>
                             </tr>
                           ))}

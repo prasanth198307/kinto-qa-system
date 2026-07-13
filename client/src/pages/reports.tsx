@@ -3068,8 +3068,8 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
                   <h5 className="font-semibold">Included in Reports:</h5>
                   <ul className="space-y-1 text-muted-foreground">
                     <li>✓ B2B Invoices (with GSTIN)</li>
-                    <li>✓ B2CL - B2C Large (above ₹2.5L)</li>
-                    <li>✓ B2CS - B2C Small (below ₹2.5L)</li>
+                    <li>✓ B2CL - B2C Large (above ${sym}2.5L)</li>
+                    <li>✓ B2CS - B2C Small (below ${sym}2.5L)</li>
                     <li>✓ EXP - Export Invoices</li>
                     <li className="text-green-600">✓ HSN Summary (with line item details)</li>
                   </ul>

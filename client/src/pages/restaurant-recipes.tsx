@@ -7,11 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const apiFetch = (u: string) => fetch(u, { credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 const apiPost = (u: string, b: any) => fetch(u, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b), credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 const apiDelete = (u: string) => fetch(u, { method: "DELETE", credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
-const fmt = (n: any) => "₹" + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
+const fmt = (n: any) => sym + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
 
 function costPctBadge(pct: number) {
   if (pct <= 0) return <Badge variant="outline" className="text-xs text-gray-400">No recipe</Badge>;
@@ -136,6 +137,8 @@ function RecipeEditor({ menuItem, recipe, onSaved }: { menuItem: any; recipe: an
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [yieldQty, setYieldQty] = useState(String(recipe?.yield_qty || "1"));
   const [yieldUnit, setYieldUnit] = useState(recipe?.yield_unit || "portion");
   const [prepTime, setPrepTime] = useState(String(recipe?.prep_time_minutes || ""));
@@ -297,7 +300,7 @@ function RecipeEditor({ menuItem, recipe, onSaved }: { menuItem: any; recipe: an
                 {filteredRm.map((rm: any) => (
                   <button key={rm.id} className="w-full text-left px-3 py-1.5 text-xs hover:bg-blue-50"
                     onClick={() => { setIngName(rm.name); setIngUnit(rm.unit || ""); setIngRmId(rm.id); if (rm.cost_per_unit) setIngCost(String(rm.cost_per_unit)); setRmSearch(""); }}>
-                    {rm.name} <span className="text-gray-400">({rm.unit}){rm.cost_per_unit ? ` — ₹${rm.cost_per_unit}` : ""}</span>
+                    {rm.name} <span className="text-gray-400">({rm.unit}){rm.cost_per_unit ? ` — ${sym}${rm.cost_per_unit}` : ""}</span>
                   </button>
                 ))}
               </div>
@@ -307,7 +310,7 @@ function RecipeEditor({ menuItem, recipe, onSaved }: { menuItem: any; recipe: an
             <Input placeholder="Name" value={ingName} onChange={e => setIngName(e.target.value)} className="h-7 text-xs" />
             <Input placeholder="Qty" value={ingQty} onChange={e => setIngQty(e.target.value)} className="h-7 text-xs" type="number" />
             <Input placeholder="Unit (g/ml/pcs)" value={ingUnit} onChange={e => setIngUnit(e.target.value)} className="h-7 text-xs" />
-            <Input placeholder="Cost/Unit ₹" value={ingCost} onChange={e => setIngCost(e.target.value)} className="h-7 text-xs" type="number" />
+            <Input placeholder="Cost/Unit ${sym}" value={ingCost} onChange={e => setIngCost(e.target.value)} className="h-7 text-xs" type="number" />
           </div>
           <Button size="sm" className="mt-2 h-7 text-xs" onClick={addIngredient} disabled={addingIng}>{addingIng ? "Adding..." : "+ Add"}</Button>
         </div>

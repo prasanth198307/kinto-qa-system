@@ -11,6 +11,7 @@ import {
 import { Loader2, Package, IndianRupee, CheckCircle2, X, Trash2, BadgeCheck } from "lucide-react";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -70,6 +71,8 @@ export function ModuleMarketplaceDialog({
 }) {
   const { toast } = useToast();
   const [draft, setDraft] = useState<Set<string> | null>(null);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [saving, setSaving] = useState(false);
 
   const { data, isLoading } = useQuery<TenantModuleData>({
@@ -247,7 +250,7 @@ export function ModuleMarketplaceDialog({
                                   </div>
                                 ) : (
                                   <span className="text-sm font-bold text-foreground">
-                                    ₹{mod.priceMonthly}
+                                    {sym}{mod.priceMonthly}
                                     <span className="text-xs font-normal text-muted-foreground">/mo</span>
                                   </span>
                                 )}

@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Search, Plus, Download, Bell } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (m: string, p: string, b?: any) =>
   fetch(p, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined }).then((r) => r.json());
@@ -19,6 +20,8 @@ const BLANK = { name: "", father_name: "", phone: "", email: "", date_of_birth: 
 
 export default function NidhiMembersPage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
@@ -100,8 +103,8 @@ export default function NidhiMembersPage() {
                 <TableCell className="font-mono text-sm">{m.member_number}</TableCell>
                 <TableCell className="font-medium">{m.name}</TableCell>
                 <TableCell>{m.phone}</TableCell>
-                <TableCell className="text-sm">{m.active_deposits ?? 0} · ₹{Number(m.total_deposit_balance||0).toLocaleString("en-IN")}</TableCell>
-                <TableCell className="text-sm">{m.active_loans ?? 0} · ₹{Number(m.total_loan_outstanding||0).toLocaleString("en-IN")}</TableCell>
+                <TableCell className="text-sm">{m.active_deposits ?? 0} · {sym}{Number(m.total_deposit_balance||0).toLocaleString("en-IN")}</TableCell>
+                <TableCell className="text-sm">{m.active_loans ?? 0} · {sym}{Number(m.total_loan_outstanding||0).toLocaleString("en-IN")}</TableCell>
                 <TableCell><Badge variant={KYC_BADGE[m.kyc_status] ?? "secondary"}>{m.kyc_status}</Badge></TableCell>
                 <TableCell><div className="flex gap-1">
                   <Button size="sm" variant="outline" onClick={() => setEditM({ ...m })}>Edit</Button>

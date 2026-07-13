@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TrendingUp, Plus, X, Target } from "lucide-react";
 import { useLocation } from "wouter";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string, body?: any) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -17,6 +18,8 @@ const EMPTY_OPP = { title: "", contact_id: "", pipeline_id: "", stage_id: "", va
 
 export default function CRMPipelinePage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [, setLocation] = useLocation();
   const [tab, setTab] = useState<"overview" | "pipelines" | "stages">("overview");
   const [showPipeForm, setShowPipeForm] = useState(false);
@@ -62,8 +65,8 @@ export default function CRMPipelinePage() {
 
       <div className="grid grid-cols-4 gap-3">
         <Card><CardContent className="pt-3"><p className="text-xs text-gray-500">Total Deals</p><p className="text-2xl font-bold">{oppsArr.length}</p></CardContent></Card>
-        <Card><CardContent className="pt-3"><p className="text-xs text-gray-500">Pipeline Value</p><p className="text-xl font-bold">₹{(totalValue/100000).toFixed(1)}L</p></CardContent></Card>
-        <Card><CardContent className="pt-3"><p className="text-xs text-gray-500">Weighted Value</p><p className="text-xl font-bold">₹{(weightedValue/100000).toFixed(1)}L</p></CardContent></Card>
+        <Card><CardContent className="pt-3"><p className="text-xs text-gray-500">Pipeline Value</p><p className="text-xl font-bold">{sym}{(totalValue/100000).toFixed(1)}L</p></CardContent></Card>
+        <Card><CardContent className="pt-3"><p className="text-xs text-gray-500">Weighted Value</p><p className="text-xl font-bold">{sym}{(weightedValue/100000).toFixed(1)}L</p></CardContent></Card>
         <Card><CardContent className="pt-3"><p className="text-xs text-gray-500">Pipelines</p><p className="text-2xl font-bold">{pipesArr.length}</p></CardContent></Card>
       </div>
 
@@ -99,7 +102,7 @@ export default function CRMPipelinePage() {
                 <SelectContent>{stagesArr.filter((s: any) => !oppForm.pipeline_id || s.pipeline_id?.toString() === oppForm.pipeline_id).map((s: any) => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div><Label>Value (₹)</Label><Input type="number" value={oppForm.value} onChange={e => of2("value", e.target.value)} /></div>
+            <div><Label>Value (${sym})</Label><Input type="number" value={oppForm.value} onChange={e => of2("value", e.target.value)} /></div>
             <div><Label>Probability (%)</Label><Input type="number" value={oppForm.probability} onChange={e => of2("probability", e.target.value)} /></div>
             <div><Label>Expected Close</Label><Input type="date" value={oppForm.expected_close} onChange={e => of2("expected_close", e.target.value)} /></div>
             <div className="col-span-2"><Label>Notes</Label><Input value={oppForm.notes} onChange={e => of2("notes", e.target.value)} /></div>
@@ -122,7 +125,7 @@ export default function CRMPipelinePage() {
                   <p className="text-xs text-gray-400">Close: {o.expected_close?.slice(0, 10)}</p>
                 </div>
                 <div className="flex flex-col items-end gap-1">
-                  <p className="font-bold">₹{Number(o.value ?? 0).toLocaleString("en-IN")}</p>
+                  <p className="font-bold">{sym}{Number(o.value ?? 0).toLocaleString("en-IN")}</p>
                   <p className="text-xs text-gray-500">{o.probability}% probability</p>
                   <Button size="sm" variant="ghost" className="text-red-500 text-xs" onClick={() => deleteOpp.mutate(o.id)}>Del</Button>
                 </div>

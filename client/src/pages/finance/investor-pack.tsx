@@ -8,12 +8,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RefreshCw, Download, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string, body?: any) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 const fmt = (n: number, currency = true) => currency
-  ? `₹${(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 0 })}`
+  ? `${sym}${(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 0 })}`
   : String((n || 0).toFixed(1));
 
 const pct = (n: number) => `${(n || 0).toFixed(1)}%`;

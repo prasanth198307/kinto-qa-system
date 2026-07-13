@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart3, Download } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" } }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -53,11 +54,13 @@ function ReportTable({ data, columns }: { data: any[]; columns: { key: string; l
   );
 }
 
-const fmtMoney = (v: number) => v != null ? `₹${(v / 100).toLocaleString("en-IN")}` : "—";
+const fmtMoney = (v: number) => v != null ? `${sym}${(v / 100).toLocaleString("en-IN")}` : "—";
 const fmtPct = (v: number) => v != null ? `${v.toFixed(1)}%` : "—";
 
 export default function HealthcareReportsPage() {
   const today = new Date().toISOString().slice(0, 10);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const firstDay = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
   const [from, setFrom] = useState(firstDay);
   const [to, setTo] = useState(today);
@@ -221,7 +224,7 @@ export default function HealthcareReportsPage() {
               <StatCard label="Claims Submitted" value={summary.submitted ?? 0} />
               <StatCard label="Approved" value={summary.approved ?? 0} />
               <StatCard label="Rejected" value={summary.rejected ?? 0} />
-              <StatCard label="Total Approved (₹)" value={fmtMoney(summary.total_approved ?? 0)} />
+              <StatCard label="Total Approved " value={fmtMoney(summary.total_approved ?? 0)} />
             </div>
           )}
           <Card><CardContent className="pt-4">

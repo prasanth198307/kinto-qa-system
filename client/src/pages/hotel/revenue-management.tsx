@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const ROOM_TYPES = [
   { type: "Deluxe", total: 20, current_rate: 4500, occupancy: 92 },
@@ -32,6 +33,8 @@ function KPICard({ label, value, sub }: { label: string; value: string; sub?: st
 
 function OccupancyForecast({ forecast }: { forecast: Array<{ date: string; occupancy: number; adr: number }> }) {
   const maxOcc = Math.max(...forecast.map(f => f.occupancy), 100);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   return (
     <Card>
       <CardHeader><CardTitle>30-Day Occupancy Forecast</CardTitle></CardHeader>
@@ -42,7 +45,7 @@ function OccupancyForecast({ forecast }: { forecast: Array<{ date: string; occup
               <div
                 className={`w-4 rounded-t transition-all ${f.occupancy > 90 ? "bg-green-500" : f.occupancy >= 70 ? "bg-blue-400" : "bg-orange-400"}`}
                 style={{ height: `${(f.occupancy / maxOcc) * 120}px` }}
-                title={`${f.date}: ${f.occupancy}% | ₹${f.adr}`}
+                title={`${f.date}: ${f.occupancy}% | ${sym}${f.adr}`}
               />
               {i % 5 === 0 && <span className="text-[9px] text-muted-foreground rotate-45">{f.date.slice(5)}</span>}
             </div>
@@ -66,6 +69,8 @@ export default function RevenueManagementPage() {
   });
 
   const forecast: Array<{ date: string; occupancy: number; adr: number }> = (forecastData as any)?.forecast ?? Array.from({ length: 30 }, (_, i) => ({
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
     date: new Date(Date.now() + i * 86400000).toISOString().split("T")[0],
     occupancy: Math.floor(Math.random() * 40) + 55,
     adr: Math.floor(Math.random() * 2000) + 3000,
@@ -93,8 +98,8 @@ export default function RevenueManagementPage() {
       </div>
 
       <div className="grid grid-cols-3 gap-4">
-        <KPICard label="RevPAR" value={`₹${revpar.toLocaleString()}`} sub="Revenue Per Available Room" />
-        <KPICard label="ADR" value={`₹${avgAdr.toLocaleString()}`} sub="Average Daily Rate" />
+        <KPICard label="RevPAR" value={`${sym}${revpar.toLocaleString()}`} sub="Revenue Per Available Room" />
+        <KPICard label="ADR" value={`${sym}${avgAdr.toLocaleString()}`} sub="Average Daily Rate" />
         <KPICard label="Occupancy %" value={`${avgOcc}%`} sub="30-day average forecast" />
       </div>
 
@@ -128,9 +133,9 @@ export default function RevenueManagementPage() {
                         <span className="text-sm">{rt.occupancy}%</span>
                       </div>
                     </TableCell>
-                    <TableCell>₹{rt.current_rate.toLocaleString()}</TableCell>
+                    <TableCell>{sym}{rt.current_rate.toLocaleString()}</TableCell>
                     <TableCell><Badge variant="outline">{rec.badge}</Badge></TableCell>
-                    <TableCell className={`font-semibold ${rec.color}`}>₹{rec.new_rate.toLocaleString()}</TableCell>
+                    <TableCell className={`font-semibold ${rec.color}`}>{sym}{rec.new_rate.toLocaleString()}</TableCell>
                     <TableCell><span className={`text-sm font-medium ${rec.color}`}>{rec.action}</span></TableCell>
                   </TableRow>
                 );

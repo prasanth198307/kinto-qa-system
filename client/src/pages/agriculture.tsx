@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Search, Leaf, MapPin, ShoppingBag, TrendingUp, Users, FlaskConical, Pencil, Trash2, Receipt } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const fmt = (n: any) => Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
 function F({ label, children }: any) { return <div className="space-y-1"><Label className="text-xs">{label}</Label>{children}</div>; }
@@ -27,8 +28,8 @@ function OverviewTab() {
       <SC title="Total Farms" value={stats?.totalFarms ?? 0} icon={MapPin} color="bg-green-100 text-green-600" />
       <SC title="Total Farmers" value={stats?.totalFarmers ?? 0} icon={Users} color="bg-blue-100 text-blue-600" />
       <SC title="Active Crops" value={stats?.activeCycles ?? 0} icon={Leaf} color="bg-teal-100 text-teal-600" />
-      <SC title="Monthly Procurement" value={`₹${fmt(stats?.monthlyProcurement)}`} icon={ShoppingBag} color="bg-orange-100 text-orange-600" />
-      <SC title="Monthly Harvest" value={`₹${fmt(stats?.monthlyHarvestValue)}`} icon={TrendingUp} color="bg-purple-100 text-purple-600" />
+      <SC title="Monthly Procurement" value={`${sym}${fmt(stats?.monthlyProcurement)}`} icon={ShoppingBag} color="bg-orange-100 text-orange-600" />
+      <SC title="Monthly Harvest" value={`${sym}${fmt(stats?.monthlyHarvestValue)}`} icon={TrendingUp} color="bg-purple-100 text-purple-600" />
     </div>
   );
 }
@@ -36,6 +37,10 @@ function OverviewTab() {
 function FarmsTab() {
   const { toast } = useToast();
   const [search, setSearch] = useState(""); const [showForm, setShowForm] = useState(false); const [editing, setEditing] = useState<any>(null); const [form, setForm] = useState<any>({});
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { data: farms = [] } = useQuery<any[]>({ queryKey: ["/api/agriculture/farms"] });
   const saveMut = useMutation({ mutationFn: (d: any) => editing ? apiRequest("PUT", `/api/agriculture/farms/${editing.id}`, d) : apiRequest("POST", "/api/agriculture/farms", d), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/agriculture/farms"] }); setShowForm(false); toast({ title: "Saved" }); } });
   const delMut = useMutation({ mutationFn: (id: any) => apiRequest("DELETE", `/api/agriculture/farms/${id}`), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/agriculture/farms"] }) });
@@ -86,6 +91,8 @@ function FarmsTab() {
 function FarmersTab() {
   const { toast } = useToast();
   const [search, setSearch] = useState(""); const [showForm, setShowForm] = useState(false); const [editing, setEditing] = useState<any>(null); const [form, setForm] = useState<any>({});
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { data: farmers = [] } = useQuery<any[]>({ queryKey: ["/api/agriculture/farmers"] });
   const saveMut = useMutation({ mutationFn: (d: any) => editing ? apiRequest("PUT", `/api/agriculture/farmers/${editing.id}`, d) : apiRequest("POST", "/api/agriculture/farmers", d), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/agriculture/farmers"] }); setShowForm(false); toast({ title: "Saved" }); } });
   const delMut = useMutation({ mutationFn: (id: any) => apiRequest("DELETE", `/api/agriculture/farmers/${id}`), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/agriculture/farmers"] }) });
@@ -136,6 +143,8 @@ function FarmersTab() {
 function CropCyclesTab() {
   const { toast } = useToast();
   const [search, setSearch] = useState(""); const [showForm, setShowForm] = useState(false); const [editing, setEditing] = useState<any>(null); const [form, setForm] = useState<any>({}); const [showInputs, setShowInputs] = useState<any>(null); const [inputForm, setInputForm] = useState<any>({});
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { data: cycles = [] } = useQuery<any[]>({ queryKey: ["/api/agriculture/crop-cycles"] });
   const { data: farms = [] } = useQuery<any[]>({ queryKey: ["/api/agriculture/farms"] });
   const { data: farmers = [] } = useQuery<any[]>({ queryKey: ["/api/agriculture/farmers"] });
@@ -161,7 +170,7 @@ function CropCyclesTab() {
             <td className="px-3 py-2">{c.farm_name||"—"}</td><td className="px-3 py-2">{c.farmer_name||"—"}</td><td className="px-3 py-2">{c.season||"—"}</td>
             <td className="px-3 py-2">{c.sowing_date?.split("T")[0]||"—"}</td><td className="px-3 py-2">{c.expected_harvest_date?.split("T")[0]||"—"}</td>
             <td className="px-3 py-2">{c.area_acres||c.area ? `${c.area_acres||c.area} ${c.area_unit||"ac"}` : "—"}</td>
-            <td className="px-3 py-2">₹{fmt(totalCost(c))}</td>
+            <td className="px-3 py-2">{sym}{fmt(totalCost(c))}</td>
             <td className="px-3 py-2">{c.yield_qty_tons||c.actual_yield ? `${c.yield_qty_tons||c.actual_yield}T` : "—"}</td>
             <td className="px-3 py-2"><Badge className={CROP_STATUS[c.status]||"bg-gray-100 text-gray-700"}>{c.status}</Badge></td>
             <td className="px-3 py-2"><div className="flex gap-1"><Button size="sm" variant="outline" onClick={()=>{setShowInputs(c);setInputForm({crop_cycle_id:c.id,application_date:new Date().toISOString().split("T")[0]});}}>Inputs</Button><Button size="icon" variant="ghost" onClick={()=>openEdit(c)}><Pencil className="h-3.5 w-3.5"/></Button></div></td>
@@ -181,11 +190,11 @@ function CropCyclesTab() {
             <F label="Sowing Date"><Input type="date" value={form.sowing_date||""} onChange={e=>setForm({...form,sowing_date:e.target.value})}/></F>
             <F label="Expected Harvest"><Input type="date" value={form.expected_harvest_date||""} onChange={e=>setForm({...form,expected_harvest_date:e.target.value})}/></F>
             {editing&&<F label="Actual Harvest"><Input type="date" value={form.actual_harvest_date||""} onChange={e=>setForm({...form,actual_harvest_date:e.target.value})}/></F>}
-            <F label="Fertilizer Cost (₹)"><Input type="number" value={form.fertilizer_cost||""} onChange={e=>setForm({...form,fertilizer_cost:e.target.value})}/></F>
-            <F label="Labour Cost (₹)"><Input type="number" value={form.labor_cost||""} onChange={e=>setForm({...form,labor_cost:e.target.value})}/></F>
-            <F label="Other Cost (₹)"><Input type="number" value={form.other_cost||""} onChange={e=>setForm({...form,other_cost:e.target.value})}/></F>
+            <F label="Fertilizer Cost "><Input type="number" value={form.fertilizer_cost||""} onChange={e=>setForm({...form,fertilizer_cost:e.target.value})}/></F>
+            <F label="Labour Cost "><Input type="number" value={form.labor_cost||""} onChange={e=>setForm({...form,labor_cost:e.target.value})}/></F>
+            <F label="Other Cost "><Input type="number" value={form.other_cost||""} onChange={e=>setForm({...form,other_cost:e.target.value})}/></F>
             {editing&&<><F label="Yield (tons)"><Input type="number" value={form.yield_qty_tons||form.actual_yield||""} onChange={e=>setForm({...form,yield_qty_tons:e.target.value,actual_yield:e.target.value})}/></F>
-            <F label="Selling Price/ton (₹)"><Input type="number" value={form.selling_price_per_ton||""} onChange={e=>setForm({...form,selling_price_per_ton:e.target.value})}/></F></>}
+            <F label="Selling Price/ton (${sym})"><Input type="number" value={form.selling_price_per_ton||""} onChange={e=>setForm({...form,selling_price_per_ton:e.target.value})}/></F></>}
             <F label="Status"><Select value={form.status||"sown"} onValueChange={v=>setForm({...form,status:v})}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{["sown","growing","harvested","failed"].map(s=><SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select></F>
             <div className="col-span-2"><F label="Notes"><Textarea rows={2} value={form.notes||""} onChange={e=>setForm({...form,notes:e.target.value})}/></F></div>
           </div>
@@ -197,7 +206,7 @@ function CropCyclesTab() {
           <div className="rounded-md border overflow-x-auto mb-3"><table className="w-full text-sm">
             <thead className="bg-muted/50"><tr>{["Type","Input","Qty","Unit","Cost/Unit","Total","Date",""].map(h=><th key={h} className="px-3 py-2 text-left">{h}</th>)}</tr></thead>
             <tbody>{(inputs as any[]).map(i=>(
-              <tr key={i.id} className="border-t"><td className="px-3 py-2">{i.input_type}</td><td className="px-3 py-2 font-medium">{i.input_name}</td><td className="px-3 py-2">{i.quantity||"—"}</td><td className="px-3 py-2">{i.unit||"—"}</td><td className="px-3 py-2">₹{fmt(i.cost_per_unit)}</td><td className="px-3 py-2 font-medium">₹{fmt(i.total_cost)}</td><td className="px-3 py-2">{i.application_date?.split("T")[0]||"—"}</td><td className="px-3 py-2"><Button size="icon" variant="ghost" onClick={()=>delInput.mutate(i.id)}><Trash2 className="h-3.5 w-3.5"/></Button></td></tr>
+              <tr key={i.id} className="border-t"><td className="px-3 py-2">{i.input_type}</td><td className="px-3 py-2 font-medium">{i.input_name}</td><td className="px-3 py-2">{i.quantity||"—"}</td><td className="px-3 py-2">{i.unit||"—"}</td><td className="px-3 py-2">{sym}{fmt(i.cost_per_unit)}</td><td className="px-3 py-2 font-medium">{sym}{fmt(i.total_cost)}</td><td className="px-3 py-2">{i.application_date?.split("T")[0]||"—"}</td><td className="px-3 py-2"><Button size="icon" variant="ghost" onClick={()=>delInput.mutate(i.id)}><Trash2 className="h-3.5 w-3.5"/></Button></td></tr>
             ))}{!(inputs as any[]).length&&<tr><td colSpan={8} className="px-3 py-4 text-center text-muted-foreground">No inputs logged</td></tr>}</tbody>
           </table></div>
           <div className="grid grid-cols-3 gap-2">
@@ -205,7 +214,7 @@ function CropCyclesTab() {
             <F label="Input Name"><Input value={inputForm.input_name||""} onChange={e=>setInputForm({...inputForm,input_name:e.target.value})}/></F>
             <F label="Qty"><Input type="number" value={inputForm.quantity||""} onChange={e=>setInputForm({...inputForm,quantity:e.target.value})}/></F>
             <F label="Unit"><Input placeholder="kg, litre..." value={inputForm.unit||""} onChange={e=>setInputForm({...inputForm,unit:e.target.value})}/></F>
-            <F label="Cost/Unit (₹)"><Input type="number" value={inputForm.cost_per_unit||""} onChange={e=>setInputForm({...inputForm,cost_per_unit:e.target.value})}/></F>
+            <F label="Cost/Unit (${sym})"><Input type="number" value={inputForm.cost_per_unit||""} onChange={e=>setInputForm({...inputForm,cost_per_unit:e.target.value})}/></F>
             <F label="Date"><Input type="date" value={inputForm.application_date||""} onChange={e=>setInputForm({...inputForm,application_date:e.target.value})}/></F>
           </div>
           <div className="flex justify-end gap-2 pt-2"><Button variant="outline" onClick={()=>setShowInputs(null)}>Close</Button><Button size="sm" onClick={()=>addInput.mutate({...inputForm,crop_cycle_id:showInputs?.id})} disabled={addInput.isPending}><Plus className="h-3 w-3 mr-1"/>Add Input</Button></div>
@@ -218,6 +227,8 @@ function CropCyclesTab() {
 function HarvestTab() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false); const [editing, setEditing] = useState<any>(null); const [form, setForm] = useState<any>({});
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { data: harvests = [] } = useQuery<any[]>({ queryKey: ["/api/agriculture/harvest-records"] });
   const { data: cycles = [] } = useQuery<any[]>({ queryKey: ["/api/agriculture/crop-cycles"] });
   const saveMut = useMutation({ mutationFn: (d: any) => editing ? apiRequest("PUT", `/api/agriculture/harvest-records/${editing.id}`, d) : apiRequest("POST", "/api/agriculture/harvest-records", d), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/agriculture/harvest-records"] }); setShowForm(false); toast({ title: "Saved" }); } });
@@ -234,7 +245,7 @@ function HarvestTab() {
             <td className="px-3 py-2 font-medium">{h.crop_name||"—"}</td><td className="px-3 py-2">{h.harvest_date?.split("T")[0]}</td>
             <td className="px-3 py-2">{h.quantity} {h.unit}</td><td className="px-3 py-2">{h.quality_grade||"—"}</td>
             <td className="px-3 py-2">{h.moisture_pct ? `${h.moisture_pct}%` : "—"}</td>
-            <td className="px-3 py-2">₹{fmt(h.market_price)}</td><td className="px-3 py-2 font-medium">₹{fmt(h.total_value)}</td>
+            <td className="px-3 py-2">{sym}{fmt(h.market_price)}</td><td className="px-3 py-2 font-medium">{sym}{fmt(h.total_value)}</td>
             <td className="px-3 py-2">{h.storage_location||"—"}</td>
             <td className="px-3 py-2"><div className="flex gap-1"><Button size="icon" variant="ghost" onClick={()=>openEdit(h)}><Pencil className="h-3.5 w-3.5"/></Button><Button size="icon" variant="ghost" onClick={()=>delMut.mutate(h.id)}><Trash2 className="h-3.5 w-3.5"/></Button></div></td>
           </tr>
@@ -249,7 +260,7 @@ function HarvestTab() {
             <F label="Unit"><Select value={form.unit||"kg"} onValueChange={v=>setForm({...form,unit:v})}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{["kg","quintal","ton","litre","bag"].map(u=><SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent></Select></F>
             <F label="Quality Grade"><Select value={form.quality_grade||""} onValueChange={v=>setForm({...form,quality_grade:v})}><SelectTrigger><SelectValue placeholder="Select"/></SelectTrigger><SelectContent>{["A","B","C","Premium","Standard","Below Standard"].map(g=><SelectItem key={g} value={g}>{g}</SelectItem>)}</SelectContent></Select></F>
             <F label="Moisture %"><Input type="number" value={form.moisture_pct||""} onChange={e=>setForm({...form,moisture_pct:e.target.value})}/></F>
-            <F label="Market Price (₹)"><Input type="number" value={form.market_price||""} onChange={e=>setForm({...form,market_price:e.target.value})}/></F>
+            <F label="Market Price "><Input type="number" value={form.market_price||""} onChange={e=>setForm({...form,market_price:e.target.value})}/></F>
             <div className="col-span-2"><F label="Storage Location"><Input value={form.storage_location||""} onChange={e=>setForm({...form,storage_location:e.target.value})}/></F></div>
             <div className="col-span-2"><F label="Notes"><Textarea rows={2} value={form.notes||""} onChange={e=>setForm({...form,notes:e.target.value})}/></F></div>
           </div>
@@ -263,6 +274,8 @@ function HarvestTab() {
 function ProcurementTab() {
   const { toast } = useToast();
   const [search, setSearch] = useState(""); const [showForm, setShowForm] = useState(false); const [editing, setEditing] = useState<any>(null); const [form, setForm] = useState<any>({});
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { data: procs = [] } = useQuery<any[]>({ queryKey: ["/api/agriculture/procurement"] });
   const saveMut = useMutation({ mutationFn: (d: any) => editing ? apiRequest("PUT", `/api/agriculture/procurement/${editing.id}`, d) : apiRequest("POST", "/api/agriculture/procurement", d), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/agriculture/procurement"] }); setShowForm(false); toast({ title: "Saved" }); } });
   const openNew = () => { setEditing(null); setForm({ procurement_date: new Date().toISOString().split("T")[0] }); setShowForm(true); };
@@ -280,8 +293,8 @@ function ProcurementTab() {
           <tr key={p.id} className="border-t hover:bg-muted/30">
             <td className="px-3 py-2 font-mono text-xs">{p.procurement_no}</td><td className="px-3 py-2 font-medium">{p.farmer_name}</td>
             <td className="px-3 py-2">{p.commodity}</td><td className="px-3 py-2">{p.variety||"—"}</td>
-            <td className="px-3 py-2">{p.quantity_tons}</td><td className="px-3 py-2">₹{fmt(p.rate_per_ton)}</td>
-            <td className="px-3 py-2 font-medium">₹{fmt(p.total_amount)}</td><td className="px-3 py-2">{p.procurement_date?.split("T")[0]}</td>
+            <td className="px-3 py-2">{p.quantity_tons}</td><td className="px-3 py-2">{sym}{fmt(p.rate_per_ton)}</td>
+            <td className="px-3 py-2 font-medium">{sym}{fmt(p.total_amount)}</td><td className="px-3 py-2">{p.procurement_date?.split("T")[0]}</td>
             <td className="px-3 py-2">{p.quality_grade||"—"}</td>
             <td className="px-3 py-2"><Badge className={p.status==="paid"?"bg-green-100 text-green-700":"bg-orange-100 text-orange-700"}>{p.status||"received"}</Badge></td>
             <td className="px-3 py-2"><Button size="icon" variant="ghost" onClick={()=>openEdit(p)}><Pencil className="h-3.5 w-3.5"/></Button></td>
@@ -296,7 +309,7 @@ function ProcurementTab() {
             <F label="Commodity *"><Input value={form.commodity||""} onChange={e=>setForm({...form,commodity:e.target.value})}/></F>
             <F label="Variety"><Input value={form.variety||""} onChange={e=>setForm({...form,variety:e.target.value})}/></F>
             <F label="Quantity (tons)"><Input type="number" value={form.quantity_tons||""} onChange={e=>setForm({...form,quantity_tons:e.target.value})}/></F>
-            <F label="Rate/ton (₹)"><Input type="number" value={form.rate_per_ton||""} onChange={e=>setForm({...form,rate_per_ton:e.target.value})}/></F>
+            <F label="Rate/ton (${sym})"><Input type="number" value={form.rate_per_ton||""} onChange={e=>setForm({...form,rate_per_ton:e.target.value})}/></F>
             <F label="Procurement Date"><Input type="date" value={form.procurement_date||""} onChange={e=>setForm({...form,procurement_date:e.target.value})}/></F>
             <F label="Quality Grade"><Select value={form.quality_grade||""} onValueChange={v=>setForm({...form,quality_grade:v})}><SelectTrigger><SelectValue placeholder="Select"/></SelectTrigger><SelectContent>{["A","B","C","Premium","Standard"].map(g=><SelectItem key={g} value={g}>{g}</SelectItem>)}</SelectContent></Select></F>
             <F label="Moisture %"><Input type="number" value={form.moisture_pct||""} onChange={e=>setForm({...form,moisture_pct:e.target.value})}/></F>
@@ -313,6 +326,8 @@ function ProcurementTab() {
 function CommodityPricesTab() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false); const [form, setForm] = useState<any>({});
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { data: prices = [] } = useQuery<any[]>({ queryKey: ["/api/agriculture/commodity-prices"] });
   const saveMut = useMutation({ mutationFn: (d: any) => apiRequest("POST", "/api/agriculture/commodity-prices", d), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/agriculture/commodity-prices"] }); setShowForm(false); toast({ title: "Saved" }); } });
   const delMut = useMutation({ mutationFn: (id: any) => apiRequest("DELETE", `/api/agriculture/commodity-prices/${id}`), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/agriculture/commodity-prices"] }) });
@@ -321,14 +336,14 @@ function CommodityPricesTab() {
     <div className="space-y-4">
       <div className="flex justify-end"><Button onClick={openNew}><Plus className="h-4 w-4 mr-1"/>Add Price</Button></div>
       <div className="rounded-md border overflow-x-auto"><table className="w-full text-sm">
-        <thead className="bg-muted/50"><tr>{["Commodity","Variety","Market","Date","Min (₹/q)","Max (₹/q)","Modal (₹/q)","Source",""].map(h=><th key={h} className="px-3 py-2 text-left font-medium">{h}</th>)}</tr></thead>
+        <thead className="bg-muted/50"><tr>{["Commodity","Variety","Market","Date","Min (${sym}/q)","Max (${sym}/q)","Modal (${sym}/q)","Source",""].map(h=><th key={h} className="px-3 py-2 text-left font-medium">{h}</th>)}</tr></thead>
         <tbody>{(prices as any[]).map(p=>(
           <tr key={p.id} className="border-t hover:bg-muted/30">
             <td className="px-3 py-2 font-medium">{p.commodity_name}</td><td className="px-3 py-2">{p.variety||"—"}</td>
             <td className="px-3 py-2">{p.market_name||"—"}</td><td className="px-3 py-2">{p.price_date?.split("T")[0]}</td>
-            <td className="px-3 py-2">{p.min_price ? `₹${fmt(p.min_price)}` : "—"}</td>
-            <td className="px-3 py-2">{p.max_price ? `₹${fmt(p.max_price)}` : "—"}</td>
-            <td className="px-3 py-2 font-medium">₹{fmt(p.price_per_quintal)}</td><td className="px-3 py-2">{p.source||"—"}</td>
+            <td className="px-3 py-2">{p.min_price ? `${sym}${fmt(p.min_price)}` : "—"}</td>
+            <td className="px-3 py-2">{p.max_price ? `${sym}${fmt(p.max_price)}` : "—"}</td>
+            <td className="px-3 py-2 font-medium">{sym}{fmt(p.price_per_quintal)}</td><td className="px-3 py-2">{p.source||"—"}</td>
             <td className="px-3 py-2"><Button size="icon" variant="ghost" onClick={()=>delMut.mutate(p.id)}><Trash2 className="h-3.5 w-3.5"/></Button></td>
           </tr>
         ))}{!(prices as any[]).length&&<tr><td colSpan={9} className="px-3 py-6 text-center text-muted-foreground">No price data</td></tr>}</tbody>
@@ -340,9 +355,9 @@ function CommodityPricesTab() {
             <F label="Variety"><Input value={form.variety||""} onChange={e=>setForm({...form,variety:e.target.value})}/></F>
             <F label="Market Name"><Input value={form.market_name||""} onChange={e=>setForm({...form,market_name:e.target.value})}/></F>
             <F label="Price Date"><Input type="date" value={form.price_date||""} onChange={e=>setForm({...form,price_date:e.target.value})}/></F>
-            <F label="Modal Price (₹/q) *"><Input type="number" value={form.price_per_quintal||""} onChange={e=>setForm({...form,price_per_quintal:e.target.value})}/></F>
-            <F label="Min Price (₹/q)"><Input type="number" value={form.min_price||""} onChange={e=>setForm({...form,min_price:e.target.value})}/></F>
-            <F label="Max Price (₹/q)"><Input type="number" value={form.max_price||""} onChange={e=>setForm({...form,max_price:e.target.value})}/></F>
+            <F label="Modal Price (${sym}/q) *"><Input type="number" value={form.price_per_quintal||""} onChange={e=>setForm({...form,price_per_quintal:e.target.value})}/></F>
+            <F label="Min Price (${sym}/q)"><Input type="number" value={form.min_price||""} onChange={e=>setForm({...form,min_price:e.target.value})}/></F>
+            <F label="Max Price (${sym}/q)"><Input type="number" value={form.max_price||""} onChange={e=>setForm({...form,max_price:e.target.value})}/></F>
             <div className="col-span-2"><F label="Source"><Input placeholder="APMC, Agmarknet..." value={form.source||""} onChange={e=>setForm({...form,source:e.target.value})}/></F></div>
           </div>
           <div className="flex justify-end gap-2 pt-2"><Button variant="outline" onClick={()=>setShowForm(false)}>Cancel</Button><Button onClick={()=>saveMut.mutate(form)} disabled={saveMut.isPending}>Save</Button></div>

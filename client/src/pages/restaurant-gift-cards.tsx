@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (m: string, u: string, b?: any) =>
   fetch(u, {
@@ -45,6 +46,8 @@ function generateCardNumber() {
 export default function RestaurantGiftCardsPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchCard, setSearchCard] = useState<string>("");
   const [lookedUpCard, setLookedUpCard] = useState<GiftCard | null>(null);
@@ -152,7 +155,7 @@ export default function RestaurantGiftCardsPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ₹{(s?.outstanding_balance ?? cardList.reduce((sum: number, c: GiftCard) => sum + (c.balance || 0), 0)).toLocaleString()}
+                {sym}{(s?.outstanding_balance ?? cardList.reduce((sum: number, c: GiftCard) => sum + (c.balance || 0), 0)).toLocaleString()}
               </div>
             </CardContent>
           </Card>
@@ -181,7 +184,7 @@ export default function RestaurantGiftCardsPage() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label>Initial Amount (₹)</Label>
+                    <Label>Initial Amount (${sym})</Label>
                     <Input
                       type="number"
                       min={0}
@@ -241,7 +244,7 @@ export default function RestaurantGiftCardsPage() {
                       <div><span className="text-muted-foreground">Card #</span><br /><strong className="font-mono">{lookedUpCard.card_number}</strong></div>
                       <div><span className="text-muted-foreground">Customer</span><br /><strong>{lookedUpCard.customer_name}</strong></div>
                       <div><span className="text-muted-foreground">Phone</span><br /><strong>{lookedUpCard.customer_phone}</strong></div>
-                      <div><span className="text-muted-foreground">Balance</span><br /><strong className="text-green-700">₹{lookedUpCard.balance?.toLocaleString()}</strong></div>
+                      <div><span className="text-muted-foreground">Balance</span><br /><strong className="text-green-700">{sym}{lookedUpCard.balance?.toLocaleString()}</strong></div>
                       <div><span className="text-muted-foreground">Expiry</span><br /><strong>{lookedUpCard.expiry_date}</strong></div>
                       <div><span className="text-muted-foreground">Status</span><br />
                         <Badge className={lookedUpCard.status === "active" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
@@ -253,14 +256,14 @@ export default function RestaurantGiftCardsPage() {
                     {lookedUpCard.status === "active" && (
                       <div className="flex gap-2 items-end">
                         <div className="space-y-2 flex-1">
-                          <Label>Redeem Amount (₹)</Label>
+                          <Label>Redeem Amount (${sym})</Label>
                           <Input
                             type="number"
                             min={0}
                             max={lookedUpCard.balance}
                             value={redeemAmount}
                             onChange={(e) => setRedeemAmount(e.target.value)}
-                            placeholder={`Max ₹${lookedUpCard.balance}`}
+                            placeholder={`Max ${sym}${lookedUpCard.balance}`}
                           />
                         </div>
                         <Button onClick={() => redeemCard.mutate()} disabled={redeemCard.isPending || !redeemAmount}>
@@ -287,7 +290,7 @@ export default function RestaurantGiftCardsPage() {
                                 <TableCell>
                                   <Badge variant={t.type === "issue" || t.type === "topup" ? "default" : "secondary"}>{t.type}</Badge>
                                 </TableCell>
-                                <TableCell className="text-right">₹{t.amount?.toLocaleString()}</TableCell>
+                                <TableCell className="text-right">{sym}{t.amount?.toLocaleString()}</TableCell>
                                 <TableCell>{t.date}</TableCell>
                                 <TableCell className="text-muted-foreground">{t.note}</TableCell>
                               </TableRow>
@@ -340,8 +343,8 @@ export default function RestaurantGiftCardsPage() {
                           <TableCell className="font-mono text-xs">{card.card_number}</TableCell>
                           <TableCell>{card.customer_name}</TableCell>
                           <TableCell>{card.issued_date}</TableCell>
-                          <TableCell className="text-right">₹{card.initial_amount?.toLocaleString()}</TableCell>
-                          <TableCell className="text-right font-semibold">₹{card.balance?.toLocaleString()}</TableCell>
+                          <TableCell className="text-right">{sym}{card.initial_amount?.toLocaleString()}</TableCell>
+                          <TableCell className="text-right font-semibold">{sym}{card.balance?.toLocaleString()}</TableCell>
                           <TableCell>{card.expiry_date}</TableCell>
                           <TableCell>
                             <Badge className={
@@ -387,15 +390,15 @@ export default function RestaurantGiftCardsPage() {
                   <div className="space-y-3 mt-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Total Issued Value</span>
-                      <span className="font-semibold">₹{(s?.total_issued_value ?? 0).toLocaleString()}</span>
+                      <span className="font-semibold">{sym}{(s?.total_issued_value ?? 0).toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Total Redeemed</span>
-                      <span className="font-semibold">₹{(s?.total_redeemed ?? 0).toLocaleString()}</span>
+                      <span className="font-semibold">{sym}{(s?.total_redeemed ?? 0).toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-sm border-t pt-2">
                       <span className="font-medium">Outstanding Liability</span>
-                      <span className="font-bold text-orange-600">₹{(s?.outstanding_balance ?? 0).toLocaleString()}</span>
+                      <span className="font-bold text-orange-600">{sym}{(s?.outstanding_balance ?? 0).toLocaleString()}</span>
                     </div>
                   </div>
                 </CardContent>

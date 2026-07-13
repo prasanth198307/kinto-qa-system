@@ -4,6 +4,7 @@ import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const apiGet = async (url: string) => {
   const r = await fetch(url, { credentials: "include" });
@@ -13,9 +14,9 @@ const apiGet = async (url: string) => {
 const fmt = (n: any) => Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
 const fmtShort = (n: any) => {
   const v = Number(n || 0);
-  if (v >= 100000) return `₹${(v / 100000).toFixed(1)}L`;
-  if (v >= 1000) return `₹${(v / 1000).toFixed(1)}K`;
-  return `₹${v.toFixed(0)}`;
+  if (v >= 100000) return `${sym}${(v / 100000).toFixed(1)}L`;
+  if (v >= 1000) return `${sym}${(v / 1000).toFixed(1)}K`;
+  return `${sym}${v.toFixed(0)}`;
 };
 
 function pct(a: number, b: number) {
@@ -37,6 +38,8 @@ function KpiCard({ label, value, sub, urgent }: { label: string; value: string |
 
 function KotStatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
     pending: "bg-yellow-100 text-yellow-800",
     cooking: "bg-blue-100 text-blue-800",
     ready: "bg-green-100 text-green-800",
@@ -53,6 +56,8 @@ function elapsed(t: string) {
 
 function LiveKotFeed({ kots }: { kots: any[] }) {
   const live = kots.filter((k: any) => k.status !== "paid").slice(0, 10);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   return (
     <Card className="h-full">
       <CardHeader className="pb-2">
@@ -78,6 +83,8 @@ function LiveKotFeed({ kots }: { kots: any[] }) {
 
 function TableGrid({ tables, onNavigate }: { tables: any[]; onNavigate: (path: string) => void }) {
   const colorClass = (s: string) => {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
     if (s === "available") return "bg-green-100 border-green-400 text-green-800";
     if (s === "bill_pending" || s === "bill-pending") return "bg-red-100 border-red-400 text-red-700";
     return "bg-amber-100 border-amber-400 text-amber-800";
@@ -113,6 +120,8 @@ function TableGrid({ tables, onNavigate }: { tables: any[]; onNavigate: (path: s
 
 function PaymentModeDonut({ modes }: { modes: any[] }) {
   const total = modes.reduce((s, m) => s + Number(m.amount || 0), 0);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const colors = ["#6366f1", "#22c55e", "#f59e0b", "#ec4899", "#06b6d4"];
   const modeLabels: Record<string, string> = { cash: "Cash", card: "Card", upi: "UPI", aggregator: "Aggregator", credit: "Credit" };
   return (
@@ -127,7 +136,7 @@ function PaymentModeDonut({ modes }: { modes: any[] }) {
               <div key={m.mode || i}>
                 <div className="flex justify-between text-xs mb-0.5">
                   <span className="font-medium">{modeLabels[m.mode] || m.mode}</span>
-                  <span className="text-gray-500">₹{fmt(m.amount)} ({share.toFixed(1)}%)</span>
+                  <span className="text-gray-500">{sym}{fmt(m.amount)} ({share.toFixed(1)}%)</span>
                 </div>
                 <div className="w-full bg-gray-100 rounded-full h-2">
                   <div className="h-2 rounded-full transition-all" style={{ width: `${share}%`, backgroundColor: colors[i % colors.length] }} />
@@ -135,7 +144,7 @@ function PaymentModeDonut({ modes }: { modes: any[] }) {
               </div>
             );
           })}
-          {total > 0 && <div className="text-right text-xs font-semibold text-gray-600 pt-1">Total: ₹{fmt(total)}</div>}
+          {total > 0 && <div className="text-right text-xs font-semibold text-gray-600 pt-1">Total: {sym}{fmt(total)}</div>}
         </div>
       </CardContent>
     </Card>
@@ -154,7 +163,7 @@ function TopItems({ items }: { items: any[] }) {
               <span className="text-xs text-gray-400 w-4 font-bold">{i + 1}</span>
               <span className="flex-1 text-sm truncate">{item.name}</span>
               <span className="text-xs text-gray-500">{item.qty} sold</span>
-              <span className="text-xs font-semibold text-gray-700">₹{fmt(item.revenue)}</span>
+              <span className="text-xs font-semibold text-gray-700">{sym}{fmt(item.revenue)}</span>
             </div>
           ))}
         </div>
@@ -165,6 +174,8 @@ function TopItems({ items }: { items: any[] }) {
 
 function AggregatorOrders({ agg, onNavigate }: { agg: any; onNavigate: (path: string) => void }) {
   const platforms = [
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
     { key: "swiggy", label: "Swiggy", color: "bg-orange-500" },
     { key: "zomato", label: "Zomato", color: "bg-red-500" },
     { key: "uber", label: "Uber Eats", color: "bg-black" },
@@ -197,6 +208,8 @@ function AggregatorOrders({ agg, onNavigate }: { agg: any; onNavigate: (path: st
 
 function WeeklyChart({ weekly }: { weekly: any[] }) {
   const max = Math.max(...weekly.map((d: any) => Number(d.revenue || 0)), 1);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   const data = weekly.length === 7 ? weekly : days.map((d, i) => ({ day: d, revenue: weekly[i]?.revenue || 0 }));
   return (
@@ -213,14 +226,14 @@ function WeeklyChart({ weekly }: { weekly: any[] }) {
                 <div
                   className={`w-full rounded-t transition-all ${isToday ? "bg-indigo-500" : "bg-indigo-200"}`}
                   style={{ height: `${h}px` }}
-                  title={`${d.day || days[i]}: ₹${fmt(d.revenue)}`}
+                  title={`${d.day || days[i]}: ${sym}${fmt(d.revenue)}`}
                 />
                 <span className="text-xs text-gray-500">{d.day || days[i]}</span>
               </div>
             );
           })}
         </div>
-        <div className="mt-2 text-xs text-gray-400 text-right">Total: ₹{fmt(data.reduce((s: number, d: any) => s + Number(d.revenue || 0), 0))}</div>
+        <div className="mt-2 text-xs text-gray-400 text-right">Total: {sym}{fmt(data.reduce((s: number, d: any) => s + Number(d.revenue || 0), 0))}</div>
       </CardContent>
     </Card>
   );
@@ -228,6 +241,8 @@ function WeeklyChart({ weekly }: { weekly: any[] }) {
 
 function QuickActions({ onNavigate }: { onNavigate: (path: string) => void }) {
   const actions = [
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
     { label: "New KOT", path: "/restaurant-pos", icon: "🧾", color: "bg-indigo-50 hover:bg-indigo-100 border-indigo-200" },
     { label: "Kitchen View", path: "/restaurant-kitchen", icon: "👨‍🍳", color: "bg-orange-50 hover:bg-orange-100 border-orange-200" },
     { label: "Table Map", path: "/restaurant-tables", icon: "🗺️", color: "bg-green-50 hover:bg-green-100 border-green-200" },
@@ -258,6 +273,8 @@ function QuickActions({ onNavigate }: { onNavigate: (path: string) => void }) {
 
 function StaffOnDuty({ staff }: { staff: any[] }) {
   const roleBadge: Record<string, string> = {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
     cashier: "bg-blue-100 text-blue-700",
     waiter: "bg-green-100 text-green-700",
     chef: "bg-orange-100 text-orange-700",
@@ -304,7 +321,7 @@ function RecentActivity({ customers }: { customers: any[] }) {
             </div>
             <div className="text-right">
               <div className="text-xs text-gray-600">{c.activity || c.transaction_type || "Visit"}</div>
-              <div className="text-xs text-indigo-600 font-semibold">{c.points ? `+${c.points} pts` : c.amount ? `₹${fmt(c.amount)}` : ""}</div>
+              <div className="text-xs text-indigo-600 font-semibold">{c.points ? `+${c.points} pts` : c.amount ? `${sym}${fmt(c.amount)}` : ""}</div>
             </div>
           </div>
         ))}
@@ -377,6 +394,8 @@ export default function RestaurantEnterprisePage() {
   });
 
   const todayRev = Number(summary.today_revenue || 0);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const yestRev = Number(summary.yesterday_revenue || 0);
   const revChange = pct(todayRev, yestRev);
   const todayOrders = Number(summary.order_count || 0);

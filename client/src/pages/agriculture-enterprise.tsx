@@ -7,12 +7,15 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = async (m: string, u: string, b?: any) => { const r = await fetch(u, { method: m, headers: {'Content-Type':'application/json'}, body: b ? JSON.stringify(b) : undefined, credentials: 'include' }); if (!r.ok) throw new Error(await r.text()); return r.json(); };
 const fmt = (n: any) => Number(n||0).toLocaleString('en-IN', {maximumFractionDigits:2});
 
 export default function AgricultureEnterprisePage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [farmId, setFarmId] = useState("1");
   const [mandiForm, setMandiForm] = useState({ commodity: "", mandi_name: "", price_per_qt: "", date: "" });
   const [animalForm, setAnimalForm] = useState({ farmer_id: "", animal_type: "cattle", breed: "", tag_no: "" });
@@ -72,12 +75,12 @@ export default function AgricultureEnterprisePage() {
           <Tabs defaultValue="pmkisan"><TabsList><TabsTrigger value="pmkisan">PM Kisan</TabsTrigger><TabsTrigger value="pmfby">PMFBY</TabsTrigger></TabsList>
           <TabsContent value="pmkisan"><Card><CardContent className="pt-4">
             <Table><TableHeader><TableRow><TableHead>Farmer</TableHead><TableHead>Registration</TableHead><TableHead>Installments</TableHead><TableHead>Last Amount</TableHead></TableRow></TableHeader>
-            <TableBody>{(pmKisan as any[]).map((p:any)=><TableRow key={p.id}><TableCell>{p.farmer_name||p.farmer_id}</TableCell><TableCell>{p.registration_no}</TableCell><TableCell>{p.installments?.length||0}</TableCell><TableCell>₹{fmt(p.last_amount||2000)}</TableCell></TableRow>)}</TableBody></Table>
+            <TableBody>{(pmKisan as any[]).map((p:any)=><TableRow key={p.id}><TableCell>{p.farmer_name||p.farmer_id}</TableCell><TableCell>{p.registration_no}</TableCell><TableCell>{p.installments?.length||0}</TableCell><TableCell>{sym}{fmt(p.last_amount||2000)}</TableCell></TableRow>)}</TableBody></Table>
             {(pmKisan as any[]).length===0&&<p className="text-center text-gray-400 py-8">No PM Kisan records</p>}
           </CardContent></Card></TabsContent>
           <TabsContent value="pmfby"><Card><CardContent className="pt-4">
             <Table><TableHeader><TableRow><TableHead>Farmer</TableHead><TableHead>Crop</TableHead><TableHead>Area</TableHead><TableHead>Insured Amount</TableHead><TableHead>Premium</TableHead></TableRow></TableHeader>
-            <TableBody>{(pmfby as any[]).map((p:any)=><TableRow key={p.id}><TableCell>{p.farmer_name||p.farmer_id}</TableCell><TableCell>{p.crop}</TableCell><TableCell>{p.area} acres</TableCell><TableCell>₹{fmt(p.insured_amount)}</TableCell><TableCell>₹{fmt(p.premium)}</TableCell></TableRow>)}</TableBody></Table>
+            <TableBody>{(pmfby as any[]).map((p:any)=><TableRow key={p.id}><TableCell>{p.farmer_name||p.farmer_id}</TableCell><TableCell>{p.crop}</TableCell><TableCell>{p.area} acres</TableCell><TableCell>{sym}{fmt(p.insured_amount)}</TableCell><TableCell>{sym}{fmt(p.premium)}</TableCell></TableRow>)}</TableBody></Table>
             {(pmfby as any[]).length===0&&<p className="text-center text-gray-400 py-8">No PMFBY records</p>}
           </CardContent></Card></TabsContent>
           </Tabs>
@@ -87,7 +90,7 @@ export default function AgricultureEnterprisePage() {
           <Card><CardHeader><CardTitle>FPO Members</CardTitle></CardHeader>
           <CardContent>
             <Table><TableHeader><TableRow><TableHead>Farmer</TableHead><TableHead>Shares</TableHead><TableHead>Share Value</TableHead><TableHead>Joined</TableHead></TableRow></TableHeader>
-            <TableBody>{(fpoMembers as any[]).map((m:any)=><TableRow key={m.id}><TableCell>{m.farmer_name||m.farmer_id}</TableCell><TableCell>{m.share_qty}</TableCell><TableCell>₹{fmt(m.share_value)}</TableCell><TableCell>{m.joined_date?.slice(0,10)}</TableCell></TableRow>)}</TableBody></Table>
+            <TableBody>{(fpoMembers as any[]).map((m:any)=><TableRow key={m.id}><TableCell>{m.farmer_name||m.farmer_id}</TableCell><TableCell>{m.share_qty}</TableCell><TableCell>{sym}{fmt(m.share_value)}</TableCell><TableCell>{m.joined_date?.slice(0,10)}</TableCell></TableRow>)}</TableBody></Table>
             {(fpoMembers as any[]).length===0&&<p className="text-center text-gray-400 py-8">No FPO members registered</p>}
           </CardContent></Card>
         </TabsContent>
@@ -124,9 +127,9 @@ export default function AgricultureEnterprisePage() {
                     <TableCell className="font-medium">{p.commodity}</TableCell>
                     <TableCell>{p.market_name||p.mandi_name}</TableCell>
                     <TableCell>{p.state||'—'}</TableCell>
-                    <TableCell>₹{fmt(p.min_price||p.price_per_qt)}</TableCell>
-                    <TableCell>₹{fmt(p.max_price||p.price_per_qt)}</TableCell>
-                    <TableCell className="font-bold text-green-700">₹{fmt(p.modal_price||p.price_per_qt)}</TableCell>
+                    <TableCell>{sym}{fmt(p.min_price||p.price_per_qt)}</TableCell>
+                    <TableCell>{sym}{fmt(p.max_price||p.price_per_qt)}</TableCell>
+                    <TableCell className="font-bold text-green-700">{sym}{fmt(p.modal_price||p.price_per_qt)}</TableCell>
                     <TableCell className="text-xs">{(p.arrival_date||p.date)?.slice(0,10)||'—'}</TableCell>
                   </TableRow>)}</TableBody>
                 </Table>

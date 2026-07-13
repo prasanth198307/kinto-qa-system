@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Search, Phone, Mail, Building, Star, MessageSquare, DollarSign, FileText } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (path: string) => fetch(path).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
@@ -48,6 +49,8 @@ const CUSTOMERS = [
 
 export default function Customer360Page() {
   const [search, setSearch] = useState("");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [replyText, setReplyText] = useState("");
 
@@ -98,7 +101,7 @@ export default function Customer360Page() {
                 </div>
                 <div className="flex items-center gap-2">
                   <DollarSign className="w-3 h-3" />
-                  <span>LTV: ₹{Number(c.lifetime_value).toLocaleString()}</span>
+                  <span>LTV: {sym}{Number(c.lifetime_value).toLocaleString()}</span>
                 </div>
                 <div className="flex gap-1 flex-wrap mt-2">
                   {c.tags?.map((tag: string) => <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>)}
@@ -123,7 +126,7 @@ export default function Customer360Page() {
                       <div className="font-medium">{opp.name}</div>
                       <Badge variant="outline" className="text-xs">{opp.stage}</Badge>
                     </div>
-                    <div className="font-bold">₹{Number(opp.value).toLocaleString()}</div>
+                    <div className="font-bold">{sym}{Number(opp.value).toLocaleString()}</div>
                   </div>
                 ))}
               </CardContent>

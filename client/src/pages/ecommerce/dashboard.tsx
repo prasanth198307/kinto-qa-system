@@ -1,9 +1,10 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { ShoppingCart, IndianRupee, RotateCcw, Store, RefreshCw, Upload } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const fmt = (n: number) => new Intl.NumberFormat("en-IN").format(n);
-const fmtCur = (n: number) => "₹" + fmt(n);
+const fmtCur = (n: number) => sym + fmt(n);
 
 type Stats = {
   todayOrders: number;

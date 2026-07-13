@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Save, Globe, Eye, EyeOff, Trash2, GripVertical, Plus, Code, CreditCard, Sparkles, Wand2, Zap } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const FIELD_TYPES = [
   { type: "text", label: "Text" },
@@ -299,7 +300,7 @@ export default function SwachFormsBuilderPage() {
                         <span className="font-medium text-green-800">{f.label}</span>
                       </div>
                       <div className="text-green-700 font-semibold">
-                        {f.currency === "USD" ? "$" : f.currency === "EUR" ? "€" : "₹"}{f.amount}
+                        {f.currency === "USD" ? "$" : f.currency === "EUR" ? "€" : sym}{f.amount}
                       </div>
                       {f.description && <p className="text-xs text-green-600 mt-1">{f.description}</p>}
                       <button className="mt-2 bg-green-600 text-white text-xs px-3 py-1 rounded" disabled>Pay Now</button>
@@ -358,7 +359,7 @@ export default function SwachFormsBuilderPage() {
                   <Label className="text-xs">Currency</Label>
                   <select className="border rounded px-2 py-1 text-sm w-full mt-1" value={sel.currency || "INR"}
                     onChange={e => updateField(sel.id, { currency: e.target.value })}>
-                    <option value="INR">INR (₹)</option>
+                    <option value="INR">INR (${sym})</option>
                     <option value="USD">USD ($)</option>
                     <option value="EUR">EUR (€)</option>
                   </select>

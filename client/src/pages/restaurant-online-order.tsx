@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 interface MenuItem {
   id: number;
@@ -43,6 +44,8 @@ interface Outlet {
 export default function RestaurantOnlineOrderPage() {
   const { slug } = useParams<{ slug: string }>();
   const [cart, setCart] = useState<CartItem[]>([]);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [deliveryType, setDeliveryType] = useState<"delivery" | "pickup">("delivery");
   const [showCart, setShowCart] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -191,7 +194,7 @@ export default function RestaurantOnlineOrderPage() {
           <div className="bg-orange-50 rounded-xl p-6 mb-6">
             <p className="text-sm text-orange-600 font-medium mb-1">Token Number</p>
             <p className="text-6xl font-black text-orange-500">{orderToken}</p>
-            <p className="text-sm text-gray-500 mt-2">Total: ₹{orderTotal.toFixed(2)}</p>
+            <p className="text-sm text-gray-500 mt-2">Total: {sym}{orderTotal.toFixed(2)}</p>
           </div>
 
           <div className="mb-6">
@@ -355,7 +358,7 @@ export default function RestaurantOnlineOrderPage() {
             >
               <span className="bg-white/20 rounded-lg px-2 py-0.5 text-sm font-bold">{cartCount} items</span>
               <span className="font-semibold">View Cart</span>
-              <span className="font-bold">₹{grandTotal.toFixed(2)} →</span>
+              <span className="font-bold">{sym}{grandTotal.toFixed(2)} →</span>
             </button>
           </div>
         </div>
@@ -376,7 +379,7 @@ export default function RestaurantOnlineOrderPage() {
                 <div key={c.id} className="flex items-center justify-between">
                   <div>
                     <p className="font-medium text-gray-800">{c.name}</p>
-                    <p className="text-sm text-gray-500">₹{c.price} × {c.qty} = ₹{(c.price * c.qty).toFixed(2)}</p>
+                    <p className="text-sm text-gray-500">{sym}{c.price} × {c.qty} = {sym}{(c.price * c.qty).toFixed(2)}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <button onClick={() => updateQty(c.id, -1)} className="w-7 h-7 bg-orange-100 rounded-full text-orange-600 font-bold flex items-center justify-center">−</button>
@@ -389,9 +392,9 @@ export default function RestaurantOnlineOrderPage() {
 
             {/* GST breakdown */}
             <div className="bg-gray-50 rounded-xl p-3 mb-4 text-sm">
-              <div className="flex justify-between text-gray-600 mb-1"><span>Subtotal</span><span>₹{cartTotal.toFixed(2)}</span></div>
-              <div className="flex justify-between text-gray-600 mb-1"><span>GST (5%)</span><span>₹{gst.toFixed(2)}</span></div>
-              <div className="flex justify-between font-bold text-gray-800 border-t pt-2 mt-2"><span>Total</span><span>₹{grandTotal.toFixed(2)}</span></div>
+              <div className="flex justify-between text-gray-600 mb-1"><span>Subtotal</span><span>{sym}{cartTotal.toFixed(2)}</span></div>
+              <div className="flex justify-between text-gray-600 mb-1"><span>GST (5%)</span><span>{sym}{gst.toFixed(2)}</span></div>
+              <div className="flex justify-between font-bold text-gray-800 border-t pt-2 mt-2"><span>Total</span><span>{sym}{grandTotal.toFixed(2)}</span></div>
             </div>
 
             {/* Customer details */}
@@ -419,7 +422,7 @@ export default function RestaurantOnlineOrderPage() {
               disabled={placeMutation.isPending}
               className="w-full bg-orange-500 text-white rounded-xl py-4 font-bold text-lg hover:bg-orange-600 transition disabled:opacity-60"
             >
-              {placeMutation.isPending ? "Placing Order..." : `Place Order · ₹${grandTotal.toFixed(2)}`}
+              {placeMutation.isPending ? "Placing Order..." : `Place Order · ${sym}${grandTotal.toFixed(2)}`}
             </button>
             {placeMutation.isError && <p className="text-red-500 text-sm mt-2 text-center">{(placeMutation.error as any)?.message || "Failed to place order"}</p>}
           </div>
@@ -443,6 +446,8 @@ function MenuItemCard({
   onUpdateQty: (id: number, delta: number) => void;
 }) {
   const cartItem = cart.find((c) => c.id === item.id);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const vegEmoji = item.is_veg === 1 ? "🟢" : item.is_veg === 0 ? "🔴" : "";
   const foodEmojis = ["🍕", "🍔", "🌮", "🍜", "🍛", "🥘", "🍱", "🥗", "🍗", "🍖"];
   const emoji = foodEmojis[item.id % foodEmojis.length];
@@ -462,7 +467,7 @@ function MenuItemCard({
         {item.description && (
           <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{item.description}</p>
         )}
-        <p className="text-orange-600 font-bold text-sm mt-1">₹{Number(item.price).toFixed(2)}</p>
+        <p className="text-orange-600 font-bold text-sm mt-1">{sym}{Number(item.price).toFixed(2)}</p>
       </div>
       <div className="flex items-center shrink-0">
         {cartItem ? (

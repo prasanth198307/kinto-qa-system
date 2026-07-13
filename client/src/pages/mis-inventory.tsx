@@ -21,12 +21,16 @@ interface InventoryData {
 
 function KpiBadge({ label, color }: { label: string; color: 'gray' | 'red' | 'orange' | 'green' | 'amber' }) {
   const cls = { gray: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400', red: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400', orange: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400', green: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400', amber: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' }[color];
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   return <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded tracking-wide ${cls}`}>{label}</span>;
 }
 
 function StockHealthBar({ current, reorder }: { current: number; reorder: number | null }) {
   if (!reorder || reorder === 0) return <div className="text-xs text-muted-foreground">—</div>;
   const pct = Math.min((current / reorder) * 100, 100);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const color = pct <= 25 ? 'bg-red-500' : pct <= 50 ? 'bg-amber-500' : 'bg-green-500';
   return (
     <div className="flex items-center gap-2">
@@ -49,7 +53,7 @@ export default function MISInventory() {
   const tenantConfig = useTenantConfig();
   const formatINR = (paise: number) => fmtCur(paise / 100, tenantConfig);
   const formatINRRupees = (rupees: number) => fmtCur(rupees, tenantConfig);
-  const sym = tenantConfig.currency_symbol ?? '₹';
+  const sym = tenantConfig.currency_symbol ?? sym;
   const [isExporting, setIsExporting] = useState(false);
   const { data, isLoading } = useQuery<InventoryData>({ queryKey: ['/api/mis/inventory-analytics'] });
 

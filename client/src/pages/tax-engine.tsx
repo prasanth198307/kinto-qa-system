@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Globe, Calculator, BookOpen, Shield } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const COUNTRIES = ["India", "Saudi Arabia", "UAE", "USA", "Germany", "France", "Netherlands",
   "Italy", "Spain", "Belgium", "Austria", "Portugal", "Poland", "Sweden", "Denmark",
@@ -22,6 +23,8 @@ const US_STATES = ["CA","TX","NY","FL","IL","PA","OH","GA","NC","MI"];
 
 function RegimeBadge({ regime }: { regime: string }) {
   const colors: Record<string, string> = {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
     GST: 'bg-blue-100 text-blue-800',
     ZATCA: 'bg-green-100 text-green-800',
     VAT: 'bg-purple-100 text-purple-800',
@@ -36,6 +39,8 @@ function SettingsTab() {
   const { toast } = useToast();
   const { data } = useQuery({ queryKey: ['/api/tax/settings'], queryFn: () => apiRequest('GET', '/api/tax/settings').then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); }) });
   const s = data?.settings;
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [form, setForm] = useState({ country: s?.country ?? 'India', default_state: s?.default_state ?? '',
     seller_state: s?.seller_state ?? '', vat_number: s?.vat_number ?? '', tax_regime: s?.tax_regime ?? 'GST',
     eu_vat_number: s?.eu_vat_number ?? '', zatca_enabled: s?.zatca_enabled ?? false, us_state: s?.us_state ?? '' });
@@ -114,6 +119,8 @@ function SettingsTab() {
 // Tab 2: Tax Calculator
 function CalculatorTab() {
   const [params, setParams] = useState({ country: 'India', state: '', sellerState: '', taxableAmount: 10000, taxRate: '', isB2B: false, customerVatNumber: '' });
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -144,7 +151,7 @@ function CalculatorTab() {
           </div>
           <div><Label>State (India/USA)</Label><Input className="mt-1" value={params.state} onChange={e => set('state', e.target.value)} placeholder="e.g. Maharashtra / CA" /></div>
           <div><Label>Seller State (India only)</Label><Input className="mt-1" value={params.sellerState} onChange={e => set('sellerState', e.target.value)} /></div>
-          <div><Label>Amount (₹)</Label><Input type="number" className="mt-1" value={params.taxableAmount} onChange={e => set('taxableAmount', Number(e.target.value))} /></div>
+          <div><Label>Amount (${sym})</Label><Input type="number" className="mt-1" value={params.taxableAmount} onChange={e => set('taxableAmount', Number(e.target.value))} /></div>
           <div><Label>Tax Rate % (optional override)</Label><Input className="mt-1" value={params.taxRate} onChange={e => set('taxRate', e.target.value)} placeholder="Auto" /></div>
           <div><Label>Customer VAT Number (EU B2B)</Label><Input className="mt-1" value={params.customerVatNumber} onChange={e => set('customerVatNumber', e.target.value)} /></div>
           <div className="flex items-center gap-2 mt-5">
@@ -163,9 +170,9 @@ function CalculatorTab() {
             <table className="w-full text-sm mt-2">
               <thead><tr className="border-b"><th className="text-left py-1">Tax</th><th className="text-right py-1">Rate</th><th className="text-right py-1">Amount</th></tr></thead>
               <tbody>
-                {result.lines.map((l: any) => <tr key={l.name} className="border-b"><td className="py-1">{l.name}</td><td className="text-right">{l.rate}%</td><td className="text-right">₹{(l.amount / 100).toFixed(2)}</td></tr>)}
-                <tr className="font-semibold"><td>Total Tax</td><td></td><td className="text-right">₹{(result.totalTax / 100).toFixed(2)}</td></tr>
-                <tr className="font-bold text-base"><td>Grand Total</td><td></td><td className="text-right">₹{(result.grandTotal / 100).toFixed(2)}</td></tr>
+                {result.lines.map((l: any) => <tr key={l.name} className="border-b"><td className="py-1">{l.name}</td><td className="text-right">{l.rate}%</td><td className="text-right">{sym}{(l.amount / 100).toFixed(2)}</td></tr>)}
+                <tr className="font-semibold"><td>Total Tax</td><td></td><td className="text-right">{sym}{(result.totalTax / 100).toFixed(2)}</td></tr>
+                <tr className="font-bold text-base"><td>Grand Total</td><td></td><td className="text-right">{sym}{(result.grandTotal / 100).toFixed(2)}</td></tr>
               </tbody>
             </table>
           </CardContent>

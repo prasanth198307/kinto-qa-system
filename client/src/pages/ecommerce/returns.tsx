@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const API = "/api/ecommerce";
 
@@ -19,6 +20,8 @@ const empty = { order_id: "", return_type: "return", reason: "", amount: "", sta
 export default function ReturnsPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<Return | null>(null);
   const [form, setForm] = useState({ ...empty });
@@ -51,7 +54,7 @@ export default function ReturnsPage() {
     { label: "Total Returns", value: returns.length },
     { label: "RTO Count", value: returns.filter(r => r.return_type === "rto").length },
     { label: "Pending Approval", value: returns.filter(r => r.status === "pending").length },
-    { label: "Total Refund Value", value: "₹" + returns.filter(r => r.status === "refunded").reduce((s, r) => s + Number(r.amount), 0).toLocaleString("en-IN") },
+    { label: "Total Refund Value", value: sym + returns.filter(r => r.status === "refunded").reduce((s, r) => s + Number(r.amount), 0).toLocaleString("en-IN") },
   ];
 
   const openCreate = () => { setForm({ ...empty }); setEditing(null); setModal(true); };
@@ -114,7 +117,7 @@ export default function ReturnsPage() {
                 <td style={td}>{r.channel_name}</td>
                 <td style={td}><Badge label={r.return_type.toUpperCase()} color={typeBadge[r.return_type] || "#6b7280"} /></td>
                 <td style={{ ...td, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.reason}</td>
-                <td style={td}>₹{Number(r.amount).toLocaleString("en-IN")}</td>
+                <td style={td}>{sym}{Number(r.amount).toLocaleString("en-IN")}</td>
                 <td style={td}><Badge label={r.status} color={statusBadge[r.status] || "#6b7280"} />{r.status === "approved" && <span style={{ fontSize: 11, color: "#22c55e", marginLeft: 6 }}>✓ GL posted</span>}</td>
                 <td style={td}>{new Date(r.created_at).toLocaleDateString("en-IN")}</td>
                 <td style={td}>

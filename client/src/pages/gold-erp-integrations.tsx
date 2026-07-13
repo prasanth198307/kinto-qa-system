@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 function FL({ label, children }: any) {
   return <div className="space-y-1"><Label className="text-xs">{label}</Label>{children}</div>;
@@ -27,6 +28,8 @@ const fmtWt = (n: any) => `${fmt(n, 3)} g`;
 export function IntegrationConfigsSection() {
   const { toast } = useToast();
   const [tab, setTab] = useState<"mcx" | "bis" | "shipping" | "insurance" | "traces" | "xrf">("mcx");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
 
   const { data: mcx = {} } = useQuery<any>({ queryKey: ["/api/gold-erp/config/mcx"] });
   const { data: bis = {} } = useQuery<any>({ queryKey: ["/api/gold-erp/config/bis"] });
@@ -191,8 +194,8 @@ export function IntegrationConfigsSection() {
             <div className="grid grid-cols-2 gap-3">
               <FL label="Insurance Provider"><Input value={insForm.provider || ""} onChange={e => setM(setInsForm)("provider", e.target.value)} placeholder="New India / National" /></FL>
               <FL label="Policy No."><Input value={insForm.policy_no || ""} onChange={e => setM(setInsForm)("policy_no", e.target.value)} /></FL>
-              <FL label="Coverage per gram (₹)"><Input type="number" value={insForm.coverage_per_gm || ""} onChange={e => setM(setInsForm)("coverage_per_gm", e.target.value)} /></FL>
-              <FL label="Max Coverage (₹)"><Input type="number" value={insForm.max_coverage || ""} onChange={e => setM(setInsForm)("max_coverage", e.target.value)} /></FL>
+              <FL label="Coverage per gram "><Input type="number" value={insForm.coverage_per_gm || ""} onChange={e => setM(setInsForm)("coverage_per_gm", e.target.value)} /></FL>
+              <FL label="Max Coverage "><Input type="number" value={insForm.max_coverage || ""} onChange={e => setM(setInsForm)("max_coverage", e.target.value)} /></FL>
               <FL label="Premium %"><Input type="number" value={insForm.premium_pct || ""} onChange={e => setM(setInsForm)("premium_pct", e.target.value)} /></FL>
               <FL label="Auto-insure above (g)"><Input type="number" value={insForm.auto_insure_above_gm || 100} onChange={e => setM(setInsForm)("auto_insure_above_gm", e.target.value)} /></FL>
               <FL label="Contact Name"><Input value={insForm.contact_name || ""} onChange={e => setM(setInsForm)("contact_name", e.target.value)} /></FL>
@@ -218,7 +221,7 @@ export function IntegrationConfigsSection() {
                 </Select>
               </FL>
               <FL label="TDS Rate %"><Input type="number" value={tracesForm.tds_rate_pct || 1} onChange={e => setM(setTracesForm)("tds_rate_pct", e.target.value)} /></FL>
-              <FL label="Threshold per Buyer (₹)"><Input type="number" value={tracesForm.threshold_inr || 10000} onChange={e => setM(setTracesForm)("threshold_inr", e.target.value)} /></FL>
+              <FL label="Threshold per Buyer "><Input type="number" value={tracesForm.threshold_inr || 10000} onChange={e => setM(setTracesForm)("threshold_inr", e.target.value)} /></FL>
             </div>
             <div className="flex items-center gap-3">
               <input type="checkbox" checked={!!tracesForm.auto_deduct} onChange={e => setM(setTracesForm)("auto_deduct", e.target.checked ? 1 : 0)} id="auto_deduct_tds" />
@@ -226,7 +229,7 @@ export function IntegrationConfigsSection() {
             </div>
             <div className="bg-muted/50 rounded-lg p-3 text-xs space-y-1">
               <p className="font-medium">Section 194Q Guide</p>
-              <p className="text-muted-foreground">TDS @ 0.1% applies to purchases above ₹50 lakh per buyer per FY. For gold purchases, threshold is typically ₹10,000 under Section 194Q.</p>
+              <p className="text-muted-foreground">TDS @ 0.1% applies to purchases above ${sym}50 lakh per buyer per FY. For gold purchases, threshold is typically ${sym}10,000 under Section 194Q.</p>
             </div>
             <div className="flex justify-end"><Button onClick={() => tracesMut.mutate(tracesForm)} disabled={tracesMut.isPending}><Save className="h-4 w-4 mr-1" />Save Config</Button></div>
           </CardContent>

@@ -11,16 +11,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Coins, ArrowDownLeft, TrendingUp, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string, body?: any) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
-const fmt = (n: number) => `₹${Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
+const fmt = (n: number) => `${sym}${Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
 const fmtG = (n: number) => `${Number(n || 0).toFixed(4)}g`;
 
 export default function DigitalGoldPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [buyOpen, setBuyOpen] = useState(false);
   const [redeemId, setRedeemId] = useState<number | null>(null);
   const [buyMode, setBuyMode] = useState<"amount" | "grams">("amount");

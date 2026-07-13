@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2, CheckCircle, XCircle, Wallet, Receipt, ChevronDown, ChevronUp } from "lucide-react";
 import { InlineAttachments } from "@/components/inline-attachments";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const EXPENSE_CATEGORIES = ["Travel", "Accommodation", "Meals", "Fuel", "Communication", "Office Supplies", "Medical", "Training", "Client Entertainment", "Other"];
 
@@ -30,6 +31,8 @@ interface ClaimItem { category: string; description: string; amount: string; exp
 function ClaimForm({ employees, onSave, onCancel }: any) {
   const { toast } = useToast();
   const [form, setForm] = useState({ employeeId: "", title: "", claimDate: new Date().toISOString().split("T")[0], notes: "" });
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [items, setItems] = useState<ClaimItem[]>([{ category: "Travel", description: "", amount: "", expenseDate: "" }]);
 
   const addItem = () => setItems(p => [...p, { category: "Travel", description: "", amount: "", expenseDate: "" }]);
@@ -88,7 +91,7 @@ function ClaimForm({ employees, onSave, onCancel }: any) {
             </div>
           </Card>
         ))}
-        <div className="text-right font-semibold text-sm">Total: ₹{total.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</div>
+        <div className="text-right font-semibold text-sm">Total: {sym}{total.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</div>
       </div>
 
       <div>
@@ -108,6 +111,8 @@ function ClaimForm({ employees, onSave, onCancel }: any) {
 
 function ClaimCard({ claim, items, onAction }: any) {
   const [expanded, setExpanded] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const claimItems = items.filter((i: any) => i.claim_id === claim.id);
   return (
     <Card className="overflow-hidden">
@@ -119,7 +124,7 @@ function ClaimCard({ claim, items, onAction }: any) {
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <Badge variant={STATUS_COLORS[claim.status] as any}>{STATUS_LABELS[claim.status]}</Badge>
-            <span className="font-semibold">₹{Number(claim.total_amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+            <span className="font-semibold">{sym}{Number(claim.total_amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
             <Button size="icon" variant="ghost" onClick={() => setExpanded(e => !e)} data-testid={`button-expand-claim-${claim.id}`}>
               {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </Button>
@@ -136,7 +141,7 @@ function ClaimCard({ claim, items, onAction }: any) {
                     <td className="py-1">{it.category}</td>
                     <td className="py-1 text-muted-foreground">{it.description || "—"}</td>
                     <td className="py-1 text-muted-foreground">{it.expense_date ? new Date(it.expense_date).toLocaleDateString("en-IN") : "—"}</td>
-                    <td className="py-1 text-right">₹{Number(it.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+                    <td className="py-1 text-right">{sym}{Number(it.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
                   </tr>
                 ))}
               </tbody>
@@ -169,6 +174,8 @@ function ClaimCard({ claim, items, onAction }: any) {
 export default function HRExpenseClaimsPage() {
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [activeTab, setActiveTab] = useState("all");
   const [selected, setSelected] = useState<Set<number>>(new Set());
 
@@ -240,8 +247,8 @@ export default function HRExpenseClaimsPage() {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: "Pending", value: stats.pending, sub: `₹${stats.totalPending.toLocaleString("en-IN")}`, color: "text-yellow-600" },
-          { label: "Approved", value: stats.approved, sub: `₹${stats.totalApproved.toLocaleString("en-IN")}`, color: "text-green-600" },
+          { label: "Pending", value: stats.pending, sub: `${sym}${stats.totalPending.toLocaleString("en-IN")}`, color: "text-yellow-600" },
+          { label: "Approved", value: stats.approved, sub: `${sym}${stats.totalApproved.toLocaleString("en-IN")}`, color: "text-green-600" },
           { label: "Total Claims", value: claims.length, sub: "all time" },
           { label: "Paid", value: claims.filter(c => c.status === "paid").length, sub: "reimbursed" },
         ].map(s => (

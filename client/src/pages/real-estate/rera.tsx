@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Shield, AlertCircle, Download, FileText } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string, body?: any) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -25,6 +26,8 @@ const SAMPLE_COMPLAINTS = [
 
 export default function RERAPage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [reportOpen, setReportOpen] = useState(false);
   const [complaintOpen, setComplaintOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<any>(null);
@@ -114,7 +117,7 @@ export default function RERAPage() {
                       </TableCell>
                       <TableCell>{p.completion}</TableCell>
                       <TableCell>
-                        <div className="text-sm">₹{Number(p.rera_balance).toLocaleString()}</div>
+                        <div className="text-sm">{sym}{Number(p.rera_balance).toLocaleString()}</div>
                         <div className="text-xs text-muted-foreground">70% fund lock</div>
                       </TableCell>
                       <TableCell>

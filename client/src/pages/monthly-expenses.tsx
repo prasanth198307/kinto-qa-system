@@ -72,6 +72,7 @@ import {
   ChevronsUpDown,
 } from "lucide-react";
 import { format } from "date-fns";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 type MonthlyExpense = {
   id: string;
@@ -133,7 +134,7 @@ function nextMonth(ym: string) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 function fmtCurrency(paise: number) {
-  return `₹${(paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `${sym}${(paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 function deriveStatus(totalPaise: number, paidPaise: number): 'pending' | 'partial' | 'paid' {
   if (paidPaise <= 0) return 'pending';
@@ -749,7 +750,7 @@ export default function MonthlyExpensesPage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label>Amount (₹) *</Label>
+                    <Label>Amount (${sym}) *</Label>
                     <Input
                       type="number" step="0.01" min="0"
                       placeholder={`Max ${fmtCurrency(remainingBalance)}`}

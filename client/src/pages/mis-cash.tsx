@@ -101,7 +101,9 @@ const CHART_NET = '#378ADD';
 
 export default function MISCash() {
   const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol ?? '₹';
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
+  const sym = tenantConfig.currency_symbol ?? sym;
   const fmtCurr = (n: number): string => {
     if (n >= 10000000) return `${sym}${(n / 10000000).toFixed(2)}Cr`;
     if (n >= 100000) return `${sym}${(n / 100000).toFixed(2)}L`;

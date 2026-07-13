@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, RefreshCw, Edit2, Trash2, Package } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 type Listing = {
   id: number; channel_name: string; sku: string; product_name: string;
@@ -22,6 +23,8 @@ const emptyForm = { channel_id: "", sku: "", product_name: "", category: "", mrp
 
 export default function ListingsPage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { toast } = useToast();
   const [modalOpen, setModalOpen] = useState(false);
   const [editItem, setEditItem] = useState<Listing | null>(null);
@@ -107,8 +110,8 @@ export default function ListingsPage() {
                   <TableCell style={{ fontWeight: 500 }}>{l.product_name}</TableCell>
                   <TableCell><Badge variant="outline">{l.channel_name}</Badge></TableCell>
                   <TableCell>{l.category}</TableCell>
-                  <TableCell>₹{l.mrp.toLocaleString()}</TableCell>
-                  <TableCell>₹{l.selling_price.toLocaleString()}</TableCell>
+                  <TableCell>{sym}{l.mrp.toLocaleString()}</TableCell>
+                  <TableCell>{sym}{l.selling_price.toLocaleString()}</TableCell>
                   <TableCell><Badge variant="secondary">{disc}% off</Badge></TableCell>
                   <TableCell>
                     <span style={{ display: "flex", alignItems: "center", gap: 6 }}>

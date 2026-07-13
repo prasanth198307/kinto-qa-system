@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Download, Search, FileText } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string, body?: unknown) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -52,6 +53,8 @@ const PAYMENT_MODES = ["Cash", "Cheque", "NEFT", "RTGS", "UPI", "DD"];
 export default function DonorAdminPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
 
   const [donorSearch, setDonorSearch] = useState("");
   const [selectedDonor, setSelectedDonor] = useState<Donor | null>(null);
@@ -110,7 +113,7 @@ export default function DonorAdminPage() {
     onError: () => toast({ title: "Failed to add project", variant: "destructive" }),
   });
 
-  const fmt = (n: number) => `₹${(n || 0).toLocaleString("en-IN")}`;
+  const fmt = (n: number) => `${sym}${(n || 0).toLocaleString("en-IN")}`;
 
   const toggle80G = (id: number) =>
     setSelected80GIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);

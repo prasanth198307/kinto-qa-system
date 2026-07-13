@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Vendor, CustomerAdvance } from "@shared/schema";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 interface AdvanceWithBalance extends CustomerAdvance {
   vendorName: string | null;
@@ -589,7 +590,7 @@ export default function CustomerAdvancesPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label>Amount (₹) *</Label>
+                <Label>Amount (${sym}) *</Label>
                 <Input
                   type="number"
                   step="0.01"

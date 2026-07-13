@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MapPin, Gauge, Wifi, Plus, Trash2, Navigation } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (path: string) => fetch(path).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
@@ -236,7 +237,7 @@ export default function GPSTrackingPage() {
                     <div><div className="text-xs text-muted-foreground">Distance</div><div className="font-semibold">{routeResult.distance_km} km</div></div>
                     <div><div className="text-xs text-muted-foreground">Duration</div><div className="font-semibold">{routeResult.duration_hrs} hrs</div></div>
                     <div><div className="text-xs text-muted-foreground">Est. Fuel</div><div className="font-semibold">{routeResult.estimated_fuel_l} L</div></div>
-                    <div><div className="text-xs text-muted-foreground">Est. Toll</div><div className="font-semibold">₹{routeResult.estimated_toll}</div></div>
+                    <div><div className="text-xs text-muted-foreground">Est. Toll</div><div className="font-semibold">{sym}{routeResult.estimated_toll}</div></div>
                   </div>
                   {routeResult.ordered_waypoints && (
                     <div>
@@ -288,7 +289,7 @@ function EWBExpiring() {
             <TableCell>{e.ewb_number}</TableCell>
             <TableCell>{e.party_name}</TableCell>
             <TableCell className="text-orange-600 font-medium">{e.valid_till}</TableCell>
-            <TableCell>₹{Number(e.total_value || 0).toLocaleString("en-IN")}</TableCell>
+            <TableCell>{sym}{Number(e.total_value || 0).toLocaleString("en-IN")}</TableCell>
           </TableRow>
         ))}
       </TableBody>

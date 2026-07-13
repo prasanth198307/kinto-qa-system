@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, Undo2, X, Ban } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string, body?: any) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -16,6 +17,8 @@ const LABELS: Record<Tab, string> = { near_expiry: "Near Expiry", expired: "Expi
 
 export default function ExpiryPage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [tab, setTab] = useState<Tab>("near_expiry");
   const [returning, setReturning] = useState<any>(null);
   const [retForm, setRetForm] = useState({ supplier_name: "", credit_expected: "" });
@@ -68,7 +71,7 @@ export default function ExpiryPage() {
               {returning?.id === b.id && (
                 <CardContent className="border-t pt-3 grid grid-cols-3 gap-2 items-end">
                   <div><Label className="text-xs">Distributor / Supplier</Label><Input value={retForm.supplier_name} onChange={e => setRetForm(p => ({ ...p, supplier_name: e.target.value }))} /></div>
-                  <div><Label className="text-xs">Expected Credit (₹)</Label><Input type="number" value={retForm.credit_expected} onChange={e => setRetForm(p => ({ ...p, credit_expected: e.target.value }))} /></div>
+                  <div><Label className="text-xs">Expected Credit (${sym})</Label><Input type="number" value={retForm.credit_expected} onChange={e => setRetForm(p => ({ ...p, credit_expected: e.target.value }))} /></div>
                   <div className="flex gap-1">
                     <Button size="sm" onClick={() => createReturn.mutate({ stock_id: b.id, drug_id: b.drug_id, batch_number: b.batch_number, quantity: b.quantity, supplier_name: retForm.supplier_name, credit_expected: parseFloat(retForm.credit_expected) })}>Raise Return</Button>
                     <Button size="sm" variant="ghost" onClick={() => setReturning(null)}><X className="w-3 h-3" /></Button>
@@ -108,7 +111,7 @@ export default function ExpiryPage() {
               <CardContent className="pt-4 flex items-center justify-between">
                 <div>
                   <p className="font-semibold">{r.drug_name ?? `Drug #${r.drug_id}`} — Batch {r.batch_number}</p>
-                  <p className="text-sm text-gray-500">{r.supplier_name} · Qty {r.quantity} · Credit ₹{r.credit_expected}</p>
+                  <p className="text-sm text-gray-500">{r.supplier_name} · Qty {r.quantity} · Credit {sym}{r.credit_expected}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge className={r.status === "approved" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}>{r.status ?? "pending"}</Badge>

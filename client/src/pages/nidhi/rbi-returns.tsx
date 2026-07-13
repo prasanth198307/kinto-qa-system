@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Download, CheckCircle, Clock } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (path: string) => fetch(path).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
@@ -24,6 +25,8 @@ const CHECKLIST = [
 
 export default function RBIReturnsPage() {
   const [period, setPeriod] = useState("H1-2026");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
 
   const { data: returnData } = useQuery({
     queryKey: ["nidhi-rbi-return", period],
@@ -84,11 +87,11 @@ export default function RBIReturnsPage() {
               <div className="grid grid-cols-2 gap-4">
                 {[
                   ["Total Members", d.member_count?.toLocaleString()],
-                  ["Share Capital (₹)", Number(d.share_capital || 0).toLocaleString()],
-                  ["Reserves & Surplus (₹)", Number(d.reserves || 0).toLocaleString()],
-                  ["Net Owned Funds (₹)", Number(d.net_owned_funds || 0).toLocaleString()],
-                  ["Total Deposits (₹)", Number(d.total_deposits || 0).toLocaleString()],
-                  ["Loans Outstanding (₹)", Number(d.loans_outstanding || 0).toLocaleString()],
+                  ["Share Capital ", Number(d.share_capital || 0).toLocaleString()],
+                  ["Reserves & Surplus (${sym})", Number(d.reserves || 0).toLocaleString()],
+                  ["Net Owned Funds ", Number(d.net_owned_funds || 0).toLocaleString()],
+                  ["Total Deposits ", Number(d.total_deposits || 0).toLocaleString()],
+                  ["Loans Outstanding ", Number(d.loans_outstanding || 0).toLocaleString()],
                 ].map(([label, value]) => (
                   <div key={label} className="border rounded p-3">
                     <div className="text-sm text-muted-foreground">{label}</div>
@@ -111,11 +114,11 @@ export default function RBIReturnsPage() {
             <CardContent>
               <div className="grid grid-cols-2 gap-4">
                 {[
-                  ["Fixed Deposits (₹)", Number(d.fixed_deposits || 0).toLocaleString()],
-                  ["Recurring Deposits (₹)", Number(d.recurring_deposits || 0).toLocaleString()],
-                  ["Savings Deposits (₹)", Number(d.savings_deposits || 0).toLocaleString()],
-                  ["Total Deposits (₹)", Number(d.total_deposits || 0).toLocaleString()],
-                  ["Loans Disbursed (₹)", Number(d.loans_outstanding || 0).toLocaleString()],
+                  ["Fixed Deposits ", Number(d.fixed_deposits || 0).toLocaleString()],
+                  ["Recurring Deposits ", Number(d.recurring_deposits || 0).toLocaleString()],
+                  ["Savings Deposits ", Number(d.savings_deposits || 0).toLocaleString()],
+                  ["Total Deposits ", Number(d.total_deposits || 0).toLocaleString()],
+                  ["Loans Disbursed ", Number(d.loans_outstanding || 0).toLocaleString()],
                   ["NOF Ratio", `${((d.total_deposits || 0) / (d.net_owned_funds || 1)).toFixed(1)}x`],
                 ].map(([label, value]) => (
                   <div key={label} className="border rounded p-3">
@@ -141,8 +144,8 @@ export default function RBIReturnsPage() {
                 {[
                   ["New Members This Quarter", "28"],
                   ["Loans Sanctioned This Quarter", "15"],
-                  ["Loans Disbursed This Quarter (₹)", "850,000"],
-                  ["EMI Collections (₹)", "320,000"],
+                  ["Loans Disbursed This Quarter ", "850,000"],
+                  ["EMI Collections ", "320,000"],
                   ["Defaulted Loans", "2"],
                   ["NPA Accounts", "1"],
                 ].map(([label, value]) => (

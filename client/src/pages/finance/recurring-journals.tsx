@@ -13,6 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Trash2, Play, Edit, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string, body?: unknown) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -50,6 +51,8 @@ const EMPTY_LINE: JournalLine = { account_code: "", account_name: "", debit: "",
 export default function RecurringJournalsPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [formOpen, setFormOpen] = useState(false);
   const [historyJournalId, setHistoryJournalId] = useState<number | null>(null);
   const [form, setForm] = useState({ name: "", description: "", frequency: "Monthly", day_of_month: "1", auto_post: false, lines: [{ ...EMPTY_LINE }] });

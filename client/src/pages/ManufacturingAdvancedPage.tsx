@@ -18,13 +18,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { GitBranch, Layers, ClipboardList, Settings2, PlayCircle, PlusCircle, CheckCircle, XCircle, AlertTriangle, Loader2 } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
-function rupee(paise: number) { return `₹${(paise / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}` }
+function rupee(paise: number) { return `${sym}${(paise / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}` }
 
 // ─── BOM Explosion Tab ────────────────────────────────────────────────────────
 function BOMExplosionTab() {
   const { toast } = useToast();
   const [productId, setProductId] = useState("");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [qty, setQty] = useState("1");
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -69,7 +72,7 @@ function BOMExplosionTab() {
         <Card>
           <CardHeader>
             <CardTitle>{result.product_name} — BOM for qty {result.qty_to_produce}</CardTitle>
-            <CardDescription>Total material cost: <strong>₹{Number(result.total_material_cost / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</strong></CardDescription>
+            <CardDescription>Total material cost: <strong>{sym}{Number(result.total_material_cost / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</strong></CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
@@ -96,8 +99,8 @@ function BOMExplosionTab() {
                     <TableCell>{row.uom}</TableCell>
                     <TableCell className="text-right">{Number(row.qty_per_parent).toFixed(3)}</TableCell>
                     <TableCell className="text-right font-medium">{Number(row.total_qty_needed).toFixed(3)}</TableCell>
-                    <TableCell className="text-right">₹{Number(row.cost_price / 100).toFixed(2)}</TableCell>
-                    <TableCell className="text-right">₹{Number(row.total_cost / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</TableCell>
+                    <TableCell className="text-right">{sym}{Number(row.cost_price / 100).toFixed(2)}</TableCell>
+                    <TableCell className="text-right">{sym}{Number(row.total_cost / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -120,7 +123,7 @@ function BOMExplosionTab() {
                       <TableCell className="font-medium">{row.material_name}</TableCell>
                       <TableCell>{row.uom}</TableCell>
                       <TableCell className="text-right">{Number(row.total_qty_needed).toFixed(3)}</TableCell>
-                      <TableCell className="text-right font-medium">₹{Number(row.total_cost / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</TableCell>
+                      <TableCell className="text-right font-medium">{sym}{Number(row.total_cost / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -409,6 +412,8 @@ function ECNTab() {
 function CostRollupTab() {
   const { toast } = useToast();
   const [productId, setProductId] = useState("");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [qty, setQty] = useState("1");
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -484,7 +489,7 @@ function CostRollupTab() {
                 { label: "Total Standard Cost", value: result.cost_breakdown?.total_standard_cost, color: "text-green-600" },
               ].map(item => (
                 <div key={item.label} className="text-center p-3 rounded-lg border">
-                  <div className={`text-lg font-bold ${item.color}`}>₹{Number((item.value || 0) / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</div>
+                  <div className={`text-lg font-bold ${item.color}`}>{sym}{Number((item.value || 0) / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</div>
                   <div className="text-xs text-muted-foreground">{item.label}</div>
                 </div>
               ))}
@@ -493,7 +498,7 @@ function CostRollupTab() {
             {result.variance !== 0 && (
               <div className={`flex items-center gap-2 p-3 rounded-lg text-sm mb-4 ${result.variance > 0 ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"}`}>
                 <AlertTriangle className="h-4 w-4" />
-                Variance from existing standard: {result.variance > 0 ? "+" : ""}₹{Number(Math.abs(result.variance) / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                Variance from existing standard: {result.variance > 0 ? "+" : ""}{sym}{Number(Math.abs(result.variance) / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                 {" "}({result.variance > 0 ? "above" : "below"} current standard)
               </div>
             )}
@@ -515,8 +520,8 @@ function CostRollupTab() {
                     <TableCell>{m.material_name}</TableCell>
                     <TableCell>{m.uom}</TableCell>
                     <TableCell className="text-right">{Number(m.total_qty_needed).toFixed(3)}</TableCell>
-                    <TableCell className="text-right">₹{Number(m.cost_price / 100).toFixed(2)}</TableCell>
-                    <TableCell className="text-right">₹{Number(m.total_cost / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</TableCell>
+                    <TableCell className="text-right">{sym}{Number(m.cost_price / 100).toFixed(2)}</TableCell>
+                    <TableCell className="text-right">{sym}{Number(m.total_cost / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

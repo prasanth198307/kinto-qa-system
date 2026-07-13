@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Barcode, Scale, Printer, DollarSign, CheckCircle, XCircle } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (m: string, p: string, b?: any) =>
   fetch(p, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined }).then(async (r) => {
@@ -18,6 +19,8 @@ const api = (m: string, p: string, b?: any) =>
 
 export default function RetailPOSHardwarePage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { toast } = useToast();
   const [cfg, setCfg] = useState<any>({ scale_type: "none", cash_drawer: "printer_kick", pole_display: "none", label_printer: "none" });
   const [scanValue, setScanValue] = useState("");
@@ -81,7 +84,7 @@ export default function RetailPOSHardwarePage() {
               scanResult.ok ? (
                 <div className="border border-green-300 bg-green-50 rounded p-3 flex items-center gap-2 text-sm">
                   <CheckCircle className="w-4 h-4 text-green-600" />
-                  <div><strong>{scanResult.product.name}</strong> — ₹{Number(scanResult.product.selling_price || scanResult.product.price || 0)} · SKU {scanResult.product.sku || "—"}</div>
+                  <div><strong>{scanResult.product.name}</strong> — {sym}{Number(scanResult.product.selling_price || scanResult.product.price || 0)} · SKU {scanResult.product.sku || "—"}</div>
                 </div>
               ) : (
                 <div className="border border-red-300 bg-red-50 rounded p-3 flex items-center gap-2 text-sm">

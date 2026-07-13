@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Plus, Trash2, Save, AlertTriangle, Check } from "lucide-react";
 import { groupAccountsByParent } from "@/lib/account-hierarchy";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 interface ChartAccount {
   id: string;
@@ -32,13 +33,15 @@ interface JournalLineForm {
 }
 
 function formatAmount(paise: number): string {
-  return `₹${(paise / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
+  return `${sym}${(paise / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
 }
 
 export default function ManualJournalEntryPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const searchString = useSearch();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const editId = new URLSearchParams(searchString).get("edit");
   const isEditMode = !!editId;
 
@@ -231,7 +234,7 @@ export default function ManualJournalEntryPage() {
               <div className="col-span-4 sm:col-span-2">
                 <Input
                   type="number"
-                  placeholder="Debit ₹"
+                  placeholder="Debit ${sym}"
                   value={line.debit}
                   onChange={e => updateLine(idx, "debit", e.target.value)}
                   step="0.01"
@@ -242,7 +245,7 @@ export default function ManualJournalEntryPage() {
               <div className="col-span-4 sm:col-span-2">
                 <Input
                   type="number"
-                  placeholder="Credit ₹"
+                  placeholder="Credit ${sym}"
                   value={line.credit}
                   onChange={e => updateLine(idx, "credit", e.target.value)}
                   step="0.01"

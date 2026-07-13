@@ -14,10 +14,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Textarea } from "@/components/ui/textarea";
 import { FileText, Plus, Printer, Search, IndianRupee, Shield, AlertCircle, Download, CheckCircle, XCircle, Clock } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const FISCAL_YEARS = ["2024-25", "2023-24", "2025-26"];
 const fmt = (n: any) => Number(n || 0).toLocaleString("en-IN");
-const fmtRs = (n: any) => `₹${fmt(n)}`;
+const fmtRs = (n: any) => `${sym}${fmt(n)}`;
 
 function calcHraExemption(basic: number, rentPM: number, cityType: string) {
   if (!rentPM) return 0;
@@ -60,6 +61,8 @@ function calcTax(income: number, regime: string) {
 function DeclarationForm({ employees, employee, fiscalYear, existing, onSave, onCancel }: any) {
   const { toast } = useToast();
   const emp = employees.find((e: any) => String(e.id) === String(employee)) || {};
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [form, setForm] = useState({
     employeeId: employee || "",
     fiscalYear: fiscalYear || "2024-25",
@@ -257,11 +260,11 @@ function DeclarationForm({ employees, employee, fiscalYear, existing, onSave, on
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {[
-                ["homeLoanInterest", "Home Loan Interest (Sec 24) — Max ₹2,00,000"],
+                ["homeLoanInterest", "Home Loan Interest (Sec 24) — Max ${sym}2,00,000"],
                 ["eduLoanInterest", "Education Loan Interest (Sec 80E) — No limit"],
-                ["nps80ccd", "NPS Contribution (Sec 80CCD 1B) — Max ₹50,000"],
+                ["nps80ccd", "NPS Contribution (Sec 80CCD 1B) — Max ${sym}50,000"],
                 ["sec80g", "Donations (Sec 80G)"],
-                ["sec80tta", "Savings Bank Interest (Sec 80TTA) — Max ₹10,000"],
+                ["sec80tta", "Savings Bank Interest (Sec 80TTA) — Max ${sym}10,000"],
                 ["otherDeductions", "Other Deductions"],
               ].map(([k, label]) => (
                 <div key={k} className="space-y-1.5">
@@ -279,7 +282,7 @@ function DeclarationForm({ employees, employee, fiscalYear, existing, onSave, on
             {[
               ["Estimated Annual Gross", fmtRs(Math.round(annualGross))],
               ["Standard Deduction", `(${fmtRs(stdDed)})`],
-              ["Section 80C (capped at ₹1.5L)", `(${fmtRs(total80c)})`],
+              ["Section 80C (capped at ${sym}1.5L)", `(${fmtRs(total80c)})`],
               ["Section 80D", `(${fmtRs(max80d)})`],
               ["HRA Exemption", `(${fmtRs(Math.round(hraExemption))})`],
               ["Home Loan Interest", `(${fmtRs(Math.min(Number(form.homeLoanInterest || 0), 200000))})`],

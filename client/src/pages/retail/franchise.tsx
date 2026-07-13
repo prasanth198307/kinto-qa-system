@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Plus } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string, body?: unknown) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -29,6 +30,8 @@ const CHECKLIST = [
 
 export default function FranchisePage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ ...EMPTY });
   const [selected, setSelected] = useState<typeof MOCK[0] | null>(null);
@@ -56,7 +59,7 @@ export default function FranchisePage() {
 
       <div className="grid grid-cols-3 gap-4">
         <Card><CardContent className="pt-4"><p className="text-sm text-muted-foreground">Total Franchises</p><p className="text-2xl font-bold">{rows.length}</p></CardContent></Card>
-        <Card><CardContent className="pt-4"><p className="text-sm text-muted-foreground">Monthly Royalty</p><p className="text-2xl font-bold">₹{Math.round(totalRoyalty).toLocaleString()}</p></CardContent></Card>
+        <Card><CardContent className="pt-4"><p className="text-sm text-muted-foreground">Monthly Royalty</p><p className="text-2xl font-bold">{sym}{Math.round(totalRoyalty).toLocaleString()}</p></CardContent></Card>
         <Card><CardContent className="pt-4"><p className="text-sm text-muted-foreground">Avg Compliance Score</p>
           <p className="text-2xl font-bold">{Math.round(rows.reduce((s: number, r: Record<string, unknown>) => s + Number(r.compliance_score || 0), 0) / rows.length)}%</p>
         </CardContent></Card>
@@ -90,8 +93,8 @@ export default function FranchisePage() {
                     <TableCell>{String(r.franchisee_name)}</TableCell>
                     <TableCell>{String(r.location)}</TableCell>
                     <TableCell>{pct}%</TableCell>
-                    <TableCell>₹{Number(r.sales_target).toLocaleString()}</TableCell>
-                    <TableCell>₹{actual.toLocaleString()}</TableCell>
+                    <TableCell>{sym}{Number(r.sales_target).toLocaleString()}</TableCell>
+                    <TableCell>{sym}{actual.toLocaleString()}</TableCell>
                     <TableCell>
                       <Badge variant={score >= 90 ? "default" : score >= 75 ? "outline" : "destructive"}>{score}%</Badge>
                     </TableCell>
@@ -111,7 +114,7 @@ export default function FranchisePage() {
             <div className="grid grid-cols-3 gap-4">
               <div className="bg-muted rounded p-3">
                 <p className="text-sm text-muted-foreground">Monthly Sales</p>
-                <p className="text-xl font-bold">₹{Number(selected.actual_sales).toLocaleString()}</p>
+                <p className="text-xl font-bold">{sym}{Number(selected.actual_sales).toLocaleString()}</p>
               </div>
               <div className="bg-muted rounded p-3">
                 <p className="text-sm text-muted-foreground">Royalty Rate</p>
@@ -119,7 +122,7 @@ export default function FranchisePage() {
               </div>
               <div className="bg-yellow-50 rounded p-3">
                 <p className="text-sm text-muted-foreground">Royalty Amount</p>
-                <p className="text-xl font-bold">₹{Math.round(Number(selected.actual_sales) * Number(selected.royalty_pct) / 100).toLocaleString()}</p>
+                <p className="text-xl font-bold">{sym}{Math.round(Number(selected.actual_sales) * Number(selected.royalty_pct) / 100).toLocaleString()}</p>
               </div>
             </div>
             <div className="mt-4">

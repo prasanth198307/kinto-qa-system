@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { CheckCircle, FileText } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (path: string) => fetch(path).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
@@ -32,6 +33,8 @@ const SAMPLE_BILLS = [
 export default function RERACompliancePage() {
   const { toast } = useToast();
   const [projectId, setProjectId] = useState<string>("");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [quarter, setQuarter] = useState("1");
   const [year, setYear] = useState("2026");
   const [reportData, setReportData] = useState<any>(null);
@@ -164,7 +167,7 @@ export default function RERACompliancePage() {
                       { label: "Units Total", value: reportData.units_total },
                       { label: "Units Sold", value: reportData.units_sold },
                       { label: "Units Booked", value: reportData.units_booked },
-                      { label: "Quarter Collections", value: `₹${Number(reportData.quarter_collections || 0).toLocaleString("en-IN")}` },
+                      { label: "Quarter Collections", value: `${sym}${Number(reportData.quarter_collections || 0).toLocaleString("en-IN")}` },
                       { label: "Construction %", value: `${reportData.construction_pct}%` },
                     ].map(m => (
                       <div key={m.label} className="border rounded-lg p-3 text-center">
@@ -278,7 +281,7 @@ export default function RERACompliancePage() {
                       <TableRow key={b.id}>
                         <TableCell>{b.subcontractor}</TableCell>
                         <TableCell>{b.invoice_date}</TableCell>
-                        <TableCell>₹{Number(b.amount || 0).toLocaleString("en-IN")}</TableCell>
+                        <TableCell>{sym}{Number(b.amount || 0).toLocaleString("en-IN")}</TableCell>
                         <TableCell>
                           <Button size="sm" onClick={() => approveBillMutation.mutate(b.id)}>Approve</Button>
                         </TableCell>

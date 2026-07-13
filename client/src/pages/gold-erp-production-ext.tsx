@@ -11,10 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, CheckCircle, AlertTriangle, RefreshCw, Pencil, Upload, Image, Clock, Check, RotateCcw, ArrowRight, X } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const fmt = (n: any, d = 2) => Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: d });
 const fmtWt = (n: any) => `${fmt(n, 3)} g`;
-const fmtAmt = (n: any) => `₹${fmt(n)}`;
+const fmtAmt = (n: any) => `${sym}${fmt(n)}`;
 const today = () => new Date().toISOString().slice(0, 10);
 
 function FieldRow({ label, children }: any) {
@@ -128,6 +129,8 @@ function CADForm({ editing, orders, onClose, onSave, isPending }: {
   editing: any; orders: any[]; onClose: () => void; onSave: (data: any, sendToCam: boolean) => void; isPending: boolean;
 }) {
   const [form, setForm] = useState<any>(editing ? { ...editing, approval_status: editing.customer_approval ? "approved" : "pending" } : { approval_status: "pending", mcx_rate: 6820, revision_count: 0 });
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [cadFileName, setCadFileName] = useState<string>(editing?.cad_file_url || "");
   const [renderCount, setRenderCount] = useState(editing?.render_image_url ? 2 : 0);
   const cadFileRef = useRef<HTMLInputElement>(null);
@@ -245,7 +248,7 @@ function CADForm({ editing, orders, onClose, onSave, isPending }: {
           </div>
           <div className="space-y-1">
             <Label className="text-xs font-medium text-muted-foreground">
-              MCX rate (₹/g)
+              MCX rate (${sym}/g)
               <span className="ml-1 text-[10px] bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 px-1.5 rounded">live</span>
             </Label>
             <Input data-testid="input-mcx-rate" type="number" value={form.mcx_rate || 6820} onChange={e => set("mcx_rate", e.target.value)} />
@@ -258,11 +261,11 @@ function CADForm({ editing, orders, onClose, onSave, isPending }: {
             <div>
               <div className="text-xs text-amber-800 dark:text-amber-300">Estimated gold value (read-only)</div>
               <div className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5">
-                Based on MCX rate ₹{rate.toLocaleString("en-IN")}/g · {purityKey.split(" ")[0]} · today
+                Based on MCX rate {sym}{rate.toLocaleString("en-IN")}/g · {purityKey.split(" ")[0]} · today
               </div>
             </div>
             <div className="text-base font-semibold text-amber-900 dark:text-amber-200" data-testid="text-gold-value">
-              ₹{goldValue.toLocaleString("en-IN")}
+              {sym}{goldValue.toLocaleString("en-IN")}
             </div>
           </div>
         )}
@@ -659,6 +662,8 @@ export function CAMSection() {
 export function GhatSection() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [form, setForm] = useState<any>({ stage_name: "Casting", weigh_date: today() });
   const { data: entries = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/ghat-entries"] });
   const { data: orders = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/production-orders"] });
@@ -735,6 +740,8 @@ export function GhatSection() {
 export function SettlementSection() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [form, setForm] = useState<any>({ allowable_wastage_pct: 3, settlement_date: today() });
   const { data: settlements = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/settlements"] });
   const { data: orders = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/production-orders"] });
@@ -804,8 +811,8 @@ export function SettlementSection() {
               <FieldRow label="Gold Issued (g)"><Input data-testid="input-settlement-issued" type="number" value={form.gold_issued_gm || ""} onChange={e => set("gold_issued_gm", e.target.value)} /></FieldRow>
               <FieldRow label="Gold Received (g)"><Input data-testid="input-settlement-received" type="number" value={form.gold_received_gm || ""} onChange={e => set("gold_received_gm", e.target.value)} /></FieldRow>
               <FieldRow label="Allowable Wastage %"><Input data-testid="input-settlement-wastage-pct" type="number" value={form.allowable_wastage_pct || 3} onChange={e => set("allowable_wastage_pct", e.target.value)} /></FieldRow>
-              <FieldRow label="Gold Rate (₹/g)"><Input data-testid="input-settlement-rate" type="number" value={form.gold_rate || ""} onChange={e => set("gold_rate", e.target.value)} /></FieldRow>
-              <FieldRow label="Wage Amount (₹)"><Input data-testid="input-settlement-wage" type="number" value={form.wage_amount || ""} onChange={e => set("wage_amount", e.target.value)} /></FieldRow>
+              <FieldRow label="Gold Rate (${sym}/g)"><Input data-testid="input-settlement-rate" type="number" value={form.gold_rate || ""} onChange={e => set("gold_rate", e.target.value)} /></FieldRow>
+              <FieldRow label="Wage Amount "><Input data-testid="input-settlement-wage" type="number" value={form.wage_amount || ""} onChange={e => set("wage_amount", e.target.value)} /></FieldRow>
               <FieldRow label="Settlement Date"><Input data-testid="input-settlement-date" type="date" value={form.settlement_date || today()} onChange={e => set("settlement_date", e.target.value)} /></FieldRow>
             </div>
             <Button variant="outline" className="w-full" onClick={calcSettlement} data-testid="button-calc-settlement"><RefreshCw className="h-4 w-4 mr-2" />Calculate Settlement</Button>

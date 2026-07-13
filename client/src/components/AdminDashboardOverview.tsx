@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import type { User, Machine, ChecklistTemplate, SparePartCatalog, MaintenancePlan } from "@shared/schema";
 import { usePermissions } from "@/hooks/use-permissions";
+import { useTenantConfig } from "@/hooks/use-tenant-config";
 
 interface AdminDashboardOverviewProps {
   onNavigateToTab: (tab: string) => void;
@@ -20,6 +21,8 @@ interface PlanFeatures {
 }
 
 export default function AdminDashboardOverview({ onNavigateToTab }: AdminDashboardOverviewProps) {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { data: planFeatures } = useQuery<PlanFeatures>({
     queryKey: ['/api/tenant/features'],
   });
@@ -109,7 +112,7 @@ export default function AdminDashboardOverview({ onNavigateToTab }: AdminDashboa
     // POS / Retail dashboard stats
     {
       title: "Today's Sales",
-      value: `₹${(posStats?.todaySales ?? 0).toLocaleString('en-IN')}`,
+      value: `${sym}${(posStats?.todaySales ?? 0).toLocaleString('en-IN')}`,
       subtitle: `${posStats?.todayTransactions ?? 0} transactions`,
       icon: ShoppingCart,
       color: "text-green-600",
@@ -119,7 +122,7 @@ export default function AdminDashboardOverview({ onNavigateToTab }: AdminDashboa
     },
     {
       title: "Monthly Sales",
-      value: `₹${(posStats?.monthlySales ?? 0).toLocaleString('en-IN')}`,
+      value: `${sym}${(posStats?.monthlySales ?? 0).toLocaleString('en-IN')}`,
       subtitle: "This month",
       icon: BarChart2,
       color: "text-blue-600",

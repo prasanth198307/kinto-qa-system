@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BarChart2, DollarSign, AlertTriangle, Stethoscope, TrendingUp, Archive } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (path: string) => fetch(path).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
@@ -14,6 +15,8 @@ const ICONS: Record<Tab, any> = { gst: DollarSign, expiry: AlertTriangle, margin
 
 export default function PharmacyReportsPage() {
   const [tab, setTab] = useState<Tab>("gst");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [fromDate, setFromDate] = useState(() => { const d = new Date(); d.setDate(1); return d.toISOString().slice(0, 10); });
   const [toDate, setToDate] = useState(() => new Date().toISOString().slice(0, 10));
 
@@ -40,13 +43,13 @@ export default function PharmacyReportsPage() {
       {tab === "gst" && (
         <div className="space-y-4">
           <div className="grid grid-cols-4 gap-4">
-            {[["Taxable Sales", `₹${(r.taxable_sales ?? 0).toLocaleString()}`], ["Output GST", `₹${(r.output_gst ?? 0).toLocaleString()}`], ["Input GST", `₹${(r.input_gst ?? 0).toLocaleString()}`], ["Net GST Payable", `₹${(r.net_gst ?? 0).toLocaleString()}`]].map(([l, v]) => (
+            {[["Taxable Sales", `${sym}${(r.taxable_sales ?? 0).toLocaleString()}`], ["Output GST", `${sym}${(r.output_gst ?? 0).toLocaleString()}`], ["Input GST", `${sym}${(r.input_gst ?? 0).toLocaleString()}`], ["Net GST Payable", `${sym}${(r.net_gst ?? 0).toLocaleString()}`]].map(([l, v]) => (
               <Card key={l as string}><CardContent className="pt-4"><p className="text-sm text-gray-500">{l}</p><p className="text-xl font-bold">{v}</p></CardContent></Card>
             ))}
           </div>
           <Card><CardHeader><CardTitle className="text-base">GST Rate-wise Breakup</CardTitle></CardHeader><CardContent>
             <table className="w-full text-sm"><thead><tr className="bg-gray-50">{["GST Rate", "Taxable Value", "CGST", "SGST", "Total Tax"].map(h => <th key={h} className="text-left p-2 border">{h}</th>)}</tr></thead>
-              <tbody>{rows("by_rate").map((x: any, i: number) => <tr key={i} className="border-b"><td className="p-2">{x.gst_rate}%</td><td className="p-2">₹{x.taxable?.toLocaleString()}</td><td className="p-2">₹{x.cgst?.toLocaleString()}</td><td className="p-2">₹{x.sgst?.toLocaleString()}</td><td className="p-2">₹{x.total_tax?.toLocaleString()}</td></tr>)}
+              <tbody>{rows("by_rate").map((x: any, i: number) => <tr key={i} className="border-b"><td className="p-2">{x.gst_rate}%</td><td className="p-2">{sym}{x.taxable?.toLocaleString()}</td><td className="p-2">{sym}{x.cgst?.toLocaleString()}</td><td className="p-2">{sym}{x.sgst?.toLocaleString()}</td><td className="p-2">{sym}{x.total_tax?.toLocaleString()}</td></tr>)}
               {rows("by_rate").length === 0 && <tr><td colSpan={5} className="text-center p-4 text-gray-400">No data for selected period.</td></tr>}</tbody>
             </table>
           </CardContent></Card>
@@ -55,8 +58,8 @@ export default function PharmacyReportsPage() {
 
       {tab === "expiry" && (
         <Card><CardHeader><CardTitle className="text-base">Expiry Value at Risk</CardTitle></CardHeader><CardContent>
-          <table className="w-full text-sm"><thead><tr className="bg-gray-50">{["Drug", "Batch", "Expiry", "Qty", "Value ₹"].map(h => <th key={h} className="text-left p-2 border">{h}</th>)}</tr></thead>
-            <tbody>{rows("batches").map((x: any, i: number) => <tr key={i} className="border-b"><td className="p-2">{x.drug_name}</td><td className="p-2 font-mono text-xs">{x.batch_number}</td><td className="p-2">{x.expiry_date?.slice(0, 10)}</td><td className="p-2">{x.quantity}</td><td className="p-2">₹{x.value?.toLocaleString()}</td></tr>)}
+          <table className="w-full text-sm"><thead><tr className="bg-gray-50">{["Drug", "Batch", "Expiry", "Qty", "Value ${sym}"].map(h => <th key={h} className="text-left p-2 border">{h}</th>)}</tr></thead>
+            <tbody>{rows("batches").map((x: any, i: number) => <tr key={i} className="border-b"><td className="p-2">{x.drug_name}</td><td className="p-2 font-mono text-xs">{x.batch_number}</td><td className="p-2">{x.expiry_date?.slice(0, 10)}</td><td className="p-2">{x.quantity}</td><td className="p-2">{sym}{x.value?.toLocaleString()}</td></tr>)}
             {rows("batches").length === 0 && <tr><td colSpan={5} className="text-center p-4 text-gray-400">No near-expiry stock.</td></tr>}</tbody>
           </table>
         </CardContent></Card>
@@ -64,8 +67,8 @@ export default function PharmacyReportsPage() {
 
       {tab === "margin" && (
         <Card><CardHeader><CardTitle className="text-base">Margin Analysis</CardTitle></CardHeader><CardContent>
-          <table className="w-full text-sm"><thead><tr className="bg-gray-50">{["Drug", "Purchase Rate", "Selling Rate", "Margin ₹", "Margin %"].map(h => <th key={h} className="text-left p-2 border">{h}</th>)}</tr></thead>
-            <tbody>{rows("drugs").map((x: any, i: number) => <tr key={i} className="border-b"><td className="p-2">{x.drug_name}</td><td className="p-2">₹{x.purchase_rate}</td><td className="p-2">₹{x.selling_rate}</td><td className="p-2">₹{x.margin}</td><td className="p-2 font-semibold">{x.margin_pct}%</td></tr>)}
+          <table className="w-full text-sm"><thead><tr className="bg-gray-50">{["Drug", "Purchase Rate", "Selling Rate", "Margin ${sym}", "Margin %"].map(h => <th key={h} className="text-left p-2 border">{h}</th>)}</tr></thead>
+            <tbody>{rows("drugs").map((x: any, i: number) => <tr key={i} className="border-b"><td className="p-2">{x.drug_name}</td><td className="p-2">{sym}{x.purchase_rate}</td><td className="p-2">{sym}{x.selling_rate}</td><td className="p-2">{sym}{x.margin}</td><td className="p-2 font-semibold">{x.margin_pct}%</td></tr>)}
             {rows("drugs").length === 0 && <tr><td colSpan={5} className="text-center p-4 text-gray-400">No data.</td></tr>}</tbody>
           </table>
         </CardContent></Card>
@@ -73,8 +76,8 @@ export default function PharmacyReportsPage() {
 
       {tab === "doctor-wise" && (
         <Card><CardHeader><CardTitle className="text-base">Doctor-wise Sales</CardTitle></CardHeader><CardContent>
-          <table className="w-full text-sm"><thead><tr className="bg-gray-50">{["Doctor", "Prescriptions", "Total Sales ₹"].map(h => <th key={h} className="text-left p-2 border">{h}</th>)}</tr></thead>
-            <tbody>{rows("doctors").map((x: any, i: number) => <tr key={i} className="border-b"><td className="p-2">{x.doctor_name}</td><td className="p-2">{x.rx_count}</td><td className="p-2">₹{x.total_sales?.toLocaleString()}</td></tr>)}
+          <table className="w-full text-sm"><thead><tr className="bg-gray-50">{["Doctor", "Prescriptions", "Total Sales ${sym}"].map(h => <th key={h} className="text-left p-2 border">{h}</th>)}</tr></thead>
+            <tbody>{rows("doctors").map((x: any, i: number) => <tr key={i} className="border-b"><td className="p-2">{x.doctor_name}</td><td className="p-2">{x.rx_count}</td><td className="p-2">{sym}{x.total_sales?.toLocaleString()}</td></tr>)}
             {rows("doctors").length === 0 && <tr><td colSpan={3} className="text-center p-4 text-gray-400">No data for selected period.</td></tr>}</tbody>
           </table>
         </CardContent></Card>
@@ -83,13 +86,13 @@ export default function PharmacyReportsPage() {
       {tab === "purchase-vs-sales" && (
         <div className="space-y-4">
           <div className="grid grid-cols-3 gap-4">
-            {[["Total Purchases", `₹${(r.total_purchases ?? 0).toLocaleString()}`], ["Total Sales", `₹${(r.total_sales ?? 0).toLocaleString()}`], ["Gross Profit", `₹${(r.gross_profit ?? 0).toLocaleString()}`]].map(([l, v]) => (
+            {[["Total Purchases", `${sym}${(r.total_purchases ?? 0).toLocaleString()}`], ["Total Sales", `${sym}${(r.total_sales ?? 0).toLocaleString()}`], ["Gross Profit", `${sym}${(r.gross_profit ?? 0).toLocaleString()}`]].map(([l, v]) => (
               <Card key={l as string}><CardContent className="pt-4"><p className="text-sm text-gray-500">{l}</p><p className="text-xl font-bold">{v}</p></CardContent></Card>
             ))}
           </div>
           <Card><CardHeader><CardTitle className="text-base">Monthly Trend</CardTitle></CardHeader><CardContent>
             <table className="w-full text-sm"><thead><tr className="bg-gray-50">{["Month", "Purchases ₹", "Sales ₹", "Profit ₹"].map(h => <th key={h} className="text-left p-2 border">{h}</th>)}</tr></thead>
-              <tbody>{rows("monthly").map((x: any, i: number) => <tr key={i} className="border-b"><td className="p-2">{x.month}</td><td className="p-2">₹{x.purchases?.toLocaleString()}</td><td className="p-2">₹{x.sales?.toLocaleString()}</td><td className="p-2">₹{x.profit?.toLocaleString()}</td></tr>)}
+              <tbody>{rows("monthly").map((x: any, i: number) => <tr key={i} className="border-b"><td className="p-2">{x.month}</td><td className="p-2">{sym}{x.purchases?.toLocaleString()}</td><td className="p-2">{sym}{x.sales?.toLocaleString()}</td><td className="p-2">{sym}{x.profit?.toLocaleString()}</td></tr>)}
               {rows("monthly").length === 0 && <tr><td colSpan={4} className="text-center p-4 text-gray-400">No data.</td></tr>}</tbody>
             </table>
           </CardContent></Card>
@@ -99,7 +102,7 @@ export default function PharmacyReportsPage() {
       {tab === "dead-stock" && (
         <Card><CardHeader><CardTitle className="text-base">Dead Stock (no sales in 90 days)</CardTitle></CardHeader><CardContent>
           <table className="w-full text-sm"><thead><tr className="bg-gray-50">{["Drug", "Batch", "Qty", "Value ₹", "Last Sold"].map(h => <th key={h} className="text-left p-2 border">{h}</th>)}</tr></thead>
-            <tbody>{rows("items").map((x: any, i: number) => <tr key={i} className="border-b"><td className="p-2">{x.drug_name}</td><td className="p-2 font-mono text-xs">{x.batch_number}</td><td className="p-2">{x.quantity}</td><td className="p-2">₹{x.value?.toLocaleString()}</td><td className="p-2">{x.last_sold?.slice(0, 10) ?? "Never"}</td></tr>)}
+            <tbody>{rows("items").map((x: any, i: number) => <tr key={i} className="border-b"><td className="p-2">{x.drug_name}</td><td className="p-2 font-mono text-xs">{x.batch_number}</td><td className="p-2">{x.quantity}</td><td className="p-2">{sym}{x.value?.toLocaleString()}</td><td className="p-2">{x.last_sold?.slice(0, 10) ?? "Never"}</td></tr>)}
             {rows("items").length === 0 && <tr><td colSpan={5} className="text-center p-4 text-gray-400">No dead stock. Inventory moving well.</td></tr>}</tbody>
           </table>
         </CardContent></Card>

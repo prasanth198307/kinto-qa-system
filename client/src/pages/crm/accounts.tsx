@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Building2, Plus, X, Search } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string, body?: any) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -17,6 +18,8 @@ const EMPTY = { name: "", type: "Prospect", industry: "", website: "", phone: ""
 
 export default function CRMAccountsPage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState({ ...EMPTY });
@@ -122,7 +125,7 @@ export default function CRMAccountsPage() {
               <div className="grid grid-cols-3 gap-2 text-xs text-gray-600 mt-2">
                 {a.phone && <span>{a.phone}</span>}
                 {a.email && <span className="col-span-2">{a.email}</span>}
-                {a.annual_revenue > 0 && <span>Rev: ₹{Number(a.annual_revenue).toLocaleString("en-IN")}</span>}
+                {a.annual_revenue > 0 && <span>Rev: {sym}{Number(a.annual_revenue).toLocaleString("en-IN")}</span>}
                 {a.employee_count > 0 && <span>{a.employee_count} employees</span>}
                 {a.gst_no && <span>GST: {a.gst_no}</span>}
               </div>

@@ -7,12 +7,15 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { Gem, TrendingUp } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (m: string, p: string, b?: any) =>
   fetch(p, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined }).then((r) => r.json());
 
 export default function NidhiGoldRatesPage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { toast } = useToast();
   const today = new Date().toISOString().slice(0, 10);
   const [form, setForm] = useState({ rate_22k: "", rate_24k: "", rate_18k: "", rate_date: today });
@@ -38,7 +41,7 @@ export default function NidhiGoldRatesPage() {
           {[["22K", latest.rate_22k], ["24K", latest.rate_24k], ["18K", latest.rate_18k]].map(([k, v]) => (
             <Card key={k}><CardContent className="p-4">
               <div className="flex items-center gap-2 mb-1"><Gem className="w-4 h-4 text-yellow-600" /><span className="text-xs text-muted-foreground">{k} per gram</span></div>
-              <div className="text-2xl font-bold">₹{Number(v || 0).toLocaleString("en-IN")}</div>
+              <div className="text-2xl font-bold">{sym}{Number(v || 0).toLocaleString("en-IN")}</div>
               <div className="text-xs text-muted-foreground">as of {latest.rate_date}</div>
             </CardContent></Card>
           ))}
@@ -65,9 +68,9 @@ export default function NidhiGoldRatesPage() {
               {rates.map((r: any) => (
                 <TableRow key={r.id}>
                   <TableCell>{r.rate_date}</TableCell>
-                  <TableCell className="font-semibold">₹{Number(r.rate_22k || 0).toLocaleString("en-IN")}</TableCell>
-                  <TableCell>₹{Number(r.rate_24k || 0).toLocaleString("en-IN")}</TableCell>
-                  <TableCell>₹{Number(r.rate_18k || 0).toLocaleString("en-IN")}</TableCell>
+                  <TableCell className="font-semibold">{sym}{Number(r.rate_22k || 0).toLocaleString("en-IN")}</TableCell>
+                  <TableCell>{sym}{Number(r.rate_24k || 0).toLocaleString("en-IN")}</TableCell>
+                  <TableCell>{sym}{Number(r.rate_18k || 0).toLocaleString("en-IN")}</TableCell>
                 </TableRow>
               ))}
               {!rates.length && <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-6">No rates entered yet</TableCell></TableRow>}

@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const GSTR_TYPES = ["GSTR-1","GSTR-3B","GSTR-2B","GSTR-9"] as const;
@@ -35,6 +36,8 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
 function GSTRTab({ gstrType }: { gstrType: GSTRType }) {
   const { toast } = useToast();
   const [month, setMonth] = useState("6");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [year, setYear] = useState("2026");
   const [validated, setValidated] = useState(false);
   const [showFiling, setShowFiling] = useState(false);
@@ -122,8 +125,8 @@ function GSTRTab({ gstrType }: { gstrType: GSTRType }) {
       {data && (
         <>
           <div className="grid grid-cols-3 gap-3">
-            <SummaryCard label="Taxable Value" value={`₹${data.summary.taxable_value.toLocaleString()}`} />
-            <SummaryCard label="Total Tax (CGST+SGST+IGST)" value={`₹${data.summary.total_tax.toLocaleString()}`} />
+            <SummaryCard label="Taxable Value" value={`${sym}${data.summary.taxable_value.toLocaleString()}`} />
+            <SummaryCard label="Total Tax (CGST+SGST+IGST)" value={`${sym}${data.summary.total_tax.toLocaleString()}`} />
             <SummaryCard label="Invoice Count" value={String(data.summary.invoice_count)} />
           </div>
 
@@ -149,10 +152,10 @@ function GSTRTab({ gstrType }: { gstrType: GSTRType }) {
                         <TableCell className="font-mono text-xs">{inv.gstin}</TableCell>
                         <TableCell>{inv.invoice_no}</TableCell>
                         <TableCell>{inv.invoice_date}</TableCell>
-                        <TableCell>₹{inv.taxable.toLocaleString()}</TableCell>
-                        <TableCell>₹{inv.cgst.toLocaleString()}</TableCell>
-                        <TableCell>₹{inv.sgst.toLocaleString()}</TableCell>
-                        <TableCell>₹{inv.igst.toLocaleString()}</TableCell>
+                        <TableCell>{sym}{inv.taxable.toLocaleString()}</TableCell>
+                        <TableCell>{sym}{inv.cgst.toLocaleString()}</TableCell>
+                        <TableCell>{sym}{inv.sgst.toLocaleString()}</TableCell>
+                        <TableCell>{sym}{inv.igst.toLocaleString()}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

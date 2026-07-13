@@ -157,7 +157,7 @@ export default function PrintInvoicePage() {
     }
   };
   const taxLabel = tenantConfig.tax_regime ?? "Tax";
-  const currSym = tenantConfig.currency_symbol ?? "₹";
+  const currSym = tenantConfig.currency_symbol ?? sym;
 
   const formatRate = (rateInBasisPoints: number): string => {
     return `${(rateInBasisPoints / 100).toFixed(2)}%`;

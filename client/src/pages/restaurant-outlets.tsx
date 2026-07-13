@@ -7,10 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (m: string, u: string, b?: any) =>
   fetch(u, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined, credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
-const fmt = (n: any) => "₹" + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
+const fmt = (n: any) => sym + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
 
 const OUTLET_TYPE_COLORS: Record<string, string> = {
   dine_in: "bg-blue-100 text-blue-800",
@@ -32,7 +33,7 @@ const emptyPrinter = { printer_name: "", printer_type: "thermal", connection_typ
 
 
 const COUNTRY_PRESETS = [
-  { country: "India", tax_name: "GST", tax_rate: 5, currency: "INR", currency_symbol: "₹", flag: "🇮🇳" },
+  { country: "India", tax_name: "GST", tax_rate: 5, currency: "INR", currency_symbol: sym, flag: "🇮🇳" },
   { country: "UAE", tax_name: "VAT", tax_rate: 5, currency: "AED", currency_symbol: "د.إ", flag: "🇦🇪" },
   { country: "Saudi Arabia", tax_name: "VAT", tax_rate: 15, currency: "SAR", currency_symbol: "ر.س", flag: "🇸🇦" },
   { country: "UK", tax_name: "VAT", tax_rate: 20, currency: "GBP", currency_symbol: "£", flag: "🇬🇧" },
@@ -215,6 +216,8 @@ function TaxCurrencyTab() {
 function FranchiseTab() {
   const { toast } = useToast();
   const [config, setConfig] = useState<any>(null);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [saving, setSaving] = useState(false);
 
   const { data: summary } = useQuery({
@@ -249,8 +252,8 @@ function FranchiseTab() {
       <div className="grid md:grid-cols-3 gap-4">
         {[
           { label: "Franchise Outlets", value: summaryData.total_outlets || 0, icon: "🏢" },
-          { label: "Total Network Revenue", value: `₹${Number(summaryData.total_revenue || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`, icon: "💰" },
-          { label: "Royalty Earned (month)", value: `₹${Number(summaryData.total_royalty || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`, icon: "📊" },
+          { label: "Total Network Revenue", value: `${sym}${Number(summaryData.total_revenue || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`, icon: "💰" },
+          { label: "Royalty Earned (month)", value: `${sym}${Number(summaryData.total_royalty || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`, icon: "📊" },
         ].map(s => (
           <Card key={s.label} className="border-0 shadow-sm">
             <CardContent className="pt-4 pb-3 flex items-center gap-3">
@@ -280,7 +283,7 @@ function FranchiseTab() {
               </div>
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-600 block mb-1">Minimum Royalty (₹ per cycle)</label>
+              <label className="text-xs font-semibold text-gray-600 block mb-1">Minimum Royalty (${sym} per cycle)</label>
               <Input type="number" value={cfg.min_royalty} onChange={e => setConfig((c: any) => ({ ...c, min_royalty: e.target.value }))} />
             </div>
             <div>
@@ -293,10 +296,10 @@ function FranchiseTab() {
             </div>
             <div className="p-3 bg-blue-50 rounded-xl text-sm text-blue-700">
               <div className="font-semibold mb-1">Example Calculation</div>
-              Net Sales: ₹1,00,000<br />
-              Royalty ({cfg.royalty_pct}%): ₹{(100000 * Number(cfg.royalty_pct) / 100).toLocaleString("en-IN")}<br />
-              Marketing Fee ({cfg.marketing_fee_pct}%): ₹{(100000 * Number(cfg.marketing_fee_pct) / 100).toLocaleString("en-IN")}<br />
-              <strong>Total Due: ₹{(100000 * (Number(cfg.royalty_pct) + Number(cfg.marketing_fee_pct)) / 100).toLocaleString("en-IN")}</strong>
+              Net Sales: ${sym}1,00,000<br />
+              Royalty ({cfg.royalty_pct}%): {sym}{(100000 * Number(cfg.royalty_pct) / 100).toLocaleString("en-IN")}<br />
+              Marketing Fee ({cfg.marketing_fee_pct}%): {sym}{(100000 * Number(cfg.marketing_fee_pct) / 100).toLocaleString("en-IN")}<br />
+              <strong>Total Due: {sym}{(100000 * (Number(cfg.royalty_pct) + Number(cfg.marketing_fee_pct)) / 100).toLocaleString("en-IN")}</strong>
             </div>
             <button onClick={save} disabled={saving} className="w-full bg-blue-600 text-white rounded-lg py-2 text-sm font-semibold hover:bg-blue-700 disabled:opacity-50">
               {saving ? "Saving..." : "Save Royalty Config"}
@@ -318,8 +321,8 @@ function FranchiseTab() {
                   {summaryData.outlets.map((o: any) => (
                     <tr key={o.id}>
                       <td className="py-2 font-medium">{o.name}</td>
-                      <td className="py-2 text-right">₹{Number(o.revenue).toLocaleString("en-IN", { maximumFractionDigits: 0 })}</td>
-                      <td className="py-2 text-right text-blue-600">₹{Number(o.royalty).toLocaleString("en-IN", { maximumFractionDigits: 0 })}</td>
+                      <td className="py-2 text-right">{sym}{Number(o.revenue).toLocaleString("en-IN", { maximumFractionDigits: 0 })}</td>
+                      <td className="py-2 text-right text-blue-600">{sym}{Number(o.royalty).toLocaleString("en-IN", { maximumFractionDigits: 0 })}</td>
                     </tr>
                   ))}
                 </tbody>

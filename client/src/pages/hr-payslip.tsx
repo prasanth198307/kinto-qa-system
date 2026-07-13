@@ -5,9 +5,12 @@ import { Printer, MessageCircle, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { buildPayslipHtml } from "@/lib/payslip-templates";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 export default function HRPayslipPage() {
   const params = useParams<{ id: string }>();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { toast } = useToast();
 
   const { data: ps, isLoading, error } = useQuery({
@@ -162,14 +165,14 @@ export default function HRPayslipPage() {
                     {displayEarnings.map((c: any, i: number) => (
                       <tr key={i}>
                         <td className="py-1 text-gray-600">{c.name}</td>
-                        <td className="py-1 text-right font-medium">₹{fmt(c.amount)}</td>
+                        <td className="py-1 text-right font-medium">{sym}{fmt(c.amount)}</td>
                       </tr>
                     ))}
                   </tbody>
                   <tfoot>
                     <tr className="border-t font-semibold">
                       <td className="pt-2">Gross Salary</td>
-                      <td className="pt-2 text-right">₹{fmt(ps.gross_salary)}</td>
+                      <td className="pt-2 text-right">{sym}{fmt(ps.gross_salary)}</td>
                     </tr>
                   </tfoot>
                 </table>
@@ -182,7 +185,7 @@ export default function HRPayslipPage() {
                     {displayDeductions.map((c: any, i: number) => (
                       <tr key={i}>
                         <td className="py-1 text-gray-600">{c.name}</td>
-                        <td className="py-1 text-right font-medium">₹{fmt(c.amount)}</td>
+                        <td className="py-1 text-right font-medium">{sym}{fmt(c.amount)}</td>
                       </tr>
                     ))}
                     {displayDeductions.length === 0 && (
@@ -192,7 +195,7 @@ export default function HRPayslipPage() {
                   <tfoot>
                     <tr className="border-t font-semibold">
                       <td className="pt-2">Total Deductions</td>
-                      <td className="pt-2 text-right">₹{fmt(ps.total_deductions)}</td>
+                      <td className="pt-2 text-right">{sym}{fmt(ps.total_deductions)}</td>
                     </tr>
                   </tfoot>
                 </table>
@@ -204,10 +207,10 @@ export default function HRPayslipPage() {
           {showEmployerContrib && (Number(ps.pf_employer) > 0 || Number(ps.esi_employer) > 0) && (
             <div className="px-5 py-3 border-b bg-gray-50 text-sm flex gap-6 flex-wrap">
               {Number(ps.pf_employer) > 0 && (
-                <span className="text-gray-500">Employer PF: <span className="font-medium text-black">₹{fmt(ps.pf_employer)}</span></span>
+                <span className="text-gray-500">Employer PF: <span className="font-medium text-black">{sym}{fmt(ps.pf_employer)}</span></span>
               )}
               {Number(ps.esi_employer) > 0 && (
-                <span className="text-gray-500">Employer ESI: <span className="font-medium text-black">₹{fmt(ps.esi_employer)}</span></span>
+                <span className="text-gray-500">Employer ESI: <span className="font-medium text-black">{sym}{fmt(ps.esi_employer)}</span></span>
               )}
             </div>
           )}
@@ -221,7 +224,7 @@ export default function HRPayslipPage() {
               </div>
               <div className="text-right">
                 <p className="text-sm text-gray-500">Net Pay</p>
-                <p className="text-2xl font-bold">₹{fmt(ps.net_salary)}</p>
+                <p className="text-2xl font-bold">{sym}{fmt(ps.net_salary)}</p>
               </div>
             </div>
           </div>

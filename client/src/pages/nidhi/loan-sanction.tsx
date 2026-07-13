@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Printer } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string, body?: any) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then((r) => r.json());
@@ -36,6 +37,8 @@ function nextAction(status: string) {
 
 export default function LoanSanctionPage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ member: "", amount: "", purpose: "", security: "" });
 
@@ -60,7 +63,7 @@ export default function LoanSanctionPage() {
       <h2 style="text-align:center">SANCTION LETTER</h2>
       <p>Date: ${new Date().toLocaleDateString()}</p>
       <p>Dear <strong>${loan.member_name}</strong>,</p>
-      <p>We are pleased to sanction <strong>₹${Number(loan.amount).toLocaleString()}</strong>
+      <p>We are pleased to sanction <strong>${sym}${Number(loan.amount).toLocaleString()}</strong>
       for <em>${loan.purpose}</em> at <strong>${loan.interest_rate}% p.a.</strong> for <strong>${loan.tenure_months} months</strong>.</p>
       <p>Security: ${loan.security}</p>
       <br/><p>Authorised Signatory</p></body></html>`;
@@ -115,7 +118,7 @@ export default function LoanSanctionPage() {
                 return (
                   <TableRow key={loan.id}>
                     <TableCell className="font-medium">{loan.member_name}</TableCell>
-                    <TableCell>₹{Number(loan.amount).toLocaleString()}</TableCell>
+                    <TableCell>{sym}{Number(loan.amount).toLocaleString()}</TableCell>
                     <TableCell>{loan.purpose}</TableCell>
                     <TableCell>{loan.security}</TableCell>
                     <TableCell>{loan.applied_date}</TableCell>

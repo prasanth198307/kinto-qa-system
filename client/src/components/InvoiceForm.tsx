@@ -100,7 +100,7 @@ const invoiceFormSchema = z.object({
     quantity: z.number().min(1, "Quantity must be at least 1"),
     unitPrice: z.number().min(0, "Price must be positive"),
     discount: z.number().min(0).optional(), // Discount amount
-    discountMode: z.string().optional(), // '%' (percentage) or '₹' (flat rupees)
+    discountMode: z.string().optional(), // '%' (percentage) or sym (flat rupees)
     gstRate: z.number().min(0).max(100, "GST rate must be 0-100%"),
     transportRatePerCase: z.number().min(0).optional(), // Transport rate per case (rupees)
     batchNumber: z.string().optional(),
@@ -121,6 +121,7 @@ interface InvoiceFormProps {
 export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, onClose }: InvoiceFormProps) {
   const { toast } = useToast();
   const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [, navigate] = useLocation();
   const [isIntrastateSupply, setIsIntrastateSupply] = useState(() => {
     // For existing invoices, derive from stored igstAmount
@@ -886,7 +887,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
       if (discountMode === '%') {
         discountAmount = (grossLine * discountVal) / 100;
       } else {
-        discountAmount = discountVal * item.quantity; // ₹ per case × qty
+        discountAmount = discountVal * item.quantity; // ${sym} per case × qty
       }
       grossTotal += grossLine;
       totalDiscountAmount += discountAmount;
@@ -1006,7 +1007,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
         if (discountMode === '%') {
           discountAmount = (grossLine * discountVal) / 100;
         } else {
-          discountAmount = discountVal * item.quantity; // ₹ per case × qty
+          discountAmount = discountVal * item.quantity; // ${sym} per case × qty
         }
         const taxableAmount = grossLine - discountAmount;
         const taxAmount = (taxableAmount * gstRate) / 100;
@@ -1277,9 +1278,9 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                 <td>${item.description}</td>
                 <td>${item.hsnCode || '-'}</td>
                 <td class="text-right">${qty}</td>
-                <td class="text-right">₹${price.toFixed(2)}</td>
+                <td class="text-right">${sym}${price.toFixed(2)}</td>
                 <td class="text-right">${gst}%</td>
-                <td class="text-right">₹${amount.toFixed(2)}</td>
+                <td class="text-right">${sym}${amount.toFixed(2)}</td>
               </tr>
               `;
             }).join('')}
@@ -1441,7 +1442,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                                   <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-medium">Partial</span>
                                 )}
                               </div>
-                              <span className="text-xs text-muted-foreground">{so.buyerName} — ₹{(so.totalAmount / 100).toLocaleString()}</span>
+                              <span className="text-xs text-muted-foreground">{so.buyerName} — {sym}{(so.totalAmount / 100).toLocaleString()}</span>
                             </div>
                           </CommandItem>
                         ))}
@@ -1511,7 +1512,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
             </Select>
             {form.watch("currencyCode") && form.watch("currencyCode") !== 'INR' && (
               <div className="mt-1.5">
-                <Label className="text-xs text-muted-foreground">Exchange Rate (1 {form.watch("currencyCode")} = ₹)</Label>
+                <Label className="text-xs text-muted-foreground">Exchange Rate (1 {form.watch("currencyCode")} = ${sym})</Label>
                 <Input
                   type="number"
                   step="0.0001"
@@ -2007,7 +2008,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                     <th className="text-left font-semibold px-2 py-1.5 whitespace-nowrap">Description *</th>
                     <th className="text-left font-semibold px-2 py-1.5 whitespace-nowrap">Qty *</th>
                     <th className="text-left font-semibold px-2 py-1.5 whitespace-nowrap">Batch #</th>
-                    <th className="text-left font-semibold px-2 py-1.5 whitespace-nowrap">{gstInclusiveMode ? 'Base ₹' : 'Price ₹'}</th>
+                    <th className="text-left font-semibold px-2 py-1.5 whitespace-nowrap">{gstInclusiveMode ? `Base ${sym}` : `Price ${sym}`}</th>
                     <th className="text-left font-semibold px-2 py-1.5 whitespace-nowrap">Discount</th>
                     <th className="text-left font-semibold px-2 py-1.5 whitespace-nowrap">GST %</th>
                     {gstInclusiveMode && <th className="text-left font-semibold px-2 py-1.5 whitespace-nowrap">Price/Case (incl. GST)</th>}
@@ -2049,7 +2050,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Credit Limit Exceeded</AlertTitle>
             <AlertDescription>
-              {selectedVendor?.vendorName} has an outstanding balance of ₹{((outstandingData?.totalOutstanding ?? 0) / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })} which exceeds their credit limit of ₹{(vendorCreditLimit / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}. Please review before creating this invoice.
+              {selectedVendor?.vendorName} has an outstanding balance of {sym}{((outstandingData?.totalOutstanding ?? 0) / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })} which exceeds their credit limit of {sym}{(vendorCreditLimit / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}. Please review before creating this invoice.
             </AlertDescription>
           </Alert>
         )}
@@ -2063,7 +2064,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
             <div className="flex items-center gap-2 text-green-800 dark:text-green-300">
               <Wallet className="w-4 h-4 shrink-0" />
               <span className="text-sm font-medium">
-                Customer has ₹{(totalAvailableAdvance / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })} in advance payments
+                Customer has {sym}{(totalAvailableAdvance / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })} in advance payments
                 {availableAdvancesData!.count > 1 ? ` (across ${availableAdvancesData!.count} records)` : ''}
               </span>
             </div>
@@ -2109,8 +2110,8 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
             </div>
             {advanceToApply > 0 && (
               <p className="text-xs text-green-700 dark:text-green-400">
-                ₹{advanceToApply.toLocaleString('en-IN', { minimumFractionDigits: 2 })} will be applied automatically after invoice is created.
-                Remaining due: ₹{Math.max(0, (taxes.totalAmount / 100) - advanceToApply).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                {sym}{advanceToApply.toLocaleString('en-IN', { minimumFractionDigits: 2 })} will be applied automatically after invoice is created.
+                Remaining due: {sym}{Math.max(0, (taxes.totalAmount / 100) - advanceToApply).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
               </p>
             )}
           </div>

@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ShoppingCart, Plus, X, Trash2 } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string, body?: any) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -15,6 +16,8 @@ type Line = { drug_id: string; batch_number: string; expiry_date: string; quanti
 
 export default function PurchasesPage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [showForm, setShowForm] = useState(false);
   const [header, setHeader] = useState({ supplier_name: "", invoice_number: "", purchase_date: new Date().toISOString().slice(0, 10), gst_amount: "0" });
   const [lines, setLines] = useState<Line[]>([{ drug_id: "", batch_number: "", expiry_date: "", quantity: "", purchase_rate: "", mrp: "" }]);
@@ -53,7 +56,7 @@ export default function PurchasesPage() {
 
       <div className="grid grid-cols-3 gap-4">
         <Card><CardContent className="pt-4 flex items-center gap-3"><ShoppingCart className="w-8 h-8 text-blue-500" /><div><p className="text-sm text-gray-500">Total Purchases</p><p className="text-2xl font-bold">{arr.length}</p></div></CardContent></Card>
-        <Card><CardContent className="pt-4"><p className="text-sm text-gray-500">This Month</p><p className="text-2xl font-bold">₹{monthTotal.toLocaleString()}</p></CardContent></Card>
+        <Card><CardContent className="pt-4"><p className="text-sm text-gray-500">This Month</p><p className="text-2xl font-bold">{sym}{monthTotal.toLocaleString()}</p></CardContent></Card>
         <Card><CardContent className="pt-4"><p className="text-sm text-gray-500">Suppliers</p><p className="text-2xl font-bold">{new Set(arr.map((p: any) => p.supplier_name)).size}</p></CardContent></Card>
       </div>
 
@@ -90,7 +93,7 @@ export default function PurchasesPage() {
             <div className="flex justify-between items-end border-t pt-3">
               <p className="text-xs text-gray-500">GL: DR Pharmacy COGS · CR Accounts Payable (auto)</p>
               <div className="text-right">
-                <p className="text-xl font-bold">Total: ₹{total.toFixed(2)}</p>
+                <p className="text-xl font-bold">Total: {sym}{total.toFixed(2)}</p>
                 <Button className="mt-1" onClick={save}>Save Purchase</Button>
               </div>
             </div>
@@ -107,8 +110,8 @@ export default function PurchasesPage() {
                 <p className="text-sm text-gray-500">{p.purchase_date?.slice(0, 10)}</p>
               </div>
               <div className="text-right">
-                <p className="font-semibold">₹{parseFloat(p.total_amount || 0).toLocaleString()}</p>
-                <Badge className="bg-blue-100 text-blue-800">GST ₹{parseFloat(p.gst_amount || 0).toLocaleString()}</Badge>
+                <p className="font-semibold">{sym}{parseFloat(p.total_amount || 0).toLocaleString()}</p>
+                <Badge className="bg-blue-100 text-blue-800">GST {sym}{parseFloat(p.gst_amount || 0).toLocaleString()}</Badge>
               </div>
             </CardContent>
           </Card>

@@ -11,11 +11,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Plus, Ship, FileText, DollarSign, Loader2, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string, body?: any) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
-const fmt = (n: number) => `₹${(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
+const fmt = (n: number) => `${sym}${(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
 
 const STATUS_COLOR: Record<string, string> = {
   booked: "bg-gray-100 text-gray-700",
@@ -30,6 +31,8 @@ const DOC_TYPES = ["bill_of_lading", "commercial_invoice", "packing_list", "coo"
 export default function SupplyChainPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [shipOpen, setShipOpen] = useState(false);
   const [landedOpen, setLandedOpen] = useState(false);
   const [docOpen, setDocOpen] = useState<number | null>(null);
@@ -223,12 +226,12 @@ export default function SupplyChainPage() {
             </div>
             <div><Label>PO Reference</Label><Input value={lForm.po_reference} onChange={e => setLForm(f => ({ ...f, po_reference: e.target.value }))} /></div>
             {[
-              ["Freight (₹)", "freight_amount"],
-              ["Insurance (₹)", "insurance_amount"],
-              ["Customs Duty (₹)", "customs_duty"],
-              ["Port Charges (₹)", "port_charges"],
-              ["CHA Charges (₹)", "cha_charges"],
-              ["Other (₹)", "other_charges"],
+              ["Freight ", "freight_amount"],
+              ["Insurance ", "insurance_amount"],
+              ["Customs Duty ", "customs_duty"],
+              ["Port Charges ", "port_charges"],
+              ["CHA Charges ", "cha_charges"],
+              ["Other ", "other_charges"],
             ].map(([label, key]) => (
               <div key={key}><Label>{label}</Label><Input type="number" value={(lForm as any)[key]} onChange={e => setLForm(f => ({ ...f, [key]: e.target.value }))} /></div>
             ))}

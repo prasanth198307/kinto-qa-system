@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string, body?: any) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -20,6 +21,8 @@ const EMPTY_RECHARGE = { amount: "" };
 export default function FuelPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [tab, setTab] = useState<"fuel" | "fastag">("fuel");
   const [showFuelForm, setShowFuelForm] = useState(false);
   const [editingFuel, setEditingFuel] = useState<any>(null);
@@ -109,7 +112,7 @@ export default function FuelPage() {
                         <td style={{ padding: "8px 12px" }}>{r.date}</td>
                         <td style={{ padding: "8px 12px" }}>{vehicleMap[r.vehicle_id] || r.vehicle_id}</td>
                         <td style={{ padding: "8px 12px" }}>{Number(r.liters).toFixed(2)} L</td>
-                        <td style={{ padding: "8px 12px" }}>₹{Number(r.rate_per_liter).toFixed(2)}</td>
+                        <td style={{ padding: "8px 12px" }}>{sym}{Number(r.rate_per_liter).toFixed(2)}</td>
                         <td style={{ padding: "8px 12px", fontWeight: 600 }}>{fmt(Number(r.liters) * Number(r.rate_per_liter))}</td>
                         <td style={{ padding: "8px 12px" }}>{r.odometer_km ? `${r.odometer_km} km` : "—"}</td>
                         <td style={{ padding: "8px 12px" }}>{r.fuel_station || "—"}</td>

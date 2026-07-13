@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, TrendingUp, IndianRupee } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (path: string) => fetch(path).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
@@ -50,6 +51,8 @@ const stageBadge: Record<Stage, string> = {
 export default function PipelineBoardPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [newDeal, setNewDeal] = useState({ contact_id: "", title: "", value: "", stage: "lead" as Stage, expected_close_date: "" });
   const [showNewDeal, setShowNewDeal] = useState(false);
   const [reasonModal, setReasonModal] = useState<{ dealId: number; outcome: "won" | "lost" } | null>(null);

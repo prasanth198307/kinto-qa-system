@@ -19,6 +19,7 @@ import {
   FileSpreadsheet, CheckCircle, AlertCircle
 } from "lucide-react";
 import { CustomFieldsSection } from "@/components/custom-fields-section";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
 const DOCUMENT_TYPES = [
@@ -41,6 +42,8 @@ const INDIAN_STATES = [
 // ── Employee Form (multi-tab add/edit) ────────────────────────────────────────
 function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, onSave, onCancel }: any) {
   const [form, setForm] = useState(editing ? {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
     empCode: editing.emp_code || "",
     firstName: editing.first_name || "",
     lastName: editing.last_name || "",
@@ -149,7 +152,7 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
     if (basicComp) {
       if (basicComp.formula_type === 'fixed') {
         basic = Number(basicComp.formula_value || 0);
-        basicFormula = `Fixed ₹${basic.toLocaleString('en-IN')}`;
+        basicFormula = `Fixed ${sym}${basic.toLocaleString('en-IN')}`;
       } else {
         basic = Math.round(monthlyCTC * Number(basicComp.formula_value || 0) / 100);
         basicFormula = `${basicComp.formula_value}% of Monthly CTC`;
@@ -176,7 +179,7 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
         formula = `${c.formula_value}% of Monthly CTC`;
       } else {
         amt = Number(c.formula_value || 0);
-        formula = `Fixed ₹${amt.toLocaleString('en-IN')}`;
+        formula = `Fixed ${sym}${amt.toLocaleString('en-IN')}`;
       }
       otherTotal += amt;
       breakdown.push({ name: c.name, formula, amount: amt, type: 'earning' });
@@ -202,13 +205,13 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
     if (pfEnabled) {
       const pfBase = Math.min(basic, pfCeiling);
       const pf = Math.round(pfBase * pfRate);
-      breakdown.push({ name: 'PF (Employee)', formula: `${(pfRate * 100).toFixed(0)}% of Basic (≤ ₹${pfCeiling.toLocaleString('en-IN')})`, amount: pf, type: 'deduction' });
+      breakdown.push({ name: 'PF (Employee)', formula: `${(pfRate * 100).toFixed(0)}% of Basic (≤ ${sym}${pfCeiling.toLocaleString('en-IN')})`, amount: pf, type: 'deduction' });
     }
     if (esiEnabled && grossEarnings <= esiCeiling) {
       const esi = Math.round(grossEarnings * esiRate);
-      breakdown.push({ name: 'ESI (Employee)', formula: `${(esiRate * 100).toFixed(2)}% of Gross (Gross ≤ ₹${esiCeiling.toLocaleString('en-IN')})`, amount: esi, type: 'deduction' });
+      breakdown.push({ name: 'ESI (Employee)', formula: `${(esiRate * 100).toFixed(2)}% of Gross (Gross ≤ ${sym}${esiCeiling.toLocaleString('en-IN')})`, amount: esi, type: 'deduction' });
     } else if (esiEnabled && grossEarnings > esiCeiling) {
-      breakdown.push({ name: 'ESI (Employee)', formula: `Not applicable — Gross > ₹${esiCeiling.toLocaleString('en-IN')}`, amount: 0, type: 'deduction' });
+      breakdown.push({ name: 'ESI (Employee)', formula: `Not applicable — Gross > ${sym}${esiCeiling.toLocaleString('en-IN')}`, amount: 0, type: 'deduction' });
     }
     if (ptEnabled) {
       // Use actual PT slabs from DB; match by employee state if available, else use first state found
@@ -405,12 +408,12 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
                         <tr key={i} className="border-b border-blue-100 dark:border-blue-900">
                           <td className="px-3 py-1 text-foreground">{row.name}</td>
                           <td className="px-3 py-1 text-muted-foreground text-center">{row.formula}</td>
-                          <td className="px-3 py-1 text-right font-medium tabular-nums text-green-700 dark:text-green-400">₹{row.amount.toLocaleString('en-IN')}</td>
+                          <td className="px-3 py-1 text-right font-medium tabular-nums text-green-700 dark:text-green-400">{sym}{row.amount.toLocaleString('en-IN')}</td>
                         </tr>
                       ))}
                       <tr className="bg-green-100 dark:bg-green-900/30 font-semibold">
                         <td className="px-3 py-1.5 text-green-800 dark:text-green-200" colSpan={2}>Gross Monthly Salary</td>
-                        <td className="px-3 py-1.5 text-right tabular-nums text-green-800 dark:text-green-200">₹{grossTotal.toLocaleString('en-IN')}</td>
+                        <td className="px-3 py-1.5 text-right tabular-nums text-green-800 dark:text-green-200">{sym}{grossTotal.toLocaleString('en-IN')}</td>
                       </tr>
                     </tbody>
                   </table>
@@ -426,12 +429,12 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
                           <tr key={i} className="border-b border-blue-100 dark:border-blue-900">
                             <td className="px-3 py-1 text-foreground">{row.name}</td>
                             <td className="px-3 py-1 text-muted-foreground text-center">{row.formula}</td>
-                            <td className="px-3 py-1 text-right font-medium tabular-nums text-red-600 dark:text-red-400">−₹{row.amount.toLocaleString('en-IN')}</td>
+                            <td className="px-3 py-1 text-right font-medium tabular-nums text-red-600 dark:text-red-400">−{sym}{row.amount.toLocaleString('en-IN')}</td>
                           </tr>
                         ))}
                         <tr className="bg-red-50 dark:bg-red-900/20 font-semibold">
                           <td className="px-3 py-1.5 text-red-800 dark:text-red-200" colSpan={2}>Total Deductions</td>
-                          <td className="px-3 py-1.5 text-right tabular-nums text-red-800 dark:text-red-200">−₹{deductTotal.toLocaleString('en-IN')}</td>
+                          <td className="px-3 py-1.5 text-right tabular-nums text-red-800 dark:text-red-200">−{sym}{deductTotal.toLocaleString('en-IN')}</td>
                         </tr>
                       </tbody>
                     </table>
@@ -440,7 +443,7 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
                   {/* Net */}
                   <div className="px-3 py-2 bg-blue-100 dark:bg-blue-900/40 border-t border-blue-200 dark:border-blue-800 flex justify-between items-center font-bold text-blue-800 dark:text-blue-200">
                     <span>Estimated Net Take-Home / Month</span>
-                    <span className="tabular-nums">₹{netSalary.toLocaleString('en-IN')}</span>
+                    <span className="tabular-nums">{sym}{netSalary.toLocaleString('en-IN')}</span>
                   </div>
                   <p className="px-3 py-1.5 text-muted-foreground italic">
                     HRA, LTA and all other components are auto-calculated at payroll run time. PF/ESI/PT are based on statutory settings and employee flags above.
@@ -464,7 +467,7 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
           </div>
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
-              <Label>Special Allowance (₹/month)</Label>
+              <Label>Special Allowance (${sym}/month)</Label>
               {ctcAutoCalc && (
                 <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-1.5 py-0.5 rounded font-medium">Auto</span>
               )}
@@ -478,7 +481,7 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
           </div>
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
-              <Label>TA Daily Rate (₹/day)</Label>
+              <Label>TA Daily Rate (${sym}/day)</Label>
               <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">Optional</span>
             </div>
             <Input className={inputCls} type="number" value={form.taAmount} onChange={f("taAmount")} placeholder="0 — leave blank if not applicable" />
@@ -486,7 +489,7 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
           </div>
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
-              <Label>DA Daily Rate (₹/day)</Label>
+              <Label>DA Daily Rate (${sym}/day)</Label>
               <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">Optional</span>
             </div>
             <Input className={inputCls} type="number" value={form.daAmount} onChange={f("daAmount")} placeholder="0 — leave blank if not applicable" />
@@ -756,6 +759,8 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
 function DocumentsPanel({ emp }: { emp: any }) {
   const { toast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [docType, setDocType] = useState("Offer Letter");
   const [docNotes, setDocNotes] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -858,6 +863,8 @@ function DocumentsPanel({ emp }: { emp: any }) {
 function SalaryRevisionPanel({ emp }: { emp: any }) {
   const { toast } = useToast();
   const [showAdd, setShowAdd] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [form, setForm] = useState({
     effectiveDate: "", newBasic: "", newCtc: "", revisionType: "increment", reason: "", approvedBy: ""
   });
@@ -939,7 +946,7 @@ function SalaryRevisionPanel({ emp }: { emp: any }) {
     });
   };
 
-  const fmt = (n: any) => n ? `₹${Number(n).toLocaleString("en-IN")}` : "—";
+  const fmt = (n: any) => n ? `${sym}${Number(n).toLocaleString("en-IN")}` : "—";
   const pct = (o: any, n: any) => {
     if (!o || !n || Number(o) === 0) return "";
     const diff = ((Number(n) - Number(o)) / Number(o)) * 100;
@@ -974,7 +981,7 @@ function SalaryRevisionPanel({ emp }: { emp: any }) {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>New CTC (₹) <span className="text-destructive">*</span></Label>
+                <Label>New CTC (${sym}) <span className="text-destructive">*</span></Label>
                 <Input
                   className="h-9"
                   type="number"
@@ -996,7 +1003,7 @@ function SalaryRevisionPanel({ emp }: { emp: any }) {
               </div>
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <Label>New Basic Salary (₹) <span className="text-destructive">*</span></Label>
+                  <Label>New Basic Salary (${sym}) <span className="text-destructive">*</span></Label>
                   {basicAutoCalc && (
                     <Badge variant="secondary" className="text-xs">Auto-calculated</Badge>
                   )}
@@ -1067,6 +1074,8 @@ function SalaryRevisionPanel({ emp }: { emp: any }) {
 // ── Employee Detail View ──────────────────────────────────────────────────────
 function EmployeeDetail({ emp, onBack, onEdit }: any) {
   const [tab, setTab] = useState("overview");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { toast } = useToast();
   const photoInputRef = useRef<HTMLInputElement>(null);
 
@@ -1085,7 +1094,7 @@ function EmployeeDetail({ emp, onBack, onEdit }: any) {
       </div>
     ) : null;
 
-  const fmt = (n: any) => n ? `₹${Number(n).toLocaleString("en-IN")}` : "—";
+  const fmt = (n: any) => n ? `${sym}${Number(n).toLocaleString("en-IN")}` : "—";
 
   return (
     <div className="space-y-4">
@@ -1142,8 +1151,8 @@ function EmployeeDetail({ emp, onBack, onEdit }: any) {
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Compensation</p>
               <InfoRow label="Basic Salary" value={fmt(emp.basic_salary)} />
               {Number(emp.special_allowance) > 0 && <InfoRow label="Special Allowance" value={fmt(emp.special_allowance)} />}
-              {Number(emp.ta_amount) > 0 && <InfoRow label="TA Daily Rate" value={`₹${fmt(emp.ta_amount)}/day`} />}
-              {Number(emp.da_amount) > 0 && <InfoRow label="DA Daily Rate" value={`₹${fmt(emp.da_amount)}/day`} />}
+              {Number(emp.ta_amount) > 0 && <InfoRow label="TA Daily Rate" value={`${sym}${fmt(emp.ta_amount)}/day`} />}
+              {Number(emp.da_amount) > 0 && <InfoRow label="DA Daily Rate" value={`${sym}${fmt(emp.da_amount)}/day`} />}
               <InfoRow label="CTC" value={fmt(emp.ctc)} />
               <InfoRow label="Salary Structure" value={emp.salary_structure_name} />
               <InfoRow label="Tax Regime" value={emp.tax_regime === "new" ? "New Regime" : "Old Regime"} />

@@ -8,12 +8,15 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = async (m: string, u: string, b?: any) => { const r = await fetch(u, { method: m, headers: {'Content-Type':'application/json'}, body: b ? JSON.stringify(b) : undefined, credentials: 'include' }); if (!r.ok) throw new Error(await r.text()); return r.json(); };
 const fmt = (n: any) => Number(n||0).toLocaleString('en-IN', {maximumFractionDigits:2});
 
 export default function EducationEnterprise2Page() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [lmsForm, setLmsForm] = useState({ title: "", course_id: "", content_type: "video", content_url: "" });
   const [budgetForm, setBudgetForm] = useState({ head: "", allocated_amount: "", fy: "2025-26" });
   const [biometricForm, setBiometricForm] = useState({ device_type: "fingerprint", device_id: "", location: "" });
@@ -86,7 +89,7 @@ export default function EducationEnterprise2Page() {
               (budgets as any[]).map((b:any)=>{
                 const pct = Math.min(100, Math.round(((b.actual||0)/b.allocated_amount)*100));
                 return <div key={b.id} className="mb-3">
-                  <div className="flex justify-between text-sm mb-1"><span>{b.head}</span><span>₹{fmt(b.actual||0)} / ₹{fmt(b.allocated_amount)}</span></div>
+                  <div className="flex justify-between text-sm mb-1"><span>{b.head}</span><span>{sym}{fmt(b.actual||0)} / {sym}{fmt(b.allocated_amount)}</span></div>
                   <div className="w-full bg-gray-100 rounded-full h-2"><div className={`h-2 rounded-full ${pct>90?'bg-red-500':pct>70?'bg-yellow-500':'bg-green-500'}`} style={{width:`${pct}%`}}></div></div>
                 </div>;
               })}

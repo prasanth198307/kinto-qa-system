@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Download, Printer } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string, body?: unknown) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -50,6 +51,8 @@ interface PDC {
 export default function MemberPassbookPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [memberId, setMemberId] = useState<string>("");
   const [memberSearch, setMemberSearch] = useState("");
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
@@ -144,7 +147,7 @@ export default function MemberPassbookPage() {
               </div>
               <div>
                 <div className="text-xs text-muted-foreground">Share Capital</div>
-                <div className="font-semibold">₹{Number(selectedMember.share_capital || 0).toLocaleString()}</div>
+                <div className="font-semibold">{sym}{Number(selectedMember.share_capital || 0).toLocaleString()}</div>
               </div>
             </div>
           )}
@@ -156,15 +159,15 @@ export default function MemberPassbookPage() {
         <div className="grid grid-cols-3 gap-4">
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-sm">Total Deposits</CardTitle></CardHeader>
-            <CardContent><p className="text-2xl font-bold text-green-600">₹{Number(summary.total_deposits || 0).toLocaleString()}</p></CardContent>
+            <CardContent><p className="text-2xl font-bold text-green-600">{sym}{Number(summary.total_deposits || 0).toLocaleString()}</p></CardContent>
           </Card>
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-sm">Outstanding Loans</CardTitle></CardHeader>
-            <CardContent><p className="text-2xl font-bold text-red-600">₹{Number(summary.outstanding_loans || 0).toLocaleString()}</p></CardContent>
+            <CardContent><p className="text-2xl font-bold text-red-600">{sym}{Number(summary.outstanding_loans || 0).toLocaleString()}</p></CardContent>
           </Card>
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-sm">EMI Due This Month</CardTitle></CardHeader>
-            <CardContent><p className="text-2xl font-bold text-yellow-600">₹{Number(summary.emi_due || 0).toLocaleString()}</p></CardContent>
+            <CardContent><p className="text-2xl font-bold text-yellow-600">{sym}{Number(summary.emi_due || 0).toLocaleString()}</p></CardContent>
           </Card>
         </div>
       )}
@@ -205,12 +208,12 @@ export default function MemberPassbookPage() {
                         <TableCell className="whitespace-nowrap">{tx.date}</TableCell>
                         <TableCell>{tx.description}</TableCell>
                         <TableCell className="text-right text-red-600">
-                          {tx.debit ? `₹${Number(tx.debit).toLocaleString()}` : "—"}
+                          {tx.debit ? `${sym}${Number(tx.debit).toLocaleString()}` : "—"}
                         </TableCell>
                         <TableCell className="text-right text-green-600">
-                          {tx.credit ? `₹${Number(tx.credit).toLocaleString()}` : "—"}
+                          {tx.credit ? `${sym}${Number(tx.credit).toLocaleString()}` : "—"}
                         </TableCell>
-                        <TableCell className="text-right font-medium">₹{Number(tx.balance).toLocaleString()}</TableCell>
+                        <TableCell className="text-right font-medium">{sym}{Number(tx.balance).toLocaleString()}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -241,7 +244,7 @@ export default function MemberPassbookPage() {
                       <TableRow key={pdc.id}>
                         <TableCell>{pdc.cheque_no}</TableCell>
                         <TableCell>{pdc.bank}</TableCell>
-                        <TableCell>₹{Number(pdc.amount).toLocaleString()}</TableCell>
+                        <TableCell>{sym}{Number(pdc.amount).toLocaleString()}</TableCell>
                         <TableCell>{pdc.instrument_date}</TableCell>
                         <TableCell>
                           <Badge variant={PDC_STATUS_VARIANT[pdc.status?.toLowerCase()] || "secondary"} className="capitalize">

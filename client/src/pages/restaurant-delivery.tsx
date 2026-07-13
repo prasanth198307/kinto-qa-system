@@ -7,10 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (m: string, u: string, b?: any) =>
   fetch(u, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined, credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
-const fmt = (n: any) => "₹" + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
+const fmt = (n: any) => sym + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
 
 type DeliveryOrder = {
   id: number;
@@ -85,6 +86,8 @@ function timeSince(dateStr?: string) {
 export default function RestaurantDeliveryPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
 
   const { data: orders = [] } = useQuery<DeliveryOrder[]>({
     queryKey: ["/api/restaurant/delivery-orders"],
@@ -193,7 +196,7 @@ export default function RestaurantDeliveryPage() {
     onError: () => toast({ title: "Failed to confirm order", variant: "destructive" }),
   });
 
-  const fmt2 = (n: any) => "₹" + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
+  const fmt2 = (n: any) => sym + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
 
   return (
     <div className="p-4 space-y-4">
@@ -278,11 +281,11 @@ export default function RestaurantDeliveryPage() {
               <textarea className="w-full border rounded px-3 py-2 text-sm min-h-16 bg-background" value={form.delivery_address || ""} onChange={e => setForm(f => ({ ...f, delivery_address: e.target.value }))} placeholder="Full delivery address..." />
             </div>
             <div>
-              <label className="text-xs font-medium">Total Amount (₹)</label>
+              <label className="text-xs font-medium">Total Amount (${sym})</label>
               <Input type="number" value={form.total_amount || ""} onChange={e => setForm(f => ({ ...f, total_amount: Number(e.target.value) }))} />
             </div>
             <div>
-              <label className="text-xs font-medium">Delivery Fee (₹)</label>
+              <label className="text-xs font-medium">Delivery Fee (${sym})</label>
               <Input type="number" value={form.delivery_fee ?? 40} onChange={e => setForm(f => ({ ...f, delivery_fee: Number(e.target.value) }))} />
             </div>
             <div>

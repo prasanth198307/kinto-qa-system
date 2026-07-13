@@ -10,14 +10,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (m: string, p: string, b?: any) =>
   fetch(p, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined }).then((r) => r.json());
 
-const fmt = (n: any) => `₹${Number(n || 0).toLocaleString("en-IN")}`;
+const fmt = (n: any) => `${sym}${Number(n || 0).toLocaleString("en-IN")}`;
 
 export default function NidhiSharesPage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { toast } = useToast();
   const [allotOpen, setAllotOpen] = useState(false);
   const [dividendRate, setDividendRate] = useState("10");
@@ -86,7 +89,7 @@ export default function NidhiSharesPage() {
                     <TableCell>{t.member_name}</TableCell>
                     <TableCell><Badge variant={t.transaction_type === "allotment" ? "default" : "secondary"}>{t.transaction_type}</Badge></TableCell>
                     <TableCell>{t.shares_count}</TableCell>
-                    <TableCell>₹{t.share_value}</TableCell>
+                    <TableCell>{sym}{t.share_value}</TableCell>
                     <TableCell className="font-semibold">{fmt(t.total_amount)}</TableCell>
                     <TableCell>{t.certificate_number || "—"}</TableCell>
                   </TableRow>

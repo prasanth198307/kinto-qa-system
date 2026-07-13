@@ -8,12 +8,15 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = async (m: string, u: string, b?: any) => { const r = await fetch(u, { method: m, headers: {'Content-Type':'application/json'}, body: b ? JSON.stringify(b) : undefined, credentials: 'include' }); if (!r.ok) throw new Error(await r.text()); return r.json(); };
 const fmt = (n: any) => Number(n||0).toLocaleString('en-IN', {maximumFractionDigits:2});
 
 export default function CRMEnterprisePage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [smtp, setSmtp] = useState({ smtp_host: "", smtp_port: "587", smtp_user: "", smtp_pass: "", from_name: "", from_email: "" });
   const [testTo, setTestTo] = useState("");
   const [leadIds, setLeadIds] = useState("");
@@ -170,13 +173,13 @@ export default function CRMEnterprisePage() {
                 <Input type="number" placeholder="Price" value={item.unit_price} onChange={e=>{const n=[...quoteItems];n[i].unit_price=Number(e.target.value);setQuoteItems(n);}} />
               </div>)}
               <Button size="sm" variant="outline" onClick={()=>setQuoteItems([...quoteItems,{description:'',qty:1,unit_price:0}])}>+ Add Item</Button>
-              <div className="font-medium">Total: ₹{fmt(quoteTotal)}</div>
+              <div className="font-medium">Total: {sym}{fmt(quoteTotal)}</div>
               <Button onClick={()=>createQuote.mutate({items:quoteItems})}>Create Quote</Button>
             </CardContent></Card>
             <Card><CardHeader><CardTitle>Quotes</CardTitle></CardHeader>
             <CardContent>
               <Table><TableHeader><TableRow><TableHead>Quote#</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead><TableHead>Date</TableHead></TableRow></TableHeader>
-              <TableBody>{(quotes as any[]).map((q:any)=><TableRow key={q.id}><TableCell>{q.quote_number||q.id?.slice(0,8)}</TableCell><TableCell>₹{fmt(q.total_amount)}</TableCell><TableCell><Badge variant={q.status==='accepted'?'default':q.status==='rejected'?'destructive':'secondary'}>{q.status}</Badge></TableCell><TableCell>{q.created_at?.slice(0,10)}</TableCell></TableRow>)}</TableBody></Table>
+              <TableBody>{(quotes as any[]).map((q:any)=><TableRow key={q.id}><TableCell>{q.quote_number||q.id?.slice(0,8)}</TableCell><TableCell>{sym}{fmt(q.total_amount)}</TableCell><TableCell><Badge variant={q.status==='accepted'?'default':q.status==='rejected'?'destructive':'secondary'}>{q.status}</Badge></TableCell><TableCell>{q.created_at?.slice(0,10)}</TableCell></TableRow>)}</TableBody></Table>
               {(quotes as any[]).length===0&&<p className="text-center text-gray-400 py-4">No quotes created</p>}
             </CardContent></Card>
           </div>

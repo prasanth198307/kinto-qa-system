@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import {
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
   Plus, Pencil, Trash2, Users, BookOpen, GraduationCap, Receipt, AlertTriangle,
   BookMarked, Bus, Megaphone, ClipboardList, Library, Search, CheckSquare,
   Calendar, BookCopy, BarChart3, X
@@ -41,9 +42,9 @@ function OverviewTab() {
       <SC title="Total Students" value={stats?.totalStudents ?? 0} icon={Users} color="bg-blue-100 text-blue-600" />
       <SC title="Total Staff" value={stats?.totalTeachers ?? 0} icon={GraduationCap} color="bg-green-100 text-green-600" />
       <SC title="Total Classes" value={stats?.totalClasses ?? 0} icon={BookOpen} color="bg-purple-100 text-purple-600" />
-      <SC title="Monthly Collection" value={`₹${fmt(stats?.monthlyCollection)}`} icon={Receipt} color="bg-orange-100 text-orange-600" />
+      <SC title="Monthly Collection" value={`${sym}${fmt(stats?.monthlyCollection)}`} icon={Receipt} color="bg-orange-100 text-orange-600" />
       <SC title="Overdue Books" value={stats?.overdueBooks ?? 0} icon={AlertTriangle} color="bg-red-100 text-red-600" />
-      <SC title="Monthly Fee Target" value={`₹${fmt(stats?.monthlyFeeTarget)}`} icon={BookMarked} color="bg-teal-100 text-teal-600" />
+      <SC title="Monthly Fee Target" value={`${sym}${fmt(stats?.monthlyFeeTarget)}`} icon={BookMarked} color="bg-teal-100 text-teal-600" />
       <SC title="Active Notices" value={stats?.activeAnnouncements ?? 0} icon={Megaphone} color="bg-yellow-100 text-yellow-600" />
       <SC title="Transport Students" value={stats?.transportStudents ?? 0} icon={Bus} color="bg-indigo-100 text-indigo-600" />
     </div>
@@ -54,6 +55,8 @@ function OverviewTab() {
 function StudentsTab() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({});
   const [search, setSearch] = useState("");
@@ -126,6 +129,8 @@ function StudentsTab() {
 function StaffTab() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({});
   const { data: teachers = [] } = useQuery<any[]>({ queryKey: ["/api/education/teachers"] });
@@ -150,7 +155,7 @@ function StaffTab() {
             <td className="px-3 py-2">{t.subject || "—"}</td>
             <td className="px-3 py-2">{t.phone || "—"}</td>
             <td className="px-3 py-2">{t.date_of_joining || "—"}</td>
-            <td className="px-3 py-2">₹{fmt(t.salary)}</td>
+            <td className="px-3 py-2">{sym}{fmt(t.salary)}</td>
             <td className="px-3 py-2"><Badge variant={t.status === "active" ? "default" : "secondary"}>{t.status}</Badge></td>
             <td className="px-3 py-2"><div className="flex gap-1"><Button size="icon" variant="ghost" onClick={() => openEdit(t)}><Pencil className="h-3.5 w-3.5" /></Button><Button size="icon" variant="ghost" onClick={() => delMut.mutate(t.id)}><Trash2 className="h-3.5 w-3.5" /></Button></div></td>
           </tr>
@@ -167,7 +172,7 @@ function StaffTab() {
             <F label="Phone"><Input value={form.phone||""} onChange={e=>setForm({...form,phone:e.target.value})}/></F>
             <F label="Email"><Input type="email" value={form.email||""} onChange={e=>setForm({...form,email:e.target.value})}/></F>
             <F label="Joining Date"><Input type="date" value={form.date_of_joining||""} onChange={e=>setForm({...form,date_of_joining:e.target.value})}/></F>
-            <F label="Salary (₹)"><Input type="number" value={form.salary||""} onChange={e=>setForm({...form,salary:e.target.value})}/></F>
+            <F label="Salary "><Input type="number" value={form.salary||""} onChange={e=>setForm({...form,salary:e.target.value})}/></F>
             <div className="col-span-2"><F label="Status"><Select value={form.status||"active"} onValueChange={v=>setForm({...form,status:v})}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{["active","inactive","on leave"].map(s=><SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select></F></div>
           </div>
           <div className="flex justify-end gap-2 pt-2"><Button variant="outline" onClick={()=>setShowForm(false)}>Cancel</Button><Button onClick={()=>saveMut.mutate(form)} disabled={saveMut.isPending}>Save</Button></div>
@@ -480,6 +485,8 @@ function AttendanceTab() {
 function TimetableTab() {
   const { toast } = useToast();
   const [selectedClass, setSelectedClass] = useState("");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [showPeriodForm, setShowPeriodForm] = useState(false);
   const [showEntryForm, setShowEntryForm] = useState(false);
   const [periodForm, setPeriodForm] = useState<any>({});
@@ -580,6 +587,8 @@ function TimetableTab() {
 function TransportTab() {
   const { toast } = useToast();
   const [subTab, setSubTab] = useState<"vehicles"|"routes"|"students">("vehicles");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({});
@@ -616,10 +625,10 @@ function TransportTab() {
       </table></div>}
 
       {subTab==="routes"&&<div className="rounded-md border overflow-x-auto"><table className="w-full text-sm">
-        <thead className="bg-muted/50"><tr>{["Route Name","Pickup Points","Distance (km)","Fee (₹)",""].map(h=><th key={h} className="px-3 py-2 text-left font-medium">{h}</th>)}</tr></thead>
+        <thead className="bg-muted/50"><tr>{["Route Name","Pickup Points","Distance (km)","Fee ",""].map(h=><th key={h} className="px-3 py-2 text-left font-medium">{h}</th>)}</tr></thead>
         <tbody>{(routes as any[]).map((r:any)=>(
           <tr key={r.id} className="border-t hover:bg-muted/30">
-            <td className="px-3 py-2 font-medium">{r.route_name}</td><td className="px-3 py-2">{r.pickup_points||"—"}</td><td className="px-3 py-2">{r.distance_km||"—"}</td><td className="px-3 py-2">₹{fmt(r.fee)}</td>
+            <td className="px-3 py-2 font-medium">{r.route_name}</td><td className="px-3 py-2">{r.pickup_points||"—"}</td><td className="px-3 py-2">{r.distance_km||"—"}</td><td className="px-3 py-2">{sym}{fmt(r.fee)}</td>
             <td className="px-3 py-2"><div className="flex gap-1"><Button size="icon" variant="ghost" onClick={()=>openEdit(r)}><Pencil className="h-3.5 w-3.5"/></Button><Button size="icon" variant="ghost" onClick={()=>delR.mutate(r.id)}><Trash2 className="h-3.5 w-3.5"/></Button></div></td>
           </tr>
         ))}{!(routes as any[]).length&&<tr><td colSpan={5} className="px-3 py-6 text-center text-muted-foreground">No routes added</td></tr>}</tbody>
@@ -648,7 +657,7 @@ function TransportTab() {
             <F label="Pickup Points"><Textarea value={form.pickup_points||""} onChange={e=>setForm({...form,pickup_points:e.target.value})} rows={2} placeholder="Stop 1, Stop 2…"/></F>
             <div className="grid grid-cols-2 gap-3">
               <F label="Distance (km)"><Input type="number" value={form.distance_km||""} onChange={e=>setForm({...form,distance_km:e.target.value})}/></F>
-              <F label="Fee (₹)"><Input type="number" value={form.fee||""} onChange={e=>setForm({...form,fee:e.target.value})}/></F>
+              <F label="Fee "><Input type="number" value={form.fee||""} onChange={e=>setForm({...form,fee:e.target.value})}/></F>
             </div>
           </div>}
           {subTab==="students"&&<div className="grid gap-3">
@@ -670,6 +679,8 @@ function TransportTab() {
 function AnnouncementsTab() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({});
   const { data: announcements = [] } = useQuery<any[]>({ queryKey: ["/api/education/announcements"] });
@@ -723,6 +734,8 @@ function AnnouncementsTab() {
 function AssessmentsTab() {
   const { toast } = useToast();
   const [selectedExam, setSelectedExam] = useState<any>(null);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [showExamForm, setShowExamForm] = useState(false);
   const [editingExam, setEditingExam] = useState<any>(null);
   const [examForm, setExamForm] = useState<any>({});
@@ -823,6 +836,8 @@ function AssessmentsTab() {
 function LibraryTab() {
   const { toast } = useToast();
   const [subTab, setSubTab] = useState<"books"|"issues">("books");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [showBook, setShowBook] = useState(false);
   const [showIssue, setShowIssue] = useState(false);
   const [editingBook, setEditingBook] = useState<any>(null);
@@ -862,7 +877,7 @@ function LibraryTab() {
             <td className="px-3 py-2 font-medium">{i.book_title}</td><td className="px-3 py-2">{i.student_name_ref||i.student_name||"—"}</td>
             <td className="px-3 py-2">{i.issue_date}</td><td className="px-3 py-2">{i.due_date||"—"}</td>
             <td className="px-3 py-2"><Badge variant={i.status==="issued"?"default":"secondary"}>{i.status}</Badge></td>
-            <td className="px-3 py-2">₹{fmt(i.fine_amount||0)}</td>
+            <td className="px-3 py-2">{sym}{fmt(i.fine_amount||0)}</td>
             <td className="px-3 py-2">{i.status==="issued"&&<Button size="sm" variant="outline" onClick={()=>returnMut.mutate({id:i.id,return_date:new Date().toISOString().split("T")[0],fine_amount:0})}>Return</Button>}</td>
           </tr>
         ))}{!(issues as any[]).length&&<tr><td colSpan={7} className="px-3 py-6 text-center text-muted-foreground">No book issues</td></tr>}</tbody>
@@ -902,6 +917,8 @@ function LibraryTab() {
 function FeesTab() {
   const { toast } = useToast();
   const [subTab, setSubTab] = useState<"payments"|"structures"|"components"|"scholarships"|"discounts"|"ledger">("payments");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
 
   // ── data ──
   const { data: structures = [] } = useQuery<any[]>({ queryKey: ["/api/education/fee-structures"] });
@@ -961,7 +978,7 @@ function FeesTab() {
     const type  = base?.type || "percentage";
     const value = Number(ss.value ?? base?.value ?? 0);
     const amt   = type === "percentage" ? Math.round(grossAmt * value / 100) : value;
-    if (amt > 0) breakdown.push({ label: `${ss.scholarship_name} (${type === "percentage" ? value + "%" : "₹" + fmt(value)})`, amount: amt });
+    if (amt > 0) breakdown.push({ label: `${ss.scholarship_name} (${type === "percentage" ? value + "%" : sym + fmt(value)})`, amount: amt });
   });
   appliedDiscs.forEach(sd => {
     const base  = (discounts as any[]).find(d => d.id === sd.discount_id);
@@ -1048,9 +1065,9 @@ function FeesTab() {
             <td className="px-3 py-2 font-medium">{p.student_name}</td>
             <td className="px-3 py-2">{p.class_name||"—"}</td>
             <td className="px-3 py-2">{p.for_month||"—"}</td>
-            <td className="px-3 py-2">₹{fmt(p.gross_amount||p.amount)}</td>
-            <td className="px-3 py-2 text-green-600 dark:text-green-400">{Number(p.discount_amount)>0?`−₹${fmt(p.discount_amount)}`:"—"}</td>
-            <td className="px-3 py-2 font-semibold">₹{fmt(p.amount)}</td>
+            <td className="px-3 py-2">{sym}{fmt(p.gross_amount||p.amount)}</td>
+            <td className="px-3 py-2 text-green-600 dark:text-green-400">{Number(p.discount_amount)>0?`−${sym}${fmt(p.discount_amount)}`:"—"}</td>
+            <td className="px-3 py-2 font-semibold">{sym}{fmt(p.amount)}</td>
             <td className="px-3 py-2 uppercase">{p.payment_mode}</td>
             <td className="px-3 py-2">{p.paid_date?.split("T")[0]}</td>
           </tr>
@@ -1062,7 +1079,7 @@ function FeesTab() {
         <thead className="bg-muted/50"><tr>{["Class","Fee Type","Amount","Frequency","Year","Due Day",""].map(h=><th key={h} className="px-3 py-2 text-left font-medium">{h}</th>)}</tr></thead>
         <tbody>{(structures as any[]).map((s:any)=>(
           <tr key={s.id} className="border-t hover:bg-muted/30">
-            <td className="px-3 py-2">{s.class_name||"All"}</td><td className="px-3 py-2 font-medium">{s.fee_type}</td><td className="px-3 py-2">₹{fmt(s.amount)}</td>
+            <td className="px-3 py-2">{s.class_name||"All"}</td><td className="px-3 py-2 font-medium">{s.fee_type}</td><td className="px-3 py-2">{sym}{fmt(s.amount)}</td>
             <td className="px-3 py-2 capitalize">{s.frequency}</td><td className="px-3 py-2">{s.academic_year||"—"}</td><td className="px-3 py-2">{s.due_day}</td>
             <td className="px-3 py-2"><div className="flex gap-1"><Button size="icon" variant="ghost" onClick={()=>{setEditingSf(s);setSfForm({...s});setShowSfForm(true);}}><Pencil className="h-3.5 w-3.5"/></Button><Button size="icon" variant="ghost" onClick={()=>sfDel.mutate(s.id)}><Trash2 className="h-3.5 w-3.5"/></Button></div></td>
           </tr>
@@ -1092,7 +1109,7 @@ function FeesTab() {
             <tbody>{(scholarships as any[]).map((s:any)=>(
               <tr key={s.id} className="border-t hover:bg-muted/30">
                 <td className="px-3 py-2 font-medium">{s.name}</td><td className="px-3 py-2 capitalize">{s.type}</td>
-                <td className="px-3 py-2">{s.type==="percentage"?`${s.value}%`:`₹${fmt(s.value)}`}</td>
+                <td className="px-3 py-2">{s.type==="percentage"?`${s.value}%`:`${sym}${fmt(s.value)}`}</td>
                 <td className="px-3 py-2"><div className="flex gap-1">
                   <Button size="icon" variant="ghost" onClick={()=>{setEditingSch(s);setSchForm({...s});setShowSchMaster(true);}}><Pencil className="h-3.5 w-3.5"/></Button>
                   <Button size="icon" variant="ghost" onClick={()=>schMasterDel.mutate(s.id)}><Trash2 className="h-3.5 w-3.5"/></Button>
@@ -1113,7 +1130,7 @@ function FeesTab() {
               <tr key={ss.id} className="border-t hover:bg-muted/30">
                 <td className="px-3 py-2 font-medium">{ss.student_name}</td>
                 <td className="px-3 py-2">{ss.scholarship_name}</td>
-                <td className="px-3 py-2">{ss.value!=null?(ss.type==="percentage"?`${ss.value}%`:`₹${fmt(ss.value)}`):"Default"}</td>
+                <td className="px-3 py-2">{ss.value!=null?(ss.type==="percentage"?`${ss.value}%`:`${sym}${fmt(ss.value)}`):"Default"}</td>
                 <td className="px-3 py-2"><Button size="icon" variant="ghost" onClick={()=>assignSchDel.mutate(ss.id)}><Trash2 className="h-3.5 w-3.5"/></Button></td>
               </tr>
             ))}{!(studentScholarships as any[]).length&&<tr><td colSpan={4} className="px-3 py-6 text-center text-muted-foreground">No assignments yet</td></tr>}</tbody>
@@ -1148,7 +1165,7 @@ function FeesTab() {
               <tr key={sd.id} className="border-t hover:bg-muted/30">
                 <td className="px-3 py-2 font-medium">{sd.student_name}</td>
                 <td className="px-3 py-2">{sd.discount_name}</td>
-                <td className="px-3 py-2">₹{fmt(sd.value)}</td>
+                <td className="px-3 py-2">{sym}{fmt(sd.value)}</td>
                 <td className="px-3 py-2">{sd.applicable_on||"All fees"}</td>
                 <td className="px-3 py-2"><Button size="icon" variant="ghost" onClick={()=>assignDiscDel.mutate(sd.id)}><Trash2 className="h-3.5 w-3.5"/></Button></td>
               </tr>
@@ -1166,9 +1183,9 @@ function FeesTab() {
             <td className="px-3 py-2">{l.entry_date?.split("T")[0]||l.entry_date}</td>
             <td className="px-3 py-2 font-medium">{l.student_name}</td>
             <td className="px-3 py-2">{l.component_name||l.narration||"—"}</td>
-            <td className="px-3 py-2 text-red-600 dark:text-red-400">{Number(l.debit)>0?`₹${fmt(l.debit)}`:"—"}</td>
-            <td className="px-3 py-2 text-green-600 dark:text-green-400">{Number(l.credit)>0?`₹${fmt(l.credit)}`:"—"}</td>
-            <td className="px-3 py-2 font-semibold">₹{fmt(l.balance)}</td>
+            <td className="px-3 py-2 text-red-600 dark:text-red-400">{Number(l.debit)>0?`${sym}${fmt(l.debit)}`:"—"}</td>
+            <td className="px-3 py-2 text-green-600 dark:text-green-400">{Number(l.credit)>0?`${sym}${fmt(l.credit)}`:"—"}</td>
+            <td className="px-3 py-2 font-semibold">{sym}{fmt(l.balance)}</td>
           </tr>
         ))}{!(ledger as any[]).length&&<tr><td colSpan={7} className="px-3 py-6 text-center text-muted-foreground">No ledger entries</td></tr>}</tbody>
       </table></div>}
@@ -1190,27 +1207,27 @@ function FeesTab() {
                 setPf({...pf, fee_structure_id: v==="__none__"?"":v, gross_amount: sf?.amount||pf.gross_amount });
               }}>
                 <SelectTrigger><SelectValue placeholder="Select structure (optional)"/></SelectTrigger>
-                <SelectContent><SelectItem value="__none__">None</SelectItem>{(structures as any[]).map((s:any)=><SelectItem key={s.id} value={String(s.id)}>{s.fee_type} — ₹{fmt(s.amount)}</SelectItem>)}</SelectContent>
+                <SelectContent><SelectItem value="__none__">None</SelectItem>{(structures as any[]).map((s:any)=><SelectItem key={s.id} value={String(s.id)}>{s.fee_type} — {sym}{fmt(s.amount)}</SelectItem>)}</SelectContent>
               </Select>
             </F>
-            <F label="Gross Amount (₹) *">
+            <F label="Gross Amount (${sym}) *">
               <Input type="number" placeholder="Total fee before deductions" value={pf.gross_amount||""} onChange={e=>setPf({...pf,gross_amount:e.target.value})}/>
             </F>
 
             {/* Deduction breakdown — shown when student selected & gross > 0 */}
             {selStudentId && grossAmt > 0 && (
               <div className="rounded-md bg-muted/40 border p-3 space-y-1.5 text-sm">
-                <div className="flex justify-between"><span className="text-muted-foreground">Gross Fee</span><span>₹{fmt(grossAmt)}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Gross Fee</span><span>{sym}{fmt(grossAmt)}</span></div>
                 {breakdown.length > 0
                   ? breakdown.map((b,i)=>(
                     <div key={i} className="flex justify-between text-green-600 dark:text-green-400">
-                      <span>{b.label}</span><span>−₹{fmt(b.amount)}</span>
+                      <span>{b.label}</span><span>−{sym}{fmt(b.amount)}</span>
                     </div>
                   ))
                   : <div className="text-muted-foreground text-xs">No scholarships or discounts assigned to this student.</div>
                 }
                 <div className="border-t pt-1.5 flex justify-between font-semibold">
-                  <span>Net Payable</span><span>₹{fmt(netPayable)}</span>
+                  <span>Net Payable</span><span>{sym}{fmt(netPayable)}</span>
                 </div>
               </div>
             )}
@@ -1244,10 +1261,10 @@ function FeesTab() {
               <F label="Type">
                 <Select value={schForm.type||"percentage"} onValueChange={v=>setSchForm({...schForm,type:v})}>
                   <SelectTrigger><SelectValue/></SelectTrigger>
-                  <SelectContent><SelectItem value="percentage">Percentage (%)</SelectItem><SelectItem value="fixed">Fixed (₹)</SelectItem></SelectContent>
+                  <SelectContent><SelectItem value="percentage">Percentage (%)</SelectItem><SelectItem value="fixed">Fixed (${sym})</SelectItem></SelectContent>
                 </Select>
               </F>
-              <F label="Value *"><Input type="number" value={schForm.value||""} onChange={e=>setSchForm({...schForm,value:e.target.value})} placeholder={schForm.type==="percentage"?"%":"₹"}/></F>
+              <F label="Value *"><Input type="number" value={schForm.value||""} onChange={e=>setSchForm({...schForm,value:e.target.value})} placeholder={schForm.type==="percentage"?"%":sym}/></F>
             </div>
           </div>
           <div className="flex justify-end gap-2 pt-2">
@@ -1271,7 +1288,7 @@ function FeesTab() {
             <F label="Scholarship *">
               <Select value={String(assignSchForm.scholarship_id||"")} onValueChange={v=>setAssignSchForm({...assignSchForm,scholarship_id:v})}>
                 <SelectTrigger><SelectValue placeholder="Select scholarship"/></SelectTrigger>
-                <SelectContent>{(scholarships as any[]).map((s:any)=><SelectItem key={s.id} value={String(s.id)}>{s.name} ({s.type==="percentage"?`${s.value}%`:`₹${fmt(s.value)}`})</SelectItem>)}</SelectContent>
+                <SelectContent>{(scholarships as any[]).map((s:any)=><SelectItem key={s.id} value={String(s.id)}>{s.name} ({s.type==="percentage"?`${s.value}%`:`${sym}${fmt(s.value)}`})</SelectItem>)}</SelectContent>
               </Select>
             </F>
             <F label="Override Value (optional)"><Input type="number" placeholder="Leave blank to use default" value={assignSchForm.value||""} onChange={e=>setAssignSchForm({...assignSchForm,value:e.target.value})}/></F>
@@ -1390,8 +1407,8 @@ function FeesTab() {
             </F>
             <F label="Description"><Input value={ledgerForm.component_name||""} onChange={e=>setLedgerForm({...ledgerForm,component_name:e.target.value})} placeholder="Tuition Fee, Transport…"/></F>
             <div className="grid grid-cols-2 gap-3">
-              <F label="Debit (₹)"><Input type="number" value={ledgerForm.debit||""} onChange={e=>setLedgerForm({...ledgerForm,debit:e.target.value})}/></F>
-              <F label="Credit (₹)"><Input type="number" value={ledgerForm.credit||""} onChange={e=>setLedgerForm({...ledgerForm,credit:e.target.value})}/></F>
+              <F label="Debit "><Input type="number" value={ledgerForm.debit||""} onChange={e=>setLedgerForm({...ledgerForm,debit:e.target.value})}/></F>
+              <F label="Credit "><Input type="number" value={ledgerForm.credit||""} onChange={e=>setLedgerForm({...ledgerForm,credit:e.target.value})}/></F>
             </div>
             <F label="Date"><Input type="date" value={ledgerForm.entry_date||""} onChange={e=>setLedgerForm({...ledgerForm,entry_date:e.target.value})}/></F>
             <F label="Narration"><Input value={ledgerForm.narration||""} onChange={e=>setLedgerForm({...ledgerForm,narration:e.target.value})}/></F>

@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Search, Building2, Home, FileText, BarChart3, Users, Receipt, Pencil, Trash2, X, Mail } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const fmt = (n: any) => Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
 function F({ label, children }: any) { return <div className="space-y-1"><Label className="text-xs">{label}</Label>{children}</div>; }
@@ -27,7 +28,7 @@ function OverviewTab() {
       <SC title="Total Units" value={stats?.totalUnits ?? 0} icon={Home} color="bg-green-100 text-green-600" />
       <SC title="Available Units" value={stats?.availableUnits ?? 0} icon={Home} color="bg-teal-100 text-teal-600" />
       <SC title="Active Bookings" value={stats?.activeBookings ?? 0} icon={FileText} color="bg-orange-100 text-orange-600" />
-      <SC title="Total Revenue" value={`₹${fmt(stats?.totalRevenue)}`} icon={Receipt} color="bg-purple-100 text-purple-600" />
+      <SC title="Total Revenue" value={`${sym}${fmt(stats?.totalRevenue)}`} icon={Receipt} color="bg-purple-100 text-purple-600" />
     </div>
   );
 }
@@ -35,6 +36,8 @@ function OverviewTab() {
 function ProjectsTab() {
   const { toast } = useToast();
   const [search, setSearch] = useState(""); const [showForm, setShowForm] = useState(false); const [editing, setEditing] = useState<any>(null); const [form, setForm] = useState<any>({});
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { data: projects = [] } = useQuery<any[]>({ queryKey: ["/api/real-estate/projects"] });
   const saveMut = useMutation({ mutationFn: (d: any) => editing ? apiRequest("PUT", `/api/real-estate/projects/${editing.id}`, d) : apiRequest("POST", "/api/real-estate/projects", d), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/real-estate/projects"] }); setShowForm(false); toast({ title: "Saved" }); } });
   const delMut = useMutation({ mutationFn: (id: any) => apiRequest("DELETE", `/api/real-estate/projects/${id}`), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/real-estate/projects"] }) });
@@ -91,6 +94,8 @@ function ProjectsTab() {
 function UnitsTab() {
   const { toast } = useToast();
   const [search, setSearch] = useState(""); const [filterProject, setFilterProject] = useState(""); const [showForm, setShowForm] = useState(false); const [editing, setEditing] = useState<any>(null); const [form, setForm] = useState<any>({});
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { data: units = [] } = useQuery<any[]>({ queryKey: ["/api/real-estate/units"] });
   const { data: projects = [] } = useQuery<any[]>({ queryKey: ["/api/real-estate/projects"] });
   const saveMut = useMutation({ mutationFn: (d: any) => editing ? apiRequest("PUT", `/api/real-estate/units/${editing.id}`, d) : apiRequest("POST", "/api/real-estate/units", d), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/real-estate/units"] }); setShowForm(false); toast({ title: "Saved" }); } });
@@ -112,7 +117,7 @@ function UnitsTab() {
           <tr key={u.id} className="border-t hover:bg-muted/30">
             <td className="px-3 py-2 font-medium">{u.unit_no}</td><td className="px-3 py-2">{u.project_name||"—"}</td><td className="px-3 py-2">{u.unit_type||"—"}</td>
             <td className="px-3 py-2">{u.floor_no != null ? u.floor_no : "—"}</td><td className="px-3 py-2">{u.area_sqft ? `${u.area_sqft} sqft` : "—"}</td>
-            <td className="px-3 py-2">₹{fmt(u.base_price)}</td><td className="px-3 py-2 font-medium">₹{fmt(u.current_price)}</td>
+            <td className="px-3 py-2">{sym}{fmt(u.base_price)}</td><td className="px-3 py-2 font-medium">{sym}{fmt(u.current_price)}</td>
             <td className="px-3 py-2">{u.facing||"—"}</td>
             <td className="px-3 py-2"><Badge className={STATUS_C[u.status]||""}>{u.status}</Badge></td>
             <td className="px-3 py-2"><div className="flex gap-1"><Button size="icon" variant="ghost" onClick={()=>openEdit(u)}><Pencil className="h-3.5 w-3.5"/></Button><Button size="icon" variant="ghost" onClick={()=>delMut.mutate(u.id)}><Trash2 className="h-3.5 w-3.5"/></Button></div></td>
@@ -127,8 +132,8 @@ function UnitsTab() {
             <F label="Unit Type"><Select value={form.unit_type||""} onValueChange={v=>setForm({...form,unit_type:v})}><SelectTrigger><SelectValue placeholder="Select"/></SelectTrigger><SelectContent>{["1BHK","2BHK","3BHK","4BHK","Studio","Penthouse","Shop","Office","Plot"].map(t=><SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent></Select></F>
             <F label="Floor No."><Input type="number" value={form.floor_no||""} onChange={e=>setForm({...form,floor_no:e.target.value})}/></F>
             <F label="Area (sqft)"><Input type="number" value={form.area_sqft||""} onChange={e=>setForm({...form,area_sqft:e.target.value})}/></F>
-            <F label="Base Price (₹)"><Input type="number" value={form.base_price||""} onChange={e=>setForm({...form,base_price:e.target.value})}/></F>
-            <F label="Current Price (₹)"><Input type="number" value={form.current_price||""} onChange={e=>setForm({...form,current_price:e.target.value})}/></F>
+            <F label="Base Price "><Input type="number" value={form.base_price||""} onChange={e=>setForm({...form,base_price:e.target.value})}/></F>
+            <F label="Current Price "><Input type="number" value={form.current_price||""} onChange={e=>setForm({...form,current_price:e.target.value})}/></F>
             <F label="Facing"><Select value={form.facing||""} onValueChange={v=>setForm({...form,facing:v})}><SelectTrigger><SelectValue placeholder="Select"/></SelectTrigger><SelectContent>{["North","South","East","West","NE","NW","SE","SW"].map(f=><SelectItem key={f} value={f}>{f}</SelectItem>)}</SelectContent></Select></F>
             <F label="Status"><Select value={form.status||"available"} onValueChange={v=>setForm({...form,status:v})}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{["available","reserved","booked","sold"].map(s=><SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select></F>
             <div className="col-span-2"><F label="Features"><Input placeholder="Balcony, Parking, Garden..." value={form.features||""} onChange={e=>setForm({...form,features:e.target.value})}/></F></div>
@@ -143,6 +148,8 @@ function UnitsTab() {
 function BookingsTab() {
   const { toast } = useToast();
   const [search, setSearch] = useState(""); const [showForm, setShowForm] = useState(false); const [editing, setEditing] = useState<any>(null); const [form, setForm] = useState<any>({}); const [showPayments, setShowPayments] = useState<any>(null); const [payForm, setPayForm] = useState<any>({}); const [partialId, setPartialId] = useState<any>(null); const [partialAmt, setPartialAmt] = useState("");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { data: bookings = [] } = useQuery<any[]>({ queryKey: ["/api/real-estate/bookings"] });
   const { data: units = [] } = useQuery<any[]>({ queryKey: ["/api/real-estate/units"] });
   const { data: brokers = [] } = useQuery<any[]>({ queryKey: ["/api/real-estate/brokers"] });
@@ -167,7 +174,7 @@ function BookingsTab() {
             <td className="px-3 py-2 font-mono text-xs">{b.booking_no}</td><td className="px-3 py-2 font-medium">{b.customer_name}</td>
             <td className="px-3 py-2">{b.unit_no||"—"}</td><td className="px-3 py-2">{b.project_name||"—"}</td>
             <td className="px-3 py-2">{b.booking_date?.split("T")[0]}</td>
-            <td className="px-3 py-2">₹{fmt(b.total_amount)}</td><td className="px-3 py-2">₹{fmt(b.booking_amount)}</td>
+            <td className="px-3 py-2">{sym}{fmt(b.total_amount)}</td><td className="px-3 py-2">{sym}{fmt(b.booking_amount)}</td>
             <td className="px-3 py-2">{b.broker_name||"—"}</td>
             <td className="px-3 py-2"><Badge className={b.status==="booked"?"bg-orange-100 text-orange-700":b.status==="sold"?"bg-red-100 text-red-700":"bg-gray-100 text-gray-700"}>{b.status}</Badge></td>
             <td className="px-3 py-2"><div className="flex gap-1"><Button size="sm" variant="outline" onClick={()=>{setShowPayments(b);setPayForm({booking_id:b.id});}}>Payments</Button><Button size="icon" variant="ghost" onClick={()=>openEdit(b)}><Pencil className="h-3.5 w-3.5"/></Button></div></td>
@@ -177,17 +184,17 @@ function BookingsTab() {
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="max-w-xl max-h-[90dvh] overflow-y-auto"><DialogHeader><DialogTitle>{editing?"Edit Booking":"New Booking"}</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2"><F label="Unit *"><Select value={String(form.unit_id||"")} onValueChange={v=>setForm({...form,unit_id:v})}><SelectTrigger><SelectValue placeholder="Select unit"/></SelectTrigger><SelectContent>{availableUnits.map((u:any)=><SelectItem key={u.id} value={String(u.id)}>{u.unit_no} — {u.project_name} — ₹{fmt(u.current_price)}</SelectItem>)}</SelectContent></Select></F></div>
+            <div className="col-span-2"><F label="Unit *"><Select value={String(form.unit_id||"")} onValueChange={v=>setForm({...form,unit_id:v})}><SelectTrigger><SelectValue placeholder="Select unit"/></SelectTrigger><SelectContent>{availableUnits.map((u:any)=><SelectItem key={u.id} value={String(u.id)}>{u.unit_no} — {u.project_name} — {sym}{fmt(u.current_price)}</SelectItem>)}</SelectContent></Select></F></div>
             <div className="col-span-2"><F label="Customer Name *"><Input value={form.customer_name||""} onChange={e=>setForm({...form,customer_name:e.target.value})}/></F></div>
             <F label="Customer Phone"><Input value={form.customer_phone||""} onChange={e=>setForm({...form,customer_phone:e.target.value})}/></F>
             <F label="Customer Email"><Input value={form.customer_email||""} onChange={e=>setForm({...form,customer_email:e.target.value})}/></F>
             <F label="Booking Date"><Input type="date" value={form.booking_date||""} onChange={e=>setForm({...form,booking_date:e.target.value})}/></F>
-            <F label="Total Amount (₹)"><Input type="number" value={form.total_amount||""} onChange={e=>setForm({...form,total_amount:e.target.value})}/></F>
-            <F label="Booking Amount (₹)"><Input type="number" value={form.booking_amount||""} onChange={e=>setForm({...form,booking_amount:e.target.value})}/></F>
-            <F label="Loan Amount (₹)"><Input type="number" value={form.loan_amount||""} onChange={e=>setForm({...form,loan_amount:e.target.value})}/></F>
+            <F label="Total Amount "><Input type="number" value={form.total_amount||""} onChange={e=>setForm({...form,total_amount:e.target.value})}/></F>
+            <F label="Booking Amount "><Input type="number" value={form.booking_amount||""} onChange={e=>setForm({...form,booking_amount:e.target.value})}/></F>
+            <F label="Loan Amount "><Input type="number" value={form.loan_amount||""} onChange={e=>setForm({...form,loan_amount:e.target.value})}/></F>
             <F label="Bank Name"><Input value={form.bank_name||""} onChange={e=>setForm({...form,bank_name:e.target.value})}/></F>
             <F label="Broker"><Select value={form.broker_id?String(form.broker_id):"__none__"} onValueChange={v=>setForm({...form,broker_id:v==="__none__"?"":v})}><SelectTrigger><SelectValue placeholder="None"/></SelectTrigger><SelectContent><SelectItem value="__none__">None</SelectItem>{(brokers as any[]).map((b:any)=><SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>)}</SelectContent></Select></F>
-            <F label="Broker Commission (₹)"><Input type="number" value={form.broker_commission||""} onChange={e=>setForm({...form,broker_commission:e.target.value})}/></F>
+            <F label="Broker Commission "><Input type="number" value={form.broker_commission||""} onChange={e=>setForm({...form,broker_commission:e.target.value})}/></F>
             <F label="Agreement Date"><Input type="date" value={form.agreement_date||""} onChange={e=>setForm({...form,agreement_date:e.target.value})}/></F>
             <F label="Possession Date"><Input type="date" value={form.possession_date||""} onChange={e=>setForm({...form,possession_date:e.target.value})}/></F>
             <F label="Status"><Select value={form.status||"booked"} onValueChange={v=>setForm({...form,status:v})}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{["booked","sold","cancelled"].map(s=><SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select></F>
@@ -198,13 +205,13 @@ function BookingsTab() {
       </Dialog>
       <Dialog open={!!showPayments} onOpenChange={()=>setShowPayments(null)}>
         <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto"><DialogHeader><DialogTitle>Payment Schedule — {showPayments?.customer_name} · {showPayments?.unit_no}</DialogTitle></DialogHeader>
-          <p className="text-sm text-muted-foreground">Total: ₹{fmt(showPayments?.total_amount)} | Booking: ₹{fmt(showPayments?.booking_amount)}</p>
+          <p className="text-sm text-muted-foreground">Total: {sym}{fmt(showPayments?.total_amount)} | Booking: {sym}{fmt(showPayments?.booking_amount)}</p>
           <div className="rounded-md border overflow-x-auto"><table className="w-full text-sm">
             <thead className="bg-muted/50"><tr>{["Milestone","Due Date","Amount","Paid","Status",""].map(h=><th key={h} className="px-3 py-2 text-left">{h}</th>)}</tr></thead>
             <tbody>{(schedules as any[]).map(s=>(
               <tr key={s.id} className="border-t">
                 <td className="px-3 py-2 font-medium">{s.milestone}</td><td className="px-3 py-2">{s.due_date?.split("T")[0]||"—"}</td>
-                <td className="px-3 py-2">₹{fmt(s.amount)}</td><td className="px-3 py-2">₹{fmt(s.paid_amount)}</td>
+                <td className="px-3 py-2">{sym}{fmt(s.amount)}</td><td className="px-3 py-2">{sym}{fmt(s.paid_amount)}</td>
                 <td className="px-3 py-2"><Badge className={s.status==="paid"?"bg-green-100 text-green-700":s.status==="partial"?"bg-orange-100 text-orange-700":"bg-gray-100 text-gray-700"}>{s.status||"pending"}</Badge></td>
                 <td className="px-3 py-2">
                   {s.status!=="paid"&&(
@@ -227,7 +234,7 @@ function BookingsTab() {
           </table></div>
           <div className="grid grid-cols-3 gap-2 pt-2">
             <F label="Milestone"><Input value={payForm.milestone||""} onChange={e=>setPayForm({...payForm,milestone:e.target.value})}/></F>
-            <F label="Amount (₹)"><Input type="number" value={payForm.amount||""} onChange={e=>setPayForm({...payForm,amount:e.target.value})}/></F>
+            <F label="Amount "><Input type="number" value={payForm.amount||""} onChange={e=>setPayForm({...payForm,amount:e.target.value})}/></F>
             <F label="Due Date"><Input type="date" value={payForm.due_date||""} onChange={e=>setPayForm({...payForm,due_date:e.target.value})}/></F>
           </div>
           <div className="flex justify-end gap-2 pt-1"><Button size="sm" onClick={()=>addSchedule.mutate({...payForm,booking_id:showPayments?.id})} disabled={addSchedule.isPending}><Plus className="h-3 w-3 mr-1"/>Add Milestone</Button><Button variant="outline" onClick={()=>setShowPayments(null)}>Close</Button></div>
@@ -240,6 +247,8 @@ function BookingsTab() {
 function BrokersTab() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false); const [editing, setEditing] = useState<any>(null); const [form, setForm] = useState<any>({});
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { data: brokers = [] } = useQuery<any[]>({ queryKey: ["/api/real-estate/brokers"] });
   const saveMut = useMutation({ mutationFn: (d: any) => editing ? apiRequest("PUT", `/api/real-estate/brokers/${editing.id}`, d) : apiRequest("POST", "/api/real-estate/brokers", d), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/real-estate/brokers"] }); setShowForm(false); toast({ title: "Saved" }); } });
   const delMut = useMutation({ mutationFn: (id: any) => apiRequest("DELETE", `/api/real-estate/brokers/${id}`), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/real-estate/brokers"] }) });
@@ -280,6 +289,8 @@ function BrokersTab() {
 function DemandLettersTab() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false); const [editing, setEditing] = useState<any>(null); const [form, setForm] = useState<any>({});
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { data: letters = [] } = useQuery<any[]>({ queryKey: ["/api/real-estate/demand-letters"] });
   const { data: bookings = [] } = useQuery<any[]>({ queryKey: ["/api/real-estate/bookings"] });
   const saveMut = useMutation({ mutationFn: (d: any) => editing ? apiRequest("PUT", `/api/real-estate/demand-letters/${editing.id}`, d) : apiRequest("POST", "/api/real-estate/demand-letters", d), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/real-estate/demand-letters"] }); setShowForm(false); toast({ title: "Saved" }); } });
@@ -299,7 +310,7 @@ function DemandLettersTab() {
             <td className="px-3 py-2 font-mono text-xs">{l.demand_number}</td><td className="px-3 py-2 font-medium">{l.customer_name||"—"}</td>
             <td className="px-3 py-2">{l.unit_number||"—"}</td><td className="px-3 py-2">{l.milestone||"—"}</td>
             <td className="px-3 py-2">{l.demand_date?.split("T")[0]}</td><td className="px-3 py-2">{l.due_date?.split("T")[0]||"—"}</td>
-            <td className="px-3 py-2 font-medium">₹{fmt(l.amount)}</td><td className="px-3 py-2">₹{fmt(l.paid_amount)}</td>
+            <td className="px-3 py-2 font-medium">{sym}{fmt(l.amount)}</td><td className="px-3 py-2">{sym}{fmt(l.paid_amount)}</td>
             <td className="px-3 py-2"><Badge className={STATUS_C[l.status]||"bg-gray-100 text-gray-700"}>{l.status||"pending"}</Badge></td>
             <td className="px-3 py-2"><div className="flex gap-1">
               {l.status!=="paid"&&<Button size="sm" variant="outline" onClick={()=>markPaid.mutate({id:l.id,...l,paid_amount:l.amount,status:"paid"})}>Mark Paid</Button>}
@@ -316,11 +327,11 @@ function DemandLettersTab() {
             <F label="Customer Name *"><Input value={form.customer_name||""} onChange={e=>setForm({...form,customer_name:e.target.value})}/></F>
             <F label="Unit Number"><Input value={form.unit_number||""} onChange={e=>setForm({...form,unit_number:e.target.value})}/></F>
             <F label="Milestone / Description"><Input value={form.milestone||""} onChange={e=>setForm({...form,milestone:e.target.value})}/></F>
-            <F label="Amount (₹) *"><Input type="number" value={form.amount||""} onChange={e=>setForm({...form,amount:e.target.value})}/></F>
+            <F label="Amount (${sym}) *"><Input type="number" value={form.amount||""} onChange={e=>setForm({...form,amount:e.target.value})}/></F>
             <F label="Demand Date"><Input type="date" value={form.demand_date||""} onChange={e=>setForm({...form,demand_date:e.target.value})}/></F>
             <F label="Due Date"><Input type="date" value={form.due_date||""} onChange={e=>setForm({...form,due_date:e.target.value})}/></F>
             <F label="Status"><Select value={form.status||"pending"} onValueChange={v=>setForm({...form,status:v})}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{["pending","partial","paid","overdue"].map(s=><SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select></F>
-            <F label="Paid Amount (₹)"><Input type="number" value={form.paid_amount||""} onChange={e=>setForm({...form,paid_amount:e.target.value})}/></F>
+            <F label="Paid Amount "><Input type="number" value={form.paid_amount||""} onChange={e=>setForm({...form,paid_amount:e.target.value})}/></F>
             <div className="col-span-2"><F label="Notes"><Textarea rows={2} value={form.notes||""} onChange={e=>setForm({...form,notes:e.target.value})}/></F></div>
           </div>
           <div className="flex justify-end gap-2 pt-2"><Button variant="outline" onClick={()=>setShowForm(false)}>Cancel</Button><Button onClick={()=>saveMut.mutate(form)} disabled={saveMut.isPending}>Save</Button></div>

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FlaskConical, Plus, X, Download, CheckCircle } from "lucide-react";
+import { useTenantConfig } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string, body?: any) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -25,6 +26,8 @@ const EMPTY_ORDER = { patient_id: "", doctor_id: "", lab_test_id: "", priority: 
 const EMPTY_RESULT = { value: "", unit: "", flag: "normal", remarks: "" };
 
 export default function LabPage() {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const qc = useQueryClient();
   const [tab, setTab] = useState("orders");
   const [showTestForm, setShowTestForm] = useState(false);
@@ -110,7 +113,7 @@ export default function LabPage() {
                 <div><Label>Test</Label>
                   <Select value={orderForm.lab_test_id} onValueChange={v => of("lab_test_id", v)}>
                     <SelectTrigger><SelectValue placeholder="Select test" /></SelectTrigger>
-                    <SelectContent>{testsArr.map((t: any) => <SelectItem key={t.id} value={t.id.toString()}>{t.name} — ₹{t.price}</SelectItem>)}</SelectContent>
+                    <SelectContent>{testsArr.map((t: any) => <SelectItem key={t.id} value={t.id.toString()}>{t.name} — {sym}{t.price}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div><Label>Priority</Label>
@@ -227,7 +230,7 @@ export default function LabPage() {
                 <CardContent className="pt-4">
                   <p className="font-semibold">{t.name}</p>
                   <p className="text-xs text-gray-500">{t.category} · TAT: {t.turnaround_hours}h</p>
-                  <p className="text-sm font-medium text-green-700 mt-1">₹{t.price}</p>
+                  <p className="text-sm font-medium text-green-700 mt-1">{sym}{t.price}</p>
                   {t.reference_range && <p className="text-xs text-gray-400">Ref: {t.reference_range} {t.unit}</p>}
                 </CardContent>
               </Card>

@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Receipt, Plus, Download } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string, body?: any) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -17,6 +18,8 @@ const EMPTY_CHARGE = { description: "", category: "room", quantity: "1", rate: "
 
 export default function HotelFolioPage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [selectedFolioId, setSelectedFolioId] = useState<number | null>(null);
   const [chargeForm, setChargeForm] = useState({ ...EMPTY_CHARGE });
 
@@ -62,7 +65,7 @@ export default function HotelFolioPage() {
                     <Badge className={STATUS_COLOR[f.status]}>{f.status}</Badge>
                   </div>
                   <p className="text-xs text-gray-500">Folio #{f.folio_number} · Room {f.room_number ?? f.room_id}</p>
-                  <p className="text-xs font-medium text-green-700 mt-1">Total: ₹{Number(f.total_amount ?? 0).toLocaleString("en-IN")} · Balance: ₹{Number(f.balance_amount ?? 0).toLocaleString("en-IN")}</p>
+                  <p className="text-xs font-medium text-green-700 mt-1">Total: {sym}{Number(f.total_amount ?? 0).toLocaleString("en-IN")} · Balance: {sym}{Number(f.balance_amount ?? 0).toLocaleString("en-IN")}</p>
                 </div>
               ))}
             </div>
@@ -75,7 +78,7 @@ export default function HotelFolioPage() {
                     <p className="text-xs text-gray-500">Folio #{f.folio_number}</p>
                   </div>
                   <div className="flex gap-1 items-center">
-                    <p className="text-sm font-medium">₹{Number(f.total_amount ?? 0).toLocaleString("en-IN")}</p>
+                    <p className="text-sm font-medium">{sym}{Number(f.total_amount ?? 0).toLocaleString("en-IN")}</p>
                     <Button size="sm" variant="outline" className="h-6 text-xs" onClick={e => { e.stopPropagation(); window.open(`/api/hotel/folios/${f.id}/pdf`, "_blank"); }}><Download className="w-3 h-3" /></Button>
                   </div>
                 </div>
@@ -107,8 +110,8 @@ export default function HotelFolioPage() {
                       <td className="p-2">{it.description}</td>
                       <td className="p-2 text-xs"><Badge variant="outline">{it.category}</Badge></td>
                       <td className="p-2">{it.quantity}</td>
-                      <td className="p-2">₹{Number(it.rate ?? 0).toLocaleString("en-IN")}</td>
-                      <td className="p-2 font-medium">₹{Number(it.amount ?? 0).toLocaleString("en-IN")}</td>
+                      <td className="p-2">{sym}{Number(it.rate ?? 0).toLocaleString("en-IN")}</td>
+                      <td className="p-2 font-medium">{sym}{Number(it.amount ?? 0).toLocaleString("en-IN")}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -117,15 +120,15 @@ export default function HotelFolioPage() {
 
               <div className="flex items-center justify-between pt-2 border-t">
                 <p className="text-sm font-medium">Total</p>
-                <p className="font-bold">₹{Number(selectedFolio.total_amount ?? 0).toLocaleString("en-IN")}</p>
+                <p className="font-bold">{sym}{Number(selectedFolio.total_amount ?? 0).toLocaleString("en-IN")}</p>
               </div>
               <div className="flex items-center justify-between">
                 <p className="text-sm">Paid</p>
-                <p className="text-green-600">₹{Number(selectedFolio.paid_amount ?? 0).toLocaleString("en-IN")}</p>
+                <p className="text-green-600">{sym}{Number(selectedFolio.paid_amount ?? 0).toLocaleString("en-IN")}</p>
               </div>
               <div className="flex items-center justify-between">
                 <p className="text-sm font-medium">Balance Due</p>
-                <p className="text-red-600 font-bold">₹{Number(selectedFolio.balance_amount ?? 0).toLocaleString("en-IN")}</p>
+                <p className="text-red-600 font-bold">{sym}{Number(selectedFolio.balance_amount ?? 0).toLocaleString("en-IN")}</p>
               </div>
 
               {selectedFolio.status === "open" && (

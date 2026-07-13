@@ -13,6 +13,7 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { exportToExcel, formatCurrencyForExcel } from "@/lib/excel-export";
 import { format, subMonths } from "date-fns";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 interface ManufacturingSalesData {
   month: string;
@@ -51,11 +52,11 @@ interface ManufacturingSalesData {
 }
 
 function formatCurrency(paise: number): string {
-  return `₹${(paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  return `${sym}${(paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
 function formatUnit(paise: number): string {
-  return `₹${(paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `${sym}${(paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function pct(part: number, whole: number): number {

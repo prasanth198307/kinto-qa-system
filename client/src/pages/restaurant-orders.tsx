@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (m: string, u: string, b?: any) =>
   fetch(u, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined, credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -124,6 +125,8 @@ function VoidItemRow({
 }) {
   const { toast } = useToast();
   const [showVoidInput, setShowVoidInput] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [voidReason, setVoidReason] = useState("");
 
   const handleVoid = async () => {
@@ -201,6 +204,8 @@ function AddItemsPanel({
 }) {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [results, setResults] = useState<any[]>([]);
   const [selected, setSelected] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -283,7 +288,7 @@ function AddItemsPanel({
               onClick={() => addItem(item)}
             >
               <span>{item.name}</span>
-              <span className="text-gray-500 text-xs">₹{item.price}</span>
+              <span className="text-gray-500 text-xs">{sym}{item.price}</span>
             </button>
           ))}
         </div>
@@ -295,7 +300,7 @@ function AddItemsPanel({
               <span className="font-medium">{item.item_name}</span>
               <div className="flex items-center gap-2">
                 <span className="text-gray-500">×{item.quantity}</span>
-                <span>₹{(item.rate * item.quantity).toFixed(2)}</span>
+                <span>{sym}{(item.rate * item.quantity).toFixed(2)}</span>
                 <button
                   className="text-red-500 hover:text-red-700"
                   onClick={() => removeSelected(item.menu_item_id)}
@@ -334,6 +339,8 @@ function OrderDetailPanel({
 }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [detail, setDetail] = useState<KotOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [showAddItems, setShowAddItems] = useState(false);
@@ -413,8 +420,8 @@ function OrderDetailPanel({
                       )}
                     </td>
                     <td className="px-2 py-2 text-center">{item.quantity}</td>
-                    <td className="px-2 py-2 text-right">₹{fmt(item.rate)}</td>
-                    <td className="px-2 py-2 text-right">₹{fmt(item.amount)}</td>
+                    <td className="px-2 py-2 text-right">{sym}{fmt(item.rate)}</td>
+                    <td className="px-2 py-2 text-right">{sym}{fmt(item.amount)}</td>
                     <td className="px-2 py-2 text-center">
                       <span className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">{item.course}</span>
                     </td>
@@ -454,8 +461,8 @@ function OrderDetailPanel({
                       {item.item_name}
                     </td>
                     <td className="px-2 py-2 text-center line-through text-red-400">{item.quantity}</td>
-                    <td className="px-2 py-2 text-right line-through text-red-400">₹{fmt(item.rate)}</td>
-                    <td className="px-2 py-2 text-right line-through text-red-400">₹{fmt(item.amount)}</td>
+                    <td className="px-2 py-2 text-right line-through text-red-400">{sym}{fmt(item.rate)}</td>
+                    <td className="px-2 py-2 text-right line-through text-red-400">{sym}{fmt(item.amount)}</td>
                     <td className="px-2 py-2 text-center">
                       <span className="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded">VOID</span>
                     </td>
@@ -498,12 +505,12 @@ function OrderDetailPanel({
               ].map(row => (
                 <div key={row.label} className="flex justify-between text-xs text-gray-600">
                   <span>{row.label}</span>
-                  <span>₹{row.value}</span>
+                  <span>{sym}{row.value}</span>
                 </div>
               ))}
               <div className="border-t border-gray-200 pt-1 flex justify-between text-sm font-bold text-gray-800">
                 <span>Grand Total</span>
-                <span>₹{fmt(detail.grand_total)}</span>
+                <span>{sym}{fmt(detail.grand_total)}</span>
               </div>
             </div>
           </div>
@@ -539,6 +546,8 @@ function OrderDetailPanel({
 export default function RestaurantOrdersPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
 
   const [date, setDate] = useState(todayDate());
   const [statusFilter, setStatusFilter] = useState("all");
@@ -618,7 +627,7 @@ export default function RestaurantOrdersPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {[
           { label: "Total Orders Today", value: totalOrders, color: "text-gray-800", icon: "📋" },
-          { label: "Total Revenue", value: `₹${fmt(totalRevenue)}`, color: "text-green-700", icon: "💰" },
+          { label: "Total Revenue", value: `${sym}${fmt(totalRevenue)}`, color: "text-green-700", icon: "💰" },
           { label: "Open Orders", value: openOrders, color: "text-orange-700", icon: "🔓" },
           { label: "Paid Orders", value: paidOrders, color: "text-blue-700", icon: "✅" },
         ].map(stat => (
@@ -777,13 +786,13 @@ export default function RestaurantOrdersPage() {
                           <StatusBadge status={order.status} />
                         </td>
                         <td className="px-3 py-2.5 text-right text-gray-700">
-                          ₹{fmt(order.subtotal)}
+                          {sym}{fmt(order.subtotal)}
                         </td>
                         <td className="px-3 py-2.5 text-right text-gray-700">
-                          ₹{fmt(order.gst_amount)}
+                          {sym}{fmt(order.gst_amount)}
                         </td>
                         <td className="px-3 py-2.5 text-right font-semibold text-gray-800">
-                          ₹{fmt(order.grand_total)}
+                          {sym}{fmt(order.grand_total)}
                         </td>
                         <td className="px-3 py-2.5 text-gray-600 text-xs">
                           {order.cashier_name || "—"}

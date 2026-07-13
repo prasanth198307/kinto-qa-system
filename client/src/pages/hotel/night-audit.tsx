@@ -3,12 +3,15 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Moon, Play, CheckCircle, TrendingUp } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string, body?: any) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 export default function HotelNightAuditPage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [running, setRunning] = useState(false);
   const [lastResult, setLastResult] = useState<any>(null);
 
@@ -48,7 +51,7 @@ export default function HotelNightAuditPage() {
           <CardHeader><CardTitle className="text-base text-green-700 flex items-center gap-2"><CheckCircle className="w-4 h-4" />Audit Completed</CardTitle></CardHeader>
           <CardContent className="grid grid-cols-4 gap-4">
             <div><p className="text-xs text-gray-500">Occupancy</p><p className="text-2xl font-bold">{lastResult.occupancy_pct ?? 0}%</p></div>
-            <div><p className="text-xs text-gray-500">Revenue</p><p className="text-2xl font-bold">₹{Number(lastResult.total_revenue ?? 0).toLocaleString("en-IN")}</p></div>
+            <div><p className="text-xs text-gray-500">Revenue</p><p className="text-2xl font-bold">{sym}{Number(lastResult.total_revenue ?? 0).toLocaleString("en-IN")}</p></div>
             <div><p className="text-xs text-gray-500">Arrivals</p><p className="text-2xl font-bold">{lastResult.arrivals ?? 0}</p></div>
             <div><p className="text-xs text-gray-500">Departures</p><p className="text-2xl font-bold">{lastResult.departures ?? 0}</p></div>
           </CardContent>
@@ -75,7 +78,7 @@ export default function HotelNightAuditPage() {
                   </td>
                   <td className="p-2">{h.arrivals}</td>
                   <td className="p-2">{h.departures}</td>
-                  <td className="p-2 font-medium">₹{Number(h.total_revenue ?? 0).toLocaleString("en-IN")}</td>
+                  <td className="p-2 font-medium">{sym}{Number(h.total_revenue ?? 0).toLocaleString("en-IN")}</td>
                 </tr>
               ))}
             </tbody>

@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { Trash2, Plus, CheckCircle2, XCircle, Package, AlertTriangle, Loader2, IndianRupee } from "lucide-react";
 import type { ScrapInventory } from "@shared/schema";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const DAMAGE_REASONS = ["transport", "handling", "manufacturing_defect", "customer_misuse", "expired", "other"];
 const DISPOSAL_METHODS = ["recycled", "disposed", "sold_as_scrap", "repaired"];
@@ -34,6 +35,8 @@ const PROCESSED_BADGE: Record<string, { label: string; variant: "default" | "sec
 export default function ScrapManagementPage() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("pending");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [selected, setSelected] = useState<ScrapInventory | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [approveOpen, setApproveOpen] = useState(false);
@@ -55,7 +58,7 @@ export default function ScrapManagementPage() {
   const approved = scraps.filter(s => s.approvalStatus === "approved");
   const all = scraps;
 
-  const fmt = (paise: number | null | undefined) => paise != null ? `₹${(paise / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}` : "-";
+  const fmt = (paise: number | null | undefined) => paise != null ? `${sym}${(paise / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}` : "-";
 
   const addMutation = useMutation({
     mutationFn: async (data: any) => {

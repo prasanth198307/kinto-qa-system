@@ -11,9 +11,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Phone, MessageSquare, AlertTriangle, CheckCircle, Gift } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const fmt = (n: any, d = 2) => Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: d });
-const fmtAmt = (n: any) => `₹${fmt(n)}`;
+const fmtAmt = (n: any) => `${sym}${fmt(n)}`;
 const fmtWt = (n: any) => `${fmt(n, 3)} g`;
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -95,6 +96,8 @@ export function ChitMaturitySection() {
 export function ChitDefaultersSection() {
   const { toast } = useToast();
   const [showActionForm, setShowActionForm] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [selectedMember, setSelectedMember] = useState<any>(null);
   const [form, setForm] = useState<any>({ action_type: "call", action_date: today() });
   const { data: defaulters = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/chit-defaulters"] });
@@ -176,6 +179,8 @@ export function ChitDefaultersSection() {
 export function ChitRedemptionsSection() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [form, setForm] = useState<any>({ redemption_type: "gold", redemption_date: today() });
   const { data: redemptions = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/chit-redemptions"] });
   const { data: allMembers = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/chit-members"] });
@@ -247,7 +252,7 @@ export function ChitRedemptionsSection() {
             <div className="grid grid-cols-2 gap-3">
               <FL label="Gold Weight (g) if applicable"><Input data-testid="input-redemption-gold-wt" type="number" value={form.gold_weight_gm || ""} onChange={e => set("gold_weight_gm", e.target.value)} /></FL>
               <FL label="Item Tag (if jewellery)"><Input data-testid="input-redemption-item-tag" value={form.item_tag || ""} onChange={e => set("item_tag", e.target.value)} /></FL>
-              <FL label="TDS Deducted (₹)"><Input data-testid="input-redemption-tds" type="number" value={form.tds_deducted || 0} onChange={e => set("tds_deducted", e.target.value)} /></FL>
+              <FL label="TDS Deducted "><Input data-testid="input-redemption-tds" type="number" value={form.tds_deducted || 0} onChange={e => set("tds_deducted", e.target.value)} /></FL>
               <FL label="Redemption Date"><Input data-testid="input-redemption-date" type="date" value={form.redemption_date || today()} onChange={e => set("redemption_date", e.target.value)} /></FL>
             </div>
             <div className="flex gap-2 justify-end"><Button variant="outline" onClick={() => setShowForm(false)} data-testid="button-redemption-cancel">Cancel</Button><Button onClick={() => saveMut.mutate(form)} disabled={saveMut.isPending} data-testid="button-save-redemption">Process</Button></div>

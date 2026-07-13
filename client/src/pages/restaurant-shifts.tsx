@@ -10,10 +10,11 @@ import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (m: string, u: string, b?: any) =>
   fetch(u, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined, credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
-const fmt = (n: any) => "₹" + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
+const fmt = (n: any) => sym + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
 
 const DENOMS = [1000, 500, 200, 100, 50, 20, 10, 5, 2, 1];
 
@@ -157,6 +158,8 @@ function ZReportActions({ shift, onDone }: { shift: any; onDone: () => void }) {
 export default function RestaurantShiftsPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
 
   const [openForm, setOpenForm] = useState({ shift_name: "Morning Shift", cashier_name: "", terminal_id: "", outlet_id: "", opening_cash: "" });
   const [denomCounts, setDenomCounts] = useState<Record<number, string>>({});
@@ -287,7 +290,7 @@ export default function RestaurantShiftsPage() {
                 <div className="grid grid-cols-5 gap-2">
                   {DENOMS.map(d => (
                     <div key={d} className="flex items-center gap-1">
-                      <span className="text-xs w-10">₹{d}</span>
+                      <span className="text-xs w-10">{sym}{d}</span>
                       <Input type="number" min={0} placeholder="0" className="w-14 text-xs"
                         value={closeDenomCounts[d] || ""}
                         onChange={e => setCloseDenomCounts(p => ({ ...p, [d]: e.target.value }))} />
@@ -337,7 +340,7 @@ export default function RestaurantShiftsPage() {
               <div className="grid grid-cols-5 gap-2">
                 {DENOMS.map(d => (
                   <div key={d} className="flex items-center gap-1">
-                    <span className="text-xs w-10">₹{d}</span>
+                    <span className="text-xs w-10">{sym}{d}</span>
                     <Input type="number" min={0} placeholder="0" className="w-14 text-xs"
                       value={denomCounts[d] || ""}
                       onChange={e => setDenomCounts(p => ({ ...p, [d]: e.target.value }))} />

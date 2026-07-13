@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Search, User, CalendarDays, Bed, Stethoscope, FlaskConical, Pill, Receipt, Pencil, Trash2, X } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const fmt = (n: any) => Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
 const STATUS_COLORS: Record<string, string> = {
@@ -59,7 +60,7 @@ function OverviewTab() {
         <StatCard title="Total Patients" value={stats?.totalPatients ?? 0} icon={User} color="bg-blue-100 text-blue-600" />
         <StatCard title="Today Appointments" value={stats?.todayAppointments ?? 0} icon={CalendarDays} color="bg-green-100 text-green-600" />
         <StatCard title="IPD Admitted" value={stats?.ipdAdmissions ?? 0} icon={Bed} color="bg-orange-100 text-orange-600" />
-        <StatCard title="Monthly Revenue" value={`₹${fmt(stats?.monthlyRevenue)}`} icon={Receipt} color="bg-purple-100 text-purple-600" />
+        <StatCard title="Monthly Revenue" value={`${sym}${fmt(stats?.monthlyRevenue)}`} icon={Receipt} color="bg-purple-100 text-purple-600" />
       </div>
     </div>
   );
@@ -69,6 +70,8 @@ function OverviewTab() {
 function PatientsTab() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({});
@@ -166,6 +169,8 @@ function PatientsTab() {
 function DoctorsTab() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({});
 
@@ -205,7 +210,7 @@ function DoctorsTab() {
               <div className="text-sm space-y-1">
                 <p className="text-muted-foreground">{d.phone} {d.email ? `· ${d.email}` : ""}</p>
                 {d.available_days && <p className="text-xs">Available: {d.available_days}</p>}
-                {d.consultation_fee > 0 && <p className="text-xs font-medium">Fee: ₹{fmt(d.consultation_fee)}</p>}
+                {d.consultation_fee > 0 && <p className="text-xs font-medium">Fee: {sym}{fmt(d.consultation_fee)}</p>}
               </div>
             </CardContent>
           </Card>
@@ -221,7 +226,7 @@ function DoctorsTab() {
             <FieldRow label="Qualification"><Input value={form.qualification||""} onChange={e=>setForm({...form,qualification:e.target.value})} /></FieldRow>
             <FieldRow label="Phone"><Input value={form.phone||""} onChange={e=>setForm({...form,phone:e.target.value})} /></FieldRow>
             <FieldRow label="Email"><Input value={form.email||""} onChange={e=>setForm({...form,email:e.target.value})} /></FieldRow>
-            <FieldRow label="Consultation Fee (₹)"><Input type="number" value={form.consultation_fee||""} onChange={e=>setForm({...form,consultation_fee:e.target.value})} /></FieldRow>
+            <FieldRow label="Consultation Fee "><Input type="number" value={form.consultation_fee||""} onChange={e=>setForm({...form,consultation_fee:e.target.value})} /></FieldRow>
             <FieldRow label="Available Days"><Input placeholder="Mon-Sat" value={form.available_days||""} onChange={e=>setForm({...form,available_days:e.target.value})} /></FieldRow>
             <FieldRow label="From"><Input type="time" value={form.available_from||""} onChange={e=>setForm({...form,available_from:e.target.value})} /></FieldRow>
             <FieldRow label="To"><Input type="time" value={form.available_to||""} onChange={e=>setForm({...form,available_to:e.target.value})} /></FieldRow>
@@ -241,6 +246,8 @@ function DoctorsTab() {
 function OPDTab() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({});
   const [search, setSearch] = useState("");
@@ -293,7 +300,7 @@ function OPDTab() {
                 <td className="px-3 py-2">{a.appointment_date?.split("T")[0]}</td>
                 <td className="px-3 py-2">{a.slot_time || "—"}</td>
                 <td className="px-3 py-2">{a.type}</td>
-                <td className="px-3 py-2">₹{fmt(a.consultation_fee)}</td>
+                <td className="px-3 py-2">{sym}{fmt(a.consultation_fee)}</td>
                 <td className="px-3 py-2"><Badge className={STATUS_COLORS[a.status] || ""}>{a.status}</Badge></td>
                 <td className="px-3 py-2">
                   <div className="flex gap-1">
@@ -341,7 +348,7 @@ function OPDTab() {
                 <SelectContent>{["scheduled","completed","cancelled"].map(s=><SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
               </Select>
             </FieldRow>
-            <div className="col-span-2"><FieldRow label="Consultation Fee (₹)"><Input type="number" value={form.consultation_fee||""} onChange={e=>setForm({...form,consultation_fee:e.target.value})} /></FieldRow></div>
+            <div className="col-span-2"><FieldRow label="Consultation Fee "><Input type="number" value={form.consultation_fee||""} onChange={e=>setForm({...form,consultation_fee:e.target.value})} /></FieldRow></div>
             <div className="col-span-2"><FieldRow label="Diagnosis"><Textarea rows={2} value={form.diagnosis||""} onChange={e=>setForm({...form,diagnosis:e.target.value})} /></FieldRow></div>
             <div className="col-span-2"><FieldRow label="Notes"><Textarea rows={2} value={form.notes||""} onChange={e=>setForm({...form,notes:e.target.value})} /></FieldRow></div>
           </div>
@@ -359,6 +366,8 @@ function OPDTab() {
 function IPDTab() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({});
 
@@ -401,7 +410,7 @@ function IPDTab() {
                 <td className="px-3 py-2">{a.doctor_name || "—"}</td>
                 <td className="px-3 py-2">{a.admission_date?.split("T")[0]}</td>
                 <td className="px-3 py-2">{a.discharge_date?.split("T")[0] || "—"}</td>
-                <td className="px-3 py-2">₹{fmt(a.daily_charge)}</td>
+                <td className="px-3 py-2">{sym}{fmt(a.daily_charge)}</td>
                 <td className="px-3 py-2"><Badge className={STATUS_COLORS[a.status]||""}>{a.status}</Badge></td>
                 <td className="px-3 py-2"><Button size="icon" variant="ghost" onClick={()=>openEdit(a)}><Pencil className="h-3.5 w-3.5" /></Button></td>
               </tr>
@@ -439,7 +448,7 @@ function IPDTab() {
             </div>
             <FieldRow label="Admission Date"><Input type="date" value={form.admission_date||""} onChange={e=>setForm({...form,admission_date:e.target.value})} /></FieldRow>
             <FieldRow label="Discharge Date"><Input type="date" value={form.discharge_date||""} onChange={e=>setForm({...form,discharge_date:e.target.value})} /></FieldRow>
-            <FieldRow label="Daily Charge (₹)"><Input type="number" value={form.daily_charge||""} onChange={e=>setForm({...form,daily_charge:e.target.value})} /></FieldRow>
+            <FieldRow label="Daily Charge "><Input type="number" value={form.daily_charge||""} onChange={e=>setForm({...form,daily_charge:e.target.value})} /></FieldRow>
             <FieldRow label="Status">
               <Select value={form.status||"admitted"} onValueChange={v=>setForm({...form,status:v})}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -463,6 +472,8 @@ function IPDTab() {
 function LabTab() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({});
   const [search, setSearch] = useState("");
@@ -509,7 +520,7 @@ function LabTab() {
                 <td className="px-3 py-2">{t.ordered_date?.split("T")[0]}</td>
                 <td className="px-3 py-2 max-w-[150px] truncate">{t.result || "—"}</td>
                 <td className="px-3 py-2"><Badge className={STATUS_COLORS[t.status]||""}>{t.status}</Badge></td>
-                <td className="px-3 py-2">₹{fmt(t.amount)}</td>
+                <td className="px-3 py-2">{sym}{fmt(t.amount)}</td>
                 <td className="px-3 py-2">
                   <div className="flex gap-1">
                     <Button size="icon" variant="ghost" onClick={()=>openEdit(t)}><Pencil className="h-3.5 w-3.5" /></Button>
@@ -544,7 +555,7 @@ function LabTab() {
             </div>
             <div className="col-span-2"><FieldRow label="Test Name *"><Input value={form.test_name||""} onChange={e=>setForm({...form,test_name:e.target.value})} /></FieldRow></div>
             <FieldRow label="Ordered Date"><Input type="date" value={form.ordered_date||""} onChange={e=>setForm({...form,ordered_date:e.target.value})} /></FieldRow>
-            <FieldRow label="Charge (₹)"><Input type="number" value={form.amount||""} onChange={e=>setForm({...form,amount:e.target.value})} /></FieldRow>
+            <FieldRow label="Charge "><Input type="number" value={form.amount||""} onChange={e=>setForm({...form,amount:e.target.value})} /></FieldRow>
             <FieldRow label="Normal Range"><Input value={form.normal_range||""} onChange={e=>setForm({...form,normal_range:e.target.value})} /></FieldRow>
             <FieldRow label="Status">
               <Select value={form.status||"pending"} onValueChange={v=>setForm({...form,status:v})}>
@@ -569,6 +580,8 @@ function LabTab() {
 function PharmacyTab() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({});
   const [search, setSearch] = useState("");
@@ -607,7 +620,7 @@ function PharmacyTab() {
       <div className="rounded-md border overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-muted/50">
-            <tr>{["Code","Name","Generic","Category","Unit","Stock","Reorder","Purchase ₹","Selling ₹","Expiry","Action"].map(h=><th key={h} className="px-3 py-2 text-left font-medium">{h}</th>)}</tr>
+            <tr>{["Code","Name","Generic","Category","Unit","Stock","Reorder","Purchase ${sym}","Selling ${sym}","Expiry","Action"].map(h=><th key={h} className="px-3 py-2 text-left font-medium">{h}</th>)}</tr>
           </thead>
           <tbody>
             {filtered.map(m => {
@@ -621,8 +634,8 @@ function PharmacyTab() {
                   <td className="px-3 py-2">{m.unit}</td>
                   <td className={`px-3 py-2 font-medium ${lowS ? "text-red-600" : ""}`}>{m.stock_qty}</td>
                   <td className="px-3 py-2">{m.reorder_level}</td>
-                  <td className="px-3 py-2">₹{fmt(m.purchase_price)}</td>
-                  <td className="px-3 py-2">₹{fmt(m.selling_price)}</td>
+                  <td className="px-3 py-2">{sym}{fmt(m.purchase_price)}</td>
+                  <td className="px-3 py-2">{sym}{fmt(m.selling_price)}</td>
                   <td className="px-3 py-2">{m.expiry_date?.split("T")[0] || "—"}</td>
                   <td className="px-3 py-2">
                     <div className="flex gap-1">
@@ -648,8 +661,8 @@ function PharmacyTab() {
             <FieldRow label="Manufacturer"><Input value={form.manufacturer||""} onChange={e=>setForm({...form,manufacturer:e.target.value})} /></FieldRow>
             <FieldRow label="Stock Qty"><Input type="number" value={form.stock_qty||""} onChange={e=>setForm({...form,stock_qty:e.target.value})} /></FieldRow>
             <FieldRow label="Reorder Level"><Input type="number" value={form.reorder_level||""} onChange={e=>setForm({...form,reorder_level:e.target.value})} /></FieldRow>
-            <FieldRow label="Purchase Price (₹)"><Input type="number" value={form.purchase_price||""} onChange={e=>setForm({...form,purchase_price:e.target.value})} /></FieldRow>
-            <FieldRow label="Selling Price (₹)"><Input type="number" value={form.selling_price||""} onChange={e=>setForm({...form,selling_price:e.target.value})} /></FieldRow>
+            <FieldRow label="Purchase Price "><Input type="number" value={form.purchase_price||""} onChange={e=>setForm({...form,purchase_price:e.target.value})} /></FieldRow>
+            <FieldRow label="Selling Price "><Input type="number" value={form.selling_price||""} onChange={e=>setForm({...form,selling_price:e.target.value})} /></FieldRow>
             <div className="col-span-2"><FieldRow label="Expiry Date"><Input type="date" value={form.expiry_date||""} onChange={e=>setForm({...form,expiry_date:e.target.value})} /></FieldRow></div>
           </div>
           <div className="flex justify-end gap-2 pt-2">
@@ -666,6 +679,8 @@ function PharmacyTab() {
 function BillingTab() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({});
   const [items, setItems] = useState<any[]>([]);
@@ -737,9 +752,9 @@ function BillingTab() {
                 <td className="px-3 py-2 font-medium">{b.patient_name}</td>
                 <td className="px-3 py-2">{b.bill_date?.split("T")[0]}</td>
                 <td className="px-3 py-2 capitalize">{b.bill_type}</td>
-                <td className="px-3 py-2">₹{fmt(b.total_amount)}</td>
-                <td className="px-3 py-2">₹{fmt(b.paid_amount)}</td>
-                <td className="px-3 py-2">₹{fmt(b.balance_amount)}</td>
+                <td className="px-3 py-2">{sym}{fmt(b.total_amount)}</td>
+                <td className="px-3 py-2">{sym}{fmt(b.paid_amount)}</td>
+                <td className="px-3 py-2">{sym}{fmt(b.balance_amount)}</td>
                 <td className="px-3 py-2"><Badge className={STATUS_COLORS[b.status]||""}>{b.status}</Badge></td>
                 <td className="px-3 py-2">
                   <div className="flex gap-1">
@@ -788,20 +803,20 @@ function BillingTab() {
                         <td className="px-2 py-1"><Input className="h-7" value={it.description} onChange={e=>updateItem(i,"description",e.target.value)} /></td>
                         <td className="px-2 py-1"><Input className="h-7 w-16" type="number" value={it.quantity} onChange={e=>updateItem(i,"quantity",e.target.value)} /></td>
                         <td className="px-2 py-1"><Input className="h-7 w-24" type="number" value={it.rate} onChange={e=>updateItem(i,"rate",e.target.value)} /></td>
-                        <td className="px-2 py-1 font-medium">₹{fmt(it.amount)}</td>
+                        <td className="px-2 py-1 font-medium">{sym}{fmt(it.amount)}</td>
                         <td className="px-2 py-1"><Button size="icon" variant="ghost" onClick={()=>removeItem(i)}><X className="h-3 w-3" /></Button></td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-              <div className="text-right font-semibold">Total: ₹{fmt(totalAmt)}</div>
+              <div className="text-right font-semibold">Total: {sym}{fmt(totalAmt)}</div>
             </div>
           )}
           <div className="grid grid-cols-2 gap-3">
-            <FieldRow label="Total Amount (₹)"><Input type="number" value={editing ? form.total_amount||"" : totalAmt} onChange={e=>setForm({...form,total_amount:e.target.value})} readOnly={!editing} /></FieldRow>
-            <FieldRow label="Discount (₹)"><Input type="number" value={form.discount_amount||""} onChange={e=>setForm({...form,discount_amount:e.target.value})} /></FieldRow>
-            <FieldRow label="Paid Amount (₹)"><Input type="number" value={form.paid_amount||""} onChange={e=>setForm({...form,paid_amount:e.target.value})} /></FieldRow>
+            <FieldRow label="Total Amount "><Input type="number" value={editing ? form.total_amount||"" : totalAmt} onChange={e=>setForm({...form,total_amount:e.target.value})} readOnly={!editing} /></FieldRow>
+            <FieldRow label="Discount "><Input type="number" value={form.discount_amount||""} onChange={e=>setForm({...form,discount_amount:e.target.value})} /></FieldRow>
+            <FieldRow label="Paid Amount "><Input type="number" value={form.paid_amount||""} onChange={e=>setForm({...form,paid_amount:e.target.value})} /></FieldRow>
             <FieldRow label="Payment Mode">
               <Select value={form.payment_mode||"cash"} onValueChange={v=>setForm({...form,payment_mode:v})}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -824,6 +839,8 @@ function BillingTab() {
 function WardsTab() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({});
 
@@ -854,7 +871,7 @@ function WardsTab() {
                   <p className="font-semibold">{w.ward_name}</p>
                   <p className="text-sm text-muted-foreground capitalize">{w.ward_type}</p>
                   <p className="text-sm mt-1">Total Beds: <strong>{w.total_beds}</strong></p>
-                  <p className="text-sm">Charge/Day: <strong>₹{fmt(w.charge_per_day)}</strong></p>
+                  <p className="text-sm">Charge/Day: <strong>{sym}{fmt(w.charge_per_day)}</strong></p>
                 </div>
                 <div className="flex gap-1">
                   <Button size="icon" variant="ghost" onClick={()=>openEdit(w)}><Pencil className="h-3.5 w-3.5" /></Button>
@@ -878,7 +895,7 @@ function WardsTab() {
               </Select>
             </FieldRow>
             <FieldRow label="Total Beds"><Input type="number" value={form.total_beds||""} onChange={e=>setForm({...form,total_beds:e.target.value})} /></FieldRow>
-            <FieldRow label="Charge per Day (₹)"><Input type="number" value={form.charge_per_day||""} onChange={e=>setForm({...form,charge_per_day:e.target.value})} /></FieldRow>
+            <FieldRow label="Charge per Day "><Input type="number" value={form.charge_per_day||""} onChange={e=>setForm({...form,charge_per_day:e.target.value})} /></FieldRow>
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={()=>setShowForm(false)}>Cancel</Button>

@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Package, Plus, X, AlertTriangle } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string, body?: any) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -23,6 +24,8 @@ const EMPTY = { drug_id: "", batch_number: "", expiry_date: "", quantity: "", mr
 
 export default function StockPage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ ...EMPTY });
@@ -103,7 +106,7 @@ export default function StockPage() {
                 <td className="p-2">{s.expiry_date?.slice(0, 10)}</td>
                 <td className="p-2">{expiryBadge(s.expiry_date)}</td>
                 <td className="p-2">{s.quantity}</td>
-                <td className="p-2">₹{s.mrp}</td>
+                <td className="p-2">{sym}{s.mrp}</td>
                 <td className="p-2">{s.rack_location}</td>
               </tr>
             ))}

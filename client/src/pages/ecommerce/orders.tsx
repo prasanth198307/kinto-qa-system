@@ -2,8 +2,9 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { ChevronDown, ChevronUp, RefreshCw, Truck } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
-const fmt = (n: number) => "₹" + new Intl.NumberFormat("en-IN").format(n);
+const fmt = (n: number) => sym + new Intl.NumberFormat("en-IN").format(n);
 
 type Order = {
   id: number; order_number: string; channel_name: string; platform: string;

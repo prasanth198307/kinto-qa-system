@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (m: string, u: string, b?: any) =>
   fetch(u, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -38,6 +39,8 @@ const STATUS_STYLE: Record<string, string> = {
 function ConfigModal({ platform, cfg, onClose }: { platform: typeof PLATFORMS[0]; cfg: any; onClose: () => void }) {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [form, setForm] = useState({ api_key: cfg?.api_key || "", api_secret: cfg?.api_secret || "", restaurant_id: cfg?.restaurant_id || "", webhook_secret: cfg?.webhook_secret || "", auto_accept: cfg?.auto_accept ?? 1 });
   const save = useMutation({
     mutationFn: () => api("POST", "/api/aggregators/config", { platform: platform.id, ...form }),
@@ -84,6 +87,8 @@ function ConfigModal({ platform, cfg, onClose }: { platform: typeof PLATFORMS[0]
 export default function RestaurantAggregatorsPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [tab, setTab] = useState<"platforms" | "orders" | "commission" | "sync">("platforms");
   const [configModal, setConfigModal] = useState<typeof PLATFORMS[0] | null>(null);
   const [filterPlatform, setFilterPlatform] = useState("all");
@@ -119,7 +124,7 @@ export default function RestaurantAggregatorsPage() {
   const totalOrders = commList.reduce((s, r) => s + Number(r.orders || 0), 0);
   const totalRev = commList.reduce((s, r) => s + Number(r.revenue || 0), 0);
   const totalComm = commList.reduce((s, r) => s + Number(r.commission || 0), 0);
-  const fmtCurr = (n: number) => `₹${Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
+  const fmtCurr = (n: number) => `${sym}${Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 
   const TABS = [
     { id: "platforms", label: "🌐 Platforms" },
@@ -250,8 +255,8 @@ export default function RestaurantAggregatorsPage() {
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="text-2xl font-black text-gray-800">₹{Number(order.total_amount).toFixed(0)}</div>
-                          {Number(order.platform_commission) > 0 && <div className="text-xs text-red-500">Commission: ₹{Number(order.platform_commission).toFixed(0)}</div>}
+                          <div className="text-2xl font-black text-gray-800">{sym}{Number(order.total_amount).toFixed(0)}</div>
+                          {Number(order.platform_commission) > 0 && <div className="text-xs text-red-500">Commission: {sym}{Number(order.platform_commission).toFixed(0)}</div>}
                           {Number(order.estimated_delivery_time) > 0 && <div className="text-xs text-gray-400">ETA: {order.estimated_delivery_time} min</div>}
                           <div className="text-xs text-gray-400 mt-1">{new Date(order.created_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</div>
                           {nextStatuses.length > 0 && (

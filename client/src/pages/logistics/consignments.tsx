@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string, body?: any) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -30,6 +31,8 @@ const EMPTY = {
 export default function ConsignmentsPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>(EMPTY);
@@ -129,7 +132,7 @@ export default function ConsignmentsPage() {
         <DialogContent style={{ maxWidth: 580 }}>
           <DialogHeader><DialogTitle>{editing ? "Edit Consignment" : "New Consignment Note"}</DialogTitle></DialogHeader>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            {[["lr_no", "LR No"], ["shipper_name", "Shipper"], ["consignee_name", "Consignee"], ["origin", "Origin"], ["destination", "Destination"], ["weight_kg", "Weight (kg)"], ["freight_charges", "Freight Charges (₹)"], ["eway_bill_no", "E-Way Bill No"], ["goods_description", "Goods Description"]].map(([k, lbl]) => (
+            {[["lr_no", "LR No"], ["shipper_name", "Shipper"], ["consignee_name", "Consignee"], ["origin", "Origin"], ["destination", "Destination"], ["weight_kg", "Weight (kg)"], ["freight_charges", "Freight Charges "], ["eway_bill_no", "E-Way Bill No"], ["goods_description", "Goods Description"]].map(([k, lbl]) => (
               <div key={k} style={k === "goods_description" ? { gridColumn: "1/-1" } : {}}>
                 <Label>{lbl}</Label>
                 <Input value={form[k] || ""} onChange={set(k)} type={["weight_kg", "freight_charges"].includes(k) ? "number" : "text"} />

@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const apiRequest = async (method: string, url: string, body?: any) => {
   const r = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined, credentials: "include" });
@@ -21,6 +22,8 @@ const STAGES = ["New", "Contacted", "Test Scheduled", "Selected", "Enrolled"];
 
 function AdmissionsTab() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { data: inquiries = [] } = useQuery({ queryKey: ["/api/education/inquiries"], queryFn: () => apiRequest("GET", "/api/education/inquiries") });
   const [showAdd, setShowAdd] = useState(false);
   const [f, setF] = useState({ student_name: "", phone: "", father_name: "", applying_for_class: "", source: "" });
@@ -67,6 +70,8 @@ function AdmissionsTab() {
 
 function StudentsTab() {
   const [cls, setCls] = useState(""); const [sec, setSec] = useState("");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { data: students = [] } = useQuery({ queryKey: ["/api/education/students", cls, sec], queryFn: () => apiRequest("GET", `/api/education/students?class=${cls}&section=${sec}`) });
   return (
     <div className="space-y-3">
@@ -80,6 +85,8 @@ function StudentsTab() {
 
 function AcademicsTab() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { data: assignments = [] } = useQuery({ queryKey: ["/api/education/assignments"], queryFn: () => apiRequest("GET", "/api/education/assignments") });
   const { data: exams = [] } = useQuery({ queryKey: ["/api/education/online-exams"], queryFn: () => apiRequest("GET", "/api/education/online-exams") });
   const { data: circulars = [] } = useQuery({ queryKey: ["/api/education/circulars"], queryFn: () => apiRequest("GET", "/api/education/circulars") });
@@ -121,10 +128,10 @@ function FeesTab() {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-3 gap-3">
-        {[["Today's Collection", summary.today_collection],["Monthly Total", summary.monthly_total],["Pending Dues", summary.pending_dues]].map(([l,v]) => <Card key={l as string}><CardContent className="pt-4"><div className="text-xs text-gray-500">{l}</div><div className="text-xl font-bold">₹{fmt(v)}</div></CardContent></Card>)}
+        {[["Today's Collection", summary.today_collection],["Monthly Total", summary.monthly_total],["Pending Dues", summary.pending_dues]].map(([l,v]) => <Card key={l as string}><CardContent className="pt-4"><div className="text-xs text-gray-500">{l}</div><div className="text-xl font-bold">{sym}{fmt(v)}</div></CardContent></Card>)}
       </div>
       <Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Class</TableHead><TableHead>Fee Type</TableHead><TableHead>Amount</TableHead><TableHead>Paid</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
-        <TableBody>{fees.map((f: any) => <TableRow key={f.id}><TableCell>{f.student_name}</TableCell><TableCell>{f.class_name}</TableCell><TableCell>{f.fee_type}</TableCell><TableCell>₹{fmt(f.amount)}</TableCell><TableCell>{f.paid_date}</TableCell><TableCell><Badge variant={f.status === "paid" ? "default" : "destructive"}>{f.status}</Badge></TableCell></TableRow>)}</TableBody>
+        <TableBody>{fees.map((f: any) => <TableRow key={f.id}><TableCell>{f.student_name}</TableCell><TableCell>{f.class_name}</TableCell><TableCell>{f.fee_type}</TableCell><TableCell>{sym}{fmt(f.amount)}</TableCell><TableCell>{f.paid_date}</TableCell><TableCell><Badge variant={f.status === "paid" ? "default" : "destructive"}>{f.status}</Badge></TableCell></TableRow>)}</TableBody>
       </Table>
     </div>
   );
@@ -136,10 +143,10 @@ function HostelTab() {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-6 gap-2">
-        {rooms.map((r: any) => <Card key={r.id} className={r.occupied >= r.capacity ? "border-red-300" : "border-green-300"}><CardContent className="pt-3 text-xs text-center"><div className="font-bold">Room {r.room_number}</div><div>{r.occupied}/{r.capacity}</div><div className="text-gray-500">₹{fmt(r.monthly_charge)}/mo</div></CardContent></Card>)}
+        {rooms.map((r: any) => <Card key={r.id} className={r.occupied >= r.capacity ? "border-red-300" : "border-green-300"}><CardContent className="pt-3 text-xs text-center"><div className="font-bold">Room {r.room_number}</div><div>{r.occupied}/{r.capacity}</div><div className="text-gray-500">{sym}{fmt(r.monthly_charge)}/mo</div></CardContent></Card>)}
       </div>
       <Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Room</TableHead><TableHead>Monthly</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
-        <TableBody>{allotments.map((a: any) => <TableRow key={a.id}><TableCell>{a.student_name}</TableCell><TableCell>{a.room_number}</TableCell><TableCell>₹{fmt(a.monthly_charge)}</TableCell><TableCell><Badge>{a.status}</Badge></TableCell></TableRow>)}</TableBody>
+        <TableBody>{allotments.map((a: any) => <TableRow key={a.id}><TableCell>{a.student_name}</TableCell><TableCell>{a.room_number}</TableCell><TableCell>{sym}{fmt(a.monthly_charge)}</TableCell><TableCell><Badge>{a.status}</Badge></TableCell></TableRow>)}</TableBody>
       </Table>
     </div>
   );
@@ -147,6 +154,8 @@ function HostelTab() {
 
 function AlumniTab() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { data: alumni = [] } = useQuery({ queryKey: ["/api/education/alumni"], queryFn: () => apiRequest("GET", "/api/education/alumni") });
   const [f, setF] = useState({ name: "", batch_year: "", last_class: "", current_occupation: "", company: "", phone: "", email: "" });
   const add = useMutation({ mutationFn: (d: any) => apiRequest("POST", "/api/education/alumni", d), onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/education/alumni"] }) });

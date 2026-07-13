@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertTriangle, CheckCircle, Clock, Play, Loader2, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string, body?: any) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -16,6 +17,8 @@ const api = (method: string, path: string, body?: any) =>
 export default function LoyaltyExpiryPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [expiryDays, setExpiryDays] = useState("");
 
   const { data: stats, isLoading, refetch } = useQuery<any>({
@@ -157,7 +160,7 @@ export default function LoyaltyExpiryPage() {
                 Save Expiry Configuration
               </Button>
               <div className="text-sm text-muted-foreground space-y-1 border-t pt-3">
-                <p><strong>Current config:</strong> {config?.expiry_days || "Not set"} days · Points per ₹100: {config?.points_per_100 || "—"} · Redemption value: ₹{config?.redemption_value || "—"}/point</p>
+                <p><strong>Current config:</strong> {config?.expiry_days || "Not set"} days · Points per ₹100: {config?.points_per_100 || "—"} · Redemption value: {sym}{config?.redemption_value || "—"}/point</p>
                 <p><strong>Min redemption:</strong> {config?.min_redemption || "—"} points</p>
               </div>
             </CardContent>

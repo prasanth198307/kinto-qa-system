@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Download, Mail, FileText, Eye } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string, body?: any) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined, credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -34,7 +35,7 @@ const CERT_TEMPLATE = (donor: typeof MOCK_DONORS[0], fy: string) => `
     <tr><td style="padding: 8px; font-weight: bold;">Receipt No:</td><td>${donor.receipt_no}</td></tr>
     <tr><td style="padding: 8px; font-weight: bold;">Donor Name:</td><td>${donor.name}</td></tr>
     <tr><td style="padding: 8px; font-weight: bold;">PAN:</td><td>${donor.pan}</td></tr>
-    <tr><td style="padding: 8px; font-weight: bold;">Amount:</td><td>₹${donor.amount.toLocaleString("en-IN")} (${donor.amount >= 2000 ? "by cheque/online" : "cash"})</td></tr>
+    <tr><td style="padding: 8px; font-weight: bold;">Amount:</td><td>${sym}${donor.amount.toLocaleString("en-IN")} (${donor.amount >= 2000 ? "by cheque/online" : "cash"})</td></tr>
     <tr><td style="padding: 8px; font-weight: bold;">Date:</td><td>${donor.date}</td></tr>
     <tr><td style="padding: 8px; font-weight: bold;">Financial Year:</td><td>${fy}</td></tr>
   </table>
@@ -51,6 +52,8 @@ const CERT_TEMPLATE = (donor: typeof MOCK_DONORS[0], fy: string) => `
 export default function BulkCertificatePage() {
   const { toast } = useToast();
   const [fy, setFy] = useState("2025-26");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [fromDate, setFromDate] = useState("2025-04-01");
   const [toDate, setToDate] = useState("2026-03-31");
   const [selected, setSelected] = useState<number[]>([]);
@@ -121,7 +124,7 @@ export default function BulkCertificatePage() {
 
       {selected.length > 0 && (
         <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
-          <p className="text-blue-800 font-medium">{selected.length} donors selected — ₹{totalAmount.toLocaleString("en-IN")} total</p>
+          <p className="text-blue-800 font-medium">{selected.length} donors selected — {sym}{totalAmount.toLocaleString("en-IN")} total</p>
           <div className="flex gap-2 ml-auto">
             <Button onClick={() => generateAll.mutate()} disabled={generateAll.isPending}>
               {generateAll.isPending ? "Generating..." : "Generate All PDFs"}
@@ -164,7 +167,7 @@ export default function BulkCertificatePage() {
                   <TableCell className="font-mono text-sm">{d.pan}</TableCell>
                   <TableCell className="font-mono text-sm">{d.receipt_no}</TableCell>
                   <TableCell>{d.date}</TableCell>
-                  <TableCell className="text-right">₹{d.amount.toLocaleString("en-IN")}</TableCell>
+                  <TableCell className="text-right">{sym}{d.amount.toLocaleString("en-IN")}</TableCell>
                   <TableCell>
                     <Button size="sm" variant="ghost" onClick={() => setPreviewDonor(d)}>
                       <Eye className="h-4 w-4" />

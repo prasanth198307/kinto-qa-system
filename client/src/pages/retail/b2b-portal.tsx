@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Plus } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string, body?: unknown) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -29,6 +30,8 @@ const MOCK_ORDERS = [
 
 export default function B2BPortalPage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [orderOpen, setOrderOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState("");
   const [tier, setTier] = useState("Wholesale");
@@ -83,7 +86,7 @@ export default function B2BPortalPage() {
                       <TableRow key={i}>
                         <TableCell className="font-medium">{String(r.name)}</TableCell>
                         <TableCell><Badge variant="outline">{String(r.tier)}</Badge></TableCell>
-                        <TableCell>₹{limit.toLocaleString()}</TableCell>
+                        <TableCell>{sym}{limit.toLocaleString()}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <div className="w-20 bg-gray-100 rounded-full h-2">
@@ -93,7 +96,7 @@ export default function B2BPortalPage() {
                           </div>
                         </TableCell>
                         <TableCell>{String(r.terms)}</TableCell>
-                        <TableCell>₹{Number(r.outstanding).toLocaleString()}</TableCell>
+                        <TableCell>{sym}{Number(r.outstanding).toLocaleString()}</TableCell>
                         <TableCell>
                           <div className="flex gap-1">
                             <Button size="sm" variant="outline">Credit Note</Button>
@@ -129,7 +132,7 @@ export default function B2BPortalPage() {
                       <TableCell className="font-mono">{o.id}</TableCell>
                       <TableCell>{o.customer}</TableCell>
                       <TableCell>{o.items} items</TableCell>
-                      <TableCell>₹{o.amount.toLocaleString()}</TableCell>
+                      <TableCell>{sym}{o.amount.toLocaleString()}</TableCell>
                       <TableCell>{o.date}</TableCell>
                       <TableCell>
                         <Badge variant={o.status === "Delivered" ? "default" : "outline"}>{o.status}</Badge>
@@ -171,8 +174,8 @@ export default function B2BPortalPage() {
                     return (
                       <TableRow key={i}>
                         <TableCell>{p.product}</TableCell>
-                        <TableCell>₹{p.mrp.toLocaleString()}</TableCell>
-                        <TableCell>₹{price.toLocaleString()}</TableCell>
+                        <TableCell>{sym}{p.mrp.toLocaleString()}</TableCell>
+                        <TableCell>{sym}{price.toLocaleString()}</TableCell>
                         <TableCell><Badge variant="secondary">{disc}% off</Badge></TableCell>
                       </TableRow>
                     );

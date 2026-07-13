@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Link, Code, CreditCard } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 interface EmbedSnippet {
   script_tag: string; inline_embed: string; direct_url: string; iframe: string;
@@ -18,6 +19,8 @@ export default function SwachFormsPreviewPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [showEmbed, setShowEmbed] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [embedSnippet, setEmbedSnippet] = useState<EmbedSnippet | null>(null);
   const [embedTab, setEmbedTab] = useState<"script_tag" | "inline_embed" | "direct_url" | "iframe">("script_tag");
 
@@ -66,7 +69,7 @@ export default function SwachFormsPreviewPage() {
               <span className="font-medium text-green-800 text-sm">{field.label}{field.required && <span className="text-red-500 ml-1">*</span>}</span>
             </div>
             <div className="text-green-700 font-semibold">
-              {field.currency === "USD" ? "$" : field.currency === "EUR" ? "€" : "₹"}{field.amount}
+              {field.currency === "USD" ? "$" : field.currency === "EUR" ? "€" : sym}{field.amount}
             </div>
             {field.description && <p className="text-xs text-green-600 mt-1">{field.description}</p>}
             <button className="mt-2 bg-green-600 text-white text-xs px-3 py-1 rounded opacity-70 cursor-not-allowed" disabled>Pay Now</button>

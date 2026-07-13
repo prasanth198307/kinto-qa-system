@@ -21,6 +21,7 @@ import { GlobalHeader } from "@/components/GlobalHeader";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { exportToExcel, formatCurrencyForExcel, formatDateForExcel } from "@/lib/excel-export";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 interface CancelledInvoicesProps {
   showHeader?: boolean;
@@ -339,7 +340,7 @@ export default function CancelledInvoices({ showHeader = true }: CancelledInvoic
                         <TableCell className="text-right">
                           <span className="flex items-center justify-end gap-1">
                             <IndianRupee className="h-3 w-3" />
-                            {formatCurrency(invoice.totalAmount).replace('₹', '')}
+                            {formatCurrency(invoice.totalAmount).replace(sym, '')}
                           </span>
                         </TableCell>
                         <TableCell>

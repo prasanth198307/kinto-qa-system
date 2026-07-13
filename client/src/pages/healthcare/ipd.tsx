@@ -7,11 +7,14 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BedDouble, Plus, X, FileText, Download } from "lucide-react";
+import { useTenantConfig } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string, body?: any) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 export default function IpdPage() {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [charging, setCharging] = useState<number | null>(null);
@@ -105,7 +108,7 @@ export default function IpdPage() {
             {charging === a.id && (
               <CardContent className="border-t pt-3 flex gap-2 items-end">
                 <div className="flex-1"><Label className="text-xs">Charge Description</Label><Input value={chargeForm.description} onChange={e => setChargeForm(p => ({ ...p, description: e.target.value }))} placeholder="Room rent, OT charges, consumables…" /></div>
-                <div><Label className="text-xs">Amount (₹)</Label><Input type="number" value={chargeForm.amount} onChange={e => setChargeForm(p => ({ ...p, amount: e.target.value }))} className="w-32" /></div>
+                <div><Label className="text-xs">{`Amount (${sym})`}</Label><Input type="number" value={chargeForm.amount} onChange={e => setChargeForm(p => ({ ...p, amount: e.target.value }))} className="w-32" /></div>
                 <Button size="sm" onClick={() => addCharge.mutate({ id: a.id, b: { description: chargeForm.description, amount: parseFloat(chargeForm.amount) } })}>Add</Button>
               </CardContent>
             )}

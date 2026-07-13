@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Receipt, Plus, X, Trash2 } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string, body?: any) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -15,6 +16,8 @@ type Item = { drug_id: string; quantity: string; rate: string; gst_rate: string 
 
 export default function BillingPage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [showForm, setShowForm] = useState(false);
   const [header, setHeader] = useState({ patient_name: "", patient_phone: "", doctor_name: "", prescription_no: "", payment_mode: "cash", discount: "0" });
   const [items, setItems] = useState<Item[]>([{ drug_id: "", quantity: "1", rate: "", gst_rate: "12" }]);
@@ -55,8 +58,8 @@ export default function BillingPage() {
 
       <div className="grid grid-cols-3 gap-4">
         <Card><CardContent className="pt-4"><p className="text-sm text-gray-500">Total Bills</p><p className="text-2xl font-bold">{arr.length}</p></CardContent></Card>
-        <Card><CardContent className="pt-4"><p className="text-sm text-gray-500">Today's Sales</p><p className="text-2xl font-bold text-green-600">₹{todayTotal.toLocaleString()}</p></CardContent></Card>
-        <Card><CardContent className="pt-4"><p className="text-sm text-gray-500">Credit Balances</p><p className="text-2xl font-bold text-orange-600">₹{arr.reduce((s: number, r: any) => s + (parseFloat(r.balance_amount) || 0), 0).toLocaleString()}</p></CardContent></Card>
+        <Card><CardContent className="pt-4"><p className="text-sm text-gray-500">Today's Sales</p><p className="text-2xl font-bold text-green-600">{sym}{todayTotal.toLocaleString()}</p></CardContent></Card>
+        <Card><CardContent className="pt-4"><p className="text-sm text-gray-500">Credit Balances</p><p className="text-2xl font-bold text-orange-600">{sym}{arr.reduce((s: number, r: any) => s + (parseFloat(r.balance_amount) || 0), 0).toLocaleString()}</p></CardContent></Card>
       </div>
 
       {showForm && (
@@ -81,10 +84,10 @@ export default function BillingPage() {
                   </Select>
                 </div>
                 <div><Label className="text-xs">Qty</Label><Input type="number" value={it.quantity} onChange={e => setItem(i, "quantity", e.target.value)} /></div>
-                <div><Label className="text-xs">Rate (₹)</Label><Input type="number" value={it.rate} onChange={e => setItem(i, "rate", e.target.value)} /></div>
+                <div><Label className="text-xs">Rate (${sym})</Label><Input type="number" value={it.rate} onChange={e => setItem(i, "rate", e.target.value)} /></div>
                 <div><Label className="text-xs">GST %</Label><Input type="number" value={it.gst_rate} onChange={e => setItem(i, "gst_rate", e.target.value)} /></div>
                 <div className="flex gap-1 items-center">
-                  <span className="text-sm font-medium w-20">₹{lineAmount(it).toFixed(2)}</span>
+                  <span className="text-sm font-medium w-20">{sym}{lineAmount(it).toFixed(2)}</span>
                   <Button size="sm" variant="ghost" className="text-red-500" onClick={() => setItems(p => p.filter((_, idx) => idx !== i))}><Trash2 className="w-3 h-3" /></Button>
                 </div>
               </div>
@@ -92,7 +95,7 @@ export default function BillingPage() {
             <Button variant="outline" size="sm" onClick={() => setItems(p => [...p, { drug_id: "", quantity: "1", rate: "", gst_rate: "12" }])}><Plus className="w-3 h-3 mr-1" />Add Item</Button>
             <div className="flex items-end justify-between border-t pt-3">
               <div className="flex gap-3 items-end">
-                <div><Label className="text-xs">Discount (₹)</Label><Input type="number" className="w-24" value={header.discount} onChange={e => setHeader(p => ({ ...p, discount: e.target.value }))} /></div>
+                <div><Label className="text-xs">Discount (${sym})</Label><Input type="number" className="w-24" value={header.discount} onChange={e => setHeader(p => ({ ...p, discount: e.target.value }))} /></div>
                 <div><Label className="text-xs">Payment Mode</Label>
                   <Select value={header.payment_mode} onValueChange={v => setHeader(p => ({ ...p, payment_mode: v }))}>
                     <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
@@ -101,7 +104,7 @@ export default function BillingPage() {
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-xl font-bold">Net: ₹{net.toFixed(2)}</p>
+                <p className="text-xl font-bold">Net: {sym}{net.toFixed(2)}</p>
                 <p className="text-xs text-gray-500">GL: DR Cash/AR · CR Drug Sales + GST (auto)</p>
                 <Button className="mt-1" onClick={save}>Save & Post GL</Button>
               </div>
@@ -122,8 +125,8 @@ export default function BillingPage() {
                 </div>
               </div>
               <div className="text-right">
-                <p className="font-semibold">₹{parseFloat(s.total_amount || 0).toLocaleString()}</p>
-                <Badge className={parseFloat(s.balance_amount || 0) > 0 ? "bg-orange-100 text-orange-800" : "bg-green-100 text-green-800"}>{parseFloat(s.balance_amount || 0) > 0 ? `Balance ₹${s.balance_amount}` : "Paid"}</Badge>
+                <p className="font-semibold">{sym}{parseFloat(s.total_amount || 0).toLocaleString()}</p>
+                <Badge className={parseFloat(s.balance_amount || 0) > 0 ? "bg-orange-100 text-orange-800" : "bg-green-100 text-green-800"}>{parseFloat(s.balance_amount || 0) > 0 ? `Balance ${sym}${s.balance_amount}` : "Paid"}</Badge>
               </div>
             </CardContent>
           </Card>

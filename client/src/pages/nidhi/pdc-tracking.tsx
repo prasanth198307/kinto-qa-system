@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string, body?: any) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then((r) => r.json());
@@ -31,6 +32,8 @@ const today = new Date().toISOString().slice(0, 10);
 
 export default function PDCTrackingPage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ member: "", loan_id: "", cheque_no: "", bank: "", amount: "", instrument_date: "" });
 
@@ -76,7 +79,7 @@ export default function PDCTrackingPage() {
               {todayDue.map((c: any) => (
                 <div key={c.id} className="border border-yellow-400 rounded p-2 text-sm">
                   <div className="font-medium">{c.member}</div>
-                  <div>Cheque #{c.cheque_no} · ₹{Number(c.amount).toLocaleString()}</div>
+                  <div>Cheque #{c.cheque_no} · {sym}{Number(c.amount).toLocaleString()}</div>
                   <Button size="sm" className="mt-1" onClick={() => updateMutation.mutate({ id: c.id, status: "Presented" })}>
                     Present
                   </Button>
@@ -116,7 +119,7 @@ export default function PDCTrackingPage() {
                       <TableCell>{c.loan_id}</TableCell>
                       <TableCell>{c.cheque_no}</TableCell>
                       <TableCell>{c.bank}</TableCell>
-                      <TableCell>₹{Number(c.amount).toLocaleString()}</TableCell>
+                      <TableCell>{sym}{Number(c.amount).toLocaleString()}</TableCell>
                       <TableCell>{c.instrument_date}</TableCell>
                       <TableCell><Badge variant={STATUS_BADGE[c.status]}>{c.status}</Badge></TableCell>
                       <TableCell>

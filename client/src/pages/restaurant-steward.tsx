@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { saveOfflineKOT, getCachedMenuData, cacheMenuData } from "@/utils/offline-db";
 import { useOffline } from "@/hooks/use-offline";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 // Types
 interface MenuItem { id: number; item_name: string; price: number; category_id: number; description?: string; is_available: boolean; }
@@ -25,6 +26,8 @@ function RecentKOTs({ tableId }: { tableId: number }) {
   });
 
   const recentOrders = Array.isArray(orders) ? orders.slice(0, 5) : [];
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   if (recentOrders.length === 0) return null;
 
   return (
@@ -68,6 +71,8 @@ export default function RestaurantStewardPage() {
 
   // State
   const [selectedTable, setSelectedTable] = useState<Table | null>(null);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
@@ -113,7 +118,7 @@ export default function RestaurantStewardPage() {
       return [...prev, { item, qty: 1, notes: "" }];
     });
     if (!cartOpen) {
-      toast({ title: `+ ${item.item_name}`, description: `₹${item.price}` });
+      toast({ title: `+ ${item.item_name}`, description: `${sym}${item.price}` });
     }
   }, [cartOpen, toast]);
 
@@ -249,7 +254,7 @@ export default function RestaurantStewardPage() {
                 🍽️
               </div>
               <div className="font-semibold text-gray-800 text-sm leading-tight line-clamp-2">{item.item_name}</div>
-              <div className="text-red-600 font-bold mt-1">₹{item.price}</div>
+              <div className="text-red-600 font-bold mt-1">{sym}{item.price}</div>
               {cartItem && (
                 <div className="absolute top-2 right-2 bg-red-600 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
                   {cartItem.qty}
@@ -265,7 +270,7 @@ export default function RestaurantStewardPage() {
         <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-red-600 text-white px-4 py-3 flex items-center justify-between z-20">
           <div>
             <div className="text-xs text-red-200">{cart.reduce((s, c) => s + c.qty, 0)} items</div>
-            <div className="font-bold text-lg">₹{grand.toFixed(2)}</div>
+            <div className="font-bold text-lg">{sym}{grand.toFixed(2)}</div>
           </div>
           <button onClick={() => setCartOpen(true)} className="bg-white text-red-600 font-bold px-5 py-2 rounded-full text-sm">
             View Cart →
@@ -292,7 +297,7 @@ export default function RestaurantStewardPage() {
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
                       <div className="font-medium text-sm">{item.item_name}</div>
-                      <div className="text-gray-500 text-xs">₹{item.price} × {qty} = ₹{(item.price * qty).toFixed(2)}</div>
+                      <div className="text-gray-500 text-xs">{sym}{item.price} × {qty} = {sym}{(item.price * qty).toFixed(2)}</div>
                     </div>
                     <div className="flex items-center gap-2 ml-3">
                       <button onClick={() => updateQty(item.id, -1)} className="w-8 h-8 bg-gray-100 rounded-full text-lg font-bold flex items-center justify-center active:bg-gray-200">−</button>
@@ -311,9 +316,9 @@ export default function RestaurantStewardPage() {
             </div>
             {/* Summary */}
             <div className="border-t px-4 py-3 bg-gray-50 space-y-1">
-              <div className="flex justify-between text-sm text-gray-600"><span>Subtotal</span><span>₹{subtotal.toFixed(2)}</span></div>
-              <div className="flex justify-between text-sm text-gray-600"><span>GST (5%)</span><span>₹{gst.toFixed(2)}</span></div>
-              <div className="flex justify-between font-bold"><span>Total</span><span className="text-red-600">₹{grand.toFixed(2)}</span></div>
+              <div className="flex justify-between text-sm text-gray-600"><span>Subtotal</span><span>{sym}{subtotal.toFixed(2)}</span></div>
+              <div className="flex justify-between text-sm text-gray-600"><span>GST (5%)</span><span>{sym}{gst.toFixed(2)}</span></div>
+              <div className="flex justify-between font-bold"><span>Total</span><span className="text-red-600">{sym}{grand.toFixed(2)}</span></div>
             </div>
             <div className="px-4 pb-safe pb-4 pt-2 flex gap-3">
               <button onClick={() => setCartOpen(false)} className="flex-1 border-2 border-gray-200 rounded-2xl py-3 font-semibold text-gray-600">Back</button>

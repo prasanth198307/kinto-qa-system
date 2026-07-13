@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BarChart2, Truck, Fuel, Users, Activity } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (path: string) => fetch(path).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
@@ -29,6 +30,8 @@ const TAB_ICONS: Record<Tab, any> = {
 
 export default function LogisticsReportsPage() {
   const [tab, setTab] = useState<Tab>("trip_summary");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [fromDate, setFromDate] = useState(() => { const d = new Date(); d.setDate(1); return d.toISOString().slice(0, 10); });
   const [toDate, setToDate] = useState(() => new Date().toISOString().slice(0, 10));
 
@@ -73,7 +76,7 @@ export default function LogisticsReportsPage() {
                 <thead><tr className="bg-gray-50">{["Route", "Trips", "Avg Distance", "Avg Revenue"].map(h => <th key={h} className="text-left p-2 border">{h}</th>)}</tr></thead>
                 <tbody>
                   {Array.isArray(r.by_route) && r.by_route.map((row: any, i: number) => (
-                    <tr key={i} className="border-b"><td className="p-2">{row.route}</td><td className="p-2">{row.trip_count}</td><td className="p-2">{row.avg_distance_km} km</td><td className="p-2">₹{row.avg_revenue?.toLocaleString()}</td></tr>
+                    <tr key={i} className="border-b"><td className="p-2">{row.route}</td><td className="p-2">{row.trip_count}</td><td className="p-2">{row.avg_distance_km} km</td><td className="p-2">{sym}{row.avg_revenue?.toLocaleString()}</td></tr>
                   ))}
                   {(!r.by_route || r.by_route?.length === 0) && <tr><td colSpan={4} className="text-center p-4 text-gray-400">No data for selected period.</td></tr>}
                 </tbody>
@@ -86,7 +89,7 @@ export default function LogisticsReportsPage() {
       {tab === "fuel_efficiency" && (
         <div className="space-y-4">
           <div className="grid grid-cols-3 gap-4">
-            {[["Total Fuel (L)", r.total_liters ?? 0, ""], ["Total Spend", `₹${(r.total_spend ?? 0).toLocaleString()}`, ""], ["Fleet Avg km/L", r.fleet_avg_kmpl ?? 0, "text-blue-600"]].map(([label, val, cls]) => (
+            {[["Total Fuel (L)", r.total_liters ?? 0, ""], ["Total Spend", `${sym}${(r.total_spend ?? 0).toLocaleString()}`, ""], ["Fleet Avg km/L", r.fleet_avg_kmpl ?? 0, "text-blue-600"]].map(([label, val, cls]) => (
               <Card key={label as string}><CardContent className="pt-4"><p className="text-sm text-gray-500">{label}</p><p className={`text-2xl font-bold ${cls}`}>{val}</p></CardContent></Card>
             ))}
           </div>
@@ -94,10 +97,10 @@ export default function LogisticsReportsPage() {
             <CardHeader><CardTitle className="text-base">Per-Vehicle Efficiency</CardTitle></CardHeader>
             <CardContent>
               <table className="w-full text-sm">
-                <thead><tr className="bg-gray-50">{["Vehicle", "Litres", "Distance km", "km/L", "Spend ₹"].map(h => <th key={h} className="text-left p-2 border">{h}</th>)}</tr></thead>
+                <thead><tr className="bg-gray-50">{["Vehicle", "Litres", "Distance km", "km/L", "Spend ${sym}"].map(h => <th key={h} className="text-left p-2 border">{h}</th>)}</tr></thead>
                 <tbody>
                   {Array.isArray(r.by_vehicle) && r.by_vehicle.map((row: any, i: number) => (
-                    <tr key={i} className="border-b"><td className="p-2">{row.registration_no}</td><td className="p-2">{row.total_liters}</td><td className="p-2">{row.distance_km}</td><td className="p-2 font-semibold">{row.kmpl}</td><td className="p-2">₹{row.spend?.toLocaleString()}</td></tr>
+                    <tr key={i} className="border-b"><td className="p-2">{row.registration_no}</td><td className="p-2">{row.total_liters}</td><td className="p-2">{row.distance_km}</td><td className="p-2 font-semibold">{row.kmpl}</td><td className="p-2">{sym}{row.spend?.toLocaleString()}</td></tr>
                   ))}
                   {(!r.by_vehicle || r.by_vehicle?.length === 0) && <tr><td colSpan={5} className="text-center p-4 text-gray-400">No data for selected period.</td></tr>}
                 </tbody>
@@ -135,10 +138,10 @@ export default function LogisticsReportsPage() {
             <CardHeader><CardTitle className="text-base">Vehicle Utilization</CardTitle></CardHeader>
             <CardContent>
               <table className="w-full text-sm">
-                <thead><tr className="bg-gray-50">{["Vehicle", "Trips", "Days Used", "Utilization %", "Revenue ₹"].map(h => <th key={h} className="text-left p-2 border">{h}</th>)}</tr></thead>
+                <thead><tr className="bg-gray-50">{["Vehicle", "Trips", "Days Used", "Utilization %", "Revenue ${sym}"].map(h => <th key={h} className="text-left p-2 border">{h}</th>)}</tr></thead>
                 <tbody>
                   {Array.isArray(r.vehicles) && r.vehicles.map((v: any, i: number) => (
-                    <tr key={i} className="border-b"><td className="p-2">{v.registration_no}</td><td className="p-2">{v.trip_count}</td><td className="p-2">{v.days_used}</td><td className="p-2"><div className="flex items-center gap-2"><div className="w-16 bg-gray-200 rounded-full h-1.5"><div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${v.utilization_pct}%` }} /></div>{v.utilization_pct}%</div></td><td className="p-2">₹{v.revenue?.toLocaleString()}</td></tr>
+                    <tr key={i} className="border-b"><td className="p-2">{v.registration_no}</td><td className="p-2">{v.trip_count}</td><td className="p-2">{v.days_used}</td><td className="p-2"><div className="flex items-center gap-2"><div className="w-16 bg-gray-200 rounded-full h-1.5"><div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${v.utilization_pct}%` }} /></div>{v.utilization_pct}%</div></td><td className="p-2">{sym}{v.revenue?.toLocaleString()}</td></tr>
                   ))}
                   {(!r.vehicles || r.vehicles?.length === 0) && <tr><td colSpan={5} className="text-center p-4 text-gray-400">No data for selected period.</td></tr>}
                 </tbody>
@@ -151,7 +154,7 @@ export default function LogisticsReportsPage() {
       {tab === "fastag_spend" && (
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            {[["Total Toll Spend", `₹${(r.total_spend ?? 0).toLocaleString()}`, ""], ["Total Transactions", r.transaction_count ?? 0, ""]].map(([l, v, c]) => (
+            {[["Total Toll Spend", `${sym}${(r.total_spend ?? 0).toLocaleString()}`, ""], ["Total Transactions", r.transaction_count ?? 0, ""]].map(([l, v, c]) => (
               <Card key={l as string}><CardContent className="pt-4"><p className="text-sm text-gray-500">{l}</p><p className={`text-2xl font-bold ${c}`}>{v}</p></CardContent></Card>
             ))}
           </div>
@@ -162,7 +165,7 @@ export default function LogisticsReportsPage() {
                 <thead><tr className="bg-gray-50">{["Vehicle", "Transactions", "Total Toll ₹", "Avg per Trip ₹"].map(h => <th key={h} className="text-left p-2 border">{h}</th>)}</tr></thead>
                 <tbody>
                   {Array.isArray(r.by_vehicle) && r.by_vehicle.map((v: any, i: number) => (
-                    <tr key={i} className="border-b"><td className="p-2">{v.registration_no}</td><td className="p-2">{v.txn_count}</td><td className="p-2">₹{v.total_spend?.toLocaleString()}</td><td className="p-2">₹{v.avg_per_trip?.toLocaleString()}</td></tr>
+                    <tr key={i} className="border-b"><td className="p-2">{v.registration_no}</td><td className="p-2">{v.txn_count}</td><td className="p-2">{sym}{v.total_spend?.toLocaleString()}</td><td className="p-2">{sym}{v.avg_per_trip?.toLocaleString()}</td></tr>
                   ))}
                   {(!r.by_vehicle || r.by_vehicle?.length === 0) && <tr><td colSpan={4} className="text-center p-4 text-gray-400">No FASTag data for selected period.</td></tr>}
                 </tbody>

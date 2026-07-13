@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2, Briefcase, Clock, Target, FileText, TrendingUp, ChevronRight, Pencil } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const STATUS_COLORS: Record<string, string> = { active: "default", completed: "secondary", on_hold: "secondary", cancelled: "destructive" };
 
@@ -19,6 +20,8 @@ const STATUS_COLORS: Record<string, string> = { active: "default", completed: "s
 function ProjectForm({ project, employees, onSave, onCancel }: any) {
   const { toast } = useToast();
   const [form, setForm] = useState({
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
     name: project?.name || "", code: project?.code || "", clientName: project?.client_name || "",
     clientGstin: project?.client_gstin || "", startDate: project?.start_date?.split("T")[0] || "",
     endDate: project?.end_date?.split("T")[0] || "", contractValue: project?.contract_value || "",
@@ -62,7 +65,7 @@ function ProjectForm({ project, employees, onSave, onCancel }: any) {
           <Input type="date" value={form.endDate} onChange={e => setForm(p => ({ ...p, endDate: e.target.value }))} />
         </div>
         <div>
-          <Label>Contract Value (₹)</Label>
+          <Label>Contract Value (${sym})</Label>
           <Input type="number" value={form.contractValue} onChange={e => setForm(p => ({ ...p, contractValue: e.target.value }))} />
         </div>
         <div>
@@ -103,6 +106,8 @@ function ProjectForm({ project, employees, onSave, onCancel }: any) {
 function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () => void }) {
   const { toast } = useToast();
   const [boqDialogOpen, setBoqDialogOpen] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [milestoneDialogOpen, setMilestoneDialogOpen] = useState(false);
   const [tsDialogOpen, setTsDialogOpen] = useState(false);
   const [boqForm, setBoqForm] = useState({ description: "", uom: "", quantity: "", rate: "" });
@@ -169,9 +174,9 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
       {pnl && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { label: "Revenue", value: `₹${Number(pnl.revenue).toLocaleString("en-IN")}` },
-            { label: "Cost (POs)", value: `₹${Number(pnl.cost).toLocaleString("en-IN")}` },
-            { label: "Gross Profit", value: `₹${Number(pnl.gross_profit).toLocaleString("en-IN")}`, color: pnl.gross_profit >= 0 ? "text-green-600" : "text-destructive" },
+            { label: "Revenue", value: `${sym}${Number(pnl.revenue).toLocaleString("en-IN")}` },
+            { label: "Cost (POs)", value: `${sym}${Number(pnl.cost).toLocaleString("en-IN")}` },
+            { label: "Gross Profit", value: `${sym}${Number(pnl.gross_profit).toLocaleString("en-IN")}`, color: pnl.gross_profit >= 0 ? "text-green-600" : "text-destructive" },
             { label: "Billable Hours", value: `${Number(pnl.total_hours).toFixed(1)} hrs` },
           ].map(s => (
             <Card key={s.label}><CardContent className="p-3"><p className="text-xs text-muted-foreground">{s.label}</p><p className={`text-lg font-bold ${s.color || ""}`}>{s.value}</p></CardContent></Card>
@@ -190,7 +195,7 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
         {/* BOQ */}
         <TabsContent value="boq" className="space-y-3 mt-3">
           <div className="flex justify-between items-center gap-2">
-            <p className="text-sm text-muted-foreground">BOQ Total: <strong>₹{boqTotal.toLocaleString("en-IN")}</strong></p>
+            <p className="text-sm text-muted-foreground">BOQ Total: <strong>{sym}{boqTotal.toLocaleString("en-IN")}</strong></p>
             <Button size="sm" onClick={() => setBoqDialogOpen(true)} data-testid="button-add-boq"><Plus className="w-3 h-3 mr-1" />Add Item</Button>
           </div>
           {boq?.length === 0 ? <p className="text-center py-6 text-muted-foreground text-sm">No BOQ items</p> : (
@@ -201,8 +206,8 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
                   {boq?.map((b: any) => (
                     <tr key={b.id} className="border-t">
                       <td className="p-3">{b.description}</td><td className="p-3 text-center">{b.uom || "—"}</td>
-                      <td className="p-3 text-right">{b.quantity || "—"}</td><td className="p-3 text-right">{b.rate ? `₹${Number(b.rate).toLocaleString("en-IN")}` : "—"}</td>
-                      <td className="p-3 text-right font-medium">₹{Number(b.amount || 0).toLocaleString("en-IN")}</td>
+                      <td className="p-3 text-right">{b.quantity || "—"}</td><td className="p-3 text-right">{b.rate ? `${sym}${Number(b.rate).toLocaleString("en-IN")}` : "—"}</td>
+                      <td className="p-3 text-right font-medium">{sym}{Number(b.amount || 0).toLocaleString("en-IN")}</td>
                       <td className="p-3 text-right"><Button size="icon" variant="ghost" onClick={() => deleteBOQ.mutate(b.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button></td>
                     </tr>
                   ))}
@@ -215,7 +220,7 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
         {/* Milestones */}
         <TabsContent value="milestones" className="space-y-3 mt-3">
           <div className="flex justify-between items-center gap-2">
-            <p className="text-sm text-muted-foreground">Total: ₹{msTotal.toLocaleString("en-IN")} · Invoiced: ₹{msInvoiced.toLocaleString("en-IN")}</p>
+            <p className="text-sm text-muted-foreground">Total: {sym}{msTotal.toLocaleString("en-IN")} · Invoiced: {sym}{msInvoiced.toLocaleString("en-IN")}</p>
             <Button size="sm" onClick={() => setMilestoneDialogOpen(true)} data-testid="button-add-milestone"><Plus className="w-3 h-3 mr-1" />Add Milestone</Button>
           </div>
           {milestones?.length === 0 ? <p className="text-center py-6 text-muted-foreground text-sm">No milestones</p> : (
@@ -228,7 +233,7 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
                       <p className="text-xs text-muted-foreground">{m.due_date ? new Date(m.due_date).toLocaleDateString("en-IN") : "No due date"} {m.percentage ? `· ${m.percentage}%` : ""}</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-sm">₹{Number(m.amount).toLocaleString("en-IN")}</span>
+                      <span className="font-semibold text-sm">{sym}{Number(m.amount).toLocaleString("en-IN")}</span>
                       <Select value={m.status} onValueChange={v => msActionMutation.mutate({ id: m.id, status: v })}>
                         <SelectTrigger className="h-7 text-xs w-28"><SelectValue /></SelectTrigger>
                         <SelectContent>{["pending", "in_progress", "completed", "invoiced"].map(s => <SelectItem key={s} value={s}>{s.replace("_", " ")}</SelectItem>)}</SelectContent>
@@ -276,7 +281,7 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
                 {invoices.map((inv: any) => (
                   <Card key={inv.id}><CardContent className="p-3 flex justify-between gap-2">
                     <div><p className="font-medium">{inv.invoice_number}</p><p className="text-xs text-muted-foreground">{new Date(inv.invoice_date).toLocaleDateString("en-IN")}</p></div>
-                    <div className="text-right"><p className="font-semibold">₹{Number(inv.total_amount).toLocaleString("en-IN")}</p><Badge variant="secondary" className="text-xs">{inv.status}</Badge></div>
+                    <div className="text-right"><p className="font-semibold">{sym}{Number(inv.total_amount).toLocaleString("en-IN")}</p><Badge variant="secondary" className="text-xs">{inv.status}</Badge></div>
                   </CardContent></Card>
                 ))}
               </>)}
@@ -285,7 +290,7 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
                 {purchaseOrders.map((po: any) => (
                   <Card key={po.id}><CardContent className="p-3 flex justify-between gap-2">
                     <div><p className="font-medium">{po.po_number}</p><p className="text-xs text-muted-foreground">{new Date(po.po_date).toLocaleDateString("en-IN")}</p></div>
-                    <div className="text-right"><p className="font-semibold">₹{Number(po.total_amount).toLocaleString("en-IN")}</p><Badge variant="secondary" className="text-xs">{po.status}</Badge></div>
+                    <div className="text-right"><p className="font-semibold">{sym}{Number(po.total_amount).toLocaleString("en-IN")}</p><Badge variant="secondary" className="text-xs">{po.status}</Badge></div>
                   </CardContent></Card>
                 ))}
               </>)}
@@ -302,9 +307,9 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
             <div className="grid grid-cols-3 gap-2">
               <div><Label>UOM</Label><Input value={boqForm.uom} onChange={e => setBoqForm(p => ({ ...p, uom: e.target.value }))} placeholder="m²" /></div>
               <div><Label>Quantity</Label><Input type="number" value={boqForm.quantity} onChange={e => setBoqForm(p => ({ ...p, quantity: e.target.value }))} /></div>
-              <div><Label>Rate (₹)</Label><Input type="number" value={boqForm.rate} onChange={e => setBoqForm(p => ({ ...p, rate: e.target.value }))} /></div>
+              <div><Label>Rate (${sym})</Label><Input type="number" value={boqForm.rate} onChange={e => setBoqForm(p => ({ ...p, rate: e.target.value }))} /></div>
             </div>
-            {boqForm.quantity && boqForm.rate && <p className="text-sm font-medium">Amount: ₹{(Number(boqForm.quantity) * Number(boqForm.rate)).toLocaleString("en-IN")}</p>}
+            {boqForm.quantity && boqForm.rate && <p className="text-sm font-medium">Amount: {sym}{(Number(boqForm.quantity) * Number(boqForm.rate)).toLocaleString("en-IN")}</p>}
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setBoqDialogOpen(false)}>Cancel</Button>
               <Button onClick={() => boqMutation.mutate()} disabled={boqMutation.isPending || !boqForm.description} data-testid="button-save-boq">{boqMutation.isPending ? "Saving..." : "Add"}</Button>
@@ -322,7 +327,7 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
               <div><Label>Due Date</Label><Input type="date" value={msForm.dueDate} onChange={e => setMsForm(p => ({ ...p, dueDate: e.target.value }))} /></div>
               <div><Label>% of Contract</Label><Input type="number" value={msForm.percentage} onChange={e => setMsForm(p => ({ ...p, percentage: e.target.value }))} /></div>
             </div>
-            <div><Label>Amount (₹) <span className="text-destructive">*</span></Label><Input type="number" value={msForm.amount} onChange={e => setMsForm(p => ({ ...p, amount: e.target.value }))} /></div>
+            <div><Label>Amount (${sym}) <span className="text-destructive">*</span></Label><Input type="number" value={msForm.amount} onChange={e => setMsForm(p => ({ ...p, amount: e.target.value }))} /></div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setMilestoneDialogOpen(false)}>Cancel</Button>
               <Button onClick={() => msMutation.mutate()} disabled={msMutation.isPending || !msForm.title || !msForm.amount} data-testid="button-save-milestone">{msMutation.isPending ? "Saving..." : "Add"}</Button>
@@ -359,6 +364,8 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
 export default function ProjectManagementPage() {
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [editingProject, setEditingProject] = useState<any>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [statusFilter, setStatusFilter] = useState("all");
@@ -401,7 +408,7 @@ export default function ProjectManagementPage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: "Active Projects", value: stats.active, icon: Briefcase },
-          { label: "Active Contract Value", value: `₹${(stats.totalValue / 1e5).toFixed(1)}L`, icon: TrendingUp },
+          { label: "Active Contract Value", value: `${sym}${(stats.totalValue / 1e5).toFixed(1)}L`, icon: TrendingUp },
           { label: "Total Projects", value: projects.length, icon: FileText },
           { label: "Completed", value: projects.filter((p: any) => p.status === "completed").length, icon: Target },
         ].map(s => (
@@ -438,7 +445,7 @@ export default function ProjectManagementPage() {
                     <Button size="icon" variant="ghost" onClick={e => { e.stopPropagation(); deleteMutation.mutate(p.id); }}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                   </div>
                 </div>
-                {p.contract_value > 0 && <p className="text-sm font-semibold">₹{Number(p.contract_value).toLocaleString("en-IN")}</p>}
+                {p.contract_value > 0 && <p className="text-sm font-semibold">{sym}{Number(p.contract_value).toLocaleString("en-IN")}</p>}
                 <div className="flex gap-2 text-xs text-muted-foreground flex-wrap">
                   {p.start_date && <span>{new Date(p.start_date).toLocaleDateString("en-IN")}</span>}
                   {p.end_date && <span>→ {new Date(p.end_date).toLocaleDateString("en-IN")}</span>}

@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import {
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
   Plus, Search, Briefcase, Users, Clock, CheckCircle2,
   XCircle, Star, Phone, Mail, Building2, Calendar, Trash2, ChevronRight
 } from "lucide-react";
@@ -36,6 +37,8 @@ const getStage = (v: string) => STAGES.find(s => s.value === v) || STAGES[0];
 function JobOpeningForm({ editing, depts, onSave, onCancel }: any) {
   const { toast } = useToast();
   const [form, setForm] = useState({
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
     title: editing?.title || "",
     departmentId: editing?.department_id ? String(editing.department_id) : "__none__",
     positions: editing?.positions || "1",
@@ -95,11 +98,11 @@ function JobOpeningForm({ editing, depts, onSave, onCancel }: any) {
           <Input className="h-9" type="number" min="0" value={form.experienceMax} onChange={f("experienceMax")} />
         </div>
         <div className="space-y-1.5">
-          <Label>Salary Range (Min ₹)</Label>
+          <Label>Salary Range (Min ${sym})</Label>
           <Input className="h-9" type="number" min="0" value={form.salaryMin} onChange={f("salaryMin")} placeholder="e.g. 300000" />
         </div>
         <div className="space-y-1.5">
-          <Label>Salary Range (Max ₹)</Label>
+          <Label>Salary Range (Max ${sym})</Label>
           <Input className="h-9" type="number" min="0" value={form.salaryMax} onChange={f("salaryMax")} placeholder="e.g. 600000" />
         </div>
         <div className="space-y-1.5">
@@ -152,6 +155,8 @@ function JobOpeningForm({ editing, depts, onSave, onCancel }: any) {
 function ApplicationForm({ openings, editing, preOpeningId, onSave, onCancel }: any) {
   const { toast } = useToast();
   const [form, setForm] = useState({
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
     openingId: editing?.opening_id ? String(editing.opening_id) : (preOpeningId ? String(preOpeningId) : ""),
     candidateName: editing?.candidate_name || "",
     phone: editing?.phone || "",
@@ -216,11 +221,11 @@ function ApplicationForm({ openings, editing, preOpeningId, onSave, onCancel }: 
           </Select>
         </div>
         <div className="space-y-1.5">
-          <Label>Current CTC (₹/year)</Label>
+          <Label>Current CTC (${sym}/year)</Label>
           <Input className="h-9" type="number" value={form.currentCtc} onChange={f("currentCtc")} placeholder="0" />
         </div>
         <div className="space-y-1.5">
-          <Label>Expected CTC (₹/year)</Label>
+          <Label>Expected CTC (${sym}/year)</Label>
           <Input className="h-9" type="number" value={form.expectedCtc} onChange={f("expectedCtc")} placeholder="0" />
         </div>
         <div className="space-y-1.5">
@@ -268,6 +273,8 @@ function ApplicationForm({ openings, editing, preOpeningId, onSave, onCancel }: 
 export default function HrRecruitment() {
   const { toast } = useToast();
   const [tab, setTab] = useState("openings");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState("all");
   const [openingFilter, setOpeningFilter] = useState("all");
@@ -403,7 +410,7 @@ export default function HrRecruitment() {
                           {job.location && <span>{job.location}</span>}
                           <span>{job.positions} position{Number(job.positions) > 1 ? "s" : ""}</span>
                           <span>{job.experience_min}–{job.experience_max} yrs exp</span>
-                          {job.salary_min && <span>₹{fmt(job.salary_min)}–{fmt(job.salary_max)}/yr</span>}
+                          {job.salary_min && <span>{sym}{fmt(job.salary_min)}–{fmt(job.salary_max)}/yr</span>}
                           <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{job.application_count || 0} applications</span>
                         </div>
                         {job.skills && <p className="text-xs text-muted-foreground mt-1.5">Skills: {job.skills}</p>}
@@ -456,7 +463,7 @@ export default function HrRecruitment() {
                         </td>
                         <td className="px-3 py-2.5 text-muted-foreground">{app.opening_title}</td>
                         <td className="px-3 py-2.5 capitalize text-muted-foreground">{app.source}</td>
-                        <td className="px-3 py-2.5">{app.expected_ctc ? `₹${fmt(app.expected_ctc)}` : "—"}</td>
+                        <td className="px-3 py-2.5">{app.expected_ctc ? `${sym}${fmt(app.expected_ctc)}` : "—"}</td>
                         <td className="px-3 py-2.5 text-muted-foreground">{app.notice_period_days ? `${app.notice_period_days}d` : "—"}</td>
                         <td className="px-3 py-2.5 text-muted-foreground">{app.interview_date || "—"}</td>
                         <td className="px-3 py-2.5">

@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Pill, Package, Receipt, ShoppingCart, AlertTriangle, ShieldAlert, FileText, BarChart2, Undo2, ScanLine } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (path: string) => fetch(path).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
@@ -26,6 +27,8 @@ export default function PharmacyDashboard() {
   const { data: alerts = [] } = useQuery<any[]>({ queryKey: ["/api/pharmacy/stock/expiry-alerts"], queryFn: () => api("/api/pharmacy/stock/expiry-alerts") });
 
   const s = stats as any;
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const alertCount = Array.isArray(alerts) ? alerts.length : 0;
 
   return (
@@ -33,7 +36,7 @@ export default function PharmacyDashboard() {
       <h1 className="text-2xl font-bold">Pharmacy ERP</h1>
 
       <div className="grid grid-cols-4 gap-4">
-        <Card><CardContent className="pt-4"><p className="text-sm text-gray-500">Today's Sales</p><p className="text-2xl font-bold text-green-600">₹{(s.today_sales ?? 0).toLocaleString()}</p></CardContent></Card>
+        <Card><CardContent className="pt-4"><p className="text-sm text-gray-500">Today's Sales</p><p className="text-2xl font-bold text-green-600">{sym}{(s.today_sales ?? 0).toLocaleString()}</p></CardContent></Card>
         <Card><CardContent className="pt-4"><p className="text-sm text-gray-500">Drugs in Master</p><p className="text-2xl font-bold">{s.drug_count ?? 0}</p></CardContent></Card>
         <Card><CardContent className="pt-4"><p className="text-sm text-gray-500">Stock Batches</p><p className="text-2xl font-bold">{s.stock_batches ?? 0}</p></CardContent></Card>
         <Card className={alertCount > 0 ? "border-orange-300" : ""}><CardContent className="pt-4 flex items-center gap-2"><AlertTriangle className={`w-6 h-6 ${alertCount > 0 ? "text-orange-500" : "text-gray-300"}`} /><div><p className="text-sm text-gray-500">Expiry Alerts</p><p className="text-2xl font-bold text-orange-600">{alertCount}</p></div></CardContent></Card>

@@ -335,24 +335,24 @@ ${invoice.shipToName || invoice.shipToAddress ? `
               <thead>
                 <tr>
                   <th rowspan="2">HSN/SAC</th>
-                  <th rowspan="2">Taxable amount (₹)</th>
+                  <th rowspan="2">Taxable amount (${sym})</th>
                   ${isIntrastate ? `
                     <th colspan="2">CGST</th>
                     <th colspan="2">SGST</th>
                   ` : `
                     <th colspan="2">IGST</th>
                   `}
-                  <th rowspan="2">Total Tax (₹)</th>
+                  <th rowspan="2">Total Tax (${sym})</th>
                 </tr>
                 <tr>
                   ${isIntrastate ? `
                     <th>Rate (%)</th>
-                    <th>Amt (₹)</th>
+                    <th>Amt (${sym})</th>
                     <th>Rate (%)</th>
-                    <th>Amt (₹)</th>
+                    <th>Amt (${sym})</th>
                   ` : `
                     <th>Rate (%)</th>
-                    <th>Amt (₹)</th>
+                    <th>Amt (${sym})</th>
                   `}
                 </tr>
               </thead>

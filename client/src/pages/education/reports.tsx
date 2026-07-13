@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart2, Users, DollarSign, GraduationCap, TrendingUp } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (path: string) => fetch(path).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
@@ -12,6 +13,8 @@ const ICONS: Record<Tab, any> = { admission_funnel: TrendingUp, attendance_summa
 
 export default function EducationReportsPage() {
   const [tab, setTab] = useState<Tab>("admission_funnel");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { data: report = {} } = useQuery<any>({ queryKey: ["/api/education/reports", tab], queryFn: () => api(`/api/education/reports/${tab.replace(/_/g, "-")}`) });
   const r = report as any;
 
@@ -50,13 +53,13 @@ export default function EducationReportsPage() {
       {tab === "fee_collection" && (
         <div className="space-y-4">
           <div className="grid grid-cols-3 gap-4">
-            {[["Total Collected", `₹${(r.total_collected ?? 0).toLocaleString()}`, "text-green-600"], ["Total Due", `₹${(r.total_due ?? 0).toLocaleString()}`, "text-red-600"], ["Collection %", `${r.collection_pct ?? 0}%`, ""]].map(([l, v, c]) => (
+            {[["Total Collected", `${sym}${(r.total_collected ?? 0).toLocaleString()}`, "text-green-600"], ["Total Due", `${sym}${(r.total_due ?? 0).toLocaleString()}`, "text-red-600"], ["Collection %", `${r.collection_pct ?? 0}%`, ""]].map(([l, v, c]) => (
               <Card key={l as string}><CardContent className="pt-4"><p className="text-sm text-gray-500">{l}</p><p className={`text-2xl font-bold ${c}`}>{v}</p></CardContent></Card>
             ))}
           </div>
           <Card><CardHeader><CardTitle className="text-base">By Class</CardTitle></CardHeader><CardContent>
             <table className="w-full text-sm"><thead><tr className="bg-gray-50">{["Class","Collected","Due"].map(h => <th key={h} className="text-left p-2 border">{h}</th>)}</tr></thead>
-              <tbody>{Array.isArray(r.by_class) && r.by_class.map((c: any, i: number) => <tr key={i} className="border-b"><td className="p-2">{c.class_name}</td><td className="p-2">₹{c.collected?.toLocaleString()}</td><td className="p-2">₹{c.due?.toLocaleString()}</td></tr>)}
+              <tbody>{Array.isArray(r.by_class) && r.by_class.map((c: any, i: number) => <tr key={i} className="border-b"><td className="p-2">{c.class_name}</td><td className="p-2">{sym}{c.collected?.toLocaleString()}</td><td className="p-2">{sym}{c.due?.toLocaleString()}</td></tr>)}
               {(!r.by_class || r.by_class?.length === 0) && <tr><td colSpan={3} className="text-center p-4 text-gray-400">No data.</td></tr>}</tbody>
             </table>
           </CardContent></Card>

@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { TrendingUp, TrendingDown, DollarSign, Target } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (path: string) => fetch(path).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
@@ -40,8 +41,8 @@ const SAMPLE_PL: Record<string, any> = {
   },
 };
 
-function fmt(n: number) { return "₹" + (n / 100000).toFixed(1) + "L"; }
-function fmtC(n: number) { return "₹" + (n / 10000000).toFixed(2) + "Cr"; }
+function fmt(n: number) { return sym + (n / 100000).toFixed(1) + "L"; }
+function fmtC(n: number) { return sym + (n / 10000000).toFixed(2) + "Cr"; }
 
 export default function ProjectPLPage() {
   const [projectId, setProjectId] = useState("1");

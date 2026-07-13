@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Stethoscope, Plus, X } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string, body?: any) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -14,6 +15,8 @@ const EMPTY = { name: "", specialization: "", qualification: "", registration_no
 
 export default function DoctorsPage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState({ ...EMPTY });
@@ -75,7 +78,7 @@ export default function DoctorsPage() {
               <div>
                 <p className="font-semibold">Dr. {d.name}</p>
                 <p className="text-sm text-gray-600">{d.specialization} · {d.qualification}</p>
-                <p className="text-xs text-gray-500">Reg: {d.registration_no} · Fee: ₹{d.consultation_fee}</p>
+                <p className="text-xs text-gray-500">Reg: {d.registration_no} · Fee: {sym}{d.consultation_fee}</p>
                 <p className="text-xs text-gray-500">OPD: {d.opd_days ?? "—"} · {d.phone}</p>
               </div>
               <div className="flex flex-col items-end gap-2">

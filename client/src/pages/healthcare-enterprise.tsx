@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const apiRequest = async (method: string, url: string, body?: any) => {
   const r = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined, credentials: "include" });
@@ -18,6 +19,8 @@ const fmt = (n: any) => Number(n || 0).toLocaleString("en-IN", { maximumFraction
 
 function OPDTab() {
   const [f, setF] = useState({ patient_id: "", doctor_id: "", consultation_charge: "", procedure_charges: "", lab_charges: "", pharmacy_charges: "", discount: "" });
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { data: bills = [] } = useQuery({ queryKey: ["/api/healthcare/opd/bills"], queryFn: () => apiRequest("GET", "/api/healthcare/opd/bills") });
   const qc = useQueryClient();
   const submit = useMutation({ mutationFn: (d: any) => apiRequest("POST", "/api/healthcare/opd/bill", d), onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/healthcare/opd/bills"] }) });
@@ -33,12 +36,12 @@ function OPDTab() {
           <Input placeholder="Lab" value={f.lab_charges} onChange={e => setF({ ...f, lab_charges: e.target.value })} />
           <Input placeholder="Pharmacy" value={f.pharmacy_charges} onChange={e => setF({ ...f, pharmacy_charges: e.target.value })} />
           <Input placeholder="Discount" value={f.discount} onChange={e => setF({ ...f, discount: e.target.value })} />
-          <div className="flex items-center text-sm font-semibold">Total: ₹{fmt(total)}</div>
+          <div className="flex items-center text-sm font-semibold">Total: {sym}{fmt(total)}</div>
           <Button onClick={() => submit.mutate(f)}>Submit Bill</Button>
         </CardContent>
       </Card>
       <Table><TableHeader><TableRow><TableHead>Bill No</TableHead><TableHead>Patient</TableHead><TableHead>Doctor</TableHead><TableHead>Total</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
-        <TableBody>{bills.map((b: any) => <TableRow key={b.id}><TableCell>{b.bill_number}</TableCell><TableCell>{b.patient_name}</TableCell><TableCell>{b.doctor_name}</TableCell><TableCell>₹{fmt(b.total_amount)}</TableCell><TableCell><Badge>{b.status}</Badge></TableCell></TableRow>)}</TableBody>
+        <TableBody>{bills.map((b: any) => <TableRow key={b.id}><TableCell>{b.bill_number}</TableCell><TableCell>{b.patient_name}</TableCell><TableCell>{b.doctor_name}</TableCell><TableCell>{sym}{fmt(b.total_amount)}</TableCell><TableCell><Badge>{b.status}</Badge></TableCell></TableRow>)}</TableBody>
       </Table>
     </div>
   );
@@ -47,6 +50,8 @@ function OPDTab() {
 function IPDTab() {
   const { data: admissions = [] } = useQuery({ queryKey: ["/api/healthcare/ipd/admissions"], queryFn: () => apiRequest("GET", "/api/healthcare/ipd/admissions") });
   const [selected, setSelected] = useState<any>(null);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [chargeForm, setChargeForm] = useState({ charge_type: "", description: "", quantity: "1", unit_price: "" });
   const [showDialog, setShowDialog] = useState(false);
   const qc = useQueryClient();
@@ -55,7 +60,7 @@ function IPDTab() {
   return (
     <div className="space-y-4">
       <Table><TableHeader><TableRow><TableHead>Patient</TableHead><TableHead>Ward</TableHead><TableHead>Bed</TableHead><TableHead>Admitted</TableHead><TableHead>Bill Total</TableHead><TableHead></TableHead></TableRow></TableHeader>
-        <TableBody>{admissions.map((a: any) => <TableRow key={a.id}><TableCell>{a.patient_name}</TableCell><TableCell>{a.ward_name}</TableCell><TableCell>{a.bed_number}</TableCell><TableCell>{a.admission_date}</TableCell><TableCell>₹{fmt(a.current_bill_total)}</TableCell>
+        <TableBody>{admissions.map((a: any) => <TableRow key={a.id}><TableCell>{a.patient_name}</TableCell><TableCell>{a.ward_name}</TableCell><TableCell>{a.bed_number}</TableCell><TableCell>{a.admission_date}</TableCell><TableCell>{sym}{fmt(a.current_bill_total)}</TableCell>
           <TableCell className="flex gap-1"><Button size="sm" variant="outline" onClick={() => { setSelected(a); setShowDialog(true); }}>Add Charge</Button><Button size="sm" onClick={() => finalize.mutate(a.id)}>Finalize</Button></TableCell></TableRow>)}</TableBody>
       </Table>
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
@@ -76,6 +81,8 @@ function IPDTab() {
 function BedsTab() {
   const { data: beds = [] } = useQuery({ queryKey: ["/api/healthcare/beds"], queryFn: () => apiRequest("GET", "/api/healthcare/beds") });
   const [ward, setWard] = useState("all");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const qc = useQueryClient();
   const release = useMutation({ mutationFn: (id: any) => apiRequest("POST", `/api/healthcare/beds/${id}/release`, {}), onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/healthcare/beds"] }) });
   const wards = [...new Set(beds.map((b: any) => b.ward_name))];
@@ -101,6 +108,8 @@ function BedsTab() {
 function OTTab() {
   const { data: schedule = [] } = useQuery({ queryKey: ["/api/healthcare/ot/schedule"], queryFn: () => apiRequest("GET", "/api/healthcare/ot/schedule") });
   const [f, setF] = useState({ patient_id: "", surgery_name: "", surgeon_id: "", scheduled_date: "", scheduled_time: "", estimated_duration_mins: "", anesthesia_type: "" });
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const qc = useQueryClient();
   const book = useMutation({ mutationFn: (d: any) => apiRequest("POST", "/api/healthcare/ot/schedule", d), onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/healthcare/ot/schedule"] }) });
   const statusColor: Record<string, any> = { scheduled: "secondary", in_progress: "default", completed: "outline" };
@@ -128,6 +137,8 @@ function OTTab() {
 function LabTab() {
   const { data: pending = [] } = useQuery({ queryKey: ["/api/healthcare/lab/orders/pending"], queryFn: () => apiRequest("GET", "/api/healthcare/lab/orders/pending") });
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [rf, setRf] = useState({ result_value: "", normal_range: "", is_critical: false });
   const qc = useQueryClient();
   const enter = useMutation({ mutationFn: ({ orderId, d }: any) => apiRequest("POST", `/api/healthcare/lab/orders/${orderId}/results`, d), onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/healthcare/lab/orders/pending"] }); setSelectedOrder(null); } });
@@ -160,6 +171,8 @@ function LabTab() {
 
 function InsuranceTab() {
   const [pf, setPf] = useState({ patient_id: "", insurance_company: "", policy_number: "", sum_insured: "", valid_to: "" });
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { data: claims = [] } = useQuery({ queryKey: ["/api/healthcare/tpa/claims"], queryFn: () => apiRequest("GET", "/api/healthcare/tpa/claims") });
   const qc = useQueryClient();
   const addPolicy = useMutation({ mutationFn: (d: any) => apiRequest("POST", "/api/healthcare/insurance/policy", d), onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/healthcare/tpa/claims"] }) });
@@ -178,7 +191,7 @@ function InsuranceTab() {
       </Card>
       <h3 className="font-semibold text-sm">TPA Claims</h3>
       <Table><TableHeader><TableRow><TableHead>Patient</TableHead><TableHead>Pre-Auth</TableHead><TableHead>Claim</TableHead><TableHead>Approved</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
-        <TableBody>{claims.map((c: any) => <TableRow key={c.id}><TableCell>{c.patient_name}</TableCell><TableCell>₹{fmt(c.pre_auth_amount)}</TableCell><TableCell>₹{fmt(c.claim_amount)}</TableCell><TableCell>₹{fmt(c.approved_amount)}</TableCell><TableCell><Badge variant={statusColor[c.status] || "secondary"}>{c.status}</Badge></TableCell></TableRow>)}</TableBody>
+        <TableBody>{claims.map((c: any) => <TableRow key={c.id}><TableCell>{c.patient_name}</TableCell><TableCell>{sym}{fmt(c.pre_auth_amount)}</TableCell><TableCell>{sym}{fmt(c.claim_amount)}</TableCell><TableCell>{sym}{fmt(c.approved_amount)}</TableCell><TableCell><Badge variant={statusColor[c.status] || "secondary"}>{c.status}</Badge></TableCell></TableRow>)}</TableBody>
       </Table>
     </div>
   );

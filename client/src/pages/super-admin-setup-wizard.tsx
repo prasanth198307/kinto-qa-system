@@ -13,6 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import SuperAdminLayout from "./super-admin-layout";
 import {
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
   CheckCircle2, ChevronRight, Store, Building2, Users, Package,
   ArrowLeft, Loader2, Eye, EyeOff, AlertCircle, Sparkles, ShieldCheck,
 } from "lucide-react";
@@ -155,6 +156,8 @@ function slugify(str: string) {
 
 function StepIndicator({ current }: { current: Step }) {
   const steps = [
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
     { n: 1 as Step, label: "Plan",     icon: Package },
     { n: 2 as Step, label: "Business", icon: Building2 },
     { n: 3 as Step, label: "Users",    icon: Users },
@@ -193,6 +196,8 @@ export default function SuperAdminSetupWizard() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [step, setStep] = useState<Step>(1);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [showPass, setShowPass] = useState(false);
   const [seedResult, setSeedResult] = useState<any>(null);
   const [createdTenantId, setCreatedTenantId] = useState<number | null>(null);
@@ -330,7 +335,7 @@ export default function SuperAdminSetupWizard() {
                     <Input className="font-mono text-sm" value={planForm.slug} onChange={e => setPlanForm(p => ({ ...p, slug: e.target.value }))} data-testid="input-plan-slug" />
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Monthly Price (₹)</Label>
+                    <Label>Monthly Price (${sym})</Label>
                     <Input type="number" value={planForm.priceMonthly} onChange={e => setPlanForm(p => ({ ...p, priceMonthly: e.target.value }))} data-testid="input-plan-price" />
                   </div>
                   <div className="space-y-1.5">

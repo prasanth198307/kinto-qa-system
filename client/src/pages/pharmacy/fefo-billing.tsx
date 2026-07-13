@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { AlertTriangle, CheckCircle, Search, Pill } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (path: string) => fetch(path).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
@@ -35,6 +36,8 @@ function daysUntil(dateStr: string) {
 export default function FEFOBillingPage() {
   const { toast } = useToast();
   const [drugSearch, setDrugSearch] = useState("");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [drugResults, setDrugResults] = useState<any[]>([]);
   const [pickedBatches, setPickedBatches] = useState<{ [key: number]: PickedBatch[] }>({});
   const [billItems, setBillItems] = useState<BillItem[]>([]);
@@ -208,7 +211,7 @@ export default function FEFOBillingPage() {
                                   <span>Batch: <strong>{b.batch_no}</strong></span>
                                   <span className={expiryColor(days)}>Exp: {b.expiry_date} ({days}d)</span>
                                   <span>Qty: {b.qty}</span>
-                                  <span>MRP: ₹{b.mrp}</span>
+                                  <span>MRP: {sym}{b.mrp}</span>
                                   {days <= 90 && <Badge variant="secondary" className="text-orange-600"><AlertTriangle className="h-3 w-3 mr-1" />Near Expiry</Badge>}
                                 </div>
                               </TableCell>
@@ -246,13 +249,13 @@ export default function FEFOBillingPage() {
                         <TableCell>{item.batch_no}</TableCell>
                         <TableCell className={expiryColor(daysUntil(item.expiry))}>{item.expiry}</TableCell>
                         <TableCell>{item.qty}</TableCell>
-                        <TableCell>₹{item.mrp}</TableCell>
-                        <TableCell>₹{(item.qty * item.mrp).toFixed(2)}</TableCell>
+                        <TableCell>{sym}{item.mrp}</TableCell>
+                        <TableCell>{sym}{(item.qty * item.mrp).toFixed(2)}</TableCell>
                       </TableRow>
                     ))}
                     <TableRow>
                       <TableCell colSpan={5} className="font-bold text-right">Total</TableCell>
-                      <TableCell className="font-bold">₹{totalAmount.toFixed(2)}</TableCell>
+                      <TableCell className="font-bold">{sym}{totalAmount.toFixed(2)}</TableCell>
                     </TableRow>
                   </TableBody>
                 </Table>
@@ -382,7 +385,7 @@ export default function FEFOBillingPage() {
                       <TableRow key={sale.id}>
                         <TableCell>{sale.id}</TableCell>
                         <TableCell>{sale.party_name}</TableCell>
-                        <TableCell>₹{Number(sale.amount || 0).toLocaleString("en-IN")}</TableCell>
+                        <TableCell>{sym}{Number(sale.amount || 0).toLocaleString("en-IN")}</TableCell>
                         <TableCell>
                           <Button size="sm" onClick={() => generateIRNMutation.mutate(sale.id)} disabled={generateIRNMutation.isPending}>
                             Generate IRN

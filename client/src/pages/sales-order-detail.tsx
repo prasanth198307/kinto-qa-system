@@ -44,6 +44,7 @@ import { GlobalHeader } from "@/components/GlobalHeader";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import type { Product, Vendor } from "@shared/schema";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const salesOrderItemSchema = z.object({
   productId: z.string().min(1, "Product required"),
@@ -55,7 +56,7 @@ const salesOrderItemSchema = z.object({
   sgstRate: z.number().min(0).max(100).default(9),
   igstRate: z.number().min(0).max(100).default(0),
   discount: z.number().min(0).default(0),
-  discountMode: z.enum(['%', '₹']).default('%'),
+  discountMode: z.enum(['%', sym]).default('%'),
 });
 
 const salesOrderSchema = z.object({
@@ -108,6 +109,8 @@ function EditSalesOrderDialog({ salesOrder, open, onClose }: EditDialogProps) {
   const { data: vendors = [] } = useQuery<Vendor[]>({ queryKey: ['/api/vendors'] });
 
   const items = salesOrder.items || [];
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
 
   // Detect supply type from existing items (inter-state if any item has igstRate > 0)
   const [isInterstate, setIsInterstate] = useState(() =>
@@ -149,9 +152,9 @@ function EditSalesOrderDialog({ salesOrder, open, onClose }: EditDialogProps) {
           sgstRate: sgst,
           igstRate: igst,
           discount: Number(item.discount || 0) / 100,       // stored as value×100, convert back
-          discountMode: (item.discountMode || '%') as '%' | '₹',
+          discountMode: (item.discountMode || '%') as '%' | sym,
         };
-      }) : [{ productId: "", description: "", hsnCode: "22011010", quantity: 1, unitPrice: 0, cgstRate: 9, sgstRate: 9, igstRate: 0, discount: 0, discountMode: '%' as '%' | '₹' }],
+      }) : [{ productId: "", description: "", hsnCode: "22011010", quantity: 1, unitPrice: 0, cgstRate: 9, sgstRate: 9, igstRate: 0, discount: 0, discountMode: '%' as '%' | sym }],
     },
   });
 
@@ -195,7 +198,7 @@ function EditSalesOrderDialog({ salesOrder, open, onClose }: EditDialogProps) {
         const unitPricePaise = Math.round(unitPriceExcl * 100);
         const grossPaise = unitPricePaise * item.quantity;
 
-        // Discount stored as value×100 (paise-style). '%' mode: gross×discount/10000; '₹' mode: discount×qty
+        // Discount stored as value×100 (paise-style). '%' mode: gross×discount/10000; sym mode: discount×qty
         const discountStored = Math.round((item.discount || 0) * 100); // store back as value×100
         const discountMode = item.discountMode || '%';
         const discountPaise = discountMode === '%'
@@ -436,8 +439,8 @@ function EditSalesOrderDialog({ salesOrder, open, onClose }: EditDialogProps) {
                   <span className="text-xs text-muted-foreground">{isInterstate ? 'IGST only' : 'CGST + SGST'}</span>
                 </div>
                 <Button type="button" variant="outline" size="sm" onClick={() => append(isInterstate
-                  ? { productId: "", description: "", hsnCode: "22011010", quantity: 1, unitPrice: 0, cgstRate: 0, sgstRate: 0, igstRate: 18, discount: 0, discountMode: '%' as '%' | '₹' }
-                  : { productId: "", description: "", hsnCode: "22011010", quantity: 1, unitPrice: 0, cgstRate: 9, sgstRate: 9, igstRate: 0, discount: 0, discountMode: '%' as '%' | '₹' }
+                  ? { productId: "", description: "", hsnCode: "22011010", quantity: 1, unitPrice: 0, cgstRate: 0, sgstRate: 0, igstRate: 18, discount: 0, discountMode: '%' as '%' | sym }
+                  : { productId: "", description: "", hsnCode: "22011010", quantity: 1, unitPrice: 0, cgstRate: 9, sgstRate: 9, igstRate: 0, discount: 0, discountMode: '%' as '%' | sym }
                 )} data-testid="button-edit-add-item">
                   <Plus className="w-4 h-4 mr-1" />Add Item
                 </Button>
@@ -449,7 +452,7 @@ function EditSalesOrderDialog({ salesOrder, open, onClose }: EditDialogProps) {
                       <TableHead className="min-w-[180px]">Product</TableHead>
                       <TableHead className="w-24">HSN Code</TableHead>
                       <TableHead className="w-20">Qty</TableHead>
-                      <TableHead className="w-32">Case Price ₹ (incl. GST)</TableHead>
+                      <TableHead className="w-32">Case Price ${sym} (incl. GST)</TableHead>
                       <TableHead className="w-40">{isInterstate ? 'IGST %' : 'CGST% / SGST%'}</TableHead>
                       <TableHead className="w-36">Discount</TableHead>
                       <TableHead className="w-28 text-right">Line Total</TableHead>
@@ -557,7 +560,7 @@ function EditSalesOrderDialog({ salesOrder, open, onClose }: EditDialogProps) {
                                 className="w-9 px-1 text-xs shrink-0"
                                 onClick={() => {
                                   const cur = form.getValues(`items.${index}.discountMode`) || '%';
-                                  form.setValue(`items.${index}.discountMode`, cur === '%' ? '₹' : '%');
+                                  form.setValue(`items.${index}.discountMode`, cur === '%' ? sym : '%');
                                 }}
                                 data-testid={`button-edit-discount-mode-${index}`}
                               >
@@ -566,7 +569,7 @@ function EditSalesOrderDialog({ salesOrder, open, onClose }: EditDialogProps) {
                             </div>
                           </TableCell>
                           <TableCell className="text-right text-sm font-medium tabular-nums">
-                            ₹{lineTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {sym}{lineTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </TableCell>
                           <TableCell>
                             <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} disabled={fields.length === 1} className="text-destructive h-8 w-8">
@@ -583,7 +586,7 @@ function EditSalesOrderDialog({ salesOrder, open, onClose }: EditDialogProps) {
               <div className="flex justify-end pt-1">
                 <div className="flex items-center gap-4 bg-muted/50 rounded-md px-4 py-2 text-sm">
                   <span className="text-muted-foreground">Estimated Grand Total (incl. GST):</span>
-                  <span className="font-bold text-base">₹{liveTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  <span className="font-bold text-base">{sym}{liveTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
               </div>
             </div>
@@ -607,6 +610,8 @@ export default function SalesOrderDetail({ showHeader = true }: { showHeader?: b
   const { toast } = useToast();
   const { logoutMutation } = useAuth();
   const [cancellationReason, setCancellationReason] = useState("");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [isEditOpen, setIsEditOpen] = useState(false);
 
   const { data: salesOrder, isLoading: isLoadingSO } = useQuery<any>({
@@ -677,7 +682,7 @@ export default function SalesOrderDetail({ showHeader = true }: { showHeader?: b
     const items = salesOrder.items || [];
 
     // Compute per-item discount amounts in paise
-    // discount stored as value×100 (paise). '%' mode: gross×discount/10000; '₹' mode: discount×qty
+    // discount stored as value×100 (paise). '%' mode: gross×discount/10000; sym mode: discount×qty
     const itemsWithDiscount = items.map((item: any) => {
       const grossPaise = (item.unitPrice || 0) * (item.quantity || 0);
       const discountVal = item.discount || 0;
@@ -848,7 +853,7 @@ export default function SalesOrderDetail({ showHeader = true }: { showHeader?: b
                                 <span className="text-[10px] text-muted-foreground ml-1">
                                   ({item.discountMode === '%'
                                     ? `${(item.discount / 100).toFixed(0)}%`
-                                    : `₹${(item.discount / 100).toFixed(0)}/cs`})
+                                    : `${sym}${(item.discount / 100).toFixed(0)}/cs`})
                                 </span>
                               </span>
                             ) : (

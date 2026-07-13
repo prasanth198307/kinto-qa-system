@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (path: string) => fetch(path).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
@@ -47,6 +48,8 @@ const TABS = ["Sales by Channel", "Monthly Trend", "Top Products", "Return Analy
 
 export default function ReportsPage() {
   const [tab, setTab] = useState(0);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [period, setPeriod] = useState("this_month");
 
   const { data: orders = [] } = useQuery<any[]>({ queryKey: ["ecom-orders"], queryFn: () => api("/api/ecommerce/orders") });
@@ -111,7 +114,7 @@ export default function ReportsPage() {
     if (tab === 3) exportCSV(["Return Type","Count","Total Amount","% of Orders"], returnAnalysis.map(r => [r.type, r.count, r.amount, r.pct + "%"]), "return-analysis.csv");
   };
 
-  const fmt = (n: number) => `₹${Number(n || 0).toLocaleString("en-IN")}`;
+  const fmt = (n: number) => `${sym}${Number(n || 0).toLocaleString("en-IN")}`;
 
   return (
     <div style={s.page}>

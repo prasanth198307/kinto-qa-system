@@ -6,11 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (m: string, u: string, b?: any) =>
   fetch(u, { method: m, headers: { "Content-Type": "application/json" }, credentials: "include", body: b ? JSON.stringify(b) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
-const fmt = (n: any) => n != null ? `₹${Number(n).toLocaleString("en-IN")}` : "—";
+const fmt = (n: any) => n != null ? `${sym}${Number(n).toLocaleString("en-IN")}` : "—";
 
 const STAGES = ["new", "contacted", "site_visit_scheduled", "site_visit_done", "negotiation", "booked", "lost"];
 const STAGE_COLOR: Record<string, [string, string]> = {
@@ -22,6 +23,8 @@ const STAGE_COLOR: Record<string, [string, string]> = {
 export default function CrmPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [showForm, setShowForm] = useState(false);
   const [selectedLead, setSelectedLead] = useState<any>(null);
   const [form, setForm] = useState<any>({});
@@ -93,7 +96,7 @@ export default function CrmPage() {
                   {projects.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
               </div>
-              {[{ key: "name", label: "Lead Name" }, { key: "phone", label: "Phone" }, { key: "email", label: "Email" }, { key: "source", label: "Source (Walk-in/Website/Broker/Reference)" }, { key: "budget_min", label: "Budget Min ₹", type: "number" }, { key: "budget_max", label: "Budget Max ₹", type: "number" }, { key: "unit_type_preference", label: "Unit Type (1BHK/2BHK/3BHK)" }, { key: "notes", label: "Notes" }].map(f => (
+              {[{ key: "name", label: "Lead Name" }, { key: "phone", label: "Phone" }, { key: "email", label: "Email" }, { key: "source", label: "Source (Walk-in/Website/Broker/Reference)" }, { key: "budget_min", label: "Budget Min ${sym}", type: "number" }, { key: "budget_max", label: "Budget Max ${sym}", type: "number" }, { key: "unit_type_preference", label: "Unit Type (1BHK/2BHK/3BHK)" }, { key: "notes", label: "Notes" }].map(f => (
                 <div key={f.key}>
                   <Label style={{ fontSize: 11 }}>{f.label}</Label>
                   <Input type={f.type || "text"} value={form[f.key] ?? ""} onChange={e => setForm((p: any) => ({ ...p, [f.key]: e.target.value }))} style={{ fontSize: 12, marginTop: 2 }} />

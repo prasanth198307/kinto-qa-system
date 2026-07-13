@@ -16,6 +16,7 @@ import { Pencil, IndianRupee, Star, Gift, Loader2, Package2, Search } from "luci
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import SuperAdminLayout from "./super-admin-layout";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 interface CatalogModule {
   slug: string;
@@ -46,6 +47,8 @@ const CATEGORY_COLORS: Record<string, string> = {
 export default function SuperAdminModuleCatalog() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [filterCat, setFilterCat] = useState("All");
   const [editing, setEditing] = useState<CatalogModule | null>(null);
   const [form, setForm] = useState<Partial<CatalogModule>>({});
@@ -138,7 +141,7 @@ export default function SuperAdminModuleCatalog() {
         <Card>
           <CardContent className="pt-5 pb-4">
             <p className="text-xs text-muted-foreground mb-1">Max Possible/Tenant</p>
-            <p className="text-2xl font-bold" data-testid="stat-max-revenue">₹{totalRevenue.toLocaleString("en-IN")}</p>
+            <p className="text-2xl font-bold" data-testid="stat-max-revenue">{sym}{totalRevenue.toLocaleString("en-IN")}</p>
           </CardContent>
         </Card>
       </div>

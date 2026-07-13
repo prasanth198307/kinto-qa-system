@@ -11,6 +11,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import SuperAdminLayout from "./super-admin-layout";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 interface Tenant {
   id: number;
@@ -54,6 +55,8 @@ export default function SuperAdminOverview() {
   });
 
   const seedDemoMutation = useMutation({
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/admin/seed-demo", {});
       return res.json();
@@ -180,14 +183,14 @@ export default function SuperAdminOverview() {
             {[
               {
                 label: "Monthly Recurring Revenue",
-                value: revenue ? `₹${(revenue.mrr / 100).toLocaleString("en-IN", { maximumFractionDigits: 0 })}` : "—",
-                sub: "MRR (paise → ₹)",
+                value: revenue ? `${sym}${(revenue.mrr / 100).toLocaleString("en-IN", { maximumFractionDigits: 0 })}` : "—",
+                sub: "MRR (paise → ${sym})",
                 icon: IndianRupee,
                 color: "text-primary",
               },
               {
                 label: "Annual Recurring Revenue",
-                value: revenue ? `₹${(revenue.arr / 100).toLocaleString("en-IN", { maximumFractionDigits: 0 })}` : "—",
+                value: revenue ? `${sym}${(revenue.arr / 100).toLocaleString("en-IN", { maximumFractionDigits: 0 })}` : "—",
                 sub: "ARR (MRR × 12)",
                 icon: TrendingUp,
                 color: "text-green-600",

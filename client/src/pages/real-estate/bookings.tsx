@@ -6,16 +6,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (m: string, u: string, b?: any) =>
   fetch(u, { method: m, headers: { "Content-Type": "application/json" }, credentials: "include", body: b ? JSON.stringify(b) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
-const fmt = (n: any) => n != null ? `₹${Number(n).toLocaleString("en-IN")}` : "—";
+const fmt = (n: any) => n != null ? `${sym}${Number(n).toLocaleString("en-IN")}` : "—";
 const fmtDate = (d: any) => d ? new Date(d).toLocaleDateString("en-IN") : "—";
 
 export default function BookingsPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [showForm, setShowForm] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
   const [form, setForm] = useState<any>({});
@@ -77,7 +80,7 @@ export default function BookingsPage() {
                   {brokers.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
                 </select>
               </div>
-              {[{ key: "customer_name", label: "Customer Name" }, { key: "customer_phone", label: "Phone" }, { key: "customer_email", label: "Email" }, { key: "customer_address", label: "Address" }, { key: "booking_date", label: "Booking Date", type: "date" }, { key: "total_amount", label: "Total Amount ₹", type: "number" }, { key: "booking_amount", label: "Booking Amount ₹", type: "number" }, { key: "loan_amount", label: "Loan Amount ₹", type: "number" }, { key: "bank_name", label: "Bank Name" }, { key: "broker_commission", label: "Broker Commission ₹", type: "number" }, { key: "agreement_date", label: "Agreement Date", type: "date" }, { key: "possession_date", label: "Possession Date", type: "date" }].map(f => (
+              {[{ key: "customer_name", label: "Customer Name" }, { key: "customer_phone", label: "Phone" }, { key: "customer_email", label: "Email" }, { key: "customer_address", label: "Address" }, { key: "booking_date", label: "Booking Date", type: "date" }, { key: "total_amount", label: "Total Amount ₹", type: "number" }, { key: "booking_amount", label: "Booking Amount ₹", type: "number" }, { key: "loan_amount", label: "Loan Amount ${sym}", type: "number" }, { key: "bank_name", label: "Bank Name" }, { key: "broker_commission", label: "Broker Commission ${sym}", type: "number" }, { key: "agreement_date", label: "Agreement Date", type: "date" }, { key: "possession_date", label: "Possession Date", type: "date" }].map(f => (
                 <div key={f.key}>
                   <Label style={{ fontSize: 11 }}>{f.label}</Label>
                   <Input type={f.type || "text"} value={form[f.key] ?? ""} onChange={e => setForm((p: any) => ({ ...p, [f.key]: e.target.value }))} style={{ fontSize: 12, marginTop: 2 }} />

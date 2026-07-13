@@ -7,10 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (m: string, u: string, b?: any) =>
   fetch(u, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined, credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
-const fmt = (n: any) => "₹" + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
+const fmt = (n: any) => sym + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
 
 const FOOD_ICONS: Record<string, string> = { veg: "🟢", "non-veg": "🔴", egg: "🟡" };
 const GST_LABELS: Record<string, string> = { food: "Food (5%)", restaurant: "Restaurant (12%)", bar: "Bar (18%)" };
@@ -512,11 +513,11 @@ export default function RestaurantMenuPage() {
                   <textarea className="w-full border rounded px-3 py-2 text-sm min-h-16 bg-background" value={itemForm.description || ""} onChange={e => setItemForm(f => ({ ...f, description: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="text-xs font-medium">Price (₹) *</label>
+                  <label className="text-xs font-medium">Price (${sym}) *</label>
                   <Input type="number" value={itemForm.price || ""} onChange={e => setItemForm(f => ({ ...f, price: Number(e.target.value) }))} />
                 </div>
                 <div>
-                  <label className="text-xs font-medium">Cost Price (₹)</label>
+                  <label className="text-xs font-medium">Cost Price (${sym})</label>
                   <Input type="number" value={itemForm.cost_price || ""} onChange={e => setItemForm(f => ({ ...f, cost_price: Number(e.target.value) }))} />
                 </div>
                 <div>
@@ -585,7 +586,7 @@ export default function RestaurantMenuPage() {
                         <TableHeader>
                           <TableRow>
                             <TableHead>Name</TableHead>
-                            <TableHead>Price Adj (±₹)</TableHead>
+                            <TableHead>Price Adj (±${sym})</TableHead>
                             <TableHead>SKU</TableHead>
                             <TableHead></TableHead>
                           </TableRow>
@@ -622,7 +623,7 @@ export default function RestaurantMenuPage() {
                               onChange={e => setVariationForm(f => ({ ...f, variation_name: e.target.value }))} />
                           </div>
                           <div>
-                            <label className="text-xs font-medium">Price Adjustment (±₹)</label>
+                            <label className="text-xs font-medium">Price Adjustment (±${sym})</label>
                             <Input type="number" placeholder="0" value={variationForm.price_modifier}
                               onChange={e => setVariationForm(f => ({ ...f, price_modifier: Number(e.target.value) }))} />
                           </div>
@@ -751,7 +752,7 @@ export default function RestaurantMenuPage() {
                         ))}
                         <div className="flex gap-2">
                           <Input placeholder="Option name" className="flex-1" value={optionForms[mod.id]?.option_name || ""} onChange={e => setOptionForms(f => ({ ...f, [mod.id]: { ...f[mod.id], option_name: e.target.value } }))} />
-                          <Input type="number" placeholder="±₹" className="w-20" value={optionForms[mod.id]?.price_adjustment ?? ""} onChange={e => setOptionForms(f => ({ ...f, [mod.id]: { ...f[mod.id], price_adjustment: Number(e.target.value) } }))} />
+                          <Input type="number" placeholder="±${sym}" className="w-20" value={optionForms[mod.id]?.price_adjustment ?? ""} onChange={e => setOptionForms(f => ({ ...f, [mod.id]: { ...f[mod.id], price_adjustment: Number(e.target.value) } }))} />
                           <Button size="sm" onClick={() => { saveOption.mutate({ modId: mod.id, data: optionForms[mod.id] }); setOptionForms(f => ({ ...f, [mod.id]: { option_name: "", price_adjustment: 0 } })); }} disabled={!optionForms[mod.id]?.option_name}>Add</Button>
                         </div>
                       </div>
@@ -772,7 +773,7 @@ export default function RestaurantMenuPage() {
                 <Input placeholder="Description" value={comboForm.description || ""} onChange={e => setComboForm(f => ({ ...f, description: e.target.value }))} />
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-xs">Price (₹)</label>
+                    <label className="text-xs">Price (${sym})</label>
                     <Input type="number" value={comboForm.combo_price || ""} onChange={e => setComboForm(f => ({ ...f, combo_price: Number(e.target.value) }))} />
                   </div>
                   <div>

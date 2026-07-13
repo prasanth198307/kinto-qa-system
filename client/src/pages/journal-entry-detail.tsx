@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, BookOpen, Lock, Unlock, Edit } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 interface JournalLine {
   id: string;
@@ -58,7 +59,7 @@ const SOURCE_LABELS: Record<string, string> = {
 
 function formatAmount(paise: number): string {
   if (paise === 0) return "-";
-  return `₹${(paise / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
+  return `${sym}${(paise / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
 }
 
 function formatDate(dateStr: string): string {

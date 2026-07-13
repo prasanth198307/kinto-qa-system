@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { BedDouble, CalendarCheck, CalendarX, TrendingUp, ArrowRight } from "lucide-react";
 import { useLocation } from "wouter";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string, body?: any) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -16,6 +17,8 @@ const STATUS_COLOR: Record<string, string> = {
 
 export default function HotelFrontDeskPage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [, setLocation] = useLocation();
   const today = new Date().toISOString().slice(0, 10);
 
@@ -74,7 +77,7 @@ export default function HotelFrontDeskPage() {
               <div key={r.id} className="flex items-center justify-between p-2 border rounded">
                 <div>
                   <p className="font-medium text-sm">{r.guest_name ?? `Guest #${r.guest_id}`}</p>
-                  <p className="text-xs text-gray-500">Room {r.room_number ?? r.room_id} · ₹{Number(r.total_amount ?? 0).toLocaleString("en-IN")}</p>
+                  <p className="text-xs text-gray-500">Room {r.room_number ?? r.room_id} · {sym}{Number(r.total_amount ?? 0).toLocaleString("en-IN")}</p>
                 </div>
                 <div className="flex gap-1">
                   <Button size="sm" variant="outline" onClick={() => setLocation("/hotel/folio")}>Folio</Button>

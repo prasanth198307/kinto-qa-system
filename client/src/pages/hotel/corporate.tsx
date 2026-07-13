@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Building2, Plus, X } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string, body?: any) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -14,6 +15,8 @@ const EMPTY = { company_name: "", contact_person: "", phone: "", email: "", gst_
 
 export default function HotelCorporatePage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState({ ...EMPTY });
@@ -48,7 +51,7 @@ export default function HotelCorporatePage() {
       <div className="grid grid-cols-3 gap-3">
         <Card><CardContent className="pt-3"><p className="text-xs text-gray-500">Total Accounts</p><p className="text-2xl font-bold">{arr.length}</p></CardContent></Card>
         <Card><CardContent className="pt-3"><p className="text-xs text-gray-500">Active Contracts</p><p className="text-2xl font-bold">{arr.filter((a: any) => { const now = new Date(); return (!a.contract_to || new Date(a.contract_to) >= now); }).length}</p></CardContent></Card>
-        <Card><CardContent className="pt-3"><p className="text-xs text-gray-500">Total Credit Limit</p><p className="text-2xl font-bold">₹{arr.reduce((s: number, a: any) => s + Number(a.credit_limit ?? 0), 0).toLocaleString("en-IN")}</p></CardContent></Card>
+        <Card><CardContent className="pt-3"><p className="text-xs text-gray-500">Total Credit Limit</p><p className="text-2xl font-bold">{sym}{arr.reduce((s: number, a: any) => s + Number(a.credit_limit ?? 0), 0).toLocaleString("en-IN")}</p></CardContent></Card>
       </div>
 
       {showForm && (
@@ -63,8 +66,8 @@ export default function HotelCorporatePage() {
             <div><Label>Phone</Label><Input value={form.phone} onChange={e => f("phone", e.target.value)} /></div>
             <div><Label>Email</Label><Input value={form.email} onChange={e => f("email", e.target.value)} /></div>
             <div><Label>GST Number</Label><Input value={form.gst_no} onChange={e => f("gst_no", e.target.value)} /></div>
-            <div><Label>Negotiated Rate (₹/night)</Label><Input type="number" value={form.negotiated_rate} onChange={e => f("negotiated_rate", e.target.value)} /></div>
-            <div><Label>Credit Limit (₹)</Label><Input type="number" value={form.credit_limit} onChange={e => f("credit_limit", e.target.value)} /></div>
+            <div><Label>Negotiated Rate (${sym}/night)</Label><Input type="number" value={form.negotiated_rate} onChange={e => f("negotiated_rate", e.target.value)} /></div>
+            <div><Label>Credit Limit (${sym})</Label><Input type="number" value={form.credit_limit} onChange={e => f("credit_limit", e.target.value)} /></div>
             <div><Label>Credit Days</Label>
               <Select value={form.credit_days} onValueChange={v => f("credit_days", v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -97,8 +100,8 @@ export default function HotelCorporatePage() {
                   <span className={`text-xs px-2 py-1 rounded ${isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>{isActive ? "Active" : "Expired"}</span>
                 </div>
                 <div className="grid grid-cols-3 gap-2 text-sm mb-3">
-                  <div><p className="text-xs text-gray-500">Negotiated Rate</p><p className="font-medium">₹{Number(a.negotiated_rate ?? 0).toLocaleString("en-IN")}/night</p></div>
-                  <div><p className="text-xs text-gray-500">Credit Limit</p><p className="font-medium">₹{Number(a.credit_limit ?? 0).toLocaleString("en-IN")}</p></div>
+                  <div><p className="text-xs text-gray-500">Negotiated Rate</p><p className="font-medium">{sym}{Number(a.negotiated_rate ?? 0).toLocaleString("en-IN")}/night</p></div>
+                  <div><p className="text-xs text-gray-500">Credit Limit</p><p className="font-medium">{sym}{Number(a.credit_limit ?? 0).toLocaleString("en-IN")}</p></div>
                   <div><p className="text-xs text-gray-500">Credit Days</p><p className="font-medium">{a.credit_days} days</p></div>
                 </div>
                 {a.contract_from && <p className="text-xs text-gray-400 mb-2">{a.contract_from?.slice(0, 10)} → {a.contract_to?.slice(0, 10)}</p>}

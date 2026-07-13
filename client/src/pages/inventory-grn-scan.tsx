@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Scan, Plus, Minus, CheckCircle2, Loader2, AlertCircle, Package, Trash2 } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 interface ScannedItem {
   product_id: number;
@@ -23,6 +24,8 @@ interface ScannedItem {
 export default function InventoryGrnScan() {
   const { toast } = useToast();
   const scanRef = useRef<HTMLInputElement>(null);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [scanInput, setScanInput] = useState("");
   const [supplier, setSupplier] = useState("");
   const [items, setItems] = useState<ScannedItem[]>([]);
@@ -180,7 +183,7 @@ export default function InventoryGrnScan() {
                     {item.barcode ? `EAN: ${item.barcode}` : item.sku ? `SKU: ${item.sku}` : "No barcode"}
                     {item.hsn_code ? ` · HSN: ${item.hsn_code}` : ""}
                     {item.tax_rate ? ` · GST: ${item.tax_rate}%` : ""}
-                    {item.mrp ? ` · MRP: ₹${(item.mrp / 100).toFixed(0)}` : ""}
+                    {item.mrp ? ` · MRP: ${sym}${(item.mrp / 100).toFixed(0)}` : ""}
                   </p>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">

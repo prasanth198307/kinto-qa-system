@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import {
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
   Plus, Search, ShoppingCart, Users, Tag, RotateCcw, TrendingUp, X,
   Pencil, Trash2, AlertTriangle, ShieldCheck, ArrowRight, CheckCircle2,
   Wallet, Smartphone, Clock, CreditCard, ChevronLeft, Eye, EyeOff,
@@ -37,11 +38,11 @@ function SC({ title, value, icon: Icon, color }: any) {
   );
 }
 
-// ── Currency input with ₹ prefix ──────────────────────────────────────────────
+// ── Currency input with ${sym} prefix ──────────────────────────────────────────────
 function CurrencyInput({ value, onChange, placeholder = "0.00", ...props }: any) {
   return (
     <div className="relative">
-      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-medium">₹</span>
+      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-medium">${sym}</span>
       <Input
         type="number"
         min="0"
@@ -62,12 +63,18 @@ type DenomMap = Record<number, number>;
 
 function DenominationInput({ value, onChange }: { value: DenomMap; onChange: (v: DenomMap) => void }) {
   const total = DENOMINATIONS.reduce((s, d) => s + d * (value[d] || 0), 0);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   return (
     <div className="space-y-1.5">
       <div className="grid gap-1">
         {DENOMINATIONS.map(d => (
           <div key={d} className="grid grid-cols-[52px_1fr_72px] items-center gap-2">
-            <span className="text-xs font-medium text-right text-muted-foreground">₹{d}</span>
+            <span className="text-xs font-medium text-right text-muted-foreground">{sym}{d}</span>
             <Input
               type="number" min="0" placeholder="0"
               value={value[d] || ""}
@@ -75,14 +82,14 @@ function DenominationInput({ value, onChange }: { value: DenomMap; onChange: (v:
               className="h-7 text-center text-sm"
             />
             <span className="text-xs text-muted-foreground text-right">
-              = ₹{((value[d] || 0) * d).toLocaleString("en-IN")}
+              = {sym}{((value[d] || 0) * d).toLocaleString("en-IN")}
             </span>
           </div>
         ))}
       </div>
       <div className="flex items-center justify-between pt-1 border-t font-semibold text-sm">
         <span>Total Cash</span>
-        <span className="text-primary">₹{total.toLocaleString("en-IN")}</span>
+        <span className="text-primary">{sym}{total.toLocaleString("en-IN")}</span>
       </div>
     </div>
   );
@@ -101,6 +108,8 @@ function SplitPaymentPanel({ total, splits, onSplitsChange }: {
   total: number; splits: SplitRow[]; onSplitsChange: (s: SplitRow[]) => void;
 }) {
   const splitTotal = splits.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const remaining = +(total - splitTotal).toFixed(2);
   const changeGiven = splitTotal > total + 0.01 ? +(splitTotal - total).toFixed(2) : 0;
 
@@ -127,7 +136,7 @@ function SplitPaymentPanel({ total, splits, onSplitsChange }: {
             </SelectContent>
           </Select>
           <div className="relative flex-1">
-            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₹</span>
+            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">${sym}</span>
             <Input type="number" min="0" step="0.01" placeholder="0.00"
               value={row.amount} onChange={e => update(i, "amount", e.target.value)}
               className="pl-5 h-8 text-sm" />
@@ -150,20 +159,20 @@ function SplitPaymentPanel({ total, splits, onSplitsChange }: {
       <div className="text-xs space-y-0.5 pt-1.5 border-t">
         <div className="flex justify-between">
           <span className="text-muted-foreground">Bill Total</span>
-          <span className="font-semibold">₹{fmt(total)}</span>
+          <span className="font-semibold">{sym}{fmt(total)}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-muted-foreground">Tendered</span>
-          <span>₹{fmt(splitTotal)}</span>
+          <span>{sym}{fmt(splitTotal)}</span>
         </div>
         {remaining > 0.01 && (
           <div className="flex justify-between text-amber-600 dark:text-amber-400 font-medium">
-            <span>Balance Due</span><span>₹{fmt(remaining)}</span>
+            <span>Balance Due</span><span>{sym}{fmt(remaining)}</span>
           </div>
         )}
         {changeGiven > 0.01 && (
           <div className="flex justify-between text-green-700 dark:text-green-400 font-semibold">
-            <span>Change to Return</span><span>₹{fmt(changeGiven)}</span>
+            <span>Change to Return</span><span>{sym}{fmt(changeGiven)}</span>
           </div>
         )}
       </div>
@@ -179,6 +188,8 @@ function MrpOverrideDialog({ open, itemName, mrpRupees, currentPrice, onConfirm,
   const { toast } = useToast();
   // Pre-fill with MRP if current price is above MRP, otherwise keep current price
   const safeDefault = mrpRupees > 0 && currentPrice > mrpRupees ? String(mrpRupees) : String(currentPrice || "");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [newPrice, setNewPrice] = useState(safeDefault);
   const [priceError, setPriceError] = useState("");
 
@@ -201,7 +212,7 @@ function MrpOverrideDialog({ open, itemName, mrpRupees, currentPrice, onConfirm,
           <div className="p-3 rounded-md bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-700 text-sm text-red-800 dark:text-red-300">
             <p className="font-medium truncate">{itemName}</p>
             <p className="text-xs mt-0.5">
-              MRP is <strong>₹{fmt(mrpRupees)}</strong>. You cannot bill above MRP (Consumer Protection Act).
+              MRP is <strong>{sym}{fmt(mrpRupees)}</strong>. You cannot bill above MRP (Consumer Protection Act).
               Enter a price at or below MRP to continue.
             </p>
           </div>
@@ -225,7 +236,7 @@ function MrpOverrideDialog({ open, itemName, mrpRupees, currentPrice, onConfirm,
               const p = Number(newPrice);
               if (!p || p <= 0) { setPriceError("Enter a valid price"); return; }
               if (mrpRupees > 0 && p > mrpRupees) {
-                setPriceError(`Price cannot exceed MRP of ₹${fmt(mrpRupees)}`);
+                setPriceError(`Price cannot exceed MRP of ${sym}${fmt(mrpRupees)}`);
                 return;
               }
               onConfirm(p);
@@ -244,6 +255,8 @@ function MrpOverrideDialog({ open, itemName, mrpRupees, currentPrice, onConfirm,
 function LastSessionCard({ session }: { session: any }) {
   if (!session) return null;
   const duration = session.closed_at
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
     ? Math.round((new Date(session.closed_at).getTime() - new Date(session.opened_at).getTime()) / 60000)
     : null;
   return (
@@ -255,7 +268,7 @@ function LastSessionCard({ session }: { session: any }) {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
         <div>
           <p className="text-xs text-muted-foreground">Total Sales</p>
-          <p className="font-bold text-base">₹{fmt(session.total_sales)}</p>
+          <p className="font-bold text-base">{sym}{fmt(session.total_sales)}</p>
         </div>
         <div>
           <p className="text-xs text-muted-foreground">Transactions</p>
@@ -263,7 +276,7 @@ function LastSessionCard({ session }: { session: any }) {
         </div>
         <div>
           <p className="text-xs text-muted-foreground">Opening Float</p>
-          <p className="font-medium">₹{fmt(session.opening_balance)}</p>
+          <p className="font-medium">{sym}{fmt(session.opening_balance)}</p>
         </div>
         <div>
           <p className="text-xs text-muted-foreground">Duration</p>
@@ -294,6 +307,8 @@ function OpenSessionDialog({
 }) {
   const { toast } = useToast();
   const [step, setStep] = useState<OpenStep>("balance");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [counterName, setCounterName] = useState("Counter 1");
   const [cashDenom, setCashDenom] = useState<DenomMap>({});
   const [upiFloat, setUpiFloat] = useState("");
@@ -476,8 +491,8 @@ function OpenSessionDialog({
                   ? <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
                   : <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-primary" />}
                 <span>
-                  Total float: <strong>₹{fmt(totalFloat)}</strong>
-                  {needsApproval && <> — exceeds ₹{fmt(APPROVAL_THRESHOLD)} limit, manager approval required</>}
+                  Total float: <strong>{sym}{fmt(totalFloat)}</strong>
+                  {needsApproval && <> — exceeds {sym}{fmt(APPROVAL_THRESHOLD)} limit, manager approval required</>}
                 </span>
               </div>
             )}
@@ -527,7 +542,7 @@ function OpenSessionDialog({
             <div className="flex items-start gap-3 p-3 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-700 text-sm text-amber-800 dark:text-amber-200">
               <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
               <div>
-                <p className="font-semibold">Opening balance ₹{fmt(totalFloat)} exceeds threshold</p>
+                <p className="font-semibold">Opening balance {sym}{fmt(totalFloat)} exceeds threshold</p>
                 <p className="text-xs mt-0.5">A manager must approve this session. Have them enter their credentials below.</p>
               </div>
             </div>
@@ -625,6 +640,8 @@ function UpiQrDialog({
 }) {
   const { toast } = useToast();
   const [qrState, setQrState] = useState<QrState>("generating");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [qrId, setQrId] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(300);
@@ -645,7 +662,7 @@ function UpiQrDialog({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ amount, session_id: sessionId, description: `Bill ₹${amount}` }),
+      body: JSON.stringify({ amount, session_id: sessionId, description: `Bill ${sym}${amount}` }),
     })
       .then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); })
       .then(data => {
@@ -713,7 +730,7 @@ function UpiQrDialog({
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Smartphone className="h-4 w-4 text-primary" /> UPI Payment — ₹{fmt(amount)}
+            <Smartphone className="h-4 w-4 text-primary" /> UPI Payment — {sym}{fmt(amount)}
           </DialogTitle>
         </DialogHeader>
 
@@ -756,7 +773,7 @@ function UpiQrDialog({
               </div>
               <div className="text-center">
                 <p className="font-bold text-green-700 dark:text-green-400">Payment Received!</p>
-                <p className="text-sm text-muted-foreground mt-1">₹{fmt(amount)} via UPI</p>
+                <p className="text-sm text-muted-foreground mt-1">{sym}{fmt(amount)} via UPI</p>
               </div>
             </div>
           )}
@@ -813,9 +830,9 @@ function OverviewTab() {
   const { data: stats } = useQuery<any>({ queryKey: ["/api/pos/stats"] });
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-      <SC title="Today's Sales"  value={`₹${fmt(stats?.todaySales)}`}         icon={TrendingUp} color="bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400" />
+      <SC title="Today's Sales"  value={`${sym}${fmt(stats?.todaySales)}`}         icon={TrendingUp} color="bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400" />
       <SC title="Today's Txns"   value={stats?.todayTransactions ?? 0}         icon={ShoppingCart} color="bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400" />
-      <SC title="Monthly Sales"  value={`₹${fmt(stats?.monthlySales)}`}        icon={TrendingUp} color="bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400" />
+      <SC title="Monthly Sales"  value={`${sym}${fmt(stats?.monthlySales)}`}        icon={TrendingUp} color="bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400" />
       <SC title="Open Sessions"  value={stats?.openSessions ?? 0}              icon={Tag}        color="bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400" />
       <SC title="Customers"      value={stats?.totalCustomers ?? 0}            icon={Users}      color="bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400" />
     </div>
@@ -837,6 +854,8 @@ function CardTerminalDialog({ open, amount, sessionId, counterName, onClose, onP
   onClose: () => void; onPaid: (terminalId: string | null, cardRef: string | null) => void;
 }) {
   const [state, setState] = useState<CardState>("loading");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [terminal, setTerminal] = useState<any>(null);
   const [chargeId, setChargeId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
@@ -923,7 +942,7 @@ function CardTerminalDialog({ open, amount, sessionId, counterName, onClose, onP
                 <p className="text-xs font-medium text-muted-foreground">Confirm manually instead</p>
                 <Input placeholder="Card approval / ref no. (optional)" value={cardRef} onChange={e => setCardRef(e.target.value)} />
                 <Button className="w-full" onClick={() => { setState("paid"); setTimeout(() => onPaid(null, cardRef || null), 800); }}>
-                  <Check className="h-4 w-4 mr-2" />Mark as Paid — ₹{fmt(amount)}
+                  <Check className="h-4 w-4 mr-2" />Mark as Paid — {sym}{fmt(amount)}
                 </Button>
               </div>
             </div>
@@ -933,7 +952,7 @@ function CardTerminalDialog({ open, amount, sessionId, counterName, onClose, onP
             <div className="flex flex-col items-center gap-3 py-4">
               <Cpu className="h-10 w-10 text-blue-500 animate-pulse" />
               <p className="font-medium">Sending to {terminal ? TERMINAL_TYPE_LABELS[terminal.terminal_type] : "terminal"}…</p>
-              <p className="text-sm text-muted-foreground">₹{fmt(amount)}</p>
+              <p className="text-sm text-muted-foreground">{sym}{fmt(amount)}</p>
             </div>
           )}
 
@@ -943,7 +962,7 @@ function CardTerminalDialog({ open, amount, sessionId, counterName, onClose, onP
                 <div className="h-16 w-16 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
                   <CreditCard className="h-8 w-8 text-blue-600 dark:text-blue-400" />
                 </div>
-                <p className="text-2xl font-bold">₹{fmt(amount)}</p>
+                <p className="text-2xl font-bold">{sym}{fmt(amount)}</p>
                 {terminal && (
                   <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                     <Monitor className="h-3.5 w-3.5" />
@@ -978,7 +997,7 @@ function CardTerminalDialog({ open, amount, sessionId, counterName, onClose, onP
                 <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-400" />
               </div>
               <p className="text-lg font-bold text-green-700 dark:text-green-400">Payment Successful!</p>
-              <p className="text-sm text-muted-foreground">₹{fmt(amount)} via Card</p>
+              <p className="text-sm text-muted-foreground">{sym}{fmt(amount)} via Card</p>
               {cardRef && <p className="text-xs font-mono bg-muted px-2 py-1 rounded">Ref: {cardRef}</p>}
             </div>
           )}
@@ -1013,6 +1032,8 @@ function WeightEntryDialog({ open, product, onConfirm, onClose }: {
   open: boolean; product: any | null; onConfirm: (weight: number) => void; onClose: () => void;
 }) {
   const [weight, setWeight] = useState("");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const unitPrice = Number(product?.selling_price || product?.price || 0);
   const amount = (Number(weight) || 0) * unitPrice;
   return (
@@ -1033,7 +1054,7 @@ function WeightEntryDialog({ open, product, onConfirm, onClose }: {
             />
           </F>
           {Number(weight) > 0 && (
-            <p className="text-sm font-medium">Amount: ₹{fmt(amount)} ({weight} {product?.unit_label || "kg"} × ₹{fmt(unitPrice)})</p>
+            <p className="text-sm font-medium">Amount: {sym}{fmt(amount)} ({weight} {product?.unit_label || "kg"} × {sym}{fmt(unitPrice)})</p>
           )}
         </div>
         <DialogFooter>
@@ -1051,6 +1072,8 @@ function WeightEntryDialog({ open, product, onConfirm, onClose }: {
 function EodReportDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { data: company } = useQuery<any>({ queryKey: ["/api/settings/company"] });
   const [reportDate, setReportDate] = useState(new Date().toISOString().split("T")[0]);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { data: report, isLoading, refetch } = useQuery<any>({
     queryKey: ["/api/pos/reports/eod", reportDate],
     queryFn: async () => {
@@ -1098,19 +1121,19 @@ function EodReportDialog({ open, onClose }: { open: boolean; onClose: () => void
               <div className="text-center text-[10px]">*** Z-REPORT / END OF DAY ***</div>
               <div className="text-center text-[10px]">Date: {reportDate}</div>
               <div className="divider" />
-              <div className="flex justify-between font-bold"><span>Total Sales</span><span>₹{fmt(report.summary?.total_sales)}</span></div>
+              <div className="flex justify-between font-bold"><span>Total Sales</span><span>{sym}{fmt(report.summary?.total_sales)}</span></div>
               <div className="flex justify-between text-[10px]"><span>Transactions</span><span>{report.summary?.total_txns}</span></div>
-              <div className="flex justify-between text-[10px]"><span>Tax Collected</span><span>₹{fmt(report.summary?.total_tax)}</span></div>
-              <div className="flex justify-between text-[10px]"><span>Discounts Given</span><span>₹{fmt(report.summary?.total_discounts)}</span></div>
+              <div className="flex justify-between text-[10px]"><span>Tax Collected</span><span>{sym}{fmt(report.summary?.total_tax)}</span></div>
+              <div className="flex justify-between text-[10px]"><span>Discounts Given</span><span>{sym}{fmt(report.summary?.total_discounts)}</span></div>
               {Number(report.summary?.total_loyalty_discount) > 0 && (
-                <div className="flex justify-between text-[10px]"><span>Loyalty Discounts</span><span>₹{fmt(report.summary?.total_loyalty_discount)}</span></div>
+                <div className="flex justify-between text-[10px]"><span>Loyalty Discounts</span><span>{sym}{fmt(report.summary?.total_loyalty_discount)}</span></div>
               )}
               <div className="divider" />
               <div className="text-[10px] font-bold">PAYMENT MODE BREAKDOWN</div>
               {(report.byMode || []).map((m: any, i: number) => (
                 <div key={i} className="flex justify-between text-[10px]">
                   <span>{String(m.payment_mode || "").toUpperCase()}</span>
-                  <span>{m.txn_count} txns · ₹{fmt(m.amount)}</span>
+                  <span>{m.txn_count} txns · {sym}{fmt(m.amount)}</span>
                 </div>
               ))}
               {!report.byMode?.length && <div className="text-[10px] text-center text-gray-400">No transactions</div>}
@@ -1119,7 +1142,7 @@ function EodReportDialog({ open, onClose }: { open: boolean; onClose: () => void
               {(report.topItems || []).map((it: any, i: number) => (
                 <div key={i} className="flex justify-between text-[10px]">
                   <span className="truncate flex-1 mr-2">{it.product_name}</span>
-                  <span className="shrink-0">×{Number(it.qty).toFixed(2)} ₹{fmt(it.amount)}</span>
+                  <span className="shrink-0">×{Number(it.qty).toFixed(2)} {sym}{fmt(it.amount)}</span>
                 </div>
               ))}
               {!report.topItems?.length && <div className="text-[10px] text-center text-gray-400">No items sold</div>}
@@ -1128,7 +1151,7 @@ function EodReportDialog({ open, onClose }: { open: boolean; onClose: () => void
                   <div className="divider" />
                   <div className="text-[10px] font-bold">SESSIONS</div>
                   {report.sessions.map((s: any, i: number) => (
-                    <div key={i} className="text-[10px]">{s.counter_name}: Open ₹{fmt(s.opening_balance)} Close ₹{fmt(s.closing_balance || 0)} Sales ₹{fmt(s.total_sales)}</div>
+                    <div key={i} className="text-[10px]">{s.counter_name}: Open {sym}{fmt(s.opening_balance)} Close {sym}{fmt(s.closing_balance || 0)} Sales {sym}{fmt(s.total_sales)}</div>
                   ))}
                 </>
               )}
@@ -1139,7 +1162,7 @@ function EodReportDialog({ open, onClose }: { open: boolean; onClose: () => void
                   {report.hourly.map((h: any, i: number) => (
                     <div key={i} className="flex justify-between text-[10px]">
                       <span>{String(h.hour).padStart(2, "0")}:00–{String(h.hour + 1).padStart(2, "0")}:00</span>
-                      <span>{h.txn_count} txns · ₹{fmt(h.amount)}</span>
+                      <span>{h.txn_count} txns · {sym}{fmt(h.amount)}</span>
                     </div>
                   ))}
                 </>
@@ -1166,6 +1189,8 @@ function PrintReceiptDialog({ open, txn, saleItems, session, onClose }: {
   const { data: company } = useQuery<any>({ queryKey: ["/api/settings/company"] });
 
   const handlePrint = () => {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
     const el = document.getElementById("thermal-receipt-content");
     if (!el) return;
     const w = window.open("", "_blank", "width=420,height=700");
@@ -1224,29 +1249,29 @@ function PrintReceiptDialog({ open, txn, saleItems, session, onClose }: {
                 <tr key={i}>
                   <td className="max-w-[90px] truncate">{it.product_name}</td>
                   <td className="text-right">{it.quantity}</td>
-                  <td className="text-right">₹{fmt(it.unit_price)}</td>
-                  <td className="text-right">₹{fmt(it.amount)}</td>
+                  <td className="text-right">{sym}{fmt(it.unit_price)}</td>
+                  <td className="text-right">{sym}{fmt(it.amount)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
           <div className="border-t border-dashed border-gray-400 my-1" />
-          <div className="flex justify-between text-[10px]"><span>Subtotal</span><span>₹{fmt(txn.subtotal)}</span></div>
+          <div className="flex justify-between text-[10px]"><span>Subtotal</span><span>{sym}{fmt(txn.subtotal)}</span></div>
           {Number(txn.tax_amount) > 0 && <>
-            <div className="flex justify-between text-[10px]"><span>CGST</span><span>₹{fmt(Number(txn.tax_amount) / 2)}</span></div>
-            <div className="flex justify-between text-[10px]"><span>SGST</span><span>₹{fmt(Number(txn.tax_amount) / 2)}</span></div>
-            <div className="flex justify-between text-[10px]"><span>Total Tax</span><span>₹{fmt(txn.tax_amount)}</span></div>
+            <div className="flex justify-between text-[10px]"><span>CGST</span><span>{sym}{fmt(Number(txn.tax_amount) / 2)}</span></div>
+            <div className="flex justify-between text-[10px]"><span>SGST</span><span>{sym}{fmt(Number(txn.tax_amount) / 2)}</span></div>
+            <div className="flex justify-between text-[10px]"><span>Total Tax</span><span>{sym}{fmt(txn.tax_amount)}</span></div>
           </>}
-          {Number(txn.discount_amount) > 0 && <div className="flex justify-between text-[10px]"><span>Discount</span><span>-₹{fmt(txn.discount_amount)}</span></div>}
-          {Number(txn.loyalty_discount) > 0 && <div className="flex justify-between text-[10px]"><span>Loyalty Redemption</span><span>-₹{fmt(txn.loyalty_discount)}</span></div>}
+          {Number(txn.discount_amount) > 0 && <div className="flex justify-between text-[10px]"><span>Discount</span><span>-{sym}{fmt(txn.discount_amount)}</span></div>}
+          {Number(txn.loyalty_discount) > 0 && <div className="flex justify-between text-[10px]"><span>Loyalty Redemption</span><span>-{sym}{fmt(txn.loyalty_discount)}</span></div>}
           <div className="flex justify-between font-bold text-[12px] border-t border-gray-400 pt-0.5">
-            <span>TOTAL</span><span>₹{fmt(txn.total_amount)}</span>
+            <span>TOTAL</span><span>{sym}{fmt(txn.total_amount)}</span>
           </div>
           <div className="border-t border-dashed border-gray-400 my-1" />
           {Array.isArray(txn.payment_splits) && txn.payment_splits.length > 1 ? (
             txn.payment_splits.map((sp: any, i: number) => (
               <div key={i} className="flex justify-between text-[10px]">
-                <span>{String(sp.mode || "").toUpperCase()}</span><span>₹{fmt(sp.amount)}</span>
+                <span>{String(sp.mode || "").toUpperCase()}</span><span>{sym}{fmt(sp.amount)}</span>
               </div>
             ))
           ) : (
@@ -1257,8 +1282,8 @@ function PrintReceiptDialog({ open, txn, saleItems, session, onClose }: {
             </div>
           )}
           <div className="flex justify-between text-[10px]">
-            <span>Paid: ₹{fmt(txn.amount_paid)}</span>
-            {Number(txn.change_given) > 0 && <span>Change: ₹{fmt(txn.change_given)}</span>}
+            <span>Paid: {sym}{fmt(txn.amount_paid)}</span>
+            {Number(txn.change_given) > 0 && <span>Change: {sym}{fmt(txn.change_given)}</span>}
           </div>
           <div className="border-t border-dashed border-gray-400 my-1" />
           <div className="text-center text-[10px] space-y-0.5">
@@ -1283,6 +1308,8 @@ function PrintReceiptDialog({ open, txn, saleItems, session, onClose }: {
 function TerminalSettingsTab() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({ terminal_type: "manual", port: 80 });
 
@@ -1437,6 +1464,8 @@ function TerminalSettingsTab() {
 function CreditLimitWarning({ customer, billTotal }: { customer: any; billTotal: number }) {
   if (!customer) return null;
   const cl = Number(customer.credit_limit || 0);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const outstanding = Number(customer.outstanding_balance || 0);
   if (cl <= 0) return null;
   if (outstanding + billTotal > cl) {
@@ -1445,7 +1474,7 @@ function CreditLimitWarning({ customer, billTotal }: { customer: any; billTotal:
         <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
         <div>
           <p className="font-semibold">Credit limit exceeded</p>
-          <p>Outstanding: ₹{Number(outstanding).toLocaleString("en-IN", { maximumFractionDigits: 2 })} + Bill: ₹{Number(billTotal).toLocaleString("en-IN", { maximumFractionDigits: 2 })} / Limit ₹{Number(cl).toLocaleString("en-IN", { maximumFractionDigits: 2 })}</p>
+          <p>Outstanding: {sym}{Number(outstanding).toLocaleString("en-IN", { maximumFractionDigits: 2 })} + Bill: {sym}{Number(billTotal).toLocaleString("en-IN", { maximumFractionDigits: 2 })} / Limit {sym}{Number(cl).toLocaleString("en-IN", { maximumFractionDigits: 2 })}</p>
         </div>
       </div>
     );
@@ -1454,7 +1483,7 @@ function CreditLimitWarning({ customer, billTotal }: { customer: any; billTotal:
     return (
       <div className="flex items-center gap-2 p-2 rounded-md bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-700 text-orange-800 dark:text-orange-200 text-xs">
         <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-        <span>Outstanding: ₹{Number(outstanding).toLocaleString("en-IN", { maximumFractionDigits: 2 })} of ₹{Number(cl).toLocaleString("en-IN", { maximumFractionDigits: 2 })} credit limit</span>
+        <span>Outstanding: {sym}{Number(outstanding).toLocaleString("en-IN", { maximumFractionDigits: 2 })} of {sym}{Number(cl).toLocaleString("en-IN", { maximumFractionDigits: 2 })} credit limit</span>
       </div>
     );
   }
@@ -1465,6 +1494,8 @@ function CreditLimitWarning({ customer, billTotal }: { customer: any; billTotal:
 function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
   const { toast } = useToast();
   const [cartItems, setCartItems] = useState<any[]>([]);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [productSearch, setProductSearch] = useState("");
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
   const [splits, setSplits] = useState<SplitRow[]>([{ mode: "cash", amount: "" }]);
@@ -1654,14 +1685,14 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
       if (cl > 0 && outstanding + total > cl) {
         toast({
           title: "Credit limit exceeded",
-          description: `${selectedCustomer.name} has ₹${fmt(outstanding)} outstanding + ₹${fmt(total)} bill = ₹${fmt(outstanding + total)} against ₹${fmt(cl)} limit.`,
+          description: `${selectedCustomer.name} has ₹${fmt(outstanding)} outstanding + ${sym}${fmt(total)} bill = ${sym}${fmt(outstanding + total)} against ${sym}${fmt(cl)} limit.`,
           variant: "destructive",
         });
         return;
       }
     }
     if (splitTotal < total - 0.01) {
-      toast({ title: "Amount short", description: `₹${fmt(total - splitTotal)} still due`, variant: "destructive" });
+      toast({ title: "Amount short", description: `${sym}${fmt(total - splitTotal)} still due`, variant: "destructive" });
       return;
     }
     if (splits.length === 1 && splits[0].mode === "upi") { setShowUpiQr(true); return; }
@@ -1737,9 +1768,9 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
               {activeSession.approved_by && <Badge className="ml-2 text-xs bg-amber-100 text-amber-700">Mgr Approved</Badge>}
             </p>
             <p className="text-xs text-green-600 dark:text-green-400">
-              Sales: ₹{fmt(activeSession.total_sales)} · Txns: {activeSession.total_transactions}
-              · Float: ₹{fmt(activeSession.opening_balance)}
-              {Number(activeSession.opening_upi_float) > 0 && ` + ₹${fmt(activeSession.opening_upi_float)} UPI`}
+              Sales: {sym}{fmt(activeSession.total_sales)} · Txns: {activeSession.total_transactions}
+              · Float: {sym}{fmt(activeSession.opening_balance)}
+              {Number(activeSession.opening_upi_float) > 0 && ` + ${sym}${fmt(activeSession.opening_upi_float)} UPI`}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -1772,14 +1803,14 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
                 <p className="font-medium">{activeSession?.counter_name}</p>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                   <span className="text-muted-foreground">Total Sales</span>
-                  <span className="font-semibold text-right">₹{fmt(activeSession?.total_sales)}</span>
+                  <span className="font-semibold text-right">{sym}{fmt(activeSession?.total_sales)}</span>
                   <span className="text-muted-foreground">Transactions</span>
                   <span className="font-semibold text-right">{activeSession?.total_transactions}</span>
                   <span className="text-muted-foreground">Cash Float (Opening)</span>
-                  <span className="font-semibold text-right">₹{fmt(activeSession?.opening_balance)}</span>
+                  <span className="font-semibold text-right">{sym}{fmt(activeSession?.opening_balance)}</span>
                   {Number(activeSession?.opening_upi_float) > 0 && <>
                     <span className="text-muted-foreground">UPI Float (Opening)</span>
-                    <span className="font-semibold text-right">₹{fmt(activeSession?.opening_upi_float)}</span>
+                    <span className="font-semibold text-right">{sym}{fmt(activeSession?.opening_upi_float)}</span>
                   </>}
                   <span className="text-muted-foreground">Session Started</span>
                   <span className="font-semibold text-right">{activeSession?.opened_at ? fmtTime(activeSession.opened_at) : "—"}</span>
@@ -1805,7 +1836,7 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
                 const expectedCash   = openingFloat + totalCashSales;
                 const variance       = closingBalance - expectedCash;
                 const absVariance    = Math.abs(variance);
-                const VARIANCE_GATE  = 100; // ₹100 threshold requires acknowledgement
+                const VARIANCE_GATE  = 100; // ${sym}100 threshold requires acknowledgement
                 const isShortage     = variance < 0;
                 const isSurplus      = variance > 0;
                 const needsGate      = absVariance > VARIANCE_GATE;
@@ -1815,16 +1846,16 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
                     {/* Reconciliation breakdown */}
                     <div className="text-xs rounded-md border p-2.5 space-y-1 bg-muted/30">
                       <div className="flex justify-between text-muted-foreground">
-                        <span>Opening float</span><span>₹{fmt(openingFloat)}</span>
+                        <span>Opening float</span><span>{sym}{fmt(openingFloat)}</span>
                       </div>
                       <div className="flex justify-between text-muted-foreground">
-                        <span>+ Cash sales ({cashTxns.length} txns)</span><span>₹{fmt(totalCashSales)}</span>
+                        <span>+ Cash sales ({cashTxns.length} txns)</span><span>{sym}{fmt(totalCashSales)}</span>
                       </div>
                       <div className="flex justify-between font-medium border-t pt-1">
-                        <span>Expected in drawer</span><span>₹{fmt(expectedCash)}</span>
+                        <span>Expected in drawer</span><span>{sym}{fmt(expectedCash)}</span>
                       </div>
                       <div className="flex justify-between text-muted-foreground">
-                        <span>Physical count</span><span>₹{fmt(closingBalance)}</span>
+                        <span>Physical count</span><span>{sym}{fmt(closingBalance)}</span>
                       </div>
                     </div>
                     {/* Variance badge */}
@@ -1836,7 +1867,7 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
                           : "bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300"
                     }`}>
                       <span>{isShortage ? "Shortage" : isSurplus ? "Surplus" : "Balanced"}</span>
-                      <span>{variance >= 0 ? "+" : ""}₹{fmt(variance)}</span>
+                      <span>{variance >= 0 ? "+" : ""}{sym}{fmt(variance)}</span>
                     </div>
                     {/* Variance gate — must acknowledge before closing */}
                     {needsGate && (
@@ -1849,7 +1880,7 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
                           data-testid="checkbox-variance-acknowledge"
                         />
                         <span>
-                          I acknowledge a {isShortage ? "cash shortage" : "cash surplus"} of <strong>₹{fmt(absVariance)}</strong> and confirm this close is intentional.
+                          I acknowledge a {isShortage ? "cash shortage" : "cash surplus"} of <strong>{sym}{fmt(absVariance)}</strong> and confirm this close is intentional.
                         </span>
                       </label>
                     )}
@@ -1913,7 +1944,7 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
                         <span className="text-muted-foreground">Total Transactions</span>
                         <span className="font-semibold text-right">{totalTxns}</span>
                         <span className="text-muted-foreground">Gross Sales</span>
-                        <span className="font-semibold text-right">₹{fmt(totalSales)}</span>
+                        <span className="font-semibold text-right">{sym}{fmt(totalSales)}</span>
                       </div>
                     </div>
 
@@ -1935,7 +1966,7 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
                                 <tr key={row.payment_mode} className="border-t">
                                   <td className="py-1.5 px-3 capitalize">{MODE_LABEL[row.payment_mode] ?? row.payment_mode}</td>
                                   <td className="py-1.5 px-3 text-right text-muted-foreground">{row.txn_count}</td>
-                                  <td className="py-1.5 px-3 text-right font-medium">₹{fmt(Number(row.total))}</td>
+                                  <td className="py-1.5 px-3 text-right font-medium">{sym}{fmt(Number(row.total))}</td>
                                 </tr>
                               ))}
                             </tbody>
@@ -1949,18 +1980,18 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Cash Reconciliation</p>
                       <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
                         <span className="text-muted-foreground">Opening Float</span>
-                        <span className="text-right">₹{fmt(cr.openingFloat)}</span>
+                        <span className="text-right">{sym}{fmt(cr.openingFloat)}</span>
                         <span className="text-muted-foreground">+ Cash Sales</span>
-                        <span className="text-right">₹{fmt(cr.cashSales)}</span>
+                        <span className="text-right">{sym}{fmt(cr.cashSales)}</span>
                         <span className="font-medium border-t pt-1">Expected in Drawer</span>
-                        <span className="font-semibold text-right border-t pt-1">₹{fmt(cr.expectedCash)}</span>
+                        <span className="font-semibold text-right border-t pt-1">{sym}{fmt(cr.expectedCash)}</span>
                         <span className="text-muted-foreground">Physical Count</span>
-                        <span className="text-right">₹{fmt(cr.physicalCash)}</span>
+                        <span className="text-right">{sym}{fmt(cr.physicalCash)}</span>
                         <span className={`font-semibold border-t pt-1 ${cr.variance < 0 ? "text-red-600 dark:text-red-400" : cr.variance > 0 ? "text-amber-600 dark:text-amber-400" : "text-green-600 dark:text-green-400"}`}>
                           {cr.variance < 0 ? "Shortage" : cr.variance > 0 ? "Surplus" : "Balanced"}
                         </span>
                         <span className={`font-semibold text-right border-t pt-1 ${cr.variance < 0 ? "text-red-600 dark:text-red-400" : cr.variance > 0 ? "text-amber-600 dark:text-amber-400" : "text-green-600 dark:text-green-400"}`}>
-                          {cr.variance >= 0 ? "+" : ""}₹{fmt(cr.variance)}
+                          {cr.variance >= 0 ? "+" : ""}{sym}{fmt(cr.variance)}
                         </span>
                       </div>
                     </div>
@@ -2004,7 +2035,7 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
                 {p.sold_by === "weight" && <Scale className="h-3 w-3 text-muted-foreground shrink-0 mt-0.5" />}
               </div>
               <p className="text-xs text-muted-foreground">{p.sku || "—"}{p.unit_label ? ` · ${p.unit_label}` : ""}</p>
-              <p className="text-sm font-semibold mt-1">₹{fmt(p.selling_price || p.price || 0)}{p.sold_by === "weight" ? `/${p.unit_label || "kg"}` : ""}</p>
+              <p className="text-sm font-semibold mt-1">{sym}{fmt(p.selling_price || p.price || 0)}{p.sold_by === "weight" ? `/${p.unit_label || "kg"}` : ""}</p>
             </button>
           ))}
           {!filteredProducts.length && <p className="col-span-3 text-center py-4 text-muted-foreground text-sm">No products found</p>}
@@ -2020,7 +2051,7 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
               <div key={i} className="flex items-center gap-2 text-sm">
                 <div className="flex-1 min-w-0">
                   <p className="truncate font-medium">{it.product_name}</p>
-                  <p className="text-xs text-muted-foreground">₹{fmt(it.unit_price)} × {it.quantity}{(it as any).unit_label ? ` ${(it as any).unit_label}` : ""}</p>
+                  <p className="text-xs text-muted-foreground">{sym}{fmt(it.unit_price)} × {it.quantity}{(it as any).unit_label ? ` ${(it as any).unit_label}` : ""}</p>
                 </div>
                 <div className="flex items-center gap-1">
                   <Button size="icon" variant="ghost" onClick={() => updateQty(i, it.quantity - 1)}><span className="text-base leading-none">−</span></Button>
@@ -2031,26 +2062,26 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
                   const prod = (products as any[]).find(p => p.id === it.product_id);
                   setMrpOverride({ product: prod || { id: it.product_id, name: it.product_name, mrp: 0, selling_price: it.unit_price }, cartIdx: i });
                 }}><Pencil className="h-3 w-3" /></Button>
-                <span className="w-20 text-right text-sm">₹{fmt(it.amount)}</span>
+                <span className="w-20 text-right text-sm">{sym}{fmt(it.amount)}</span>
                 <Button size="icon" variant="ghost" onClick={() => setCartItems(p => p.filter((_, idx) => idx !== i))}><X className="h-3 w-3" /></Button>
               </div>
             ))}
             {!cartItems.length && <p className="text-center text-sm text-muted-foreground py-4">Cart is empty</p>}
 
             <div className="border-t pt-2 space-y-1 text-sm">
-              <div className="flex justify-between"><span>Subtotal</span><span>₹{fmt(subtotal)}</span></div>
+              <div className="flex justify-between"><span>Subtotal</span><span>{sym}{fmt(subtotal)}</span></div>
               {tax > 0 && <>
-                <div className="flex justify-between text-xs text-muted-foreground"><span>CGST</span><span>₹{fmt(tax / 2)}</span></div>
-                <div className="flex justify-between text-xs text-muted-foreground"><span>SGST</span><span>₹{fmt(tax / 2)}</span></div>
-                <div className="flex justify-between"><span>Total Tax</span><span>₹{fmt(tax)}</span></div>
+                <div className="flex justify-between text-xs text-muted-foreground"><span>CGST</span><span>{sym}{fmt(tax / 2)}</span></div>
+                <div className="flex justify-between text-xs text-muted-foreground"><span>SGST</span><span>{sym}{fmt(tax / 2)}</span></div>
+                <div className="flex justify-between"><span>Total Tax</span><span>{sym}{fmt(tax)}</span></div>
               </>}
               {loyaltyDiscount > 0 && (
                 <div className="flex justify-between text-amber-700 dark:text-amber-400">
                   <span className="flex items-center gap-1"><Gift className="h-3 w-3" />Loyalty Discount</span>
-                  <span>-₹{fmt(loyaltyDiscount)}</span>
+                  <span>-{sym}{fmt(loyaltyDiscount)}</span>
                 </div>
               )}
-              <div className="flex justify-between font-bold text-base border-t pt-1"><span>Total</span><span>₹{fmt(total)}</span></div>
+              <div className="flex justify-between font-bold text-base border-t pt-1"><span>Total</span><span>{sym}{fmt(total)}</span></div>
             </div>
 
             <F label="Customer">
@@ -2070,7 +2101,7 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
                   <p className="font-medium text-amber-800 dark:text-amber-200 flex items-center gap-1">
                     <Gift className="h-3 w-3" />{selectedCustomer.loyalty_points} pts available
                   </p>
-                  <p className="text-amber-600 dark:text-amber-400">= ₹{fmt(selectedCustomer.loyalty_points / 100)} discount</p>
+                  <p className="text-amber-600 dark:text-amber-400">= {sym}{fmt(selectedCustomer.loyalty_points / 100)} discount</p>
                 </div>
                 <Button size="sm" variant={loyaltyRedeem > 0 ? "default" : "outline"}
                   onClick={() => setLoyaltyRedeem(loyaltyRedeem > 0 ? 0 : selectedCustomer.loyalty_points)}
@@ -2085,7 +2116,7 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
             </F>
 
             <Button className="w-full" onClick={completeSale} disabled={saleMut.isPending || !cartItems.length} data-testid="button-complete-sale">
-              {saleMut.isPending ? "Processing…" : `Complete Sale — ₹${fmt(total)}`}
+              {saleMut.isPending ? "Processing…" : `Complete Sale — ${sym}${fmt(total)}`}
             </Button>
             {cartItems.length > 0 && (
               <Button variant="outline" className="w-full" disabled={parkBillMut.isPending}
@@ -2236,6 +2267,8 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
 // ── Sales History ─────────────────────────────────────────────────────────────
 function SalesHistoryTab() {
   const [activeTab, setActiveTab] = useState<"txns" | "cashier" | "hourly" | "daily">("txns");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [search, setSearch] = useState("");
   const [reportDate, setReportDate] = useState(new Date().toISOString().split("T")[0]);
   const { data: txns = [] } = useQuery<any[]>({ queryKey: ["/api/pos/transactions"] });
@@ -2301,13 +2334,13 @@ function SalesHistoryTab() {
                   <tr key={t.id} className="border-t hover:bg-muted/30">
                     <td className="px-3 py-2 font-mono text-xs">{t.transaction_no}</td>
                     <td className="px-3 py-2">{t.customer_name || "Walk-in"}</td>
-                    <td className="px-3 py-2">₹{fmt(t.subtotal)}</td>
-                    <td className="px-3 py-2">₹{fmt(t.tax_amount)}</td>
-                    <td className="px-3 py-2">₹{fmt(t.discount_amount)}</td>
-                    <td className="px-3 py-2 font-bold">₹{fmt(t.total_amount)}</td>
+                    <td className="px-3 py-2">{sym}{fmt(t.subtotal)}</td>
+                    <td className="px-3 py-2">{sym}{fmt(t.tax_amount)}</td>
+                    <td className="px-3 py-2">{sym}{fmt(t.discount_amount)}</td>
+                    <td className="px-3 py-2 font-bold">{sym}{fmt(t.total_amount)}</td>
                     <td className="px-3 py-2 uppercase">{t.payment_mode}</td>
-                    <td className="px-3 py-2">₹{fmt(t.amount_paid)}</td>
-                    <td className="px-3 py-2">₹{fmt(t.change_given)}</td>
+                    <td className="px-3 py-2">{sym}{fmt(t.amount_paid)}</td>
+                    <td className="px-3 py-2">{sym}{fmt(t.change_given)}</td>
                     <td className="px-3 py-2 whitespace-nowrap">{new Date(t.created_at).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })}</td>
                   </tr>
                 ))}
@@ -2340,9 +2373,9 @@ function SalesHistoryTab() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
                   {[
                     { label: "Transactions", val: row.txn_count },
-                    { label: "Total Sales", val: `₹${fmt(row.total_sales)}` },
-                    { label: "Tax", val: `₹${fmt(row.total_tax)}` },
-                    { label: "Discounts", val: `₹${fmt(row.total_discounts)}` },
+                    { label: "Total Sales", val: `${sym}${fmt(row.total_sales)}` },
+                    { label: "Tax", val: `${sym}${fmt(row.total_tax)}` },
+                    { label: "Discounts", val: `${sym}${fmt(row.total_discounts)}` },
                   ].map(({ label, val }) => (
                     <div key={label} className="text-center p-2 rounded-md bg-muted/40">
                       <p className="text-xs text-muted-foreground">{label}</p>
@@ -2382,8 +2415,8 @@ function SalesHistoryTab() {
                     <tr key={row.hour} className="border-t hover:bg-muted/30">
                       <td className="px-3 py-2 font-medium">{label}</td>
                       <td className="px-3 py-2">{row.txn_count}</td>
-                      <td className="px-3 py-2 font-semibold">₹{fmt(row.amount)}</td>
-                      <td className="px-3 py-2 text-muted-foreground">₹{fmt(row.avg_ticket)}</td>
+                      <td className="px-3 py-2 font-semibold">{sym}{fmt(row.amount)}</td>
+                      <td className="px-3 py-2 text-muted-foreground">{sym}{fmt(row.avg_ticket)}</td>
                       <td className="px-3 py-2 w-32">
                         <div className="h-3 rounded-full bg-muted overflow-hidden">
                           <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
@@ -2411,9 +2444,9 @@ function SalesHistoryTab() {
               {/* Day-level KPI strip */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
-                  { label: "Gross Sales",    value: `₹${fmt(dailySummary.totals?.gross_sales)}` },
-                  { label: "Net Sales",      value: `₹${fmt(dailySummary.totals?.net_sales)}` },
-                  { label: "Tax Collected",  value: `₹${fmt(dailySummary.totals?.total_tax)}` },
+                  { label: "Gross Sales",    value: `${sym}${fmt(dailySummary.totals?.gross_sales)}` },
+                  { label: "Net Sales",      value: `${sym}${fmt(dailySummary.totals?.net_sales)}` },
+                  { label: "Tax Collected",  value: `${sym}${fmt(dailySummary.totals?.total_tax)}` },
                   { label: "Transactions",   value: String(dailySummary.totals?.txn_count ?? 0) },
                 ].map(kpi => (
                   <div key={kpi.label} className="rounded-md border p-3 bg-muted/20 space-y-0.5">
@@ -2440,10 +2473,10 @@ function SalesHistoryTab() {
                           <td className="px-3 py-2 font-medium">{c.counter_name || "—"}</td>
                           <td className="px-3 py-2">{c.session_count}</td>
                           <td className="px-3 py-2">{c.txn_count}</td>
-                          <td className="px-3 py-2 font-semibold">₹{fmt(c.gross_sales)}</td>
-                          <td className="px-3 py-2 text-amber-600 dark:text-amber-400">₹{fmt(c.total_discount)}</td>
-                          <td className="px-3 py-2">₹{fmt(c.total_tax)}</td>
-                          <td className="px-3 py-2 font-semibold text-green-700 dark:text-green-400">₹{fmt(c.net_sales)}</td>
+                          <td className="px-3 py-2 font-semibold">{sym}{fmt(c.gross_sales)}</td>
+                          <td className="px-3 py-2 text-amber-600 dark:text-amber-400">{sym}{fmt(c.total_discount)}</td>
+                          <td className="px-3 py-2">{sym}{fmt(c.total_tax)}</td>
+                          <td className="px-3 py-2 font-semibold text-green-700 dark:text-green-400">{sym}{fmt(c.net_sales)}</td>
                         </tr>
                       ))}
                       {/* Totals row */}
@@ -2451,10 +2484,10 @@ function SalesHistoryTab() {
                         <td className="px-3 py-2">Total</td>
                         <td className="px-3 py-2">{dailySummary.totals?.session_count}</td>
                         <td className="px-3 py-2">{dailySummary.totals?.txn_count}</td>
-                        <td className="px-3 py-2">₹{fmt(dailySummary.totals?.gross_sales)}</td>
-                        <td className="px-3 py-2 text-amber-600 dark:text-amber-400">₹{fmt(dailySummary.totals?.total_discount)}</td>
-                        <td className="px-3 py-2">₹{fmt(dailySummary.totals?.total_tax)}</td>
-                        <td className="px-3 py-2 text-green-700 dark:text-green-400">₹{fmt(dailySummary.totals?.net_sales)}</td>
+                        <td className="px-3 py-2">{sym}{fmt(dailySummary.totals?.gross_sales)}</td>
+                        <td className="px-3 py-2 text-amber-600 dark:text-amber-400">{sym}{fmt(dailySummary.totals?.total_discount)}</td>
+                        <td className="px-3 py-2">{sym}{fmt(dailySummary.totals?.total_tax)}</td>
+                        <td className="px-3 py-2 text-green-700 dark:text-green-400">{sym}{fmt(dailySummary.totals?.net_sales)}</td>
                       </tr>
                     </tbody>
                   </table>
@@ -2471,7 +2504,7 @@ function SalesHistoryTab() {
                       return (
                         <div key={p.payment_mode} className="rounded-md border px-4 py-2.5 bg-muted/20 text-center min-w-[110px]">
                           <p className="text-xs text-muted-foreground capitalize">{MODE_LABEL[p.payment_mode] ?? p.payment_mode}</p>
-                          <p className="font-semibold">₹{fmt(p.total)}</p>
+                          <p className="font-semibold">{sym}{fmt(p.total)}</p>
                           <p className="text-xs text-muted-foreground">{p.txn_count} txn{Number(p.txn_count) === 1 ? "" : "s"}</p>
                         </div>
                       );
@@ -2491,6 +2524,8 @@ function SalesHistoryTab() {
 function CustomersTab() {
   const { toast } = useToast();
   const [search, setSearch] = useState(""); const [showForm, setShowForm] = useState(false); const [editing, setEditing] = useState<any>(null); const [form, setForm] = useState<any>({});
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { data: customers = [] } = useQuery<any[]>({ queryKey: ["/api/pos/customers"] });
   const saveMut = useMutation({ mutationFn: (d: any) => editing ? apiRequest("PUT", `/api/pos/customers/${editing.id}`, d) : apiRequest("POST", "/api/pos/customers", d), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/pos/customers"] }); setShowForm(false); toast({ title: "Saved" }); } });
   const delMut = useMutation({ mutationFn: (id: any) => apiRequest("DELETE", `/api/pos/customers/${id}`), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/pos/customers"] }) });
@@ -2510,7 +2545,7 @@ function CustomersTab() {
                 <td className="px-3 py-2 font-mono text-xs">{c.customer_code}</td><td className="px-3 py-2 font-medium">{c.name}</td>
                 <td className="px-3 py-2">{c.phone || "—"}</td><td className="px-3 py-2">{c.email || "—"}</td>
                 <td className="px-3 py-2"><Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">{c.loyalty_points || 0} pts</Badge></td>
-                <td className="px-3 py-2">₹{fmt(c.credit_limit)}</td><td className="px-3 py-2">₹{fmt(c.outstanding_balance)}</td>
+                <td className="px-3 py-2">{sym}{fmt(c.credit_limit)}</td><td className="px-3 py-2">{sym}{fmt(c.outstanding_balance)}</td>
                 <td className="px-3 py-2"><div className="flex gap-1"><Button size="icon" variant="ghost" onClick={() => { setEditing(c); setForm({ ...c }); setShowForm(true); }}><Pencil className="h-3.5 w-3.5" /></Button><Button size="icon" variant="ghost" onClick={() => delMut.mutate(c.id)}><Trash2 className="h-3.5 w-3.5" /></Button></div></td>
               </tr>
             ))}
@@ -2524,7 +2559,7 @@ function CustomersTab() {
             <div className="col-span-2"><F label="Name *"><Input value={form.name || ""} onChange={e => setForm({ ...form, name: e.target.value })} /></F></div>
             <F label="Phone"><Input value={form.phone || ""} onChange={e => setForm({ ...form, phone: e.target.value })} /></F>
             <F label="Email"><Input value={form.email || ""} onChange={e => setForm({ ...form, email: e.target.value })} /></F>
-            <F label="Credit Limit (₹)"><Input type="number" value={form.credit_limit || ""} onChange={e => setForm({ ...form, credit_limit: e.target.value })} /></F>
+            <F label="Credit Limit "><Input type="number" value={form.credit_limit || ""} onChange={e => setForm({ ...form, credit_limit: e.target.value })} /></F>
             <F label="Date of Birth"><Input type="date" value={form.date_of_birth || ""} onChange={e => setForm({ ...form, date_of_birth: e.target.value })} /></F>
             <div className="col-span-2"><F label="Address"><Input value={form.address || ""} onChange={e => setForm({ ...form, address: e.target.value })} /></F></div>
           </div>
@@ -2539,6 +2574,8 @@ function CustomersTab() {
 function ReturnsTab() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [txnNoInput, setTxnNoInput] = useState("");
   const [lookupTxn, setLookupTxn] = useState<any>(null);
   const [lookupLoading, setLookupLoading] = useState(false);
@@ -2619,7 +2656,7 @@ function ReturnsTab() {
                 <td className="px-3 py-2 font-mono text-xs">{r.return_number}</td>
                 <td className="px-3 py-2">{r.customer_name_ref || "Walk-in"}</td>
                 <td className="px-3 py-2 whitespace-nowrap">{r.return_date?.split("T")[0]}</td>
-                <td className="px-3 py-2 font-medium">₹{fmt(r.return_amount)}</td>
+                <td className="px-3 py-2 font-medium">{sym}{fmt(r.return_amount)}</td>
                 <td className="px-3 py-2 max-w-[150px] truncate">{r.reason || "—"}</td>
                 <td className="px-3 py-2 uppercase">{r.refund_mode}</td>
                 <td className="px-3 py-2">
@@ -2667,7 +2704,7 @@ function ReturnsTab() {
               <div className="space-y-3">
                 <div className="p-3 rounded-md bg-muted/40 text-xs space-y-1">
                   <p className="font-medium">{lookupTxn.transaction_no}</p>
-                  <p className="text-muted-foreground">Customer: {lookupTxn.customer_name || "Walk-in"} · Total: ₹{fmt(lookupTxn.total_amount)}</p>
+                  <p className="text-muted-foreground">Customer: {lookupTxn.customer_name || "Walk-in"} · Total: {sym}{fmt(lookupTxn.total_amount)}</p>
                 </div>
                 <label className="text-sm font-medium">Step 2 — Select Items to Return</label>
                 <div className="space-y-2 max-h-48 overflow-y-auto">
@@ -2682,7 +2719,7 @@ function ReturnsTab() {
                       />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{it.product_name}</p>
-                        <p className="text-xs text-muted-foreground">₹{fmt(it.unit_price)} × {it.quantity}</p>
+                        <p className="text-xs text-muted-foreground">{sym}{fmt(it.unit_price)} × {it.quantity}</p>
                       </div>
                       {selectedItems[i]?.selected && (
                         <div className="flex items-center gap-1">
@@ -2704,7 +2741,7 @@ function ReturnsTab() {
 
                 {returnTotal > 0 && (
                   <div className="flex justify-between font-semibold text-sm p-2 rounded-md bg-muted/40">
-                    <span>Return Amount</span><span>₹{fmt(returnTotal)}</span>
+                    <span>Return Amount</span><span>{sym}{fmt(returnTotal)}</span>
                   </div>
                 )}
 
@@ -2729,7 +2766,7 @@ function ReturnsTab() {
             <Button variant="outline" onClick={() => { setShowForm(false); setLookupTxn(null); }}>Cancel</Button>
             {lookupTxn && (
               <Button onClick={submitReturn} disabled={saveMut.isPending || !returnItems.length} data-testid="button-submit-return">
-                {saveMut.isPending ? "Processing…" : `Process Return — ₹${fmt(returnTotal)}`}
+                {saveMut.isPending ? "Processing…" : `Process Return — ${sym}${fmt(returnTotal)}`}
               </Button>
             )}
           </DialogFooter>
@@ -2743,6 +2780,8 @@ function ReturnsTab() {
 function PromotionsTab() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false); const [editing, setEditing] = useState<any>(null); const [form, setForm] = useState<any>({});
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { data: promos = [] } = useQuery<any[]>({ queryKey: ["/api/pos/promotions"] });
   const saveMut = useMutation({ mutationFn: (d: any) => editing ? apiRequest("PUT", `/api/pos/promotions/${editing.id}`, d) : apiRequest("POST", "/api/pos/promotions", d), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/pos/promotions"] }); setShowForm(false); toast({ title: "Saved" }); } });
   const delMut = useMutation({ mutationFn: (id: any) => apiRequest("DELETE", `/api/pos/promotions/${id}`), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/pos/promotions"] }) });
@@ -2761,8 +2800,8 @@ function PromotionsTab() {
                 </div>
                 <div className="flex gap-1"><Button size="icon" variant="ghost" onClick={() => { setEditing(p); setForm({ ...p, start_date: p.start_date?.split("T")[0], end_date: p.end_date?.split("T")[0] }); setShowForm(true); }}><Pencil className="h-3.5 w-3.5" /></Button><Button size="icon" variant="ghost" onClick={() => delMut.mutate(p.id)}><Trash2 className="h-3.5 w-3.5" /></Button></div>
               </div>
-              <p className="text-sm text-muted-foreground">{p.promo_type === "percentage" ? `${p.discount_value}% off` : `₹${fmt(p.discount_value)} off`}</p>
-              {p.min_purchase_amount > 0 && <p className="text-xs text-muted-foreground">Min purchase: ₹{fmt(p.min_purchase_amount)}</p>}
+              <p className="text-sm text-muted-foreground">{p.promo_type === "percentage" ? `${p.discount_value}% off` : `${sym}${fmt(p.discount_value)} off`}</p>
+              {p.min_purchase_amount > 0 && <p className="text-xs text-muted-foreground">Min purchase: {sym}{fmt(p.min_purchase_amount)}</p>}
               {(p.start_date || p.end_date) && <p className="text-xs text-muted-foreground mt-1">{p.start_date?.split("T")[0]} → {p.end_date?.split("T")[0]}</p>}
             </CardContent>
           </Card>
@@ -2774,9 +2813,9 @@ function PromotionsTab() {
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2"><F label="Name *"><Input value={form.name || ""} onChange={e => setForm({ ...form, name: e.target.value })} /></F></div>
             <F label="Promo Code"><Input placeholder="SAVE10" value={form.promo_code || ""} onChange={e => setForm({ ...form, promo_code: e.target.value })} /></F>
-            <F label="Type"><Select value={form.promo_type || "percentage"} onValueChange={v => setForm({ ...form, promo_type: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="percentage">Percentage (%)</SelectItem><SelectItem value="fixed">Fixed Amount (₹)</SelectItem></SelectContent></Select></F>
-            <F label={`Discount ${form.promo_type === "percentage" ? "%" : "(₹)"}`}><Input type="number" value={form.discount_value || ""} onChange={e => setForm({ ...form, discount_value: e.target.value })} /></F>
-            <F label="Min Purchase (₹)"><Input type="number" value={form.min_purchase_amount || ""} onChange={e => setForm({ ...form, min_purchase_amount: e.target.value })} /></F>
+            <F label="Type"><Select value={form.promo_type || "percentage"} onValueChange={v => setForm({ ...form, promo_type: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="percentage">Percentage (%)</SelectItem><SelectItem value="fixed">Fixed Amount (${sym})</SelectItem></SelectContent></Select></F>
+            <F label={`Discount ${form.promo_type === "percentage" ? "%" : "(${sym})"}`}><Input type="number" value={form.discount_value || ""} onChange={e => setForm({ ...form, discount_value: e.target.value })} /></F>
+            <F label="Min Purchase "><Input type="number" value={form.min_purchase_amount || ""} onChange={e => setForm({ ...form, min_purchase_amount: e.target.value })} /></F>
             <F label="Start Date"><Input type="date" value={form.start_date || ""} onChange={e => setForm({ ...form, start_date: e.target.value })} /></F>
             <F label="End Date"><Input type="date" value={form.end_date || ""} onChange={e => setForm({ ...form, end_date: e.target.value })} /></F>
             <F label="Usage Limit"><Input type="number" value={form.usage_limit || ""} onChange={e => setForm({ ...form, usage_limit: e.target.value })} /></F>
@@ -2804,9 +2843,9 @@ function SessionsTab() {
               <td className="px-3 py-2 font-medium">{s.counter_name}</td>
               <td className="px-3 py-2 whitespace-nowrap">{fmtTime(s.opened_at)}</td>
               <td className="px-3 py-2 whitespace-nowrap">{s.closed_at ? fmtTime(s.closed_at) : "—"}</td>
-              <td className="px-3 py-2">₹{fmt(s.opening_balance)}</td>
-              <td className="px-3 py-2">₹{fmt(s.opening_upi_float || 0)}</td>
-              <td className="px-3 py-2 font-medium">₹{fmt(s.total_sales)}</td>
+              <td className="px-3 py-2">{sym}{fmt(s.opening_balance)}</td>
+              <td className="px-3 py-2">{sym}{fmt(s.opening_upi_float || 0)}</td>
+              <td className="px-3 py-2 font-medium">{sym}{fmt(s.total_sales)}</td>
               <td className="px-3 py-2">{s.total_transactions}</td>
               <td className="px-3 py-2">{s.approved_by ? <Badge className="bg-amber-100 text-amber-700 text-xs">{s.approved_by}</Badge> : "—"}</td>
               <td className="px-3 py-2"><Badge className={s.status === "open" ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground"}>{s.status}</Badge></td>
@@ -2822,6 +2861,8 @@ function SessionsTab() {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function POSPage() {
   const [activeTab, setActiveTab] = useState("overview");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
 
   return (
     <div className="p-4 sm:p-6 space-y-6">

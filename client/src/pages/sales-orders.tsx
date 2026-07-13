@@ -132,6 +132,12 @@ type SalesOrderFormValues = z.infer<typeof salesOrderSchema>;
 
 export default function SalesOrdersPage({ showHeader = true }: { showHeader?: boolean }) {
   const [location, navigate] = useLocation();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { toast } = useToast();
   const tenantConfig = useTenantConfig();
   const { user, logoutMutation } = useAuth();
@@ -761,7 +767,7 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                                     className="h-8 w-9 px-1 text-xs"
                                     onClick={() => {
                                       const cur = form.getValues(`items.${index}.discountMode`) || '%';
-                                      form.setValue(`items.${index}.discountMode`, cur === '%' ? '₹' : '%');
+                                      form.setValue(`items.${index}.discountMode`, cur === '%' ? sym : '%');
                                     }}
                                     data-testid={`button-discount-mode-${index}`}
                                   >

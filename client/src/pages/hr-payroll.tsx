@@ -14,6 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import {
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
   Play, CheckCircle, Lock, Eye, Plus, Unlock, Download,
   MessageCircle, Mail, IndianRupee, Users, ExternalLink, Settings2, FileArchive, SlidersHorizontal
 } from "lucide-react";
@@ -254,15 +255,15 @@ export default function HRPayrollPage() {
                       <div className="flex gap-4 text-sm">
                         <div className="text-center">
                           <p className="text-muted-foreground text-xs">Gross</p>
-                          <p className="font-semibold">₹{fmt(run.total_gross)}</p>
+                          <p className="font-semibold">{sym}{fmt(run.total_gross)}</p>
                         </div>
                         <div className="text-center">
                           <p className="text-muted-foreground text-xs">Deductions</p>
-                          <p className="font-semibold text-destructive">₹{fmt(run.total_deductions)}</p>
+                          <p className="font-semibold text-destructive">{sym}{fmt(run.total_deductions)}</p>
                         </div>
                         <div className="text-center">
                           <p className="text-muted-foreground text-xs">Net Pay</p>
-                          <p className="font-semibold text-green-600">₹{fmt(run.total_net)}</p>
+                          <p className="font-semibold text-green-600">{sym}{fmt(run.total_net)}</p>
                         </div>
                       </div>
                     )}
@@ -392,12 +393,12 @@ export default function HRPayrollPage() {
                         <p className="text-xs text-muted-foreground">{p.emp_code} · {p.department_name}</p>
                       </td>
                       <td className="px-3 py-2 text-right">{Number(p.days_worked).toFixed(1)}/{p.days_in_month}</td>
-                      <td className="px-3 py-2 text-right font-medium">₹{fmt(p.gross_salary)}</td>
-                      <td className="px-3 py-2 text-right text-muted-foreground">₹{fmt(p.pf_employee)}</td>
-                      <td className="px-3 py-2 text-right text-muted-foreground">₹{fmt(p.esi_employee)}</td>
-                      <td className="px-3 py-2 text-right text-muted-foreground">₹{fmt(p.pt)}</td>
-                      <td className="px-3 py-2 text-right text-muted-foreground">₹{fmt(p.tds)}</td>
-                      <td className="px-3 py-2 text-right font-semibold text-green-700">₹{fmt(p.net_salary)}</td>
+                      <td className="px-3 py-2 text-right font-medium">{sym}{fmt(p.gross_salary)}</td>
+                      <td className="px-3 py-2 text-right text-muted-foreground">{sym}{fmt(p.pf_employee)}</td>
+                      <td className="px-3 py-2 text-right text-muted-foreground">{sym}{fmt(p.esi_employee)}</td>
+                      <td className="px-3 py-2 text-right text-muted-foreground">{sym}{fmt(p.pt)}</td>
+                      <td className="px-3 py-2 text-right text-muted-foreground">{sym}{fmt(p.tds)}</td>
+                      <td className="px-3 py-2 text-right font-semibold text-green-700">{sym}{fmt(p.net_salary)}</td>
                       <td className="px-3 py-2 text-center">
                         <div className="flex items-center justify-center gap-1">
                           {viewRun?.status !== "locked" && (
@@ -418,12 +419,12 @@ export default function HRPayrollPage() {
                     <tr>
                       <td className="px-3 py-2">Total ({(payslips as any[]).length})</td>
                       <td />
-                      <td className="px-3 py-2 text-right">₹{fmt((payslips as any[]).reduce((s, p) => s + Number(p.gross_salary), 0))}</td>
-                      <td className="px-3 py-2 text-right">₹{fmt((payslips as any[]).reduce((s, p) => s + Number(p.pf_employee), 0))}</td>
-                      <td className="px-3 py-2 text-right">₹{fmt((payslips as any[]).reduce((s, p) => s + Number(p.esi_employee), 0))}</td>
-                      <td className="px-3 py-2 text-right">₹{fmt((payslips as any[]).reduce((s, p) => s + Number(p.pt), 0))}</td>
-                      <td className="px-3 py-2 text-right">₹{fmt((payslips as any[]).reduce((s, p) => s + Number(p.tds), 0))}</td>
-                      <td className="px-3 py-2 text-right text-green-700">₹{fmt((payslips as any[]).reduce((s, p) => s + Number(p.net_salary), 0))}</td>
+                      <td className="px-3 py-2 text-right">{sym}{fmt((payslips as any[]).reduce((s, p) => s + Number(p.gross_salary), 0))}</td>
+                      <td className="px-3 py-2 text-right">{sym}{fmt((payslips as any[]).reduce((s, p) => s + Number(p.pf_employee), 0))}</td>
+                      <td className="px-3 py-2 text-right">{sym}{fmt((payslips as any[]).reduce((s, p) => s + Number(p.esi_employee), 0))}</td>
+                      <td className="px-3 py-2 text-right">{sym}{fmt((payslips as any[]).reduce((s, p) => s + Number(p.pt), 0))}</td>
+                      <td className="px-3 py-2 text-right">{sym}{fmt((payslips as any[]).reduce((s, p) => s + Number(p.tds), 0))}</td>
+                      <td className="px-3 py-2 text-right text-green-700">{sym}{fmt((payslips as any[]).reduce((s, p) => s + Number(p.net_salary), 0))}</td>
                       <td />
                     </tr>
                   </tfoot>
@@ -708,10 +709,10 @@ export default function HRPayrollPage() {
                       <div>
                         <p className="text-sm font-medium">{comp.name}</p>
                         {isDaily && (
-                          <p className="text-xs text-muted-foreground">₹{comp.daily_rate}/day × {comp.field_days ?? 0} days = ₹{Number(comp.amount).toLocaleString()}</p>
+                          <p className="text-xs text-muted-foreground">{sym}{comp.daily_rate}/day × {comp.field_days ?? 0} days = {sym}{Number(comp.amount).toLocaleString()}</p>
                         )}
                       </div>
-                      <span className="text-sm font-semibold">₹{Number(comp.amount).toLocaleString()}</span>
+                      <span className="text-sm font-semibold">{sym}{Number(comp.amount).toLocaleString()}</span>
                     </div>
                     {isDaily ? (
                       <div className="flex items-center gap-2">

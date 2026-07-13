@@ -8,16 +8,19 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { RefreshCw, Bell, TrendingUp, TrendingDown, Wifi, WifiOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 interface RateData { rate: number; silver: number; platinum: number; updatedAt: string | Date; }
 
-const fmt = (n: number) => `₹${Number(n).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
+const fmt = (n: number) => `${sym}${Number(n).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 
 const PURITIY_FACTOR: Record<string, number> = { "24K": 1, "22K": 22/24, "18K": 18/24, "14K": 14/24 };
 
 export default function LiveGoldRatesPage() {
   const { toast } = useToast();
   const [live, setLive] = useState<RateData | null>(null);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [connected, setConnected] = useState(false);
   const [weight, setWeight] = useState("");
   const [purity, setPurity] = useState("22K");
@@ -48,7 +51,7 @@ export default function LiveGoldRatesPage() {
           if (alertRef.current.price > 0 && !alertRef.current.fired) {
             const rate22k = (data.rate || 0) * (22/24);
             if (rate22k >= alertRef.current.price) {
-              toast({ title: `Gold Rate Alert!`, description: `22K gold hit ₹${Math.round(rate22k)}/g — your alert at ₹${alertRef.current.price}/g triggered` });
+              toast({ title: `Gold Rate Alert!`, description: `22K gold hit ${sym}${Math.round(rate22k)}/g — your alert at ${sym}${alertRef.current.price}/g triggered` });
               alertRef.current.fired = true;
             }
           }
@@ -90,7 +93,7 @@ export default function LiveGoldRatesPage() {
     if (!alertPrice) return;
     alertRef.current = { price: Number(alertPrice), fired: false };
     setAlertActive(true);
-    toast({ title: `Alert set for ₹${alertPrice}/g on 22K gold`, description: "You'll be notified when the live rate reaches this price." });
+    toast({ title: `Alert set for ${sym}${alertPrice}/g on 22K gold`, description: "You'll be notified when the live rate reaches this price." });
   };
 
   return (
@@ -179,7 +182,7 @@ export default function LiveGoldRatesPage() {
             <Button onClick={setAlert} disabled={!alertPrice} className="w-full">
               <Bell className="h-4 w-4 mr-2" /> {alertActive ? "Alert Active ✓" : "Set Alert"}
             </Button>
-            {alertActive && <p className="text-xs text-green-600">Alert active: notify when 22K ≥ ₹{alertPrice}/g</p>}
+            {alertActive && <p className="text-xs text-green-600">Alert active: notify when 22K ≥ {sym}{alertPrice}/g</p>}
             <div className="bg-blue-50 rounded p-2 text-xs text-blue-700">
               <p className="font-medium mb-0.5">Live Rate Source</p>
               <p>Connected to GoldAPI.io (MCX-correlated) via Server-Sent Events. Rate refreshes every 60 seconds from live API when GOLDAPI_KEY is configured; otherwise uses ±0.2% random walk simulation for demo.</p>

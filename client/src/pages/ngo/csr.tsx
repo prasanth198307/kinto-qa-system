@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, FileText, CheckSquare, Target } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string, body?: any) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined, credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -40,6 +41,8 @@ const MOCK_PROJECTS = [
 export default function CSRPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [projects, setProjects] = useState(MOCK_PROJECTS);
   const [checklist, setChecklist] = useState(S135_CHECKLIST);
   const [showDialog, setShowDialog] = useState(false);
@@ -80,9 +83,9 @@ export default function CSRPage() {
 have been utilized as follows:</p>
 <table border="1" cellpadding="8">
 <tr><td>Project</td><td>${p.project}</td></tr>
-<tr><td>Sanctioned Amount</td><td>₹${fmt(p.sanctioned)}</td></tr>
-<tr><td>Amount Received</td><td>₹${fmt(p.received)}</td></tr>
-<tr><td>Amount Utilized</td><td>₹${fmt(p.utilized)}</td></tr>
+<tr><td>Sanctioned Amount</td><td>{sym}${fmt(p.sanctioned)}</td></tr>
+<tr><td>Amount Received</td><td>{sym}${fmt(p.received)}</td></tr>
+<tr><td>Amount Utilized</td><td>${sym}${fmt(p.utilized)}</td></tr>
 <tr><td>Beneficiaries</td><td>${p.beneficiaries}</td></tr>
 <tr><td>Outcomes</td><td>${p.outcomes}</td></tr>
 </table>
@@ -115,8 +118,8 @@ have been utilized as follows:</p>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card><CardContent className="pt-4"><p className="text-xs text-gray-500">Total Projects</p><p className="text-2xl font-bold text-blue-600">{projects.length}</p></CardContent></Card>
-        <Card><CardContent className="pt-4"><p className="text-xs text-gray-500">Total Sanctioned</p><p className="text-lg font-bold">₹{fmt(totalSanctioned)}</p></CardContent></Card>
-        <Card><CardContent className="pt-4"><p className="text-xs text-gray-500">Total Utilized</p><p className="text-lg font-bold text-green-600">₹{fmt(totalUtilized)}</p></CardContent></Card>
+        <Card><CardContent className="pt-4"><p className="text-xs text-gray-500">Total Sanctioned</p><p className="text-lg font-bold">{sym}{fmt(totalSanctioned)}</p></CardContent></Card>
+        <Card><CardContent className="pt-4"><p className="text-xs text-gray-500">Total Utilized</p><p className="text-lg font-bold text-green-600">{sym}{fmt(totalUtilized)}</p></CardContent></Card>
         <Card><CardContent className="pt-4"><p className="text-xs text-gray-500">Sec 135 Compliance</p><p className="text-2xl font-bold text-purple-600">{s135Done}/{checklist.length}</p></CardContent></Card>
       </div>
 
@@ -142,9 +145,9 @@ have been utilized as follows:</p>
                   <TableRow key={p.id}>
                     <TableCell className="font-medium">{p.project}</TableCell>
                     <TableCell>{p.company}</TableCell>
-                    <TableCell className="text-right">₹{fmt(p.sanctioned)}</TableCell>
-                    <TableCell className="text-right">₹{fmt(p.received)}</TableCell>
-                    <TableCell className="text-right">₹{fmt(p.utilized)}</TableCell>
+                    <TableCell className="text-right">{sym}{fmt(p.sanctioned)}</TableCell>
+                    <TableCell className="text-right">{sym}{fmt(p.received)}</TableCell>
+                    <TableCell className="text-right">{sym}{fmt(p.utilized)}</TableCell>
                     <TableCell>{p.beneficiaries.toLocaleString("en-IN")}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">

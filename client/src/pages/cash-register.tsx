@@ -29,6 +29,7 @@ import type { CashRegisterDay, CashRegisterTransaction, CashRegisterExpenseItem,
 import { DataTablePagination } from "@/components/DataTablePagination";
 import { useAuth } from "@/hooks/use-auth";
 import { usePermissions } from "@/hooks/use-permissions";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 interface DayWithTransactions extends CashRegisterDay {
   transactions?: (CashRegisterTransaction & { items?: CashRegisterExpenseItem[] })[];
@@ -1309,7 +1310,7 @@ export default function CashRegisterPage() {
                       </div>
                       
                       <div className="space-y-2">
-                        <Label htmlFor="actual-balance">Actual Cash on Hand (₹)</Label>
+                        <Label htmlFor="actual-balance">Actual Cash on Hand (${sym})</Label>
                         <Input
                           id="actual-balance"
                           type="number"
@@ -1436,7 +1437,7 @@ export default function CashRegisterPage() {
             {editingTransaction && (
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-amount">Amount (₹)</Label>
+                  <Label htmlFor="edit-amount">Amount (${sym})</Label>
                   <Input
                     id="edit-amount"
                     type="number"

@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Printer, Send, CheckCircle, Download } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string, body?: any) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -28,6 +29,8 @@ const SAMPLE_LETTERS = [
 
 export default function DemandLettersPage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [milestones, setMilestones] = useState(MILESTONES);
   const [preview, setPreview] = useState<any>(null);
 
@@ -55,7 +58,7 @@ export default function DemandLettersPage() {
       <p>To: <strong>${letter.buyer}</strong></p>
       <p>Unit: <strong>${letter.unit}</strong></p>
       <p>Milestone: <strong>${letter.milestone}</strong></p>
-      <p>Amount Due: <strong>₹${Number(letter.amount).toLocaleString()}</strong></p>
+      <p>Amount Due: <strong>${sym}${Number(letter.amount).toLocaleString()}</strong></p>
       <p>Due Date: <strong>${letter.due_date}</strong></p>
       <br/><p>Authorised Signatory</p></body></html>`;
     const w = window.open("", "_blank"); if (w) { w.document.write(html); w.print(); }
@@ -120,7 +123,7 @@ export default function DemandLettersPage() {
                   <TableCell className="font-medium">{l.buyer}</TableCell>
                   <TableCell>{l.unit}</TableCell>
                   <TableCell>{l.milestone}</TableCell>
-                  <TableCell>₹{Number(l.amount).toLocaleString()}</TableCell>
+                  <TableCell>{sym}{Number(l.amount).toLocaleString()}</TableCell>
                   <TableCell>{l.due_date}</TableCell>
                   <TableCell><Badge variant={STATUS_BADGE[l.status]}>{l.status}</Badge></TableCell>
                   <TableCell>

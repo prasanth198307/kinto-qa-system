@@ -57,6 +57,7 @@ import VendorManagement from "@/components/VendorManagement";
 import BankManagement from "@/components/BankManagement";
 import AdminSparePartsManagement from "@/components/AdminSparePartsManagement";
 import { DataTablePagination } from "@/components/DataTablePagination";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 interface InventoryManagementProps {
   activeTab?: string;
@@ -929,7 +930,7 @@ function ProductsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSea
                     </TableCell>
                     <TableCell data-testid={`text-uom-${item.id}`}>{getUomName(item.uomId)}</TableCell>
                     <TableCell data-testid={`text-cost-${item.id}`}>
-                      {item.standardCost ? `₹${item.standardCost}` : '-'}
+                      {item.standardCost ? `${sym}${item.standardCost}` : '-'}
                     </TableCell>
                     <TableCell data-testid={`badge-status-${item.id}`}>
                       <Badge variant={item.isActive === 'true' ? 'default' : 'secondary'}>
@@ -1808,7 +1809,7 @@ function ProductDialog({
                     name="basePrice"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Base Price (₹)</FormLabel>
+                        <FormLabel>Base Price (${sym})</FormLabel>
                         <FormControl>
                           <Input 
                             type="number" 
@@ -1820,7 +1821,7 @@ function ProductDialog({
                             data-testid="input-base-price"
                           />
                         </FormControl>
-                        <FormDescription className="text-xs">Enter price in rupees (e.g., 94.50 for ₹94.50)</FormDescription>
+                        <FormDescription className="text-xs">Enter price in rupees (e.g., 94.50 for ${sym}94.50)</FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -1850,7 +1851,7 @@ function ProductDialog({
 
                 {calculatedTotalPrice !== undefined && (
                   <FormItem>
-                    <FormLabel>Total Price with GST (₹)</FormLabel>
+                    <FormLabel>Total Price with GST (${sym})</FormLabel>
                     <Input 
                       value={(calculatedTotalPrice / 100).toFixed(2)} 
                       disabled 
@@ -1858,7 +1859,7 @@ function ProductDialog({
                       data-testid="display-total-price"
                     />
                     <FormDescription className="text-xs">
-                      ₹{(calculatedTotalPrice / 100).toFixed(2)} (Auto-calculated from Base Price + GST)
+                      {sym}{(calculatedTotalPrice / 100).toFixed(2)} (Auto-calculated from Base Price + GST)
                     </FormDescription>
                   </FormItem>
                 )}
@@ -2959,6 +2960,8 @@ function RawMaterialDialog({
 }) {
   const { toast } = useToast();
   const [selectedTypeDetails, setSelectedTypeDetails] = useState<RawMaterialType | null>(null);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [existingTypeStock, setExistingTypeStock] = useState<number>(0);
   const [selectedPOId, setSelectedPOId] = useState<string>('');
   const [selectedPOItemId, setSelectedPOItemId] = useState<string>('');
@@ -3121,7 +3124,7 @@ function RawMaterialDialog({
     }
     
     // Calculate base price: vendorPrice × conversionFactor
-    // Example: ₹200/KG × 25 KG/Bag = ₹5,000/Bag
+    // Example: ${sym}200/KG × 25 KG/Bag = ${sym}5,000/Bag
     const basePrice = vendorQuotedPrice * factor;
     
     // Update the base price field
@@ -3894,7 +3897,7 @@ function RawMaterialDialog({
                     )}
                     <FormItem>
                       <FormLabel>
-                        Vendor Price (₹ per {vendorPricingUnitLabel})
+                        Vendor Price (${sym} per {vendorPricingUnitLabel})
                       </FormLabel>
                       <FormControl>
                         <Input 
@@ -3912,7 +3915,7 @@ function RawMaterialDialog({
                       </FormControl>
                       <FormDescription className="text-xs">
                         {getConversionFactor && vendorQuotedPrice
-                          ? `₹${vendorQuotedPrice} × ${getConversionFactor} = ₹${(vendorQuotedPrice * getConversionFactor).toFixed(2)}/${selectedUom?.name || 'Unit'}`
+                          ? `${sym}${vendorQuotedPrice} × ${getConversionFactor} = ${sym}${(vendorQuotedPrice * getConversionFactor).toFixed(2)}/${selectedUom?.name || 'Unit'}`
                           : vendorPricingMode === 'other' ? 'Enter conversion factor and price' : 'Enter vendor price'}
                       </FormDescription>
                     </FormItem>
@@ -3931,7 +3934,7 @@ function RawMaterialDialog({
                     
                     return (
                       <FormItem>
-                        <FormLabel>Base Price (₹ per {selectedUom?.name || selectedTypeDetails?.baseUnit || 'Unit'})</FormLabel>
+                        <FormLabel>Base Price (${sym} per {selectedUom?.name || selectedTypeDetails?.baseUnit || 'Unit'})</FormLabel>
                         <FormControl>
                           <Input 
                             type="number" 
@@ -4019,9 +4022,9 @@ function RawMaterialDialog({
                       const qty = Number(receivedQuantity) || Number(openingStock) || 0;
                       const unit = selectedTypeDetails?.baseUnit || 'Units';
                       if (qty > 0) {
-                        return `Total Value for ${qty} ${unit}${qty > 1 ? 's' : ''} (₹)`;
+                        return `Total Value for ${qty} ${unit}${qty > 1 ? 's' : ''} (${sym})`;
                       }
-                      return `Total Valuation (₹)`;
+                      return `Total Valuation (${sym})`;
                     })()}
                   </FormLabel>
                   <FormControl>
@@ -4041,7 +4044,7 @@ function RawMaterialDialog({
                       const unitWithGst = base + (base * gst / 100);
                       const total = unitWithGst * qty;
                       if (qty > 0 && unitWithGst > 0) {
-                        return `₹${unitWithGst.toLocaleString('en-IN')} × ${qty} = ₹${total.toLocaleString('en-IN')}`;
+                        return `${sym}${unitWithGst.toLocaleString('en-IN')} × ${qty} = ${sym}${total.toLocaleString('en-IN')}`;
                       }
                       return `(Unit Cost incl. GST) × Quantity`;
                     })()}
@@ -5015,6 +5018,8 @@ function RecordScrapDialog({
   isLoading: boolean;
 }) {
   const scrapFormSchema = z.object({
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
     quantity: z.number().int().min(1, "Must be at least 1"),
     scrapDate: z.string().min(1, "Date is required"),
     damageReason: z.string().min(1, "Reason is required"),
@@ -5149,7 +5154,7 @@ function RecordScrapDialog({
 
             <FormField control={form.control} name="unitCost" render={({ field }) => (
               <FormItem>
-                <FormLabel>Unit Cost (₹)</FormLabel>
+                <FormLabel>Unit Cost (${sym})</FormLabel>
                 <FormControl>
                   <Input
                     type="number"

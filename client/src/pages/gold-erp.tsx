@@ -32,10 +32,11 @@ import { ECommerceSection } from "./gold-erp-ecommerce";
 import { RFIDSection } from "./gold-erp-rfid";
 import { MetalFinanceSection } from "./gold-erp-finance";
 import { IntegrationConfigsSection } from "./gold-erp-integrations";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const fmt = (n: any, d = 2) => Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: d });
 const fmtWt = (n: any) => `${fmt(n, 3)} g`;
-const fmtAmt = (n: any) => `₹${fmt(n)}`;
+const fmtAmt = (n: any) => `${sym}${fmt(n)}`;
 const today = () => new Date().toISOString().slice(0, 10);
 
 const PURITIES: Record<string, { name: string; pct: number }[]> = {
@@ -102,7 +103,9 @@ function OverviewSection() {
   const { data: rates = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/metal-rates/today"] });
 
   const statCards = [
-    { title: "Gold Rate (22K)", value: `₹${fmt(stats?.goldRate)}/g`, icon: TrendingUp, color: "bg-yellow-100 text-yellow-600" },
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
+    { title: "Gold Rate (22K)", value: `${sym}${fmt(stats?.goldRate)}/g`, icon: TrendingUp, color: "bg-yellow-100 text-yellow-600" },
     { title: "Karigars", value: stats?.totalKarigars ?? 0, icon: Users, color: "bg-blue-100 text-blue-600" },
     { title: "Jewellery Items", value: stats?.totalItems ?? 0, icon: Package, color: "bg-purple-100 text-purple-600" },
     { title: "Active Repairs", value: stats?.activeRepairs ?? 0, icon: Wrench, color: "bg-orange-100 text-orange-600" },
@@ -135,7 +138,7 @@ function OverviewSection() {
                   {rates.map((r: any) => (
                     <div key={r.id} className="flex justify-between text-sm py-1 border-b last:border-0">
                       <span className="font-medium capitalize">{r.metal} — {r.purity_name}</span>
-                      <span className="font-bold">₹{fmt(r.rate_per_gram)}/g</span>
+                      <span className="font-bold">{sym}{fmt(r.rate_per_gram)}/g</span>
                     </div>
                   ))}
                 </div>
@@ -215,6 +218,8 @@ function OverviewSection() {
 function MetalRatesSection() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [form, setForm] = useState<any>({ metal: "gold", purity_name: "22K (916)", purity_percent: 91.6, source: "IBJA", rate_date: today() });
   const { data: rates = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/metal-rates"] });
 
@@ -258,7 +263,7 @@ function MetalRatesSection() {
               <tr key={r.id} className="border-t hover:bg-muted/30">
                 <td className="px-4 py-2 capitalize font-medium">{r.metal}</td>
                 <td className="px-4 py-2">{r.purity_name}</td>
-                <td className="px-4 py-2 text-right font-bold">₹{fmt(r.rate_per_gram)}</td>
+                <td className="px-4 py-2 text-right font-bold">{sym}{fmt(r.rate_per_gram)}</td>
                 <td className="px-4 py-2 text-muted-foreground">{r.source}</td>
                 <td className="px-4 py-2 text-muted-foreground">{r.rate_date?.slice(0, 10)}</td>
                 <td className="px-4 py-2 text-right">
@@ -284,7 +289,7 @@ function MetalRatesSection() {
                 <SelectContent>{(PURITIES[form.metal] || []).map(p => <SelectItem key={p.name} value={p.name}>{p.name}</SelectItem>)}</SelectContent>
               </Select>
             </FieldRow>
-            <FieldRow label="Rate per gram (₹)"><Input type="number" value={form.rate_per_gram || ""} onChange={e => set("rate_per_gram", e.target.value)} data-testid="input-rate-per-gram" /></FieldRow>
+            <FieldRow label="Rate per gram "><Input type="number" value={form.rate_per_gram || ""} onChange={e => set("rate_per_gram", e.target.value)} data-testid="input-rate-per-gram" /></FieldRow>
             <FieldRow label="Source">
               <Select value={form.source} onValueChange={v => set("source", v)}><SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent><SelectItem value="IBJA">IBJA</SelectItem><SelectItem value="MCX">MCX</SelectItem><SelectItem value="manual">Manual</SelectItem></SelectContent>
@@ -306,6 +311,8 @@ function MetalRatesSection() {
 function KarigarSection() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({ metal_type: "gold", status: "active" });
@@ -362,8 +369,8 @@ function KarigarSection() {
             <FieldRow label="Name *"><Input value={form.name || ""} onChange={e => set("name", e.target.value)} data-testid="input-karigar-name" /></FieldRow>
             <FieldRow label="Phone"><Input value={form.phone || ""} onChange={e => set("phone", e.target.value)} /></FieldRow>
             <FieldRow label="Specialization"><Input value={form.specialization || ""} onChange={e => set("specialization", e.target.value)} placeholder="Bangles, Rings, Chains…" /></FieldRow>
-            <FieldRow label="Wage per gram (₹)"><Input type="number" value={form.wage_per_gram || ""} onChange={e => set("wage_per_gram", e.target.value)} /></FieldRow>
-            <FieldRow label="Daily Rate (₹)"><Input type="number" value={form.daily_rate || ""} onChange={e => set("daily_rate", e.target.value)} placeholder="e.g. 800" /></FieldRow>
+            <FieldRow label="Wage per gram "><Input type="number" value={form.wage_per_gram || ""} onChange={e => set("wage_per_gram", e.target.value)} /></FieldRow>
+            <FieldRow label="Daily Rate "><Input type="number" value={form.daily_rate || ""} onChange={e => set("daily_rate", e.target.value)} placeholder="e.g. 800" /></FieldRow>
             <FieldRow label="Aadhaar No"><Input value={form.aadhar_no || ""} onChange={e => set("aadhar_no", e.target.value)} /></FieldRow>
             <FieldRow label="Address"><Textarea value={form.address || ""} onChange={e => set("address", e.target.value)} rows={2} /></FieldRow>
             {editing && <FieldRow label="Status"><Select value={form.status || "active"} onValueChange={v => set("status", v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="active">Active</SelectItem><SelectItem value="inactive">Inactive</SelectItem></SelectContent></Select></FieldRow>}
@@ -382,6 +389,8 @@ function KarigarSection() {
 function ItemMasterSection() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({ metal_type: "gold", purity_name: "22K (916)", making_charge_type: "percent", stock_qty: 1 });
@@ -467,8 +476,8 @@ function ItemMasterSection() {
             </FieldRow>
             <FieldRow label="Making Charge Value"><Input type="number" value={form.making_charge_value || ""} onChange={e => set("making_charge_value", e.target.value)} /></FieldRow>
             <FieldRow label="Wastage %"><Input type="number" value={form.wastage_pct || ""} onChange={e => set("wastage_pct", e.target.value)} /></FieldRow>
-            <FieldRow label="Stone Value (₹)"><Input type="number" value={form.stone_value || ""} onChange={e => set("stone_value", e.target.value)} /></FieldRow>
-            <FieldRow label="Selling Price (₹)"><Input type="number" value={form.selling_price || ""} onChange={e => set("selling_price", e.target.value)} /></FieldRow>
+            <FieldRow label="Stone Value "><Input type="number" value={form.stone_value || ""} onChange={e => set("stone_value", e.target.value)} /></FieldRow>
+            <FieldRow label="Selling Price "><Input type="number" value={form.selling_price || ""} onChange={e => set("selling_price", e.target.value)} /></FieldRow>
             <FieldRow label="Stock Qty"><Input type="number" value={form.stock_qty || 1} onChange={e => set("stock_qty", e.target.value)} /></FieldRow>
           </div>
           <div className="flex gap-2 justify-end pt-2">
@@ -485,6 +494,8 @@ function ItemMasterSection() {
 function EstimatesSection() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [form, setForm] = useState<any>({ metal_type: "gold", purity_name: "22K (916)", gst_pct: 3, making_charge_type: "percent" });
   const { data: estimates = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/estimates"] });
   const { data: ratesData = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/metal-rates/today"] });
@@ -569,7 +580,7 @@ function EstimatesSection() {
                 </Select>
               </FieldRow>
               <FieldRow label="Weight (g)"><Input type="number" value={form.weight_gm || ""} onChange={e => set("weight_gm", e.target.value)} /></FieldRow>
-              <FieldRow label="Rate/g (₹)">
+              <FieldRow label="Rate/g (${sym})">
                 <div className="flex gap-1">
                   <Input type="number" value={form.rate_per_gram || ""} onChange={e => set("rate_per_gram", e.target.value)} />
                   <Button size="sm" variant="outline" onClick={autoFillRate} title="Fill from today's rate"><RefreshCw className="h-4 w-4" /></Button>
@@ -580,12 +591,12 @@ function EstimatesSection() {
                 <div className="flex gap-1">
                   <Select value={form.making_charge_type || "percent"} onValueChange={v => set("making_charge_type", v)}>
                     <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
-                    <SelectContent><SelectItem value="percent">%</SelectItem><SelectItem value="per_gram">₹/g</SelectItem><SelectItem value="fixed">Fixed</SelectItem></SelectContent>
+                    <SelectContent><SelectItem value="percent">%</SelectItem><SelectItem value="per_gram">${sym}/g</SelectItem><SelectItem value="fixed">Fixed</SelectItem></SelectContent>
                   </Select>
                   <Input type="number" value={form.making_charge_value || ""} onChange={e => set("making_charge_value", e.target.value)} />
                 </div>
               </FieldRow>
-              <FieldRow label="Stone Value (₹)"><Input type="number" value={form.stone_value || ""} onChange={e => set("stone_value", e.target.value)} /></FieldRow>
+              <FieldRow label="Stone Value "><Input type="number" value={form.stone_value || ""} onChange={e => set("stone_value", e.target.value)} /></FieldRow>
               <FieldRow label="GST %"><Input type="number" value={form.gst_pct ?? 3} onChange={e => set("gst_pct", e.target.value)} /></FieldRow>
             </div>
             <Button variant="outline" className="w-full" onClick={calcTotal} data-testid="button-calculate">Calculate Total</Button>
@@ -616,6 +627,8 @@ function EstimatesSection() {
 function ProductionSection() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [form, setForm] = useState<any>({ metal_type: "gold", purity_name: "22K (916)", qty: 1 });
   const { data: orders = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/production-orders"] });
@@ -735,6 +748,8 @@ function ProductionSection() {
 function JobworkSection() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({ metal_type: "gold", order_date: today() });
   const { data: orders = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/jobwork-orders"] });
@@ -799,7 +814,7 @@ function JobworkSection() {
                 </Select>
               </FieldRow>
               <FieldRow label="Issued Weight (g)"><Input type="number" value={form.issued_weight_gm || ""} onChange={e => set("issued_weight_gm", e.target.value)} /></FieldRow>
-              <FieldRow label="Wage/g (₹)"><Input type="number" value={form.wage_per_gram || ""} onChange={e => set("wage_per_gram", e.target.value)} /></FieldRow>
+              <FieldRow label="Wage/g (${sym})"><Input type="number" value={form.wage_per_gram || ""} onChange={e => set("wage_per_gram", e.target.value)} /></FieldRow>
               {editing && <>
                 <FieldRow label="Received Wt (g)"><Input type="number" value={form.received_weight_gm || ""} onChange={e => set("received_weight_gm", e.target.value)} /></FieldRow>
                 <FieldRow label="Wastage (g)"><Input type="number" value={form.wastage_gm || ""} onChange={e => set("wastage_gm", e.target.value)} /></FieldRow>
@@ -829,6 +844,8 @@ function JobworkSection() {
 function BullionSection() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [form, setForm] = useState<any>({ txn_type: "purchase", metal_type: "gold", purity_name: "22K (916)", txn_date: today() });
   const { data: stock = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/bullion-stock"] });
   const { data: transactions = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/bullion-transactions"] });
@@ -851,7 +868,7 @@ function BullionSection() {
             <CardContent className="p-3">
               <p className="text-xs text-muted-foreground capitalize">{s.metal_type} — {s.purity_name}</p>
               <p className="text-xl font-bold mt-1">{fmtWt(s.stock_grams)}</p>
-              <p className="text-xs text-muted-foreground">Avg ₹{fmt(s.avg_rate)}/g</p>
+              <p className="text-xs text-muted-foreground">Avg {sym}{fmt(s.avg_rate)}/g</p>
             </CardContent>
           </Card>
         ))}
@@ -903,7 +920,7 @@ function BullionSection() {
                 </Select>
               </FieldRow>
               <FieldRow label="Weight (g)"><Input type="number" value={form.weight_gm || ""} onChange={e => set("weight_gm", e.target.value)} /></FieldRow>
-              <FieldRow label="Rate/g (₹)"><Input type="number" value={form.rate_per_gram || ""} onChange={e => set("rate_per_gram", e.target.value)} /></FieldRow>
+              <FieldRow label="Rate/g (${sym})"><Input type="number" value={form.rate_per_gram || ""} onChange={e => set("rate_per_gram", e.target.value)} /></FieldRow>
             </div>
             <FieldRow label="Party Name"><Input value={form.party_name || ""} onChange={e => set("party_name", e.target.value)} /></FieldRow>
             <FieldRow label="Date"><Input type="date" value={form.txn_date} onChange={e => set("txn_date", e.target.value)} /></FieldRow>
@@ -923,6 +940,8 @@ function BullionSection() {
 function RepairsSection() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({ metal_type: "gold", issue_date: today() });
@@ -1000,8 +1019,8 @@ function RepairsSection() {
               <FieldRow label="Expected Delivery"><Input type="date" value={form.expected_delivery || ""} onChange={e => set("expected_delivery", e.target.value)} /></FieldRow>
               <FieldRow label="Metal Weight (g)"><Input type="number" value={form.metal_weight_gm || ""} onChange={e => set("metal_weight_gm", e.target.value)} /></FieldRow>
               <FieldRow label="Old Gold Wt (g)"><Input type="number" value={form.old_gold_weight_gm || ""} onChange={e => set("old_gold_weight_gm", e.target.value)} /></FieldRow>
-              <FieldRow label="Repair Charges (₹)"><Input type="number" value={form.repair_charges || ""} onChange={e => set("repair_charges", e.target.value)} /></FieldRow>
-              <FieldRow label="Advance (₹)"><Input type="number" value={form.advance_amount || ""} onChange={e => set("advance_amount", e.target.value)} /></FieldRow>
+              <FieldRow label="Repair Charges "><Input type="number" value={form.repair_charges || ""} onChange={e => set("repair_charges", e.target.value)} /></FieldRow>
+              <FieldRow label="Advance "><Input type="number" value={form.advance_amount || ""} onChange={e => set("advance_amount", e.target.value)} /></FieldRow>
             </div>
             {editing && <FieldRow label="Status">
               <Select value={form.status || "received"} onValueChange={v => set("status", v)}>
@@ -1038,13 +1057,13 @@ function RepairsSection() {
                   <FieldRow label="Gold Added (gm)">
                     <input type="number" step="0.001" className="w-full rounded-md border px-3 py-1.5 text-sm" value={goldAdded} onChange={e => setGoldAdded(parseFloat(e.target.value) || 0)} />
                   </FieldRow>
-                  <FieldRow label="Gold Rate (₹/gm)">
+                  <FieldRow label="Gold Rate (${sym}/gm)">
                     <input type="number" className="w-full rounded-md border px-3 py-1.5 text-sm" value={goldRate} onChange={e => setGoldRate(parseFloat(e.target.value) || 0)} />
                   </FieldRow>
                 </div>
                 <div className="rounded-md border p-3 space-y-2 text-sm">
                   <div className="flex justify-between"><span>Repair Charges</span><span>{fmtAmt(repairCharges)}</span></div>
-                  <div className="flex justify-between"><span>Gold Addition ({goldAdded} gm × ₹{goldRate})</span><span>{fmtAmt(goldValue)}</span></div>
+                  <div className="flex justify-between"><span>Gold Addition ({goldAdded} gm × {sym}{goldRate})</span><span>{fmtAmt(goldValue)}</span></div>
                   <div className="flex justify-between"><span>GST on Making (5%)</span><span>{fmtAmt(gstOnMaking)}</span></div>
                   <div className="flex justify-between font-semibold border-t pt-2"><span>Total</span><span>{fmtAmt(total)}</span></div>
                 </div>
@@ -1059,7 +1078,7 @@ function RepairsSection() {
                       gst_amount: gstOnMaking,
                       total_amount: total,
                     }).then(() => {
-                      toast({ title: "Invoice created", description: `₹${total.toFixed(2)} for ${invoiceRepair.customer_name}` });
+                      toast({ title: "Invoice created", description: `${sym}${total.toFixed(2)} for ${invoiceRepair.customer_name}` });
                       setShowInvoice(false); setInvoiceRepair(null); setGoldAdded(0);
                     }).catch((e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }));
                   }}>Save Invoice</Button>
@@ -1077,6 +1096,8 @@ function RepairsSection() {
 function HallmarkingSection() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [form, setForm] = useState<any>({ metal_type: "gold", purity_name: "22K (916)", hallmark_date: today() });
   const { data: records = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/hallmarking"] });
 
@@ -1164,6 +1185,8 @@ function HallmarkingSection() {
 function ChitSchemesSection() {
   const { toast } = useToast();
   const [showSchemeForm, setShowSchemeForm] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [selectedScheme, setSelectedScheme] = useState<any>(null);
   const [showMemberForm, setShowMemberForm] = useState(false);
   const [showPayForm, setShowPayForm] = useState(false);
@@ -1254,7 +1277,7 @@ function ChitSchemesSection() {
           <div className="space-y-3">
             <FieldRow label="Scheme Name *"><Input data-testid="input-scheme-name" value={sf.name || ""} onChange={e => setSf((p: any) => ({ ...p, name: e.target.value }))} placeholder="e.g. Diwali Gold Scheme 2026" /></FieldRow>
             <div className="grid grid-cols-2 gap-3">
-              <FieldRow label="Monthly Amount (₹)"><Input data-testid="input-scheme-amount" type="number" value={sf.monthly_amount || ""} onChange={e => setSf((p: any) => ({ ...p, monthly_amount: e.target.value }))} /></FieldRow>
+              <FieldRow label="Monthly Amount "><Input data-testid="input-scheme-amount" type="number" value={sf.monthly_amount || ""} onChange={e => setSf((p: any) => ({ ...p, monthly_amount: e.target.value }))} /></FieldRow>
               <FieldRow label="Metal">
                 <Select value={sf.metal_type || "gold"} onValueChange={v => setSf((p: any) => ({ ...p, metal_type: v }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
@@ -1296,7 +1319,7 @@ function ChitSchemesSection() {
         <DialogContent className="max-w-sm">
           <DialogHeader><DialogTitle>Record Installment — {selectedMember?.member_name}</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <FieldRow label="Amount (₹)"><Input type="number" value={pf.amount || ""} onChange={e => setPf((p: any) => ({ ...p, amount: e.target.value }))} /></FieldRow>
+            <FieldRow label="Amount "><Input type="number" value={pf.amount || ""} onChange={e => setPf((p: any) => ({ ...p, amount: e.target.value }))} /></FieldRow>
             <FieldRow label="Payment Mode">
               <Select value={pf.payment_mode} onValueChange={v => setPf((p: any) => ({ ...p, payment_mode: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -1456,6 +1479,8 @@ function AnalyticsSection() {
 function MetalLedgerSection() {
   const { toast } = useToast();
   const [view, setView] = useState<"balances" | "transactions">("balances");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [showForm, setShowForm] = useState(false);
   const [searchCust, setSearchCust] = useState("");
   const [form, setForm] = useState<any>({ metal_type: "gold", purity_name: "22K (916)", transaction_type: "inward", txn_date: today() });

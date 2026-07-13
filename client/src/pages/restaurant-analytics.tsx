@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (m: string, u: string, b?: any) =>
   fetch(u, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -12,7 +13,7 @@ const api = (m: string, u: string, b?: any) =>
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
-function fmt(n: number) { return `₹${Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`; }
+function fmt(n: number) { return `${sym}${Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`; }
 function fmtDate(s: string) { return new Date(s).toLocaleDateString("en-IN", { day: "numeric", month: "short" }); }
 
 function Heatmap({ data }: { data: any[] }) {
@@ -76,6 +77,8 @@ function Heatmap({ data }: { data: any[] }) {
 
 function MenuMatrix({ items, avgQty, avgRevenue }: { items: any[]; avgQty: number; avgRevenue: number }) {
   const [hovered, setHovered] = useState<string | null>(null);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const catColor: Record<string, string> = { star: "#10b981", plowhorse: "#3b82f6", puzzle: "#f59e0b", dog: "#ef4444" };
 
   return (
@@ -136,6 +139,8 @@ function MenuMatrix({ items, avgQty, avgRevenue }: { items: any[]; avgQty: numbe
 
 export default function RestaurantAnalyticsPage() {
   const [tab, setTab] = useState<"overview" | "menu" | "heatmap" | "staff" | "customers" | "forecast">("overview");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [from, setFrom] = useState(() => new Date(Date.now() - 30 * 86400000).toISOString().split("T")[0]);
   const [to, setTo] = useState(() => new Date().toISOString().split("T")[0]);
   const [search, setSearch] = useState("");
@@ -216,7 +221,7 @@ export default function RestaurantAnalyticsPage() {
                 { label: "Menu Items Tracked", value: engItems.length, sub: `${stars.length} Stars · ${dogs.length} Dogs`, icon: "🍽️", c: "text-indigo-600" },
                 { label: "Total Staff Revenue", value: fmt(totalRevServer), sub: `${servers.length} active servers`, icon: "👤", c: "text-green-600" },
                 { label: "Total Customers", value: customers.length, sub: `${atRisk.length} at risk`, icon: "👥", c: "text-blue-600" },
-                { label: "Customer LTV Pool", value: fmt(totalLTV), sub: `Avg ${customers.length ? fmt(totalLTV / customers.length) : "₹0"} / customer`, icon: "💎", c: "text-purple-600" },
+                { label: "Customer LTV Pool", value: fmt(totalLTV), sub: `Avg ${customers.length ? fmt(totalLTV / customers.length) : "${sym}0"} / customer`, icon: "💎", c: "text-purple-600" },
               ].map(s => (
                 <Card key={s.label} className="border-0 shadow-sm">
                   <CardContent className="pt-4 pb-3">
@@ -352,7 +357,7 @@ export default function RestaurantAnalyticsPage() {
             <div className="grid grid-cols-3 gap-4">
               <Card className="border-0 shadow-sm"><CardContent className="pt-4 pb-3 text-center"><div className="text-2xl font-black text-green-600">{servers.length}</div><div className="text-xs text-gray-500">Active Servers</div></CardContent></Card>
               <Card className="border-0 shadow-sm"><CardContent className="pt-4 pb-3 text-center"><div className="text-2xl font-black text-blue-600">{fmt(totalRevServer)}</div><div className="text-xs text-gray-500">Total Revenue</div></CardContent></Card>
-              <Card className="border-0 shadow-sm"><CardContent className="pt-4 pb-3 text-center"><div className="text-2xl font-black text-purple-600">{servers.length ? fmt(totalRevServer / servers.length) : "₹0"}</div><div className="text-xs text-gray-500">Avg per Server</div></CardContent></Card>
+              <Card className="border-0 shadow-sm"><CardContent className="pt-4 pb-3 text-center"><div className="text-2xl font-black text-purple-600">{servers.length ? fmt(totalRevServer / servers.length) : "${sym}0"}</div><div className="text-xs text-gray-500">Avg per Server</div></CardContent></Card>
             </div>
             <Card className="border-0 shadow-sm">
               <CardHeader><CardTitle>Staff Performance Leaderboard</CardTitle></CardHeader>
@@ -404,7 +409,7 @@ export default function RestaurantAnalyticsPage() {
               {[
                 { label: "Total Customers", value: customers.length, icon: "👥" },
                 { label: "Total LTV", value: fmt(totalLTV), icon: "💰" },
-                { label: "Avg LTV / Customer", value: customers.length ? fmt(totalLTV / customers.length) : "₹0", icon: "📊" },
+                { label: "Avg LTV / Customer", value: customers.length ? fmt(totalLTV / customers.length) : "${sym}0", icon: "📊" },
                 { label: "At-Risk (30+ days)", value: atRisk.length, icon: "⚠️" },
               ].map(s => (
                 <Card key={s.label} className="border-0 shadow-sm">

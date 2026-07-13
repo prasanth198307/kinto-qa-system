@@ -7,12 +7,15 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CreditCard } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string, body?: any) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 
 export default function ParentPortalPage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [studentId, setStudentId] = useState("");
   const [payAmount, setPayAmount] = useState("");
 
@@ -57,12 +60,12 @@ export default function ParentPortalPage() {
           <Card>
             <CardHeader><CardTitle className="text-base">Fee Summary</CardTitle></CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold text-red-600 mb-2">₹{totalDue.toLocaleString()} due</p>
+              <p className="text-2xl font-bold text-red-600 mb-2">{sym}{totalDue.toLocaleString()} due</p>
               <div className="space-y-1">
                 {feeArr.map((f: any, i: number) => (
                   <div key={i} className="flex justify-between text-sm border-b pb-1">
                     <span>{f.fee_type}</span>
-                    <Badge className={f.status === "paid" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}>{f.status === "paid" ? "Paid" : `₹${f.amount}`}</Badge>
+                    <Badge className={f.status === "paid" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}>{f.status === "paid" ? "Paid" : `${sym}${f.amount}`}</Badge>
                   </div>
                 ))}
                 {feeArr.length === 0 && <p className="text-gray-400 text-sm">No fee records.</p>}

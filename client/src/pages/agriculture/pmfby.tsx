@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string, body?: unknown) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -24,6 +25,8 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function PMFBYPage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ ...EMPTY_ENROLL });
 
@@ -52,8 +55,8 @@ export default function PMFBYPage() {
 
       <div className="grid grid-cols-3 gap-4">
         <Card><CardContent className="pt-4"><p className="text-sm text-muted-foreground">Total Enrolled</p><p className="text-2xl font-bold">{rows.length || 3}</p></CardContent></Card>
-        <Card><CardContent className="pt-4"><p className="text-sm text-muted-foreground">Total Premium (₹)</p><p className="text-2xl font-bold">₹{(totalPremium || 48500).toLocaleString()}</p></CardContent></Card>
-        <Card><CardContent className="pt-4"><p className="text-sm text-muted-foreground">Total Claims (₹)</p><p className="text-2xl font-bold">₹{(totalClaims || 125000).toLocaleString()}</p></CardContent></Card>
+        <Card><CardContent className="pt-4"><p className="text-sm text-muted-foreground">Total Premium (₹)</p><p className="text-2xl font-bold">{sym}{(totalPremium || 48500).toLocaleString()}</p></CardContent></Card>
+        <Card><CardContent className="pt-4"><p className="text-sm text-muted-foreground">Total Claims (₹)</p><p className="text-2xl font-bold">{sym}{(totalClaims || 125000).toLocaleString()}</p></CardContent></Card>
       </div>
 
       <Tabs defaultValue="enrollments">
@@ -84,20 +87,20 @@ export default function PMFBYPage() {
                       <TableCell>{String(r.survey_no)}</TableCell>
                       <TableCell>{String(r.crop)}</TableCell>
                       <TableCell>{String(r.area_ha)}</TableCell>
-                      <TableCell>₹{Number(r.sum_insured).toLocaleString()}</TableCell>
-                      <TableCell>₹{Number(r.premium).toLocaleString()}</TableCell>
+                      <TableCell>{sym}{Number(r.sum_insured).toLocaleString()}</TableCell>
+                      <TableCell>{sym}{Number(r.premium).toLocaleString()}</TableCell>
                       <TableCell><Badge variant="outline">{String(r.season)}</Badge></TableCell>
                     </TableRow>
                   )) : (
                     <>
                       <TableRow>
                         <TableCell>Ramesh Patel</TableCell><TableCell>123/4</TableCell><TableCell>Wheat</TableCell>
-                        <TableCell>2.5</TableCell><TableCell>₹62,500</TableCell><TableCell>₹750</TableCell>
+                        <TableCell>2.5</TableCell><TableCell>{sym}62,500</TableCell><TableCell>{sym}750</TableCell>
                         <TableCell><Badge variant="outline">Rabi</Badge></TableCell>
                       </TableRow>
                       <TableRow>
                         <TableCell>Sunita Devi</TableCell><TableCell>456/2</TableCell><TableCell>Rice</TableCell>
-                        <TableCell>1.8</TableCell><TableCell>₹45,000</TableCell><TableCell>₹540</TableCell>
+                        <TableCell>1.8</TableCell><TableCell>{sym}45,000</TableCell><TableCell>{sym}540</TableCell>
                         <TableCell><Badge variant="outline">Kharif</Badge></TableCell>
                       </TableRow>
                     </>
@@ -126,14 +129,14 @@ export default function PMFBYPage() {
                     <TableCell>Ramesh Patel</TableCell>
                     <TableCell>Hailstorm</TableCell>
                     <TableCell>60%</TableCell>
-                    <TableCell>₹37,500</TableCell>
+                    <TableCell>{sym}37,500</TableCell>
                     <TableCell><Badge variant="outline">Under Review</Badge></TableCell>
                   </TableRow>
                   <TableRow>
                     <TableCell>Sunita Devi</TableCell>
                     <TableCell>Flood</TableCell>
                     <TableCell>80%</TableCell>
-                    <TableCell>₹36,000</TableCell>
+                    <TableCell>{sym}36,000</TableCell>
                     <TableCell><Badge>Approved</Badge></TableCell>
                   </TableRow>
                 </TableBody>

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BarChart3, Download } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" } }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -27,6 +28,8 @@ const COL_MAP: Record<string, string[]> = {
 
 export default function HotelReportsPage() {
   const [tab, setTab] = useState("occupancy");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [from, setFrom] = useState(() => { const d = new Date(); d.setDate(1); return d.toISOString().slice(0, 10); });
   const [to, setTo] = useState(() => new Date().toISOString().slice(0, 10));
 
@@ -41,7 +44,7 @@ export default function HotelReportsPage() {
 
   const statCards: Record<string, Record<string, string>> = {
     occupancy: { "Avg Occupancy": `${summary.avg_occupancy_pct ?? 0}%`, "Total Arrivals": summary.total_arrivals ?? "—", "Total Departures": summary.total_departures ?? "—" },
-    revenue: { "Total Revenue": `₹${Number(summary.total_revenue ?? 0).toLocaleString("en-IN")}`, "Room Revenue": `₹${Number(summary.room_revenue ?? 0).toLocaleString("en-IN")}`, "F&B Revenue": `₹${Number(summary.fnb_revenue ?? 0).toLocaleString("en-IN")}` },
+    revenue: { "Total Revenue": `${sym}${Number(summary.total_revenue ?? 0).toLocaleString("en-IN")}`, "Room Revenue": `${sym}${Number(summary.room_revenue ?? 0).toLocaleString("en-IN")}`, "F&B Revenue": `${sym}${Number(summary.fnb_revenue ?? 0).toLocaleString("en-IN")}` },
     room_type: { "Best Occupied": summary.best_room_type ?? "—", "Lowest Occupied": summary.lowest_room_type ?? "—" },
     source: { "Top Source": summary.top_source ?? "—", "Total Bookings": summary.total_bookings ?? "—" },
     housekeeping: { "Tasks Assigned": summary.total_tasks ?? "—", "Completion Rate": `${summary.completion_pct ?? 0}%` },
@@ -95,7 +98,7 @@ export default function HotelReportsPage() {
                     {cols.map(c => (
                       <td key={c} className="p-2">
                         {typeof row[c] === "number" && (c.includes("revenue") || c.includes("rate"))
-                          ? `₹${Number(row[c]).toLocaleString("en-IN")}`
+                          ? `${sym}${Number(row[c]).toLocaleString("en-IN")}`
                           : c.includes("pct") ? `${row[c] ?? 0}%`
                           : row[c] ?? "—"}
                       </td>

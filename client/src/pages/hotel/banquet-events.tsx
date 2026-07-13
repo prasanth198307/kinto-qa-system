@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Eye, CheckCircle, FileText } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string, body?: unknown) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -52,6 +53,8 @@ const EMPTY_FORM = {
 
 function CalendarView({ events }: { events: BanquetEvent[] }) {
   const now = new Date();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [viewYear, setViewYear] = useState(now.getFullYear());
   const [viewMonth, setViewMonth] = useState(now.getMonth() + 1);
 
@@ -111,6 +114,8 @@ function CalendarView({ events }: { events: BanquetEvent[] }) {
 
 function NewEventDialog({ open, onClose, halls }: { open: boolean; onClose: () => void; halls: string[] }) {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { toast } = useToast();
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const f = (k: string) => (form as Record<string, string>)[k];
@@ -185,9 +190,9 @@ function NewEventDialog({ open, onClose, halls }: { open: boolean; onClose: () =
             </div>
           ))}
           <div className="col-span-2 bg-muted rounded p-3 text-sm space-y-1">
-            <div className="flex justify-between"><span>Subtotal:</span><span>₹{total.toLocaleString()}</span></div>
-            <div className="flex justify-between"><span>GST @18%:</span><span>₹{gst.toFixed(0)}</span></div>
-            <div className="flex justify-between font-bold"><span>Balance Due:</span><span>₹{balance.toFixed(0)}</span></div>
+            <div className="flex justify-between"><span>Subtotal:</span><span>{sym}{total.toLocaleString()}</span></div>
+            <div className="flex justify-between"><span>GST @18%:</span><span>{sym}{gst.toFixed(0)}</span></div>
+            <div className="flex justify-between font-bold"><span>Balance Due:</span><span>{sym}{balance.toFixed(0)}</span></div>
           </div>
         </div>
         <DialogFooter>
@@ -201,6 +206,8 @@ function NewEventDialog({ open, onClose, halls }: { open: boolean; onClose: () =
 
 export default function BanquetEventsPage() {
   const [statusFilter, setStatusFilter] = useState("all");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [showNew, setShowNew] = useState(false);
 
   const { data: halls = [] } = useQuery<string[]>({
@@ -271,7 +278,7 @@ export default function BanquetEventsPage() {
                       <TableCell>
                         <span className={`text-xs px-2 py-1 rounded-full font-medium ${STATUS_COLORS[ev.status] || ""}`}>{ev.status}</span>
                       </TableCell>
-                      <TableCell>₹{Number(ev.total_amount || 0).toLocaleString()}</TableCell>
+                      <TableCell>{sym}{Number(ev.total_amount || 0).toLocaleString()}</TableCell>
                       <TableCell>
                         <div className="flex gap-1">
                           <Button size="sm" variant="ghost"><Eye className="h-4 w-4" /></Button>

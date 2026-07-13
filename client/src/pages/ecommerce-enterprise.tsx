@@ -7,12 +7,15 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = async (m: string, u: string, b?: any) => { const r = await fetch(u, { method: m, headers: {'Content-Type':'application/json'}, body: b ? JSON.stringify(b) : undefined, credentials: 'include' }); if (!r.ok) throw new Error(await r.text()); return r.json(); };
 const fmt = (n: any) => Number(n||0).toLocaleString('en-IN', {maximumFractionDigits:2});
 
 export default function EcommerceEnterprisePage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [channelForm, setChannelForm] = useState({ channel_name: "", channel_type: "amazon", api_key: "", seller_id: "" });
   const [returnForm, setReturnForm] = useState({ order_id: "", reason: "", refund_amount: "" });
   const [reportType, setReportType] = useState("channel-performance");
@@ -78,7 +81,7 @@ export default function EcommerceEnterprisePage() {
             <CardContent>
               {(channels as any[]).length===0?<p className="text-gray-400 text-sm text-center py-8">Connect channels to see performance</p>:
               <div className="space-y-3">
-                {(channels as any[]).map((c:any)=><div key={c.id} className="p-3 bg-gray-50 rounded"><div className="font-medium text-sm">{c.channel_name}</div><div className="flex gap-4 mt-1 text-xs text-gray-600"><span>Orders: {c.order_count||0}</span><span>Revenue: ₹{fmt(c.revenue||0)}</span></div></div>)}
+                {(channels as any[]).map((c:any)=><div key={c.id} className="p-3 bg-gray-50 rounded"><div className="font-medium text-sm">{c.channel_name}</div><div className="flex gap-4 mt-1 text-xs text-gray-600"><span>Orders: {c.order_count||0}</span><span>Revenue: {sym}{fmt(c.revenue||0)}</span></div></div>)}
               </div>}
             </CardContent></Card>
           </div>
@@ -125,7 +128,7 @@ export default function EcommerceEnterprisePage() {
           <Card><CardHeader><CardTitle>Multi-Channel Orders</CardTitle></CardHeader>
           <CardContent>
             <Table><TableHeader><TableRow><TableHead>Order ID</TableHead><TableHead>Channel</TableHead><TableHead>Customer</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead><TableHead>Action</TableHead></TableRow></TableHeader>
-            <TableBody>{(orders as any[]).map((o:any)=><TableRow key={o.id}><TableCell className="font-mono text-xs">{o.platform_order_id||o.id?.slice(0,8)}</TableCell><TableCell><span className={`px-1 py-0.5 rounded text-xs ${channelColors[o.channel_type]||'bg-gray-100'}`}>{o.channel_type||'direct'}</span></TableCell><TableCell>{o.customer_name}</TableCell><TableCell>₹{fmt(o.total_amount)}</TableCell><TableCell><Badge>{o.status}</Badge></TableCell><TableCell><Button size="sm" variant="outline" onClick={()=>api('POST',`/api/ecommerce/orders/${o.id}/allocate-stock`).then(()=>qc.invalidateQueries({queryKey:['/api/ecommerce/orders']}))}>Allocate</Button></TableCell></TableRow>)}</TableBody></Table>
+            <TableBody>{(orders as any[]).map((o:any)=><TableRow key={o.id}><TableCell className="font-mono text-xs">{o.platform_order_id||o.id?.slice(0,8)}</TableCell><TableCell><span className={`px-1 py-0.5 rounded text-xs ${channelColors[o.channel_type]||'bg-gray-100'}`}>{o.channel_type||'direct'}</span></TableCell><TableCell>{o.customer_name}</TableCell><TableCell>{sym}{fmt(o.total_amount)}</TableCell><TableCell><Badge>{o.status}</Badge></TableCell><TableCell><Button size="sm" variant="outline" onClick={()=>api('POST',`/api/ecommerce/orders/${o.id}/allocate-stock`).then(()=>qc.invalidateQueries({queryKey:['/api/ecommerce/orders']}))}>Allocate</Button></TableCell></TableRow>)}</TableBody></Table>
             {(orders as any[]).length===0&&<p className="text-center text-gray-400 py-8">No orders. Sync your channels to pull orders.</p>}
           </CardContent></Card>
         </TabsContent>
@@ -145,13 +148,13 @@ export default function EcommerceEnterprisePage() {
             <CardContent className="space-y-3">
               <div><Label>Order ID</Label><Input value={returnForm.order_id} onChange={e=>setReturnForm({...returnForm,order_id:e.target.value})} /></div>
               <div><Label>Return Reason</Label><Input value={returnForm.reason} onChange={e=>setReturnForm({...returnForm,reason:e.target.value})} /></div>
-              <div><Label>Refund Amount (₹)</Label><Input type="number" value={returnForm.refund_amount} onChange={e=>setReturnForm({...returnForm,refund_amount:e.target.value})} /></div>
+              <div><Label>Refund Amount (${sym})</Label><Input type="number" value={returnForm.refund_amount} onChange={e=>setReturnForm({...returnForm,refund_amount:e.target.value})} /></div>
               <Button onClick={()=>processReturn.mutate({...returnForm,refund_amount:Number(returnForm.refund_amount)})}>Process Return</Button>
             </CardContent></Card>
             <Card><CardHeader><CardTitle>Returns</CardTitle></CardHeader>
             <CardContent>
               <Table><TableHeader><TableRow><TableHead>Order</TableHead><TableHead>Reason</TableHead><TableHead>Refund</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
-              <TableBody>{(returns as any[]).map((r:any)=><TableRow key={r.id}><TableCell>{r.order_id?.slice(0,8)}</TableCell><TableCell>{r.reason}</TableCell><TableCell>₹{fmt(r.refund_amount)}</TableCell><TableCell><Badge>{r.status}</Badge></TableCell></TableRow>)}</TableBody></Table>
+              <TableBody>{(returns as any[]).map((r:any)=><TableRow key={r.id}><TableCell>{r.order_id?.slice(0,8)}</TableCell><TableCell>{r.reason}</TableCell><TableCell>{sym}{fmt(r.refund_amount)}</TableCell><TableCell><Badge>{r.status}</Badge></TableCell></TableRow>)}</TableBody></Table>
               {(returns as any[]).length===0&&<p className="text-center text-gray-400 py-4">No returns</p>}
             </CardContent></Card>
           </div>
@@ -170,7 +173,7 @@ export default function EcommerceEnterprisePage() {
           <Card><CardHeader><CardTitle>Ad Spend & ROAS</CardTitle></CardHeader>
           <CardContent>
             <Table><TableHeader><TableRow><TableHead>Platform</TableHead><TableHead>Campaign</TableHead><TableHead>Spend</TableHead><TableHead>Revenue</TableHead><TableHead>ROAS</TableHead></TableRow></TableHeader>
-            <TableBody>{(adSpend as any[]).map((a:any)=><TableRow key={a.id}><TableCell>{a.platform}</TableCell><TableCell>{a.campaign_name}</TableCell><TableCell>₹{fmt(a.spend)}</TableCell><TableCell>₹{fmt(a.revenue)}</TableCell><TableCell><Badge variant={Number(a.revenue)/Number(a.spend||1)>=2?'default':'destructive'}>{(Number(a.revenue)/Number(a.spend||1)).toFixed(1)}x</Badge></TableCell></TableRow>)}</TableBody></Table>
+            <TableBody>{(adSpend as any[]).map((a:any)=><TableRow key={a.id}><TableCell>{a.platform}</TableCell><TableCell>{a.campaign_name}</TableCell><TableCell>{sym}{fmt(a.spend)}</TableCell><TableCell>{sym}{fmt(a.revenue)}</TableCell><TableCell><Badge variant={Number(a.revenue)/Number(a.spend||1)>=2?'default':'destructive'}>{(Number(a.revenue)/Number(a.spend||1)).toFixed(1)}x</Badge></TableCell></TableRow>)}</TableBody></Table>
             {(adSpend as any[]).length===0&&<p className="text-center text-gray-400 py-8">No ad spend tracked. Add campaigns to track ROAS.</p>}
           </CardContent></Card>
         </TabsContent>

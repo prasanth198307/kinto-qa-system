@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { FileText, Download, Zap, XCircle } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (method: string, path: string, body?: any) =>
   fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined, credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -34,6 +35,8 @@ const MOCK_INVOICES = [
 export default function PharmacyEInvoicePage() {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [invoices, setInvoices] = useState(MOCK_INVOICES);
   const [selected, setSelected] = useState<number[]>([]);
   const [cancelDialog, setCancelDialog] = useState<{ id: number } | null>(null);
@@ -152,8 +155,8 @@ export default function PharmacyEInvoicePage() {
                   <TableCell className="font-mono font-medium">{inv.bill_no}</TableCell>
                   <TableCell>{inv.patient}</TableCell>
                   <TableCell>{inv.date}</TableCell>
-                  <TableCell>₹{inv.amount.toLocaleString("en-IN")}</TableCell>
-                  <TableCell>₹{inv.gst}</TableCell>
+                  <TableCell>{sym}{inv.amount.toLocaleString("en-IN")}</TableCell>
+                  <TableCell>{sym}{inv.gst}</TableCell>
                   <TableCell className="font-mono text-xs max-w-[120px] truncate">{inv.irn || "—"}</TableCell>
                   <TableCell><Badge className={STATUS_COLOR[inv.status]}>{inv.status}</Badge></TableCell>
                   <TableCell className="flex gap-1 flex-wrap">
@@ -191,7 +194,7 @@ export default function PharmacyEInvoicePage() {
                 <div><p className="text-gray-500">IRN</p><p className="font-mono font-medium break-all">{detailInv.irn}</p></div>
                 <div><p className="text-gray-500">Ack No</p><p className="font-mono">{detailInv.ack_no}</p></div>
                 <div><p className="text-gray-500">Bill No</p><p>{detailInv.bill_no}</p></div>
-                <div><p className="text-gray-500">Amount</p><p>₹{detailInv.amount}</p></div>
+                <div><p className="text-gray-500">Amount</p><p>{sym}{detailInv.amount}</p></div>
               </div>
               <div className="p-3 bg-gray-50 rounded">
                 <p className="text-gray-500 text-xs mb-1">Signed QR Code (text representation)</p>

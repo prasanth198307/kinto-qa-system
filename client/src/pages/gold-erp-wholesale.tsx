@@ -11,10 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, CheckCircle, Package } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const fmt = (n: any, d = 2) => Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: d });
 const fmtWt = (n: any) => `${fmt(n, 3)} g`;
-const fmtAmt = (n: any) => `₹${fmt(n)}`;
+const fmtAmt = (n: any) => `${sym}${fmt(n)}`;
 const today = () => new Date().toISOString().slice(0, 10);
 
 function FL({ label, children }: any) {
@@ -32,6 +33,8 @@ function SH({ title, action }: any) {
 
 function SBadge({ status }: { status: string }) {
   const cls: Record<string, string> = {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
     received: "bg-blue-100 text-blue-700",
     in_progress: "bg-yellow-100 text-yellow-700",
     completed: "bg-green-100 text-green-700",
@@ -47,6 +50,8 @@ function SBadge({ status }: { status: string }) {
 export function WholesaleJobworkSection() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({ making_charges_type: "per_gram", customer_gold_purity: "22K" });
   const { data: jobs = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/wholesale-jobwork"] });
@@ -130,8 +135,8 @@ export function WholesaleJobworkSection() {
                     <SelectContent><SelectItem value="per_gram">Per Gram</SelectItem><SelectItem value="per_piece">Per Piece</SelectItem><SelectItem value="flat">Flat Amount</SelectItem></SelectContent>
                   </Select>
                 </FL>
-                <FL label="Charges Amount (₹)"><Input data-testid="input-jobwork-making-charges" type="number" value={form.making_charges || ""} onChange={e => set("making_charges", e.target.value)} /></FL>
-                <FL label="Stone Setting Charges (₹)"><Input type="number" value={form.stone_setting_charges || ""} onChange={e => set("stone_setting_charges", e.target.value)} /></FL>
+                <FL label="Charges Amount "><Input data-testid="input-jobwork-making-charges" type="number" value={form.making_charges || ""} onChange={e => set("making_charges", e.target.value)} /></FL>
+                <FL label="Stone Setting Charges "><Input type="number" value={form.stone_setting_charges || ""} onChange={e => set("stone_setting_charges", e.target.value)} /></FL>
                 <FL label="Timeline (Days)"><Input type="number" value={form.timeline_days || 10} onChange={e => set("timeline_days", e.target.value)} /></FL>
               </div>
               <FL label="Karigar">
@@ -171,6 +176,8 @@ export function WholesaleJobworkSection() {
 export function HallmarkingBatchesSection() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({ testing_method: "xrf", date_sent: today() });
   const { data: batches = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/hallmarking-batches"] });
@@ -238,7 +245,7 @@ export function HallmarkingBatchesSection() {
                 </Select>
               </FL>
               <FL label="Date Sent"><Input type="date" value={form.date_sent || today()} onChange={e => set("date_sent", e.target.value)} /></FL>
-              <FL label="Total Cost (₹)"><Input type="number" value={form.total_cost || ""} onChange={e => set("total_cost", e.target.value)} /></FL>
+              <FL label="Total Cost "><Input type="number" value={form.total_cost || ""} onChange={e => set("total_cost", e.target.value)} /></FL>
             </div>
             {editing && <>
               <FL label="Status">

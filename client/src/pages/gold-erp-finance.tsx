@@ -11,10 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, BookOpen, BarChart2, TrendingDown, Layers } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const fmt = (n: any, d = 2) => Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: d });
 const fmtWt = (n: any) => `${fmt(n, 3)} g`;
-const fmtAmt = (n: any) => `₹${fmt(n)}`;
+const fmtAmt = (n: any) => `${sym}${fmt(n)}`;
 const today = () => new Date().toISOString().slice(0, 10);
 
 function FL({ label, children }: any) {
@@ -28,6 +29,8 @@ function SH({ title, action }: any) {
 export function MetalFinanceSection() {
   const { toast } = useToast();
   const [tab, setTab] = useState<"accounts" | "journals" | "consolidation" | "loss">("accounts");
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [showAccForm, setShowAccForm] = useState(false);
   const [showJournalForm, setShowJournalForm] = useState(false);
   const [showConsolidationForm, setShowConsolidationForm] = useState(false);
@@ -137,7 +140,7 @@ export function MetalFinanceSection() {
               <DialogHeader><DialogTitle>Journal Lines — {selectedJournal?.journal_no}</DialogTitle></DialogHeader>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-muted/50"><tr>{["Account", "Side", "Weight (g)", "Rate/g", "Amount (₹)"].map(h => <th key={h} className="px-3 py-2 text-left">{h}</th>)}</tr></thead>
+                  <thead className="bg-muted/50"><tr>{["Account", "Side", "Weight (g)", "Rate/g", "Amount "].map(h => <th key={h} className="px-3 py-2 text-left">{h}</th>)}</tr></thead>
                   <tbody>
                     {(lines as any[]).map((l: any) => (
                       <tr key={l.id} className="border-t">

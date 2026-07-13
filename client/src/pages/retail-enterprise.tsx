@@ -7,12 +7,15 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = async (m: string, u: string, b?: any) => { const r = await fetch(u, { method: m, headers: {'Content-Type':'application/json'}, body: b ? JSON.stringify(b) : undefined, credentials: 'include' }); if (!r.ok) throw new Error(await r.text()); return r.json(); };
 const fmt = (n: any) => Number(n||0).toLocaleString('en-IN', {maximumFractionDigits:2});
 
 export default function RetailEnterprisePage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [phone, setPhone] = useState(""); const [found, setFound] = useState<any>(null);
   const [bill, setBill] = useState(""); const [redeem, setRedeem] = useState("");
   const [reportType, setReportType] = useState("item-wise-sales"); const [from, setFrom] = useState(""); const [to, setTo] = useState("");
@@ -84,7 +87,7 @@ export default function RetailEnterprisePage() {
               <div className="mt-4">
                 <h4 className="font-medium mb-2">Recent Shifts</h4>
                 <Table><TableHeader><TableRow><TableHead>Cashier</TableHead><TableHead>Opening</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
-                <TableBody>{(shifts as any[]).slice(0,5).map((s:any)=><TableRow key={s.id}><TableCell>{s.cashier_name}</TableCell><TableCell>₹{fmt(s.opening_cash)}</TableCell><TableCell><Badge variant={s.status==='open'?'default':'secondary'}>{s.status}</Badge></TableCell></TableRow>)}</TableBody></Table>
+                <TableBody>{(shifts as any[]).slice(0,5).map((s:any)=><TableRow key={s.id}><TableCell>{s.cashier_name}</TableCell><TableCell>{sym}{fmt(s.opening_cash)}</TableCell><TableCell><Badge variant={s.status==='open'?'default':'secondary'}>{s.status}</Badge></TableCell></TableRow>)}</TableBody></Table>
               </div>
             </CardContent></Card>
           </div>
@@ -102,9 +105,9 @@ export default function RetailEnterprisePage() {
                   <span>Tier: <Badge>{found.loyalty_tier}</Badge></span>
                   <span>Visits: <strong>{found.total_visits}</strong></span>
                 </div>
-                <div className="text-sm">Total Spend: ₹{fmt(found.total_spend)}</div>
+                <div className="text-sm">Total Spend: {sym}{fmt(found.total_spend)}</div>
                 <div className="flex gap-2 mt-2">
-                  <Input placeholder="Bill amount ₹" value={bill} onChange={e=>setBill(e.target.value)} className="w-32" />
+                  <Input placeholder="Bill amount ${sym}" value={bill} onChange={e=>setBill(e.target.value)} className="w-32" />
                   <Button size="sm" onClick={earn}>Earn Points</Button>
                 </div>
                 <div className="flex gap-2">
@@ -115,8 +118,8 @@ export default function RetailEnterprisePage() {
             </CardContent></Card>
             <Card><CardHeader><CardTitle>Loyalty Config</CardTitle></CardHeader>
             <CardContent className="space-y-2 text-sm">
-              <p>Points earned: 1 point per ₹50</p>
-              <p>Redemption: ₹0.25 per point</p>
+              <p>Points earned: 1 point per ${sym}50</p>
+              <p>Redemption: ${sym}0.25 per point</p>
               <p>Min redemption: 10 points</p>
               <p>Tiers: Bronze (0-499) | Silver (500-1999) | Gold (2000+)</p>
             </CardContent></Card>

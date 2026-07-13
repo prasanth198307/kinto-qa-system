@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = async (m: string, u: string, b?: any) => { const r = await fetch(u, { method: m, headers: {'Content-Type':'application/json'}, body: b ? JSON.stringify(body) : undefined, credentials: 'include' }); if (!r.ok) throw new Error(await r.text()); return r.json(); };
 const apiFix = async (m: string, u: string, b?: any) => { const r = await fetch(u, { method: m, headers: {'Content-Type':'application/json'}, body: b ? JSON.stringify(b) : undefined, credentials: 'include' }); if (!r.ok) throw new Error(await r.text()); return r.json(); };
@@ -14,6 +15,8 @@ const fmt = (n: any) => Number(n||0).toLocaleString('en-IN', {maximumFractionDig
 
 export default function LogisticsEnterprisePage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [gpsForm, setGpsForm] = useState({ vehicle_id: "", lat: "", lng: "", speed: "" });
   const [reportType, setReportType] = useState("fleet-utilization");
   const [reportData, setReportData] = useState<any[]>([]);
@@ -83,7 +86,7 @@ export default function LogisticsEnterprisePage() {
           <Tabs defaultValue="fuel"><TabsList><TabsTrigger value="fuel">Fuel Records</TabsTrigger><TabsTrigger value="tyres">Tyres</TabsTrigger></TabsList>
           <TabsContent value="fuel"><Card><CardContent className="pt-4">
             <Table><TableHeader><TableRow><TableHead>Vehicle</TableHead><TableHead>Date</TableHead><TableHead>Liters</TableHead><TableHead>Rate</TableHead><TableHead>Amount</TableHead><TableHead>Odometer</TableHead></TableRow></TableHeader>
-            <TableBody>{(fuel as any[]).map((f:any)=><TableRow key={f.id}><TableCell>{f.vehicle_id}</TableCell><TableCell>{f.fill_date?.slice(0,10)}</TableCell><TableCell>{f.liters} L</TableCell><TableCell>₹{f.rate_per_liter}</TableCell><TableCell>₹{fmt(f.total_amount)}</TableCell><TableCell>{f.odometer} km</TableCell></TableRow>)}</TableBody></Table>
+            <TableBody>{(fuel as any[]).map((f:any)=><TableRow key={f.id}><TableCell>{f.vehicle_id}</TableCell><TableCell>{f.fill_date?.slice(0,10)}</TableCell><TableCell>{f.liters} L</TableCell><TableCell>{sym}{f.rate_per_liter}</TableCell><TableCell>{sym}{fmt(f.total_amount)}</TableCell><TableCell>{f.odometer} km</TableCell></TableRow>)}</TableBody></Table>
             {(fuel as any[]).length===0&&<p className="text-center text-gray-400 py-8">No fuel records</p>}
           </CardContent></Card></TabsContent>
           <TabsContent value="tyres"><Card><CardContent className="pt-4">
@@ -115,7 +118,7 @@ export default function LogisticsEnterprisePage() {
           <Card><CardHeader><CardTitle>Freight Bills</CardTitle></CardHeader>
           <CardContent>
             <Table><TableHeader><TableRow><TableHead>Bill#</TableHead><TableHead>Trip</TableHead><TableHead>Customer</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
-            <TableBody>{(freightBills as any[]).map((b:any)=><TableRow key={b.id}><TableCell>{b.bill_number}</TableCell><TableCell>{b.trip_id}</TableCell><TableCell>{b.customer_name}</TableCell><TableCell>₹{fmt(b.amount)}</TableCell><TableCell><Badge>{b.status}</Badge></TableCell></TableRow>)}</TableBody></Table>
+            <TableBody>{(freightBills as any[]).map((b:any)=><TableRow key={b.id}><TableCell>{b.bill_number}</TableCell><TableCell>{b.trip_id}</TableCell><TableCell>{b.customer_name}</TableCell><TableCell>{sym}{fmt(b.amount)}</TableCell><TableCell><Badge>{b.status}</Badge></TableCell></TableRow>)}</TableBody></Table>
             {(freightBills as any[]).length===0&&<p className="text-center text-gray-400 py-8">No freight bills generated</p>}
           </CardContent></Card>
         </TabsContent>
