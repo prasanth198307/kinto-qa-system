@@ -3,6 +3,7 @@ import { useParams } from "wouter";
 import { format } from "date-fns";
 import { Loader2, ArrowLeft, Printer } from "lucide-react";
 import { amountToWords } from "@/lib/number-to-words";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 interface DebitNoteItem {
   id: string;
@@ -56,6 +57,7 @@ const REASON_LABELS: Record<string, string> = {
 export default function PrintDebitNotePage() {
   const params = useParams<{ id: string }>();
   const debitNoteId = params.id;
+  const tenantConfig = useTenantConfig();
 
   const { data: fullNote, isLoading, error } = useQuery<VendorDebitNote & { items: DebitNoteItem[] }>({
     queryKey: ['/api/vendor-debit-notes', debitNoteId],
@@ -105,7 +107,7 @@ export default function PrintDebitNotePage() {
   }
 
   const formatCurrency = (amountInPaise: number): string => {
-    return `₹${(amountInPaise / 100).toFixed(2)}`;
+    return fmtCur(amountInPaise / 100, tenantConfig);
   };
 
   const formatRate = (rateInBasisPoints: number): string => {

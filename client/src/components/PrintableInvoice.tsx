@@ -315,11 +315,11 @@ ${invoice.shipToName || invoice.shipToAddress ? `
               <th>HSN/SAC</th>
               <th>Quantity</th>
               <th>Unit</th>
-              <th>Price/Unit (₹)</th>
-              ${hasDiscount ? '<th>Discount (₹)</th>' : ''}
+              <th>Price/Unit</th>
+              ${hasDiscount ? '<th>Discount</th>' : ''}
               <th>GST%</th>
-              <th>GST (₹)</th>
-              <th>Amount (₹)</th>
+              <th>GST</th>
+              <th>Amount</th>
             </tr>
           </thead>
           <tbody>
@@ -373,24 +373,24 @@ ${invoice.shipToName || invoice.shipToAddress ? `
               <thead>
                 <tr>
                   <th rowspan="2">HSN/SAC</th>
-                  <th rowspan="2">Taxable amount (₹)</th>
+                  <th rowspan="2">Taxable amount</th>
                   ${isIntrastate ? `
                     <th colspan="2">CGST</th>
                     <th colspan="2">SGST</th>
                   ` : `
                     <th colspan="2">IGST</th>
                   `}
-                  <th rowspan="2">Total Tax (₹)</th>
+                  <th rowspan="2">Total Tax</th>
                 </tr>
                 <tr>
                   ${isIntrastate ? `
                     <th>Rate (%)</th>
-                    <th>Amt (₹)</th>
+                    <th>Amt</th>
                     <th>Rate (%)</th>
-                    <th>Amt (₹)</th>
+                    <th>Amt</th>
                   ` : `
                     <th>Rate (%)</th>
-                    <th>Amt (₹)</th>
+                    <th>Amt</th>
                   `}
                 </tr>
               </thead>

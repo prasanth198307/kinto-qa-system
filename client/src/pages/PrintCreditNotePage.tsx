@@ -3,6 +3,7 @@ import { useParams } from "wouter";
 import { format } from "date-fns";
 import { Loader2, ArrowLeft, Printer } from "lucide-react";
 import { amountToWords } from "@/lib/number-to-words";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 interface CreditNote {
   id: string;
@@ -47,6 +48,7 @@ interface CreditNoteItem {
 export default function PrintCreditNotePage() {
   const params = useParams<{ id: string }>();
   const creditNoteId = params.id;
+  const tenantConfig = useTenantConfig();
 
   const { data: creditNote, isLoading, error } = useQuery<CreditNote>({
     queryKey: ['/api/credit-notes', creditNoteId],
@@ -94,7 +96,7 @@ export default function PrintCreditNotePage() {
   }
 
   const formatCurrency = (amountInPaise: number): string => {
-    return `₹${(amountInPaise / 100).toFixed(2)}`;
+    return fmtCur(amountInPaise / 100, tenantConfig);
   };
 
   const formatRate = (rateInBasisPoints: number): string => {
