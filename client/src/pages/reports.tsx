@@ -1531,7 +1531,7 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
         ['Total Payments', filteredPayments.length],
         ['Total Amount', formatCurrencyForExcel(totalAmount)],
         [''],
-        ['Payment Date', 'Invoice No', 'Buyer', 'Amount (₹)', 'Payment Method', 'Payment Type', 'Reference No', 'Bank', 'Remarks'],
+        ['Payment Date', 'Invoice No', 'Buyer', 'Amount', 'Payment Method', 'Payment Type', 'Reference No', 'Bank', 'Remarks'],
         ...filteredPayments.map(p => [
           formatDateForExcel(p.paymentDate),
           p.invoiceNumber || '-',
@@ -2760,7 +2760,7 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
                   <Card>
                     <CardContent className="pt-4">
                       <div className="text-sm text-muted-foreground">Ending Balance</div>
-                      <div className="text-xl font-bold">₹{(cashRegisterReportData.summary.endingBalance / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
+                      <div className="text-xl font-bold">{formatCurrency(cashRegisterReportData.summary.endingBalance)}</div>
                     </CardContent>
                   </Card>
                   <Card>
@@ -2780,11 +2780,11 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
                       <TableRow>
                         <TableHead>Date</TableHead>
                         <TableHead>Salesperson</TableHead>
-                        <TableHead className="text-right">Opening (₹)</TableHead>
-                        <TableHead className="text-right">Cash Received (₹)</TableHead>
-                        <TableHead className="text-right">Expenses (₹)</TableHead>
-                        <TableHead className="text-right">Transfers (₹)</TableHead>
-                        <TableHead className="text-right">Closing (₹)</TableHead>
+                        <TableHead className="text-right">Opening</TableHead>
+                        <TableHead className="text-right">Cash Received</TableHead>
+                        <TableHead className="text-right">Expenses</TableHead>
+                        <TableHead className="text-right">Transfers</TableHead>
+                        <TableHead className="text-right">Closing</TableHead>
                         <TableHead>Status</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -2793,11 +2793,11 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
                         <TableRow key={day.id}>
                           <TableCell className="font-medium">{safeFormat(day.registerDate, 'MMM dd, yyyy')}</TableCell>
                           <TableCell>{day.salespersonName}</TableCell>
-                          <TableCell className="text-right">{(day.openingBalance / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
-                          <TableCell className="text-right text-green-600">{(day.totalCashReceived / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
-                          <TableCell className="text-right text-red-600">{(day.totalExpenses / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
-                          <TableCell className="text-right text-blue-600">{(day.totalTransfers / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
-                          <TableCell className="text-right">{(day.closingBalance / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(day.openingBalance)}</TableCell>
+                          <TableCell className="text-right text-green-600">{formatCurrency(day.totalCashReceived)}</TableCell>
+                          <TableCell className="text-right text-red-600">{formatCurrency(day.totalExpenses)}</TableCell>
+                          <TableCell className="text-right text-blue-600">{formatCurrency(day.totalTransfers)}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(day.closingBalance)}</TableCell>
                           <TableCell>
                             <span className={`text-xs px-2 py-1 rounded ${
                               day.status === 'reconciled' ? 'bg-green-100 text-green-800' :
@@ -3099,7 +3099,7 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
                   {filteredPayments.length} payment{filteredPayments.length !== 1 ? 's' : ''} found
                   {filteredPayments.length > 0 && (
                     <span className="ml-2">
-                      | Total: ₹{(filteredPayments.reduce((sum, p) => sum + (p.amount || 0), 0) / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      | Total: {formatCurrency(filteredPayments.reduce((sum, p) => sum + (p.amount || 0), 0))}
                     </span>
                   )}
                 </CardDescription>
@@ -3292,7 +3292,7 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
                             {payment.vendorName || '-'}
                           </TableCell>
                           <TableCell className="text-right font-medium">
-                            ₹{((payment.amount || 0) / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                            {formatCurrency(payment.amount || 0)}
                           </TableCell>
                           <TableCell>
                             <span className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 px-2 py-1 rounded">
@@ -3411,11 +3411,11 @@ function ScrapReportContent() {
       ['Summary'],
       ['Total Records:', reportData.summary.totalRecords],
       ['Total Quantity:', reportData.summary.totalQuantity],
-      ['Total Cost Value:', `₹${(reportData.summary.totalCostValue / 100).toFixed(2)}`],
-      ['Total Loss Amount:', `₹${(reportData.summary.totalLossAmount / 100).toFixed(2)}`],
-      ['GST Reversal:', `₹${(reportData.summary.totalGstReversal / 100).toFixed(2)}`],
-      ['Disposal Recovery:', `₹${(reportData.summary.totalDisposalValue / 100).toFixed(2)}`],
-      ['Net Loss:', `₹${(reportData.summary.netLoss / 100).toFixed(2)}`],
+      ['Total Cost Value:', formatCurrency(reportData.summary.totalCostValue)],
+      ['Total Loss Amount:', formatCurrency(reportData.summary.totalLossAmount)],
+      ['GST Reversal:', formatCurrency(reportData.summary.totalGstReversal)],
+      ['Disposal Recovery:', formatCurrency(reportData.summary.totalDisposalValue)],
+      ['Net Loss:', formatCurrency(reportData.summary.netLoss)],
       [''],
       ['Breakdown by Damage Reason'],
       ['Reason', 'Count', 'Loss Amount'],

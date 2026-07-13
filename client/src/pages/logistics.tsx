@@ -302,7 +302,7 @@ function FuelTab() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="text-sm text-muted-foreground">Total Fuel Cost: <strong className="text-foreground">₹{fmt(totalCost)}</strong></div>
+        <div className="text-sm text-muted-foreground">Total Fuel Cost: <strong className="text-foreground">{sym}{fmt(totalCost)}</strong></div>
         <Button onClick={openNew}><Plus className="h-4 w-4 mr-1"/>Add Fuel Record</Button>
       </div>
       <div className="rounded-md border overflow-x-auto"><table className="w-full text-sm">
@@ -310,8 +310,8 @@ function FuelTab() {
         <tbody>{(records as any[]).map(r=>(
           <tr key={r.id} className="border-t hover:bg-muted/30">
             <td className="px-3 py-2 font-medium">{r.vehicle_no||"—"}</td><td className="px-3 py-2">{r.record_date?.split("T")[0]}</td>
-            <td className="px-3 py-2">{r.liters}L</td><td className="px-3 py-2">₹{fmt(r.rate_per_liter)}</td>
-            <td className="px-3 py-2 font-medium">₹{fmt(r.amount)}</td><td className="px-3 py-2">{r.odometer_reading ? `${r.odometer_reading} km` : "—"}</td>
+            <td className="px-3 py-2">{r.liters}L</td><td className="px-3 py-2">{sym}{fmt(r.rate_per_liter)}</td>
+            <td className="px-3 py-2 font-medium">{sym}{fmt(r.amount)}</td><td className="px-3 py-2">{r.odometer_reading ? `${r.odometer_reading} km` : "—"}</td>
             <td className="px-3 py-2">{r.fuel_station||"—"}</td>
             <td className="px-3 py-2"><Button size="icon" variant="ghost" onClick={()=>delMut.mutate(r.id)}><Trash2 className="h-3.5 w-3.5"/></Button></td>
           </tr>
@@ -323,8 +323,8 @@ function FuelTab() {
             <div className="col-span-2"><F label="Vehicle *"><Select value={String(form.vehicle_id||"")} onValueChange={v=>setForm({...form,vehicle_id:v})}><SelectTrigger><SelectValue placeholder="Select vehicle"/></SelectTrigger><SelectContent>{(vehicles as any[]).map((v:any)=><SelectItem key={v.id} value={String(v.id)}>{v.vehicle_no}</SelectItem>)}</SelectContent></Select></F></div>
             <F label="Date"><Input type="date" value={form.record_date||""} onChange={e=>setForm({...form,record_date:e.target.value})}/></F>
             <F label="Liters"><Input type="number" value={form.liters||""} onChange={e=>setForm({...form,liters:e.target.value})}/></F>
-            <F label="Rate/Liter (₹)"><Input type="number" value={form.rate_per_liter||""} onChange={e=>setForm({...form,rate_per_liter:e.target.value,amount:((Number(e.target.value)||0)*(Number(form.liters)||0)).toFixed(2)})}/></F>
-            <F label="Amount (₹)"><Input type="number" value={form.amount||""} onChange={e=>setForm({...form,amount:e.target.value})}/></F>
+            <F label={`Rate/Liter (${sym})`}><Input type="number" value={form.rate_per_liter||""} onChange={e=>setForm({...form,rate_per_liter:e.target.value,amount:((Number(e.target.value)||0)*(Number(form.liters)||0)).toFixed(2)})}/></F>
+            <F label={`Amount (${sym})`}><Input type="number" value={form.amount||""} onChange={e=>setForm({...form,amount:e.target.value})}/></F>
             <F label="Odometer (km)"><Input type="number" value={form.odometer_reading||""} onChange={e=>setForm({...form,odometer_reading:e.target.value})}/></F>
             <F label="Fuel Station"><Input value={form.fuel_station||""} onChange={e=>setForm({...form,fuel_station:e.target.value})}/></F>
           </div>
@@ -337,6 +337,7 @@ function FuelTab() {
 
 function MaintenanceTab() {
   const { toast } = useToast();
+  const { currency_symbol: sym } = useTenantConfig();
   const [showForm, setShowForm] = useState(false); const [form, setForm] = useState<any>({});
   const { data: records = [] } = useQuery<any[]>({ queryKey: ["/api/logistics/vehicle-maintenance"] });
   const { data: vehicles = [] } = useQuery<any[]>({ queryKey: ["/api/logistics/vehicles"] });
@@ -352,7 +353,7 @@ function MaintenanceTab() {
           <tr key={r.id} className="border-t hover:bg-muted/30">
             <td className="px-3 py-2 font-medium">{r.vehicle_no||"—"}</td><td className="px-3 py-2">{r.maintenance_date?.split("T")[0]}</td>
             <td className="px-3 py-2">{r.maintenance_type||"—"}</td><td className="px-3 py-2 max-w-[200px] truncate">{r.description||"—"}</td>
-            <td className="px-3 py-2 font-medium">₹{fmt(r.cost)}</td><td className="px-3 py-2">{r.vendor_name||"—"}</td>
+            <td className="px-3 py-2 font-medium">{sym}{fmt(r.cost)}</td><td className="px-3 py-2">{r.vendor_name||"—"}</td>
             <td className="px-3 py-2">{r.next_service_date?.split("T")[0]||"—"}</td>
             <td className="px-3 py-2"><Button size="icon" variant="ghost" onClick={()=>delMut.mutate(r.id)}><Trash2 className="h-3.5 w-3.5"/></Button></td>
           </tr>
@@ -364,7 +365,7 @@ function MaintenanceTab() {
             <div className="col-span-2"><F label="Vehicle *"><Select value={String(form.vehicle_id||"")} onValueChange={v=>setForm({...form,vehicle_id:v})}><SelectTrigger><SelectValue placeholder="Select vehicle"/></SelectTrigger><SelectContent>{(vehicles as any[]).map((v:any)=><SelectItem key={v.id} value={String(v.id)}>{v.vehicle_no}</SelectItem>)}</SelectContent></Select></F></div>
             <F label="Date"><Input type="date" value={form.maintenance_date||""} onChange={e=>setForm({...form,maintenance_date:e.target.value})}/></F>
             <F label="Type"><Select value={form.maintenance_type||""} onValueChange={v=>setForm({...form,maintenance_type:v})}><SelectTrigger><SelectValue placeholder="Select type"/></SelectTrigger><SelectContent>{["Oil Change","Tyre","Brakes","Engine","Electrical","AC","Body Work","Other"].map(t=><SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent></Select></F>
-            <F label="Cost (₹)"><Input type="number" value={form.cost||""} onChange={e=>setForm({...form,cost:e.target.value})}/></F>
+            <F label={`Cost (${sym})`}><Input type="number" value={form.cost||""} onChange={e=>setForm({...form,cost:e.target.value})}/></F>
             <F label="Vendor Name"><Input value={form.vendor_name||""} onChange={e=>setForm({...form,vendor_name:e.target.value})}/></F>
             <F label="Odometer (km)"><Input type="number" value={form.odometer_reading||""} onChange={e=>setForm({...form,odometer_reading:e.target.value})}/></F>
             <F label="Next Service Date"><Input type="date" value={form.next_service_date||""} onChange={e=>setForm({...form,next_service_date:e.target.value})}/></F>

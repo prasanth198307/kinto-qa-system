@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = (m: string, u: string, b?: any) =>
   fetch(u, {
@@ -60,6 +61,8 @@ interface FranchiseApplication {
 
 export default function RestaurantFranchisePage() {
   const { toast } = useToast();
+  const tenantConfig = useTenantConfig();
+  const formatCurrency = (amount: number) => fmtCur(amount, tenantConfig);
   const qc = useQueryClient();
 
   const [config, setConfig] = useState<FranchiseConfig>({
@@ -149,7 +152,7 @@ export default function RestaurantFranchisePage() {
               <CardTitle className="text-sm font-medium text-muted-foreground">Network Revenue (Monthly)</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">₹{totalRevenue.toLocaleString()}</div>
+              <div className="text-2xl font-bold">{formatCurrency(totalRevenue)}</div>
             </CardContent>
           </Card>
           <Card>
@@ -202,7 +205,7 @@ export default function RestaurantFranchisePage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Minimum Royalty Amount (₹)</Label>
+                    <Label>Minimum Royalty Amount</Label>
                     <Input
                       type="number"
                       min={0}
@@ -267,9 +270,9 @@ export default function RestaurantFranchisePage() {
                         <TableRow key={outlet.id}>
                           <TableCell className="font-medium">{outlet.name}</TableCell>
                           <TableCell>{outlet.city}</TableCell>
-                          <TableCell className="text-right">₹{outlet.monthly_revenue?.toLocaleString()}</TableCell>
-                          <TableCell className="text-right">₹{outlet.royalty_due?.toLocaleString()}</TableCell>
-                          <TableCell className="text-right">₹{outlet.marketing_fee?.toLocaleString()}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(outlet.monthly_revenue || 0)}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(outlet.royalty_due || 0)}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(outlet.marketing_fee || 0)}</TableCell>
                           <TableCell>
                             <Badge variant={outlet.status === "active" ? "default" : "secondary"}>
                               {outlet.status}
@@ -323,9 +326,9 @@ export default function RestaurantFranchisePage() {
                         <TableRow key={inv.id}>
                           <TableCell className="font-medium">{inv.outlet_name}</TableCell>
                           <TableCell>{inv.period}</TableCell>
-                          <TableCell className="text-right">₹{inv.royalty_amount?.toLocaleString()}</TableCell>
-                          <TableCell className="text-right">₹{inv.marketing_fee?.toLocaleString()}</TableCell>
-                          <TableCell className="text-right font-semibold">₹{inv.total?.toLocaleString()}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(inv.royalty_amount || 0)}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(inv.marketing_fee || 0)}</TableCell>
+                          <TableCell className="text-right font-semibold">{formatCurrency(inv.total || 0)}</TableCell>
                           <TableCell>
                             <Badge variant={inv.status === "paid" ? "default" : "secondary"}>{inv.status}</Badge>
                           </TableCell>

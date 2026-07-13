@@ -12,12 +12,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 import { format } from "date-fns";
 import { Plus, Search, Package, AlertTriangle, Wrench, ArrowDownToLine, ArrowUpFromLine, Loader2 } from "lucide-react";
 import type { SparePartCatalog, SparePartEntry, SparePartIssuance } from "@shared/schema";
 
 export default function SparePartsPage() {
   const { toast } = useToast();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [search, setSearch] = useState("");
   const [selectedPart, setSelectedPart] = useState<SparePartCatalog | null>(null);
   const [addPartOpen, setAddPartOpen] = useState(false);
@@ -88,7 +91,7 @@ export default function SparePartsPage() {
   const filtered = parts.filter(p => !search || p.partName.toLowerCase().includes(search.toLowerCase()) || (p.partNumber ?? "").toLowerCase().includes(search.toLowerCase()) || (p.category ?? "").toLowerCase().includes(search.toLowerCase()));
   const lowStock = parts.filter(p => p.reorderThreshold && (p.currentStock ?? 0) <= p.reorderThreshold);
 
-  const fmt = (paise: number | null | undefined) => paise != null ? `₹${(paise / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}` : "-";
+  const fmt = (paise: number | null | undefined) => paise != null ? fmtCur(paise / 100, tenantConfig) : "-";
 
   return (
     <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
@@ -274,7 +277,7 @@ export default function SparePartsPage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Unit Price (₹)</Label>
+                <Label>{`Unit Price (${sym})`}</Label>
                 <Input type="number" min="0" step="0.01" placeholder="0.00" value={partForm.unitPrice} onChange={e => setPartForm(f => ({ ...f, unitPrice: e.target.value }))} data-testid="input-part-price" />
               </div>
               <div className="space-y-1.5">
@@ -309,7 +312,7 @@ export default function SparePartsPage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Unit Price (₹) *</Label>
+                <Label>{`Unit Price (${sym}) *`}</Label>
                 <Input type="number" min="0" step="0.01" placeholder="0.00" value={entryForm.unitPrice} onChange={e => setEntryForm(f => ({ ...f, unitPrice: e.target.value }))} data-testid="input-entry-price" />
               </div>
               <div className="space-y-1.5">

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar, Printer, TrendingUp, TrendingDown, ExternalLink, LayoutList, Columns2, Download, ChevronDown, ChevronRight, Expand, Shrink } from "lucide-react";
 import { exportToExcel } from "@/lib/excel-export";
+import { useTenantConfig, formatCurrency as fmtCur, type TenantConfig } from "@/hooks/use-tenant-config";
 
 interface TreeNode {
   id: string;
@@ -47,10 +48,10 @@ function getFYDates(fy: string): { start: string; end: string } {
   return { start: `${y}-04-01`, end: `${y + 1}-03-31` };
 }
 
-function formatAmount(paise: number): string {
+const DEFAULT_TENANT: TenantConfig = { currency_code: "INR", currency_symbol: "₹", country_code: "IN", timezone: "Asia/Kolkata", tax_regime: "GST", tax_rate: 18, date_format: "DD/MM/YYYY", default_locale: "en", country: "India" };
+function formatAmount(paise: number, config?: TenantConfig): string {
   if (paise === 0) return "-";
-  const rupees = Math.abs(paise) / 100;
-  const formatted = rupees.toLocaleString("en-IN", { minimumFractionDigits: 2 });
+  const formatted = fmtCur(Math.abs(paise) / 100, config ?? DEFAULT_TENANT);
   return paise < 0 ? `(${formatted})` : formatted;
 }
 
@@ -101,6 +102,7 @@ function sumLedgerBalances(nodes: TreeNode[]): number {
 }
 
 export default function ProfitLossPage() {
+  const tenantConfig = useTenantConfig();
   const searchString = useSearch();
   const urlParams = new URLSearchParams(searchString);
   const urlMode = urlParams.get("mode");
@@ -432,6 +434,7 @@ function TreeRows({ nodes, depth, expandedNodes, toggleNode, onAccountClick }: {
   toggleNode: (id: string) => void;
   onAccountClick: (node: TreeNode) => void;
 }) {
+  const tenantConfig = useTenantConfig();
   return (
     <>
       {nodes.map(node => {

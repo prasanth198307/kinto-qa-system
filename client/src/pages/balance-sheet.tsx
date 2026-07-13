@@ -402,7 +402,7 @@ export default function BalanceSheetPage() {
                 <tr className="border-t-2 bg-muted/30 font-semibold">
                   <td className="px-4 py-2.5">Total Assets</td>
                   <td className="text-right px-4 py-2.5 font-mono tabular-nums whitespace-nowrap" data-testid="row-total-assets">
-                    {formatAmount(totalAssets)}
+                    {formatAmount(totalAssets, tenantConfig)}
                   </td>
                 </tr>
               </tbody>
@@ -430,7 +430,7 @@ export default function BalanceSheetPage() {
                 <tr className="border-t-2 bg-muted/30 font-semibold">
                   <td className="px-4 py-2.5">Total Liabilities</td>
                   <td className="text-right px-4 py-2.5 font-mono tabular-nums whitespace-nowrap" data-testid="row-total-liabilities">
-                    {formatAmount(totalLiabilities)}
+                    {formatAmount(totalLiabilities, tenantConfig)}
                   </td>
                 </tr>
 
@@ -449,14 +449,14 @@ export default function BalanceSheetPage() {
                     Current Period Net {netProfitLoss >= 0 ? "Profit" : "Loss"}
                   </td>
                   <td className={`text-right px-4 py-2 font-mono tabular-nums whitespace-nowrap ${netProfitLoss >= 0 ? "text-green-700 dark:text-green-300" : "text-destructive"}`}>
-                    {formatAmount(Math.abs(netProfitLoss))}
+                    {formatAmount(Math.abs(netProfitLoss), tenantConfig)}
                   </td>
                 </tr>
 
                 <tr className="border-t-2 bg-muted/30 font-semibold">
                   <td className="px-4 py-2.5">Total Equity</td>
                   <td className="text-right px-4 py-2.5 font-mono tabular-nums whitespace-nowrap" data-testid="row-total-equity">
-                    {formatAmount(totalEquity + netProfitLoss)}
+                    {formatAmount(totalEquity + netProfitLoss, tenantConfig)}
                   </td>
                 </tr>
 
@@ -465,7 +465,7 @@ export default function BalanceSheetPage() {
                 <tr className={`border-t-2 font-bold text-base ${isBalanced ? "bg-green-50/80 dark:bg-green-950/30" : "bg-red-50/80 dark:bg-red-950/30"}`}>
                   <td className="px-4 py-3">Total Liabilities & Equity</td>
                   <td className="text-right px-4 py-3 font-mono tabular-nums whitespace-nowrap" data-testid="row-total-liabilities-equity">
-                    {formatAmount(totalLiabilitiesAndEquity)}
+                    {formatAmount(totalLiabilitiesAndEquity, tenantConfig)}
                   </td>
                 </tr>
               </tbody>

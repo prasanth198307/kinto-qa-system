@@ -7,10 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig } from "@/hooks/use-tenant-config";
 
 const api = (m: string, u: string, b?: any) =>
   fetch(u, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined, credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
-const fmt = (n: any) => "₹" + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
+const fmt = (n: any) => Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
 
 const TIER_STYLES: Record<string, string> = {
   bronze: "bg-amber-100 text-amber-800",
@@ -207,6 +208,7 @@ function GiftCardsTab() {
 export default function RestaurantCustomersPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const { currency_symbol: sym } = useTenantConfig();
 
   const [tab, setTab] = useState<"customers" | "loyalty" | "feedback">("customers");
   const [search, setSearch] = useState("");
@@ -418,7 +420,7 @@ export default function RestaurantCustomersPage() {
                   </div>
                   <div><span className="text-gray-400">Points</span><p className="font-bold text-purple-700">{selectedCustomer.loyalty_points || 0}</p></div>
                   <div><span className="text-gray-400">Total Visits</span><p>{selectedCustomer.total_visits || 0}</p></div>
-                  <div><span className="text-gray-400">Total Spend</span><p>{fmt(selectedCustomer.total_spend)}</p></div>
+                  <div><span className="text-gray-400">Total Spend</span><p>{sym}{fmt(selectedCustomer.total_spend)}</p></div>
                   <div><span className="text-gray-400">Last Visit</span><p>{selectedCustomer.last_visit?.split("T")[0] || "—"}</p></div>
                   <div><span className="text-gray-400">GSTIN</span><p>{selectedCustomer.gstin || "—"}</p></div>
                 </div>
@@ -447,7 +449,7 @@ export default function RestaurantCustomersPage() {
                         {customerHistory.slice(0, 10).map((h: any, i: number) => (
                           <TableRow key={i}>
                             <TableCell>{h.visit_date?.split("T")[0] || h.created_at?.split("T")[0]}</TableCell>
-                            <TableCell>{fmt(h.total_amount || h.grand_total)}</TableCell>
+                            <TableCell>{sym}{fmt(h.total_amount || h.grand_total)}</TableCell>
                             <TableCell>{h.item_count || "—"}</TableCell>
                             <TableCell>{h.points_earned || 0}</TableCell>
                           </TableRow>
@@ -488,7 +490,7 @@ export default function RestaurantCustomersPage() {
                         </TableCell>
                         <TableCell>{c.loyalty_points || 0}</TableCell>
                         <TableCell>{c.total_visits || 0}</TableCell>
-                        <TableCell>{fmt(c.total_spend)}</TableCell>
+                        <TableCell>{sym}{fmt(c.total_spend)}</TableCell>
                         <TableCell>{c.last_visit?.split("T")[0] || "—"}</TableCell>
                         <TableCell onClick={e => e.stopPropagation()}>
                           <div className="flex gap-1 items-center">
@@ -512,15 +514,15 @@ export default function RestaurantCustomersPage() {
         <div className="space-y-6">
           <div className="grid grid-cols-3 gap-4">
             {[
-              { tier: "bronze", label: "Bronze", desc: `Spend ₹0 – ₹${(effectiveConfig.silver_threshold || 5000).toLocaleString()}`, color: "bg-amber-50 border-amber-200" },
-              { tier: "silver", label: "Silver", desc: `Spend ₹${(effectiveConfig.silver_threshold || 5000).toLocaleString()} – ₹${(effectiveConfig.gold_threshold || 15000).toLocaleString()}`, color: "bg-gray-50 border-gray-200" },
-              { tier: "gold", label: "Gold", desc: `Spend ₹${(effectiveConfig.gold_threshold || 15000).toLocaleString()}+`, color: "bg-yellow-50 border-yellow-200" },
+              { tier: "bronze", label: "Bronze", desc: `Spend ${sym}0 – ${sym}${(effectiveConfig.silver_threshold || 5000).toLocaleString()}`, color: "bg-amber-50 border-amber-200" },
+              { tier: "silver", label: "Silver", desc: `Spend ${sym}${(effectiveConfig.silver_threshold || 5000).toLocaleString()} – ${sym}${(effectiveConfig.gold_threshold || 15000).toLocaleString()}`, color: "bg-gray-50 border-gray-200" },
+              { tier: "gold", label: "Gold", desc: `Spend ${sym}${(effectiveConfig.gold_threshold || 15000).toLocaleString()}+`, color: "bg-yellow-50 border-yellow-200" },
             ].map(t => (
               <Card key={t.tier} className={`border-2 ${t.color}`}>
                 <CardContent className="pt-4">
                   <p className="text-lg font-bold">{TIER_ICON[t.tier]} {t.label}</p>
                   <p className="text-sm text-gray-600">{t.desc}</p>
-                  <p className="text-xs text-gray-400 mt-1">Earn {effectiveConfig.points_per_100_rupees || 1} pt per ₹100</p>
+                  <p className="text-xs text-gray-400 mt-1">Earn {effectiveConfig.points_per_100_rupees || 1} pt per {sym}100</p>
                 </CardContent>
               </Card>
             ))}
@@ -528,7 +530,7 @@ export default function RestaurantCustomersPage() {
 
           <Card className="bg-blue-50 border-blue-200">
             <CardContent className="pt-4 text-sm text-blue-800">
-              <strong>Points Example:</strong> Spend ₹500 → earn {Math.floor(5 * (effectiveConfig.points_per_100_rupees || 1))} points → worth {fmt(Math.floor(5 * (effectiveConfig.points_per_100_rupees || 1)) * (effectiveConfig.redemption_rate || 1))}
+              <strong>Points Example:</strong> Spend {sym}500 → earn {Math.floor(5 * (effectiveConfig.points_per_100_rupees || 1))} points → worth {sym}{fmt(Math.floor(5 * (effectiveConfig.points_per_100_rupees || 1)) * (effectiveConfig.redemption_rate || 1))}
             </CardContent>
           </Card>
 

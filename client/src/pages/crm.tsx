@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTenantConfig } from "@/hooks/use-tenant-config";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -41,6 +42,7 @@ function FieldRow({ label, children }: any) {
 
 // ── Pipeline Kanban ───────────────────────────────────────────────────────────
 function PipelineTab() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { toast } = useToast();
   const [selectedPipeline, setSelectedPipeline] = useState<string>("");
   const [showOppForm, setShowOppForm] = useState(false);
@@ -109,7 +111,7 @@ function PipelineTab() {
                 <h3 className="font-semibold text-sm">{stage.name}</h3>
                 <Badge variant="outline" className="text-xs">{stageOpps.length}</Badge>
               </div>
-              <p className="text-xs text-muted-foreground mb-3">₹{fmt(stageValue)}</p>
+              <p className="text-xs text-muted-foreground mb-3">{sym}{fmt(stageValue)}</p>
               <div className="space-y-2">
                 {stageOpps.map((opp: any) => (
                   <Card key={opp.id} draggable onDragStart={() => setDragging(opp.id)} className="cursor-grab active:cursor-grabbing shadow-sm hover:shadow-md transition-shadow">
@@ -123,7 +125,7 @@ function PipelineTab() {
                       </div>
                       <p className="text-xs text-muted-foreground">{opp.account_name || opp.contact_name || "—"}</p>
                       <div className="flex items-center justify-between mt-2">
-                        <span className="text-sm font-bold text-green-600">₹{fmt(opp.amount)}</span>
+                        <span className="text-sm font-bold text-green-600">{sym}{fmt(opp.amount)}</span>
                         <span className="text-xs text-muted-foreground">{opp.probability}%</span>
                       </div>
                       {opp.expected_close_date && <p className="text-xs text-muted-foreground mt-1">Close: {opp.expected_close_date}</p>}
@@ -325,6 +327,7 @@ function ContactsTab() {
 
 // ── Accounts Tab ──────────────────────────────────────────────────────────────
 function AccountsTab() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -362,7 +365,7 @@ function AccountsTab() {
                 <td className="px-3 py-2"><p className="font-medium">{a.name}</p><p className="text-xs text-muted-foreground">{a.website || "—"}</p></td>
                 <td className="px-3 py-2">{a.industry || "—"}</td>
                 <td className="px-3 py-2">{a.phone || "—"}</td>
-                <td className="px-3 py-2">₹{fmt(a.annual_revenue)}</td>
+                <td className="px-3 py-2">{sym}{fmt(a.annual_revenue)}</td>
                 <td className="px-3 py-2">{a.employee_count || "—"}</td>
                 <td className="px-3 py-2"><div className="flex gap-1"><Button size="sm" variant="ghost" onClick={() => openForm(a)}><Pencil className="h-3 w-3" /></Button><Button size="sm" variant="ghost" className="text-red-600" onClick={() => del.mutate(a.id)}><Trash2 className="h-3 w-3" /></Button></div></td>
               </tr>
@@ -562,6 +565,7 @@ function TasksTab() {
 
 // ── Reports Tab ───────────────────────────────────────────────────────────────
 function ReportsTab() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { data: stats } = useQuery<any>({ queryKey: ["/api/crm/pipeline-stats"] });
   const { data: opportunities = [] } = useQuery<any[]>({ queryKey: ["/api/crm/opportunities"] });
   const won = opportunities.filter((o: any) => o.status === 'won');
@@ -575,10 +579,10 @@ function ReportsTab() {
         <StatCard title="Contacts" value={stats?.contacts ?? 0} icon={Users} color="bg-blue-100 text-blue-600" />
         <StatCard title="Accounts" value={stats?.accounts ?? 0} icon={Building2} color="bg-purple-100 text-purple-600" />
         <StatCard title="Open Opportunities" value={stats?.openOpportunities ?? 0} icon={Target} color="bg-orange-100 text-orange-600" />
-        <StatCard title="Pipeline Value" value={`₹${fmt(stats?.pipelineValue)}`} icon={DollarSign} color="bg-green-100 text-green-600" />
+        <StatCard title="Pipeline Value" value={`${sym}${fmt(stats?.pipelineValue)}`} icon={DollarSign} color="bg-green-100 text-green-600" />
       </div>
       <div className="grid sm:grid-cols-3 gap-4">
-        <Card><CardContent className="p-4"><p className="text-sm text-muted-foreground">Won Deals</p><p className="text-2xl font-bold text-green-600">{won.length}</p><p className="text-sm">₹{fmt(wonValue)}</p></CardContent></Card>
+        <Card><CardContent className="p-4"><p className="text-sm text-muted-foreground">Won Deals</p><p className="text-2xl font-bold text-green-600">{won.length}</p><p className="text-sm">{sym}{fmt(wonValue)}</p></CardContent></Card>
         <Card><CardContent className="p-4"><p className="text-sm text-muted-foreground">Lost Deals</p><p className="text-2xl font-bold text-red-600">{lost.length}</p></CardContent></Card>
         <Card><CardContent className="p-4"><p className="text-sm text-muted-foreground">Open Tasks</p><p className="text-2xl font-bold">{stats?.openTasks ?? 0}</p></CardContent></Card>
       </div>

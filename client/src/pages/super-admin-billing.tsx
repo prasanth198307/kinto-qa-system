@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 import { format } from "date-fns";
 import SuperAdminLayout from "./super-admin-layout";
 
@@ -118,8 +119,8 @@ interface UpgradeRequestRow {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function paiseToRupees(paise: number) {
-  return (paise / 100).toLocaleString("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
+function paiseToRupees(paise: number, config: ReturnType<typeof useTenantConfig>) {
+  return fmtCur(paise / 100, config);
 }
 
 function planBadge(slug: string, planName?: string) {
@@ -147,6 +148,8 @@ function eventIcon(type: string): ReactNode {
 
 export default function SuperAdminBilling() {
   const { toast } = useToast();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [search, setSearch] = useState("");
   const [changePlanFor, setChangePlanFor] = useState<SubRow | null>(null);
   const [modulesTenant, setModulesTenant] = useState<{ id: number; name: string } | null>(null);
@@ -755,7 +758,7 @@ export default function SuperAdminBilling() {
                           <p className="text-xs text-muted-foreground capitalize">{invoiceData.plan.billingCycle} billing</p>
                         </td>
                         <td className="py-2 text-right font-medium">
-                          ₹{invoiceData.plan.priceRupees.toLocaleString("en-IN")}
+                          {fmtCur(invoiceData.plan.priceRupees, tenantConfig)}
                         </td>
                       </tr>
 
@@ -767,7 +770,7 @@ export default function SuperAdminBilling() {
                             <p className="text-xs text-muted-foreground">Add-on module</p>
                           </td>
                           <td className="py-2 text-right font-medium">
-                            ₹{m.priceRupees.toLocaleString("en-IN")}
+                            {fmtCur(m.priceRupees, tenantConfig)}
                           </td>
                         </tr>
                       ))}
@@ -779,11 +782,11 @@ export default function SuperAdminBilling() {
                 <div className="ml-auto max-w-xs space-y-1.5">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Subtotal</span>
-                    <span>₹{invoiceData.subtotal.toLocaleString("en-IN")}</span>
+                    <span>{fmtCur(invoiceData.subtotal, tenantConfig)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">GST ({invoiceData.gstRate}%)</span>
-                    <span>₹{invoiceData.gstAmount.toLocaleString("en-IN")}</span>
+                    <span>{fmtCur(invoiceData.gstAmount, tenantConfig)}</span>
                   </div>
                   <Separator />
                   <div className="flex justify-between font-bold text-base">
@@ -799,18 +802,18 @@ export default function SuperAdminBilling() {
                 <div className="rounded-md bg-muted/40 p-3 text-xs text-muted-foreground space-y-1">
                   <p className="font-medium text-foreground">Billing Breakdown</p>
                   <p>
-                    Base plan ({invoiceData.plan.name}): ₹{invoiceData.plan.priceRupees.toLocaleString("en-IN")}/mo
+                    Base plan ({invoiceData.plan.name}): {fmtCur(invoiceData.plan.priceRupees, tenantConfig)}/mo
                   </p>
                   {invoiceData.addonModules.length > 0 ? (
                     <p>
                       Add-on modules ({invoiceData.addonModules.length}):
-                      ₹{invoiceData.addonModules.reduce((s, m) => s + m.priceRupees, 0).toLocaleString("en-IN")}/mo
+                      {fmtCur(invoiceData.addonModules.reduce((s, m) => s + m.priceRupees, 0), tenantConfig)}/mo
                     </p>
                   ) : (
                     <p>No paid add-on modules selected</p>
                   )}
                   <p>
-                    GST @{invoiceData.gstRate}% on SaaS services: ₹{invoiceData.gstAmount.toLocaleString("en-IN")}
+                    GST @{invoiceData.gstRate}% on SaaS services: {fmtCur(invoiceData.gstAmount, tenantConfig)}
                   </p>
                   {invoiceData.addonModules.length === 0 && invoiceData.plan.priceRupees === 0 && (
                     <p className="text-amber-600 dark:text-amber-400 font-medium mt-1">
