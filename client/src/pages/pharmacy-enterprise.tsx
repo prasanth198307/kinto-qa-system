@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const api = async (m: string, u: string, b?: any) => { const r = await fetch(u, { method: m, headers: {'Content-Type':'application/json'}, body: b ? JSON.stringify(b) : undefined, credentials: 'include' }); if (!r.ok) throw new Error(await r.text()); return r.json(); };
-const fmt = (n: any) => Number(n||0).toLocaleString('en-IN', {maximumFractionDigits:2});
+const _fmtNum = (n: any) => Number(n||0).toLocaleString(undefined, {maximumFractionDigits:2});
 
 export default function PharmacyEnterprisePage() {
   const qc = useQueryClient();

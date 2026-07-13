@@ -7,8 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-
-const fmt = (n: number) => `₹${(n / 100000).toFixed(1)}L`;
+import { useTenantConfig } from "@/hooks/use-tenant-config";
 
 function CompanyGroup({ companies }: { companies: any[] }) {
   return (
@@ -145,6 +144,8 @@ function IntercompanyTable({ transactions }: { transactions: any[] }) {
 
 export default function MultiCompanyPage() {
   const { toast } = useToast();
+  const tenantConfig = useTenantConfig();
+  const fmt = (n: number) => `${tenantConfig.currency_symbol}${(n / 100000).toFixed(1)}L`;
   const [report, setReport] = useState<any>(null);
 
   const { data: companies = [] } = useQuery({
