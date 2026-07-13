@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 import { Plus, Pencil, Trash2, Tag, ChevronRight } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
@@ -33,6 +34,8 @@ interface PriceListItem {
 
 export default function PriceListsPage() {
   const { toast } = useToast();
+  const tenantConfig = useTenantConfig();
+  const formatCurrency = (amount: number) => fmtCur(amount, tenantConfig);
   const [open, setOpen] = useState(false);
   const [selectedList, setSelectedList] = useState<PriceList | null>(null);
   const [itemOpen, setItemOpen] = useState(false);
@@ -166,7 +169,7 @@ export default function PriceListsPage() {
                         <TableRow key={item.id} data-testid={`row-price-item-${item.id}`}>
                           <TableCell className="font-medium">{item.product_name || item.product_id}</TableCell>
                           <TableCell>{item.min_qty}</TableCell>
-                          <TableCell>₹{Number(item.price).toLocaleString("en-IN")}</TableCell>
+                          <TableCell>{formatCurrency(Number(item.price))}</TableCell>
                           <TableCell className="text-sm">{item.valid_from ? new Date(item.valid_from).toLocaleDateString() : "—"}</TableCell>
                           <TableCell className="text-sm">{item.valid_to ? new Date(item.valid_to).toLocaleDateString() : "—"}</TableCell>
                         </TableRow>
@@ -241,7 +244,7 @@ export default function PriceListsPage() {
                 <Input type="number" min={1} data-testid="input-min-qty" value={itemForm.min_qty} onChange={e => setItemForm(f => ({ ...f, min_qty: Number(e.target.value) }))} />
               </div>
               <div className="space-y-1.5">
-                <Label>Price (₹)</Label>
+                <Label>Price</Label>
                 <Input type="number" min={0} data-testid="input-price" value={itemForm.price} onChange={e => setItemForm(f => ({ ...f, price: Number(e.target.value) }))} />
               </div>
             </div>

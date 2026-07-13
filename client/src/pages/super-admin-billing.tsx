@@ -399,8 +399,8 @@ export default function SuperAdminBilling() {
                             Price:{" "}
                             <span className="text-foreground">
                               {sub.billingCycle === "yearly"
-                                ? `${paiseToRupees(plan.priceYearly)}/yr`
-                                : `${paiseToRupees(plan.priceMonthly)}/mo`}
+                                ? `${paiseToRupees(plan.priceYearly, tenantConfig)}/yr`
+                                : `${paiseToRupees(plan.priceMonthly, tenantConfig)}/mo`}
                             </span>
                           </span>
                         )}
@@ -474,7 +474,7 @@ export default function SuperAdminBilling() {
                                 {ev.notes && <span className="text-muted-foreground ml-1">· {ev.notes}</span>}
                               </div>
                               {ev.amount != null && ev.amount > 0 && (
-                                <span className="shrink-0 font-medium">{paiseToRupees(ev.amount)}</span>
+                                <span className="shrink-0 font-medium">{paiseToRupees(ev.amount, tenantConfig)}</span>
                               )}
                               <span className="shrink-0 text-muted-foreground">
                                 {format(new Date(ev.createdAt), "dd MMM yy")}
@@ -540,7 +540,7 @@ export default function SuperAdminBilling() {
                         <span className="capitalize">{p.name}</span>
                         {p.priceMonthly > 0 && (
                           <span className="text-xs text-muted-foreground">
-                            {paiseToRupees(p.priceMonthly)}/mo
+                            {paiseToRupees(p.priceMonthly, tenantConfig)}/mo
                           </span>
                         )}
                       </div>
@@ -586,7 +586,7 @@ export default function SuperAdminBilling() {
                       <div className="flex justify-between">
                         <span>Credit for unused {changePlanFor?.plan?.name} days</span>
                         <span className="font-medium text-emerald-600 dark:text-emerald-400">
-                          + {paiseToRupees(prorationInfo.creditPaise)}
+                          + {paiseToRupees(prorationInfo.creditPaise, tenantConfig)}
                         </span>
                       </div>
                     )}
@@ -594,7 +594,7 @@ export default function SuperAdminBilling() {
                       <div className="flex justify-between">
                         <span>Charge for {prorationInfo.daysRemaining} days on {selectedPlan?.name}</span>
                         <span className="font-medium text-red-600 dark:text-red-400">
-                          - {paiseToRupees(prorationInfo.chargePaise)}
+                          - {paiseToRupees(prorationInfo.chargePaise, tenantConfig)}
                         </span>
                       </div>
                     )}
@@ -603,8 +603,8 @@ export default function SuperAdminBilling() {
                       <span>Net adjustment</span>
                       <span className={prorationInfo.netPaise <= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}>
                         {prorationInfo.netPaise <= 0
-                          ? `Credit ${paiseToRupees(Math.abs(prorationInfo.netPaise))}`
-                          : `Charge ${paiseToRupees(prorationInfo.netPaise)}`}
+                          ? `Credit ${paiseToRupees(Math.abs(prorationInfo.netPaise), tenantConfig)}`
+                          : `Charge ${paiseToRupees(prorationInfo.netPaise, tenantConfig)}`}
                       </span>
                     </div>
                   </div>
@@ -791,9 +791,8 @@ export default function SuperAdminBilling() {
                   <Separator />
                   <div className="flex justify-between font-bold text-base">
                     <span>Total Due</span>
-                    <span className="flex items-center gap-0.5 text-primary">
-                      <IndianRupee className="h-4 w-4" />
-                      {invoiceData.grandTotal.toLocaleString("en-IN")}
+                    <span className="text-primary">
+                      {fmtCur(invoiceData.grandTotal, tenantConfig)}
                     </span>
                   </div>
                 </div>

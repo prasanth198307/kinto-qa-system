@@ -3422,7 +3422,7 @@ function ScrapReportContent() {
     ];
     
     Object.entries(reportData.summary.byDamageReason).forEach(([reason, data]) => {
-      excelData.push([reason, data.count, `₹${(data.lossAmount / 100).toFixed(2)}`]);
+      excelData.push([reason, data.count, formatCurrency(data.lossAmount)]);
     });
     
     excelData.push(['']);
@@ -3430,7 +3430,7 @@ function ScrapReportContent() {
     excelData.push(['Product', 'Count', 'Quantity', 'Loss Amount']);
     
     Object.entries(reportData.summary.byProduct).forEach(([_, data]) => {
-      excelData.push([data.productName, data.count, data.quantity, `₹${(data.lossAmount / 100).toFixed(2)}`]);
+      excelData.push([data.productName, data.count, data.quantity, formatCurrency(data.lossAmount)]);
     });
     
     excelData.push(['']);
@@ -3446,7 +3446,7 @@ function ScrapReportContent() {
         r.quantity,
         r.damageReason || '-',
         r.approvalStatus,
-        `₹${((r.lossAmount || 0) / 100).toFixed(2)}`,
+        formatCurrency(r.lossAmount || 0),
       ]);
     });
     
@@ -3495,7 +3495,7 @@ function ScrapReportContent() {
               <div class="summary-label">Total Quantity</div>
             </div>
             <div class="summary-item">
-              <div class="summary-value">₹${(reportData.summary.netLoss / 100).toFixed(2)}</div>
+              <div class="summary-value">${formatCurrency(reportData.summary.netLoss)}</div>
               <div class="summary-label">Net Loss</div>
             </div>
           </div>
@@ -3505,7 +3505,7 @@ function ScrapReportContent() {
         <table>
           <tr><th>Reason</th><th class="text-right">Count</th><th class="text-right">Loss Amount</th></tr>
           ${Object.entries(reportData.summary.byDamageReason).map(([reason, data]) => 
-            `<tr><td>${reason}</td><td class="text-right">${data.count}</td><td class="text-right">₹${(data.lossAmount / 100).toFixed(2)}</td></tr>`
+            `<tr><td>${reason}</td><td class="text-right">${data.count}</td><td class="text-right">${formatCurrency(data.lossAmount)}</td></tr>`
           ).join('')}
         </table>
         
@@ -3513,7 +3513,7 @@ function ScrapReportContent() {
         <table>
           <tr><th>Product</th><th class="text-right">Count</th><th class="text-right">Quantity</th><th class="text-right">Loss Amount</th></tr>
           ${Object.entries(reportData.summary.byProduct).map(([_, data]) => 
-            `<tr><td>${data.productName}</td><td class="text-right">${data.count}</td><td class="text-right">${data.quantity}</td><td class="text-right">₹${(data.lossAmount / 100).toFixed(2)}</td></tr>`
+            `<tr><td>${data.productName}</td><td class="text-right">${data.count}</td><td class="text-right">${data.quantity}</td><td class="text-right">${formatCurrency(data.lossAmount)}</td></tr>`
           ).join('')}
         </table>
         
@@ -3606,13 +3606,13 @@ function ScrapReportContent() {
               </Card>
               <Card>
                 <CardContent className="pt-4">
-                  <div className="text-2xl font-bold text-red-600">₹{(reportData.summary.totalLossAmount / 100).toFixed(2)}</div>
+                  <div className="text-2xl font-bold text-red-600">{formatCurrency(reportData.summary.totalLossAmount)}</div>
                   <div className="text-sm text-muted-foreground">Total Loss</div>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="pt-4">
-                  <div className="text-2xl font-bold text-orange-600">₹{(reportData.summary.netLoss / 100).toFixed(2)}</div>
+                  <div className="text-2xl font-bold text-orange-600">{formatCurrency(reportData.summary.netLoss)}</div>
                   <div className="text-sm text-muted-foreground">Net Loss</div>
                 </CardContent>
               </Card>

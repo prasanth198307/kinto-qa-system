@@ -8,12 +8,15 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const api = async (m: string, u: string, b?: any) => { const r = await fetch(u, { method: m, headers: {'Content-Type':'application/json'}, body: b ? JSON.stringify(b) : undefined, credentials: 'include' }); if (!r.ok) throw new Error(await r.text()); return r.json(); };
 const _fmtNum = (n: any) => Number(n||0).toLocaleString(undefined, {maximumFractionDigits:2});
 
 export default function PharmacyEnterprisePage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const formatCurrency = (amount: number) => fmtCur(amount, tenantConfig);
   const [regType, setRegType] = useState("schedule-h");
   const [showCC, setShowCC] = useState(false);
   const [cc, setCC] = useState({ name: "", phone: "", credit_limit: "", payment_terms_days: "30" });
@@ -72,13 +75,13 @@ export default function PharmacyEnterprisePage() {
           <Card><CardHeader className="flex flex-row items-center justify-between"><CardTitle>Credit Customers</CardTitle><Button size="sm" onClick={()=>setShowCC(true)}>+ Add Credit Customer</Button></CardHeader>
           <CardContent>
             <Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Phone</TableHead><TableHead>Credit Limit</TableHead><TableHead>Payment Terms</TableHead><TableHead>Action</TableHead></TableRow></TableHeader>
-            <TableBody>{(creditCustomers as any[]).map((c:any)=><TableRow key={c.id}><TableCell>{c.name}</TableCell><TableCell>{c.phone}</TableCell><TableCell>₹{fmt(c.credit_limit)}</TableCell><TableCell>{c.payment_terms_days} days</TableCell><TableCell><Button size="sm" variant="outline" onClick={()=>api('GET',`/api/pharmacy/credit-customers/${c.id}/outstanding`).then(d=>alert(JSON.stringify(d,null,2)))}>Outstanding</Button></TableCell></TableRow>)}</TableBody></Table>
+            <TableBody>{(creditCustomers as any[]).map((c:any)=><TableRow key={c.id}><TableCell>{c.name}</TableCell><TableCell>{c.phone}</TableCell><TableCell>{formatCurrency(Number(c.credit_limit || 0))}</TableCell><TableCell>{c.payment_terms_days} days</TableCell><TableCell><Button size="sm" variant="outline" onClick={()=>api('GET',`/api/pharmacy/credit-customers/${c.id}/outstanding`).then(d=>alert(JSON.stringify(d,null,2)))}>Outstanding</Button></TableCell></TableRow>)}</TableBody></Table>
             {(creditCustomers as any[]).length===0&&<p className="text-center text-gray-400 py-8">No credit customers. Add hospitals/clinics with credit accounts.</p>}
           </CardContent></Card>
           <Dialog open={showCC} onOpenChange={setShowCC}><DialogContent><DialogHeader><DialogTitle>Add Credit Customer</DialogTitle></DialogHeader>
             <div className="space-y-3"><div><Label>Name</Label><Input value={cc.name} onChange={e=>setCC({...cc,name:e.target.value})} /></div>
             <div><Label>Phone</Label><Input value={cc.phone} onChange={e=>setCC({...cc,phone:e.target.value})} /></div>
-            <div><Label>Credit Limit (₹)</Label><Input type="number" value={cc.credit_limit} onChange={e=>setCC({...cc,credit_limit:e.target.value})} /></div>
+            <div><Label>Credit Limit</Label><Input type="number" value={cc.credit_limit} onChange={e=>setCC({...cc,credit_limit:e.target.value})} /></div>
             <div><Label>Payment Terms (days)</Label><Input type="number" value={cc.payment_terms_days} onChange={e=>setCC({...cc,payment_terms_days:e.target.value})} /></div>
             <Button onClick={()=>addCC.mutate({...cc,credit_limit:Number(cc.credit_limit),payment_terms_days:Number(cc.payment_terms_days)})}>Save</Button></div>
           </DialogContent></Dialog>

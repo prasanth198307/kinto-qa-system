@@ -349,7 +349,7 @@ export default function ProfitLossPage() {
           <CardContent className="p-4">
             <div className="text-xs text-muted-foreground uppercase tracking-wide">Total Revenue</div>
             <div className="text-lg font-semibold mt-1 font-mono tabular-nums" data-testid="text-total-revenue">
-              {"\u20B9"}{formatAmount(totalRevenue)}
+              {formatAmount(totalRevenue, tenantConfig)}
             </div>
           </CardContent>
         </Card>
@@ -357,7 +357,7 @@ export default function ProfitLossPage() {
           <CardContent className="p-4">
             <div className="text-xs text-muted-foreground uppercase tracking-wide">Total Expenses</div>
             <div className="text-lg font-semibold mt-1 font-mono tabular-nums" data-testid="text-total-expenses">
-              {"\u20B9"}{formatAmount(totalExpenses)}
+              {formatAmount(totalExpenses, tenantConfig)}
             </div>
           </CardContent>
         </Card>
@@ -374,7 +374,7 @@ export default function ProfitLossPage() {
               )}
             </div>
             <div className={`text-lg font-semibold mt-1 font-mono tabular-nums ${isProfit ? "text-green-700 dark:text-green-300" : "text-destructive"}`} data-testid="text-net-profit">
-              {"\u20B9"}{formatAmount(Math.abs(netProfit))}
+              {formatAmount(Math.abs(netProfit), tenantConfig)}
             </div>
           </CardContent>
         </Card>
@@ -408,7 +408,7 @@ export default function ProfitLossPage() {
 
       <div className="hidden print-only" style={{ display: "none" }}>
         <div style={{ textAlign: "right", fontSize: "10px", color: "#666", marginTop: "16px", borderTop: "1px solid #ccc", paddingTop: "8px" }}>
-          Printed on: {printDate} &middot; {companyName} &middot; Net {isProfit ? "Profit" : "Loss"}: {"\u20B9"}{formatAmount(Math.abs(netProfit))}
+          Printed on: {printDate} &middot; {companyName} &middot; Net {isProfit ? "Profit" : "Loss"}: {formatAmount(Math.abs(netProfit), tenantConfig)}
         </div>
       </div>
     </div>
@@ -477,7 +477,7 @@ function TreeRows({ nodes, depth, expandedNodes, toggleNode, onAccountClick }: {
                   )}
                 </div>
                 <div className={`font-mono tabular-nums whitespace-nowrap text-right ${isGroup ? 'font-medium' : ''}`}>
-                  {formatAmount(node.closingBalance)}
+                  {formatAmount(node.closingBalance, tenantConfig)}
                 </div>
               </div>
               {isGroup && isExpanded && hasChildren && (
@@ -509,7 +509,7 @@ function VerticalView({ revenueTree, expenseTree, totalRevenue, totalExpenses, n
           <thead>
             <tr className="border-b bg-muted/30">
               <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Particulars</th>
-              <th className="text-right px-4 py-2.5 text-xs font-medium text-muted-foreground w-[160px]">Amount ({"\u20B9"})</th>
+              <th className="text-right px-4 py-2.5 text-xs font-medium text-muted-foreground w-[160px]">Amount</th>
             </tr>
           </thead>
           <tbody>
@@ -522,7 +522,7 @@ function VerticalView({ revenueTree, expenseTree, totalRevenue, totalExpenses, n
             <tr className="border-t-2 bg-muted/30 font-semibold">
               <td className="px-4 py-2.5">Total Revenue</td>
               <td className="text-right px-4 py-2.5 font-mono tabular-nums whitespace-nowrap" data-testid="row-total-revenue">
-                {formatAmount(totalRevenue)}
+                {formatAmount(totalRevenue, tenantConfig)}
               </td>
             </tr>
 
@@ -537,7 +537,7 @@ function VerticalView({ revenueTree, expenseTree, totalRevenue, totalExpenses, n
             <tr className="border-t-2 bg-muted/30 font-semibold">
               <td className="px-4 py-2.5">Total Expenses</td>
               <td className="text-right px-4 py-2.5 font-mono tabular-nums whitespace-nowrap" data-testid="row-total-expenses">
-                {formatAmount(totalExpenses)}
+                {formatAmount(totalExpenses, tenantConfig)}
               </td>
             </tr>
 
@@ -548,7 +548,7 @@ function VerticalView({ revenueTree, expenseTree, totalRevenue, totalExpenses, n
                 Net {isProfit ? "Profit" : "Loss"}
               </td>
               <td className={`text-right px-4 py-3 font-mono tabular-nums whitespace-nowrap ${isProfit ? "text-green-700 dark:text-green-300" : "text-destructive"}`} data-testid="row-net-profit">
-                {formatAmount(Math.abs(netProfit))}
+                {formatAmount(Math.abs(netProfit), tenantConfig)}
               </td>
             </tr>
           </tbody>
@@ -577,7 +577,7 @@ function TallyView({ revenueTree, expenseTree, totalRevenue, totalExpenses, netP
               <tr className="border-t-2 bg-muted/30 font-semibold">
                 <td className="px-4 py-2.5">Total Revenue</td>
                 <td className="text-right px-4 py-2.5 font-mono tabular-nums whitespace-nowrap" data-testid="tally-total-revenue">
-                  {formatAmount(totalRevenue)}
+                  {formatAmount(totalRevenue, tenantConfig)}
                 </td>
               </tr>
 
@@ -585,7 +585,7 @@ function TallyView({ revenueTree, expenseTree, totalRevenue, totalExpenses, netP
                 <tr className="bg-red-50/50 dark:bg-red-950/20">
                   <td className="px-4 py-2 font-medium">Net Loss (transferred)</td>
                   <td className="text-right px-4 py-2 font-mono tabular-nums text-destructive whitespace-nowrap">
-                    {formatAmount(Math.abs(netProfit))}
+                    {formatAmount(Math.abs(netProfit), tenantConfig)}
                   </td>
                 </tr>
               )}
@@ -593,7 +593,7 @@ function TallyView({ revenueTree, expenseTree, totalRevenue, totalExpenses, netP
               <tr className={`border-t-2 font-bold ${isProfit ? "bg-green-50/80 dark:bg-green-950/30" : "bg-muted/30"}`}>
                 <td className="px-4 py-3">Grand Total</td>
                 <td className="text-right px-4 py-3 font-mono tabular-nums whitespace-nowrap">
-                  {formatAmount(isProfit ? totalRevenue : totalRevenue + Math.abs(netProfit))}
+                  {formatAmount(isProfit ? totalRevenue : totalRevenue + Math.abs(netProfit), tenantConfig)}
                 </td>
               </tr>
             </tbody>
@@ -617,7 +617,7 @@ function TallyView({ revenueTree, expenseTree, totalRevenue, totalExpenses, netP
               <tr className="border-t-2 bg-muted/30 font-semibold">
                 <td className="px-4 py-2.5">Total Expenses</td>
                 <td className="text-right px-4 py-2.5 font-mono tabular-nums whitespace-nowrap" data-testid="tally-total-expenses">
-                  {formatAmount(totalExpenses)}
+                  {formatAmount(totalExpenses, tenantConfig)}
                 </td>
               </tr>
 
@@ -625,7 +625,7 @@ function TallyView({ revenueTree, expenseTree, totalRevenue, totalExpenses, netP
                 <tr className="bg-green-50/50 dark:bg-green-950/20">
                   <td className="px-4 py-2 font-medium">Net Profit (transferred)</td>
                   <td className="text-right px-4 py-2 font-mono tabular-nums text-green-700 dark:text-green-300 whitespace-nowrap">
-                    {formatAmount(netProfit)}
+                    {formatAmount(netProfit, tenantConfig)}
                   </td>
                 </tr>
               )}
@@ -633,7 +633,7 @@ function TallyView({ revenueTree, expenseTree, totalRevenue, totalExpenses, netP
               <tr className={`border-t-2 font-bold ${isProfit ? "bg-muted/30" : "bg-red-50/80 dark:bg-red-950/30"}`}>
                 <td className="px-4 py-3">Grand Total</td>
                 <td className="text-right px-4 py-3 font-mono tabular-nums whitespace-nowrap">
-                  {formatAmount(isProfit ? totalExpenses + netProfit : totalExpenses)}
+                  {formatAmount(isProfit ? totalExpenses + netProfit : totalExpenses, tenantConfig)}
                 </td>
               </tr>
             </tbody>

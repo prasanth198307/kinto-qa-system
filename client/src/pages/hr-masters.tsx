@@ -612,8 +612,8 @@ function PTSlabsTab() {
               <tbody>
                 {rows.map((r: any) => (
                   <tr key={r.id} className="border-t">
-                    <td className="px-3 py-2">{Number(r.income_from).toLocaleString("en-IN")}</td>
-                    <td className="px-3 py-2">{r.income_to != null ? Number(r.income_to).toLocaleString("en-IN") : "& above"}</td>
+                    <td className="px-3 py-2">{fmtCur(Number(r.income_from), tenantConfig)}</td>
+                    <td className="px-3 py-2">{r.income_to != null ? fmtCur(Number(r.income_to), tenantConfig) : "& above"}</td>
                     <td className="px-3 py-2 font-medium">{fmtCur(Number(r.pt_amount), tenantConfig)}</td>
                     <td className="px-3 py-2">
                       <div className="flex gap-1">

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar, Printer, AlertTriangle, CheckCircle2, ExternalLink, Download, ChevronDown, ChevronRight } from "lucide-react";
 import { exportToExcel } from "@/lib/excel-export";
+import { useTenantConfig, formatCurrency as fmtCur, type TenantConfig } from "@/hooks/use-tenant-config";
 
 interface ChartAccount {
   id: string;
@@ -54,10 +55,10 @@ function getAvailableFYs(): string[] {
   return Array.from({ length: 4 }, (_, i) => String(current - i));
 }
 
-function formatAmount(paise: number): string {
+const DEFAULT_TENANT: TenantConfig = { currency_code: "INR", currency_symbol: "₹", country_code: "IN", timezone: "Asia/Kolkata", tax_regime: "GST", tax_rate: 18, date_format: "DD/MM/YYYY", default_locale: "en", country: "India" };
+function formatAmount(paise: number, config?: TenantConfig): string {
   if (paise === 0) return "-";
-  const rupees = Math.abs(paise) / 100;
-  return rupees.toLocaleString("en-IN", { minimumFractionDigits: 2 });
+  return fmtCur(Math.abs(paise) / 100, config ?? DEFAULT_TENANT);
 }
 
 function getFYDates(fy: string): { start: string; end: string } {
@@ -86,6 +87,7 @@ function getDebitCredit(accountType: string, balance: number): { debit: number; 
 }
 
 export default function TrialBalancePage() {
+  const tenantConfig = useTenantConfig();
   const searchString = useSearch();
   const urlParams = new URLSearchParams(searchString);
 
@@ -458,11 +460,11 @@ export default function TrialBalancePage() {
           )}
           <div className="flex-1">
             <span className={`text-sm font-medium ${isBalanced ? "text-green-700 dark:text-green-300" : "text-destructive"}`}>
-              {isBalanced ? "Books are balanced" : `Out of balance by \u20B9${formatAmount(Math.abs(difference))}`}
+              {isBalanced ? "Books are balanced" : `Out of balance by ${formatAmount(Math.abs(difference), tenantConfig)}`}
             </span>
           </div>
           <div className="text-right text-xs text-muted-foreground hidden sm:block">
-            Total Debit: {"\u20B9"}{formatAmount(totalDebit)} &middot; Total Credit: {"\u20B9"}{formatAmount(totalCredit)}
+            Total Debit: {formatAmount(totalDebit, tenantConfig)} &middot; Total Credit: {formatAmount(totalCredit, tenantConfig)}
           </div>
         </CardContent>
       </Card>
@@ -475,8 +477,8 @@ export default function TrialBalancePage() {
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">
                   {viewMode === "tree" ? "Group / Account" : "Account"}
                 </th>
-                <th className="text-right px-4 py-2.5 text-xs font-medium text-muted-foreground w-[150px]">Debit ({"\u20B9"})</th>
-                <th className="text-right px-4 py-2.5 text-xs font-medium text-muted-foreground w-[150px]">Credit ({"\u20B9"})</th>
+                <th className="text-right px-4 py-2.5 text-xs font-medium text-muted-foreground w-[150px]">Debit</th>
+                <th className="text-right px-4 py-2.5 text-xs font-medium text-muted-foreground w-[150px]">Credit</th>
               </tr>
             </thead>
             <tbody>
@@ -511,10 +513,10 @@ export default function TrialBalancePage() {
                         </div>
                       </td>
                       <td className="text-right px-4 py-2 font-mono tabular-nums whitespace-nowrap">
-                        {debit > 0 ? formatAmount(debit) : "-"}
+                        {debit > 0 ? formatAmount(debit, tenantConfig) : "-"}
                       </td>
                       <td className="text-right px-4 py-2 font-mono tabular-nums whitespace-nowrap">
-                        {credit > 0 ? formatAmount(credit) : "-"}
+                        {credit > 0 ? formatAmount(credit, tenantConfig) : "-"}
                       </td>
                     </tr>
                   );
@@ -525,17 +527,17 @@ export default function TrialBalancePage() {
               <tr className="border-t-2 bg-muted/50 font-semibold">
                 <td className="px-4 py-3">Total</td>
                 <td className="text-right px-4 py-3 font-mono tabular-nums whitespace-nowrap" data-testid="total-debit">
-                  {"\u20B9"}{formatAmount(totalDebit)}
+                  {formatAmount(totalDebit, tenantConfig)}
                 </td>
                 <td className="text-right px-4 py-3 font-mono tabular-nums whitespace-nowrap" data-testid="total-credit">
-                  {"\u20B9"}{formatAmount(totalCredit)}
+                  {formatAmount(totalCredit, tenantConfig)}
                 </td>
               </tr>
               {!isBalanced && (
                 <tr className="bg-destructive/5">
                   <td className="px-4 py-2 text-destructive text-xs">Difference</td>
                   <td className="text-right px-4 py-2 font-mono tabular-nums text-destructive text-xs whitespace-nowrap" colSpan={2}>
-                    {"\u20B9"}{formatAmount(Math.abs(difference))}
+                    {formatAmount(Math.abs(difference), tenantConfig)}
                   </td>
                 </tr>
               )}
@@ -546,7 +548,7 @@ export default function TrialBalancePage() {
 
       <div className="hidden print-only" style={{ display: "none" }}>
         <div style={{ textAlign: "right", fontSize: "10px", color: "#666", marginTop: "16px", borderTop: "1px solid #ccc", paddingTop: "8px" }}>
-          Printed on: {printDate} &middot; {companyName} &middot; {isBalanced ? "Books Balanced" : `Out of balance by \u20B9${formatAmount(Math.abs(difference))}`}
+          Printed on: {printDate} &middot; {companyName} &middot; {isBalanced ? "Books Balanced" : `Out of balance by ${formatAmount(Math.abs(difference), tenantConfig)}`}
         </div>
       </div>
     </div>
@@ -566,6 +568,7 @@ function TBTreeRow({
   onToggle: (id: string) => void;
   onAccountClick: (node: { id: string; nodeType?: string }) => void;
 }) {
+  const tenantConfig = useTenantConfig();
   const isGroup = node.nodeType === 'group';
   const isExpanded = expandedNodes.has(node.id);
   const hasChildren = isGroup && node.children.length > 0;
@@ -606,10 +609,10 @@ function TBTreeRow({
           </div>
         </td>
         <td className="text-right px-4 py-2 font-mono tabular-nums whitespace-nowrap">
-          {node.debit > 0 ? formatAmount(node.debit) : "-"}
+          {node.debit > 0 ? formatAmount(node.debit, tenantConfig) : "-"}
         </td>
         <td className="text-right px-4 py-2 font-mono tabular-nums whitespace-nowrap">
-          {node.credit > 0 ? formatAmount(node.credit) : "-"}
+          {node.credit > 0 ? formatAmount(node.credit, tenantConfig) : "-"}
         </td>
       </tr>
 
