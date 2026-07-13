@@ -36,8 +36,7 @@ import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-co
 
 const fmt = (n: any, d = 2) => Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: d });
 const fmtWt = (n: any) => `${fmt(n, 3)} g`;
-  const { currency_symbol: sym } = useTenantConfig();
-const fmtAmt = (n: any) => `${sym}${fmt(n)}`;
+const fmtAmt = (sym: string, n: any) => `${sym}${fmt(n)}`;
 const today = () => new Date().toISOString().slice(0, 10);
 
 const PURITIES: Record<string, { name: string; pct: number }[]> = {
@@ -309,6 +308,7 @@ function MetalRatesSection() {
 
 // ── Karigar ───────────────────────────────────────────────────────────────────
 function KarigarSection() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -348,8 +348,8 @@ function KarigarSection() {
               <p className="text-sm text-muted-foreground">{k.phone}{k.specialization ? ` · ${k.specialization}` : ""}</p>
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div className="bg-muted/50 rounded p-2"><p className="text-muted-foreground">Balance</p><p className="font-semibold">{fmtWt(k.balance_grams)}</p></div>
-                <div className="bg-muted/50 rounded p-2"><p className="text-muted-foreground">Wage/g</p><p className="font-semibold">{fmtAmt(k.wage_per_gram)}</p></div>
-                <div className="bg-muted/50 rounded p-2"><p className="text-muted-foreground">Daily Rate</p><p className="font-semibold">{fmtAmt(k.daily_rate)}</p></div>
+                <div className="bg-muted/50 rounded p-2"><p className="text-muted-foreground">Wage/g</p><p className="font-semibold">{fmtAmt(sym, k.wage_per_gram)}</p></div>
+                <div className="bg-muted/50 rounded p-2"><p className="text-muted-foreground">Daily Rate</p><p className="font-semibold">{fmtAmt(sym, k.daily_rate)}</p></div>
               </div>
               <div className="flex gap-2 pt-1">
                 <Button size="sm" variant="outline" className="flex-1" onClick={() => { setEditing(k); setForm(k); setShowForm(true); }}><Pencil className="h-3 w-3 mr-1" />Edit</Button>
@@ -385,6 +385,7 @@ function KarigarSection() {
 
 // ── Item Master ───────────────────────────────────────────────────────────────
 function ItemMasterSection() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -430,7 +431,7 @@ function ItemMasterSection() {
                 <td className="px-4 py-2 capitalize"><p>{item.metal_type}</p><p className="text-xs text-muted-foreground">{item.purity_name}</p></td>
                 <td className="px-4 py-2 text-right">{fmtWt(item.gross_weight_gm)}</td>
                 <td className="px-4 py-2 text-right">{fmtWt(item.net_weight_gm)}</td>
-                <td className="px-4 py-2 text-right font-semibold">{item.selling_price ? fmtAmt(item.selling_price) : "—"}</td>
+                <td className="px-4 py-2 text-right font-semibold">{item.selling_price ? fmtAmt(sym, item.selling_price) : "—"}</td>
                 <td className="px-4 py-2 text-center">{item.stock_qty}</td>
                 <td className="px-4 py-2">
                   <div className="flex gap-1 justify-end">
@@ -488,6 +489,7 @@ function ItemMasterSection() {
 
 // ── Estimates ─────────────────────────────────────────────────────────────────
 function EstimatesSection() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<any>({ metal_type: "gold", purity_name: "22K (916)", gst_pct: 3, making_charge_type: "percent" });
@@ -516,7 +518,6 @@ function EstimatesSection() {
   }, [form.metal_type, form.purity_name, (ratesData as any[]).length]);
 
   const calcTotal = () => {
-  const { currency_symbol: sym } = useTenantConfig();
     const wt = Number(form.weight_gm || 0);
     const rate = Number(form.rate_per_gram || 0);
     const metalVal = wt * rate;
@@ -546,7 +547,7 @@ function EstimatesSection() {
                 <td className="px-4 py-2 text-xs text-muted-foreground">{e.estimate_no}</td>
                 <td className="px-4 py-2"><p className="font-medium">{e.customer_name || "—"}</p><p className="text-xs text-muted-foreground">{e.customer_phone}</p></td>
                 <td className="px-4 py-2 capitalize">{e.metal_type} · {e.purity_name}</td>
-                <td className="px-4 py-2 font-bold">{fmtAmt(e.total_amount)}</td>
+                <td className="px-4 py-2 font-bold">{fmtAmt(sym, e.total_amount)}</td>
                 <td className="px-4 py-2"><StatusBadge status={e.status} /></td>
                 <td className="px-4 py-2 text-xs text-muted-foreground">{e.created_at?.slice(0, 10)}</td>
               </tr>
@@ -597,12 +598,12 @@ function EstimatesSection() {
             <Button variant="outline" className="w-full" onClick={calcTotal} data-testid="button-calculate">Calculate Total</Button>
             {form.total_amount && (
               <div className="bg-muted/50 rounded-lg p-3 space-y-1 text-sm">
-                <div className="flex justify-between"><span>Metal Value</span><span>{fmtAmt(form.total_metal_value)}</span></div>
-                <div className="flex justify-between"><span>Wastage</span><span>{fmtAmt(form.wastage_amount)}</span></div>
-                <div className="flex justify-between"><span>Making Charges</span><span>{fmtAmt(form.making_charges)}</span></div>
-                <div className="flex justify-between"><span>Stone Value</span><span>{fmtAmt(form.stone_value)}</span></div>
-                <div className="flex justify-between"><span>GST ({form.gst_pct}%)</span><span>{fmtAmt(form.gst_amount)}</span></div>
-                <div className="flex justify-between font-bold text-base border-t pt-1"><span>Total</span><span>{fmtAmt(form.total_amount)}</span></div>
+                <div className="flex justify-between"><span>Metal Value</span><span>{fmtAmt(sym, form.total_metal_value)}</span></div>
+                <div className="flex justify-between"><span>Wastage</span><span>{fmtAmt(sym, form.wastage_amount)}</span></div>
+                <div className="flex justify-between"><span>Making Charges</span><span>{fmtAmt(sym, form.making_charges)}</span></div>
+                <div className="flex justify-between"><span>Stone Value</span><span>{fmtAmt(sym, form.stone_value)}</span></div>
+                <div className="flex justify-between"><span>GST ({form.gst_pct}%)</span><span>{fmtAmt(sym, form.gst_amount)}</span></div>
+                <div className="flex justify-between font-bold text-base border-t pt-1"><span>Total</span><span>{fmtAmt(sym, form.total_amount)}</span></div>
               </div>
             )}
             <FieldRow label="Valid Until"><Input type="date" value={form.valid_until || ""} onChange={e => set("valid_until", e.target.value)} /></FieldRow>
@@ -739,6 +740,7 @@ function ProductionSection() {
 
 // ── Jobwork ───────────────────────────────────────────────────────────────────
 function JobworkSection() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
@@ -772,7 +774,7 @@ function JobworkSection() {
                 <td className="px-4 py-2">{fmtWt(o.issued_weight_gm)}</td>
                 <td className="px-4 py-2">{o.received_weight_gm ? fmtWt(o.received_weight_gm) : "—"}</td>
                 <td className="px-4 py-2">{o.wastage_gm ? fmtWt(o.wastage_gm) : "—"}</td>
-                <td className="px-4 py-2 font-semibold">{fmtAmt(o.total_wage)}</td>
+                <td className="px-4 py-2 font-semibold">{fmtAmt(sym, o.total_wage)}</td>
                 <td className="px-4 py-2"><StatusBadge status={o.status} /></td>
                 <td className="px-4 py-2"><Button size="icon" variant="ghost" onClick={() => { setEditing(o); setForm(o); setShowForm(true); }}><Pencil className="h-4 w-4" /></Button></td>
               </tr>
@@ -876,8 +878,8 @@ function BullionSection() {
                 <td className="px-4 py-2"><StatusBadge status={t.txn_type} /></td>
                 <td className="px-4 py-2 capitalize">{t.metal_type} · {t.purity_name}</td>
                 <td className="px-4 py-2">{fmtWt(t.weight_gm)}</td>
-                <td className="px-4 py-2">{fmtAmt(t.rate_per_gram)}</td>
-                <td className="px-4 py-2 font-semibold">{fmtAmt(t.amount)}</td>
+                <td className="px-4 py-2">{fmtAmt(sym, t.rate_per_gram)}</td>
+                <td className="px-4 py-2 font-semibold">{fmtAmt(sym, t.amount)}</td>
                 <td className="px-4 py-2">{t.party_name || "—"}</td>
                 <td className="px-4 py-2 text-xs text-muted-foreground">{t.txn_date}</td>
               </tr>
@@ -970,7 +972,7 @@ function RepairsSection() {
                 <td className="px-4 py-2"><p className="font-medium">{r.customer_name}</p><p className="text-xs text-muted-foreground">{r.customer_phone}</p></td>
                 <td className="px-4 py-2"><p className="text-xs">{r.item_description?.slice(0, 30)}</p><p className="text-xs text-muted-foreground">{r.repair_type}</p></td>
                 <td className="px-4 py-2">{r.karigar_name || "—"}</td>
-                <td className="px-4 py-2 font-semibold">{fmtAmt(r.repair_charges)}</td>
+                <td className="px-4 py-2 font-semibold">{fmtAmt(sym, r.repair_charges)}</td>
                 <td className="px-4 py-2"><StatusBadge status={r.status} /></td>
                 <td className="px-4 py-2 text-xs text-muted-foreground">{r.expected_delivery?.slice(0, 10) || "—"}</td>
                 <td className="px-4 py-2">
@@ -1051,10 +1053,10 @@ function RepairsSection() {
                   </FieldRow>
                 </div>
                 <div className="rounded-md border p-3 space-y-2 text-sm">
-                  <div className="flex justify-between"><span>Repair Charges</span><span>{fmtAmt(repairCharges)}</span></div>
-                  <div className="flex justify-between"><span>Gold Addition ({goldAdded} gm × {sym}{goldRate})</span><span>{fmtAmt(goldValue)}</span></div>
-                  <div className="flex justify-between"><span>GST on Making (5%)</span><span>{fmtAmt(gstOnMaking)}</span></div>
-                  <div className="flex justify-between font-semibold border-t pt-2"><span>Total</span><span>{fmtAmt(total)}</span></div>
+                  <div className="flex justify-between"><span>Repair Charges</span><span>{fmtAmt(sym, repairCharges)}</span></div>
+                  <div className="flex justify-between"><span>Gold Addition ({goldAdded} gm × {sym}{goldRate})</span><span>{fmtAmt(sym, goldValue)}</span></div>
+                  <div className="flex justify-between"><span>GST on Making (5%)</span><span>{fmtAmt(sym, gstOnMaking)}</span></div>
+                  <div className="flex justify-between font-semibold border-t pt-2"><span>Total</span><span>{fmtAmt(sym, total)}</span></div>
                 </div>
                 <div className="flex gap-2 justify-end">
                   <Button variant="outline" onClick={() => setShowInvoice(false)}>Cancel</Button>
@@ -1241,7 +1243,7 @@ function ChitSchemesSection() {
               <div>
                 <p className="font-medium text-sm">{m.member_name}</p>
                 <p className="text-xs text-muted-foreground">{m.phone} · {m.member_code}</p>
-                <p className="text-xs">{m.installments_paid} installments paid · {fmtAmt(m.total_paid)} total</p>
+                <p className="text-xs">{m.installments_paid} installments paid · {fmtAmt(sym, m.total_paid)} total</p>
               </div>
               <div className="flex gap-2 items-center">
                 <StatusBadge status={m.status} />
@@ -1345,9 +1347,9 @@ function AnalyticsSection() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: "Active Items", val: overview?.items?.cnt || 0, sub: `${fmtWt(overview?.items?.total_stock)} total stock` },
-          { label: "Live Stock Value", val: fmtAmt(totalStockVal), sub: "Bullion + Finished goods" },
+          { label: "Live Stock Value", val: fmtAmt(sym, totalStockVal), sub: "Bullion + Finished goods" },
           { label: "Active Karigars", val: overview?.karigars?.cnt || 0, sub: "Currently working" },
-          { label: "Open Repairs", val: overview?.repairs?.cnt || 0, sub: `Charges: ${fmtAmt(overview?.repairs?.total_charges)}` },
+          { label: "Open Repairs", val: overview?.repairs?.cnt || 0, sub: `Charges: ${fmtAmt(sym, overview?.repairs?.total_charges)}` },
         ].map(k => (
           <Card key={k.label}>
             <CardContent className="p-4">
@@ -1417,8 +1419,8 @@ function AnalyticsSection() {
                     <tr key={m.month} className="border-t">
                       <td className="px-3 py-1.5">{new Date(m.month).toLocaleDateString("en-IN", { month: "short", year: "2-digit" })}</td>
                       <td className="px-3 py-1.5">{m.estimate_count}</td>
-                      <td className="px-3 py-1.5">{fmtAmt(m.total_making)}</td>
-                      <td className="px-3 py-1.5">{fmtAmt(m.total_revenue)}</td>
+                      <td className="px-3 py-1.5">{fmtAmt(sym, m.total_making)}</td>
+                      <td className="px-3 py-1.5">{fmtAmt(sym, m.total_revenue)}</td>
                       <td className="px-3 py-1.5">{m.avg_wastage_pct}%</td>
                     </tr>
                   ))}
@@ -1438,7 +1440,7 @@ function AnalyticsSection() {
               {(stockValue?.bullionStock || []).map((b: any) => (
                 <div key={`${b.metal_type}-${b.purity_name}`} className="flex justify-between text-sm py-1 border-b last:border-0">
                   <span>{b.metal_type} — {b.purity_name}</span>
-                  <span className="font-medium">{fmtWt(b.stock_grams)} · {fmtAmt(b.value)}</span>
+                  <span className="font-medium">{fmtWt(b.stock_grams)} · {fmtAmt(sym, b.value)}</span>
                 </div>
               ))}
               {!(stockValue?.bullionStock?.length) && <p className="text-xs text-muted-foreground">No bullion stock</p>}
@@ -1448,7 +1450,7 @@ function AnalyticsSection() {
               {(stockValue?.itemStock || []).map((b: any) => (
                 <div key={`${b.metal_type}-${b.purity_name}`} className="flex justify-between text-sm py-1 border-b last:border-0">
                   <span>{b.metal_type} — {b.purity_name}</span>
-                  <span className="font-medium">{fmtWt(b.total_gm)} · {fmtAmt(b.total_value)}</span>
+                  <span className="font-medium">{fmtWt(b.total_gm)} · {fmtAmt(sym, b.total_value)}</span>
                 </div>
               ))}
               {!(stockValue?.itemStock?.length) && <p className="text-xs text-muted-foreground">No item stock</p>}
@@ -1549,8 +1551,8 @@ function MetalLedgerSection() {
                   <td className="px-3 py-1.5 capitalize">{t.metal_type}</td>
                   <td className="px-3 py-1.5">{t.purity_name}</td>
                   <td className="px-3 py-1.5 font-medium">{fmtWt(t.weight_gm)}</td>
-                  <td className="px-3 py-1.5">{t.rate_per_gram ? fmtAmt(t.rate_per_gram) : "—"}</td>
-                  <td className="px-3 py-1.5">{t.amount ? fmtAmt(t.amount) : "—"}</td>
+                  <td className="px-3 py-1.5">{t.rate_per_gram ? fmtAmt(sym, t.rate_per_gram) : "—"}</td>
+                  <td className="px-3 py-1.5">{t.amount ? fmtAmt(sym, t.amount) : "—"}</td>
                   <td className="px-3 py-1.5 text-muted-foreground">{t.reference_no || "—"}</td>
                 </tr>
               ))}

@@ -1,5 +1,5 @@
-const CACHE_VERSION = 'swacherp-v6';
-const API_CACHE_NAME = 'swacherp-api-v6';
+const CACHE_VERSION = 'swacherp-v7';
+const API_CACHE_NAME = 'swacherp-api-v7';
 
 const STATIC_PRECACHE = ['/'];
 

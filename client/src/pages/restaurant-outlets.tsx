@@ -10,7 +10,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 const api = (m: string, u: string, b?: any) =>
   fetch(u, { method: m, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined, credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
-  const { currency_symbol: sym } = useTenantConfig();
 const OUTLET_TYPE_COLORS: Record<string, string> = {
   dine_in: "bg-blue-100 text-blue-800",
   cloud_kitchen: "bg-purple-100 text-purple-800",
@@ -28,7 +27,7 @@ const emptyOutlet = { outlet_code: "", outlet_name: "", outlet_type: "dine_in", 
 const emptyTerminal = { terminal_name: "", terminal_code: "", outlet_id: "", terminal_type: "pos", printer_ip: "", printer_port: "9100", printer_type: "thermal", is_active: true };
 const emptyPrinter = { printer_name: "", printer_type: "thermal", connection_type: "network", ip_address: "", port: "9100", paper_size: "80mm", stations: [] as string[], print_types: [] as string[], is_active: true };
 const COUNTRY_PRESETS = [
-  { country: "India", tax_name: "GST", tax_rate: 5, currency: "INR", currency_symbol: sym, flag: "🇮🇳" },
+  { country: "India", tax_name: "GST", tax_rate: 5, currency: "INR", currency_symbol: "₹", flag: "🇮🇳" },
   { country: "UAE", tax_name: "VAT", tax_rate: 5, currency: "AED", currency_symbol: "د.إ", flag: "🇦🇪" },
   { country: "Saudi Arabia", tax_name: "VAT", tax_rate: 15, currency: "SAR", currency_symbol: "ر.س", flag: "🇸🇦" },
   { country: "UK", tax_name: "VAT", tax_rate: 20, currency: "GBP", currency_symbol: "£", flag: "🇬🇧" },

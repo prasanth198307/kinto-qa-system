@@ -47,6 +47,7 @@ export default function CustomerAdvancesPage() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const { hasPermission } = usePermissions();
+  const { currency_symbol: sym } = useTenantConfig();
   const canCreate = hasPermission('customer_advances', 'create');
   const canEdit = hasPermission('customer_advances', 'edit');
   const canDelete = hasPermission('customer_advances', 'delete');
@@ -110,8 +111,6 @@ export default function CustomerAdvancesPage() {
 
   // Get all child vendor IDs for the selected parent vendor
   const childVendorIds = useMemo(() => {
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
     if (!selectedAdvance?.vendorId) return [];
     return vendors
       .filter(v => v.parentVendorId === selectedAdvance.vendorId)
@@ -312,7 +311,6 @@ export default function CustomerAdvancesPage() {
   };
 
   const formatCurrency = (amountInPaise: number) => {
-  const { currency_symbol: sym } = useTenantConfig();
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',

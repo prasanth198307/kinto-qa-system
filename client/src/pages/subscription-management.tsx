@@ -370,6 +370,7 @@ function MarketplaceTab({
   data: ModuleData;
   onSave: (slugs: string[]) => void;
 }) {
+  const { currency_symbol: sym } = useTenantConfig();
   const freeSet = new Set(data.freeModules);
   const planSet = new Set(data.planModules ?? []);
   const [draft, setDraft] = useState<Set<string>>(new Set(data.selectedModules));
@@ -399,7 +400,6 @@ function MarketplaceTab({
   })();
 
   const handleSave = async () => {
-  const { currency_symbol: sym } = useTenantConfig();
     setSaving(true);
     try {
       await onSave(Array.from(draft));
@@ -558,6 +558,7 @@ function ManageModulesTab({
   data: ModuleData;
   onSave: (slugs: string[]) => void;
 }) {
+  const { currency_symbol: sym } = useTenantConfig();
   const freeSet = new Set(data.freeModules);
   const [selected, setSelected] = useState<Set<string>>(new Set(data.selectedModules));
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
@@ -588,7 +589,6 @@ function ManageModulesTab({
   };
 
   const handleSave = async () => {
-  const { currency_symbol: sym } = useTenantConfig();
     setSaving(true);
     try {
       await onSave(Array.from(selected));

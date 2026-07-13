@@ -86,6 +86,7 @@ function OverviewTab() {
 
 // ── POS / KOT Tab ─────────────────────────────────────────────────────────────
 function POSKOTTab() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { toast } = useToast();
   const [selectedTable, setSelectedTable] = useState<any>(null);
   const [cart, setCart] = useState<any[]>([]);
@@ -128,7 +129,6 @@ function POSKOTTab() {
   const total = cart.reduce((s, c) => s + c.amount, 0);
 
   const placeOrder = () => {
-  const { currency_symbol: sym } = useTenantConfig();
     if (cart.length === 0) return toast({ title: "Cart empty", variant: "destructive" });
     createKot.mutate({ table_id: selectedTable?.id || null, order_type: orderType, waiter_name: waiter, items: cart });
   };

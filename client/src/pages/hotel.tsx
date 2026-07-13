@@ -444,6 +444,7 @@ function CheckInOutTab() {
 
 // ── Folios Tab ────────────────────────────────────────────────────────────────
 function FoliosTab() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -467,7 +468,6 @@ function FoliosTab() {
   const addItem = () => setForm((p: any) => ({ ...p, items: [...(p.items || []), { description: "", quantity: 1, rate: 0, amount: 0, category: "room" }] }));
   const removeItem = (i: number) => setForm((p: any) => ({ ...p, items: p.items.filter((_: any, idx: number) => idx !== i) }));
   const updateItem = (i: number, field: string, val: any) => setForm((p: any) => {
-  const { currency_symbol: sym } = useTenantConfig();
     const items = [...p.items];
     items[i] = { ...items[i], [field]: val };
     if (field === "quantity" || field === "rate") items[i].amount = (Number(items[i].quantity) || 0) * (Number(items[i].rate) || 0);
@@ -742,12 +742,12 @@ function GuestsTab() {
 
 // ── Channel Manager Tab ───────────────────────────────────────────────────────
 function ChannelManagerTab() {
+  const { currency_symbol: sym } = useTenantConfig();
   const { toast } = useToast();
   const [syncing, setSyncing] = useState(false);
   const { data: rates = [], refetch } = useQuery<any[]>({ queryKey: ["/api/hotel/enterprise/channels/rates"] });
 
   const handleSync = async () => {
-  const { currency_symbol: sym } = useTenantConfig();
     setSyncing(true);
     try {
       const r = await apiRequest("POST", "/api/hotel/enterprise/channels/sync");
