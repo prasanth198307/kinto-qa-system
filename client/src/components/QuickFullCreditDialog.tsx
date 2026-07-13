@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 import { useQuery } from "@tanstack/react-query";
 import {
   AlertDialog,
@@ -86,9 +87,8 @@ export function QuickFullCreditDialog({
     enabled: open && !!invoiceId,
   });
 
-  const formatCurrency = (amountInPaise: number) => {
-    return `₹${(amountInPaise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  };
+  const tenantConfig = useTenantConfig();
+  const formatCurrency = (amountInPaise: number) => fmtCur(amountInPaise / 100, tenantConfig);
 
   // Calculate remaining amounts based on effective values (value-based approach)
   const hasPreviousAdjustments = effectiveData?.summary && 

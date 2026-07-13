@@ -385,7 +385,7 @@ export function CreateCreditNoteDialog({
                                   : "Invoice Price";
                               return (
                               <FormItem>
-                                <FormLabel>Adjusted Price (₹)</FormLabel>
+                                <FormLabel>Adjusted Price ({tenantConfig.currency_symbol})</FormLabel>
                                 <FormControl>
                                   <Input
                                     type="number"

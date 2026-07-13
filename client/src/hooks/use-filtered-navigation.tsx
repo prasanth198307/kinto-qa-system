@@ -461,14 +461,35 @@ const CORE_ADMIN_NAV = new Set([
   'company-settings',
   'notification-settings',
   'language-settings',
-  'projects',
-  'fixed-assets',
 ]);
 
-function filterNavSectionsByPlan(sections: NavSection[], allowedNavItems: string[]): NavSection[] {
+// Sections that require a specific subscribed module to appear.
+// Entire section is hidden unless the tenant plan includes the required module.
+const SECTION_MODULE_GATES: Record<string, string> = {
+  'accounting-section':       'accounting',
+  'healthcare-erp-section':   'healthcare',
+  'logistics-erp-section':    'logistics_transport',
+  'projects-section':         'projects',
+  'hr-section':               'hr_payroll',
+  'maintenance-section':      'maintenance',
+  'crm-section':              'crm',
+  'real-estate-erp-section':  'real_estate',
+  'agriculture-erp-section':  'agriculture',
+  'education-erp-section':    'education',
+  'gold-erp-section':         'gold_erp',
+  'fixed-assets-section':     'fixed_assets',
+};
+
+function filterNavSectionsByPlan(sections: NavSection[], allowedNavItems: string[], planModules: string[] = []): NavSection[] {
   if (!allowedNavItems || allowedNavItems.length === 0) return sections;
   const allowed = new Set(allowedNavItems);
+  const moduleSet = new Set(planModules);
   return sections
+    .filter(section => {
+      const requiredModule = SECTION_MODULE_GATES[section.id ?? ''];
+      if (requiredModule && !moduleSet.has(requiredModule)) return false;
+      return true;
+    })
     .map(section => {
       const filteredItems = section.items.filter(item => allowed.has(item.id) || CORE_ADMIN_NAV.has(item.id));
       const filteredSubs = (section.subSections ?? [])
@@ -482,7 +503,7 @@ function filterNavSectionsByPlan(sections: NavSection[], allowedNavItems: string
 export function useFilteredNavigation(allNavSections: NavSection[]) {
   const { permissions, role: roleName, roles: allRoles, isLoading: permissionsLoading } = usePermissions();
   const { user } = useAuth();
-  const { allowedNavItems, isLoading: planLoading } = usePlanFeatures();
+  const { allowedNavItems, modules: planModules, isLoading: planLoading } = usePlanFeatures();
   const { applyModuleLabelsToNav } = useModuleLabels();
   const lastValidRef = useRef<NavSection[]>([]);
   
@@ -494,7 +515,7 @@ export function useFilteredNavigation(allNavSections: NavSection[]) {
     }
     // First apply plan-level filtering (hides modules not in subscription)
     const planFiltered = allowedNavItems.length > 0
-      ? filterNavSectionsByPlan(allNavSections, allowedNavItems)
+      ? filterNavSectionsByPlan(allNavSections, allowedNavItems, planModules)
       : allNavSections;
 
     // System roles bypass role/permission filtering — only plan gating applies

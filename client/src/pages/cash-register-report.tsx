@@ -35,6 +35,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { useToast } from '@/hooks/use-toast';
+import { useTenantConfig, formatCurrency as fmtCur } from '@/hooks/use-tenant-config';
 import { getCashSourceLabel } from '@/lib/utils';
 import { downloadXLSX } from '@/lib/download-utils';
 
@@ -126,14 +127,7 @@ interface DocumentData {
   voucherId?: string;
 }
 
-// Cash register amounts are stored in RUPEES (not paise)
-const formatCurrency = (rupees: number) => {
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    minimumFractionDigits: 2,
-  }).format(rupees);
-};
+// formatCurrency is defined inside the component (see CashRegisterReport)
 
 const formatCurrencyNumber = (rupees: number) => {
   return rupees.toFixed(2);
@@ -278,6 +272,9 @@ const formatPeriodLabel = (period: string, periodType: string) => {
 };
 
 export default function CashRegisterReport() {
+  const tenantConfig = useTenantConfig();
+  // Cash register amounts are stored in RUPEES (not paise)
+  const formatCurrency = (rupees: number) => fmtCur(rupees, tenantConfig);
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState('report');

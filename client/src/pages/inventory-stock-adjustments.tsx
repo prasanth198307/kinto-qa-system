@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -51,6 +52,8 @@ interface Adjustment {
 }
 
 export default function InventoryStockAdjustments() {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { toast } = useToast();
   const [open, setOpen]         = useState(false);
   const [search, setSearch]     = useState("");
@@ -77,7 +80,7 @@ export default function InventoryStockAdjustments() {
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/inventory/stock-adjustments"] });
       if (data?.requires_approval) {
-        toast({ title: "Pending Approval", description: `Value ₹${fmtRs(data.total_value)} exceeds ₹${APPROVAL_THRESHOLD} — sent for supervisor approval.` });
+        toast({ title: "Pending Approval", description: `Value ${sym}${fmtRs(data.total_value)} exceeds ${sym}${APPROVAL_THRESHOLD} — sent for supervisor approval.` });
       } else {
         toast({ title: "Adjustment recorded", description: "Stock ledger updated." });
       }
@@ -158,7 +161,7 @@ export default function InventoryStockAdjustments() {
       {pendingCount > 0 && (
         <div className="flex items-center gap-3 p-3 rounded-md border border-amber-200 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30 text-sm text-amber-800 dark:text-amber-200">
           <ShieldAlert className="h-4 w-4 shrink-0" />
-          <span><strong>{pendingCount}</strong> adjustment{pendingCount > 1 ? "s" : ""} pending supervisor approval — value exceeds ₹{APPROVAL_THRESHOLD}.</span>
+          <span><strong>{pendingCount}</strong> adjustment{pendingCount > 1 ? "s" : ""} pending supervisor approval — value exceeds {sym}{APPROVAL_THRESHOLD}.</span>
           <Button size="sm" variant="outline" className="ml-auto" onClick={() => setStatusFilter("pending_approval")}>
             Review
           </Button>
@@ -250,7 +253,7 @@ export default function InventoryStockAdjustments() {
                     <TableHead>Product</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead className="text-right">Qty</TableHead>
-                    <TableHead className="text-right">Value (₹)</TableHead>
+                    <TableHead className="text-right">Value ({sym})</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Reason</TableHead>
                     <TableHead>By</TableHead>
@@ -282,7 +285,7 @@ export default function InventoryStockAdjustments() {
                           </span>
                         </TableCell>
                         <TableCell className="text-right text-sm">
-                          {Number(a.total_value || 0) > 0 ? `₹${fmtRs(a.total_value)}` : "—"}
+                          {Number(a.total_value || 0) > 0 ? `${sym}${fmtRs(a.total_value)}` : "—"}
                         </TableCell>
                         <TableCell>
                           <Badge variant={sMeta.variant} className="text-xs whitespace-nowrap">
@@ -394,7 +397,7 @@ export default function InventoryStockAdjustments() {
                   data-testid="input-unit-label" />
               </div>
               <div className="space-y-1.5">
-                <Label>Unit Price (₹)</Label>
+                <Label>Unit Price ({sym})</Label>
                 <Input type="number" min="0" step="0.01" placeholder="0.00"
                   value={form.unit_price} onChange={e => setForm(f => ({ ...f, unit_price: e.target.value }))}
                   data-testid="input-unit-price" />
@@ -409,8 +412,8 @@ export default function InventoryStockAdjustments() {
                   : "bg-muted/50 text-muted-foreground"
               }`}>
                 {willNeedApproval
-                  ? <><ShieldAlert className="h-3.5 w-3.5 shrink-0 mt-0.5" /><span>Estimated value ₹{fmtRs(estimatedValue)} exceeds ₹{APPROVAL_THRESHOLD} — will require supervisor approval before stock is updated.</span></>
-                  : <><CheckCircle2 className="h-3.5 w-3.5 shrink-0 mt-0.5" /><span>Estimated value ₹{fmtRs(estimatedValue)} — within auto-approval limit.</span></>
+                  ? <><ShieldAlert className="h-3.5 w-3.5 shrink-0 mt-0.5" /><span>Estimated value {sym}{fmtRs(estimatedValue)} exceeds {sym}{APPROVAL_THRESHOLD} — will require supervisor approval before stock is updated.</span></>
+                  : <><CheckCircle2 className="h-3.5 w-3.5 shrink-0 mt-0.5" /><span>Estimated value {sym}{fmtRs(estimatedValue)} — within auto-approval limit.</span></>
                 }
               </div>
             )}

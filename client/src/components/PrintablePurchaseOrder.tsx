@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Printer } from "lucide-react";
 import { format } from "date-fns";
 import companyLogo from "@assets/inmoisture-logo.png";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 interface PrintablePurchaseOrderProps {
   po: PurchaseOrder;
@@ -21,6 +22,7 @@ const COMPANY_DETAILS = {
 };
 
 export default function PrintablePurchaseOrder({ po }: PrintablePurchaseOrderProps) {
+  const tenantConfig = useTenantConfig();
   const printRef = useRef<HTMLDivElement>(null);
 
   const { data: rawMaterials = [] } = useQuery<RawMaterial[]>({
@@ -540,10 +542,10 @@ export default function PrintablePurchaseOrder({ po }: PrintablePurchaseOrderPro
                 <th style={{ width: '12%' }}>HSN Code</th>
                 <th style={{ width: '8%' }} className="center">Qty</th>
                 <th style={{ width: '8%' }} className="center">Unit</th>
-                <th style={{ width: '12%' }} className="number">Rate (₹)</th>
+                <th style={{ width: '12%' }} className="number">Rate</th>
                 <th style={{ width: '8%' }} className="center">GST%</th>
-                <th style={{ width: '12%' }} className="number">Tax (₹)</th>
-                <th style={{ width: '14%' }} className="number">Amount (₹)</th>
+                <th style={{ width: '12%' }} className="number">Tax</th>
+                <th style={{ width: '14%' }} className="number">Amount</th>
               </tr>
             </thead>
             <tbody>
@@ -589,29 +591,29 @@ export default function PrintablePurchaseOrder({ po }: PrintablePurchaseOrderPro
             <div className="totals-box">
               <div className="total-row sub-total">
                 <span>Subtotal</span>
-                <span>₹ {subtotal.toFixed(2)}</span>
+                <span>{fmtCur(subtotal, tenantConfig)}</span>
               </div>
               {(totalCgst > 0 || totalSgst > 0) && (
                 <>
                   <div className="total-row">
                     <span>CGST</span>
-                    <span>₹ {totalCgst.toFixed(2)}</span>
+                    <span>{fmtCur(totalCgst, tenantConfig)}</span>
                   </div>
                   <div className="total-row">
                     <span>SGST</span>
-                    <span>₹ {totalSgst.toFixed(2)}</span>
+                    <span>{fmtCur(totalSgst, tenantConfig)}</span>
                   </div>
                 </>
               )}
               {totalIgst > 0 && (
                 <div className="total-row">
                   <span>IGST</span>
-                  <span>₹ {totalIgst.toFixed(2)}</span>
+                  <span>{fmtCur(totalIgst, tenantConfig)}</span>
                 </div>
               )}
               <div className="total-row">
                 <span>Grand Total</span>
-                <span>₹ {grandTotal.toFixed(2)}</span>
+                <span>{fmtCur(grandTotal, tenantConfig)}</span>
               </div>
             </div>
           </div>

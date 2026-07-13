@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTenantConfig } from "@/hooks/use-tenant-config";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -23,6 +24,8 @@ interface SparePartEntryFormProps {
 
 export default function SparePartEntryForm({ part, onClose }: SparePartEntryFormProps) {
   const { toast } = useToast();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [activeTab, setActiveTab] = useState("entries");
   const [isEntryDialogOpen, setIsEntryDialogOpen] = useState(false);
   const [isIssueDialogOpen, setIsIssueDialogOpen] = useState(false);
@@ -240,9 +243,9 @@ export default function SparePartEntryForm({ part, onClose }: SparePartEntryForm
                   <TableRow>
                     <TableHead>Date</TableHead>
                     <TableHead>Qty</TableHead>
-                    <TableHead>Unit Price (₹)</TableHead>
+                    <TableHead>Unit Price ({sym})</TableHead>
                     <TableHead>GST</TableHead>
-                    <TableHead>Total (₹)</TableHead>
+                    <TableHead>Total ({sym})</TableHead>
                     <TableHead>Remarks</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -268,9 +271,9 @@ export default function SparePartEntryForm({ part, onClose }: SparePartEntryForm
                         <TableRow key={entry.id}>
                           <TableCell>{format(new Date(entry.purchaseDate), 'dd MMM yyyy')}</TableCell>
                           <TableCell className="text-green-600 font-medium">+{entry.quantity}</TableCell>
-                          <TableCell>₹{entry.unitPrice}</TableCell>
-                          <TableCell>{(entry as any).gstPercent || 0}% (₹{gstAmt})</TableCell>
-                          <TableCell className="font-medium">₹{total}</TableCell>
+                          <TableCell>{sym}{entry.unitPrice}</TableCell>
+                          <TableCell>{(entry as any).gstPercent || 0}% ({sym}{gstAmt})</TableCell>
+                          <TableCell className="font-medium">{sym}{total}</TableCell>
                           <TableCell>{entry.remarks || '-'}</TableCell>
                         </TableRow>
                       );
@@ -384,7 +387,7 @@ export default function SparePartEntryForm({ part, onClose }: SparePartEntryForm
                 />
               </div>
               <div className="space-y-2">
-                <Label>Unit Price (₹)</Label>
+                <Label>Unit Price ({sym})</Label>
                 <Input 
                   type="number" 
                   min="0"
@@ -412,7 +415,7 @@ export default function SparePartEntryForm({ part, onClose }: SparePartEntryForm
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Total Amount (₹)</Label>
+                <Label>Total Amount ({sym})</Label>
                 <Input 
                   type="number" 
                   value={(parseInt(entryFormData.quantity) || 0) * (parseInt(entryFormData.unitPrice) || 0) + Math.round((parseInt(entryFormData.quantity) || 0) * (parseInt(entryFormData.unitPrice) || 0) * (parseInt(entryFormData.gstPercent) || 0) / 100)}

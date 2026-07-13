@@ -1,9 +1,19 @@
 // Shared payslip HTML template generator
 // Used by hr-payslip.tsx (admin) and ess-portal.tsx (employee)
 
+import type { TenantConfig } from "@/hooks/use-tenant-config";
+
 const MONTHS_A = ["","January","February","March","April","May","June","July","August","September","October","November","December"];
 
-function fmtN(n: any) { return Number(n || 0).toLocaleString("en-IN"); }
+const LOCALE_MAP: Record<string, string> = {
+  IN: "en-IN", US: "en-US", AE: "ar-AE", SA: "ar-SA",
+  GB: "en-GB", EU: "de-DE", AU: "en-AU", SG: "en-SG",
+};
+
+function makeFmtN(config?: TenantConfig) {
+  const locale = LOCALE_MAP[config?.country_code ?? "IN"] ?? "en-IN";
+  return (n: any) => Number(n || 0).toLocaleString(locale);
+}
 
 function toWordsInner(num: number): string {
   const ones = ["","One","Two","Three","Four","Five","Six","Seven","Eight","Nine","Ten","Eleven","Twelve","Thirteen","Fourteen","Fifteen","Sixteen","Seventeen","Eighteen","Nineteen"];
@@ -51,7 +61,9 @@ export function buildPayslipHtml(
   leaveBalances: any[] = [],
   logoOverride?: string | null,
   isSample = false,
+  config?: TenantConfig,
 ): string {
+  const fmtN = makeFmtN(config);
   const key = (settings?.template_style || "classic") as TKey;
   const th  = THEMES[key] ?? THEMES.classic;
 
@@ -65,7 +77,8 @@ export function buildPayslipHtml(
   const logoHtml = rawLogo ? `<img src="${rawLogo}" style="height:44px;object-fit:contain;flex-shrink:0;margin-right:12px" />` : "";
 
   const monthName = MONTHS_A[ps?.month] || "";
-  const today     = new Date().toLocaleDateString("en-IN");
+  const dateLocale = LOCALE_MAP[config?.country_code ?? "IN"] ?? "en-IN";
+  const today     = new Date().toLocaleDateString(dateLocale);
   const badge     = isSample ? ` <span style="font-size:10px;background:rgba(255,255,255,0.25);border-radius:3px;padding:1px 6px">SAMPLE</span>` : "";
 
   let comps: any[] = [];

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -119,6 +120,7 @@ interface InvoiceFormProps {
 
 export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, onClose }: InvoiceFormProps) {
   const { toast } = useToast();
+  const tenantConfig = useTenantConfig();
   const [, navigate] = useLocation();
   const [isIntrastateSupply, setIsIntrastateSupply] = useState(() => {
     // For existing invoices, derive from stored igstAmount
@@ -1194,7 +1196,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
   };
 
   const generatePrintHTML = (data: InvoiceFormData, taxes: ReturnType<typeof calculateTaxes>) => {
-    const formatCurrency = (amountInPaise: number) => `₹${(amountInPaise / 100).toFixed(2)}`;
+    const formatCurrency = (amountInPaise: number) => fmtCur(amountInPaise / 100, tenantConfig);
     
     return `
       <!DOCTYPE html>
@@ -1345,7 +1347,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
   };
 
   const taxes = calculateTaxes();
-  const formatCurrency = (amountInPaise: number) => `₹${(amountInPaise / 100).toFixed(2)}`;
+  const formatCurrency = (amountInPaise: number) => fmtCur(amountInPaise / 100, tenantConfig);
 
   return (
     <Card className="p-4">

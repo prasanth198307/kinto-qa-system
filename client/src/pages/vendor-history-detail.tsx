@@ -50,6 +50,7 @@ import {
 } from "lucide-react";
 import { formatCurrencyForExcel, formatDateForExcel } from "@/lib/excel-export";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface LedgerEntry {
@@ -151,6 +152,7 @@ export default function VendorHistoryDetailPage() {
   const { vendorId } = useParams<{ vendorId: string }>();
   const { hasPermission } = usePermissions();
   const { toast } = useToast();
+  const tenantConfig = useTenantConfig();
   const canViewPayments = hasPermission('vendor_history', 'view');
   const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("ledger");
@@ -428,13 +430,7 @@ export default function VendorHistoryDetailPage() {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return (amount / 100).toLocaleString('en-IN', { 
-      style: 'currency', 
-      currency: 'INR',
-      minimumFractionDigits: 2,
-    });
-  };
+  const formatCurrency = (amount: number) => fmtCur(amount / 100, tenantConfig);
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('en-IN', {

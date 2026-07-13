@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -86,6 +87,8 @@ interface POItem {
 
 export default function PurchaseOrderForm({ onSuccess, onCancel, editingPO }: PurchaseOrderFormProps) {
   const { toast } = useToast();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [vendorSearchOpen, setVendorSearchOpen] = useState(false);
   const [signaturePreview, setSignaturePreview] = useState<string | null>(null);
   const signatureInputRef = useRef<HTMLInputElement>(null);
@@ -853,7 +856,7 @@ export default function PurchaseOrderForm({ onSuccess, onCancel, editingPO }: Pu
                         name={`items.${index}.unitPrice`}
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-xs">Rate (₹) *</FormLabel>
+                            <FormLabel className="text-xs">Rate ({sym}) *</FormLabel>
                             <FormControl>
                               <Input 
                                 type="number"
@@ -903,7 +906,7 @@ export default function PurchaseOrderForm({ onSuccess, onCancel, editingPO }: Pu
                     <div>
                       <div className="text-xs text-muted-foreground mb-1">Amount</div>
                       <div className="h-9 flex items-center font-medium">
-                        ₹{lineCalc.amount.toFixed(2)}
+                        {fmtCur(lineCalc.amount, tenantConfig)}
                       </div>
                     </div>
 
@@ -911,7 +914,7 @@ export default function PurchaseOrderForm({ onSuccess, onCancel, editingPO }: Pu
                     <div>
                       <div className="text-xs text-muted-foreground mb-1">Total (incl. GST)</div>
                       <div className="h-9 flex items-center font-medium text-primary">
-                        ₹{lineCalc.total.toFixed(2)}
+                        {fmtCur(lineCalc.total, tenantConfig)}
                       </div>
                     </div>
                   </div>
@@ -925,19 +928,19 @@ export default function PurchaseOrderForm({ onSuccess, onCancel, editingPO }: Pu
             <div className="w-full max-w-xs space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Subtotal:</span>
-                <span className="font-medium">₹{totals.subtotal.toFixed(2)}</span>
+                <span className="font-medium">{fmtCur(totals.subtotal, tenantConfig)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">CGST:</span>
-                <span>₹{totals.cgst.toFixed(2)}</span>
+                <span>{fmtCur(totals.cgst, tenantConfig)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">SGST:</span>
-                <span>₹{totals.sgst.toFixed(2)}</span>
+                <span>{fmtCur(totals.sgst, tenantConfig)}</span>
               </div>
               <div className="flex justify-between border-t pt-2">
                 <span className="font-semibold">Grand Total:</span>
-                <span className="font-bold text-lg text-primary">₹{totals.grandTotal.toFixed(2)}</span>
+                <span className="font-bold text-lg text-primary">{fmtCur(totals.grandTotal, tenantConfig)}</span>
               </div>
             </div>
           </div>

@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { FileText, Download } from "lucide-react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -18,6 +19,8 @@ const YEARS = ["2025-26", "2024-25", "2023-24"];
 
 export default function GSTRReportsPage() {
   const now = new Date();
+  const tenantConfig = useTenantConfig();
+  const formatCurrency = (amount: number) => fmtCur(amount, tenantConfig);
   const [month, setMonth] = useState(String(now.getMonth() + 1).padStart(2, "0"));
   const [year, setYear] = useState(now.getFullYear().toString());
 
@@ -132,10 +135,10 @@ export default function GSTRReportsPage() {
                         <TableCell>{inv.buyer_name}</TableCell>
                         <TableCell className="font-mono text-sm">{inv.invoice_number}</TableCell>
                         <TableCell>{inv.invoice_date ? new Date(inv.invoice_date).toLocaleDateString() : "—"}</TableCell>
-                        <TableCell className="text-right">₹{Number(inv.taxable_value || inv.subtotal || 0).toLocaleString("en-IN")}</TableCell>
-                        <TableCell className="text-right">₹{Number(inv.igst || 0).toLocaleString("en-IN")}</TableCell>
-                        <TableCell className="text-right">₹{Number(inv.cgst || 0).toLocaleString("en-IN")}</TableCell>
-                        <TableCell className="text-right">₹{Number(inv.sgst || 0).toLocaleString("en-IN")}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(Number(inv.taxable_value || inv.subtotal || 0))}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(Number(inv.igst || 0))}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(Number(inv.cgst || 0))}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(Number(inv.sgst || 0))}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -168,8 +171,8 @@ export default function GSTRReportsPage() {
                         <TableCell className="font-mono text-sm">{inv.invoice_number}</TableCell>
                         <TableCell>{inv.buyer_name}</TableCell>
                         <TableCell>{inv.invoice_date ? new Date(inv.invoice_date).toLocaleDateString() : "—"}</TableCell>
-                        <TableCell className="text-right">₹{Number(inv.subtotal || 0).toLocaleString("en-IN")}</TableCell>
-                        <TableCell className="text-right">₹{Number(inv.tax_amount || 0).toLocaleString("en-IN")}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(Number(inv.subtotal || 0))}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(Number(inv.tax_amount || 0))}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -204,20 +207,20 @@ export default function GSTRReportsPage() {
                         <TableCell className="font-mono text-sm">{s.estimate_no}</TableCell>
                         <TableCell>{s.customer_name}</TableCell>
                         <TableCell>{s.sale_date ? new Date(s.sale_date).toLocaleDateString("en-IN") : "—"}</TableCell>
-                        <TableCell className="text-right">₹{Number(s.taxable_value || 0).toLocaleString("en-IN")}</TableCell>
-                        <TableCell className="text-right">₹{Number(s.cgst_amount || 0).toLocaleString("en-IN")}</TableCell>
-                        <TableCell className="text-right">₹{Number(s.sgst_amount || 0).toLocaleString("en-IN")}</TableCell>
-                        <TableCell className="text-right font-medium">₹{Number(s.total_amount || 0).toLocaleString("en-IN")}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(Number(s.taxable_value || 0))}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(Number(s.cgst_amount || 0))}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(Number(s.sgst_amount || 0))}</TableCell>
+                        <TableCell className="text-right font-medium">{formatCurrency(Number(s.total_amount || 0))}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
                 <div className="border-t px-4 py-2 flex flex-wrap justify-end gap-6 text-sm bg-muted/30">
                   <span className="text-muted-foreground">Total Taxable: <strong className="text-foreground">
-                    ₹{goldSales.reduce((s: number, r: any) => s + Number(r.taxable_value || 0), 0).toLocaleString("en-IN")}
+                    {formatCurrency(goldSales.reduce((s: number, r: any) => s + Number(r.taxable_value || 0), 0))}
                   </strong></span>
                   <span className="text-muted-foreground">Total GST: <strong className="text-foreground">
-                    ₹{goldSales.reduce((s: number, r: any) => s + Number(r.gst_amount || 0), 0).toLocaleString("en-IN")}
+                    {formatCurrency(goldSales.reduce((s: number, r: any) => s + Number(r.gst_amount || 0), 0))}
                   </strong></span>
                 </div>
               </CardContent>
@@ -253,21 +256,21 @@ export default function GSTRReportsPage() {
                         <TableCell className="font-mono text-sm font-medium">{row.hsn_code}</TableCell>
                         <TableCell className="text-sm max-w-[200px] truncate">{row.description}</TableCell>
                         <TableCell className="text-center">{row.gst_rate ?? 0}%</TableCell>
-                        <TableCell className="text-right">₹{Number(row.taxable_value || 0).toLocaleString("en-IN")}</TableCell>
-                        <TableCell className="text-right">₹{Number(row.cgst || 0).toLocaleString("en-IN")}</TableCell>
-                        <TableCell className="text-right">₹{Number(row.sgst || 0).toLocaleString("en-IN")}</TableCell>
-                        <TableCell className="text-right">₹{Number(row.igst || 0).toLocaleString("en-IN")}</TableCell>
-                        <TableCell className="text-right font-semibold">₹{Number(row.total_tax || 0).toLocaleString("en-IN")}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(Number(row.taxable_value || 0))}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(Number(row.cgst || 0))}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(Number(row.sgst || 0))}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(Number(row.igst || 0))}</TableCell>
+                        <TableCell className="text-right font-semibold">{formatCurrency(Number(row.total_tax || 0))}</TableCell>
                       </TableRow>
                     ))}
                     {/* Totals row */}
                     <TableRow className="bg-muted/40 font-semibold">
                       <TableCell colSpan={3}>Total</TableCell>
-                      <TableCell className="text-right">₹{hsnSummary.reduce((s: number, r: any) => s + Number(r.taxable_value || 0), 0).toLocaleString("en-IN")}</TableCell>
-                      <TableCell className="text-right">₹{hsnSummary.reduce((s: number, r: any) => s + Number(r.cgst || 0), 0).toLocaleString("en-IN")}</TableCell>
-                      <TableCell className="text-right">₹{hsnSummary.reduce((s: number, r: any) => s + Number(r.sgst || 0), 0).toLocaleString("en-IN")}</TableCell>
-                      <TableCell className="text-right">₹{hsnSummary.reduce((s: number, r: any) => s + Number(r.igst || 0), 0).toLocaleString("en-IN")}</TableCell>
-                      <TableCell className="text-right">₹{hsnSummary.reduce((s: number, r: any) => s + Number(r.total_tax || 0), 0).toLocaleString("en-IN")}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(hsnSummary.reduce((s: number, r: any) => s + Number(r.taxable_value || 0), 0))}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(hsnSummary.reduce((s: number, r: any) => s + Number(r.cgst || 0), 0))}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(hsnSummary.reduce((s: number, r: any) => s + Number(r.sgst || 0), 0))}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(hsnSummary.reduce((s: number, r: any) => s + Number(r.igst || 0), 0))}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(hsnSummary.reduce((s: number, r: any) => s + Number(r.total_tax || 0), 0))}</TableCell>
                     </TableRow>
                   </TableBody>
                 </Table>
@@ -295,19 +298,19 @@ export default function GSTRReportsPage() {
                 <CardContent className="space-y-2 text-sm">
                   <div className="flex justify-between py-1 border-b">
                     <span className="text-muted-foreground">Total Taxable Value</span>
-                    <span className="font-medium">₹{Number(sup_details.taxable_value || 0).toLocaleString("en-IN")}</span>
+                    <span className="font-medium">{formatCurrency(Number(sup_details.taxable_value || 0))}</span>
                   </div>
                   <div className="flex justify-between py-1 border-b">
                     <span className="text-muted-foreground">IGST</span>
-                    <span className="font-medium">₹{Number(sup_details.igst || 0).toLocaleString("en-IN")}</span>
+                    <span className="font-medium">{formatCurrency(Number(sup_details.igst || 0))}</span>
                   </div>
                   <div className="flex justify-between py-1 border-b">
                     <span className="text-muted-foreground">CGST</span>
-                    <span className="font-medium">₹{Number(sup_details.cgst || 0).toLocaleString("en-IN")}</span>
+                    <span className="font-medium">{formatCurrency(Number(sup_details.cgst || 0))}</span>
                   </div>
                   <div className="flex justify-between py-1">
                     <span className="text-muted-foreground">SGST</span>
-                    <span className="font-medium">₹{Number(sup_details.sgst || 0).toLocaleString("en-IN")}</span>
+                    <span className="font-medium">{formatCurrency(Number(sup_details.sgst || 0))}</span>
                   </div>
                 </CardContent>
               </Card>
@@ -319,11 +322,11 @@ export default function GSTRReportsPage() {
                 <CardContent className="space-y-2 text-sm">
                   <div className="flex justify-between py-1 border-b">
                     <span className="text-muted-foreground">ITC on Inputs</span>
-                    <span className="font-medium">₹{Number(itc_elg.inputs || 0).toLocaleString("en-IN")}</span>
+                    <span className="font-medium">{formatCurrency(Number(itc_elg.inputs || 0))}</span>
                   </div>
                   <div className="flex justify-between py-1">
                     <span className="text-muted-foreground">ITC on Capital Goods</span>
-                    <span className="font-medium">₹{Number(itc_elg.capital_goods || 0).toLocaleString("en-IN")}</span>
+                    <span className="font-medium">{formatCurrency(Number(itc_elg.capital_goods || 0))}</span>
                   </div>
                 </CardContent>
               </Card>
@@ -346,8 +349,8 @@ export default function GSTRReportsPage() {
                         {gstr3bData.tax_rate_summary.map((row: any, i: number) => (
                           <TableRow key={i} data-testid={`row-tax-rate-${i}`}>
                             <TableCell><Badge variant="secondary">{row.tax_rate}%</Badge></TableCell>
-                            <TableCell className="text-right">₹{Number(row.taxable_value || 0).toLocaleString("en-IN")}</TableCell>
-                            <TableCell className="text-right">₹{Number(row.tax_amount || 0).toLocaleString("en-IN")}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(Number(row.taxable_value || 0))}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(Number(row.tax_amount || 0))}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>

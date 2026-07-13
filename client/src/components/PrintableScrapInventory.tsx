@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 import { Printer } from "lucide-react";
 import { format } from "date-fns";
 import type { ScrapInventory } from "@shared/schema";
@@ -8,9 +9,8 @@ interface PrintableScrapInventoryProps {
 }
 
 export default function PrintableScrapInventory({ scrap }: PrintableScrapInventoryProps) {
-  const formatCurrency = (amountInPaise: number): string => {
-    return `₹${(amountInPaise / 100).toFixed(2)}`;
-  };
+  const tenantConfig = useTenantConfig();
+  const formatCurrency = (amountInPaise: number): string => fmtCur(amountInPaise / 100, tenantConfig);
 
   const getDamageReasonLabel = (reason: string): string => {
     const reasonMap: Record<string, string> = {

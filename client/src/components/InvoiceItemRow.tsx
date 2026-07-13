@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Trash2 } from "lucide-react";
 import type { Product } from "@shared/schema";
+import { useTenantConfig } from "@/hooks/use-tenant-config";
 
 interface StockSummaryItem {
   productId: string;
@@ -47,6 +48,8 @@ export default function InvoiceItemRow({
   remove,
   toast,
 }: InvoiceItemRowProps) {
+  const tenantConfig = useTenantConfig();
+
   return (
     <tr className="border-b last:border-b-0 hover:bg-muted/30 transition-colors">
 
@@ -98,7 +101,7 @@ export default function InvoiceItemRow({
                 const reservedInfo = reserved > 0 ? ` (${reserved} reserved)` : '';
                 toast({
                   title: "Stock Available",
-                  description: `Available: ${totalAvailable} units${reservedInfo}${basePriceNum > 0 ? ` | Price: ₹${(basePriceNum / 100).toFixed(2)}` : ''}`,
+                  description: `Available: ${totalAvailable} units${reservedInfo}${basePriceNum > 0 ? ` | Price: ${tenantConfig.currency_symbol}${(basePriceNum / 100).toFixed(2)}` : ''}`,
                 });
               }
             }
@@ -220,7 +223,7 @@ export default function InvoiceItemRow({
             className="h-8 w-9 px-1 text-xs shrink-0"
             onClick={() => {
               const currentMode = form.watch(`items.${index}.discountMode`) || '%';
-              const newMode = currentMode === '%' ? '₹' : '%';
+              const newMode = currentMode === '%' ? tenantConfig.currency_symbol : '%';
               form.setValue(`items.${index}.discountMode`, newMode);
             }}
             data-testid={`button-discount-mode-${index}`}
@@ -278,7 +281,7 @@ export default function InvoiceItemRow({
             />
             {itemTotalAmounts[index] > 0 && (
               <div className="text-[10px] text-muted-foreground mt-0.5 whitespace-nowrap">
-                {isIntrastateSupply ? 'C+S' : 'I'}GST: ₹{((itemTotalAmounts[index] - form.watch(`items.${index}.unitPrice`)) * form.watch(`items.${index}.quantity`)).toFixed(2)}
+                {isIntrastateSupply ? 'C+S' : 'I'}GST: {tenantConfig.currency_symbol}{((itemTotalAmounts[index] - form.watch(`items.${index}.unitPrice`)) * form.watch(`items.${index}.quantity`)).toFixed(2)}
               </div>
             )}
           </div>
@@ -292,7 +295,7 @@ export default function InvoiceItemRow({
           step="0.01"
           min="0"
           {...form.register(`items.${index}.transportRatePerCase`, { valueAsNumber: true })}
-          placeholder="₹0"
+          placeholder={`${tenantConfig.currency_symbol}0`}
           className="h-8 text-sm w-[65px]"
           data-testid={`input-transport-rate-${index}`}
         />

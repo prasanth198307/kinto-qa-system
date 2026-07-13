@@ -27,6 +27,7 @@ import {
 import { format } from "date-fns";
 import { IndianRupee, AlertCircle, Eye, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { DataTablePagination } from "@/components/DataTablePagination";
 import { PaginationMeta } from "@shared/schema";
@@ -60,6 +61,8 @@ interface PendingPaymentsDashboardProps {
 }
 
 export default function PendingPaymentsDashboard({ customerFilter }: PendingPaymentsDashboardProps) {
+  const tenantConfig = useTenantConfig();
+  const fc = (paise: number) => fmtCur(paise / 100, tenantConfig);
   const { hasModule } = usePlanFeatures();
   const { toast } = useToast();
   const search = useSearch();
@@ -195,14 +198,14 @@ export default function PendingPaymentsDashboard({ customerFilter }: PendingPaym
               <div className="text-right">
                 <p className="text-sm text-muted-foreground">Advance Payments Available</p>
                 <p className="text-xl font-bold text-green-700 dark:text-green-400" data-testid="text-total-prepayment">
-                  ₹{(totalPrepayment / 100).toFixed(2)}
+                  {fc(totalPrepayment)}
                 </p>
               </div>
             )}
             <div className="text-right">
               <p className="text-sm text-muted-foreground" data-testid="text-total-outstanding-label">Total Outstanding</p>
               <p className="text-2xl font-bold text-destructive" data-testid="text-total-outstanding-amount">
-                ₹{(totalOutstanding / 100).toFixed(2)}
+                {fc(totalOutstanding)}
               </p>
             </div>
           </div>
@@ -248,21 +251,21 @@ export default function PendingPaymentsDashboard({ customerFilter }: PendingPaym
                         {invoice.buyerName}
                       </TableCell>
                       <TableCell className="text-right" data-testid={`text-total-${invoice.id}`}>
-                        ₹{(invoice.totalAmount / 100).toFixed(2)}
+                        {fc(invoice.totalAmount)}
                       </TableCell>
                       <TableCell className="text-right text-green-600" data-testid={`text-paid-${invoice.id}`}>
-                        ₹{(invoice.totalPaid / 100).toFixed(2)}
+                        {fc(invoice.totalPaid)}
                       </TableCell>
                       <TableCell className="text-right text-muted-foreground" data-testid={`text-writeoff-${invoice.id}`}>
-                        {invoice.writeOffAmount > 0 ? `₹${(invoice.writeOffAmount / 100).toFixed(2)}` : '-'}
+                        {invoice.writeOffAmount > 0 ? fc(invoice.writeOffAmount) : '-'}
                       </TableCell>
                       <TableCell className="text-right font-semibold text-destructive" data-testid={`text-outstanding-${invoice.id}`}>
-                        ₹{(invoice.outstandingBalance / 100).toFixed(2)}
+                        {fc(invoice.outstandingBalance)}
                       </TableCell>
                       <TableCell className="text-right" data-testid={`text-advance-${invoice.id}`}>
                         {(invoice.availablePrepayment || 0) > 0 ? (
                           <span className="font-medium text-green-700 dark:text-green-400">
-                            ₹{((invoice.availablePrepayment || 0) / 100).toFixed(2)}
+                            {fc(invoice.availablePrepayment || 0)}
                           </span>
                         ) : (
                           <span className="text-muted-foreground">—</span>
@@ -304,7 +307,7 @@ export default function PendingPaymentsDashboard({ customerFilter }: PendingPaym
                                 <AlertDialogTitle>Write Off Outstanding Balance?</AlertDialogTitle>
                                 <AlertDialogDescription>
                                   This will create a write-off payment entry for{" "}
-                                  <strong>₹{(invoice.outstandingBalance / 100).toFixed(2)}</strong>{" "}
+                                  <strong>{fc(invoice.outstandingBalance)}</strong>{" "}
                                   on invoice <strong>{invoice.invoiceNumber}</strong> from{" "}
                                   <strong>{invoice.buyerName}</strong>.
                                   <br /><br />

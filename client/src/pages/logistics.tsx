@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig } from "@/hooks/use-tenant-config";
 import { Plus, Search, Truck, Users, FileText, Fuel, Wrench, Receipt, Pencil, Trash2, Download, Map } from "lucide-react";
 
 const fmt = (n: any) => Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
@@ -23,12 +24,13 @@ const LR_STATUS: Record<string, string> = { in_transit: "bg-orange-100 text-oran
 
 function OverviewTab() {
   const { data: stats } = useQuery<any>({ queryKey: ["/api/logistics/stats"] });
+  const { currency_symbol: sym } = useTenantConfig();
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
       <SC title="Active Vehicles" value={stats?.activeVehicles ?? 0} icon={Truck} color="bg-blue-100 text-blue-600" />
       <SC title="Active Drivers" value={stats?.activeDrivers ?? 0} icon={Users} color="bg-green-100 text-green-600" />
       <SC title="Active Trips" value={stats?.activeTrips ?? 0} icon={FileText} color="bg-orange-100 text-orange-600" />
-      <SC title="Monthly Freight" value={`₹${fmt(stats?.monthlyFreight)}`} icon={Receipt} color="bg-purple-100 text-purple-600" />
+      <SC title="Monthly Freight" value={`${sym}${fmt(stats?.monthlyFreight)}`} icon={Receipt} color="bg-purple-100 text-purple-600" />
     </div>
   );
 }
@@ -86,6 +88,7 @@ function VehiclesTab() {
 
 function DriversTab() {
   const { toast } = useToast();
+  const { currency_symbol: sym } = useTenantConfig();
   const [search, setSearch] = useState(""); const [showForm, setShowForm] = useState(false); const [editing, setEditing] = useState<any>(null); const [form, setForm] = useState<any>({});
   const { data: drivers = [] } = useQuery<any[]>({ queryKey: ["/api/logistics/drivers"] });
   const saveMut = useMutation({ mutationFn: (d: any) => editing ? apiRequest("PUT", `/api/logistics/drivers/${editing.id}`, d) : apiRequest("POST", "/api/logistics/drivers", d), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/logistics/drivers"] }); setShowForm(false); toast({ title: "Saved" }); } });
@@ -105,7 +108,7 @@ function DriversTab() {
           <tr key={d.id} className="border-t hover:bg-muted/30">
             <td className="px-3 py-2 font-mono text-xs">{d.driver_code}</td><td className="px-3 py-2 font-medium">{d.name}</td><td className="px-3 py-2">{d.phone||"—"}</td>
             <td className="px-3 py-2">{d.license_number||"—"}</td><td className="px-3 py-2">{d.license_expiry?.split("T")[0]||"—"}</td>
-            <td className="px-3 py-2">₹{fmt(d.salary)}</td>
+            <td className="px-3 py-2">{sym}{fmt(d.salary)}</td>
             <td className="px-3 py-2"><Badge className={d.status==="active"?"bg-green-100 text-green-700":"bg-gray-100 text-gray-700"}>{d.status}</Badge></td>
             <td className="px-3 py-2"><div className="flex gap-1"><Button size="icon" variant="ghost" onClick={()=>openEdit(d)}><Pencil className="h-3.5 w-3.5"/></Button><Button size="icon" variant="ghost" onClick={()=>delMut.mutate(d.id)}><Trash2 className="h-3.5 w-3.5"/></Button></div></td>
           </tr>
@@ -120,7 +123,7 @@ function DriversTab() {
             <F label="License Expiry"><Input type="date" value={form.license_expiry||""} onChange={e=>setForm({...form,license_expiry:e.target.value})}/></F>
             <F label="Badge Number"><Input value={form.badge_number||""} onChange={e=>setForm({...form,badge_number:e.target.value})}/></F>
             <F label="Date of Joining"><Input type="date" value={form.date_of_joining||""} onChange={e=>setForm({...form,date_of_joining:e.target.value})}/></F>
-            <F label="Salary (₹)"><Input type="number" value={form.salary||""} onChange={e=>setForm({...form,salary:e.target.value})}/></F>
+            <F label={`Salary (${sym})`}><Input type="number" value={form.salary||""} onChange={e=>setForm({...form,salary:e.target.value})}/></F>
             <F label="Status"><Select value={form.status||"active"} onValueChange={v=>setForm({...form,status:v})}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="active">Active</SelectItem><SelectItem value="inactive">Inactive</SelectItem></SelectContent></Select></F>
             <div className="col-span-2"><F label="Address"><Textarea rows={2} value={form.address||""} onChange={e=>setForm({...form,address:e.target.value})}/></F></div>
           </div>
@@ -133,6 +136,7 @@ function DriversTab() {
 
 function TripsTab() {
   const { toast } = useToast();
+  const { currency_symbol: sym } = useTenantConfig();
   const [search, setSearch] = useState(""); const [showForm, setShowForm] = useState(false); const [editing, setEditing] = useState<any>(null); const [form, setForm] = useState<any>({});
   const { data: trips = [] } = useQuery<any[]>({ queryKey: ["/api/logistics/trips"] });
   const { data: vehicles = [] } = useQuery<any[]>({ queryKey: ["/api/logistics/vehicles"] });
@@ -156,7 +160,7 @@ function TripsTab() {
           <tr key={t.id} className="border-t hover:bg-muted/30">
             <td className="px-3 py-2 font-mono text-xs">{t.trip_no}</td><td className="px-3 py-2">{t.vehicle_no||"—"}</td><td className="px-3 py-2">{t.driver_name_ref||t.driver_name||"—"}</td>
             <td className="px-3 py-2">{t.from_location}</td><td className="px-3 py-2">{t.to_location}</td><td className="px-3 py-2">{t.trip_date?.split("T")[0]}</td>
-            <td className="px-3 py-2">₹{fmt(t.freight_amount)}</td><td className="px-3 py-2">₹{fmt(t.balance_amount)}</td>
+            <td className="px-3 py-2">{sym}{fmt(t.freight_amount)}</td><td className="px-3 py-2">{sym}{fmt(t.balance_amount)}</td>
             <td className="px-3 py-2"><Badge className={TRIP_STATUS[t.status]||"bg-gray-100 text-gray-700"}>{t.status}</Badge></td>
             <td className="px-3 py-2"><div className="flex gap-1"><Button size="icon" variant="ghost" onClick={()=>openEdit(t)}><Pencil className="h-3.5 w-3.5"/></Button><Button size="icon" variant="ghost" onClick={()=>delMut.mutate(t.id)}><Trash2 className="h-3.5 w-3.5"/></Button></div></td>
           </tr>

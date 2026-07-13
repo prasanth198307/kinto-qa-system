@@ -10,6 +10,7 @@ import { TrendingUp, Package, DollarSign, ShoppingCart, Calendar, FileSpreadshee
 import { downloadXLSX } from "@/lib/download-utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 interface PeriodAnalytics {
   period: string;
@@ -37,6 +38,7 @@ interface SalesAnalytics {
 }
 
 export default function SalesDashboard() {
+  const tenantConfig = useTenantConfig();
   const { toast } = useToast();
   const [selectedPeriod, setSelectedPeriod] = useState<string>("monthly");
   const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
@@ -53,12 +55,10 @@ export default function SalesDashboard() {
     enabled: selectedPeriod !== 'custom' || (!!dateFrom && !!dateTo),
   });
 
-  const formatCurrency = (amountInPaise: number) => {
-    return `₹${(amountInPaise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  };
+  const formatCurrency = (amountInPaise: number) => fmtCur(amountInPaise / 100, tenantConfig);
 
   const formatQuantity = (qty: number) => {
-    return qty.toLocaleString('en-IN');
+    return qty.toLocaleString(tenantConfig.default_locale);
   };
 
   // Generate year options (current year and past 5 years)
@@ -90,19 +90,19 @@ export default function SalesDashboard() {
     // Prepare data for Excel
     const excelData = salesData.analytics.map(period => ({
       'Period': period.period,
-      'Revenue (₹)': (period.revenue / 100).toFixed(2),
+      'Revenue': (period.revenue / 100).toFixed(2),
       'Goods Sold': period.quantity,
       'Orders': period.invoiceCount,
-      'Avg Order Value (₹)': (period.avgOrderValue / 100).toFixed(2),
+      'Avg Order Value': (period.avgOrderValue / 100).toFixed(2),
     }));
 
     // Add totals row
     excelData.push({
       'Period': 'TOTAL',
-      'Revenue (₹)': (salesData.totals.totalRevenue / 100).toFixed(2),
+      'Revenue': (salesData.totals.totalRevenue / 100).toFixed(2),
       'Goods Sold': salesData.totals.totalQuantity,
       'Orders': salesData.totals.totalInvoices,
-      'Avg Order Value (₹)': (salesData.totals.avgOrderValue / 100).toFixed(2),
+      'Avg Order Value': (salesData.totals.avgOrderValue / 100).toFixed(2),
     });
 
     // Create workbook and worksheet

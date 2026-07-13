@@ -43,6 +43,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig } from "@/hooks/use-tenant-config";
 import { Plus, Pencil, Trash2, Star, Search, X, Check, ChevronsUpDown, ShieldCheck, Loader2, AlertCircle, RefreshCw, Download } from "lucide-react";
 import { downloadXLSX } from "@/lib/download-utils";
 import { format } from "date-fns";
@@ -144,6 +145,7 @@ interface PaginatedVendorResponse {
 }
 
 export default function VendorManagement() {
+  const tenantConfig = useTenantConfig();
   const { toast } = useToast();
   const [location, setLocation] = useLocation();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -1270,7 +1272,7 @@ export default function VendorManagement() {
                 <p className="text-sm text-muted-foreground mb-3">Set credit limit and payment terms for this customer/vendor.</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="creditLimit">Credit Limit (₹)</Label>
+                    <Label htmlFor="creditLimit">Credit Limit ({tenantConfig.currency_symbol})</Label>
                     <Input
                       id="creditLimit"
                       name="creditLimit"

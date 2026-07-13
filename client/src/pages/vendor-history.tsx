@@ -38,6 +38,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { exportToExcel, formatCurrencyForExcel, formatDateForExcel } from "@/lib/excel-export";
 import { format } from "date-fns";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 interface VendorSummary {
   id: string;
@@ -78,6 +79,7 @@ interface VendorHistoryResponse {
 }
 
 export default function VendorHistoryPage() {
+  const tenantConfig = useTenantConfig();
   const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -102,13 +104,7 @@ export default function VendorHistoryPage() {
     },
   });
 
-  const formatCurrency = (amount: number) => {
-    return (amount / 100).toLocaleString('en-IN', { 
-      style: 'currency', 
-      currency: 'INR',
-      minimumFractionDigits: 2,
-    });
-  };
+  const formatCurrency = (amount: number) => fmtCur(amount / 100, tenantConfig);
 
   const handleExportExcel = async () => {
     if (!data?.vendors.length) return;

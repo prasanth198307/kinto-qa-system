@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   Dialog,
@@ -117,9 +118,8 @@ export function DebitNoteAdjustmentDialog({
     },
   });
 
-  const formatCurrency = (paise: number) => {
-    return `₹${(paise / 100).toFixed(2)}`;
-  };
+  const tenantConfig = useTenantConfig();
+  const formatCurrency = (paise: number) => fmtCur(paise / 100, tenantConfig);
 
   const totalSelectedAmount = Object.values(selectedItems).reduce((sum, item) => sum + item.amount, 0);
   const remainingToAllocate = unsettledAmount - totalSelectedAmount;

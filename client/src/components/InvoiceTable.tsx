@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Trash2, Edit, DollarSign, FileText, Package, Truck, CheckCircle, Eye, PackageCheck, Lock, XCircle } from "lucide-react";
 import type { Invoice } from "@shared/schema";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 import { format } from "date-fns";
 import { Link } from "wouter";
 import PrintableInvoice from "./PrintableInvoice";
@@ -19,6 +20,8 @@ interface InvoiceTableProps {
 }
 
 export default function InvoiceTable({ invoices, isLoading, onEdit, onDelete, onCancel, onPayment, onMarkReadyForGatepass }: InvoiceTableProps) {
+  const tenantConfig = useTenantConfig();
+
   // Use invoice.amountReceived for consistency with invoice detail page and vendor analytics
   // This is the authoritative source from Vyapaar Sale Report
   const getTotalPaid = (invoice: Invoice) => {
@@ -33,9 +36,7 @@ export default function InvoiceTable({ invoices, isLoading, onEdit, onDelete, on
     return <div className="text-center py-8 text-muted-foreground" data-testid="no-invoices">No invoices found</div>;
   }
 
-  const formatCurrency = (amountInPaise: number) => {
-    return `₹${(amountInPaise / 100).toFixed(2)}`;
-  };
+  const formatCurrency = (amountInPaise: number) => fmtCur(amountInPaise / 100, tenantConfig);
 
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { label: string; variant: any; icon: any }> = {

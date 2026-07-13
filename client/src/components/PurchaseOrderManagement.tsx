@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +21,7 @@ export default function PurchaseOrderManagement() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deletingPOId, setDeletingPOId] = useState<string | null>(null);
   const { toast } = useToast();
+  const tenantConfig = useTenantConfig();
 
   const { data: purchaseOrders = [] } = useQuery<PurchaseOrder[]>({
     queryKey: ['/api/purchase-orders'],
@@ -286,7 +288,7 @@ export default function PurchaseOrderManagement() {
                         <p><span className="font-medium">Vendor:</span> {po.vendorName || getVendorName(po.vendorId)}</p>
                         <p><span className="font-medium">Spare Part:</span> {sparePart?.partName || 'Multi-Item PO'}</p>
                         <p><span className="font-medium">Quantity:</span> {po.quantity}</p>
-                        <p><span className="font-medium">Grand Total:</span> ₹{grandTotal}</p>
+                        <p><span className="font-medium">Grand Total:</span> {fmtCur(grandTotal, tenantConfig)}</p>
                         {po.poDate && (
                           <p><span className="font-medium">PO Date:</span> {format(new Date(po.poDate), 'dd/MM/yyyy')}</p>
                         )}

@@ -10,11 +10,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 import { Plus, Pencil, Star, CheckCircle, AlertTriangle, ShoppingBag, RotateCcw, Search } from "lucide-react";
 
 const fmt = (n: any, d = 2) => Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: d });
 const fmtWt = (n: any) => `${fmt(n, 3)} g`;
-const fmtAmt = (n: any) => `₹${fmt(n)}`;
+// fmtAmt is now defined per-component using useTenantConfig
 const today = () => new Date().toISOString().slice(0, 10);
 
 function FL({ label, children }: any) {
@@ -43,6 +44,9 @@ function SBadge({ status }: { status: string }) {
 // ── Counter Bookings ───────────────────────────────────────────────────────────
 export function CounterBookingsSection() {
   const { toast } = useToast();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
+  const fmtAmt = (n: any) => fmtCur(n, tenantConfig);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [search, setSearch] = useState("");
@@ -116,8 +120,8 @@ export function CounterBookingsSection() {
                 </Select>
               </FL>
               <FL label="Item Weight (gm)"><Input type="number" step="0.001" placeholder="0.000" value={form.item_weight || ""} onChange={e => set("item_weight", e.target.value)} /></FL>
-              <FL label="Today's Rate (₹/gm)"><Input type="number" step="0.01" placeholder="0.00" value={form.gold_rate_today || ""} onChange={e => set("gold_rate_today", e.target.value)} /></FL>
-              <FL label="Advance Collected (₹)"><Input type="number" value={form.advance_collected || ""} onChange={e => set("advance_collected", e.target.value)} /></FL>
+              <FL label={`Today's Rate (${sym}/gm)`}><Input type="number" step="0.01" placeholder="0.00" value={form.gold_rate_today || ""} onChange={e => set("gold_rate_today", e.target.value)} /></FL>
+              <FL label={`Advance Collected (${sym})`}><Input type="number" value={form.advance_collected || ""} onChange={e => set("advance_collected", e.target.value)} /></FL>
               <FL label="Expected Ready"><Input type="date" value={form.expected_ready || ""} onChange={e => set("expected_ready", e.target.value)} /></FL>
               <FL label="Counter Staff"><Input value={form.counter_staff || ""} onChange={e => set("counter_staff", e.target.value)} /></FL>
               <FL label="Design Ref"><Input value={form.design_ref || ""} onChange={e => set("design_ref", e.target.value)} /></FL>
@@ -144,6 +148,9 @@ export function CounterBookingsSection() {
 // ── Customer Approvals ────────────────────────────────────────────────────────
 export function CustomerApprovalsSection() {
   const { toast } = useToast();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
+  const fmtAmt = (n: any) => fmtCur(n, tenantConfig);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({ issue_date: today() });
@@ -204,8 +211,8 @@ export function CustomerApprovalsSection() {
               <FL label="Phone"><Input data-testid="input-approval-phone" value={form.customer_phone || ""} onChange={e => set("customer_phone", e.target.value)} /></FL>
               <FL label="Issue Date"><Input type="date" value={form.issue_date || today()} onChange={e => set("issue_date", e.target.value)} /></FL>
               <FL label="Expected Return"><Input type="date" value={form.expected_return || ""} onChange={e => set("expected_return", e.target.value)} /></FL>
-              <FL label="Total Value (₹)"><Input data-testid="input-approval-value" type="number" value={form.total_value || ""} onChange={e => set("total_value", e.target.value)} /></FL>
-              <FL label="Deposit Amount (₹)"><Input data-testid="input-approval-deposit" type="number" value={form.deposit_amount || ""} onChange={e => set("deposit_amount", e.target.value)} /></FL>
+              <FL label={`Total Value (${sym})`}><Input data-testid="input-approval-value" type="number" value={form.total_value || ""} onChange={e => set("total_value", e.target.value)} /></FL>
+              <FL label={`Deposit Amount (${sym})`}><Input data-testid="input-approval-deposit" type="number" value={form.deposit_amount || ""} onChange={e => set("deposit_amount", e.target.value)} /></FL>
               <FL label="Counter Staff"><Input value={form.counter_staff || ""} onChange={e => set("counter_staff", e.target.value)} /></FL>
             </div>
             <div className="flex items-center gap-2">
@@ -233,6 +240,9 @@ export function CustomerApprovalsSection() {
 // ── Buy-back ──────────────────────────────────────────────────────────────────
 export function BuybackSection() {
   const { toast } = useToast();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
+  const fmtAmt = (n: any) => fmtCur(n, tenantConfig);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({ metal_type: "gold", buyback_rate_pct: 95 });
@@ -298,7 +308,7 @@ export function BuybackSection() {
               <FL label="Purity Tested %"><Input type="number" value={form.purity_tested_pct || ""} onChange={e => set("purity_tested_pct", e.target.value)} /></FL>
               <FL label="Gross Weight (g)"><Input type="number" value={form.gross_weight_gm || ""} onChange={e => set("gross_weight_gm", e.target.value)} /></FL>
               <FL label="Stone Weight (g)"><Input type="number" value={form.stone_weight_gm || 0} onChange={e => set("stone_weight_gm", e.target.value)} /></FL>
-              <FL label="Today's Rate (₹/g)"><Input type="number" value={form.gold_rate_today || ""} onChange={e => set("gold_rate_today", e.target.value)} /></FL>
+              <FL label={`Today's Rate (${sym}/g)`}><Input type="number" value={form.gold_rate_today || ""} onChange={e => set("gold_rate_today", e.target.value)} /></FL>
               <FL label="Buyback Rate %"><Input type="number" value={form.buyback_rate_pct || 95} onChange={e => set("buyback_rate_pct", e.target.value)} /></FL>
               <FL label="Payment Mode">
                 <Select value={form.payment_mode || "cash"} onValueChange={v => set("payment_mode", v)}>
@@ -422,6 +432,9 @@ export function PhysicalAuditSection() {
 // ── Loyalty & Rewards ─────────────────────────────────────────────────────────
 export function LoyaltySection() {
   const { toast } = useToast();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
+  const fmtAmt = (n: any) => fmtCur(n, tenantConfig);
   const [tab, setTab] = useState<"members" | "programs">("members");
   const [showMemberForm, setShowMemberForm] = useState(false);
   const [showProgForm, setShowProgForm] = useState(false);
@@ -485,11 +498,11 @@ export function LoyaltySection() {
               <CardContent className="p-4 space-y-2">
                 <p className="font-semibold">{p.program_name}</p>
                 <div className="grid grid-cols-2 gap-1 text-xs">
-                  <div><span className="text-muted-foreground">Points/₹: </span>{p.points_per_rupee}</div>
-                  <div><span className="text-muted-foreground">Redeem Value: </span>₹{p.redemption_value}/pt</div>
-                  <div><span className="text-muted-foreground">Silver: </span>₹{p.silver_threshold}+</div>
-                  <div><span className="text-muted-foreground">Gold: </span>₹{p.gold_threshold}+</div>
-                  <div><span className="text-muted-foreground">Platinum: </span>₹{p.platinum_threshold}+</div>
+                  <div><span className="text-muted-foreground">{`Points/${sym}: `}</span>{p.points_per_rupee}</div>
+                  <div><span className="text-muted-foreground">Redeem Value: </span>{sym}{p.redemption_value}/pt</div>
+                  <div><span className="text-muted-foreground">Silver: </span>{sym}{p.silver_threshold}+</div>
+                  <div><span className="text-muted-foreground">Gold: </span>{sym}{p.gold_threshold}+</div>
+                  <div><span className="text-muted-foreground">Platinum: </span>{sym}{p.platinum_threshold}+</div>
                 </div>
               </CardContent>
             </Card>
@@ -524,11 +537,11 @@ export function LoyaltySection() {
           <div className="space-y-3">
             <FL label="Program Name *"><Input value={pf.program_name || ""} onChange={e => setP("program_name", e.target.value)} /></FL>
             <div className="grid grid-cols-2 gap-3">
-              <FL label="Silver Threshold (₹)"><Input type="number" value={pf.silver_threshold || 50000} onChange={e => setP("silver_threshold", e.target.value)} /></FL>
-              <FL label="Gold Threshold (₹)"><Input type="number" value={pf.gold_threshold || 200000} onChange={e => setP("gold_threshold", e.target.value)} /></FL>
-              <FL label="Platinum Threshold (₹)"><Input type="number" value={pf.platinum_threshold || 500000} onChange={e => setP("platinum_threshold", e.target.value)} /></FL>
-              <FL label="Points per ₹"><Input type="number" value={pf.points_per_rupee || 0.01} onChange={e => setP("points_per_rupee", e.target.value)} /></FL>
-              <FL label="₹ per Point (redemption)"><Input type="number" value={pf.redemption_value || 0.5} onChange={e => setP("redemption_value", e.target.value)} /></FL>
+              <FL label={`Silver Threshold (${sym})`}><Input type="number" value={pf.silver_threshold || 50000} onChange={e => setP("silver_threshold", e.target.value)} /></FL>
+              <FL label={`Gold Threshold (${sym})`}><Input type="number" value={pf.gold_threshold || 200000} onChange={e => setP("gold_threshold", e.target.value)} /></FL>
+              <FL label={`Platinum Threshold (${sym})`}><Input type="number" value={pf.platinum_threshold || 500000} onChange={e => setP("platinum_threshold", e.target.value)} /></FL>
+              <FL label={`Points per ${sym}`}><Input type="number" value={pf.points_per_rupee || 0.01} onChange={e => setP("points_per_rupee", e.target.value)} /></FL>
+              <FL label={`${sym} per Point (redemption)`}><Input type="number" value={pf.redemption_value || 0.5} onChange={e => setP("redemption_value", e.target.value)} /></FL>
             </div>
             <div className="flex gap-2 justify-end"><Button variant="outline" onClick={() => setShowProgForm(false)}>Cancel</Button><Button onClick={() => progMut.mutate(pf)} disabled={progMut.isPending}>Create</Button></div>
           </div>
@@ -541,6 +554,9 @@ export function LoyaltySection() {
 // ── Promotions ────────────────────────────────────────────────────────────────
 export function PromotionsSection() {
   const { toast } = useToast();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
+  const fmtAmt = (n: any) => fmtCur(n, tenantConfig);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<any>({ promo_type: "discount_pct", discount_pct: 0 });
   const { data: promos = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/promotions"] });

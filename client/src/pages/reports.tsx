@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useTenantConfig } from "@/hooks/use-tenant-config";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 import VendorReport from "@/components/VendorReport";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -540,7 +540,7 @@ function MonthlySalesReportContent() {
       ['Summary'],
       ['Total Invoices:', msSummary?.totalInvoices || 0],
       ['Total Quantity Sold:', msSummary?.totalQuantity || 0],
-      ['Total Amount:', `₹${((msSummary?.totalAmount || 0) / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`],
+      ['Total Amount:', formatCurrency(msSummary?.totalAmount || 0)],
       ['Unique Products:', msSummary?.uniqueProducts || 0],
       [''],
     ];
@@ -548,7 +548,7 @@ function MonthlySalesReportContent() {
     msMonths.forEach(month => {
       excelData.push(
         [`${month.monthLabel}`],
-        ['Product Name', 'Quantity Sold', 'Amount (₹)', 'Invoice Count']
+        ['Product Name', 'Quantity Sold', 'Amount', 'Invoice Count']
       );
 
       month.products.forEach(product => {
@@ -618,27 +618,27 @@ function MonthlySalesReportContent() {
         <div class="summary">
           ${msSummary?.totalInvoices ? `<div class="summary-card"><div class="label">Total Invoices</div><div class="value">${msSummary.totalInvoices}</div></div>` : ''}
           ${msSummary?.totalQuantity ? `<div class="summary-card"><div class="label">Total Qty Sold</div><div class="value">${msSummary.totalQuantity.toLocaleString()}</div></div>` : ''}
-          ${msSummary?.totalAmount ? `<div class="summary-card"><div class="label">Total Amount</div><div class="value">₹${(msSummary.totalAmount / 100).toLocaleString('en-IN')}</div></div>` : ''}
+          ${msSummary?.totalAmount ? `<div class="summary-card"><div class="label">Total Amount</div><div class="value">${formatCurrency(msSummary.totalAmount)}</div></div>` : ''}
           ${msSummary?.uniqueProducts ? `<div class="summary-card"><div class="label">Products</div><div class="value">${msSummary.uniqueProducts}</div></div>` : ''}
         </div>
         ${msMonths.map(month => `
           <div class="month-section">
             <div class="month-header">${month.monthLabel}</div>
             <table>
-              <thead><tr><th>Product Name</th><th class="text-right">Quantity</th><th class="text-right">Amount (₹)</th><th class="text-right">Invoices</th></tr></thead>
+              <thead><tr><th>Product Name</th><th class="text-right">Quantity</th><th class="text-right">Amount</th><th class="text-right">Invoices</th></tr></thead>
               <tbody>
                 ${month.products.map(product => `
                   <tr>
                     <td>${product.productName}</td>
                     <td class="text-right">${product.totalQuantity.toLocaleString()}</td>
-                    <td class="text-right">${(product.totalAmount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    <td class="text-right">${formatCurrency(product.totalAmount)}</td>
                     <td class="text-right">${product.invoiceCount}</td>
                   </tr>
                 `).join('')}
                 <tr class="month-total">
                   <td>Month Total</td>
                   <td class="text-right">${month.totalQuantity.toLocaleString()}</td>
-                  <td class="text-right">${(month.totalAmount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                  <td class="text-right">${formatCurrency(month.totalAmount)}</td>
                   <td class="text-right">${month.invoiceCount}</td>
                 </tr>
               </tbody>
@@ -646,7 +646,7 @@ function MonthlySalesReportContent() {
           </div>
         `).join('')}
         <div class="grand-total">
-          Grand Total: ${msSummary?.totalQuantity?.toLocaleString() || 0} units | ₹${((msSummary?.totalAmount || 0) / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })} | ${msSummary?.totalInvoices || 0} invoices
+          Grand Total: ${msSummary?.totalQuantity?.toLocaleString() || 0} units | ${formatCurrency(msSummary?.totalAmount || 0)} | ${msSummary?.totalInvoices || 0} invoices
         </div>
         <script>window.onload = function() { window.print(); }</script>
       </body>
@@ -791,7 +791,7 @@ function MonthlySalesReportContent() {
             {msSummary.totalAmount > 0 && (
               <div className="p-4 bg-green-500/10 rounded-lg text-center">
                 <p className="text-sm text-muted-foreground">Total Amount</p>
-                <p className="text-2xl font-bold text-green-600">₹{(msSummary.totalAmount / 100).toLocaleString('en-IN')}</p>
+                <p className="text-2xl font-bold text-green-600">{formatCurrency(msSummary.totalAmount)}</p>
               </div>
             )}
             {msSummary.uniqueProducts > 0 && (
@@ -821,7 +821,7 @@ function MonthlySalesReportContent() {
                       <span className="font-semibold">{month.monthLabel}</span>
                       <div className="flex gap-4 text-sm">
                         <span>{month.totalQuantity.toLocaleString()} units</span>
-                        <span>₹{(month.totalAmount / 100).toLocaleString('en-IN')}</span>
+                        <span>{formatCurrency(month.totalAmount)}</span>
                       </div>
                     </div>
                     <Table>
@@ -829,7 +829,7 @@ function MonthlySalesReportContent() {
                         <TableRow>
                           <TableHead>Product Name</TableHead>
                           <TableHead className="text-right">Quantity</TableHead>
-                          <TableHead className="text-right">Amount (₹)</TableHead>
+                          <TableHead className="text-right">Amount</TableHead>
                           <TableHead className="text-right">Invoices</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -838,7 +838,7 @@ function MonthlySalesReportContent() {
                           <TableRow key={idx}>
                             <TableCell className="font-medium">{product.productName}</TableCell>
                             <TableCell className="text-right">{product.totalQuantity.toLocaleString()}</TableCell>
-                            <TableCell className="text-right">₹{(product.totalAmount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(product.totalAmount)}</TableCell>
                             <TableCell className="text-right">{product.invoiceCount}</TableCell>
                           </TableRow>
                         ))}
@@ -850,7 +850,7 @@ function MonthlySalesReportContent() {
                   <div className="flex justify-end">
                     <div className="bg-primary text-primary-foreground px-6 py-3 rounded-lg">
                       <span className="text-lg font-bold">
-                        Grand Total: {msSummary?.totalQuantity?.toLocaleString()} units | ₹{((msSummary?.totalAmount || 0) / 100).toLocaleString('en-IN')}
+                        Grand Total: {msSummary?.totalQuantity?.toLocaleString()} units | {formatCurrency(msSummary?.totalAmount || 0)}
                       </span>
                     </div>
                   </div>
@@ -874,7 +874,8 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
   const { canAccessScreen } = usePermissions();
   const { hasModule } = usePlanFeatures();
   const tenantConfig = useTenantConfig();
-  
+  const formatCurrency = (amountInPaise: number) => fmtCur(amountInPaise / 100, tenantConfig);
+
   // Check individual report tab permissions - database driven
   // If user has "reports" permission, they can see all tabs
   // Otherwise check individual report_* permissions
@@ -2077,7 +2078,7 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
                             <TableCell>{safeFormat(invoice.invoiceDate, 'MMM dd, yyyy')}</TableCell>
                             <TableCell>{invoice.buyerName}</TableCell>
                             <TableCell className="font-semibold">
-                              ₹{(invoice.totalAmount / 100).toFixed(2)}
+                              {formatCurrency(invoice.totalAmount)}
                             </TableCell>
                             <TableCell>
                               <PrintableInvoice invoice={invoice} />

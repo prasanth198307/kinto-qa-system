@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 import { Plus, Pencil, Trash2, Building2, Briefcase, Clock, Calendar, CalendarDays, DollarSign, Layers, FileText, MapPin, Shield } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -352,6 +353,8 @@ function HolidaysTab() {
 // ── Salary Components ────────────────────────────────────────────────────────
 function SalaryComponentsTab() {
   const { toast } = useToast();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState({ name: "", code: "", type: "earning", formulaType: "fixed", formulaValue: "0", isStatutory: false, showOnPayslip: true });
@@ -381,7 +384,7 @@ function SalaryComponentsTab() {
             <h4 className="text-sm font-medium text-muted-foreground mb-2 capitalize">{type}s</h4>
             <MasterTable columns={[
               { key: "name", label: "Component" }, { key: "code", label: "Code" },
-              { key: "formula_type", label: "Formula", render: (v: string, r: any) => v === "percent_of_basic" ? `${r.formula_value}% of Basic` : `Fixed ₹${r.formula_value}` },
+              { key: "formula_type", label: "Formula", render: (v: string, r: any) => v === "percent_of_basic" ? `${r.formula_value}% of Basic` : `Fixed ${sym}${r.formula_value}` },
               { key: "is_statutory", label: "Statutory", render: (v: boolean) => v ? <Badge variant="secondary">Yes</Badge> : "No" },
               { key: "show_on_payslip", label: "On Payslip", render: (v: boolean) => v ? "Yes" : "No" },
             ]} rows={rows.filter((r: any) => r.type === type)} onEdit={openEdit} onDelete={(id: number) => del.mutate(id)} />
@@ -408,7 +411,7 @@ function SalaryComponentsTab() {
                 <SelectContent><SelectItem value="fixed">Fixed Amount</SelectItem><SelectItem value="percent_of_basic">% of Basic</SelectItem></SelectContent>
               </Select>
             </div>
-            <div><Label>{form.formulaType === "percent_of_basic" ? "Percentage (%)" : "Amount (₹)"}</Label>
+            <div><Label>{form.formulaType === "percent_of_basic" ? "Percentage (%)" : `Amount (${sym})`}</Label>
               <Input type="number" value={form.formulaValue} onChange={e => setForm(f => ({ ...f, formulaValue: e.target.value }))} />
             </div>
             <div className="flex gap-4">
@@ -426,6 +429,8 @@ function SalaryComponentsTab() {
 // ── Salary Structures Tab ─────────────────────────────────────────────────────
 function SalaryStructuresTab() {
   const { toast } = useToast();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [structName, setStructName] = useState("");
@@ -494,7 +499,7 @@ function SalaryStructuresTab() {
                 <p className="font-medium text-sm">{s.name}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {comps.length === 0 ? "No components" : comps.map((c: any) =>
-                    `${c.name} (${c.formula_type === "percent_of_basic" ? `${c.formula_value}%` : `₹${c.formula_value}`})`
+                    `${c.name} (${c.formula_type === "percent_of_basic" ? `${c.formula_value}%` : `${sym}${c.formula_value}`})`
                   ).join(", ")}
                 </p>
               </div>
@@ -538,7 +543,7 @@ function SalaryStructuresTab() {
                           </Select>
                         </div>
                         <div>
-                          <Label className="text-xs">{(overrides[c.id]?.formula_type ?? c.formula_type) === "percent_of_basic" ? "Percent (%)" : "Amount (₹)"}</Label>
+                          <Label className="text-xs">{(overrides[c.id]?.formula_type ?? c.formula_type) === "percent_of_basic" ? "Percent (%)" : `Amount (${sym})`}</Label>
                           <Input className="h-8 text-xs" type="number" value={overrides[c.id]?.formula_value ?? String(c.formula_value)} onChange={e => setOverrides(o => ({ ...o, [c.id]: { ...o[c.id], formula_value: e.target.value } }))} />
                         </div>
                       </div>
@@ -560,6 +565,8 @@ function SalaryStructuresTab() {
 // ── PT Slabs Tab ──────────────────────────────────────────────────────────────
 function PTSlabsTab() {
   const { toast } = useToast();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState({ state: "", income_from: "0", income_to: "", pt_amount: "0" });

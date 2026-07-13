@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Trash2 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,6 +32,8 @@ interface PaymentHistoryProps {
 }
 
 export default function PaymentHistory({ invoice }: PaymentHistoryProps) {
+  const tenantConfig = useTenantConfig();
+  const fc = (paise: number) => fmtCur(paise / 100, tenantConfig);
   const { toast } = useToast();
 
   const { data: payments = [], isLoading } = useQuery<InvoicePayment[]>({
@@ -113,27 +116,27 @@ export default function PaymentHistory({ invoice }: PaymentHistoryProps) {
           <div>
             <p className="text-sm text-muted-foreground">Invoice Total</p>
             <p className="text-lg font-semibold" data-testid="text-invoice-total">
-              ₹{(invoice.totalAmount / 100).toFixed(2)}
+              {fc(invoice.totalAmount)}
             </p>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Total Paid</p>
             <p className="text-lg font-semibold text-green-600" data-testid="text-payments-total">
-              ₹{(actualPaid / 100).toFixed(2)}
+              {fc(actualPaid)}
             </p>
           </div>
           {writeOffTotal > 0 && (
             <div>
               <p className="text-sm text-muted-foreground">Written Off</p>
               <p className="text-lg font-semibold text-slate-500" data-testid="text-writeoff-total">
-                ₹{(writeOffTotal / 100).toFixed(2)}
+                {fc(writeOffTotal)}
               </p>
             </div>
           )}
           <div>
             <p className="text-sm text-muted-foreground">Outstanding</p>
             <p className="text-lg font-semibold text-destructive" data-testid="text-balance-outstanding">
-              ₹{(outstandingBalance / 100).toFixed(2)}
+              {fc(outstandingBalance)}
             </p>
           </div>
         </div>
@@ -167,7 +170,7 @@ export default function PaymentHistory({ invoice }: PaymentHistoryProps) {
                       {payment.paymentDate ? format(parseISO(payment.paymentDate), "dd-MMM-yyyy") : '-'}
                     </TableCell>
                     <TableCell className="font-medium" data-testid={`text-payment-amount-${payment.id}`}>
-                      ₹{(payment.amount / 100).toFixed(2)}
+                      {fc(payment.amount)}
                     </TableCell>
                     <TableCell data-testid={`text-payment-type-${payment.id}`}>
                       <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ${
@@ -194,7 +197,7 @@ export default function PaymentHistory({ invoice }: PaymentHistoryProps) {
                     </TableCell>
                     <TableCell className="font-medium" data-testid={`text-running-balance-${payment.id}`}>
                       <span className={payment.runningBalance > 0 ? "text-destructive" : "text-green-600"}>
-                        ₹{(payment.runningBalance / 100).toFixed(2)}
+                        {fc(payment.runningBalance)}
                       </span>
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground" data-testid={`text-recorded-by-${payment.id}`}>

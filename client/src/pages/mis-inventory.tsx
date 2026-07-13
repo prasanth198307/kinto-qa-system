@@ -8,6 +8,7 @@ import { AlertTriangle, Download, ArrowRight } from "lucide-react";
 import { useState } from "react";
 import { exportToExcel, formatCurrencyForExcel, formatDateForExcel } from "@/lib/excel-export";
 import { format } from "date-fns";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 interface InventoryData {
   summary: { totalRawMaterialValue: number; totalRawMaterials: number; belowReorder: number };
@@ -17,12 +18,6 @@ interface InventoryData {
   slowMovers: Array<{ id: string; materialCode: string; materialName: string; currentStock: number; lastIssued: string | null }>;
 }
 
-function formatINR(paise: number) {
-  return `₹${(paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-}
-function formatINRRupees(rupees: number) {
-  return `₹${rupees.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-}
 
 function KpiBadge({ label, color }: { label: string; color: 'gray' | 'red' | 'orange' | 'green' | 'amber' }) {
   const cls = { gray: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400', red: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400', orange: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400', green: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400', amber: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' }[color];
@@ -51,6 +46,10 @@ function StockStatus({ current, reorder, agingBucket }: { current: number; reord
 }
 
 export default function MISInventory() {
+  const tenantConfig = useTenantConfig();
+  const formatINR = (paise: number) => fmtCur(paise / 100, tenantConfig);
+  const formatINRRupees = (rupees: number) => fmtCur(rupees, tenantConfig);
+  const sym = tenantConfig.currency_symbol ?? '₹';
   const [isExporting, setIsExporting] = useState(false);
   const { data, isLoading } = useQuery<InventoryData>({ queryKey: ['/api/mis/inventory-analytics'] });
 
@@ -99,7 +98,7 @@ export default function MISInventory() {
               <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
               <div>
                 <p className="font-semibold text-red-800 dark:text-red-300">Critical: Total Inventory Value = {formatINR(totalValue)} only</p>
-                <p className="text-sm text-red-700 dark:text-red-400 mt-0.5">This is extremely low for a water bottling plant. Either inventory items are not valued in the system, or stock receipts are not being logged. Raw materials alone should be ₹5L+.</p>
+                <p className="text-sm text-red-700 dark:text-red-400 mt-0.5">This is extremely low for a water bottling plant. Either inventory items are not valued in the system, or stock receipts are not being logged. Raw materials alone should be {sym}5L+.</p>
               </div>
             </div>
           )}
@@ -113,7 +112,7 @@ export default function MISInventory() {
                 </div>
                 <p className="text-2xl font-bold">{formatINR(totalValue)}</p>
                 <p className="text-xs text-muted-foreground mt-1">Only RM labels logged</p>
-                <p className="text-xs text-amber-600 dark:text-amber-400 font-medium mt-1">₹5L+ expected</p>
+                <p className="text-xs text-amber-600 dark:text-amber-400 font-medium mt-1">{sym}5L+ expected</p>
               </CardContent>
             </Card>
             <Card>
@@ -196,7 +195,7 @@ export default function MISInventory() {
                     <div key={i} className="flex items-center justify-between p-3 border rounded-lg">
                       <div>
                         <p className="font-medium text-sm">{item.materialName}</p>
-                        <p className="text-xs text-muted-foreground">{item.materialCode} · {item.currentStock.toLocaleString()} units · ₹{((item.currentStock * 0) || 0).toLocaleString()}</p>
+                        <p className="text-xs text-muted-foreground">{item.materialCode} · {item.currentStock.toLocaleString()} units · {fmtCur((item.currentStock * 0) || 0, tenantConfig)}</p>
                       </div>
                       <span className="text-[10px] font-bold px-1.5 py-0.5 rounded tracking-wide bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 shrink-0">SLOW MOVER</span>
                     </div>
@@ -236,7 +235,7 @@ export default function MISInventory() {
                         <p className="text-sm font-medium">{rm.currentStock.toLocaleString()}</p>
                         <p className="text-xs text-muted-foreground">units</p>
                       </TableCell>
-                      <TableCell className="text-right text-sm">₹{rm.unitCost.toLocaleString('en-IN', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</TableCell>
+                      <TableCell className="text-right text-sm">{fmtCur(rm.unitCost, tenantConfig)}</TableCell>
                       <TableCell className="text-right text-sm font-medium">{formatINR(rm.stockValue)}</TableCell>
                       <TableCell className="text-right text-sm text-muted-foreground">{rm.reorderLevel ? `${rm.reorderLevel.toLocaleString()} units` : '—'}</TableCell>
                       <TableCell><StockHealthBar current={rm.currentStock} reorder={rm.reorderLevel} /></TableCell>
@@ -277,8 +276,8 @@ export default function MISInventory() {
                       <TableCell className="font-medium text-sm">{fg.productName}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{fg.batchCount > 0 ? `B-${String(fg.batchCount).padStart(4, '0')}` : '—'}</TableCell>
                       <TableCell className="text-right text-sm font-medium">{fg.totalQuantity.toLocaleString()}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{fg.oldestBatch ? new Date(fg.oldestBatch).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' }) : '—'}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{fg.newestBatch ? new Date(fg.newestBatch).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' }) : '—'}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{fg.oldestBatch ? new Date(fg.oldestBatch).toLocaleDateString(tenantConfig.default_locale, { day: 'numeric', month: 'short', year: '2-digit' }) : '—'}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{fg.newestBatch ? new Date(fg.newestBatch).toLocaleDateString(tenantConfig.default_locale, { day: 'numeric', month: 'short', year: '2-digit' }) : '—'}</TableCell>
                       <TableCell className="text-right text-sm font-medium">{fg.stockValue > 0 ? formatINRRupees(fg.stockValue) : '—'}</TableCell>
                     </TableRow>
                   ))}

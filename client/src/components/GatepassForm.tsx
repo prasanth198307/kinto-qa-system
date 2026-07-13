@@ -6,6 +6,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { insertGatepassSchema, insertGatepassItemSchema, type FinishedGood, type Product, type Uom, type Gatepass, type GatepassItem, type Vendor, type Invoice } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig } from "@/hooks/use-tenant-config";
 import { Card } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
@@ -61,6 +62,7 @@ interface GatepassItemWithBatchInfo {
 }
 
 export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
+  const tenantConfig = useTenantConfig();
   const { toast } = useToast();
   const [items, setItems] = useState<GatepassItemWithBatchInfo[]>([{ 
     finishedGoodId: "", 
@@ -577,7 +579,7 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
       if (product) {
         const key = invItem.id || invItem.productId;
         summary[key] = {
-          productName: product.productName + (invItem.unitPrice ? ` @ ₹${invItem.unitPrice}` : ''),
+          productName: product.productName + (invItem.unitPrice ? ` @ ${tenantConfig.currency_symbol}${invItem.unitPrice}` : ''),
           invoiceQty: invItem.quantity,
           dispatchedQty: 0,
           productId: invItem.productId,
@@ -646,7 +648,7 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
 
   const generatePrintHTML = (data: FormData) => {
     const vendor = vendors.find(v => v.id === data.header.vendorId);
-    const formattedDate = new Date(data.header.gatepassDate).toLocaleDateString('en-IN');
+    const formattedDate = new Date(data.header.gatepassDate).toLocaleDateString(tenantConfig.default_locale);
     
     return `
       <!DOCTYPE html>
@@ -1093,12 +1095,12 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
                         {/* Show linked invoice first when editing existing gatepass */}
                         {linkedInvoice && !availableInvoices.find(inv => inv.id === linkedInvoice.id) && (
                           <SelectItem key={linkedInvoice.id} value={linkedInvoice.id}>
-                            {linkedInvoice.invoiceNumber} - {linkedInvoice.buyerName} - ₹{(linkedInvoice.totalAmount / 100).toFixed(2)} (Current)
+                            {linkedInvoice.invoiceNumber} - {linkedInvoice.buyerName} - {tenantConfig.currency_symbol}{(linkedInvoice.totalAmount / 100).toFixed(2)} (Current)
                           </SelectItem>
                         )}
                         {availableInvoices.map((invoice) => (
                           <SelectItem key={invoice.id} value={invoice.id}>
-                            {invoice.invoiceNumber} - {invoice.buyerName} - ₹{(invoice.totalAmount / 100).toFixed(2)}
+                            {invoice.invoiceNumber} - {invoice.buyerName} - {tenantConfig.currency_symbol}{(invoice.totalAmount / 100).toFixed(2)}
                           </SelectItem>
                         ))}
                       </SelectContent>

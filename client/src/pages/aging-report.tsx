@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig } from "@/hooks/use-tenant-config";
 import { Download, Calendar, ChevronDown, ChevronRight, AlertTriangle } from "lucide-react";
 import { exportToExcel } from "@/lib/excel-export";
 
@@ -61,11 +62,11 @@ interface AgingResponse {
   summary: AgingSummary;
 }
 
-function formatAmount(paise: number | null | undefined): string {
+function formatAmount(paise: number | null | undefined, locale: string): string {
   const val = Number(paise) || 0;
   if (val === 0) return "-";
   const abs = Math.abs(val);
-  const formatted = (abs / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 });
+  const formatted = (abs / 100).toLocaleString(locale, { minimumFractionDigits: 2 });
   return val < 0 ? `(${formatted})` : formatted;
 }
 
@@ -104,6 +105,8 @@ const BUCKETS = [
 ] as const;
 
 export default function AgingReportPage() {
+  const tenantConfig = useTenantConfig();
+  const fmt = (paise: number | null | undefined) => formatAmount(paise, tenantConfig.default_locale);
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<"receivable" | "payable">("receivable");
   const [asOfDate, setAsOfDate] = useState(getTodayString());
@@ -272,7 +275,7 @@ export default function AgingReportPage() {
               <CardContent className="p-3">
                 <div className="text-xs text-muted-foreground uppercase tracking-wide">{bucket.label}</div>
                 <div className={`text-sm font-semibold mt-1 font-mono tabular-nums ${bucket.key !== "total" ? colorClass : ""}`}>
-                  {formatAmount(value)}
+                  {fmt(value)}
                 </div>
               </CardContent>
             </Card>
@@ -325,12 +328,12 @@ export default function AgingReportPage() {
               <tfoot>
                 <tr className="border-t-2 bg-muted/50 font-semibold">
                   <td className="px-4 py-3">Total</td>
-                  <td className="text-right px-3 py-3 font-mono tabular-nums whitespace-nowrap" data-testid="footer-current">{formatAmount(summary.current)}</td>
-                  <td className="text-right px-3 py-3 font-mono tabular-nums whitespace-nowrap" data-testid="footer-d1-30">{formatAmount(summary.d1_30)}</td>
-                  <td className="text-right px-3 py-3 font-mono tabular-nums whitespace-nowrap" data-testid="footer-d31-60">{formatAmount(summary.d31_60)}</td>
-                  <td className="text-right px-3 py-3 font-mono tabular-nums whitespace-nowrap" data-testid="footer-d61-90">{formatAmount(summary.d61_90)}</td>
-                  <td className="text-right px-3 py-3 font-mono tabular-nums whitespace-nowrap" data-testid="footer-over90">{formatAmount(summary.over90)}</td>
-                  <td className="text-right px-4 py-3 font-mono tabular-nums whitespace-nowrap" data-testid="footer-total">{formatAmount(summary.total)}</td>
+                  <td className="text-right px-3 py-3 font-mono tabular-nums whitespace-nowrap" data-testid="footer-current">{fmt(summary.current)}</td>
+                  <td className="text-right px-3 py-3 font-mono tabular-nums whitespace-nowrap" data-testid="footer-d1-30">{fmt(summary.d1_30)}</td>
+                  <td className="text-right px-3 py-3 font-mono tabular-nums whitespace-nowrap" data-testid="footer-d31-60">{fmt(summary.d31_60)}</td>
+                  <td className="text-right px-3 py-3 font-mono tabular-nums whitespace-nowrap" data-testid="footer-d61-90">{fmt(summary.d61_90)}</td>
+                  <td className="text-right px-3 py-3 font-mono tabular-nums whitespace-nowrap" data-testid="footer-over90">{fmt(summary.over90)}</td>
+                  <td className="text-right px-4 py-3 font-mono tabular-nums whitespace-nowrap" data-testid="footer-total">{fmt(summary.total)}</td>
                 </tr>
               </tfoot>
             )}
@@ -356,6 +359,8 @@ function VendorRow({
   details?: AgingInvoice[] | AgingOrder[];
   activeTab: "receivable" | "payable";
 }) {
+  const tenantConfig = useTenantConfig();
+  const fmtAmt = (paise: number | null | undefined) => formatAmount(paise, tenantConfig.default_locale);
   return (
     <>
       <tr
@@ -378,12 +383,12 @@ function VendorRow({
             )}
           </div>
         </td>
-        <td className={`text-right px-3 py-2.5 font-mono tabular-nums whitespace-nowrap ${BUCKET_COLORS.current}`}>{formatAmount(vendor.current)}</td>
-        <td className={`text-right px-3 py-2.5 font-mono tabular-nums whitespace-nowrap ${BUCKET_COLORS.d1_30}`}>{formatAmount(vendor.d1_30)}</td>
-        <td className={`text-right px-3 py-2.5 font-mono tabular-nums whitespace-nowrap ${BUCKET_COLORS.d31_60}`}>{formatAmount(vendor.d31_60)}</td>
-        <td className={`text-right px-3 py-2.5 font-mono tabular-nums whitespace-nowrap ${BUCKET_COLORS.d61_90}`}>{formatAmount(vendor.d61_90)}</td>
-        <td className={`text-right px-3 py-2.5 font-mono tabular-nums whitespace-nowrap ${BUCKET_COLORS.over90}`}>{formatAmount(vendor.over90)}</td>
-        <td className="text-right px-4 py-2.5 font-mono tabular-nums whitespace-nowrap font-medium">{formatAmount(vendor.total)}</td>
+        <td className={`text-right px-3 py-2.5 font-mono tabular-nums whitespace-nowrap ${BUCKET_COLORS.current}`}>{fmtAmt(vendor.current)}</td>
+        <td className={`text-right px-3 py-2.5 font-mono tabular-nums whitespace-nowrap ${BUCKET_COLORS.d1_30}`}>{fmtAmt(vendor.d1_30)}</td>
+        <td className={`text-right px-3 py-2.5 font-mono tabular-nums whitespace-nowrap ${BUCKET_COLORS.d31_60}`}>{fmtAmt(vendor.d31_60)}</td>
+        <td className={`text-right px-3 py-2.5 font-mono tabular-nums whitespace-nowrap ${BUCKET_COLORS.d61_90}`}>{fmtAmt(vendor.d61_90)}</td>
+        <td className={`text-right px-3 py-2.5 font-mono tabular-nums whitespace-nowrap ${BUCKET_COLORS.over90}`}>{fmtAmt(vendor.over90)}</td>
+        <td className="text-right px-4 py-2.5 font-mono tabular-nums whitespace-nowrap font-medium">{fmtAmt(vendor.total)}</td>
       </tr>
       {isExpanded && hasDetails && details!.map((item, idx) => {
         const isInvoice = activeTab === "receivable";
@@ -406,13 +411,13 @@ function VendorRow({
               </div>
             </td>
             <td className="text-right px-3 py-2 text-xs text-muted-foreground font-mono tabular-nums whitespace-nowrap" colSpan={2}>
-              Amt: {formatAmount(item.totalAmount)}
+              Amt: {fmtAmt(item.totalAmount)}
             </td>
             <td className="text-right px-3 py-2 text-xs text-muted-foreground font-mono tabular-nums whitespace-nowrap" colSpan={2}>
-              Paid: {formatAmount(item.paidAmount)}
+              Paid: {fmtAmt(item.paidAmount)}
             </td>
             <td className="text-right px-3 py-2 text-xs font-mono tabular-nums whitespace-nowrap font-medium" colSpan={2}>
-              O/S: {formatAmount(item.outstanding)}
+              O/S: {fmtAmt(item.outstanding)}
             </td>
           </tr>
         );
@@ -421,10 +426,10 @@ function VendorRow({
   );
 }
 
-function formatDate(dateStr: string | null | undefined): string {
+function formatDate(dateStr: string | null | undefined, locale = "en-IN"): string {
   if (!dateStr) return "-";
   try {
-    return new Date(dateStr + "T00:00:00").toLocaleDateString("en-IN", {
+    return new Date(dateStr + "T00:00:00").toLocaleDateString(locale, {
       day: "2-digit",
       month: "short",
       year: "numeric",

@@ -1,7 +1,5 @@
 import { Card } from "@/components/ui/card";
-
-const formatCurrency = (amountInPaise: number) =>
-  `₹${(amountInPaise / 100).toFixed(2)}`;
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 interface TaxBreakdown {
   grossTotal?: number;
@@ -20,6 +18,8 @@ interface InvoiceTaxSummaryProps {
 }
 
 export default function InvoiceTaxSummary({ taxes, isIntrastateSupply }: InvoiceTaxSummaryProps) {
+  const tenantConfig = useTenantConfig();
+  const formatCurrency = (amountInPaise: number) => fmtCur(amountInPaise / 100, tenantConfig);
   const hasDiscount = (taxes.totalDiscount ?? 0) > 0;
 
   return (

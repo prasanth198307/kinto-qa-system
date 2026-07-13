@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 import { Button } from "@/components/ui/button";
 import { Printer } from "lucide-react";
 import { format } from "date-fns";
@@ -9,6 +10,7 @@ interface PrintableExpenseVoucherProps {
 }
 
 export default function PrintableExpenseVoucher({ voucher }: PrintableExpenseVoucherProps) {
+  const tenantConfig = useTenantConfig();
   const { data: voucherDetail, isLoading: itemsLoading } = useQuery<{ items: ExpenseItem[] }>({
     queryKey: ['/api/expense-vouchers', voucher.id],
     queryFn: async () => {
@@ -33,9 +35,7 @@ export default function PrintableExpenseVoucher({ voucher }: PrintableExpenseVou
     return category?.name || '-';
   };
 
-  const formatCurrency = (amountInPaise: number): string => {
-    return `₹${(amountInPaise / 100).toFixed(2)}`;
-  };
+  const formatCurrency = (amountInPaise: number): string => fmtCur(amountInPaise / 100, tenantConfig);
 
   const getPaymentModeLabel = (mode: string): string => {
     const modeMap: Record<string, string> = {

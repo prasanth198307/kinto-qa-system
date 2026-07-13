@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import { exportToExcel, formatDateForExcel } from "@/lib/excel-export";
 import { format } from "date-fns";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 /* ─── API shape ──────────────────────────────────────────────────────── */
 interface FinancialData {
@@ -59,15 +60,12 @@ function buildFyOptions() {
 const FY_OPTIONS = buildFyOptions();
 
 /* ─── Formatters ─────────────────────────────────────────────────────── */
-function fmtCurr(paise: number): string {
+function fmtCurrSymbol(paise: number, sym: string): string {
   const n = Math.abs(paise / 100);
-  if (n >= 10000000) return `₹${(n / 10000000).toFixed(2)}Cr`;
-  if (n >= 100000)   return `₹${(n / 100000).toFixed(2)}L`;
-  if (n >= 1000)     return `₹${(n / 1000).toFixed(1)}K`;
-  return `₹${Math.round(n).toLocaleString("en-IN")}`;
-}
-function fmtFull(paise: number): string {
-  return `₹${Math.abs(Math.round(paise / 100)).toLocaleString("en-IN")}`;
+  if (n >= 10000000) return `${sym}${(n / 10000000).toFixed(2)}Cr`;
+  if (n >= 100000)   return `${sym}${(n / 100000).toFixed(2)}L`;
+  if (n >= 1000)     return `${sym}${(n / 1000).toFixed(1)}K`;
+  return `${sym}${Math.round(n).toLocaleString()}`;
 }
 function pct(n: number, d: number) { return d > 0 ? Math.round((n / d) * 100) : 0; }
 function monthLabel(m: string) {
@@ -158,6 +156,9 @@ const CHART_NET = "#378ADD";
    Main Component
 ═══════════════════════════════════════════════════════════════════════ */
 export default function MISFinancial() {
+  const tenantConfig = useTenantConfig();
+  const fmtCurr = (paise: number) => fmtCurrSymbol(paise, tenantConfig.currency_symbol);
+  const fmtFull = (paise: number) => fmtCur(Math.abs(paise / 100), tenantConfig);
   const curFy = new Date().getMonth() >= 3 ? new Date().getFullYear() : new Date().getFullYear() - 1;
   const [period, setPeriod]       = useState("full_year");
   const [fy, setFy]               = useState(String(curFy));
@@ -212,33 +213,33 @@ export default function MISFinancial() {
           { name: "KPI Summary", data: [
             ["Metric", "Value"],
             ["Period", selectedLabel],
-            ["Total Revenue (₹)", Math.round((kpis?.plRevenue ?? 0) / 100)],
-            ["Total Expenses (₹)", Math.round((kpis?.plExpenses ?? 0) / 100)],
-            ["Net Profit/Loss (₹)", Math.round(netProfit / 100)],
+            ["Total Revenue ", Math.round((kpis?.plRevenue ?? 0) / 100)],
+            ["Total Expenses ", Math.round((kpis?.plExpenses ?? 0) / 100)],
+            ["Net Profit/Loss ", Math.round(netProfit / 100)],
             ["Net Margin (%)", kpis?.netMargin ?? 0],
-            ["Total Outstanding AR (₹)", Math.round((kpis?.totalOutstanding ?? 0) / 100)],
+            ["Total Outstanding AR ", Math.round((kpis?.totalOutstanding ?? 0) / 100)],
             ["Overdue Invoices", kpis?.overdueCount ?? 0],
-            ["Cash/Bank Balance (₹)", Math.round((kpis?.cashBalance ?? 0) / 100)],
+            ["Cash/Bank Balance ", Math.round((kpis?.cashBalance ?? 0) / 100)],
             ["Unreconciled Entries", kpis?.unreconciledCount ?? 0],
           ]},
           { name: "Monthly Trend", data: [
-            ["Month", "Revenue (₹)", "Expenses (₹)", "Net (₹)"],
+            ["Month", "Revenue ", "Expenses ", "Net "],
             ...(data.monthlyTrend ?? []).map(m => [m.month, Math.round(m.revenue / 100), Math.round(m.expenses / 100), Math.round((m.revenue - m.expenses) / 100)]),
           ]},
           { name: "Trial Balance Groups", data: [
-            ["Account Group", "Type", "Debit (₹)", "Credit (₹)", "Net (₹)"],
+            ["Account Group", "Type", "Debit ", "Credit ", "Net "],
             ...(data.trialGroups ?? []).map(g => [g.groupName, g.accountType, Math.round(g.totalDebit), Math.round(g.totalCredit), Math.round(g.netBalance ?? (g.totalDebit - g.totalCredit))]),
           ]},
           { name: "Aging", data: [
-            ["Bucket", "Count", "Outstanding (₹)"],
+            ["Bucket", "Count", "Outstanding "],
             ...(data.receivablesAging ?? []).map(r => [r.bucket, r.count, Math.round(r.outstanding / 100)]),
           ]},
           { name: "Top Debtors", data: [
-            ["Customer", "Invoices", "Billed (₹)", "Collected (₹)", "Outstanding (₹)"],
+            ["Customer", "Invoices", "Billed ", "Collected ", "Outstanding "],
             ...(data.topDebtors ?? []).map(d => [d.customer, d.invoiceCount, Math.round(d.totalBilled / 100), Math.round(d.totalCollected / 100), Math.round(d.outstanding / 100)]),
           ]},
           { name: "Journal Entries", data: [
-            ["Date", "Reference", "Type", "Amount (₹)", "Narration", "Flags"],
+            ["Date", "Reference", "Type", "Amount ", "Narration", "Flags"],
             ...(data.recentJournals ?? []).map(j => [formatDateForExcel(j.date), j.reference || j.id, j.sourceType, Math.round(j.amount / 100), j.narration ?? "", (j.flags ?? []).join(", ")]),
           ]},
         ],
@@ -373,7 +374,7 @@ export default function MISFinancial() {
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.12)" vertical={false} />
                     <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#888" }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fontSize: 10, fill: "#888" }} axisLine={false} tickLine={false} width={52}
-                      tickFormatter={v => Math.abs(v) >= 100000 ? `₹${(v / 100000).toFixed(0)}L` : `₹${(v / 1000).toFixed(0)}K`}
+                      tickFormatter={v => fmtCurrSymbol(v * 100, tenantConfig.currency_symbol)}
                     />
                     <RTooltip content={<ChartTip />} />
                     <Bar dataKey="Revenue" name="Revenue" fill={CHART_IN} radius={[3, 3, 0, 0]} maxBarSize={20} />
@@ -603,7 +604,7 @@ export default function MISFinancial() {
               { title: "LIABILITIES", bg: "#FCEBEB", titleColor: "#A32D2D", rows: [
                 { label: "Accounts Payable", val: "—" },
                 { label: "GST Payable",      val: "—" },
-                { label: "Other",            val: "₹0" },
+                { label: "Other",            val: `${tenantConfig.currency_symbol}0` },
               ], total: fmtFull(data?.balanceSheet?.liabilities ?? 0), totalColor: "#A32D2D", note: "Settle payables on time to avoid penalties.", noteColor: "#854F0B" },
               { title: "EQUITY", bg: "#EAF3DE", titleColor: "#3B6D11", rows: [
                 { label: "Net Profit FY", val: `${netProfit < 0 ? "−" : ""}${fmtFull(Math.abs(netProfit))}`, color: netProfit >= 0 ? "#3B6D11" : "#A32D2D" },
@@ -679,7 +680,7 @@ export default function MISFinancial() {
                     <td style={{ padding: "8px 8px", fontWeight: 600 }}>All entries matched</td>
                     <td style={{ padding: "8px 8px" }}><GreenChip>MATCH</GreenChip></td>
                     <td style={{ padding: "8px 8px" }} className="text-muted-foreground">0</td>
-                    <td style={{ padding: "8px 8px", fontFamily: "monospace", color: "#3B6D11" }}>₹0</td>
+                    <td style={{ padding: "8px 8px", fontFamily: "monospace", color: "#3B6D11" }}>{tenantConfig.currency_symbol}0</td>
                     <td style={{ padding: "8px 8px" }}><GreenChip>CLEAR</GreenChip></td>
                     <td style={{ padding: "8px 8px", fontSize: 11 }} className="text-muted-foreground">No action needed</td>
                   </tr>

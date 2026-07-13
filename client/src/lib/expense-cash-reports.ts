@@ -308,7 +308,7 @@ export async function exportCashRegisterReportAsExcel(data: CashRegisterReportDa
           'Salesperson': day.salespersonName,
           'Transaction Ref': tx.reference || '',
           'Item': item.itemLabel,
-          'Amount (₹)': formatCurrency(item.amount),
+          'Amount': formatCurrency(item.amount, config),
         });
       });
     });

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { 
@@ -132,6 +133,7 @@ type SalesOrderFormValues = z.infer<typeof salesOrderSchema>;
 export default function SalesOrdersPage({ showHeader = true }: { showHeader?: boolean }) {
   const [location, navigate] = useLocation();
   const { toast } = useToast();
+  const tenantConfig = useTenantConfig();
   const { user, logoutMutation } = useAuth();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -282,12 +284,7 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
     createSoMutation.mutate(values);
   };
 
-  const formatCurrency = (amountPaise: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-    }).format(amountPaise / 100);
-  };
+  const formatCurrency = (amountPaise: number) => fmtCur(amountPaise / 100, tenantConfig);
 
   const pageContent = (
     <div className={showHeader ? "container mx-auto p-4 sm:p-6 mt-16" : "p-4"}>
@@ -627,7 +624,7 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                             <TableHead className="min-w-[200px]">Product</TableHead>
                             <TableHead className="w-28">HSN Code</TableHead>
                             <TableHead className="w-20">Qty</TableHead>
-                            <TableHead className="w-32">Case Price ₹ (incl. GST)</TableHead>
+                            <TableHead className="w-32">Case Price (incl. GST)</TableHead>
                             <TableHead className="w-36">Discount</TableHead>
                             <TableHead className="w-36">CGST% / SGST%</TableHead>
                             <TableHead className="w-28 text-right">Line Total</TableHead>
@@ -816,7 +813,7 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                                 </div>
                               </TableCell>
                               <TableCell className="text-right text-sm font-medium tabular-nums">
-                                ₹{lineTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                {fmtCur(lineTotal, tenantConfig)}
                               </TableCell>
                               <TableCell>
                                 <Button
@@ -840,7 +837,7 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                       <div className="flex items-center gap-4 bg-muted/50 rounded-md px-4 py-2 text-sm">
                         <span className="text-muted-foreground">Estimated Grand Total (incl. GST):</span>
                         <span className="font-bold text-base">
-                          ₹{form.watch("items").reduce((sum, item) => {
+                          {fmtCur(form.watch("items").reduce((sum, item) => {
                             const inclPrice = item.unitPrice || 0;
                             const qty = item.quantity || 0;
                             const gst = (item.cgstRate || 0) + (item.sgstRate || 0) + (item.igstRate || 0);
@@ -852,7 +849,7 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                               : dVal * qty;
                             const taxable = grossBase - dAmt;
                             return sum + taxable + (taxable * gst / 100);
-                          }, 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          }, 0), tenantConfig)}
                         </span>
                       </div>
                     </div>

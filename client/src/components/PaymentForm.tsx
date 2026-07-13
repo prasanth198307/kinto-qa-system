@@ -24,6 +24,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { format } from "date-fns";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const paymentFormSchema = insertInvoicePaymentSchema.extend({
   paymentDate: z.string().min(1, "Payment date is required"),
@@ -42,6 +43,7 @@ interface PaymentFormProps {
 }
 
 export default function PaymentForm({ invoice, onSuccess, onCancel }: PaymentFormProps) {
+  const tenantConfig = useTenantConfig();
   const { toast } = useToast();
 
   // Fetch payment history to calculate outstanding balance
@@ -62,7 +64,7 @@ export default function PaymentForm({ invoice, onSuccess, onCancel }: PaymentFor
         const amountInPaise = Math.round(parseFloat(val) * 100);
         return amountInPaise <= outstandingBalance;
       }, {
-        message: `Amount cannot exceed outstanding balance of ₹${(outstandingBalance / 100).toFixed(2)}`,
+        message: `Amount cannot exceed outstanding balance of ${fmtCur(outstandingBalance / 100, tenantConfig)}`,
       }),
   });
 
@@ -124,15 +126,15 @@ export default function PaymentForm({ invoice, onSuccess, onCancel }: PaymentFor
           </div>
           <div>
             <span className="text-muted-foreground">Total Amount:</span>
-            <span className="ml-2 font-medium" data-testid="text-total-amount">₹{(invoice.totalAmount / 100).toFixed(2)}</span>
+            <span className="ml-2 font-medium" data-testid="text-total-amount">{fmtCur(invoice.totalAmount / 100, tenantConfig)}</span>
           </div>
           <div>
             <span className="text-muted-foreground">Total Paid:</span>
-            <span className="ml-2 font-medium" data-testid="text-total-paid">₹{(totalPaid / 100).toFixed(2)}</span>
+            <span className="ml-2 font-medium" data-testid="text-total-paid">{fmtCur(totalPaid / 100, tenantConfig)}</span>
           </div>
           <div>
             <span className="text-muted-foreground">Outstanding:</span>
-            <span className="ml-2 font-medium text-destructive" data-testid="text-outstanding">₹{(outstandingBalance / 100).toFixed(2)}</span>
+            <span className="ml-2 font-medium text-destructive" data-testid="text-outstanding">{fmtCur(outstandingBalance / 100, tenantConfig)}</span>
           </div>
         </div>
       </div>
@@ -163,7 +165,7 @@ export default function PaymentForm({ invoice, onSuccess, onCancel }: PaymentFor
               name="amount"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Amount (₹)</FormLabel>
+                  <FormLabel>Amount ({tenantConfig.currency_symbol})</FormLabel>
                   <FormControl>
                     <Input
                       type="number"

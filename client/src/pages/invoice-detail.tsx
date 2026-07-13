@@ -54,6 +54,7 @@ import { CreateCreditNoteDialog } from "@/components/CreateCreditNoteDialog";
 import { CorrectAndCreditDialog } from "@/components/CorrectAndCreditDialog";
 import { CorrectAndDebitDialog } from "@/components/CorrectAndDebitDialog";
 import { QuickFullCreditDialog } from "@/components/QuickFullCreditDialog";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 interface Vendor {
   id: string;
@@ -87,6 +88,7 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
   const { id } = useParams<{ id: string }>();
   const [location, navigate] = useLocation();
   const { toast } = useToast();
+  const tenantConfig = useTenantConfig();
   const { logoutMutation, user } = useAuth();
   // Call usePermissions early to avoid hooks ordering violation with early returns
   const { hasPermission, role: permissionRole } = usePermissions();
@@ -573,9 +575,7 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
     return <Badge variant={config.variant} data-testid={`status-${status}`}>{config.label}</Badge>;
   };
 
-  const formatCurrency = (amountInPaise: number): string => {
-    return `₹${(amountInPaise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  };
+  const formatCurrency = (amountInPaise: number): string => fmtCur(amountInPaise / 100, tenantConfig);
 
   const handleEdit = () => {
     navigate(`/?tab=invoices&edit=${id}`);
@@ -1714,7 +1714,7 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
               </span>
             </div>
             <div className="space-y-1">
-              <label className="text-sm font-medium">Amount to Apply (₹)</label>
+              <label className="text-sm font-medium">Amount to Apply</label>
               <Input
                 type="number"
                 min="0.01"

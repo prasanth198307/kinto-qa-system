@@ -1,6 +1,7 @@
 // PharmacyBatchSelector — FEFO (First Expiry First Out) batch selection component
 // Used in pharmacy billing to sort and display drug batches by expiry date ASC
 
+import { useTenantConfig } from "@/hooks/use-tenant-config";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle } from "lucide-react";
@@ -35,6 +36,7 @@ function sortFefo(batches: Batch[]): Batch[] {
 }
 
 export default function PharmacyBatchSelector({ batches, selectedBatch, onSelect }: Props) {
+  const tenantConfig = useTenantConfig();
   const sorted = sortFefo(batches);
 
   if (!sorted.length) {
@@ -80,7 +82,7 @@ export default function PharmacyBatchSelector({ batches, selectedBatch, onSelect
               <div className="flex gap-3 text-xs text-gray-500">
                 <span>Exp: {b.expiry_date}</span>
                 <span>Qty: {b.quantity}</span>
-                <span>MRP: ₹{b.mrp}</span>
+                <span>MRP: {tenantConfig.currency_symbol}{b.mrp}</span>
               </div>
             </div>
           </Button>

@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 import { Plus, Trash2, Package, CheckCircle, ChevronRight, Pencil } from "lucide-react";
 
 const ASSET_CATEGORIES = ["Land & Building", "Plant & Machinery", "Furniture & Fixtures", "Vehicles", "Office Equipment", "Computers & IT", "Electrical Fittings", "Tools & Equipment", "Intangible Assets", "Other"];
@@ -18,6 +19,7 @@ const STATUS_COLORS: Record<string, string> = { active: "default", disposed: "se
 
 function AssetForm({ asset, onSave, onCancel }: any) {
   const { toast } = useToast();
+  const tenantConfig = useTenantConfig();
   const [form, setForm] = useState({
     name: asset?.name || "", assetCode: asset?.asset_code || "", category: asset?.category || "",
     purchaseDate: asset?.purchase_date?.split("T")[0] || "", purchaseCost: asset?.purchase_cost || "",
@@ -57,8 +59,8 @@ function AssetForm({ asset, onSave, onCancel }: any) {
         </div>
         <div><Label>Location</Label><Input value={form.location} onChange={e => setForm(p => ({ ...p, location: e.target.value }))} /></div>
         <div><Label>Purchase Date</Label><Input type="date" value={form.purchaseDate} onChange={e => setForm(p => ({ ...p, purchaseDate: e.target.value }))} /></div>
-        <div><Label>Purchase Cost (₹)</Label><Input type="number" value={form.purchaseCost} onChange={e => setForm(p => ({ ...p, purchaseCost: e.target.value }))} /></div>
-        <div><Label>Salvage / Residual Value (₹)</Label><Input type="number" value={form.salvageValue} onChange={e => setForm(p => ({ ...p, salvageValue: e.target.value }))} /></div>
+        <div><Label>Purchase Cost</Label><Input type="number" value={form.purchaseCost} onChange={e => setForm(p => ({ ...p, purchaseCost: e.target.value }))} /></div>
+        <div><Label>Salvage / Residual Value</Label><Input type="number" value={form.salvageValue} onChange={e => setForm(p => ({ ...p, salvageValue: e.target.value }))} /></div>
         <div><Label>Useful Life (months)</Label><Input type="number" value={form.usefulLifeMonths} onChange={e => setForm(p => ({ ...p, usefulLifeMonths: e.target.value }))} /></div>
         <div>
           <Label>Depreciation Method</Label>
@@ -81,7 +83,7 @@ function AssetForm({ asset, onSave, onCancel }: any) {
       </div>
       {depAmount && (
         <div className="rounded-md bg-muted/50 p-3 text-sm">
-          Monthly depreciation (SLM): <strong>₹{Number(depAmount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</strong>
+          Monthly depreciation (SLM): <strong>{fmtCur(Number(depAmount), tenantConfig)}</strong>
         </div>
       )}
       <div className="flex justify-end gap-2">
@@ -97,6 +99,7 @@ function AssetForm({ asset, onSave, onCancel }: any) {
 
 function AssetDetail({ assetId, onBack }: { assetId: number; onBack: () => void }) {
   const { toast } = useToast();
+  const tenantConfig = useTenantConfig();
   const { data, isLoading } = useQuery<any>({ queryKey: ["/api/assets/fixed-assets", assetId] });
 
   const postMutation = useMutation({
@@ -121,9 +124,9 @@ function AssetDetail({ assetId, onBack }: { assetId: number; onBack: () => void 
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: "Purchase Cost", value: `₹${Number(asset?.purchase_cost || 0).toLocaleString("en-IN")}` },
-          { label: "Current Value", value: `₹${Number(asset?.current_value || 0).toLocaleString("en-IN")}` },
-          { label: "Total Depreciation Posted", value: `₹${totalDep.toLocaleString("en-IN")}` },
+          { label: "Purchase Cost", value: fmtCur(Number(asset?.purchase_cost || 0), tenantConfig) },
+          { label: "Current Value", value: fmtCur(Number(asset?.current_value || 0), tenantConfig) },
+          { label: "Total Depreciation Posted", value: fmtCur(totalDep, tenantConfig) },
           { label: "Useful Life", value: `${asset?.useful_life_months} months` },
         ].map(s => (
           <Card key={s.label}><CardContent className="p-3"><p className="text-xs text-muted-foreground">{s.label}</p><p className="font-bold">{s.value}</p></CardContent></Card>
@@ -140,9 +143,9 @@ function AssetDetail({ assetId, onBack }: { assetId: number; onBack: () => void 
               {(schedule || []).slice(0, 24).map((s: any) => (
                 <tr key={s.id} className={`border-t ${s.posted ? "opacity-60" : ""}`}>
                   <td className="p-3">{String(s.period_month).padStart(2, "0")}/{s.period_year}</td>
-                  <td className="p-3 text-right">₹{Number(s.opening_value).toLocaleString("en-IN")}</td>
-                  <td className="p-3 text-right text-destructive">-₹{Number(s.depreciation).toLocaleString("en-IN")}</td>
-                  <td className="p-3 text-right font-medium">₹{Number(s.closing_value).toLocaleString("en-IN")}</td>
+                  <td className="p-3 text-right">{fmtCur(Number(s.opening_value), tenantConfig)}</td>
+                  <td className="p-3 text-right text-destructive">-{fmtCur(Number(s.depreciation), tenantConfig)}</td>
+                  <td className="p-3 text-right font-medium">{fmtCur(Number(s.closing_value), tenantConfig)}</td>
                   <td className="p-3">
                     {s.posted ? (
                       <Badge variant="secondary" className="text-xs"><CheckCircle className="w-3 h-3 mr-1 inline" />Posted</Badge>
@@ -163,6 +166,7 @@ function AssetDetail({ assetId, onBack }: { assetId: number; onBack: () => void 
 
 export default function FixedAssetsPage() {
   const { toast } = useToast();
+  const tenantConfig = useTenantConfig();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingAsset, setEditingAsset] = useState<any>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -199,8 +203,8 @@ export default function FixedAssetsPage() {
         {[
           { label: "Total Assets", value: assets.length },
           { label: "Active Assets", value: assets.filter((a: any) => a.status === "active").length },
-          { label: "Gross Block", value: `₹${(totalCost / 1e5).toFixed(1)}L` },
-          { label: "Net Block", value: `₹${(totalCurrentValue / 1e5).toFixed(1)}L` },
+          { label: "Gross Block", value: fmtCur(totalCost, tenantConfig) },
+          { label: "Net Block", value: fmtCur(totalCurrentValue, tenantConfig) },
         ].map(s => (
           <Card key={s.label}><CardContent className="p-3"><p className="text-xs text-muted-foreground">{s.label}</p><p className="text-xl font-bold">{s.value}</p></CardContent></Card>
         ))}
@@ -234,8 +238,8 @@ export default function FixedAssetsPage() {
                     {a.asset_code && <p className="text-xs text-muted-foreground">{a.asset_code}</p>}
                   </td>
                   <td className="p-3 text-muted-foreground">{a.category || "—"}</td>
-                  <td className="p-3 text-right">₹{Number(a.purchase_cost || 0).toLocaleString("en-IN")}</td>
-                  <td className="p-3 text-right font-medium">₹{Number(a.current_value || 0).toLocaleString("en-IN")}</td>
+                  <td className="p-3 text-right">{fmtCur(Number(a.purchase_cost || 0), tenantConfig)}</td>
+                  <td className="p-3 text-right font-medium">{fmtCur(Number(a.current_value || 0), tenantConfig)}</td>
                   <td className="p-3 text-muted-foreground">{a.location || "—"}</td>
                   <td className="p-3"><Badge variant={STATUS_COLORS[a.status] as any} className="text-xs">{a.status?.replace(/_/g, " ")}</Badge></td>
                   <td className="p-3" onClick={e => e.stopPropagation()}>

@@ -3,12 +3,14 @@ import { useQuery } from "@tanstack/react-query";
 import { type RawMaterialIssuance, type RawMaterialIssuanceItem, type RawMaterial, type Product, type Uom } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Printer } from "lucide-react";
+import { useTenantConfig } from "@/hooks/use-tenant-config";
 
 interface PrintableRawMaterialIssuanceProps {
   issuance: RawMaterialIssuance;
 }
 
 export default function PrintableRawMaterialIssuance({ issuance }: PrintableRawMaterialIssuanceProps) {
+  const tenantConfig = useTenantConfig();
   const printRef = useRef<HTMLDivElement>(null);
 
   const { data: items = [] } = useQuery<RawMaterialIssuanceItem[]>({
@@ -212,7 +214,7 @@ export default function PrintableRawMaterialIssuance({ issuance }: PrintableRawM
     printWindow.document.close();
   };
 
-  const formattedDate = new Date(issuance.issuanceDate).toLocaleDateString('en-IN', {
+  const formattedDate = new Date(issuance.issuanceDate).toLocaleDateString(tenantConfig.default_locale, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric'

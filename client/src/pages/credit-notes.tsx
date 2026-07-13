@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -59,6 +60,7 @@ interface CreditNoteItem {
 
 export default function CreditNotes() {
   const [, navigate] = useLocation();
+  const tenantConfig = useTenantConfig();
   const [selectedCreditNote, setSelectedCreditNote] = useState<CreditNote | null>(null);
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -208,19 +210,19 @@ export default function CreditNotes() {
                       </TableCell>
                       <TableCell>{cn.buyerName}</TableCell>
                       <TableCell className="text-right">
-                        ₹{((cn.subtotal ?? 0) / 100).toFixed(2)}
+                        {fmtCur((cn.subtotal ?? 0) / 100, tenantConfig)}
                       </TableCell>
                       <TableCell className="text-right">
-                        ₹{((cn.cgstAmount ?? 0) / 100).toFixed(2)}
+                        {fmtCur((cn.cgstAmount ?? 0) / 100, tenantConfig)}
                       </TableCell>
                       <TableCell className="text-right">
-                        ₹{((cn.sgstAmount ?? 0) / 100).toFixed(2)}
+                        {fmtCur((cn.sgstAmount ?? 0) / 100, tenantConfig)}
                       </TableCell>
                       <TableCell className="text-right">
-                        ₹{((cn.igstAmount ?? 0) / 100).toFixed(2)}
+                        {fmtCur((cn.igstAmount ?? 0) / 100, tenantConfig)}
                       </TableCell>
                       <TableCell className="text-right font-semibold">
-                        ₹{total.toFixed(2)}
+                        {fmtCur(total, tenantConfig)}
                       </TableCell>
                       <TableCell className="text-center">
                         <Button
@@ -298,10 +300,10 @@ export default function CreditNotes() {
                           <TableCell>{item.productName}</TableCell>
                           <TableCell className="text-right">{item.quantity ?? 0}</TableCell>
                           <TableCell className="text-right">
-                            ₹{((item.unitPrice ?? 0) / 100).toFixed(2)}
+                            {fmtCur((item.unitPrice ?? 0) / 100, tenantConfig)}
                           </TableCell>
                           <TableCell className="text-right">
-                            ₹{((item.amount ?? 0) / 100).toFixed(2)}
+                            {fmtCur((item.amount ?? 0) / 100, tenantConfig)}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -314,24 +316,24 @@ export default function CreditNotes() {
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Subtotal:</span>
-                    <span>₹{((selectedCreditNote.subtotal ?? 0) / 100).toFixed(2)}</span>
+                    <span>{fmtCur((selectedCreditNote.subtotal ?? 0) / 100, tenantConfig)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">CGST:</span>
-                    <span>₹{((selectedCreditNote.cgstAmount ?? 0) / 100).toFixed(2)}</span>
+                    <span>{fmtCur((selectedCreditNote.cgstAmount ?? 0) / 100, tenantConfig)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">SGST:</span>
-                    <span>₹{((selectedCreditNote.sgstAmount ?? 0) / 100).toFixed(2)}</span>
+                    <span>{fmtCur((selectedCreditNote.sgstAmount ?? 0) / 100, tenantConfig)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">IGST:</span>
-                    <span>₹{((selectedCreditNote.igstAmount ?? 0) / 100).toFixed(2)}</span>
+                    <span>{fmtCur((selectedCreditNote.igstAmount ?? 0) / 100, tenantConfig)}</span>
                   </div>
                   <div className="flex justify-between font-bold text-lg border-t pt-2">
                     <span>Total:</span>
                     <span>
-                      ₹{((selectedCreditNote.grandTotal ?? 0) / 100).toFixed(2)}
+                      {fmtCur((selectedCreditNote.grandTotal ?? 0) / 100, tenantConfig)}
                     </span>
                   </div>
                 </div>

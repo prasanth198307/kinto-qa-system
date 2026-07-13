@@ -6,8 +6,10 @@ import { Loader2, ArrowLeft, Printer } from "lucide-react";
 import { amountToWords } from "@/lib/number-to-words";
 import { useState, useEffect } from "react";
 import QRCode from "qrcode";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 export default function PrintInvoiceGatepassPage() {
+  const tenantConfig = useTenantConfig();
   const params = useParams<{ invoiceId: string; gatepassId: string }>();
   const invoiceId = params.invoiceId;
   const gatepassId = params.gatepassId;
@@ -162,9 +164,7 @@ export default function PrintInvoiceGatepassPage() {
 
   const vendor = vendors.find(v => v.id === gatepass.vendorId);
 
-  const formatCurrency = (amountInPaise: number): string => {
-    return `₹${(amountInPaise / 100).toFixed(2)}`;
-  };
+  const formatCurrency = (amountInPaise: number): string => fmtCur(amountInPaise / 100, tenantConfig);
 
   const getGatepassProductName = (item: GatepassItem): string => {
     const fg = finishedGoods.find(f => f.id === item.finishedGoodId);

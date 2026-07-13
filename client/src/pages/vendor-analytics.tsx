@@ -13,6 +13,7 @@ import { Building2, TrendingUp, DollarSign, Users, FileSpreadsheet, ExternalLink
 import { downloadXLSX } from "@/lib/download-utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 import { DataTablePagination } from "@/components/DataTablePagination";
 import type { PaginationMeta } from "@shared/schema";
 
@@ -54,6 +55,7 @@ interface VendorAnalyticsResponse {
 }
 
 export default function VendorAnalytics() {
+  const tenantConfig = useTenantConfig();
   const { toast } = useToast();
   const [location, setLocation] = useLocation();
   
@@ -118,9 +120,7 @@ export default function VendorAnalytics() {
     }
   });
 
-  const formatCurrency = (amountInPaise: number) => {
-    return `₹${(amountInPaise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  };
+  const formatCurrency = (amountInPaise: number) => fmtCur(amountInPaise / 100, tenantConfig);
 
   const formatQuantity = (qty: number) => {
     return qty.toLocaleString('en-IN');
@@ -157,11 +157,11 @@ export default function VendorAnalytics() {
       'State': vendor.state || 'N/A',
       'Mobile': vendor.mobileNumber,
       'Total Orders': vendor.totalOrders,
-      'Total Revenue (₹)': (vendor.totalRevenue / 100).toFixed(2),
+      'Total Revenue': (vendor.totalRevenue / 100).toFixed(2),
       'Quantity Sold': vendor.totalQuantity,
-      'Total Paid (₹)': (vendor.totalPaid / 100).toFixed(2),
-      'Outstanding (₹)': (vendor.outstandingBalance / 100).toFixed(2),
-      'Avg Order Value (₹)': (vendor.avgOrderValue / 100).toFixed(2),
+      'Total Paid': (vendor.totalPaid / 100).toFixed(2),
+      'Outstanding': (vendor.outstandingBalance / 100).toFixed(2),
+      'Avg Order Value': (vendor.avgOrderValue / 100).toFixed(2),
     }));
 
     // Create workbook and worksheet

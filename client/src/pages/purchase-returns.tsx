@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 import { format } from "date-fns";
 import { PackageX, Plus, Trash2, Loader2, IndianRupee, CheckCircle2, Clock } from "lucide-react";
 
@@ -31,6 +32,7 @@ type PurchaseReturn = {
 
 export default function PurchaseReturnsPage() {
   const { toast } = useToast();
+  const tenantConfig = useTenantConfig();
   const [addOpen, setAddOpen] = useState(false);
   const [approveId, setApproveId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("pending");
@@ -52,7 +54,7 @@ export default function PurchaseReturnsPage() {
   const approved = returns.filter(r => ["approved", "dispatched"].includes(r.status));
   const all = returns;
 
-  const fmt = (paise: number) => `₹${(paise / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
+  const fmt = (paise: number) => fmtCur(paise / 100, tenantConfig);
 
   const addMutation = useMutation({
     mutationFn: async () => {
@@ -251,7 +253,7 @@ export default function PurchaseReturnsPage() {
                       <Input type="number" min="1" placeholder="0" value={item.quantity} onChange={e => updateItem(i, "quantity", e.target.value)} data-testid={`input-return-qty-${i}`} />
                     </div>
                     <div className="col-span-2 space-y-1">
-                      {i === 0 && <Label className="text-xs text-muted-foreground">Rate (₹)</Label>}
+                      {i === 0 && <Label className="text-xs text-muted-foreground">Rate</Label>}
                       <Input type="number" min="0" step="0.01" placeholder="0.00" value={item.unitPrice} onChange={e => updateItem(i, "unitPrice", e.target.value)} data-testid={`input-return-rate-${i}`} />
                     </div>
                     <div className="col-span-1">

@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 import { useParams, useLocation, Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -66,6 +67,7 @@ interface RawMaterialDetailProps {
 }
 
 export default function RawMaterialDetail({ showHeader = true }: RawMaterialDetailProps) {
+  const tenantConfig = useTenantConfig();
   const { id } = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
 
@@ -102,11 +104,7 @@ export default function RawMaterialDetail({ showHeader = true }: RawMaterialDeta
 
   const formatCurrency = (amount: string | number | undefined | null) => {
     const safeAmount = typeof amount === 'number' ? amount : (amount ? parseFloat(amount) : 0);
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      minimumFractionDigits: 2,
-    }).format(safeAmount / 100);
+    return fmtCur(safeAmount / 100, tenantConfig);
   };
 
   if (isLoading) {

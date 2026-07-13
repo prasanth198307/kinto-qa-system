@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 import { getCashSourceLabel } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -61,16 +62,6 @@ const PERIOD_OPTIONS = [
   ]},
 ];
 
-function fmtCurr(n: number): string {
-  if (n >= 10000000) return `₹${(n / 10000000).toFixed(2)}Cr`;
-  if (n >= 100000) return `₹${(n / 100000).toFixed(2)}L`;
-  if (n >= 1000) return `₹${(n / 1000).toFixed(1)}K`;
-  return `₹${Math.round(n).toLocaleString("en-IN")}`;
-}
-function fmtL(n: number): string {
-  if (n >= 100000) return `₹${(n / 100000).toFixed(2)}L`;
-  return fmtCurr(n);
-}
 function fmtBucket(b: string, type: 'daily' | 'monthly'): string {
   try {
     if (type === 'monthly') return format(parseISO(`${b}-01`), "MMM yy");
@@ -108,21 +99,33 @@ const CHART_IN  = '#97C459';
 const CHART_OUT = '#F09595';
 const CHART_NET = '#378ADD';
 
-function CustomTooltip({ active, payload, label }: any) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="rounded-md border bg-background p-2 shadow text-xs space-y-1">
-      <p className="font-medium">{label}</p>
-      {payload.map((p: any, i: number) => (
-        <p key={i} style={{ color: p.color }}>
-          {p.name}: {fmtL(p.value)}
-        </p>
-      ))}
-    </div>
-  );
-}
-
 export default function MISCash() {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol ?? '₹';
+  const fmtCurr = (n: number): string => {
+    if (n >= 10000000) return `${sym}${(n / 10000000).toFixed(2)}Cr`;
+    if (n >= 100000) return `${sym}${(n / 100000).toFixed(2)}L`;
+    if (n >= 1000) return `${sym}${(n / 1000).toFixed(1)}K`;
+    return fmtCur(Math.round(n), tenantConfig);
+  };
+  const fmtL = (n: number): string => {
+    if (n >= 100000) return `${sym}${(n / 100000).toFixed(2)}L`;
+    return fmtCurr(n);
+  };
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (!active || !payload?.length) return null;
+    return (
+      <div className="rounded-md border bg-background p-2 shadow text-xs space-y-1">
+        <p className="font-medium">{label}</p>
+        {payload.map((p: any, i: number) => (
+          <p key={i} style={{ color: p.color }}>
+            {p.name}: {fmtL(p.value)}
+          </p>
+        ))}
+      </div>
+    );
+  };
+
   const [periodType, setPeriodType] = useState("this-year");
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
@@ -209,7 +212,7 @@ export default function MISCash() {
           </Link>
           <div>
             <p className="text-lg font-medium" data-testid="text-page-title">Cash Register Analytics — MIS</p>
-            <p className="text-xs text-muted-foreground">{data?.periodLabel ?? "Amounts in ₹ · Decision Support View"}</p>
+            <p className="text-xs text-muted-foreground">{data?.periodLabel ?? `Amounts in ${sym} · Decision Support View`}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -268,14 +271,14 @@ export default function MISCash() {
           <KPICard
             label="Total Cash In"
             value={fmtCurr(kpis?.totalReceived ?? 0)}
-            meta={`₹${Math.round(kpis?.totalReceived ?? 0).toLocaleString('en-IN')}`}
+            meta={fmtCur(Math.round(kpis?.totalReceived ?? 0), tenantConfig)}
             chip={<PosChip>{kpis?.activeDays ?? 0} active days</PosChip>}
             valueColor="#3B6D11"
           />
           <KPICard
             label="Total Expenses"
             value={fmtCurr(kpis?.totalExpenses ?? 0)}
-            meta={`₹${Math.round(kpis?.totalExpenses ?? 0).toLocaleString('en-IN')}`}
+            meta={fmtCur(Math.round(kpis?.totalExpenses ?? 0), tenantConfig)}
             chip={<NegChip>{expPct}% of revenue</NegChip>}
             valueColor="#A32D2D"
           />
@@ -331,7 +334,7 @@ export default function MISCash() {
                   <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#888' }} axisLine={false} tickLine={false} />
                   <YAxis
                     tick={{ fontSize: 10, fill: '#888' }} axisLine={false} tickLine={false}
-                    tickFormatter={v => v >= 100000 ? `₹${(v/100000).toFixed(1)}L` : `₹${(v/1000).toFixed(0)}K`}
+                    tickFormatter={v => v >= 100000 ? `${sym}${(v/100000).toFixed(1)}L` : `${sym}${(v/1000).toFixed(0)}K`}
                     width={52}
                   />
                   <RTooltip content={<CustomTooltip />} />

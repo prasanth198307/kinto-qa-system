@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -76,6 +77,8 @@ interface FIFOPaymentAllocationProps {
 
 export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPaymentAllocationProps) {
   const { toast } = useToast();
+  const tenantConfig = useTenantConfig();
+  const formatCurrency = (amountInPaise: number) => fmtCur(amountInPaise / 100, tenantConfig);
   const [allocationPreview, setAllocationPreview] = useState<any>(null);
   const [vendorPopoverOpen, setVendorPopoverOpen] = useState(false);
   const [selectedVendorId, setSelectedVendorId] = useState<string>("");
@@ -343,7 +346,7 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
                   name="amount"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Total Payment Amount (₹)</FormLabel>
+                      <FormLabel>Total Payment Amount ({tenantConfig.currency_symbol})</FormLabel>
                       <FormControl>
                         <Input
                           {...field}
@@ -518,7 +521,7 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
                 <span>
                   {pendingData?.invoiceCount} invoice(s) with outstanding balance of{" "}
                   <span className="font-semibold text-destructive">
-                    ₹{((pendingData?.totalOutstanding || 0) / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    {formatCurrency(pendingData?.totalOutstanding || 0)}
                   </span>
                 </span>
               )}
@@ -536,7 +539,7 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
                       <TableHead className="text-xs text-right">Paid</TableHead>
                       <TableHead className="text-xs text-right">Outstanding</TableHead>
                       {allocationMethod === 'manual' && (
-                        <TableHead className="text-xs text-right w-[140px]">Pay Amount (₹)</TableHead>
+                        <TableHead className="text-xs text-right w-[140px]">Pay Amount</TableHead>
                       )}
                     </TableRow>
                   </TableHeader>
@@ -555,13 +558,13 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
                           {format(new Date(invoice.invoiceDate), "dd-MMM-yy")}
                         </TableCell>
                         <TableCell className="text-sm text-right">
-                          ₹{(invoice.totalAmount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                          {formatCurrency(invoice.totalAmount)}
                         </TableCell>
                         <TableCell className="text-sm text-right text-green-600">
-                          ₹{(invoice.totalPaid / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                          {formatCurrency(invoice.totalPaid)}
                         </TableCell>
                         <TableCell className="text-sm text-right font-medium text-destructive">
-                          ₹{(invoice.outstanding / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                          {formatCurrency(invoice.outstanding)}
                         </TableCell>
                         {allocationMethod === 'manual' && (
                           <TableCell className="text-right">
@@ -604,19 +607,19 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
                 <div>
                   <p className="text-sm text-muted-foreground">Total Payment</p>
                   <p className="text-lg font-semibold">
-                    ₹{(allocationPreview.totalAmount / 100).toFixed(2)}
+                    {formatCurrency(allocationPreview.totalAmount)}
                   </p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Allocated</p>
                   <p className="text-lg font-semibold text-green-600">
-                    ₹{(allocationPreview.allocated / 100).toFixed(2)}
+                    {formatCurrency(allocationPreview.allocated)}
                   </p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Remaining</p>
                   <p className="text-lg font-semibold text-destructive">
-                    ₹{(allocationPreview.remaining / 100).toFixed(2)}
+                    {formatCurrency(allocationPreview.remaining)}
                   </p>
                 </div>
               </div>
@@ -642,10 +645,10 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
                           {format(new Date(allocation.invoiceDate), "dd-MMM-yyyy")}
                         </TableCell>
                         <TableCell>
-                          ₹{(allocation.outstanding / 100).toFixed(2)}
+                          {formatCurrency(allocation.outstanding)}
                         </TableCell>
                         <TableCell className="font-medium text-green-600">
-                          ₹{(allocation.allocated / 100).toFixed(2)}
+                          {formatCurrency(allocation.allocated)}
                         </TableCell>
                         <TableCell>
                           <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ${

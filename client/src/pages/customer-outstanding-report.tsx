@@ -23,6 +23,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { format } from "date-fns";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 interface Invoice {
   invoiceNumber: string;
@@ -81,6 +82,7 @@ function DaysOldBadge({ days }: { days: number }) {
 }
 
 function InvoiceRows({ invoices }: { invoices: Invoice[] }) {
+  const tenantConfig = useTenantConfig();
   return (
     <TableRow>
       <TableCell colSpan={7} className="p-0 bg-muted/30">
@@ -104,7 +106,7 @@ function InvoiceRows({ invoices }: { invoices: Invoice[] }) {
                     {format(new Date(inv.invoiceDate), "dd MMM yyyy")}
                   </td>
                   <td className="py-1 text-xs text-muted-foreground max-w-[180px] truncate">{inv.sourceAccount}</td>
-                  <td className="py-1 text-right font-medium text-xs">₹{fmt(inv.outstandingRupees)}</td>
+                  <td className="py-1 text-right font-medium text-xs">{fmtCur(inv.outstandingRupees, tenantConfig)}</td>
                   <td className="py-1 text-right">
                     <DaysOldBadge days={inv.daysOld} />
                   </td>
@@ -119,6 +121,7 @@ function InvoiceRows({ invoices }: { invoices: Invoice[] }) {
 }
 
 export default function CustomerOutstandingReport() {
+  const tenantConfig = useTenantConfig();
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
@@ -195,7 +198,7 @@ export default function CustomerOutstandingReport() {
             <div>
               <p className="text-xs text-muted-foreground">Total Pending</p>
               <p className="text-xl font-semibold" data-testid="text-total-pending">
-                {isLoading ? "—" : `₹${fmt(data?.totalPendingRupees ?? 0)}`}
+                {isLoading ? "—" : fmtCur(data?.totalPendingRupees ?? 0, tenantConfig)}
               </p>
             </div>
           </CardContent>
@@ -234,7 +237,7 @@ export default function CustomerOutstandingReport() {
         <CardContent className="p-0">
           {search && (
             <div className="px-4 pb-2 text-xs text-muted-foreground">
-              {filtered.length} result{filtered.length !== 1 ? "s" : ""} — Pending: ₹{fmt(totalFiltered)}
+              {filtered.length} result{filtered.length !== 1 ? "s" : ""} — Pending: {fmtCur(totalFiltered, tenantConfig)}
             </div>
           )}
           <div className="overflow-x-auto">
@@ -334,7 +337,7 @@ export default function CustomerOutstandingReport() {
                             )}
                             {customer.advancesAppliedRupees > 0 && (
                               <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 text-xs no-default-active-elevate">
-                                Adv ₹{fmt(customer.advancesAppliedRupees)}
+                                Adv {fmtCur(customer.advancesAppliedRupees, tenantConfig)}
                               </Badge>
                             )}
                           </div>
@@ -342,7 +345,7 @@ export default function CustomerOutstandingReport() {
 
                         <TableCell className="text-right">
                           <span className="font-semibold text-sm">
-                            ₹{fmt(customer.pendingAmountRupees)}
+                            {fmtCur(customer.pendingAmountRupees, tenantConfig)}
                           </span>
                         </TableCell>
                       </TableRow>

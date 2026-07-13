@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Download, Users, TrendingUp, AlertCircle, RefreshCw } from "lucide-react";
 import { downloadXLSX } from "@/lib/download-utils";
 import { format } from "date-fns";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 interface VendorType {
   id: string;
@@ -37,11 +38,9 @@ interface VendorReportData {
   vendors: VendorReportRow[];
 }
 
-function fmt(paise: number) {
-  return "₹" + (paise / 100).toLocaleString("en-IN", { maximumFractionDigits: 2 });
-}
-
 export default function VendorReport() {
+  const tenantConfig = useTenantConfig();
+  const fmt = (paise: number) => fmtCur(paise / 100, tenantConfig);
   const [selectedTypeId, setSelectedTypeId] = useState<string>("all");
 
   // Fetch vendor types from dedicated endpoint (always works independently)
@@ -97,10 +96,10 @@ export default function VendorReport() {
       "Contact Person": r.contactPerson,
       "Vendor Types": r.vendorTypeNames,
       "Invoice Count": r.invoiceCount,
-      "Invoice Amount (₹)": parseFloat((r.totalInvoiceAmount / 100).toFixed(2)),
-      "Amount Received (₹)": parseFloat((r.totalAmountReceived / 100).toFixed(2)),
-      "Credit Notes (₹)": parseFloat((r.totalCreditNotes / 100).toFixed(2)),
-      "Outstanding (₹)": parseFloat((r.outstanding / 100).toFixed(2)),
+      "Invoice Amount": parseFloat((r.totalInvoiceAmount / 100).toFixed(2)),
+      "Amount Received": parseFloat((r.totalAmountReceived / 100).toFixed(2)),
+      "Credit Notes": parseFloat((r.totalCreditNotes / 100).toFixed(2)),
+      "Outstanding": parseFloat((r.outstanding / 100).toFixed(2)),
     }));
 
     // Add totals row
@@ -116,10 +115,10 @@ export default function VendorReport() {
       "Contact Person": "",
       "Vendor Types": "",
       "Invoice Count": totals.invoiceCount,
-      "Invoice Amount (₹)": parseFloat((totals.totalInvoiceAmount / 100).toFixed(2)),
-      "Amount Received (₹)": parseFloat((totals.totalAmountReceived / 100).toFixed(2)),
-      "Credit Notes (₹)": parseFloat((totals.totalCreditNotes / 100).toFixed(2)),
-      "Outstanding (₹)": parseFloat((totals.outstanding / 100).toFixed(2)),
+      "Invoice Amount": parseFloat((totals.totalInvoiceAmount / 100).toFixed(2)),
+      "Amount Received": parseFloat((totals.totalAmountReceived / 100).toFixed(2)),
+      "Credit Notes": parseFloat((totals.totalCreditNotes / 100).toFixed(2)),
+      "Outstanding": parseFloat((totals.outstanding / 100).toFixed(2)),
     });
 
     const ws = XLSX.utils.json_to_sheet(sheetData);

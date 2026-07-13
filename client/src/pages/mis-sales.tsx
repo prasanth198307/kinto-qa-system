@@ -10,6 +10,7 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { exportToExcel, formatCurrencyForExcel, formatDateForExcel } from "@/lib/excel-export";
 import { format } from "date-fns";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 interface SalesData {
   period: number;
@@ -44,11 +45,9 @@ interface SalesData {
   }>;
 }
 
-function formatCurrency(paise: number): string {
-  return `₹${(paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-}
-
 export default function MISSales() {
+  const tenantConfig = useTenantConfig();
+  const formatCurrency = (paise: number): string => fmtCur(paise / 100, tenantConfig);
   const [period, setPeriod] = useState('30');
   const [isExporting, setIsExporting] = useState(false);
 

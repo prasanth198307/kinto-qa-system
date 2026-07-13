@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import { amountToWords } from "@/lib/number-to-words";
 import { useToast } from "@/hooks/use-toast";
 import QRCode from "qrcode";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 interface PrintableInvoiceGatepassProps {
   invoice: Invoice;
@@ -14,6 +15,7 @@ interface PrintableInvoiceGatepassProps {
 
 export default function PrintableInvoiceGatepass({ invoice, gatepass }: PrintableInvoiceGatepassProps) {
   const { toast } = useToast();
+  const tenantConfig = useTenantConfig();
 
   const { data: invoiceItems = [] } = useQuery<InvoiceItem[]>({
     queryKey: ['/api/invoice-items', invoice.id],
@@ -129,7 +131,7 @@ export default function PrintableInvoiceGatepass({ invoice, gatepass }: Printabl
   };
 
   const formatCurrency = (amountInPaise: number): string => {
-    return `₹${(amountInPaise / 100).toFixed(2)}`;
+    return fmtCur(amountInPaise / 100, tenantConfig);
   };
 
   const safeNum = (v: any): number => v || 0;
@@ -286,11 +288,11 @@ ${invoice.shipToName || invoice.shipToAddress ? `
               <th>HSN/SAC</th>
               <th>Quantity</th>
               <th>Unit</th>
-              <th>Price/Unit (₹)</th>
-              ${hasDiscount ? '<th>Discount (₹)</th>' : ''}
+              <th>Price/Unit</th>
+              ${hasDiscount ? '<th>Discount</th>' : ''}
               <th>GST%</th>
-              <th>GST (₹)</th>
-              <th>Amount (₹)</th>
+              <th>GST</th>
+              <th>Amount</th>
             </tr>
           </thead>
           <tbody>

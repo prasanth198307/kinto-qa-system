@@ -3,9 +3,18 @@ import type { TenantConfig } from "@/hooks/use-tenant-config";
 /** Generate 80mm thermal receipt HTML from bill data */
 export function generateReceiptHTML(billData: any, config: TenantConfig): string {
   const sym = config.currency_symbol ?? "₹";
-  const fmt = (n: any) =>
-    `${sym}${Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  const now = new Date().toLocaleString("en-IN", { timeZone: config.timezone || "Asia/Kolkata" });
+  const LOCALE_MAP: Record<string, string> = {
+    IN: "en-IN", US: "en-US", AE: "ar-AE", SA: "ar-SA",
+    GB: "en-GB", EU: "de-DE", AU: "en-AU", SG: "en-SG",
+  };
+  const intlLocale = LOCALE_MAP[config.country_code ?? "IN"] ?? "en-US";
+  const fmt = (n: any) => {
+    const num = Number(n || 0);
+    try {
+      return new Intl.NumberFormat(intlLocale, { style: "currency", currency: config.currency_code || "INR", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num);
+    } catch { return `${sym}${num.toFixed(2)}`; }
+  };
+  const now = new Date().toLocaleString(intlLocale, { timeZone: config.timezone || "Asia/Kolkata" });
   const items: any[] = Array.isArray(billData?.items) ? billData.items : [];
 
   const itemRows = items

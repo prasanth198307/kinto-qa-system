@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { usePermissions } from "@/hooks/use-permissions";
@@ -86,6 +87,7 @@ const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secon
 export default function VendorDebitNotesPage() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const tenantConfig = useTenantConfig();
   const { hasPermission } = usePermissions();
   const canCreate = hasPermission('vendor_debit_notes', 'create');
   const canDelete = hasPermission('vendor_debit_notes', 'delete');
@@ -125,9 +127,7 @@ export default function VendorDebitNotesPage() {
     },
   });
 
-  const formatCurrency = (paise: number) => {
-    return `₹${(paise / 100).toFixed(2)}`;
-  };
+  const formatCurrency = (paise: number) => fmtCur(paise / 100, tenantConfig);
 
   const filteredNotes = debitNotes.filter((note) => {
     const matchesSearch =

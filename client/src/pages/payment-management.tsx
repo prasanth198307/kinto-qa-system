@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
@@ -189,6 +190,7 @@ function PaymentEvidenceRow({ paymentId }: { paymentId: string }) {
 export default function PaymentManagement() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const tenantConfig = useTenantConfig();
   const { hasPermission, role } = usePermissions();
   const canCreate = hasPermission('payments', 'create');
   const canEdit = hasPermission('payments', 'edit');
@@ -1071,7 +1073,7 @@ export default function PaymentManagement() {
                         </TableCell>
                         <TableCell className="text-sm">{payment.vendorName}</TableCell>
                         <TableCell className="text-sm font-medium">{payment.invoiceNumber}</TableCell>
-                        <TableCell className="text-sm">₹{(payment.amount / 100).toFixed(2)}</TableCell>
+                        <TableCell className="text-sm">{fmtCur(payment.amount / 100, tenantConfig)}</TableCell>
                         <TableCell className="text-sm">{payment.paymentMethod}</TableCell>
                         <TableCell className="text-sm">{payment.referenceNumber || '-'}</TableCell>
                         <TableCell className="text-sm">
@@ -1255,7 +1257,7 @@ export default function PaymentManagement() {
                             {alloc.referenceNumber || '-'}
                           </TableCell>
                           <TableCell className="text-sm font-semibold text-right">
-                            ₹{(alloc.totalAmount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                            {fmtCur(alloc.totalAmount / 100, tenantConfig)}
                           </TableCell>
                           <TableCell className="text-center">
                             {alloc.isIndividual
@@ -1281,12 +1283,12 @@ export default function PaymentManagement() {
                                     <tr key={split.paymentId} className={i < alloc.splits.length - 1 ? 'border-b border-border/50' : ''}>
                                       <td className="py-1 font-mono text-xs">{split.invoiceNumber}</td>
                                       <td className="py-1 text-muted-foreground">{split.buyerName}</td>
-                                      <td className="py-1 text-right font-medium">₹{(split.amount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                                      <td className="py-1 text-right font-medium">{fmtCur(split.amount / 100, tenantConfig)}</td>
                                     </tr>
                                   ))}
                                   <tr className="border-t-2 border-border font-semibold">
                                     <td colSpan={2} className="pt-2 text-xs uppercase tracking-wide text-muted-foreground">Total</td>
-                                    <td className="pt-2 text-right">₹{(alloc.totalAmount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                                    <td className="pt-2 text-right">{fmtCur(alloc.totalAmount / 100, tenantConfig)}</td>
                                   </tr>
                                 </tbody>
                               </table>
@@ -1417,13 +1419,13 @@ export default function PaymentManagement() {
                               {adv.receiptDate ? format(new Date(adv.receiptDate), 'dd MMM yyyy') : '—'}
                             </TableCell>
                             <TableCell className="text-right font-mono text-sm">
-                              ₹{(adv.amount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                              {fmtCur(adv.amount / 100, tenantConfig)}
                             </TableCell>
                             <TableCell className="text-right font-mono text-sm text-muted-foreground">
-                              ₹{(adv.usedAmount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                              {fmtCur(adv.usedAmount / 100, tenantConfig)}
                             </TableCell>
                             <TableCell className="text-right font-mono text-sm font-medium text-green-700 dark:text-green-400">
-                              ₹{(available / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                              {fmtCur(available / 100, tenantConfig)}
                             </TableCell>
                             <TableCell className="text-sm">{adv.paymentMethod}</TableCell>
                             <TableCell>
@@ -1475,12 +1477,12 @@ export default function PaymentManagement() {
                   <div className="text-sm text-right space-y-1">
                     <div className="text-muted-foreground">
                       Total Advance Payments: <span className="font-medium text-foreground">
-                        ₹{((prepaymentData as any[]).reduce((s: number, a: any) => s + a.amount, 0) / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        {fmtCur((prepaymentData as any[]).reduce((s: number, a: any) => s + a.amount, 0) / 100, tenantConfig)}
                       </span>
                     </div>
                     <div className="text-muted-foreground">
                       Total Available Balance: <span className="font-semibold text-green-700 dark:text-green-400">
-                        ₹{((prepaymentData as any[]).reduce((s: number, a: any) => s + Math.max(0, a.amount - a.usedAmount), 0) / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        {fmtCur((prepaymentData as any[]).reduce((s: number, a: any) => s + Math.max(0, a.amount - a.usedAmount), 0) / 100, tenantConfig)}
                       </span>
                     </div>
                   </div>
@@ -1557,7 +1559,7 @@ export default function PaymentManagement() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Amount (₹) *</label>
+                <label className="text-sm font-medium">Amount *</label>
                 <Input
                   type="number"
                   step="0.01"
@@ -1631,7 +1633,7 @@ export default function PaymentManagement() {
             <DialogTitle>Apply Advance to Invoice</DialogTitle>
             <DialogDescription>
               {selectedAdvance && (
-                <>Advance {selectedAdvance.advanceNumber} — Available: ₹{((selectedAdvance.amount - selectedAdvance.usedAmount) / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</>
+                <>Advance {selectedAdvance.advanceNumber} — Available: {fmtCur((selectedAdvance.amount - selectedAdvance.usedAmount) / 100, tenantConfig)}</>
               )}
             </DialogDescription>
           </DialogHeader>
@@ -1647,7 +1649,7 @@ export default function PaymentManagement() {
                     const outstanding = inv.totalAmount - (inv.amountReceived || 0);
                     return (
                       <SelectItem key={inv.id} value={inv.id}>
-                        {inv.invoiceNumber} — ₹{(outstanding / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })} outstanding
+                        {inv.invoiceNumber} — {fmtCur(outstanding / 100, tenantConfig)} outstanding
                       </SelectItem>
                     );
                   })}
@@ -1658,7 +1660,7 @@ export default function PaymentManagement() {
               </Select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Amount to Apply (₹) *</label>
+              <label className="text-sm font-medium">Amount to Apply *</label>
               <Input
                 type="number"
                 step="0.01"
@@ -1770,7 +1772,7 @@ export default function PaymentManagement() {
                   name="amount"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Amount (₹)</FormLabel>
+                      <FormLabel>Amount</FormLabel>
                       <FormControl>
                         <Input {...field} type="number" step="0.01" />
                       </FormControl>

@@ -12,6 +12,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Truck, Calendar, User, Package, CheckCircle, Pen, FileText, Clock } from "lucide-react";
 import { format } from "date-fns";
 import type { Invoice, PaginatedResponse } from "@shared/schema";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 interface Gatepass {
   id: string;
@@ -28,6 +29,7 @@ interface Gatepass {
 }
 
 export default function ProofOfDelivery() {
+  const tenantConfig = useTenantConfig();
   const { toast } = useToast();
   const [selectedGatepass, setSelectedGatepass] = useState<string | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<string | null>(null);
@@ -303,7 +305,7 @@ export default function ProofOfDelivery() {
                             <div className="font-semibold text-lg">{invoice.invoiceNumber}</div>
                             <div className="text-sm text-muted-foreground">{invoice.buyerName}</div>
                             <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                              <span>₹{(invoice.totalAmount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                              <span>{fmtCur(invoice.totalAmount / 100, tenantConfig)}</span>
                               <span>{format(new Date(invoice.invoiceDate), 'dd MMM yyyy')}</span>
                             </div>
                           </div>

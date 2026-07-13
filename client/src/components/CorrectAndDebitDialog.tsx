@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -301,9 +302,8 @@ export function CorrectAndDebitDialog({
     }
   };
 
-  const formatCurrency = (paise: number) => {
-    return `₹${(paise / 100).toFixed(2)}`;
-  };
+  const tenantConfig = useTenantConfig();
+  const formatCurrency = (paise: number) => fmtCur(paise / 100, tenantConfig);
 
   const hasPreviousAdjustments = effectiveData?.summary && 
     (effectiveData.summary.creditNoteCount > 0 || effectiveData.summary.debitNoteCount > 0);

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -300,9 +301,8 @@ export function CorrectAndCreditDialog({
     }
   };
 
-  const formatCurrency = (amountInPaise: number) => {
-    return `₹${(amountInPaise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  };
+  const tenantConfig = useTenantConfig();
+  const formatCurrency = (amountInPaise: number) => fmtCur(amountInPaise / 100, tenantConfig);
 
   const hasPreviousAdjustments = effectiveData?.summary && 
     (effectiveData.summary.creditNoteCount > 0 || effectiveData.summary.debitNoteCount > 0);

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -344,9 +345,8 @@ export function VendorDebitNoteDialog({
     }
   };
 
-  const formatCurrency = (paise: number) => {
-    return `₹${(paise / 100).toFixed(2)}`;
-  };
+  const tenantConfig = useTenantConfig();
+  const formatCurrency = (paise: number) => fmtCur(paise / 100, tenantConfig);
 
   const addItem = () => {
     append({
@@ -726,7 +726,7 @@ export function VendorDebitNoteDialog({
                           name={`items.${index}.unitPrice`}
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-xs">Unit Price (₹) *</FormLabel>
+                              <FormLabel className="text-xs">Unit Price ({tenantConfig.currency_symbol}) *</FormLabel>
                               <FormControl>
                                 <Input 
                                   type="number" 

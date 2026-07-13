@@ -33,6 +33,7 @@ import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import { Link } from "wouter";
 import { exportToExcel, formatCurrencyForExcel } from "@/lib/excel-export";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 import { format } from "date-fns";
 
 interface KPIData {
@@ -100,17 +101,6 @@ interface AlertsData {
   alerts: Alert[];
 }
 
-function formatCurrency(paise: number): string {
-  return `₹${(paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-}
-
-function formatCurrencyCompact(paise: number): string {
-  const val = paise / 100;
-  if (val >= 10000000) return `₹${(val / 10000000).toFixed(2)}Cr`;
-  if (val >= 100000) return `₹${(val / 100000).toFixed(2)}L`;
-  if (val >= 1000) return `₹${(val / 1000).toFixed(1)}K`;
-  return `₹${val.toLocaleString('en-IN')}`;
-}
 
 type StatusType = 'HEALTHY' | 'CRITICAL' | 'ALERT' | 'NO DATA';
 
@@ -239,6 +229,17 @@ function PriorityCard({ level, title, description }: { level: PriorityLevel; tit
 const barColors = ['bg-blue-500', 'bg-green-500', 'bg-amber-500', 'bg-violet-500', 'bg-pink-500'];
 
 export default function MISDashboard() {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol ?? '₹';
+  const formatCurrency = (paise: number): string => fmtCur(paise / 100, tenantConfig);
+  const formatCurrencyCompact = (paise: number): string => {
+    const val = paise / 100;
+    if (val >= 10000000) return `${sym}${(val / 10000000).toFixed(2)}Cr`;
+    if (val >= 100000) return `${sym}${(val / 100000).toFixed(2)}L`;
+    if (val >= 1000) return `${sym}${(val / 1000).toFixed(1)}K`;
+    return fmtCur(val, tenantConfig);
+  };
+
   const [, navigate] = useLocation();
   const [period, setPeriod] = useState('30');
   const [customFrom, setCustomFrom] = useState('');
@@ -560,7 +561,7 @@ export default function MISDashboard() {
                       <div className="flex items-start gap-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-md px-3 py-2">
                         <AlertTriangle className="w-3.5 h-3.5 text-amber-600 mt-0.5 flex-shrink-0" />
                         <p className="text-xs text-amber-700 dark:text-amber-400">
-                          Cash register data shows ₹0 for this period — verify data source or date filter
+                          Cash register data shows {sym}0 for this period — verify data source or date filter
                         </p>
                       </div>
                     )}
