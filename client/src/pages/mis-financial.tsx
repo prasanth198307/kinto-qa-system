@@ -157,6 +157,7 @@ const CHART_NET = "#378ADD";
 ═══════════════════════════════════════════════════════════════════════ */
 export default function MISFinancial() {
   const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const fmtCurr = (paise: number) => fmtCurrSymbol(paise, tenantConfig.currency_symbol);
   const fmtFull = (paise: number) => fmtCur(Math.abs(paise / 100), tenantConfig);
   const curFy = new Date().getMonth() >= 3 ? new Date().getFullYear() : new Date().getFullYear() - 1;

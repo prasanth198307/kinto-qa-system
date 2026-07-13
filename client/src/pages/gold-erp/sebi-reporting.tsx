@@ -25,6 +25,8 @@ const YEARS = [CY - 1, CY, CY + 1].map(String);
 export default function SEBIReportingPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [month, setMonth] = useState(String(new Date().getMonth() + 1));
   const [year, setYear] = useState(String(CY));
   const [quarter, setQuarter] = useState("1");

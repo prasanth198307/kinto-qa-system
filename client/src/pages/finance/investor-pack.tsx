@@ -73,6 +73,8 @@ export default function InvestorPackPage() {
   });
 
   const calcMetrics = useMutation({
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
     mutationFn: () => api("POST", "/api/investor/metrics/auto-calculate", {}),
     onSuccess: () => { toast({ title: "Metrics recalculated" }); },
   });

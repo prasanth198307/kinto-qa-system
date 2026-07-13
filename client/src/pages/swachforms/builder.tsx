@@ -73,6 +73,8 @@ export default function SwachFormsBuilderPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [fields, setFields] = useState<Field[]>([]);
   const [formName, setFormName] = useState("");
   const [selectedField, setSelectedField] = useState<string | null>(null);

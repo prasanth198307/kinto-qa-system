@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, BookOpen, Lock, Unlock, Edit } from "lucide-react";
 import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
+let sym = "₹"; // overridden per-component via useTenantConfig
 
 interface JournalLine {
   id: string;
@@ -73,6 +74,7 @@ function formatDate(dateStr: string): string {
 export default function JournalEntryDetailPage() {
   const [, setLocation] = useLocation();
   const params = useParams<{ id: string }>();
+  const { currency_symbol: sym } = useTenantConfig();
 
   const { data: entry, isLoading, error } = useQuery<JournalEntryDetail>({
     queryKey: ["/api/journal-entries", params.id],

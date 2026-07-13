@@ -16,6 +16,7 @@ interface PrintableInvoiceGatepassProps {
 export default function PrintableInvoiceGatepass({ invoice, gatepass }: PrintableInvoiceGatepassProps) {
   const { toast } = useToast();
   const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
 
   const { data: invoiceItems = [] } = useQuery<InvoiceItem[]>({
     queryKey: ['/api/invoice-items', invoice.id],

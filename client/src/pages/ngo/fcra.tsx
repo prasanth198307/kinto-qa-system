@@ -20,6 +20,8 @@ const FC_BLANK = { donor_name: "", country: "", currency: "USD", amount: "", inr
 
 export default function NGOFCRAPage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { toast } = useToast();
   const [reg, setReg] = useState<any>({ registration_no: "", validity_date: "", account_no: "", bank_name: "", bank_branch: "", ifsc: "" });
   const [fcOpen, setFcOpen] = useState(false);

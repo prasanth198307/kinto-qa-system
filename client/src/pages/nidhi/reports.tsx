@@ -31,6 +31,8 @@ export default function NidhiReportsPage() {
   const { data: collReport = [] } = useQuery<any[]>({ queryKey: ["nidhi-rpt-coll", collFrom, collTo], queryFn: () => get(`/api/nidhi/reports/daily-collection?from_date=${collFrom}&to_date=${collTo}`) });
 
   const accrualMut = useMutation({
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
     mutationFn: () => post("/api/nidhi/interest-accrual/run", {}),
     onSuccess: (d: any) => toast({ title: `Interest accrual done · ${d.journals_posted} GL entries posted` }),
   });

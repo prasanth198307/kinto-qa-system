@@ -874,6 +874,7 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
   const { canAccessScreen } = usePermissions();
   const { hasModule } = usePlanFeatures();
   const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const formatCurrency = (amountInPaise: number) => fmtCur(amountInPaise / 100, tenantConfig);
 
   // Check individual report tab permissions - database driven

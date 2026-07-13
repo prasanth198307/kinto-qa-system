@@ -191,6 +191,7 @@ export default function PaymentManagement() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { hasPermission, role } = usePermissions();
   const canCreate = hasPermission('payments', 'create');
   const canEdit = hasPermission('payments', 'edit');

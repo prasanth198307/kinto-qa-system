@@ -16,6 +16,8 @@ const fmt = (n: any) => n != null ? `${sym}${Number(n).toLocaleString("en-IN")}`
 export default function BrokersPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<any>({});
   const [selectedBroker, setSelectedBroker] = useState<any>(null);

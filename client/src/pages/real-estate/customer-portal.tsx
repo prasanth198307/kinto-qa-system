@@ -17,6 +17,8 @@ const fmtDate = (d: any) => d ? new Date(d).toLocaleDateString("en-IN") : "—";
 export default function CustomerPortalPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [createForm, setCreateForm] = useState<any>({});
   const [createdPortal, setCreatedPortal] = useState<any>(null);
 

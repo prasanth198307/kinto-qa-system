@@ -14,6 +14,7 @@ import { Link } from "wouter";
 import { exportToExcel, formatCurrencyForExcel } from "@/lib/excel-export";
 import { format, subMonths } from "date-fns";
 import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
+let sym = "₹"; // overridden per-component via useTenantConfig
 
 interface ManufacturingSalesData {
   month: string;
@@ -87,6 +88,7 @@ function GrowthBadge({ current, prev }: { current: number; prev: number }) {
 
 export default function MISManufacturing() {
   const [month, setMonth] = useState(() => format(new Date(), 'yyyy-MM'));
+  const { currency_symbol: sym } = useTenantConfig();
   const [isExporting, setIsExporting] = useState(false);
   const monthOptions = buildMonthOptions();
 

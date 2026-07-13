@@ -33,6 +33,8 @@ function StarRating({ value }: { value: number }) {
 function GiftCardsTab() {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [form, setForm] = useState({ card_number: "", initial_balance: "", expiry_date: "", customer_name: "", customer_phone: "" });
   const [searchCard, setSearchCard] = useState("");
   const [foundCard, setFoundCard] = useState<any>(null);

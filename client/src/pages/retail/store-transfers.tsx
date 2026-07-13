@@ -21,6 +21,8 @@ const BLANK_ITEM = { product_id: "", product_name: "", sku: "", requested_qty: "
 
 export default function RetailStoreTransfersPage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [viewId, setViewId] = useState<number | null>(null);

@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
+let sym = "₹"; // overridden per-component via useTenantConfig
 
 const apiFetch = (u: string) => fetch(u, { credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 const apiPost = (u: string, b: any) => fetch(u, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b), credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
@@ -223,6 +224,7 @@ function FeedbackReport() {
 function TallyExportTab() {
   const today = new Date().toISOString().split("T")[0];
   const [from, setFrom] = useState(today);
+  const { currency_symbol: sym } = useTenantConfig();
   const [to, setTo] = useState(today);
   const [salesLedger, setSalesLedger] = useState("Food Sales A/c");
   const [cashLedger, setCashLedger] = useState("Cash-in-Hand");

@@ -264,6 +264,8 @@ export default function RestaurantMenuPage() {
   const [tab, setTab] = useState<"items" | "categories" | "modifiers">("items");
   const { toast } = useToast();
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
 
   // ─── CATEGORIES ───────────────────────────────────────────────────────────
   const { data: categories = [] } = useQuery<Category[]>({ queryKey: ["/api/restaurant/menu-categories"], queryFn: () => api("GET", "/api/restaurant/menu-categories").then((r: any) => Array.isArray(r) ? r : []) });

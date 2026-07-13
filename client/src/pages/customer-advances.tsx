@@ -110,6 +110,8 @@ export default function CustomerAdvancesPage() {
 
   // Get all child vendor IDs for the selected parent vendor
   const childVendorIds = useMemo(() => {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
     if (!selectedAdvance?.vendorId) return [];
     return vendors
       .filter(v => v.parentVendorId === selectedAdvance.vendorId)

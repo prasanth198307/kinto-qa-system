@@ -22,6 +22,8 @@ const fmt = (n: number) => `${sym}${(n || 0).toLocaleString("en-IN", { minimumFr
 export default function BomVersionsPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const [selectedProduct, setSelectedProduct] = useState("");
   const [explodeQty, setExplodeQty] = useState("1");
   const [explodeResult, setExplodeResult] = useState<any[]>([]);

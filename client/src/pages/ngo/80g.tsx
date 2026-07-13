@@ -18,6 +18,8 @@ const FY = new Date().getMonth() >= 3 ? new Date().getFullYear() : new Date().ge
 
 export default function NGO80GPage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { toast } = useToast();
   const [fy, setFy] = useState(`${FY}-${String(FY + 1).slice(2)}`);
 

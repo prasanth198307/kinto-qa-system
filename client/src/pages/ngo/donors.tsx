@@ -20,6 +20,8 @@ const BLANK = { name: "", phone: "", email: "", address: "", pan_number: "", don
 
 export default function NGODonorsPage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);

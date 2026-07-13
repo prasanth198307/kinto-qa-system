@@ -15,6 +15,8 @@ const FY = new Date().getFullYear();
 
 export default function NidhiCompliancePage() {
   const qc = useQueryClient();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { toast } = useToast();
 
   const { data: nof } = useQuery<any>({ queryKey: ["nidhi-nof"], queryFn: () => get("/api/nidhi/compliance/nof-ratio") });

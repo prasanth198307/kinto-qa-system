@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Users, Landmark, Coins, TrendingUp, AlertTriangle, CheckCircle, IndianRupee, Clock } from "lucide-react";
 import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
+let sym = "₹"; // overridden per-component via useTenantConfig
 
 const fmt = (n: number) => `${sym}${Number(n || 0).toLocaleString("en-IN")}`;
 const api = (p: string) => fetch(p).then((r) => r.json());

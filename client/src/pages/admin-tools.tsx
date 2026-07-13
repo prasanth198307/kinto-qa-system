@@ -48,6 +48,8 @@ export default function AdminToolsPage() {
   const [backfillResult, setBackfillResult] = useState<BackfillResult | null>(null);
 
   const fixInvoicesMutation = useMutation({
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
     mutationFn: async () => {
       const res = await apiRequest('POST', '/api/journal-entries/fix-invoices');
       return res.json() as Promise<FixResult>;

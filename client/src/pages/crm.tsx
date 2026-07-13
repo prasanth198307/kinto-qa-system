@@ -57,6 +57,8 @@ function PipelineTab() {
   const { data: accounts = [] } = useQuery<any[]>({ queryKey: ["/api/crm/accounts"] });
 
   const saveOpp = useMutation({
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
     mutationFn: (data: any) => editingOpp
       ? apiRequest("PUT", `/api/crm/opportunities/${editingOpp.id}`, data)
       : apiRequest("POST", "/api/crm/opportunities", data),

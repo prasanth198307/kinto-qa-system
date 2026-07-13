@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
+let sym = "₹"; // overridden per-component via useTenantConfig
 
 const api = (u: string) => fetch(u, { credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
 const fmt = (n: any) => n != null ? `${sym}${Number(n).toLocaleString("en-IN")}` : "—";
@@ -21,6 +22,7 @@ const REPORTS: { key: ReportKey; label: string; desc: string }[] = [
 
 export default function ReportsPage() {
   const [activeReport, setActiveReport] = useState<ReportKey>("project_profitability");
+  const { currency_symbol: sym } = useTenantConfig();
 
   const { data, isLoading } = useQuery<any>({
     queryKey: ["/api/real-estate/reports", activeReport],
