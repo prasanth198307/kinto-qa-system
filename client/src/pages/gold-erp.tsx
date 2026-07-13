@@ -102,9 +102,9 @@ function OverviewSection() {
   const { data: stats } = useQuery<any>({ queryKey: ["/api/gold-erp/stats"] });
   const { data: rates = [] } = useQuery<any[]>({ queryKey: ["/api/gold-erp/metal-rates/today"] });
 
-  const statCards = [
   const tenantConfig = useTenantConfig();
   const sym = tenantConfig.currency_symbol;
+  const statCards = [
     { title: "Gold Rate (22K)", value: `${sym}${fmt(stats?.goldRate)}/g`, icon: TrendingUp, color: "bg-yellow-100 text-yellow-600" },
     { title: "Karigars", value: stats?.totalKarigars ?? 0, icon: Users, color: "bg-blue-100 text-blue-600" },
     { title: "Jewellery Items", value: stats?.totalItems ?? 0, icon: Package, color: "bg-purple-100 text-purple-600" },

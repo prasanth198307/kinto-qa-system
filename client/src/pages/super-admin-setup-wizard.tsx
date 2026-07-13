@@ -155,9 +155,9 @@ function slugify(str: string) {
 }
 
 function StepIndicator({ current }: { current: Step }) {
-  const steps = [
   const tenantConfig = useTenantConfig();
   const sym = tenantConfig.currency_symbol;
+  const steps = [
     { n: 1 as Step, label: "Plan",     icon: Package },
     { n: 2 as Step, label: "Business", icon: Building2 },
     { n: 3 as Step, label: "Users",    icon: Users },

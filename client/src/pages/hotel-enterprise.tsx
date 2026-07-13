@@ -17,10 +17,10 @@ const apiRequest = async (method: string, url: string, body?: any) => {
 const fmt = (n: any) => Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
 
 function FrontDeskTab() {
-  const { data: kpi = {} } = useQuery({ queryKey: ["/api/hotel/kpi"], queryFn: () => apiRequest("GET", "/api/hotel/kpi") });
-  const cards = [
   const tenantConfig = useTenantConfig();
   const sym = tenantConfig.currency_symbol;
+  const { data: kpi = {} } = useQuery({ queryKey: ["/api/hotel/kpi"], queryFn: () => apiRequest("GET", "/api/hotel/kpi") });
+  const cards = [
     { label: "Rooms Occupied", value: kpi.rooms_occupied || 0 },
     { label: "Occupancy %", value: `${fmt(kpi.occupancy_pct)}%` },
     { label: "ADR", value: `${sym}${fmt(kpi.adr)}` },
