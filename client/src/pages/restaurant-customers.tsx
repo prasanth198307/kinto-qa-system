@@ -540,11 +540,11 @@ export default function RestaurantCustomersPage() {
               {loadingConfig ? <p className="text-center text-gray-400">Loading config...</p> : (
                 <div className="grid grid-cols-2 gap-4">
                   {[
-                    { key: "points_per_100_rupees", label: "Points per ₹100 spent", type: "number" },
-                    { key: "redemption_rate", label: "₹ value per point", type: "number" },
-                    { key: "bronze_threshold", label: "Bronze min spend (₹)", type: "number" },
-                    { key: "silver_threshold", label: "Silver threshold (₹)", type: "number" },
-                    { key: "gold_threshold", label: "Gold threshold (₹)", type: "number" },
+                    { key: "points_per_100_rupees", label: `Points per ${sym}100 spent`, type: "number" },
+                    { key: "redemption_rate", label: `${sym} value per point`, type: "number" },
+                    { key: "bronze_threshold", label: `Bronze min spend (${sym})`, type: "number" },
+                    { key: "silver_threshold", label: `Silver threshold (${sym})`, type: "number" },
+                    { key: "gold_threshold", label: `Gold threshold (${sym})`, type: "number" },
                     { key: "expiry_days", label: "Points expiry (days)", type: "number" },
                   ].map(f => (
                     <div key={f.key}><label className="text-sm font-medium">{f.label}</label>
