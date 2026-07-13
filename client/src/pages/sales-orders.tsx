@@ -186,7 +186,7 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
         if (discountMode === '%') {
           discountPaise = Math.round((grossTaxable * discountVal) / 100);
         } else {
-          discountPaise = Math.round(discountVal * item.quantity * 100); // ₹ per case × qty
+          discountPaise = Math.round(discountVal * item.quantity * 100); // ${sym} per case × qty
         }
         const taxableAmountPaise = grossTaxable - discountPaise;
         const gstAmountPaise = Math.round(taxableAmountPaise * totalGST / 100);

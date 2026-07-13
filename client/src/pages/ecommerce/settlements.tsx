@@ -210,7 +210,7 @@ export default function SettlementsPage() {
                 <input type="number" value={cForm.period_year} onChange={e => setCForm(f => ({ ...f, period_year: e.target.value }))} style={inp} />
               </div>
               <div>
-                <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Gross Sales (₹)</label>
+                <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Gross Sales (${sym})</label>
                 <input type="number" value={cForm.gross_sales} onChange={e => setCForm(f => ({ ...f, gross_sales: e.target.value, commission_amount: autoCalcComm(f.commission_rate, e.target.value) }))} style={inp} />
               </div>
               <div>
@@ -218,19 +218,19 @@ export default function SettlementsPage() {
                 <input type="number" value={cForm.commission_rate} onChange={e => setCForm(f => ({ ...f, commission_rate: e.target.value, commission_amount: autoCalcComm(e.target.value, f.gross_sales) }))} style={inp} />
               </div>
               <div>
-                <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Commission Amount (₹)</label>
+                <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Commission Amount (${sym})</label>
                 <input type="number" value={cForm.commission_amount} onChange={e => setCForm(f => ({ ...f, commission_amount: e.target.value }))} style={inp} />
               </div>
               <div>
-                <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Shipping Charges (₹)</label>
+                <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Shipping Charges (${sym})</label>
                 <input type="number" value={cForm.shipping_charges} onChange={e => setCForm(f => ({ ...f, shipping_charges: e.target.value }))} style={inp} />
               </div>
               <div>
-                <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Other Deductions (₹)</label>
+                <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Other Deductions (${sym})</label>
                 <input type="number" value={cForm.other_deductions} onChange={e => setCForm(f => ({ ...f, other_deductions: e.target.value }))} style={inp} />
               </div>
               <div>
-                <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Net Settlement (₹)</label>
+                <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Net Settlement (${sym})</label>
                 <input type="number" value={cForm.net_settlement} onChange={e => setCForm(f => ({ ...f, net_settlement: e.target.value }))} style={inp} />
               </div>
               <div>

@@ -26,6 +26,8 @@ function SH({ title, action }: any) {
 
 // ── E-Commerce Store ──────────────────────────────────────────────────────────
 export function ECommerceSection() {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { toast } = useToast();
   const [tab, setTab] = useState<"config" | "customers" | "orders" | "coupons" | "rates">("config");
   const [showCouponForm, setShowCouponForm] = useState(false);
@@ -268,7 +270,7 @@ export function ECommerceSection() {
                 </Select>
               </FL>
               <FL label="Purity"><Input value={rateForm.purity_name || ""} onChange={e => setRateForm((p: any) => ({ ...p, purity_name: e.target.value }))} placeholder="22K (916)" /></FL>
-              <FL label="Rate/g (₹)"><Input type="number" value={rateForm.rate_per_gram || ""} onChange={e => setRateForm((p: any) => ({ ...p, rate_per_gram: e.target.value }))} /></FL>
+              <FL label="Rate/g "><Input type="number" value={rateForm.rate_per_gram || ""} onChange={e => setRateForm((p: any) => ({ ...p, rate_per_gram: e.target.value }))} /></FL>
               <FL label="Source">
                 <Select value={rateForm.source || "manual"} onValueChange={v => setRateForm((p: any) => ({ ...p, source: v }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>

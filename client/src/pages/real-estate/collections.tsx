@@ -108,7 +108,7 @@ export default function CollectionsPage() {
             </CardHeader>
             <CardContent>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {[{ key: "paid_date", label: "Payment Date", type: "date" }, { key: "paid_amount", label: "Amount Received ₹", type: "number" }].map(f => (
+                {[{ key: "paid_date", label: "Payment Date", type: "date" }, { key: "paid_amount", label: "Amount Received ${sym}", type: "number" }].map(f => (
                   <div key={f.key}>
                     <Label style={{ fontSize: 11 }}>{f.label}</Label>
                     <Input type={f.type || "text"} value={payForm[f.key] ?? ""} onChange={e => setPayForm((p: any) => ({ ...p, [f.key]: e.target.value }))} style={{ fontSize: 12, marginTop: 2 }} />

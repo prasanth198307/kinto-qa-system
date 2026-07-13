@@ -212,7 +212,7 @@ export default function LabPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div><Label>Price (₹)</Label><Input type="number" value={testForm.price} onChange={e => tf("price", e.target.value)} /></div>
+                <div><Label>Price (${sym})</Label><Input type="number" value={testForm.price} onChange={e => tf("price", e.target.value)} /></div>
                 <div><Label>TAT (hours)</Label><Input type="number" value={testForm.turnaround_hours} onChange={e => tf("turnaround_hours", e.target.value)} /></div>
                 <div><Label>Reference Range</Label><Input value={testForm.reference_range} onChange={e => tf("reference_range", e.target.value)} placeholder="e.g. 70-110" /></div>
                 <div><Label>Unit</Label><Input value={testForm.unit} onChange={e => tf("unit", e.target.value)} placeholder="mg/dL, g/L..." /></div>

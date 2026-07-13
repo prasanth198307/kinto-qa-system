@@ -216,7 +216,7 @@ export default function FuelPage() {
             </div>
             <div><Label>Date</Label><Input type="date" value={fuelForm.date} onChange={setF("date")} /></div>
             <div><Label>Liters</Label><Input type="number" value={fuelForm.liters} onChange={setF("liters")} /></div>
-            <div><Label>Rate/Liter (₹)</Label><Input type="number" value={fuelForm.rate_per_liter} onChange={setF("rate_per_liter")} /></div>
+            <div><Label>Rate/Liter (${sym})</Label><Input type="number" value={fuelForm.rate_per_liter} onChange={setF("rate_per_liter")} /></div>
             <div><Label>Odometer (km)</Label><Input type="number" value={fuelForm.odometer_km} onChange={setF("odometer_km")} /></div>
             <div><Label>Fuel Station</Label><Input value={fuelForm.fuel_station} onChange={setF("fuel_station")} /></div>
           </div>
@@ -232,7 +232,7 @@ export default function FuelPage() {
         <DialogContent style={{ maxWidth: 360 }}>
           <DialogHeader><DialogTitle>Recharge FASTag</DialogTitle></DialogHeader>
           <div style={{ display: "grid", gap: 12 }}>
-            <div><Label>Recharge Amount (₹)</Label><Input type="number" value={rechargeAmt} onChange={e => setRechargeAmt(e.target.value)} placeholder="Enter amount" /></div>
+            <div><Label>Recharge Amount (${sym})</Label><Input type="number" value={rechargeAmt} onChange={e => setRechargeAmt(e.target.value)} placeholder="Enter amount" /></div>
           </div>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
             <Button variant="outline" onClick={() => setRechargeId(null)}>Cancel</Button>

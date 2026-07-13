@@ -109,7 +109,7 @@ export default function NidhiDailyCollectionPage() {
               </Select></div>
             <div><Label className="text-xs">Loan ID (if EMI)</Label><Input value={form.loan_id} onChange={e => f("loan_id", e.target.value)} className="h-8 text-sm" /></div>
             <div><Label className="text-xs">Deposit ID (if RD)</Label><Input value={form.deposit_id} onChange={e => f("deposit_id", e.target.value)} className="h-8 text-sm" /></div>
-            <div><Label className="text-xs">Amount (₹)</Label><Input type="number" value={form.amount} onChange={e => f("amount", e.target.value)} className="h-8 text-sm" /></div>
+            <div><Label className="text-xs">Amount (${sym})</Label><Input type="number" value={form.amount} onChange={e => f("amount", e.target.value)} className="h-8 text-sm" /></div>
             <div><Label className="text-xs">Payment Mode</Label>
               <Select value={form.payment_mode} onValueChange={v => f("payment_mode", v)}>
                 <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>

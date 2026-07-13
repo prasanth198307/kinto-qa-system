@@ -99,7 +99,7 @@ export default function NGODonationsPage() {
                 <SelectTrigger className="h-8"><SelectValue placeholder="General fund" /></SelectTrigger>
                 <SelectContent>{projects.map((p: any) => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}</SelectContent>
               </Select></div>
-            <div><Label className="text-xs">Amount (₹)</Label><Input type="number" value={form.amount} onChange={e => f("amount", e.target.value)} className="h-8" /></div>
+            <div><Label className="text-xs">Amount (${sym})</Label><Input type="number" value={form.amount} onChange={e => f("amount", e.target.value)} className="h-8" /></div>
             <div><Label className="text-xs">Date</Label><Input type="date" value={form.donation_date} onChange={e => f("donation_date", e.target.value)} className="h-8" /></div>
             <div><Label className="text-xs">Payment Mode</Label>
               <Select value={form.payment_mode} onValueChange={v => f("payment_mode", v)}>
@@ -110,7 +110,7 @@ export default function NGODonationsPage() {
             <div className="col-span-2"><Label className="text-xs">Purpose</Label><Input value={form.purpose} onChange={e => f("purpose", e.target.value)} className="h-8" /></div>
             <div className="col-span-2 flex items-center gap-2">
               <input type="checkbox" id="g80" checked={form.is_80g_eligible} onChange={e => f("is_80g_eligible", e.target.checked)} />
-              <Label htmlFor="g80" className="text-sm">80G eligible (cash donations above ₹2,000 are NOT eligible)</Label>
+              <Label htmlFor="g80" className="text-sm">80G eligible (cash donations above ${sym}2,000 are NOT eligible)</Label>
             </div>
           </div>
           <div className="flex gap-2 justify-end mt-2">

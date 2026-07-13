@@ -91,7 +91,7 @@ export default function PharmacyReportsPage() {
             ))}
           </div>
           <Card><CardHeader><CardTitle className="text-base">Monthly Trend</CardTitle></CardHeader><CardContent>
-            <table className="w-full text-sm"><thead><tr className="bg-gray-50">{["Month", "Purchases ₹", "Sales ₹", "Profit ₹"].map(h => <th key={h} className="text-left p-2 border">{h}</th>)}</tr></thead>
+            <table className="w-full text-sm"><thead><tr className="bg-gray-50">{["Month", "Purchases ${sym}", "Sales ${sym}", "Profit ${sym}"].map(h => <th key={h} className="text-left p-2 border">{h}</th>)}</tr></thead>
               <tbody>{rows("monthly").map((x: any, i: number) => <tr key={i} className="border-b"><td className="p-2">{x.month}</td><td className="p-2">{sym}{x.purchases?.toLocaleString()}</td><td className="p-2">{sym}{x.sales?.toLocaleString()}</td><td className="p-2">{sym}{x.profit?.toLocaleString()}</td></tr>)}
               {rows("monthly").length === 0 && <tr><td colSpan={4} className="text-center p-4 text-gray-400">No data.</td></tr>}</tbody>
             </table>
@@ -101,7 +101,7 @@ export default function PharmacyReportsPage() {
 
       {tab === "dead-stock" && (
         <Card><CardHeader><CardTitle className="text-base">Dead Stock (no sales in 90 days)</CardTitle></CardHeader><CardContent>
-          <table className="w-full text-sm"><thead><tr className="bg-gray-50">{["Drug", "Batch", "Qty", "Value ₹", "Last Sold"].map(h => <th key={h} className="text-left p-2 border">{h}</th>)}</tr></thead>
+          <table className="w-full text-sm"><thead><tr className="bg-gray-50">{["Drug", "Batch", "Qty", "Value ${sym}", "Last Sold"].map(h => <th key={h} className="text-left p-2 border">{h}</th>)}</tr></thead>
             <tbody>{rows("items").map((x: any, i: number) => <tr key={i} className="border-b"><td className="p-2">{x.drug_name}</td><td className="p-2 font-mono text-xs">{x.batch_number}</td><td className="p-2">{x.quantity}</td><td className="p-2">{sym}{x.value?.toLocaleString()}</td><td className="p-2">{x.last_sold?.slice(0, 10) ?? "Never"}</td></tr>)}
             {rows("items").length === 0 && <tr><td colSpan={5} className="text-center p-4 text-gray-400">No dead stock. Inventory moving well.</td></tr>}</tbody>
           </table>

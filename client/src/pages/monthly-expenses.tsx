@@ -205,6 +205,8 @@ function SourceBadge({ source }: { source: string }) {
 }
 
 export default function MonthlyExpensesPage() {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { toast } = useToast();
   const [activeMonth, setActiveMonth] = useState(getCurrentMonth());
 
@@ -984,13 +986,13 @@ export default function MonthlyExpensesPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>{isRecurring ? 'Monthly Amount (₹) *' : 'Total Amount (₹) *'}</Label>
+                <Label>{isRecurring ? 'Monthly Amount (${sym}) *' : 'Total Amount (${sym}) *'}</Label>
                 <Input type="number" step="0.01" min="0" placeholder="0.00" value={expForm.amount}
                   onChange={e => setExpForm(f => ({ ...f, amount: e.target.value }))} data-testid="input-expense-amount" />
                 {isRecurring && <p className="text-xs text-muted-foreground">Standard monthly bill amount</p>}
               </div>
               <div className="space-y-1.5">
-                <Label>Amount Paid (₹)</Label>
+                <Label>Amount Paid (${sym})</Label>
                 <Input type="number" step="0.01" min="0" placeholder="0.00" value={expForm.paidAmount}
                   onChange={e => setExpForm(f => ({ ...f, paidAmount: e.target.value }))} data-testid="input-paid-amount" />
                 <p className="text-xs text-muted-foreground">Use "Payment History" for multiple payments</p>

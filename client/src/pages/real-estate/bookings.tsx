@@ -137,7 +137,7 @@ export default function BookingsPage() {
               {showSchedForm && (
                 <div style={{ background: "#f8faff", border: "1px solid #d0daf5", borderRadius: 6, padding: 10, marginBottom: 10 }}>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
-                    {[{ key: "milestone", label: "Milestone" }, { key: "due_date", label: "Due Date", type: "date" }, { key: "amount", label: "Amount ₹", type: "number" }, { key: "notes", label: "Notes" }].map(f => (
+                    {[{ key: "milestone", label: "Milestone" }, { key: "due_date", label: "Due Date", type: "date" }, { key: "amount", label: "Amount ${sym}", type: "number" }, { key: "notes", label: "Notes" }].map(f => (
                       <div key={f.key}>
                         <Label style={{ fontSize: 11 }}>{f.label}</Label>
                         <Input type={f.type || "text"} value={schedForm[f.key] ?? ""} onChange={e => setSchedForm((p: any) => ({ ...p, [f.key]: e.target.value }))} style={{ fontSize: 12, marginTop: 2 }} />

@@ -751,7 +751,7 @@ export default function MISFinancial() {
             </div>
             <div className="rounded-md p-2.5 text-xs flex gap-2 items-start" style={{ background: "#EEEDFE", color: "#534AB7", border: "1px solid #AFA9EC" }}>
               <span className="shrink-0">ℹ</span>
-              <span><strong>Fix rules:</strong> (1) Narration mandatory on all entries · (2) Bill/invoice attachment required for every cash expense · (3) Flag all ₹1L+ round-figure postings · (4) Resolve any duplicate entries before month-end</span>
+              <span><strong>Fix rules:</strong> (1) Narration mandatory on all entries · (2) Bill/invoice attachment required for every cash expense · (3) Flag all ${sym}1L+ round-figure postings · (4) Resolve any duplicate entries before month-end</span>
             </div>
           </>
         )}

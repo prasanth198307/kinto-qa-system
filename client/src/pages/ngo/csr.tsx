@@ -227,9 +227,9 @@ have been utilized as follows:</p>
             <div><Label>Project Name</Label><Input value={form.project_name} onChange={e => set("project_name", e.target.value)} /></div>
             <div><Label>Company Donor</Label><Input value={form.company_donor} onChange={e => set("company_donor", e.target.value)} /></div>
             <div className="grid grid-cols-3 gap-3">
-              <div><Label>Sanctioned (₹)</Label><Input type="number" value={form.sanctioned} onChange={e => set("sanctioned", e.target.value)} /></div>
-              <div><Label>Received (₹)</Label><Input type="number" value={form.received} onChange={e => set("received", e.target.value)} /></div>
-              <div><Label>Utilized (₹)</Label><Input type="number" value={form.utilized} onChange={e => set("utilized", e.target.value)} /></div>
+              <div><Label>Sanctioned (${sym})</Label><Input type="number" value={form.sanctioned} onChange={e => set("sanctioned", e.target.value)} /></div>
+              <div><Label>Received (${sym})</Label><Input type="number" value={form.received} onChange={e => set("received", e.target.value)} /></div>
+              <div><Label>Utilized (${sym})</Label><Input type="number" value={form.utilized} onChange={e => set("utilized", e.target.value)} /></div>
             </div>
             <div><Label>Beneficiaries Reached</Label><Input type="number" value={form.beneficiaries} onChange={e => set("beneficiaries", e.target.value)} /></div>
             <div><Label>Impact Outcomes</Label><Input value={form.outcomes} onChange={e => set("outcomes", e.target.value)} /></div>

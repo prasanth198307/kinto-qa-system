@@ -265,7 +265,7 @@ export default function SuperAdminModuleCatalog() {
             <div className="space-y-1.5">
               <Label className="flex items-center gap-1.5">
                 <IndianRupee className="h-3.5 w-3.5 text-muted-foreground" />
-                Price per Month (₹)
+                Price per Month (${sym})
               </Label>
               <Input
                 data-testid="input-price-monthly"

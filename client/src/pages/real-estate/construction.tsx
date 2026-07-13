@@ -162,7 +162,7 @@ export default function ConstructionPage() {
               <CardHeader style={{ paddingBottom: 8 }}><CardTitle style={{ fontSize: 13 }}>Record Construction Cost</CardTitle></CardHeader>
               <CardContent>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10 }}>
-                  {[{ key: "expense_date", label: "Date", type: "date" }, { key: "category", label: "Category (Civil/MEP/Finishing)" }, { key: "vendor_name", label: "Vendor / Contractor" }, { key: "description", label: "Description" }, { key: "budget_amount", label: "Budget ₹", type: "number" }, { key: "actual_amount", label: "Actual ₹", type: "number" }, { key: "invoice_no", label: "Invoice / Bill No" }].map(f => (
+                  {[{ key: "expense_date", label: "Date", type: "date" }, { key: "category", label: "Category (Civil/MEP/Finishing)" }, { key: "vendor_name", label: "Vendor / Contractor" }, { key: "description", label: "Description" }, { key: "budget_amount", label: "Budget ${sym}", type: "number" }, { key: "actual_amount", label: "Actual ${sym}", type: "number" }, { key: "invoice_no", label: "Invoice / Bill No" }].map(f => (
                     <div key={f.key}>
                       <Label style={{ fontSize: 11 }}>{f.label}</Label>
                       <Input type={f.type || "text"} value={cForm[f.key] ?? ""} onChange={e => setCForm((p: any) => ({ ...p, [f.key]: e.target.value }))} style={{ fontSize: 12, marginTop: 2 }} />

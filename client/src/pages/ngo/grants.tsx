@@ -94,8 +94,8 @@ export default function NGOGrantsPage() {
                 <SelectTrigger className="h-8"><SelectValue placeholder="Select" /></SelectTrigger>
                 <SelectContent>{projects.map((p: any) => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}</SelectContent>
               </Select></div>
-            <div><Label className="text-xs">Applied Amount (₹)</Label><Input type="number" value={form.applied_amount} onChange={e => f("applied_amount", e.target.value)} className="h-8" /></div>
-            <div><Label className="text-xs">Approved Amount (₹)</Label><Input type="number" value={form.approved_amount || ""} onChange={e => f("approved_amount", e.target.value)} className="h-8" /></div>
+            <div><Label className="text-xs">Applied Amount (${sym})</Label><Input type="number" value={form.applied_amount} onChange={e => f("applied_amount", e.target.value)} className="h-8" /></div>
+            <div><Label className="text-xs">Approved Amount (${sym})</Label><Input type="number" value={form.approved_amount || ""} onChange={e => f("approved_amount", e.target.value)} className="h-8" /></div>
             <div><Label className="text-xs">Application Date</Label><Input type="date" value={form.application_date ? String(form.application_date).slice(0,10) : ""} onChange={e => f("application_date", e.target.value)} className="h-8" /></div>
             <div><Label className="text-xs">Approval Date</Label><Input type="date" value={form.approval_date ? String(form.approval_date).slice(0,10) : ""} onChange={e => f("approval_date", e.target.value)} className="h-8" /></div>
             <div><Label className="text-xs">Status</Label>

@@ -103,7 +103,7 @@ function formatDate(d: string | null) {
 }
 
 function formatRupees(paise: number) {
-  if (paise === 0) return "₹0";
+  if (paise === 0) return "${sym}0";
   return `${sym}${paise.toLocaleString("en-IN")}`;
 }
 

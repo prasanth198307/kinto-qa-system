@@ -239,11 +239,11 @@ export default function ScrapManagementPage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Unit Cost (₹) *</Label>
+                <Label>Unit Cost (${sym}) *</Label>
                 <Input type="number" min="0" step="0.01" placeholder="0.00" value={form.unitCost} onChange={e => setForm(f => ({ ...f, unitCost: e.target.value }))} data-testid="input-scrap-cost" />
               </div>
               <div className="space-y-1.5">
-                <Label>Selling Price (₹) *</Label>
+                <Label>Selling Price (${sym}) *</Label>
                 <Input type="number" min="0" step="0.01" placeholder="0.00" value={form.sellingPrice} onChange={e => setForm(f => ({ ...f, sellingPrice: e.target.value }))} data-testid="input-scrap-sp" />
               </div>
             </div>
@@ -310,7 +310,7 @@ export default function ScrapManagementPage() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Recovery Value (₹)</Label>
+              <Label>Recovery Value (${sym})</Label>
               <Input type="number" min="0" step="0.01" placeholder="0.00" value={disposeForm.disposalValue} onChange={e => setDisposeForm(f => ({ ...f, disposalValue: e.target.value }))} data-testid="input-disposal-value" />
             </div>
             <div className="space-y-1.5">

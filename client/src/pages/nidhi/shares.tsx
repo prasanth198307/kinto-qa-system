@@ -127,7 +127,7 @@ export default function NidhiSharesPage() {
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2"><Label className="text-xs">Member ID</Label><Input value={form.member_id} onChange={e => f("member_id", e.target.value)} className="h-8 text-sm" /></div>
             <div><Label className="text-xs">Shares Count</Label><Input type="number" value={form.shares_count} onChange={e => f("shares_count", e.target.value)} className="h-8 text-sm" /></div>
-            <div><Label className="text-xs">Share Value (₹)</Label><Input type="number" value={form.share_value} onChange={e => f("share_value", e.target.value)} className="h-8 text-sm" /></div>
+            <div><Label className="text-xs">Share Value (${sym})</Label><Input type="number" value={form.share_value} onChange={e => f("share_value", e.target.value)} className="h-8 text-sm" /></div>
             <div><Label className="text-xs">Certificate No.</Label><Input value={form.certificate_number} onChange={e => f("certificate_number", e.target.value)} className="h-8 text-sm" /></div>
             <div><Label className="text-xs">Payment Mode</Label>
               <Select value={form.payment_mode} onValueChange={v => f("payment_mode", v)}>

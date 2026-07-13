@@ -2070,7 +2070,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
             </div>
             <div className="flex items-center gap-2">
               <Label className="text-sm text-green-800 dark:text-green-300 whitespace-nowrap shrink-0">
-                Apply towards this invoice (₹):
+                Apply towards this invoice (${sym}):
               </Label>
               <Input
                 type="number"

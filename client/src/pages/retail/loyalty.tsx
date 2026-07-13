@@ -131,8 +131,8 @@ export default function RetailLoyaltyPage() {
         <TabsContent value="config">
           <Card className="max-w-md"><CardHeader><CardTitle className="text-base flex items-center gap-2"><Clock className="w-4 h-4" />Earning, Redemption & Expiry</CardTitle></CardHeader>
             <CardContent className="space-y-3">
-              <div><Label className="text-xs">Points per ₹50 spent</Label><Input type="number" value={cfg.points_per_50_rupees} onChange={e => setCfg((p: any) => ({ ...p, points_per_50_rupees: e.target.value }))} className="h-8" /></div>
-              <div><Label className="text-xs">Redemption value per point (₹)</Label><Input type="number" step="0.1" value={cfg.redemption_value_per_point} onChange={e => setCfg((p: any) => ({ ...p, redemption_value_per_point: e.target.value }))} className="h-8" /></div>
+              <div><Label className="text-xs">Points per ${sym}50 spent</Label><Input type="number" value={cfg.points_per_50_rupees} onChange={e => setCfg((p: any) => ({ ...p, points_per_50_rupees: e.target.value }))} className="h-8" /></div>
+              <div><Label className="text-xs">Redemption value per point (${sym})</Label><Input type="number" step="0.1" value={cfg.redemption_value_per_point} onChange={e => setCfg((p: any) => ({ ...p, redemption_value_per_point: e.target.value }))} className="h-8" /></div>
               <div><Label className="text-xs">Points expiry (days of inactivity, 0 = never)</Label><Input type="number" value={cfg.expiry_days ?? 365} onChange={e => setCfg((p: any) => ({ ...p, expiry_days: e.target.value }))} className="h-8" /></div>
               <Button size="sm" onClick={() => cfgMut.mutate()} disabled={cfgMut.isPending}>Save Config</Button>
               <p className="text-xs text-muted-foreground">The expiry scheduler runs daily at server boot + every 24h and zeroes points for members inactive longer than the expiry window.</p>

@@ -197,7 +197,7 @@ export default function PipelineBoardPage() {
               <Input value={newDeal.title} onChange={e => setNewDeal(f => ({ ...f, title: e.target.value }))} placeholder="Deal title" />
             </div>
             <div>
-              <Label>Value (₹)</Label>
+              <Label>Value (${sym})</Label>
               <Input type="number" value={newDeal.value} onChange={e => setNewDeal(f => ({ ...f, value: e.target.value }))} placeholder="100000" />
             </div>
             <div>

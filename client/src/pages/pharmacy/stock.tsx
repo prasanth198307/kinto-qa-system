@@ -84,8 +84,8 @@ export default function StockPage() {
             <div><Label>Batch Number</Label><Input value={form.batch_number} onChange={e => f("batch_number", e.target.value)} /></div>
             <div><Label>Expiry Date</Label><Input type="date" value={form.expiry_date} onChange={e => f("expiry_date", e.target.value)} /></div>
             <div><Label>Quantity</Label><Input type="number" value={form.quantity} onChange={e => f("quantity", e.target.value)} /></div>
-            <div><Label>MRP (₹)</Label><Input type="number" value={form.mrp} onChange={e => f("mrp", e.target.value)} /></div>
-            <div><Label>Purchase Rate (₹)</Label><Input type="number" value={form.purchase_rate} onChange={e => f("purchase_rate", e.target.value)} /></div>
+            <div><Label>MRP (${sym})</Label><Input type="number" value={form.mrp} onChange={e => f("mrp", e.target.value)} /></div>
+            <div><Label>Purchase Rate (${sym})</Label><Input type="number" value={form.purchase_rate} onChange={e => f("purchase_rate", e.target.value)} /></div>
             <div><Label>Rack Location</Label><Input value={form.rack_location} onChange={e => f("rack_location", e.target.value)} placeholder="A-12" /></div>
             <div className="col-span-3 flex gap-2 justify-end">
               <Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>

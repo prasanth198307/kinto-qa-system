@@ -122,7 +122,7 @@ export default function NidhiDepositsPage() {
                 <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>{TYPES.map(t => <SelectItem key={t} value={t}>{t.toUpperCase()}</SelectItem>)}</SelectContent>
               </Select></div>
-            <div><Label className="text-xs">Principal (₹)</Label><Input type="number" value={form.principal_amount} onChange={e => f("principal_amount", e.target.value)} className="h-8 text-sm" /></div>
+            <div><Label className="text-xs">Principal (${sym})</Label><Input type="number" value={form.principal_amount} onChange={e => f("principal_amount", e.target.value)} className="h-8 text-sm" /></div>
             <div><Label className="text-xs">Interest Rate %</Label><Input type="number" step="0.1" value={form.interest_rate} onChange={e => f("interest_rate", e.target.value)} className="h-8 text-sm" /></div>
             <div><Label className="text-xs">Tenure (months)</Label><Input type="number" value={form.tenure_months} onChange={e => f("tenure_months", e.target.value)} className="h-8 text-sm" /></div>
             <div><Label className="text-xs">Opening Date</Label><Input type="date" value={form.opening_date} onChange={e => f("opening_date", e.target.value)} className="h-8 text-sm" /></div>

@@ -304,7 +304,7 @@ export default function DonorAdminPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <Label>Amount (₹)</Label>
+                <Label>Amount (${sym})</Label>
                 <Input type="number" value={donationForm.amount} onChange={e => setDonationForm(f => ({ ...f, amount: e.target.value }))} />
               </div>
               <div className="space-y-1">
@@ -351,7 +351,7 @@ export default function DonorAdminPage() {
               <Input value={csrForm.client_company} onChange={e => setCSRForm(f => ({ ...f, client_company: e.target.value }))} />
             </div>
             <div className="space-y-1">
-              <Label>Allocated Budget (₹)</Label>
+              <Label>Allocated Budget (${sym})</Label>
               <Input type="number" value={csrForm.allocated_budget} onChange={e => setCSRForm(f => ({ ...f, allocated_budget: e.target.value }))} />
             </div>
             <div className="grid grid-cols-2 gap-4">

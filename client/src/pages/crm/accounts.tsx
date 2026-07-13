@@ -98,7 +98,7 @@ export default function CRMAccountsPage() {
             <div><Label>Website</Label><Input value={form.website} onChange={e => f("website", e.target.value)} /></div>
             <div><Label>GST Number</Label><Input value={form.gst_no} onChange={e => f("gst_no", e.target.value)} /></div>
             <div><Label>City</Label><Input value={form.city} onChange={e => f("city", e.target.value)} /></div>
-            <div><Label>Annual Revenue (₹)</Label><Input type="number" value={form.annual_revenue} onChange={e => f("annual_revenue", e.target.value)} /></div>
+            <div><Label>Annual Revenue (${sym})</Label><Input type="number" value={form.annual_revenue} onChange={e => f("annual_revenue", e.target.value)} /></div>
             <div><Label>Employee Count</Label><Input type="number" value={form.employee_count} onChange={e => f("employee_count", e.target.value)} /></div>
             <div className="col-span-2"><Label>Address</Label><Input value={form.address} onChange={e => f("address", e.target.value)} /></div>
             <div className="col-span-3"><Label>Notes</Label><Input value={form.notes} onChange={e => f("notes", e.target.value)} /></div>

@@ -197,7 +197,7 @@ export default function InsurancePage() {
                     <SelectContent>{Array.isArray(admissions) && admissions.map((a: any) => <SelectItem key={a.id} value={a.id.toString()}>#{a.id} {a.patient_name} ({a.admission_date?.slice(0, 10)})</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
-                <div><Label>Claim Amount (₹)</Label><Input type="number" value={claimForm.claim_amount} onChange={e => cf("claim_amount", e.target.value)} /></div>
+                <div><Label>Claim Amount (${sym})</Label><Input type="number" value={claimForm.claim_amount} onChange={e => cf("claim_amount", e.target.value)} /></div>
                 <div><Label>Diagnosis (ICD-10)</Label><Input value={claimForm.diagnosis} onChange={e => cf("diagnosis", e.target.value)} placeholder="e.g. I10, E11" /></div>
                 <div className="col-span-2"><Label>Treatment Summary</Label><Input value={claimForm.treatment_summary} onChange={e => cf("treatment_summary", e.target.value)} /></div>
                 <div><Label>Pre-Auth Required?</Label>

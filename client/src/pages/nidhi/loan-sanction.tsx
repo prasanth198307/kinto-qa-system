@@ -164,7 +164,7 @@ export default function LoanSanctionPage() {
           <DialogHeader><DialogTitle>New Loan Application</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div><Label>Member Name</Label><Input value={form.member} onChange={e => setForm(f => ({ ...f, member: e.target.value }))} /></div>
-            <div><Label>Loan Amount (₹)</Label><Input type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} /></div>
+            <div><Label>Loan Amount (${sym})</Label><Input type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} /></div>
             <div><Label>Purpose</Label><Input value={form.purpose} onChange={e => setForm(f => ({ ...f, purpose: e.target.value }))} /></div>
             <div><Label>Security</Label><Input value={form.security} onChange={e => setForm(f => ({ ...f, security: e.target.value }))} /></div>
             <div className="flex gap-2 justify-end">

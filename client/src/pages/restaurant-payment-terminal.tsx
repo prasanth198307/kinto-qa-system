@@ -33,6 +33,8 @@ interface TerminalLog {
 }
 
 export default function RestaurantPaymentTerminalPage() {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -295,7 +297,7 @@ export default function RestaurantPaymentTerminalPage() {
                 <p>2. Go to <strong>Settings → API Keys</strong> and generate a new key pair (live mode).</p>
                 <p>3. Copy the <strong>Key ID</strong> (starts with <code>rzp_live_</code>) and <strong>Key Secret</strong>.</p>
                 <p>4. Paste both into the fields above and click Save.</p>
-                <p>5. Click <strong>Test Connection</strong> to verify. A payment link will be created for ₹1 to confirm the credentials work.</p>
+                <p>5. Click <strong>Test Connection</strong> to verify. A payment link will be created for ${sym}1 to confirm the credentials work.</p>
               </AccordionContent>
             </AccordionItem>
             <AccordionItem value="pinelabs">

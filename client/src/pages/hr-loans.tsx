@@ -293,12 +293,12 @@ export default function HRLoansPage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <Label>Sanctioned Amount (₹) *</Label>
+                <Label>Sanctioned Amount (${sym}) *</Label>
                 <Input type="number" placeholder="50000" value={form.sanctionedAmount}
                   onChange={e => setForm(f => ({ ...f, sanctionedAmount: e.target.value }))} />
               </div>
               <div>
-                <Label>Monthly EMI (₹) *</Label>
+                <Label>Monthly EMI (${sym}) *</Label>
                 <Input type="number" placeholder="5000" value={form.emi}
                   onChange={e => setForm(f => ({ ...f, emi: e.target.value }))} />
               </div>

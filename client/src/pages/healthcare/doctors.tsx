@@ -60,7 +60,7 @@ export default function DoctorsPage() {
             <div><Label>Medical Reg No (NMC)</Label><Input value={form.registration_no} onChange={e => f("registration_no", e.target.value)} /></div>
             <div><Label>Phone</Label><Input value={form.phone} onChange={e => f("phone", e.target.value)} /></div>
             <div><Label>Email</Label><Input value={form.email} onChange={e => f("email", e.target.value)} /></div>
-            <div><Label>Consultation Fee (₹)</Label><Input type="number" value={form.consultation_fee} onChange={e => f("consultation_fee", e.target.value)} /></div>
+            <div><Label>Consultation Fee (${sym})</Label><Input type="number" value={form.consultation_fee} onChange={e => f("consultation_fee", e.target.value)} /></div>
             <div><Label>HR Employee ID</Label><Input value={form.employee_id} onChange={e => f("employee_id", e.target.value)} placeholder="Links to hr_employees" /></div>
             <div><Label>OPD Days</Label><Input value={form.opd_days} onChange={e => f("opd_days", e.target.value)} placeholder="Mon, Wed, Fri" /></div>
             <div className="col-span-3 flex gap-2 justify-end">

@@ -221,7 +221,7 @@ export default function RERACompliancePage() {
                     onChange={e => setDlForm(f => ({ ...f, due_date: e.target.value }))} />
                 </div>
                 <div className="space-y-1">
-                  <Label>Amount (₹)</Label>
+                  <Label>Amount (${sym})</Label>
                   <Input type="number" placeholder="500000" value={dlForm.amount}
                     onChange={e => setDlForm(f => ({ ...f, amount: e.target.value }))} />
                 </div>

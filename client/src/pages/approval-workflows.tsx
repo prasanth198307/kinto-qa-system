@@ -243,11 +243,11 @@ export default function ApprovalWorkflowsPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label>Min Amount (₹)</Label>
+                <Label>Min Amount (${sym})</Label>
                 <Input type="number" data-testid="input-min-amount" value={ruleForm.min_amount} onChange={e => setRuleForm(f => ({ ...f, min_amount: Number(e.target.value) }))} />
               </div>
               <div className="space-y-1.5">
-                <Label>Max Amount (₹, blank = unlimited)</Label>
+                <Label>Max Amount (${sym}, blank = unlimited)</Label>
                 <Input type="number" data-testid="input-max-amount" value={ruleForm.max_amount} onChange={e => setRuleForm(f => ({ ...f, max_amount: e.target.value }))} placeholder="No limit" />
               </div>
             </div>

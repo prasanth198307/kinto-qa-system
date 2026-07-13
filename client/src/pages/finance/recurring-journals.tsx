@@ -242,8 +242,8 @@ export default function RecurringJournalsPage() {
                   <TableRow>
                     <TableHead>Account Code</TableHead>
                     <TableHead>Account Name</TableHead>
-                    <TableHead>Debit (₹)</TableHead>
-                    <TableHead>Credit (₹)</TableHead>
+                    <TableHead>Debit (${sym})</TableHead>
+                    <TableHead>Credit (${sym})</TableHead>
                     <TableHead>Description</TableHead>
                     <TableHead></TableHead>
                   </TableRow>

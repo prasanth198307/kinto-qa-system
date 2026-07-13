@@ -84,7 +84,7 @@ export default function BankLoansPage() {
                   {projects.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
               </div>
-              {[{ key: "bank_name", label: "Bank / Lender" }, { key: "loan_account_no", label: "Loan Account No" }, { key: "sanctioned_amount", label: "Sanctioned Amount ₹", type: "number" }, { key: "interest_rate", label: "Interest Rate % p.a.", type: "number" }, { key: "sanction_date", label: "Sanction Date", type: "date" }, { key: "disbursement_start_date", label: "Disbursement Start", type: "date" }, { key: "maturity_date", label: "Maturity Date", type: "date" }, { key: "loan_type", label: "Type (Term Loan/OD/CC)" }].map(f => (
+              {[{ key: "bank_name", label: "Bank / Lender" }, { key: "loan_account_no", label: "Loan Account No" }, { key: "sanctioned_amount", label: "Sanctioned Amount ${sym}", type: "number" }, { key: "interest_rate", label: "Interest Rate % p.a.", type: "number" }, { key: "sanction_date", label: "Sanction Date", type: "date" }, { key: "disbursement_start_date", label: "Disbursement Start", type: "date" }, { key: "maturity_date", label: "Maturity Date", type: "date" }, { key: "loan_type", label: "Type (Term Loan/OD/CC)" }].map(f => (
                 <div key={f.key}>
                   <Label style={{ fontSize: 11 }}>{f.label}</Label>
                   <Input type={f.type || "text"} value={form[f.key] ?? ""} onChange={e => setForm((p: any) => ({ ...p, [f.key]: e.target.value }))} style={{ fontSize: 12, marginTop: 2 }} />
@@ -144,7 +144,7 @@ export default function BankLoansPage() {
               {showDrawForm && (
                 <div style={{ background: "#f0f4ff", borderRadius: 6, padding: 10, marginBottom: 10 }}>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
-                    {[{ key: "drawdown_date", label: "Drawdown Date", type: "date" }, { key: "amount", label: "Amount ₹", type: "number" }, { key: "bank_reference", label: "Bank Ref / UTR" }, { key: "purpose", label: "Purpose (Civil Work/MEP/Finishing)" }].map(f => (
+                    {[{ key: "drawdown_date", label: "Drawdown Date", type: "date" }, { key: "amount", label: "Amount ${sym}", type: "number" }, { key: "bank_reference", label: "Bank Ref / UTR" }, { key: "purpose", label: "Purpose (Civil Work/MEP/Finishing)" }].map(f => (
                       <div key={f.key}>
                         <Label style={{ fontSize: 11 }}>{f.label}</Label>
                         <Input type={f.type || "text"} value={drawForm[f.key] ?? ""} onChange={e => setDrawForm((p: any) => ({ ...p, [f.key]: e.target.value }))} style={{ fontSize: 12, marginTop: 2 }} />
@@ -158,7 +158,7 @@ export default function BankLoansPage() {
               {showRepayForm && (
                 <div style={{ background: "#f0fdf4", borderRadius: 6, padding: 10, marginBottom: 10 }}>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
-                    {[{ key: "payment_date", label: "Payment Date", type: "date" }, { key: "principal_amount", label: "Principal ₹", type: "number" }, { key: "interest_amount", label: "Interest ₹", type: "number" }, { key: "bank_reference", label: "Bank Ref / UTR" }].map(f => (
+                    {[{ key: "payment_date", label: "Payment Date", type: "date" }, { key: "principal_amount", label: "Principal ${sym}", type: "number" }, { key: "interest_amount", label: "Interest ${sym}", type: "number" }, { key: "bank_reference", label: "Bank Ref / UTR" }].map(f => (
                       <div key={f.key}>
                         <Label style={{ fontSize: 11 }}>{f.label}</Label>
                         <Input type={f.type || "text"} value={repayForm[f.key] ?? ""} onChange={e => setRepayForm((p: any) => ({ ...p, [f.key]: e.target.value }))} style={{ fontSize: 12, marginTop: 2 }} />

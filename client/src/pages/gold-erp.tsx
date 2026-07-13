@@ -1606,7 +1606,7 @@ function MetalLedgerSection() {
               </div>
               <div className="space-y-1"><Label className="text-xs">Date</Label><Input type="date" value={form.txn_date} onChange={e => set("txn_date", e.target.value)} /></div>
               <div className="space-y-1"><Label className="text-xs">Weight (grams) *</Label><Input type="number" step="0.001" value={form.weight_gm || ""} onChange={e => set("weight_gm", e.target.value)} data-testid="input-ledger-weight" /></div>
-              <div className="space-y-1"><Label className="text-xs">Rate per Gram (₹)</Label><Input type="number" value={form.rate_per_gram || ""} onChange={e => set("rate_per_gram", e.target.value)} /></div>
+              <div className="space-y-1"><Label className="text-xs">Rate per Gram (${sym})</Label><Input type="number" value={form.rate_per_gram || ""} onChange={e => set("rate_per_gram", e.target.value)} /></div>
               <div className="space-y-1"><Label className="text-xs">Reference No</Label><Input value={form.reference_no || ""} onChange={e => set("reference_no", e.target.value)} /></div>
               <div className="space-y-1">
                 <Label className="text-xs">Reference Type</Label>

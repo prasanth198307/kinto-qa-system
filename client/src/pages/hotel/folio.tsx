@@ -143,8 +143,8 @@ export default function HotelFolioPage() {
                       </Select>
                     </div>
                     <div><Label className="text-xs">Qty</Label><Input type="number" value={chargeForm.quantity} onChange={e => cf("quantity", e.target.value)} className="h-8 text-sm" /></div>
-                    <div><Label className="text-xs">Rate (₹)</Label><Input type="number" value={chargeForm.rate} onChange={e => cf("rate", e.target.value)} className="h-8 text-sm" /></div>
-                    <div><Label className="text-xs">Amount (₹)</Label><Input type="number" value={chargeForm.amount} onChange={e => cf("amount", e.target.value)} className="h-8 text-sm" /></div>
+                    <div><Label className="text-xs">Rate (${sym})</Label><Input type="number" value={chargeForm.rate} onChange={e => cf("rate", e.target.value)} className="h-8 text-sm" /></div>
+                    <div><Label className="text-xs">Amount (${sym})</Label><Input type="number" value={chargeForm.amount} onChange={e => cf("amount", e.target.value)} className="h-8 text-sm" /></div>
                     <div className="flex items-end">
                       <Button size="sm" className="w-full" onClick={() => addCharge.mutate({ description: chargeForm.description, category: chargeForm.category, quantity: parseFloat(chargeForm.quantity || "1"), rate: parseFloat(chargeForm.rate || "0"), amount: parseFloat(chargeForm.amount || "0") })}><Plus className="w-3 h-3 mr-1" />Add</Button>
                     </div>

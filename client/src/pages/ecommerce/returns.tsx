@@ -157,7 +157,7 @@ export default function ReturnsPage() {
                 <textarea value={form.reason} onChange={e => setForm(f => ({ ...f, reason: e.target.value }))} style={{ ...inp, height: 72, resize: "vertical" }} />
               </div>
               <div>
-                <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Amount (₹)</label>
+                <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 4 }}>Amount (${sym})</label>
                 <input type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} style={inp} />
               </div>
               <div>

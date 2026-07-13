@@ -150,7 +150,7 @@ function DeclarationForm({ employees, employee, fiscalYear, existing, onSave, on
           <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
           <div className="space-y-0.5">
             <p className="font-medium text-amber-800 dark:text-amber-200">New Regime selected — investment deductions not applicable</p>
-            <p className="text-amber-700 dark:text-amber-300 text-xs">Under the New Tax Regime, deductions under 80C, 80D, HRA, home loan interest, 80E, 80G, 80TTA etc. are <strong>not available</strong>. A standard deduction of ₹75,000 is automatically applied. Switch to Old Regime to declare investments.</p>
+            <p className="text-amber-700 dark:text-amber-300 text-xs">Under the New Tax Regime, deductions under 80C, 80D, HRA, home loan interest, 80E, 80G, 80TTA etc. are <strong>not available</strong>. A standard deduction of ${sym}75,000 is automatically applied. Switch to Old Regime to declare investments.</p>
           </div>
         </div>
       )}
@@ -179,7 +179,7 @@ function DeclarationForm({ employees, employee, fiscalYear, existing, onSave, on
             </div>
           ) : (
             <>
-              <p className="text-xs text-muted-foreground">Max ₹1,50,000 under Section 80C. Total declared: <span className="font-semibold text-foreground">{fmtRs(Number(form.licPremium)+Number(form.ppf)+Number(form.elss)+Number(form.nsc)+Number(form.homeLoanPrincipal)+Number(form.fdTaxSaving)+Number(form.other80c))}</span> → Eligible: <span className="font-semibold text-foreground">{fmtRs(total80c)}</span></p>
+              <p className="text-xs text-muted-foreground">Max ${sym}1,50,000 under Section 80C. Total declared: <span className="font-semibold text-foreground">{fmtRs(Number(form.licPremium)+Number(form.ppf)+Number(form.elss)+Number(form.nsc)+Number(form.homeLoanPrincipal)+Number(form.fdTaxSaving)+Number(form.other80c))}</span> → Eligible: <span className="font-semibold text-foreground">{fmtRs(total80c)}</span></p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {[["licPremium","LIC Premium"], ["ppf","PPF Contribution"], ["elss","ELSS / Mutual Funds"], ["nsc","NSC (National Savings Certificate)"], ["homeLoanPrincipal","Home Loan Principal (80C)"], ["fdTaxSaving","Tax-Saving FD (5 yr)"], ["other80c","Others under 80C"]].map(([k, label]) => (
                   <div key={k} className="space-y-1.5">
@@ -199,7 +199,7 @@ function DeclarationForm({ employees, employee, fiscalYear, existing, onSave, on
             </div>
           ) : (
             <>
-              <p className="text-xs text-muted-foreground">Medical insurance premium deduction. Self & family: up to ₹25,000. Parents: up to ₹25,000 (${sym}50,000 if senior citizens).</p>
+              <p className="text-xs text-muted-foreground">Medical insurance premium deduction. Self & family: up to ${sym}25,000. Parents: up to ${sym}25,000 (${sym}50,000 if senior citizens).</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>Self & Family Medical Insurance Premium</Label>

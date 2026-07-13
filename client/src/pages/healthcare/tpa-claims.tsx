@@ -186,7 +186,7 @@ export default function TPAClaimsPage() {
               <Input value={form.treatment} onChange={e => set("treatment", e.target.value)} placeholder="Surgery, Medicines, Tests..." />
             </div>
             <div>
-              <Label>Claim Amount (₹)</Label>
+              <Label>Claim Amount (${sym})</Label>
               <Input type="number" value={form.claim_amount} onChange={e => set("claim_amount", e.target.value)} />
             </div>
             <div className="flex items-center gap-2">

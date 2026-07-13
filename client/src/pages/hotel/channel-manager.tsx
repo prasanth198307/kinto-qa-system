@@ -141,7 +141,7 @@ function RateManagement({ rates, setRates }: { rates: typeof INITIAL_RATES; setR
                 {(["bar", "weekend", "los3"] as const).map(field => (
                   <TableCell key={field}>
                     <div className="flex items-center gap-1">
-                      <span className="text-muted-foreground">₹</span>
+                      <span className="text-muted-foreground">${sym}</span>
                       <Input
                         type="number"
                         className="w-24 h-8"

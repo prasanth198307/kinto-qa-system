@@ -147,11 +147,11 @@ export default function NidhiMobileCollectionPage() {
           </div>
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-2">
-              <div><Label className="text-xs">Principal (₹)</Label><Input type="number" value={cForm.principal_component} onChange={e => setCForm(p => ({ ...p, principal_component: e.target.value }))} className="h-8 text-sm" /></div>
-              <div><Label className="text-xs">Interest (₹)</Label><Input type="number" value={cForm.interest_component} onChange={e => setCForm(p => ({ ...p, interest_component: e.target.value }))} className="h-8 text-sm" /></div>
+              <div><Label className="text-xs">Principal (${sym})</Label><Input type="number" value={cForm.principal_component} onChange={e => setCForm(p => ({ ...p, principal_component: e.target.value }))} className="h-8 text-sm" /></div>
+              <div><Label className="text-xs">Interest (${sym})</Label><Input type="number" value={cForm.interest_component} onChange={e => setCForm(p => ({ ...p, interest_component: e.target.value }))} className="h-8 text-sm" /></div>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <div><Label className="text-xs">Penalty (₹)</Label><Input type="number" value={cForm.penalty_amount} onChange={e => setCForm(p => ({ ...p, penalty_amount: e.target.value }))} className="h-8 text-sm" /></div>
+              <div><Label className="text-xs">Penalty (${sym})</Label><Input type="number" value={cForm.penalty_amount} onChange={e => setCForm(p => ({ ...p, penalty_amount: e.target.value }))} className="h-8 text-sm" /></div>
               <div><Label className="text-xs">Mode</Label>
                 <Select value={cForm.payment_mode} onValueChange={v => setCForm(p => ({ ...p, payment_mode: v }))}>
                   <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>

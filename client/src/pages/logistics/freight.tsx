@@ -137,7 +137,7 @@ export default function FreightPage() {
           <DialogHeader><DialogTitle>{editing ? "Edit Freight Bill" : "New Freight Bill"}</DialogTitle></DialogHeader>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div><Label>Bill No</Label><Input value={form.bill_no} onChange={set("bill_no")} /></div>
-            <div><Label>Amount (₹)</Label><Input type="number" value={form.amount} onChange={set("amount")} /></div>
+            <div><Label>Amount (${sym})</Label><Input type="number" value={form.amount} onChange={set("amount")} /></div>
             <div>
               <Label>Trip</Label>
               <Select value={String(form.trip_id || "")} onValueChange={v => setForm((f: any) => ({ ...f, trip_id: v }))}>

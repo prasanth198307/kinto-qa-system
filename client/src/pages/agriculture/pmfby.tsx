@@ -55,8 +55,8 @@ export default function PMFBYPage() {
 
       <div className="grid grid-cols-3 gap-4">
         <Card><CardContent className="pt-4"><p className="text-sm text-muted-foreground">Total Enrolled</p><p className="text-2xl font-bold">{rows.length || 3}</p></CardContent></Card>
-        <Card><CardContent className="pt-4"><p className="text-sm text-muted-foreground">Total Premium (₹)</p><p className="text-2xl font-bold">{sym}{(totalPremium || 48500).toLocaleString()}</p></CardContent></Card>
-        <Card><CardContent className="pt-4"><p className="text-sm text-muted-foreground">Total Claims (₹)</p><p className="text-2xl font-bold">{sym}{(totalClaims || 125000).toLocaleString()}</p></CardContent></Card>
+        <Card><CardContent className="pt-4"><p className="text-sm text-muted-foreground">Total Premium (${sym})</p><p className="text-2xl font-bold">{sym}{(totalPremium || 48500).toLocaleString()}</p></CardContent></Card>
+        <Card><CardContent className="pt-4"><p className="text-sm text-muted-foreground">Total Claims (${sym})</p><p className="text-2xl font-bold">{sym}{(totalClaims || 125000).toLocaleString()}</p></CardContent></Card>
       </div>
 
       <Tabs defaultValue="enrollments">

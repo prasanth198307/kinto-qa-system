@@ -114,7 +114,7 @@ function CatalogSyncTab() {
           </Button>
           {items.length > 0 && (
             <Table>
-              <TableHeader><TableRow><TableHead>Name</TableHead><TableHead className="text-right">Price (₹)</TableHead><TableHead>Category</TableHead><TableHead>Ship Time</TableHead></TableRow></TableHeader>
+              <TableHeader><TableRow><TableHead>Name</TableHead><TableHead className="text-right">Price (${sym})</TableHead><TableHead>Category</TableHead><TableHead>Ship Time</TableHead></TableRow></TableHeader>
               <TableBody>
                 {items.slice(0, 20).map((item: any, i: number) => (
                   <TableRow key={i}>

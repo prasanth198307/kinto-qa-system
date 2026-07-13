@@ -163,15 +163,15 @@ export default function DigitalGoldPage() {
           <DialogHeader><DialogTitle>Buy Digital Gold</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div><Label>Customer Name</Label><Input value={buyForm.customer_name} onChange={e => setBuyForm(f => ({ ...f, customer_name: e.target.value }))} placeholder="Customer name" /></div>
-            <div><Label>Live Rate (22K ₹/g)</Label>
+            <div><Label>Live Rate (22K ${sym}/g)</Label>
               <Input type="number" value={buyForm.purchase_rate} onChange={e => setBuyForm(f => ({ ...f, purchase_rate: e.target.value }))} />
             </div>
             <div className="flex gap-2">
-              <Button size="sm" variant={buyMode === "amount" ? "default" : "outline"} onClick={() => setBuyMode("amount")}>By Amount (₹)</Button>
+              <Button size="sm" variant={buyMode === "amount" ? "default" : "outline"} onClick={() => setBuyMode("amount")}>By Amount (${sym})</Button>
               <Button size="sm" variant={buyMode === "grams" ? "default" : "outline"} onClick={() => setBuyMode("grams")}>By Weight (g)</Button>
             </div>
             {buyMode === "amount" && (
-              <div><Label>Investment Amount (₹)</Label><Input type="number" value={buyForm.purchase_amount} onChange={e => setBuyForm(f => ({ ...f, purchase_amount: e.target.value }))} placeholder="e.g. 5000" /></div>
+              <div><Label>Investment Amount (${sym})</Label><Input type="number" value={buyForm.purchase_amount} onChange={e => setBuyForm(f => ({ ...f, purchase_amount: e.target.value }))} placeholder="e.g. 5000" /></div>
             )}
             {buyMode === "grams" && (
               <div><Label>Gold Weight (grams)</Label><Input type="number" step="0.001" value={buyForm.grams} onChange={e => setBuyForm(f => ({ ...f, grams: e.target.value }))} placeholder="e.g. 1.000" /></div>
@@ -208,7 +208,7 @@ export default function DigitalGoldPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div><Label>Redemption Amount (₹)</Label>
+              <div><Label>Redemption Amount (${sym})</Label>
                 <Input type="number" value={redeemForm.redeem_amount} onChange={e => setRedeemForm(f => ({ ...f, redeem_amount: e.target.value }))} />
               </div>
               <p className="text-xs text-muted-foreground">GL journal will be auto-posted on confirmation.</p>

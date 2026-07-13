@@ -79,7 +79,7 @@ export default function MandiPricesPage() {
       </div>
 
       <Card>
-        <CardHeader><CardTitle>Price Table — {commodity} (₹/quintal)</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Price Table — {commodity} (${sym}/quintal)</CardTitle></CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
@@ -130,7 +130,7 @@ export default function MandiPricesPage() {
         <CardContent>
           <div className="flex gap-3 items-end">
             <div className="flex-1">
-              <label className="text-sm font-medium mb-1 block">Alert threshold (₹/quintal)</label>
+              <label className="text-sm font-medium mb-1 block">Alert threshold (${sym}/quintal)</label>
               <Input type="number" placeholder="e.g. 2000" value={alertPrice} onChange={e => setAlertPrice(e.target.value)} />
             </div>
             <Button onClick={setAlert}><Bell className="h-4 w-4 mr-2" /> Set Alert</Button>

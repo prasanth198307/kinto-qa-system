@@ -145,7 +145,7 @@ export default function ProjectsPage() {
             {unitForm && (
               <div style={{ background: "#f8faff", border: "1px solid #d0daf5", borderRadius: 6, padding: 12, marginBottom: 12 }}>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8, marginBottom: 8 }}>
-                  {[{ key: "unit_no", label: "Unit No" }, { key: "unit_type", label: "Type (1BHK/2BHK/Shop)" }, { key: "floor_no", label: "Floor", type: "number" }, { key: "area_sqft", label: "Area sqft", type: "number" }, { key: "base_price", label: "Base Price ₹", type: "number" }, { key: "current_price", label: "Current Price ₹", type: "number" }, { key: "facing", label: "Facing (N/S/E/W)" }].map(f => (
+                  {[{ key: "unit_no", label: "Unit No" }, { key: "unit_type", label: "Type (1BHK/2BHK/Shop)" }, { key: "floor_no", label: "Floor", type: "number" }, { key: "area_sqft", label: "Area sqft", type: "number" }, { key: "base_price", label: "Base Price ${sym}", type: "number" }, { key: "current_price", label: "Current Price ${sym}", type: "number" }, { key: "facing", label: "Facing (N/S/E/W)" }].map(f => (
                     <div key={f.key}>
                       <Label style={{ fontSize: 11 }}>{f.label}</Label>
                       <Input type={f.type || "text"} value={uForm[f.key] ?? ""} onChange={e => setUForm((p: any) => ({ ...p, [f.key]: e.target.value }))} style={{ fontSize: 12, marginTop: 2 }} />

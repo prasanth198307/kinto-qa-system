@@ -135,7 +135,7 @@ export default function RetailOmniChannelPage() {
               </Select></div>
             <div><Label className="text-xs">Channel SKU</Label><Input value={form.channel_sku} onChange={e => setForm((p: any) => ({ ...p, channel_sku: e.target.value }))} className="h-8" /></div>
             <div className="grid grid-cols-2 gap-2">
-              <div><Label className="text-xs">Channel Price (₹)</Label><Input type="number" value={form.channel_price} onChange={e => setForm((p: any) => ({ ...p, channel_price: e.target.value }))} className="h-8" /></div>
+              <div><Label className="text-xs">Channel Price (${sym})</Label><Input type="number" value={form.channel_price} onChange={e => setForm((p: any) => ({ ...p, channel_price: e.target.value }))} className="h-8" /></div>
               <div><Label className="text-xs">Buffer Qty</Label><Input type="number" value={form.buffer_qty} onChange={e => setForm((p: any) => ({ ...p, buffer_qty: e.target.value }))} className="h-8" /></div>
             </div>
             <p className="text-xs text-muted-foreground">Buffer qty is held back from online listing to protect walk-in sales.</p>

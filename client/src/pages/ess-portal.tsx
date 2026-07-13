@@ -404,7 +404,7 @@ function EssDeclarationTab({ employee }: { employee: any }) {
           <TabsContent value="80c" className="mt-4 space-y-3">
             <div className="flex justify-between text-sm p-2 rounded-md bg-muted/50">
               <span>Total 80C Declared: {fmtRs(["licPremium","ppf","elss","nsc","homeLoanPrincipal","fdTaxSaving","other80c"].reduce((s, k) => s + Number(form[k]||0), 0))}</span>
-              <span className="font-medium">Eligible (capped ₹1.5L): {fmtRs(total80c)}</span>
+              <span className="font-medium">Eligible (capped ${sym}1.5L): {fmtRs(total80c)}</span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {[["licPremium","LIC Premium"],["ppf","PPF"],["elss","ELSS / Mutual Funds"],["nsc","NSC"],["homeLoanPrincipal","Home Loan Principal"],["fdTaxSaving","Tax-Saving FD (5 yr)"],["other80c","Others under 80C"]].map(([k,l]) => (

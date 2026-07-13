@@ -209,7 +209,7 @@ export default function FleetPage() {
               </Select>
             </div>
             <div><Label>Description</Label><Input value={maintForm.description} onChange={e => setMaintForm(f => ({ ...f, description: e.target.value }))} /></div>
-            <div><Label>Cost (₹)</Label><Input type="number" value={maintForm.cost} onChange={e => setMaintForm(f => ({ ...f, cost: e.target.value }))} /></div>
+            <div><Label>Cost (${sym})</Label><Input type="number" value={maintForm.cost} onChange={e => setMaintForm(f => ({ ...f, cost: e.target.value }))} /></div>
           </div>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
             <Button variant="outline" onClick={() => setShowMaint(false)}>Cancel</Button>

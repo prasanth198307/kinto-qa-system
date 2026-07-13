@@ -19,6 +19,8 @@ const api = (method: string, path: string, body?: any) =>
 const fmt = (n: number) => `${sym}${(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
 
 export default function IFRSReportingPage() {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { toast } = useToast();
   const qc = useQueryClient();
   const [assetOpen, setAssetOpen] = useState(false);
@@ -254,8 +256,8 @@ export default function IFRSReportingPage() {
               </Select>
             </div>
             <div><Label>Acquisition Date</Label><Input type="date" value={assetForm.acquisition_date} onChange={e => setAssetForm(f => ({ ...f, acquisition_date: e.target.value }))} /></div>
-            <div><Label>Cost (₹)</Label><Input type="number" value={assetForm.acquisition_cost} onChange={e => setAssetForm(f => ({ ...f, acquisition_cost: e.target.value }))} /></div>
-            <div><Label>Residual Value (₹)</Label><Input type="number" value={assetForm.residual_value} onChange={e => setAssetForm(f => ({ ...f, residual_value: e.target.value }))} /></div>
+            <div><Label>Cost (${sym})</Label><Input type="number" value={assetForm.acquisition_cost} onChange={e => setAssetForm(f => ({ ...f, acquisition_cost: e.target.value }))} /></div>
+            <div><Label>Residual Value (${sym})</Label><Input type="number" value={assetForm.residual_value} onChange={e => setAssetForm(f => ({ ...f, residual_value: e.target.value }))} /></div>
             <div><Label>Useful Life (months)</Label><Input type="number" value={assetForm.useful_life_months} onChange={e => setAssetForm(f => ({ ...f, useful_life_months: e.target.value }))} /></div>
             <div><Label>Method</Label>
               <Select value={assetForm.depreciation_method} onValueChange={v => setAssetForm(f => ({ ...f, depreciation_method: v }))}>
@@ -284,7 +286,7 @@ export default function IFRSReportingPage() {
             </div>
             <div className="col-span-2"><Label>Customer</Label><Input value={contractForm.customer_name} onChange={e => setContractForm(f => ({ ...f, customer_name: e.target.value }))} /></div>
             <div><Label>Contract Date</Label><Input type="date" value={contractForm.contract_date} onChange={e => setContractForm(f => ({ ...f, contract_date: e.target.value }))} /></div>
-            <div><Label>Total Value (₹)</Label><Input type="number" value={contractForm.total_contract_value} onChange={e => setContractForm(f => ({ ...f, total_contract_value: e.target.value }))} /></div>
+            <div><Label>Total Value (${sym})</Label><Input type="number" value={contractForm.total_contract_value} onChange={e => setContractForm(f => ({ ...f, total_contract_value: e.target.value }))} /></div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setContractOpen(false)}>Cancel</Button>
@@ -308,7 +310,7 @@ function ImpairDialog({ assetId, onClose, onSubmit, pending }: { assetId: number
     <Dialog open onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader><DialogTitle>IAS 36 Impairment Test — Asset #{assetId}</DialogTitle></DialogHeader>
-        <div><Label>Recoverable Amount (₹)</Label><Input type="number" value={val} onChange={e => setVal(e.target.value)} placeholder="Enter recoverable amount" /></div>
+        <div><Label>Recoverable Amount (${sym})</Label><Input type="number" value={val} onChange={e => setVal(e.target.value)} placeholder="Enter recoverable amount" /></div>
         <p className="text-xs text-muted-foreground">If recoverable amount &lt; NBV, impairment loss = NBV − Recoverable amount. GL: DR Impairment Loss / CR Accumulated Impairment.</p>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>

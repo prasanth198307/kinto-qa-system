@@ -80,7 +80,7 @@ export default function DrugsPage() {
                 <SelectContent>{["0","5","12","18"].map(r => <SelectItem key={r} value={r}>{r}%</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div><Label>MRP (₹)</Label><Input type="number" value={form.mrp} onChange={e => f("mrp", e.target.value)} /></div>
+            <div><Label>MRP (${sym})</Label><Input type="number" value={form.mrp} onChange={e => f("mrp", e.target.value)} /></div>
             <div><Label>Pack Size</Label><Input value={form.pack_size} onChange={e => f("pack_size", e.target.value)} placeholder="10 tablets" /></div>
             <div><Label>Composition</Label><Input value={form.composition} onChange={e => f("composition", e.target.value)} placeholder="Paracetamol 500mg" /></div>
             <div className="col-span-3 flex gap-2 justify-end">

@@ -143,7 +143,7 @@ export default function PDCTrackingPage() {
                             </>
                           )}
                           {c.status === "Bounced" && (
-                            <div className="text-xs text-destructive">Bounce charges: ₹500</div>
+                            <div className="text-xs text-destructive">Bounce charges: ${sym}500</div>
                           )}
                         </div>
                       </TableCell>
@@ -184,7 +184,7 @@ export default function PDCTrackingPage() {
             <div><Label>Loan ID</Label><Input value={form.loan_id} onChange={e => setForm(f => ({ ...f, loan_id: e.target.value }))} /></div>
             <div><Label>Cheque No</Label><Input value={form.cheque_no} onChange={e => setForm(f => ({ ...f, cheque_no: e.target.value }))} /></div>
             <div><Label>Bank</Label><Input value={form.bank} onChange={e => setForm(f => ({ ...f, bank: e.target.value }))} /></div>
-            <div><Label>Amount (₹)</Label><Input type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} /></div>
+            <div><Label>Amount (${sym})</Label><Input type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} /></div>
             <div><Label>Instrument Date</Label><Input type="date" value={form.instrument_date} onChange={e => setForm(f => ({ ...f, instrument_date: e.target.value }))} /></div>
             <div className="flex gap-2 justify-end">
               <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>

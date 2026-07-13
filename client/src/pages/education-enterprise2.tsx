@@ -75,7 +75,7 @@ export default function EducationEnterprise2Page() {
             <Card><CardHeader><CardTitle>Add Budget Head</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               <div><Label>Budget Head</Label><Input value={budgetForm.head} onChange={e=>setBudgetForm({...budgetForm,head:e.target.value})} placeholder="e.g. Salary, Infrastructure" /></div>
-              <div><Label>Allocated Amount (₹)</Label><Input type="number" value={budgetForm.allocated_amount} onChange={e=>setBudgetForm({...budgetForm,allocated_amount:e.target.value})} /></div>
+              <div><Label>Allocated Amount (${sym})</Label><Input type="number" value={budgetForm.allocated_amount} onChange={e=>setBudgetForm({...budgetForm,allocated_amount:e.target.value})} /></div>
               <div><Label>Financial Year</Label>
                 <select className="border rounded px-2 py-1 w-full text-sm" value={budgetForm.fy} onChange={e=>setBudgetForm({...budgetForm,fy:e.target.value})}>
                   {['2024-25','2025-26','2026-27'].map(f=><option key={f} value={f}>{f}</option>)}

@@ -162,7 +162,7 @@ export default function LogisticsReportsPage() {
             <CardHeader><CardTitle className="text-base">FASTag Spend by Vehicle</CardTitle></CardHeader>
             <CardContent>
               <table className="w-full text-sm">
-                <thead><tr className="bg-gray-50">{["Vehicle", "Transactions", "Total Toll ₹", "Avg per Trip ₹"].map(h => <th key={h} className="text-left p-2 border">{h}</th>)}</tr></thead>
+                <thead><tr className="bg-gray-50">{["Vehicle", "Transactions", "Total Toll ${sym}", "Avg per Trip ${sym}"].map(h => <th key={h} className="text-left p-2 border">{h}</th>)}</tr></thead>
                 <tbody>
                   {Array.isArray(r.by_vehicle) && r.by_vehicle.map((v: any, i: number) => (
                     <tr key={i} className="border-b"><td className="p-2">{v.registration_no}</td><td className="p-2">{v.txn_count}</td><td className="p-2">{sym}{v.total_spend?.toLocaleString()}</td><td className="p-2">{sym}{v.avg_per_trip?.toLocaleString()}</td></tr>

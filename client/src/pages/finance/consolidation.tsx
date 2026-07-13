@@ -19,6 +19,8 @@ const api = (method: string, path: string, body?: any) =>
 const fmt = (n: number) => `${sym}${(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 0 })}`;
 
 export default function ConsolidationPage() {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { toast } = useToast();
   const qc = useQueryClient();
   const [addOpen, setAddOpen] = useState(false);
@@ -237,7 +239,7 @@ export default function ConsolidationPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div><Label>Amount (₹)</Label><Input type="number" value={elim.amount_paise} onChange={e => setElim(f => ({ ...f, amount_paise: e.target.value }))} /></div>
+            <div><Label>Amount (${sym})</Label><Input type="number" value={elim.amount_paise} onChange={e => setElim(f => ({ ...f, amount_paise: e.target.value }))} /></div>
             <div><Label>DR Account</Label><Input value={elim.dr_account} onChange={e => setElim(f => ({ ...f, dr_account: e.target.value }))} placeholder="4001" /></div>
             <div><Label>CR Account</Label><Input value={elim.cr_account} onChange={e => setElim(f => ({ ...f, cr_account: e.target.value }))} placeholder="5001" /></div>
             <div className="col-span-2"><Label>Description</Label><Input value={elim.description} onChange={e => setElim(f => ({ ...f, description: e.target.value }))} /></div>

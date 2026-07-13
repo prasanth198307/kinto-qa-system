@@ -133,7 +133,7 @@ export default function NGOFundsPage() {
                   <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
                   <SelectContent><SelectItem value="income">Income</SelectItem><SelectItem value="expense">Expense</SelectItem></SelectContent>
                 </Select></div>
-              <div><Label className="text-xs">Amount (₹)</Label><Input type="number" value={txn.amount} onChange={e => setTxn(p => ({ ...p, amount: e.target.value }))} className="h-8" /></div>
+              <div><Label className="text-xs">Amount (${sym})</Label><Input type="number" value={txn.amount} onChange={e => setTxn(p => ({ ...p, amount: e.target.value }))} className="h-8" /></div>
             </div>
             <div><Label className="text-xs">Description</Label><Input value={txn.description} onChange={e => setTxn(p => ({ ...p, description: e.target.value }))} className="h-8" /></div>
             <div className="grid grid-cols-2 gap-2">

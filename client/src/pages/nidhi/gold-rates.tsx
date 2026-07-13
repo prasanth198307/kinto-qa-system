@@ -52,9 +52,9 @@ export default function NidhiGoldRatesPage() {
         <CardContent>
           <div className="grid grid-cols-4 gap-3">
             <div><Label className="text-xs">Date</Label><Input type="date" value={form.rate_date} onChange={e => setForm(p => ({ ...p, rate_date: e.target.value }))} className="h-8 text-sm" /></div>
-            <div><Label className="text-xs">22K Rate (₹/g)</Label><Input type="number" value={form.rate_22k} onChange={e => setForm(p => ({ ...p, rate_22k: e.target.value }))} className="h-8 text-sm" placeholder="7200" /></div>
-            <div><Label className="text-xs">24K Rate (₹/g)</Label><Input type="number" value={form.rate_24k} onChange={e => setForm(p => ({ ...p, rate_24k: e.target.value }))} className="h-8 text-sm" placeholder="7854" /></div>
-            <div><Label className="text-xs">18K Rate (₹/g)</Label><Input type="number" value={form.rate_18k} onChange={e => setForm(p => ({ ...p, rate_18k: e.target.value }))} className="h-8 text-sm" placeholder="5891" /></div>
+            <div><Label className="text-xs">22K Rate (${sym}/g)</Label><Input type="number" value={form.rate_22k} onChange={e => setForm(p => ({ ...p, rate_22k: e.target.value }))} className="h-8 text-sm" placeholder="7200" /></div>
+            <div><Label className="text-xs">24K Rate (${sym}/g)</Label><Input type="number" value={form.rate_24k} onChange={e => setForm(p => ({ ...p, rate_24k: e.target.value }))} className="h-8 text-sm" placeholder="7854" /></div>
+            <div><Label className="text-xs">18K Rate (${sym}/g)</Label><Input type="number" value={form.rate_18k} onChange={e => setForm(p => ({ ...p, rate_18k: e.target.value }))} className="h-8 text-sm" placeholder="5891" /></div>
           </div>
           <Button className="mt-3" onClick={() => addMut.mutate(form)} disabled={addMut.isPending}>Save Rates</Button>
         </CardContent>
@@ -63,7 +63,7 @@ export default function NidhiGoldRatesPage() {
       <Card><CardHeader><CardTitle className="text-base flex items-center gap-2"><TrendingUp className="w-4 h-4" />Rate History (Last 30 days)</CardTitle></CardHeader>
         <CardContent className="p-0">
           <Table>
-            <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>22K (₹/g)</TableHead><TableHead>24K (₹/g)</TableHead><TableHead>18K (₹/g)</TableHead></TableRow></TableHeader>
+            <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>22K (${sym}/g)</TableHead><TableHead>24K (${sym}/g)</TableHead><TableHead>18K (${sym}/g)</TableHead></TableRow></TableHeader>
             <TableBody>
               {rates.map((r: any) => (
                 <TableRow key={r.id}>

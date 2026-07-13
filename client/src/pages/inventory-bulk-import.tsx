@@ -49,7 +49,7 @@ const MODE_CONFIG: Record<Mode, {
     subtitle: "Manufactured products — optionally POS-enabled per row",
     icon: Package,
     who: "Manufacturing tenants — items that come OUT of production",
-    previewCols: ["Product Code", "Product Name", "HSN", "GST%", "Selling ₹", "Sell@POS", "Barcode", "MRP"],
+    previewCols: ["Product Code", "Product Name", "HSN", "GST%", "Selling ${sym}", "Sell@POS", "Barcode", "MRP"],
     fields: [
       { col: "Product Code",                req: false, note: "Unique code (e.g. FG-BOTTLE-001). Auto-generated if blank. Duplicate code = update existing." },
       { col: "Product Name",                req: true,  note: "Full product name as manufactured." },
@@ -72,7 +72,7 @@ const MODE_CONFIG: Record<Mode, {
     subtitle: "Barcode-scanned items sold at POS counter",
     icon: ShoppingCart,
     who: "Retail & grocery tenants — items sold at the POS billing counter",
-    previewCols: ["Barcode", "Product Name", "HSN", "GST%", "MRP", "Selling ₹", "Brand", "Opening Stock"],
+    previewCols: ["Barcode", "Product Name", "HSN", "GST%", "MRP", "Selling ${sym}", "Brand", "Opening Stock"],
     fields: [
       { col: "Barcode / EAN",              req: false, note: "13-digit EAN or internal barcode. Duplicate barcode = update existing item, no duplicate created." },
       { col: "Product Name",               req: true,  note: "Full name as printed on packet." },

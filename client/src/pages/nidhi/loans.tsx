@@ -121,7 +121,7 @@ export default function NidhiLoansPage() {
                 <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>{LOAN_TYPES.map(t => <SelectItem key={t} value={t}>{t.replace("_"," ").toUpperCase()}</SelectItem>)}</SelectContent>
               </Select></div>
-            <div><Label className="text-xs">Principal (₹)</Label><Input type="number" value={form.principal_amount} onChange={e => f("principal_amount", e.target.value)} className="h-8 text-sm" /></div>
+            <div><Label className="text-xs">Principal (${sym})</Label><Input type="number" value={form.principal_amount} onChange={e => f("principal_amount", e.target.value)} className="h-8 text-sm" /></div>
             <div><Label className="text-xs">Interest Rate % p.a.</Label><Input type="number" step="0.1" value={form.interest_rate} onChange={e => f("interest_rate", e.target.value)} className="h-8 text-sm" /></div>
             <div><Label className="text-xs">Tenure (months)</Label><Input type="number" value={form.tenure_months} onChange={e => f("tenure_months", e.target.value)} className="h-8 text-sm" /></div>
             <div><Label className="text-xs">Disbursement Date</Label><Input type="date" value={form.disbursement_date} onChange={e => f("disbursement_date", e.target.value)} className="h-8 text-sm" /></div>

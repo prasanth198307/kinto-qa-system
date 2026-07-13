@@ -160,7 +160,7 @@ export default function LoyaltyExpiryPage() {
                 Save Expiry Configuration
               </Button>
               <div className="text-sm text-muted-foreground space-y-1 border-t pt-3">
-                <p><strong>Current config:</strong> {config?.expiry_days || "Not set"} days · Points per ₹100: {config?.points_per_100 || "—"} · Redemption value: {sym}{config?.redemption_value || "—"}/point</p>
+                <p><strong>Current config:</strong> {config?.expiry_days || "Not set"} days · Points per ${sym}100: {config?.points_per_100 || "—"} · Redemption value: {sym}{config?.redemption_value || "—"}/point</p>
                 <p><strong>Min redemption:</strong> {config?.min_redemption || "—"} points</p>
               </div>
             </CardContent>

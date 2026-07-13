@@ -155,8 +155,8 @@ export default function ListingsPage() {
                 <Label>{lbl}</Label><Input value={String(form[key as keyof typeof form])} onChange={e => f(key, e.target.value)} />
               </div>
             ))}
-            <div><Label>MRP (₹)</Label><Input type="number" value={form.mrp} onChange={e => f("mrp", e.target.value)} /></div>
-            <div><Label>Selling Price (₹)</Label><Input type="number" value={form.selling_price} onChange={e => f("selling_price", e.target.value)} /></div>
+            <div><Label>MRP (${sym})</Label><Input type="number" value={form.mrp} onChange={e => f("mrp", e.target.value)} /></div>
+            <div><Label>Selling Price (${sym})</Label><Input type="number" value={form.selling_price} onChange={e => f("selling_price", e.target.value)} /></div>
             <div><Label>Stock Qty</Label><Input type="number" value={form.stock_qty} onChange={e => f("stock_qty", e.target.value)} /></div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 20 }}>
               <input type="checkbox" id="is_active" checked={!!form.is_active} onChange={e => f("is_active", e.target.checked)} />

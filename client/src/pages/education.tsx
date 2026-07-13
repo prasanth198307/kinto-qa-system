@@ -1309,7 +1309,7 @@ function FeesTab() {
             <F label="Type">
               <Select value={discForm.type||"fixed"} onValueChange={v=>setDiscForm({...discForm,type:v})}>
                 <SelectTrigger><SelectValue/></SelectTrigger>
-                <SelectContent><SelectItem value="fixed">Fixed (₹)</SelectItem><SelectItem value="percentage">Percentage (%)</SelectItem></SelectContent>
+                <SelectContent><SelectItem value="fixed">Fixed (${sym})</SelectItem><SelectItem value="percentage">Percentage (%)</SelectItem></SelectContent>
               </Select>
             </F>
           </div>
@@ -1337,7 +1337,7 @@ function FeesTab() {
                 <SelectContent>{(discounts as any[]).map((d:any)=><SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>)}</SelectContent>
               </Select>
             </F>
-            <F label="Amount / Value (₹ or %)"><Input type="number" value={assignDiscForm.value||""} onChange={e=>setAssignDiscForm({...assignDiscForm,value:e.target.value})}/></F>
+            <F label="Amount / Value (${sym} or %)"><Input type="number" value={assignDiscForm.value||""} onChange={e=>setAssignDiscForm({...assignDiscForm,value:e.target.value})}/></F>
             <F label="Applicable On"><Input placeholder="e.g. Tuition Fee (or leave blank for all)" value={assignDiscForm.applicable_on||""} onChange={e=>setAssignDiscForm({...assignDiscForm,applicable_on:e.target.value})}/></F>
           </div>
           <div className="flex justify-end gap-2 pt-2">
@@ -1359,7 +1359,7 @@ function FeesTab() {
               </Select>
             </F></div>
             <F label="Fee Type *"><Input placeholder="Tuition, Transport…" value={sfForm.fee_type||""} onChange={e=>setSfForm({...sfForm,fee_type:e.target.value})}/></F>
-            <F label="Amount (₹) *"><Input type="number" value={sfForm.amount||""} onChange={e=>setSfForm({...sfForm,amount:e.target.value})}/></F>
+            <F label="Amount (${sym}) *"><Input type="number" value={sfForm.amount||""} onChange={e=>setSfForm({...sfForm,amount:e.target.value})}/></F>
             <F label="Frequency">
               <Select value={sfForm.frequency||"monthly"} onValueChange={v=>setSfForm({...sfForm,frequency:v})}>
                 <SelectTrigger><SelectValue/></SelectTrigger>

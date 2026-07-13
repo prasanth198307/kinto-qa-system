@@ -98,7 +98,7 @@ export default function NGOProjectsPage() {
             <div className="col-span-2"><Label className="text-xs">Description</Label><Input value={form.description || ""} onChange={e => f("description", e.target.value)} className="h-8" /></div>
             <div><Label className="text-xs">Start Date</Label><Input type="date" value={form.start_date ? String(form.start_date).slice(0,10) : ""} onChange={e => f("start_date", e.target.value)} className="h-8" /></div>
             <div><Label className="text-xs">End Date</Label><Input type="date" value={form.end_date ? String(form.end_date).slice(0,10) : ""} onChange={e => f("end_date", e.target.value)} className="h-8" /></div>
-            <div><Label className="text-xs">Target Amount (₹)</Label><Input type="number" value={form.target_amount} onChange={e => f("target_amount", e.target.value)} className="h-8" /></div>
+            <div><Label className="text-xs">Target Amount (${sym})</Label><Input type="number" value={form.target_amount} onChange={e => f("target_amount", e.target.value)} className="h-8" /></div>
             <div><Label className="text-xs">Location</Label><Input value={form.location || ""} onChange={e => f("location", e.target.value)} className="h-8" /></div>
             <div><Label className="text-xs">Status</Label>
               <Select value={form.status} onValueChange={v => f("status", v)}>

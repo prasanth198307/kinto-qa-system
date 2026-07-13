@@ -227,7 +227,7 @@ export default function RERAPage() {
           <DialogHeader><DialogTitle>Quarterly Progress Report — {selectedProject?.name}</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div><Label>Work Completion (%)</Label><Input type="number" min={0} max={100} value={report.completion_pct} onChange={e => setReport(r => ({ ...r, completion_pct: e.target.value }))} /></div>
-            <div><Label>Funds Utilized (₹)</Label><Input type="number" value={report.funds_utilized} onChange={e => setReport(r => ({ ...r, funds_utilized: e.target.value }))} /></div>
+            <div><Label>Funds Utilized (${sym})</Label><Input type="number" value={report.funds_utilized} onChange={e => setReport(r => ({ ...r, funds_utilized: e.target.value }))} /></div>
             <div><Label>Units Sold (Cumulative)</Label><Input type="number" value={report.units_sold} onChange={e => setReport(r => ({ ...r, units_sold: e.target.value }))} /></div>
             <div className="flex gap-2 justify-end">
               <Button variant="outline" onClick={() => setReportOpen(false)}>Cancel</Button>

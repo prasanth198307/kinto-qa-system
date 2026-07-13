@@ -254,7 +254,7 @@ export function MetalFinanceSection() {
                   <SelectContent><SelectItem value="issue">Issue</SelectItem><SelectItem value="return">Return</SelectItem><SelectItem value="adjustment">Adjustment</SelectItem><SelectItem value="transfer">Transfer</SelectItem></SelectContent>
                 </Select>
               </FL>
-              <FL label="Gold Rate Used (₹/g)" className="col-span-2"><Input type="number" value={jForm.gold_rate_used || ""} onChange={e => setJForm((p: any) => ({ ...p, gold_rate_used: e.target.value }))} /></FL>
+              <FL label="Gold Rate Used (${sym}/g)" className="col-span-2"><Input type="number" value={jForm.gold_rate_used || ""} onChange={e => setJForm((p: any) => ({ ...p, gold_rate_used: e.target.value }))} /></FL>
             </div>
             <FL label="Narration"><Textarea value={jForm.narration || ""} onChange={e => setJForm((p: any) => ({ ...p, narration: e.target.value }))} rows={2} /></FL>
             <div>
@@ -305,7 +305,7 @@ export function MetalFinanceSection() {
               <FL label="In Hand (g)"><Input type="number" value={consForm.stock_in_hand_gm || 0} onChange={e => setConsForm((p: any) => ({ ...p, stock_in_hand_gm: e.target.value }))} /></FL>
               <FL label="With Karigar (g)"><Input type="number" value={consForm.stock_with_karigar_gm || 0} onChange={e => setConsForm((p: any) => ({ ...p, stock_with_karigar_gm: e.target.value }))} /></FL>
               <FL label="In Transit (g)"><Input type="number" value={consForm.stock_in_transit_gm || 0} onChange={e => setConsForm((p: any) => ({ ...p, stock_in_transit_gm: e.target.value }))} /></FL>
-              <FL label="Gold Rate (₹/g)"><Input type="number" value={consForm.gold_rate || ""} onChange={e => setConsForm((p: any) => ({ ...p, gold_rate: e.target.value }))} /></FL>
+              <FL label="Gold Rate (${sym}/g)"><Input type="number" value={consForm.gold_rate || ""} onChange={e => setConsForm((p: any) => ({ ...p, gold_rate: e.target.value }))} /></FL>
             </div>
             <div className="flex gap-2 justify-end"><Button variant="outline" onClick={() => setShowConsolidationForm(false)}>Cancel</Button><Button onClick={() => consMut.mutate(consForm)} disabled={consMut.isPending}>Save Snapshot</Button></div>
           </div>
@@ -326,7 +326,7 @@ export function MetalFinanceSection() {
                   <SelectContent><SelectItem value="gold">Gold</SelectItem><SelectItem value="silver">Silver</SelectItem></SelectContent>
                 </Select>
               </FL>
-              <FL label="Gold Rate Used (₹/g)"><Input type="number" value={lossForm.gold_rate_used || ""} onChange={e => setLossForm((p: any) => ({ ...p, gold_rate_used: e.target.value }))} /></FL>
+              <FL label="Gold Rate Used (${sym}/g)"><Input type="number" value={lossForm.gold_rate_used || ""} onChange={e => setLossForm((p: any) => ({ ...p, gold_rate_used: e.target.value }))} /></FL>
               <FL label="Gold Issued (g)"><Input type="number" value={lossForm.gold_issued_gm || ""} onChange={e => setLossForm((p: any) => ({ ...p, gold_issued_gm: e.target.value }))} /></FL>
               <FL label="In Products (g)"><Input type="number" value={lossForm.gold_in_products_gm || ""} onChange={e => setLossForm((p: any) => ({ ...p, gold_in_products_gm: e.target.value }))} /></FL>
               <FL label="Wastage Collected (g)"><Input type="number" value={lossForm.wastage_collected_gm || ""} onChange={e => setLossForm((p: any) => ({ ...p, wastage_collected_gm: e.target.value }))} /></FL>

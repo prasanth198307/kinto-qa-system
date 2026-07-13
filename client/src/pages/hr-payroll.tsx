@@ -34,6 +34,8 @@ const currentYear = new Date().getFullYear();
 const YEAR_OPTIONS = [currentYear - 1, currentYear, currentYear + 1];
 
 export default function HRPayrollPage() {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [createOpen, setCreateOpen] = useState(false);
@@ -735,7 +737,7 @@ export default function HRPayrollPage() {
                       </div>
                     ) : (
                       <div className="flex items-center gap-2">
-                        <Label className="text-xs whitespace-nowrap">Amount (₹):</Label>
+                        <Label className="text-xs whitespace-nowrap">Amount (${sym}):</Label>
                         <Input
                           className="h-8 w-28 text-right"
                           type="number"
@@ -759,7 +761,7 @@ export default function HRPayrollPage() {
               <p className="text-xs font-medium text-muted-foreground">Add Incentive / Bonus / Other</p>
               <div className="flex gap-2">
                 <Input placeholder="Name (e.g. Incentive, Bonus)" value={newCompName} onChange={e => setNewCompName(e.target.value)} className="flex-1 h-8 text-sm" />
-                <Input placeholder="Amount ₹" type="number" min="0" value={newCompAmt} onChange={e => setNewCompAmt(e.target.value)} className="w-28 h-8 text-sm text-right" />
+                <Input placeholder="Amount ${sym}" type="number" min="0" value={newCompAmt} onChange={e => setNewCompAmt(e.target.value)} className="w-28 h-8 text-sm text-right" />
                 <Button size="sm" variant="outline" onClick={() => {
                   if (!newCompName.trim() || !Number(newCompAmt)) return;
                   const code = newCompName.trim().toUpperCase().replace(/\s+/g, "_");

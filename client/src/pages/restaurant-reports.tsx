@@ -75,9 +75,9 @@ const COLS: Record<string, ColDef[]> = {
   "cashier-shift": [
     { key: "cashier_name", label: "Cashier" },
     { key: "shift_name", label: "Shift" },
-    { key: "opening_cash", label: "Opening ₹", format: "currency" },
+    { key: "opening_cash", label: "Opening ${sym}", format: "currency" },
     { key: "total_sales", label: "Sales", format: "currency" },
-    { key: "closing_cash", label: "Closing ₹", format: "currency" },
+    { key: "closing_cash", label: "Closing ${sym}", format: "currency" },
     { key: "variance", label: "Variance", format: "currency" },
   ],
   "void-discount": [
@@ -135,7 +135,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: "members", label: "Members", format: "number" },
     { key: "points_earned", label: "Points Earned", format: "number" },
     { key: "points_redeemed", label: "Points Redeemed", format: "number" },
-    { key: "redemption_value", label: "Redemption ₹", format: "currency" },
+    { key: "redemption_value", label: "Redemption ${sym}", format: "currency" },
   ],
   "outlet-comparison": [
     { key: "outlet_name", label: "Outlet" },

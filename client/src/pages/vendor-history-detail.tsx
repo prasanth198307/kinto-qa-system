@@ -153,6 +153,8 @@ export default function VendorHistoryDetailPage() {
   const { hasPermission } = usePermissions();
   const { toast } = useToast();
   const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
+  const fmtCurrency = (paise: number) => fmtCur(paise / 100, tenantConfig);
   const canViewPayments = hasPermission('vendor_history', 'view');
   const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("ledger");

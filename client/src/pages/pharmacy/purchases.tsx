@@ -71,7 +71,7 @@ export default function PurchasesPage() {
               <div><Label>Supplier / Distributor</Label><Input value={header.supplier_name} onChange={e => setHeader(p => ({ ...p, supplier_name: e.target.value }))} /></div>
               <div><Label>Invoice No</Label><Input value={header.invoice_number} onChange={e => setHeader(p => ({ ...p, invoice_number: e.target.value }))} /></div>
               <div><Label>Date</Label><Input type="date" value={header.purchase_date} onChange={e => setHeader(p => ({ ...p, purchase_date: e.target.value }))} /></div>
-              <div><Label>GST Amount (₹)</Label><Input type="number" value={header.gst_amount} onChange={e => setHeader(p => ({ ...p, gst_amount: e.target.value }))} /></div>
+              <div><Label>GST Amount (${sym})</Label><Input type="number" value={header.gst_amount} onChange={e => setHeader(p => ({ ...p, gst_amount: e.target.value }))} /></div>
             </div>
             {lines.map((l, i) => (
               <div key={i} className="grid grid-cols-7 gap-2 items-end">
@@ -84,8 +84,8 @@ export default function PurchasesPage() {
                 <div><Label className="text-xs">Batch</Label><Input value={l.batch_number} onChange={e => setLine(i, "batch_number", e.target.value)} /></div>
                 <div><Label className="text-xs">Expiry</Label><Input type="date" value={l.expiry_date} onChange={e => setLine(i, "expiry_date", e.target.value)} /></div>
                 <div><Label className="text-xs">Qty</Label><Input type="number" value={l.quantity} onChange={e => setLine(i, "quantity", e.target.value)} /></div>
-                <div><Label className="text-xs">Rate (₹)</Label><Input type="number" value={l.purchase_rate} onChange={e => setLine(i, "purchase_rate", e.target.value)} /></div>
-                <div><Label className="text-xs">MRP (₹)</Label><Input type="number" value={l.mrp} onChange={e => setLine(i, "mrp", e.target.value)} /></div>
+                <div><Label className="text-xs">Rate (${sym})</Label><Input type="number" value={l.purchase_rate} onChange={e => setLine(i, "purchase_rate", e.target.value)} /></div>
+                <div><Label className="text-xs">MRP (${sym})</Label><Input type="number" value={l.mrp} onChange={e => setLine(i, "mrp", e.target.value)} /></div>
                 <Button size="sm" variant="ghost" className="text-red-500" onClick={() => setLines(p => p.filter((_, idx) => idx !== i))}><Trash2 className="w-3 h-3" /></Button>
               </div>
             ))}

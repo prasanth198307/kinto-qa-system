@@ -122,7 +122,7 @@ export default function AgricultureEnterprisePage() {
                   {(mandiCommodities as string[]).slice(0,10).map((c:string)=><Button key={c} size="sm" variant={mandiSearch===c?'default':'outline'} onClick={()=>setMandiSearch(c)}>{c}</Button>)}
                 </div>
                 <Table>
-                  <TableHeader><TableRow><TableHead>Commodity</TableHead><TableHead>Market</TableHead><TableHead>State</TableHead><TableHead>Min ₹/Qt</TableHead><TableHead>Max ₹/Qt</TableHead><TableHead>Modal ₹/Qt</TableHead><TableHead>Date</TableHead></TableRow></TableHeader>
+                  <TableHeader><TableRow><TableHead>Commodity</TableHead><TableHead>Market</TableHead><TableHead>State</TableHead><TableHead>Min ${sym}/Qt</TableHead><TableHead>Max ${sym}/Qt</TableHead><TableHead>Modal ${sym}/Qt</TableHead><TableHead>Date</TableHead></TableRow></TableHeader>
                   <TableBody>{(mandiPrices as any[]).map((p:any,i:number)=><TableRow key={i}>
                     <TableCell className="font-medium">{p.commodity}</TableCell>
                     <TableCell>{p.market_name||p.mandi_name}</TableCell>

@@ -176,7 +176,7 @@ export default function LiveGoldRatesPage() {
           <CardContent className="space-y-3">
             <p className="text-xs text-muted-foreground">Get notified when 22K gold reaches your target price. Alert fires in real-time via the live SSE stream.</p>
             <div>
-              <Label>Alert when 22K gold goes above (₹/g)</Label>
+              <Label>Alert when 22K gold goes above (${sym}/g)</Label>
               <Input type="number" value={alertPrice} onChange={e => { setAlertPrice(e.target.value); setAlertActive(false); alertRef.current.fired = false; }} placeholder="e.g. 7000" />
             </div>
             <Button onClick={setAlert} disabled={!alertPrice} className="w-full">
@@ -196,7 +196,7 @@ export default function LiveGoldRatesPage() {
           <CardHeader><CardTitle className="text-sm">Rate History</CardTitle></CardHeader>
           <CardContent>
             <Table>
-              <TableHeader><TableRow><TableHead>Date / Time</TableHead><TableHead>Metal</TableHead><TableHead>Purity</TableHead><TableHead className="text-right">Rate (₹/g)</TableHead><TableHead>Source</TableHead></TableRow></TableHeader>
+              <TableHeader><TableRow><TableHead>Date / Time</TableHead><TableHead>Metal</TableHead><TableHead>Purity</TableHead><TableHead className="text-right">Rate (${sym}/g)</TableHead><TableHead>Source</TableHead></TableRow></TableHeader>
               <TableBody>
                 {history.slice(0, 20).map((h: any, i) => (
                   <TableRow key={i}>
