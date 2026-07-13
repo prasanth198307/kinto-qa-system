@@ -43,19 +43,40 @@ export function useTenantConfig(): TenantConfig {
   return data && data.currency_symbol ? data : DEFAULT_CONFIG;
 }
 
+// Currencies with non-standard decimal places (Intl handles these automatically,
+// but we expose this for Excel numFmt generation)
+const ZERO_DECIMAL_CURRENCIES = new Set([
+  "JPY", "KRW", "VND", "IDR", "CLP", "GNF", "ISK", "KMF", "MGA", "PYG",
+  "RWF", "UGX", "VUV", "XAF", "XOF", "XPF",
+]);
+const THREE_DECIMAL_CURRENCIES = new Set(["BHD", "IQD", "JOD", "KWD", "LYD", "OMR", "TND"]);
+
+/** Returns the correct number of decimal places for a given ISO currency code */
+export function getCurrencyDecimals(currencyCode: string): number {
+  if (ZERO_DECIMAL_CURRENCIES.has(currencyCode)) return 0;
+  if (THREE_DECIMAL_CURRENCIES.has(currencyCode)) return 3;
+  return 2;
+}
+
+/** Returns an Excel numFmt string for the tenant currency (e.g. `"$"#,##0.00`) */
+export function getCurrencyNumFmt(config: TenantConfig): string {
+  const d = getCurrencyDecimals(config.currency_code);
+  const dec = d === 0 ? "" : "." + "0".repeat(d);
+  return `"${config.currency_symbol}"#,##0${dec}`;
+}
+
 /** Format a raw amount (not in paise) using the tenant's locale + currency */
 export function formatCurrency(amount: number, config: TenantConfig): string {
   const intlLocale = LOCALE_MAP[config.country_code] ?? "en-US";
   try {
+    // Let Intl pick the correct decimal count for the currency automatically
     return new Intl.NumberFormat(intlLocale, {
       style: "currency",
       currency: config.currency_code,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
     }).format(amount);
   } catch {
-    // Fallback if currency code is not recognised by Intl
-    return `${config.currency_symbol}${amount.toFixed(2)}`;
+    const d = getCurrencyDecimals(config.currency_code);
+    return `${config.currency_symbol}${amount.toFixed(d)}`;
   }
 }
 

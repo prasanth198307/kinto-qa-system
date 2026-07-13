@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
+import { useTenantConfig, formatCurrency as fmtCur, getCurrencyNumFmt } from "@/hooks/use-tenant-config";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
@@ -192,6 +192,7 @@ export default function PaymentManagement() {
   const { toast } = useToast();
   const tenantConfig = useTenantConfig();
   const sym = tenantConfig.currency_symbol;
+  const numFmt = getCurrencyNumFmt(tenantConfig);
   const { hasPermission, role } = usePermissions();
   const canCreate = hasPermission('payments', 'create');
   const canEdit = hasPermission('payments', 'edit');
@@ -539,7 +540,7 @@ export default function PaymentManagement() {
             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: LBLUE } };
             cell.alignment = { vertical: 'middle', indent: 1 };
           });
-          totalRow.getCell(5).numFmt    = '${sym}#,##0.00';
+          totalRow.getCell(5).numFmt    = numFmt;
           totalRow.getCell(5).alignment = { vertical: 'middle', horizontal: 'right' };
 
           // Split rows (white, indented, smaller text)
@@ -557,7 +558,7 @@ export default function PaymentManagement() {
               cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } };
               cell.alignment = { vertical: 'middle', indent: 1 };
             });
-            splitRow.getCell(5).numFmt    = '${sym}#,##0.00';
+            splitRow.getCell(5).numFmt    = numFmt;
             splitRow.getCell(5).alignment = { vertical: 'middle', horizontal: 'right' };
           }
         }
@@ -570,7 +571,7 @@ export default function PaymentManagement() {
           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } };
           cell.alignment = { vertical: 'middle', indent: 1 };
         });
-        grandRow.getCell(5).numFmt    = '${sym}#,##0.00';
+        grandRow.getCell(5).numFmt    = numFmt;
         grandRow.getCell(5).alignment = { vertical: 'middle', horizontal: 'right' };
 
         // Add thin border around data area
@@ -721,8 +722,8 @@ export default function PaymentManagement() {
               cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rowBg } };
               cell.alignment = { vertical: 'middle', indent: 1 };
             });
-            dr.getCell(6).numFmt    = '${sym}#,##0.00';
-            dr.getCell(9).numFmt    = '${sym}#,##0.00';
+            dr.getCell(6).numFmt    = numFmt;
+            dr.getCell(9).numFmt    = numFmt;
             dr.getCell(6).alignment = { vertical: 'middle', horizontal: 'right' };
             dr.getCell(9).alignment = { vertical: 'middle', horizontal: 'right' };
           }
