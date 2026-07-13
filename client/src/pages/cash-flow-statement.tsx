@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Download, Calendar, ChevronDown, ChevronRight, TrendingUp, TrendingDown, ArrowDown, ArrowUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 import { exportToExcel } from "@/lib/excel-export";
 
 interface CashFlowItem {
@@ -47,11 +48,10 @@ function getFYLabel(startYear: string): string {
   return `FY ${y}-${String(y + 1).slice(2)}`;
 }
 
-function formatAmount(paise: number | null | undefined): string {
+function formatAmount(paise: number | null | undefined, config: ReturnType<typeof useTenantConfig>): string {
   const val = Number(paise) || 0;
   if (val === 0) return "-";
-  const abs = Math.abs(val);
-  const formatted = (abs / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 });
+  const formatted = fmtCur(Math.abs(val) / 100, config);
   return val < 0 ? `(${formatted})` : formatted;
 }
 
@@ -88,6 +88,7 @@ function formatDateDisplay(dateStr: string): string {
 }
 
 function AmountCell({ value, testId }: { value: number | null | undefined; testId?: string }) {
+  const tenantConfig = useTenantConfig();
   const val = Number(value) || 0;
   const isNegative = val < 0;
   return (
@@ -95,7 +96,7 @@ function AmountCell({ value, testId }: { value: number | null | undefined; testI
       className={`font-mono tabular-nums whitespace-nowrap ${isNegative ? "text-red-600 dark:text-red-400" : ""}`}
       data-testid={testId}
     >
-      {formatAmount(val)}
+      {formatAmount(val, tenantConfig)}
     </span>
   );
 }
@@ -186,6 +187,7 @@ function SectionBlock({
 }
 
 export default function CashFlowStatementPage() {
+  const tenantConfig = useTenantConfig();
   const { toast } = useToast();
   const [selectedFY, setSelectedFY] = useState(getCurrentFY());
   const [dateMode, setDateMode] = useState<"fy" | "custom">("fy");
@@ -378,7 +380,7 @@ export default function CashFlowStatementPage() {
           <CardContent className="p-4">
             <div className="text-xs text-muted-foreground uppercase tracking-wide">Opening Cash</div>
             <div className="text-lg font-semibold mt-1 font-mono tabular-nums" data-testid="text-opening-cash">
-              {"\u20B9"}{formatAmount(data.openingCash)}
+              {formatAmount(data.openingCash, tenantConfig)}
             </div>
           </CardContent>
         </Card>
@@ -396,7 +398,7 @@ export default function CashFlowStatementPage() {
               className={`text-lg font-semibold mt-1 font-mono tabular-nums ${netIsPositive ? "text-green-700 dark:text-green-300" : "text-red-600 dark:text-red-400"}`}
               data-testid="text-net-change"
             >
-              {"\u20B9"}{formatAmount(data.netChange)}
+              {formatAmount(data.netChange, tenantConfig)}
             </div>
           </CardContent>
         </Card>
@@ -404,7 +406,7 @@ export default function CashFlowStatementPage() {
           <CardContent className="p-4">
             <div className="text-xs text-muted-foreground uppercase tracking-wide">Closing Cash</div>
             <div className="text-lg font-semibold mt-1 font-mono tabular-nums" data-testid="text-closing-cash">
-              {"\u20B9"}{formatAmount(data.closingCash)}
+              {formatAmount(data.closingCash, tenantConfig)}
             </div>
           </CardContent>
         </Card>

@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 import { format } from "date-fns";
 import { Calculator, Plus, CheckCircle2, Clock, IndianRupee, Loader2, FileText } from "lucide-react";
 
@@ -19,6 +20,7 @@ type TdsRate = { id: string; section: string; description: string; individualRat
 type TdsEntry = { id: string; entryDate: string; vendorName: string; section: string; grossAmount: number; tdsRate: number; tdsAmount: number; netAmount: number; depositStatus: string; depositDate?: string; challanNumber?: string; description?: string; };
 
 export default function TDSManagementPage() {
+  const tenantConfig = useTenantConfig();
   const { toast } = useToast();
   const [addEntryOpen, setAddEntryOpen] = useState(false);
   const [depositOpen, setDepositOpen] = useState<TdsEntry | null>(null);
@@ -33,7 +35,7 @@ export default function TDSManagementPage() {
   const pending = entries.filter(e => e.depositStatus === "pending");
   const deposited = entries.filter(e => e.depositStatus === "deposited");
 
-  const fmt = (paise: number) => `₹${(paise / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
+  const fmt = (paise: number) => fmtCur(paise / 100, tenantConfig);
   const fmtRate = (bp: number) => `${(bp / 100).toFixed(1)}%`;
 
   const [form, setForm] = useState({
@@ -216,7 +218,7 @@ export default function TDSManagementPage() {
                 <Input type="date" value={form.entryDate} onChange={e => setForm(f => ({ ...f, entryDate: e.target.value }))} data-testid="input-tds-date" />
               </div>
               <div className="space-y-1.5">
-                <Label>Gross Amount (₹) *</Label>
+                <Label>Gross Amount *</Label>
                 <Input type="number" min="0" step="0.01" placeholder="0.00" value={form.grossAmount} onChange={e => setForm(f => ({ ...f, grossAmount: e.target.value }))} data-testid="input-tds-gross" />
               </div>
             </div>

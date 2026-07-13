@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { exportToExcel } from "@/lib/excel-export";
 import { Plus, Pencil, Trash2, Download, ChevronDown, ChevronRight, Scale } from "lucide-react";
@@ -90,10 +91,10 @@ function getFYLabel(startYear: string): string {
   return `FY ${y}-${String(y + 1).slice(2)}`;
 }
 
-function formatAmount(paise: number): string {
+function formatAmount(paise: number, config: ReturnType<typeof useTenantConfig>): string {
   if (paise === 0) return "-";
-  const rupees = Math.abs(paise) / 100;
-  return (paise < 0 ? "-" : "") + rupees.toLocaleString("en-IN", { minimumFractionDigits: 2 });
+  const formatted = fmtCur(Math.abs(paise) / 100, config);
+  return (paise < 0 ? "-" : "") + formatted;
 }
 
 function isFavorable(variance: number, accountType: string): boolean {
@@ -104,6 +105,7 @@ function isFavorable(variance: number, accountType: string): boolean {
 }
 
 export default function BudgetVariancePage() {
+  const tenantConfig = useTenantConfig();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("budgets");
   const [showForm, setShowForm] = useState(false);
@@ -453,7 +455,7 @@ export default function BudgetVariancePage() {
                   <CardContent className="p-3">
                     <div className="text-xs text-muted-foreground uppercase tracking-wide">Total Budget</div>
                     <div className="text-lg font-semibold mt-0.5" data-testid="text-total-budget">
-                      {formatAmount(varianceData.summary.totalBudgeted)}
+                      {formatAmount(varianceData.summary.totalBudgeted, tenantConfig)}
                     </div>
                   </CardContent>
                 </Card>
@@ -461,7 +463,7 @@ export default function BudgetVariancePage() {
                   <CardContent className="p-3">
                     <div className="text-xs text-muted-foreground uppercase tracking-wide">Total Actual</div>
                     <div className="text-lg font-semibold mt-0.5" data-testid="text-total-actual">
-                      {formatAmount(varianceData.summary.totalActual)}
+                      {formatAmount(varianceData.summary.totalActual, tenantConfig)}
                     </div>
                   </CardContent>
                 </Card>
@@ -469,7 +471,7 @@ export default function BudgetVariancePage() {
                   <CardContent className="p-3">
                     <div className="text-xs text-muted-foreground uppercase tracking-wide">Total Variance</div>
                     <div className="text-lg font-semibold mt-0.5" data-testid="text-total-variance">
-                      {formatAmount(varianceData.summary.totalVariance)}
+                      {formatAmount(varianceData.summary.totalVariance, tenantConfig)}
                     </div>
                   </CardContent>
                 </Card>
@@ -519,16 +521,16 @@ export default function BudgetVariancePage() {
                                   <Badge variant="secondary" className="text-xs">{item.accountType}</Badge>
                                 </TableCell>
                                 <TableCell className="text-right font-mono" data-testid={`text-budget-${item.accountId}`}>
-                                  {formatAmount(item.totalBudgeted)}
+                                  {formatAmount(item.totalBudgeted, tenantConfig)}
                                 </TableCell>
                                 <TableCell className="text-right font-mono" data-testid={`text-actual-${item.accountId}`}>
-                                  {formatAmount(item.totalActual)}
+                                  {formatAmount(item.totalActual, tenantConfig)}
                                 </TableCell>
                                 <TableCell
                                   className={`text-right font-mono font-medium ${favorable ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
                                   data-testid={`text-variance-${item.accountId}`}
                                 >
-                                  {formatAmount(item.totalVariance)}
+                                  {formatAmount(item.totalVariance, tenantConfig)}
                                 </TableCell>
                                 <TableCell
                                   className={`text-right font-mono ${favorable ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
@@ -544,10 +546,10 @@ export default function BudgetVariancePage() {
                                     {m.month.charAt(0).toUpperCase() + m.month.slice(1)}
                                   </TableCell>
                                   <TableCell></TableCell>
-                                  <TableCell className="text-right font-mono text-sm">{formatAmount(m.budgeted)}</TableCell>
-                                  <TableCell className="text-right font-mono text-sm">{formatAmount(m.actual)}</TableCell>
+                                  <TableCell className="text-right font-mono text-sm">{formatAmount(m.budgeted, tenantConfig)}</TableCell>
+                                  <TableCell className="text-right font-mono text-sm">{formatAmount(m.actual, tenantConfig)}</TableCell>
                                   <TableCell className={`text-right font-mono text-sm ${isFavorable(m.variance, item.accountType) ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                                    {formatAmount(m.variance)}
+                                    {formatAmount(m.variance, tenantConfig)}
                                   </TableCell>
                                   <TableCell></TableCell>
                                 </TableRow>
