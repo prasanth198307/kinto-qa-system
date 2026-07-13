@@ -11,8 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import {
 import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
+import {
   Plus, Search, Briefcase, Users, Clock, CheckCircle2,
   XCircle, Star, Phone, Mail, Building2, Calendar, Trash2, ChevronRight
 } from "lucide-react";

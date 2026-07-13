@@ -12,8 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import {
 import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
+import {
   Plus, Pencil, Trash2, Users, BookOpen, GraduationCap, Receipt, AlertTriangle,
   BookMarked, Bus, Megaphone, ClipboardList, Library, Search, CheckSquare,
   Calendar, BookCopy, BarChart3, X

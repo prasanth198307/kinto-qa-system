@@ -12,8 +12,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import SuperAdminLayout from "./super-admin-layout";
-import {
 import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
+import {
   CheckCircle2, ChevronRight, Store, Building2, Users, Package,
   ArrowLeft, Loader2, Eye, EyeOff, AlertCircle, Sparkles, ShieldCheck,
 } from "lucide-react";

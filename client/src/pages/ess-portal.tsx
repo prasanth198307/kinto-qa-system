@@ -15,8 +15,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import {
 import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
+import {
   FileText, Calendar, Clock, Shield, User, LogOut,
   IndianRupee, Printer, CheckCircle2, XCircle, ChevronRight,
   Home, Lock, AlertCircle, Download, Info, Receipt, Plus, Trash2

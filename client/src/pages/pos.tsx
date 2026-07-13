@@ -11,8 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import {
 import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
+import {
   Plus, Search, ShoppingCart, Users, Tag, RotateCcw, TrendingUp, X,
   Pencil, Trash2, AlertTriangle, ShieldCheck, ArrowRight, CheckCircle2,
   Wallet, Smartphone, Clock, CreditCard, ChevronLeft, Eye, EyeOff,
