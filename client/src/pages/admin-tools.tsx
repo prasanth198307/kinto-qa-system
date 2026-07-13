@@ -43,13 +43,14 @@ function formatPaise(paise: number): string {
 
 export default function AdminToolsPage() {
   const { toast } = useToast();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
+
   const [fixResult, setFixResult] = useState<FixResult | null>(null);
   const [paymentFixResult, setPaymentFixResult] = useState<PaymentFixResult | null>(null);
   const [backfillResult, setBackfillResult] = useState<BackfillResult | null>(null);
 
   const fixInvoicesMutation = useMutation({
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
     mutationFn: async () => {
       const res = await apiRequest('POST', '/api/journal-entries/fix-invoices');
       return res.json() as Promise<FixResult>;

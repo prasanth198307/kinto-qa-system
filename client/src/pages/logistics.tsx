@@ -40,8 +40,6 @@ function VehiclesTab() {
   const [search, setSearch] = useState(""); const [showForm, setShowForm] = useState(false); const [editing, setEditing] = useState<any>(null); const [form, setForm] = useState<any>({});
   const { data: vehicles = [] } = useQuery<any[]>({ queryKey: ["/api/logistics/vehicles"] });
   const saveMut = useMutation({ mutationFn: (d: any) => editing ? apiRequest("PUT", `/api/logistics/vehicles/${editing.id}`, d) : apiRequest("POST", "/api/logistics/vehicles", d), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/logistics/vehicles"] }); setShowForm(false); toast({ title: "Saved" }); } });
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
   const delMut = useMutation({ mutationFn: (id: any) => apiRequest("DELETE", `/api/logistics/vehicles/${id}`), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/logistics/vehicles"] }) });
   const openNew = () => { setEditing(null); setForm({ status: "active" }); setShowForm(true); };
   const openEdit = (v: any) => { setEditing(v); setForm({ ...v, rc_expiry: v.rc_expiry?.split("T")[0], insurance_expiry: v.insurance_expiry?.split("T")[0], fitness_expiry: v.fitness_expiry?.split("T")[0] }); setShowForm(true); };

@@ -480,8 +480,6 @@ function KitchenDisplayTab() {
   const { data: kots = [] } = useQuery<any[]>({ queryKey: ["/api/restaurant/kot-orders"] }, { refetchInterval: 15000 });
 
   const updateKot = useMutation({
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
     mutationFn: ({ id, status }: any) => apiRequest("PUT", `/api/restaurant/kot-orders/${id}`, { status }),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/restaurant/kot-orders"] }); queryClient.invalidateQueries({ queryKey: ["/api/restaurant/stats"] }); toast({ title: "Updated" }); },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),

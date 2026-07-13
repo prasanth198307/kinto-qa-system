@@ -86,6 +86,9 @@ function formatCurrency(rupees: number): string {
 }
 
 export default function CashRegisterPage() {
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
+
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const { hasPermission } = usePermissions();
@@ -172,8 +175,6 @@ export default function CashRegisterPage() {
 
   // Create new day mutation
   const createDayMutation = useMutation({
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
     mutationFn: async (data: { registerDate: string; openingBalance: number; isHoliday: number }) => {
       const response = await apiRequest('POST', '/api/cash-register/days', {
         ...data,

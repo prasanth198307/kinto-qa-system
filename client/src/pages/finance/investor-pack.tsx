@@ -29,6 +29,9 @@ const KPI = ({ label, value, sub, color }: { label: string; value: string; sub?:
 
 export default function InvestorPackPage() {
   const { toast } = useToast();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
+
   const [cohortMonths, setCohortMonths] = useState("6");
   const [calculating, setCalculating] = useState(false);
 
@@ -73,8 +76,6 @@ export default function InvestorPackPage() {
   });
 
   const calcMetrics = useMutation({
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
     mutationFn: () => api("POST", "/api/investor/metrics/auto-calculate", {}),
     onSuccess: () => { toast({ title: "Metrics recalculated" }); },
   });

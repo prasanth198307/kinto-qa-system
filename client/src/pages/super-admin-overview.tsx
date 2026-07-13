@@ -54,9 +54,10 @@ export default function SuperAdminOverview() {
     queryKey: ["/api/admin/upgrade-requests"],
   });
 
-  const seedDemoMutation = useMutation({
   const tenantConfig = useTenantConfig();
   const sym = tenantConfig.currency_symbol;
+
+  const seedDemoMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/admin/seed-demo", {});
       return res.json();

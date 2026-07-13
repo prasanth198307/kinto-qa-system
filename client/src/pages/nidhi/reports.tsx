@@ -19,6 +19,9 @@ const monthStart = `${today.slice(0, 7)}-01`;
 
 export default function NidhiReportsPage() {
   const { toast } = useToast();
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
+
   const [matFrom, setMatFrom] = useState(today);
   const [matTo, setMatTo] = useState(new Date(Date.now() + 90 * 86400000).toISOString().slice(0, 10));
   const [collFrom, setCollFrom] = useState(monthStart);
@@ -31,8 +34,6 @@ export default function NidhiReportsPage() {
   const { data: collReport = [] } = useQuery<any[]>({ queryKey: ["nidhi-rpt-coll", collFrom, collTo], queryFn: () => get(`/api/nidhi/reports/daily-collection?from_date=${collFrom}&to_date=${collTo}`) });
 
   const accrualMut = useMutation({
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
     mutationFn: () => post("/api/nidhi/interest-accrual/run", {}),
     onSuccess: (d: any) => toast({ title: `Interest accrual done · ${d.journals_posted} GL entries posted` }),
   });
