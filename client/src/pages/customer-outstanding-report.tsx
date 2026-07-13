@@ -121,6 +121,7 @@ function InvoiceRows({ invoices }: { invoices: Invoice[] }) {
 }
 
 export default function CustomerOutstandingReport() {
+  const tenantConfig = useTenantConfig();
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
@@ -138,8 +139,6 @@ export default function CustomerOutstandingReport() {
   };
 
   const filtered = (data?.customers ?? []).filter((c) => {
-  const tenantConfig = useTenantConfig();
-  const sym = tenantConfig.currency_symbol;
     const q = search.toLowerCase();
     if (!q) return true;
     return (
