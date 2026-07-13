@@ -82,7 +82,7 @@ export default function RetailEnterprisePage() {
             <Card><CardHeader><CardTitle>Open Shift</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               <div><Label>Cashier Name</Label><Input value={shift.cashier_name} onChange={e=>setShift({...shift,cashier_name:e.target.value})} /></div>
-              <div><Label>Opening Cash (₹)</Label><Input type="number" value={shift.opening_cash} onChange={e=>setShift({...shift,opening_cash:e.target.value})} /></div>
+              <div><Label>Opening Cash (${sym})</Label><Input type="number" value={shift.opening_cash} onChange={e=>setShift({...shift,opening_cash:e.target.value})} /></div>
               <Button onClick={()=>openShift.mutate({cashier_name:shift.cashier_name,opening_cash:Number(shift.opening_cash)})}>Open Shift</Button>
               <div className="mt-4">
                 <h4 className="font-medium mb-2">Recent Shifts</h4>

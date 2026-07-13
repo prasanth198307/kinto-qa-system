@@ -110,7 +110,7 @@ export default function SubcontractorsPage() {
                   {subcontractors.map((s: any) => <option key={s.id} value={s.id}>{s.name} ({s.specialization})</option>)}
                 </select>
               </div>
-              {[{ key: "work_description", label: "Work Description" }, { key: "start_date", label: "Start Date", type: "date" }, { key: "end_date", label: "End Date", type: "date" }, { key: "contract_value", label: "Contract Value ₹", type: "number" }, { key: "work_order_no", label: "Work Order No" }].map(f => (
+              {[{ key: "work_description", label: "Work Description" }, { key: "start_date", label: "Start Date", type: "date" }, { key: "end_date", label: "End Date", type: "date" }, { key: "contract_value", label: "Contract Value ${sym}", type: "number" }, { key: "work_order_no", label: "Work Order No" }].map(f => (
                 <div key={f.key}>
                   <Label style={{ fontSize: 11 }}>{f.label}</Label>
                   <Input type={f.type || "text"} value={form[f.key] ?? ""} onChange={e => setForm((p: any) => ({ ...p, [f.key]: e.target.value }))} style={{ fontSize: 12, marginTop: 2 }} />
@@ -137,7 +137,7 @@ export default function SubcontractorsPage() {
                   {workOrders.map((w: any) => <option key={w.id} value={w.id}>{w.work_order_no} — {w.work_description?.slice(0, 40)}</option>)}
                 </select>
               </div>
-              {[{ key: "bill_no", label: "Bill / Invoice No" }, { key: "bill_date", label: "Bill Date", type: "date" }, { key: "bill_amount", label: "Bill Amount ₹", type: "number" }, { key: "gst_amount", label: "GST Amount ${sym}", type: "number" }, { key: "tds_amount", label: "TDS Amount ${sym}", type: "number" }, { key: "milestone", label: "Milestone (e.g. Slab 1 Complete)" }, { key: "due_date", label: "Due Date", type: "date" }].map(f => (
+              {[{ key: "bill_no", label: "Bill / Invoice No" }, { key: "bill_date", label: "Bill Date", type: "date" }, { key: "bill_amount", label: "Bill Amount ${sym}", type: "number" }, { key: "gst_amount", label: "GST Amount ${sym}", type: "number" }, { key: "tds_amount", label: "TDS Amount ${sym}", type: "number" }, { key: "milestone", label: "Milestone (e.g. Slab 1 Complete)" }, { key: "due_date", label: "Due Date", type: "date" }].map(f => (
                 <div key={f.key}>
                   <Label style={{ fontSize: 11 }}>{f.label}</Label>
                   <Input type={f.type || "text"} value={form[f.key] ?? ""} onChange={e => setForm((p: any) => ({ ...p, [f.key]: e.target.value }))} style={{ fontSize: 12, marginTop: 2 }} />

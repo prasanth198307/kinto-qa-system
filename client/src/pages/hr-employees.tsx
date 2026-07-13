@@ -377,7 +377,7 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
           </div>
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
-              <Label>CTC (Annual ₹)</Label>
+              <Label>CTC (Annual ${sym})</Label>
               {ctcAutoCalc && (
                 <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-1.5 py-0.5 rounded font-medium">
                   Auto-calculating below
@@ -387,7 +387,7 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
             <Input
               className={inputCls} type="number" value={form.ctc}
               onChange={e => f("ctc")(e)}
-              placeholder="e.g. 600000 for ₹6 LPA"
+              placeholder="e.g. 600000 for ${sym}6 LPA"
               data-testid="input-ctc"
             />
             {ctcAutoCalc && calcBreakdown.length > 0 && (() => {
@@ -454,7 +454,7 @@ function EmployeeForm({ editing, depts, desigs, shifts, structures, managers, on
           </div>
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
-              <Label>Basic Salary (₹/month)</Label>
+              <Label>Basic Salary (${sym}/month)</Label>
               {ctcAutoCalc && form.basicSalary && (
                 <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-1.5 py-0.5 rounded font-medium">Auto</span>
               )}

@@ -885,7 +885,7 @@ export function JewelleryPOSSection() {
                 <Input className="mt-1" type="number" value={it.net_weight_gm} onChange={e => updateItem(idx, "net_weight_gm", e.target.value)} />
               </div>
               <div>
-                <Label className="text-xs">Making (₹)</Label>
+                <Label className="text-xs">Making (${sym})</Label>
                 <Input className="mt-1" type="number" value={it.making_charge} onChange={e => updateItem(idx, "making_charge", e.target.value)} />
               </div>
               <div className="flex flex-col">

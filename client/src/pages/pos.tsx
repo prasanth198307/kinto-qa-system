@@ -69,6 +69,10 @@ function DenominationInput({ value, onChange }: { value: DenomMap; onChange: (v:
   const sym = tenantConfig.currency_symbol;
   const tenantConfig = useTenantConfig();
   const sym = tenantConfig.currency_symbol;
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
+  const tenantConfig = useTenantConfig();
+  const sym = tenantConfig.currency_symbol;
   return (
     <div className="space-y-1.5">
       <div className="grid gap-1">
@@ -216,7 +220,7 @@ function MrpOverrideDialog({ open, itemName, mrpRupees, currentPrice, onConfirm,
               Enter a price at or below MRP to continue.
             </p>
           </div>
-          <F label={`Selling Price (₹) — max ₹${fmt(mrpRupees)}`}>
+          <F label={`Selling Price (${sym}) — max ${sym}${fmt(mrpRupees)}`}>
             <CurrencyInput
               value={newPrice}
               onChange={(e: any) => { setNewPrice(e.target.value); setPriceError(""); }}
@@ -1685,7 +1689,7 @@ function TerminalTab({ onSessionOpened }: { onSessionOpened: () => void }) {
       if (cl > 0 && outstanding + total > cl) {
         toast({
           title: "Credit limit exceeded",
-          description: `${selectedCustomer.name} has ₹${fmt(outstanding)} outstanding + ${sym}${fmt(total)} bill = ${sym}${fmt(outstanding + total)} against ${sym}${fmt(cl)} limit.`,
+          description: `${selectedCustomer.name} has ${sym}${fmt(outstanding)} outstanding + ${sym}${fmt(total)} bill = ${sym}${fmt(outstanding + total)} against ${sym}${fmt(cl)} limit.`,
           variant: "destructive",
         });
         return;

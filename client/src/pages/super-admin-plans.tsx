@@ -409,7 +409,7 @@ export default function SuperAdminPlans() {
 
               {/* ── Pricing ── */}
               <section className="space-y-3">
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Pricing (in ₹ Rupees)</h3>
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Pricing (in ${sym} Rupees)</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {/* Monthly */}
                   <div className="space-y-1">

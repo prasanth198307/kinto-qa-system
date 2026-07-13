@@ -415,18 +415,18 @@ function EssDeclarationTab({ employee }: { employee: any }) {
 
           <TabsContent value="80d" className="mt-4 space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1.5"><Label>Self & Family Premium (max ₹25,000)</Label><Input className={numCls} type="number" min="0" value={form.sec80dSelf||"0"} onChange={f("sec80dSelf")} /></div>
+              <div className="space-y-1.5"><Label>Self & Family Premium (max ${sym}25,000)</Label><Input className={numCls} type="number" min="0" value={form.sec80dSelf||"0"} onChange={f("sec80dSelf")} /></div>
               <div className="space-y-1.5"><Label>Parents Premium</Label><Input className={numCls} type="number" min="0" value={form.sec80dParents||"0"} onChange={f("sec80dParents")} /></div>
             </div>
             <div className="flex items-center gap-2">
               <Checkbox id="seniorCitizen" checked={!!form.parentsSeniorCitizen} onCheckedChange={v => setForm((p: any) => ({ ...p, parentsSeniorCitizen: !!v }))} />
-              <Label htmlFor="seniorCitizen" className="text-sm">Parents are Senior Citizens (higher limit ₹50,000)</Label>
+              <Label htmlFor="seniorCitizen" className="text-sm">Parents are Senior Citizens (higher limit ${sym}50,000)</Label>
             </div>
           </TabsContent>
 
           <TabsContent value="hra" className="mt-4 space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1.5"><Label>Monthly Rent Paid (₹)</Label><Input className={numCls} type="number" min="0" value={form.rentPerMonth||"0"} onChange={f("rentPerMonth")} /></div>
+              <div className="space-y-1.5"><Label>Monthly Rent Paid (${sym})</Label><Input className={numCls} type="number" min="0" value={form.rentPerMonth||"0"} onChange={f("rentPerMonth")} /></div>
               <div className="space-y-1.5">
                 <Label>City Type</Label>
                 <Select value={form.cityType||"non_metro"} onValueChange={s("cityType")}>

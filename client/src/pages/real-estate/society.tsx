@@ -83,7 +83,7 @@ export default function SocietyPage() {
           <CardHeader style={{ paddingBottom: 8 }}><CardTitle style={{ fontSize: 14 }}>Generate Monthly Charges for {month}</CardTitle></CardHeader>
           <CardContent>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-              {[{ key: "maintenance_amount", label: "Maintenance Charge ₹ per unit", type: "number" }, { key: "sinking_fund", label: "Sinking Fund ₹ per unit", type: "number" }, { key: "parking_charge", label: "Parking Charge ${sym}", type: "number" }, { key: "due_date", label: "Due Date", type: "date" }, { key: "late_fee_per_day", label: "Late Fee ${sym} / day", type: "number" }].map(f => (
+              {[{ key: "maintenance_amount", label: "Maintenance Charge ${sym} per unit", type: "number" }, { key: "sinking_fund", label: "Sinking Fund ${sym} per unit", type: "number" }, { key: "parking_charge", label: "Parking Charge ${sym}", type: "number" }, { key: "due_date", label: "Due Date", type: "date" }, { key: "late_fee_per_day", label: "Late Fee ${sym} / day", type: "number" }].map(f => (
                 <div key={f.key}>
                   <Label style={{ fontSize: 11 }}>{f.label}</Label>
                   <Input type={f.type || "text"} value={genForm[f.key] ?? ""} onChange={e => setGenForm((p: any) => ({ ...p, [f.key]: e.target.value }))} style={{ fontSize: 12, marginTop: 2 }} />

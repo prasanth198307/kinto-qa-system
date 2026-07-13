@@ -1555,7 +1555,7 @@ function ProductDialog({
                     name="standardCost"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Standard Cost (₹)</FormLabel>
+                        <FormLabel>Standard Cost (${sym})</FormLabel>
                         <FormControl>
                           <Input 
                             type="number" 

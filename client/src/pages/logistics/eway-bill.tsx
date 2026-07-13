@@ -337,7 +337,7 @@ export default function EWayBillPage() {
                     <DialogContent className="max-w-lg">
                       <DialogHeader><DialogTitle>Select Invoice to Generate EWB</DialogTitle></DialogHeader>
                       <div className="space-y-3">
-                        <p className="text-xs text-muted-foreground">Showing invoices ≥ ₹50,000 (EWB mandatory threshold). Search by invoice number or buyer name.</p>
+                        <p className="text-xs text-muted-foreground">Showing invoices ≥ ${sym}50,000 (EWB mandatory threshold). Search by invoice number or buyer name.</p>
                         <Input
                           placeholder="Search invoice no or buyer name..."
                           value={invoiceSearch}

@@ -328,7 +328,7 @@ export default function VendorHistoryDetailPage() {
       const cr = ws1.addRow([`▶  ${cluster}`, '', '', '', '', clusterTotal / 100]);
       cr.height = 18; ws1.mergeCells(cr.number, 1, cr.number, 3);
       cr.eachCell(c => { c.font = { bold: true, size: 10, color: { argb: BLUE700 } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: LBLUE } }; c.alignment = { vertical: 'middle', indent: 1 }; });
-      cr.getCell(6).numFmt = '₹#,##0.00'; cr.getCell(6).alignment = { vertical: 'middle', horizontal: 'right' };
+      cr.getCell(6).numFmt = '${sym}#,##0.00'; cr.getCell(6).alignment = { vertical: 'middle', horizontal: 'right' };
       // Invoice detail rows — level 1 (collapsible under the cluster)
       invs.forEach(inv => {
         const dr = ws1.addRow([inv.invoiceNumber, new Date(inv.invoiceDate).toLocaleDateString('en-IN'), inv.buyerName, inv.totalAmount / 100, (inv.totalSettled + (inv.totalCredits || 0)) / 100, inv.outstanding / 100]);
@@ -783,11 +783,11 @@ export default function VendorHistoryDetailPage() {
       });
       [5, 6].forEach(i => {
         if (dr.getCell(i).value !== null) {
-          dr.getCell(i).numFmt = '₹#,##0.00';
+          dr.getCell(i).numFmt = '${sym}#,##0.00';
           dr.getCell(i).alignment = { vertical: 'middle', horizontal: 'right' };
         }
       });
-      dr.getCell(7).numFmt = '₹#,##0.00;[Red]-${sym}#,##0.00';
+      dr.getCell(7).numFmt = '${sym}#,##0.00;[Red]-${sym}#,##0.00';
       dr.getCell(7).alignment = { vertical: 'middle', horizontal: 'right' };
       dr.getCell(7).font = { size: 9, bold: true, color: { argb: entry.balance > 0 ? 'FFEA580C' : entry.balance < 0 ? 'FF16A34A' : DGREY } };
     });

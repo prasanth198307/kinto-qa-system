@@ -199,7 +199,7 @@ function DeclarationForm({ employees, employee, fiscalYear, existing, onSave, on
             </div>
           ) : (
             <>
-              <p className="text-xs text-muted-foreground">Medical insurance premium deduction. Self & family: up to ₹25,000. Parents: up to ₹25,000 (₹50,000 if senior citizens).</p>
+              <p className="text-xs text-muted-foreground">Medical insurance premium deduction. Self & family: up to ₹25,000. Parents: up to ₹25,000 (${sym}50,000 if senior citizens).</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>Self & Family Medical Insurance Premium</Label>
@@ -212,7 +212,7 @@ function DeclarationForm({ employees, employee, fiscalYear, existing, onSave, on
               </div>
               <div className="flex items-center gap-2">
                 <Checkbox id="seniorParent" checked={form.parentsSeniorCitizen} onCheckedChange={v => setForm(p => ({ ...p, parentsSeniorCitizen: !!v }))} />
-                <Label htmlFor="seniorParent" className="text-sm">Parents are Senior Citizens (increases limit to ₹50,000)</Label>
+                <Label htmlFor="seniorParent" className="text-sm">Parents are Senior Citizens (increases limit to ${sym}50,000)</Label>
               </div>
             </>
           )}
@@ -228,7 +228,7 @@ function DeclarationForm({ employees, employee, fiscalYear, existing, onSave, on
               <p className="text-xs text-muted-foreground">HRA exemption is calculated as: minimum of (HRA received, Actual rent − 10% of basic, 50%/40% of basic for metro/non-metro).</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label>Monthly Rent Paid (₹)</Label>
+                  <Label>Monthly Rent Paid (${sym})</Label>
                   <Input className={numCls} type="number" min="0" value={form.rentPerMonth} onChange={f("rentPerMonth")} />
                 </div>
                 <div className="space-y-1.5">
