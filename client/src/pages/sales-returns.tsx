@@ -1272,6 +1272,7 @@ function InspectionForm({ returnRecord, onSubmit, isPending }: { returnRecord: a
 
 // Scrap Inventory Section with Photo Upload
 function ScrapInventorySection() {
+  const tenantConfig = useTenantConfig();
   const { toast } = useToast();
   const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
