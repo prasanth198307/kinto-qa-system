@@ -56,7 +56,7 @@ const salesOrderItemSchema = z.object({
   sgstRate: z.number().min(0).max(100).default(9),
   igstRate: z.number().min(0).max(100).default(0),
   discount: z.number().min(0).default(0),
-  discountMode: z.enum(['%', sym]).default('%'),
+  discountMode: z.string().default('%'),
 });
 
 const salesOrderSchema = z.object({

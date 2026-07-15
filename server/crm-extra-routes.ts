@@ -361,7 +361,7 @@ router.post("/drip-campaigns", auth, async (req: any, res) => {
   try {
     await ensureDripTables();
     const { name, trigger_event, steps } = req.body;
-    const camp = await db.execute(sql`INSERT INTO crm_drip_campaigns (tenant_id, name, trigger_event)
+    const camp = await db.execute(sql`INSERT INTO crm_drip_campaigns (tenant_id, name, trigger)
       VALUES (${tid(req)}, ${name}, ${trigger_event||'lead_created'}) RETURNING *`);
     const campaign = camp.rows[0] as any;
     if (steps?.length) {
@@ -761,8 +761,8 @@ router.post('/drip-campaigns', auth, async (req: any, res) => {
   const { name, trigger_event, target_segment, steps } = req.body;
   try {
     await ensureDripTables();
-    const row = await db.execute(sql`INSERT INTO crm_drip_campaigns (tenant_id, name, trigger_event, target_segment, steps)
-      VALUES (${t}, ${name}, ${trigger_event||null}, ${target_segment||'all'}, ${JSON.stringify(steps||[])}) RETURNING *`);
+    const row = await db.execute(sql`INSERT INTO crm_drip_campaigns (tenant_id, name, trigger)
+      VALUES (${t}, ${name}, ${trigger_event||'manual'}) RETURNING *`);
     res.json(row.rows[0]);
   } catch(e: any) { res.status(500).json({ message: e.message }); }
 });
@@ -783,10 +783,7 @@ router.put('/drip-campaigns/:id', auth, async (req: any, res) => {
   try {
     await ensureDripTables();
     const row = await db.execute(sql`UPDATE crm_drip_campaigns SET
-      name=COALESCE(${name},name), trigger_event=COALESCE(${trigger_event},trigger_event),
-      target_segment=COALESCE(${target_segment},target_segment),
-      steps=COALESCE(${steps?JSON.stringify(steps):null}::jsonb,steps),
-      is_active=COALESCE(${is_active},is_active)
+      name=COALESCE(${name},name), trigger=COALESCE(${trigger_event},trigger)
       WHERE id=${req.params.id} AND tenant_id=${t} RETURNING *`);
     res.json(row.rows[0]);
   } catch(e: any) { res.status(500).json({ message: e.message }); }

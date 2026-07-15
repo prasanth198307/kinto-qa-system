@@ -2179,6 +2179,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ── Phase 7N: Retail routes (franchise, b2b already in retailRouter mounted at /api/pos) ─
   // Additional mounting under /api/retail for new pages
+  app.use('/api/retail', retailExtraRouter);
   app.use('/api/retail', retailRouter);
 
   // Auth routes are handled by setupAuth() in auth.ts
@@ -5243,11 +5244,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       usableUnits = Math.round(conversionValue * (1 - (lossPercent / 100)));
       
       // Create final data object with calculated fields
-      const typeData = { 
+      const typeData = {
         ...validatedInput,
         conversionValue,
         usableUnits,
-        createdBy: userId 
+        createdBy: userId,
+        tenantId: req.tenantId ?? 1,
       };
       
       const created = await storage.createRawMaterialType(typeData);
@@ -5468,14 +5470,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      const materialData = { 
-        ...req.body, 
+      const materialData = {
+        ...req.body,
         materialCode,
         batchCode,
         closingStock,
         closingStockUsable,
         currentStock,
-        createdBy: userId 
+        createdBy: userId,
+        tenantId: req.tenantId ?? 1,
       };
       const validatedData = insertRawMaterialSchema.parse(materialData);
       const created = await storage.createRawMaterial(validatedData);
@@ -27159,6 +27162,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       }
 
       let openingCash = 0;
+      if (cashBankIds.size > 0) {
       const openingRows = await db.select({
         accountId: journalLines.accountId,
         totalDebit: sql<number>`coalesce(sum(${journalLines.debit}), 0)`,
@@ -27174,8 +27178,6 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
         ))
         .groupBy(journalLines.accountId);
 
-      for (const row of openingRows) {
-        openingCash += Number(row.totalDebit) - Number(row.totalCredit);
       }
 
       const periodLines = await db.select({
@@ -31638,21 +31640,32 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
     const t = nidhiTid(req);
     try { await ensureLoanApps(); const r = await db.execute(sql`SELECT * FROM nidhi_loan_applications WHERE tenant_id=${t} ORDER BY created_at DESC`); res.json(r.rows); } catch (e: any) { res.status(500).json({ message: e.message }); }
   });
+  app.get('/api/nidhi/loan-applications/:id', nidhiAuth, async (req: any, res: any) => {
+    const t = nidhiTid(req);
+    try {
+      const r = await db.execute(sql`SELECT * FROM nidhi_loan_applications WHERE id=${req.params.id} AND tenant_id=${t}`);
+      if (!r.rows.length) return res.status(404).json({ message: 'Not found' });
+      const row: any = r.rows[0];
+      res.json({ ...row, loan_amount: row.amount });
+    } catch (e: any) { res.status(500).json({ message: e.message }); }
+  });
   app.post('/api/nidhi/loan-applications', nidhiAuth, async (req: any, res: any) => {
     const t = nidhiTid(req);
     try {
       await ensureLoanApps();
-      const { member_id, member_name, loan_type, applied_amount, purpose, collateral, applied_date } = req.body;
+      const { member_id, member_name, loan_type, applied_amount, amount, loan_amount, purpose, collateral, security, applied_date, application_date } = req.body;
       const no = `LA-${Date.now()}`;
-      const r = await db.execute(sql`INSERT INTO nidhi_loan_applications (tenant_id,application_no,member_id,member_name,loan_type,applied_amount,purpose,collateral,applied_date) VALUES (${t},${no},${member_id||null},${member_name||null},${loan_type||'personal'},${applied_amount||0},${purpose||null},${collateral||null},${applied_date||null}) RETURNING *`);
-      res.json(r.rows[0]);
+      const loanAmt = amount||loan_amount||applied_amount||0;
+      const r = await db.execute(sql`INSERT INTO nidhi_loan_applications (tenant_id,application_number,member_id,member_name,loan_type,amount,purpose,security,applied_date) VALUES (${t},${no},${member_id||null},${member_name||null},${loan_type||'personal'},${loanAmt},${purpose||null},${security||collateral||null},${applied_date||application_date||null}) RETURNING *`);
+      const row: any = r.rows[0];
+      res.json({ ...row, loan_amount: row.amount });
     } catch (e: any) { res.status(500).json({ message: e.message }); }
   });
   app.put('/api/nidhi/loan-applications/:id', nidhiAuth, async (req: any, res: any) => {
     const t = nidhiTid(req);
     try {
-      const { status, approved_amount, remarks, approved_date } = req.body;
-      const r = await db.execute(sql`UPDATE nidhi_loan_applications SET status=${status},approved_amount=${approved_amount||null},remarks=${remarks||null},approved_date=${approved_date||null} WHERE id=${req.params.id} AND tenant_id=${t} RETURNING *`);
+      const { status, sanctioned_date, sanctioned_by, committee_remarks, sanction_date, sanctioned_amount } = req.body;
+      const r = await db.execute(sql`UPDATE nidhi_loan_applications SET status=${status||null},sanctioned_date=${sanctioned_date||sanction_date||null},sanctioned_by=${sanctioned_by||null},committee_remarks=${committee_remarks||null} WHERE id=${req.params.id} AND tenant_id=${t} RETURNING *`);
       res.json(r.rows[0]);
     } catch (e: any) { res.status(500).json({ message: e.message }); }
   });
@@ -31665,9 +31678,10 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
     const t = nidhiTid(req);
     try {
       await ensurePDC();
-      const { loan_id, member_id, member_name, cheque_no, bank_name, branch, amount, cheque_date } = req.body;
-      const r = await db.execute(sql`INSERT INTO nidhi_pdc_cheques (tenant_id,loan_id,member_id,member_name,cheque_no,bank_name,branch,amount,cheque_date) VALUES (${t},${loan_id||null},${member_id||null},${member_name||null},${cheque_no||null},${bank_name||null},${branch||null},${amount||0},${cheque_date||null}) RETURNING *`);
-      res.json(r.rows[0]);
+      const { loan_id, loan_application_id, member_id, member_name, cheque_no, cheque_number, bank_name, branch, amount, cheque_date } = req.body;
+      const r = await db.execute(sql`INSERT INTO nidhi_pdc_cheques (tenant_id,loan_id,member_id,member_name,cheque_no,bank_name,branch,amount,cheque_date) VALUES (${t},${loan_id||loan_application_id||null},${member_id||null},${member_name||null},${cheque_no||cheque_number||null},${bank_name||null},${branch||null},${amount||0},${cheque_date||null}) RETURNING *`);
+      const pdc: any = r.rows[0];
+      res.json({ ...pdc, cheque_number: pdc.cheque_no });
     } catch (e: any) { res.status(500).json({ message: e.message }); }
   });
   app.put('/api/nidhi/pdc-cheques/:id', nidhiAuth, async (req: any, res: any) => {
@@ -31738,16 +31752,16 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
     const t = crmTid(req);
     try {
       await ensureDrip();
-      const { name, description, trigger_type, trigger_condition, steps } = req.body;
-      const r = await db.execute(sql`INSERT INTO crm_drip_campaigns (tenant_id,name,description,trigger_type,trigger_condition,steps) VALUES (${t},${name},${description||null},${trigger_type||'manual'},${JSON.stringify(trigger_condition||{})}::jsonb,${JSON.stringify(steps||[])}::jsonb) RETURNING *`);
+      const { name, description, trigger_event, trigger_type, trigger_condition, steps, trigger } = req.body;
+      const r = await db.execute(sql`INSERT INTO crm_drip_campaigns (tenant_id,name,trigger) VALUES (${t},${name},${trigger||trigger_event||trigger_type||'manual'}) RETURNING *`);
       res.json(r.rows[0]);
     } catch (e: any) { res.status(500).json({ message: e.message }); }
   });
   app.put('/api/crm/drip-campaigns/:id', crmAuth, async (req: any, res: any) => {
     const t = crmTid(req);
     try {
-      const { name, description, status, steps, trigger_type, trigger_condition } = req.body;
-      const r = await db.execute(sql`UPDATE crm_drip_campaigns SET name=${name},description=${description||null},status=${status||'draft'},steps=${JSON.stringify(steps||[])}::jsonb,trigger_type=${trigger_type||'manual'},trigger_condition=${JSON.stringify(trigger_condition||{})}::jsonb WHERE id=${req.params.id} AND tenant_id=${t} RETURNING *`);
+      const { name, description, status, steps, trigger_type, trigger, is_active } = req.body;
+      const r = await db.execute(sql`UPDATE crm_drip_campaigns SET name=${name||null} WHERE id=${req.params.id} AND tenant_id=${t} RETURNING *`);
       res.json(r.rows[0]);
     } catch (e: any) { res.status(500).json({ message: e.message }); }
   });
@@ -31764,7 +31778,29 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
         db.execute(sql`SELECT * FROM crm_interactions WHERE contact_id=${cid} ORDER BY created_at DESC LIMIT 20`).catch(() => ({ rows: [] })),
       ]);
       const c = (contact.rows[0] as any) || { id: cid };
-      res.json({ ...c, timeline: activities.rows, opportunities: orders.rows, invoices: invoices.rows, interactions: interactions.rows, total_orders: orders.rows.length, total_value: orders.rows.reduce((s: number, o: any) => s + Number(o.total_amount || 0), 0) });
+      res.json({ ...c, timeline: activities.rows, opportunities: orders.rows, orders: orders.rows, invoices: invoices.rows, interactions: interactions.rows, total_orders: orders.rows.length, total_value: orders.rows.reduce((s: number, o: any) => s + Number(o.total_amount || 0), 0) });
+    } catch (e: any) { res.status(500).json({ message: e.message }); }
+  });
+
+  // ─── Shared Customers Master ──────────────────────────────────────────────
+  app.get('/api/customers', isAuthenticated, async (req: any, res: any) => {
+    const t = req.session?.tenantId ?? req.user?.tenantId;
+    const search = req.query.search as string;
+    try {
+      const rows = await db.execute(sql`SELECT id, first_name, last_name, company_name, phone, email, address, contact_type AS customer_type, created_at FROM contacts WHERE tenant_id=${t} ${search ? sql`AND (first_name ILIKE ${'%'+search+'%'} OR last_name ILIKE ${'%'+search+'%'} OR phone ILIKE ${'%'+search+'%'})` : sql``} ORDER BY created_at DESC LIMIT ${Number(req.query.limit)||50}`);
+      const items = rows.rows.map((r: any) => ({ ...r, name: [r.first_name, r.last_name].filter(Boolean).join(' ') || r.company_name }));
+      res.json({ customers: items, data: items, total: items.length });
+    } catch (e: any) { res.status(500).json({ message: e.message }); }
+  });
+  app.post('/api/customers', isAuthenticated, async (req: any, res: any) => {
+    const t = req.session?.tenantId ?? req.user?.tenantId;
+    const { name, phone, email, address, customer_type } = req.body;
+    const [firstName, ...rest] = (name || '').split(' ');
+    const lastName = rest.join(' ') || null;
+    try {
+      const r = await db.execute(sql`INSERT INTO contacts (tenant_id, first_name, last_name, phone, email, address, contact_type) VALUES (${t},${firstName||null},${lastName||null},${phone||null},${email||null},${address||null},${customer_type||'person'}) RETURNING *`);
+      const row: any = r.rows[0];
+      res.json({ ...row, name: [row.first_name, row.last_name].filter(Boolean).join(' ') });
     } catch (e: any) { res.status(500).json({ message: e.message }); }
   });
 

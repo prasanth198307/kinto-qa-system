@@ -59,10 +59,10 @@ router.get("/rooms", requireAuth, async (req: any, res) => {
 
 router.post("/rooms", requireAuth, async (req: any, res) => {
   try {
-    const { room_number, room_type_id, floor, status, notes } = req.body;
+    const { room_number, room_type_id, floor, status } = req.body;
     const rows = await db.execute(sql`
-      INSERT INTO hotel_rooms (tenant_id, room_number, room_type_id, floor, status, notes)
-      VALUES (${tid(req)}, ${room_number}, ${room_type_id||null}, ${floor||null}, ${status||'available'}, ${notes||null})
+      INSERT INTO hotel_rooms (tenant_id, room_number, room_type_id, floor, status)
+      VALUES (${tid(req)}, ${room_number}, ${room_type_id||null}, ${floor||null}, ${status||'available'})
       RETURNING *`);
     res.json(rows.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -70,10 +70,10 @@ router.post("/rooms", requireAuth, async (req: any, res) => {
 
 router.put("/rooms/:id", requireAuth, async (req: any, res) => {
   try {
-    const { room_number, room_type_id, floor, status, notes } = req.body;
+    const { room_number, room_type_id, floor, status } = req.body;
     const rows = await db.execute(sql`
       UPDATE hotel_rooms SET room_number=${room_number}, room_type_id=${room_type_id||null},
-        floor=${floor||null}, status=${status||'available'}, notes=${notes||null}
+        floor=${floor||null}, status=${status||'available'}
       WHERE id=${req.params.id} AND tenant_id=${tid(req)} RETURNING *`);
     res.json(rows.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -143,14 +143,24 @@ router.get("/reservations", requireAuth, async (req: any, res) => {
 
 router.post("/reservations", requireAuth, async (req: any, res) => {
   try {
-    const { guest_id, room_id, check_in_date, check_out_date, adults, children, rate_per_night, total_amount, advance_paid, payment_mode, source, notes } = req.body;
+    const { guest_id, guest_name, guest_phone, guest_email, room_id, room_type, check_in_date, check_out_date, adults, children, rate_per_night, total_amount, total_nights, advance_paid, payment_mode, source, notes, special_requests } = req.body;
     const no = "RES-" + Date.now();
+    // Create guest record if guest_name provided without guest_id
+    let guestId = guest_id || null;
+    if (!guestId && guest_name) {
+      try {
+        const g = await db.execute(sql`INSERT INTO hotel_guests (tenant_id, name, phone, email) VALUES (${tid(req)}, ${guest_name}, ${guest_phone||null}, ${guest_email||null}) RETURNING id`);
+        guestId = (g.rows[0] as any).id;
+      } catch {}
+    }
+    const nights = total_nights || 1;
+    const totalAmt = total_amount || (rate_per_night || 0) * nights;
     const rows = await db.execute(sql`
-      INSERT INTO hotel_reservations (tenant_id, reservation_no, guest_id, room_id, check_in_date, check_out_date,
-        adults, children, rate_per_night, total_amount, advance_paid, payment_mode, source, notes)
-      VALUES (${tid(req)}, ${no}, ${guest_id}, ${room_id}, ${check_in_date}, ${check_out_date},
-        ${adults||1}, ${children||0}, ${rate_per_night||0}, ${total_amount||0}, ${advance_paid||0},
-        ${payment_mode||null}, ${source||'direct'}, ${notes||null})
+      INSERT INTO hotel_reservations (tenant_id, reservation_number, guest_id, room_id, check_in_date, check_out_date,
+        adults, children, rate_per_night, total_nights, total_amount, advance_paid, source, notes)
+      VALUES (${tid(req)}, ${no}, ${guestId}, ${room_id||null}, ${check_in_date}, ${check_out_date},
+        ${adults||1}, ${children||0}, ${rate_per_night||0}, ${nights}, ${totalAmt}, ${advance_paid||0},
+        ${source||'direct'}, ${notes||special_requests||null})
       RETURNING *`);
     res.json(rows.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -310,7 +320,7 @@ router.get("/housekeeping", requireAuth, async (req: any, res) => {
       SELECT h.*, r.room_number
       FROM hotel_housekeeping h
       LEFT JOIN hotel_rooms r ON r.id=h.room_id
-      WHERE h.tenant_id=${tid(req)} ORDER BY h.scheduled_date DESC, h.created_at DESC`);
+      WHERE h.tenant_id=${tid(req)} ORDER BY h.task_date DESC, h.created_at DESC`);
     res.json(rows.rows);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
@@ -319,7 +329,7 @@ router.post("/housekeeping", requireAuth, async (req: any, res) => {
   try {
     const { room_id, task_type, assigned_to, scheduled_date, notes } = req.body;
     const rows = await db.execute(sql`
-      INSERT INTO hotel_housekeeping (tenant_id, room_id, task_type, assigned_to, scheduled_date, notes)
+      INSERT INTO hotel_housekeeping (tenant_id, room_id, task_type, assigned_to, task_date, notes)
       VALUES (${tid(req)}, ${room_id}, ${task_type||'cleaning'}, ${assigned_to||null}, ${scheduled_date||null}, ${notes||null})
       RETURNING *`);
     res.json(rows.rows[0]);
@@ -331,7 +341,7 @@ router.put("/housekeeping/:id", requireAuth, async (req: any, res) => {
     const { room_id, task_type, assigned_to, scheduled_date, status, completed_at, notes } = req.body;
     const rows = await db.execute(sql`
       UPDATE hotel_housekeeping SET room_id=${room_id}, task_type=${task_type||'cleaning'},
-        assigned_to=${assigned_to||null}, scheduled_date=${scheduled_date||null},
+        assigned_to=${assigned_to||null}, task_date=${scheduled_date||null},
         status=${status||'pending'}, completed_at=${completed_at||null}, notes=${notes||null}
       WHERE id=${req.params.id} AND tenant_id=${tid(req)} RETURNING *`);
     res.json(rows.rows[0]);

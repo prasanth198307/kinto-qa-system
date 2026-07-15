@@ -98,10 +98,9 @@ router.delete("/drivers/:id", requireAuth, async (req: any, res) => {
 router.get("/trips", requireAuth, async (req: any, res) => {
   try {
     const rows = await db.execute(sql`
-      SELECT t.*, v.vehicle_no, v.vehicle_type, d.name as driver_name_ref, d.phone as driver_phone_ref
+      SELECT t.*, v.vehicle_number, v.vehicle_type
       FROM trips t
-      LEFT JOIN logistics_vehicles v ON v.id=t.vehicle_id
-      LEFT JOIN drivers d ON d.id=t.driver_id
+      LEFT JOIN vehicles v ON v.id=t.vehicle_id
       WHERE t.tenant_id=${tid(req)} ORDER BY t.trip_date DESC`);
     res.json(rows.rows);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -113,11 +112,11 @@ router.post("/trips", requireAuth, async (req: any, res) => {
     const no = "TRP-" + Date.now();
     const bal = (freight_amount||0) - (advance_paid||0);
     const rows = await db.execute(sql`
-      INSERT INTO trips (tenant_id, trip_no, vehicle_id, driver_id, driver_name, from_location, to_location, trip_date, return_date, goods_description, weight_tons, freight_amount, advance_paid, balance_amount, expenses, distance_km, notes)
-      VALUES (${tid(req)}, ${no}, ${vehicle_id||null}, ${driver_id||null}, ${driver_name||null},
+      INSERT INTO trips (tenant_id, trip_no, vehicle_id, driver_name, from_location, to_location, trip_date, return_date, goods_description, weight_tons, freight_amount, advance_paid, expenses, notes)
+      VALUES (${tid(req)}, ${no}, ${vehicle_id||null}, ${driver_name||null},
               ${from_location}, ${to_location}, ${trip_date}, ${return_date||null},
               ${goods_description||null}, ${weight_tons||null}, ${freight_amount||0},
-              ${advance_paid||0}, ${bal}, ${expenses||0}, ${distance_km||null}, ${notes||null})
+              ${advance_paid||0}, ${expenses||0}, ${notes||null})
       RETURNING *`);
     res.json(rows.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }

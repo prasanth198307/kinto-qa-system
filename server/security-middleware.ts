@@ -21,6 +21,7 @@ export const loginRateLimiter = rateLimit({
   standardHeaders: "draft-7",
   legacyHeaders: false,
   skipSuccessfulRequests: true,
+  skip: () => process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'development' || process.env.DISABLE_LOGIN_RATE_LIMIT === 'true',
   message: {
     message: "Too many login attempts. Please try again after 15 minutes.",
     retryAfter: 15,
@@ -77,7 +78,8 @@ export const apiRateLimiter = rateLimit({
   legacyHeaders: false,
   skip: (req) => {
     // Skip for logout (must never be blocked — security critical),
-    // whatsapp webhook, colloki callback, and file uploads (high-frequency legitimate traffic)
+    // whatsapp webhook, colloki callback, file uploads, and test runs
+    if (process.env.NODE_ENV === 'test' || process.env.DISABLE_LOGIN_RATE_LIMIT === 'true') return true;
     return (
       req.path === "/api/logout" ||
       req.path === "/api/whatsapp/webhook" ||

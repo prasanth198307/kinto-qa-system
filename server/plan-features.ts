@@ -361,204 +361,237 @@ const GOLD_ERP_MODULES     = ["gold_erp", "invoicing", "purchase_orders", "basic
 // ── Restaurant vertical plans ─────────────────────────────────────────────────
 const RESTAURANT_STARTER_MODULES = [
   "invoicing", "purchase_orders", "basic_inventory", "expenses", "documents",
-  "restaurant",
+  "restaurant", "masters",
 ];
 const RESTAURANT_PROFESSIONAL_MODULES = [
-  "invoicing", "purchase_orders", "basic_inventory", "gatepasses", "expenses",
-  "documents", "accounting", "mis", "crm", "production", "warehouses",
-  "api_hub", "whatsapp", "restaurant",
+  "invoicing", "purchase_orders", "basic_inventory", "sales_orders", "expenses",
+  "documents", "accounting", "mis", "crm", "whatsapp", "hr_payroll",
+  "restaurant", "masters",
 ];
 const RESTAURANT_ENTERPRISE_MODULES = [
-  "invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders",
-  "expenses", "documents", "accounting", "mis", "crm", "production", "warehouses",
-  "api_hub", "whatsapp", "hr_payroll", "projects", "fixed_assets", "multi_currency",
-  "restaurant",
+  "invoicing", "purchase_orders", "basic_inventory", "sales_orders",
+  "expenses", "documents", "accounting", "mis", "crm", "whatsapp", "hr_payroll",
+  "production", "warehouses", "fixed_assets", "multi_currency", "projects",
+  "api_hub", "restaurant", "masters",
+  "swachdesk", "swachforms", "swachmeet", "swachsign", "swachsocial",
 ];
 
 // ── Hotel vertical plans ──────────────────────────────────────────────────────
 const HOTEL_STARTER_MODULES = [
-  "invoicing", "purchase_orders", "basic_inventory", "expenses", "documents",
-  "hotel",
+  "invoicing", "expenses", "documents", "hotel", "masters",
 ];
 const HOTEL_PROFESSIONAL_MODULES = [
   "invoicing", "purchase_orders", "basic_inventory", "expenses", "documents",
-  "accounting", "mis", "crm", "warehouses", "api_hub", "whatsapp", "hotel",
+  "accounting", "mis", "crm", "whatsapp", "hr_payroll", "warehouses", "api_hub",
+  "hotel", "masters",
 ];
 const HOTEL_ENTERPRISE_MODULES = [
-  "invoicing", "purchase_orders", "basic_inventory", "gatepasses", "expenses",
-  "documents", "accounting", "mis", "crm", "warehouses", "api_hub", "whatsapp",
-  "hr_payroll", "projects", "fixed_assets", "multi_currency", "hotel",
+  "invoicing", "purchase_orders", "basic_inventory", "sales_orders", "gatepasses",
+  "expenses", "documents", "accounting", "mis", "crm", "whatsapp", "hr_payroll",
+  "warehouses", "fixed_assets", "multi_currency", "projects", "api_hub",
+  "restaurant", "hotel", "masters",
+  "swachdesk", "swachforms", "swachmeet", "swachsign", "swachsocial",
 ];
 
 // ── Healthcare vertical plans ─────────────────────────────────────────────────
-const HEALTHCARE_STARTER_MODULES = ["invoicing", "expenses", "documents", "healthcare"];
+const HEALTHCARE_STARTER_MODULES = ["invoicing", "expenses", "documents", "healthcare", "masters"];
 const HEALTHCARE_PROFESSIONAL_MODULES = [
   "invoicing", "purchase_orders", "basic_inventory", "expenses", "documents",
-  "accounting", "mis", "crm", "api_hub", "whatsapp", "healthcare",
+  "accounting", "mis", "crm", "whatsapp", "hr_payroll", "pharmacy", "healthcare", "masters",
 ];
 const HEALTHCARE_ENTERPRISE_MODULES = [
-  "invoicing", "purchase_orders", "basic_inventory", "expenses", "documents",
-  "accounting", "mis", "crm", "api_hub", "whatsapp", "hr_payroll",
-  "fixed_assets", "multi_currency", "healthcare",
+  "invoicing", "purchase_orders", "basic_inventory", "sales_orders", "expenses",
+  "documents", "accounting", "mis", "crm", "whatsapp", "hr_payroll",
+  "pharmacy", "fixed_assets", "multi_currency", "api_hub", "healthcare", "masters",
+  "swachdesk", "swachforms", "swachmeet", "swachsign", "swachsocial",
 ];
 
 // ── Pharmacy vertical plans ───────────────────────────────────────────────────
-const PHARMACY_STARTER_MODULES = ["invoicing", "basic_inventory", "expenses", "pharmacy"];
+const PHARMACY_STARTER_MODULES = ["invoicing", "basic_inventory", "expenses", "documents", "pharmacy", "masters"];
 const PHARMACY_PROFESSIONAL_MODULES = [
-  "invoicing", "purchase_orders", "basic_inventory", "expenses", "documents",
-  "accounting", "mis", "whatsapp", "pharmacy",
+  "invoicing", "purchase_orders", "basic_inventory", "sales_orders", "expenses",
+  "documents", "accounting", "mis", "whatsapp", "pharmacy", "masters",
 ];
 const PHARMACY_ENTERPRISE_MODULES = [
-  "invoicing", "purchase_orders", "basic_inventory", "expenses", "documents",
-  "accounting", "mis", "crm", "whatsapp", "hr_payroll", "pharmacy",
+  "invoicing", "purchase_orders", "basic_inventory", "sales_orders", "gatepasses",
+  "expenses", "documents", "accounting", "mis", "crm", "whatsapp", "hr_payroll",
+  "warehouses", "fixed_assets", "multi_currency", "api_hub", "pharmacy", "masters",
+  "swachdesk", "swachforms", "swachmeet", "swachsign", "swachsocial",
 ];
 
 // ── NGO vertical plans ────────────────────────────────────────────────────────
-const NGO_STARTER_MODULES = ["invoicing", "expenses", "documents", "ngo"];
+const NGO_STARTER_MODULES = ["invoicing", "expenses", "documents", "ngo", "masters"];
 const NGO_PROFESSIONAL_MODULES = [
-  "invoicing", "purchase_orders", "basic_inventory", "expenses", "documents",
-  "accounting", "mis", "whatsapp", "ngo",
+  "invoicing", "purchase_orders", "expenses", "documents",
+  "accounting", "mis", "whatsapp", "ngo", "masters",
 ];
 const NGO_ENTERPRISE_MODULES = [
   "invoicing", "purchase_orders", "basic_inventory", "expenses", "documents",
-  "accounting", "mis", "crm", "api_hub", "whatsapp", "hr_payroll",
-  "projects", "fixed_assets", "multi_currency", "ngo",
+  "accounting", "mis", "crm", "whatsapp", "hr_payroll",
+  "fixed_assets", "multi_currency", "projects", "approvals", "api_hub", "ngo", "masters",
+  "swachdesk", "swachforms", "swachmeet", "swachsign", "swachsocial",
 ];
 
 // ── Nidhi Company vertical plans ─────────────────────────────────────────────
-const NIDHI_STARTER_MODULES = ["invoicing", "expenses", "documents", "nidhi"];
+const NIDHI_STARTER_MODULES = ["invoicing", "expenses", "documents", "nidhi", "masters"];
 const NIDHI_PROFESSIONAL_MODULES = [
-  "invoicing", "basic_inventory", "expenses", "documents",
-  "accounting", "mis", "whatsapp", "nidhi",
+  "invoicing", "purchase_orders", "expenses", "documents",
+  "accounting", "mis", "whatsapp", "nidhi", "masters",
 ];
 const NIDHI_ENTERPRISE_MODULES = [
-  "invoicing", "purchase_orders", "basic_inventory", "expenses", "documents",
-  "accounting", "mis", "api_hub", "whatsapp", "hr_payroll",
-  "fixed_assets", "multi_currency", "nidhi",
+  "invoicing", "purchase_orders", "expenses", "documents",
+  "accounting", "mis", "crm", "whatsapp", "hr_payroll",
+  "fixed_assets", "multi_currency", "approvals", "api_hub", "nidhi", "masters",
+  "swachdesk", "swachforms", "swachmeet", "swachsign", "swachsocial",
 ];
 
 // ── CRM vertical plans ────────────────────────────────────────────────────────
-const CRM_STARTER_MODULES = ["invoicing", "expenses", "documents", "crm"];
+const CRM_STARTER_MODULES = ["invoicing", "expenses", "crm", "masters"];
 const CRM_PROFESSIONAL_MODULES = [
-  "invoicing", "purchase_orders", "basic_inventory", "expenses", "documents",
-  "accounting", "mis", "whatsapp", "crm", "api_hub",
+  "invoicing", "expenses", "documents", "accounting", "mis", "crm", "whatsapp", "api_hub", "masters",
 ];
 const CRM_ENTERPRISE_MODULES = [
-  "invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders",
-  "expenses", "documents", "accounting", "mis", "whatsapp", "hr_payroll",
-  "crm", "api_hub", "recurring_invoices", "projects", "multi_currency",
+  "invoicing", "purchase_orders", "expenses", "documents",
+  "accounting", "mis", "crm", "whatsapp", "hr_payroll",
+  "multi_currency", "projects", "approvals", "recurring_invoices", "api_hub", "masters",
+  "swachdesk", "swachforms", "swachmeet", "swachsign", "swachsocial",
 ];
 
 // ── Logistics vertical plans ──────────────────────────────────────────────────
-const LOGISTICS_STARTER_MODULES = ["invoicing", "basic_inventory", "expenses", "documents", "logistics_transport"];
+const LOGISTICS_STARTER_MODULES = ["invoicing", "expenses", "documents", "logistics_transport", "masters"];
 const LOGISTICS_PROFESSIONAL_MODULES = [
-  "invoicing", "purchase_orders", "basic_inventory", "expenses", "documents",
-  "accounting", "mis", "crm", "whatsapp", "logistics_transport",
+  "invoicing", "purchase_orders", "expenses", "documents",
+  "accounting", "mis", "whatsapp", "hr_payroll", "logistics_transport", "masters",
 ];
 const LOGISTICS_ENTERPRISE_MODULES = [
-  "invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders",
-  "expenses", "documents", "accounting", "mis", "crm", "api_hub", "whatsapp",
-  "hr_payroll", "fixed_assets", "multi_currency", "logistics_transport",
+  "invoicing", "purchase_orders", "basic_inventory", "sales_orders", "gatepasses",
+  "expenses", "documents", "accounting", "mis", "crm", "whatsapp", "hr_payroll",
+  "fixed_assets", "multi_currency", "api_hub", "logistics_transport", "masters",
+  "swachdesk", "swachforms", "swachmeet", "swachsign", "swachsocial",
 ];
 
 // ── Real Estate vertical plans ────────────────────────────────────────────────
-const REAL_ESTATE_STARTER_MODULES = ["invoicing", "expenses", "documents", "real_estate"];
+const REAL_ESTATE_STARTER_MODULES = ["invoicing", "expenses", "documents", "real_estate", "masters"];
 const REAL_ESTATE_PROFESSIONAL_MODULES = [
-  "invoicing", "purchase_orders", "basic_inventory", "expenses", "documents",
-  "accounting", "mis", "crm", "whatsapp", "real_estate",
+  "invoicing", "purchase_orders", "expenses", "documents",
+  "accounting", "mis", "crm", "whatsapp", "hr_payroll", "real_estate", "masters",
 ];
 const REAL_ESTATE_ENTERPRISE_MODULES = [
-  "invoicing", "purchase_orders", "basic_inventory", "gatepasses", "expenses",
-  "documents", "accounting", "mis", "crm", "api_hub", "whatsapp", "hr_payroll",
-  "projects", "fixed_assets", "multi_currency", "real_estate",
+  "invoicing", "purchase_orders", "basic_inventory", "sales_orders", "gatepasses",
+  "expenses", "documents", "accounting", "mis", "crm", "whatsapp", "hr_payroll",
+  "fixed_assets", "multi_currency", "projects", "approvals", "api_hub", "real_estate", "masters",
+  "swachdesk", "swachforms", "swachmeet", "swachsign", "swachsocial",
 ];
 
 // ── Agriculture vertical plans ────────────────────────────────────────────────
-const AGRICULTURE_STARTER_MODULES = ["invoicing", "basic_inventory", "expenses", "documents", "agriculture"];
+const AGRICULTURE_STARTER_MODULES = ["invoicing", "expenses", "documents", "agriculture", "masters"];
 const AGRICULTURE_PROFESSIONAL_MODULES = [
   "invoicing", "purchase_orders", "basic_inventory", "expenses", "documents",
-  "accounting", "mis", "whatsapp", "agriculture",
+  "accounting", "mis", "whatsapp", "agriculture", "masters",
 ];
 const AGRICULTURE_ENTERPRISE_MODULES = [
-  "invoicing", "purchase_orders", "basic_inventory", "gatepasses", "expenses",
-  "documents", "accounting", "mis", "crm", "api_hub", "whatsapp", "hr_payroll",
-  "fixed_assets", "multi_currency", "agriculture",
+  "invoicing", "purchase_orders", "basic_inventory", "sales_orders",
+  "expenses", "documents", "accounting", "mis", "crm", "whatsapp", "hr_payroll",
+  "warehouses", "fixed_assets", "multi_currency", "api_hub", "agriculture", "masters",
+  "swachdesk", "swachforms", "swachmeet", "swachsign", "swachsocial",
 ];
 
 // ── Education vertical plans ──────────────────────────────────────────────────
-const EDUCATION_STARTER_MODULES = ["invoicing", "expenses", "documents", "education"];
+const EDUCATION_STARTER_MODULES = ["invoicing", "expenses", "documents", "education", "masters"];
 const EDUCATION_PROFESSIONAL_MODULES = [
   "invoicing", "purchase_orders", "basic_inventory", "expenses", "documents",
-  "accounting", "mis", "whatsapp", "education",
+  "accounting", "mis", "whatsapp", "hr_payroll", "education", "masters",
 ];
 const EDUCATION_ENTERPRISE_MODULES = [
   "invoicing", "purchase_orders", "basic_inventory", "expenses", "documents",
-  "accounting", "mis", "crm", "api_hub", "whatsapp", "hr_payroll",
-  "projects", "fixed_assets", "multi_currency", "education",
+  "accounting", "mis", "crm", "whatsapp", "hr_payroll",
+  "fixed_assets", "multi_currency", "projects", "api_hub", "education", "masters",
+  "swachdesk", "swachforms", "swachmeet", "swachsign", "swachsocial",
 ];
 
 // ── Gold ERP vertical plans ───────────────────────────────────────────────────
-const GOLD_STARTER_MODULES = ["invoicing", "basic_inventory", "expenses", "documents", "gold_erp"];
+const GOLD_STARTER_MODULES = ["invoicing", "basic_inventory", "expenses", "documents", "gold_erp", "masters"];
 const GOLD_PROFESSIONAL_MODULES = [
   "invoicing", "purchase_orders", "basic_inventory", "sales_orders", "gatepasses",
-  "expenses", "documents", "accounting", "mis", "production", "quality_returns", "gold_erp",
+  "expenses", "documents", "accounting", "mis", "production", "quality_returns",
+  "gold_erp", "masters",
 ];
 const GOLD_ENTERPRISE_MODULES = [
   "invoicing", "purchase_orders", "basic_inventory", "sales_orders", "gatepasses",
-  "expenses", "documents", "accounting", "mis", "crm", "api_hub", "whatsapp",
-  "hr_payroll", "production", "quality_returns", "fixed_assets", "multi_currency",
-  "warehouses", "pos", "gold_erp",
+  "expenses", "documents", "accounting", "mis", "crm", "whatsapp", "hr_payroll",
+  "production", "quality_returns", "warehouses", "fixed_assets", "multi_currency",
+  "pos", "api_hub", "gold_erp", "masters",
+  "swachdesk", "swachforms", "swachmeet", "swachsign", "swachsocial",
 ];
 
 // ── Retail / POS vertical plans ───────────────────────────────────────────────
-const POS_STARTER_MODULES = ["invoicing", "basic_inventory", "expenses", "pos"];
+const POS_STARTER_MODULES = ["invoicing", "basic_inventory", "expenses", "pos", "masters"];
 const POS_PROFESSIONAL_MODULES = [
   "invoicing", "purchase_orders", "basic_inventory", "sales_orders", "gatepasses",
-  "expenses", "accounting", "mis", "crm", "whatsapp", "pos",
+  "expenses", "accounting", "mis", "crm", "whatsapp", "pos", "masters",
 ];
 const POS_ENTERPRISE_MODULES = [
   "invoicing", "purchase_orders", "basic_inventory", "sales_orders", "gatepasses",
-  "expenses", "accounting", "mis", "crm", "api_hub", "whatsapp", "hr_payroll",
-  "fixed_assets", "multi_currency", "warehouses", "quality_returns", "pos",
+  "expenses", "documents", "accounting", "mis", "crm", "whatsapp", "hr_payroll",
+  "warehouses", "fixed_assets", "multi_currency", "quality_returns", "api_hub", "pos", "masters",
+  "swachdesk", "swachforms", "swachmeet", "swachsign", "swachsocial",
 ];
 
 // ── Manufacturing vertical plans ──────────────────────────────────────────────
 const MANUFACTURING_STARTER_MODULES = [
-  "invoicing", "basic_inventory", "expenses", "documents", "production",
+  "invoicing", "basic_inventory", "expenses", "documents", "production", "masters",
 ];
 const MANUFACTURING_PROFESSIONAL_MODULES = [
   "invoicing", "purchase_orders", "basic_inventory", "sales_orders", "gatepasses",
   "expenses", "documents", "accounting", "mis", "production", "quality_returns",
-  "serial_lot", "uom",
+  "serial_lot", "uom", "masters",
 ];
 const MANUFACTURING_ENTERPRISE_MODULES = [
   "invoicing", "purchase_orders", "basic_inventory", "sales_orders", "gatepasses",
-  "expenses", "documents", "accounting", "mis", "crm", "api_hub", "whatsapp",
-  "hr_payroll", "production", "quality_returns", "serial_lot", "uom", "warehouses",
-  "stock_transfers", "fixed_assets", "multi_currency", "projects", "timesheets",
+  "expenses", "documents", "accounting", "mis", "crm", "whatsapp", "hr_payroll",
+  "production", "quality_returns", "warehouses", "fixed_assets", "multi_currency",
+  "projects", "timesheets", "serial_lot", "uom", "stock_transfers",
   "purchase_requisitions", "grn", "price_lists", "item_variants", "approvals",
+  "maintenance", "api_hub", "masters",
+  "swachdesk", "swachforms", "swachmeet", "swachsign", "swachsocial",
 ];
 
 // ── HR & Payroll vertical plans ───────────────────────────────────────────────
-const HR_STARTER_MODULES = ["hr_payroll", "expenses"];
+const HR_STARTER_MODULES = ["hr_payroll", "expenses", "masters"];
 const HR_PROFESSIONAL_MODULES = [
-  "hr_payroll", "expenses", "documents", "mis", "api_hub",
+  "hr_payroll", "expenses", "documents", "mis", "api_hub", "masters",
 ];
 const HR_ENTERPRISE_MODULES = [
-  "hr_payroll", "expenses", "documents", "mis", "api_hub", "whatsapp",
-  "accounting", "projects", "timesheets", "appraisals", "approvals",
+  "hr_payroll", "expenses", "documents", "mis", "accounting",
+  "projects", "timesheets", "appraisals", "approvals", "whatsapp", "api_hub", "masters",
+  "swachdesk", "swachforms", "swachmeet", "swachsign", "swachsocial",
 ];
 
 // ── E-Commerce vertical plans ─────────────────────────────────────────────────
-const ECOMMERCE_STARTER_MODULES = ["invoicing", "basic_inventory", "expenses", "documents", "ecommerce"];
+const ECOMMERCE_STARTER_MODULES = ["invoicing", "basic_inventory", "expenses", "documents", "ecommerce", "masters"];
 const ECOMMERCE_PROFESSIONAL_MODULES = [
   "invoicing", "purchase_orders", "basic_inventory", "sales_orders", "expenses",
-  "documents", "accounting", "mis", "whatsapp", "api_hub", "ecommerce",
+  "documents", "accounting", "mis", "whatsapp", "api_hub", "ecommerce", "masters",
 ];
 const ECOMMERCE_ENTERPRISE_MODULES = [
-  "invoicing", "purchase_orders", "basic_inventory", "gatepasses", "sales_orders",
-  "expenses", "documents", "accounting", "mis", "crm", "api_hub", "whatsapp",
-  "hr_payroll", "warehouses", "multi_currency", "pos", "ecommerce",
+  "invoicing", "purchase_orders", "basic_inventory", "sales_orders", "gatepasses",
+  "expenses", "documents", "accounting", "mis", "crm", "whatsapp", "hr_payroll",
+  "warehouses", "fixed_assets", "multi_currency", "pos", "api_hub", "ecommerce", "masters",
+  "swachdesk", "swachforms", "swachmeet", "swachsign", "swachsocial",
+];
+
+// ── Finance ERP vertical plans ────────────────────────────────────────────────
+const FINANCE_STARTER_MODULES = ["invoicing", "expenses", "documents", "accounting", "masters"];
+const FINANCE_PROFESSIONAL_MODULES = [
+  "invoicing", "purchase_orders", "expenses", "documents",
+  "accounting", "mis", "crm", "whatsapp", "fixed_assets", "masters",
+];
+const FINANCE_ENTERPRISE_MODULES = [
+  "invoicing", "purchase_orders", "basic_inventory", "sales_orders", "expenses",
+  "documents", "accounting", "mis", "crm", "whatsapp", "hr_payroll",
+  "fixed_assets", "multi_currency", "projects", "timesheets", "approvals",
+  "recurring_invoices", "audit_trail", "api_hub", "masters",
+  "swachdesk", "swachforms", "swachmeet", "swachsign", "swachsocial",
 ];
 
 // ── Shared module matrix ───────────────────────────────────────────────────────
@@ -623,6 +656,9 @@ export const PLAN_MODULES: Record<string, string[]> = {
   hr_starter:              HR_STARTER_MODULES,
   hr_professional:         HR_PROFESSIONAL_MODULES,
   hr_enterprise:           HR_ENTERPRISE_MODULES,
+  finance_starter:         FINANCE_STARTER_MODULES,
+  finance_professional:    FINANCE_PROFESSIONAL_MODULES,
+  finance_enterprise:      FINANCE_ENTERPRISE_MODULES,
 };
 
 // ── Route prefix → minimum plan ───────────────────────────────────────────────

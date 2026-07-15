@@ -24,19 +24,30 @@ router.get("/donors/:id/donations", requireAuth, async (req: any, res) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
+router.get("/donors/:id", requireAuth, async (req: any, res) => {
+  try {
+    const rows = await db.execute(sql`SELECT * FROM ngo_donors WHERE id=${req.params.id} AND tenant_id=${tid(req)}`);
+    if (!rows.rows.length) return res.status(404).json({ error: "Not found" });
+    const d: any = rows.rows[0];
+    res.json({ ...d, pan: d.pan_number });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
 router.post("/donors", requireAuth, async (req: any, res) => {
   try {
-    const { name, phone, email, address, pan_number, donor_type, notes } = req.body;
+    const { name, phone, email, address, pan_number, pan, donor_type } = req.body;
+    const panVal = pan_number || pan || null;
     const code = "DNR-" + Date.now();
-    const rows = await db.execute(sql`INSERT INTO ngo_donors (tenant_id, donor_code, name, phone, email, address, pan_number, donor_type, notes) VALUES (${tid(req)}, ${code}, ${name}, ${phone||null}, ${email||null}, ${address||null}, ${pan_number||null}, ${donor_type||'individual'}, ${notes||null}) RETURNING *`);
-    res.json(rows.rows[0]);
+    const rows = await db.execute(sql`INSERT INTO ngo_donors (tenant_id, donor_code, name, phone, email, address, pan_number, donor_type) VALUES (${tid(req)}, ${code}, ${name}, ${phone||null}, ${email||null}, ${address||null}, ${panVal}, ${donor_type||'individual'}) RETURNING *`);
+    const d: any = rows.rows[0];
+    res.json({ ...d, pan: d.pan_number });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
 router.put("/donors/:id", requireAuth, async (req: any, res) => {
   try {
-    const { name, phone, email, address, pan_number, donor_type, notes } = req.body;
-    const rows = await db.execute(sql`UPDATE ngo_donors SET name=${name}, phone=${phone||null}, email=${email||null}, address=${address||null}, pan_number=${pan_number||null}, donor_type=${donor_type||'individual'}, notes=${notes||null} WHERE id=${req.params.id} AND tenant_id=${tid(req)} RETURNING *`);
+    const { name, phone, email, address, pan_number, donor_type } = req.body;
+    const rows = await db.execute(sql`UPDATE ngo_donors SET name=${name}, phone=${phone||null}, email=${email||null}, address=${address||null}, pan_number=${pan_number||null}, donor_type=${donor_type||'individual'} WHERE id=${req.params.id} AND tenant_id=${tid(req)} RETURNING *`);
     res.json(rows.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
@@ -60,22 +71,32 @@ router.post("/donations", requireAuth, async (req: any, res) => {
   try {
     const { donor_id, project_id, amount, donation_date, payment_mode, reference_number, purpose, is_80g_eligible, notes } = req.body;
     const no = "DON-" + Date.now();
-    const rows = await db.execute(sql`INSERT INTO ngo_donations (tenant_id, donation_number, donor_id, project_id, amount, donation_date, payment_mode, reference_number, purpose, is_80g_eligible, notes) VALUES (${tid(req)}, ${no}, ${donor_id}, ${project_id||null}, ${amount||0}, ${donation_date||null}, ${payment_mode||'cash'}, ${reference_number||null}, ${purpose||null}, ${is_80g_eligible ?? true}, ${notes||null}) RETURNING *`);
+    const eligible80g = is_80g_eligible ? 1 : 0;
+    const rows = await db.execute(sql`INSERT INTO ngo_donations (tenant_id, receipt_number, donor_id, project_id, amount, donation_date, payment_mode, payment_reference, purpose, is_80g_eligible, notes) VALUES (${tid(req)}, ${no}, ${donor_id}, ${project_id||null}, ${amount||0}, ${donation_date||null}, ${payment_mode||'cash'}, ${reference_number||null}, ${purpose||null}, ${eligible80g}, ${notes||null}) RETURNING *`);
     const donation = rows.rows[0] as any;
     await db.execute(sql`UPDATE ngo_donors SET total_donated=COALESCE(total_donated,0)+${amount||0} WHERE id=${donor_id} AND tenant_id=${tid(req)}`);
     if (project_id) {
-      await db.execute(sql`UPDATE ngo_projects SET funds_received=COALESCE(funds_received,0)+${amount||0} WHERE id=${project_id} AND tenant_id=${tid(req)}`);
+      await db.execute(sql`UPDATE ngo_projects SET allocated_amount=COALESCE(allocated_amount,0)+${amount||0} WHERE id=${project_id} AND tenant_id=${tid(req)}`);
     }
     // GL auto-post: Dr Cash/Bank, Cr Donation Income
     glNGODonation({ tenantId: tid(req), donationId: donation.id, donationNumber: no, amount: Math.round((amount||0)*100), paymentMode: payment_mode || "cash", date: donation_date || undefined });
-    res.json(donation);
+    res.json({ ...donation, amount: Number(donation.amount) });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.get("/donations/:id", requireAuth, async (req: any, res) => {
+  try {
+    const rows = await db.execute(sql`SELECT d.*, dn.name as donor_name FROM ngo_donations d LEFT JOIN ngo_donors dn ON dn.id=d.donor_id WHERE d.id=${req.params.id} AND d.tenant_id=${tid(req)}`);
+    if (!rows.rows.length) return res.status(404).json({ error: "Not found" });
+    const don: any = rows.rows[0];
+    res.json({ ...don, amount: Number(don.amount) });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
 router.put("/donations/:id", requireAuth, async (req: any, res) => {
   try {
     const { amount, donation_date, payment_mode, reference_number, purpose, notes } = req.body;
-    const rows = await db.execute(sql`UPDATE ngo_donations SET amount=${amount||0}, donation_date=${donation_date||null}, payment_mode=${payment_mode||'cash'}, reference_number=${reference_number||null}, purpose=${purpose||null}, notes=${notes||null} WHERE id=${req.params.id} AND tenant_id=${tid(req)} RETURNING *`);
+    const rows = await db.execute(sql`UPDATE ngo_donations SET amount=${amount||0}, donation_date=${donation_date||null}, payment_mode=${payment_mode||'cash'}, payment_reference=${reference_number||null}, purpose=${purpose||null}, notes=${notes||null} WHERE id=${req.params.id} AND tenant_id=${tid(req)} RETURNING *`);
     res.json(rows.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
@@ -90,7 +111,7 @@ router.delete("/donations/:id", requireAuth, async (req: any, res) => {
 // ── 80G Receipts ──────────────────────────────────────────────────────────────
 router.get("/receipts-80g", requireAuth, async (req: any, res) => {
   try {
-    const rows = await db.execute(sql`SELECT r.*, dn.name as donor_name, dn.pan_number FROM ngo_80g_receipts r LEFT JOIN ngo_donors dn ON dn.id=r.donor_id WHERE r.tenant_id=${tid(req)} ORDER BY r.issue_date DESC`);
+    const rows = await db.execute(sql`SELECT r.*, dn.name as donor_name, dn.pan_number FROM ngo_80g_receipts r LEFT JOIN ngo_donors dn ON dn.id=r.donor_id WHERE r.tenant_id=${tid(req)} ORDER BY r.issued_date DESC`);
     res.json(rows.rows);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
@@ -99,7 +120,48 @@ router.post("/receipts-80g", requireAuth, async (req: any, res) => {
   try {
     const { donor_id, donation_id, amount, financial_year, issue_date, notes } = req.body;
     const no = "80G-" + Date.now();
-    const rows = await db.execute(sql`INSERT INTO ngo_80g_receipts (tenant_id, receipt_number, donor_id, donation_id, amount, financial_year, issue_date, notes) VALUES (${tid(req)}, ${no}, ${donor_id}, ${donation_id||null}, ${amount||0}, ${financial_year||null}, ${issue_date||null}, ${notes||null}) RETURNING *`);
+    const rows = await db.execute(sql`INSERT INTO ngo_80g_receipts (tenant_id, receipt_number, donor_id, donation_id, amount, financial_year, issued_date) VALUES (${tid(req)}, ${no}, ${donor_id}, ${donation_id||null}, ${amount||0}, ${financial_year||null}, ${issue_date||null}) RETURNING *`);
+    res.json(rows.rows[0]);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── 80G Certificates (alias for receipts-80g) ─────────────────────────────────
+router.get("/80g-certificates", requireAuth, async (req: any, res) => {
+  try {
+    const rows = await db.execute(sql`SELECT r.*, dn.name as donor_name, dn.pan_number FROM ngo_80g_receipts r LEFT JOIN ngo_donors dn ON dn.id=r.donor_id WHERE r.tenant_id=${tid(req)} ORDER BY r.issued_date DESC`);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.post("/80g-certificates", requireAuth, async (req: any, res) => {
+  try {
+    const { donor_id, donation_id, donation_ids, amount, financial_year, issue_date, notes } = req.body;
+    const no = "80G-" + Date.now();
+    const did = donation_id || (Array.isArray(donation_ids) ? donation_ids[0] : null);
+    const rows = await db.execute(sql`INSERT INTO ngo_80g_receipts (tenant_id, receipt_number, donor_id, donation_id, amount, financial_year) VALUES (${tid(req)}, ${no}, ${donor_id}, ${did||null}, ${amount||0}, ${financial_year||null}) RETURNING *`);
+    const row: any = rows.rows[0];
+    res.json({ ...row, certificate_number: row.receipt_number });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.post("/80g-certificates/bulk", requireAuth, async (req: any, res) => {
+  try {
+    const { financial_year, donor_ids } = req.body;
+    const ids: string[] = Array.isArray(donor_ids) ? donor_ids : [];
+    let generated = 0;
+    for (const did of ids) {
+      const no = "80G-" + Date.now().toString().slice(-8) + "-" + String(did).slice(-4);
+      await db.execute(sql`INSERT INTO ngo_80g_receipts (tenant_id, receipt_number, donor_id, amount, financial_year) VALUES (${tid(req)}, ${no}, ${did}, 0, ${financial_year||null})`);
+      generated++;
+    }
+    res.json({ generated, financial_year });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.get("/80g-certificates/:id/download", requireAuth, async (req: any, res) => {
+  try {
+    const rows = await db.execute(sql`SELECT r.*, dn.name as donor_name, dn.pan_number FROM ngo_80g_receipts r LEFT JOIN ngo_donors dn ON dn.id=r.donor_id WHERE r.id=${req.params.id} AND r.tenant_id=${tid(req)}`);
+    if (!rows.rows.length) return res.status(404).json({ error: "Not found" });
     res.json(rows.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
@@ -123,8 +185,8 @@ router.post("/projects", requireAuth, async (req: any, res) => {
 
 router.put("/projects/:id", requireAuth, async (req: any, res) => {
   try {
-    const { name, description, start_date, end_date, target_amount, funds_received, funds_utilized, location, status } = req.body;
-    const rows = await db.execute(sql`UPDATE ngo_projects SET name=${name}, description=${description||null}, start_date=${start_date||null}, end_date=${end_date||null}, target_amount=${target_amount||0}, funds_received=${funds_received||0}, funds_utilized=${funds_utilized||0}, location=${location||null}, status=${status||'active'} WHERE id=${req.params.id} AND tenant_id=${tid(req)} RETURNING *`);
+    const { name, description, start_date, end_date, target_amount, location, status } = req.body;
+    const rows = await db.execute(sql`UPDATE ngo_projects SET name=${name}, description=${description||null}, start_date=${start_date||null}, end_date=${end_date||null}, target_amount=${target_amount||0}, location=${location||null}, status=${status||'active'} WHERE id=${req.params.id} AND tenant_id=${tid(req)} RETURNING *`);
     res.json(rows.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });

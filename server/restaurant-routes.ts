@@ -96,7 +96,7 @@ router.post("/tables", requireAuth, async (req, res) => {
     const { table_number, section, capacity, status, outlet_id } = req.body;
     const result = await db.execute(sql`
       INSERT INTO restaurant_tables (tenant_id, table_number, section, capacity, status, outlet_id)
-      VALUES (${tid(req)}, ${table_number}, ${section}, ${capacity}, ${status ?? 'available'}, ${outlet_id})
+      VALUES (${tid(req)}, ${table_number}, ${section ?? 'Main Hall'}, ${capacity ?? 4}, ${status ?? 'available'}, ${outlet_id ?? null})
       RETURNING *`);
     res.json(result.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -263,10 +263,10 @@ router.get("/menu-items/search", requireAuth, async (req, res) => {
 
 router.post("/menu-items", requireAuth, async (req, res) => {
   try {
-    const { name, category_id, price, gst_pct, description, is_available, is_veg, image_url, short_code } = req.body;
+    const { name, category_id, price, gst_pct, description, is_available, is_veg, image_url } = req.body;
     const result = await db.execute(sql`
-      INSERT INTO menu_items (tenant_id, name, category_id, price, gst_pct, description, is_available, is_veg, image_url, short_code)
-      VALUES (${tid(req)}, ${name}, ${category_id}, ${price}, ${gst_pct ?? 5}, ${description}, ${is_available ?? true}, ${is_veg ?? true}, ${image_url}, ${short_code})
+      INSERT INTO menu_items (tenant_id, name, category_id, price, gst_pct, description, is_available, is_veg, image_url)
+      VALUES (${tid(req)}, ${name}, ${category_id ?? null}, ${price}, ${gst_pct ?? 5}, ${description ?? null}, ${is_available ? 1 : 0}, ${is_veg ? 1 : 0}, ${image_url ?? null})
       RETURNING *`);
     res.json(result.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -837,10 +837,10 @@ router.get("/reservations/today", requireAuth, async (req, res) => {
 
 router.post("/reservations", requireAuth, async (req, res) => {
   try {
-    const { customer_name, phone, covers, reservation_date, reservation_time, notes, outlet_id } = req.body;
+    const { customer_name, phone, customer_phone, covers, reservation_date, reservation_time, notes, outlet_id } = req.body;
     const result = await db.execute(sql`
-      INSERT INTO restaurant_reservations (tenant_id, customer_name, phone, covers, reservation_date, reservation_time, notes, outlet_id, status)
-      VALUES (${tid(req)}, ${customer_name}, ${phone}, ${covers}, ${reservation_date}, ${reservation_time}, ${notes}, ${outlet_id}, 'confirmed')
+      INSERT INTO restaurant_reservations (tenant_id, customer_name, customer_phone, covers, reservation_date, reservation_time, notes, outlet_id, status)
+      VALUES (${tid(req)}, ${customer_name}, ${customer_phone ?? phone ?? null}, ${covers ?? 2}, ${reservation_date}, ${reservation_time}, ${notes ?? null}, ${outlet_id ?? null}, 'confirmed')
       RETURNING *`);
     res.json(result.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }

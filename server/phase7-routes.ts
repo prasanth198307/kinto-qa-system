@@ -174,7 +174,7 @@ router.get("/pharmacy/narcotics-register", auth, async (req: any, res: any) => {
       remarks TEXT, verified_by VARCHAR(200),
       created_at TIMESTAMPTZ DEFAULT NOW(), record_status INT DEFAULT 1
     )`);
-    let q = sql`SELECT nr.*, d.name as drug_name_resolved, d.schedule as drug_schedule FROM pharmacy_narcotics_register nr LEFT JOIN pharmacy_drugs d ON d.id=nr.drug_id WHERE nr.tenant_id=${t} AND nr.record_status=1`;
+    let q = sql`SELECT nr.*, d.generic_name as drug_name_resolved, d.schedule as drug_schedule FROM pharmacy_narcotics_register nr LEFT JOIN pharmacy_drugs d ON d.id::text=nr.drug_id::text WHERE nr.tenant_id=${t} AND nr.record_status=1`;
     if (drug_id) q = sql`${q} AND nr.drug_id=${parseInt(drug_id as string)}`;
     if (from_date) q = sql`${q} AND nr.entry_date >= ${from_date}`;
     if (to_date) q = sql`${q} AND nr.entry_date <= ${to_date}`;

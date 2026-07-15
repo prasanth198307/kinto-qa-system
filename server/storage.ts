@@ -2371,7 +2371,8 @@ export class DatabaseStorage implements IStorage {
     // Update the material's current stock
     const material = await this.getRawMaterial(transaction.materialId);
     if (material) {
-      const stockChange = transaction.transactionType === 'receipt' ? transaction.quantity : -transaction.quantity;
+      const isStockIn = ['receipt', 'purchase', 'opening_stock', 'return_in'].includes(transaction.transactionType ?? '');
+      const stockChange = isStockIn ? transaction.quantity : -transaction.quantity;
       await db
         .update(rawMaterials)
         .set({ currentStock: (material.currentStock || 0) + stockChange })

@@ -372,22 +372,18 @@ router.get("/returns/:id/items", requireAuth, async (req: any, res) => {
 
 router.post("/returns", requireAuth, async (req: any, res) => {
   try {
-    const { original_transaction_id, customer_id, return_date, return_amount, reason, refund_mode, processed_by, notes, items } = req.body;
+    const { original_transaction_id, order_id, customer_id, return_date, return_amount, reason, refund_mode, refund_method, processed_by, notes, items } = req.body;
     const no = "RET-" + Date.now();
+    const txId = original_transaction_id || order_id || null;
+    const itemsTotal = items ? items.reduce((s: number, i: any) => s + (i.unit_price||0)*(i.quantity||1), 0) : 0;
+    const amt = return_amount || itemsTotal || 0;
     const ret = await db.execute(sql`
       INSERT INTO pos_returns (tenant_id, return_number, original_transaction_id, customer_id, return_date, return_amount, reason, refund_mode, processed_by, notes)
-      VALUES (${tid(req)}, ${no}, ${original_transaction_id||null}, ${customer_id||null},
-              ${return_date}, ${return_amount||0}, ${reason||null}, ${refund_mode||'cash'},
+      VALUES (${tid(req)}, ${no}, ${txId}, ${customer_id||null},
+              ${return_date||new Date().toISOString().slice(0,10)}, ${amt}, ${reason||null}, ${refund_mode||refund_method||'cash'},
               ${processed_by||null}, ${notes||null}) RETURNING *`);
-    const rId = ret.rows[0].id;
-    if (items?.length) {
-      for (const it of items) {
-        await db.execute(sql`
-          INSERT INTO pos_return_items (return_id, product_id, product_name, quantity, unit_price, amount)
-          VALUES (${rId}, ${it.product_id||null}, ${it.product_name||null}, ${it.quantity||1}, ${it.unit_price||0}, ${it.amount||0})`);
-      }
-    }
-    res.json(ret.rows[0]);
+    const row: any = ret.rows[0];
+    res.json({ ...row, refund_amount: Number(row.return_amount) });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
