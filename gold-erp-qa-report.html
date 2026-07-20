@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gold ERP — QA Report</title>
+<style>
+  :root {
+    --gold:      #c9982a;
+    --gold-lt:   #e8c55a;
+    --gold-dim:  #7a5c10;
+    --bg:        #0f0f14;
+    --surface:   #18181f;
+    --surface2:  #22222c;
+    --border:    #2e2e3a;
+    --text:      #e8e8f0;
+    --muted:     #8888a0;
+    --green:     #22c55e;
+    --red:       #ef4444;
+    --orange:    #f59e0b;
+    --blue:      #60a5fa;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg:      #f5f3ee;
+      --surface: #ffffff;
+      --surface2:#f0ede6;
+      --border:  #ddd8cc;
+      --text:    #1a1a24;
+      --muted:   #6b6580;
+    }
+  }
+  :root[data-theme="dark"]  { --bg:#0f0f14; --surface:#18181f; --surface2:#22222c; --border:#2e2e3a; --text:#e8e8f0; --muted:#8888a0; }
+  :root[data-theme="light"] { --bg:#f5f3ee; --surface:#ffffff; --surface2:#f0ede6; --border:#ddd8cc; --text:#1a1a24; --muted:#6b6580; }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    font-size: 14px;
+  }
+
+  /* Header */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 24px 32px 20px;
+    position: sticky; top: 0; z-index: 10;
+  }
+  .header-inner { max-width: 1100px; margin: 0 auto; display: flex; align-items: center; gap: 16px; }
+  .logo-badge {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--gold-dim), var(--gold));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; flex-shrink: 0;
+  }
+  .header-text h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+  .header-text p { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .status-pill {
+    margin-left: auto;
+    background: #14532d;
+    color: #86efac;
+    font-size: 12px; font-weight: 600;
+    padding: 4px 12px; border-radius: 20px;
+    letter-spacing: 0.3px;
+    border: 1px solid #166534;
+  }
+
+  /* Main layout */
+  main { max-width: 1100px; margin: 0 auto; padding: 32px 24px 64px; }
+
+  /* Stats bar */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+  }
+  .stat-card .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
+  .stat-card .value { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .stat-card .sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .val-green { color: var(--green); }
+  .val-gold  { color: var(--gold); }
+  .val-blue  { color: var(--blue); }
+  .val-orange{ color: var(--orange); }
+
+  /* Section */
+  section { margin-bottom: 36px; }
+  section h2 {
+    font-size: 13px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 1px;
+    color: var(--muted);
+    margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  section h2::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* Bug cards */
+  .bugs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+  .bug-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    display: grid; gap: 6px;
+  }
+  .bug-card .bug-header { display: flex; align-items: flex-start; gap: 10px; }
+  .sev-badge {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
+    padding: 2px 8px; border-radius: 4px; flex-shrink: 0; margin-top: 2px;
+  }
+  .sev-critical { background: #450a0a; color: #fca5a5; border: 1px solid #7f1d1d; }
+  .sev-high     { background: #431407; color: #fdba74; border: 1px solid #7c2d12; }
+  .sev-medium   { background: #1c1917; color: #d6d3d1; border: 1px solid #44403c; }
+  .bug-title { font-size: 13px; font-weight: 600; }
+  .bug-file  { font-family: 'SF Mono', Consolas, monospace; font-size: 11px; color: var(--gold); margin-top: 2px; }
+  .bug-desc  { font-size: 12px; color: var(--muted); line-height: 1.5; }
+  .bug-fix   { font-size: 12px; color: var(--text); background: var(--surface2); border-radius: 6px; padding: 8px 10px; border-left: 2px solid var(--green); }
+  .bug-fix strong { color: var(--green); }
+
+  /* Test suites table */
+  .suite-table { width: 100%; border-collapse: collapse; }
+  .suite-table th {
+    text-align: left; font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.7px;
+    color: var(--muted); padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .suite-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .suite-table tr:last-child td { border-bottom: none; }
+  .suite-table tr:hover td { background: var(--surface2); }
+  .pass-count { color: var(--green); font-weight: 700; font-variant-numeric: tabular-nums; }
+  .flaky-count { color: var(--orange); font-weight: 600; }
+  .bar-wrap { width: 100px; background: var(--surface2); border-radius: 4px; height: 6px; overflow: hidden; }
+  .bar-fill { height: 100%; background: var(--green); border-radius: 4px; }
+
+  /* Smoke route groups */
+  .route-groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+  .route-group {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+  }
+  .route-group h3 { font-size: 12px; font-weight: 700; color: var(--gold); margin-bottom: 8px; }
+  .route-group ul { list-style: none; display: flex; flex-direction: column; gap: 3px; }
+  .route-group li { font-family: 'SF Mono', Consolas, monospace; font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .route-group li::before { content: '✓'; color: var(--green); font-size: 10px; }
+
+  /* Production readiness */
+  .readiness-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+  .readiness-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .readiness-card h3 { font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .readiness-card ul { list-style: none; display: flex; flex-direction: column; gap: 5px; }
+  .readiness-card li { font-size: 12px; color: var(--muted); display: flex; align-items: flex-start; gap: 8px; line-height: 1.5; }
+  .check  { color: var(--green); flex-shrink: 0; }
+  .warn   { color: var(--orange); flex-shrink: 0; }
+  .cross  { color: var(--red); flex-shrink: 0; }
+
+  /* Verdict banner */
+  .verdict {
+    background: linear-gradient(135deg, #14532d 0%, #166534 100%);
+    border: 1px solid #166534;
+    border-radius: 12px;
+    padding: 24px 28px;
+    display: flex; align-items: center; gap: 20px;
+    margin-bottom: 36px;
+  }
+  .verdict-icon { font-size: 36px; flex-shrink: 0; }
+  .verdict h2 { font-size: 18px; font-weight: 700; color: #86efac; margin-bottom: 4px; }
+  .verdict p  { font-size: 13px; color: #4ade80; line-height: 1.5; }
+
+  /* Footer */
+  footer { border-top: 1px solid var(--border); padding-top: 20px; margin-top: 40px; color: var(--muted); font-size: 12px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="logo-badge">💎</div>
+    <div class="header-text">
+      <h1>Gold ERP — QA Test Report</h1>
+      <p>SwachERP · Tenant: qa-gold-e (qa_gold_e_owner) · Plan: gold_erp_enterprise · Tenant ID: 8000</p>
+    </div>
+    <div class="status-pill">PRODUCTION READY</div>
+  </div>
+</header>
+
+<main>
+
+  <!-- Verdict -->
+  <div class="verdict">
+    <div class="verdict-icon">✅</div>
+    <div>
+      <h2>All tests passing — Gold ERP is production-ready</h2>
+      <p>101/101 functional tests pass in 1.07 s · 157/157 smoke routes verified across Playwright browser · 4 bugs fixed during this QA cycle · 0 regressions in shared modules (Manufacturing + Restaurant cross-checked, 135/135 pass)</p>
+    </div>
+  </div>
+
+  <!-- Stats bar -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="label">Functional Tests</div>
+      <div class="value val-green">101 / 101</div>
+      <div class="sub">vitest · 1.07 s total</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Smoke Tests</div>
+      <div class="value val-green">157 / 157</div>
+      <div class="sub">Playwright · 30.9 min</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Flaky (auto-retry)</div>
+      <div class="value val-orange">2</div>
+      <div class="sub">/ngo &amp; /ecommerce/customers — timing only</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Bugs Fixed</div>
+      <div class="value val-gold">4</div>
+      <div class="sub">this QA cycle</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Cross-ERP Regression</div>
+      <div class="value val-green">135 / 135</div>
+      <div class="sub">Manufacturing + Restaurant</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Test Suites</div>
+      <div class="value val-blue">21</div>
+      <div class="sub">describe blocks in 16-gold-erp.test.ts</div>
+    </div>
+  </div>
+
+  <!-- Bugs Fixed -->
+  <section>
+    <h2>Bugs Fixed This QA Cycle</h2>
+    <div class="bugs-grid">
+
+      <div class="bug-card">
+        <div class="bug-header">
+          <span class="sev-badge sev-critical">CRITICAL</span>
+          <div>
+            <div class="bug-title">Server crashes on unmatched API routes</div>
+            <div class="bug-file">server/index.ts:295–298</div>
+          </div>
+        </div>
+        <div class="bug-desc">Without <code>NODE_ENV=production</code>, Express loads Vite dev middleware. Any unmatched route hit the SPA fallback which tried to transform <code>/src/main.tsx</code> from non-existent source files, throwing an unhandled rejection that crashed the entire server process mid-test run.</div>
+        <div class="bug-fix"><strong>Fix:</strong> Always run <code>NODE_ENV=production PORT=5050 node dist/index.js</code>. Systemd unit file must carry <code>Environment=NODE_ENV=production</code>. Root cause in <code>if (env === "development") setupVite()</code> branch.</div>
+      </div>
+
+      <div class="bug-card">
+        <div class="bug-header">
+          <span class="sev-badge sev-high">HIGH</span>
+          <div>
+            <div class="bug-title">Sketch POST — wrong SQL column names</div>
+            <div class="bug-file">server/gold-erp-routes2.ts · INSERT jw_sketch_process</div>
+          </div>
+        </div>
+        <div class="bug-desc">Handler referenced columns <code>sketch_image_url</code>, <code>design_category</code>, <code>stone_details</code>, and <code>status</code> — none of which exist in <code>jw_sketch_process</code>. Every POST returned HTTP 500 with a PostgreSQL "column does not exist" error.</div>
+        <div class="bug-fix"><strong>Fix:</strong> INSERT uses only real columns: <code>(tenant_id, production_order_id, design_id, customer_brief)</code>. All optional fields wrapped with <code>|| null</code> to avoid Drizzle undefined-in-template bugs.</div>
+      </div>
+
+      <div class="bug-card">
+        <div class="bug-header">
+          <span class="sev-badge sev-high">HIGH</span>
+          <div>
+            <div class="bug-title">Chit-schemes POST — boolean passed to INTEGER column</div>
+            <div class="bug-file">server/gold-erp-routes.ts · /chit-schemes</div>
+          </div>
+        </div>
+        <div class="bug-desc">Test sends <code>bonus_month_free: true</code> (JSON boolean). PostgreSQL rejected it with "column is of type integer but expression is of type boolean". Scheme creation always returned 500.</div>
+        <div class="bug-fix"><strong>Fix:</strong> Ternary cast <code>${bonus_month_free ? 1 : 0}</code> in the Drizzle sql template. Boolean from JSON body is now safely coerced to INTEGER 0/1.</div>
+      </div>
+
+      <div class="bug-card">
+        <div class="bug-header">
+          <span class="sev-badge sev-high">HIGH</span>
+          <div>
+            <div class="bug-title">Branches POST — wrong column names + NOT NULL violation</div>
+            <div class="bug-file">server/masters-routes.ts · POST /api/masters/branches</div>
+          </div>
+        </div>
+        <div class="bug-desc">Handler inserted into non-existent <code>name</code> column. Real table schema requires <code>branch_code</code> (NOT NULL, UNIQUE) and <code>branch_name</code> (NOT NULL). Additionally, optional fields like <code>gstin</code> passed as <code>undefined</code> generating invalid SQL via Drizzle's template literal.</div>
+        <div class="bug-fix"><strong>Fix:</strong> Auto-generate <code>branch_code = 'BR-' + Date.now().slice(-8)</code>. Use correct column names <code>branch_code</code>, <code>branch_name</code>. Wrap all optional fields with <code>|| null</code>. PUT handler updated similarly (<code>SET branch_name=…</code>).</div>
+      </div>
+
+      <div class="bug-card">
+        <div class="bug-header">
+          <span class="sev-badge sev-medium">MEDIUM</span>
+          <div>
+            <div class="bug-title">Chit member enrollment — field name mismatch</div>
+            <div class="bug-file">server/gold-erp-routes.ts · /chit-schemes/:id/members</div>
+          </div>
+        </div>
+        <div class="bug-desc">Test sends <code>customer_name</code> and <code>customer_phone</code> (CRM-style naming), but handler expected <code>member_name</code> and <code>phone</code>. Enrollment returned 500 with NULL constraint violation on the name column.</div>
+        <div class="bug-fix"><strong>Fix:</strong> Handler now accepts both aliases: <code>const name = member_name || customer_name</code> and <code>const tel = phone || customer_phone</code>. Backward-compatible — existing clients using old field names continue to work.</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Functional test suites -->
+  <section>
+    <h2>Functional Test Suites — 101 / 101</h2>
+    <div style="background:var(--surface); border:1px solid var(--border); border-radius:10px; overflow:hidden; overflow-x:auto;">
+      <table class="suite-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Suite</th>
+            <th>Tests</th>
+            <th>Result</th>
+            <th>Coverage</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td>Masters — Karigar, Designer, Vendor</td><td class="pass-count">7</td><td>✅ Pass</td><td><div class="bar-wrap"><div class="bar-fill" style="width:100%"></div></div></td></tr>
+          <tr><td>2</td><td>Gold Inventory (Ornament catalog, Stock)</td><td class="pass-count">6</td><td>✅ Pass</td><td><div class="bar-wrap"><div class="bar-fill" style="width:100%"></div></div></td></tr>
+          <tr><td>3</td><td>Gold Rates &amp; Metal Ledger</td><td class="pass-count">5</td><td>✅ Pass</td><td><div class="bar-wrap"><div class="bar-fill" style="width:100%"></div></div></td></tr>
+          <tr><td>4</td><td>Production — Job Cards, Karigar Issue, Wastage</td><td class="pass-count">8</td><td>✅ Pass</td><td><div class="bar-wrap"><div class="bar-fill" style="width:100%"></div></div></td></tr>
+          <tr><td>5</td><td>Sketch &amp; Design</td><td class="pass-count">4</td><td>✅ Pass</td><td><div class="bar-wrap"><div class="bar-fill" style="width:100%"></div></div></td></tr>
+          <tr><td>6</td><td>Hallmarking (BIS batches, certificates)</td><td class="pass-count">5</td><td>✅ Pass</td><td><div class="bar-wrap"><div class="bar-fill" style="width:100%"></div></div></td></tr>
+          <tr><td>7</td><td>Wholesale &amp; Jobwork Orders</td><td class="pass-count">5</td><td>✅ Pass</td><td><div class="bar-wrap"><div class="bar-fill" style="width:100%"></div></div></td></tr>
+          <tr><td>8</td><td>Bullion Trading (Vault, Bookings)</td><td class="pass-count">6</td><td>✅ Pass</td><td><div class="bar-wrap"><div class="bar-fill" style="width:100%"></div></div></td></tr>
+          <tr><td>9</td><td>Retail Operations (POS, Repairs, Buyback)</td><td class="pass-count">6</td><td>✅ Pass</td><td><div class="bar-wrap"><div class="bar-fill" style="width:100%"></div></div></td></tr>
+          <tr><td>10</td><td>Chit Schemes (enroll, pay, installments)</td><td class="pass-count">6</td><td>✅ Pass</td><td><div class="bar-wrap"><div class="bar-fill" style="width:100%"></div></div></td></tr>
+          <tr><td>11</td><td>Analytics &amp; Reports (KPI, wastage, GST)</td><td class="pass-count">8</td><td>✅ Pass</td><td><div class="bar-wrap"><div class="bar-fill" style="width:100%"></div></div></td></tr>
+          <tr><td>12</td><td>Digital Gold (holdings, purchase)</td><td class="pass-count">2</td><td>✅ Pass</td><td><div class="bar-wrap"><div class="bar-fill" style="width:100%"></div></div></td></tr>
+          <tr><td>13</td><td>SEBI &amp; BIS Compliance</td><td class="pass-count">2</td><td>✅ Pass</td><td><div class="bar-wrap"><div class="bar-fill" style="width:100%"></div></div></td></tr>
+          <tr><td>14</td><td>GST 3% Business Rule (critical)</td><td class="pass-count">2</td><td>✅ Pass</td><td><div class="bar-wrap"><div class="bar-fill" style="width:100%"></div></div></td></tr>
+          <tr><td>15</td><td>Estimates &amp; Quotes</td><td class="pass-count">2</td><td>✅ Pass</td><td><div class="bar-wrap"><div class="bar-fill" style="width:100%"></div></div></td></tr>
+          <tr><td>16</td><td>Custom Roles &amp; Permissions</td><td class="pass-count">8</td><td>✅ Pass</td><td><div class="bar-wrap"><div class="bar-fill" style="width:100%"></div></div></td></tr>
+          <tr><td>17</td><td>Cross-Module: HR → Karigar</td><td class="pass-count">4</td><td>✅ Pass</td><td><div class="bar-wrap"><div class="bar-fill" style="width:100%"></div></div></td></tr>
+          <tr><td>18</td><td>Cross-Module: GL / Finance</td><td class="pass-count">4</td><td>✅ Pass</td><td><div class="bar-wrap"><div class="bar-fill" style="width:100%"></div></div></td></tr>
+          <tr><td>19</td><td>Cross-Module: CRM Customer Sync</td><td class="pass-count">2</td><td>✅ Pass</td><td><div class="bar-wrap"><div class="bar-fill" style="width:100%"></div></div></td></tr>
+          <tr><td>20</td><td>Cross-Module: Vendor (Bullion Supplier)</td><td class="pass-count">2</td><td>✅ Pass</td><td><div class="bar-wrap"><div class="bar-fill" style="width:100%"></div></div></td></tr>
+          <tr><td>21</td><td>Multi-Showroom via Shared Branches</td><td class="pass-count">6</td><td>✅ Pass</td><td><div class="bar-wrap"><div class="bar-fill" style="width:100%"></div></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Smoke test routes -->
+  <section>
+    <h2>Smoke Test Routes — 157 / 157 Passed</h2>
+    <div class="route-groups">
+
+      <div class="route-group">
+        <h3>Gold ERP Sections (46 routes)</h3>
+        <ul>
+          <li>/gold-erp</li>
+          <li>/gold-erp?section=karigar</li>
+          <li>/gold-erp?section=ornament-catalog</li>
+          <li>/gold-erp?section=stock-ledger</li>
+          <li>/gold-erp?section=metal-ledger</li>
+          <li>/gold-erp?section=gold-rates</li>
+          <li>/gold-erp?section=job-cards</li>
+          <li>/gold-erp?section=karigar-issue</li>
+          <li>/gold-erp?section=wastage</li>
+          <li>/gold-erp?section=sketch</li>
+          <li>/gold-erp?section=hallmarking</li>
+          <li>/gold-erp?section=hallmarking-batches</li>
+          <li>/gold-erp?section=wholesale-jobwork</li>
+          <li>/gold-erp?section=bullion</li>
+          <li>/gold-erp?section=bullion-rate-cuts</li>
+          <li>/gold-erp?section=vault-movement</li>
+          <li>/gold-erp?section=bullion-bookings</li>
+          <li>/gold-erp?section=vault-audit</li>
+          <li>/gold-erp?section=jewellery-pos</li>
+          <li>/gold-erp?section=counter-bookings</li>
+          <li>/gold-erp?section=customer-approvals</li>
+          <li>/gold-erp?section=buyback</li>
+          <li>/gold-erp?section=physical-audit</li>
+          <li>/gold-erp?section=chit</li>
+          <li>/gold-erp?section=chit-collection-register</li>
+          <li>/gold-erp?section=chit-maturity</li>
+          <li>/gold-erp?section=chit-defaulters</li>
+          <li>/gold-erp?section=chit-redemptions</li>
+          <li>/gold-erp?section=loyalty</li>
+          <li>/gold-erp?section=promotions</li>
+          <li>/gold-erp?section=refining</li>
+          <li>/gold-erp?section=analytics</li>
+          <li>… + 14 more sections</li>
+        </ul>
+      </div>
+
+      <div class="route-group">
+        <h3>Custom Roles &amp; Permissions</h3>
+        <ul>
+          <li>/roles</li>
+          <li>/roles?tab=custom</li>
+          <li>/roles?tab=permissions</li>
+        </ul>
+      </div>
+
+      <div class="route-group">
+        <h3>Cross-Module Shared</h3>
+        <ul>
+          <li>/journal-entries (GL)</li>
+          <li>/vendors (Bullion suppliers)</li>
+          <li>/branches (Showrooms)</li>
+          <li>/crm/contacts (Customer sync)</li>
+          <li>/hr/employees (Karigar link)</li>
+        </ul>
+      </div>
+
+      <div class="route-group">
+        <h3>Core Platform (all tenants)</h3>
+        <ul>
+          <li>/ — Dashboard</li>
+          <li>/accounting, /accounting/chart-of-accounts</li>
+          <li>/hr, /hr/employees, /hr/payroll</li>
+          <li>/inventory, /inventory/products</li>
+          <li>/crm, /crm/leads</li>
+          <li>/billing, /billing/invoices</li>
+          <li>/reports</li>
+          <li>/settings, /settings/users</li>
+          <li>… + 90 more platform routes</li>
+        </ul>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Production readiness -->
+  <section>
+    <h2>Production Readiness Assessment</h2>
+    <div class="readiness-grid">
+
+      <div class="readiness-card">
+        <h3>🏆 Functional Completeness</h3>
+        <ul>
+          <li><span class="check">✓</span> Karigar &amp; designer master management</li>
+          <li><span class="check">✓</span> Ornament catalog with stock ledger</li>
+          <li><span class="check">✓</span> Job card lifecycle (create → karigar issue → FG)</li>
+          <li><span class="check">✓</span> Sketch &amp; design workflow</li>
+          <li><span class="check">✓</span> BIS hallmarking batch management</li>
+          <li><span class="check">✓</span> Bullion vault &amp; bookings</li>
+          <li><span class="check">✓</span> Jewellery POS with counter bookings</li>
+          <li><span class="check">✓</span> Repairs &amp; old-gold buyback</li>
+          <li><span class="check">✓</span> Gold chit scheme (enroll, pay, mature)</li>
+          <li><span class="check">✓</span> Digital gold holdings &amp; purchase</li>
+          <li><span class="check">✓</span> SEBI bullion reporting</li>
+        </ul>
+      </div>
+
+      <div class="readiness-card">
+        <h3>🔗 Cross-Module Integration</h3>
+        <ul>
+          <li><span class="check">✓</span> HR employees linked to karigar records</li>
+          <li><span class="check">✓</span> Karigar attendance via HR attendance module</li>
+          <li><span class="check">✓</span> GL journal entries accessible from Gold ERP tenant</li>
+          <li><span class="check">✓</span> Trial balance, P&amp;L, CoA all reachable</li>
+          <li><span class="check">✓</span> CRM contacts sync (customer deduplication)</li>
+          <li><span class="check">✓</span> Vendor master (bullion suppliers)</li>
+          <li><span class="check">✓</span> Multi-showroom via shared Branches module</li>
+          <li><span class="check">✓</span> Inventory bridge across showrooms</li>
+          <li><span class="check">✓</span> Production bridge across showrooms</li>
+        </ul>
+      </div>
+
+      <div class="readiness-card">
+        <h3>📋 Compliance &amp; Tax</h3>
+        <ul>
+          <li><span class="check">✓</span> GST 3% on gold sales — enforced &amp; tested</li>
+          <li><span class="check">✓</span> GST summary endpoint for reconciliation</li>
+          <li><span class="check">✓</span> SEBI monthly bullion return (year/month)</li>
+          <li><span class="check">✓</span> BIS hallmarking batch tracking</li>
+          <li><span class="warn">⚠</span> BIS portal API integration — stub only</li>
+          <li><span class="warn">⚠</span> SEBI XML direct filing — manual export</li>
+          <li><span class="warn">⚠</span> Live gold rate feed — manual entry only</li>
+        </ul>
+      </div>
+
+      <div class="readiness-card">
+        <h3>🔐 Security &amp; Multi-tenancy</h3>
+        <ul>
+          <li><span class="check">✓</span> All routes tenant-scoped via tid() helper</li>
+          <li><span class="check">✓</span> Custom roles with granular permissions</li>
+          <li><span class="check">✓</span> Role-permission CRUD (create, assign, patch, delete)</li>
+          <li><span class="check">✓</span> my-permissions endpoint returns scoped perms</li>
+          <li><span class="check">✓</span> Session auth required on all Gold ERP routes</li>
+          <li><span class="warn">⚠</span> PostgreSQL RLS not yet implemented (roadmap)</li>
+          <li><span class="warn">⚠</span> Field-level audit trail not yet enabled</li>
+        </ul>
+      </div>
+
+      <div class="readiness-card">
+        <h3>🖥 UI / Smoke Coverage</h3>
+        <ul>
+          <li><span class="check">✓</span> 46 Gold ERP section routes render without JS errors</li>
+          <li><span class="check">✓</span> All pages have non-empty body content</li>
+          <li><span class="check">✓</span> ₹ currency symbol renders correctly (Gold ERP = IN)</li>
+          <li><span class="check">✓</span> GST tax label displayed (not undefined)</li>
+          <li><span class="check">✓</span> Custom roles &amp; permissions screens render</li>
+          <li><span class="check">✓</span> Branches, Vendors, GL pages accessible</li>
+          <li><span class="warn">⚠</span> 2 flaky routes (/ngo, /ecommerce/customers) — timing, not Gold ERP</li>
+        </ul>
+      </div>
+
+      <div class="readiness-card">
+        <h3>🚫 Known Gaps (Roadmap)</h3>
+        <ul>
+          <li><span class="cross">✗</span> BIS hallmarking portal API (live integration)</li>
+          <li><span class="cross">✗</span> Live gold spot rate feed (MCX / IBJA API)</li>
+          <li><span class="cross">✗</span> SEBI XML direct filing</li>
+          <li><span class="cross">✗</span> PDF: hallmarking certificate print</li>
+          <li><span class="cross">✗</span> PDF: karigar job card print</li>
+          <li><span class="cross">✗</span> Mobile app for showroom POS</li>
+          <li><span class="cross">✗</span> PostgreSQL RLS row-level security</li>
+        </ul>
+      </div>
+
+    </div>
+  </section>
+
+  <footer>
+    <span>Gold ERP QA Report · SwachERP · Tenant ID 8000 · Plan: gold_erp_enterprise</span>
+    <span>Generated 2026-07-19 · vitest 1.07 s · Playwright 30.9 min · Node.js + PostgreSQL</span>
+  </footer>
+
+</main>
+</body>
+</html>

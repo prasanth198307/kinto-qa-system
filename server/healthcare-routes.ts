@@ -2,6 +2,7 @@ import { Router } from "express";
 import { sql } from "drizzle-orm";
 import { db } from "./db";
 import { glHealthcareBill } from "./vertical-gl-service";
+import { syncVerticalCustomerToCRM } from "./cross-module-sync";
 import { createRequire } from "module";
 const _require = createRequire(import.meta.url);
 const PDFDocument = _require("pdfkit");
@@ -29,7 +30,9 @@ router.post("/patients", requireAuth, async (req: any, res) => {
       VALUES (${tid(req)}, ${code}, ${name}, ${dob||null}, ${gender||null}, ${blood_group||null},
               ${phone||null}, ${email||null}, ${address||null}, ${emergency_contact||null},
               ${allergies||null}, ${notes||null}) RETURNING *`);
-    res.json(rows.rows[0]);
+    const pat = rows.rows[0] as any;
+    syncVerticalCustomerToCRM(tid(req), 'healthcare', { id: pat.id, name, phone: phone ?? null, email: email ?? null, address: address ?? null }).catch(() => {});
+    res.json(pat);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
@@ -147,12 +150,13 @@ router.get("/appointments", requireAuth, async (req: any, res) => {
 
 router.post("/appointments", requireAuth, async (req: any, res) => {
   try {
-    const { patient_id, doctor_id, doctor_name, specialization, appointment_date, slot_time, type, consultation_fee, diagnosis, prescription, notes } = req.body;
+    const { patient_id, patient_name, patient_phone, doctor_id, doctor_name, specialization, appointment_date, appointment_time, slot_time, type, consultation_fee, fees, diagnosis, prescription, notes } = req.body;
     const no = "APT-" + Date.now();
+    const stime = slot_time || appointment_time || null;
     const rows = await db.execute(sql`
       INSERT INTO appointments (tenant_id, appointment_no, patient_id, doctor_id, doctor_name, specialization, appointment_date, slot_time, type, consultation_fee, diagnosis, prescription, notes)
-      VALUES (${tid(req)}, ${no}, ${patient_id}, ${doctor_id||null}, ${doctor_name||null}, ${specialization||null},
-              ${appointment_date}, ${slot_time||null}, ${type||'OPD'}, ${consultation_fee||0},
+      VALUES (${tid(req)}, ${no}, ${patient_id||null}, ${doctor_id||null}, ${doctor_name||null}, ${specialization||null},
+              ${appointment_date}, ${stime}, ${type||'OPD'}, ${consultation_fee||fees||0},
               ${diagnosis||null}, ${prescription||null}, ${notes||null}) RETURNING *`);
     res.json(rows.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -241,18 +245,20 @@ router.get("/prescriptions/:id/items", requireAuth, async (req: any, res) => {
 
 router.post("/prescriptions", requireAuth, async (req: any, res) => {
   try {
-    const { patient_id, doctor_id, appointment_id, diagnosis, notes, items } = req.body;
+    const { patient_id, patient_name, doctor_id, doctor_name, appointment_id, diagnosis, notes, items, medicines } = req.body;
     const code = "RX-" + Date.now();
     const pr = await db.execute(sql`
       INSERT INTO prescriptions (tenant_id, prescription_code, patient_id, doctor_id, appointment_id, diagnosis, notes)
-      VALUES (${tid(req)}, ${code}, ${patient_id}, ${doctor_id||null}, ${appointment_id||null}, ${diagnosis||null}, ${notes||null})
+      VALUES (${tid(req)}, ${code}, ${patient_id||null}, ${doctor_id||null}, ${appointment_id||null}, ${diagnosis||null}, ${notes||null})
       RETURNING *`);
     const pId = pr.rows[0].id;
-    if (items?.length) {
-      for (const it of items) {
+    const rxItems = items || medicines || [];
+    if (rxItems.length) {
+      for (const it of rxItems) {
+        const mname = it.medicine_name || it.name || null;
         await db.execute(sql`
-          INSERT INTO prescription_items (prescription_id, medicine_name, dosage, frequency, duration, instructions)
-          VALUES (${pId}, ${it.medicine_name}, ${it.dosage||null}, ${it.frequency||null}, ${it.duration||null}, ${it.instructions||null})`);
+          INSERT INTO prescription_items (tenant_id, prescription_id, medicine_name, dosage, frequency, duration, instructions)
+          VALUES (${tid(req)}, ${pId}, ${mname}, ${it.dosage||null}, ${it.frequency||null}, ${it.duration||null}, ${it.instructions||null})`);
       }
     }
     res.json(pr.rows[0]);

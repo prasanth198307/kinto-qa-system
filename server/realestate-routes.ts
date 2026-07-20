@@ -24,11 +24,12 @@ router.get("/projects", requireAuth, async (req: any, res) => {
 
 router.post("/projects", requireAuth, async (req: any, res) => {
   try {
-    const { name, location, project_type, total_units, total_area_sqft, start_date, completion_date, description } = req.body;
+    const { name, project_name, location, project_type, total_units, total_area_sqft, start_date, completion_date, description } = req.body;
+    const pname = project_name || name;
     const code = "PROJ-" + Date.now();
     const rows = await db.execute(sql`
-      INSERT INTO re_projects (tenant_id, project_code, name, location, project_type, total_units, total_area_sqft, start_date, completion_date, description)
-      VALUES (${tid(req)}, ${code}, ${name}, ${location||null}, ${project_type||'residential'},
+      INSERT INTO re_projects (tenant_id, project_code, project_name, location, project_type, total_units, total_area_sqft, start_date, completion_date, description)
+      VALUES (${tid(req)}, ${code}, ${pname}, ${location||null}, ${project_type||'residential'},
               ${total_units||0}, ${total_area_sqft||null}, ${start_date||null},
               ${completion_date||null}, ${description||null}) RETURNING *`);
     res.json(rows.rows[0]);
@@ -37,9 +38,10 @@ router.post("/projects", requireAuth, async (req: any, res) => {
 
 router.put("/projects/:id", requireAuth, async (req: any, res) => {
   try {
-    const { name, location, project_type, total_units, total_area_sqft, start_date, completion_date, status, description } = req.body;
+    const { name, project_name, location, project_type, total_units, total_area_sqft, start_date, completion_date, status, description } = req.body;
+    const pname = project_name || name;
     const rows = await db.execute(sql`
-      UPDATE re_projects SET name=${name}, location=${location||null}, project_type=${project_type||'residential'},
+      UPDATE re_projects SET project_name=${pname}, location=${location||null}, project_type=${project_type||'residential'},
         total_units=${total_units||0}, total_area_sqft=${total_area_sqft||null},
         start_date=${start_date||null}, completion_date=${completion_date||null},
         status=${status||'planning'}, description=${description||null}
@@ -61,8 +63,8 @@ router.get("/units", requireAuth, async (req: any, res) => {
     const { project_id } = req.query;
     const rows = await db.execute(
       project_id
-        ? sql`SELECT u.*, p.name as project_name FROM re_units u LEFT JOIN re_projects p ON p.id=u.project_id WHERE u.tenant_id=${tid(req)} AND u.project_id=${String(project_id)} ORDER BY u.unit_no`
-        : sql`SELECT u.*, p.name as project_name FROM re_units u LEFT JOIN re_projects p ON p.id=u.project_id WHERE u.tenant_id=${tid(req)} ORDER BY p.name, u.unit_no`
+        ? sql`SELECT u.*, p.project_name FROM re_units u LEFT JOIN re_projects p ON p.id=u.project_id WHERE u.tenant_id=${tid(req)} AND u.project_id=${String(project_id)} ORDER BY u.unit_no`
+        : sql`SELECT u.*, p.project_name FROM re_units u LEFT JOIN re_projects p ON p.id=u.project_id WHERE u.tenant_id=${tid(req)} ORDER BY p.project_name, u.unit_no`
     );
     res.json(rows.rows);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -70,11 +72,14 @@ router.get("/units", requireAuth, async (req: any, res) => {
 
 router.post("/units", requireAuth, async (req: any, res) => {
   try {
-    const { project_id, unit_no, unit_type, floor_no, area_sqft, base_price, current_price, facing, features } = req.body;
+    const { project_id, unit_no, unit_number, unit_type, floor_no, floor, area_sqft, base_price, price, current_price, facing, features } = req.body;
+    const uno = unit_no || unit_number;
+    const flr = floor_no ?? floor ?? null;
+    const bp  = base_price || price || 0;
     const rows = await db.execute(sql`
       INSERT INTO re_units (tenant_id, project_id, unit_no, unit_type, floor_no, area_sqft, base_price, current_price, facing, features)
-      VALUES (${tid(req)}, ${project_id}, ${unit_no}, ${unit_type||null}, ${floor_no||null},
-              ${area_sqft||null}, ${base_price||0}, ${current_price||base_price||0},
+      VALUES (${tid(req)}, ${project_id||null}, ${uno||null}, ${unit_type||null}, ${flr},
+              ${area_sqft||null}, ${bp}, ${current_price||bp},
               ${facing||null}, ${features||null}) RETURNING *`);
     res.json(rows.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -103,12 +108,12 @@ router.delete("/units/:id", requireAuth, async (req: any, res) => {
 router.get("/bookings", requireAuth, async (req: any, res) => {
   try {
     const rows = await db.execute(sql`
-      SELECT b.*, u.unit_no, u.unit_type, u.area_sqft, p.name as project_name,
+      SELECT b.*, u.unit_no, u.unit_type, u.area_sqft, p.project_name,
              br.name as broker_name
       FROM re_bookings b
       LEFT JOIN re_units u ON u.id=b.unit_id
       LEFT JOIN re_projects p ON p.id=u.project_id
-      LEFT JOIN re_brokers br ON br.id=b.broker_id
+      LEFT JOIN re_brokers br ON br.id::text=b.broker_id::text
       WHERE b.tenant_id=${tid(req)} ORDER BY b.created_at DESC`);
     res.json(rows.rows);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -118,12 +123,13 @@ router.post("/bookings", requireAuth, async (req: any, res) => {
   try {
     const { unit_id, customer_name, customer_phone, customer_email, customer_address, booking_date, total_amount, booking_amount, loan_amount, bank_name, broker_id, broker_commission, agreement_date, possession_date, notes } = req.body;
     const no = "BKG-" + Date.now();
+    const bkDate = booking_date || new Date().toISOString().split('T')[0];
     const rows = await db.execute(sql`
       INSERT INTO re_bookings (tenant_id, unit_id, booking_no, customer_name, customer_phone, customer_email, customer_address, booking_date, total_consideration, booking_amount, loan_amount, bank_name, broker_id, broker_commission, agreement_date, possession_date, notes)
-      VALUES (${tid(req)}, ${unit_id}, ${no}, ${customer_name}, ${customer_phone||null},
-              ${customer_email||null}, ${customer_address||null}, ${booking_date},
+      VALUES (${tid(req)}, ${unit_id||null}, ${no}, ${customer_name||null}, ${customer_phone||null},
+              ${customer_email||null}, ${customer_address||null}, ${bkDate},
               ${total_amount||0}, ${booking_amount||0}, ${loan_amount||0}, ${bank_name||null},
-              ${broker_id||null}, ${broker_commission||0}, ${agreement_date||null},
+              ${broker_id ? Number(broker_id) : null}, ${broker_commission||0}, ${agreement_date||null},
               ${possession_date||null}, ${notes||null}) RETURNING *`);
     await db.execute(sql`UPDATE re_units SET status='booked' WHERE id=${unit_id}`);
     res.json(rows.rows[0]);
@@ -264,7 +270,7 @@ router.delete("/construction-progress/:id", requireAuth, async (req: any, res) =
 // ── Demand Letters ────────────────────────────────────────────────────────────
 router.get("/demand-letters", requireAuth, async (req: any, res) => {
   try {
-    const rows = await db.execute(sql`SELECT * FROM re_demand_letters WHERE tenant_id=${Number(tid(req))} AND record_status=1 ORDER BY demand_date DESC`);
+    const rows = await db.execute(sql`SELECT * FROM re_demand_letters WHERE tenant_id=${tid(req)} ORDER BY demand_date DESC`);
     res.json(rows.rows);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
@@ -275,7 +281,7 @@ router.post("/demand-letters", requireAuth, async (req: any, res) => {
     const no = "DL-" + Date.now();
     const rows = await db.execute(sql`
       INSERT INTO re_demand_letters (tenant_id, demand_number, booking_id, customer_name, unit_number, demand_date, due_date, milestone, amount, notes)
-      VALUES (${Number(tid(req))}, ${no}, ${booking_id||null}, ${customer_name||null}, ${unit_number||null},
+      VALUES (${tid(req)}, ${no}, ${booking_id||null}, ${customer_name||null}, ${unit_number||null},
               ${demand_date}, ${due_date||null}, ${milestone||null}, ${amount||0}, ${notes||null})
       RETURNING *`);
     res.json(rows.rows[0]);
@@ -288,15 +294,29 @@ router.put("/demand-letters/:id", requireAuth, async (req: any, res) => {
     const rows = await db.execute(sql`
       UPDATE re_demand_letters SET due_date=${due_date||null}, milestone=${milestone||null},
         amount=${amount||0}, paid_amount=${paid_amount||0}, status=${status||'pending'}, notes=${notes||null}
-      WHERE id=${req.params.id} AND tenant_id=${Number(tid(req))} RETURNING *`);
+      WHERE id=${req.params.id} AND tenant_id=${tid(req)} RETURNING *`);
     res.json(rows.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
 router.delete("/demand-letters/:id", requireAuth, async (req: any, res) => {
   try {
-    await db.execute(sql`UPDATE re_demand_letters SET record_status=0 WHERE id=${req.params.id} AND tenant_id=${Number(tid(req))}`);
+    await db.execute(sql`DELETE FROM re_demand_letters WHERE id=${req.params.id} AND tenant_id=${tid(req)}`);
     res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Customers (alias: distinct customers from bookings) ───────────────────────
+router.get("/customers", requireAuth, async (req: any, res) => {
+  try {
+    const rows = await db.execute(sql`
+      SELECT DISTINCT ON (customer_name, customer_phone)
+        id, tenant_id, customer_name as name, customer_phone as phone,
+        customer_email as email, customer_address as address, created_at
+      FROM re_bookings
+      WHERE tenant_id=${tid(req)}
+      ORDER BY customer_name, customer_phone, created_at DESC`);
+    res.json(rows.rows);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 

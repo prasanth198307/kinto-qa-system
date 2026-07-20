@@ -48,10 +48,10 @@ router.get("/sketch", requireAuth, async (req: any, res) => {
 
 router.post("/sketch", requireAuth, async (req: any, res) => {
   try {
-    const { production_order_id, design_id, customer_brief, sketch_image_url, design_category, stone_details } = req.body;
+    const { production_order_id, design_id, customer_brief } = req.body;
     const row = await db.execute(sql`
-      INSERT INTO jw_sketch_process (tenant_id, production_order_id, design_id, customer_brief, sketch_image_url, design_category, stone_details, status)
-      VALUES (${tid(req)}, ${production_order_id}, ${design_id||null}, ${customer_brief||null}, ${sketch_image_url||null}, ${design_category||null}, ${stone_details||null}, 'pending')
+      INSERT INTO jw_sketch_process (tenant_id, production_order_id, design_id, customer_brief)
+      VALUES (${tid(req)}, ${production_order_id||null}, ${design_id||null}, ${customer_brief||null})
       RETURNING *`);
     res.json(row.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }

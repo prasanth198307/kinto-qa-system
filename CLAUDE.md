@@ -38,6 +38,32 @@ QA and invoice management system for Kinto Water.
 - If a file exceeds 300 lines split it into smaller components
 - Suggest specific file names and responsibilities when splitting
 
+## Cross-ERP Safety Rules (applies to every ERP fix and test session)
+When fixing a bug or adding a feature in any ERP vertical, check whether the changed
+code is also used by other ERP modules. If it is, verify those modules still pass.
+
+### Common shared modules — any change here requires cross-ERP validation:
+- server/routes.ts — all 17 verticals
+- shared/schema.ts — every tenant and module
+- server/auth.ts — all role-gated routes
+- server/plan-features.ts — all plan/subscription checks
+- server/db.ts — all DB access
+- tests/helpers/api.ts — all test files
+- createJournalWithLines() — Finance, Nidhi, HR Payroll, Restaurant
+- whatsappService — Nidhi, CRM, HR (any reminder feature)
+- runNightlyJobs / cron functions — any vertical with scheduled jobs
+
+### Validation protocol when touching a shared module:
+1. Identify which ERP verticals import or call the changed code
+2. Run the functional tests for each affected vertical (not just the one being fixed)
+3. Fix any regressions before marking the task complete
+4. Note in the commit message which other verticals were validated
+
+### Per-ERP test files (for reference):
+- 01 Manufacturing, 02 Finance, 03 Nidhi, 04 Logistics, 06 CRM
+- 07 Restaurant, 08 HR/Payroll, 09 Cash Register, 10 Hotel
+- 12 Pharmacy, 16 Gold, 18 E-Commerce, 19 Plan Matrix, 20 Cross-Module
+
 ## Key Files
 - Invoice form: client/src/components/InvoiceForm.tsx
 - Print invoice: client/src/pages/PrintInvoicePage.tsx

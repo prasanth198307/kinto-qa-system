@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 import { db } from "./db";
 import { glHotelCheckout, glHotelFolio } from "./vertical-gl-service";
 import { whatsappService } from "./whatsappService";
+import { syncVerticalCustomerToCRM } from "./cross-module-sync";
 
 const router = Router();
 const requireAuth = (req: any, res: any, next: any) => { if (!req.isAuthenticated?.() && !req.user) return res.status(401).json({ error: "Unauthorized" }); next(); };
@@ -103,7 +104,9 @@ router.post("/guests", requireAuth, async (req: any, res) => {
       VALUES (${tid(req)}, ${code}, ${name}, ${phone||null}, ${email||null}, ${address||null},
               ${id_type||null}, ${id_number||null}, ${nationality||null}, ${notes||null})
       RETURNING *`);
-    res.json(rows.rows[0]);
+    const guest = rows.rows[0] as any;
+    syncVerticalCustomerToCRM(tid(req), 'hotel', { id: guest.id, name, phone: phone ?? null, email: email ?? null, address: address ?? null }).catch(() => {});
+    res.json(guest);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 

@@ -596,7 +596,7 @@ router.post("/chit-schemes", requireAuth, async (req: any, res) => {
     const code = "SCH-" + seq();
     const row = await db.execute(sql`
       INSERT INTO jw_chit_schemes (tenant_id, scheme_code, name, duration_months, monthly_amount, metal_type, bonus_month_free, start_date, max_members, notes)
-      VALUES (${tid(req)}, ${code}, ${name}, ${duration_months||11}, ${monthly_amount}, ${metal_type||'gold'}, ${bonus_month_free||1}, ${start_date||null}, ${max_members||20}, ${notes||null})
+      VALUES (${tid(req)}, ${code}, ${name}, ${duration_months||11}, ${monthly_amount}, ${metal_type||'gold'}, ${bonus_month_free ? 1 : 0}, ${start_date||null}, ${max_members||20}, ${notes||null})
       RETURNING *`);
     res.json(row.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -631,7 +631,9 @@ router.get("/chit-schemes/:id/members", requireAuth, async (req: any, res) => {
 
 router.post("/chit-schemes/:id/members", requireAuth, async (req: any, res) => {
   try {
-    const { member_name, phone, address } = req.body;
+    const { member_name, customer_name, phone, customer_phone, address } = req.body;
+    const name = member_name || customer_name;
+    const tel = phone || customer_phone;
     const code = "MEM-" + seq();
     // compute maturity_date from scheme start_date + duration_months
     const scheme = await db.execute(sql`SELECT start_date, duration_months FROM jw_chit_schemes WHERE id=${req.params.id}`);
@@ -644,7 +646,7 @@ router.post("/chit-schemes/:id/members", requireAuth, async (req: any, res) => {
     }
     const row = await db.execute(sql`
       INSERT INTO jw_chit_members (scheme_id, tenant_id, member_code, member_name, phone, address, maturity_date)
-      VALUES (${req.params.id}, ${tid(req)}, ${code}, ${member_name}, ${phone||null}, ${address||null}, ${maturity_date})
+      VALUES (${req.params.id}, ${tid(req)}, ${code}, ${name||null}, ${tel||null}, ${address||null}, ${maturity_date})
       RETURNING *`);
     res.json(row.rows[0]);
   } catch (e: any) { res.status(500).json({ error: e.message }); }

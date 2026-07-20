@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
+import { syncBranchToVerticalOutlet } from "./cross-module-sync";
 
 const router = Router();
 
@@ -366,11 +367,18 @@ router.post("/branches", auth, async (req: any, res: any) => {
   try {
     const tid = getTenantId(req);
     const { name, address, phone, gstin, state_id } = req.body;
+    const branchCode = 'BR-' + Date.now().toString().slice(-8);
     const r = await db.execute(sql`
-      INSERT INTO branches (tenant_id, name, address, phone, gstin, state_id)
-      VALUES (${tid}, ${name}, ${address}, ${phone}, ${gstin}, ${state_id})
+      INSERT INTO branches (tenant_id, branch_code, branch_name, address, phone, gstin)
+      VALUES (${tid}, ${branchCode}, ${name}, ${address||null}, ${phone||null}, ${gstin||null})
       RETURNING *`);
-    res.json(r.rows[0]);
+    const branch = r.rows[0] as any;
+    // Auto-sync to vertical outlet/location table (fire-and-forget)
+    syncBranchToVerticalOutlet(tid, {
+      id: branch.id, name: branch.branch_name,
+      address: branch.address ?? null, phone: branch.phone ?? null, gstin: branch.gstin ?? null,
+    }).catch(() => {});
+    res.json(branch);
   } catch (e: any) {
     res.status(500).json({ message: e.message });
   }
@@ -383,7 +391,7 @@ router.put("/branches/:id", auth, async (req: any, res: any) => {
     const { name, address, phone, gstin, state_id } = req.body;
     const r = await db.execute(sql`
       UPDATE branches
-      SET name=${name}, address=${address}, phone=${phone}, gstin=${gstin}, state_id=${state_id}
+      SET branch_name=${name}, address=${address}, phone=${phone}, gstin=${gstin}
       WHERE id=${id} AND tenant_id=${tid}
       RETURNING *`);
     res.json(r.rows[0]);

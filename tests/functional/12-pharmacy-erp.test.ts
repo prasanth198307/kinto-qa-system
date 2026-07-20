@@ -78,8 +78,8 @@ describe('Pharmacy ERP — 2. Purchase & GRN (Batch/Expiry)', () => {
     });
     expect(res.status, 'Pharmacy purchase must not 404').not.toBe(404);
     if (res.status === 403 || res.status === 422) return;
-    const body = await json<{ id: number; items?: Array<{ batch_id: number }> }>(res);
-    expect(body.id).toBeGreaterThan(0);
+    const body = await json<{ id: number | string; items?: Array<{ batch_id: number | string }> }>(res);
+    expect(body.id).toBeTruthy();
     if (body.items?.[0]?.batch_id) batchId = body.items[0].batch_id;
   });
 
@@ -128,9 +128,9 @@ describe('Pharmacy ERP — 4. Prescription & Dispensing', () => {
     });
     expect(res.status, 'Register prescription must not 404').not.toBe(404);
     if (res.status === 403 || res.status === 422) return;
-    const body = await json<{ id: number }>(res);
-    prescriptionId = body.id;
-    expect(prescriptionId).toBeGreaterThan(0);
+    const body = await json<{ id: number | string }>(res);
+    prescriptionId = body.id as number;
+    expect(prescriptionId).toBeTruthy();
   });
 
   it('POST /api/pharmacy/billing dispenses drugs (FEFO, with GST)', async () => {

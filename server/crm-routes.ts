@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
 import { storage } from "./storage";
+import { syncContactToVertical } from "./cross-module-sync";
 
 const router = Router();
 
@@ -254,7 +255,7 @@ router.post("/survey-responses", requireCRM, async (req: any, res) => {
 router.get("/contacts", requireCRM, async (req: any, res) => {
   const tid = getTenantId(req);
   try {
-    const rows = await db.execute(sql`SELECT c.*, a.name as account_name FROM crm_contacts c LEFT JOIN crm_accounts a ON a.id=c.account_id WHERE c.tenant_id=${tid} AND c.record_status=1 ORDER BY c.name`);
+    const rows = await db.execute(sql`SELECT *, (first_name || ' ' || COALESCE(last_name,'')) as name FROM crm_contacts WHERE tenant_id=${tid} AND record_status=1 ORDER BY first_name, last_name`);
     res.json(rows.rows);
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
@@ -262,18 +263,25 @@ router.get("/contacts", requireCRM, async (req: any, res) => {
 router.post("/contacts", requireCRM, async (req: any, res) => {
   const tid = getTenantId(req);
   try {
-    const { name, account_id, title, email, phone, department, notes } = req.body;
-    const code = "CON-" + Date.now();
-    const r = await db.execute(sql`INSERT INTO crm_contacts (tenant_id, contact_code, name, account_id, title, email, phone, department, notes) VALUES (${tid}, ${code}, ${name}, ${account_id||null}, ${title||null}, ${email||null}, ${phone||null}, ${department||null}, ${notes||null}) RETURNING *`);
-    res.json(r.rows[0]);
+    const { first_name, last_name, email, phone, company, designation, source, notes } = req.body;
+    const r = await db.execute(sql`INSERT INTO crm_contacts (tenant_id, first_name, last_name, email, phone, company, designation, source, notes) VALUES (${tid}, ${first_name||null}, ${last_name||null}, ${email||null}, ${phone||null}, ${company||null}, ${designation||null}, ${source||null}, ${notes||null}) RETURNING *`);
+    const contact = r.rows[0] as any;
+    // Auto-sync to vertical customer table (fire-and-forget)
+    syncContactToVertical(tid, {
+      id: contact.id,
+      name: [first_name, last_name].filter(Boolean).join(' '),
+      phone: phone ?? null,
+      email: email ?? null,
+    }).catch(() => {});
+    res.json(contact);
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 
 router.put("/contacts/:id", requireCRM, async (req: any, res) => {
   const tid = getTenantId(req);
   try {
-    const { name, account_id, title, email, phone, department, notes } = req.body;
-    const r = await db.execute(sql`UPDATE crm_contacts SET name=${name}, account_id=${account_id||null}, title=${title||null}, email=${email||null}, phone=${phone||null}, department=${department||null}, notes=${notes||null}, updated_at=NOW() WHERE id=${req.params.id} AND tenant_id=${tid} RETURNING *`);
+    const { first_name, last_name, email, phone, company, designation, source, notes } = req.body;
+    const r = await db.execute(sql`UPDATE crm_contacts SET first_name=${first_name||null}, last_name=${last_name||null}, email=${email||null}, phone=${phone||null}, company=${company||null}, designation=${designation||null}, source=${source||null}, notes=${notes||null}, updated_at=NOW() WHERE id=${req.params.id} AND tenant_id=${tid} RETURNING *`);
     res.json(r.rows[0]);
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });

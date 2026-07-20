@@ -11,7 +11,7 @@
     "db:push": "drizzle-kit push",
     "test:unit": "vitest run tests/api/currency-format.test.ts",
     "test:api": "vitest run tests/api/",
-    "test:functional": "vitest run tests/functional/",
+    "test:functional": "DISABLE_LOGIN_RATE_LIMIT=true vitest run tests/functional/",
     "test:smoke": "playwright test tests/smoke/",
     "test:workflows": "playwright test tests/workflows/",
     "test:all": "npm run test:unit && npm run test:api && npm run test:smoke && npm run test:workflows",
@@ -19,7 +19,9 @@
     "test:seed:plans": "dotenv -e .env -- psql $DATABASE_URL -f tests/seed/all-plan-tenants.sql",
     "test:seed:permissions": "export $(grep -v '^#' .env | xargs) && npx tsx scripts/seed-plan-permissions.ts",
     "test:plan-matrix": "vitest run tests/functional/19-plan-matrix.test.ts",
-    "test:cross-module": "vitest run tests/functional/20-cross-module-workflows.test.ts"
+    "test:cross-module": "vitest run tests/functional/20-cross-module-workflows.test.ts",
+    "test:nav-validation": "vitest run tests/functional/21-plan-nav-validation.test.ts",
+    "dev:test": "DISABLE_LOGIN_RATE_LIMIT=true NODE_ENV=test tsx server/index.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

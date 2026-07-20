@@ -44,9 +44,9 @@ describe('E-Commerce ERP — 1. Product Listings', () => {
     });
     expect(res.status, 'List product must not 404').not.toBe(404);
     if (res.status === 403 || res.status === 422) return;
-    const body = await json<{ id: number; asin: string }>(res);
-    productListingId = body.id;
-    expect(productListingId).toBeGreaterThan(0);
+    const body = await json<{ id: number | string; asin: string }>(res);
+    productListingId = body.id as number;
+    expect(productListingId).toBeTruthy();
   });
 });
 
@@ -130,9 +130,9 @@ describe('E-Commerce ERP — 4. Returns & Refunds', () => {
     });
     expect(res.status, 'Return must not 404').not.toBe(404);
     if (res.status === 403 || res.status === 422) return;
-    const body = await json<{ id: number }>(res);
-    returnId = body.id;
-    expect(returnId).toBeGreaterThan(0);
+    const body = await json<{ id: number | string }>(res);
+    returnId = body.id as number;
+    expect(returnId).toBeTruthy();
   });
 });
 

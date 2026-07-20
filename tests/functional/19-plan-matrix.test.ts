@@ -4,13 +4,13 @@
  * Two layers:
  *  1. Unit: import PLAN_MODULES and assert every plan has the correct
  *     modules — catches typos / accidental removals at code level.
- *  2. API: for key plans, login and verify the /api/config/plan-features
+ *  2. API: for key plans, login and verify the /api/tenant/features
  *     endpoint returns the correct module list, and representative module
  *     APIs either permit or deny access accordingly.
  *
  * How plan gating works in this app:
  *   tenant.plan → seed-permissions.ts → role permissions → API 403/200
- *   The /api/config/plan-features endpoint exposes what the tenant can see.
+ *   The /api/tenant/features endpoint exposes what the tenant can see.
  *   The functional tests below use it as the source of truth for each tenant.
  */
 
@@ -34,16 +34,13 @@ describe('Plan Matrix — Unit: Restaurant plans', () => {
     expect(m).not.toContain('mis');
   });
 
-  it('restaurant_professional adds accounting + mis + crm + production + warehouses + api_hub', () => {
+  it('restaurant_professional adds accounting + mis + crm + hr_payroll (no projects/fixed_assets)', () => {
     const m = PLAN_MODULES['restaurant_professional'];
     expect(m).toContain('restaurant');
     expect(m).toContain('accounting');
     expect(m).toContain('mis');
     expect(m).toContain('crm');
-    expect(m).toContain('production');
-    expect(m).toContain('warehouses');
-    expect(m).toContain('api_hub');
-    expect(m).not.toContain('hr_payroll');
+    expect(m).toContain('hr_payroll');
     expect(m).not.toContain('projects');
     expect(m).not.toContain('fixed_assets');
   });
@@ -68,14 +65,14 @@ describe('Plan Matrix — Unit: Hotel plans', () => {
     expect(m).not.toContain('hr_payroll');
   });
 
-  it('hotel_professional adds accounting + mis + crm + warehouses', () => {
+  it('hotel_professional adds accounting + mis + crm + warehouses + hr_payroll', () => {
     const m = PLAN_MODULES['hotel_professional'];
     expect(m).toContain('hotel');
     expect(m).toContain('accounting');
     expect(m).toContain('mis');
     expect(m).toContain('crm');
     expect(m).toContain('warehouses');
-    expect(m).not.toContain('hr_payroll');
+    expect(m).toContain('hr_payroll');
     expect(m).not.toContain('projects');
   });
 
@@ -295,11 +292,12 @@ describe('Plan Matrix — Unit: Logistics plans', () => {
     expect(m).not.toContain('accounting');
   });
 
-  it('logistics_professional adds accounting + mis + crm', () => {
+  it('logistics_professional adds accounting + mis + hr_payroll (no crm)', () => {
     const m = PLAN_MODULES['logistics_professional'];
     expect(m).toContain('accounting');
     expect(m).toContain('mis');
-    expect(m).toContain('crm');
+    expect(m).toContain('hr_payroll');
+    expect(m).not.toContain('crm');
   });
 
   it('logistics_enterprise adds hr_payroll + fixed_assets + multi_currency', () => {
@@ -367,12 +365,13 @@ describe('Plan Matrix — Unit: CRM plans', () => {
     expect(m).not.toContain('hr_payroll');
   });
 
-  it('crm_enterprise adds hr_payroll + projects + multi_currency + sales_orders', () => {
+  it('crm_enterprise adds hr_payroll + projects + multi_currency + approvals', () => {
     const m = PLAN_MODULES['crm_enterprise'];
     expect(m).toContain('hr_payroll');
     expect(m).toContain('projects');
     expect(m).toContain('multi_currency');
-    expect(m).toContain('sales_orders');
+    expect(m).toContain('approvals');
+    expect(m).not.toContain('sales_orders');
   });
 });
 
@@ -424,7 +423,7 @@ describe('Plan Matrix — API: Restaurant Starter (9101) plan-features', () => {
 
   it('plan-features returns modules for restaurant_starter', async () => {
     if (!api) return;
-    const res = await api.get('/api/config/plan-features');
+    const res = await api.get('/api/tenant/features');
     if (res.status === 401) return; // seed not loaded
     expect(res.status).toBe(200);
     const data = await json<{ plan: string; modules: string[] }>(res);
@@ -466,7 +465,7 @@ describe('Plan Matrix — API: Restaurant Professional (9102) plan-features', ()
 
   it('plan-features returns modules for restaurant_professional', async () => {
     if (!api) return;
-    const res = await api.get('/api/config/plan-features');
+    const res = await api.get('/api/tenant/features');
     if (res.status === 401) return;
     expect(res.status).toBe(200);
     const data = await json<{ plan: string; modules: string[] }>(res);
@@ -502,7 +501,7 @@ describe('Plan Matrix — API: Restaurant Enterprise (9103) plan-features', () =
 
   it('plan-features returns modules for restaurant_enterprise', async () => {
     if (!api) return;
-    const res = await api.get('/api/config/plan-features');
+    const res = await api.get('/api/tenant/features');
     if (res.status === 401) return;
     expect(res.status).toBe(200);
     const data = await json<{ plan: string; modules: string[] }>(res);

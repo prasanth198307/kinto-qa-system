@@ -17,7 +17,7 @@ router.get("/fixed-assets", requireAuth, async (req: any, res) => {
     let q = `SELECT * FROM fixed_assets WHERE tenant_id=${tid} AND record_status=1`;
     if (status)   q += ` AND status='${status}'`;
     if (category) q += ` AND category='${category}'`;
-    q += ` ORDER BY name`;
+    q += ` ORDER BY asset_name`;
     const rows = await db.execute(sql.raw(q));
     res.json(rows.rows);
   } catch (e: any) {

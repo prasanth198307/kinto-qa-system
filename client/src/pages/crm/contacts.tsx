@@ -21,7 +21,7 @@ export default function CRMContactsPage() {
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState({ ...EMPTY });
   const [search, setSearch] = useState("");
-  const [tagFilter, setTagFilter] = useState("");
+  const [tagFilter, setTagFilter] = useState("_all");
 
   const { data: contacts = [] } = useQuery<any[]>({ queryKey: ["/api/crm/contacts"], queryFn: () => api("GET", "/api/crm/contacts") });
 
@@ -40,7 +40,7 @@ export default function CRMContactsPage() {
 
   const filtered = arr.filter((c: any) => {
     const ms = !search || [c.name, c.phone, c.email, c.company].some(v => (v ?? "").toLowerCase().includes(search.toLowerCase()));
-    const mt = !tagFilter || c.tag === tagFilter;
+    const mt = tagFilter === "_all" || c.tag === tagFilter;
     return ms && mt;
   });
 
@@ -67,7 +67,7 @@ export default function CRMContactsPage() {
         </div>
         <Select value={tagFilter} onValueChange={setTagFilter}>
           <SelectTrigger className="w-36"><SelectValue placeholder="All tags" /></SelectTrigger>
-          <SelectContent><SelectItem value="">All</SelectItem>{TAGS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+          <SelectContent><SelectItem value="_all">All</SelectItem>{TAGS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
         </Select>
       </div>
 

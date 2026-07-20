@@ -49,7 +49,7 @@ import ngoRouter from "./ngo-routes";
 import { swachdeskRouter, deskPublicRouter } from "./swachdesk-routes";
 import { swachformsRouter, swachformsPublicRouter } from "./swachforms-routes";
 import pharmacyRouter from "./pharmacy-routes";
-import nidhiRouter from "./nidhi-routes";
+import nidhiRouter, { runNidhiNightlyJobs } from "./nidhi-routes";
 import restaurantEnterpriseRouter from "./restaurant-enterprise-routes";
 import aggregatorRouter from "./restaurant-aggregator-routes";
 import restaurantTaxRouter from "./restaurant-tax-routes";
@@ -852,9 +852,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Always fetch plan fresh from DB — never use session cache which can be stale
     const tenantId: number = (req.session as any).tenantId ?? req.user?.tenantId ?? 1;
     let tenantPlan: string = 'enterprise';
+    let tenantCurrency: string | undefined;
+    let tenantTaxRegime: string | undefined;
     try {
-      const rows = await db.select({ plan: tenants.plan }).from(tenants).where(eq(tenants.id, tenantId)).limit(1);
+      const rows = await db.select({ plan: tenants.plan, currency: tenants.currency, taxRegime: tenants.taxRegime }).from(tenants).where(eq(tenants.id, tenantId)).limit(1);
       tenantPlan = rows[0]?.plan ?? 'enterprise';
+      tenantCurrency = rows[0]?.currency ?? undefined;
+      tenantTaxRegime = rows[0]?.taxRegime ?? undefined;
     } catch {
       tenantPlan = 'enterprise';
     }
@@ -890,7 +894,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (planRecord?.modules && Array.isArray(planRecord.modules) && planRecord.modules.length > 0) {
         const merged = mergeWithPurchased(planRecord.modules as string[]);
-        res.json(getPlanFeaturesFromModules(tenantPlan, merged));
+        res.json({ ...getPlanFeaturesFromModules(tenantPlan, merged), currency: tenantCurrency, taxRegime: tenantTaxRegime });
         return;
       }
     } catch {
@@ -901,10 +905,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const fallback = getPlanFeatures(tenantPlan);
     if (purchasedModules.length > 0) {
       const merged = mergeWithPurchased(fallback.modules);
-      res.json(getPlanFeaturesFromModules(tenantPlan, merged));
+      res.json({ ...getPlanFeaturesFromModules(tenantPlan, merged), currency: tenantCurrency, taxRegime: tenantTaxRegime });
       return;
     }
-    res.json(fallback);
+    res.json({ ...fallback, currency: tenantCurrency, taxRegime: tenantTaxRegime });
   });
 
   // ─── Tenant info endpoint (for settings page + white-labeling) ─────────────
@@ -2146,6 +2150,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Daily recurring journal processor — runs at startup then every 24h
   processRecurringJournals().catch(e => console.error("Recurring journals init:", e));
   setInterval(() => processRecurringJournals().catch(e => console.error("Recurring journals cron:", e)), 24 * 60 * 60 * 1000);
+
+  // Nidhi nightly jobs — NPA auto-mark, FD maturity close, interest accrual (2 AM daily)
+  const msUntil2AM = (() => { const n = new Date(); const t = new Date(n); t.setHours(2,0,0,0); if (t <= n) t.setDate(t.getDate()+1); return t.getTime() - n.getTime(); })();
+  setTimeout(() => {
+    runNidhiNightlyJobs().catch(e => console.error('[NIDHI CRON] init:', e));
+    setInterval(() => runNidhiNightlyJobs().catch(e => console.error('[NIDHI CRON]:', e)), 24 * 60 * 60 * 1000);
+  }, msUntil2AM);
+  console.log(`[NIDHI CRON] Scheduled — first run in ${Math.round(msUntil2AM/60000)} minutes`);
 
   // Loyalty points expiry scheduler — runs at startup then every 24h
   startLoyaltyExpiryScheduler();
@@ -4757,6 +4769,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...req.body,
         createdBy: req.user.id
       });
+      // Auto-sync vendor to CRM contacts for 360° view (fire-and-forget)
+      const { syncVendorToCRM } = await import('./cross-module-sync');
+      syncVendorToCRM(req.user.tenantId, {
+        id: (vendor as any).id,
+        name: (vendor as any).name ?? req.body.name,
+        phone: (vendor as any).phone ?? req.body.phone ?? null,
+        email: (vendor as any).email ?? req.body.email ?? null,
+        address: (vendor as any).address ?? req.body.address ?? null,
+      }).catch(() => {});
       res.status(201).json(vendor);
     } catch (error) {
       console.error("Error creating vendor:", error);
@@ -9367,22 +9388,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/sales-orders', isAuthenticated, requireRole('admin', 'manager'), async (req: any, res) => {
+  app.post('/api/sales-orders', isAuthenticated, requireRole('admin', 'manager', 'sales_manager'), async (req: any, res) => {
     try {
-      const { header, items } = req.body;
+      // Accept both { header, items } and flat body { customer_name, items, ... }
+      const { header: rawHeader, items: rawItems, ...flatBody } = req.body;
+      const header = rawHeader ?? flatBody;
+      const items = rawItems ?? flatBody.items ?? [];
 
+      // Normalize snake_case flat body to camelCase schema fields
+      const normalizedHeader = {
+        soDate:      header.soDate      ?? header.so_date      ?? header.order_date,
+        deliveryDate:header.deliveryDate?? header.delivery_date,
+        buyerName:   header.buyerName   ?? header.buyer_name   ?? header.customer_name,
+        buyerGstin:  header.buyerGstin  ?? header.buyer_gstin,
+        buyerAddress:header.buyerAddress?? header.buyer_address,
+        buyerState:  header.buyerState  ?? header.buyer_state,
+        buyerContact:header.buyerContact?? header.buyer_contact,
+        remarks:     header.remarks,
+        totalAmount: header.totalAmount ?? header.total_amount ?? Math.round((header.total ?? 0) * 100),
+        ...header,
+      };
       // Validate header
-      const validatedHeader = insertSalesOrderSchema.parse(header);
+      const validatedHeader = insertSalesOrderSchema.parse(normalizedHeader);
 
-      // Auto-generate SO Number: SO-YYYYMMDD-NNN
+      // Auto-generate SO Number: SO-YYYYMMDD-NNN (with random fallback to avoid duplicates)
       const today = new Date();
       const dateStr = format(today, 'yyyyMMdd');
       const prefix = `SO-${dateStr}-`;
-
-      // Get count of SOs today to determine NNN
       const { total } = await storage.getAllSalesOrders({ search: prefix });
       const nextNum = (total + 1).toString().padStart(3, '0');
-      const soNumber = `${prefix}${nextNum}`;
+      const soNumber = `${prefix}${nextNum}-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
 
       // Create SO
       const so = await storage.createSalesOrder({
@@ -9396,10 +9431,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const createdItems = [];
       if (items && Array.isArray(items)) {
         for (const item of items) {
-          const validatedItem = insertSalesOrderItemSchema.parse({
+          const resolvedProductId = item.productId ?? item.product_id;
+          if (!resolvedProductId) continue; // skip items without a valid product FK
+          const normalizedItem = {
             ...item,
             soId: so.id,
-          });
+            productId: resolvedProductId,
+            description: item.description ?? item.product_name ?? item.name,
+            quantity: item.quantity ?? 1,
+            unitPrice: Math.round((item.unitPrice ?? item.unit_price ?? item.rate ?? item.price ?? 0) * 100),
+            totalAmount: Math.round((item.totalAmount ?? item.total_amount ?? item.amount ?? 0) * 100),
+            taxableAmount: Math.round((item.taxableAmount ?? item.taxable_amount ?? item.amount ?? 0) * 100),
+          };
+          const validatedItem = insertSalesOrderItemSchema.parse(normalizedItem);
           const createdItem = await storage.createSalesOrderItem(validatedItem);
           createdItems.push(createdItem);
         }
@@ -9821,7 +9865,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create invoice with items
-  app.post('/api/invoices', requireRole('admin', 'manager'), async (req: any, res) => {
+  app.post('/api/invoices', requireRole('admin', 'manager', 'operator'), async (req: any, res) => {
     try {
       const { header, items } = req.body;
       
@@ -18542,6 +18586,16 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
     }
   });
 
+  // Alias for tests and frontends that use /api/bank-accounts
+  app.get('/api/bank-accounts', isAuthenticated, async (req: any, res) => {
+    try {
+      const allBanks = await storage.getAllBanks();
+      res.json(allBanks);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch bank accounts" });
+    }
+  });
+
   app.post('/api/banks', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
       const validatedData = insertBankSchema.parse(req.body);
@@ -25575,17 +25629,20 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
   });
 
   // Manual Journal Entry
-  app.post('/api/journal-entries', requireRole('admin', 'manager'), async (req: any, res) => {
+  app.post('/api/journal-entries', requireRole('admin', 'manager', 'accountsmanager'), async (req: any, res) => {
     try {
-      const { journalDate, description, notes, lines } = req.body;
+      const { journalDate, date, description, narration, notes, lines, entries } = req.body;
+      const resolvedDate = journalDate || date;
+      const resolvedDescription = description || narration;
+      const resolvedLines = lines || entries;
 
-      if (!journalDate || !description || !lines || !Array.isArray(lines) || lines.length < 2) {
+      if (!resolvedDate || !resolvedDescription || !resolvedLines || !Array.isArray(resolvedLines) || resolvedLines.length < 2) {
         return res.status(400).json({ message: 'Journal date, description, and at least 2 lines are required' });
       }
 
       // Validate debits = credits
-      const totalDebit = lines.reduce((sum: number, l: any) => sum + (l.debit || 0), 0);
-      const totalCredit = lines.reduce((sum: number, l: any) => sum + (l.credit || 0), 0);
+      const totalDebit = resolvedLines.reduce((sum: number, l: any) => sum + (l.debit || 0), 0);
+      const totalCredit = resolvedLines.reduce((sum: number, l: any) => sum + (l.credit || 0), 0);
       if (totalDebit !== totalCredit) {
         return res.status(400).json({ message: `Debits (${totalDebit}) must equal Credits (${totalCredit})` });
       }
@@ -25593,9 +25650,9 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
         return res.status(400).json({ message: 'Journal entry must have non-zero amounts' });
       }
 
-      const resolvedLines = [];
-      for (const line of lines) {
-        let accountCode = line.accountCode;
+      const processedLines: any[] = [];
+      for (const line of resolvedLines) {
+        let accountCode = line.accountCode || line.account_code;
         if (!accountCode && line.accountId) {
           const account = await storage.getChartOfAccount(line.accountId);
           if (!account) return res.status(400).json({ message: `Account ID ${line.accountId} not found` });
@@ -25610,15 +25667,15 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
         if (account.nodeType === 'group') {
           return res.status(400).json({ message: `Cannot post to Group account "${account.name}" (${account.code}). Only Ledger accounts are postable.` });
         }
-        resolvedLines.push({ ...line, accountCode });
+        processedLines.push({ ...line, accountCode });
       }
 
       const { createJournalWithLines } = await import('./journal-service');
       const entry = await createJournalWithLines(
-        journalDate,
-        description,
-        resolvedLines.map((l: any) => ({
-          accountCode: l.accountCode,
+        resolvedDate,
+        resolvedDescription,
+        processedLines.map((l: any) => ({
+          accountCode: l.accountCode || l.account_code,
           debit: l.debit || 0,
           credit: l.credit || 0,
           memo: l.memo,
@@ -31656,19 +31713,22 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       const { member_id, member_name, loan_type, applied_amount, amount, loan_amount, purpose, collateral, security, applied_date, application_date } = req.body;
       const no = `LA-${Date.now()}`;
       const loanAmt = amount||loan_amount||applied_amount||0;
-      const r = await db.execute(sql`INSERT INTO nidhi_loan_applications (tenant_id,application_number,member_id,member_name,loan_type,amount,purpose,security,applied_date) VALUES (${t},${no},${member_id||null},${member_name||null},${loan_type||'personal'},${loanAmt},${purpose||null},${security||collateral||null},${applied_date||application_date||null}) RETURNING *`);
+      const memberIdInt = member_id ? (Number.isInteger(Number(member_id)) ? Number(member_id) : null) : null;
+      const r = await db.execute(sql`INSERT INTO nidhi_loan_applications (tenant_id,application_number,member_id,member_name,loan_type,amount,purpose,security,applied_date) VALUES (${t},${no},${memberIdInt},${member_name||null},${loan_type||'personal'},${loanAmt},${purpose||null},${security||collateral||null},${applied_date||application_date||null}) RETURNING *`);
       const row: any = r.rows[0];
       res.json({ ...row, loan_amount: row.amount });
     } catch (e: any) { res.status(500).json({ message: e.message }); }
   });
-  app.put('/api/nidhi/loan-applications/:id', nidhiAuth, async (req: any, res: any) => {
+  const updateLoanApp = async (req: any, res: any) => {
     const t = nidhiTid(req);
     try {
-      const { status, sanctioned_date, sanctioned_by, committee_remarks, sanction_date, sanctioned_amount } = req.body;
-      const r = await db.execute(sql`UPDATE nidhi_loan_applications SET status=${status||null},sanctioned_date=${sanctioned_date||sanction_date||null},sanctioned_by=${sanctioned_by||null},committee_remarks=${committee_remarks||null} WHERE id=${req.params.id} AND tenant_id=${t} RETURNING *`);
+      const { status, sanctioned_date, sanctioned_by, approved_by, committee_remarks, sanction_date } = req.body;
+      const r = await db.execute(sql`UPDATE nidhi_loan_applications SET status=${status||null},sanctioned_date=${sanctioned_date||sanction_date||null},sanctioned_by=${sanctioned_by||approved_by||null},committee_remarks=${committee_remarks||null} WHERE id=${req.params.id} AND tenant_id=${t} RETURNING *`);
       res.json(r.rows[0]);
     } catch (e: any) { res.status(500).json({ message: e.message }); }
-  });
+  };
+  app.put('/api/nidhi/loan-applications/:id', nidhiAuth, updateLoanApp);
+  app.patch('/api/nidhi/loan-applications/:id', nidhiAuth, updateLoanApp);
 
   app.get('/api/nidhi/pdc-cheques', nidhiAuth, async (req: any, res: any) => {
     const t = nidhiTid(req);
@@ -31679,7 +31739,8 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
     try {
       await ensurePDC();
       const { loan_id, loan_application_id, member_id, member_name, cheque_no, cheque_number, bank_name, branch, amount, cheque_date } = req.body;
-      const r = await db.execute(sql`INSERT INTO nidhi_pdc_cheques (tenant_id,loan_id,member_id,member_name,cheque_no,bank_name,branch,amount,cheque_date) VALUES (${t},${loan_id||loan_application_id||null},${member_id||null},${member_name||null},${cheque_no||cheque_number||null},${bank_name||null},${branch||null},${amount||0},${cheque_date||null}) RETURNING *`);
+      const toInt = (v: any) => v ? (Number.isInteger(Number(v)) ? Number(v) : null) : null;
+      const r = await db.execute(sql`INSERT INTO nidhi_pdc_cheques (tenant_id,loan_id,member_id,member_name,cheque_no,bank_name,branch,amount,cheque_date) VALUES (${t},${toInt(loan_id)||toInt(loan_application_id)},${toInt(member_id)},${member_name||null},${cheque_no||cheque_number||null},${bank_name||null},${branch||null},${amount||0},${cheque_date||null}) RETURNING *`);
       const pdc: any = r.rows[0];
       res.json({ ...pdc, cheque_number: pdc.cheque_no });
     } catch (e: any) { res.status(500).json({ message: e.message }); }

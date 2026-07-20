@@ -593,11 +593,65 @@ router.get("/employees/:id", requireHR, async (req: any, res) => {
 
 router.post("/employees", requireHR, async (req: any, res) => {
   const tid = getTenantId(req);
-  const d = req.body;
-  // Convert empty strings to null (same helpers as PUT endpoint)
+  const raw = req.body;
+  // Normalize snake_case → camelCase so both API styles work
+  const d: any = {
+    empCode:      raw.empCode      ?? raw.emp_code      ?? raw.employee_id,
+    firstName:    raw.firstName    ?? raw.first_name,
+    lastName:     raw.lastName     ?? raw.last_name,
+    gender:       raw.gender,
+    dateOfBirth:  raw.dateOfBirth  ?? raw.date_of_birth,
+    bloodGroup:   raw.bloodGroup   ?? raw.blood_group,
+    departmentId: raw.departmentId ?? raw.department_id ?? raw.department,
+    designationId:raw.designationId?? raw.designation_id ?? raw.designation,
+    shiftId:      raw.shiftId      ?? raw.shift_id,
+    salaryStructureId: raw.salaryStructureId ?? raw.salary_structure_id,
+    basicSalary:  raw.basicSalary  ?? raw.basic_salary,
+    specialAllowance: raw.specialAllowance ?? raw.special_allowance,
+    taAmount:     raw.taAmount     ?? raw.ta_amount,
+    daAmount:     raw.daAmount     ?? raw.da_amount,
+    ctc:          raw.ctc,
+    joinDate:     raw.joinDate     ?? raw.join_date      ?? raw.date_of_joining,
+    exitDate:     raw.exitDate     ?? raw.exit_date,
+    exitType:     raw.exitType     ?? raw.exit_type,
+    exitReason:   raw.exitReason   ?? raw.exit_reason,
+    resignationDate: raw.resignationDate ?? raw.resignation_date,
+    reportingManagerId: raw.reportingManagerId ?? raw.reporting_manager_id,
+    phone:        raw.phone,
+    alternatePhone: raw.alternatePhone ?? raw.alternate_phone,
+    email:        raw.email,
+    address:      raw.address,
+    city:         raw.city,
+    state:        raw.state,
+    pincode:      raw.pincode,
+    emergencyContact: raw.emergencyContact ?? raw.emergency_contact,
+    emergencyContactName: raw.emergencyContactName ?? raw.emergency_contact_name,
+    emergencyContactRelation: raw.emergencyContactRelation ?? raw.emergency_contact_relation,
+    pan: raw.pan, aadhaar: raw.aadhaar,
+    pfEnabled: raw.pfEnabled ?? raw.pf_enabled,
+    esiEnabled: raw.esiEnabled ?? raw.esi_enabled,
+    pfNumber: raw.pfNumber ?? raw.pf_number,
+    esiNumber: raw.esiNumber ?? raw.esi_number,
+    uan: raw.uan, bankAccount: raw.bankAccount ?? raw.bank_account,
+    ifsc: raw.ifsc, bankName: raw.bankName ?? raw.bank_name,
+    taxRegime: raw.taxRegime ?? raw.tax_regime,
+    maritalStatus: raw.maritalStatus ?? raw.marital_status,
+    spouseName: raw.spouseName ?? raw.spouse_name,
+    spouseDob: raw.spouseDob ?? raw.spouse_dob,
+    spouseAadhaar: raw.spouseAadhaar ?? raw.spouse_aadhaar,
+    fatherName: raw.fatherName ?? raw.father_name,
+    fatherDob: raw.fatherDob ?? raw.father_dob,
+    fatherAadhaar: raw.fatherAadhaar ?? raw.father_aadhaar,
+    motherName: raw.motherName ?? raw.mother_name,
+    motherDob: raw.motherDob ?? raw.mother_dob,
+    motherAadhaar: raw.motherAadhaar ?? raw.mother_aadhaar,
+    numberOfChildren: raw.numberOfChildren ?? raw.number_of_children,
+    status: raw.status, employeeType: raw.employeeType ?? raw.employee_type,
+  };
+  // Convert empty strings to null
   const s = (v: any) => (v === '' || v == null) ? null : v;
   const n = (v: any, def = 0) => (v === '' || v == null) ? def : Number(v);
-  const i = (v: any) => (v === '' || v == null) ? null : parseInt(v);
+  const i = (v: any) => { if (v === '' || v == null) return null; const p = parseInt(v); return isNaN(p) ? null : p; };
   try {
     const r = await db.execute(sql`
       INSERT INTO hr_employees (
@@ -612,7 +666,7 @@ router.post("/employees", requireHR, async (req: any, res) => {
         father_name, father_dob, father_aadhaar,
         mother_name, mother_dob, mother_aadhaar, number_of_children, status, employee_type
       ) VALUES (
-        ${tid}, ${d.empCode}, ${d.firstName}, ${s(d.lastName)}, ${s(d.gender)},
+        ${tid}, ${s(d.empCode)}, ${d.firstName}, ${s(d.lastName)}, ${s(d.gender)},
         ${s(d.dateOfBirth)}, ${s(d.bloodGroup)},
         ${i(d.departmentId)}, ${i(d.designationId)}, ${i(d.shiftId)},
         ${i(d.salaryStructureId)}, ${n(d.basicSalary)}, ${n(d.specialAllowance)}, ${n(d.taAmount)}, ${n(d.daAmount)}, ${n(d.ctc)},
@@ -629,7 +683,20 @@ router.post("/employees", requireHR, async (req: any, res) => {
         ${n(d.numberOfChildren)}, ${s(d.status) ?? 'active'}, ${s(d.employeeType) ?? 'permanent'}
       ) RETURNING *
     `);
-    res.json(r.rows[0]);
+    const emp = r.rows[0] as any;
+    // Auto-sync new employee to vertical staff table (fire-and-forget)
+    const { syncEmployeeToVertical } = await import('./cross-module-sync');
+    syncEmployeeToVertical(tid, {
+      id: emp.id,
+      first_name: emp.first_name,
+      last_name: emp.last_name ?? null,
+      phone: emp.phone ?? null,
+      email: emp.email ?? null,
+      department: emp.department_id ? String(emp.department_id) : null,
+      designation: emp.designation_id ? String(emp.designation_id) : null,
+      status: emp.status ?? 'active',
+    }).catch(() => {});
+    res.json(emp);
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 
@@ -639,7 +706,7 @@ router.put("/employees/:id", requireHR, async (req: any, res) => {
   // Helpers: empty string must become null/0 for typed DB columns
   const s = (v: any) => (v === '' || v == null) ? null : v;
   const n = (v: any, def = 0) => (v === '' || v == null) ? def : Number(v);
-  const i = (v: any) => (v === '' || v == null) ? null : parseInt(v);
+  const i = (v: any) => { if (v === '' || v == null) return null; const p = parseInt(v); return isNaN(p) ? null : p; };
   try {
     const r = await db.execute(sql`
       UPDATE hr_employees SET
