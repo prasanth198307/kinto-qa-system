@@ -8,6 +8,128 @@ const router = Router();
 const requireAuth = (req: any, res: any, next: any) => { if (!req.isAuthenticated?.() && !req.user) return res.status(401).json({ error: "Unauthorized" }); next(); };
 const tid = (req: any) => String(req.tenantId || req.user?.tenantId || 1);
 
+// ── Alias routes for /api/retail/products, /categories, /pos-sessions, /sales, etc. ──
+// Tests call these paths; they proxy to the shared tables or session/transaction routes.
+
+router.get("/products", requireAuth, async (req: any, res) => {
+  try {
+    const rows = await db.execute(sql`SELECT * FROM products WHERE tenant_id=${tid(req)} AND record_status=1 ORDER BY product_name LIMIT 200`);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.post("/products", requireAuth, async (req: any, res) => {
+  try {
+    const { name, sku, category_id, price, cost_price, gst_rate, description } = req.body;
+    const pcode = sku || `PRD-${Date.now()}`;
+    const r = await db.execute(sql`
+      INSERT INTO products (tenant_id, product_code, product_name, sku, sku_code, category_id, base_price, standard_cost, gst_percent, description, record_status)
+      VALUES (${tid(req)}, ${pcode}, ${name||'Product'}, ${sku||null}, ${sku||null}, ${category_id||null}, ${price||0}, ${cost_price||0}, ${gst_rate||0}, ${description||null}, 1)
+      ON CONFLICT (product_code) DO UPDATE SET product_name=EXCLUDED.product_name, base_price=EXCLUDED.base_price, tenant_id=EXCLUDED.tenant_id
+      RETURNING *`);
+    res.json(r.rows[0]);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.get("/categories", requireAuth, async (req: any, res) => {
+  try {
+    const rows = await db.execute(sql`SELECT * FROM product_categories WHERE tenant_id=${tid(req)} AND record_status=1 ORDER BY name`);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.post("/categories", requireAuth, async (req: any, res) => {
+  try {
+    const { name, description } = req.body;
+    const code = `CAT-${tid(req)}-${Date.now()}`;
+    const r = await db.execute(sql`
+      INSERT INTO product_categories (tenant_id, name, code, description, record_status)
+      VALUES (${tid(req)}, ${name}, ${code}, ${description||null}, 1)
+      ON CONFLICT (name) DO UPDATE SET description=EXCLUDED.description, tenant_id=EXCLUDED.tenant_id
+      RETURNING *`);
+    res.json(r.rows[0]);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// /pos-sessions → alias for /sessions
+router.get("/pos-sessions", requireAuth, async (req: any, res) => {
+  try {
+    const rows = await db.execute(sql`SELECT * FROM pos_sessions WHERE tenant_id=${tid(req)} ORDER BY opened_at DESC LIMIT 50`);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.post("/pos-sessions", requireAuth, async (req: any, res) => {
+  try {
+    const { terminal_id, opening_cash, cashier_name, counter_name, shift_name, shift_type } = req.body;
+    const userId = String(req.user?.id || '');
+    const openedBy = Number.isInteger(req.user?.id) ? req.user.id : null;
+    const r = await db.execute(sql`
+      INSERT INTO pos_sessions (tenant_id, counter_name, shift_name, shift_type, opening_cash, user_id, opened_by, status)
+      VALUES (${tid(req)}, ${counter_name||terminal_id||'Counter 1'}, ${shift_name||'Morning'}, ${shift_type||'morning'}, ${opening_cash||0}, ${userId}, ${openedBy}, 'open')
+      RETURNING *`);
+    res.json(r.rows[0]);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// /sales → alias for /transactions
+router.get("/sales", requireAuth, async (req: any, res) => {
+  try {
+    const rows = await db.execute(sql`SELECT * FROM pos_transactions WHERE tenant_id=${tid(req)} ORDER BY created_at DESC LIMIT 100`);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.post("/sales", requireAuth, async (req: any, res) => {
+  try {
+    const { session_id, items, subtotal, gst_amount, tax_amount, discount_amount, total, total_amount, payment_method, payment_mode, loyalty_discount, customer_name } = req.body;
+    const txnNo = `TXN-${Date.now()}`;
+    const finalTotal = total || total_amount || 0;
+    const finalTax = gst_amount || tax_amount || 0;
+    const cashierId = typeof req.user?.id === 'number' ? req.user.id : null;
+    const r = await db.execute(sql`
+      INSERT INTO pos_transactions (tenant_id, transaction_no, session_id, cashier_id, customer_name, subtotal, tax_amount, discount_amount, total_amount, payment_method, loyalty_discount, status)
+      VALUES (${tid(req)}, ${txnNo}, ${session_id||null}, ${cashierId}, ${customer_name||null}, ${subtotal||0}, ${finalTax}, ${discount_amount||0}, ${finalTotal}, ${payment_method||payment_mode||'cash'}, ${loyalty_discount||0}, 'completed')
+      RETURNING *`);
+    const txn = r.rows[0] as any;
+    if (items?.length) {
+      for (const it of items) {
+        await db.execute(sql`INSERT INTO pos_transaction_items (tenant_id, transaction_id, product_id, product_name, qty, unit_price, discount_pct, tax_pct, line_total) VALUES (${tid(req)}, ${txn.id}, ${it.product_id||null}, ${it.product_name||null}, ${it.quantity||it.qty||1}, ${it.rate||it.unit_price||0}, ${it.discount||it.discount_pct||0}, ${it.gst_rate||it.tax_pct||0}, ${it.amount||it.line_total||0})`);
+      }
+    }
+    res.json(txn);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// /z-report → today's EOD summary
+router.get("/z-report", requireAuth, async (req: any, res) => {
+  try {
+    const date = (req.query.date as string) || new Date().toISOString().split("T")[0];
+    const summary = await db.execute(sql`
+      SELECT COALESCE(SUM(total_amount),0) as total_sales, COUNT(*) as total_txns,
+             COALESCE(SUM(discount_amount),0) as total_discounts,
+             COALESCE(SUM(tax_amount),0) as total_tax
+      FROM pos_transactions WHERE tenant_id=${tid(req)} AND DATE(created_at)=${date}`);
+    res.json({ date, ...(summary.rows[0] as any) });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// /stock → product stock summary
+router.get("/stock", requireAuth, async (req: any, res) => {
+  try {
+    const rows = await db.execute(sql`SELECT id, product_code, product_name, base_unit, base_price, gst_percent, sku, sku_code FROM products WHERE tenant_id=${tid(req)} AND record_status=1 ORDER BY product_name LIMIT 200`);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// /purchase-orders → shared purchase orders
+router.get("/purchase-orders", requireAuth, async (req: any, res) => {
+  try {
+    const rows = await db.execute(sql`SELECT * FROM purchase_orders WHERE tenant_id=${tid(req)} ORDER BY created_at DESC LIMIT 100`);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
 // ── POS Sessions ──────────────────────────────────────────────────────────────
 router.get("/sessions", requireAuth, async (req: any, res) => {
   try {

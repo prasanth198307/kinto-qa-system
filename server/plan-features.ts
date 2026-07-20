@@ -83,6 +83,7 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
     "sales-orders",
   ],
   production: [
+    "production",
     "sales-officers",
     "mis-production",
     "mis-manufacturing",
@@ -279,7 +280,7 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
     "real-estate/bank-loans", "real-estate/project-pl",
   ],
   pos: [
-    "pos", "retail-enterprise",
+    "pos", "retail-pos", "retail-enterprise",
     "retail/omni-channel", "retail/loyalty", "retail/franchise",
     "retail/b2b-portal", "retail/pos-hardware", "retail/store-transfers",
   ],
@@ -480,6 +481,7 @@ const REAL_ESTATE_ENTERPRISE_MODULES = [
   "invoicing", "purchase_orders", "basic_inventory", "sales_orders", "gatepasses",
   "expenses", "documents", "accounting", "mis", "crm", "whatsapp", "hr_payroll",
   "fixed_assets", "multi_currency", "projects", "approvals", "api_hub", "real_estate", "masters",
+  "production", "warehouses",
   "swachdesk", "swachforms", "swachmeet", "swachsign", "swachsocial",
 ];
 
@@ -525,7 +527,7 @@ const GOLD_ENTERPRISE_MODULES = [
 ];
 
 // ── Retail / POS vertical plans ───────────────────────────────────────────────
-const POS_STARTER_MODULES = ["invoicing", "basic_inventory", "expenses", "pos", "masters"];
+const POS_STARTER_MODULES = ["invoicing", "basic_inventory", "expenses", "pos", "documents", "masters"];
 const POS_PROFESSIONAL_MODULES = [
   "invoicing", "purchase_orders", "basic_inventory", "sales_orders", "gatepasses",
   "expenses", "accounting", "mis", "crm", "whatsapp", "pos", "masters",
@@ -533,7 +535,7 @@ const POS_PROFESSIONAL_MODULES = [
 const POS_ENTERPRISE_MODULES = [
   "invoicing", "purchase_orders", "basic_inventory", "sales_orders", "gatepasses",
   "expenses", "documents", "accounting", "mis", "crm", "whatsapp", "hr_payroll",
-  "warehouses", "fixed_assets", "multi_currency", "quality_returns", "api_hub", "pos", "masters",
+  "warehouses", "fixed_assets", "multi_currency", "quality_returns", "api_hub", "pos", "production", "masters",
   "swachdesk", "swachforms", "swachmeet", "swachsign", "swachsocial",
 ];
 
@@ -671,7 +673,7 @@ export const ROUTE_PLAN_REQUIREMENTS: Array<{ prefix: string; module: string; mi
 
   // Sales Orders
   { prefix: "/api/sales-orders",        module: "sales_orders",   minPlan: "basic" },
-  { prefix: "/api/sales-officers",      module: "production",     minPlan: "professional" },
+  { prefix: "/api/sales-officers",      module: "sales_orders",   minPlan: "basic" },
 
   // Production
   { prefix: "/api/raw-material-issuance", module: "production",   minPlan: "professional" },

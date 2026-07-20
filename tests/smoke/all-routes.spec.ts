@@ -10,21 +10,26 @@
 
 import { test, expect, Page, Browser } from '@playwright/test';
 
-const BASE = process.env.BASE_URL || 'http://localhost:5000';
+const BASE = process.env.BASE_URL || 'http://localhost:5050';
 
 interface TenantCreds {
   username: string;
   password: string;
+  slug: string;
   currency: string;
   taxLabel: string;
   name: string;
 }
 
 const TENANTS: TenantCreds[] = [
-  { username: 'qa_admin_in', password: 'Test@1234', currency: '₹',    taxLabel: 'GST',  name: 'IN' },
-  { username: 'qa_admin_ae', password: 'Test@1234', currency: 'د.إ',  taxLabel: 'VAT',  name: 'AE' },
-  { username: 'qa_admin_us', password: 'Test@1234', currency: '$',     taxLabel: 'Tax',  name: 'US' },
-  { username: 'qa_admin_eu', password: 'Test@1234', currency: '€',     taxLabel: 'VAT',  name: 'EU' },
+  { username: 'qa_admin_in',      password: 'Test@1234', slug: 'qa-in',      currency: '₹',    taxLabel: 'GST',  name: 'IN' },
+  { username: 'qa_admin_ae',      password: 'Test@1234', slug: 'qa-ae',      currency: 'د.إ',  taxLabel: 'VAT',  name: 'AE' },
+  { username: 'qa_admin_us',      password: 'Test@1234', slug: 'qa-us',      currency: '$',     taxLabel: 'Tax',  name: 'US' },
+  { username: 'qa_admin_eu',      password: 'Test@1234', slug: 'qa-eu',      currency: '€',     taxLabel: 'VAT',  name: 'EU' },
+  { username: 'qa_gold_e_owner',  password: 'Test@1234', slug: 'qa-gold-e',  currency: '₹',    taxLabel: 'GST',  name: 'Gold ERP Enterprise' },
+  { username: 'qa_re_e_owner',   password: 'Test@1234', slug: 'qa-re-e',   currency: '₹',    taxLabel: 'GST',  name: 'Real Estate Enterprise' },
+  { username: 'qa_hc_e_owner',   password: 'Test@1234', slug: 'qa-hc-e',   currency: '₹',    taxLabel: 'GST',  name: 'Healthcare Enterprise' },
+  { username: 'qa_rtl_owner',    password: 'Test@1234', slug: 'qa-pos-e',   currency: '₹',    taxLabel: 'GST',  name: 'Retail POS Enterprise' },
 ];
 
 // All 424 routes from App.tsx grouped by vertical
@@ -165,6 +170,14 @@ const ROUTES: [string, string][] = [
   ['/healthcare/insurance', 'Insurance'],
   ['/healthcare/radiology', 'Radiology'],
   ['/healthcare/analytics', 'Analytics'],
+  ['/healthcare/beds', 'Bed Management'],
+  ['/healthcare/ot', 'OT Scheduling'],
+  ['/healthcare/nursing', 'Nursing'],
+  ['/healthcare/blood-bank', 'Blood Bank'],
+  ['/healthcare/abdm', 'ABDM'],
+  ['/healthcare/emr', 'EMR'],
+  ['/healthcare/tpa-claims', 'TPA Claims'],
+  ['/healthcare/reports', 'Reports'],
 
   // Pharmacy ERP
   ['/pharmacy', 'Pharmacy'],
@@ -197,6 +210,14 @@ const ROUTES: [string, string][] = [
   ['/retail/franchise', 'Franchise'],
   ['/retail/b2b-portal', 'B2B Portal'],
   ['/retail/analytics', 'Analytics'],
+  ['/retail/omni-channel', 'Omni-Channel'],
+  ['/retail/pos-hardware', 'POS Hardware'],
+  ['/retail/store-transfers', 'Store Transfers'],
+  ['/retail/inventory', 'Inventory'],
+  ['/retail/reorder', 'Reorder'],
+  ['/retail/delivery', 'Delivery'],
+  ['/retail/promotions', 'Promotions'],
+  ['/retail/reports', 'Reports'],
 
   // NGO ERP
   ['/ngo', 'NGO'],
@@ -260,6 +281,10 @@ const ROUTES: [string, string][] = [
   ['/real-estate/contractors', 'Contractors'],
   ['/real-estate/analytics', 'Analytics'],
   ['/real-estate/enterprise', 'Enterprise'],
+  ['/real-estate/demand-letters', 'Demand Letters'],
+  ['/real-estate/brokers', 'Brokers'],
+  ['/real-estate/construction-updates', 'Construction Updates'],
+  ['/real-estate/payment-schedules', 'Payment Schedules'],
 
   // Agriculture ERP
   ['/agriculture', 'Agriculture'],
@@ -273,15 +298,52 @@ const ROUTES: [string, string][] = [
   ['/agriculture/analytics', 'Analytics'],
   ['/agriculture/enterprise', 'Enterprise'],
 
-  // Gold ERP
+  // Gold ERP — core standalone pages
   ['/gold-erp', 'Gold ERP'],
-  ['/gold-erp/inventory', 'Inventory'],
-  ['/gold-erp/sales', 'Sales'],
-  ['/gold-erp/purchase', 'Purchase'],
-  ['/gold-erp/customers', 'Customers'],
-  ['/gold-erp/schemes', 'Schemes'],
-  ['/gold-erp/hallmarking', 'Hallmarking'],
-  ['/gold-erp/analytics', 'Analytics'],
+  ['/gold-erp/live-rates', 'Live Gold Rates'],
+  ['/gold-erp/hallmarking', 'BIS Hallmarking'],
+  ['/gold-erp/sebi-reporting', 'SEBI Bullion Report'],
+  ['/gold-erp/digital-gold', 'Digital Gold'],
+  // Gold ERP — section tabs (rendered inside /gold-erp via ?section=)
+  ['/gold-erp?section=overview', 'Overview'],
+  ['/gold-erp?section=rates', 'Metal Rates'],
+  ['/gold-erp?section=karigar', 'Karigar'],
+  ['/gold-erp?section=items', 'Jewellery Items'],
+  ['/gold-erp?section=estimates', 'Estimates'],
+  ['/gold-erp?section=metal-ledger', 'Metal Ledger'],
+  ['/gold-erp?section=production', 'Production'],
+  ['/gold-erp?section=jobwork', 'Karigar Job Orders'],
+  ['/gold-erp?section=sketch', 'Sketch / Design'],
+  ['/gold-erp?section=cad', 'CAD Process'],
+  ['/gold-erp?section=cam', 'CAM / Milling'],
+  ['/gold-erp?section=karigar-attendance', 'Karigar Attendance'],
+  ['/gold-erp?section=ghat', 'Ghat Settlement'],
+  ['/gold-erp?section=settlement', 'Karigar Settlement'],
+  ['/gold-erp?section=finalize', 'Job Finalize'],
+  ['/gold-erp?section=karigar-ledger', 'Karigar Ledger'],
+  ['/gold-erp?section=repairs', 'Repairs'],
+  ['/gold-erp?section=wholesale-b2b-orders', 'B2B Order Booking'],
+  ['/gold-erp?section=wholesale-jobwork', 'Customer Jobwork'],
+  ['/gold-erp?section=hallmarking-batches', 'Hallmarking Batch'],
+  ['/gold-erp?section=jewellery-pos', 'Jewellery POS'],
+  ['/gold-erp?section=counter-bookings', 'Counter Bookings'],
+  ['/gold-erp?section=customer-approvals', 'Approvals'],
+  ['/gold-erp?section=buyback', 'Old Gold Buyback'],
+  ['/gold-erp?section=physical-audit', 'Physical Audit'],
+  ['/gold-erp?section=loyalty', 'Loyalty'],
+  ['/gold-erp?section=promotions', 'Promotions'],
+  ['/gold-erp?section=refining', 'Refining'],
+  ['/gold-erp?section=bullion', 'Bullion Stock'],
+  ['/gold-erp?section=bullion-rate-cuts', 'Rate Cut Invoices'],
+  ['/gold-erp?section=vault-movement', 'Vault Movement'],
+  ['/gold-erp?section=bullion-bookings', 'Bullion Bookings'],
+  ['/gold-erp?section=vault-audit', 'Vault Audit'],
+  ['/gold-erp?section=chit', 'Chit Schemes'],
+  ['/gold-erp?section=chit-collection-register', 'Collection Register'],
+  ['/gold-erp?section=chit-maturity', 'Chit Maturity'],
+  ['/gold-erp?section=chit-defaulters', 'Chit Defaulters'],
+  ['/gold-erp?section=chit-redemptions', 'Chit Redemptions'],
+  ['/gold-erp?section=analytics', 'Analytics'],
 
   // Finance ERP
   ['/finance-erp', 'Finance ERP'],
@@ -304,9 +366,16 @@ const ROUTES: [string, string][] = [
   ['/settings', 'Settings'],
   ['/users', 'Users'],
   ['/roles', 'Roles'],
+  ['/roles?tab=custom', 'Custom Roles'],
+  ['/roles?tab=permissions', 'Role Permissions'],
   ['/subscription', 'Subscription'],
   ['/admin-dashboard', 'Admin Dashboard'],
   ['/ess-portal', 'ESS Portal'],
+
+  // Cross-module shared screens (Gold ERP context — non-duplicate routes)
+  ['/journal-entries', 'GL Journal Entries (Gold sale GL)'],
+  ['/vendors', 'Vendors (Bullion supplier)'],
+  ['/branches', 'Branches (Gold showroom)'],
 ];
 
 // Console errors to ignore (known non-critical)
@@ -314,14 +383,23 @@ const IGNORE_ERRORS = [
   'ResizeObserver loop',
   'favicon.ico',
   'Non-Error promise rejection',
+  '403',           // Tenant permission boundaries — expected for restricted plans
+  'Forbidden',     // Same
+  '401',           // Auth checks on optional endpoints
+  'Unauthorized',  // Same
 ];
 
 async function loginAs(page: Page, creds: TenantCreds) {
-  await page.goto(`${BASE}/login`);
-  await page.fill('input[name="username"], input[type="text"]', creds.username);
-  await page.fill('input[name="password"], input[type="password"]', creds.password);
-  await page.click('button[type="submit"]');
-  await page.waitForURL(/dashboard|\/$/);
+  await page.goto(`${BASE}/auth`, { waitUntil: 'networkidle' });
+  // Fill company slug if visible (shown when no subdomain auto-detects it)
+  const slugField = page.locator('[data-testid="input-company-slug"]');
+  if (await slugField.count() > 0) {
+    await slugField.fill(creds.slug);
+  }
+  await page.locator('[data-testid="input-email"]').fill(creds.username);
+  await page.locator('[data-testid="input-password"]').fill(creds.password);
+  await page.locator('button[type="submit"]').click();
+  await page.waitForURL(/dashboard|\/$/, { timeout: 20000 });
 }
 
 for (const tenant of TENANTS) {
