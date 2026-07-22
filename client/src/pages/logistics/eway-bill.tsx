@@ -239,25 +239,80 @@ export default function EWayBillPage() {
   const printEWB = (ewb: any) => {
     const w = window.open("", "_blank");
     if (!w) return;
+    const fmtDate = (d: string) => d ? new Date(d).toLocaleDateString("en-IN") : "—";
     w.document.write(`<html><body style="font-family:Arial;padding:40px;max-width:800px">
       <h2 style="border-bottom:2px solid #333;padding-bottom:8px">E-WAY BILL</h2>
-      <table style="width:100%;border-collapse:collapse">
-        <tr><td style="padding:4px;font-weight:bold">EWB No:</td><td>${ewb.ewb_number ?? "PENDING"}</td>
-            <td style="font-weight:bold">Valid Upto:</td><td>${ewb.ewb_valid_until ?? "—"}</td></tr>
-        <tr><td style="font-weight:bold">Doc No:</td><td>${ewb.doc_number ?? "—"}</td>
-            <td style="font-weight:bold">Doc Date:</td><td>${ewb.doc_date ?? "—"}</td></tr>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:16px">
+        <tr>
+          <td style="padding:6px 4px;font-weight:bold;width:20%">EWB No:</td>
+          <td style="padding:6px 4px;width:30%">${ewb.ewb_no ?? "PENDING"}</td>
+          <td style="padding:6px 4px;font-weight:bold;width:20%">Valid Upto:</td>
+          <td style="padding:6px 4px">${fmtDate(ewb.valid_upto)}</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 4px;font-weight:bold">Doc No:</td>
+          <td>${ewb.doc_no ?? ewb.invoice_no ?? "—"}</td>
+          <td style="padding:6px 4px;font-weight:bold">Doc Date:</td>
+          <td>${fmtDate(ewb.doc_date)}</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 4px;font-weight:bold">Status:</td>
+          <td>${ewb.status ?? "—"}</td>
+          <td style="padding:6px 4px;font-weight:bold">Transport Mode:</td>
+          <td>${ewb.transport_mode === "1" ? "Road" : ewb.transport_mode === "2" ? "Rail" : ewb.transport_mode === "3" ? "Air" : ewb.transport_mode === "4" ? "Ship" : (ewb.transport_mode ?? "—")}</td>
+        </tr>
       </table>
-      <h3 style="margin-top:16px">From (Consignor)</h3>
-      <p><b>GSTIN:</b> ${ewb.from_gstin ?? "—"} | <b>Name:</b> ${ewb.from_name ?? "—"}<br/>
-      <b>Address:</b> ${ewb.from_address ?? "—"} - ${ewb.from_pincode ?? ""}</p>
-      <h3>To (Consignee)</h3>
-      <p><b>GSTIN:</b> ${ewb.to_gstin ?? "URP"} | <b>Name:</b> ${ewb.to_name ?? "—"}<br/>
-      <b>Address:</b> ${ewb.to_address ?? "—"} - ${ewb.to_pincode ?? ""}</p>
-      <h3>Transport</h3>
-      <p><b>Vehicle:</b> ${ewb.vehicle_number ?? "—"} | <b>Distance:</b> ${ewb.distance_km ?? "—"} km</p>
-      <h3>Value</h3>
-      <p><b>Total Invoice Value:</b> ${sym}${Number(ewb.total_value ?? 0).toLocaleString("en-IN")}</p>
+      <table style="width:100%;border-collapse:collapse;border:1px solid #ccc">
+        <tr style="background:#f5f5f5">
+          <th style="padding:8px;border:1px solid #ccc;text-align:left">From (Consignor)</th>
+          <th style="padding:8px;border:1px solid #ccc;text-align:left">To (Consignee)</th>
+        </tr>
+        <tr>
+          <td style="padding:8px;border:1px solid #ccc;vertical-align:top">
+            <b>GSTIN:</b> ${ewb.supplier_gstin ?? "—"}<br/>
+            <b>Place:</b> ${ewb.from_place ?? "—"}<br/>
+            <b>State:</b> ${ewb.from_state ?? "—"} &nbsp; <b>Pincode:</b> ${ewb.from_pincode ?? "—"}
+          </td>
+          <td style="padding:8px;border:1px solid #ccc;vertical-align:top">
+            <b>GSTIN:</b> ${ewb.recipient_gstin ?? "URP"}<br/>
+            <b>Place:</b> ${ewb.to_place ?? "—"}<br/>
+            <b>State:</b> ${ewb.to_state ?? "—"} &nbsp; <b>Pincode:</b> ${ewb.to_pincode ?? "—"}
+          </td>
+        </tr>
+      </table>
+      <h3 style="margin-top:16px">Transport Details</h3>
+      <table style="width:100%;border-collapse:collapse;border:1px solid #ccc">
+        <tr>
+          <td style="padding:6px 8px;border:1px solid #ccc;font-weight:bold">Vehicle No</td>
+          <td style="padding:6px 8px;border:1px solid #ccc">${ewb.vehicle_number ?? "—"}</td>
+          <td style="padding:6px 8px;border:1px solid #ccc;font-weight:bold">Distance</td>
+          <td style="padding:6px 8px;border:1px solid #ccc">${ewb.distance_km ?? "—"} km</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 8px;border:1px solid #ccc;font-weight:bold">Transporter</td>
+          <td style="padding:6px 8px;border:1px solid #ccc">${ewb.transporter_name ?? "—"}</td>
+          <td style="padding:6px 8px;border:1px solid #ccc;font-weight:bold">Transporter ID</td>
+          <td style="padding:6px 8px;border:1px solid #ccc">${ewb.transporter_id ?? "—"}</td>
+        </tr>
+      </table>
+      <h3 style="margin-top:16px">Value Summary</h3>
+      <table style="width:100%;border-collapse:collapse;border:1px solid #ccc">
+        <tr>
+          <td style="padding:6px 8px;border:1px solid #ccc;font-weight:bold">Total Invoice Value</td>
+          <td style="padding:6px 8px;border:1px solid #ccc">${sym}${Number(ewb.total_value ?? 0).toLocaleString("en-IN")}</td>
+          <td style="padding:6px 8px;border:1px solid #ccc;font-weight:bold">CGST</td>
+          <td style="padding:6px 8px;border:1px solid #ccc">${sym}${Number(ewb.cgst ?? 0).toLocaleString("en-IN")}</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 8px;border:1px solid #ccc;font-weight:bold">SGST</td>
+          <td style="padding:6px 8px;border:1px solid #ccc">${sym}${Number(ewb.sgst ?? 0).toLocaleString("en-IN")}</td>
+          <td style="padding:6px 8px;border:1px solid #ccc;font-weight:bold">IGST</td>
+          <td style="padding:6px 8px;border:1px solid #ccc">${sym}${Number(ewb.igst ?? 0).toLocaleString("en-IN")}</td>
+        </tr>
+      </table>
+      <p style="margin-top:24px;font-size:11px;color:#666">Generated by SwachERP — E-Way Bill Module</p>
     </body></html>`);
+    w.document.close();
     w.print();
   };
 
