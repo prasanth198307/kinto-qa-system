@@ -42,7 +42,7 @@ export async function getNicToken(tenantId: number): Promise<{ token: string; gs
   }
 
   // Request new token from NIC
-  const res = await fetch(`${baseUrl}?action=ACCESSTOKEN`, {
+  const res = await fetch(baseUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json", "Gstin": cred.gstin },
     body: JSON.stringify({
@@ -77,7 +77,7 @@ export async function getNicToken(tenantId: number): Promise<{ token: string; gs
 export async function generateEWB(tenantId: number, payload: Record<string, any>) {
   const { token, gstin, baseUrl } = await getNicToken(tenantId);
 
-  const res = await fetch(`${baseUrl}?action=GENWB`, {
+  const res = await fetch(baseUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -107,7 +107,7 @@ export async function generateEWB(tenantId: number, payload: Record<string, any>
 export async function cancelEWB(tenantId: number, ewbNo: string, cancelReason: number, cancelRemarks: string) {
   const { token, gstin, baseUrl } = await getNicToken(tenantId);
 
-  const res = await fetch(`${baseUrl}?action=CANEWB`, {
+  const res = await fetch(baseUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -136,7 +136,7 @@ export async function cancelEWB(tenantId: number, ewbNo: string, cancelReason: n
 export async function extendEWB(tenantId: number, ewbNo: string, vehicleNo: string, fromPlace: string, fromState: number, remainingDistance: number, transMode: string) {
   const { token, gstin, baseUrl } = await getNicToken(tenantId);
 
-  const res = await fetch(`${baseUrl}?action=EXTENDVALIDITY`, {
+  const res = await fetch(baseUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
