@@ -161,12 +161,10 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
   const createSoMutation = useMutation({
     mutationFn: async (values: SalesOrderFormValues) => {
       // Map form values to API expected format
-      // User enters case price INCLUSIVE of GST. Back-calculate base unit price.
+      // User enters case price EXCLUDING GST (base price). GST is added on top.
       const computedItems = values.items.map(item => {
-        const casePriceIncl = item.unitPrice; // rupees, inclusive of GST (user input)
+        const unitPricePaise = Math.round(item.unitPrice * 100); // base price in paise (ex-GST)
         const totalGST = (Number(item.cgstRate) || 0) + (Number(item.sgstRate) || 0) + (Number(item.igstRate) || 0);
-        const unitPriceExcl = totalGST > 0 ? casePriceIncl / (1 + totalGST / 100) : casePriceIncl;
-        const unitPricePaise = Math.round(unitPriceExcl * 100); // base price in paise
         // Apply discount to taxable amount
         const discountVal = item.discount || 0;
         const discountMode = item.discountMode || '%';
@@ -625,7 +623,7 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                             <TableHead className="min-w-[200px]">Product</TableHead>
                             <TableHead className="w-28">HSN Code</TableHead>
                             <TableHead className="w-20">Qty</TableHead>
-                            <TableHead className="w-32">Case Price (incl. GST)</TableHead>
+                            <TableHead className="w-32">Case Price (excl. GST)</TableHead>
                             <TableHead className="w-36">Discount</TableHead>
                             <TableHead className="w-36">CGST% / SGST%</TableHead>
                             <TableHead className="w-28 text-right">Line Total</TableHead>
@@ -636,11 +634,10 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                           {fields.map((field, index) => {
                             const watchedItems = form.watch("items");
                             const row = watchedItems[index] || {};
-                            // line total: back-calculate base from inclusive price, apply discount, add GST back
-                            const inclusivePrice = row.unitPrice || 0;
+                            // line total: price is ex-GST base, apply discount, add GST
+                            const basePrice = row.unitPrice || 0;
                             const qty = row.quantity || 0;
                             const gstRate = (row.cgstRate || 0) + (row.sgstRate || 0) + (row.igstRate || 0);
-                            const basePrice = gstRate > 0 ? inclusivePrice / (1 + gstRate / 100) : inclusivePrice;
                             const grossBase = basePrice * qty;
                             const discountVal = row.discount || 0;
                             const discountMode = row.discountMode || '%';
@@ -839,10 +836,9 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                         <span className="text-muted-foreground">Estimated Grand Total (incl. GST):</span>
                         <span className="font-bold text-base">
                           {fmtCur(form.watch("items").reduce((sum, item) => {
-                            const inclPrice = item.unitPrice || 0;
+                            const base = item.unitPrice || 0;
                             const qty = item.quantity || 0;
                             const gst = (item.cgstRate || 0) + (item.sgstRate || 0) + (item.igstRate || 0);
-                            const base = gst > 0 ? inclPrice / (1 + gst / 100) : inclPrice;
                             const grossBase = base * qty;
                             const dVal = item.discount || 0;
                             const dAmt = (item.discountMode || '%') === '%'

@@ -139,15 +139,14 @@ function EditSalesOrderDialog({ salesOrder, open, onClose }: EditDialogProps) {
         const sgst = Number(item.sgstRate) || 9;
         const igst = Number(item.igstRate) || 0;
         const totalGST = cgst + sgst + igst;
-        // Convert stored base price (paise) back to case price incl. GST for display
+        // Convert stored base price (paise) back to excl-GST rupees for display
         const baseRupees = Number(item.unitPrice || 0) / 100;
-        const casePriceInclGST = baseRupees * (1 + totalGST / 100);
         return {
           productId: item.productId || "",
           description: item.description || "",
           hsnCode: item.hsnCode || "",
           quantity: Number(item.quantity) || 1,
-          unitPrice: Math.round(casePriceInclGST * 100) / 100, // case price incl. GST
+          unitPrice: Math.round(baseRupees * 100) / 100, // case price excl. GST
           cgstRate: cgst,
           sgstRate: sgst,
           igstRate: igst,
@@ -179,23 +178,23 @@ function EditSalesOrderDialog({ salesOrder, open, onClose }: EditDialogProps) {
   };
 
   const watchedItems = form.watch("items");
-  // casePrice is already inclusive of GST — liveTotal = sum(casePrice × qty)
+  // casePrice is excl. GST — liveTotal includes GST
   const liveTotal = watchedItems.reduce((sum, item) => {
+    const gst = (item.cgstRate || 0) + (item.sgstRate || 0) + (item.igstRate || 0);
     const gross = (item.unitPrice || 0) * (item.quantity || 0);
     const disc = item.discountMode === '%'
       ? gross * (item.discount || 0) / 100
       : (item.discount || 0) * (item.quantity || 0);
-    return sum + gross - disc;
+    const taxable = gross - disc;
+    return sum + taxable + (taxable * gst / 100);
   }, 0);
 
   const updateMutation = useMutation({
     mutationFn: async (values: SOFormValues) => {
-      // User enters case price INCLUSIVE of GST. Back-calculate base unit price.
+      // User enters case price EXCLUDING GST (base price). GST is added on top.
       const computedItems = values.items.map(item => {
-        const casePriceIncl = item.unitPrice; // rupees inclusive of GST
         const totalGST = (Number(item.cgstRate) || 0) + (Number(item.sgstRate) || 0) + (Number(item.igstRate) || 0);
-        const unitPriceExcl = totalGST > 0 ? casePriceIncl / (1 + totalGST / 100) : casePriceIncl;
-        const unitPricePaise = Math.round(unitPriceExcl * 100);
+        const unitPricePaise = Math.round(item.unitPrice * 100);
         const grossPaise = unitPricePaise * item.quantity;
 
         // Discount stored as value×100 (paise-style). '%' mode: gross×discount/10000; sym mode: discount×qty
@@ -452,7 +451,7 @@ function EditSalesOrderDialog({ salesOrder, open, onClose }: EditDialogProps) {
                       <TableHead className="min-w-[180px]">Product</TableHead>
                       <TableHead className="w-24">HSN Code</TableHead>
                       <TableHead className="w-20">Qty</TableHead>
-                      <TableHead className="w-32">Case Price ${sym} (incl. GST)</TableHead>
+                      <TableHead className="w-32">Case Price ${sym} (excl. GST)</TableHead>
                       <TableHead className="w-40">{isInterstate ? 'IGST %' : 'CGST% / SGST%'}</TableHead>
                       <TableHead className="w-36">Discount</TableHead>
                       <TableHead className="w-28 text-right">Line Total</TableHead>
@@ -462,11 +461,14 @@ function EditSalesOrderDialog({ salesOrder, open, onClose }: EditDialogProps) {
                   <TableBody>
                     {fields.map((field, index) => {
                       const row = watchedItems[index] || {};
-                      // casePrice is already inclusive of GST; apply discount for display
+                      // casePrice is excl. GST; add GST after discount
+                      const gstRate = (row.cgstRate || 0) + (row.sgstRate || 0) + (row.igstRate || 0);
                       const grossTotal = (row.unitPrice || 0) * (row.quantity || 0);
-                      const lineTotal = row.discountMode === '%'
-                        ? grossTotal * (1 - (row.discount || 0) / 100)
-                        : grossTotal - (row.discount || 0) * (row.quantity || 0);
+                      const discAmt = row.discountMode === '%'
+                        ? grossTotal * (row.discount || 0) / 100
+                        : (row.discount || 0) * (row.quantity || 0);
+                      const taxable = grossTotal - discAmt;
+                      const lineTotal = taxable + (taxable * gstRate / 100);
                       return (
                         <TableRow key={field.id}>
                           <TableCell>
