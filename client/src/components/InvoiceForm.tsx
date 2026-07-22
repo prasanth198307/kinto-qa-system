@@ -366,7 +366,8 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
       const isIntrastate = invoice.buyerStateCode === invoice.sellerStateCode;
       
       // Use fetched invoiceItems (from separate query) OR embedded items OR empty array
-      const itemsSource = invoiceItems.length > 0 ? invoiceItems : ((invoice as any)?.items || []);
+      const safeInvoiceItems = Array.isArray(invoiceItems) ? invoiceItems : [];
+      const itemsSource = safeInvoiceItems.length > 0 ? safeInvoiceItems : (Array.isArray((invoice as any)?.items) ? (invoice as any).items : []);
       const normalizedItems = itemsSource.length > 0 
         ? itemsSource.map((item: any) => {
             // Calculate GST rate from basis points
