@@ -816,6 +816,8 @@ router.post("/bulk/purchase-requisitions/submit", requireAuth, async (req: any, 
 router.get("/custom-field-values/:entityType/:entityId", requireAuth, async (req: any, res) => {
   try {
     const { entityType, entityId } = req.params;
+    // entity_id column is INTEGER; UUID-format IDs will never match
+    if (!/^\d+$/.test(entityId)) return res.json([]);
     const rows = await db.execute(sql`
       SELECT cfv.*, cfd.field_name, cfd.field_label, cfd.field_type
       FROM custom_field_values cfv

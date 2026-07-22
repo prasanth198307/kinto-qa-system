@@ -75,7 +75,7 @@ export function CustomFieldsSection({ entityType, values: controlledValues, onCh
   });
 
   useEffect(() => {
-    if (savedValues && isSelfContained) {
+    if (savedValues && isSelfContained && Array.isArray(savedValues)) {
       const map: Record<string, any> = {};
       for (const row of savedValues) {
         map[row.field_name] = row.field_value;
