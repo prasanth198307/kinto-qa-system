@@ -228,7 +228,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
     enabled: !!gatepass,
   });
 
-  const { data: invoiceItems = [] } = useQuery<any[]>({
+  const { data: invoiceItems, isSuccess: itemsLoaded } = useQuery<any[]>({
     queryKey: invoice?.id ? [`/api/invoice-items/${invoice.id}`] : [],
     enabled: !!invoice?.id, // Only fetch items when editing an existing invoice (not for reissue mode)
     staleTime: 0, // Always refetch when the form opens to ensure fresh data after edits
@@ -429,12 +429,14 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
   }, [invoice?.id, gatepass?.id, isReissueMode]);
 
   // Effect 2: populate items once invoiceItems query resolves (runs once per invoice load)
+  // Uses replace() from useFieldArray — the only safe API for updating a field-array controlled field.
+  // Keyed on itemsLoaded (isSuccess) so it fires once when data arrives, not on every render.
   useEffect(() => {
-    if (!invoice) return;
+    if (!invoice || !itemsLoaded) return;
     const safeItems = Array.isArray(invoiceItems) ? invoiceItems : [];
     const embeddedItems = Array.isArray((invoice as any)?.items) ? (invoice as any).items : [];
     const source = safeItems.length > 0 ? safeItems : embeddedItems;
-    if (source.length === 0) return; // wait for real data; placeholder already set by Effect 1
+    if (source.length === 0) return;
     const normalizedItems = source.map(normalizeItem);
     console.log('[InvoiceForm] Populating items from API:', normalizedItems.length);
     const totalAmounts: { [index: number]: number } = {};
@@ -442,9 +444,9 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
       totalAmounts[index] = parseFloat((item.unitPrice * (1 + item.gstRate / 100)).toFixed(2));
     });
     setItemTotalAmounts(totalAmounts);
-    form.setValue('items', normalizedItems, { shouldValidate: false });
+    replace(normalizedItems);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [invoice?.id, invoiceItems]);
+  }, [invoice?.id, itemsLoaded]);
 
   // Watch buyer name for adjustments lookup
   const watchedBuyerName = form.watch("buyerName");
