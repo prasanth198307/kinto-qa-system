@@ -357,120 +357,94 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
 
 
   // Reset form when invoice prop changes (critical for reissue mode)
-  // React Hook Form only applies defaultValues on first mount, so we need to reset
-  // when invoice changes to make the form editable with the new data
-  useEffect(() => {
-    if (invoice) {
-      // Compute the isIntrastate value for GST calculation
-      const isIntrastate = invoice.buyerStateCode === invoice.sellerStateCode;
-      
-      // Use fetched invoiceItems (from separate query) OR embedded items OR empty array
-      const safeInvoiceItems = Array.isArray(invoiceItems) ? invoiceItems : [];
-      const itemsSource = safeInvoiceItems.length > 0 ? safeInvoiceItems : (Array.isArray((invoice as any)?.items) ? (invoice as any).items : []);
-      const normalizedItems = itemsSource.length > 0 
-        ? itemsSource.map((item: any) => {
-            // Calculate GST rate from basis points
-            // cgstRate/sgstRate are each half of total rate (for intrastate)
-            // igstRate is full rate (for interstate)
-            // All stored in basis points (900 = 9%, 1800 = 18%)
-            // Try both - use whichever has a non-zero value
-            let rawGstRate = 0;
-            if (item.cgstRate && item.cgstRate > 0) {
-              // Intrastate: cgstRate is half, so multiply by 2
-              rawGstRate = (item.cgstRate * 2) / 100;
-            } else if (item.igstRate && item.igstRate > 0) {
-              // Interstate: igstRate is full rate
-              rawGstRate = item.igstRate / 100;
-            }
-            
-            // Round to nearest valid GST rate (0, 5, 12, 18, 28)
-            const validRates = [0, 5, 12, 18, 28];
-            const gstRate = rawGstRate > 0 
-              ? validRates.reduce((prev, curr) => 
-                  Math.abs(curr - rawGstRate) < Math.abs(prev - rawGstRate) ? curr : prev)
-              : 18; // Default to 18% if no rate found
-            
-            console.log(`[InvoiceForm] Item GST conversion: cgstRate=${item.cgstRate}, igstRate=${item.igstRate}, raw=${rawGstRate}, final=${gstRate}`);
-            
-            return {
-              productId: item.productId || "",
-              description: item.description || "",
-              hsnCode: item.hsnCode || "",
-              quantity: item.quantity || 1,
-              unitPrice: (item.unitPrice || 0) / 100, // Convert from paise to rupees
-              discount: (item.discount || 0) / 100, // Convert from paise to rupees
-              discountMode: item.discountMode || "%", // Default to percentage
-              gstRate,
-              transportRatePerCase: (item.transportRatePerCase || 0) / 100, // Convert from paise to rupees
-              batchNumber: item.batchNumber || "", // Restore batch number
-            };
-          })
-        : [{
-            productId: "",
-            description: "",
-            hsnCode: "",
-            quantity: 1,
-            unitPrice: 0,
-            discount: 0,
-            discountMode: "%",
-            gstRate: 18,
-            transportRatePerCase: 0,
-            batchNumber: "", // Default empty batch
-          }];
-      
-      console.log('[InvoiceForm] Resetting form with invoice data, items:', normalizedItems);
-
-      // Pre-calculate item total amounts for inclusive mode if we ever switch to it
-      const totalAmounts: { [index: number]: number } = {};
-      normalizedItems.forEach((item: any, index: number) => {
-        const basePrice = item.unitPrice || 0;
-        const gstRate = item.gstRate || 0;
-        // Total = Base * (1 + GST/100)
-        totalAmounts[index] = parseFloat((basePrice * (1 + gstRate / 100)).toFixed(2));
-      });
-      setItemTotalAmounts(totalAmounts);
-
-      // Reset form when invoice prop changes (critical for reissue mode)
-      // React Hook Form only applies defaultValues on first mount, so we need to reset
-      // when invoice changes to make the form editable with the new data
-      form.reset({
-        salesOrderId: (invoice as any).salesOrderId || "",
-        gatepassId: gatepass?.id || "",
-        invoiceDate: new Date(invoice.invoiceDate).toISOString().split('T')[0],
-        invoiceTemplateId: invoice.templateId || "",
-        termsConditionsId: invoice.termsConditionsId || "",
-        sellerName: invoice.sellerName || "MicroGrid",
-        sellerAddress: invoice.sellerAddress || "356-2, Chintalapalem, Kothavalasa",
-        sellerState: invoice.sellerState || "Andhra Pradesh",
-        sellerStateCode: invoice.sellerStateCode || "37",
-        sellerGstin: invoice.sellerGstin || "37AAHCI5047B1ZR",
-        sellerPhone: invoice.sellerPhone || "",
-        sellerEmail: invoice.sellerEmail || "",
-        shipToName: invoice.shipToName || "",
-        shipToAddress: invoice.shipToAddress || "",
-        shipToCity: invoice.shipToCity || "",
-        shipToState: invoice.shipToState || "",
-        shipToPincode: invoice.shipToPincode || "",
-        buyerName: invoice.buyerName || "",
-        buyerGstin: invoice.buyerGstin || "",
-        buyerAddress: invoice.buyerAddress || "",
-        buyerState: invoice.buyerState || "Andhra Pradesh",
-        buyerStateCode: invoice.buyerStateCode || "37",
-        isCluster: invoice.isCluster || 0,
-        items: normalizedItems,
-        bankName: invoice.bankName || "",
-        bankAccountNumber: invoice.bankAccountNumber || "",
-        bankIfscCode: invoice.bankIfscCode || "",
-        accountHolderName: invoice.accountHolderName || "",
-        branchName: invoice.branchName || "",
-        upiId: invoice.upiId || "",
-        includeSignature: invoice.includeSignature ?? 1,
-        signatureType: (invoice as any).signatureType || 'default',
-        status: isReissueMode ? 'draft' : (invoice.status || 'draft'),
-      });
-      
+  // Helper to normalize a raw DB item row into form shape
+  const normalizeItem = (item: any) => {
+    let rawGstRate = 0;
+    if (item.cgstRate && item.cgstRate > 0) {
+      rawGstRate = (item.cgstRate * 2) / 100;
+    } else if (item.igstRate && item.igstRate > 0) {
+      rawGstRate = item.igstRate / 100;
     }
-  }, [invoice, gatepass, form, invoiceItems]);
+    const validRates = [0, 5, 12, 18, 28];
+    const gstRate = rawGstRate > 0
+      ? validRates.reduce((prev, curr) => Math.abs(curr - rawGstRate) < Math.abs(prev - rawGstRate) ? curr : prev)
+      : 18;
+    return {
+      productId: item.productId || "",
+      description: item.description || "",
+      hsnCode: item.hsnCode || "",
+      quantity: item.quantity || 1,
+      unitPrice: (item.unitPrice || 0) / 100,
+      discount: (item.discount || 0) / 100,
+      discountMode: item.discountMode || "%",
+      gstRate,
+      transportRatePerCase: (item.transportRatePerCase || 0) / 100,
+      batchNumber: item.batchNumber || "",
+    };
+  };
+
+  // Effect 1: reset form header fields when invoice prop changes (NOT dependent on invoiceItems)
+  useEffect(() => {
+    if (!invoice) return;
+    form.reset({
+      salesOrderId: (invoice as any).salesOrderId || "",
+      gatepassId: gatepass?.id || "",
+      invoiceDate: new Date(invoice.invoiceDate).toISOString().split('T')[0],
+      invoiceTemplateId: invoice.templateId || "",
+      termsConditionsId: invoice.termsConditionsId || "",
+      sellerName: invoice.sellerName || "MicroGrid",
+      sellerAddress: invoice.sellerAddress || "356-2, Chintalapalem, Kothavalasa",
+      sellerState: invoice.sellerState || "Andhra Pradesh",
+      sellerStateCode: invoice.sellerStateCode || "37",
+      sellerGstin: invoice.sellerGstin || "37AAHCI5047B1ZR",
+      sellerPhone: invoice.sellerPhone || "",
+      sellerEmail: invoice.sellerEmail || "",
+      shipToName: invoice.shipToName || "",
+      shipToAddress: invoice.shipToAddress || "",
+      shipToCity: invoice.shipToCity || "",
+      shipToState: invoice.shipToState || "",
+      shipToPincode: invoice.shipToPincode || "",
+      buyerName: invoice.buyerName || "",
+      buyerGstin: invoice.buyerGstin || "",
+      buyerAddress: invoice.buyerAddress || "",
+      buyerState: invoice.buyerState || "Andhra Pradesh",
+      buyerStateCode: invoice.buyerStateCode || "37",
+      isCluster: invoice.isCluster || 0,
+      items: [{
+        productId: "", description: "", hsnCode: "", quantity: 1,
+        unitPrice: 0, discount: 0, discountMode: "%", gstRate: 18,
+        transportRatePerCase: 0, batchNumber: "",
+      }],
+      bankName: invoice.bankName || "",
+      bankAccountNumber: invoice.bankAccountNumber || "",
+      bankIfscCode: invoice.bankIfscCode || "",
+      accountHolderName: invoice.accountHolderName || "",
+      branchName: invoice.branchName || "",
+      upiId: invoice.upiId || "",
+      includeSignature: invoice.includeSignature ?? 1,
+      signatureType: (invoice as any).signatureType || 'default',
+      status: isReissueMode ? 'draft' : (invoice.status || 'draft'),
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [invoice?.id, gatepass?.id, isReissueMode]);
+
+  // Effect 2: populate items once invoiceItems query resolves (runs once per invoice load)
+  useEffect(() => {
+    if (!invoice) return;
+    const safeItems = Array.isArray(invoiceItems) ? invoiceItems : [];
+    const embeddedItems = Array.isArray((invoice as any)?.items) ? (invoice as any).items : [];
+    const source = safeItems.length > 0 ? safeItems : embeddedItems;
+    if (source.length === 0) return; // wait for real data; placeholder already set by Effect 1
+    const normalizedItems = source.map(normalizeItem);
+    console.log('[InvoiceForm] Populating items from API:', normalizedItems.length);
+    const totalAmounts: { [index: number]: number } = {};
+    normalizedItems.forEach((item: any, index: number) => {
+      totalAmounts[index] = parseFloat((item.unitPrice * (1 + item.gstRate / 100)).toFixed(2));
+    });
+    setItemTotalAmounts(totalAmounts);
+    form.setValue('items', normalizedItems, { shouldValidate: false });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [invoice?.id, invoiceItems]);
 
   // Watch buyer name for adjustments lookup
   const watchedBuyerName = form.watch("buyerName");

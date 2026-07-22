@@ -820,7 +820,7 @@ router.get("/custom-field-values/:entityType/:entityId", requireAuth, async (req
       SELECT cfv.*, cfd.field_name, cfd.field_label, cfd.field_type
       FROM custom_field_values cfv
       JOIN custom_field_definitions cfd ON cfd.id=cfv.field_def_id
-      WHERE cfv.tenant_id=${tid(req)} AND cfv.entity_type=${entityType} AND cfv.entity_id=${parseInt(entityId)}`);
+      WHERE cfv.tenant_id=${tid(req)} AND cfv.entity_type=${entityType} AND cfv.entity_id=${entityId}`);
     res.json(rows.rows);
   } catch (e: any) {
     if (e.code === MISSING_TABLE) return res.json([]);
@@ -833,11 +833,11 @@ router.post("/custom-field-values/:entityType/:entityId", requireAuth, async (re
     const { values } = req.body;
     const results = [];
     for (const [fieldDefId, fieldValue] of Object.entries(values as Record<string, any>)) {
-      const existing = await db.execute(sql`SELECT id FROM custom_field_values WHERE field_def_id=${parseInt(fieldDefId)} AND entity_id=${parseInt(entityId)} AND tenant_id=${tid(req)}`);
+      const existing = await db.execute(sql`SELECT id FROM custom_field_values WHERE field_def_id=${parseInt(fieldDefId)} AND entity_id=${entityId} AND tenant_id=${tid(req)}`);
       if (existing.rows.length > 0) {
-        await db.execute(sql`UPDATE custom_field_values SET field_value=${String(fieldValue ?? "")} WHERE field_def_id=${parseInt(fieldDefId)} AND entity_id=${parseInt(entityId)} AND tenant_id=${tid(req)}`);
+        await db.execute(sql`UPDATE custom_field_values SET field_value=${String(fieldValue ?? "")} WHERE field_def_id=${parseInt(fieldDefId)} AND entity_id=${entityId} AND tenant_id=${tid(req)}`);
       } else {
-        await db.execute(sql`INSERT INTO custom_field_values (tenant_id, field_def_id, entity_type, entity_id, field_value) VALUES (${tid(req)},${parseInt(fieldDefId)},${entityType},${parseInt(entityId)},${String(fieldValue ?? "")})`);
+        await db.execute(sql`INSERT INTO custom_field_values (tenant_id, field_def_id, entity_type, entity_id, field_value) VALUES (${tid(req)},${parseInt(fieldDefId)},${entityType},${entityId},${String(fieldValue ?? "")})`);
       }
       results.push({ fieldDefId, fieldValue });
     }
