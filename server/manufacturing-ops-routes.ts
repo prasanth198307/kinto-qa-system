@@ -484,7 +484,7 @@ router.get("/eway-bills/invoices-search", auth, async (req: any, res) => {
     const tenantId = getTenantId(req);
     const q = req.query.q ? `%${req.query.q}%` : "%";
     const rows = await db.execute(sql`
-      SELECT id, invoice_number, invoice_date, buyer_name, total_amount, eway_bill_number
+      SELECT id, invoice_number, invoice_date, buyer_name, total_amount
       FROM invoices
       WHERE tenant_id = ${tenantId}
         AND record_status != 0
