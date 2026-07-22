@@ -9411,13 +9411,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate header
       const validatedHeader = insertSalesOrderSchema.parse(normalizedHeader);
 
-      // Auto-generate SO Number: SO-YYYYMMDD-NNN (with random fallback to avoid duplicates)
+      // Auto-generate SO Number: SO-YYYYMMDD-NNN
       const today = new Date();
       const dateStr = format(today, 'yyyyMMdd');
       const prefix = `SO-${dateStr}-`;
       const { total } = await storage.getAllSalesOrders({ search: prefix });
       const nextNum = (total + 1).toString().padStart(3, '0');
-      const soNumber = `${prefix}${nextNum}-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
+      const soNumber = `${prefix}${nextNum}`;
 
       // Create SO
       const so = await storage.createSalesOrder({
@@ -9439,9 +9439,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             productId: resolvedProductId,
             description: item.description ?? item.product_name ?? item.name,
             quantity: item.quantity ?? 1,
-            unitPrice: Math.round((item.unitPrice ?? item.unit_price ?? item.rate ?? item.price ?? 0) * 100),
-            totalAmount: Math.round((item.totalAmount ?? item.total_amount ?? item.amount ?? 0) * 100),
-            taxableAmount: Math.round((item.taxableAmount ?? item.taxable_amount ?? item.amount ?? 0) * 100),
+            unitPrice: Math.round(item.unitPrice ?? item.unit_price ?? item.rate ?? item.price ?? 0),
+            totalAmount: Math.round(item.totalAmount ?? item.total_amount ?? item.amount ?? 0),
+            taxableAmount: Math.round(item.taxableAmount ?? item.taxable_amount ?? item.amount ?? 0),
           };
           const validatedItem = insertSalesOrderItemSchema.parse(normalizedItem);
           const createdItem = await storage.createSalesOrderItem(validatedItem);
@@ -10565,6 +10565,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       await storage.deleteInvoice(id);
       console.log(`[AUDIT] Invoice ${invoice.invoiceNumber} deleted by user`);
+
+      // If invoice was linked to a SO, recheck SO status
+      if ((invoice as any).salesOrderId) {
+        const soId = (invoice as any).salesOrderId;
+        try {
+          const activeInvoices = await db.select({ id: invoices.id }).from(invoices)
+            .where(and(eq(invoices.salesOrderId, soId), eq(invoices.recordStatus, 1), ne(invoices.status, 'cancelled')));
+          const newStatus = activeInvoices.length === 0 ? 'confirmed' : 'partially_invoiced';
+          await db.update(salesOrders).set({ status: newStatus, updatedAt: new Date().toISOString() }).where(eq(salesOrders.id, soId));
+        } catch (soErr) { console.error('[SO_LINK] Failed to revert SO status after invoice delete:', soErr); }
+      }
+
       res.json({ message: "Invoice deleted successfully" });
     } catch (error) {
       console.error("Error deleting invoice:", error);
