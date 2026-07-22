@@ -9973,9 +9973,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const invDateStr = invDate.toISOString().slice(0, 10).replace(/-/g, '');
       const dayStart = invDate.toISOString().slice(0, 10);
       const existingCount: any = (await db.execute(sql`
-        SELECT COUNT(*)::INTEGER as cnt FROM invoices 
+        SELECT COUNT(*)::INTEGER as cnt FROM invoices
         WHERE invoice_number LIKE ${'INV-' + invDateStr + '-%'}
-        AND record_status = 1
       `)).rows;
       const seq = (Number(existingCount[0]?.cnt) || 0) + 1;
       const invoiceNumber = `INV-${invDateStr}-${String(seq).padStart(3, '0')}`;
