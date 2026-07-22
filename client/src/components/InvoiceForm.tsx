@@ -354,8 +354,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
     },
   });
 
-  // State to track if we need to sync field array after reset
-  const [pendingItemsSync, setPendingItemsSync] = useState<any[] | null>(null);
+
 
   // Reset form when invoice prop changes (critical for reissue mode)
   // React Hook Form only applies defaultValues on first mount, so we need to reset
@@ -470,8 +469,6 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
         status: isReissueMode ? 'draft' : (invoice.status || 'draft'),
       });
       
-      // Schedule items sync for next render cycle to ensure useFieldArray picks it up
-      setPendingItemsSync(normalizedItems);
     }
   }, [invoice, gatepass, form, invoiceItems]);
 
@@ -815,14 +812,6 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
 
   // Sync field array when pending items exist (needed for reissue mode)
   // This ensures useFieldArray picks up items after form.reset()
-  useEffect(() => {
-    if (pendingItemsSync && pendingItemsSync.length > 0) {
-      console.log('[InvoiceForm] Syncing field array with replace(), items:', pendingItemsSync.length);
-      replace(pendingItemsSync);
-      setPendingItemsSync(null);
-    }
-  }, [pendingItemsSync, replace]);
-
   const watchBuyerState = form.watch("buyerStateCode");
   const watchSellerState = form.watch("sellerStateCode");
   const watchItems = form.watch("items");
