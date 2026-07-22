@@ -9972,11 +9972,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const invDate = validatedHeader.invoiceDate ? new Date(validatedHeader.invoiceDate) : new Date();
       const invDateStr = invDate.toISOString().slice(0, 10).replace(/-/g, '');
       const dayStart = invDate.toISOString().slice(0, 10);
-      const existingCount: any = (await db.execute(sql`
-        SELECT COUNT(*)::INTEGER as cnt FROM invoices
+      const maxSeqResult: any = (await db.execute(sql`
+        SELECT COALESCE(MAX(CAST(SUBSTRING(invoice_number FROM ${('INV-' + invDateStr + '-').length + 1}) AS INTEGER)), 0) + 1 AS next_seq
+        FROM invoices
         WHERE invoice_number LIKE ${'INV-' + invDateStr + '-%'}
       `)).rows;
-      const seq = (Number(existingCount[0]?.cnt) || 0) + 1;
+      const seq = Number(maxSeqResult[0]?.next_seq) || 1;
       const invoiceNumber = `INV-${invDateStr}-${String(seq).padStart(3, '0')}`;
       const invoiceData = {
         ...validatedHeader,
