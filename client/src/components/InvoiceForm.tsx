@@ -383,9 +383,31 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
     };
   };
 
-  // Effect 1: reset form header fields when invoice prop changes (NOT dependent on invoiceItems)
+  // Single effect: wait until invoice items are loaded, then do ONE form.reset() with full data.
+  // Including items directly in form.reset() avoids any replace()/setValue() timing issues with
+  // useFieldArray's internal _fields map, which are the root cause of "g is not iterable" crashes.
   useEffect(() => {
     if (!invoice) return;
+    // Wait for the items query to resolve before resetting — avoids a follow-up replace() call.
+    // itemsLoaded (isSuccess) goes false→true once per invoice load; this effect fires once.
+    if (invoice.id && !itemsLoaded) return;
+
+    const safeItems = Array.isArray(invoiceItems) ? invoiceItems : [];
+    const embeddedItems = Array.isArray((invoice as any)?.items) ? (invoice as any).items : [];
+    const source = safeItems.length > 0 ? safeItems : embeddedItems;
+    const normalizedItems = source.length > 0 ? source.map(normalizeItem) : [{
+      productId: "", description: "", hsnCode: "", quantity: 1,
+      unitPrice: 0, discount: 0, discountMode: "%", gstRate: 18,
+      transportRatePerCase: 0, batchNumber: "",
+    }];
+
+    console.log('[InvoiceForm] Resetting form with items:', normalizedItems.length);
+    const totalAmounts: { [index: number]: number } = {};
+    normalizedItems.forEach((item: any, index: number) => {
+      totalAmounts[index] = parseFloat((item.unitPrice * (1 + item.gstRate / 100)).toFixed(2));
+    });
+    setItemTotalAmounts(totalAmounts);
+
     form.reset({
       salesOrderId: (invoice as any).salesOrderId || "",
       gatepassId: gatepass?.id || "",
@@ -410,11 +432,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
       buyerState: invoice.buyerState || "Andhra Pradesh",
       buyerStateCode: invoice.buyerStateCode || "37",
       isCluster: invoice.isCluster || 0,
-      items: [{
-        productId: "", description: "", hsnCode: "", quantity: 1,
-        unitPrice: 0, discount: 0, discountMode: "%", gstRate: 18,
-        transportRatePerCase: 0, batchNumber: "",
-      }],
+      items: normalizedItems,
       bankName: invoice.bankName || "",
       bankAccountNumber: invoice.bankAccountNumber || "",
       bankIfscCode: invoice.bankIfscCode || "",
@@ -426,27 +444,7 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
       status: isReissueMode ? 'draft' : (invoice.status || 'draft'),
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [invoice?.id, gatepass?.id, isReissueMode]);
-
-  // Effect 2: populate items once invoiceItems query resolves (runs once per invoice load)
-  // Uses replace() from useFieldArray — the only safe API for updating a field-array controlled field.
-  // Keyed on itemsLoaded (isSuccess) so it fires once when data arrives, not on every render.
-  useEffect(() => {
-    if (!invoice || !itemsLoaded) return;
-    const safeItems = Array.isArray(invoiceItems) ? invoiceItems : [];
-    const embeddedItems = Array.isArray((invoice as any)?.items) ? (invoice as any).items : [];
-    const source = safeItems.length > 0 ? safeItems : embeddedItems;
-    if (source.length === 0) return;
-    const normalizedItems = source.map(normalizeItem);
-    console.log('[InvoiceForm] Populating items from API:', normalizedItems.length);
-    const totalAmounts: { [index: number]: number } = {};
-    normalizedItems.forEach((item: any, index: number) => {
-      totalAmounts[index] = parseFloat((item.unitPrice * (1 + item.gstRate / 100)).toFixed(2));
-    });
-    setItemTotalAmounts(totalAmounts);
-    replace(normalizedItems);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [invoice?.id, itemsLoaded]);
+  }, [invoice?.id, gatepass?.id, isReissueMode, itemsLoaded]);
 
   // Watch buyer name for adjustments lookup
   const watchedBuyerName = form.watch("buyerName");
