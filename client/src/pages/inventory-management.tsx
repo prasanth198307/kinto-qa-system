@@ -533,6 +533,7 @@ interface PaginatedProductResponse {
 
 function ProductsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSearchChange: (value: string) => void }) {
   const { toast } = useToast();
+  const { currency_symbol: sym } = useTenantConfig();
   const { role, hasPermission } = usePermissions();
   const [location, setLocation] = useLocation();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -779,7 +780,6 @@ function ProductsTab({ searchTerm, onSearchChange }: { searchTerm: string; onSea
   };
 
   const getUomName = (uomId: string | null) => {
-  const { currency_symbol: sym } = useTenantConfig();
     if (!uomId) return '-';
     const uom = uoms.find(u => u.id === uomId);
     return uom ? uom.name : '-';
@@ -1039,6 +1039,7 @@ function ProductDialog({
   isLoading: boolean;
 }) {
   const { toast } = useToast();
+  const { currency_symbol: sym } = useTenantConfig();
   const [activeTab, setActiveTab] = useState("info");
   const [bomSaving, setBomSaving] = useState(false);
   
@@ -1348,7 +1349,6 @@ function ProductDialog({
   };
 
   const handleSubmit = async (data: ProductFormData) => {
-  const { currency_symbol: sym } = useTenantConfig();
     // Pass the complete form data (including bomItems) to parent's onSubmit
     // Include the selected configuration ID for BOM items
     const submitData = {
@@ -5019,6 +5019,7 @@ function RecordScrapDialog({
   onSubmit: (data: any) => void;
   isLoading: boolean;
 }) {
+  const { currency_symbol: sym } = useTenantConfig();
   const scrapFormSchema = z.object({
     quantity: z.number().int().min(1, "Must be at least 1"),
     scrapDate: z.string().min(1, "Date is required"),
@@ -5059,7 +5060,6 @@ function RecordScrapDialog({
   const productName = product?.productName || 'Unknown Product';
 
   const handleSubmit = (values: z.infer<typeof scrapFormSchema>) => {
-  const { currency_symbol: sym } = useTenantConfig();
     onSubmit({
       productId: item.productId,
       productName,
