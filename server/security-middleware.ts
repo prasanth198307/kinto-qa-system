@@ -73,7 +73,7 @@ export const resetPasswordRateLimiter = rateLimit({
  */
 export const apiRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 2000,
+  max: 100000,
   standardHeaders: "draft-7",
   legacyHeaders: false,
   skip: (req) => {

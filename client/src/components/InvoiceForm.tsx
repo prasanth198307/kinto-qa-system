@@ -99,10 +99,10 @@ const invoiceFormSchema = z.object({
     hsnCode: z.string().optional(),
     quantity: z.number().min(1, "Quantity must be at least 1"),
     unitPrice: z.number().min(0, "Price must be positive"),
-    discount: z.number().min(0).optional(), // Discount amount
+    discount: z.preprocess(v => (typeof v === 'number' && isNaN(v)) ? undefined : v, z.number().min(0).optional()), // Discount amount
     discountMode: z.string().optional(), // '%' (percentage) or sym (flat rupees)
     gstRate: z.number().min(0).max(100, "GST rate must be 0-100%"),
-    transportRatePerCase: z.number().min(0).optional(), // Transport rate per case (rupees)
+    transportRatePerCase: z.preprocess(v => (typeof v === 'number' && isNaN(v)) ? undefined : v, z.number().min(0).optional()), // Transport rate per case (rupees)
     batchNumber: z.string().optional(),
   })).min(1, "At least one item is required"),
   
