@@ -1971,7 +1971,6 @@ export default function InvoiceForm({ gatepass, invoice, isReissueMode = false, 
                     <th className="text-left font-semibold px-2 py-1.5 whitespace-nowrap">HSN</th>
                     <th className="text-left font-semibold px-2 py-1.5 whitespace-nowrap">Description *</th>
                     <th className="text-left font-semibold px-2 py-1.5 whitespace-nowrap">Qty *</th>
-                    <th className="text-left font-semibold px-2 py-1.5 whitespace-nowrap">Batch #</th>
                     <th className="text-left font-semibold px-2 py-1.5 whitespace-nowrap">{gstInclusiveMode ? `Base ${sym}` : `Price ${sym}`}</th>
                     <th className="text-left font-semibold px-2 py-1.5 whitespace-nowrap">Discount</th>
                     <th className="text-left font-semibold px-2 py-1.5 whitespace-nowrap">GST %</th>

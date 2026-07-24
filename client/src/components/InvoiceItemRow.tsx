@@ -182,15 +182,6 @@ export default function InvoiceItemRow({
         />
       </td>
 
-      {/* Batch Number */}
-      <td className="p-1">
-        <Input
-          {...form.register(`items.${index}.batchNumber`)}
-          placeholder="Batch #"
-          className="h-8 text-sm w-[75px] border-primary/50 focus-visible:ring-primary"
-          data-testid={`input-batch-${index}`}
-        />
-      </td>
 
       {/* Unit Price */}
       <td className="p-1">
