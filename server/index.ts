@@ -20,6 +20,7 @@ const { setupVite, serveStatic, log } = await import("./vite");
 const { notificationService } = await import("./notificationService");
 const { storage } = await import("./storage");
 const corsModule = await import("cors");
+const compressionModule = await import("compression");
 
 // Function to sync WhatsApp secrets from environment to database (one-time)
 async function syncWhatsAppSecretsToDatabase() {
@@ -65,6 +66,8 @@ const cors = corsModule.default;
 const { Request, Response, NextFunction } = expressModule;
 
 const app = express();
+const compression = compressionModule.default;
+app.use(compression({ threshold: 1024 })); // gzip responses > 1KB
 
 // ── Dynamic per-tenant CORS whitelist ─────────────────────────────────────
 let _corsCache: Set<string> = new Set();
