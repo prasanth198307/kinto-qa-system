@@ -919,8 +919,15 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
     return 'gatepasses';
   };
   
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const [dateFrom, setDateFrom] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+  });
+  const [dateTo, setDateTo] = useState(() => {
+    const now = new Date();
+    const last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return `${last.getFullYear()}-${String(last.getMonth() + 1).padStart(2, '0')}-${String(last.getDate()).padStart(2, '0')}`;
+  });
   const [selectedCustomer, setSelectedCustomer] = useState<string>("all");
   const [customerPopoverOpen, setCustomerPopoverOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(() => getFirstAccessibleTab());
@@ -1169,7 +1176,7 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
       if (item.buyerName !== selectedCustomer) return false;
     }
     return true;
-  }) : [];
+  }).sort((a, b) => new Date(b.invoiceDate).getTime() - new Date(a.invoiceDate).getTime()) : [];
 
   const filteredIssuances = Array.isArray(issuances) ? issuances.filter(item => {
     // Date filter
@@ -1227,8 +1234,10 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
   }) : [];
 
   const clearFilters = () => {
-    setDateFrom("");
-    setDateTo("");
+    const now = new Date();
+    const last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    setDateFrom(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`);
+    setDateTo(`${last.getFullYear()}-${String(last.getMonth() + 1).padStart(2, '0')}-${String(last.getDate()).padStart(2, '0')}`);
     setSelectedCustomer("all");
   };
   
