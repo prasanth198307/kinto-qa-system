@@ -1332,20 +1332,35 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
     if (filteredInvoices.length === 0) return;
     setIsExportingInvoices(true);
     try {
-      // Fetch invoice items for all filtered invoices
+      // Fetch invoice items and sales returns for all filtered invoices in parallel
       const invoiceItemsMap: Record<string, any[]> = {};
-      await Promise.all(
-        filteredInvoices.map(async (inv) => {
+      const returnsMap: Record<string, number> = {}; // invoiceId -> total credit amount in paise
+
+      await Promise.all([
+        ...filteredInvoices.map(async (inv) => {
           try {
             const res = await fetch(`/api/invoice-items/${inv.id}`, { credentials: 'include' });
-            if (res.ok) {
-              invoiceItemsMap[inv.id] = await res.json();
-            }
+            if (res.ok) invoiceItemsMap[inv.id] = await res.json();
           } catch (e) {
             console.error(`Failed to fetch items for invoice ${inv.id}`);
           }
-        })
-      );
+        }),
+        (async () => {
+          try {
+            const res = await fetch('/api/sales-returns', { credentials: 'include' });
+            if (res.ok) {
+              const returns: any[] = await res.json();
+              for (const r of returns) {
+                if (r.invoiceId) {
+                  returnsMap[r.invoiceId] = (returnsMap[r.invoiceId] || 0) + (r.totalCreditAmount || 0);
+                }
+              }
+            }
+          } catch (e) {
+            console.error('Failed to fetch sales returns');
+          }
+        })()
+      ]);
 
       // Summary sheet with invoice-level data
       const summarySheet = [
@@ -1354,31 +1369,39 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
         dateFrom || dateTo ? ['Date Range', `${dateFrom || 'Start'} to ${dateTo || 'End'}`] : [''],
         [''],
         [
-          'Invoice #', 'Date', 'Buyer Name', 'Buyer GSTIN/Aadhaar', 'Buyer Address', 
-          'Buyer State', 'State Code', 'Contact', 'Total Amount', 'Amount Received', 
-          'Balance Due', 'Status'
+          'Invoice #', 'Date', 'Buyer Name', 'Buyer GSTIN/Aadhaar', 'Buyer Address',
+          'Buyer State', 'State Code', 'Contact', 'Total Amount', 'Returns Amount',
+          'Net Amount', 'Amount Received', 'Balance Due', 'Status'
         ],
-        ...filteredInvoices.map(inv => [
-          inv.invoiceNumber,
-          formatDateForExcel(inv.invoiceDate),
-          inv.buyerName || '-',
-          inv.buyerGstin || '-',
-          inv.buyerAddress || '-',
-          inv.buyerState || '-',
-          inv.buyerStateCode || '-',
-          inv.buyerContact || '-',
-          formatCurrencyForExcel(inv.totalAmount),
-          formatCurrencyForExcel(inv.amountReceived || 0),
-          formatCurrencyForExcel((inv.totalAmount || 0) - (inv.amountReceived || 0)),
-          inv.status || 'draft'
-        ])
+        ...filteredInvoices.map(inv => {
+          const returnsAmt = returnsMap[inv.id] || 0;
+          const netAmount = (inv.totalAmount || 0) - returnsAmt;
+          return [
+            inv.invoiceNumber,
+            formatDateForExcel(inv.invoiceDate),
+            inv.buyerName || '-',
+            inv.buyerGstin || '-',
+            inv.buyerAddress || '-',
+            inv.buyerState || '-',
+            inv.buyerStateCode || '-',
+            inv.buyerContact || '-',
+            formatCurrencyForExcel(inv.totalAmount),
+            returnsAmt > 0 ? formatCurrencyForExcel(returnsAmt) : '-',
+            formatCurrencyForExcel(netAmount),
+            formatCurrencyForExcel(inv.amountReceived || 0),
+            formatCurrencyForExcel(netAmount - (inv.amountReceived || 0)),
+            inv.status || 'draft'
+          ];
+        })
       ];
 
       // Add summary totals
       const totalAmount = filteredInvoices.reduce((sum, inv) => sum + (inv.totalAmount || 0), 0);
+      const totalReturns = filteredInvoices.reduce((sum, inv) => sum + (returnsMap[inv.id] || 0), 0);
+      const totalNet = totalAmount - totalReturns;
       const totalReceived = filteredInvoices.reduce((sum, inv) => sum + (inv.amountReceived || 0), 0);
       summarySheet.push(['']);
-      summarySheet.push(['', '', '', '', '', '', '', 'TOTAL:', formatCurrencyForExcel(totalAmount), formatCurrencyForExcel(totalReceived), formatCurrencyForExcel(totalAmount - totalReceived), '']);
+      summarySheet.push(['', '', '', '', '', '', '', 'TOTAL:', formatCurrencyForExcel(totalAmount), formatCurrencyForExcel(totalReturns), formatCurrencyForExcel(totalNet), formatCurrencyForExcel(totalReceived), formatCurrencyForExcel(totalNet - totalReceived), '']);
 
       // Items sheet with line-item details
       const itemsSheet: (string | number)[][] = [
