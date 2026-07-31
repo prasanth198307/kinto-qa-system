@@ -16060,14 +16060,14 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
         const vendorDebits = allDebitNotes.filter(dn => invoiceIds.includes(dn.invoiceId));
         const totalDebits = vendorDebits.reduce((sum, dn) => sum + (dn.grandTotal || 0), 0);
         
-        // Customer advances for this vendor family (available balance = amount - usedAmount)
-        const vendorAdvances = allAdvances.filter(adv => 
-          vendorIdsToInclude.includes(adv.vendorId) && adv.status === 'active'
+        // Customer advances — only count the portion actually adjusted/applied to invoices (usedAmount)
+        // Unadjusted advance balance is not yet a payment against any invoice so must not reduce outstanding
+        const vendorAdvances = allAdvances.filter(adv =>
+          vendorIdsToInclude.includes(adv.vendorId) && (adv.usedAmount || 0) > 0
         );
-        const totalAdvances = vendorAdvances.reduce((sum, adv) => sum + ((adv.amount || 0) - (adv.usedAmount || 0)), 0);
-        
-        // Outstanding = Invoiced + Debits - Credits - Received - Advances
-        // Formula: What they originally owed + additional charges - reductions - what they paid - prepayments
+        const totalAdvances = vendorAdvances.reduce((sum, adv) => sum + (adv.usedAmount || 0), 0);
+
+        // Outstanding = Invoiced + Debits - Credits - Received - Advances(adjusted only)
         const outstanding = totalInvoiced + totalDebits - totalCredits - totalReceived - totalAdvances;
         
         // Last transaction date (across all family members)
