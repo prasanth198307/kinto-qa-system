@@ -15957,7 +15957,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
     try {
       const { search, page = '1', pageSize = '20', sortBy = 'outstanding', sortOrder = 'desc' } = req.query;
       const pageNum = parseInt(page as string);
-      const limit = Math.min(parseInt(pageSize as string), 100);
+      const limit = Math.min(parseInt(pageSize as string), 10000);
       const offset = (pageNum - 1) * limit;
       
       // Get all active vendors
