@@ -107,9 +107,21 @@ export default function VendorHistoryPage() {
   const formatCurrency = (amount: number) => fmtCur(amount / 100, tenantConfig);
 
   const handleExportExcel = async () => {
-    if (!data?.vendors.length) return;
+    if (!data) return;
     setIsExporting(true);
     try {
+      // Fetch ALL vendors (not just current page) for the export
+      const params = new URLSearchParams({
+        page: '1',
+        pageSize: '10000',
+        sortBy,
+        sortOrder,
+        ...(search && { search }),
+      });
+      const res = await fetch(`/api/vendor-history?${params}`, { credentials: 'include' });
+      const allData: VendorHistoryResponse = res.ok ? await res.json() : data;
+      const allVendors = allData.vendors;
+
       const summarySheet = [
         ['Vendor History Report'],
         ['Generated', format(new Date(), 'yyyy-MM-dd HH:mm')],
@@ -125,7 +137,7 @@ export default function VendorHistoryPage() {
       const vendorsSheet = [
         ['Vendors'],
         ['Vendor Code', 'Vendor Name', 'GST Number', 'City', 'State', 'Invoices', 'Credit Notes', 'Debit Notes', 'Total Invoiced', 'Total Received', 'Outstanding', 'Last Transaction'],
-        ...data.vendors.map(v => [
+        ...allVendors.map(v => [
           v.vendorCode,
           v.vendorName,
           v.gstNumber || '',
