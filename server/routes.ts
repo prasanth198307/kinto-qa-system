@@ -11768,6 +11768,10 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       const allDebitNotes = await db.select().from(debitNotes).where(
         and(eq(debitNotes.recordStatus, 1), tc(debitNotes), eq(debitNotes.status, 'issued'))
       );
+      // Sales returns reduce the outstanding — only ones with a credit amount issued
+      const allSalesReturns = await db.select().from(salesReturns).where(
+        and(eq(salesReturns.recordStatus, 1), tc(salesReturns))
+      );
 
       // Group credit/debit notes by invoice ID
       const creditNotesByInvoice = new Map<string, number>();
@@ -11781,7 +11785,16 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
         const current = debitNotesByInvoice.get(dn.invoiceId) || 0;
         debitNotesByInvoice.set(dn.invoiceId, current + dn.grandTotal);
       });
-      
+
+      // Group sales return credit amounts by invoice ID
+      const salesReturnsByInvoice = new Map<string, number>();
+      allSalesReturns.forEach(sr => {
+        if (sr.invoiceId && (sr.totalCreditAmount || 0) > 0) {
+          const current = salesReturnsByInvoice.get(sr.invoiceId) || 0;
+          salesReturnsByInvoice.set(sr.invoiceId, current + (sr.totalCreditAmount || 0));
+        }
+      });
+
       // Group payments by invoice, separating write-offs from actual payments
       const writeOffsByInvoice = new Map<string, number>();
       const actualPaymentsByInvoice = new Map<string, number>();
@@ -11805,7 +11818,8 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
         const totalPaid = totalSettled - writeOffAmount;
         const creditNoteTotal = creditNotesByInvoice.get(invoice.id) || 0;
         const debitNoteTotal = debitNotesByInvoice.get(invoice.id) || 0;
-        const effectiveTotal = invoice.totalAmount + debitNoteTotal - creditNoteTotal;
+        const salesReturnTotal = salesReturnsByInvoice.get(invoice.id) || 0;
+        const effectiveTotal = invoice.totalAmount + debitNoteTotal - creditNoteTotal - salesReturnTotal;
         const outstandingBalance = Math.max(0, effectiveTotal - totalSettled);
         
         return {

@@ -258,6 +258,8 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
 
   // A "full return" blocks cancel/reissue and credit note actions to prevent double-crediting
   const hasFullReturn = invoiceSalesReturns.some((r: any) => r.returnType === 'full');
+  // Total credit amount from all sales returns — reduces the balance due
+  const returnsTotal = invoiceSalesReturns.reduce((sum: number, r: any) => sum + (r.totalCreditAmount || 0), 0);
 
   // Restore invoice mutation
   const restoreInvoiceMutation = useMutation({
@@ -1216,12 +1218,19 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
             {(() => {
               const writeOffTotal = payments.filter(p => p.paymentType === 'Write-off').reduce((sum, p) => sum + p.amount, 0);
               const actualReceived = Math.max(0, (invoice.amountReceived || 0) - writeOffTotal);
+              const balanceDue = Math.max(0, invoice.totalAmount - returnsTotal - (invoice.amountReceived || 0));
               return (
                 <>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Amount Received:</span>
                     <span className="font-medium text-green-600">{formatCurrency(actualReceived)}</span>
                   </div>
+                  {returnsTotal > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Sales Returns:</span>
+                      <span className="font-medium text-blue-600">- {formatCurrency(returnsTotal)}</span>
+                    </div>
+                  )}
                   {writeOffTotal > 0 && (
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Written Off:</span>
@@ -1231,7 +1240,7 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Balance Due:</span>
                     <span className="font-medium text-orange-600">
-                      {formatCurrency(invoice.totalAmount - (invoice.amountReceived || 0))}
+                      {formatCurrency(balanceDue)}
                     </span>
                   </div>
                   {totalAvailableAdvance > 0 && invoice.paymentStatus !== 'paid' && invoice.status !== 'cancelled' && (
@@ -1253,7 +1262,7 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
                             variant="outline"
                             data-testid="button-apply-advance"
                             onClick={() => {
-                              const balanceDue = invoice.totalAmount - (invoice.amountReceived || 0);
+                              const balanceDue = Math.max(0, invoice.totalAmount - returnsTotal - (invoice.amountReceived || 0));
                               const maxApply = Math.min(totalAvailableAdvance / 100, balanceDue / 100);
                               setApplyAdvanceAmount(maxApply.toFixed(2));
                               setIsApplyAdvanceOpen(true);
@@ -1710,7 +1719,7 @@ export default function InvoiceDetail({ showHeader = true }: InvoiceDetailProps 
             <div className="text-sm text-muted-foreground">
               Balance due:{' '}
               <span className="font-semibold text-orange-600">
-                {formatCurrency(invoice ? invoice.totalAmount - (invoice.amountReceived || 0) : 0)}
+                {formatCurrency(invoice ? Math.max(0, invoice.totalAmount - returnsTotal - (invoice.amountReceived || 0)) : 0)}
               </span>
             </div>
             <div className="space-y-1">
