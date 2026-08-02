@@ -67,6 +67,7 @@ export default function InvoiceTable({ invoices, isLoading, returnsMap = {}, onE
             <TableHead data-testid="header-status" className="min-w-[120px]">Status</TableHead>
             <TableHead data-testid="header-total" className="min-w-[100px]">Total</TableHead>
             <TableHead data-testid="header-paid" className="min-w-[100px]">Paid</TableHead>
+            <TableHead data-testid="header-returns" className="min-w-[100px]">Returns</TableHead>
             <TableHead data-testid="header-outstanding" className="min-w-[120px]">Outstanding</TableHead>
             <TableHead data-testid="header-actions" className="min-w-[200px]">Actions</TableHead>
           </TableRow>
@@ -99,6 +100,9 @@ export default function InvoiceTable({ invoices, isLoading, returnsMap = {}, onE
                 </TableCell>
                 <TableCell data-testid={`paid-${invoice.id}`} className="text-green-600">
                   {formatCurrency(totalPaid)}
+                </TableCell>
+                <TableCell data-testid={`returns-${invoice.id}`} className="text-blue-600">
+                  {returnsCredit > 0 ? formatCurrency(returnsCredit) : <span className="text-muted-foreground">—</span>}
                 </TableCell>
                 <TableCell data-testid={`outstanding-${invoice.id}`}>
                   <span className={isPaid ? "text-muted-foreground" : "text-destructive font-medium"}>
