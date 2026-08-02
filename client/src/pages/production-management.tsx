@@ -269,6 +269,21 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
     queryKey: ['/api/invoices'],
   });
 
+  const { data: salesReturnsData = [] } = useQuery<any[]>({
+    queryKey: ['/api/sales-returns'],
+  });
+
+  // Map invoiceId -> total credit amount from all sales returns
+  const returnsMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const r of salesReturnsData) {
+      if (r.invoiceId && (r.totalCreditAmount || 0) > 0) {
+        map[r.invoiceId] = (map[r.invoiceId] || 0) + (r.totalCreditAmount || 0);
+      }
+    }
+    return map;
+  }, [salesReturnsData]);
+
   const { data: vendors = [] } = useQuery<Vendor[]>({
     queryKey: ['/api/vendors'],
   });
@@ -1262,6 +1277,7 @@ export default function ProductionManagement({ activeTab: externalActiveTab }: P
               <InvoiceTable
                 invoices={paginatedInvoicesData.paginatedInvoices}
                 isLoading={isLoadingInvoices}
+                returnsMap={returnsMap}
                 onEdit={handleEditInvoice}
                 onDelete={handleDeleteInvoice}
                 onCancel={handleCancelInvoice}

@@ -12,6 +12,7 @@ import PrintableInvoice from "./PrintableInvoice";
 interface InvoiceTableProps {
   invoices: Invoice[];
   isLoading: boolean;
+  returnsMap?: Record<string, number>; // invoiceId -> totalCreditAmount in paise
   onEdit?: (invoice: Invoice) => void;
   onDelete?: (invoice: Invoice) => void;
   onCancel?: (invoice: Invoice) => void;
@@ -19,11 +20,9 @@ interface InvoiceTableProps {
   onMarkReadyForGatepass?: (invoice: Invoice) => void;
 }
 
-export default function InvoiceTable({ invoices, isLoading, onEdit, onDelete, onCancel, onPayment, onMarkReadyForGatepass }: InvoiceTableProps) {
+export default function InvoiceTable({ invoices, isLoading, returnsMap = {}, onEdit, onDelete, onCancel, onPayment, onMarkReadyForGatepass }: InvoiceTableProps) {
   const tenantConfig = useTenantConfig();
 
-  // Use invoice.amountReceived for consistency with invoice detail page and vendor analytics
-  // This is the authoritative source from Vyapaar Sale Report
   const getTotalPaid = (invoice: Invoice) => {
     return invoice.amountReceived || 0;
   };
@@ -75,7 +74,8 @@ export default function InvoiceTable({ invoices, isLoading, onEdit, onDelete, on
         <TableBody>
           {invoices.map((invoice) => {
             const totalPaid = getTotalPaid(invoice);
-            const outstanding = invoice.totalAmount - totalPaid;
+            const returnsCredit = returnsMap[invoice.id] || 0;
+            const outstanding = Math.max(0, invoice.totalAmount - returnsCredit - totalPaid);
             const isPaid = outstanding <= 0;
             
             return (
