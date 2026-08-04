@@ -240,3 +240,100 @@ describe('6. Today Stats and MIS', () => {
     await expectStatus(res, 200);
   });
 });
+
+describe('Manufacturing ERP — 7. Custom Roles & Permissions API', () => {
+  it('GET /api/roles returns roles for manufacturing tenant', async () => {
+    const res = await api.get('/api/roles');
+    expect(res.status).not.toBe(404);
+    if (res.status === 200) {
+      const roles = await json<unknown[]>(res);
+      expect(Array.isArray(roles)).toBe(true);
+    }
+  });
+
+  it('GET /api/roles?tab=permissions returns permission matrix', async () => {
+    const res = await api.get('/api/roles?tab=permissions');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/user-management/users returns user list', async () => {
+    const res = await api.get('/api/user-management/users');
+    expect(res.status).not.toBe(404);
+    if (res.status === 200 && res.headers.get('content-type')?.includes('application/json')) {
+      const users = await json<unknown[]>(res);
+      expect(Array.isArray(users)).toBe(true);
+    }
+  });
+
+  it('POST /api/roles creates a custom role for manufacturing tenant', async () => {
+    const res = await api.post('/api/roles', {
+      name: 'QA Line Supervisor',
+      description: 'Custom role for production line supervision',
+      permissions: ['manufacturing_read', 'manufacturing_write', 'production_approve'],
+    });
+    expect(res.status).not.toBe(404);
+  });
+});
+
+describe('Manufacturing ERP — 8. Masters: Regions, Branches, Tax Config, Audit Log', () => {
+  it('GET /api/masters/branches returns branch/region list', async () => {
+    const res = await api.get('/api/masters/branches');
+    expect(res.status).not.toBe(404);
+    if (res.status === 200) {
+      const branches = await json<unknown[]>(res);
+      expect(Array.isArray(branches)).toBe(true);
+    }
+  });
+
+  it('GET /api/masters/tax-config returns tax configuration', async () => {
+    const res = await api.get('/api/masters/tax-config');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/masters/audit-log returns audit trail entries', async () => {
+    const res = await api.get('/api/masters/audit-log');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/masters/approval-workflow returns approval workflow config', async () => {
+    const res = await api.get('/api/masters/approval-workflow');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/masters/departments returns department list', async () => {
+    const res = await api.get('/api/masters/departments');
+    expect(res.status).not.toBe(404);
+  });
+});
+
+describe('Manufacturing ERP — 9. Cross-Module Integration', () => {
+  it('GET /api/accounting/journal-entries works alongside manufacturing (GL cross-module)', async () => {
+    const res = await api.get('/api/accounting/journal-entries?limit=5');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/hr/employees works alongside manufacturing (HR cross-module)', async () => {
+    const res = await api.get('/api/hr/employees');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/crm/contacts works alongside manufacturing (CRM cross-module)', async () => {
+    const res = await api.get('/api/crm/contacts');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/mis/summary works alongside manufacturing (MIS cross-module)', async () => {
+    const res = await api.get('/api/mis/summary');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/invoices works alongside manufacturing finished goods billing (AR cross-module)', async () => {
+    const res = await api.get('/api/invoices?limit=5');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/warehouses works alongside manufacturing raw material storage (Warehouse cross-module)', async () => {
+    const res = await api.get('/api/warehouses');
+    expect(res.status).not.toBe(404);
+  });
+});

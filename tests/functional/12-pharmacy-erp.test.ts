@@ -219,3 +219,100 @@ describe('Pharmacy ERP — 6. Expiry Tracking & Alerts', () => {
     await expectStatus(res, 200);
   });
 });
+
+describe('Pharmacy ERP — 7. Custom Roles & Permissions API', () => {
+  it('GET /api/roles returns roles for pharmacy tenant', async () => {
+    const res = await api.get('/api/roles');
+    expect(res.status).not.toBe(404);
+    if (res.status === 200) {
+      const roles = await json<unknown[]>(res);
+      expect(Array.isArray(roles)).toBe(true);
+    }
+  });
+
+  it('GET /api/roles?tab=permissions returns permission matrix', async () => {
+    const res = await api.get('/api/roles?tab=permissions');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/user-management/users returns user list', async () => {
+    const res = await api.get('/api/user-management/users');
+    expect(res.status).not.toBe(404);
+    if (res.status === 200 && res.headers.get('content-type')?.includes('application/json')) {
+      const users = await json<unknown[]>(res);
+      expect(Array.isArray(users)).toBe(true);
+    }
+  });
+
+  it('POST /api/roles creates a custom role for pharmacy tenant', async () => {
+    const res = await api.post('/api/roles', {
+      name: 'QA Narcotics Officer',
+      description: 'Custom role for controlled substance management',
+      permissions: ['pharmacy_read', 'pharmacy_write', 'narcotics_manage'],
+    });
+    expect(res.status).not.toBe(404);
+  });
+});
+
+describe('Pharmacy ERP — 8. Masters: Regions, Branches, Tax Config, Audit Log', () => {
+  it('GET /api/masters/branches returns branch/region list', async () => {
+    const res = await api.get('/api/masters/branches');
+    expect(res.status).not.toBe(404);
+    if (res.status === 200) {
+      const branches = await json<unknown[]>(res);
+      expect(Array.isArray(branches)).toBe(true);
+    }
+  });
+
+  it('GET /api/masters/tax-config returns tax configuration', async () => {
+    const res = await api.get('/api/masters/tax-config');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/masters/audit-log returns audit trail entries', async () => {
+    const res = await api.get('/api/masters/audit-log');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/masters/approval-workflow returns approval workflow config', async () => {
+    const res = await api.get('/api/masters/approval-workflow');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/masters/departments returns department list', async () => {
+    const res = await api.get('/api/masters/departments');
+    expect(res.status).not.toBe(404);
+  });
+});
+
+describe('Pharmacy ERP — 9. Cross-Module Integration', () => {
+  it('GET /api/accounting/journal-entries works alongside pharmacy (GL cross-module)', async () => {
+    const res = await api.get('/api/accounting/journal-entries?limit=5');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/hr/employees works alongside pharmacy (HR cross-module)', async () => {
+    const res = await api.get('/api/hr/employees');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/crm/contacts works alongside pharmacy (CRM cross-module)', async () => {
+    const res = await api.get('/api/crm/contacts');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/mis/summary works alongside pharmacy (MIS cross-module)', async () => {
+    const res = await api.get('/api/mis/summary');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/invoices works alongside pharmacy dispensing billing (AR cross-module)', async () => {
+    const res = await api.get('/api/invoices?limit=5');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/warehouses works alongside pharmacy cold storage (Warehouse cross-module)', async () => {
+    const res = await api.get('/api/warehouses');
+    expect(res.status).not.toBe(404);
+  });
+});

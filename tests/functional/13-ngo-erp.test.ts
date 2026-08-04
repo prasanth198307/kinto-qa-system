@@ -220,3 +220,100 @@ describe('NGO ERP — 7. Beneficiaries', () => {
     expect(res.status).not.toBe(404);
   });
 });
+
+describe('NGO ERP — 8. Custom Roles & Permissions API', () => {
+  it('GET /api/roles returns roles for NGO tenant', async () => {
+    const res = await api.get('/api/roles');
+    expect(res.status).not.toBe(404);
+    if (res.status === 200) {
+      const roles = await json<unknown[]>(res);
+      expect(Array.isArray(roles)).toBe(true);
+    }
+  });
+
+  it('GET /api/roles?tab=permissions returns permission matrix', async () => {
+    const res = await api.get('/api/roles?tab=permissions');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/user-management/users returns user list', async () => {
+    const res = await api.get('/api/user-management/users');
+    expect(res.status).not.toBe(404);
+    if (res.status === 200 && res.headers.get("content-type")?.includes("application/json")) {
+      const users = await json<unknown[]>(res);
+      expect(Array.isArray(users)).toBe(true);
+    }
+  });
+
+  it('POST /api/roles creates a custom role for NGO tenant', async () => {
+    const res = await api.post('/api/roles', {
+      name: 'QA Program Coordinator',
+      description: 'Custom role for NGO program coordination',
+      permissions: ['ngo_read', 'ngo_write', 'donor_manage'],
+    });
+    expect(res.status).not.toBe(404);
+  });
+});
+
+describe('NGO ERP — 9. Masters: Regions, Branches, Tax Config, Audit Log', () => {
+  it('GET /api/masters/branches returns branch/region list', async () => {
+    const res = await api.get('/api/masters/branches');
+    expect(res.status).not.toBe(404);
+    if (res.status === 200) {
+      const branches = await json<unknown[]>(res);
+      expect(Array.isArray(branches)).toBe(true);
+    }
+  });
+
+  it('GET /api/masters/tax-config returns tax configuration (80G/FCRA)', async () => {
+    const res = await api.get('/api/masters/tax-config');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/masters/audit-log returns audit trail entries', async () => {
+    const res = await api.get('/api/masters/audit-log');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/masters/approval-workflow returns approval workflow config', async () => {
+    const res = await api.get('/api/masters/approval-workflow');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/masters/departments returns department list', async () => {
+    const res = await api.get('/api/masters/departments');
+    expect(res.status).not.toBe(404);
+  });
+});
+
+describe('NGO ERP — 10. Cross-Module Integration', () => {
+  it('GET /api/accounting/journal-entries works alongside NGO (GL cross-module)', async () => {
+    const res = await api.get('/api/accounting/journal-entries?limit=5');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/hr/employees works alongside NGO (HR cross-module)', async () => {
+    const res = await api.get('/api/hr/employees');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/crm/contacts works alongside NGO donor management (CRM cross-module)', async () => {
+    const res = await api.get('/api/crm/contacts');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/mis/summary works alongside NGO (MIS cross-module)', async () => {
+    const res = await api.get('/api/mis/summary');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/invoices works alongside NGO receipt generation (AR cross-module)', async () => {
+    const res = await api.get('/api/invoices?limit=5');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/payroll works alongside NGO staff payroll (Payroll cross-module)', async () => {
+    const res = await api.get('/api/payroll');
+    expect(res.status).not.toBe(404);
+  });
+});

@@ -102,6 +102,8 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
   // Pass excludeInvoiceId so this invoice's own items aren't counted as reserved
   const { data: availableStockData } = useQuery<AvailableStockResponse>({
     queryKey: ['/api/finished-goods/available-stock', { excludeInvoiceId: selectedInvoiceId || '' }],
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
   
   // Fetch the specific finished goods that are already assigned to this gatepass

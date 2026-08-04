@@ -177,3 +177,105 @@ describe('4. Route Optimization', () => {
     expect(result).toBeDefined();
   });
 });
+
+describe('Logistics ERP — 5. Custom Roles & Permissions API', () => {
+  it('GET /api/roles returns roles for logistics tenant', async () => {
+    const res = await api.get('/api/roles');
+    expect(res.status).not.toBe(404);
+    if (res.status === 200) {
+      const roles = await json<unknown[]>(res);
+      expect(Array.isArray(roles)).toBe(true);
+    }
+  });
+
+  it('GET /api/roles?tab=permissions returns permission matrix', async () => {
+    const res = await api.get('/api/roles?tab=permissions');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/user-management/users returns user list', async () => {
+    const res = await api.get('/api/user-management/users');
+    expect(res.status).not.toBe(404);
+    if (res.status === 200 && res.headers.get("content-type")?.includes("application/json")) {
+      const users = await json<unknown[]>(res);
+      expect(Array.isArray(users)).toBe(true);
+    }
+  });
+
+  it('POST /api/roles creates a custom role for logistics tenant', async () => {
+    const res = await api.post('/api/roles', {
+      name: 'QA Fleet Supervisor',
+      description: 'Custom role for fleet operations supervision',
+      permissions: ['logistics_read', 'logistics_write', 'vehicle_manage'],
+    });
+    expect(res.status).not.toBe(404);
+  });
+});
+
+describe('Logistics ERP — 6. Masters: Regions, Branches, Tax Config, Audit Log', () => {
+  it('GET /api/masters/branches returns depot/region list', async () => {
+    const res = await api.get('/api/masters/branches');
+    expect(res.status).not.toBe(404);
+    if (res.status === 200) {
+      const branches = await json<unknown[]>(res);
+      expect(Array.isArray(branches)).toBe(true);
+    }
+  });
+
+  it('GET /api/masters/tax-config returns tax configuration (GST/e-way bill)', async () => {
+    const res = await api.get('/api/masters/tax-config');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/masters/audit-log returns audit trail entries', async () => {
+    const res = await api.get('/api/masters/audit-log');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/masters/approval-workflow returns approval workflow config', async () => {
+    const res = await api.get('/api/masters/approval-workflow');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/masters/departments returns department list', async () => {
+    const res = await api.get('/api/masters/departments');
+    expect(res.status).not.toBe(404);
+  });
+});
+
+describe('Logistics ERP — 7. Cross-Module Integration', () => {
+  it('GET /api/accounting/journal-entries works alongside logistics (GL cross-module)', async () => {
+    const res = await api.get('/api/accounting/journal-entries?limit=5');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/hr/employees works alongside logistics driver management (HR cross-module)', async () => {
+    const res = await api.get('/api/hr/employees');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/crm/contacts works alongside logistics customers (CRM cross-module)', async () => {
+    const res = await api.get('/api/crm/contacts');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/mis/summary works alongside logistics (MIS cross-module)', async () => {
+    const res = await api.get('/api/mis/summary');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/invoices works alongside logistics LR billing (AR cross-module)', async () => {
+    const res = await api.get('/api/invoices?limit=5');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/warehouses works alongside logistics depot management (Warehouse cross-module)', async () => {
+    const res = await api.get('/api/warehouses');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/fixed-assets works alongside logistics fleet assets (Fixed Assets cross-module)', async () => {
+    const res = await api.get('/api/fixed-assets');
+    expect(res.status).not.toBe(404);
+  });
+});

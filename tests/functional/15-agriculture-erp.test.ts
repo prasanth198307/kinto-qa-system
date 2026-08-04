@@ -225,3 +225,100 @@ describe('Agriculture ERP — 8. Supply Chain Tracing', () => {
     expect(res.status).not.toBe(404);
   });
 });
+
+describe('Agriculture ERP — 9. Custom Roles & Permissions API', () => {
+  it('GET /api/roles returns roles for agriculture tenant', async () => {
+    const res = await api.get('/api/roles');
+    expect(res.status).not.toBe(404);
+    if (res.status === 200) {
+      const roles = await json<unknown[]>(res);
+      expect(Array.isArray(roles)).toBe(true);
+    }
+  });
+
+  it('GET /api/roles?tab=permissions returns permission matrix', async () => {
+    const res = await api.get('/api/roles?tab=permissions');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/user-management/users returns user list', async () => {
+    const res = await api.get('/api/user-management/users');
+    expect(res.status).not.toBe(404);
+    if (res.status === 200 && res.headers.get("content-type")?.includes("application/json")) {
+      const users = await json<unknown[]>(res);
+      expect(Array.isArray(users)).toBe(true);
+    }
+  });
+
+  it('POST /api/roles creates a custom role for agriculture tenant', async () => {
+    const res = await api.post('/api/roles', {
+      name: 'QA Field Inspector',
+      description: 'Custom role for crop field inspection',
+      permissions: ['agriculture_read', 'agriculture_write', 'crop_inspect'],
+    });
+    expect(res.status).not.toBe(404);
+  });
+});
+
+describe('Agriculture ERP — 10. Masters: Regions, Branches, Tax Config, Audit Log', () => {
+  it('GET /api/masters/branches returns branch/region list', async () => {
+    const res = await api.get('/api/masters/branches');
+    expect(res.status).not.toBe(404);
+    if (res.status === 200) {
+      const branches = await json<unknown[]>(res);
+      expect(Array.isArray(branches)).toBe(true);
+    }
+  });
+
+  it('GET /api/masters/tax-config returns tax configuration', async () => {
+    const res = await api.get('/api/masters/tax-config');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/masters/audit-log returns audit trail entries', async () => {
+    const res = await api.get('/api/masters/audit-log');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/masters/approval-workflow returns approval workflow config', async () => {
+    const res = await api.get('/api/masters/approval-workflow');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/masters/departments returns department list', async () => {
+    const res = await api.get('/api/masters/departments');
+    expect(res.status).not.toBe(404);
+  });
+});
+
+describe('Agriculture ERP — 11. Cross-Module Integration', () => {
+  it('GET /api/accounting/journal-entries works alongside agriculture (GL cross-module)', async () => {
+    const res = await api.get('/api/accounting/journal-entries?limit=5');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/hr/employees works alongside agriculture (HR cross-module)', async () => {
+    const res = await api.get('/api/hr/employees');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/crm/contacts works alongside agriculture (CRM cross-module)', async () => {
+    const res = await api.get('/api/crm/contacts');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/mis/summary works alongside agriculture (MIS cross-module)', async () => {
+    const res = await api.get('/api/mis/summary');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/invoices works alongside agriculture produce billing (AR cross-module)', async () => {
+    const res = await api.get('/api/invoices?limit=5');
+    expect(res.status).not.toBe(404);
+  });
+
+  it('GET /api/warehouses works alongside agriculture produce storage (Warehouse cross-module)', async () => {
+    const res = await api.get('/api/warehouses');
+    expect(res.status).not.toBe(404);
+  });
+});

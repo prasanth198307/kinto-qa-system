@@ -264,6 +264,7 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
       queryClient.invalidateQueries({ queryKey: ['/api/production-entries'] });
       queryClient.invalidateQueries({ queryKey: ['/api/production-entries/opening-bottles'] });
       queryClient.invalidateQueries({ queryKey: ['/api/finished-goods'], exact: false });
+      queryClient.invalidateQueries({ queryKey: ['/api/finished-goods/available-stock'], exact: false });
       toast({
         title: "Success",
         description: "Production entry created successfully",
@@ -295,6 +296,7 @@ export default function ProductionEntryForm({ entry, onClose }: ProductionEntryF
       queryClient.invalidateQueries({ queryKey: ['/api/production-entries'] });
       queryClient.invalidateQueries({ queryKey: ['/api/production-entries/opening-bottles'] });
       queryClient.invalidateQueries({ queryKey: ['/api/finished-goods'], exact: false });
+      queryClient.invalidateQueries({ queryKey: ['/api/finished-goods/available-stock'], exact: false });
       toast({
         title: "Success",
         description: "Production entry updated successfully",
