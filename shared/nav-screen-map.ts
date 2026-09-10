@@ -85,6 +85,7 @@ export const navItemToScreenKey: Record<string, string> = {
 
   // ── Sales & Invoicing ─────────────────────────────────────────────────────
   'sales-orders':                       'sales_orders',
+  'sales-order-report':                 'sales_order_report',
   'sales-officers':                     'sales_officers',
   'invoices':                           'invoices',
   'add-purchase-order':                 'purchase_orders',

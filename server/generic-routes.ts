@@ -643,7 +643,7 @@ async function handleGSTR1(req: any, res: any) {
         i.subtotal, i.cgst_amount, i.sgst_amount, i.igst_amount, i.total_amount,
         i.place_of_supply, i.invoice_type
       FROM invoices i
-      WHERE i.tenant_id=${tid(req)} AND i.status NOT IN ('cancelled','draft')
+      WHERE i.tenant_id=${tid(req)} AND i.record_status = 1 AND i.status NOT IN ('cancelled','draft')
         AND EXTRACT(MONTH FROM i.invoice_date::date)=${m}
         AND EXTRACT(YEAR FROM i.invoice_date::date)=${y}
       ORDER BY i.invoice_date`);
@@ -652,7 +652,7 @@ async function handleGSTR1(req: any, res: any) {
     const hsnRows = await db.execute(sql`
       SELECT
         COALESCE(NULLIF(TRIM(ii.hsn_code),''), NULLIF(TRIM(p.hsn_code),''), 'N/A') AS hsn_code,
-        COALESCE(NULLIF(TRIM(p.product_name),''), ii.item_name, 'Unspecified')      AS description,
+        COALESCE(NULLIF(TRIM(p.product_name),''), ii.description, 'Unspecified')    AS description,
         COALESCE(ii.cgst_rate + ii.sgst_rate + ii.igst_rate,
                  CAST(p.gst_percent AS INTEGER), 0)                                  AS gst_rate,
         COUNT(DISTINCT i.id)                                                          AS invoice_count,
@@ -665,12 +665,12 @@ async function handleGSTR1(req: any, res: any) {
       FROM invoice_items ii
       JOIN invoices i ON i.id = ii.invoice_id
       LEFT JOIN products p ON p.id::text = ii.product_id::text AND p.tenant_id = ${tid(req)}
-      WHERE i.tenant_id = ${tid(req)} AND i.status NOT IN ('cancelled','draft')
+      WHERE i.tenant_id = ${tid(req)} AND i.record_status = 1 AND i.status NOT IN ('cancelled','draft')
         AND EXTRACT(MONTH FROM i.invoice_date::date) = ${m}
         AND EXTRACT(YEAR FROM i.invoice_date::date)  = ${y}
       GROUP BY
         COALESCE(NULLIF(TRIM(ii.hsn_code),''), NULLIF(TRIM(p.hsn_code),''), 'N/A'),
-        COALESCE(NULLIF(TRIM(p.product_name),''), ii.item_name, 'Unspecified'),
+        COALESCE(NULLIF(TRIM(p.product_name),''), ii.description, 'Unspecified'),
         COALESCE(ii.cgst_rate + ii.sgst_rate + ii.igst_rate, CAST(p.gst_percent AS INTEGER), 0)
       ORDER BY taxable_value DESC`).catch(() => ({ rows: [] as any[] }));
 

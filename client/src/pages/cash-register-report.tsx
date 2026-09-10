@@ -91,6 +91,7 @@ interface TransactionData {
   amount: number;
   description?: string;
   reference?: string;
+  partyName?: string;
   convertedToVoucherId?: string;
 }
 
@@ -134,124 +135,233 @@ const formatCurrencyNumber = (rupees: number) => {
 };
 
 const exportToExcel = async (reportData: ReportData, periodType: string) => {
-  const XLSX = await import('xlsx');
-  const workbook = XLSX.utils.book_new();
-  
-  const summaryData = [
-    ['Cash Register Report'],
-    ['Period', periodType.charAt(0).toUpperCase() + periodType.slice(1)],
-    [''],
-    ['Overall Summary'],
-    ['Opening Balance', formatCurrencyNumber(reportData.overallSummary.openingBalance)],
-    ['Total Cash Received', formatCurrencyNumber(reportData.overallSummary.totalCashReceived)],
-    ['Total Expenses', formatCurrencyNumber(reportData.overallSummary.totalExpenses)],
-    ['Total Transfers', formatCurrencyNumber(reportData.overallSummary.totalTransfers)],
-    ['Net Cash Flow', formatCurrencyNumber(reportData.overallSummary.netCashFlow)],
-    ['Closing Balance', formatCurrencyNumber(reportData.overallSummary.closingBalance)],
-    [''],
-    ['Days Summary'],
-    ['Total Days', reportData.overallSummary.totalDays],
-    ['Open Days', reportData.overallSummary.openDays],
-    ['Closed Days', reportData.overallSummary.closedDays],
-  ];
-  
-  const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
-  XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
-  
-  const detailHeaders = ['Date', 'Status', 'Opening Balance', 'Cash Received', 'Expenses', 'Transfers', 'Closing Balance', 'Imported'];
-  const detailRows: (string | number)[][] = [detailHeaders];
-  
-  reportData.periods.forEach(period => {
-    period.days.forEach(day => {
-      detailRows.push([
-        format(new Date(day.date), 'yyyy-MM-dd'),
-        day.status,
-        parseFloat(formatCurrencyNumber(day.openingBalance)),
-        parseFloat(formatCurrencyNumber(day.cashReceived)),
-        parseFloat(formatCurrencyNumber(day.expenses)),
-        parseFloat(formatCurrencyNumber(day.transfers)),
-        parseFloat(formatCurrencyNumber(day.closingBalance)),
-        day.importedFromFile ? 'Yes' : 'No',
-      ]);
-    });
-  });
-  
-  const detailSheet = XLSX.utils.aoa_to_sheet(detailRows);
-  XLSX.utils.book_append_sheet(workbook, detailSheet, 'Daily Details');
-  
-  const periodHeaders = ['Period', 'Days', 'Opening Balance', 'Cash Received', 'Expenses', 'Transfers', 'Net Cash Flow', 'Closing Balance'];
-  const periodRows: (string | number)[][] = [periodHeaders];
-  
-  reportData.periods.forEach(period => {
-    periodRows.push([
-      period.period,
-      period.daysCount,
-      parseFloat(formatCurrencyNumber(period.openingBalance)),
-      parseFloat(formatCurrencyNumber(period.totalCashReceived)),
-      parseFloat(formatCurrencyNumber(period.totalExpenses)),
-      parseFloat(formatCurrencyNumber(period.totalTransfers)),
-      parseFloat(formatCurrencyNumber(period.netCashFlow)),
-      parseFloat(formatCurrencyNumber(period.closingBalance)),
-    ]);
-  });
-  
-  const periodSheet = XLSX.utils.aoa_to_sheet(periodRows);
-  XLSX.utils.book_append_sheet(workbook, periodSheet, 'Period Summary');
-  
-  // Add Cash Received by Source sheet
-  if (reportData.transactions && reportData.transactions.length > 0) {
-    const cashTxns = reportData.transactions.filter(t => t.transactionType === 'cash_received');
-    if (cashTxns.length > 0) {
-      const bySource: Record<string, { amount: number; count: number }> = {};
-      cashTxns.forEach(t => {
-        const key = t.sourceType || 'other';
-        if (!bySource[key]) bySource[key] = { amount: 0, count: 0 };
-        bySource[key].amount += t.amount;
-        bySource[key].count += 1;
-      });
-      const sourceLabel = getCashSourceLabel;
-      const totalReceived = cashTxns.reduce((s, t) => s + t.amount, 0);
-      const sourceRows: (string | number)[][] = [['Source', 'Amount', 'Transactions', 'Share %']];
-      Object.entries(bySource)
-        .sort((a, b) => b[1].amount - a[1].amount)
-        .forEach(([key, val]) => {
-          const pct = totalReceived > 0 ? parseFloat(((val.amount / totalReceived) * 100).toFixed(1)) : 0;
-          sourceRows.push([sourceLabel(key), parseFloat(formatCurrencyNumber(val.amount)), val.count, pct]);
-        });
-      sourceRows.push(['Total', parseFloat(formatCurrencyNumber(totalReceived)), cashTxns.length, 100]);
-      const sourceSheet = XLSX.utils.aoa_to_sheet(sourceRows);
-      XLSX.utils.book_append_sheet(workbook, sourceSheet, 'Cash By Source');
-    }
-  }
+  const ExcelJS = (await import('exceljs')).default;
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('Cash Register');
+  ws.views = [{ showGridLines: false, state: 'frozen', ySplit: 8 }];
 
-  // Add Transactions sheet with all line items
-  if (reportData.transactions && reportData.transactions.length > 0) {
-    const transactionHeaders = ['Date', 'Salesperson', 'Type', 'Source', 'Amount', 'Description', 'Reference', 'Voucher ID'];
-    const transactionRows: (string | number)[][] = [transactionHeaders];
-    
-    // Sort transactions by date
-    const sortedTransactions = [...reportData.transactions].sort((a, b) => 
-      a.date.localeCompare(b.date) || a.transactionType.localeCompare(b.transactionType)
-    );
-    
-    sortedTransactions.forEach(t => {
-      transactionRows.push([
-        t.date,
-        t.salespersonName || '',
-        t.transactionType || '',
-        t.sourceType || '',
-        parseFloat(formatCurrencyNumber(t.amount)),
-        t.description || '',
-        t.reference || '',
-        t.convertedToVoucherId || '',
+  // Column widths
+  ws.columns = [
+    { key: 'date',    width: 14 },
+    { key: 'partic',  width: 30 },
+    { key: 'from',    width: 24 },
+    { key: 'to',      width: 24 },
+    { key: 'in',      width: 16 },
+    { key: 'out',     width: 16 },
+    { key: 'bal',     width: 18 },
+  ];
+
+  // Palette
+  const NAVY   = '1A2B45'; const NAVY2  = '253858';
+  const IN_BG  = 'EAF6EE'; const OUT_BG = 'FDECEA';
+  const IN_FG  = '1E7E4A'; const OUT_FG = 'C0392B';
+  const GOLD   = 'B8891A'; const GOLD_BG= 'FDF3DC';
+  const WHITE  = 'FFFFFF'; const MUTED  = '5C6B7A';
+  const KPI_BG = 'F6F8FA';
+  const OP_BG  = 'D6EAF8'; const OP_FG  = '154360';
+  const CL_BG  = 'D5F5E3'; const CL_FG  = '1E7E4A';
+  const COMMA  = '#,##0';
+
+  const s = (fgColor: string) => ({ type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FF' + fgColor } });
+  const f = (color: string, bold = false, size = 9, italic = false) =>
+    ({ name: 'Arial', color: { argb: 'FF' + color }, bold, size, italic });
+  const al = (h: 'left'|'right'|'center', indent = 0) => ({ horizontal: h, vertical: 'middle' as const, indent });
+
+  const mergeRow = (row: ExcelJS.Row, fromCol: number, toCol: number, bg: string) => {
+    ws.mergeCells(row.number, fromCol, row.number, toCol);
+    for (let c = fromCol; c <= toCol; c++) row.getCell(c).fill = s(bg);
+  };
+
+  // ── Row 1: Title ───────────────────────────────────────────────────────────
+  const r1 = ws.addRow(['KINTO WATER — CASH REGISTER']);
+  r1.height = 28; mergeRow(r1, 1, 7, NAVY);
+  const c1 = r1.getCell(1);
+  c1.font = f(WHITE, true, 14); c1.alignment = al('left', 1);
+
+  // ── Row 2: Subtitle ────────────────────────────────────────────────────────
+  const today = format(new Date(), 'd MMM yyyy');
+  const startDate = reportData.periods.length ? reportData.periods[0].startDate : '';
+  const endDate   = reportData.periods.length ? reportData.periods[reportData.periods.length - 1].endDate : '';
+  const periodLabel = startDate && endDate
+    ? `${format(new Date(startDate), 'd MMM')} – ${format(new Date(endDate), 'd MMM yyyy')}`
+    : periodType;
+  const r2 = ws.addRow([`Period: ${periodLabel}   ·   ${reportData.overallSummary.totalDays} Days   ·   Generated ${today}`]);
+  r2.height = 16; mergeRow(r2, 1, 7, NAVY2);
+  const c2 = r2.getCell(1);
+  c2.font = f('AACCEE', false, 9, true); c2.alignment = al('left', 1);
+
+  // ── Row 3: Spacer ──────────────────────────────────────────────────────────
+  const r3 = ws.addRow([]); r3.height = 6;
+
+  // ── Rows 4-5: KPI tiles ────────────────────────────────────────────────────
+  const kpis = [
+    { label: 'Opening Balance', value: reportData.overallSummary.openingBalance, fg: NAVY,   bg: KPI_BG, cols: [1,2] },
+    { label: 'Total Received',  value: reportData.overallSummary.totalCashReceived, fg: IN_FG,  bg: IN_BG,  cols: [3,4] },
+    { label: 'Total Expenses',  value: reportData.overallSummary.totalExpenses,     fg: OUT_FG, bg: OUT_BG, cols: [5,6] },
+    { label: 'Net Cash Flow',   value: reportData.overallSummary.netCashFlow,       fg: GOLD,   bg: GOLD_BG,cols: [7,7] },
+  ];
+  const r4 = ws.addRow([]); r4.height = 15;
+  const r5 = ws.addRow([]); r5.height = 15;
+  kpis.forEach(({ label, value, fg, bg, cols }) => {
+    const [c1, c2] = cols;
+    if (c1 !== c2) {
+      ws.mergeCells(r4.number, c1, r4.number, c2);
+      ws.mergeCells(r5.number, c1, r5.number, c2);
+    }
+    const lc = r4.getCell(c1);
+    lc.value = label; lc.font = f(MUTED, true, 8); lc.fill = s(bg); lc.alignment = al('left', 1);
+    const vc = r5.getCell(c1);
+    vc.value = value; vc.numFmt = COMMA;
+    vc.font = f(fg, true, 13); vc.fill = s(bg); vc.alignment = al('left', 1);
+  });
+
+  // ── Row 6: Closing balance banner ─────────────────────────────────────────
+  const r6 = ws.addRow([]); r6.height = 15;
+  mergeRow(r6, 1, 7, NAVY);
+  const cb = r6.getCell(1);
+  cb.value = `Closing Balance:   ₹${reportData.overallSummary.closingBalance.toLocaleString('en-IN')}   ·   As of ${today}`;
+  cb.font = f(WHITE, true, 10); cb.alignment = al('right', 1);
+
+  // ── Row 7: Spacer ──────────────────────────────────────────────────────────
+  const r7 = ws.addRow([]); r7.height = 6;
+
+  // ── Row 8: Column headers ─────────────────────────────────────────────────
+  const r8 = ws.addRow(['Date','Particulars','Received From','Paid To','Cash In (₹)','Cash Out (₹)','Balance (₹)']);
+  r8.height = 22;
+  r8.eachCell(cell => {
+    cell.font = f(WHITE, true, 9); cell.fill = s(NAVY);
+  });
+  ['left','left','left','left','right','right','right'].forEach((ha, i) => {
+    r8.getCell(i + 1).alignment = al(ha as 'left'|'right', 1);
+  });
+
+  // ── Transactions ──────────────────────────────────────────────────────────
+  const allTxns = [...(reportData.transactions || [])].sort((a, b) =>
+    a.date.localeCompare(b.date) || a.transactionType.localeCompare(b.transactionType)
+  );
+
+  // Group by date
+  const byDate = new Map<string, typeof allTxns>();
+  allTxns.forEach(t => {
+    const d = t.date.slice(0, 10);
+    if (!byDate.has(d)) byDate.set(d, []);
+    byDate.get(d)!.push(t);
+  });
+
+  let runningBal = reportData.overallSummary.openingBalance;
+
+  byDate.forEach((txns, dateStr) => {
+    const dayOpen = runningBal;
+    const dayDate = new Date(dateStr);
+    const dayLabel = format(dayDate, 'd MMMM yyyy  (EEEE)');
+
+    // Day header row — blue, bold, opening balance inline
+    const rh = ws.addRow([]); rh.height = 16;
+    mergeRow(rh, 1, 7, OP_BG);
+    const hc = rh.getCell(1);
+    hc.value = `  ${dayLabel}   ·   Opening: ₹${dayOpen.toLocaleString('en-IN')}`;
+    hc.font = f(OP_FG, true, 10); hc.alignment = al('left');
+
+    let dayIn = 0; let dayOut = 0;
+
+    txns.forEach(t => {
+      const isIn  = t.transactionType === 'cash_received';
+      const amt   = Number(t.amount);
+      const bg    = isIn ? IN_BG : OUT_BG;
+      const ref   = t.reference || '';
+      const desc  = t.description || '';
+      const src   = (t.sourceType || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+      const particulars = isIn ? (ref || src) : (desc || ref);
+      const receivedFrom = isIn ? (t.partyName || '') : '';
+      const paidTo       = isIn ? '' : (t.partyName || ref);
+      const cashIn       = isIn ? amt : null;
+      const cashOut      = isIn ? null : amt;
+      runningBal += isIn ? amt : -amt;
+      if (isIn) dayIn += amt; else dayOut += amt;
+
+      const rt = ws.addRow([
+        format(dayDate, 'd MMM'),
+        particulars,
+        receivedFrom,
+        paidTo,
+        cashIn,
+        cashOut,
+        runningBal,
       ]);
+      rt.height = 14;
+      rt.eachCell({ includeEmpty: true }, (cell, colNum) => {
+        cell.fill = s(bg);
+        cell.border = { bottom: { style: 'thin', color: { argb: 'FFE8EEF4' } } };
+        if (colNum >= 5) {
+          cell.numFmt = COMMA;
+          cell.alignment = al('right', 1);
+          const fg = colNum === 5 ? IN_FG : colNum === 6 ? OUT_FG : NAVY;
+          cell.font = f(fg, colNum === 7, 9.5);
+        } else {
+          cell.alignment = al('left', 1);
+          cell.font = f(NAVY, false, 9.5);
+        }
+      });
     });
-    
-    const transactionSheet = XLSX.utils.aoa_to_sheet(transactionRows);
-    XLSX.utils.book_append_sheet(workbook, transactionSheet, 'Transactions');
-  }
-  
-  await downloadXLSX(workbook, `cash-register-report-${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+
+    // Day total row — closing balance green
+    const rt2 = ws.addRow([]); rt2.height = 16;
+    ws.mergeCells(rt2.number, 1, rt2.number, 4);
+    const dtc = rt2.getCell(1);
+    dtc.value = `  ${format(dayDate, 'd MMM')} — Day Total`;
+    dtc.font = f(MUTED, true, 8.5); dtc.fill = s(WHITE); dtc.alignment = al('left');
+    dtc.border = { top: { style: 'thin', color: { argb: 'FF' + NAVY } }, bottom: { style: 'thin', color: { argb: 'FF' + NAVY } } };
+
+    const inCell = rt2.getCell(5);
+    inCell.value = dayIn; inCell.numFmt = COMMA;
+    inCell.font = f(IN_FG, true, 10); inCell.fill = s(WHITE); inCell.alignment = al('right', 1);
+    inCell.border = { top: { style: 'thin', color: { argb: 'FF' + NAVY } }, bottom: { style: 'thin', color: { argb: 'FF' + NAVY } } };
+
+    const outCell = rt2.getCell(6);
+    outCell.value = dayOut; outCell.numFmt = COMMA;
+    outCell.font = f(OUT_FG, true, 10); outCell.fill = s(WHITE); outCell.alignment = al('right', 1);
+    outCell.border = { top: { style: 'thin', color: { argb: 'FF' + NAVY } }, bottom: { style: 'thin', color: { argb: 'FF' + NAVY } } };
+
+    const clCell = rt2.getCell(7);
+    clCell.value = runningBal; clCell.numFmt = COMMA;
+    clCell.font = f(CL_FG, true, 11); clCell.fill = s(CL_BG); clCell.alignment = al('right', 1);
+    clCell.border = { top: { style: 'thin', color: { argb: 'FF' + NAVY } }, bottom: { style: 'thin', color: { argb: 'FF' + NAVY } } };
+  });
+
+  // ── Grand total ────────────────────────────────────────────────────────────
+  const rgt = ws.addRow([]); rgt.height = 20;
+  ws.mergeCells(rgt.number, 1, rgt.number, 4);
+  const gtc = rgt.getCell(1);
+  gtc.value = `  GRAND TOTAL  ·  As of ${today}`;
+  gtc.font = f(WHITE, true, 10); gtc.fill = s(NAVY); gtc.alignment = al('left');
+
+  const gtIn = rgt.getCell(5);
+  gtIn.value = reportData.overallSummary.totalCashReceived; gtIn.numFmt = COMMA;
+  gtIn.font = f('7ADDA4', true, 11); gtIn.fill = s(NAVY); gtIn.alignment = al('right', 1);
+
+  const gtOut = rgt.getCell(6);
+  gtOut.value = reportData.overallSummary.totalExpenses; gtOut.numFmt = COMMA;
+  gtOut.font = f('F5A09A', true, 11); gtOut.fill = s(NAVY); gtOut.alignment = al('right', 1);
+
+  const gtBal = rgt.getCell(7);
+  gtBal.value = reportData.overallSummary.closingBalance; gtBal.numFmt = COMMA;
+  gtBal.font = f(WHITE, true, 11); gtBal.fill = s(NAVY); gtBal.alignment = al('right', 1);
+
+  // ── Footer note ────────────────────────────────────────────────────────────
+  const rf = ws.addRow([]); rf.height = 13;
+  ws.mergeCells(rf.number, 1, rf.number, 7);
+  const fc = rf.getCell(1);
+  fc.value = '  Note: Blue row = Opening balance per day   ·   Green cell = Closing balance per day';
+  fc.font = f(MUTED, false, 8, true); fc.alignment = al('left');
+
+  // ── Download ───────────────────────────────────────────────────────────────
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `cash-register-report-${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
+  a.click(); URL.revokeObjectURL(url);
 };
 
 const formatPeriodLabel = (period: string, periodType: string) => {

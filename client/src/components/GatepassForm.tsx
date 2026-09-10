@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -277,6 +277,9 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
     },
   });
 
+  // Watch form items to keep quantity summary reactive when user manually edits quantities
+  const watchedItems = useWatch({ control: form.control, name: "items" });
+
   useEffect(() => {
     // Only populate form when we have both gatepass data AND items have finished loading
     if (gatepass && !isLoadingGatepassItems) {
@@ -412,16 +415,22 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
         const casesUom = uoms.find(u => u.name?.toLowerCase() === 'cases' || u.name?.toLowerCase() === 'case');
         
         // Map FIFO allocated items to form items
-        const fifoItems: GatepassItemWithBatchInfo[] = data.allocatedItems.map((alloc: any) => ({
-          finishedGoodId: alloc.finishedGoodId,
-          productId: alloc.productId,
-          quantityDispatched: alloc.quantityAllocated,
-          uomId: casesUom?.id || alloc.uomId || "",
-          remarks: "",
-          batchNumber: alloc.batchNumber,
-          productionDate: alloc.productionDate,
-          availableStock: alloc.availableStock,
-        }));
+        const fifoItems: GatepassItemWithBatchInfo[] = data.allocatedItems.map((alloc: any) => {
+          // Guarantee productId — fallback to lookup in available stock if server didn't return it
+          const productId = alloc.productId
+            || availableStockData?.items?.find((fg: any) => fg.id === alloc.finishedGoodId)?.productId
+            || "";
+          return {
+            finishedGoodId: alloc.finishedGoodId,
+            productId,
+            quantityDispatched: alloc.quantityAllocated,
+            uomId: casesUom?.id || alloc.uomId || "",
+            remarks: "",
+            batchNumber: alloc.batchNumber,
+            productionDate: alloc.productionDate,
+            availableStock: alloc.availableStock,
+          };
+        });
         
         setItems(fifoItems);
         form.setValue("items", fifoItems);
@@ -590,7 +599,9 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
     });
     
     // Sum up dispatched quantities per product from current items
-    items.forEach(item => {
+    // Use watchedItems (from useWatch) so manual quantity edits trigger re-computation
+    const currentItems = watchedItems || items;
+    currentItems.forEach(item => {
       // Match by productId since gatepass items don't have invoiceItemId
       const matchingKey = Object.keys(summary).find(k => summary[k].productId === item.productId && summary[k].dispatchedQty < summary[k].invoiceQty);
       if (matchingKey) {
@@ -1209,7 +1220,10 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
                   .filter((_, i) => i !== index)
                   .map(item => item.finishedGoodId)
                   .filter(id => id);
-                
+
+                // Derive productId from selected finishedGoodId when item.productId is missing (older records)
+                const itemProductId = item.productId || finishedGoods.find(fg => fg.id === item.finishedGoodId)?.productId;
+
                 // Get available quantity for current batch
                 const currentBatchId = items[index]?.finishedGoodId;
                 const currentBatch = finishedGoods.find(fg => fg.id === currentBatchId);
@@ -1272,17 +1286,20 @@ export default function GatepassForm({ gatepass, onClose }: GatepassFormProps) {
                             </FormControl>
                             <SelectContent>
                               {finishedGoods
+                                // If this item has a product set, only show batches for that product
+                                .filter(fg => !itemProductId || fg.productId === itemProductId)
                                 // Include batches with available quantity > 0, OR the currently assigned batch (even if 0)
                                 .filter(fg => ((fg as any).availableQuantity ?? fg.quantity) > 0 || fg.id === field.value)
                                 // Exclude already selected batches (except the current one)
                                 .filter(fg => !selectedBatchIds.includes(fg.id) || fg.id === field.value)
                                 .map((fg) => {
                                   const product = products.find(p => p.id === fg.productId);
+                                  const uom = uoms.find(u => u.id === fg.uomId);
                                   const available = (fg as any).availableQuantity ?? fg.quantity;
                                   const isCurrentBatch = fg.id === field.value;
                                   return (
                                     <SelectItem key={fg.id} value={fg.id}>
-                                      {product?.productName || 'Unknown'} - Batch: {fg.batchNumber} 
+                                      {product?.productName || 'Unknown'} - Batch: {fg.batchNumber}{uom ? ` [${uom.name}]` : ''}
                                       {isCurrentBatch && available === 0 ? ' (Assigned)' : ` (Available: ${available})`}
                                     </SelectItem>
                                   );

@@ -5730,135 +5730,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Optional: excludeInvoiceId - exclude a specific invoice's reservations (useful when editing)
   app.get('/api/finished-goods/available-stock', isAuthenticated, async (req: any, res) => {
     try {
-      const excludeInvoiceId = req.query.excludeInvoiceId as string | undefined;
-      
       // Step 1: Get all approved finished goods with quantity > 0
+      // finished_goods.quantity is already decremented when a gatepass is created,
+      // so it represents actual remaining stock — no further subtraction needed.
       const allGoods = await storage.getAllFinishedGoods((req.session as any)?.tenantId ?? req.user?.tenantId);
       const approvedGoods = allGoods.filter(
         fg => fg.qualityStatus === 'approved' && fg.quantity > 0 && fg.recordStatus === 1
       );
 
-      // Step 2: Get reserved quantities from pending invoices
-      // Pending = invoices that are draft or ready_for_gatepass (not yet dispatched)
-      // EXCLUDE invoices that already have a gatepass (physical stock already deducted)
-      const allPendingInvoices = await db.select().from(invoices).where(
-        and(
-          sql`${invoices.status} IN ('draft', 'ready_for_gatepass')`,
-          eq(invoices.recordStatus, 1), tc(invoices)
-        )
-      );
-      
-      // Get all active gatepasses to find which invoices already have gatepasses
-      const activeGatepasses = await db.select({
-        invoiceId: gatepasses.invoiceId
-      }).from(gatepasses).where(
-        and(
-          eq(gatepasses.recordStatus, 1), tc(gatepasses),
-          sql`${gatepasses.invoiceId} IS NOT NULL`
-        )
-      );
-      const invoiceIdsWithGatepass = new Set(activeGatepasses.map(gp => gp.invoiceId));
-      
-      // Filter out invoices that already have gatepasses (their stock is already deducted)
-      // Also exclude the specified invoice if editing
-      let pendingInvoiceIds = allPendingInvoices
-        .filter(inv => !invoiceIdsWithGatepass.has(inv.id)) // Exclude invoices with gatepasses
-        .map(inv => inv.id);
-      
-      if (excludeInvoiceId) {
-        pendingInvoiceIds = pendingInvoiceIds.filter(id => id !== excludeInvoiceId);
-      }
-      let reservedByProduct: Record<string, number> = {};
-      
-      if (pendingInvoiceIds.length > 0) {
-        // IMPORTANT: Only count active (non-soft-deleted) invoice items
-        // record_status = 1 means active, record_status = 0 means soft-deleted
-        const reservedItems = await db.select({
-          productId: invoiceItems.productId,
-          quantity: invoiceItems.quantity
-        }).from(invoiceItems).where(
-          and(
-            sql`${invoiceItems.invoiceId} IN (${sql.join(pendingInvoiceIds.map(id => sql`${id}`), sql`, `)})`,
-            eq(invoiceItems.recordStatus, 1), tc(invoiceItems)
-          )
-        );
-        
-        // Aggregate reserved quantities by product
-        for (const item of reservedItems) {
-          reservedByProduct[item.productId] = (reservedByProduct[item.productId] || 0) + item.quantity;
-        }
-      }
+      const result = approvedGoods.map(fg => ({
+        ...fg,
+        physicalQuantity: fg.quantity,
+        reservedQuantity: 0,
+        availableQuantity: fg.quantity,
+      }));
 
-      // Step 3: Aggregate physical stock by product
-      const stockByProduct: Record<string, { totalPhysical: number; reserved: number; available: number; batches: any[] }> = {};
-      
-      for (const fg of approvedGoods) {
-        if (!stockByProduct[fg.productId]) {
-          stockByProduct[fg.productId] = {
-            totalPhysical: 0,
-            reserved: reservedByProduct[fg.productId] || 0,
-            available: 0,
-            batches: []
-          };
-        }
-        stockByProduct[fg.productId].totalPhysical += fg.quantity;
-        stockByProduct[fg.productId].batches.push({
-          id: fg.id,
-          batchNumber: fg.batchNumber,
-          productionDate: fg.productionDate,
-          quantity: fg.quantity
-        });
+      const summaryMap: Record<string, { totalPhysical: number; reserved: number; available: number }> = {};
+      for (const fg of result) {
+        if (!summaryMap[fg.productId]) summaryMap[fg.productId] = { totalPhysical: 0, reserved: 0, available: 0 };
+        summaryMap[fg.productId].totalPhysical += fg.quantity;
+        summaryMap[fg.productId].available += fg.quantity;
       }
-
-      // Step 4: Calculate available stock (physical - reserved)
-      for (const productId in stockByProduct) {
-        const stock = stockByProduct[productId];
-        stock.available = Math.max(0, stock.totalPhysical - stock.reserved);
-      }
-
-      // Step 5: Return both summary and individual batches with adjusted quantities
-      // For individual batches, we apply FIFO deduction of reserved quantities
-      const result = approvedGoods.map(fg => {
-        const productStock = stockByProduct[fg.productId];
-        // Calculate this batch's effective available quantity using FIFO
-        // Sort batches by production date to apply FIFO
-        const sortedBatches = productStock.batches.sort((a: any, b: any) => 
-          new Date(a.productionDate).getTime() - new Date(b.productionDate).getTime()
-        );
-        
-        // Find this batch's position and calculate remaining reserved to apply
-        let remainingReserved = productStock.reserved;
-        let effectiveQuantity = fg.quantity;
-        
-        for (const batch of sortedBatches) {
-          if (batch.id === fg.id) {
-            // This is our batch - apply remaining reserved
-            effectiveQuantity = Math.max(0, fg.quantity - remainingReserved);
-            break;
-          } else {
-            // Older batch - deduct from reserved first
-            remainingReserved = Math.max(0, remainingReserved - batch.quantity);
-          }
-        }
-        
-        // If FIFO fully absorbs this batch (effectiveQuantity=0), still show it with
-        // its physical quantity — soft reservations from other invoices have not physically
-        // moved any stock yet, so the batch is still selectable in a gatepass.
-        const displayQuantity = effectiveQuantity > 0 ? effectiveQuantity : fg.quantity;
-        return {
-          ...fg,
-          physicalQuantity: fg.quantity,
-          reservedQuantity: fg.quantity - effectiveQuantity,
-          availableQuantity: displayQuantity
-        };
-      }).filter(fg => fg.quantity > 0); // Show all physically-stocked batches
 
       res.json({
         items: result,
-        summary: Object.entries(stockByProduct).map(([productId, stock]) => ({
+        summary: Object.entries(summaryMap).map(([productId, stock]) => ({
           productId,
           totalPhysical: stock.totalPhysical,
-          reserved: stock.reserved,
+          reserved: 0,
           available: stock.available
         }))
       });
@@ -6202,75 +6101,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return dateA.getTime() - dateB.getTime(); // Oldest first (FIFO)
         });
       
-      // Get reserved quantities from pending invoices (draft/ready_for_gatepass)
-      // This prevents double-allocation when multiple gatepasses are created before dispatch
-      const pendingInvoicesList = await db.select().from(invoices).where(
-        and(
-          sql`${invoices.status} IN ('draft', 'ready_for_gatepass')`,
-          eq(invoices.recordStatus, 1), tc(invoices)
-        )
-      );
-      
-      // Get all active gatepasses to find which invoices already have gatepasses
-      // Invoices with gatepasses should NOT be counted as reserved (physical stock already deducted)
-      const activeGatepasses = await db.select({
-        invoiceId: gatepasses.invoiceId
-      }).from(gatepasses).where(
-        and(
-          eq(gatepasses.recordStatus, 1), tc(gatepasses),
-          sql`${gatepasses.invoiceId} IS NOT NULL`
-        )
-      );
-      const invoiceIdsWithGatepass = new Set(activeGatepasses.map(gp => gp.invoiceId));
-      
-      // Filter out:
-      // 1. Invoices that already have gatepasses (their stock is already deducted from physical)
-      // 2. The invoice being allocated for (excludeInvoiceId) - we're allocating FOR this invoice
-      let filteredInvoices = pendingInvoicesList
-        .filter(inv => !invoiceIdsWithGatepass.has(inv.id));
-      
-      if (excludeInvoiceId) {
-        filteredInvoices = filteredInvoices.filter(inv => inv.id !== excludeInvoiceId);
-      }
-      
-      
-      // Get invoice items for pending invoices
-      let reservedByBatch = new Map<string, number>(); // finishedGoodId -> reserved qty
-      
-      if (filteredInvoices.length > 0) {
-        const invoiceIds = filteredInvoices.map(inv => inv.id);
-        const pendingItems = await db.select().from(invoiceItems).where(
-          sql`${invoiceItems.invoiceId} IN (${sql.join(invoiceIds.map(id => sql`${id}`), sql`, `)})`
-        );
-        
-        // For each pending invoice item, we need to figure out which batches would be used
-        // Since we use FIFO, simulate the allocation to know which batches are reserved
-        // Group by productId first
-        const pendingByProduct = new Map<string, number>();
-        for (const item of pendingItems) {
-          if (item.productId) {
-            const current = pendingByProduct.get(item.productId) || 0;
-            pendingByProduct.set(item.productId, current + item.quantity);
-          }
-        }
-        
-        // Simulate FIFO allocation for pending invoices to determine batch-level reservations
-        for (const [productId, totalReserved] of pendingByProduct) {
-          let remaining = totalReserved;
-          const productBatches = approvedGoods.filter(fg => fg.productId === productId);
-          
-          for (const batch of productBatches) {
-            if (remaining <= 0) break;
-            const batchQty = batch.quantity;
-            const allocate = Math.min(remaining, batchQty);
-            
-            const currentReserved = reservedByBatch.get(batch.id) || 0;
-            reservedByBatch.set(batch.id, currentReserved + allocate);
-            remaining -= allocate;
-          }
-        }
-      }
-      
+      // finished_goods.quantity is already decremented when a gatepass is created,
+      // so it represents actual remaining stock — no reservation logic needed.
+      const reservedByBatch = new Map<string, number>();
+
       const allocatedItems: Array<{
         productId: string;
         finishedGoodId: string;
@@ -8150,6 +7984,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Handle both flat structure and nested { header, items } structure
       const { header, items } = req.body;
+      console.log(`[GP-PATCH] keys=${Object.keys(req.body).join(',')} items=${JSON.stringify(items)?.slice(0,300)}`);
       const gatepassData = header || req.body;
       
       const validatedData = insertGatepassSchema.partial().parse(gatepassData);
@@ -8175,21 +8010,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Update gatepass header
-      const gatepass = await storage.updateGatepass(id, validatedData);
-      if (!gatepass) {
+      // Update gatepass header and items inside a transaction
+      const result = await db.transaction(async (tx) => {
+        const gatepass = await storage.updateGatepass(id, validatedData);
+        if (!gatepass) {
+          throw new Error("Gatepass not found");
+        }
+
+        // Update items if provided — restore old batch stock, deduct from new batch
+        if (items && Array.isArray(items) && items.length > 0) {
+          // Get existing items to return their inventory
+          const existingItems = await tx.select().from(gatepassItems).where(
+            and(eq(gatepassItems.gatepassId, id), eq(gatepassItems.recordStatus, 1))
+          );
+
+          // Return old batch quantities back to finished goods
+          for (const oldItem of existingItems) {
+            if (oldItem.finishedGoodId) {
+              const [fg] = await tx.select().from(finishedGoods)
+                .where(eq(finishedGoods.id, oldItem.finishedGoodId)).limit(1);
+              if (fg) {
+                await tx.update(finishedGoods)
+                  .set({ quantity: (fg.quantity || 0) + (oldItem.quantityDispatched || 0), recordStatus: 1, updatedAt: new Date().toISOString() })
+                  .where(eq(finishedGoods.id, oldItem.finishedGoodId));
+              }
+            }
+          }
+
+          // Soft-delete old gatepass items
+          await tx.update(gatepassItems)
+            .set({ recordStatus: 0, updatedAt: new Date().toISOString() })
+            .where(and(eq(gatepassItems.gatepassId, id), eq(gatepassItems.recordStatus, 1)));
+
+          // Insert new items and deduct from new batch
+          for (const item of items) {
+            const validatedItem = insertGatepassItemSchema.parse({ ...item, gatepassId: id });
+
+            const [fg] = await tx.select().from(finishedGoods)
+              .where(and(eq(finishedGoods.id, validatedItem.finishedGoodId), eq(finishedGoods.recordStatus, 1), tc(finishedGoods)))
+              .for('update');
+
+            if (!fg) throw new Error(`Finished good ${validatedItem.finishedGoodId} not found`);
+
+            const newQty = fg.quantity - validatedItem.quantityDispatched;
+            if (newQty < 0) {
+              throw new Error(`Insufficient stock for batch ${fg.batchNumber}. Available: ${fg.quantity}, Required: ${validatedItem.quantityDispatched}`);
+            }
+
+            await tx.insert(gatepassItems).values({ ...validatedItem, batchNumber: fg.batchNumber });
+            await tx.update(finishedGoods)
+              .set({ quantity: newQty, updatedAt: new Date().toISOString() })
+              .where(eq(finishedGoods.id, validatedItem.finishedGoodId));
+          }
+        }
+
+        return gatepass;
+      });
+
+      if (!result) {
         return res.status(404).json({ message: "Gatepass not found" });
       }
-      
-      // Update items if provided
-      if (items && Array.isArray(items) && items.length > 0) {
-        // For now, we're only updating header info - items update would require
-        // handling inventory changes which is complex. The main use case is
-        // updating driver/vehicle info, not changing batch allocations.
-        // Items are already correctly allocated during creation.
-      }
-      
-      res.json(gatepass);
+
+      res.json(result);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
@@ -9292,6 +9174,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ==================== INVOICE MANAGEMENT ====================
   
+  // Sales Order Report API
+  app.get('/api/sales-orders/report', isAuthenticated, async (req: any, res) => {
+    try {
+      const { dateFrom, dateTo, customerId, productId, status } = req.query;
+      const tenantId = req.user?.tenantId || 1;
+
+      const conditions: any[] = [
+        eq(salesOrders.recordStatus, 1),
+        eq(salesOrders.tenantId, tenantId),
+      ];
+      if (status && status !== 'all') conditions.push(eq(salesOrders.status, status as string));
+      if (dateFrom) conditions.push(gte(salesOrders.soDate, dateFrom as string));
+      if (dateTo) conditions.push(lte(salesOrders.soDate, dateTo as string));
+      if (customerId && customerId !== 'all') conditions.push(eq(salesOrders.vendorId, customerId as string));
+
+      const soRows = await db
+        .select({
+          id: salesOrders.id,
+          soNumber: salesOrders.soNumber,
+          soDate: salesOrders.soDate,
+          buyerName: salesOrders.buyerName,
+          status: salesOrders.status,
+          vendorId: salesOrders.vendorId,
+        })
+        .from(salesOrders)
+        .where(and(...conditions))
+        .orderBy(salesOrders.soDate, salesOrders.soNumber);
+
+      if (soRows.length === 0) return res.json([]);
+
+      const soIds = soRows.map(s => s.id);
+
+      // Get items for those SOs
+      const itemConditions: any[] = [
+        inArray(salesOrderItems.soId, soIds),
+        eq(salesOrderItems.recordStatus, 1),
+      ];
+      if (productId && productId !== 'all') itemConditions.push(eq(salesOrderItems.productId, productId as string));
+
+      const itemRows = await db
+        .select({
+          soId: salesOrderItems.soId,
+          productId: salesOrderItems.productId,
+          quantity: salesOrderItems.quantity,
+          unitPrice: salesOrderItems.unitPrice,
+          taxableAmount: salesOrderItems.taxableAmount,
+          cgstRate: salesOrderItems.cgstRate,
+          sgstRate: salesOrderItems.sgstRate,
+          igstRate: salesOrderItems.igstRate,
+          totalAmount: salesOrderItems.totalAmount,
+          productName: products.productName,
+          productSku: products.skuCode,
+        })
+        .from(salesOrderItems)
+        .leftJoin(products, eq(salesOrderItems.productId, products.id))
+        .where(and(...itemConditions));
+
+      // Build rows: one per SO × product
+      const soMap = new Map(soRows.map(s => [s.id, s]));
+      const rows: any[] = [];
+      for (const item of itemRows) {
+        const so = soMap.get(item.soId);
+        if (!so) continue;
+        const cgst = Number(item.cgstRate || 0);
+        const sgst = Number(item.sgstRate || 0);
+        const igst = Number(item.igstRate || 0);
+        const taxableAmt = (item.taxableAmount || 0) / 100;
+        const taxAmt = Math.round(taxableAmt * (cgst + sgst + igst)) / 100;
+        rows.push({
+          soDate: so.soDate,
+          soNumber: so.soNumber,
+          buyerName: so.buyerName,
+          status: so.status,
+          sku: item.productSku || '',
+          productName: item.productName || '',
+          quantity: item.quantity,
+          unitPrice: (item.unitPrice || 0) / 100,
+          taxableAmount: taxableAmt,
+          taxAmount: taxAmt,
+          totalAmount: (item.totalAmount || 0) / 100,
+        });
+      }
+
+      res.json(rows);
+    } catch (error) {
+      console.error('[SO_REPORT] Error:', error);
+      res.status(500).json({ message: 'Failed to generate report' });
+    }
+  });
+
   // Get all invoices
   // Sales Orders Routes
   app.get('/api/sales-orders', isAuthenticated, async (req: any, res) => {
@@ -9449,6 +9421,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // Sync buyer details back to vendor master if a vendor is linked
+      if (validatedHeader.vendorId) {
+        const vendorUpdates: Record<string, any> = {};
+        if (validatedHeader.buyerGstin) vendorUpdates.gstNumber = validatedHeader.buyerGstin;
+        if (validatedHeader.buyerContact) vendorUpdates.mobileNumber = validatedHeader.buyerContact;
+        if ((normalizedHeader as any).buyerAadhaar) vendorUpdates.aadhaarNumber = (normalizedHeader as any).buyerAadhaar;
+        if (Object.keys(vendorUpdates).length > 0) {
+          vendorUpdates.updatedAt = new Date().toISOString();
+          await db.update(vendors).set(vendorUpdates).where(eq(vendors.id, validatedHeader.vendorId));
+        }
+      }
+
       await logAudit(req.user.id, 'CREATE', 'sales_orders', so.id, `Created sales order ${soNumber}`);
       res.status(201).json({ ...so, items: createdItems });
     } catch (error) {
@@ -9493,6 +9477,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           createdItems.push(createdItem);
         }
         (updatedSo as any).items = createdItems;
+      }
+
+      // Sync buyer details back to vendor master if a vendor is linked
+      const linkedVendorId = updatedSo.vendorId ?? so.vendorId;
+      if (linkedVendorId && header) {
+        const vendorUpdates: Record<string, any> = {};
+        if (header.buyerGstin) vendorUpdates.gstNumber = header.buyerGstin;
+        if (header.buyerContact) vendorUpdates.mobileNumber = header.buyerContact;
+        if (header.buyerAadhaar) vendorUpdates.aadhaarNumber = header.buyerAadhaar;
+        if (Object.keys(vendorUpdates).length > 0) {
+          vendorUpdates.updatedAt = new Date().toISOString();
+          await db.update(vendors).set(vendorUpdates).where(eq(vendors.id, linkedVendorId));
+        }
       }
 
       await logAudit(req.user.id, 'UPDATE', 'sales_orders', so.id, `Updated sales order ${so.soNumber}`);
@@ -10646,36 +10643,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`[CANCEL] Cancelled gatepass ${gp.gatepassNumber}`);
         }
         
-        // Return inventory to finished goods (same logic as cancel-and-reissue)
-        for (const item of items) {
-          if (item.productId && item.quantity > 0) {
-            // Verify product exists
-            const [existingProduct] = await tx.select({ id: products.id })
-              .from(products)
-              .where(eq(products.id, item.productId))
-              .limit(1);
-            
-            if (existingProduct) {
-              const batchNumber = `CANCEL-${invoice.invoiceNumber}-${format(new Date(), 'yyyyMMdd-HHmmss')}`;
-              const hasGatepass = cancelledGatepassNumbers.length > 0;
-              
-              await tx.insert(finishedGoods).values({
-                productId: item.productId,
-                batchNumber,
-                productionDate: new Date().toISOString(),
-                quantity: item.quantity,
-                qualityStatus: 'approved',
-                remarks: hasGatepass 
-                  ? `Inventory returned - Invoice ${invoice.invoiceNumber} cancelled. Gatepass(es): ${cancelledGatepassNumbers.join(', ')}. ${reason ? 'Reason: ' + reason : ''}`
-                  : `Inventory returned - Invoice ${invoice.invoiceNumber} cancelled. ${reason ? 'Reason: ' + reason : ''}`,
-                createdBy: req.user?.id,
-              });
-              
-              console.log(`[INVENTORY] Returned ${item.quantity} units of product ${item.productId} to inventory (Cancel)`);
-            } else {
-              console.warn(`[INVENTORY] Skipping inventory return for product ${item.productId} - product not found`);
+        // Only return inventory if a gatepass existed — inventory is only deducted at gatepass creation
+        if (cancelledGatepassNumbers.length > 0) {
+          // Build original batch map from cancelled gatepass items (same as cancel-and-reissue)
+          const originalBatchMap = new Map<string, string>(); // productId -> original batch number
+          for (const gp of existingGatepasses) {
+            const gpItems = await tx.select({
+              productId: gatepassItems.productId,
+              finishedGoodId: gatepassItems.finishedGoodId,
+            })
+              .from(gatepassItems)
+              .where(eq(gatepassItems.gatepassId, gp.id));
+
+            for (const gpItem of gpItems) {
+              if (gpItem.finishedGoodId) {
+                const [fg] = await tx.select({
+                  batchNumber: finishedGoods.batchNumber,
+                  originalBatchNumber: finishedGoods.originalBatchNumber,
+                  productId: finishedGoods.productId,
+                })
+                  .from(finishedGoods)
+                  .where(eq(finishedGoods.id, gpItem.finishedGoodId))
+                  .limit(1);
+                if (fg) {
+                  const effectiveProductId = gpItem.productId || fg.productId;
+                  if (effectiveProductId) {
+                    // Use originalBatchNumber if set, else the batch itself — strip CANCEL prefix if present
+                    const rawBatch = fg.originalBatchNumber || fg.batchNumber;
+                    const resolvedBatch = rawBatch.startsWith('CANCEL-') ? null : rawBatch;
+                    if (resolvedBatch) originalBatchMap.set(effectiveProductId, resolvedBatch);
+                  }
+                }
+              }
             }
           }
+
+          for (const item of items) {
+            if (item.productId && item.quantity > 0) {
+              const [existingProduct] = await tx.select({ id: products.id })
+                .from(products)
+                .where(eq(products.id, item.productId))
+                .limit(1);
+
+              if (existingProduct) {
+                const originalBatchNumber = originalBatchMap.get(item.productId) || null;
+                const batchNumber = originalBatchNumber || `CANCEL-${invoice.invoiceNumber}-${format(new Date(), 'yyyyMMdd-HHmmss')}`;
+
+                // Add to existing batch if it exists, otherwise create new record
+                const [existingBatch] = await tx.select()
+                  .from(finishedGoods)
+                  .where(and(
+                    eq(finishedGoods.productId, item.productId),
+                    eq(finishedGoods.batchNumber, batchNumber)
+                  ))
+                  .limit(1);
+
+                if (existingBatch) {
+                  await tx.update(finishedGoods)
+                    .set({
+                      quantity: existingBatch.quantity + item.quantity,
+                      recordStatus: 1,
+                      updatedAt: new Date().toISOString(),
+                      remarks: existingBatch.remarks
+                        ? `${existingBatch.remarks} | +${item.quantity} returned from invoice ${invoice.invoiceNumber}`
+                        : `+${item.quantity} returned from invoice ${invoice.invoiceNumber} (Cancel)`,
+                    })
+                    .where(eq(finishedGoods.id, existingBatch.id));
+                  console.log(`[CANCEL] Added ${item.quantity} back to existing batch ${batchNumber}`);
+                } else {
+                  await tx.insert(finishedGoods).values({
+                    productId: item.productId,
+                    batchNumber,
+                    originalBatchNumber,
+                    productionDate: new Date().toISOString(),
+                    quantity: item.quantity,
+                    qualityStatus: 'approved',
+                    remarks: `Inventory returned - Invoice ${invoice.invoiceNumber} cancelled. Gatepass(es): ${cancelledGatepassNumbers.join(', ')}. ${reason ? 'Reason: ' + reason : ''}`,
+                    createdBy: req.user?.id,
+                  });
+                  console.log(`[CANCEL] Created batch ${batchNumber} with ${item.quantity} units`);
+                }
+              }
+            }
+          }
+        } else {
+          console.log(`[CANCEL] No gatepass for ${invoice.invoiceNumber} — skipping inventory return (nothing was deducted)`);
         }
         
         // Cancel the invoice (soft delete with cancellation tracking)
@@ -10875,14 +10927,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             for (const gpItem of gpItems) {
               if (gpItem.finishedGoodId) {
-                const [fg] = await tx.select({ batchNumber: finishedGoods.batchNumber, originalBatchNumber: finishedGoods.originalBatchNumber })
+                const [fg] = await tx.select({ batchNumber: finishedGoods.batchNumber, originalBatchNumber: finishedGoods.originalBatchNumber, productId: finishedGoods.productId })
                   .from(finishedGoods)
                   .where(eq(finishedGoods.id, gpItem.finishedGoodId))
                   .limit(1);
-                if (fg && gpItem.productId) {
-                  // Use originalBatchNumber if available, otherwise use batchNumber
-                  const displayBatch = fg.originalBatchNumber || fg.batchNumber;
-                  originalBatchMap.set(gpItem.productId, displayBatch);
+                if (fg) {
+                  const effectiveProductId = gpItem.productId || fg.productId;
+                  if (effectiveProductId) {
+                    // Use originalBatchNumber if available, otherwise use batchNumber
+                    const displayBatch = fg.originalBatchNumber || fg.batchNumber;
+                    originalBatchMap.set(effectiveProductId, displayBatch);
+                  }
                 }
               }
             }
@@ -11587,20 +11642,21 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       for (const { invoice, items } of invoicesWithItems) {
         for (const item of items) {
           const hsnCode = item.hsnCode || 'UNCLASSIFIED';
+          const desc = item.description || '';
+          const mapKey = `${hsnCode}||${desc}`;
           const qty = item.quantity || 0;
           const taxableAmt = (item.taxableAmount || 0) / 100; // Convert paise to rupees
           const cgst = (item.cgstAmount || 0) / 100;
           const sgst = (item.sgstAmount || 0) / 100;
           const igst = (item.igstAmount || 0) / 100;
           const cess = (item.cessAmount || 0) / 100;
-          
-          // Get UOM (you may need to fetch this from the UOM table if uomId is present)
-          const uom = 'NOS'; // Default, could be fetched from database if needed
-          
-          if (!hsnMap.has(hsnCode)) {
-            hsnMap.set(hsnCode, {
+
+          const uom = 'NOS';
+
+          if (!hsnMap.has(mapKey)) {
+            hsnMap.set(mapKey, {
               hsnCode,
-              description: item.description || '',
+              description: desc,
               uom,
               quantity: 0,
               taxableValue: 0,
@@ -11611,8 +11667,8 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
               taxRate: 0,
             });
           }
-          
-          const hsnEntry = hsnMap.get(hsnCode);
+
+          const hsnEntry = hsnMap.get(mapKey);
           hsnEntry.quantity += qty;
           hsnEntry.taxableValue += taxableAmt;
           hsnEntry.cgstAmount += cgst;
@@ -22391,6 +22447,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
           amount: cashRegisterTransactions.amount,
           description: cashRegisterTransactions.description,
           reference: cashRegisterTransactions.reference,
+          partyName: cashRegisterTransactions.partyName,
           convertedToVoucherId: cashRegisterTransactions.convertedToVoucherId,
         })
         .from(cashRegisterTransactions)

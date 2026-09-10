@@ -81,6 +81,7 @@ export const MODULE_NAV_ITEMS: Record<string, string[]> = {
   ],
   sales_orders: [
     "sales-orders",
+    "sales-order-report",
   ],
   production: [
     "production",

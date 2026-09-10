@@ -119,6 +119,7 @@ const salesOrderSchema = z.object({
   buyerAddress: z.string().optional(),
   buyerState: z.string().optional(),
   buyerContact: z.string().optional(),
+  buyerAadhaar: z.string().optional(),
   shipToName: z.string().optional(),
   shipToAddress: z.string().optional(),
   shipToCity: z.string().optional(),
@@ -192,6 +193,7 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
           buyerAddress: values.buyerAddress || null,
           buyerState: values.buyerState || null,
           buyerContact: values.buyerContact || null,
+          buyerAadhaar: values.buyerAadhaar || null,
           shipToName: values.shipToName || null,
           shipToAddress: values.shipToAddress || null,
           shipToCity: values.shipToCity || null,
@@ -260,6 +262,7 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
       buyerAddress: "",
       buyerState: "",
       buyerContact: "",
+      buyerAadhaar: "",
       soDate: format(new Date(), 'yyyy-MM-dd'),
       items: [{
         productId: "",
@@ -366,6 +369,19 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                       />
                       <FormField
                         control={form.control}
+                        name="buyerAadhaar"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Buyer Aadhaar No</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter Aadhaar number" {...field} data-testid="input-buyer-aadhaar" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
                         name="buyerAddress"
                         render={({ field }) => (
                           <FormItem>
@@ -458,6 +474,7 @@ export default function SalesOrdersPage({ showHeader = true }: { showHeader?: bo
                                           if (vendor.address) form.setValue("buyerAddress", vendor.address);
                                           if (vendor.state) form.setValue("buyerState", vendor.state);
                                           if (vendor.mobileNumber) form.setValue("buyerContact", vendor.mobileNumber);
+                                          if (vendor.aadhaarNumber) form.setValue("buyerAadhaar", vendor.aadhaarNumber);
                                           if (vendor.shipToName) form.setValue("shipToName", vendor.shipToName);
                                           if (vendor.shipToAddress) form.setValue("shipToAddress", vendor.shipToAddress);
                                           if (vendor.shipToCity) form.setValue("shipToCity", vendor.shipToCity);

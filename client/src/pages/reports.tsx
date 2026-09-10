@@ -1165,11 +1165,11 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
   const filteredGatepasses = Array.isArray(gatepasses) ? gatepasses : [];
 
   const filteredInvoices = Array.isArray(invoices) ? invoices.filter(item => {
-    // Date filter
+    // Date filter — compare YYYY-MM-DD strings to avoid timezone shifts
     if (dateFrom || dateTo) {
-      const date = new Date(item.invoiceDate);
-      if (dateFrom && new Date(dateFrom) > date) return false;
-      if (dateTo && new Date(dateTo) < date) return false;
+      const invDateStr = (item.invoiceDate || '').substring(0, 10);
+      if (dateFrom && dateFrom > invDateStr) return false;
+      if (dateTo && dateTo < invDateStr) return false;
     }
     // Customer filter
     if (selectedCustomer && selectedCustomer !== 'all') {
@@ -1443,7 +1443,7 @@ export default function Reports({ showHeader = true }: ReportsProps = {}) {
               item.quantity || 0,
               formatCurrencyForExcel(item.unitPrice || 0),
               formatCurrencyForExcel(item.discount || 0),
-              formatCurrencyForExcel(item.taxableValue || 0),
+              formatCurrencyForExcel(item.taxableAmount || 0),
               item.cgstRate ? `${(item.cgstRate / 100).toFixed(2)}%` : '0%',
               formatCurrencyForExcel(item.cgstAmount || 0),
               item.sgstRate ? `${(item.sgstRate / 100).toFixed(2)}%` : '0%',

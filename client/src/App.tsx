@@ -61,6 +61,7 @@ const ProductionEntries = lazy(() => import("@/pages/production-entries"));
 const ProductionReconciliations = lazy(() => import("@/pages/production-reconciliations"));
 const ProductionReconciliationReport = lazy(() => import("@/pages/production-reconciliation-report"));
 const FinishedGoodsReport = lazy(() => import("@/pages/finished-goods-report"));
+const SalesOrderReport = lazy(() => import("@/pages/sales-order-report"));
 const VarianceAnalytics = lazy(() => import("@/pages/variance-analytics"));
 const SalesReturns = lazy(() => import("@/pages/sales-returns"));
 const MachineStartupReminders = lazy(() => import("@/pages/machine-startup-reminders"));
@@ -88,7 +89,7 @@ const PendingPaymentsDashboard = lazy(() => import("@/components/PendingPayments
 const OperatorAssignedChecklists = lazy(() => import("@/components/OperatorAssignedChecklists").then(m => ({ default: m.OperatorAssignedChecklists })));
 import { VerticalNavSidebar, type NavSection } from "@/components/VerticalNavSidebar";
 import { Activity, AlertTriangle, Archive, Award, BarChart3, BedDouble, Bell, BookOpen, Box, Briefcase, Building2, Calculator, Calendar, Camera, Car, CheckCircle, CheckCircle2, ClipboardCheck, ClipboardList, Clock, Coins, CreditCard, Crosshair, Factory, FileStack, FileText, FileX, FolderOpen, Gem, Gift, Globe, Heart, History, IndianRupee, Key, Landmark, Layers, LayoutDashboard, ListChecks, Loader2, Lock, LogOut, MessageSquare, Package, PackageX, Pill, Play, Plus, Receipt, RotateCcw, Scale, Scan, Settings, Settings2, Shield, ShoppingBag, ShoppingCart, Star, Tag, Target, Trash2, TrendingUp, Truck, Upload, UserX, Users, UtensilsCrossed, Wallet, Wifi, Wrench, XCircle, Zap , Database, GraduationCap, HeartPulse, Home, Leaf } from "lucide-react";
-import { MapPin, Route as RouteIcon } from "lucide-react";
+import { MapPin, Route as RouteIcon, FileBarChart2 } from "lucide-react";
 const CRMLeadsPage = lazy(() => import("@/pages/crm-leads"));
 const SwachDeskPage = lazy(() => import("@/pages/swachdesk/index"));
 const TicketDetailPage = lazy(() => import("@/pages/swachdesk/ticket-detail"));
@@ -645,7 +646,7 @@ const DASHBOARD_VALID_TABS = [
   'maintenance', 'reports', 'sales-dashboard', 'vendor-analytics', 'sales-orders',
   'checklist-assignments', 'machine-startup-reminders', 'whatsapp-analytics',
   'product-categories', 'product-types', 'production-entries', 'production-reconciliations',
-  'production-reconciliation-report', 'finished-goods-report',
+  'production-reconciliation-report', 'finished-goods-report', 'sales-order-report',
   'variance-analytics', 'purchase-orders', 'pm-history', 'role-permissions',
   'vendors', 'assignments',
   'machine-types', 'pm-templates', 'uom', 'raw-material-types', 'template-management',
@@ -1423,6 +1424,8 @@ function AdminDashboard() {
         return <ProductionReconciliationReport />;
       case 'finished-goods-report':
         return <FinishedGoodsReport />;
+      case 'sales-order-report':
+        return <SalesOrderReport />;
       case 'variance-analytics':
         return <VarianceAnalytics />;
       case 'sales-returns':
@@ -1874,6 +1877,7 @@ const navItemToScreenKey: Record<string, string> = {
   'spare-parts': 'spare_parts',
   // Finance & Sales
   'sales-orders': 'sales_orders',
+  'sales-order-report': 'sales_order_report',
   'invoices': 'invoices',
   'vendor-history': 'vendor_history',
   'vendor-debit-notes': 'vendor_debit_notes',
@@ -1983,6 +1987,7 @@ const navItemToScreen: Record<string, string> = {
   'variance-analytics': 'Create Finished Goods',
   'spare-parts-stock': 'Spare Parts Stock',
   // Finance & Sales
+  'sales-order-report': 'Purchase Orders',
   'invoices': 'Purchase Orders',
   'vendor-history': 'Purchase Orders',
   'pending-payments': 'Purchase Orders',
@@ -2359,6 +2364,7 @@ function getAdminNavSections(setLocation: (path: string) => void, userRole?: str
       label: "Finance & Sales",
       items: [
         { id: "sales-orders", label: "Sales Orders", icon: ClipboardList, onClick: () => setLocation('/sales-orders') },
+        { id: "sales-order-report", label: "SO Report", icon: FileBarChart2, onClick: () => setLocation('/sales-order-report') },
         { id: "invoices", label: "Sales Invoices", icon: Receipt, onClick: () => setLocation('/?tab=invoices') },
         { id: "sales-officers", label: "Sales Officers", icon: Users, onClick: () => setLocation('/sales-officers') },
         { id: "customer-outstanding-report", label: "Customer Outstanding", icon: BarChart3, onClick: () => setLocation('/customer-outstanding-report') },
@@ -3387,6 +3393,29 @@ function WriteOffReportPageWrapper() {
       }}
     >
       <WriteOffReport showHeader={false} />
+    </DashboardShell>
+  );
+}
+
+function SalesOrderReportPageWrapper() {
+  const { logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState('sales-order-report');
+  const allNavSections = getAdminNavSections(setLocation);
+  const { navSections, isLoading } = useFilteredNavigation(allNavSections);
+  const resolvedNav = isLoading ? allNavSections : navSections;
+  return (
+    <DashboardShell
+      title="Sales Order Report"
+      onLogoutClick={() => logoutMutation.mutate()}
+      notificationCount={0}
+      navSections={resolvedNav}
+      activeView={activeView}
+      onNavigate={(viewId) => { setActiveView(viewId); }}
+    >
+      <Suspense fallback={<div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+        <SalesOrderReport />
+      </Suspense>
     </DashboardShell>
   );
 }
@@ -4536,6 +4565,7 @@ function Router() {
       <ProtectedRoute path="/write-off-report" component={WriteOffReportPageWrapper} />
       <ProtectedRoute path="/pending-payments" component={PendingPaymentsPage} />
       <ProtectedRoute path="/customer-outstanding-report" component={CustomerOutstandingReportPage} />
+      <ProtectedRoute path="/sales-order-report" component={SalesOrderReportPageWrapper} />
       <ProtectedRoute path="/payment-management" component={PaymentManagementPage} />
       <ProtectedRoute path="/vendor-analytics" component={VendorAnalyticsPage} />
       <ProtectedRoute path="/spare-parts" component={SparePartsPageWrapper} />
