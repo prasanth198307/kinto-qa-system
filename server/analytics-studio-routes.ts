@@ -844,7 +844,8 @@ export function startAnalyticsScheduler() {
 }
 
 async function processScheduledReports() {
-  // Ensure tables exist
+  // Ensure tables exist (bi_reports may not exist yet if no route has been called)
+  await ensureTables();
   await pool.query(`CREATE TABLE IF NOT EXISTS bi_scheduled_reports (
     id SERIAL PRIMARY KEY,
     tenant_id INT NOT NULL,
