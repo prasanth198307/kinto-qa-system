@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Plus, Edit, Trash2, Shield, Check, X, AlertTriangle, RefreshCw, Copy, Eye, EyeOff, Search, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { Plus, Edit, Trash2, Shield, Check, X, AlertTriangle, RefreshCw, Copy, Eye, EyeOff, Search, CheckCircle2, XCircle, Loader2, ChevronRight, ChevronDown } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
@@ -88,6 +88,16 @@ export default function RoleManagement() {
   const [copyFromRoleId, setCopyFromRoleId] = useState<string>('');
   const [isCopying, setIsCopying] = useState(false);
   const [permSearch, setPermSearch] = useState('');
+  const [collapsedModules, setCollapsedModules] = useState<Set<string>>(new Set());
+
+  const toggleModuleCollapse = (moduleKey: string) => {
+    setCollapsedModules(prev => {
+      const next = new Set(prev);
+      if (next.has(moduleKey)) next.delete(moduleKey);
+      else next.add(moduleKey);
+      return next;
+    });
+  };
 
   // Filter screens to only those relevant to the tenant's plan modules
   const activeScreens = AVAILABLE_SCREENS.filter(
@@ -784,36 +794,62 @@ export default function RoleManagement() {
                       agriculture:      'Agriculture',
                     };
 
-                    const filtered = activeScreens.filter(
-                      s => !permSearch.trim() || s.label.toLowerCase().includes(permSearch.trim().toLowerCase())
-                    );
+                    const q = permSearch.trim().toLowerCase();
 
-                    // Group by module; null key = core (no module)
-                    const groups: { moduleKey: string | null; screens: typeof filtered }[] = [];
+                    // Group by module first (unfiltered)
+                    const allGroups: { moduleKey: string | null; screens: typeof activeScreens }[] = [];
                     const seen = new Set<string | null>();
-                    for (const s of filtered) {
+                    for (const s of activeScreens) {
                       const mk = s.module ?? null;
-                      if (!seen.has(mk)) { seen.add(mk); groups.push({ moduleKey: mk, screens: [] }); }
-                      groups.find(g => g.moduleKey === mk)!.screens.push(s);
+                      if (!seen.has(mk)) { seen.add(mk); allGroups.push({ moduleKey: mk, screens: [] }); }
+                      allGroups.find(g => g.moduleKey === mk)!.screens.push(s);
                     }
-                    // Core screens first
-                    groups.sort((a, b) => {
+                    allGroups.sort((a, b) => {
                       if (a.moduleKey === null) return -1;
                       if (b.moduleKey === null) return 1;
                       return (MODULE_LABELS[a.moduleKey] ?? a.moduleKey).localeCompare(MODULE_LABELS[b.moduleKey] ?? b.moduleKey);
                     });
 
+                    // Filter: if search matches module label, show all screens in that module;
+                    // otherwise show only screens whose label matches
+                    const groups = allGroups.map(({ moduleKey, screens }) => {
+                      if (!q) return { moduleKey, screens };
+                      const moduleLabel = (moduleKey ? (MODULE_LABELS[moduleKey] ?? moduleKey) : 'Core (Always Available)').toLowerCase();
+                      const matchesModule = moduleLabel.includes(q);
+                      const filteredScreens = matchesModule
+                        ? screens
+                        : screens.filter(s => s.label.toLowerCase().includes(q));
+                      return { moduleKey, screens: filteredScreens };
+                    }).filter(g => g.screens.length > 0);
+
+                    const isSearching = !!q;
+
                     let globalIdx = 0;
-                    return groups.map(({ moduleKey, screens }) => (
-                      <Fragment key={moduleKey ?? '__core__'}>
-                        <tr className="bg-muted/40">
+                    return groups.map(({ moduleKey, screens }) => {
+                      const groupKey = moduleKey ?? '__core__';
+                      const isCollapsed = !isSearching && collapsedModules.has(groupKey);
+                      return (
+                      <Fragment key={groupKey}>
+                        <tr
+                          className="bg-muted/40 cursor-pointer select-none hover:bg-muted/60"
+                          onClick={() => !isSearching && toggleModuleCollapse(groupKey)}
+                        >
                           <td colSpan={5} className="py-1.5 px-2">
-                            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                              {moduleKey ? (MODULE_LABELS[moduleKey] ?? moduleKey) : 'Core (Always Available)'}
-                            </span>
+                            <div className="flex items-center gap-1.5">
+                              {isSearching ? null : isCollapsed
+                                ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                                : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                              }
+                              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                {moduleKey ? (MODULE_LABELS[moduleKey] ?? moduleKey) : 'Core (Always Available)'}
+                              </span>
+                              {!isSearching && (
+                                <span className="ml-1 text-xs text-muted-foreground/60">({screens.length})</span>
+                              )}
+                            </div>
                           </td>
                         </tr>
-                        {screens.map(screen => {
+                        {!isCollapsed && screens.map(screen => {
                           const index = globalIdx++;
                           return (
                             <tr key={screen.key} className="border-b hover-elevate" data-testid={`row-permission-${index}`}>
@@ -866,7 +902,8 @@ export default function RoleManagement() {
                           );
                         })}
                       </Fragment>
-                    ));
+                      );
+                    });
                   })()}
                 </tbody>
               </table>
