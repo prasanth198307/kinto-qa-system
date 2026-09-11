@@ -2976,6 +2976,91 @@ router.get("/reports/salary-revisions", requireHR, async (req: any, res) => {
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 
+// ─── STATUTORY REGISTERS ──────────────────────────────────────────────────────
+router.get("/reports/salary-register", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  const { month, year, departmentId } = req.query;
+  if (!month || !year) return res.status(400).json({ message: "month and year required" });
+  try {
+    let q = sql`
+      SELECT p.*, e.emp_code, e.first_name, e.last_name, e.pan, e.uan, e.pf_number, e.esi_number,
+        e.bank_account, e.ifsc, e.bank_name,
+        d.name as department_name, des.name as designation_name
+      FROM hr_payslips p
+      JOIN hr_employees e ON p.employee_id = e.id
+      LEFT JOIN hr_departments d ON e.department_id = d.id
+      LEFT JOIN hr_designations des ON e.designation_id = des.id
+      WHERE p.tenant_id=${tid} AND p.month=${Number(month)} AND p.year=${Number(year)}
+    `;
+    if (departmentId) q = sql`${q} AND e.department_id=${Number(departmentId)}`;
+    q = sql`${q} ORDER BY e.emp_code`;
+    res.json((await db.execute(q)).rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.get("/reports/pf-register", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  const { month, year } = req.query;
+  if (!month || !year) return res.status(400).json({ message: "month and year required" });
+  try {
+    const rows = await db.execute(sql`
+      SELECT e.emp_code, e.first_name, e.last_name, e.uan, e.pf_number, e.pan,
+        p.basic_salary, p.pf_employee, p.pf_employer,
+        (p.pf_employee + p.pf_employer) as total_pf,
+        d.name as department_name
+      FROM hr_payslips p
+      JOIN hr_employees e ON p.employee_id = e.id
+      LEFT JOIN hr_departments d ON e.department_id = d.id
+      WHERE p.tenant_id=${tid} AND p.month=${Number(month)} AND p.year=${Number(year)}
+        AND e.pf_enabled=true
+      ORDER BY e.emp_code
+    `);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.get("/reports/esi-register", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  const { month, year } = req.query;
+  if (!month || !year) return res.status(400).json({ message: "month and year required" });
+  try {
+    const rows = await db.execute(sql`
+      SELECT e.emp_code, e.first_name, e.last_name, e.esi_number,
+        p.gross_salary, p.esi_employee, p.esi_employer,
+        (p.esi_employee + p.esi_employer) as total_esi,
+        d.name as department_name
+      FROM hr_payslips p
+      JOIN hr_employees e ON p.employee_id = e.id
+      LEFT JOIN hr_departments d ON e.department_id = d.id
+      WHERE p.tenant_id=${tid} AND p.month=${Number(month)} AND p.year=${Number(year)}
+        AND e.esi_enabled=true
+      ORDER BY e.emp_code
+    `);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
+router.get("/reports/pt-register", requireHR, async (req: any, res) => {
+  const tid = getTenantId(req);
+  const { month, year } = req.query;
+  if (!month || !year) return res.status(400).json({ message: "month and year required" });
+  try {
+    const rows = await db.execute(sql`
+      SELECT e.emp_code, e.first_name, e.last_name, e.pan,
+        p.gross_salary, p.pt,
+        d.name as department_name, des.name as designation_name
+      FROM hr_payslips p
+      JOIN hr_employees e ON p.employee_id = e.id
+      LEFT JOIN hr_departments d ON e.department_id = d.id
+      LEFT JOIN hr_designations des ON e.designation_id = des.id
+      WHERE p.tenant_id=${tid} AND p.month=${Number(month)} AND p.year=${Number(year)}
+        AND p.pt > 0
+      ORDER BY e.emp_code
+    `);
+    res.json(rows.rows);
+  } catch (e: any) { res.status(500).json({ message: e.message }); }
+});
+
 // ─── LOANS & ADVANCES ─────────────────────────────────────────────────────────
 router.get("/loans", requireHR, async (req: any, res) => {
   const tid = getTenantId(req);

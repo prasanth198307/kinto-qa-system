@@ -670,6 +670,367 @@ function SalaryRevisionReport() {
   );
 }
 
+// ── Shared Month/Year Filter ──────────────────────────────────────────────────
+function MonthYearFilter({ month, year, setMonth, setYear, deptId, setDeptId, depts, onGenerate, hasData, onExcel }: any) {
+  return (
+    <div className="flex items-end gap-3 flex-wrap">
+      <div className="space-y-1.5">
+        <Label>Month</Label>
+        <Select value={month} onValueChange={setMonth}>
+          <SelectTrigger className="h-9 w-36"><SelectValue /></SelectTrigger>
+          <SelectContent>{MONTHS.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-1.5">
+        <Label>Year</Label>
+        <Select value={year} onValueChange={setYear}>
+          <SelectTrigger className="h-9 w-28"><SelectValue /></SelectTrigger>
+          <SelectContent>{YEARS.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}</SelectContent>
+        </Select>
+      </div>
+      {depts && (
+        <div className="space-y-1.5">
+          <Label>Department</Label>
+          <Select value={deptId} onValueChange={setDeptId}>
+            <SelectTrigger className="h-9 w-48"><SelectValue placeholder="All Departments" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Departments</SelectItem>
+              {depts.map((d: any) => <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+      <Button size="sm" onClick={onGenerate}>Generate Report</Button>
+      {hasData && (
+        <>
+          <Button variant="outline" size="sm" onClick={() => window.print()}>
+            <Printer className="h-3.5 w-3.5 mr-1.5" />Print
+          </Button>
+          <Button variant="outline" size="sm" onClick={onExcel}>
+            <Download className="h-3.5 w-3.5 mr-1.5" />Excel
+          </Button>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Salary Register ───────────────────────────────────────────────────────────
+function SalaryRegisterReport() {
+  const [month, setMonth] = useState(currentMonth);
+  const [year, setYear] = useState(String(currentYear));
+  const [deptId, setDeptId] = useState("all");
+  const [fetched, setFetched] = useState(false);
+  const { data: depts = [] } = useQuery<any[]>({ queryKey: ["/api/hr/departments"] });
+  const queryParams = new URLSearchParams({ month, year });
+  if (deptId !== "all") queryParams.set("departmentId", deptId);
+  const { data: rows = [], isLoading, refetch } = useQuery<any[]>({
+    queryKey: ["/api/hr/reports/salary-register", month, year, deptId],
+    queryFn: async () => {
+      const r = await fetch(`/api/hr/reports/salary-register?${queryParams}`, { credentials: "include" });
+      if (!r.ok) throw new Error((await r.json()).message || "Failed");
+      return (await r.json()) || [];
+    },
+    enabled: fetched,
+  });
+
+  const totalGross = rows.reduce((s: number, r: any) => s + Number(r.gross_salary || 0), 0);
+  const totalNet = rows.reduce((s: number, r: any) => s + Number(r.net_salary || 0), 0);
+
+  return (
+    <div className="space-y-4">
+      <MonthYearFilter month={month} year={year} setMonth={setMonth} setYear={setYear}
+        deptId={deptId} setDeptId={setDeptId} depts={depts}
+        onGenerate={() => { setFetched(true); refetch(); }}
+        hasData={rows.length > 0}
+        onExcel={() => exportToExcel(rows, [
+          { key: "emp_code", label: "Emp Code" }, { key: "first_name", label: "First Name" }, { key: "last_name", label: "Last Name" },
+          { key: "department_name", label: "Department" }, { key: "designation_name", label: "Designation" },
+          { key: "bank_name", label: "Bank" }, { key: "bank_account", label: "Account No" }, { key: "ifsc", label: "IFSC" },
+          { key: "uan", label: "UAN" }, { key: "pf_number", label: "PF No" }, { key: "esi_number", label: "ESI No" }, { key: "pan", label: "PAN" },
+          { key: "days_in_month", label: "Days in Month" }, { key: "days_worked", label: "Days Worked" }, { key: "lop_days", label: "LOP" },
+          { key: "basic_salary", label: "Basic" }, { key: "gross_salary", label: "Gross" },
+          { key: "pf_employee", label: "PF (EE)" }, { key: "pf_employer", label: "PF (ER)" },
+          { key: "esi_employee", label: "ESI (EE)" }, { key: "esi_employer", label: "ESI (ER)" },
+          { key: "pt", label: "PT" }, { key: "tds", label: "TDS" }, { key: "other_deductions", label: "Other Deductions" },
+          { key: "total_deductions", label: "Total Deductions" }, { key: "net_salary", label: "Net Salary" },
+        ], `Salary_Register_${MONTHS.find(m => m.value === month)?.label}_${year}`)}
+      />
+      {fetched && (
+        <div className="overflow-x-auto rounded-md border">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50">
+              <tr>
+                <th className="px-3 py-2.5 text-left font-medium text-muted-foreground">Employee</th>
+                <th className="px-3 py-2.5 text-left font-medium text-muted-foreground">Department</th>
+                <th className="px-3 py-2.5 text-center font-medium text-muted-foreground">Days Worked</th>
+                <th className="px-3 py-2.5 text-right font-medium text-muted-foreground">Basic</th>
+                <th className="px-3 py-2.5 text-right font-medium text-muted-foreground">Gross</th>
+                <th className="px-3 py-2.5 text-right font-medium text-muted-foreground">PF (EE)</th>
+                <th className="px-3 py-2.5 text-right font-medium text-muted-foreground">ESI (EE)</th>
+                <th className="px-3 py-2.5 text-right font-medium text-muted-foreground">PT</th>
+                <th className="px-3 py-2.5 text-right font-medium text-muted-foreground">TDS</th>
+                <th className="px-3 py-2.5 text-right font-medium text-muted-foreground">Net Pay</th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading ? (
+                <tr><td colSpan={10} className="px-3 py-8 text-center text-muted-foreground">Loading...</td></tr>
+              ) : rows.length === 0 ? (
+                <tr><td colSpan={10} className="px-3 py-8 text-center text-muted-foreground">No payslips found for selected period</td></tr>
+              ) : rows.map((r: any) => (
+                <tr key={r.id} className="border-t">
+                  <td className="px-3 py-2"><p className="font-medium">{r.first_name} {r.last_name}</p><p className="text-xs text-muted-foreground">{r.emp_code}</p></td>
+                  <td className="px-3 py-2 text-muted-foreground">{r.department_name || "—"}</td>
+                  <td className="px-3 py-2 text-center">{r.days_worked}/{r.days_in_month}</td>
+                  <td className="px-3 py-2 text-right">{fmt(r.basic_salary)}</td>
+                  <td className="px-3 py-2 text-right">{fmt(r.gross_salary)}</td>
+                  <td className="px-3 py-2 text-right">{fmt(r.pf_employee)}</td>
+                  <td className="px-3 py-2 text-right">{fmt(r.esi_employee)}</td>
+                  <td className="px-3 py-2 text-right">{fmt(r.pt)}</td>
+                  <td className="px-3 py-2 text-right">{fmt(r.tds)}</td>
+                  <td className="px-3 py-2 text-right font-medium">{fmt(r.net_salary)}</td>
+                </tr>
+              ))}
+            </tbody>
+            {rows.length > 0 && (
+              <tfoot className="bg-muted/30 font-medium">
+                <tr><td colSpan={4} className="px-3 py-2">Total — {rows.length} employees</td>
+                  <td className="px-3 py-2 text-right">{fmt(totalGross)}</td>
+                  <td colSpan={4} />
+                  <td className="px-3 py-2 text-right">{fmt(totalNet)}</td>
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── PF Register ───────────────────────────────────────────────────────────────
+function PFRegisterReport() {
+  const [month, setMonth] = useState(currentMonth);
+  const [year, setYear] = useState(String(currentYear));
+  const [fetched, setFetched] = useState(false);
+  const { data: rows = [], isLoading, refetch } = useQuery<any[]>({
+    queryKey: ["/api/hr/reports/pf-register", month, year],
+    queryFn: async () => {
+      const r = await fetch(`/api/hr/reports/pf-register?month=${month}&year=${year}`, { credentials: "include" });
+      if (!r.ok) throw new Error((await r.json()).message || "Failed");
+      return (await r.json()) || [];
+    },
+    enabled: fetched,
+  });
+
+  const totalEE = rows.reduce((s: number, r: any) => s + Number(r.pf_employee || 0), 0);
+  const totalER = rows.reduce((s: number, r: any) => s + Number(r.pf_employer || 0), 0);
+
+  return (
+    <div className="space-y-4">
+      <MonthYearFilter month={month} year={year} setMonth={setMonth} setYear={setYear}
+        onGenerate={() => { setFetched(true); refetch(); }}
+        hasData={rows.length > 0}
+        onExcel={() => exportToExcel(rows, [
+          { key: "emp_code", label: "Emp Code" }, { key: "first_name", label: "First Name" }, { key: "last_name", label: "Last Name" },
+          { key: "uan", label: "UAN" }, { key: "pf_number", label: "PF Number" }, { key: "pan", label: "PAN" },
+          { key: "department_name", label: "Department" },
+          { key: "basic_salary", label: "Basic Salary" },
+          { key: "pf_employee", label: "PF Employee (12%)" }, { key: "pf_employer", label: "PF Employer (12%)" }, { key: "total_pf", label: "Total PF" },
+        ], `PF_Register_${MONTHS.find(m => m.value === month)?.label}_${year}`)}
+      />
+      {fetched && (
+        <div className="overflow-x-auto rounded-md border">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50">
+              <tr>
+                <th className="px-3 py-2.5 text-left font-medium text-muted-foreground">Employee</th>
+                <th className="px-3 py-2.5 text-left font-medium text-muted-foreground">UAN</th>
+                <th className="px-3 py-2.5 text-left font-medium text-muted-foreground">PF Number</th>
+                <th className="px-3 py-2.5 text-right font-medium text-muted-foreground">Basic</th>
+                <th className="px-3 py-2.5 text-right font-medium text-muted-foreground">PF Employee</th>
+                <th className="px-3 py-2.5 text-right font-medium text-muted-foreground">PF Employer</th>
+                <th className="px-3 py-2.5 text-right font-medium text-muted-foreground">Total PF</th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading ? (
+                <tr><td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">Loading...</td></tr>
+              ) : rows.length === 0 ? (
+                <tr><td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">No PF data found for selected period</td></tr>
+              ) : rows.map((r: any) => (
+                <tr key={r.emp_code} className="border-t">
+                  <td className="px-3 py-2"><p className="font-medium">{r.first_name} {r.last_name}</p><p className="text-xs text-muted-foreground">{r.emp_code}</p></td>
+                  <td className="px-3 py-2">{r.uan || "—"}</td>
+                  <td className="px-3 py-2">{r.pf_number || "—"}</td>
+                  <td className="px-3 py-2 text-right">{fmt(r.basic_salary)}</td>
+                  <td className="px-3 py-2 text-right">{fmt(r.pf_employee)}</td>
+                  <td className="px-3 py-2 text-right">{fmt(r.pf_employer)}</td>
+                  <td className="px-3 py-2 text-right font-medium">{fmt(r.total_pf)}</td>
+                </tr>
+              ))}
+            </tbody>
+            {rows.length > 0 && (
+              <tfoot className="bg-muted/30 font-medium">
+                <tr><td colSpan={4} className="px-3 py-2">Total — {rows.length} employees</td>
+                  <td className="px-3 py-2 text-right">{fmt(totalEE)}</td>
+                  <td className="px-3 py-2 text-right">{fmt(totalER)}</td>
+                  <td className="px-3 py-2 text-right">{fmt(totalEE + totalER)}</td>
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── ESI Register ──────────────────────────────────────────────────────────────
+function ESIRegisterReport() {
+  const [month, setMonth] = useState(currentMonth);
+  const [year, setYear] = useState(String(currentYear));
+  const [fetched, setFetched] = useState(false);
+  const { data: rows = [], isLoading, refetch } = useQuery<any[]>({
+    queryKey: ["/api/hr/reports/esi-register", month, year],
+    queryFn: async () => {
+      const r = await fetch(`/api/hr/reports/esi-register?month=${month}&year=${year}`, { credentials: "include" });
+      if (!r.ok) throw new Error((await r.json()).message || "Failed");
+      return (await r.json()) || [];
+    },
+    enabled: fetched,
+  });
+
+  const totalEE = rows.reduce((s: number, r: any) => s + Number(r.esi_employee || 0), 0);
+  const totalER = rows.reduce((s: number, r: any) => s + Number(r.esi_employer || 0), 0);
+
+  return (
+    <div className="space-y-4">
+      <MonthYearFilter month={month} year={year} setMonth={setMonth} setYear={setYear}
+        onGenerate={() => { setFetched(true); refetch(); }}
+        hasData={rows.length > 0}
+        onExcel={() => exportToExcel(rows, [
+          { key: "emp_code", label: "Emp Code" }, { key: "first_name", label: "First Name" }, { key: "last_name", label: "Last Name" },
+          { key: "esi_number", label: "ESI Number" }, { key: "department_name", label: "Department" },
+          { key: "gross_salary", label: "Gross Salary" },
+          { key: "esi_employee", label: "ESI Employee (0.75%)" }, { key: "esi_employer", label: "ESI Employer (3.25%)" }, { key: "total_esi", label: "Total ESI" },
+        ], `ESI_Register_${MONTHS.find(m => m.value === month)?.label}_${year}`)}
+      />
+      {fetched && (
+        <div className="overflow-x-auto rounded-md border">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50">
+              <tr>
+                <th className="px-3 py-2.5 text-left font-medium text-muted-foreground">Employee</th>
+                <th className="px-3 py-2.5 text-left font-medium text-muted-foreground">ESI Number</th>
+                <th className="px-3 py-2.5 text-right font-medium text-muted-foreground">Gross</th>
+                <th className="px-3 py-2.5 text-right font-medium text-muted-foreground">ESI Employee (0.75%)</th>
+                <th className="px-3 py-2.5 text-right font-medium text-muted-foreground">ESI Employer (3.25%)</th>
+                <th className="px-3 py-2.5 text-right font-medium text-muted-foreground">Total ESI</th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading ? (
+                <tr><td colSpan={6} className="px-3 py-8 text-center text-muted-foreground">Loading...</td></tr>
+              ) : rows.length === 0 ? (
+                <tr><td colSpan={6} className="px-3 py-8 text-center text-muted-foreground">No ESI data found for selected period</td></tr>
+              ) : rows.map((r: any) => (
+                <tr key={r.emp_code} className="border-t">
+                  <td className="px-3 py-2"><p className="font-medium">{r.first_name} {r.last_name}</p><p className="text-xs text-muted-foreground">{r.emp_code}</p></td>
+                  <td className="px-3 py-2">{r.esi_number || "—"}</td>
+                  <td className="px-3 py-2 text-right">{fmt(r.gross_salary)}</td>
+                  <td className="px-3 py-2 text-right">{fmt(r.esi_employee)}</td>
+                  <td className="px-3 py-2 text-right">{fmt(r.esi_employer)}</td>
+                  <td className="px-3 py-2 text-right font-medium">{fmt(r.total_esi)}</td>
+                </tr>
+              ))}
+            </tbody>
+            {rows.length > 0 && (
+              <tfoot className="bg-muted/30 font-medium">
+                <tr><td colSpan={3} className="px-3 py-2">Total — {rows.length} employees</td>
+                  <td className="px-3 py-2 text-right">{fmt(totalEE)}</td>
+                  <td className="px-3 py-2 text-right">{fmt(totalER)}</td>
+                  <td className="px-3 py-2 text-right">{fmt(totalEE + totalER)}</td>
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── PT Register ───────────────────────────────────────────────────────────────
+function PTRegisterReport() {
+  const [month, setMonth] = useState(currentMonth);
+  const [year, setYear] = useState(String(currentYear));
+  const [fetched, setFetched] = useState(false);
+  const { data: rows = [], isLoading, refetch } = useQuery<any[]>({
+    queryKey: ["/api/hr/reports/pt-register", month, year],
+    queryFn: async () => {
+      const r = await fetch(`/api/hr/reports/pt-register?month=${month}&year=${year}`, { credentials: "include" });
+      if (!r.ok) throw new Error((await r.json()).message || "Failed");
+      return (await r.json()) || [];
+    },
+    enabled: fetched,
+  });
+
+  const totalPT = rows.reduce((s: number, r: any) => s + Number(r.pt || 0), 0);
+
+  return (
+    <div className="space-y-4">
+      <MonthYearFilter month={month} year={year} setMonth={setMonth} setYear={setYear}
+        onGenerate={() => { setFetched(true); refetch(); }}
+        hasData={rows.length > 0}
+        onExcel={() => exportToExcel(rows, [
+          { key: "emp_code", label: "Emp Code" }, { key: "first_name", label: "First Name" }, { key: "last_name", label: "Last Name" },
+          { key: "pan", label: "PAN" }, { key: "department_name", label: "Department" }, { key: "designation_name", label: "Designation" },
+          { key: "gross_salary", label: "Gross Salary" }, { key: "pt", label: "Professional Tax" },
+        ], `PT_Register_${MONTHS.find(m => m.value === month)?.label}_${year}`)}
+      />
+      {fetched && (
+        <div className="overflow-x-auto rounded-md border">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50">
+              <tr>
+                <th className="px-3 py-2.5 text-left font-medium text-muted-foreground">Employee</th>
+                <th className="px-3 py-2.5 text-left font-medium text-muted-foreground">PAN</th>
+                <th className="px-3 py-2.5 text-left font-medium text-muted-foreground">Department</th>
+                <th className="px-3 py-2.5 text-right font-medium text-muted-foreground">Gross</th>
+                <th className="px-3 py-2.5 text-right font-medium text-muted-foreground">Professional Tax</th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading ? (
+                <tr><td colSpan={5} className="px-3 py-8 text-center text-muted-foreground">Loading...</td></tr>
+              ) : rows.length === 0 ? (
+                <tr><td colSpan={5} className="px-3 py-8 text-center text-muted-foreground">No PT data found for selected period</td></tr>
+              ) : rows.map((r: any) => (
+                <tr key={r.emp_code} className="border-t">
+                  <td className="px-3 py-2"><p className="font-medium">{r.first_name} {r.last_name}</p><p className="text-xs text-muted-foreground">{r.emp_code}</p></td>
+                  <td className="px-3 py-2">{r.pan || "—"}</td>
+                  <td className="px-3 py-2 text-muted-foreground">{r.department_name || "—"}</td>
+                  <td className="px-3 py-2 text-right">{fmt(r.gross_salary)}</td>
+                  <td className="px-3 py-2 text-right font-medium">{fmt(r.pt)}</td>
+                </tr>
+              ))}
+            </tbody>
+            {rows.length > 0 && (
+              <tfoot className="bg-muted/30 font-medium">
+                <tr><td colSpan={4} className="px-3 py-2">Total — {rows.length} employees</td>
+                  <td className="px-3 py-2 text-right">{fmt(totalPT)}</td>
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main Reports Page ─────────────────────────────────────────────────────────
 export default function HrReports() {
   return (
@@ -707,6 +1068,10 @@ export default function HrReports() {
           <TabsTrigger value="payroll">Payroll Summary</TabsTrigger>
           <TabsTrigger value="leave">Leave Balance</TabsTrigger>
           <TabsTrigger value="revisions">Salary Revisions</TabsTrigger>
+          <TabsTrigger value="salary-register">Salary Register</TabsTrigger>
+          <TabsTrigger value="pf">PF Register</TabsTrigger>
+          <TabsTrigger value="esi">ESI Register</TabsTrigger>
+          <TabsTrigger value="pt">PT Register</TabsTrigger>
         </TabsList>
 
         <div className="mt-4">
@@ -715,6 +1080,10 @@ export default function HrReports() {
           <TabsContent value="payroll"><PayrollSummaryReport /></TabsContent>
           <TabsContent value="leave"><LeaveBalanceReport /></TabsContent>
           <TabsContent value="revisions"><SalaryRevisionReport /></TabsContent>
+          <TabsContent value="salary-register"><SalaryRegisterReport /></TabsContent>
+          <TabsContent value="pf"><PFRegisterReport /></TabsContent>
+          <TabsContent value="esi"><ESIRegisterReport /></TabsContent>
+          <TabsContent value="pt"><PTRegisterReport /></TabsContent>
         </div>
       </Tabs>
     </div>
