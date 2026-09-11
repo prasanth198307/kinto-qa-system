@@ -9,17 +9,31 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Printer, Download, Users, CalendarDays, IndianRupee, TrendingUp, FileBarChart2 } from "lucide-react";
 import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
-import * as XLSX from "xlsx";
+import XLSXStyle from "xlsx-js-style";
 let sym = "₹"; // overridden per-component via useTenantConfig
 
 function exportToExcel(rows: any[], columns: { key: string; label: string }[], filename: string) {
   const header = columns.map(c => c.label);
   const data = rows.map(row => columns.map(col => row[col.key] ?? ""));
 
-  const ws = XLSX.utils.aoa_to_sheet([header, ...data]);
+  const ws = XLSXStyle.utils.aoa_to_sheet([header, ...data]);
+
+  // Style header row — bold, blue background, white text, centered
+  const headerStyle = {
+    font: { bold: true, color: { rgb: "FFFFFF" }, sz: 11 },
+    fill: { fgColor: { rgb: "2E4A8B" }, patternType: "solid" },
+    alignment: { horizontal: "center", vertical: "center", wrapText: false },
+    border: {
+      bottom: { style: "thin", color: { rgb: "FFFFFF" } },
+    },
+  };
+  columns.forEach((_, ci) => {
+    const cellRef = XLSXStyle.utils.encode_cell({ r: 0, c: ci });
+    if (ws[cellRef]) ws[cellRef].s = headerStyle;
+  });
 
   // Auto column widths
-  ws["!cols"] = columns.map((col, ci) => {
+  ws["!cols"] = columns.map((col) => {
     const maxLen = Math.max(
       col.label.length,
       ...rows.map(row => String(row[col.key] ?? "").length)
@@ -30,9 +44,12 @@ function exportToExcel(rows: any[], columns: { key: string; label: string }[], f
   // Freeze first row
   ws["!views"] = [{ state: "frozen", ySplit: 1 }];
 
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Report");
-  XLSX.writeFile(wb, `${filename}.xlsx`);
+  // Row height for header
+  ws["!rows"] = [{ hpt: 20 }];
+
+  const wb = XLSXStyle.utils.book_new();
+  XLSXStyle.utils.book_append_sheet(wb, ws, "Report");
+  XLSXStyle.writeFile(wb, `${filename}.xlsx`);
 }
 
 const MONTHS = [
