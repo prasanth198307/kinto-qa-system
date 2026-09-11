@@ -128,8 +128,6 @@ function EmployeeDirectoryReport() {
               { key: "ta_amount", label: "TA" },
               { key: "da_amount", label: "DA" },
               { key: "ctc", label: "CTC" },
-              { key: "pf_enabled", label: "PF Enabled" },
-              { key: "esi_enabled", label: "ESI Enabled" },
               { key: "emergency_contact_name", label: "Emergency Contact" },
               { key: "emergency_contact", label: "Emergency Phone" },
             ],
