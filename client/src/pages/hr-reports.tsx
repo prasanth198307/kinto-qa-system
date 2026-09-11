@@ -9,7 +9,20 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Printer, Download, Users, CalendarDays, IndianRupee, TrendingUp, FileBarChart2 } from "lucide-react";
 import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
+import * as XLSX from "xlsx";
 let sym = "₹"; // overridden per-component via useTenantConfig
+
+function exportToExcel(rows: any[], columns: { key: string; label: string }[], filename: string) {
+  const data = rows.map(row => {
+    const obj: any = {};
+    columns.forEach(col => { obj[col.label] = row[col.key] ?? ""; });
+    return obj;
+  });
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Report");
+  XLSX.writeFile(wb, `${filename}.xlsx`);
+}
 
 const MONTHS = [
   { value: "1", label: "January" }, { value: "2", label: "February" }, { value: "3", label: "March" },
@@ -76,6 +89,25 @@ function EmployeeDirectoryReport() {
         <Button variant="outline" size="sm" onClick={handlePrint}>
           <Printer className="h-3.5 w-3.5 mr-1.5" />Print
         </Button>
+        {employees.length > 0 && (
+          <Button variant="outline" size="sm" onClick={() => exportToExcel(
+            employees,
+            [
+              { key: "emp_code", label: "Emp Code" },
+              { key: "first_name", label: "First Name" },
+              { key: "last_name", label: "Last Name" },
+              { key: "department_name", label: "Department" },
+              { key: "designation_name", label: "Designation" },
+              { key: "phone", label: "Phone" },
+              { key: "email", label: "Email" },
+              { key: "join_date", label: "Join Date" },
+              { key: "status", label: "Status" },
+            ],
+            "Employee_Directory"
+          )}>
+            <Download className="h-3.5 w-3.5 mr-1.5" />Excel
+          </Button>
+        )}
       </div>
 
       <div className="print-area overflow-x-auto rounded-md border">
@@ -179,9 +211,29 @@ function AttendanceSummaryReport() {
           Generate Report
         </Button>
         {rows.length > 0 && (
-          <Button variant="outline" size="sm" onClick={() => window.print()}>
-            <Printer className="h-3.5 w-3.5 mr-1.5" />Print
-          </Button>
+          <>
+            <Button variant="outline" size="sm" onClick={() => window.print()}>
+              <Printer className="h-3.5 w-3.5 mr-1.5" />Print
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => exportToExcel(
+              rows,
+              [
+                { key: "emp_code", label: "Emp Code" },
+                { key: "first_name", label: "First Name" },
+                { key: "last_name", label: "Last Name" },
+                { key: "department_name", label: "Department" },
+                { key: "present_days", label: "Present" },
+                { key: "absent_days", label: "Absent" },
+                { key: "half_days", label: "Half Day" },
+                { key: "lop_days", label: "LOP" },
+                { key: "leave_days", label: "On Leave" },
+                { key: "total_ot_hours", label: "OT Hours" },
+              ],
+              `Attendance_Summary_${MONTHS.find(m => m.value === month)?.label}_${year}`
+            )}>
+              <Download className="h-3.5 w-3.5 mr-1.5" />Excel
+            </Button>
+          </>
         )}
       </div>
 
@@ -263,10 +315,34 @@ function PayrollSummaryReport() {
         </div>
       )}
 
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
         <Button variant="outline" size="sm" onClick={() => window.print()}>
           <Printer className="h-3.5 w-3.5 mr-1.5" />Print
         </Button>
+        {rows.length > 0 && (
+          <Button variant="outline" size="sm" onClick={() => exportToExcel(
+            rows.map(r => ({
+              ...r,
+              period: `${MONTHS.find(m => m.value === String(r.month))?.label} ${r.year}`,
+            })),
+            [
+              { key: "period", label: "Period" },
+              { key: "run_status", label: "Status" },
+              { key: "employee_count", label: "Employees" },
+              { key: "total_gross", label: "Gross" },
+              { key: "total_pf_employee", label: "PF (EE)" },
+              { key: "total_pf_employer", label: "PF (ER)" },
+              { key: "total_esi_employee", label: "ESI (EE)" },
+              { key: "total_esi_employer", label: "ESI (ER)" },
+              { key: "total_pt", label: "PT" },
+              { key: "total_tds", label: "TDS" },
+              { key: "total_net", label: "Net Pay" },
+            ],
+            "Payroll_Summary"
+          )}>
+            <Download className="h-3.5 w-3.5 mr-1.5" />Excel
+          </Button>
+        )}
       </div>
 
       <div className="overflow-x-auto rounded-md border">
@@ -367,9 +443,28 @@ function LeaveBalanceReport() {
           Generate Report
         </Button>
         {Object.keys(grouped).length > 0 && (
-          <Button variant="outline" size="sm" onClick={() => window.print()}>
-            <Printer className="h-3.5 w-3.5 mr-1.5" />Print
-          </Button>
+          <>
+            <Button variant="outline" size="sm" onClick={() => window.print()}>
+              <Printer className="h-3.5 w-3.5 mr-1.5" />Print
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => exportToExcel(
+              rows,
+              [
+                { key: "emp_code", label: "Emp Code" },
+                { key: "first_name", label: "First Name" },
+                { key: "last_name", label: "Last Name" },
+                { key: "department_name", label: "Department" },
+                { key: "leave_type", label: "Leave Type" },
+                { key: "leave_code", label: "Leave Code" },
+                { key: "total_days", label: "Allotted" },
+                { key: "used_days", label: "Used" },
+                { key: "balance_days", label: "Balance" },
+              ],
+              `Leave_Balance_${year}`
+            )}>
+              <Download className="h-3.5 w-3.5 mr-1.5" />Excel
+            </Button>
+          </>
         )}
       </div>
 
@@ -474,9 +569,29 @@ function SalaryRevisionReport() {
           Generate Report
         </Button>
         {rows.length > 0 && (
-          <Button variant="outline" size="sm" onClick={() => window.print()}>
-            <Printer className="h-3.5 w-3.5 mr-1.5" />Print
-          </Button>
+          <>
+            <Button variant="outline" size="sm" onClick={() => window.print()}>
+              <Printer className="h-3.5 w-3.5 mr-1.5" />Print
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => exportToExcel(
+              rows,
+              [
+                { key: "emp_code", label: "Emp Code" },
+                { key: "first_name", label: "First Name" },
+                { key: "last_name", label: "Last Name" },
+                { key: "department_name", label: "Department" },
+                { key: "effective_date", label: "Effective Date" },
+                { key: "revision_type", label: "Type" },
+                { key: "old_basic", label: "Old Basic" },
+                { key: "new_basic", label: "New Basic" },
+                { key: "new_ctc", label: "New CTC" },
+                { key: "approved_by", label: "Approved By" },
+              ],
+              "Salary_Revisions"
+            )}>
+              <Download className="h-3.5 w-3.5 mr-1.5" />Excel
+            </Button>
+          </>
         )}
       </div>
 
