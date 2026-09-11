@@ -13,12 +13,23 @@ import * as XLSX from "xlsx";
 let sym = "₹"; // overridden per-component via useTenantConfig
 
 function exportToExcel(rows: any[], columns: { key: string; label: string }[], filename: string) {
-  const data = rows.map(row => {
-    const obj: any = {};
-    columns.forEach(col => { obj[col.label] = row[col.key] ?? ""; });
-    return obj;
+  const header = columns.map(c => c.label);
+  const data = rows.map(row => columns.map(col => row[col.key] ?? ""));
+
+  const ws = XLSX.utils.aoa_to_sheet([header, ...data]);
+
+  // Auto column widths
+  ws["!cols"] = columns.map((col, ci) => {
+    const maxLen = Math.max(
+      col.label.length,
+      ...rows.map(row => String(row[col.key] ?? "").length)
+    );
+    return { wch: Math.min(Math.max(maxLen + 2, 10), 40) };
   });
-  const ws = XLSX.utils.json_to_sheet(data);
+
+  // Freeze first row
+  ws["!views"] = [{ state: "frozen", ySplit: 1 }];
+
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Report");
   XLSX.writeFile(wb, `${filename}.xlsx`);
