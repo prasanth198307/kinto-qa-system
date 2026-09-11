@@ -20,6 +20,8 @@ import {
 } from "lucide-react";
 import { CustomFieldsSection } from "@/components/custom-fields-section";
 import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
+import { usePagination } from "@/hooks/use-pagination";
+import { PaginationBar } from "@/components/PaginationBar";
 
 const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
 const DOCUMENT_TYPES = [
@@ -1349,6 +1351,7 @@ export default function HrEmployees() {
     const matchDept = deptFilter === "all" || String(e.department_id) === deptFilter;
     return matchSearch && matchStatus && matchDept;
   });
+  const { page, setPage, totalPages, paged: pagedEmps, total: filteredTotal } = usePagination(filtered, 20);
 
   // summary stats
   const activeCount = employees.filter((e: any) => e.status === "active").length;
@@ -1435,7 +1438,7 @@ export default function HrEmployees() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((emp: any) => (
+              {pagedEmps.map((emp: any) => (
                 <tr key={emp.id} className="border-t hover-elevate cursor-pointer" onClick={() => setViewingEmp(emp)} data-testid={`row-employee-${emp.id}`}>
                   <td className="px-3 py-2.5">
                     <div className="flex items-center gap-2">
@@ -1481,6 +1484,7 @@ export default function HrEmployees() {
               ))}
             </tbody>
           </table>
+          <PaginationBar page={page} totalPages={totalPages} total={filteredTotal} pageSize={20} onPageChange={setPage} />
         </div>
       )}
 

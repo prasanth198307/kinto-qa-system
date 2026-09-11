@@ -12,6 +12,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, CheckCircle, XCircle, Clock, ChevronLeft, ChevronRight, RefreshCw, FileDown } from "lucide-react";
+import { usePagination } from "@/hooks/use-pagination";
+import { PaginationBar } from "@/components/PaginationBar";
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "secondary",
@@ -51,7 +53,7 @@ export default function HRLeavesPage() {
 
   const { data: employees = [] } = useQuery<any[]>({ queryKey: ["/api/hr/employees"] });
   const { data: leaveTypes = [] } = useQuery<any[]>({ queryKey: ["/api/hr/leave-types"] });
-  const { data: applications = [] } = useQuery({
+  const { data: applicationsRaw = [] } = useQuery({
     queryKey: ["/api/hr/leave-applications", statusFilter],
     queryFn: () => {
       const url = statusFilter !== "all"
@@ -60,6 +62,9 @@ export default function HRLeavesPage() {
       return fetch(url, { credentials: "include" }).then(async r => { if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText)); return r.json(); });
     },
   });
+
+  const applications = applicationsRaw as any[];
+  const { page: leavePage, setPage: setLeavePage, totalPages: leaveTotalPages, paged: pagedApplications, total: leaveTotal } = usePagination(applications, 20);
 
   const { data: calendarData = [] } = useQuery({
     queryKey: ["/api/hr/leave-calendar", calMonth, calYear],
@@ -183,10 +188,10 @@ export default function HRLeavesPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {(applications as any[]).length === 0 && (
+                    {pagedApplications.length === 0 && (
                       <tr><td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">No applications found</td></tr>
                     )}
-                    {(applications as any[]).map((app: any) => (
+                    {pagedApplications.map((app: any) => (
                       <tr key={app.id} className="border-t">
                         <td className="px-3 py-2">
                           <p className="font-medium">{app.first_name} {app.last_name}</p>
@@ -216,6 +221,7 @@ export default function HRLeavesPage() {
                     ))}
                   </tbody>
                 </table>
+                <PaginationBar page={leavePage} totalPages={leaveTotalPages} total={leaveTotal} pageSize={20} onPageChange={setLeavePage} />
               </div>
             </CardContent>
           </Card>

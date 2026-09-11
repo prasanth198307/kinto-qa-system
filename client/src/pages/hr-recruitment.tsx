@@ -12,6 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
+import { usePagination } from "@/hooks/use-pagination";
+import { PaginationBar } from "@/components/PaginationBar";
 import {
   Plus, Search, Briefcase, Users, Clock, CheckCircle2,
   XCircle, Star, Phone, Mail, Building2, Calendar, Trash2, ChevronRight
@@ -308,6 +310,7 @@ export default function HrRecruitment() {
     return matchSearch && matchStage && matchOpening;
   });
 
+  const { page: appPage, setPage: setAppPage, totalPages: appTotalPages, paged: pagedApps, total: appTotal } = usePagination(filteredApps, 20);
   const totalOpen = (openings as any[]).filter((o: any) => o.status === "open").length;
   const totalApps = (applications as any[]).length;
   const totalSelected = (applications as any[]).filter((a: any) => a.stage === "selected" || a.stage === "joined").length;
@@ -446,7 +449,7 @@ export default function HrRecruitment() {
                   ))}
                 </tr></thead>
                 <tbody>
-                  {filteredApps.map((app: any) => {
+                  {pagedApps.map((app: any) => {
                     const stage = getStage(app.stage);
                     return (
                       <tr key={app.id} className="border-t hover-elevate" data-testid={`row-app-${app.id}`}>
@@ -486,7 +489,7 @@ export default function HrRecruitment() {
                   })}
                 </tbody>
               </table>
-              <div className="px-3 py-2 border-t bg-muted/30 text-sm text-muted-foreground">{filteredApps.length} application{filteredApps.length !== 1 ? "s" : ""}</div>
+              <PaginationBar page={appPage} totalPages={appTotalPages} total={appTotal} pageSize={20} onPageChange={setAppPage} />
             </div>
           )}
         </TabsContent>

@@ -12,6 +12,8 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Plus, CreditCard, ChevronDown, ChevronRight, Wallet } from "lucide-react";
 import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
+import { usePagination } from "@/hooks/use-pagination";
+import { PaginationBar } from "@/components/PaginationBar";
 
 const MONTHS = ["", "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December"];
@@ -79,10 +81,11 @@ export default function HRLoansPage() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/hr/loans"] }); toast({ title: "Loan closed" }); },
   });
 
-  const filtered = (loans as any[]).filter(l =>
+  const filteredLoans = (loans as any[]).filter(l =>
     !filterEmp || `${l.first_name} ${l.last_name} ${l.emp_code}`.toLowerCase().includes(filterEmp.toLowerCase())
   );
 
+  const { page: loanPage, setPage: setLoanPage, totalPages: loanTotalPages, paged: pagedLoans, total: loanTotal } = usePagination(filteredLoans, 20);
   const activeCount = (loans as any[]).filter(l => l.status === 'active').length;
   const totalOutstanding = (loans as any[]).filter(l => l.status === 'active').reduce((s, l) => s + Number(l.outstanding), 0);
 
@@ -139,7 +142,7 @@ export default function HRLoansPage() {
       {/* Loan list */}
       {isLoading ? (
         <Card><CardContent className="py-8 text-center text-muted-foreground">Loading...</CardContent></Card>
-      ) : filtered.length === 0 ? (
+      ) : filteredLoans.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <Wallet className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
@@ -149,7 +152,7 @@ export default function HRLoansPage() {
         </Card>
       ) : (
         <div className="space-y-2">
-          {filtered.map((loan: any) => (
+          {pagedLoans.map((loan: any) => (
             <Card key={loan.id}>
               <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -251,6 +254,7 @@ export default function HRLoansPage() {
               </CardContent>
             </Card>
           ))}
+          <PaginationBar page={loanPage} totalPages={loanTotalPages} total={loanTotal} pageSize={20} onPageChange={setLoanPage} />
         </div>
       )}
 

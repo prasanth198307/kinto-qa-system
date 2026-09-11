@@ -14,6 +14,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2, CheckCircle, XCircle, Wallet, Receipt, ChevronDown, ChevronUp } from "lucide-react";
 import { InlineAttachments } from "@/components/inline-attachments";
+import { usePagination } from "@/hooks/use-pagination";
+import { PaginationBar } from "@/components/PaginationBar";
 import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 
 const EXPENSE_CATEGORIES = ["Travel", "Accommodation", "Meals", "Fuel", "Communication", "Office Supplies", "Medical", "Training", "Client Entertainment", "Other"];
@@ -211,6 +213,7 @@ export default function HRExpenseClaimsPage() {
 
   const filteredClaims = activeTab === "all" ? claims : claims.filter(c => c.status === activeTab);
   const pendingInView = filteredClaims.filter(c => c.status === "pending");
+  const { page: claimPage, setPage: setClaimPage, totalPages: claimTotalPages, paged: pagedClaims, total: claimTotal } = usePagination(filteredClaims, 20);
 
   const stats = {
     pending: claims.filter(c => c.status === "pending").length,
@@ -290,7 +293,7 @@ export default function HRExpenseClaimsPage() {
               <p>No expense claims</p>
             </div>
           ) : (
-            filteredClaims.map(claim => (
+            pagedClaims.map(claim => (
               <div key={claim.id} className="flex items-start gap-2">
                 {claim.status === "pending" && (
                   <Checkbox
@@ -311,6 +314,7 @@ export default function HRExpenseClaimsPage() {
               </div>
             ))
           )}
+          {claimTotalPages > 1 && <PaginationBar page={claimPage} totalPages={claimTotalPages} total={claimTotal} pageSize={20} onPageChange={setClaimPage} />}
         </TabsContent>
       </Tabs>
 
