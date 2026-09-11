@@ -2845,11 +2845,13 @@ router.get("/reports/employee-directory", requireHR, async (req: any, res) => {
   const { status, departmentId } = req.query;
   try {
     let q = sql`
-      SELECT e.*, d.name as department_name, des.name as designation_name, s.name as shift_name
+      SELECT e.*, d.name as department_name, des.name as designation_name, s.name as shift_name,
+        CONCAT(m.first_name, ' ', m.last_name) as reporting_manager_name
       FROM hr_employees e
       LEFT JOIN hr_departments d ON e.department_id = d.id
       LEFT JOIN hr_designations des ON e.designation_id = des.id
       LEFT JOIN hr_shifts s ON e.shift_id = s.id
+      LEFT JOIN hr_employees m ON e.reporting_manager_id = m.id
       WHERE e.tenant_id=${tid} AND e.record_status=1
     `;
     if (status) q = sql`${q} AND e.status=${status}`;
