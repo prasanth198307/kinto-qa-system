@@ -1485,8 +1485,17 @@ export default function ApiKeysPage() {
               <div>
                 <Label className="text-muted-foreground text-xs">Usage example</Label>
                 <pre className="mt-1 bg-muted rounded-md p-2.5 text-xs font-mono overflow-x-auto whitespace-pre-wrap break-all">
-{`curl https://your-domain.com/api/external/customer-outstanding \\
-  -H "Authorization: Bearer ${newKeyResult.rawKey}"`}
+{(() => {
+  const exampleApi = newKeyResult.scopes && newKeyResult.scopes.length > 0
+    ? catalogue.find(a => a.id === newKeyResult.scopes![0])
+    : null;
+  const examplePath = exampleApi?.path ?? '/api/external/customer-outstanding';
+  const domain = window.location.origin;
+  if (exampleApi?.method === 'POST') {
+    return `curl -X POST ${domain}${examplePath} \\\n  -H "Authorization: Bearer ${newKeyResult.rawKey}" \\\n  -H "Content-Type: application/json" \\\n  -d '{}'`;
+  }
+  return `curl ${domain}${examplePath} \\\n  -H "Authorization: Bearer ${newKeyResult.rawKey}"`;
+})()}
                 </pre>
               </div>
               <DialogFooter>
