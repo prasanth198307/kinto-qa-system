@@ -1391,28 +1391,38 @@ export default function ApiKeysPage() {
                     </div>
                   </div>
                   {!allAccess && (
-                    <div className="mt-3 pl-7 space-y-3" onClick={e => e.stopPropagation()}>
-                      <Input
-                        placeholder="Search APIs…"
-                        value={scopeSearch}
-                        onChange={e => setScopeSearch(e.target.value)}
-                        className="text-sm h-8"
-                        data-testid="input-scope-search"
-                      />
+                    <div className="mt-3 pl-7 space-y-3">
+                      <div onClick={e => e.stopPropagation()}>
+                        <Input
+                          placeholder="Search APIs…"
+                          value={scopeSearch}
+                          onChange={e => setScopeSearch(e.target.value)}
+                          className="text-sm h-8"
+                          data-testid="input-scope-search"
+                        />
+                      </div>
                       <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                        {catalogue
-                          .filter(api => {
-                            const q = scopeSearch.toLowerCase();
-                            return !q || api.label.toLowerCase().includes(q) || api.path.toLowerCase().includes(q) || api.method.toLowerCase().includes(q);
-                          })
-                          .map(api => (
+                        {(() => {
+                          const q = scopeSearch.toLowerCase();
+                          const filtered = catalogue.filter(api =>
+                            !q || api.label.toLowerCase().includes(q) || api.path.toLowerCase().includes(q) || api.method.toLowerCase().includes(q)
+                          );
+                          if (filtered.length === 0) {
+                            return <p className="text-xs text-muted-foreground italic py-2">No APIs match "{scopeSearch}"</p>;
+                          }
+                          return filtered.map(api => (
                             <div
                               key={api.id}
                               className="flex items-start gap-2.5 cursor-pointer"
-                              onClick={() => toggleScope(api.id)}
+                              onClick={e => { e.stopPropagation(); toggleScope(api.id); }}
                               data-testid={`scope-${api.id}`}
                             >
-                              <Checkbox checked={selectedScopes.includes(api.id)} onCheckedChange={() => toggleScope(api.id)} className="mt-0.5" />
+                              <Checkbox
+                                checked={selectedScopes.includes(api.id)}
+                                onCheckedChange={() => toggleScope(api.id)}
+                                onClick={e => e.stopPropagation()}
+                                className="mt-0.5"
+                              />
                               <div>
                                 <p className="text-sm font-medium flex items-center gap-1.5">
                                   <span className={`text-xs font-bold px-1.5 py-0.5 rounded font-mono ${METHOD_COLORS[api.method] ?? ''}`}>{api.method}</span>
@@ -1421,16 +1431,13 @@ export default function ApiKeysPage() {
                                 <p className="text-xs text-muted-foreground">{api.path}</p>
                               </div>
                             </div>
-                          ))}
-                        {catalogue.filter(api => {
-                          const q = scopeSearch.toLowerCase();
-                          return !q || api.label.toLowerCase().includes(q) || api.path.toLowerCase().includes(q) || api.method.toLowerCase().includes(q);
-                        }).length === 0 && (
-                          <p className="text-xs text-muted-foreground italic py-2">No APIs match "{scopeSearch}"</p>
-                        )}
+                          ));
+                        })()}
                       </div>
                       {selectedScopes.length > 0 && (
-                        <p className="text-xs text-muted-foreground">{selectedScopes.length} API{selectedScopes.length !== 1 ? 's' : ''} selected</p>
+                        <p className="text-xs text-muted-foreground" onClick={e => e.stopPropagation()}>
+                          {selectedScopes.length} API{selectedScopes.length !== 1 ? 's' : ''} selected
+                        </p>
                       )}
                     </div>
                   )}
