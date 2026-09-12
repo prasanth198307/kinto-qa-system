@@ -30484,8 +30484,11 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       const { name, scopes, description } = req.body;
       if (!name?.trim()) return res.status(400).json({ message: 'Key name is required' });
 
-      // Validate scopes — must be valid API IDs or null (= all access)
-      const validIds = EXTERNAL_API_CATALOGUE.map(a => a.id);
+      // Validate scopes — must be valid API IDs (built-in or custom) or null (= all access)
+      const tenantId: number = req.session?.tenantId ?? req.user?.tenantId ?? 1;
+      const customRows = await db.execute(sql`SELECT api_id FROM external_api_catalogue WHERE tenant_id = ${tenantId} AND record_status = 1`);
+      const customIds = (customRows.rows ?? []).map((r: any) => r.api_id as string);
+      const validIds = [...EXTERNAL_API_CATALOGUE.map(a => a.id), ...customIds];
       let scopesJson: string | null = null;
       if (Array.isArray(scopes) && scopes.length > 0) {
         const invalid = scopes.filter((s: string) => !validIds.includes(s));
@@ -30493,7 +30496,6 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
         scopesJson = JSON.stringify(scopes);
       }
 
-      const tenantId: number = req.session?.tenantId ?? req.user?.tenantId ?? 1;
       const rawKey = `kinto_${crypto.randomBytes(32).toString('hex')}`;
       const keyHash = crypto.createHash('sha256').update(rawKey).digest('hex');
 
