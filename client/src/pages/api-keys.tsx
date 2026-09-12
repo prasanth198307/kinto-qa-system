@@ -1068,6 +1068,11 @@ export default function ApiKeysPage() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/external-api-keys"] });
+      // Resolve example path now while catalogue is available; stored for display
+      const firstScopeId = data.scopes && data.scopes.length > 0 ? data.scopes[0] : null;
+      const exampleEntry = firstScopeId ? catalogue.find(a => a.id === firstScopeId) : null;
+      (data as any)._examplePath = exampleEntry?.path ?? null;
+      (data as any)._exampleMethod = exampleEntry?.method ?? 'GET';
       setNewKeyResult(data);
     },
     onError: () => toast({ title: "Failed to create API key", variant: "destructive" }),
@@ -1486,12 +1491,10 @@ export default function ApiKeysPage() {
                 <Label className="text-muted-foreground text-xs">Usage example</Label>
                 <pre className="mt-1 bg-muted rounded-md p-2.5 text-xs font-mono overflow-x-auto whitespace-pre-wrap break-all">
 {(() => {
-  const exampleApi = newKeyResult.scopes && newKeyResult.scopes.length > 0
-    ? catalogue.find(a => a.id === newKeyResult.scopes![0])
-    : null;
-  const examplePath = exampleApi?.path ?? '/api/external/customer-outstanding';
+  const examplePath = (newKeyResult as any)._examplePath ?? '/api/external/customer-outstanding';
+  const exampleMethod = (newKeyResult as any)._exampleMethod ?? 'GET';
   const domain = window.location.origin;
-  if (exampleApi?.method === 'POST') {
+  if (exampleMethod === 'POST') {
     return `curl -X POST ${domain}${examplePath} \\\n  -H "Authorization: Bearer ${newKeyResult.rawKey}" \\\n  -H "Content-Type: application/json" \\\n  -d '{}'`;
   }
   return `curl ${domain}${examplePath} \\\n  -H "Authorization: Bearer ${newKeyResult.rawKey}"`;
