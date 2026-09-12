@@ -11969,9 +11969,9 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       
       // Parse pagination params or use defaults to always return consistent format
       const { paginationRequestSchema } = await import('@shared/schema');
-      const paginationParams = paginationRequestSchema.parse({ 
-        page: page || 1, 
-        pageSize: pageSize || 1000 
+      const paginationParams = paginationRequestSchema.parse({
+        page: page || 1,
+        pageSize: pageSize || 100
       });
       
       const totalPages = Math.ceil(totalCount / paginationParams.pageSize);
