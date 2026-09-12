@@ -30484,14 +30484,17 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       const { name, scopes, description } = req.body;
       if (!name?.trim()) return res.status(400).json({ message: 'Key name is required' });
 
-      // Validate scopes — must be valid API IDs (built-in or custom) or null (= all access)
+      // Validate scopes — must be valid API IDs (built-in, proxy, or custom) or null (= all access)
       const tenantId: number = req.session?.tenantId ?? req.user?.tenantId ?? 1;
       const customRows = await db.execute(sql`SELECT api_id FROM external_api_definitions WHERE tenant_id = ${tenantId} AND is_active = 1`);
       const customIds = (customRows.rows ?? []).map((r: any) => r.api_id as string);
-      const validIds = [...EXTERNAL_API_CATALOGUE.map(a => a.id), ...customIds];
+      const builtInIds = EXTERNAL_API_CATALOGUE.map(a => a.id);
       let scopesJson: string | null = null;
       if (Array.isArray(scopes) && scopes.length > 0) {
-        const invalid = scopes.filter((s: string) => !validIds.includes(s));
+        // proxy_ IDs are auto-generated system entries (not stored in DB); allow them by prefix
+        const invalid = scopes.filter((s: string) =>
+          !builtInIds.includes(s) && !customIds.includes(s) && !s.startsWith('proxy_')
+        );
         if (invalid.length > 0) return res.status(400).json({ message: `Invalid scope(s): ${invalid.join(', ')}` });
         scopesJson = JSON.stringify(scopes);
       }
