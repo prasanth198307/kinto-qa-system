@@ -135,8 +135,17 @@ export default function AdminUserManagement() {
     queryKey: ['/api/roles'],
   });
 
-  // Show all roles — module filtering was hiding valid roles from admins
-  const roles = allRoles;
+  // Deduplicate roles by lowercase name — prefer UUID IDs over legacy string IDs
+  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const rolesByName = new Map<string, Role>();
+  for (const role of allRoles) {
+    const key = role.name.toLowerCase();
+    const existing = rolesByName.get(key);
+    if (!existing || uuidPattern.test(role.id)) {
+      rolesByName.set(key, role);
+    }
+  }
+  const roles = Array.from(rolesByName.values());
 
   // Update user profile + roles
   const updateUserMutation = useMutation({
