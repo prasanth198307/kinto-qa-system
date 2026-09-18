@@ -232,7 +232,7 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
                   render={({ field }) => (
                     <FormItem className="flex-1">
                       <FormLabel>Vendor/Customer</FormLabel>
-                      <Popover open={vendorPopoverOpen} onOpenChange={setVendorPopoverOpen} modal={false}>
+                      <Popover open={vendorPopoverOpen} onOpenChange={setVendorPopoverOpen}>
                         <PopoverTrigger asChild>
                           <FormControl>
                             <Button
