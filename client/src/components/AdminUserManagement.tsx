@@ -12,7 +12,6 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 import { usePlanFeatures } from "@/hooks/use-plan-features";
-import { ROLE_MODULE_RELEVANCE } from "@/lib/role-module-relevance";
 
 interface UserWithRole {
   id: string;
@@ -64,7 +63,7 @@ function RoleCheckboxGroup({
   };
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-72 overflow-y-auto pr-1">
       {roles.map(role => (
         <div
           key={role.id}
@@ -136,12 +135,8 @@ export default function AdminUserManagement() {
     queryKey: ['/api/roles'],
   });
 
-  // Filter roles to only those relevant to the tenant's active plan modules
-  const roles = allRoles.filter(role => {
-    const relevantModules = ROLE_MODULE_RELEVANCE[role.name.toLowerCase()];
-    if (!relevantModules) return true;
-    return relevantModules.some(m => modules.includes(m));
-  });
+  // Show all roles — module filtering was hiding valid roles from admins
+  const roles = allRoles;
 
   // Update user profile + roles
   const updateUserMutation = useMutation({
