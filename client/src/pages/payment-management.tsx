@@ -1698,7 +1698,7 @@ export default function PaymentManagement() {
 
       <Dialog open={showPaymentDialog} onOpenChange={() => {}}>
         <DialogContent
-          className="max-w-4xl max-h-[90vh] overflow-y-auto"
+          className="max-w-6xl max-h-[90vh] overflow-y-auto"
           onInteractOutside={(e) => e.preventDefault()}
           onPointerDownOutside={(e) => e.preventDefault()}
           onFocusOutside={(e) => e.preventDefault()}

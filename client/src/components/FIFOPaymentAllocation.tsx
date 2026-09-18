@@ -546,8 +546,8 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
           </CardHeader>
           {pendingData && pendingData.invoiceCount > 0 && (
             <CardContent className="pt-0">
-              <div className="rounded-md border max-h-[600px] overflow-auto">
-                <Table>
+              <div className="rounded-md border max-h-[600px] overflow-auto overflow-x-auto">
+                <Table className="min-w-[900px]">
                   <TableHeader className="sticky top-0 bg-background z-10 shadow-sm">
                     <TableRow>
                       <TableHead className="text-xs w-[130px]">Invoice #</TableHead>
