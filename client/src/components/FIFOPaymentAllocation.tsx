@@ -550,22 +550,22 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
                 <Table>
                   <TableHeader className="sticky top-0 bg-background z-10 shadow-sm">
                     <TableRow>
-                      <TableHead className="text-xs">Invoice #</TableHead>
-                      <TableHead className="text-xs">Date</TableHead>
-                      <TableHead className="text-xs text-right">Total</TableHead>
-                      <TableHead className="text-xs text-right">Paid</TableHead>
-                      <TableHead className="text-xs text-right">Outstanding</TableHead>
+                      <TableHead className="text-xs w-[130px]">Invoice #</TableHead>
+                      <TableHead className="text-xs w-[70px]">Date</TableHead>
+                      <TableHead className="text-xs text-right w-[80px]">Total</TableHead>
+                      <TableHead className="text-xs text-right w-[70px]">Paid</TableHead>
+                      <TableHead className="text-xs text-right w-[90px]">Outstanding</TableHead>
                       {allocationMethod === 'manual' && (
-                        <TableHead className="text-xs text-right w-[120px]">Pay Amount</TableHead>
+                        <TableHead className="text-xs text-right w-[100px]">Pay Amount</TableHead>
                       )}
                       {allocationMethod === 'manual' && (
-                        <TableHead className="text-xs w-[110px]">Pay Date</TableHead>
+                        <TableHead className="text-xs w-[130px]">Pay Date</TableHead>
                       )}
                       {allocationMethod === 'manual' && (
-                        <TableHead className="text-xs w-[110px]">Method</TableHead>
+                        <TableHead className="text-xs w-[90px]">Method</TableHead>
                       )}
                       {allocationMethod === 'manual' && (
-                        <TableHead className="text-xs w-[120px]">Reference</TableHead>
+                        <TableHead className="text-xs w-[140px]">Reference</TableHead>
                       )}
                     </TableRow>
                   </TableHeader>
