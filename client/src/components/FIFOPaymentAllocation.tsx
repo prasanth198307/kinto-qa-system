@@ -8,13 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Form,
   FormControl,
   FormField,
@@ -293,20 +286,17 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
                   render={({ field }) => (
                     <FormItem className="w-[200px]">
                       <FormLabel>Allocation Type</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
-                        value={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger data-testid="select-allocation-method" className="bg-white border-primary/20">
-                            <SelectValue placeholder="Select type" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="fifo">FIFO (Oldest First)</SelectItem>
-                          <SelectItem value="manual">Specific Invoices</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <select
+                          data-testid="select-allocation-method"
+                          value={field.value}
+                          onChange={(e) => field.onChange(e.target.value)}
+                          className="flex h-10 w-full rounded-md border border-primary/20 bg-white px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                        >
+                          <option value="fifo">FIFO (Oldest First)</option>
+                          <option value="manual">Specific Invoices</option>
+                        </select>
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -320,29 +310,27 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Paid By</FormLabel>
-                      <Select 
-                        onValueChange={(val) => {
-                          field.onChange(val);
-                          const vendor = vendors.find(v => v.id === selectedVendorId);
-                          if (val === 'buyer') {
-                            form.setValue('payerName', vendor?.vendorName || "");
-                          } else if (val === 'shipper') {
-                            form.setValue('payerName', vendor?.shipToName || "");
-                          }
-                        }} 
-                        value={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger data-testid="select-paid-by">
-                            <SelectValue placeholder="Who paid?" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="buyer">Buyer/Vendor</SelectItem>
-                          <SelectItem value="shipper">Shipper (Unit)</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <select
+                          data-testid="select-paid-by"
+                          value={field.value}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            field.onChange(val);
+                            const vendor = vendors.find((v: any) => v.id === selectedVendorId);
+                            if (val === 'buyer') {
+                              form.setValue('payerName', vendor?.vendorName || "");
+                            } else if (val === 'shipper') {
+                              form.setValue('payerName', vendor?.shipToName || "");
+                            }
+                          }}
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                        >
+                          <option value="buyer">Buyer/Vendor</option>
+                          <option value="shipper">Shipper (Unit)</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -409,21 +397,21 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Payment Method</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-payment-method">
-                            <SelectValue />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="Cash">Cash</SelectItem>
-                          <SelectItem value="Cheque">Cheque</SelectItem>
-                          <SelectItem value="NEFT">NEFT</SelectItem>
-                          <SelectItem value="RTGS">RTGS</SelectItem>
-                          <SelectItem value="UPI">UPI</SelectItem>
-                          <SelectItem value="Other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <select
+                          data-testid="select-payment-method"
+                          value={field.value}
+                          onChange={(e) => field.onChange(e.target.value)}
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                        >
+                          <option value="Cash">Cash</option>
+                          <option value="Cheque">Cheque</option>
+                          <option value="NEFT">NEFT</option>
+                          <option value="RTGS">RTGS</option>
+                          <option value="UPI">UPI</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -451,20 +439,21 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Bank (Optional)</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-bank">
-                            <SelectValue placeholder="Select bank" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
+                      <FormControl>
+                        <select
+                          data-testid="select-bank"
+                          value={field.value}
+                          onChange={(e) => field.onChange(e.target.value)}
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                        >
+                          <option value="">Select bank</option>
                           {banks.map((bank: any) => (
-                            <SelectItem key={bank.id} value={bank.bankName}>
+                            <option key={bank.id} value={bank.bankName}>
                               {bank.bankName}
-                            </SelectItem>
+                            </option>
                           ))}
-                        </SelectContent>
-                      </Select>
+                        </select>
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
