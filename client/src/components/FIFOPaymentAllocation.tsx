@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -82,6 +82,7 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
   const [allocationPreview, setAllocationPreview] = useState<any>(null);
   const [vendorPopoverOpen, setVendorPopoverOpen] = useState(false);
   const [selectedVendorId, setSelectedVendorId] = useState<string>("");
+  const [perInvoiceDetails, setPerInvoiceDetails] = useState<Record<string, { date: string; method: string; ref: string }>>({});
 
   const { data: vendors = [] } = useQuery<any[]>({
     queryKey: ['/api/vendors'],
@@ -129,6 +130,23 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
   const allocationMethod = form.watch("allocationMethod");
   const manualAllocations = form.watch("manualAllocations") || {};
 
+  // Pre-populate per-invoice details with global defaults whenever invoices load or mode switches to manual
+  const paymentDate = form.watch("paymentDate");
+  const paymentMethod = form.watch("paymentMethod");
+  useEffect(() => {
+    if (allocationMethod === 'manual' && pendingData?.pendingInvoices?.length) {
+      setPerInvoiceDetails(prev => {
+        const next = { ...prev };
+        for (const inv of pendingData.pendingInvoices) {
+          if (!next[inv.id]) {
+            next[inv.id] = { date: paymentDate, method: paymentMethod, ref: "" };
+          }
+        }
+        return next;
+      });
+    }
+  }, [allocationMethod, pendingData, paymentDate, paymentMethod]);
+
   const handleManualAllocationChange = (invoiceId: string, value: string) => {
     const currentAllocations = { ...manualAllocations };
     if (!value || parseFloat(value) === 0) {
@@ -137,10 +155,18 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
       currentAllocations[invoiceId] = value;
     }
     form.setValue("manualAllocations", currentAllocations);
-    
+
     // Update total amount based on manual entries
     const total = Object.values(currentAllocations).reduce((sum, val) => sum + parseFloat(val), 0);
     form.setValue("amount", total.toFixed(2));
+
+  };
+
+  const handlePerInvoiceDetailChange = (invoiceId: string, field: 'date' | 'method' | 'ref', value: string) => {
+    setPerInvoiceDetails(prev => ({
+      ...prev,
+      [invoiceId]: { ...(prev[invoiceId] || { date: form.getValues("paymentDate"), method: form.getValues("paymentMethod"), ref: "" }), [field]: value },
+    }));
   };
 
   const allocateMutation = useMutation({
@@ -156,9 +182,10 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
         referenceNumber: data.referenceNumber,
         bankName: data.bankName,
         remarks: data.remarks,
-        manualAllocations: data.allocationMethod === 'manual' 
+        manualAllocations: data.allocationMethod === 'manual'
           ? Object.fromEntries(Object.entries(data.manualAllocations || {}).map(([id, val]) => [id, Math.round(parseFloat(val) * 100)]))
           : undefined,
+        perInvoiceDetails: data.allocationMethod === 'manual' ? perInvoiceDetails : undefined,
       };
       const response = await apiRequest('POST', '/api/invoice-payments/allocate-fifo', payload);
       return await response.json();
@@ -205,7 +232,7 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
                   render={({ field }) => (
                     <FormItem className="flex-1">
                       <FormLabel>Vendor/Customer</FormLabel>
-                      <Popover open={vendorPopoverOpen} onOpenChange={setVendorPopoverOpen}>
+                      <Popover open={vendorPopoverOpen} onOpenChange={setVendorPopoverOpen} modal={false}>
                         <PopoverTrigger asChild>
                           <FormControl>
                             <Button
@@ -484,6 +511,7 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
                     onClick={() => {
                       setAllocationPreview(null);
                       setSelectedVendorId("");
+                      setPerInvoiceDetails({});
                       form.reset();
                       if (onSuccess) onSuccess();
                     }}
@@ -529,7 +557,7 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
           </CardHeader>
           {pendingData && pendingData.invoiceCount > 0 && (
             <CardContent className="pt-0">
-              <div className="rounded-md border max-h-[600px] overflow-y-auto">
+              <div className="rounded-md border max-h-[600px] overflow-auto">
                 <Table>
                   <TableHeader className="sticky top-0 bg-background z-10 shadow-sm">
                     <TableRow>
@@ -539,7 +567,16 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
                       <TableHead className="text-xs text-right">Paid</TableHead>
                       <TableHead className="text-xs text-right">Outstanding</TableHead>
                       {allocationMethod === 'manual' && (
-                        <TableHead className="text-xs text-right w-[140px]">Pay Amount</TableHead>
+                        <TableHead className="text-xs text-right w-[120px]">Pay Amount</TableHead>
+                      )}
+                      {allocationMethod === 'manual' && (
+                        <TableHead className="text-xs w-[110px]">Pay Date</TableHead>
+                      )}
+                      {allocationMethod === 'manual' && (
+                        <TableHead className="text-xs w-[110px]">Method</TableHead>
+                      )}
+                      {allocationMethod === 'manual' && (
+                        <TableHead className="text-xs w-[120px]">Reference</TableHead>
                       )}
                     </TableRow>
                   </TableHeader>
@@ -577,6 +614,40 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
                               onChange={(e) => handleManualAllocationChange(invoice.id, e.target.value)}
                               max={(invoice.outstanding / 100).toFixed(2)}
                               data-testid={`input-manual-alloc-${invoice.id}`}
+                            />
+                          </TableCell>
+                        )}
+                        {allocationMethod === 'manual' && (
+                          <TableCell>
+                            <Input
+                              type="date"
+                              className="h-8 text-xs border-primary/20 focus:border-primary w-full"
+                              value={perInvoiceDetails[invoice.id]?.date || form.watch("paymentDate")}
+                              onChange={(e) => handlePerInvoiceDetailChange(invoice.id, 'date', e.target.value)}
+                            />
+                          </TableCell>
+                        )}
+                        {allocationMethod === 'manual' && (
+                          <TableCell>
+                            <select
+                              className="h-8 text-xs border border-input rounded-md px-1 w-full bg-background"
+                              value={perInvoiceDetails[invoice.id]?.method || form.watch("paymentMethod")}
+                              onChange={(e) => handlePerInvoiceDetailChange(invoice.id, 'method', e.target.value)}
+                            >
+                              {["Cash","Cheque","NEFT","RTGS","UPI","Other"].map(m => (
+                                <option key={m} value={m}>{m}</option>
+                              ))}
+                            </select>
+                          </TableCell>
+                        )}
+                        {allocationMethod === 'manual' && (
+                          <TableCell>
+                            <Input
+                              type="text"
+                              className="h-8 text-xs border-primary/20 focus:border-primary w-full"
+                              placeholder="Ref / Cheque No."
+                              value={perInvoiceDetails[invoice.id]?.ref || ""}
+                              onChange={(e) => handlePerInvoiceDetailChange(invoice.id, 'ref', e.target.value)}
                             />
                           </TableCell>
                         )}
