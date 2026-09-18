@@ -63,7 +63,7 @@ function RoleCheckboxGroup({
   };
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-72 overflow-y-auto pr-1">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-96 overflow-y-auto pr-1">
       {roles.map(role => (
         <div
           key={role.id}
