@@ -4508,7 +4508,7 @@ function DailyProductionReportContent() {
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 min-w-0">
         {/* Filters */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 bg-muted/50 rounded-lg">
           <div className="space-y-1">
@@ -4595,8 +4595,8 @@ function DailyProductionReportContent() {
             <p className="text-sm mt-1">Finished goods entries in this date range will appear here.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto border rounded-md">
-            <Table>
+          <div className="overflow-x-auto border rounded-md" style={{WebkitOverflowScrolling: 'touch', overflowX: 'auto', maxWidth: '100%'}}>
+            <Table style={{minWidth: 'max-content'}}>
               <TableHeader>
                 <TableRow className="bg-muted/50">
                   <TableHead className="sticky left-0 bg-muted/50 z-10 min-w-[180px] font-semibold">
