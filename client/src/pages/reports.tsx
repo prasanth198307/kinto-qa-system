@@ -4595,7 +4595,7 @@ function DailyProductionReportContent() {
             <p className="text-sm mt-1">Finished goods entries in this date range will appear here.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto border rounded-md" style={{WebkitOverflowScrolling: 'touch', overflowX: 'auto', maxWidth: '100%'}}>
+          <div className="border rounded-md" style={{WebkitOverflowScrolling: 'touch', overflowX: 'scroll', maxWidth: '100%', scrollbarWidth: 'thin', scrollbarColor: '#94a3b8 #f1f5f9'}}>
             <Table style={{minWidth: 'max-content'}}>
               <TableHeader>
                 <TableRow className="bg-muted/50">
