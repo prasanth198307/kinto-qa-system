@@ -1,16 +1,15 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueries } from "@tanstack/react-query";
 import { useSearch } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
 import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
-import { Calendar, Download, Search, Check, ChevronsUpDown, BookOpen } from "lucide-react";
+import { Calendar, Download, Check, ChevronsUpDown, BookOpen, X } from "lucide-react";
 import { downloadXLSX } from "@/lib/download-utils";
 import { groupAccountsByParent } from "@/lib/account-hierarchy";
 
@@ -95,7 +94,8 @@ export default function LedgerViewPage() {
   const hasCustomUrlDates = !!urlFromDate && !!urlToDate;
 
   const [selectedFY, setSelectedFY] = useState(getCurrentFY());
-  const [selectedAccountId, setSelectedAccountId] = useState<string>(urlAccountId);
+  // Multi-select: array of account IDs
+  const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>(urlAccountId ? [urlAccountId] : []);
   const [accountPopoverOpen, setAccountPopoverOpen] = useState(false);
   const [dateMode, setDateMode] = useState<"fy" | "custom">(hasCustomUrlDates ? "custom" : "fy");
   const [customFrom, setCustomFrom] = useState(urlFromDate);
@@ -109,7 +109,7 @@ export default function LedgerViewPage() {
     const accId = params.get("accountId") || "";
     const from = params.get("fromDate") || "";
     const to = params.get("toDate") || "";
-    if (accId) setSelectedAccountId(accId);
+    if (accId) setSelectedAccountIds([accId]);
     if (from && to) {
       setDateMode("custom");
       setCustomFrom(from);
@@ -130,76 +130,80 @@ export default function LedgerViewPage() {
     return `fy=${selectedFY}`;
   })();
 
-  const { data: ledgerData, isLoading: ledgerLoading } = useQuery<LedgerResponse>({
-    queryKey: ["/api/ledger", selectedAccountId, dateMode, selectedFY, customFrom, customTo],
-    queryFn: async () => {
-      const res = await fetch(`/api/ledger/${selectedAccountId}?${queryParams}`, { credentials: 'include' });
-      if (!res.ok) throw new Error("Failed to fetch ledger data");
-      return res.json();
-    },
-    enabled: !!selectedAccountId,
+  // Fetch ledger for each selected account
+  const ledgerQueries = useQueries({
+    queries: selectedAccountIds.map(accountId => ({
+      queryKey: ["/api/ledger", accountId, dateMode, selectedFY, customFrom, customTo],
+      queryFn: async (): Promise<LedgerResponse> => {
+        const res = await fetch(`/api/ledger/${accountId}?${queryParams}`, { credentials: 'include' });
+        if (!res.ok) throw new Error("Failed to fetch ledger data");
+        return res.json();
+      },
+      enabled: !!accountId,
+    })),
   });
 
-  const selectedAccount = accountsList.find(a => a.id === selectedAccountId);
+  const allLoading = ledgerQueries.some(q => q.isLoading);
+  const ledgerResults = ledgerQueries.map(q => q.data).filter(Boolean) as LedgerResponse[];
 
   const fyStartYear = parseInt(selectedFY);
   const periodLabel = dateMode === "custom" && isCustomValid
     ? `${formatDate(customFrom)} to ${formatDate(customTo)}`
-    : `Apr ${fyStartYear} \u2013 Mar ${fyStartYear + 1}`;
+    : `Apr ${fyStartYear} – Mar ${fyStartYear + 1}`;
+
+  // Toggle account selection
+  function toggleAccount(id: string) {
+    setSelectedAccountIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  }
+
+  function removeAccount(id: string) {
+    setSelectedAccountIds(prev => prev.filter(x => x !== id));
+  }
+
+  // Combined totals across all accounts
+  const combinedDebit  = ledgerResults.reduce((s, d) => s + (Number(d.periodDebit)  || 0), 0);
+  const combinedCredit = ledgerResults.reduce((s, d) => s + (Number(d.periodCredit) || 0), 0);
+  const combinedClose  = ledgerResults.reduce((s, d) => s + (Number(d.closingBalance) || 0), 0);
+  const combinedOpen   = ledgerResults.reduce((s, d) => s + (Number(d.openingBalance) || 0), 0);
 
   async function downloadExcel() {
-    if (!ledgerData) return;
+    if (!ledgerResults.length) return;
     const XLSX = await import("xlsx");
+    const wb = XLSX.utils.book_new();
 
-    const rows: Record<string, string | number>[] = [];
+    for (const ledgerData of ledgerResults) {
+      const rows: Record<string, string | number>[] = [];
+      rows.push({ Date: "", "Journal #": "", Description: "Opening Balance", Debit: "", Credit: "", Balance: (Number(ledgerData.openingBalance) || 0) / 100 });
+      for (const txn of ledgerData.transactions) {
+        rows.push({
+          Date: txn.journalDate,
+          "Journal #": txn.journalNumber,
+          Description: txn.description + (txn.partyName ? ` | ${txn.partyName}` : "") + (txn.memo ? ` | ${txn.memo}` : ""),
+          Debit: (Number(txn.debit) || 0) / 100,
+          Credit: (Number(txn.credit) || 0) / 100,
+          Balance: (Number(txn.balance) || 0) / 100,
+        });
+      }
+      rows.push({ Date: "", "Journal #": "", Description: "Closing Balance", Debit: (Number(ledgerData.periodDebit) || 0) / 100, Credit: (Number(ledgerData.periodCredit) || 0) / 100, Balance: (Number(ledgerData.closingBalance) || 0) / 100 });
 
-    rows.push({
-      Date: "",
-      "Journal #": "",
-      Description: "Opening Balance",
-      Debit: "",
-      Credit: "",
-      Balance: (Number(ledgerData.openingBalance) || 0) / 100,
-    });
-
-    for (const txn of ledgerData.transactions) {
-      rows.push({
-        Date: txn.journalDate,
-        "Journal #": txn.journalNumber,
-        Description: txn.description + (txn.partyName ? ` | ${txn.partyName}` : "") + (txn.memo ? ` | ${txn.memo}` : ""),
-        Debit: (Number(txn.debit) || 0) / 100,
-        Credit: (Number(txn.credit) || 0) / 100,
-        Balance: (Number(txn.balance) || 0) / 100,
-      });
+      const ws = XLSX.utils.json_to_sheet(rows);
+      ws["!cols"] = [{ wch: 14 }, { wch: 14 }, { wch: 45 }, { wch: 16 }, { wch: 16 }, { wch: 16 }];
+      const sheetName = ledgerData.account.name.replace(/[^a-zA-Z0-9 ]/g, "").slice(0, 31);
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
     }
 
-    rows.push({
-      Date: "",
-      "Journal #": "",
-      Description: "Closing Balance",
-      Debit: (Number(ledgerData.periodDebit) || 0) / 100,
-      Credit: (Number(ledgerData.periodCredit) || 0) / 100,
-      Balance: (Number(ledgerData.closingBalance) || 0) / 100,
-    });
-
-    const ws = XLSX.utils.json_to_sheet(rows);
-    ws["!cols"] = [
-      { wch: 14 },
-      { wch: 14 },
-      { wch: 45 },
-      { wch: 16 },
-      { wch: 16 },
-      { wch: 16 },
-    ];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Ledger");
-    const accountName = ledgerData.account.name.replace(/[^a-zA-Z0-9]/g, "_");
-    await downloadXLSX(wb, `Ledger_${accountName}_${selectedFY}.xlsx`);
-    toast({ title: "Downloaded", description: "Ledger exported as Excel (.xlsx)" });
+    const suffix = ledgerResults.length === 1 ? ledgerResults[0].account.name.replace(/[^a-zA-Z0-9]/g, "_") : `${ledgerResults.length}_accounts`;
+    await downloadXLSX(wb, `Ledger_${suffix}_${selectedFY}.xlsx`);
+    toast({ title: "Downloaded", description: `Ledger exported — ${ledgerResults.length} sheet(s)` });
   }
+
+  const selectedAccounts = accountsList.filter(a => selectedAccountIds.includes(a.id));
 
   return (
     <div className="p-4 space-y-4 max-w-6xl mx-auto" data-testid="page-ledger-view">
+      {/* Header */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-xl font-semibold" data-testid="text-page-title">Ledger View</h1>
@@ -232,25 +236,13 @@ export default function LedgerViewPage() {
 
           {dateMode === "custom" && (
             <div className="flex items-center gap-1.5">
-              <Input
-                type="date"
-                value={customFrom}
-                onChange={e => setCustomFrom(e.target.value)}
-                className="w-[140px]"
-                data-testid="input-date-from"
-              />
+              <Input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)} className="w-[140px]" data-testid="input-date-from" />
               <span className="text-xs text-muted-foreground">to</span>
-              <Input
-                type="date"
-                value={customTo}
-                onChange={e => setCustomTo(e.target.value)}
-                className="w-[140px]"
-                data-testid="input-date-to"
-              />
+              <Input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)} className="w-[140px]" data-testid="input-date-to" />
             </div>
           )}
 
-          {ledgerData && (
+          {ledgerResults.length > 0 && (
             <Button variant="outline" onClick={downloadExcel} data-testid="button-download-excel">
               <Download className="w-4 h-4 mr-1" /> Excel
             </Button>
@@ -258,7 +250,8 @@ export default function LedgerViewPage() {
         </div>
       </div>
 
-      <div>
+      {/* Multi-select account picker */}
+      <div className="space-y-2">
         <Popover open={accountPopoverOpen} onOpenChange={setAccountPopoverOpen}>
           <PopoverTrigger asChild>
             <Button
@@ -268,13 +261,14 @@ export default function LedgerViewPage() {
               className="w-full max-w-lg justify-between font-normal"
               data-testid="button-select-account"
             >
-              {selectedAccount ? (
-                <span className="truncate">
-                  <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono mr-2">{selectedAccount.code}</code>
-                  {selectedAccount.name}
-                </span>
+              {selectedAccountIds.length === 0 ? (
+                <span className="text-muted-foreground">Select accounts... (multi-select)</span>
               ) : (
-                <span className="text-muted-foreground">Select an account...</span>
+                <span className="truncate">
+                  {selectedAccountIds.length === 1 && selectedAccounts[0]
+                    ? <><code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono mr-2">{selectedAccounts[0].code}</code>{selectedAccounts[0].name}</>
+                    : `${selectedAccountIds.length} accounts selected`}
+                </span>
               )}
               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             </Button>
@@ -282,52 +276,100 @@ export default function LedgerViewPage() {
           <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
             <Command>
               <CommandInput placeholder="Search by code or name..." data-testid="input-search-account" />
+              <div className="border-b px-3 py-1.5 text-xs text-muted-foreground flex items-center justify-between">
+                <span>{selectedAccountIds.length} selected</span>
+                {selectedAccountIds.length > 0 && (
+                  <button className="text-xs text-destructive hover:underline" onClick={() => setSelectedAccountIds([])}>Clear all</button>
+                )}
+              </div>
               <CommandList>
                 <CommandEmpty>No account found.</CommandEmpty>
                 {groupAccountsByParent(accountsList).map(group => (
                   <CommandGroup key={group.label} heading={group.label}>
-                    {group.accounts.map(account => (
-                      <CommandItem
-                        key={account.id}
-                        value={`${account.code} ${account.name}`}
-                        onSelect={() => {
-                          setSelectedAccountId(account.id);
-                          setAccountPopoverOpen(false);
-                        }}
-                        data-testid={`option-account-${account.code}`}
-                      >
-                        <Check className={`mr-2 h-4 w-4 ${selectedAccountId === account.id ? "opacity-100" : "opacity-0"}`} />
-                        <code className="text-xs bg-muted px-1 py-0.5 rounded font-mono mr-2 shrink-0">{account.code}</code>
-                        <span className="truncate">{account.name}</span>
-                      </CommandItem>
-                    ))}
+                    {group.accounts.map(account => {
+                      const isSelected = selectedAccountIds.includes(account.id);
+                      return (
+                        <CommandItem
+                          key={account.id}
+                          value={`${account.code} ${account.name}`}
+                          onSelect={() => toggleAccount(account.id)}
+                          data-testid={`option-account-${account.code}`}
+                        >
+                          <Check className={`mr-2 h-4 w-4 ${isSelected ? "opacity-100 text-primary" : "opacity-0"}`} />
+                          <code className="text-xs bg-muted px-1 py-0.5 rounded font-mono mr-2 shrink-0">{account.code}</code>
+                          <span className="truncate">{account.name}</span>
+                        </CommandItem>
+                      );
+                    })}
                   </CommandGroup>
                 ))}
               </CommandList>
             </Command>
           </PopoverContent>
         </Popover>
+
+        {/* Selected account chips */}
+        {selectedAccounts.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {selectedAccounts.map(acc => (
+              <span key={acc.id} className="inline-flex items-center gap-1 text-xs bg-primary/10 text-primary border border-primary/20 rounded-full px-2.5 py-0.5">
+                <code className="font-mono">{acc.code}</code>
+                <span>{acc.name}</span>
+                <button onClick={() => removeAccount(acc.id)} className="ml-0.5 hover:text-destructive">
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
-      {!selectedAccountId && (
+      {/* Empty state */}
+      {selectedAccountIds.length === 0 && (
         <Card>
           <CardContent className="p-8 flex flex-col items-center justify-center text-center">
             <BookOpen className="w-10 h-10 text-muted-foreground mb-3" />
             <p className="text-sm text-muted-foreground" data-testid="text-select-prompt">
-              Select an account above to view its ledger
+              Select one or more accounts above to view their ledger
             </p>
           </CardContent>
         </Card>
       )}
 
-      {selectedAccountId && ledgerLoading && (
+      {/* Loading */}
+      {selectedAccountIds.length > 0 && allLoading && (
         <div className="flex items-center justify-center h-48" data-testid="loading-ledger">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
         </div>
       )}
 
-      {ledgerData && (
-        <>
+      {/* Combined summary when multiple accounts */}
+      {ledgerResults.length > 1 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[
+            { label: "Combined Opening", value: combinedOpen },
+            { label: "Combined Debit",   value: combinedDebit },
+            { label: "Combined Credit",  value: combinedCredit },
+            { label: "Combined Closing", value: combinedClose },
+          ].map(({ label, value }) => (
+            <Card key={label}>
+              <CardContent className="p-3">
+                <div className="text-xs text-muted-foreground uppercase tracking-wide">{label}</div>
+                <div className="text-sm font-semibold font-mono tabular-nums mt-0.5">{formatAmount(value, tenantConfig)}</div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Per-account ledger sections */}
+      {ledgerResults.map((ledgerData) => (
+        <div key={ledgerData.account.id} className="space-y-3">
+          {/* Account header with summary */}
+          <div className="flex items-center gap-2">
+            <code className="text-xs bg-muted px-2 py-0.5 rounded font-mono">{ledgerData.account.code}</code>
+            <span className="font-semibold text-sm">{ledgerData.account.name}</span>
+          </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <Card>
               <CardContent className="p-3">
@@ -388,49 +430,31 @@ export default function LedgerViewPage() {
                   </tr>
                   {ledgerData.transactions.map((txn, idx) => (
                     <tr key={txn.lineId || idx} className="hover-elevate" data-testid={`row-txn-${txn.lineId || idx}`}>
-                      <td className="px-4 py-2 whitespace-nowrap text-muted-foreground" data-testid={`date-${txn.lineId || idx}`}>
-                        {formatDate(txn.journalDate)}
-                      </td>
-                      <td className="px-3 py-2 whitespace-nowrap" data-testid={`journal-${txn.lineId || idx}`}>
+                      <td className="px-4 py-2 whitespace-nowrap text-muted-foreground">{formatDate(txn.journalDate)}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">
                         <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono">{txn.journalNumber}</code>
                       </td>
                       <td className="px-3 py-2">
-                        <div className="truncate max-w-[400px]" data-testid={`desc-${txn.lineId || idx}`}>
+                        <div className="truncate max-w-[400px]">
                           {txn.description}
-                          {txn.partyName && (
-                            <span className="text-muted-foreground"> | {txn.partyName}</span>
-                          )}
+                          {txn.partyName && <span className="text-muted-foreground"> | {txn.partyName}</span>}
                         </div>
-                        {txn.memo && (
-                          <div className="text-xs text-muted-foreground truncate max-w-[400px]">{txn.memo}</div>
-                        )}
+                        {txn.memo && <div className="text-xs text-muted-foreground truncate max-w-[400px]">{txn.memo}</div>}
                       </td>
-                      <td className="text-right px-4 py-2 font-mono tabular-nums whitespace-nowrap" data-testid={`debit-${txn.lineId || idx}`}>
-                        {formatAmount(txn.debit, tenantConfig)}
-                      </td>
-                      <td className="text-right px-4 py-2 font-mono tabular-nums whitespace-nowrap" data-testid={`credit-${txn.lineId || idx}`}>
-                        {formatAmount(txn.credit, tenantConfig)}
-                      </td>
-                      <td className="text-right px-4 py-2 font-mono tabular-nums font-medium whitespace-nowrap" data-testid={`balance-${txn.lineId || idx}`}>
-                        {formatAmount(txn.balance, tenantConfig)}
-                      </td>
+                      <td className="text-right px-4 py-2 font-mono tabular-nums whitespace-nowrap">{formatAmount(txn.debit, tenantConfig)}</td>
+                      <td className="text-right px-4 py-2 font-mono tabular-nums whitespace-nowrap">{formatAmount(txn.credit, tenantConfig)}</td>
+                      <td className="text-right px-4 py-2 font-mono tabular-nums font-medium whitespace-nowrap">{formatAmount(txn.balance, tenantConfig)}</td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
-                  <tr className="border-t-2 bg-muted/50 font-semibold" data-testid="row-closing-balance">
+                  <tr className="border-t-2 bg-muted/50 font-semibold">
                     <td className="px-4 py-3" colSpan={3}>
                       <span className="text-xs font-semibold uppercase tracking-wide">Closing Balance</span>
                     </td>
-                    <td className="text-right px-4 py-3 font-mono tabular-nums whitespace-nowrap" data-testid="total-debit">
-                      {formatAmount(ledgerData.periodDebit, tenantConfig)}
-                    </td>
-                    <td className="text-right px-4 py-3 font-mono tabular-nums whitespace-nowrap" data-testid="total-credit">
-                      {formatAmount(ledgerData.periodCredit, tenantConfig)}
-                    </td>
-                    <td className="text-right px-4 py-3 font-mono tabular-nums whitespace-nowrap" data-testid="value-closing-balance">
-                      {formatAmount(ledgerData.closingBalance, tenantConfig)}
-                    </td>
+                    <td className="text-right px-4 py-3 font-mono tabular-nums whitespace-nowrap">{formatAmount(ledgerData.periodDebit, tenantConfig)}</td>
+                    <td className="text-right px-4 py-3 font-mono tabular-nums whitespace-nowrap">{formatAmount(ledgerData.periodCredit, tenantConfig)}</td>
+                    <td className="text-right px-4 py-3 font-mono tabular-nums whitespace-nowrap">{formatAmount(ledgerData.closingBalance, tenantConfig)}</td>
                   </tr>
                 </tfoot>
               </table>
@@ -438,16 +462,10 @@ export default function LedgerViewPage() {
           </Card>
 
           {ledgerData.transactions.length === 0 && (
-            <Card>
-              <CardContent className="p-6 text-center">
-                <p className="text-sm text-muted-foreground" data-testid="text-no-transactions">
-                  No transactions found for this period
-                </p>
-              </CardContent>
-            </Card>
+            <p className="text-sm text-muted-foreground text-center py-4">No transactions found for this period</p>
           )}
-        </>
-      )}
+        </div>
+      ))}
     </div>
   );
 }
