@@ -5,11 +5,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
 import { useTenantConfig, formatCurrency as fmtCur } from "@/hooks/use-tenant-config";
-import { Calendar, Download, Check, ChevronsUpDown, BookOpen, X } from "lucide-react";
+import { Calendar, Download, ChevronsUpDown, BookOpen, X } from "lucide-react";
 import { downloadXLSX } from "@/lib/download-utils";
 import { groupAccountsByParent } from "@/lib/account-hierarchy";
 
@@ -200,6 +198,31 @@ export default function LedgerViewPage() {
   }
 
   const selectedAccounts = accountsList.filter(a => selectedAccountIds.includes(a.id));
+  const [accountSearch, setAccountSearch] = useState("");
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setAccountPopoverOpen(false);
+      }
+    }
+    if (accountPopoverOpen) document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [accountPopoverOpen]);
+
+  const filteredGroups = useMemo(() => {
+    const q = accountSearch.trim().toLowerCase();
+    return groupAccountsByParent(accountsList)
+      .map(group => ({
+        ...group,
+        accounts: group.accounts.filter(a =>
+          !q || a.code.toLowerCase().includes(q) || a.name.toLowerCase().includes(q)
+        ),
+      }))
+      .filter(g => g.accounts.length > 0);
+  }, [accountsList, accountSearch]);
 
   return (
     <div className="p-4 space-y-4 max-w-6xl mx-auto" data-testid="page-ledger-view">
@@ -250,72 +273,95 @@ export default function LedgerViewPage() {
         </div>
       </div>
 
-      {/* Multi-select account picker */}
+      {/* Multi-select account picker — plain HTML, no cmdk */}
       <div className="space-y-2">
-        <Popover open={accountPopoverOpen} onOpenChange={setAccountPopoverOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              role="combobox"
-              aria-expanded={accountPopoverOpen}
-              className="w-full max-w-lg justify-between font-normal"
-              data-testid="button-select-account"
-            >
-              {selectedAccountIds.length === 0 ? (
-                <span className="text-muted-foreground">Select accounts... (multi-select)</span>
-              ) : (
-                <span className="truncate">
-                  {selectedAccountIds.length === 1 && selectedAccounts[0]
-                    ? <><code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono mr-2">{selectedAccounts[0].code}</code>{selectedAccounts[0].name}</>
-                    : `${selectedAccountIds.length} accounts selected`}
-                </span>
-              )}
-              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-            <Command>
-              <CommandInput placeholder="Search by code or name..." data-testid="input-search-account" />
-              <div className="border-b px-3 py-1.5 text-xs text-muted-foreground flex items-center justify-between">
+        <div className="relative max-w-lg" ref={dropdownRef}>
+          {/* Trigger button */}
+          <button
+            type="button"
+            onClick={() => setAccountPopoverOpen(o => !o)}
+            className="w-full flex items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm hover:bg-accent focus:outline-none"
+            data-testid="button-select-account"
+          >
+            <span className="truncate text-left">
+              {selectedAccountIds.length === 0
+                ? <span className="text-muted-foreground">Select accounts... (multi-select)</span>
+                : selectedAccountIds.length === 1 && selectedAccounts[0]
+                  ? <span><code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono mr-2">{selectedAccounts[0].code}</code>{selectedAccounts[0].name}</span>
+                  : <span>{selectedAccountIds.length} accounts selected</span>
+              }
+            </span>
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </button>
+
+          {/* Dropdown panel */}
+          {accountPopoverOpen && (
+            <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-lg" style={{maxHeight: '360px', display: 'flex', flexDirection: 'column'}}>
+              {/* Search */}
+              <div className="p-2 border-b">
+                <input
+                  autoFocus
+                  type="text"
+                  placeholder="Search by code or name..."
+                  value={accountSearch}
+                  onChange={e => setAccountSearch(e.target.value)}
+                  className="w-full rounded border border-input bg-background px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                  data-testid="input-search-account"
+                />
+              </div>
+              {/* Count + clear */}
+              <div className="px-3 py-1.5 border-b flex items-center justify-between text-xs text-muted-foreground">
                 <span>{selectedAccountIds.length} selected</span>
                 {selectedAccountIds.length > 0 && (
-                  <button className="text-xs text-destructive hover:underline" onClick={() => setSelectedAccountIds([])}>Clear all</button>
+                  <button
+                    type="button"
+                    onMouseDown={e => { e.preventDefault(); setSelectedAccountIds([]); }}
+                    className="text-destructive hover:underline"
+                  >Clear all</button>
                 )}
               </div>
-              <CommandList>
-                <CommandEmpty>No account found.</CommandEmpty>
-                {groupAccountsByParent(accountsList).map(group => (
-                  <CommandGroup key={group.label} heading={group.label}>
+              {/* List */}
+              <div style={{overflowY: 'auto', flex: 1}}>
+                {filteredGroups.length === 0 && (
+                  <div className="px-3 py-4 text-sm text-center text-muted-foreground">No accounts found</div>
+                )}
+                {filteredGroups.map(group => (
+                  <div key={group.label}>
+                    <div className="px-3 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/40 sticky top-0">{group.label}</div>
                     {group.accounts.map(account => {
                       const isSelected = selectedAccountIds.includes(account.id);
                       return (
-                        <CommandItem
+                        <label
                           key={account.id}
-                          value={`${account.code} ${account.name}`}
-                          onSelect={() => toggleAccount(account.id)}
+                          className={`flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-accent text-sm ${isSelected ? 'bg-primary/5' : ''}`}
                           data-testid={`option-account-${account.code}`}
                         >
-                          <Check className={`mr-2 h-4 w-4 ${isSelected ? "opacity-100 text-primary" : "opacity-0"}`} />
-                          <code className="text-xs bg-muted px-1 py-0.5 rounded font-mono mr-2 shrink-0">{account.code}</code>
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleAccount(account.id)}
+                            className="h-4 w-4 rounded border-input accent-primary"
+                          />
+                          <code className="text-xs bg-muted px-1 py-0.5 rounded font-mono shrink-0">{account.code}</code>
                           <span className="truncate">{account.name}</span>
-                        </CommandItem>
+                        </label>
                       );
                     })}
-                  </CommandGroup>
+                  </div>
                 ))}
-              </CommandList>
-            </Command>
-          </PopoverContent>
-        </Popover>
+              </div>
+            </div>
+          )}
+        </div>
 
-        {/* Selected account chips */}
+        {/* Selected chips */}
         {selectedAccounts.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {selectedAccounts.map(acc => (
               <span key={acc.id} className="inline-flex items-center gap-1 text-xs bg-primary/10 text-primary border border-primary/20 rounded-full px-2.5 py-0.5">
                 <code className="font-mono">{acc.code}</code>
                 <span>{acc.name}</span>
-                <button onClick={() => removeAccount(acc.id)} className="ml-0.5 hover:text-destructive">
+                <button type="button" onClick={() => removeAccount(acc.id)} className="ml-0.5 hover:text-destructive">
                   <X className="w-3 h-3" />
                 </button>
               </span>
