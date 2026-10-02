@@ -2126,6 +2126,8 @@ export const invoices = pgTable("invoices", {
 });
 
 export const insertInvoiceSchema = createInsertSchema(invoices, {
+  buyerName: z.string().transform(v => v.trim()),
+  shipToName: z.string().optional().transform(v => v ? v.trim() : v),
   invoiceDate: z.union([z.string(), z.date()]).transform(val => {
     if (!val) return new Date();
     if (typeof val === 'string') {

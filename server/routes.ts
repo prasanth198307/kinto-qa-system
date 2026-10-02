@@ -10560,6 +10560,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // Void invoice journal before deleting (non-blocking)
+      try {
+        const { deleteJournalEntry } = await import('./journal-service');
+        await deleteJournalEntry('invoice', id);
+      } catch (je) { console.error('[JOURNAL] Invoice delete journal void failed:', je); }
+
       await storage.deleteInvoice(id);
       console.log(`[AUDIT] Invoice ${invoice.invoiceNumber} deleted by user`);
 
