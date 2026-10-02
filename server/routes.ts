@@ -16066,14 +16066,21 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       
       // Get all invoices for aggregation (exclude cancelled)
       const allInvoices = await storage.getAllInvoices((req.session as any)?.tenantId ?? req.user?.tenantId);
-      let activeInvoices = allInvoices.filter(inv => inv.recordStatus === 1 && inv.status !== 'cancelled');
-      // Apply date range filter when provided
+      const allActiveInvoices = allInvoices.filter(inv => inv.recordStatus === 1 && inv.status !== 'cancelled');
+      // Period invoices: filtered by date range when provided
+      let activeInvoices = allActiveInvoices;
+      // Opening invoices: invoices strictly before fromDate (for opening balance)
+      let openingInvoices: typeof allActiveInvoices = [];
       if (fromDate && toDate) {
         const from = fromDate as string;
         const to = toDate as string;
-        activeInvoices = activeInvoices.filter(inv => {
+        activeInvoices = allActiveInvoices.filter(inv => {
           const d = inv.invoiceDate ? inv.invoiceDate.substring(0, 10) : '';
           return d >= from && d <= to;
+        });
+        openingInvoices = allActiveInvoices.filter(inv => {
+          const d = inv.invoiceDate ? inv.invoiceDate.substring(0, 10) : '';
+          return d < from;
         });
       }
       
@@ -16146,8 +16153,22 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
         );
         const totalAdvances = vendorAdvances.reduce((sum, adv) => sum + (adv.usedAmount || 0), 0);
 
-        // Outstanding = Invoiced + Debits - Credits - Received - Advances(adjusted only)
-        const outstanding = totalInvoiced + totalDebits - totalCredits - totalReceived - totalAdvances;
+        // Opening balance: outstanding from invoices before the selected FY start
+        let openingBalance = 0;
+        if (openingInvoices.length > 0) {
+          const openingVendorInvoices = openingInvoices.filter(inv =>
+            vendorNamesToInclude.some(name =>
+              name.toLowerCase() === inv.buyerName?.toLowerCase() ||
+              name.toLowerCase() === inv.shipToName?.toLowerCase()
+            )
+          );
+          const openingInvoiced = openingVendorInvoices.reduce((s, inv) => s + inv.totalAmount, 0);
+          const openingReceived = openingVendorInvoices.reduce((s, inv) => s + (inv.amountReceived || 0), 0);
+          openingBalance = openingInvoiced - openingReceived;
+        }
+
+        // Outstanding = Opening Balance + Period(Invoiced + Debits - Credits - Received - Advances)
+        const outstanding = openingBalance + totalInvoiced + totalDebits - totalCredits - totalReceived - totalAdvances;
         
         // Last transaction date (across all family members)
         const lastInvoiceDate = vendorInvoices.length > 0 
@@ -16175,6 +16196,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
           totalCredits,
           totalDebits,
           totalAdvances,
+          openingBalance,
           outstanding,
           lastTransactionDate: lastInvoiceDate,
         };
@@ -16212,6 +16234,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
           totalCredits: group.reduce((s, v) => s + v.totalCredits, 0),
           totalDebits: group.reduce((s, v) => s + v.totalDebits, 0),
           totalAdvances: group.reduce((s, v) => s + v.totalAdvances, 0),
+          openingBalance: group.reduce((s, v) => s + (v.openingBalance || 0), 0),
           outstanding: group.reduce((s, v) => s + v.outstanding, 0),
           lastTransactionDate: lastDate,
           isGroup: true,

@@ -55,6 +55,7 @@ interface VendorSummary {
   totalReceived: number;
   totalCredits: number;
   totalDebits: number;
+  openingBalance: number;
   outstanding: number;
   lastTransactionDate: string | null;
   isGroup: boolean;
@@ -114,8 +115,11 @@ export default function VendorHistoryPage() {
     if (dateMode === "custom" && isCustomValid) {
       return { fromDate: customFrom, toDate: customTo };
     }
-    const y = parseInt(selectedFY);
-    return { fromDate: `${y}-04-01`, toDate: `${y + 1}-03-31` };
+    if (dateMode === "fy" && selectedFY !== "all") {
+      const y = parseInt(selectedFY);
+      return { fromDate: `${y}-04-01`, toDate: `${y + 1}-03-31` };
+    }
+    return { fromDate: "", toDate: "" }; // All FY — no filter
   }, [dateMode, selectedFY, customFrom, customTo, isCustomValid]);
 
   const { data, isLoading } = useQuery<VendorHistoryResponse>({
@@ -126,8 +130,7 @@ export default function VendorHistoryPage() {
         pageSize: pageSize.toString(),
         sortBy,
         sortOrder,
-        fromDate,
-        toDate,
+        ...(fromDate && toDate && { fromDate, toDate }),
         ...(search && { search }),
       });
       const res = await fetch(`/api/vendor-history?${params}`, { credentials: 'include' });
@@ -148,8 +151,7 @@ export default function VendorHistoryPage() {
         pageSize: '10000',
         sortBy,
         sortOrder,
-        fromDate,
-        toDate,
+        ...(fromDate && toDate && { fromDate, toDate }),
         ...(search && { search }),
       });
       const res = await fetch(`/api/vendor-history?${params}`, { credentials: 'include' });
@@ -383,6 +385,7 @@ export default function VendorHistoryPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="all">All Years</SelectItem>
                   {getAvailableFYs().map(fy => (
                     <SelectItem key={fy} value={fy}>{getFYLabel(fy)}</SelectItem>
                   ))}
@@ -432,6 +435,7 @@ export default function VendorHistoryPage() {
                       <ArrowUpDown className="h-3 w-3" />
                     </Button>
                   </TableHead>
+                  {fromDate && <TableHead className="text-right text-blue-700">Opening Bal.</TableHead>}
                   <TableHead className="text-right">
                     <Button
                       variant="ghost"
@@ -440,7 +444,7 @@ export default function VendorHistoryPage() {
                       className="flex items-center gap-1 ml-auto"
                       data-testid="button-sort-invoiced"
                     >
-                      Total Invoiced
+                      {fromDate ? "Period Invoiced" : "Total Invoiced"}
                       <ArrowUpDown className="h-3 w-3" />
                     </Button>
                   </TableHead>
@@ -479,7 +483,7 @@ export default function VendorHistoryPage() {
                   ))
                 ) : data?.vendors.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={fromDate ? 10 : 9} className="text-center py-8 text-muted-foreground">
                       No vendors found
                     </TableCell>
                   </TableRow>
@@ -513,6 +517,11 @@ export default function VendorHistoryPage() {
                           {vendor.invoiceCount}
                         </Badge>
                       </TableCell>
+                      {fromDate && (
+                        <TableCell className="text-right text-blue-700 font-medium">
+                          {vendor.openingBalance ? formatCurrency(vendor.openingBalance) : '-'}
+                        </TableCell>
+                      )}
                       <TableCell className="text-right font-medium">
                         {formatCurrency(vendor.totalInvoiced)}
                       </TableCell>
