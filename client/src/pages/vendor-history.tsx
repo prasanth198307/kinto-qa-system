@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -78,6 +78,22 @@ interface VendorHistoryResponse {
   };
 }
 
+function getCurrentFY(): string {
+  const now = new Date();
+  const year = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+  return String(year);
+}
+
+function getAvailableFYs(): string[] {
+  const currentFYStart = parseInt(getCurrentFY());
+  return Array.from({ length: 4 }, (_, i) => String(currentFYStart - i));
+}
+
+function getFYLabel(startYear: string): string {
+  const y = parseInt(startYear);
+  return `FY ${y}-${String(y + 1).slice(2)}`;
+}
+
 export default function VendorHistoryPage() {
   const tenantConfig = useTenantConfig();
   const [, setLocation] = useLocation();
@@ -87,15 +103,31 @@ export default function VendorHistoryPage() {
   const [sortBy, setSortBy] = useState("outstanding");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [isExporting, setIsExporting] = useState(false);
+  const [selectedFY, setSelectedFY] = useState(getCurrentFY());
+  const [dateMode, setDateMode] = useState<"fy" | "custom">("fy");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+
+  const isCustomValid = dateMode === "custom" && customFrom && customTo && customFrom <= customTo;
+
+  const { fromDate, toDate } = useMemo(() => {
+    if (dateMode === "custom" && isCustomValid) {
+      return { fromDate: customFrom, toDate: customTo };
+    }
+    const y = parseInt(selectedFY);
+    return { fromDate: `${y}-04-01`, toDate: `${y + 1}-03-31` };
+  }, [dateMode, selectedFY, customFrom, customTo, isCustomValid]);
 
   const { data, isLoading } = useQuery<VendorHistoryResponse>({
-    queryKey: ['/api/vendor-history', { search, page, pageSize, sortBy, sortOrder }],
+    queryKey: ['/api/vendor-history', { search, page, pageSize, sortBy, sortOrder, fromDate, toDate }],
     queryFn: async () => {
       const params = new URLSearchParams({
         page: page.toString(),
         pageSize: pageSize.toString(),
         sortBy,
         sortOrder,
+        fromDate,
+        toDate,
         ...(search && { search }),
       });
       const res = await fetch(`/api/vendor-history?${params}`, { credentials: 'include' });
@@ -116,6 +148,8 @@ export default function VendorHistoryPage() {
         pageSize: '10000',
         sortBy,
         sortOrder,
+        fromDate,
+        toDate,
         ...(search && { search }),
       });
       const res = await fetch(`/api/vendor-history?${params}`, { credentials: 'include' });
@@ -306,7 +340,7 @@ export default function VendorHistoryPage() {
 
       {/* Search and Filters - Hidden in Print */}
       <Card className="print:hidden">
-        <CardContent className="pt-4">
+        <CardContent className="pt-4 space-y-3">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -332,6 +366,36 @@ export default function VendorHistoryPage() {
                 <SelectItem value="100">100 per page</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <Select value={dateMode} onValueChange={(v) => { setDateMode(v as "fy" | "custom"); setPage(1); }}>
+              <SelectTrigger className="w-[120px]" data-testid="select-date-mode">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="fy">Financial Year</SelectItem>
+                <SelectItem value="custom">Custom Range</SelectItem>
+              </SelectContent>
+            </Select>
+            {dateMode === "fy" && (
+              <Select value={selectedFY} onValueChange={(v) => { setSelectedFY(v); setPage(1); }}>
+                <SelectTrigger className="w-[140px]" data-testid="select-fy">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {getAvailableFYs().map(fy => (
+                    <SelectItem key={fy} value={fy}>{getFYLabel(fy)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {dateMode === "custom" && (
+              <div className="flex items-center gap-2">
+                <Input type="date" value={customFrom} onChange={e => { setCustomFrom(e.target.value); setPage(1); }} className="w-[140px]" data-testid="input-date-from" />
+                <span className="text-muted-foreground text-sm">to</span>
+                <Input type="date" value={customTo} onChange={e => { setCustomTo(e.target.value); setPage(1); }} className="w-[140px]" data-testid="input-date-to" />
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

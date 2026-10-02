@@ -16025,7 +16025,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
   // Get all vendors with summary totals (list view)
   app.get('/api/vendor-history', isAuthenticated, async (req: any, res) => {
     try {
-      const { search, page = '1', pageSize = '20', sortBy = 'outstanding', sortOrder = 'desc' } = req.query;
+      const { search, page = '1', pageSize = '20', sortBy = 'outstanding', sortOrder = 'desc', fromDate, toDate } = req.query;
       const pageNum = parseInt(page as string);
       const limit = Math.min(parseInt(pageSize as string), 10000);
       const offset = (pageNum - 1) * limit;
@@ -16066,7 +16066,16 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       
       // Get all invoices for aggregation (exclude cancelled)
       const allInvoices = await storage.getAllInvoices((req.session as any)?.tenantId ?? req.user?.tenantId);
-      const activeInvoices = allInvoices.filter(inv => inv.recordStatus === 1 && inv.status !== 'cancelled');
+      let activeInvoices = allInvoices.filter(inv => inv.recordStatus === 1 && inv.status !== 'cancelled');
+      // Apply date range filter when provided
+      if (fromDate && toDate) {
+        const from = fromDate as string;
+        const to = toDate as string;
+        activeInvoices = activeInvoices.filter(inv => {
+          const d = inv.invoiceDate ? inv.invoiceDate.substring(0, 10) : '';
+          return d >= from && d <= to;
+        });
+      }
       
       // Get all credit notes
       const allCreditNotes = await db.select()
@@ -18233,7 +18242,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
   // FIFO Payment Allocation - Allocate one payment across multiple outstanding invoices
   app.post('/api/invoice-payments/allocate-fifo', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
-      const { vendorId, amount, paymentDate, paymentMethod, paidBy, payerName, referenceNumber, bankName, remarks, allocationMethod, manualAllocations } = req.body;
+      const { vendorId, amount, paymentDate, paymentMethod, paidBy, payerName, referenceNumber, bankName, remarks, allocationMethod, manualAllocations, perInvoiceDetails } = req.body;
       
       if (!vendorId || !amount || amount <= 0) {
         return res.status(400).json({ message: "Vendor ID and valid payment amount are required" });
@@ -18269,15 +18278,16 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
             const outstanding = invoice.totalAmount - Number(paymentSum.sum);
             
             // Create payment record — use invoice's own buyerName so child records carry the child name
+            const invDetail = perInvoiceDetails?.[invoiceId];
             const [payment] = await tx.insert(invoicePayments).values({
               invoiceId: invoice.id,
-              paymentDate: paymentDate ? new Date(paymentDate).toISOString() : new Date().toISOString(),
+              paymentDate: invDetail?.date ? new Date(invDetail.date).toISOString() : (paymentDate ? new Date(paymentDate).toISOString() : new Date().toISOString()),
               amount: allocateAmount,
-              paymentMethod: paymentMethod || 'Cash',
+              paymentMethod: invDetail?.method || paymentMethod || 'Cash',
               paymentType: allocateAmount >= outstanding ? 'Full' : 'Partial',
               paidBy: paidBy || 'buyer',
               payerName: invoice.buyerName || payerName || '',
-              referenceNumber: referenceNumber || null,
+              referenceNumber: invDetail?.ref || referenceNumber || null,
               bankName: bankName || null,
               remarks: remarks || `Manual allocation from bulk payment`,
               bulkAllocationId,
