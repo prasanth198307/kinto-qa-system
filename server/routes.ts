@@ -10856,6 +10856,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       res.json({ message: "Invoice restored successfully. It is now active again." });
+
+      // Re-post invoice journal after restore (non-blocking)
+      try {
+        const restoredInvoice = await storage.getInvoice(id);
+        if (restoredInvoice && restoredInvoice.status !== 'cancelled') {
+          const { journalForInvoice, deleteJournalEntry } = await import('./journal-service');
+          await deleteJournalEntry('invoice', id);
+          await journalForInvoice(restoredInvoice);
+        }
+      } catch (je) { console.error('[JOURNAL] Invoice restore journal re-post failed:', je); }
     } catch (error) {
       console.error("Error restoring invoice:", error);
       res.status(500).json({ message: "Failed to restore invoice" });
