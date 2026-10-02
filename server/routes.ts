@@ -16650,17 +16650,28 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       if (openingInvoices.length > 0) {
         const openingInvoiceIds = openingInvoices.map(inv => inv.id);
         let openingPayments: any[] = [];
+        let openingCreditNotes: any[] = [];
         if (openingInvoiceIds.length > 0) {
-          openingPayments = await db.select()
-            .from(invoicePayments)
-            .where(and(
-              eq(invoicePayments.recordStatus, 1), tc(invoicePayments),
-              inArray(invoicePayments.invoiceId, openingInvoiceIds)
-            ));
+          [openingPayments, openingCreditNotes] = await Promise.all([
+            db.select()
+              .from(invoicePayments)
+              .where(and(
+                eq(invoicePayments.recordStatus, 1), tc(invoicePayments),
+                inArray(invoicePayments.invoiceId, openingInvoiceIds)
+              )),
+            db.select()
+              .from(creditNotes)
+              .where(and(
+                eq(creditNotes.recordStatus, 1), tc(creditNotes),
+                eq(creditNotes.status, 'issued'),
+                inArray(creditNotes.invoiceId, openingInvoiceIds)
+              )),
+          ]);
         }
         const openingInvoiced = openingInvoices.reduce((s, inv) => s + inv.totalAmount, 0);
         const openingReceived = openingPayments.reduce((s, pmt) => s + pmt.amount, 0);
-        openingBalance = openingInvoiced - openingReceived;
+        const openingCreditTotal = openingCreditNotes.reduce((s, cn) => s + (cn.grandTotal || 0), 0);
+        openingBalance = openingInvoiced - openingReceived - openingCreditTotal;
       }
 
       // Calculate summary totals

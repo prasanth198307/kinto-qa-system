@@ -44,12 +44,11 @@ function getAvailableFYs(): string[] {
 }
 
 function getFYDates(fy: string): { start: string; end: string } {
-  const { currency_symbol: sym } = useTenantConfig();
   const y = parseInt(fy);
   return { start: `${y}-04-01`, end: `${y + 1}-03-31` };
 }
 
-const DEFAULT_TENANT: TenantConfig = { currency_code: "INR", currency_symbol: sym, country_code: "IN", timezone: "Asia/Kolkata", tax_regime: "GST", tax_rate: 18, date_format: "DD/MM/YYYY", default_locale: "en", country: "India" };
+const DEFAULT_TENANT: TenantConfig = { currency_code: "INR", currency_symbol: "₹", country_code: "IN", timezone: "Asia/Kolkata", tax_regime: "GST", tax_rate: 18, date_format: "DD/MM/YYYY", default_locale: "en", country: "India" };
 function formatAmount(paise: number, config?: TenantConfig): string {
   if (paise === 0) return "-";
   const formatted = fmtCur(Math.abs(paise) / 100, config ?? DEFAULT_TENANT);
