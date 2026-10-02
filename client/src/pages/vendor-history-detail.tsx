@@ -219,7 +219,10 @@ export default function VendorHistoryDetailPage() {
   };
 
   const filteredTxnInvoices = txnData?.invoices.filter(inv => {
-    if (txnFilter === 'all') return true;
+    if (ledgerFromDate && ledgerToDate) {
+      const d = inv.invoiceDate ? inv.invoiceDate.substring(0, 10) : '';
+      if (d < ledgerFromDate || d > ledgerToDate) return false;
+    }
     if (txnFilter === 'pending') return inv.outstanding > 0;
     if (txnFilter === 'settled') return inv.outstanding <= 0;
     return true;
@@ -227,9 +230,14 @@ export default function VendorHistoryDetailPage() {
 
   // ── Unpaid tab derived data ────────────────────────────────────────────────
   const unpaidInvoices = useMemo(() =>
-    (txnData?.invoices || []).filter(inv => inv.outstanding > 0)
-      .sort((a, b) => new Date(a.invoiceDate).getTime() - new Date(b.invoiceDate).getTime()),
-  [txnData]);
+    (txnData?.invoices || []).filter(inv => {
+      if (ledgerFromDate && ledgerToDate) {
+        const d = inv.invoiceDate ? inv.invoiceDate.substring(0, 10) : '';
+        if (d < ledgerFromDate || d > ledgerToDate) return false;
+      }
+      return inv.outstanding > 0;
+    }).sort((a, b) => new Date(a.invoiceDate).getTime() - new Date(b.invoiceDate).getTime()),
+  [txnData, ledgerFromDate, ledgerToDate]);
 
   const unpaidByCluster = useMemo(() => {
     const map = new Map<string, InvoiceTransaction[]>();
@@ -542,7 +550,19 @@ export default function VendorHistoryDetailPage() {
       : `${selectedFilters.length} types selected`;
 
   const hasFilters = selectedFilters.length > 0;
-  const filteredSummary = hasFilters ? {
+  const hasDateFilter = !!(ledgerFromDate && ledgerToDate);
+
+  // Opening balance: balance of last ledger entry BEFORE the FY start date
+  const openingBalance = useMemo(() => {
+    if (!hasDateFilter || !data?.ledger) return 0;
+    const before = data.ledger
+      .filter(e => e.date && e.date.substring(0, 10) < ledgerFromDate)
+      .sort((a, b) => a.date.localeCompare(b.date));
+    return before.length > 0 ? before[before.length - 1].balance : 0;
+  }, [hasDateFilter, ledgerFromDate, data?.ledger]);
+
+  // Always compute filteredSummary when any filter (date or type) is active
+  const filteredSummary = (hasFilters || hasDateFilter) ? {
     totalInvoiced: filteredLedger.filter(e => e.type === 'invoice').reduce((sum, e) => sum + e.debit, 0),
     invoiceCount: filteredLedger.filter(e => e.type === 'invoice').length,
     totalPayments: filteredLedger.filter(e => e.type === 'payment').reduce((sum, e) => sum + e.credit, 0),
@@ -1421,6 +1441,90 @@ export default function VendorHistoryDetailPage() {
         </Card>
       </div>
 
+      {/* Unified Date Filter — applies to all 3 tabs */}
+      <Card className="print:hidden">
+        <CardContent className="py-3 px-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <Select value={dateMode} onValueChange={(v) => setDateMode(v as "fy" | "custom")}>
+              <SelectTrigger className="w-[140px]" data-testid="select-detail-date-mode">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="fy">Financial Year</SelectItem>
+                <SelectItem value="custom">Custom Range</SelectItem>
+              </SelectContent>
+            </Select>
+            {dateMode === "fy" && (
+              <Select value={selectedFY} onValueChange={setSelectedFY}>
+                <SelectTrigger className="w-[140px]" data-testid="select-detail-fy">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Years</SelectItem>
+                  {getAvailableFYs().map(fy => (
+                    <SelectItem key={fy} value={fy}>{getFYLabel(fy)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {dateMode === "custom" && (
+              <div className="flex items-center gap-2">
+                <Input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)} className="w-[140px]" data-testid="input-detail-date-from" />
+                <span className="text-muted-foreground text-sm">to</span>
+                <Input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)} className="w-[140px]" data-testid="input-detail-date-to" />
+              </div>
+            )}
+            {hasDateFilter && (
+              <span className="text-xs text-muted-foreground">
+                Showing {ledgerFromDate} to {ledgerToDate}
+              </span>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Opening Balance card — shown only when a specific period is selected */}
+      {hasDateFilter && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/20">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-blue-700">Opening Balance</CardTitle>
+              <IndianRupee className="h-4 w-4 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className={`text-xl font-bold ${openingBalance > 0 ? 'text-orange-600' : openingBalance < 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
+                {formatCurrency(openingBalance)}
+              </div>
+              <p className="text-xs text-muted-foreground">As of {ledgerFromDate}</p>
+            </CardContent>
+          </Card>
+          <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/20">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-blue-700">Period Activity</CardTitle>
+              <FileText className="h-4 w-4 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-xl font-bold">
+                {formatCurrency((s?.totalInvoiced || 0) + (s?.totalDebits || 0) - (s?.totalPayments || 0) - (s?.totalAdvances || 0) - (s?.totalCredits || 0) - (s?.vendorDebitNoteAdjustments || 0))}
+              </div>
+              <p className="text-xs text-muted-foreground">{s?.invoiceCount || 0} invoices in period</p>
+            </CardContent>
+          </Card>
+          <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/20">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-blue-700">Closing Balance</CardTitle>
+              <TrendingUp className="h-4 w-4 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className={`text-xl font-bold ${(openingBalance + (s?.totalInvoiced || 0) + (s?.totalDebits || 0) - (s?.totalPayments || 0) - (s?.totalAdvances || 0) - (s?.totalCredits || 0) - (s?.vendorDebitNoteAdjustments || 0)) > 0 ? 'text-orange-600' : 'text-green-600'}`}>
+                {formatCurrency(openingBalance + (s?.totalInvoiced || 0) + (s?.totalDebits || 0) - (s?.totalPayments || 0) - (s?.totalAdvances || 0) - (s?.totalCredits || 0) - (s?.vendorDebitNoteAdjustments || 0))}
+              </div>
+              <p className="text-xs text-muted-foreground">As of {ledgerToDate}</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Tabs: Ledger View + Invoice Transactions */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className={`grid w-full ${canViewPayments ? 'grid-cols-3' : 'grid-cols-2'}`}>
@@ -1449,35 +1553,6 @@ export default function VendorHistoryDetailPage() {
                 Transaction Ledger
               </CardTitle>
               <div className="flex flex-wrap items-center gap-2 print:hidden">
-                <Select value={dateMode} onValueChange={(v) => setDateMode(v as "fy" | "custom")}>
-                  <SelectTrigger className="w-[110px] h-8 text-xs" data-testid="select-detail-date-mode">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="fy">Financial Year</SelectItem>
-                    <SelectItem value="custom">Custom Range</SelectItem>
-                  </SelectContent>
-                </Select>
-                {dateMode === "fy" && (
-                  <Select value={selectedFY} onValueChange={setSelectedFY}>
-                    <SelectTrigger className="w-[120px] h-8 text-xs" data-testid="select-detail-fy">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Years</SelectItem>
-                      {getAvailableFYs().map(fy => (
-                        <SelectItem key={fy} value={fy}>{getFYLabel(fy)}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-                {dateMode === "custom" && (
-                  <div className="flex items-center gap-1">
-                    <Input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)} className="w-[130px] h-8 text-xs" data-testid="input-detail-date-from" />
-                    <span className="text-muted-foreground text-xs">–</span>
-                    <Input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)} className="w-[130px] h-8 text-xs" data-testid="input-detail-date-to" />
-                  </div>
-                )}
                 <Button variant="outline" size="sm" onClick={handleExportExcel} disabled={isLoading || !data} className="gap-1" data-testid="button-export-vendor-ledger">
                   <Download className="h-4 w-4" />
                   <span className="hidden sm:inline">Excel</span>
