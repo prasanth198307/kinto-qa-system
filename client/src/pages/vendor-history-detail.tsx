@@ -1504,9 +1504,20 @@ export default function VendorHistoryDetailPage() {
               <CardTitle className="text-sm font-medium text-blue-700">Period Activity</CardTitle>
               <FileText className="h-4 w-4 text-blue-500" />
             </CardHeader>
-            <CardContent>
-              <div className="text-xl font-bold">
-                {formatCurrency((s?.totalInvoiced || 0) + (s?.totalDebits || 0) - (s?.totalPayments || 0) - (s?.totalAdvances || 0) - (s?.totalCredits || 0) - (s?.vendorDebitNoteAdjustments || 0))}
+            <CardContent className="space-y-1">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Debit (Invoices + DN)</span>
+                <span className="font-medium text-orange-600">{formatCurrency((s?.totalInvoiced || 0) + (s?.totalDebits || 0))}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Credit (Payments + CN + Adv)</span>
+                <span className="font-medium text-green-600">{formatCurrency((s?.totalPayments || 0) + (s?.totalAdvances || 0) + (s?.totalCredits || 0) + (s?.vendorDebitNoteAdjustments || 0))}</span>
+              </div>
+              <div className="border-t border-blue-200 pt-1 flex justify-between">
+                <span className="text-xs font-semibold text-blue-700">Net</span>
+                <span className={`text-base font-bold ${((s?.totalInvoiced || 0) + (s?.totalDebits || 0) - (s?.totalPayments || 0) - (s?.totalAdvances || 0) - (s?.totalCredits || 0) - (s?.vendorDebitNoteAdjustments || 0)) > 0 ? 'text-orange-600' : 'text-green-600'}`}>
+                  {formatCurrency((s?.totalInvoiced || 0) + (s?.totalDebits || 0) - (s?.totalPayments || 0) - (s?.totalAdvances || 0) - (s?.totalCredits || 0) - (s?.vendorDebitNoteAdjustments || 0))}
+                </span>
               </div>
               <p className="text-xs text-muted-foreground">{s?.invoiceCount || 0} invoices in period</p>
             </CardContent>
