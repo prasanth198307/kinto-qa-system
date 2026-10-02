@@ -89,6 +89,7 @@ interface VendorDetailResponse {
     totalAdvances: number;
     vendorDebitNoteAdjustments: number;
     currentBalance: number;
+    openingBalance: number;
     invoiceCount: number;
     creditNoteCount: number;
     debitNoteCount: number;
@@ -195,9 +196,15 @@ export default function VendorHistoryDetailPage() {
   }, [dateMode, selectedFY, customFrom, customTo, isCustomValid]);
 
   const { data, isLoading } = useQuery<VendorDetailResponse>({
-    queryKey: ['/api/vendor-history', vendorId],
+    queryKey: ['/api/vendor-history', vendorId, ledgerFromDate, ledgerToDate],
     queryFn: async () => {
-      const res = await fetch(`/api/vendor-history/${vendorId}`, { credentials: 'include' });
+      const params = new URLSearchParams();
+      if (ledgerFromDate && ledgerToDate) {
+        params.set('startDate', ledgerFromDate);
+        params.set('endDate', ledgerToDate);
+      }
+      const url = `/api/vendor-history/${vendorId}${params.toString() ? '?' + params.toString() : ''}`;
+      const res = await fetch(url, { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch vendor details');
       return res.json();
     },
@@ -552,14 +559,8 @@ export default function VendorHistoryDetailPage() {
   const hasFilters = selectedFilters.length > 0;
   const hasDateFilter = !!(ledgerFromDate && ledgerToDate);
 
-  // Opening balance: balance of last ledger entry BEFORE the FY start date
-  const openingBalance = useMemo(() => {
-    if (!hasDateFilter || !data?.ledger) return 0;
-    const before = data.ledger
-      .filter(e => e.date && e.date.substring(0, 10) < ledgerFromDate)
-      .sort((a, b) => a.date.localeCompare(b.date));
-    return before.length > 0 ? before[before.length - 1].balance : 0;
-  }, [hasDateFilter, ledgerFromDate, data?.ledger]);
+  // Opening balance: from API (computed server-side from invoices before period start)
+  const openingBalance = hasDateFilter ? (data?.summary?.openingBalance ?? 0) : 0;
 
   // Always compute filteredSummary when any filter (date or type) is active
   const filteredSummary = (hasFilters || hasDateFilter) ? {

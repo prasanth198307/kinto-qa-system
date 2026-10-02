@@ -16441,25 +16441,29 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       // Get all invoices for this vendor family (parent + children)
       // Match on buyerName OR shipToName (same as the list endpoint)
       const allInvoices = await storage.getAllInvoices((req.session as any)?.tenantId ?? req.user?.tenantId);
-      let vendorInvoices = allInvoices.filter(inv => 
-        vendorNamesToInclude.some(name => 
+      const allVendorInvoices = allInvoices.filter(inv =>
+        vendorNamesToInclude.some(name =>
           name.toLowerCase() === inv.buyerName?.toLowerCase() ||
           name.toLowerCase() === inv.shipToName?.toLowerCase()
         ) && inv.recordStatus === 1
       );
-      
-      // Filter by date range if provided
-      if (startDate) {
-        vendorInvoices = vendorInvoices.filter(inv => 
-          new Date(inv.invoiceDate) >= new Date(startDate as string)
-        );
+
+      // Split into opening (before period) and period invoices
+      let vendorInvoices = allVendorInvoices;
+      let openingInvoices: typeof allVendorInvoices = [];
+      if (startDate && endDate) {
+        const from = (startDate as string).substring(0, 10);
+        const to = (endDate as string).substring(0, 10);
+        vendorInvoices = allVendorInvoices.filter(inv => {
+          const d = inv.invoiceDate ? inv.invoiceDate.substring(0, 10) : '';
+          return d >= from && d <= to;
+        });
+        openingInvoices = allVendorInvoices.filter(inv => {
+          const d = inv.invoiceDate ? inv.invoiceDate.substring(0, 10) : '';
+          return d < from;
+        });
       }
-      if (endDate) {
-        vendorInvoices = vendorInvoices.filter(inv => 
-          new Date(inv.invoiceDate) <= new Date(endDate as string)
-        );
-      }
-      
+
       const invoiceIds = vendorInvoices.map(inv => inv.id);
       
       // Get credit notes for these invoices
@@ -16641,26 +16645,44 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
         entry.balance = runningBalance;
       });
       
+      // Calculate opening balance from invoices before period start
+      let openingBalance = 0;
+      if (openingInvoices.length > 0) {
+        const openingInvoiceIds = openingInvoices.map(inv => inv.id);
+        let openingPayments: any[] = [];
+        if (openingInvoiceIds.length > 0) {
+          openingPayments = await db.select()
+            .from(invoicePayments)
+            .where(and(
+              eq(invoicePayments.recordStatus, 1), tc(invoicePayments),
+              inArray(invoicePayments.invoiceId, openingInvoiceIds)
+            ));
+        }
+        const openingInvoiced = openingInvoices.reduce((s, inv) => s + inv.totalAmount, 0);
+        const openingReceived = openingPayments.reduce((s, pmt) => s + pmt.amount, 0);
+        openingBalance = openingInvoiced - openingReceived;
+      }
+
       // Calculate summary totals
       const totalInvoiced = vendorInvoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
       const totalCredits = vendorCreditNotes.reduce((sum, cn) => sum + (cn.grandTotal || 0), 0);
       const totalDebits = customerDebitNotes.reduce((sum, dn) => sum + (dn.grandTotal || 0), 0);
       // Only active (non-cancelled) advances count toward the summary card and balance
       const totalAdvances = activeAdvances.reduce((sum, adv) => sum + ((adv.amount || 0) - (adv.usedAmount || 0)), 0);
-      
+
       // Calculate vendor debit note adjustments total (these are invoice payments with method "Debit Note Adjustment")
       const vendorDebitNoteAdjustmentsTotal = allInvoicePayments
         .filter(pmt => pmt.paymentMethod === 'Debit Note Adjustment')
         .reduce((sum, pmt) => sum + pmt.amount, 0);
-      
+
       // Calculate actual payments (excluding DN Adjustments) from invoice_payments table
       const actualPaymentsTotal = allInvoicePayments
         .filter(pmt => pmt.paymentMethod !== 'Debit Note Adjustment')
         .reduce((sum, pmt) => sum + pmt.amount, 0);
-      
+
       // Total payments = actual payments only (DN Adjustments shown separately)
       const totalPayments = actualPaymentsTotal;
-      
+
       // Current balance = Invoiced + Debits - Credits - Payments - DN Adjustments - Advances
       const currentBalance = totalInvoiced + totalDebits - totalCredits - totalPayments - vendorDebitNoteAdjustmentsTotal - totalAdvances;
       
@@ -16684,6 +16706,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
           totalAdvances,
           vendorDebitNoteAdjustments: vendorDebitNoteAdjustmentsTotal,
           currentBalance,
+          openingBalance,
           invoiceCount: vendorInvoices.length,
           creditNoteCount: vendorCreditNotes.length,
           debitNoteCount: customerDebitNotes.length,
