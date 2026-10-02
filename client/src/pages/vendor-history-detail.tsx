@@ -4,6 +4,7 @@ import { useLocation, useParams } from "wouter";
 import { usePermissions } from "@/hooks/use-permissions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { 
   Table, 
@@ -147,6 +148,22 @@ interface InvoiceTransactionsResponse {
   invoices: InvoiceTransaction[];
 }
 
+function getCurrentFY(): string {
+  const now = new Date();
+  const year = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+  return String(year);
+}
+
+function getAvailableFYs(): string[] {
+  const currentFYStart = parseInt(getCurrentFY());
+  return Array.from({ length: 4 }, (_, i) => String(currentFYStart - i));
+}
+
+function getFYLabel(startYear: string): string {
+  const y = parseInt(startYear);
+  return `FY ${y}-${String(y + 1).slice(2)}`;
+}
+
 export default function VendorHistoryDetailPage() {
   const [, setLocation] = useLocation();
   const { vendorId } = useParams<{ vendorId: string }>();
@@ -162,6 +179,20 @@ export default function VendorHistoryDetailPage() {
   const [expandedInvoices, setExpandedInvoices] = useState<Record<string, boolean>>({});
   const [txnFilter, setTxnFilter] = useState("all");
   const [expandedClusters, setExpandedClusters] = useState<Record<string, boolean>>({});
+  const [selectedFY, setSelectedFY] = useState("all");
+  const [dateMode, setDateMode] = useState<"fy" | "custom">("fy");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+
+  const isCustomValid = dateMode === "custom" && customFrom && customTo && customFrom <= customTo;
+  const { ledgerFromDate, ledgerToDate } = useMemo(() => {
+    if (dateMode === "custom" && isCustomValid) return { ledgerFromDate: customFrom, ledgerToDate: customTo };
+    if (dateMode === "fy" && selectedFY !== "all") {
+      const y = parseInt(selectedFY);
+      return { ledgerFromDate: `${y}-04-01`, ledgerToDate: `${y + 1}-03-31` };
+    }
+    return { ledgerFromDate: "", ledgerToDate: "" };
+  }, [dateMode, selectedFY, customFrom, customTo, isCustomValid]);
 
   const { data, isLoading } = useQuery<VendorDetailResponse>({
     queryKey: ['/api/vendor-history', vendorId],
@@ -495,9 +526,14 @@ export default function VendorHistoryDetailPage() {
     });
   };
 
-  const filteredLedger = data?.ledger.filter(entry => 
-    selectedFilters.length === 0 || selectedFilters.includes(entry.type)
-  ) || [];
+  const filteredLedger = data?.ledger.filter(entry => {
+    if (selectedFilters.length > 0 && !selectedFilters.includes(entry.type)) return false;
+    if (ledgerFromDate && ledgerToDate) {
+      const d = entry.date ? entry.date.substring(0, 10) : '';
+      if (d < ledgerFromDate || d > ledgerToDate) return false;
+    }
+    return true;
+  }) || [];
 
   const filterLabel = selectedFilters.length === 0 
     ? 'All Transactions' 
@@ -1412,7 +1448,36 @@ export default function VendorHistoryDetailPage() {
                 <Calendar className="h-5 w-5 print:hidden" />
                 Transaction Ledger
               </CardTitle>
-              <div className="flex items-center gap-2 print:hidden">
+              <div className="flex flex-wrap items-center gap-2 print:hidden">
+                <Select value={dateMode} onValueChange={(v) => setDateMode(v as "fy" | "custom")}>
+                  <SelectTrigger className="w-[110px] h-8 text-xs" data-testid="select-detail-date-mode">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="fy">Financial Year</SelectItem>
+                    <SelectItem value="custom">Custom Range</SelectItem>
+                  </SelectContent>
+                </Select>
+                {dateMode === "fy" && (
+                  <Select value={selectedFY} onValueChange={setSelectedFY}>
+                    <SelectTrigger className="w-[120px] h-8 text-xs" data-testid="select-detail-fy">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Years</SelectItem>
+                      {getAvailableFYs().map(fy => (
+                        <SelectItem key={fy} value={fy}>{getFYLabel(fy)}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {dateMode === "custom" && (
+                  <div className="flex items-center gap-1">
+                    <Input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)} className="w-[130px] h-8 text-xs" data-testid="input-detail-date-from" />
+                    <span className="text-muted-foreground text-xs">–</span>
+                    <Input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)} className="w-[130px] h-8 text-xs" data-testid="input-detail-date-to" />
+                  </div>
+                )}
                 <Button variant="outline" size="sm" onClick={handleExportExcel} disabled={isLoading || !data} className="gap-1" data-testid="button-export-vendor-ledger">
                   <Download className="h-4 w-4" />
                   <span className="hidden sm:inline">Excel</span>
