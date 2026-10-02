@@ -10450,11 +10450,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
         
-        // Regenerate journal if financial amounts changed
+        // Regenerate journal if any financial amounts changed
         try {
-          const oldTotal = Number(existingInvoice.totalAmount) || 0;
-          const newTotal = Number(invoice.totalAmount) || 0;
-          if (oldTotal !== newTotal && invoice.status !== 'cancelled') {
+          const financiallyChanged =
+            Number(existingInvoice.totalAmount) !== Number(invoice.totalAmount) ||
+            Number(existingInvoice.cgstAmount) !== Number(invoice.cgstAmount) ||
+            Number(existingInvoice.sgstAmount) !== Number(invoice.sgstAmount) ||
+            Number(existingInvoice.igstAmount) !== Number(invoice.igstAmount) ||
+            Number(existingInvoice.subtotal) !== Number(invoice.subtotal);
+          if (financiallyChanged && invoice.status !== 'cancelled') {
             const { journalForInvoice, deleteJournalEntry } = await import('./journal-service');
             await deleteJournalEntry('invoice', id);
             await journalForInvoice(invoice);
@@ -10493,11 +10497,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Regenerate journal if financial amounts changed (header-only path)
+      // Regenerate journal if any financial amounts changed (header-only path)
       try {
-        const oldTotal = Number(existingInvoice.totalAmount) || 0;
-        const newTotal = Number(invoice.totalAmount) || 0;
-        if (oldTotal !== newTotal && invoice.status !== 'cancelled') {
+        const financiallyChanged =
+          Number(existingInvoice.totalAmount) !== Number(invoice.totalAmount) ||
+          Number(existingInvoice.cgstAmount) !== Number(invoice.cgstAmount) ||
+          Number(existingInvoice.sgstAmount) !== Number(invoice.sgstAmount) ||
+          Number(existingInvoice.igstAmount) !== Number(invoice.igstAmount) ||
+          Number(existingInvoice.subtotal) !== Number(invoice.subtotal);
+        if (financiallyChanged && invoice.status !== 'cancelled') {
           const { journalForInvoice, deleteJournalEntry } = await import('./journal-service');
           await deleteJournalEntry('invoice', id);
           await journalForInvoice(invoice);
@@ -15333,6 +15341,15 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
         );
       });
 
+      // Post journal for the new credit note (non-blocking)
+      try {
+        const [newCN] = await db.select().from(creditNotes).where(eq(creditNotes.noteNumber, creditNoteNumber));
+        if (newCN) {
+          const { journalForCreditNote } = await import('./journal-service');
+          await journalForCreditNote(newCN, invoice.invoiceNumber, invoice.buyerName || invoice.shipToName || '');
+        }
+      } catch (je) { console.error('[JOURNAL] Manual credit note journal failed:', je); }
+
       res.json({
         message: `Credit note ${creditNoteNumber} created successfully`,
         creditNoteNumber,
@@ -15657,6 +15674,15 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
         );
       });
 
+      // Post journal for the new credit note (non-blocking)
+      try {
+        const [newCN] = await db.select().from(creditNotes).where(eq(creditNotes.noteNumber, creditNoteNumber));
+        if (newCN) {
+          const { journalForCreditNote } = await import('./journal-service');
+          await journalForCreditNote(newCN, invoice.invoiceNumber, invoice.buyerName || invoice.shipToName || '');
+        }
+      } catch (je) { console.error('[JOURNAL] Correct & Credit note journal failed:', je); }
+
       res.json({
         message: `Credit note ${creditNoteNumber} created successfully`,
         creditNoteNumber,
@@ -15918,6 +15944,15 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
         );
       });
 
+      // Post journal for the new credit note (non-blocking)
+      try {
+        const [newCN] = await db.select().from(creditNotes).where(eq(creditNotes.noteNumber, creditNoteNumber));
+        if (newCN) {
+          const { journalForCreditNote } = await import('./journal-service');
+          await journalForCreditNote(newCN, invoice.invoiceNumber, invoice.buyerName || invoice.shipToName || '');
+        }
+      } catch (je) { console.error('[JOURNAL] Quick full credit note journal failed:', je); }
+
       res.json({
         message: `Credit note ${creditNoteNumber} created for full invoice amount`,
         creditNoteNumber,
@@ -15926,6 +15961,30 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
     } catch (error) {
       console.error("Error creating quick full credit:", error);
       res.status(500).json({ message: "Failed to create credit note" });
+    }
+  });
+
+  // Delete (void) a credit note — admin only, non-cancelled notes only
+  app.delete('/api/credit-notes/:id', requireRole('admin'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const [cn] = await db.select().from(creditNotes).where(and(eq(creditNotes.id, id), eq(creditNotes.recordStatus, 1)));
+      if (!cn) return res.status(404).json({ message: 'Credit note not found' });
+      if (cn.status === 'cancelled') return res.status(400).json({ message: 'Credit note is already cancelled' });
+
+      await db.update(creditNotes).set({ status: 'cancelled', recordStatus: 0 }).where(eq(creditNotes.id, id));
+
+      // Void the journal
+      try {
+        const { deleteJournalEntry } = await import('./journal-service');
+        await deleteJournalEntry('credit_note', id);
+      } catch (je) { console.error('[JOURNAL] Credit note delete journal void failed:', je); }
+
+      await logAudit(req.user?.id, 'DELETE', 'credit_notes', id, `Credit note ${cn.noteNumber} voided`);
+      res.json({ message: 'Credit note voided successfully' });
+    } catch (error) {
+      console.error('Error deleting credit note:', error);
+      res.status(500).json({ message: 'Failed to delete credit note' });
     }
   });
 
@@ -17178,6 +17237,30 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
     }
   });
 
+  // Delete (void) a debit note — admin only
+  app.delete('/api/debit-notes/:id', requireRole('admin'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const [dn] = await db.select().from(debitNotes).where(and(eq(debitNotes.id, id), eq(debitNotes.recordStatus, 1)));
+      if (!dn) return res.status(404).json({ message: 'Debit note not found' });
+      if (dn.status === 'cancelled') return res.status(400).json({ message: 'Debit note is already cancelled' });
+
+      await db.update(debitNotes).set({ status: 'cancelled', recordStatus: 0 }).where(eq(debitNotes.id, id));
+
+      // Void the journal
+      try {
+        const { deleteJournalEntry } = await import('./journal-service');
+        await deleteJournalEntry('debit_note', id);
+      } catch (je) { console.error('[JOURNAL] Debit note delete journal void failed:', je); }
+
+      await logAudit(req.user?.id, 'DELETE', 'debit_notes', id, `Debit note ${dn.noteNumber} voided`);
+      res.json({ message: 'Debit note voided successfully' });
+    } catch (error) {
+      console.error('Error deleting debit note:', error);
+      res.status(500).json({ message: 'Failed to delete debit note' });
+    }
+  });
+
   // ==================== VENDOR DEBIT NOTES ====================
   // Manual debit notes against vendors for claims (defective goods, short receipts, quality issues)
 
@@ -17819,7 +17902,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
           if (adjustment.referenceType === 'invoice' && adjustment.invoiceId) {
             // Get current invoice to update amountReceived
             const [currentInvoice] = await tx.select().from(invoices).where(eq(invoices.id, adjustment.invoiceId));
-            
+
             // Find the payment record created for this adjustment
             await tx.update(invoicePayments)
               .set({ recordStatus: 0 })
@@ -17847,12 +17930,34 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
 
         // Soft-delete the debit note
         await tx.update(vendorDebitNotes)
-          .set({ 
+          .set({
             recordStatus: 0,
             status: 'cancelled'
           })
           .where(eq(vendorDebitNotes.id, debitNoteId));
       });
+
+      // Void VDN journal and all adjustment journals (non-blocking)
+      try {
+        const { deleteJournalEntry } = await import('./journal-service');
+        await deleteJournalEntry('vendor_debit_note', debitNoteId);
+        for (const adjustment of adjustments) {
+          await deleteJournalEntry('vdn_adjustment', adjustment.id);
+          // Void the invoice payment journal for this adjustment if present
+          if (adjustment.referenceType === 'invoice' && adjustment.invoiceId) {
+            const paymentRows = await db.select({ id: invoicePayments.id })
+              .from(invoicePayments)
+              .where(and(
+                eq(invoicePayments.invoiceId, adjustment.invoiceId),
+                eq(invoicePayments.referenceNumber, debitNote.noteNumber),
+                eq(invoicePayments.paymentMethod, 'Debit Note Adjustment')
+              ));
+            for (const p of paymentRows) {
+              await deleteJournalEntry('payment', p.id);
+            }
+          }
+        }
+      } catch (je) { console.error('[JOURNAL] VDN delete journal void failed:', je); }
 
       await logAudit(
         req.user?.id,
@@ -17862,9 +17967,9 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
         `Deleted vendor debit note ${debitNote.noteNumber}. Revoked ${adjustments.length} adjustment(s).`
       );
 
-      res.json({ 
-        message: "Debit note deleted successfully", 
-        revokedAdjustments: adjustments.length 
+      res.json({
+        message: "Debit note deleted successfully",
+        revokedAdjustments: adjustments.length
       });
     } catch (error) {
       console.error("Error deleting vendor debit note:", error);
@@ -21383,6 +21488,12 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
         await storage.deleteExpenseItem(item.id);
       }
       
+      // Void journal before deleting (non-blocking)
+      try {
+        const { deleteJournalEntry } = await import('./journal-service');
+        await deleteJournalEntry('expense', id);
+      } catch (je) { console.error('[JOURNAL] Expense voucher delete journal void failed:', je); }
+
       await storage.deleteExpenseVoucher(id);
       await logAudit(req.user?.id, 'DELETE', 'expense_vouchers', id, `Expense voucher deleted: ${voucher.voucherNumber}`);
       res.status(204).send();

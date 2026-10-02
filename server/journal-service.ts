@@ -672,6 +672,44 @@ export async function createJournalWithLines(
 }
 
 // ============================================================
+// JOURNAL VOID / DELETE HELPERS
+// ============================================================
+
+/**
+ * Void the journal entry for a given source (sets record_status=0 on entry + lines).
+ * Idempotent: no-op if no active journal exists.
+ */
+export async function deleteJournalEntry(sourceType: string, sourceId: string): Promise<void> {
+  try {
+    const existing = await storage.getJournalEntryBySource(sourceType, sourceId);
+    if (existing) {
+      await storage.deleteJournalEntry(existing.id);
+      console.log(`[JOURNAL] Voided journal ${existing.id} (${sourceType}:${sourceId})`);
+    }
+  } catch (e: any) {
+    console.error(`[JOURNAL] deleteJournalEntry failed for ${sourceType}:${sourceId}:`, e.message);
+  }
+}
+
+/**
+ * Void ALL active journal entries for a source id across all source types.
+ * Useful when deleting a record that may have multiple journal types (e.g. invoice + payment).
+ */
+export async function voidAllJournalsForSource(sourceId: string): Promise<void> {
+  try {
+    const rows = await db.execute(sql`
+      SELECT id FROM journal_entries
+      WHERE source_id = ${sourceId} AND record_status = 1
+    `);
+    for (const row of (rows as any).rows) {
+      await storage.deleteJournalEntry(row.id);
+    }
+  } catch (e: any) {
+    console.error(`[JOURNAL] voidAllJournalsForSource failed for ${sourceId}:`, e.message);
+  }
+}
+
+// ============================================================
 // AUTO-GENERATION FUNCTIONS
 // ============================================================
 
