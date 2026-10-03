@@ -16284,12 +16284,13 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
         const vendorDebits = allDebitNotes.filter(dn => invoiceIds.includes(dn.invoiceId));
         const totalDebits = vendorDebits.reduce((sum, dn) => sum + (dn.grandTotal || 0), 0);
         
-        // Customer advances — only count the portion actually adjusted/applied to invoices (usedAmount)
-        // Unadjusted advance balance is not yet a payment against any invoice so must not reduce outstanding
+        // Customer advances — only count the UNAPPLIED portion (money collected but not yet allocated to invoices).
+        // Applied (used) advances are already reflected in amountReceived on the invoice, so subtracting usedAmount
+        // would double-count. We subtract only (amount - usedAmount) = balance not yet applied.
         const vendorAdvances = allAdvances.filter(adv =>
-          vendorIdsToInclude.includes(adv.vendorId) && (adv.usedAmount || 0) > 0
+          vendorIdsToInclude.includes(adv.vendorId) && (adv.amount || 0) > (adv.usedAmount || 0)
         );
-        const totalAdvances = vendorAdvances.reduce((sum, adv) => sum + (adv.usedAmount || 0), 0);
+        const totalAdvances = vendorAdvances.reduce((sum, adv) => sum + ((adv.amount || 0) - (adv.usedAmount || 0)), 0);
 
         // Opening balance: outstanding from invoices before the selected FY start
         let openingBalance = 0;
@@ -16305,7 +16306,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
           openingBalance = openingInvoiced - openingReceived;
         }
 
-        // Outstanding = Opening Balance + Period(Invoiced + Debits - Credits - Received - Advances)
+        // Outstanding = Opening Balance + Period(Invoiced + Debits - Credits - Received - UnusedAdvances)
         const outstanding = openingBalance + totalInvoiced + totalDebits - totalCredits - totalReceived - totalAdvances;
         
         // Last transaction date (across all family members)
