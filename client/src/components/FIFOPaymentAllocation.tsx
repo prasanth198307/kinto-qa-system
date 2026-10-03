@@ -555,7 +555,7 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
       </Card>
 
       {/* Pending Invoices Preview - Shows when vendor is selected */}
-      {selectedVendorId && !allocationPreview && (
+      {(selectedVendorId || selectedBuyerName) && !allocationPreview && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">
