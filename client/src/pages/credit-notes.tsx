@@ -73,7 +73,8 @@ export default function CreditNotes() {
     if (creditNotes.length === 0) return;
     setIsExporting(true);
     try {
-      const dataSheet = [
+      // Sheet 1: Summary
+      const summarySheet = [
         ['Credit Notes Report'],
         ['Generated', format(new Date(), 'yyyy-MM-dd HH:mm')],
         [''],
@@ -93,9 +94,48 @@ export default function CreditNotes() {
         ])
       ];
 
+      // Sheet 2: SKU-wise breakdown
+      let skuSheet: any[][] = [
+        ['Credit Notes — SKU-wise Breakdown'],
+        ['Generated', format(new Date(), 'yyyy-MM-dd HH:mm')],
+        [''],
+        ['Credit Note #', 'Invoice #', 'Date', 'Buyer Name', 'Product / SKU', 'Qty', 'Unit Price (₹)', 'Discount (₹)', 'Taxable Value (₹)', 'CGST %', 'CGST (₹)', 'SGST %', 'SGST (₹)', 'IGST %', 'IGST (₹)', 'Total (₹)'],
+      ];
+      try {
+        const res = await fetch('/api/credit-note-items/all', { credentials: 'include' });
+        if (res.ok) {
+          const allItems: any[] = await res.json();
+          allItems.forEach(item => {
+            skuSheet.push([
+              item.noteNumber || '',
+              item.invoiceNumber || '',
+              formatDateForExcel(item.creditDate),
+              item.buyerName || '',
+              item.productName || item.description || '',
+              item.quantity,
+              formatCurrencyForExcel(item.unitPrice),
+              formatCurrencyForExcel(item.discountAmount || 0),
+              formatCurrencyForExcel(item.taxableValue),
+              item.cgstRate ? `${(item.cgstRate / 100).toFixed(0)}%` : '0%',
+              formatCurrencyForExcel(item.cgstAmount),
+              item.sgstRate ? `${(item.sgstRate / 100).toFixed(0)}%` : '0%',
+              formatCurrencyForExcel(item.sgstAmount),
+              item.igstRate ? `${(item.igstRate / 100).toFixed(0)}%` : '0%',
+              formatCurrencyForExcel(item.igstAmount),
+              formatCurrencyForExcel(item.totalAmount),
+            ]);
+          });
+        }
+      } catch (_) {
+        // If SKU fetch fails, export summary only
+      }
+
       await exportToExcel({
         filename: `credit-notes-${format(new Date(), 'yyyy-MM-dd')}.xlsx`,
-        sheets: [{ name: 'Credit Notes', data: dataSheet }],
+        sheets: [
+          { name: 'Credit Notes', data: summarySheet },
+          { name: 'SKU-wise', data: skuSheet },
+        ],
       });
     } finally {
       setIsExporting(false);
