@@ -15178,7 +15178,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
         igstRate: creditNoteItems.igstRate,
         igstAmount: creditNoteItems.igstAmount,
         totalAmount: creditNoteItems.totalAmount,
-        productName: products.name,
+        productName: products.productName,
       })
       .from(creditNoteItems)
       .leftJoin(creditNotes, eq(creditNoteItems.creditNoteId, creditNotes.id))
