@@ -4810,6 +4810,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get distinct buyer names that have outstanding invoices (for FIFO dropdown)
+  app.get('/api/invoices/buyer-names', isAuthenticated, async (req: any, res) => {
+    try {
+      const tenantId = (req.session as any)?.tenantId ?? req.user?.tenantId;
+      const rows = await db.execute(sql`
+        SELECT DISTINCT i.buyer_name
+        FROM invoices i
+        WHERE i.record_status = 1 AND i.tenant_id = ${tenantId}
+          AND (i.total_amount - COALESCE((
+            SELECT SUM(ip.amount) FROM invoice_payments ip
+            WHERE ip.invoice_id = i.id AND ip.record_status = 1
+          ), 0)) > 0
+        ORDER BY i.buyer_name
+      `);
+      res.json((rows as any).rows.map((r: any) => r.buyer_name));
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch buyer names" });
+    }
+  });
+
+  // Get pending invoices by buyer name (for invoice-only parties not in vendors table)
+  app.get('/api/invoices/pending-by-buyer', isAuthenticated, async (req: any, res) => {
+    try {
+      const tenantId = (req.session as any)?.tenantId ?? req.user?.tenantId;
+      const { buyerName } = req.query;
+      if (!buyerName) return res.status(400).json({ message: "buyerName required" });
+
+      const allInvoices = await storage.getAllInvoices(tenantId);
+      const vendorInvoices = allInvoices.filter(inv =>
+        inv.buyerName === buyerName && inv.recordStatus === 1
+      );
+
+      const allPayments = await db.select().from(invoicePayments).where(eq(invoicePayments.recordStatus, 1));
+      const paymentsByInvoice: Record<string, number> = {};
+      allPayments.forEach(p => {
+        paymentsByInvoice[p.invoiceId] = (paymentsByInvoice[p.invoiceId] || 0) + p.amount;
+      });
+
+      const pendingInvoices = vendorInvoices
+        .map(inv => {
+          const paid = paymentsByInvoice[inv.id] || 0;
+          const outstanding = inv.totalAmount - paid;
+          return { id: inv.id, invoiceNumber: inv.invoiceNumber, invoiceDate: inv.invoiceDate, totalAmount: inv.totalAmount, totalPaid: paid, outstanding };
+        })
+        .filter(inv => inv.outstanding > 0)
+        .sort((a, b) => new Date(a.invoiceDate).getTime() - new Date(b.invoiceDate).getTime());
+
+      const totalOutstanding = pendingInvoices.reduce((s, i) => s + i.outstanding, 0);
+      res.json({ vendorName: buyerName, pendingInvoices, totalOutstanding, invoiceCount: pendingInvoices.length });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch pending invoices" });
+    }
+  });
+
   // Get pending invoices for a vendor (for FIFO payment allocation preview)
   // Also includes invoices from child vendors linked to this parent
   app.get('/api/vendors/:id/pending-invoices', isAuthenticated, async (req: any, res) => {
@@ -4825,14 +4879,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get all vendors to find children of this parent
       const allVendors = await storage.getAllVendors();
       const childVendors = allVendors.filter(v => v.parentVendorId === id);
-      
-      // Build list of vendor names to include (parent + all children)
-      const vendorNamesToInclude = [vendor.vendorName, ...childVendors.map(cv => cv.vendorName)];
+
+      // Use shipToName ONLY when vendorName is shared across multiple vendor records
+      // (e.g. 30 HPCL sub-dealers). For normal vendors, always use vendorName.
+      const nameCount = allVendors.filter(v => v.vendorName === vendor.vendorName).length;
+      const useShipTo = (v: any) => nameCount > 1 && v.shipToName ? v.shipToName : v.vendorName;
+      const vendorNamesToInclude = [
+        useShipTo(vendor),
+        ...childVendors.map(cv => useShipTo(cv))
+      ].filter(Boolean);
 
       // Get all invoices for this vendor family (parent + children)
       const allInvoices = await storage.getAllInvoices((req.session as any)?.tenantId ?? req.user?.tenantId);
-      const vendorInvoices = allInvoices.filter(inv => 
-        vendorNamesToInclude.includes(inv.buyerName) && inv.recordStatus === 1
+      const vendorInvoices = allInvoices.filter(inv =>
+        vendorNamesToInclude.some(name =>
+          name.toLowerCase() === inv.buyerName?.toLowerCase() ||
+          name.toLowerCase() === inv.shipToName?.toLowerCase()
+        ) && inv.recordStatus === 1
       );
 
       // Get all credit notes and debit notes for outstanding balance calculation
@@ -16506,13 +16569,15 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       const allVendors = await storage.getAllVendors();
       const childVendors = allVendors.filter(v => v.parentVendorId === vendorId);
       const vendorIdsToInclude = [vendorId, ...childVendors.map(cv => cv.id)];
+      // Use shipToName ONLY when vendorName is shared (e.g. 30 HPCL sub-dealers).
+      // For Kinto warehouses and normal vendors, always use vendorName.
+      const nameCount16 = allVendors.filter(v => v.vendorName === vendor.vendorName).length;
+      const useShipTo16 = (v: any) => nameCount16 > 1 && v.shipToName ? v.shipToName : v.vendorName;
       const vendorNamesToInclude = [
-        vendor.vendorName,
-        vendor.shipToName || '',
-        ...childVendors.map(cv => cv.vendorName),
-        ...childVendors.map(cv => cv.shipToName || '')
+        useShipTo16(vendor),
+        ...childVendors.map(cv => useShipTo16(cv))
       ].filter(Boolean);
-      
+
       // Get all invoices for this vendor family (parent + children)
       // Match on buyerName OR shipToName (same as the list endpoint)
       const allInvoices = await storage.getAllInvoices((req.session as any)?.tenantId ?? req.user?.tenantId);
@@ -16820,23 +16885,24 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       const allVendors = await storage.getAllVendors();
       const childVendors = allVendors.filter(v => v.parentVendorId === vendorId);
       const vendorIdsToInclude = [vendorId, ...childVendors.map(cv => cv.id)];
+      // Use shipToName ONLY when vendorName is shared (e.g. 30 HPCL sub-dealers).
+      const nameCount17 = allVendors.filter(v => v.vendorName === vendor.vendorName).length;
+      const useShipTo17 = (v: any) => nameCount17 > 1 && v.shipToName ? v.shipToName : v.vendorName;
       const vendorNamesToInclude = [
-        vendor.vendorName,
-        vendor.shipToName || '',
-        ...childVendors.map(cv => cv.vendorName),
-        ...childVendors.map(cv => cv.shipToName || '')
+        useShipTo17(vendor),
+        ...childVendors.map(cv => useShipTo17(cv))
       ].filter(Boolean);
-      
+
       const allInvoices = await storage.getAllInvoices((req.session as any)?.tenantId ?? req.user?.tenantId);
-      const vendorInvoices = allInvoices.filter(inv => 
-        vendorNamesToInclude.some(name => 
+      const vendorInvoices = allInvoices.filter(inv =>
+        vendorNamesToInclude.some(name =>
           name.toLowerCase() === inv.buyerName?.toLowerCase() ||
           name.toLowerCase() === inv.shipToName?.toLowerCase()
         ) && inv.recordStatus === 1
       );
-      
+
       const invoiceIds = vendorInvoices.map(inv => inv.id);
-      
+
       let allPayments: any[] = [];
       let allCreditNotesList: any[] = [];
       let allDebitNotesList: any[] = [];
@@ -18420,16 +18486,17 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
   // FIFO Payment Allocation - Allocate one payment across multiple outstanding invoices
   app.post('/api/invoice-payments/allocate-fifo', requireRole('admin', 'manager'), async (req: any, res) => {
     try {
-      const { vendorId, amount, paymentDate, paymentMethod, paidBy, payerName, referenceNumber, bankName, remarks, allocationMethod, manualAllocations, perInvoiceDetails } = req.body;
-      
-      if (!vendorId || !amount || amount <= 0) {
-        return res.status(400).json({ message: "Vendor ID and valid payment amount are required" });
+      const { vendorId, buyerName: directBuyerName, amount, paymentDate, paymentMethod, paidBy, payerName, referenceNumber, bankName, remarks, allocationMethod, manualAllocations, perInvoiceDetails } = req.body;
+
+      if ((!vendorId && !directBuyerName) || !amount || amount <= 0) {
+        return res.status(400).json({ message: "Vendor ID or buyer name and valid payment amount are required" });
       }
 
-      // Get the vendor to verify it exists and get the vendor name
-      const vendor = await storage.getVendor(vendorId);
-      if (!vendor) {
-        return res.status(404).json({ message: "Vendor not found" });
+      // Support invoice-only buyers (no vendor record) via directBuyerName
+      let vendor: any = null;
+      if (vendorId) {
+        vendor = await storage.getVendor(vendorId);
+        if (!vendor) return res.status(404).json({ message: "Vendor not found" });
       }
 
       // Generate one shared ID for all split payments in this allocation
@@ -18490,9 +18557,14 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
         } else {
           // Standard FIFO Logic
           // Get all outstanding invoices for this vendor family (parent + child vendors)
-          const allVendors = await storage.getAllVendors();
-          const childVendors = allVendors.filter(v => v.parentVendorId === vendorId);
-          const vendorNamesToInclude = [vendor.vendorName, ...childVendors.map(cv => cv.vendorName)];
+          let vendorNamesToInclude: string[];
+          if (directBuyerName) {
+            vendorNamesToInclude = [directBuyerName];
+          } else {
+            const allVendors = await storage.getAllVendors();
+            const childVendors = allVendors.filter(v => v.parentVendorId === vendorId);
+            vendorNamesToInclude = [vendor.vendorName, ...childVendors.map((cv: any) => cv.vendorName)];
+          }
 
           const allInvoices = await storage.getAllInvoices((req.session as any)?.tenantId ?? req.user?.tenantId);
           const vendorInvoices = allInvoices.filter(inv =>

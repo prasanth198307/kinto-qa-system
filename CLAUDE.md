@@ -97,3 +97,10 @@ When a file exceeds 300 lines split it like this:
 - Keep shared state in parent component
 - Use props to pass data down
 - Always check for unused imports after extracting a component
+
+## Session Efficiency Rules
+- Never re-read scratchpad scripts after a session compaction — work from the summary
+- Keep DB queries minimal — no full column dumps, no large result sets
+- Give short answers — no long tables or elaborations unless explicitly asked
+- Batch related DB fixes into one transaction instead of multiple round-trips
+- Do not re-derive facts already established earlier in the conversation

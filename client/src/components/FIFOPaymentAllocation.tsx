@@ -45,7 +45,7 @@ import {
 import { cn } from "@/lib/utils";
 
 const fifoPaymentSchema = z.object({
-  vendorId: z.string().min(1, "Vendor is required"),
+  vendorId: z.string().min(1, "Vendor/buyer is required"),
   allocationMethod: z.enum(["fifo", "manual"]).default("fifo"),
   amount: z.string().min(1, "Amount is required")
     .refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
@@ -75,11 +75,20 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
   const [allocationPreview, setAllocationPreview] = useState<any>(null);
   const [vendorPopoverOpen, setVendorPopoverOpen] = useState(false);
   const [selectedVendorId, setSelectedVendorId] = useState<string>("");
+  const [selectedBuyerName, setSelectedBuyerName] = useState<string>("");
   const [perInvoiceDetails, setPerInvoiceDetails] = useState<Record<string, { date: string; method: string; ref: string }>>({});
 
   const { data: vendors = [] } = useQuery<any[]>({
     queryKey: ['/api/vendors'],
   });
+
+  const { data: invoiceBuyerNames = [] } = useQuery<string[]>({
+    queryKey: ['/api/invoices/buyer-names'],
+  });
+
+  // Merge: registered vendors + invoice-only buyers not in vendors table
+  const vendorNameSet = new Set(vendors.map((v: any) => v.vendorName));
+  const invoiceOnlyBuyers = invoiceBuyerNames.filter(name => !vendorNameSet.has(name));
 
   const { data: banks = [] } = useQuery<any[]>({
     queryKey: ['/api/banks'],
@@ -99,8 +108,16 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
     totalOutstanding: number;
     invoiceCount: number;
   }>({
-    queryKey: ['/api/vendors', selectedVendorId, 'pending-invoices'],
-    enabled: !!selectedVendorId,
+    queryKey: selectedVendorId
+      ? ['/api/vendors', selectedVendorId, 'pending-invoices']
+      : ['/api/invoices/pending-by-buyer', selectedBuyerName],
+    queryFn: selectedVendorId
+      ? undefined
+      : async () => {
+          const res = await fetch(`/api/invoices/pending-by-buyer?buyerName=${encodeURIComponent(selectedBuyerName)}`);
+          return res.json();
+        },
+    enabled: !!(selectedVendorId || selectedBuyerName),
   });
 
   const form = useForm<FIFOPaymentFormData>({
@@ -165,7 +182,8 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
   const allocateMutation = useMutation({
     mutationFn: async (data: FIFOPaymentFormData) => {
       const payload = {
-        vendorId: data.vendorId,
+        vendorId: selectedBuyerName ? undefined : data.vendorId,
+        buyerName: selectedBuyerName || undefined,
         allocationMethod: data.allocationMethod,
         amount: Math.round(parseFloat(data.amount) * 100), // Convert to paise
         paymentDate: new Date(data.paymentDate).toISOString(),
@@ -238,7 +256,7 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
                               data-testid="select-vendor"
                             >
                               {field.value
-                                ? vendors.find((v: any) => v.id === field.value)?.vendorName
+                                ? (vendors.find((v: any) => v.id === field.value)?.vendorName || selectedBuyerName)
                                 : "Select vendor"}
                               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
@@ -249,7 +267,7 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
                             <CommandInput placeholder="Search vendor..." />
                             <CommandList>
                               <CommandEmpty>No vendor found.</CommandEmpty>
-                              <CommandGroup>
+                              <CommandGroup heading="Registered Vendors">
                                 {vendors.map((vendor: any) => (
                                   <CommandItem
                                     key={vendor.id}
@@ -257,20 +275,36 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
                                     onSelect={() => {
                                       form.setValue("vendorId", vendor.id);
                                       setSelectedVendorId(vendor.id);
+                                      setSelectedBuyerName("");
                                       form.setValue("payerName", vendor.vendorName || "");
                                       setVendorPopoverOpen(false);
                                     }}
                                   >
-                                    <Check
-                                      className={cn(
-                                        "mr-2 h-4 w-4",
-                                        vendor.id === field.value ? "opacity-100" : "opacity-0"
-                                      )}
-                                    />
+                                    <Check className={cn("mr-2 h-4 w-4", vendor.id === field.value ? "opacity-100" : "opacity-0")} />
                                     {vendor.vendorName}
                                   </CommandItem>
                                 ))}
                               </CommandGroup>
+                              {invoiceOnlyBuyers.length > 0 && (
+                                <CommandGroup heading="Invoice Buyers (no vendor record)">
+                                  {invoiceOnlyBuyers.map((name: string) => (
+                                    <CommandItem
+                                      key={name}
+                                      value={name}
+                                      onSelect={() => {
+                                        form.setValue("vendorId", `buyer:${name}`);
+                                        setSelectedVendorId("");
+                                        setSelectedBuyerName(name);
+                                        form.setValue("payerName", name);
+                                        setVendorPopoverOpen(false);
+                                      }}
+                                    >
+                                      <Check className={cn("mr-2 h-4 w-4", selectedBuyerName === name ? "opacity-100" : "opacity-0")} />
+                                      {name}
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              )}
                             </CommandList>
                           </Command>
                         </PopoverContent>
@@ -500,6 +534,7 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
                     onClick={() => {
                       setAllocationPreview(null);
                       setSelectedVendorId("");
+                      setSelectedBuyerName("");
                       setPerInvoiceDetails({});
                       form.reset();
                       if (onSuccess) onSuccess();
