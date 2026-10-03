@@ -95,6 +95,20 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
   });
 
   // Fetch pending invoices when vendor is selected
+  const pendingQueryOptions = selectedVendorId
+    ? {
+        queryKey: ['/api/vendors', selectedVendorId, 'pending-invoices'] as const,
+        enabled: true,
+      }
+    : {
+        queryKey: ['/api/invoices/pending-by-buyer', selectedBuyerName] as const,
+        queryFn: async () => {
+          const res = await fetch(`/api/invoices/pending-by-buyer?buyerName=${encodeURIComponent(selectedBuyerName)}`);
+          return res.json();
+        },
+        enabled: !!selectedBuyerName,
+      };
+
   const { data: pendingData, isLoading: isPendingLoading } = useQuery<{
     vendorName: string;
     pendingInvoices: Array<{
@@ -107,18 +121,7 @@ export default function FIFOPaymentAllocation({ onSuccess, onCancel }: FIFOPayme
     }>;
     totalOutstanding: number;
     invoiceCount: number;
-  }>({
-    queryKey: selectedVendorId
-      ? ['/api/vendors', selectedVendorId, 'pending-invoices']
-      : ['/api/invoices/pending-by-buyer', selectedBuyerName],
-    queryFn: selectedVendorId
-      ? undefined
-      : async () => {
-          const res = await fetch(`/api/invoices/pending-by-buyer?buyerName=${encodeURIComponent(selectedBuyerName)}`);
-          return res.json();
-        },
-    enabled: !!(selectedVendorId || selectedBuyerName),
-  });
+  }>(pendingQueryOptions);
 
   const form = useForm<FIFOPaymentFormData>({
     resolver: zodResolver(fifoPaymentSchema),
