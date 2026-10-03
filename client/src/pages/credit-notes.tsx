@@ -108,7 +108,7 @@ export default function CreditNotes() {
           allItems.forEach(item => {
             skuSheet.push([
               item.noteNumber || '',
-              item.invoiceNumber || '',
+              item.invoiceNumber || item.noteNumber || '',
               formatDateForExcel(item.creditDate),
               item.buyerName || '',
               item.productName || item.description || '',

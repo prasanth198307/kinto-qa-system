@@ -15162,12 +15162,11 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       const rows = await db.select({
         creditNoteId: creditNoteItems.creditNoteId,
         noteNumber: creditNotes.noteNumber,
-        invoiceNumber: creditNotes.invoiceNumber,
         creditDate: creditNotes.creditDate,
-        buyerName: creditNotes.buyerName,
-        buyerGstin: creditNotes.buyerGstin,
+        invoiceNumber: invoices.invoiceNumber,
+        buyerName: invoices.buyerName,
+        buyerGstin: invoices.buyerGstin,
         description: creditNoteItems.description,
-        productId: creditNoteItems.productId,
         quantity: creditNoteItems.quantity,
         unitPrice: creditNoteItems.unitPrice,
         discountAmount: creditNoteItems.discountAmount,
@@ -15183,6 +15182,7 @@ th{background:#e5e7eb;padding:8px;text-align:left;font-size:13px}
       })
       .from(creditNoteItems)
       .leftJoin(creditNotes, eq(creditNoteItems.creditNoteId, creditNotes.id))
+      .leftJoin(invoices, eq(creditNotes.invoiceId, invoices.id))
       .leftJoin(products, eq(creditNoteItems.productId, products.id))
       .where(and(eq(creditNoteItems.recordStatus, 1), tc(creditNoteItems)))
       .orderBy(desc(creditNotes.creditDate));
